@@ -11,7 +11,10 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::clock::parse_utc;
-use crate::domain::{BoardMeta, BoardSnapshot, Card, Column, RunState, Transition};
+use crate::domain::{
+    BoardMeta, BoardSnapshot, Card, Column, RunState, Transition,
+    normalize_and_validate_description, validate_board_name,
+};
 use crate::error::{FileAction, SkanError};
 
 use super::{ExportFile, FORMAT, VERSION};
@@ -116,10 +119,75 @@ fn convert(raw: RawFile) -> Result<ExportFile, Violation> {
     })
 }
 
+/// What is wrong with a one-line text (title or pending reason), if anything.
+/// The text must not need trimming: nothing is corrected on import.
+fn one_line_problem(text: &str, max: usize, subject: &str) -> Option<String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        Some(format!("an empty {subject}"))
+    } else if text.contains(['\n', '\r']) {
+        Some(format!("a {subject} with a line break"))
+    } else if trimmed.len() != text.len() {
+        Some(format!("a {subject} with leading or trailing whitespace"))
+    } else if text.chars().count() > max {
+        Some(format!("a {subject} longer than {max} characters"))
+    } else {
+        None
+    }
+}
+
+fn check_board(board: &BoardMeta) -> Result<(), Violation> {
+    if validate_board_name(&board.name).ok().as_deref() != Some(board.name.as_str()) {
+        return Err(
+            "The board name must be 1 to 50 characters on one line, without leading or trailing whitespace."
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn check_card_items(card: &Card) -> Result<(), Violation> {
+    let id = card.id;
+    if id < 1 {
+        return Err(format!(
+            "Card IDs must be 1 or greater. #{id} is not valid."
+        ));
+    }
+    if let Some(problem) = one_line_problem(&card.title, 100, "title") {
+        return Err(format!("Card #{id} has {problem}."));
+    }
+    if card.description.contains("\r\n") {
+        return Err(format!(
+            "Card #{id} has a description with CRLF line breaks."
+        ));
+    }
+    if normalize_and_validate_description(&card.description).is_err() {
+        return Err(format!(
+            "Card #{id} has a description longer than 300 characters."
+        ));
+    }
+    if card.position < 1 {
+        return Err(format!(
+            "Card #{id} has position {}. Positions must be 1 or greater.",
+            card.position
+        ));
+    }
+    if let Some(reason) = &card.pending_reason
+        && let Some(problem) = one_line_problem(reason, 100, "pending reason")
+    {
+        return Err(format!("Card #{id} has {problem}."));
+    }
+    Ok(())
+}
+
 /// Check every import rule in the order MODEL.md lists them.
 fn check(file: &ExportFile) -> Result<BoardSnapshot, Violation> {
     if file.format != FORMAT || file.version != VERSION {
         return Err(format_violation());
+    }
+    check_board(&file.board)?;
+    for card in &file.cards {
+        check_card_items(card)?;
     }
     let mut cards = file.cards.clone();
     cards.sort_by_key(|card| card.id);

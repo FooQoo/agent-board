@@ -609,3 +609,129 @@ fn validate_rejects_a_typed_file_with_the_wrong_format() {
         })
     );
 }
+
+// ------------------------------------------------- item rules (board and cards)
+
+const NAME_REASON: &str = "The board name must be 1 to 50 characters on one line, without leading or trailing whitespace.";
+
+#[test]
+fn the_board_name_must_follow_the_name_rules() {
+    assert_rejected(|v| v["board"]["name"] = json!(""), NAME_REASON);
+    assert_rejected(|v| v["board"]["name"] = json!("   "), NAME_REASON);
+    assert_rejected(|v| v["board"]["name"] = json!("x".repeat(51)), NAME_REASON);
+    assert_rejected(|v| v["board"]["name"] = json!("two\nlines"), NAME_REASON);
+    assert_rejected(|v| v["board"]["name"] = json!(" padded"), NAME_REASON);
+    assert_rejected(|v| v["board"]["name"] = json!("padded\t"), NAME_REASON);
+}
+
+#[test]
+fn characters_are_counted_as_unicode_scalar_values() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut value = valid_json();
+    value["board"]["name"] = json!("ボ".repeat(50));
+    value["cards"][0]["title"] = json!("あ".repeat(100));
+    value["cards"][0]["description"] = json!("🙂".repeat(300));
+    value["cards"][2]["pending_reason"] = json!("い".repeat(100));
+    let path = write_json(dir.path(), &value);
+    read_and_validate(&path).unwrap();
+
+    assert_rejected(|v| v["board"]["name"] = json!("ボ".repeat(51)), NAME_REASON);
+    assert_rejected(
+        |v| v["cards"][0]["title"] = json!("あ".repeat(101)),
+        "Card #1 has a title longer than 100 characters.",
+    );
+}
+
+#[test]
+fn titles_must_follow_the_title_rules() {
+    assert_rejected(
+        |v| v["cards"][2]["title"] = json!("x".repeat(101)),
+        "Card #3 has a title longer than 100 characters.",
+    );
+    assert_rejected(
+        |v| v["cards"][1]["title"] = json!(""),
+        "Card #2 has an empty title.",
+    );
+    assert_rejected(
+        |v| v["cards"][1]["title"] = json!("  \t "),
+        "Card #2 has an empty title.",
+    );
+    assert_rejected(
+        |v| v["cards"][1]["title"] = json!("two\nlines"),
+        "Card #2 has a title with a line break.",
+    );
+    assert_rejected(
+        |v| v["cards"][1]["title"] = json!("carriage\rreturn"),
+        "Card #2 has a title with a line break.",
+    );
+    assert_rejected(
+        |v| v["cards"][3]["title"] = json!(" padded"),
+        "Card #4 has a title with leading or trailing whitespace.",
+    );
+}
+
+#[test]
+fn descriptions_must_follow_the_description_rules() {
+    assert_rejected(
+        |v| v["cards"][0]["description"] = json!("x".repeat(301)),
+        "Card #1 has a description longer than 300 characters.",
+    );
+    assert_rejected(
+        |v| v["cards"][0]["description"] = json!("a\r\nb"),
+        "Card #1 has a description with CRLF line breaks.",
+    );
+    // Newlines and surrounding spaces are fine in a description.
+    let dir = tempfile::tempdir().unwrap();
+    let mut value = valid_json();
+    value["cards"][0]["description"] = json!("  line one\nline two\n");
+    read_and_validate(&write_json(dir.path(), &value)).unwrap();
+}
+
+#[test]
+fn pending_reasons_must_follow_the_reason_rules() {
+    assert_rejected(
+        |v| v["cards"][2]["pending_reason"] = json!("x".repeat(101)),
+        "Card #3 has a pending reason longer than 100 characters.",
+    );
+    assert_rejected(
+        |v| v["cards"][2]["pending_reason"] = json!(""),
+        "Card #3 has an empty pending reason.",
+    );
+    assert_rejected(
+        |v| v["cards"][2]["pending_reason"] = json!("a\nb"),
+        "Card #3 has a pending reason with a line break.",
+    );
+    assert_rejected(
+        |v| v["cards"][2]["pending_reason"] = json!("a "),
+        "Card #3 has a pending reason with leading or trailing whitespace.",
+    );
+}
+
+#[test]
+fn a_pending_card_may_have_no_reason() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut value = valid_json();
+    value["cards"][2]["pending_reason"] = json!(null);
+    let snapshot = read_and_validate(&write_json(dir.path(), &value)).unwrap();
+    assert_eq!(snapshot.cards[2].pending_reason, None);
+}
+
+#[test]
+fn ids_and_positions_must_be_at_least_one() {
+    assert_rejected(
+        |v| v["cards"][0]["id"] = json!(0),
+        "Card IDs must be 1 or greater. #0 is not valid.",
+    );
+    assert_rejected(
+        |v| v["cards"][0]["id"] = json!(-4),
+        "Card IDs must be 1 or greater. #-4 is not valid.",
+    );
+    assert_rejected(
+        |v| v["cards"][0]["position"] = json!(0),
+        "Card #1 has position 0. Positions must be 1 or greater.",
+    );
+    assert_rejected(
+        |v| v["cards"][3]["position"] = json!(-1),
+        "Card #4 has position -1. Positions must be 1 or greater.",
+    );
+}
