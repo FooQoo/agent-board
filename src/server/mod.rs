@@ -8,6 +8,7 @@ pub mod assets;
 pub mod dist;
 mod events;
 pub mod guard;
+mod instance;
 
 use std::future::Future;
 use std::net::{SocketAddr, TcpListener};
@@ -16,8 +17,9 @@ use std::sync::Arc;
 
 use tokio::sync::broadcast;
 
+use crate::clock::format_utc;
 use crate::error::SkanError;
-use crate::paths;
+use crate::paths::{self, ServeInfo};
 use crate::store::Store;
 
 /// How the web server is started.
@@ -51,7 +53,13 @@ pub fn run_until<F: Future<Output = ()>>(
     on_ready: impl FnOnce(SocketAddr),
 ) -> Result<(), SkanError> {
     let db_path = paths::db_path();
+    let serve_path = paths::serve_info_path();
     require_board(&db_path)?;
+    if let Some(info) = paths::read_serve_info()
+        && instance::is_serving(&info)
+    {
+        return Err(SkanError::AlreadyServing { port: info.port });
+    }
     let listener = bind(config.port)?;
     let addr = listener
         .local_addr()
@@ -75,13 +83,21 @@ pub fn run_until<F: Future<Output = ()>>(
             .set_nonblocking(true)
             .and_then(|()| tokio::net::TcpListener::from_std(listener))
             .map_err(|e| internal(format!("Cannot listen on {addr}: {e}")))?;
+        let pid = std::process::id();
+        paths::write_serve_info(&ServeInfo {
+            pid,
+            port: addr.port(),
+            started_at: format_utc(chrono::Utc::now()),
+        });
         on_ready(addr);
-        tokio::select! {
+        let result = tokio::select! {
             served = async { axum::serve(listener, app).await } => {
                 served.map_err(|e| internal(format!("The server stopped: {e}")))
             }
             () = shutdown => Ok(()),
-        }
+        };
+        instance::remove_serve_info_of(&serve_path, pid);
+        result
     })
 }
 

@@ -803,3 +803,162 @@ fn a_keep_alive_comment_arrives_within_sixteen_seconds() {
     let mut events = server.events();
     events.wait_for("\n:", Duration::from_secs(17));
 }
+
+// ---------------------------------------------------------------- serve.json and startup
+
+use skan::paths::ServeInfo;
+
+fn serve_json(home: &Path) -> Option<ServeInfo> {
+    let text = std::fs::read_to_string(home.join("serve.json")).ok()?;
+    serde_json::from_str(&text).ok()
+}
+
+fn write_serve_json(home: &Path, info: &ServeInfo) {
+    std::fs::write(
+        home.join("serve.json"),
+        serde_json::to_string(info).unwrap(),
+    )
+    .unwrap();
+}
+
+/// A port nothing listens on.
+fn free_port() -> u16 {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.local_addr().unwrap().port()
+}
+
+/// A stand-in for another server that answers `GET /api/health` with `pid`.
+fn fake_health_server(pid: u32) -> (u16, JoinHandle<()>) {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let handle = std::thread::spawn(move || {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let mut buf = [0u8; 2048];
+            let _ = stream.read(&mut buf);
+            let body = format!("{{\"ok\":true,\"pid\":{pid}}}");
+            let _ = write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+        }
+    });
+    (port, handle)
+}
+
+fn info(pid: u32, port: u16) -> ServeInfo {
+    ServeInfo {
+        pid,
+        port,
+        started_at: "2026-10-02T01:00:00Z".into(),
+    }
+}
+
+#[test]
+fn serve_json_is_written_while_running_and_removed_when_the_server_stops() {
+    let home = board_home();
+    assert_eq!(serve_json(home.path()), None);
+    let server = Running::start(home.path(), 0).unwrap();
+    let written = serve_json(home.path()).expect("serve.json is written before ready");
+    assert_eq!(written.pid, std::process::id());
+    assert_eq!(written.port, server.port());
+    assert!(
+        skan::clock::parse_utc(&written.started_at).is_ok(),
+        "{}",
+        written.started_at
+    );
+    server.stop().unwrap();
+    assert_eq!(serve_json(home.path()), None);
+    assert!(!home.path().join("serve.json").exists());
+}
+
+#[test]
+fn serve_json_never_holds_the_session_token() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let token = server.token();
+    let text = std::fs::read_to_string(home.path().join("serve.json")).unwrap();
+    assert!(!text.contains(&token));
+}
+
+#[test]
+fn an_uninitialized_board_is_not_initialized_and_leaves_no_serve_json() {
+    let home = tempfile::tempdir().unwrap();
+    let error = Running::start(home.path(), 0).err().unwrap();
+    assert_eq!(error, SkanError::NotInitialized);
+    assert!(!home.path().join("serve.json").exists());
+}
+
+#[test]
+fn a_second_server_for_the_same_data_directory_is_already_serving() {
+    let home = board_home();
+    let first = Running::start(home.path(), 0).unwrap();
+    let before = serve_json(home.path());
+    let error = Running::start(home.path(), 0).err().unwrap();
+    assert_eq!(error, SkanError::AlreadyServing { port: first.port() });
+    // The first server is untouched.
+    assert_eq!(serve_json(home.path()), before);
+    assert_eq!(first.get("/api/health").status, 200);
+    // Asking for the running server's own port is also "already serving".
+    let error = Running::start(home.path(), first.port()).err().unwrap();
+    assert_eq!(error, SkanError::AlreadyServing { port: first.port() });
+    first.stop().unwrap();
+}
+
+#[test]
+fn a_port_in_use_by_something_else_is_port_in_use() {
+    let home = board_home();
+    let blocker = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = blocker.local_addr().unwrap().port();
+    let error = Running::start(home.path(), port).err().unwrap();
+    assert_eq!(error, SkanError::PortInUse { port });
+    assert_eq!(error.code(), "port_in_use");
+    assert!(!home.path().join("serve.json").exists());
+}
+
+#[test]
+fn a_serve_json_whose_server_is_gone_is_overwritten() {
+    let home = board_home();
+    write_serve_json(home.path(), &info(4_000_000, free_port()));
+    let server = Running::start(home.path(), 0).unwrap();
+    let written = serve_json(home.path()).unwrap();
+    assert_eq!(written.pid, std::process::id());
+    assert_eq!(written.port, server.port());
+}
+
+#[test]
+fn a_serve_json_whose_health_reports_another_pid_is_overwritten() {
+    let home = board_home();
+    let (port, fake) = fake_health_server(1);
+    write_serve_json(home.path(), &info(2, port));
+    let server = Running::start(home.path(), 0).unwrap();
+    assert_eq!(serve_json(home.path()).unwrap().port, server.port());
+    fake.join().unwrap();
+}
+
+#[test]
+fn a_serve_json_whose_port_answers_with_the_same_pid_means_already_serving() {
+    let home = board_home();
+    let (port, fake) = fake_health_server(2);
+    write_serve_json(home.path(), &info(2, port));
+    let error = Running::start(home.path(), 0).err().unwrap();
+    assert_eq!(error, SkanError::AlreadyServing { port });
+    fake.join().unwrap();
+}
+
+#[test]
+fn a_broken_serve_json_is_overwritten() {
+    let home = board_home();
+    std::fs::write(home.path().join("serve.json"), "not json").unwrap();
+    let server = Running::start(home.path(), 0).unwrap();
+    assert_eq!(serve_json(home.path()).unwrap().port, server.port());
+}
+
+#[test]
+fn stopping_leaves_a_serve_json_that_another_process_took_over() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    write_serve_json(home.path(), &info(1, 1));
+    server.stop().unwrap();
+    assert_eq!(serve_json(home.path()), Some(info(1, 1)));
+}
