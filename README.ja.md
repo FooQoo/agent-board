@@ -67,11 +67,12 @@ Rules for agents:
 CLIを実行またはテストするときは、実際のボードに触れないよう`SKAN_HOME`を一時ディレクトリに設定してください。macOSの既定のデータ保存先は`~/Library/Application Support/skan/`、Windowsでは`%APPDATA%\skan\`です。
 
 ```sh
-SKAN_HOME=$(mktemp -d) cargo run -- init --name dev
+export SKAN_HOME="$(mktemp -d)"
+cargo run -- init --name dev
 cargo run -- serve --port <port>
 ```
 
-同じボードを使うコマンドごとに`SKAN_HOME`を設定する必要があります。複数のコマンドを続けて実行する場合は、シェルで環境変数を設定できます。例: `export SKAN_HOME=$(mktemp -d)`。
+exportした`SKAN_HOME`は、そのシェルセッション内のコマンドで共有されます。新しいセッションでは再度設定してください。
 
 サンプルデータでWeb画面だけを開発するには、次を実行します。
 

@@ -67,11 +67,12 @@ Run all commands from the repository root.
 Always point `SKAN_HOME` at a temporary directory when you run or test the CLI, so your real board is never touched. The default data area is `~/Library/Application Support/skan/` on macOS and `%APPDATA%\skan\` on Windows.
 
 ```sh
-SKAN_HOME=$(mktemp -d) cargo run -- init --name dev
+export SKAN_HOME="$(mktemp -d)"
+cargo run -- init --name dev
 cargo run -- serve --port <port>
 ```
 
-`SKAN_HOME` must be set for every command that should use the same board. Export it in your shell session if you run several commands, for example `export SKAN_HOME=$(mktemp -d)`.
+The exported `SKAN_HOME` is shared by commands in this shell session. Set it again in a new session.
 
 To work on the web UI alone with sample data:
 
