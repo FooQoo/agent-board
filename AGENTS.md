@@ -2,7 +2,7 @@
 
 ## Repository conventions
 
-- Write code, comments, documentation, and UI text in English.
+- Keep source code, code comments, repository instructions, and the English README (`README.md`) in English. Localized UI resources and `README.ja.md` may use their target language; all other documentation remains in English.
 - Keep implementation and tests in this repository.
 
 ## Verification

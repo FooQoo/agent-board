@@ -1,5 +1,7 @@
 # SimpleKanban
 
+[日本語](README.ja.md)
+
 A local kanban board for coding agents.
 
 ## What it is
@@ -10,6 +12,10 @@ SimpleKanban lets an agent manage cards from the command line (`skan`) while a h
 - The web view (`skan serve`) is for humans only. It shows the board, updates automatically, and can delete a card.
 - The board has three columns: Todo, Doing, and Done. Only cards in Doing have a run state: idle, running, or pending.
 - Everything is stored locally in a SQLite database. Nothing leaves your machine, and `skan serve` listens only on `127.0.0.1`.
+
+## Language
+
+The web UI opens in English. Use the globe button in the header to choose English or Japanese; the selection is saved in your browser. The interface does not choose a language from your browser or operating system settings. The CLI, its help and errors, and API and JSON values remain in English. Card content that you enter is not translated.
 
 ## Build
 
@@ -61,11 +67,12 @@ Run all commands from the repository root.
 Always point `SKAN_HOME` at a temporary directory when you run or test the CLI, so your real board is never touched. The default data area is `~/Library/Application Support/skan/` on macOS and `%APPDATA%\skan\` on Windows.
 
 ```sh
-SKAN_HOME=$(mktemp -d) cargo run -- init --name dev
+export SKAN_HOME="$(mktemp -d)"
+cargo run -- init --name dev
 cargo run -- serve --port <port>
 ```
 
-`SKAN_HOME` must be set for every command that should use the same board. Export it in your shell session if you run several commands, for example `export SKAN_HOME=$(mktemp -d)`.
+The exported `SKAN_HOME` is shared by commands in this shell session. Set it again in a new session.
 
 To work on the web UI alone with sample data:
 
