@@ -308,6 +308,24 @@ fn unknown_command_and_no_command_point_to_top_level_help() {
 }
 
 #[test]
+fn a_missing_command_says_so_instead_of_printing_help() {
+    let home = board();
+    let o = run(home.path(), &[]);
+    assert_eq!(o.code, 2);
+    assert_eq!(
+        o.err,
+        "Error: a command is required.\nReason: Run \"skan --help\" for usage.\n"
+    );
+    let o = run(home.path(), &["frobnicate"]);
+    assert!(
+        o.err
+            .starts_with("Error: unrecognized subcommand 'frobnicate'\n"),
+        "{}",
+        o.err
+    );
+}
+
+#[test]
 fn invalid_value_message_lists_the_choices() {
     let home = board();
     let o = run(home.path(), &["mv", "1", "sideways"]);

@@ -270,8 +270,15 @@ pub fn parse(args: &[OsString]) -> Result<Parsed, SkanError> {
                 ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
                     Ok(Parsed::Print(error.to_string()))
                 }
-                _ => Err(SkanError::InvalidArgument {
-                    message: parser_message(&error.to_string()),
+                kind => Err(SkanError::InvalidArgument {
+                    message: match kind {
+                        // The parser would print the whole help text here.
+                        ErrorKind::MissingSubcommand
+                        | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
+                            "a command is required.".to_string()
+                        }
+                        _ => parser_message(&error.to_string()),
+                    },
                     command: subcommand_in(args),
                 }),
             }
