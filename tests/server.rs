@@ -833,8 +833,16 @@ fn fake_health_server(pid: u32) -> (u16, JoinHandle<()>) {
     let port = listener.local_addr().unwrap().port();
     let handle = std::thread::spawn(move || {
         if let Ok((mut stream, _)) = listener.accept() {
-            let mut buf = [0u8; 2048];
-            let _ = stream.read(&mut buf);
+            // Read the whole request first, or closing with unread data resets
+            // the connection before the client sees the response.
+            let mut request = Vec::new();
+            let mut buf = [0u8; 512];
+            while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+                match stream.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => request.extend_from_slice(&buf[..n]),
+                }
+            }
             let body = format!("{{\"ok\":true,\"pid\":{pid}}}");
             let _ = write!(
                 stream,

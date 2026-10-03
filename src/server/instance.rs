@@ -35,11 +35,8 @@ fn health_pid(port: u16) -> Option<u32> {
     stream.set_read_timeout(Some(HEALTH_TIMEOUT)).ok()?;
     stream.set_write_timeout(Some(HEALTH_TIMEOUT)).ok()?;
     // HTTP/1.0 so the reply has a Content-Length and the connection closes.
-    write!(
-        stream,
-        "GET /api/health HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\n\r\n"
-    )
-    .ok()?;
+    let request = format!("GET /api/health HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\n\r\n");
+    stream.write_all(request.as_bytes()).ok()?;
     let mut response = Vec::new();
     stream.take(MAX_RESPONSE).read_to_end(&mut response).ok()?;
     let text = String::from_utf8(response).ok()?;
