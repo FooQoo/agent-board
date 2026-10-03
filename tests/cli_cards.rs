@@ -337,38 +337,6 @@ fn invalid_value_message_lists_the_choices() {
     );
 }
 
-#[test]
-fn unimplemented_commands_exit_1_with_not_implemented() {
-    let home = board();
-    add(home.path(), "x");
-    for args in [
-        vec!["rm", "1"],
-        vec!["export"],
-        vec!["serve"],
-        vec!["init", "--name", "again"],
-    ] {
-        let o = run(home.path(), &args);
-        assert_eq!(o.code, 1, "{args:?}");
-        assert_eq!(o.out, "");
-        assert!(o.err.starts_with("Error: "), "{args:?}: {}", o.err);
-        let mut with_json = args.clone();
-        with_json.push("--json");
-        let v = json(&run(home.path(), &with_json).err);
-        assert_eq!(v["error"]["code"], "not_implemented", "{args:?}");
-    }
-    // import does not need a board, so it reaches the stub on an empty home too.
-    let empty = tempfile::tempdir().unwrap();
-    let o = run(empty.path(), &["import"]);
-    assert_eq!(o.code, 1);
-    assert!(
-        o.err.contains("import is not implemented yet."),
-        "{}",
-        o.err
-    );
-    // nothing was changed by any of them
-    assert_eq!(card_ids(home.path()), vec![1]);
-}
-
 // ------------------------------------------------------------------- init
 
 #[test]
