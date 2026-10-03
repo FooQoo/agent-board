@@ -123,3 +123,16 @@
     --board-padding: var(--space-16);
   }
 }
+
+@media (min-width: 1024px) {
+  :root {
+    /* 100vw equals the viewport width here: .app is fixed to the viewport height, so no page scrollbar. */
+    --header-height: 56px;
+    --inset-left: clamp(24px, calc(24px + (100vw - 1024px) * 0.15625), 64px);
+    --inset-right-header: clamp(24px, calc(24px + (100vw - 1024px) * 0.15625), 64px);
+    --inset-right-board: clamp(24px, calc(24px + (100vw - 1024px) * 0.0625), 40px);
+    --board-inset-block: 40px;
+    --scroll-fade-height: 48px;
+    --scrollbar-width: 6px;
+  }
+}
