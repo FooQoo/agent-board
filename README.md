@@ -1,5 +1,7 @@
 # SimpleKanban
 
+[日本語](README.ja.md)
+
 A local kanban board for coding agents.
 
 ## What it is
@@ -10,6 +12,10 @@ SimpleKanban lets an agent manage cards from the command line (`skan`) while a h
 - The web view (`skan serve`) is for humans only. It shows the board, updates automatically, and can delete a card.
 - The board has three columns: Todo, Doing, and Done. Only cards in Doing have a run state: idle, running, or pending.
 - Everything is stored locally in a SQLite database. Nothing leaves your machine, and `skan serve` listens only on `127.0.0.1`.
+
+## Language
+
+The web UI opens in English. Use the globe button in the header to choose English or Japanese; the selection is saved in your browser. The interface does not choose a language from your browser or operating system settings. The CLI, its help and errors, and API and JSON values remain in English. Card content that you enter is not translated.
 
 ## Build
 
