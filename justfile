@@ -15,11 +15,19 @@ build:
 serve port="7420" backend_port="7421": build
     #!/usr/bin/env bash
     set -euo pipefail
+    if ! command -v watchexec >/dev/null 2>&1; then
+        echo "Install Watchexec with: cargo install --locked watchexec-cli" >&2
+        exit 1
+    fi
+    if ( : >/dev/tcp/127.0.0.1/{{port}} ) 2>/dev/null; then
+        echo "Web port {{port}} is already in use." >&2
+        exit 1
+    fi
     if ( : >/dev/tcp/127.0.0.1/{{backend_port}} ) 2>/dev/null; then
         echo "Rust API port {{backend_port}} is already in use." >&2
         exit 1
     fi
-    cargo watch -w src -w Cargo.toml -w Cargo.lock -w build.rs -x "run -- serve --port {{backend_port}}" &
+    watchexec --watch src --watch Cargo.toml --watch Cargo.lock --watch build.rs --restart -- cargo run -- serve --port "{{backend_port}}" &
     watcher=$!
     trap 'kill "$watcher" 2>/dev/null || true; wait "$watcher" 2>/dev/null || true' EXIT
     for attempt in {1..120}; do
@@ -27,7 +35,7 @@ serve port="7420" backend_port="7421": build
             break
         fi
         if ! kill -0 "$watcher" 2>/dev/null; then
-            echo "The Rust watcher stopped before the server started." >&2
+            echo "Watchexec stopped before the server started." >&2
             exit 1
         fi
         sleep 0.25

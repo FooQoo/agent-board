@@ -81,7 +81,7 @@ just build        # build the web UI, then the CLI
 just serve        # saved board with Vite HMR and Rust watch (port 7420)
 ```
 
-`just dev` watches web files and updates the browser through HMR. `just serve` requires `cargo-watch`. It watches Rust files, restarts the Rust API when they change, and serves the web UI through Vite with HMR. Open `http://127.0.0.1:7420/`; the Rust API uses port 7421. The board comes from the normal saved location, or from `SKAN_HOME` if set. A Rust restart reloads the page to refresh its delete token.
+`just dev` watches web files and updates the browser through HMR. `just serve` requires Watchexec; install it with `cargo install --locked watchexec-cli`. It watches Rust files, restarts the Rust API when they change, and serves the web UI through Vite with HMR. Open `http://127.0.0.1:7420/`; the Rust API uses port 7421. The board comes from the normal saved location, or from `SKAN_HOME` if set. A Rust restart reloads the page to refresh its delete token.
 
 Pass different ports as arguments, for example `just dev 5174` or `just serve 7500 7501` (web port, then Rust API port).
 

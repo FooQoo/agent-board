@@ -81,7 +81,7 @@ just build        # Web画面、CLIの順にビルド
 just serve        # 保存済みボードを表示（ポート7420、Vite HMRとRust監視）
 ```
 
-`just dev`はWebファイルの変更を監視し、HMRで画面に反映します。`just serve`には`cargo-watch`が必要です。Rustファイルを監視してAPIを再起動し、Web画面はViteのHMRで更新します。画面は`http://127.0.0.1:7420/`で開き、Rust APIはポート7421を使います。ボードは通常の保存先から読み込み、`SKAN_HOME`が設定されていればその保存先を使います。Rustの再起動時には削除用トークンを更新するため画面を再読み込みします。
+`just dev`はWebファイルの変更を監視し、HMRで画面に反映します。`just serve`にはWatchexecが必要です。`cargo install --locked watchexec-cli`でインストールできます。Rustファイルを監視してAPIを再起動し、Web画面はViteのHMRで更新します。画面は`http://127.0.0.1:7420/`で開き、Rust APIはポート7421を使います。ボードは通常の保存先から読み込み、`SKAN_HOME`が設定されていればその保存先を使います。Rustの再起動時には削除用トークンを更新するため画面を再読み込みします。
 
 ポートを変える場合は`just dev 5174`、または`just serve 7500 7501`（Web、Rust APIの順）のように指定します。
 
