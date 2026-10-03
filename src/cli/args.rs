@@ -9,8 +9,39 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use crate::domain::{Column, RunState};
 use crate::error::{FileAction, SkanError};
 
+/// `skan --help`: the design's text, so that an agent can use `skan` from this alone.
+const TOP_HELP: &str = "\
+skan - a local kanban board for coding agents
+
+Usage: skan [--json] <COMMAND>
+
+Commands:
+  init    Create the board
+  add     Add a card to Todo
+  edit    Change a card's title or description
+  mv      Move a card to todo, doing, or done
+  state   Report a card's run state: idle, running, or pending
+  rm      Delete a card (humans only; asks for confirmation)
+  ls      List cards
+  show    Show a card and its history
+  export  Write the board to a JSON file
+  import  Restore the board from a JSON file
+  serve   Show the board in your browser
+
+Rules for agents:
+  - Move a card to doing before you report running or pending.
+  - Report pending with --reason when you are waiting for something.
+  - Moving a card to todo or done resets it to idle.
+  - You cannot delete cards or replace the board. Ask a human to do it.
+  - Add --json to any command for machine-readable output.";
+
 #[derive(Parser, Debug)]
-#[command(name = "skan", version, disable_help_subcommand = true)]
+#[command(
+    name = "skan",
+    version,
+    disable_help_subcommand = true,
+    override_help = TOP_HELP
+)]
 pub struct Cli {
     /// Print machine-readable JSON instead of text.
     #[arg(long, global = true)]
@@ -115,6 +146,7 @@ pub struct DescriptionArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  skan init --name \"My project\"")]
 pub struct InitArgs {
     /// Name of the board
     #[arg(long, value_name = "NAME")]
@@ -122,6 +154,9 @@ pub struct InitArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  skan add \"Write the setup guide\"\n  skan add \"Fix the login bug\" --desc \"Users cannot sign in on Safari\"\n  skan add \"Plan the release\" --desc-file notes.txt\n  echo \"Details\" | skan add \"Write the docs\" --desc -"
+)]
 pub struct AddArgs {
     /// Title of the card (1 to 100 characters, one line)
     pub title: String,
@@ -130,6 +165,9 @@ pub struct AddArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  skan edit 15 --title \"Write the install guide\"\n  skan edit 15 --desc \"Steps for macOS and Linux\"\n  skan edit 15 --desc \"\""
+)]
 pub struct EditArgs {
     /// ID of the card
     pub id: i64,
@@ -141,6 +179,7 @@ pub struct EditArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  skan mv 12 doing\n  skan mv 12 done")]
 pub struct MvArgs {
     /// ID of the card
     pub id: i64,
@@ -149,6 +188,9 @@ pub struct MvArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  skan state 12 running\n  skan state 12 pending --reason \"Waiting for review\"\n  skan state 12 idle"
+)]
 pub struct StateArgs {
     /// ID of the card
     pub id: i64,
@@ -160,12 +202,16 @@ pub struct StateArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  skan rm 11")]
 pub struct RmArgs {
     /// ID of the card
     pub id: i64,
 }
 
 #[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  skan ls\n  skan ls --column doing\n  skan ls --state pending --json"
+)]
 pub struct LsArgs {
     /// Only list cards in this column
     #[arg(long, value_name = "COLUMN")]
@@ -176,12 +222,14 @@ pub struct LsArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  skan show 12\n  skan show 12 --json")]
 pub struct ShowArgs {
     /// ID of the card
     pub id: i64,
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  skan export\n  skan export -o backup/board.json")]
 pub struct ExportArgs {
     /// Output file, or a directory to write skan.json into
     #[arg(short, long, value_name = "PATH")]
@@ -189,12 +237,14 @@ pub struct ExportArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  skan import\n  skan import backup/board.json")]
 pub struct ImportArgs {
     /// Board file to read (default: skan.json in the current directory)
     pub file: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  skan serve\n  skan serve --port 7500")]
 pub struct ServeArgs {
     /// Port to listen on (127.0.0.1 only)
     #[arg(long, value_name = "PORT", default_value_t = 7420)]

@@ -729,7 +729,7 @@ fn ls_filters_by_column_and_state() {
     let home = design_board();
     assert_eq!(
         run(home.path(), &["ls", "--column", "done"]).out,
-        "Done (2)\n  #9   Return the card list as JSON\n  #8   Initialize the board\n"
+        "Done (2)\n  #9  Return the card list as JSON\n  #8  Initialize the board\n"
     );
     assert_eq!(
         run(
