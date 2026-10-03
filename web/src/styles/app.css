@@ -486,7 +486,7 @@ ol {
 
 .detail__title {
   font-family: var(--font-serif);
-  font-size: var(--fs-36);
+  font-size: var(--fs-28);
   font-weight: 600;
   line-height: var(--lh-detail-title);
   overflow-wrap: anywhere;
@@ -503,7 +503,7 @@ ol {
   padding: var(--space-6) var(--space-16);
   border: var(--stroke) solid var(--primary);
   border-radius: var(--radius-control);
-  font-size: var(--fs-17);
+  font-size: var(--fs-15);
   color: var(--primary);
 }
 
