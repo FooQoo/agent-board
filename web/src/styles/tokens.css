@@ -95,6 +95,7 @@
   --board-message-min-height: 320px;
 
   /* Component dimensions */
+  --size-brand-mark: 44px;
   --size-grip: 16px;
   --size-badge-icon: 18px;
   --size-lane-dot: 12px;
@@ -123,6 +124,7 @@
 @media (max-width: 639px) {
   :root {
     --board-padding: var(--space-16);
+    --size-brand-mark: 32px;
   }
 }
 

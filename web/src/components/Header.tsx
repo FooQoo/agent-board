@@ -44,7 +44,10 @@ export function Header({ boardName }: { boardName: string | null }) {
 
   return (
     <header className="header">
-      <h1 className="header__app">SimpleKanban</h1>
+      <h1 className="header__app">
+        <img className="header__logo" src="/logo.png" alt="" width="44" height="44" />
+        <span>SimpleKanban</span>
+      </h1>
       {boardName !== null && (
         <>
           <span className="header__slash" aria-hidden="true">

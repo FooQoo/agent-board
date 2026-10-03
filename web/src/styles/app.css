@@ -72,10 +72,23 @@ ol {
 }
 
 .header__app {
-  font-size: var(--fs-28);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-22);
   font-weight: normal;
   color: var(--on-primary);
   white-space: nowrap;
+}
+
+.header__logo {
+  display: block;
+  flex: none;
+  width: var(--size-brand-mark);
+  height: var(--size-brand-mark);
+  object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 .header__slash {
@@ -834,7 +847,8 @@ ol {
   }
 
   .header__app {
-    font-size: var(--fs-22);
+    gap: var(--space-3);
+    font-size: var(--fs-18);
   }
 
   .header__slash {

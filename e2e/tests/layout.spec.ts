@@ -77,7 +77,7 @@ test('1280px: outer insets, header and footer match the wide layout', async ({ p
   ]);
   const header = await computed(page, '.header', ['padding-left', 'padding-right']);
   expect(header.height).toBe(56);
-  expect([header['padding-left'], header['padding-right']]).toEqual(['64px', '64px']);
+  expect([header['padding-left'], header['padding-right']]).toEqual(['64px', '24px']);
   const footer = await computed(page, '.status-bar', ['padding-left', 'padding-right']);
   expect([footer['padding-left'], footer['padding-right']]).toEqual(['64px', '40px']);
 

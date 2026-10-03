@@ -4,7 +4,7 @@
 use std::path::Path;
 
 /// Files `pnpm --dir web build` must produce under `web/dist/`.
-pub const REQUIRED_FILES: [&str; 3] = ["index.html", "assets/app.js", "assets/app.css"];
+pub const REQUIRED_FILES: [&str; 4] = ["index.html", "assets/app.js", "assets/app.css", "logo.png"];
 
 /// The required files that do not exist under `dist`.
 pub fn missing_files(dist: &Path) -> Vec<&'static str> {
@@ -37,7 +37,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         assert_eq!(
             missing_files(&tmp.path().join("dist")),
-            vec!["index.html", "assets/app.js", "assets/app.css"]
+            vec!["index.html", "assets/app.js", "assets/app.css", "logo.png"]
         );
     }
 
@@ -46,6 +46,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         touch(tmp.path(), "index.html");
         touch(tmp.path(), "assets/app.css");
+        touch(tmp.path(), "logo.png");
         assert_eq!(missing_files(tmp.path()), vec!["assets/app.js"]);
     }
 
@@ -63,6 +64,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         touch(tmp.path(), "index.html");
         touch(tmp.path(), "assets/app.css");
+        touch(tmp.path(), "logo.png");
         std::fs::create_dir_all(tmp.path().join("assets/app.js")).unwrap();
         assert_eq!(missing_files(tmp.path()), vec!["assets/app.js"]);
     }

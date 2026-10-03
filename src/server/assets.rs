@@ -14,6 +14,9 @@ pub const APP_CSS: &str = include_str!(concat!(
     "/web/dist/assets/app.css"
 ));
 
+pub const LOGO_PNG: &[u8] =
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/web/dist/logo.png"));
+
 /// What the web build leaves in `index.html` for the server to fill in.
 pub const TOKEN_PLACEHOLDER: &str = "{{SKAN_TOKEN}}";
 

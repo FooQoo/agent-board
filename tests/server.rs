@@ -62,7 +62,7 @@ fn build_script_stops_the_build_when_one_asset_is_missing() {
 
 #[test]
 fn build_script_passes_and_watches_the_dist_directory_when_built() {
-    let dir = fake_manifest(&["index.html", "assets/app.js", "assets/app.css"]);
+    let dir = fake_manifest(&["index.html", "assets/app.js", "assets/app.css", "logo.png"]);
     let out = run_build_script(dir.path());
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
@@ -404,6 +404,21 @@ fn assets_are_served_with_their_content_types() {
     assert_eq!(
         js.body,
         std::fs::read_to_string(dist.join("app.js")).unwrap()
+    );
+
+    let logo = server.get("/logo.png");
+    assert_eq!(logo.status, 200);
+    assert_eq!(logo.content_type.as_deref(), Some("image/png"));
+    assert_eq!(logo.cache_control.as_deref(), Some("no-store"));
+    let logo_bytes = ureq::get(server.url("/logo.png"))
+        .call()
+        .unwrap()
+        .body_mut()
+        .read_to_vec()
+        .unwrap();
+    assert_eq!(
+        logo_bytes,
+        std::fs::read(dist.parent().unwrap().join("logo.png")).unwrap()
     );
 
     let css = server.get("/assets/app.css");
