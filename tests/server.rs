@@ -970,3 +970,33 @@ fn stopping_leaves_a_serve_json_that_another_process_took_over() {
     server.stop().unwrap();
     assert_eq!(serve_json(home.path()), Some(info(1, 1)));
 }
+
+// ---------------------------------------------------------------- CLI notification end to end
+
+#[test]
+fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let mut events = server.events();
+    let notified = with_home(home.path(), skan::interact::notify::notify_serve);
+    assert!(notified);
+    events.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
+}
+
+#[test]
+fn notify_serve_is_false_after_the_server_stopped() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let port = server.port();
+    server.stop().unwrap();
+    // serve.json is gone, and a leftover one pointing at the closed port fails too.
+    assert!(!with_home(
+        home.path(),
+        skan::interact::notify::notify_serve
+    ));
+    write_serve_json(home.path(), &info(std::process::id(), port));
+    assert!(!with_home(
+        home.path(),
+        skan::interact::notify::notify_serve
+    ));
+}
