@@ -1,9 +1,14 @@
 use chrono::{DateTime, TimeZone, Utc};
+use serde_json::{Value, json};
 use skan::domain::{BoardMeta, BoardSnapshot, Card, Column, RunState, Transition};
 use skan::error::{FileAction, SkanError};
-use skan::transfer::{ExportFile, resolve_output, serialize, to_export_file, write_atomic};
+use skan::store::Store;
+use skan::transfer::{
+    ExportFile, read_and_validate, resolve_output, serialize, to_export_file, validate,
+    write_atomic,
+};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn t(hour: u32, minute: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 2, hour, minute, 0).unwrap()
@@ -307,4 +312,300 @@ fn a_read_only_directory_is_a_file_error_and_keeps_the_existing_file() {
     ));
     assert_eq!(fs::read_to_string(&path).unwrap(), "original");
     assert_eq!(dir_entries(dir.path()), vec!["skan.json"]);
+}
+
+// ------------------------------------------------------------------- import
+
+/// One card in the file's JSON form. Each transition is `(from, to, at)`.
+fn card_json(
+    id: i64,
+    column: &str,
+    position: i64,
+    run_state: &str,
+    reason: Option<&str>,
+    transitions: &[(Option<&str>, &str, &str)],
+) -> Value {
+    let history: Vec<Value> = transitions
+        .iter()
+        .map(|(from, to, at)| json!({ "from": from, "to": to, "at": at }))
+        .collect();
+    json!({
+        "id": id,
+        "title": format!("Card {id}"),
+        "description": "",
+        "column": column,
+        "position": position,
+        "run_state": run_state,
+        "pending_reason": reason,
+        "created_at": "2026-10-02T00:00:00Z",
+        "updated_at": "2026-10-02T03:00:00Z",
+        "run_state_changed_at": "2026-10-02T03:00:00Z",
+        "transitions": history,
+    })
+}
+
+/// A valid file with one card per situation: #1 idle in Todo, #2 running and
+/// #3 pending in Doing, #4 idle in Done. `next_card_id` leaves a gap (#5).
+fn valid_json() -> Value {
+    let created = (None, "todo", "2026-10-02T00:00:00Z");
+    let started = (Some("todo"), "doing", "2026-10-02T01:00:00Z");
+    let finished = (Some("doing"), "done", "2026-10-02T02:00:00Z");
+    json!({
+        "format": "skan-board",
+        "version": 1,
+        "board": {
+            "name": "simplekanban",
+            "next_card_id": 6,
+            "created_at": "2026-10-01T07:00:00Z"
+        },
+        "cards": [
+            card_json(1, "todo", 1, "idle", None, &[created]),
+            card_json(2, "doing", 1, "running", None, &[created, started]),
+            card_json(3, "doing", 2, "pending", Some("Waiting for review"), &[created, started]),
+            card_json(4, "done", 1, "idle", None, &[created, started, finished]),
+        ]
+    })
+}
+
+fn write_json(dir: &Path, value: &Value) -> PathBuf {
+    let path = dir.join("board.json");
+    fs::write(&path, serde_json::to_string_pretty(value).unwrap()).unwrap();
+    path
+}
+
+/// The `skan import` flow without the CLI: validate, then replace the board.
+fn import(store: &Store, path: &Path) -> Result<(), SkanError> {
+    let snapshot = read_and_validate(path)?;
+    store.replace_all(&snapshot)
+}
+
+/// A store holding the board from `valid_json()` under a different name, so a
+/// wrongly accepted import would be visible.
+fn existing_store(dir: &Path) -> Store {
+    let store = Store::open(&dir.join("board.db")).unwrap();
+    store.create_board("existing", t(0, 0)).unwrap();
+    store.add_card("keep me", "", t(0, 1)).unwrap();
+    store
+}
+
+/// Apply `mutate` to a valid file and expect `ImportInvalid` with `reason`,
+/// leaving the existing board untouched.
+fn assert_rejected(mutate: impl FnOnce(&mut Value), reason: &str) {
+    let dir = tempfile::tempdir().unwrap();
+    let store = existing_store(dir.path());
+    let before = store.snapshot().unwrap();
+
+    let mut value = valid_json();
+    mutate(&mut value);
+    let path = write_json(dir.path(), &value);
+
+    let error = import(&store, &path).unwrap_err();
+    assert_eq!(
+        error,
+        SkanError::ImportInvalid {
+            file: path.display().to_string(),
+            reason: reason.to_string(),
+        }
+    );
+    assert_eq!(
+        error.message(),
+        format!("{} is not a valid board file.", path.display())
+    );
+    assert_eq!(
+        store.snapshot().unwrap(),
+        before,
+        "the board must not change"
+    );
+}
+
+#[test]
+fn a_valid_file_is_accepted_and_replaces_the_board() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = existing_store(dir.path());
+    let path = write_json(dir.path(), &valid_json());
+
+    import(&store, &path).unwrap();
+
+    let snapshot = store.snapshot().unwrap();
+    assert_eq!(snapshot.board.name, "simplekanban");
+    assert_eq!(snapshot.board.next_card_id, 6);
+    let ids: Vec<i64> = snapshot.cards.iter().map(|c| c.id).collect();
+    assert_eq!(ids, vec![1, 2, 3, 4]);
+    // Running and pending are kept as they are, not reset.
+    assert_eq!(snapshot.cards[1].run_state, skan::domain::RunState::Running);
+    assert_eq!(
+        snapshot.cards[2].pending_reason.as_deref(),
+        Some("Waiting for review")
+    );
+}
+
+#[test]
+fn a_valid_file_with_cards_out_of_id_order_gives_a_sorted_snapshot() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut value = valid_json();
+    value["cards"].as_array_mut().unwrap().reverse();
+    let path = write_json(dir.path(), &value);
+    let snapshot = read_and_validate(&path).unwrap();
+    let ids: Vec<i64> = snapshot.cards.iter().map(|c| c.id).collect();
+    assert_eq!(ids, vec![1, 2, 3, 4]);
+}
+
+#[test]
+fn an_empty_board_file_is_accepted() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut value = valid_json();
+    value["cards"] = json!([]);
+    value["board"]["next_card_id"] = json!(1);
+    let path = write_json(dir.path(), &value);
+    let snapshot = read_and_validate(&path).unwrap();
+    assert!(snapshot.cards.is_empty());
+    assert_eq!(snapshot.board.next_card_id, 1);
+}
+
+#[test]
+fn a_missing_file_is_a_read_file_error_and_the_board_is_unchanged() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = existing_store(dir.path());
+    let before = store.snapshot().unwrap();
+    let path = dir.path().join("nope.json");
+    let error = import(&store, &path).unwrap_err();
+    match &error {
+        SkanError::FileError {
+            action,
+            file,
+            reason,
+        } => {
+            assert_eq!(*action, FileAction::Read);
+            assert_eq!(file, &path.display().to_string());
+            assert!(!reason.is_empty());
+        }
+        other => panic!("expected FileError, got {other:?}"),
+    }
+    assert_eq!(error.message(), format!("cannot read {}.", path.display()));
+    assert_eq!(store.snapshot().unwrap(), before);
+}
+
+#[test]
+fn a_directory_is_a_read_file_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let result = read_and_validate(dir.path());
+    assert!(matches!(
+        result,
+        Err(SkanError::FileError {
+            action: FileAction::Read,
+            ..
+        })
+    ));
+}
+
+/// Write raw bytes and expect `ImportInvalid`; return its reason.
+fn rejected_reason_for_bytes(bytes: &[u8]) -> String {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("board.json");
+    fs::write(&path, bytes).unwrap();
+    match read_and_validate(&path) {
+        Err(SkanError::ImportInvalid { file, reason }) => {
+            assert_eq!(file, path.display().to_string());
+            reason
+        }
+        other => panic!("expected ImportInvalid, got {other:?}"),
+    }
+}
+
+#[test]
+fn files_that_are_not_json_are_import_invalid_with_a_position() {
+    let reason = rejected_reason_for_bytes(b"this is not json");
+    assert!(reason.contains("line 1 column"), "{reason}");
+    let reason = rejected_reason_for_bytes(b"");
+    assert!(reason.contains("line 1 column 0"), "{reason}");
+    let reason = rejected_reason_for_bytes(b"{\n  \"format\": \"skan-board\",\n  oops\n}");
+    assert!(reason.contains("line 3"), "{reason}");
+    let reason = rejected_reason_for_bytes(&[0xff, 0xfe, 0x00]);
+    assert!(reason.contains("line 1"), "{reason}");
+}
+
+#[test]
+fn json_with_missing_wrong_typed_or_unknown_items_is_import_invalid() {
+    let dir = tempfile::tempdir().unwrap();
+    let cases: Vec<Box<dyn Fn(&mut Value)>> = vec![
+        Box::new(|v| {
+            v.as_object_mut().unwrap().remove("cards");
+        }),
+        Box::new(|v| v["cards"][0]["column"] = json!("review")),
+        Box::new(|v| v["cards"][0]["run_state"] = json!("sleeping")),
+        Box::new(|v| v["cards"][0]["id"] = json!("one")),
+        Box::new(|v| v["cards"][0]["position"] = json!(1.5)),
+        Box::new(|v| v["cards"][0]["created_at"] = json!(20261002)),
+        Box::new(|v| v["cards"][0]["transitions"][0]["to"] = json!(null)),
+        Box::new(|v| v["cards"][0]["extra"] = json!(true)),
+        Box::new(|v| v["board"]["name"] = json!(["a"])),
+        Box::new(|v| v["cards"] = json!({})),
+    ];
+    for (index, mutate) in cases.iter().enumerate() {
+        let mut value = valid_json();
+        mutate(&mut value);
+        let path = write_json(dir.path(), &value);
+        match read_and_validate(&path) {
+            Err(SkanError::ImportInvalid { reason, .. }) => {
+                assert!(reason.contains("line"), "case {index}: {reason}");
+            }
+            other => panic!("case {index}: expected ImportInvalid, got {other:?}"),
+        }
+    }
+}
+
+const FORMAT_REASON: &str = "The format must be \"skan-board\" with version 1.";
+
+#[test]
+fn the_format_and_version_must_match() {
+    assert_rejected(|v| v["format"] = json!("other-board"), FORMAT_REASON);
+    assert_rejected(|v| v["format"] = json!("Skan-Board"), FORMAT_REASON);
+    assert_rejected(|v| v["version"] = json!(2), FORMAT_REASON);
+    assert_rejected(|v| v["version"] = json!(0), FORMAT_REASON);
+    assert_rejected(|v| v["version"] = json!("1"), FORMAT_REASON);
+    assert_rejected(|v| v["version"] = json!(1.0), FORMAT_REASON);
+    assert_rejected(
+        |v| {
+            v.as_object_mut().unwrap().remove("format");
+        },
+        FORMAT_REASON,
+    );
+    assert_rejected(
+        |v| {
+            v.as_object_mut().unwrap().remove("version");
+        },
+        FORMAT_REASON,
+    );
+}
+
+#[test]
+fn a_file_of_another_shape_reports_the_format_not_a_parse_error() {
+    assert_rejected(|v| *v = json!({ "something": "else" }), FORMAT_REASON);
+    assert_rejected(|v| *v = json!([1, 2, 3]), FORMAT_REASON);
+    assert_rejected(|v| *v = json!("skan-board"), FORMAT_REASON);
+}
+
+#[test]
+fn the_format_is_checked_before_everything_else() {
+    assert_rejected(
+        |v| {
+            v["version"] = json!(2);
+            v["board"]["name"] = json!("");
+            v["cards"][0]["id"] = json!(2);
+        },
+        FORMAT_REASON,
+    );
+}
+
+#[test]
+fn validate_rejects_a_typed_file_with_the_wrong_format() {
+    let mut file = to_export_file(&sample_snapshot());
+    file.version = 2;
+    assert_eq!(
+        validate(&file),
+        Err(SkanError::ImportInvalid {
+            file: "skan.json".into(),
+            reason: FORMAT_REASON.into()
+        })
+    );
 }

@@ -8,6 +8,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
+mod validate;
+
 use crate::domain::{BoardMeta, BoardSnapshot, Card};
 use crate::error::{FileAction, SkanError};
 
@@ -110,15 +112,4 @@ pub fn write_atomic(path: &Path, contents: &str) -> Result<(), SkanError> {
     Ok(())
 }
 
-/// Read `path` and validate it. Unreadable files are `FileError`; files that
-/// are not valid board files are `ImportInvalid`.
-pub fn read_and_validate(path: &Path) -> Result<BoardSnapshot, SkanError> {
-    let _ = path;
-    todo!()
-}
-
-/// Check every import rule and return the first violation as `ImportInvalid`.
-pub fn validate(file: &ExportFile) -> Result<BoardSnapshot, SkanError> {
-    let _ = file;
-    todo!()
-}
+pub use validate::{read_and_validate, validate};
