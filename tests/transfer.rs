@@ -1,6 +1,9 @@
 use chrono::{DateTime, TimeZone, Utc};
 use skan::domain::{BoardMeta, BoardSnapshot, Card, Column, RunState, Transition};
-use skan::transfer::{ExportFile, serialize, to_export_file};
+use skan::error::{FileAction, SkanError};
+use skan::transfer::{ExportFile, resolve_output, serialize, to_export_file, write_atomic};
+use std::fs;
+use std::path::Path;
 
 fn t(hour: u32, minute: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 2, hour, minute, 0).unwrap()
@@ -160,4 +163,148 @@ fn export_file_json_round_trips_through_serde() {
     let file = to_export_file(&sample_snapshot());
     let back: ExportFile = serde_json::from_str(&serialize(&file)).unwrap();
     assert_eq!(back, file);
+}
+
+// ------------------------------------------------------------- resolve_output
+
+#[test]
+fn no_argument_means_skan_json_in_the_working_directory() {
+    let cwd = tempfile::tempdir().unwrap();
+    assert_eq!(
+        resolve_output(None, cwd.path()),
+        cwd.path().join("skan.json")
+    );
+}
+
+#[test]
+fn an_existing_directory_means_skan_json_inside_it() {
+    let cwd = tempfile::tempdir().unwrap();
+    fs::create_dir(cwd.path().join("backups")).unwrap();
+    // Relative to cwd.
+    assert_eq!(
+        resolve_output(Some(Path::new("backups")), cwd.path()),
+        cwd.path().join("backups").join("skan.json")
+    );
+    // Absolute.
+    let abs = cwd.path().join("backups");
+    assert_eq!(
+        resolve_output(Some(&abs), cwd.path()),
+        abs.join("skan.json")
+    );
+    // The working directory itself ("." components are dropped).
+    assert_eq!(
+        resolve_output(Some(Path::new(".")), cwd.path()),
+        cwd.path().join("skan.json")
+    );
+}
+
+#[test]
+fn a_file_path_is_used_as_given_whether_or_not_it_exists() {
+    let cwd = tempfile::tempdir().unwrap();
+    assert_eq!(
+        resolve_output(Some(Path::new("mine.json")), cwd.path()),
+        cwd.path().join("mine.json")
+    );
+    fs::write(cwd.path().join("old.json"), "x").unwrap();
+    assert_eq!(
+        resolve_output(Some(Path::new("old.json")), cwd.path()),
+        cwd.path().join("old.json")
+    );
+    let abs = cwd.path().join("elsewhere.json");
+    assert_eq!(resolve_output(Some(&abs), Path::new("/nonexistent")), abs);
+}
+
+// --------------------------------------------------------------- write_atomic
+
+fn dir_entries(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+#[test]
+fn write_atomic_creates_the_file_and_leaves_no_temporary_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("skan.json");
+    write_atomic(&path, "hello\n").unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), "hello\n");
+    assert_eq!(dir_entries(dir.path()), vec!["skan.json"]);
+}
+
+#[test]
+fn write_atomic_replaces_an_existing_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("skan.json");
+    fs::write(&path, "old contents that are longer").unwrap();
+    write_atomic(&path, "new").unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), "new");
+    assert_eq!(dir_entries(dir.path()), vec!["skan.json"]);
+}
+
+#[test]
+fn write_atomic_into_a_missing_directory_is_a_file_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("missing").join("skan.json");
+    let err = write_atomic(&path, "x").unwrap_err();
+    match err {
+        SkanError::FileError {
+            action,
+            file,
+            reason,
+        } => {
+            assert_eq!(action, FileAction::Write);
+            assert_eq!(file, path.display().to_string());
+            assert!(!reason.is_empty());
+        }
+        other => panic!("expected FileError, got {other:?}"),
+    }
+}
+
+#[test]
+fn write_atomic_onto_a_directory_fails_and_cleans_up_its_temporary_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("skan.json");
+    fs::create_dir(&target).unwrap();
+    let err = write_atomic(&target, "x").unwrap_err();
+    assert!(matches!(
+        err,
+        SkanError::FileError {
+            action: FileAction::Write,
+            ..
+        }
+    ));
+    assert_eq!(dir_entries(dir.path()), vec!["skan.json"]);
+    assert!(target.is_dir());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_read_only_directory_is_a_file_error_and_keeps_the_existing_file() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("skan.json");
+    fs::write(&path, "original").unwrap();
+    fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o555)).unwrap();
+
+    // Root ignores directory permissions; skip the assertion in that case.
+    let can_write_anyway = fs::write(dir.path().join("probe"), "").is_ok();
+    let result = write_atomic(&path, "replacement");
+    fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o755)).unwrap();
+    if can_write_anyway {
+        return;
+    }
+
+    assert!(matches!(
+        result,
+        Err(SkanError::FileError {
+            action: FileAction::Write,
+            ..
+        })
+    ));
+    assert_eq!(fs::read_to_string(&path).unwrap(), "original");
+    assert_eq!(dir_entries(dir.path()), vec!["skan.json"]);
 }
