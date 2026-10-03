@@ -44,7 +44,7 @@ fn health_pid(port: u16) -> Option<u32> {
     stream.take(MAX_RESPONSE).read_to_end(&mut response).ok()?;
     let text = String::from_utf8(response).ok()?;
     let (head, body) = text.split_once("\r\n\r\n")?;
-    if !head.split_whitespace().nth(1).is_some_and(|s| s == "200") {
+    if head.split_whitespace().nth(1) != Some("200") {
         return None;
     }
     let health: Health = serde_json::from_str(body).ok()?;
