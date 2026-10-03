@@ -787,10 +787,11 @@ ol {
   .lane__scroll[data-more='true']::after {
     content: '';
     position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    right: calc(-1 * var(--space-16));
+    bottom: calc(-1 * var(--space-16));
+    left: calc(-1 * var(--space-16));
     height: var(--scroll-fade-height);
+    border-radius: 0 0 var(--radius-lane) var(--radius-lane);
     background: linear-gradient(to bottom, transparent, var(--lane));
     pointer-events: none;
   }
@@ -800,8 +801,8 @@ ol {
   }
 
   .lane__cards::-webkit-scrollbar-thumb {
-    border-radius: var(--radius-round);
-    background: var(--divider);
+    border-radius: calc(var(--scrollbar-width) / 2);
+    background: var(--scrollbar-thumb);
   }
 
   .lane__cards::-webkit-scrollbar-track {
@@ -811,7 +812,7 @@ ol {
   @supports not selector(::-webkit-scrollbar) {
     .lane__cards {
       scrollbar-width: thin;
-      scrollbar-color: var(--divider) transparent;
+      scrollbar-color: var(--scrollbar-thumb) transparent;
     }
   }
 

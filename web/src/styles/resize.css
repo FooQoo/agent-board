@@ -6,15 +6,16 @@
   --handle-width: 16px;
   --handle-height: 72px;
   --handle-radius: 8px;
-  --grip-width: 2px;
-  --grip-height: 28px;
-  --grip-gap: 3px;
+  --grip-width: 6px;
+  --grip-height: 2px;
+  --grip-gap: 4px;
 
   position: absolute;
   top: 50%;
   right: var(--detail-width);
   z-index: 5;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--grip-gap);
@@ -36,8 +37,8 @@
 .resize-handle__grip {
   width: var(--grip-width);
   height: var(--grip-height);
-  border-radius: var(--grip-width);
-  background: var(--divider);
+  border-radius: 1px;
+  background: var(--text-muted);
 }
 
 .resize-handle:hover .resize-handle__grip,
