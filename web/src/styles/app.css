@@ -149,7 +149,7 @@ ol {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 320px;
+  min-height: var(--board-message-min-height);
 }
 
 .lane {

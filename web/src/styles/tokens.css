@@ -90,6 +90,7 @@
   --detail-width: 360px;
   --page-gutter: var(--space-40);
   --board-padding: var(--space-24);
+  --board-message-min-height: 320px;
 
   /* Component dimensions */
   --size-grip: 16px;
