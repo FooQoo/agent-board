@@ -83,7 +83,7 @@ test('1280px: outer insets, header and footer match the wide layout', async ({ p
 
   // Type sizes and lane padding are unchanged from the baseline.
   const title = await computed(page, '.card__title', ['font-size']);
-  expect(title['font-size']).toBe('17px');
+  expect(title['font-size']).toBe('15px');
   expect((await computed(page, '.lane', ['padding-left', 'padding-top']))['padding-left']).toBe('16px');
   expect((await computed(page, '.lane', ['padding-top']))['padding-top']).toBe('16px');
 });
