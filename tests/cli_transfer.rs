@@ -223,3 +223,172 @@ fn export_changes_nothing_so_it_does_not_notify() {
     assert!(o.out.starts_with("Exported 1 card to "), "{}", o.out);
     assert_eq!(o.commits, 0);
 }
+
+// ------------------------------------------------- import (no board yet)
+
+/// Export `source` and return the path of the file.
+fn exported(source: &Path) -> PathBuf {
+    let o = run(source, &["export", "-o", "backup.json"]);
+    assert_eq!(o.code, 0, "{}", o.err);
+    source.join("backup.json")
+}
+
+fn cards_of(home: &Path) -> serde_json::Value {
+    let o = run(home, &["ls", "--json"]);
+    assert_eq!(o.code, 0, "{}", o.err);
+    json(&o.out)
+}
+
+fn shows_of(home: &Path) -> Vec<serde_json::Value> {
+    cards_of(home)["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            let id = c["id"].as_i64().unwrap().to_string();
+            let o = run(home, &["show", &id, "--json"]);
+            assert_eq!(o.code, 0, "{}", o.err);
+            json(&o.out)
+        })
+        .collect()
+}
+
+/// A board with cards in every column and a pending card.
+fn busy_board() -> tempfile::TempDir {
+    let home = board_with(&["Todo one", "Doing one", "Done one", "Spare"]);
+    for args in [
+        vec!["mv", "2", "doing"],
+        vec!["state", "2", "pending", "--reason", "Waiting for review"],
+        vec!["mv", "3", "done"],
+    ] {
+        let o = run(home.path(), &args);
+        assert_eq!(o.code, 0, "{}", o.err);
+    }
+    home
+}
+
+#[test]
+fn import_without_a_board_restores_it_without_asking() {
+    let source = busy_board();
+    let file = exported(source.path());
+    let target = tempfile::tempdir().unwrap();
+    std::fs::copy(&file, target.path().join("skan.json")).unwrap();
+
+    let o = run(target.path(), &["import"]);
+    assert_eq!(o.code, 0, "{}", o.err);
+    assert_eq!(
+        o.out,
+        "Imported board \"demo\" with 4 cards from ./skan.json.\n"
+    );
+    assert_eq!(o.err, "", "no confirmation is asked when there is no board");
+
+    assert_eq!(cards_of(target.path()), cards_of(source.path()));
+    assert_eq!(shows_of(target.path()), shows_of(source.path()));
+}
+
+#[test]
+fn import_reads_the_given_file_and_keeps_the_next_card_id() {
+    let source = busy_board();
+    let file = exported(source.path());
+    let target = tempfile::tempdir().unwrap();
+
+    let o = run(target.path(), &["import", file.to_str().unwrap()]);
+    assert_eq!(o.code, 0, "{}", o.err);
+    assert_eq!(
+        o.out,
+        format!(
+            "Imported board \"demo\" with 4 cards from {}.\n",
+            file.display()
+        )
+    );
+
+    let added = run(target.path(), &["add", "After the import"]);
+    assert_eq!(added.code, 0, "{}", added.err);
+    assert_eq!(added.out, "Added #5 to Todo: After the import\n");
+}
+
+#[test]
+fn import_of_one_card_says_one_card() {
+    let source = board_with(&["Only"]);
+    let file = exported(source.path());
+    let target = tempfile::tempdir().unwrap();
+    let o = run(target.path(), &["import", file.to_str().unwrap()]);
+    assert_eq!(o.code, 0, "{}", o.err);
+    assert!(
+        o.out
+            .starts_with("Imported board \"demo\" with 1 card from ")
+    );
+}
+
+#[test]
+fn import_json_prints_the_board_and_the_card_count() {
+    let source = busy_board();
+    let file = exported(source.path());
+    let target = tempfile::tempdir().unwrap();
+    let o = run(target.path(), &["import", file.to_str().unwrap(), "--json"]);
+    assert_eq!(o.code, 0, "{}", o.err);
+    assert!(
+        o.out
+            .starts_with("{\"board\":{\"name\":\"demo\",\"next_card_id\":5,\"created_at\":\""),
+        "{}",
+        o.out
+    );
+    assert!(o.out.ends_with("\"},\"cards\":4}\n"), "{}", o.out);
+    assert_eq!(o.out.lines().count(), 1);
+}
+
+#[test]
+fn import_counts_as_a_change_so_it_notifies_once() {
+    let source = board_with(&["First"]);
+    let file = exported(source.path());
+    let target = tempfile::tempdir().unwrap();
+    let o = run_at(
+        &target.path().join("board.db"),
+        "2026-10-03T00:00:00Z",
+        &["import", file.to_str().unwrap()],
+    );
+    assert_eq!(o.code, 0, "{}", o.err);
+    assert_eq!(o.commits, 1);
+}
+
+#[test]
+fn import_of_an_invalid_file_fails_without_creating_a_board() {
+    let target = tempfile::tempdir().unwrap();
+    std::fs::write(
+        target.path().join("skan.json"),
+        r#"{"format":"skan-board","version":2}"#,
+    )
+    .unwrap();
+    let o = run(target.path(), &["import"]);
+    assert_eq!(o.code, 1);
+    assert_eq!(o.out, "");
+    assert!(
+        o.err
+            .starts_with("Error: skan.json is not a valid board file.\nReason: "),
+        "{}",
+        o.err
+    );
+    assert_eq!(run(target.path(), &["ls"]).code, 4, "still no board");
+
+    let j = run(target.path(), &["import", "--json"]);
+    assert_eq!(j.code, 1);
+    assert_eq!(json(&j.err)["error"]["code"], "import_invalid");
+}
+
+#[test]
+fn import_without_a_file_is_a_file_error() {
+    let target = tempfile::tempdir().unwrap();
+    let o = run(target.path(), &["import"]);
+    assert_eq!(o.code, 1);
+    assert_eq!(o.out, "");
+    assert!(
+        o.err.starts_with("Error: cannot read skan.json.\nReason: "),
+        "{}",
+        o.err
+    );
+    let j = run(target.path(), &["import", "missing.json", "--json"]);
+    assert_eq!(j.code, 1);
+    let error = &json(&j.err)["error"];
+    assert_eq!(error["code"], "file_error");
+    assert_eq!(error["message"], "cannot read missing.json.");
+}
