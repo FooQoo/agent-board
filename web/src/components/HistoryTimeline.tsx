@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { columnLabel, formatShort } from '../lib/format';
 import { historyItems } from '../lib/history';
 import type { Transition } from '../types';
 
 export function HistoryTimeline({ transitions }: { transitions: Transition[] }) {
+  const { t } = useTranslation();
   const items = historyItems(transitions);
   return (
     <ol className="history">
@@ -10,9 +12,9 @@ export function HistoryTimeline({ transitions }: { transitions: Transition[] }) 
         <li key={index} className="history__step" data-column={item.column}>
           <span className="dot dot--history" data-column={item.column} aria-hidden="true" />
           <span className="history__text">
-            <span className="history__column">{columnLabel(item.column)}</span>
+            <span className="history__column">{columnLabel(item.column, t)}</span>
             <span className="history__at">
-              {item.label !== null ? `${item.label} · ` : ''}
+              {item.created ? `${t('history.created')} · ` : ''}
               {formatShort(item.at)}
             </span>
           </span>

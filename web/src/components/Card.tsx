@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { formatShort, stateLabel } from '../lib/format';
 import type { Card as CardModel } from '../types';
 import { Grip } from './icons';
@@ -10,7 +11,8 @@ export interface CardProps {
 }
 
 export function Card({ card, selected, onSelect }: CardProps) {
-  const showsState = stateLabel(card) !== null;
+  const { t } = useTranslation();
+  const showsState = stateLabel(card, t) !== null;
   const pending = showsState && card.run_state === 'pending';
   const className = ['card', pending ? 'card--pending' : '', selected ? 'card--selected' : '']
     .filter(Boolean)
@@ -26,7 +28,7 @@ export function Card({ card, selected, onSelect }: CardProps) {
       </span>
       <span className="card__title">{card.title}</span>
       {pending && card.pending_reason && <span className="card__reason">{card.pending_reason}</span>}
-      <span className="card__updated">Updated {formatShort(card.updated_at)}</span>
+      <span className="card__updated">{t('card.updated', { date: formatShort(card.updated_at) })}</span>
     </button>
   );
 }

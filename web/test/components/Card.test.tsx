@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Card } from '../../src/components/Card';
+import { i18n } from '../../src/i18n';
 import { fixtureCard, makeCard } from '../fixtures';
 
 const noop = () => {};
@@ -28,6 +29,31 @@ describe('Card', () => {
     expect(screen.getByText('Idle')).toBeTruthy();
     rerender(<Card card={fixtureCard(12)} selected={false} onSelect={noop} />);
     expect(screen.getByText('Pending')).toBeTruthy();
+  });
+
+  it('translates the column run state and update label without changing card input or time', async () => {
+    const card = makeCard({
+      id: 40,
+      title: 'Keep this title as entered',
+      column: 'doing',
+      run_state: 'pending',
+      pending_reason: 'Keep this waiting reason as entered',
+      updated_at: '2026-10-02T10:08:00Z',
+    });
+    try {
+      render(<Card card={card} selected={true} onSelect={noop} />);
+      expect(screen.getByText('Updated 10/02 10:08')).toBeTruthy();
+      await act(async () => {
+        await i18n.changeLanguage('ja');
+      });
+      expect(screen.getByText('待機中')).toBeTruthy();
+      expect(screen.getByText('更新 10/02 10:08')).toBeTruthy();
+      expect(screen.getByText('Keep this title as entered')).toBeTruthy();
+      expect(screen.getByText('Keep this waiting reason as entered')).toBeTruthy();
+      expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('true');
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   it('shows the waiting reason only for pending cards', () => {

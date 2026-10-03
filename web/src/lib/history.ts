@@ -2,8 +2,8 @@ import type { ColumnName, Transition } from '../types';
 
 export interface HistoryItem {
   column: ColumnName;
-  /** `Created` for the creation transition, otherwise only the timestamp is shown. */
-  label: 'Created' | null;
+  /** True only for the creation transition. The view chooses its localized label. */
+  created: boolean;
   at: string;
 }
 
@@ -11,7 +11,7 @@ export interface HistoryItem {
 export function historyItems(transitions: Transition[]): HistoryItem[] {
   return transitions.map((t) => ({
     column: t.to,
-    label: t.from === null ? 'Created' : null,
+    created: t.from === null,
     at: t.at,
   }));
 }

@@ -1,4 +1,5 @@
 import type { Card, ColumnName } from '../types';
+import type { TFunction } from 'i18next';
 
 const pad = (n: number): string => String(n).padStart(2, '0');
 
@@ -13,8 +14,8 @@ export function formatTime(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function cardCountLabel(n: number): string {
-  return n === 1 ? '1 card' : `${n} cards`;
+export function cardCountLabel(n: number, t?: TFunction): string {
+  return t ? t('status.cardCount', { count: n }) : n === 1 ? '1 card' : `${n} cards`;
 }
 
 const COLUMN_LABELS: Record<ColumnName, string> = {
@@ -23,8 +24,8 @@ const COLUMN_LABELS: Record<ColumnName, string> = {
   done: 'Done',
 };
 
-export function columnLabel(c: ColumnName): string {
-  return COLUMN_LABELS[c];
+export function columnLabel(c: ColumnName, t?: TFunction): string {
+  return t ? t(`column.${c}`) : COLUMN_LABELS[c];
 }
 
 const STATE_LABELS = {
@@ -34,6 +35,7 @@ const STATE_LABELS = {
 } as const;
 
 /** The run state is only shown for cards in Doing. */
-export function stateLabel(card: Card): 'Idle' | 'Running' | 'Pending' | null {
-  return card.column === 'doing' ? STATE_LABELS[card.run_state] : null;
+export function stateLabel(card: Card, t?: TFunction): string | null {
+  if (card.column !== 'doing') return null;
+  return t ? t(`runState.${card.run_state}`) : STATE_LABELS[card.run_state];
 }
