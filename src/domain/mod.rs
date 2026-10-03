@@ -10,4 +10,4 @@ pub use column::{Column, RunState};
 pub use limits::{
     normalize_and_validate_description, validate_board_name, validate_reason, validate_title,
 };
-pub use rules::{check_run_state, sort_cards};
+pub use rules::{RunStateViolation, check_run_state, sort_cards};
