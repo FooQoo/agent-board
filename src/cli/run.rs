@@ -26,6 +26,8 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
         return fail(env, &error, cli.json);
     }
     match prepare_and_run(&cli, env) {
+        // `serve` has already written its startup line while it ran.
+        Ok(_) if matches!(cli.command, Command::Serve(_)) => 0,
         Ok((ctx, outcome)) => {
             let text = if cli.json {
                 format!("{}\n", output::render_json(&outcome.json))

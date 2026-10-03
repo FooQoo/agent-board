@@ -151,6 +151,12 @@ struct Serving {
 }
 
 impl Serving {
+    fn start_with(home: &Path, args: &[&str], port: u16) -> (Serving, String) {
+        let mut serving = Serving::spawn(home, args, port);
+        let first = serving.first_line();
+        (serving, first)
+    }
+
     fn spawn(home: &Path, args: &[&str], port: u16) -> Serving {
         let mut child = StdCommand::new(assert_cmd::cargo::cargo_bin("skan"))
             .args(args)
@@ -176,9 +182,7 @@ impl Serving {
 
     /// `skan serve --port <port>`, waiting until it prints its first line.
     fn start(home: &Path, port: u16) -> (Serving, String) {
-        let mut serving = Serving::spawn(home, &["serve", "--port", &port.to_string()], port);
-        let first = serving.first_line();
-        (serving, first)
+        Serving::start_with(home, &["serve", "--port", &port.to_string()], port)
     }
 
     fn first_line(&mut self) -> String {
@@ -217,8 +221,14 @@ impl Serving {
 
     /// Send SIGTERM and wait for the exit code.
     fn terminate(&mut self) -> Option<i32> {
+        self.signal("TERM")
+    }
+
+    /// Send `signal` (for example `INT`) to the child only and wait for the
+    /// exit code; `None` if it is still running after 5 s or was killed.
+    fn signal(&mut self, signal: &str) -> Option<i32> {
         let _ = StdCommand::new("kill")
-            .args(["-TERM", &self.child.id().to_string()])
+            .args([&format!("-{signal}"), &self.child.id().to_string()])
             .status();
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline {
@@ -348,4 +358,205 @@ fn commands_that_change_nothing_do_not_notify() {
     // The fake really works: a write is noticed.
     run_ok(home.path(), &["add", "Another"]);
     assert_eq!(fake.next(QUICK).as_deref(), Some(NOTIFY_LINE));
+}
+
+// ------------------------------------------------------------ the command
+
+#[test]
+fn serve_without_a_board_exits_4() {
+    let _serial = serial();
+    let home = tempfile::tempdir().unwrap();
+    let o = run(home.path(), &["serve", "--port", "7620"]);
+    assert_eq!(o.code, 4, "{}", o.err);
+    assert_eq!(o.out, "");
+    assert!(o.err.contains("no board found."), "{}", o.err);
+    assert!(port_is_free(7620));
+    assert!(!home.path().join("serve.json").exists());
+}
+
+#[test]
+fn serve_without_a_board_reports_json_errors() {
+    let _serial = serial();
+    let home = tempfile::tempdir().unwrap();
+    let o = run(home.path(), &["serve", "--json", "--port", "7620"]);
+    assert_eq!(o.code, 4, "{}", o.err);
+    assert!(o.err.contains("\"not_initialized\""), "{}", o.err);
+}
+
+#[test]
+fn serve_prints_the_startup_line_and_answers_health() {
+    let _serial = serial();
+    let home = board();
+    let (serving, first) = Serving::start(home.path(), 7621);
+    assert_eq!(
+        first,
+        "Serving \"demo\" at http://127.0.0.1:7621/ (press Ctrl+C to stop)"
+    );
+    let health = ureq::get("http://127.0.0.1:7621/api/health")
+        .call()
+        .unwrap();
+    assert_eq!(health.status().as_u16(), 200);
+    let info = std::fs::read_to_string(home.path().join("serve.json")).unwrap();
+    assert!(info.contains("\"port\":7621"), "{info}");
+    drop(serving);
+}
+
+#[test]
+fn serve_json_prints_the_url_as_the_first_line() {
+    let _serial = serial();
+    let home = board();
+    let (serving, first) =
+        Serving::start_with(home.path(), &["serve", "--json", "--port", "7623"], 7623);
+    assert_eq!(first, r#"{"url":"http://127.0.0.1:7623/"}"#);
+    let health = ureq::get("http://127.0.0.1:7623/api/health")
+        .call()
+        .unwrap();
+    assert_eq!(health.status().as_u16(), 200);
+    drop(serving);
+}
+
+#[test]
+fn a_second_serve_on_the_same_data_exits_1_with_already_serving() {
+    let _serial = serial();
+    let home = board();
+    let (_first, _) = Serving::start(home.path(), 7624);
+    let o = run(home.path(), &["serve", "--port", "7622"]);
+    assert_eq!(o.code, 1, "{}", o.err);
+    assert_eq!(o.out, "");
+    assert!(
+        o.err.contains("the board is already being served."),
+        "{}",
+        o.err
+    );
+    assert!(o.err.contains("http://127.0.0.1:7624/"), "{}", o.err);
+    assert!(port_is_free(7622));
+    // The first serve is untouched.
+    let health = ureq::get("http://127.0.0.1:7624/api/health")
+        .call()
+        .unwrap();
+    assert_eq!(health.status().as_u16(), 200);
+}
+
+#[test]
+fn a_port_held_by_another_process_exits_1_with_port_in_use() {
+    let _serial = serial();
+    let home = board();
+    let _holder = TcpListener::bind((Ipv4Addr::LOCALHOST, 7625)).unwrap();
+    let o = run(home.path(), &["serve", "--port", "7625"]);
+    assert_eq!(o.code, 1, "{}", o.err);
+    assert_eq!(o.out, "");
+    assert!(o.err.contains("port 7625 is already in use."), "{}", o.err);
+    assert!(
+        o.err.contains("Choose another port with --port."),
+        "{}",
+        o.err
+    );
+    assert!(!home.path().join("serve.json").exists());
+}
+
+#[test]
+fn serve_stops_with_exit_0_and_removes_serve_json_on_ctrl_c_and_sigterm() {
+    let _serial = serial();
+    for signal in ["INT", "TERM"] {
+        let home = board();
+        let (mut serving, _) = Serving::start(home.path(), 7626);
+        assert!(home.path().join("serve.json").exists());
+        assert_eq!(serving.signal(signal), Some(0), "SIG{signal}");
+        assert!(
+            !home.path().join("serve.json").exists(),
+            "serve.json left after SIG{signal}"
+        );
+        // Nothing but the startup line was printed, not even a blank line.
+        assert_eq!(
+            serving.lines.recv_timeout(Duration::from_millis(200)).ok(),
+            None
+        );
+    }
+}
+
+// ------------------------------------------------ the live notification path
+
+#[test]
+fn a_subscriber_receives_changed_after_add_mv_and_state() {
+    let _serial = serial();
+    let home = board();
+    let (serving, _) = Serving::start(home.path(), 7626);
+    let mut events = serving.events();
+    let commands: &[&[&str]] = &[
+        &["add", "A card"],
+        &["mv", "1", "doing"],
+        &["state", "1", "running"],
+    ];
+    for (i, args) in commands.iter().enumerate() {
+        let start = Instant::now();
+        run_ok(home.path(), args);
+        assert!(
+            events.wait_for_changed(i + 1, QUICK),
+            "no changed event within 2 s after skan {args:?}; got {:?}",
+            events.received
+        );
+        assert!(start.elapsed() < QUICK + Duration::from_secs(1));
+    }
+}
+
+#[test]
+fn a_subscriber_receives_nothing_for_commands_that_change_nothing() {
+    let _serial = serial();
+    let home = board();
+    run_ok(home.path(), &["add", "A card"]);
+    run_ok(home.path(), &["mv", "1", "doing"]);
+    let (serving, _) = Serving::start(home.path(), 7627);
+    let mut events = serving.events();
+    run_ok(home.path(), &["ls"]);
+    run_ok(home.path(), &["show", "1"]);
+    // Already in Doing.
+    run_ok(home.path(), &["mv", "1", "doing"]);
+    assert!(
+        !events.wait_for_changed(1, Duration::from_secs(1)),
+        "unexpected changed event: {:?}",
+        events.received
+    );
+    // The subscription works: a real change still arrives.
+    run_ok(home.path(), &["add", "Another"]);
+    assert!(events.wait_for_changed(1, QUICK), "{:?}", events.received);
+}
+
+// ------------------------------------------- serve stopped or serve.json stale
+
+#[test]
+fn a_write_after_serve_stopped_succeeds_quickly() {
+    let _serial = serial();
+    let home = board();
+    let (mut serving, _) = Serving::start(home.path(), 7628);
+    assert_eq!(serving.terminate(), Some(0));
+    let o = run_ok(home.path(), &["add", "After serve"]);
+    assert!(o.elapsed < Duration::from_secs(1), "took {:?}", o.elapsed);
+}
+
+#[test]
+fn a_write_with_a_stale_serve_json_succeeds_quickly() {
+    let _serial = serial();
+    let home = board();
+    // Nothing listens on the port in serve.json.
+    assert!(port_is_free(7629));
+    write_serve_json(home.path(), 4_000_000, 7629);
+    let o = run_ok(home.path(), &["add", "Stale"]);
+    assert!(o.elapsed < Duration::from_secs(1), "took {:?}", o.elapsed);
+    assert!(o.out.contains("Stale"), "{}", o.out);
+}
+
+#[test]
+fn a_write_after_serve_was_killed_succeeds_quickly() {
+    let _serial = serial();
+    let home = board();
+    let (mut serving, _) = Serving::start(home.path(), 7628);
+    // SIGKILL: serve cannot clean up, so serve.json stays behind.
+    serving.child.kill().unwrap();
+    serving.child.wait().unwrap();
+    assert!(home.path().join("serve.json").exists());
+    let o = run_ok(home.path(), &["add", "After crash"]);
+    assert!(o.elapsed < Duration::from_secs(1), "took {:?}", o.elapsed);
+    // A new serve takes over the stale file.
+    let (_again, first) = Serving::start(home.path(), 7628);
+    assert!(first.starts_with("Serving \"demo\""), "{first}");
 }
