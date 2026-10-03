@@ -1,0 +1,57 @@
+.app__body {
+  position: relative;
+}
+
+.resize-handle {
+  --handle-width: 16px;
+  --handle-height: 72px;
+  --handle-radius: 8px;
+  --grip-width: 2px;
+  --grip-height: 28px;
+  --grip-gap: 3px;
+
+  position: absolute;
+  top: 50%;
+  right: var(--detail-width);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--grip-gap);
+  width: var(--handle-width);
+  height: var(--handle-height);
+  border: var(--stroke, 1px) solid var(--divider);
+  border-radius: var(--handle-radius);
+  background: var(--surface);
+  transform: translate(50%, -50%);
+  touch-action: none;
+  cursor: col-resize;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  border-color: var(--primary);
+}
+
+.resize-handle__grip {
+  width: var(--grip-width);
+  height: var(--grip-height);
+  border-radius: var(--grip-width);
+  background: var(--divider);
+}
+
+.resize-handle:hover .resize-handle__grip,
+.resize-handle:active .resize-handle__grip {
+  background: var(--primary);
+}
+
+@media (max-width: 1023px) {
+  .resize-handle {
+    display: none;
+  }
+}
+
+body.is-resizing {
+  user-select: none;
+  cursor: col-resize;
+}

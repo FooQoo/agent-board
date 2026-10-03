@@ -5,6 +5,7 @@ import { App } from './App';
 import { readMockInitial } from './mock';
 import './styles/tokens.css';
 import './styles/app.css';
+import './styles/resize.css';
 
 const initial = import.meta.env.MODE === 'mock' ? readMockInitial(window.location.search) : undefined;
 
