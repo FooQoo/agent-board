@@ -831,3 +831,57 @@ fn positions_may_have_gaps() {
     let snapshot = read_and_validate(&write_json(dir.path(), &value)).unwrap();
     assert_eq!(snapshot.cards[2].position, 40);
 }
+
+// ------------------------------------------------------ run state and reason
+
+#[test]
+fn running_and_pending_cards_must_be_in_doing() {
+    // #1 is idle in Todo; make it running or pending without moving it.
+    assert_rejected(
+        |v| v["cards"][0]["run_state"] = json!("running"),
+        "Card #1 is running but is in Todo.",
+    );
+    assert_rejected(
+        |v| {
+            v["cards"][0]["run_state"] = json!("pending");
+            v["cards"][0]["pending_reason"] = json!("Waiting");
+        },
+        "Card #1 is pending but is in Todo.",
+    );
+    assert_rejected(
+        |v| v["cards"][3]["run_state"] = json!("running"),
+        "Card #4 is running but is in Done.",
+    );
+    assert_rejected(
+        |v| v["cards"][3]["run_state"] = json!("pending"),
+        "Card #4 is pending but is in Done.",
+    );
+}
+
+#[test]
+fn a_running_card_is_not_reset_to_idle() {
+    let dir = tempfile::tempdir().unwrap();
+    let snapshot = read_and_validate(&write_json(dir.path(), &valid_json())).unwrap();
+    assert_eq!(snapshot.cards[1].run_state, skan::domain::RunState::Running);
+}
+
+#[test]
+fn only_pending_cards_may_have_a_reason() {
+    assert_rejected(
+        |v| v["cards"][0]["pending_reason"] = json!("Waiting"),
+        "Card #1 has a reason but is not pending.",
+    );
+    assert_rejected(
+        |v| v["cards"][1]["pending_reason"] = json!("Waiting"),
+        "Card #2 has a reason but is not pending.",
+    );
+    assert_rejected(
+        |v| v["cards"][3]["pending_reason"] = json!("Waiting"),
+        "Card #4 has a reason but is not pending.",
+    );
+    // An empty string is still a reason on a card that is not pending.
+    assert_rejected(
+        |v| v["cards"][1]["pending_reason"] = json!(""),
+        "Card #2 has a reason but is not pending.",
+    );
+}

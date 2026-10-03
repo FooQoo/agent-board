@@ -173,7 +173,9 @@ fn check_card_items(card: &Card) -> Result<(), Violation> {
             card.position
         ));
     }
-    if let Some(reason) = &card.pending_reason
+    // A reason on a card that is not pending is reported by the run-state rule.
+    if card.run_state == RunState::Pending
+        && let Some(reason) = &card.pending_reason
         && let Some(problem) = one_line_problem(reason, 100, "pending reason")
     {
         return Err(format!("Card #{id} has {problem}."));
@@ -214,6 +216,21 @@ fn check_ids_and_positions(file: &ExportFile) -> Result<(), Violation> {
     Ok(())
 }
 
+fn check_run_state(card: &Card) -> Result<(), Violation> {
+    let id = card.id;
+    if card.run_state != RunState::Idle && card.column != Column::Doing {
+        return Err(format!(
+            "Card #{id} is {} but is in {}.",
+            card.run_state.as_str(),
+            card.column.label()
+        ));
+    }
+    if card.pending_reason.is_some() && card.run_state != RunState::Pending {
+        return Err(format!("Card #{id} has a reason but is not pending."));
+    }
+    Ok(())
+}
+
 /// Check every import rule in the order MODEL.md lists them.
 fn check(file: &ExportFile) -> Result<BoardSnapshot, Violation> {
     if file.format != FORMAT || file.version != VERSION {
@@ -224,6 +241,9 @@ fn check(file: &ExportFile) -> Result<BoardSnapshot, Violation> {
         check_card_items(card)?;
     }
     check_ids_and_positions(file)?;
+    for card in &file.cards {
+        check_run_state(card)?;
+    }
     let mut cards = file.cards.clone();
     cards.sort_by_key(|card| card.id);
     Ok(BoardSnapshot {
