@@ -1155,10 +1155,9 @@ fn after_commit_runs_once_per_command_that_changed_the_board() {
         (vec!["add", ""], 2, 0),
         (vec!["add"], 2, 0),
         (vec!["--help"], 0, 0),
-        (vec!["rm", "1"], 1, 0),
-        (vec!["export"], 1, 0),
-        (vec!["init", "--name", "again"], 1, 0),
-        (vec!["serve"], 1, 0),
+        // rm, export, init over a board and serve are covered by cli_destructive,
+        // cli_transfer and cli_serve; running them in-process here could prompt,
+        // write skan.json, or block.
     ];
     for (args, code, commits) in cases {
         let o = run_at(&db, t, &args);
