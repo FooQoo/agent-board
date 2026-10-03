@@ -1000,3 +1000,145 @@ fn notify_serve_is_false_after_the_server_stopped() {
         skan::interact::notify::notify_serve
     ));
 }
+
+// ---------------------------------------------------------------- examples/serve.rs and `run`
+
+use std::process::{Child, Stdio};
+
+/// Path of the built `serve` example, building it first if needed (a plain
+/// `cargo test --test server` does not build examples).
+fn serve_example() -> std::path::PathBuf {
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    let built = Command::new(cargo)
+        .args(["build", "--example", "serve"])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .status()
+        .unwrap();
+    assert!(built.success());
+    let mut dir = std::env::current_exe().unwrap();
+    dir.pop(); // deps/
+    dir.pop(); // debug/
+    dir.join("examples")
+        .join(if cfg!(windows) { "serve.exe" } else { "serve" })
+}
+
+fn spawn_example(home: &Path, args: &[&str]) -> Child {
+    Command::new(serve_example())
+        .args(args)
+        .env("SKAN_HOME", home)
+        .env("TZ", "UTC")
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap()
+}
+
+fn wait_for_file(path: &Path, within: Duration) -> bool {
+    let deadline = Instant::now() + within;
+    while Instant::now() < deadline {
+        if path.exists() {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    path.exists()
+}
+
+fn wait_for_exit(child: &mut Child, within: Duration) -> Option<std::process::ExitStatus> {
+    let deadline = Instant::now() + within;
+    while Instant::now() < deadline {
+        if let Some(status) = child.try_wait().unwrap() {
+            return Some(status);
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    child.try_wait().unwrap()
+}
+
+/// Start the example on `port`, check it serves, send `signal`, and check it
+/// exits cleanly and removes serve.json.
+fn example_stops_on(signal: &str, port: u16) {
+    let home = board_home();
+    let mut child = spawn_example(home.path(), &["--port", &port.to_string()]);
+    let serve_path = home.path().join("serve.json");
+    assert!(
+        wait_for_file(&serve_path, Duration::from_secs(5)),
+        "serve.json never appeared"
+    );
+    let health = ureq::get(format!("http://127.0.0.1:{port}/api/health"))
+        .call()
+        .unwrap();
+    assert_eq!(health.status().as_u16(), 200);
+    assert_eq!(serve_json(home.path()).unwrap().port, port);
+
+    let sent = Command::new("kill")
+        .args([signal, &child.id().to_string()])
+        .status()
+        .unwrap();
+    assert!(sent.success());
+    let status = wait_for_exit(&mut child, Duration::from_secs(5));
+    if status.is_none() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    assert_eq!(status.and_then(|s| s.code()), Some(0));
+    assert!(!serve_path.exists(), "serve.json was left behind");
+}
+
+#[test]
+#[cfg(unix)]
+fn the_example_serves_and_cleans_up_on_sigint() {
+    example_stops_on("-INT", 7618);
+}
+
+#[test]
+#[cfg(unix)]
+fn the_example_serves_and_cleans_up_on_sigterm() {
+    example_stops_on("-TERM", 7619);
+}
+
+#[test]
+fn the_example_reports_an_uninitialized_board_with_exit_code_4() {
+    let home = tempfile::tempdir().unwrap();
+    let mut child = spawn_example(home.path(), &["--port", "7617"]);
+    let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
+    assert_eq!(status.code(), Some(4));
+    let mut stderr = String::new();
+    child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut stderr)
+        .unwrap();
+    assert!(stderr.contains("Error: no board found."), "{stderr}");
+}
+
+#[test]
+fn the_example_reports_a_port_in_use_with_exit_code_1() {
+    let home = board_home();
+    let blocker = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = blocker.local_addr().unwrap().port();
+    let mut child = spawn_example(home.path(), &["--port", &port.to_string()]);
+    let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
+    assert_eq!(status.code(), Some(1));
+    let mut stderr = String::new();
+    child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut stderr)
+        .unwrap();
+    assert!(
+        stderr.contains(&format!("Error: port {port} is already in use.")),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn the_example_needs_a_port() {
+    let home = board_home();
+    let mut child = spawn_example(home.path(), &[]);
+    let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
+    assert_eq!(status.code(), Some(2));
+    assert!(!home.path().join("serve.json").exists());
+}
