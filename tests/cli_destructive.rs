@@ -257,3 +257,157 @@ fn init_prompt_uses_the_trimmed_name() {
     a.result.unwrap();
     assert_eq!(a.prompt, REPLACE_BOARD_PROMPT);
 }
+
+// ------------------------------------------------------- rm (piped)
+
+#[test]
+fn rm_without_a_terminal_needs_confirmation_and_deletes_nothing() {
+    let home = board_with(&["One", "Two", "Three"]);
+    let before = state_of(home.path());
+
+    let o = run_with_stdin(home.path(), &["rm", "3"], "y\n");
+    assert_eq!(o.code, 1);
+    assert_eq!(o.out, "");
+    assert_eq!(
+        o.err,
+        format!(
+            "Error: deleting a card needs confirmation from a human.\nReason: {NEEDS_CONFIRMATION_REASON}\n"
+        )
+    );
+    assert_eq!(state_of(home.path()), before);
+}
+
+#[test]
+fn rm_with_json_is_always_confirmation_required() {
+    let home = board_with(&["One", "Two"]);
+    let before = state_of(home.path());
+
+    let o = run(home.path(), &["rm", "2", "--json"]);
+    assert_eq!(o.code, 1);
+    assert_eq!(o.out, "");
+    assert_eq!(
+        o.err,
+        format!(
+            "{{\"error\":{{\"code\":\"confirmation_required\",\"message\":\"deleting a card needs confirmation from a human.\",\"reason\":\"{NEEDS_CONFIRMATION_REASON}\"}}}}\n"
+        )
+    );
+    // The flag may come first, too.
+    let o = run_with_stdin(home.path(), &["--json", "rm", "1"], "yes\n");
+    assert_eq!(o.code, 1);
+    assert_eq!(json(&o.err)["error"]["code"], "confirmation_required");
+    assert_eq!(state_of(home.path()), before);
+}
+
+#[test]
+fn rm_without_a_board_is_not_initialized() {
+    let home = tempfile::tempdir().unwrap();
+    let o = run(home.path(), &["rm", "1"]);
+    assert_eq!(o.code, 4);
+}
+
+// ------------------------------------------------ rm (run_with_io)
+
+use skan::cli::args::RmArgs;
+use skan::cli::commands::rm;
+
+fn answer_rm(home: &Path, id: i64, input: &[u8], interactive: bool, json: bool) -> Answered {
+    let ctx = context(home, interactive, json);
+    let args = RmArgs { id };
+    let mut cursor = std::io::Cursor::new(input.to_vec());
+    let mut prompt = Vec::new();
+    let result = rm::run_with_io(&ctx, &args, &mut cursor, &mut prompt);
+    let position = cursor.position() as usize;
+    Answered {
+        result,
+        prompt: String::from_utf8(prompt).unwrap(),
+        unread: input[position..].to_vec(),
+    }
+}
+
+#[test]
+fn rm_deletes_on_y_or_yes_and_prints_deleted() {
+    for answer in ["y\n", "yes\n", "Y\n", "YES\n", " yes\n", "y"] {
+        let home = board_with(&["One", "Two", "Three"]);
+        let a = answer_rm(home.path(), 2, answer.as_bytes(), true, false);
+        let outcome = a.result.unwrap_or_else(|e| panic!("{answer:?}: {e}"));
+        assert!(outcome.changed, "{answer:?}");
+        assert_eq!(outcome.human, "Deleted #2.\n");
+        assert_eq!(
+            a.prompt, "Delete #2 \"Two\"? This cannot be undone. [y/N] ",
+            "{answer:?}"
+        );
+        assert_eq!(titles(home.path()), vec!["One", "Three"], "{answer:?}");
+    }
+}
+
+#[test]
+fn rm_cancels_on_anything_else_and_deletes_nothing() {
+    for answer in [
+        "n\n",
+        "N\n",
+        "\n",
+        "",
+        "no\n",
+        "maybe\n",
+        "yes!\n",
+        "\u{ff59}\n",
+    ] {
+        let home = board_with(&["One", "Two"]);
+        let before = state_of(home.path());
+        let a = answer_rm(home.path(), 2, answer.as_bytes(), true, false);
+        let outcome = a.result.unwrap_or_else(|e| panic!("{answer:?}: {e}"));
+        assert!(!outcome.changed, "{answer:?}");
+        assert_eq!(outcome.human, "Cancelled. Nothing was changed.\n");
+        assert_eq!(a.prompt, "Delete #2 \"Two\"? This cannot be undone. [y/N] ");
+        assert_eq!(state_of(home.path()), before, "{answer:?}");
+    }
+}
+
+#[test]
+fn rm_prompt_embeds_the_title_as_it_is() {
+    let home = board_with(&["Fix \"quotes\" & 日本語 [y/N]"]);
+    let a = answer_rm(home.path(), 1, b"n\n", true, false);
+    a.result.unwrap();
+    assert_eq!(
+        a.prompt,
+        "Delete #1 \"Fix \"quotes\" & 日本語 [y/N]\"? This cannot be undone. [y/N] "
+    );
+}
+
+#[test]
+fn rm_without_a_human_asks_nothing_deletes_nothing_and_never_reads() {
+    for (interactive, json) in [(false, false), (false, true), (true, true)] {
+        let home = board_with(&["One"]);
+        let before = state_of(home.path());
+        let a = answer_rm(home.path(), 1, b"y\n", interactive, json);
+        assert_eq!(
+            a.result.err(),
+            Some(SkanError::ConfirmationRequired {
+                operation: "deleting a card".to_string()
+            }),
+            "interactive={interactive} json={json}"
+        );
+        assert_eq!(a.prompt, "");
+        assert_eq!(a.unread, b"y\n");
+        assert_eq!(state_of(home.path()), before);
+    }
+}
+
+#[test]
+fn rm_of_a_missing_card_is_card_not_found_before_asking() {
+    let home = board_with(&["One"]);
+    let a = answer_rm(home.path(), 9, b"y\n", true, false);
+    assert_eq!(a.result.err(), Some(SkanError::CardNotFound { id: 9 }));
+    assert_eq!(a.prompt, "");
+    assert_eq!(titles(home.path()), vec!["One"]);
+}
+
+#[test]
+fn rm_never_reuses_the_deleted_id() {
+    let home = board_with(&["One", "Two"]);
+    answer_rm(home.path(), 2, b"y\n", true, false)
+        .result
+        .unwrap();
+    let added = run(home.path(), &["add", "Three"]);
+    assert_eq!(added.out, "Added #3 to Todo: Three\n");
+}
