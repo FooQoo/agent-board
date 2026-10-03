@@ -181,7 +181,7 @@ ol {
   border-top: var(--stroke) solid var(--line);
   background: var(--surface);
   font-family: var(--font-mono);
-  font-size: var(--fs-16);
+  font-size: var(--fs-14);
   color: var(--text-primary);
 }
 

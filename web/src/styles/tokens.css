@@ -129,6 +129,7 @@
   :root {
     /* 100vw equals the viewport width here: .app is fixed to the viewport height, so no page scrollbar. */
     --header-height: 56px;
+    --statusbar-height: 44px;
     --inset-left: clamp(24px, calc(24px + (100vw - 1024px) * 0.15625), 64px);
     --inset-right-header: clamp(24px, calc(24px + (100vw - 1024px) * 0.15625), 64px);
     --inset-right-board: clamp(24px, calc(24px + (100vw - 1024px) * 0.0625), 40px);
