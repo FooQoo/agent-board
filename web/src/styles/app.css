@@ -750,10 +750,19 @@ ol {
     min-height: 0;
   }
 
+  .header {
+    padding: 0 var(--inset-right-header) 0 var(--inset-left);
+  }
+
+  .status-bar {
+    padding: 0 var(--inset-right-board) 0 var(--inset-left);
+  }
+
   .board__lanes {
     align-items: stretch;
     height: 100%;
     min-height: 0;
+    padding: var(--board-inset-block) var(--inset-right-board) var(--board-inset-block) var(--inset-left);
   }
 
   .board--centered {
@@ -764,9 +773,46 @@ ol {
     min-height: 0;
   }
 
-  .lane__cards {
+  .lane__scroll {
+    position: relative;
     flex: 1;
+    min-height: 0;
+  }
+
+  .lane__cards {
+    height: 100%;
     overflow-y: auto;
+  }
+
+  .lane__scroll[data-more='true']::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: var(--scroll-fade-height);
+    background: linear-gradient(to bottom, transparent, var(--lane));
+    pointer-events: none;
+  }
+
+  .lane__cards::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+  }
+
+  .lane__cards::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-round);
+    background: var(--divider);
+  }
+
+  .lane__cards::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    .lane__cards {
+      scrollbar-width: thin;
+      scrollbar-color: var(--divider) transparent;
+    }
   }
 
   .detail {
