@@ -392,3 +392,148 @@ fn import_without_a_file_is_a_file_error() {
     assert_eq!(error["code"], "file_error");
     assert_eq!(error["message"], "cannot read missing.json.");
 }
+
+// ---------------------------------------- import over a board (run_with_io)
+
+use skan::cli::args::ImportArgs;
+use skan::cli::commands::import::run_with_io;
+use skan::error::SkanError;
+
+fn context(home: &Path, interactive: bool, json: bool) -> Context {
+    Context {
+        store: Store::open(&home.join("board.db")).unwrap(),
+        clock: Box::new(FixedClock(at("2026-10-03T00:00:00Z"))),
+        json,
+        interactive,
+    }
+}
+
+const REPLACE_PROMPT: &str = "A board \"demo\" already exists. Replace it with the board in ./backup.json? All current cards and history will be deleted. [y/N] ";
+
+/// An existing board "demo" with one card, and a file exported from a board
+/// with two other cards. Returns (home of the existing board, export dir).
+fn existing_and_file() -> (tempfile::TempDir, tempfile::TempDir) {
+    let existing = board_with(&["Existing card"]);
+    let source = board_with(&["Imported one", "Imported two"]);
+    exported(source.path());
+    (existing, source)
+}
+
+struct Answered {
+    result: Result<skan::cli::Outcome, SkanError>,
+    prompt: String,
+    unread: Vec<u8>,
+}
+
+fn answer_import(
+    existing: &Path,
+    source: &Path,
+    input: &[u8],
+    interactive: bool,
+    json: bool,
+) -> Answered {
+    let ctx = context(existing, interactive, json);
+    let args = ImportArgs {
+        file: Some(source.join("backup.json")),
+    };
+    let mut cursor = std::io::Cursor::new(input.to_vec());
+    let mut prompt = Vec::new();
+    let result = run_with_io(&ctx, &args, source, &mut cursor, &mut prompt);
+    let position = cursor.position() as usize;
+    Answered {
+        result,
+        prompt: String::from_utf8(prompt).unwrap(),
+        unread: input[position..].to_vec(),
+    }
+}
+
+fn titles(home: &Path) -> Vec<String> {
+    let mut titles: Vec<String> = cards_of(home)["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["title"].as_str().unwrap().to_string())
+        .collect();
+    titles.sort();
+    titles
+}
+
+#[test]
+fn import_over_a_board_asks_and_replaces_it_on_y_or_yes() {
+    for answer in ["y\n", "yes\n", "Y\n", "YES\n", " Yes \n", "y"] {
+        let (existing, source) = existing_and_file();
+        let a = answer_import(
+            existing.path(),
+            source.path(),
+            answer.as_bytes(),
+            true,
+            false,
+        );
+        let outcome = a.result.unwrap_or_else(|e| panic!("{answer:?}: {e}"));
+        assert!(outcome.changed, "{answer:?}");
+        assert_eq!(
+            outcome.human,
+            "Imported board \"demo\" with 2 cards from ./backup.json.\n"
+        );
+        assert_eq!(a.prompt, REPLACE_PROMPT);
+        assert_eq!(
+            titles(existing.path()),
+            vec!["Imported one", "Imported two"],
+            "{answer:?}"
+        );
+    }
+}
+
+#[test]
+fn import_over_a_board_cancels_on_anything_else_and_changes_nothing() {
+    for answer in [
+        "n\n", "\n", "", "no\n", "maybe\n", "yess\n", "y e s\n", "ye\n",
+    ] {
+        let (existing, source) = existing_and_file();
+        let a = answer_import(
+            existing.path(),
+            source.path(),
+            answer.as_bytes(),
+            true,
+            false,
+        );
+        let outcome = a.result.unwrap_or_else(|e| panic!("{answer:?}: {e}"));
+        assert!(!outcome.changed, "{answer:?}");
+        assert_eq!(outcome.human, "Cancelled. Nothing was changed.\n");
+        assert_eq!(a.prompt, REPLACE_PROMPT);
+        assert_eq!(titles(existing.path()), vec!["Existing card"], "{answer:?}");
+    }
+}
+
+#[test]
+fn import_over_a_board_without_a_human_needs_confirmation_and_asks_nothing() {
+    for (interactive, json) in [(false, false), (false, true), (true, true)] {
+        let (existing, source) = existing_and_file();
+        let a = answer_import(existing.path(), source.path(), b"y\n", interactive, json);
+        assert_eq!(
+            a.result.err(),
+            Some(SkanError::ConfirmationRequired {
+                operation: "replacing the board".to_string()
+            }),
+            "interactive={interactive} json={json}"
+        );
+        assert_eq!(a.prompt, "");
+        assert_eq!(a.unread, b"y\n", "the input is not read");
+        assert_eq!(titles(existing.path()), vec!["Existing card"]);
+    }
+}
+
+#[test]
+fn an_invalid_file_fails_before_any_question_even_over_a_board() {
+    let (existing, source) = existing_and_file();
+    std::fs::write(source.path().join("backup.json"), "{\"format\":\"nope\"}").unwrap();
+    for (interactive, json) in [(true, false), (false, false), (false, true)] {
+        let a = answer_import(existing.path(), source.path(), b"y\n", interactive, json);
+        assert!(
+            matches!(a.result, Err(SkanError::ImportInvalid { .. })),
+            "interactive={interactive} json={json}"
+        );
+        assert_eq!(a.prompt, "");
+        assert_eq!(titles(existing.path()), vec!["Existing card"]);
+    }
+}
