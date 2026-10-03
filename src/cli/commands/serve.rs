@@ -1,9 +1,64 @@
+use std::io::Write;
+use std::net::SocketAddr;
+
+use serde_json::json;
+
 use crate::cli::args::ServeArgs;
 use crate::cli::{Context, Outcome};
 use crate::error::SkanError;
+use crate::server::{self, ServeConfig};
 
-pub fn run(_ctx: &mut Context, _args: &ServeArgs) -> Result<Outcome, SkanError> {
-    Err(SkanError::NotImplemented {
-        command: "serve".to_string(),
+/// Serve the board until Ctrl+C (or SIGTERM), then return.
+///
+/// The startup line goes straight to standard output from `on_ready`, so it
+/// appears only once the port is bound; `execute` prints nothing for `serve`
+/// afterwards. The command never changes the board, so `changed` is `false`.
+pub fn run(ctx: &mut Context, args: &ServeArgs) -> Result<Outcome, SkanError> {
+    let name = ctx.store.board()?.ok_or(SkanError::NotInitialized)?.name;
+    let json = ctx.json;
+    server::run_until(ServeConfig { port: args.port }, shutdown_signal(), |addr| {
+        announce(&name, addr, json)
+    })?;
+    Ok(Outcome {
+        changed: false,
+        human: String::new(),
+        json: json!(null),
     })
+}
+
+/// Write the startup line (or, with `--json`, the URL object) and flush, so a
+/// reader on a pipe sees it before the server starts waiting.
+fn announce(name: &str, addr: SocketAddr, json: bool) {
+    let url = format!("http://127.0.0.1:{}/", addr.port());
+    let line = if json {
+        json!({ "url": url }).to_string()
+    } else {
+        format!("Serving \"{name}\" at {url} (press Ctrl+C to stop)")
+    };
+    let mut stdout = std::io::stdout().lock();
+    let _ = writeln!(stdout, "{line}");
+    let _ = stdout.flush();
+}
+
+/// Completes on Ctrl+C, or on SIGTERM where the platform has it.
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        match signal(SignalKind::terminate()) {
+            Ok(mut term) => {
+                tokio::select! {
+                    _ = tokio::signal::ctrl_c() => {}
+                    _ = term.recv() => {}
+                }
+            }
+            Err(_) => {
+                let _ = tokio::signal::ctrl_c().await;
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = tokio::signal::ctrl_c().await;
+    }
 }
