@@ -17,5 +17,5 @@
     "noEmit": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "test", "vite.config.ts", "mock-api.ts"]
+  "include": ["src", "test", "vite.config.ts", "mock-api.ts", "live-api.ts"]
 }

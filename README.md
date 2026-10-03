@@ -73,7 +73,19 @@ Rules for agents:
 
 Run all commands from the repository root.
 
-Always point `SKAN_HOME` at a temporary directory when you run or test the CLI, so your real board is never touched. The default data area is `~/Library/Application Support/skan/` on macOS and `%APPDATA%\skan\` on Windows.
+Common workflows use `just`:
+
+```sh
+just dev          # sample board with Vite HMR (port 5173)
+just build        # build the web UI, then the CLI
+just serve        # saved board with Vite HMR and Rust watch (port 7420)
+```
+
+`just dev` watches web files and updates the browser through HMR. `just serve` requires `cargo-watch`. It watches Rust files, restarts the Rust API when they change, and serves the web UI through Vite with HMR. Open `http://127.0.0.1:7420/`; the Rust API uses port 7421. The board comes from the normal saved location, or from `SKAN_HOME` if set. A Rust restart reloads the page to refresh its delete token.
+
+Pass different ports as arguments, for example `just dev 5174` or `just serve 7500 7501` (web port, then Rust API port).
+
+For manual CLI experiments and tests, point `SKAN_HOME` at a temporary directory so your saved board is not touched. The default data area is `~/Library/Application Support/skan/` on macOS and `%APPDATA%\skan\` on Windows.
 
 ```sh
 export SKAN_HOME="$(mktemp -d)"
