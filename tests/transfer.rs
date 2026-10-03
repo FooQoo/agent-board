@@ -885,3 +885,270 @@ fn only_pending_cards_may_have_a_reason() {
         "Card #2 has a reason but is not pending.",
     );
 }
+
+// --------------------------------------------------------------- transitions
+
+const AT: &str = "2026-10-02T00:00:00Z";
+
+fn history_reason(id: i64) -> String {
+    format!("Card #{id}'s history must start with its creation and end in its current column.")
+}
+
+fn continuity_reason(id: i64) -> String {
+    format!(
+        "Card #{id}'s history must be continuous: each move must start from the column the previous move ended in."
+    )
+}
+
+#[test]
+fn a_card_needs_at_least_one_transition() {
+    assert_rejected(
+        |v| v["cards"][0]["transitions"] = json!([]),
+        &history_reason(1),
+    );
+}
+
+#[test]
+fn the_first_transition_must_be_a_creation() {
+    assert_rejected(
+        |v| {
+            // todo -> doing as the first and only move of a card in Doing.
+            v["cards"][1]["transitions"] = json!([
+                { "from": "todo", "to": "doing", "at": AT }
+            ]);
+        },
+        &history_reason(2),
+    );
+}
+
+#[test]
+fn the_last_transition_must_end_in_the_current_column() {
+    assert_rejected(
+        |v| {
+            v["cards"][0]["column"] = json!("done");
+            v["cards"][0]["position"] = json!(2);
+        },
+        &history_reason(1),
+    );
+    assert_rejected(
+        |v| {
+            // History says the card went on to Done, but it is in Doing.
+            v["cards"][1]["transitions"] = json!([
+                { "from": null, "to": "todo", "at": AT },
+                { "from": "todo", "to": "done", "at": AT }
+            ]);
+        },
+        &history_reason(2),
+    );
+}
+
+#[test]
+fn each_transition_must_start_where_the_previous_one_ended() {
+    assert_rejected(
+        |v| {
+            v["cards"][3]["transitions"] = json!([
+                { "from": null, "to": "todo", "at": AT },
+                { "from": "doing", "to": "done", "at": AT }
+            ]);
+        },
+        &continuity_reason(4),
+    );
+    assert_rejected(
+        |v| {
+            // A second creation in the middle of the history.
+            v["cards"][3]["transitions"] = json!([
+                { "from": null, "to": "todo", "at": AT },
+                { "from": null, "to": "done", "at": AT }
+            ]);
+        },
+        &continuity_reason(4),
+    );
+}
+
+#[test]
+fn a_history_may_revisit_columns_and_a_move_may_repeat_the_column() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut value = valid_json();
+    value["cards"][1]["transitions"] = json!([
+        { "from": null, "to": "todo", "at": "2026-10-02T00:00:00Z" },
+        { "from": "todo", "to": "doing", "at": "2026-10-02T01:00:00Z" },
+        { "from": "doing", "to": "todo", "at": "2026-10-02T02:00:00Z" },
+        { "from": "todo", "to": "doing", "at": "2026-10-02T03:00:00Z" }
+    ]);
+    let snapshot = read_and_validate(&write_json(dir.path(), &value)).unwrap();
+    assert_eq!(snapshot.cards[1].transitions.len(), 4);
+}
+
+// --------------------------------------------------------------------- dates
+
+#[test]
+fn every_date_must_be_utc_rfc3339_with_seconds() {
+    let bad = "2026-10-02 10:00";
+    assert_rejected(
+        |v| v["board"]["created_at"] = json!(bad),
+        "The board has an invalid date: \"2026-10-02 10:00\".",
+    );
+    assert_rejected(
+        |v| v["cards"][1]["created_at"] = json!(bad),
+        "Card #2 has an invalid date: \"2026-10-02 10:00\".",
+    );
+    assert_rejected(
+        |v| v["cards"][1]["updated_at"] = json!(bad),
+        "Card #2 has an invalid date: \"2026-10-02 10:00\".",
+    );
+    assert_rejected(
+        |v| v["cards"][2]["run_state_changed_at"] = json!(bad),
+        "Card #3 has an invalid date: \"2026-10-02 10:00\".",
+    );
+    assert_rejected(
+        |v| v["cards"][3]["transitions"][1]["at"] = json!(bad),
+        "Card #4 has an invalid date: \"2026-10-02 10:00\".",
+    );
+}
+
+#[test]
+fn offsets_missing_zone_and_fractions_are_rejected() {
+    for bad in [
+        "2026-10-02T10:00:00+09:00",
+        "2026-10-02T01:00:00+00:00",
+        "2026-10-02T01:00:00",
+        "2026-10-02T01:00:00.123Z",
+        "2026-10-02T01:00Z",
+        "2026-13-02T01:00:00Z",
+        "",
+        "yesterday",
+    ] {
+        assert_rejected(
+            |v| v["cards"][0]["created_at"] = json!(bad),
+            &format!("Card #1 has an invalid date: \"{bad}\"."),
+        );
+    }
+}
+
+// ------------------------------------------------------ ordering and rejection
+
+#[test]
+fn the_first_violation_in_rule_order_is_reported() {
+    // Both an invalid name and a duplicate ID: the item rules come first.
+    assert_rejected(
+        |v| {
+            v["board"]["name"] = json!("");
+            v["cards"][3]["id"] = json!(2);
+        },
+        NAME_REASON,
+    );
+    // Both a duplicate ID and a pending card in Todo: IDs come first.
+    assert_rejected(
+        |v| {
+            v["cards"][3]["id"] = json!(2);
+            v["cards"][0]["run_state"] = json!("running");
+        },
+        "Card IDs must be unique. #2 appears twice.",
+    );
+}
+
+#[test]
+fn validate_checks_typed_files_and_names_the_default_file() {
+    let mut file = to_export_file(&sample_snapshot());
+    file.cards[1].run_state = skan::domain::RunState::Running; // card #12 stays in Doing
+    file.cards[0].run_state = skan::domain::RunState::Running; // card #3 is in Todo
+    assert_eq!(
+        validate(&file),
+        Err(SkanError::ImportInvalid {
+            file: "skan.json".into(),
+            reason: "Card #3 is running but is in Todo.".into()
+        })
+    );
+    // A valid typed file gives back an ID-sorted snapshot.
+    let ok = validate(&to_export_file(&sample_snapshot())).unwrap();
+    let ids: Vec<i64> = ok.cards.iter().map(|c| c.id).collect();
+    assert_eq!(ids, vec![3, 12]);
+}
+
+// ------------------------------------------------------- full round trip
+
+/// A board built through the store, using every kind of state: a pending card
+/// with a reason, a running card, a card moved around, a deleted card (an ID
+/// gap) and a Done column with several cards.
+fn busy_store(dir: &Path) -> Store {
+    let store = Store::open(&dir.join("board.db")).unwrap();
+    store.create_board("round trip ボード", t(0, 0)).unwrap();
+    for (n, title) in ["First", "Second", "Third", "Fourth", "Fifth", "Sixth"]
+        .iter()
+        .enumerate()
+    {
+        let desc = if n == 1 { "two\nlines" } else { "" };
+        store.add_card(title, desc, t(1, n as u32)).unwrap();
+    }
+    store.move_card(1, Column::Doing, t(2, 0)).unwrap();
+    store.move_card(2, Column::Doing, t(2, 1)).unwrap();
+    store.move_card(3, Column::Doing, t(2, 2)).unwrap();
+    store.move_card(4, Column::Doing, t(2, 3)).unwrap();
+    store.move_card(4, Column::Done, t(3, 0)).unwrap();
+    store.move_card(3, Column::Done, t(3, 1)).unwrap();
+    store.move_card(3, Column::Todo, t(3, 2)).unwrap();
+    store.move_card(3, Column::Doing, t(3, 3)).unwrap();
+    store
+        .set_run_state(1, skan::domain::RunState::Running, None, t(4, 0))
+        .unwrap();
+    store
+        .set_run_state(
+            2,
+            skan::domain::RunState::Pending,
+            Some("Waiting for review"),
+            t(4, 1),
+        )
+        .unwrap();
+    store.delete_card(6).unwrap();
+    store
+}
+
+#[test]
+fn export_validate_and_replace_all_reproduce_the_snapshot() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = busy_store(dir.path());
+    let original = store.snapshot().unwrap();
+    assert_eq!(original.board.next_card_id, 7);
+
+    let path = dir.path().join("skan.json");
+    write_atomic(&path, &serialize(&to_export_file(&original))).unwrap();
+    let snapshot = read_and_validate(&path).unwrap();
+    assert_eq!(snapshot, original);
+
+    // Restore into a different, empty database.
+    let other_dir = tempfile::tempdir().unwrap();
+    let other = Store::open(&other_dir.path().join("board.db")).unwrap();
+    other.replace_all(&snapshot).unwrap();
+    assert_eq!(other.snapshot().unwrap(), original);
+
+    // And over a board that already has other content.
+    let existing_dir = tempfile::tempdir().unwrap();
+    let existing = existing_store(existing_dir.path());
+    existing.replace_all(&snapshot).unwrap();
+    assert_eq!(existing.snapshot().unwrap(), original);
+
+    // The second export of the restored board has the same bytes.
+    let again = serialize(&to_export_file(&other.snapshot().unwrap()));
+    assert_eq!(again, fs::read_to_string(&path).unwrap());
+}
+
+#[test]
+fn the_next_card_id_survives_the_round_trip() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = busy_store(dir.path());
+    let path = dir.path().join("skan.json");
+    write_atomic(
+        &path,
+        &serialize(&to_export_file(&store.snapshot().unwrap())),
+    )
+    .unwrap();
+
+    let other_dir = tempfile::tempdir().unwrap();
+    let other = Store::open(&other_dir.path().join("board.db")).unwrap();
+    other
+        .replace_all(&read_and_validate(&path).unwrap())
+        .unwrap();
+    // #6 was deleted before the export; the next card is #7, not #6.
+    let card = other.add_card("After restore", "", t(5, 0)).unwrap();
+    assert_eq!(card.id, 7);
+}

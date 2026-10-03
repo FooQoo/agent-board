@@ -231,6 +231,30 @@ fn check_run_state(card: &Card) -> Result<(), Violation> {
     Ok(())
 }
 
+fn check_history(card: &Card) -> Result<(), Violation> {
+    let id = card.id;
+    let must_start = || {
+        format!("Card #{id}'s history must start with its creation and end in its current column.")
+    };
+    let Some(first) = card.transitions.first() else {
+        return Err(must_start());
+    };
+    if first.from.is_some() {
+        return Err(must_start());
+    }
+    for pair in card.transitions.windows(2) {
+        if pair[1].from != Some(pair[0].to) {
+            return Err(format!(
+                "Card #{id}'s history must be continuous: each move must start from the column the previous move ended in."
+            ));
+        }
+    }
+    if card.transitions.last().map(|last| last.to) != Some(card.column) {
+        return Err(must_start());
+    }
+    Ok(())
+}
+
 /// Check every import rule in the order MODEL.md lists them.
 fn check(file: &ExportFile) -> Result<BoardSnapshot, Violation> {
     if file.format != FORMAT || file.version != VERSION {
@@ -243,6 +267,9 @@ fn check(file: &ExportFile) -> Result<BoardSnapshot, Violation> {
     check_ids_and_positions(file)?;
     for card in &file.cards {
         check_run_state(card)?;
+    }
+    for card in &file.cards {
+        check_history(card)?;
     }
     let mut cards = file.cards.clone();
     cards.sort_by_key(|card| card.id);
