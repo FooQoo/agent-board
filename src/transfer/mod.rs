@@ -7,6 +7,11 @@ use serde::{Deserialize, Serialize};
 use crate::domain::{BoardMeta, BoardSnapshot, Card};
 use crate::error::SkanError;
 
+/// The value of `format` in every export file.
+pub const FORMAT: &str = "skan-board";
+/// The only supported `version`.
+pub const VERSION: u32 = 1;
+
 /// The export file (`skan.json`). Field order is the key order in the file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportFile {
@@ -18,14 +23,22 @@ pub struct ExportFile {
 
 /// Build the export file from a snapshot. Cards are in ascending ID order.
 pub fn to_export_file(snapshot: &BoardSnapshot) -> ExportFile {
-    let _ = snapshot;
-    todo!()
+    let mut cards = snapshot.cards.clone();
+    cards.sort_by_key(|card| card.id);
+    ExportFile {
+        format: FORMAT.to_string(),
+        version: VERSION,
+        board: snapshot.board.clone(),
+        cards,
+    }
 }
 
 /// Render the file: 2-space indent, UTF-8, exactly one trailing newline.
 pub fn serialize(file: &ExportFile) -> String {
-    let _ = file;
-    todo!()
+    let mut text =
+        serde_json::to_string_pretty(file).expect("an export file is always serializable");
+    text.push('\n');
+    text
 }
 
 /// Resolve the output path for `skan export`: no argument means
