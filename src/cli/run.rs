@@ -95,6 +95,9 @@ fn write_text(out: &mut dyn Write, text: &str) {
     let _ = out.flush();
 }
 
-/// Called once after a command that changed the board. Does nothing yet; the
-/// serve notification is added later.
-pub fn after_commit(_ctx: &Context) {}
+/// Called once after a command that changed the board: tells a running
+/// `skan serve` so open browsers refresh. Best effort; the result is ignored
+/// and the notification never takes longer than its own 300 ms budget.
+pub fn after_commit(_ctx: &Context) {
+    let _ = crate::interact::notify::notify_serve();
+}
