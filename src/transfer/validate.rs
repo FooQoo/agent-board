@@ -3,6 +3,7 @@
 //! Dates are read as text first so that a bad date is reported with the
 //! card it belongs to instead of as an anonymous JSON error.
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -180,6 +181,39 @@ fn check_card_items(card: &Card) -> Result<(), Violation> {
     Ok(())
 }
 
+fn check_ids_and_positions(file: &ExportFile) -> Result<(), Violation> {
+    let mut seen_ids = HashSet::new();
+    for card in &file.cards {
+        if !seen_ids.insert(card.id) {
+            return Err(format!(
+                "Card IDs must be unique. #{} appears twice.",
+                card.id
+            ));
+        }
+    }
+    if file.board.next_card_id < 1 {
+        return Err("next_card_id must be 1 or greater.".to_string());
+    }
+    if file
+        .cards
+        .iter()
+        .any(|card| card.id >= file.board.next_card_id)
+    {
+        return Err("next_card_id must be greater than every card ID.".to_string());
+    }
+    let mut seen_positions = HashSet::new();
+    for card in &file.cards {
+        if !seen_positions.insert((card.column, card.position)) {
+            return Err(format!(
+                "Two cards in {} have position {}.",
+                card.column.label(),
+                card.position
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Check every import rule in the order MODEL.md lists them.
 fn check(file: &ExportFile) -> Result<BoardSnapshot, Violation> {
     if file.format != FORMAT || file.version != VERSION {
@@ -189,6 +223,7 @@ fn check(file: &ExportFile) -> Result<BoardSnapshot, Violation> {
     for card in &file.cards {
         check_card_items(card)?;
     }
+    check_ids_and_positions(file)?;
     let mut cards = file.cards.clone();
     cards.sort_by_key(|card| card.id);
     Ok(BoardSnapshot {

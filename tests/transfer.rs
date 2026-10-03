@@ -524,10 +524,12 @@ fn files_that_are_not_json_are_import_invalid_with_a_position() {
     assert!(reason.contains("line 1"), "{reason}");
 }
 
+type Mutation = Box<dyn Fn(&mut Value)>;
+
 #[test]
 fn json_with_missing_wrong_typed_or_unknown_items_is_import_invalid() {
     let dir = tempfile::tempdir().unwrap();
-    let cases: Vec<Box<dyn Fn(&mut Value)>> = vec![
+    let cases: Vec<Mutation> = vec![
         Box::new(|v| {
             v.as_object_mut().unwrap().remove("cards");
         }),
@@ -734,4 +736,98 @@ fn ids_and_positions_must_be_at_least_one() {
         |v| v["cards"][3]["position"] = json!(-1),
         "Card #4 has position -1. Positions must be 1 or greater.",
     );
+}
+
+// ----------------------------------------------- IDs, next_card_id, positions
+
+#[test]
+fn card_ids_must_be_unique() {
+    assert_rejected(
+        |v| v["cards"][3]["id"] = json!(2),
+        "Card IDs must be unique. #2 appears twice.",
+    );
+    assert_rejected(
+        |v| {
+            v["cards"][1]["id"] = json!(1);
+            v["cards"][2]["id"] = json!(1);
+        },
+        "Card IDs must be unique. #1 appears twice.",
+    );
+}
+
+#[test]
+fn next_card_id_must_be_greater_than_every_card_id() {
+    let reason = "next_card_id must be greater than every card ID.";
+    assert_rejected(|v| v["board"]["next_card_id"] = json!(4), reason);
+    assert_rejected(|v| v["board"]["next_card_id"] = json!(1), reason);
+    assert_rejected(
+        |v| {
+            v["cards"][3]["id"] = json!(9);
+            v["board"]["next_card_id"] = json!(9);
+        },
+        reason,
+    );
+}
+
+#[test]
+fn next_card_id_may_leave_gaps_after_deleted_cards() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut value = valid_json();
+    value["board"]["next_card_id"] = json!(5000);
+    let snapshot = read_and_validate(&write_json(dir.path(), &value)).unwrap();
+    assert_eq!(snapshot.board.next_card_id, 5000);
+}
+
+#[test]
+fn next_card_id_must_be_at_least_one() {
+    let reason = "next_card_id must be 1 or greater.";
+    assert_rejected(
+        |v| {
+            v["cards"] = json!([]);
+            v["board"]["next_card_id"] = json!(0);
+        },
+        reason,
+    );
+    assert_rejected(
+        |v| {
+            v["cards"] = json!([]);
+            v["board"]["next_card_id"] = json!(-3);
+        },
+        reason,
+    );
+}
+
+#[test]
+fn positions_must_be_unique_within_a_column() {
+    assert_rejected(
+        |v| v["cards"][2]["position"] = json!(1),
+        "Two cards in Doing have position 1.",
+    );
+    assert_rejected(
+        |v| {
+            // Move #4 to Todo with a clashing position (it is idle, so this
+            // is valid apart from the position).
+            v["cards"][3]["column"] = json!("todo");
+            v["cards"][3]["transitions"] = json!([
+                { "from": null, "to": "todo", "at": "2026-10-02T00:00:00Z" }
+            ]);
+        },
+        "Two cards in Todo have position 1.",
+    );
+}
+
+#[test]
+fn the_same_position_in_different_columns_is_fine() {
+    let dir = tempfile::tempdir().unwrap();
+    // valid_json already has position 1 in Todo, Doing and Done.
+    read_and_validate(&write_json(dir.path(), &valid_json())).unwrap();
+}
+
+#[test]
+fn positions_may_have_gaps() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut value = valid_json();
+    value["cards"][2]["position"] = json!(40);
+    let snapshot = read_and_validate(&write_json(dir.path(), &value)).unwrap();
+    assert_eq!(snapshot.cards[2].position, 40);
 }
