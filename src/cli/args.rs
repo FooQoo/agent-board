@@ -28,6 +28,15 @@ Commands:
   import  Restore the board from a JSON file
   serve   Show the board in your browser
 
+Workflow for agents:
+  skan ls --json                             # read the board first; a human may have moved cards
+  skan mv <id> doing                         # you start a card
+  skan state <id> running                    # you are working on it
+  skan state <id> pending --reason \"<text>\"  # you are waiting for a human or an external result
+  skan state <id> running                    # the wait is over
+  skan mv <id> done                          # you are finished (the card returns to idle)
+Do not leave a card running when you stop: finish it, or run `skan state <id> idle`.
+
 Rules for agents:
   - Move a card to doing before you report running or pending.
   - Report pending with --reason when you are waiting for something.
@@ -189,7 +198,7 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  skan state 12 running\n  skan state 12 pending --reason \"Waiting for review\"\n  skan state 12 idle"
+    after_help = "Run states:\n  idle     not working on it\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason\n\nExamples:\n  skan state 12 running\n  skan state 12 pending --reason \"Waiting for review\"\n  skan state 12 idle"
 )]
 pub struct StateArgs {
     /// ID of the card

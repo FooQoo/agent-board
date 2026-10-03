@@ -641,6 +641,24 @@ fn help_lists_the_rules_for_agents() {
          \x20 - You cannot delete cards or replace the board. Ask a human to do it.\n\
          \x20 - Add --json to any command for machine-readable output.\n";
     assert!(o.out.contains(rules), "{}", o.out);
+    for step in [
+        "skan ls --json",
+        "skan mv <id> doing",
+        "skan state <id> running",
+        "skan state <id> pending --reason \"<text>\"",
+        "skan mv <id> done",
+        "Do not leave a card running when you stop",
+    ] {
+        assert!(
+            o.out.contains(step),
+            "workflow step {step:?} missing:\n{}",
+            o.out
+        );
+    }
+    assert!(
+        o.out.find("Workflow for agents:").unwrap() < o.out.find("Rules for agents:").unwrap(),
+        "the workflow comes before the rules"
+    );
     assert!(
         o.out
             .starts_with("skan - a local kanban board for coding agents\n")

@@ -49,9 +49,18 @@ Other commands: `edit`, `show`, `rm`, `export`, and `import`. Run `skan --help` 
 
 ## Rules for agents
 
-The same rules appear in `skan --help`.
+The same workflow and rules appear in `skan --help`.
 
 ```text
+Workflow for agents:
+  skan ls --json                             # read the board first; a human may have moved cards
+  skan mv <id> doing                         # you start a card
+  skan state <id> running                    # you are working on it
+  skan state <id> pending --reason "<text>"  # you are waiting for a human or an external result
+  skan state <id> running                    # the wait is over
+  skan mv <id> done                          # you are finished (the card returns to idle)
+Do not leave a card running when you stop: finish it, or run `skan state <id> idle`.
+
 Rules for agents:
   - Move a card to doing before you report running or pending.
   - Report pending with --reason when you are waiting for something.

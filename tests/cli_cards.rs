@@ -132,6 +132,15 @@ Commands:
   import  Restore the board from a JSON file
   serve   Show the board in your browser
 
+Workflow for agents:
+  skan ls --json                             # read the board first; a human may have moved cards
+  skan mv <id> doing                         # you start a card
+  skan state <id> running                    # you are working on it
+  skan state <id> pending --reason \"<text>\"  # you are waiting for a human or an external result
+  skan state <id> running                    # the wait is over
+  skan mv <id> done                          # you are finished (the card returns to idle)
+Do not leave a card running when you stop: finish it, or run `skan state <id> idle`.
+
 Rules for agents:
   - Move a card to doing before you report running or pending.
   - Report pending with --reason when you are waiting for something.
@@ -1175,4 +1184,20 @@ fn after_commit_is_not_called_when_there_is_no_board() {
         &["add", "x"],
     );
     assert_eq!((o.code, o.commits), (4, 0));
+}
+
+#[test]
+fn state_help_explains_each_run_state_and_keeps_its_examples() {
+    let home = tempfile::tempdir().unwrap();
+    let o = run(home.path(), &["state", "--help"]);
+    assert_eq!(o.code, 0);
+    for line in [
+        "idle     not working on it",
+        "running  you are working on it now",
+        "pending  you are waiting; say what for with --reason",
+        "Examples:",
+        "skan state 12 pending --reason \"Waiting for review\"",
+    ] {
+        assert!(o.out.contains(line), "missing {line:?} in:\n{}", o.out);
+    }
 }
