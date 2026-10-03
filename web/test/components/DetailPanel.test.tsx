@@ -1,12 +1,30 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DetailPanel } from '../../src/components/DetailPanel';
+import { selectLocale } from '../../src/i18n';
 import { fixtureCard, makeCard } from '../fixtures';
 
 const noop = () => {};
 
 describe('DetailPanel', () => {
+  beforeEach(() => selectLocale('en'));
+
+  it('translates the detail region, empty selection, headings, and accessible controls', () => {
+    selectLocale('ja');
+    const { rerender } = render(<DetailPanel card={null} onClose={noop} onDeleted={noop} />);
+    expect(screen.getByRole('complementary', { name: 'カードの詳細' })).toBeTruthy();
+    expect(screen.getByText('カードを選択すると詳細を表示します。')).toBeTruthy();
+
+    rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
+    expect(screen.getByRole('button', { name: '詳細を閉じる' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'カードを削除' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '説明' })).toBeTruthy();
+    expect(screen.getByText('説明はありません。')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '履歴' })).toBeTruthy();
+    selectLocale('en');
+  });
+
   it('asks for a selection when no card is selected', () => {
     render(<DetailPanel card={null} onClose={noop} onDeleted={noop} />);
     expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
