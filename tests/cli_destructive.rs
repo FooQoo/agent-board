@@ -483,3 +483,218 @@ fn import_without_a_board_needs_no_terminal() {
     assert_eq!(o.err, "");
     assert_eq!(titles(home.path()), vec!["Imported one", "Imported two"]);
 }
+
+// ------------------------------------- pseudo-terminal runs (Unix only)
+
+#[cfg(unix)]
+mod terminal {
+    use std::path::Path;
+    use std::process::Command as StdCommand;
+    use std::time::{Duration, Instant};
+
+    use expectrl::process::unix::WaitStatus;
+    use expectrl::session::OsSession as Session;
+    use expectrl::{Eof, Expect};
+
+    use super::{board_with, json, run, skan, state_of, titles};
+
+    const TIMEOUT: Duration = Duration::from_secs(20);
+
+    /// Start `skan <args>` on a pseudo-terminal: standard input, output and
+    /// error are all the terminal. A child that outlives the test is killed
+    /// when the session is dropped.
+    fn spawn(home: &Path, args: &[&str]) -> Session {
+        let program = skan(home).get_program().to_owned();
+        let mut command = StdCommand::new(program);
+        command
+            .args(args)
+            .env("SKAN_HOME", home)
+            .env("TZ", "UTC")
+            .current_dir(home);
+        let mut session = Session::spawn(command).expect("spawn skan on a terminal");
+        session.set_expect_timeout(Some(TIMEOUT));
+        session
+    }
+
+    /// Read to the end of the output, reap the child, and return its exit code.
+    fn finish(mut session: Session) -> i32 {
+        session.expect(Eof).expect("the command ends");
+        let started = Instant::now();
+        loop {
+            match session.get_process().status().expect("wait status") {
+                WaitStatus::Exited(_, code) => return code,
+                WaitStatus::StillAlive => {
+                    assert!(started.elapsed() < TIMEOUT, "the command did not exit");
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                other => panic!("the command did not exit normally: {other:?}"),
+            }
+        }
+    }
+
+    fn expect_text(session: &mut Session, text: &str) {
+        session
+            .expect(text)
+            .unwrap_or_else(|e| panic!("waiting for {text:?}: {e}"));
+    }
+
+    const RM_PROMPT: &str = "Delete #3 \"Third\"? This cannot be undone. [y/N] ";
+
+    #[test]
+    fn rm_asks_and_deletes_on_y() {
+        for answer in ["y", "yes", "YES"] {
+            let home = board_with(&["First", "Second", "Third"]);
+            let mut session = spawn(home.path(), &["rm", "3"]);
+            expect_text(&mut session, RM_PROMPT);
+            session.send_line(answer).unwrap();
+            expect_text(&mut session, "Deleted #3.");
+            assert_eq!(finish(session), 0, "{answer}");
+            assert_eq!(titles(home.path()), vec!["First", "Second"], "{answer}");
+        }
+    }
+
+    #[test]
+    fn rm_cancels_on_n_empty_or_anything_else_and_keeps_the_card() {
+        for answer in ["n", "", "no", "maybe", "yep"] {
+            let home = board_with(&["First", "Second", "Third"]);
+            let before = state_of(home.path());
+            let mut session = spawn(home.path(), &["rm", "3"]);
+            expect_text(&mut session, RM_PROMPT);
+            session.send_line(answer).unwrap();
+            expect_text(&mut session, "Cancelled. Nothing was changed.");
+            assert_eq!(finish(session), 0, "{answer:?}");
+            assert_eq!(state_of(home.path()), before, "{answer:?}");
+        }
+    }
+
+    #[test]
+    fn rm_of_a_missing_card_fails_without_a_prompt() {
+        let home = board_with(&["First"]);
+        let mut session = spawn(home.path(), &["rm", "9"]);
+        expect_text(&mut session, "Error: card #9 not found.");
+        assert_eq!(finish(session), 3);
+        assert_eq!(titles(home.path()), vec!["First"]);
+    }
+
+    #[test]
+    fn rm_with_json_on_a_terminal_still_needs_confirmation() {
+        let home = board_with(&["First"]);
+        let mut session = spawn(home.path(), &["rm", "1", "--json"]);
+        expect_text(&mut session, "\"code\":\"confirmation_required\"");
+        assert_eq!(finish(session), 1);
+        assert_eq!(titles(home.path()), vec!["First"]);
+    }
+
+    const INIT_PROMPT: &str = "A board \"demo\" already exists. Replace it with an empty board \"other\"? All cards and history will be deleted. [y/N] ";
+
+    #[test]
+    fn init_over_a_board_asks_and_starts_an_empty_board_on_y() {
+        let home = board_with(&["First", "Second"]);
+        let mut session = spawn(home.path(), &["init", "--name", "other"]);
+        expect_text(&mut session, INIT_PROMPT);
+        session.send_line("y").unwrap();
+        expect_text(
+            &mut session,
+            "Replaced the board with an empty board \"other\".",
+        );
+        assert_eq!(finish(session), 0);
+
+        let ls = run(home.path(), &["ls", "--json"]);
+        assert_eq!(json(&ls.out)["cards"], serde_json::json!([]));
+        let init_again = run(home.path(), &["add", "Fresh", "--json"]);
+        let card = &json(&init_again.out)["card"];
+        assert_eq!(card["id"], 1, "the next ID starts over at 1");
+        let store = skan::store::Store::open(&home.path().join("board.db")).unwrap();
+        assert_eq!(store.board().unwrap().unwrap().name, "other");
+    }
+
+    #[test]
+    fn init_over_a_board_cancels_on_n_and_on_empty_input() {
+        for answer in ["n", ""] {
+            let home = board_with(&["First", "Second"]);
+            let before = state_of(home.path());
+            let mut session = spawn(home.path(), &["init", "--name", "other"]);
+            expect_text(&mut session, INIT_PROMPT);
+            session.send_line(answer).unwrap();
+            expect_text(&mut session, "Cancelled. Nothing was changed.");
+            assert_eq!(finish(session), 0, "{answer:?}");
+            assert_eq!(state_of(home.path()), before, "{answer:?}");
+            let store = skan::store::Store::open(&home.path().join("board.db")).unwrap();
+            assert_eq!(store.board().unwrap().unwrap().name, "demo");
+        }
+    }
+
+    #[test]
+    fn init_without_a_board_creates_it_on_a_terminal_without_asking() {
+        let home = tempfile::tempdir().unwrap();
+        let mut session = spawn(home.path(), &["init", "--name", "fresh"]);
+        expect_text(&mut session, "Created board \"fresh\".");
+        assert_eq!(finish(session), 0);
+    }
+
+    /// Two boards: the one to restore (with cards in each column and a pending
+    /// card) exported to a file, and an unrelated existing one.
+    fn source_and_target() -> (tempfile::TempDir, tempfile::TempDir, String) {
+        let source = board_with(&["Todo one", "Doing one", "Done one", "Spare"]);
+        for args in [
+            vec!["mv", "2", "doing"],
+            vec!["state", "2", "pending", "--reason", "Waiting for review"],
+            vec!["mv", "3", "done"],
+        ] {
+            let o = run(source.path(), &args);
+            assert_eq!(o.code, 0, "{}", o.err);
+        }
+        let o = run(source.path(), &["export", "-o", "backup.json"]);
+        assert_eq!(o.code, 0, "{}", o.err);
+        let file = source.path().join("backup.json").display().to_string();
+        let target = board_with(&["Existing one", "Existing two"]);
+        (source, target, file)
+    }
+
+    #[test]
+    fn import_over_a_board_asks_and_restores_the_exported_state_on_yes() {
+        let (source, target, file) = source_and_target();
+        let expected = state_of(source.path());
+        assert_ne!(state_of(target.path()), expected);
+
+        let mut session = spawn(target.path(), &["import", &file]);
+        expect_text(
+            &mut session,
+            &format!(
+                "A board \"demo\" already exists. Replace it with the board in {file}? All current cards and history will be deleted. [y/N] "
+            ),
+        );
+        session.send_line("yes").unwrap();
+        expect_text(
+            &mut session,
+            &format!("Imported board \"demo\" with 4 cards from {file}."),
+        );
+        assert_eq!(finish(session), 0);
+        assert_eq!(state_of(target.path()), expected);
+    }
+
+    #[test]
+    fn import_over_a_board_cancels_on_n_and_changes_nothing() {
+        for answer in ["n", ""] {
+            let (_source, target, file) = source_and_target();
+            let before = state_of(target.path());
+            let mut session = spawn(target.path(), &["import", &file]);
+            expect_text(&mut session, "[y/N] ");
+            session.send_line(answer).unwrap();
+            expect_text(&mut session, "Cancelled. Nothing was changed.");
+            assert_eq!(finish(session), 0, "{answer:?}");
+            assert_eq!(state_of(target.path()), before, "{answer:?}");
+        }
+    }
+
+    #[test]
+    fn import_of_an_invalid_file_over_a_board_fails_before_any_prompt() {
+        let target = board_with(&["Existing"]);
+        std::fs::write(target.path().join("skan.json"), "{}").unwrap();
+        let before = state_of(target.path());
+        let mut session = spawn(target.path(), &["import"]);
+        expect_text(&mut session, "Error: skan.json is not a valid board file.");
+        assert_eq!(finish(session), 1);
+        assert_eq!(state_of(target.path()), before);
+    }
+}
