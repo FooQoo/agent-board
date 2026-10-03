@@ -367,7 +367,7 @@ ol {
 
 .card__id {
   font-family: var(--font-mono);
-  font-size: var(--fs-14);
+  font-size: var(--fs-13);
 }
 
 .card__spacer {
@@ -375,13 +375,13 @@ ol {
 }
 
 .card__title {
-  font-size: var(--fs-17);
+  font-size: var(--fs-15);
   line-height: var(--lh-card-title);
   overflow-wrap: anywhere;
 }
 
 .card__reason {
-  font-size: var(--fs-14);
+  font-size: var(--fs-13);
   line-height: var(--lh-text);
   color: var(--text-secondary);
   overflow-wrap: anywhere;
@@ -391,7 +391,7 @@ ol {
   /* The mock puts an 8px spacer between the text block and the timestamp, inside the 10px flex gaps. */
   margin-top: calc(var(--space-10) + var(--space-8));
   font-family: var(--font-mono);
-  font-size: var(--fs-13);
+  font-size: var(--fs-12);
   color: var(--text-secondary);
 }
 
@@ -399,7 +399,7 @@ ol {
   display: inline-flex;
   align-items: center;
   gap: var(--space-6);
-  font-size: var(--fs-15);
+  font-size: var(--fs-13);
   white-space: nowrap;
 }
 
@@ -410,7 +410,7 @@ ol {
 
 .run-state--idle {
   font-family: var(--font-mono);
-  font-size: var(--fs-14);
+  font-size: var(--fs-13);
   color: var(--text-secondary);
 }
 
@@ -451,7 +451,7 @@ ol {
 }
 
 .detail__empty-message {
-  font-size: var(--fs-17);
+  font-size: var(--fs-15);
   color: var(--text-muted);
 }
 
@@ -463,7 +463,7 @@ ol {
 
 .detail__id {
   font-family: var(--font-mono);
-  font-size: var(--fs-16);
+  font-size: var(--fs-14);
 }
 
 .icon-button {
@@ -503,12 +503,12 @@ ol {
   padding: var(--space-6) var(--space-16);
   border: var(--stroke) solid var(--primary);
   border-radius: var(--radius-control);
-  font-size: var(--fs-17);
+  font-size: var(--fs-14);
   color: var(--primary);
 }
 
 .detail__reason {
-  font-size: var(--fs-14);
+  font-size: var(--fs-13);
   line-height: var(--lh-text);
   color: var(--text-secondary);
   overflow-wrap: anywhere;
@@ -528,7 +528,7 @@ ol {
 }
 
 .section-heading__label {
-  font-size: var(--fs-20);
+  font-size: var(--fs-16);
   font-weight: 600;
 }
 
@@ -537,7 +537,7 @@ ol {
 }
 
 .detail__description {
-  font-size: var(--fs-17);
+  font-size: var(--fs-15);
   line-height: var(--lh-description);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -585,7 +585,7 @@ ol {
 }
 
 .history__column {
-  font-size: var(--fs-18);
+  font-size: var(--fs-16);
   font-weight: 600;
 }
 
@@ -603,7 +603,7 @@ ol {
 
 .history__at {
   font-family: var(--font-mono);
-  font-size: var(--fs-14);
+  font-size: var(--fs-13);
   color: var(--text-secondary);
 }
 
@@ -649,13 +649,13 @@ ol {
 }
 
 .delete-confirm__message {
-  font-size: var(--fs-16);
+  font-size: var(--fs-14);
   line-height: var(--lh-text);
   overflow-wrap: anywhere;
 }
 
 .delete-confirm__error {
-  font-size: var(--fs-15);
+  font-size: var(--fs-13);
   color: var(--danger);
 }
 
@@ -669,7 +669,7 @@ ol {
   padding: var(--space-8) var(--space-20);
   border: var(--stroke) solid transparent;
   border-radius: var(--radius-control);
-  font-size: var(--fs-16);
+  font-size: var(--fs-14);
   cursor: pointer;
 }
 
