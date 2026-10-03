@@ -111,20 +111,22 @@ test('opening, switching, and closing the panel never moves the board', async ({
 });
 
 test('the card grips never take keyboard focus', async ({ page }) => {
-  // With nothing selected, Tab visits the eight cards and nothing else.
+  // With nothing selected, Tab visits the language control and eight cards; grips stay out of the order.
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 8; step++) {
+  for (let step = 0; step < 9; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
         const active = document.activeElement as HTMLElement;
-        return `${active.tagName} ${(active.textContent ?? '').match(/^#\d+/)?.[0] ?? active.textContent}`;
+        const cardId = (active.textContent ?? '').match(/^#\d+/)?.[0];
+        return `${active.tagName} ${active.getAttribute('aria-label') ?? cardId ?? active.textContent}`;
       }),
     );
   }
   expect(visited).toEqual([
+    'BUTTON Language',
     'BUTTON #14',
     'BUTTON #15',
     'BUTTON #16',
@@ -142,11 +144,11 @@ test('the card grips never take keyboard focus', async ({ page }) => {
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Delete card' })).toBeFocused();
 
-  // Nothing but the cards, Close details, and Delete card can be focused.
+  // The language control, cards, Close details, and Delete card can be focused; grips cannot.
   const focusable = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]')]
       .filter((element) => element.tabIndex >= 0)
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  expect(focusable).toHaveLength(8 + 2);
+  expect(focusable).toHaveLength(1 + 8 + 2);
 });
