@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { StatusBar } from '../../src/components/StatusBar';
+import { i18n } from '../../src/i18n';
 
 const synced = new Date(2026, 9, 2, 10, 42);
 
@@ -38,5 +39,23 @@ describe('StatusBar', () => {
     render(<StatusBar status="error" cardCount={0} connected={false} lastSyncedAt={null} />);
     expect(screen.getByText('Not connected')).toBeTruthy();
     expect(screen.getByText('–')).toBeTruthy();
+  });
+
+  it('translates card counts and sync states while preserving the time format', async () => {
+    await i18n.changeLanguage('ja');
+    try {
+      const { rerender } = render(<StatusBar status="ready" cardCount={0} connected lastSyncedAt={synced} />);
+      expect(screen.getByText('0件')).toBeTruthy();
+      expect(screen.getByText('同期済み 10:42')).toBeTruthy();
+      rerender(<StatusBar status="ready" cardCount={8} connected={false} lastSyncedAt={synced} />);
+      expect(screen.getByText('8件')).toBeTruthy();
+      expect(screen.getByText('切断中 · 最終同期 10:42')).toBeTruthy();
+      rerender(<StatusBar status="loading" cardCount={0} connected={false} lastSyncedAt={null} />);
+      expect(screen.getByText('接続中…')).toBeTruthy();
+      rerender(<StatusBar status="error" cardCount={0} connected={false} lastSyncedAt={null} />);
+      expect(screen.getByText('接続できません')).toBeTruthy();
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 });

@@ -1,4 +1,5 @@
 import { cardCountLabel, formatTime } from '../lib/format';
+import { useTranslation } from 'react-i18next';
 
 export interface StatusBarProps {
   status: 'loading' | 'ready' | 'error';
@@ -9,20 +10,26 @@ export interface StatusBarProps {
 
 type Tone = 'ok' | 'idle' | 'warn';
 
-function describeSync({ status, connected, lastSyncedAt }: StatusBarProps): { text: string; tone: Tone } {
-  if (status === 'loading') return { text: 'Connecting…', tone: 'idle' };
-  if (status === 'error') return { text: 'Not connected', tone: 'warn' };
+function describeSync(
+  { status, connected, lastSyncedAt }: StatusBarProps,
+  t: ReturnType<typeof useTranslation>['t'],
+): { text: string; tone: Tone } {
+  if (status === 'loading') return { text: t('status.connecting'), tone: 'idle' };
+  if (status === 'error') return { text: t('status.notConnected'), tone: 'warn' };
   const time = lastSyncedAt ? formatTime(lastSyncedAt) : '';
   return connected
-    ? { text: `Synced ${time}`, tone: 'ok' }
-    : { text: `Disconnected · Last synced ${time}`, tone: 'warn' };
+    ? { text: t('status.synced', { time }), tone: 'ok' }
+    : { text: t('status.disconnected', { time }), tone: 'warn' };
 }
 
 export function StatusBar(props: StatusBarProps) {
-  const sync = describeSync(props);
+  const { t } = useTranslation();
+  const sync = describeSync(props, t);
   return (
     <footer className="status-bar">
-      <span className="status-bar__count">{props.status === 'ready' ? cardCountLabel(props.cardCount) : '–'}</span>
+      <span className="status-bar__count">
+        {props.status === 'ready' ? cardCountLabel(props.cardCount, t) : '–'}
+      </span>
       <span className="status-bar__sync" role="status">
         <span className="status-bar__dot" data-tone={sync.tone} aria-hidden="true" />
         <span>{sync.text}</span>

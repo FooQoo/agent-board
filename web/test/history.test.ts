@@ -5,9 +5,9 @@ import type { Transition } from '../src/types';
 const t = (from: Transition['from'], to: Transition['to'], at: string): Transition => ({ from, to, at });
 
 describe('historyItems', () => {
-  it('shows only the creation as Created in the todo column', () => {
+  it('returns a semantic creation marker without localized display text', () => {
     expect(historyItems([t(null, 'todo', '2026-10-01T16:00:00Z')])).toEqual([
-      { column: 'todo', label: 'Created', at: '2026-10-01T16:00:00Z' },
+      { column: 'todo', created: true, at: '2026-10-01T16:00:00Z' },
     ]);
   });
 
@@ -18,9 +18,9 @@ describe('historyItems', () => {
       t('doing', 'done', '2026-10-02T09:48:00Z'),
     ]);
     expect(items).toEqual([
-      { column: 'todo', label: 'Created', at: '2026-10-01T16:00:00Z' },
-      { column: 'doing', label: null, at: '2026-10-01T16:30:00Z' },
-      { column: 'done', label: null, at: '2026-10-02T09:48:00Z' },
+      { column: 'todo', created: true, at: '2026-10-01T16:00:00Z' },
+      { column: 'doing', created: false, at: '2026-10-01T16:30:00Z' },
+      { column: 'done', created: false, at: '2026-10-02T09:48:00Z' },
     ]);
   });
 
@@ -32,7 +32,7 @@ describe('historyItems', () => {
       t('todo', 'doing', '2026-10-01T18:00:00Z'),
     ]);
     expect(items.map((i) => i.column)).toEqual(['todo', 'doing', 'todo', 'doing']);
-    expect(items.map((i) => i.label)).toEqual(['Created', null, null, null]);
+    expect(items.map((i) => i.created)).toEqual([true, false, false, false]);
   });
 
   it('keeps the order of the input (oldest first)', () => {

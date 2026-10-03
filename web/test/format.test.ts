@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import type { TFunction } from 'i18next';
 import { cardCountLabel, columnLabel, formatShort, formatTime, stateLabel } from '../src/lib/format';
 import { makeCard } from './fixtures';
+
+const translate = ((key: string, options?: Record<string, unknown>): string => {
+  const labels: Record<string, string> = {
+    'status.cardCount': `${String(options?.count)}件`,
+    'column.todo': '未着手',
+    'column.doing': '進行中',
+    'column.done': '完了',
+    'runState.idle': '未稼働',
+    'runState.running': '稼働中',
+    'runState.pending': '待機中',
+  };
+  return labels[key] ?? key;
+}) as unknown as TFunction;
 
 describe('formatShort', () => {
   it('formats an RFC 3339 timestamp as local MM/DD HH:mm', () => {
@@ -28,6 +42,12 @@ describe('cardCountLabel', () => {
     expect(cardCountLabel(0)).toBe('0 cards');
     expect(cardCountLabel(8)).toBe('8 cards');
   });
+
+  it('uses the selected language for zero, one and multiple cards', () => {
+    expect(cardCountLabel(0, translate)).toBe('0件');
+    expect(cardCountLabel(1, translate)).toBe('1件');
+    expect(cardCountLabel(8, translate)).toBe('8件');
+  });
 });
 
 describe('columnLabel', () => {
@@ -36,6 +56,12 @@ describe('columnLabel', () => {
     expect(columnLabel('doing')).toBe('Doing');
     expect(columnLabel('done')).toBe('Done');
   });
+
+  it('translates each domain column value for display', () => {
+    expect(columnLabel('todo', translate)).toBe('未着手');
+    expect(columnLabel('doing', translate)).toBe('進行中');
+    expect(columnLabel('done', translate)).toBe('完了');
+  });
 });
 
 describe('stateLabel', () => {
@@ -43,6 +69,13 @@ describe('stateLabel', () => {
     expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'idle' }))).toBe('Idle');
     expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'running' }))).toBe('Running');
     expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'pending' }))).toBe('Pending');
+  });
+
+  it('translates run state values only for doing cards', () => {
+    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'idle' }), translate)).toBe('未稼働');
+    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'running' }), translate)).toBe('稼働中');
+    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'pending' }), translate)).toBe('待機中');
+    expect(stateLabel(makeCard({ id: 1, column: 'todo' }), translate)).toBeNull();
   });
 
   it('returns null for cards that are not in doing', () => {
