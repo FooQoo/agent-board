@@ -1,0 +1,124 @@
+/*
+ * Design tokens. Names and values mirror the variables of the approved design.
+ * Fonts: the design uses Inter / IBM Plex Mono / Source Serif 4,
+ * the implementation uses the system font stacks instead of font files.
+ */
+:root {
+  /* Colors: design variables */
+  --primary: #1f6feb;
+  --primary-strong: #1a4fb8;
+  --text-primary: #1a4fb8;
+  --text-secondary: #4a64a8;
+  --text-muted: #6f84b8;
+  --on-primary: #ffffff;
+  --accent-cyan: #5ed1f2;
+  --surface: #ffffff;
+  --lane: #eef5fc;
+  --card-border: #a9d6f0;
+  --divider: #8cc6ee;
+  --line: #2f6bdb;
+  --badge: #d7ecfb;
+  --selected: #1f4fd1;
+  --pending-bg: #fff8de;
+  --pending-border: #f1d27c;
+  --pending-text: #d9650b;
+  --todo: #6e62a8;
+  --doing: #1f6feb;
+  --done: #3e968a;
+  --danger: #e2342d;
+
+  /* Colors used by the mock frames but not defined as design variables */
+  --header-board-name: #d6e6ff;
+  --danger-bg: #fff1f0;
+
+  /* Fonts (design: font-sans / font-mono / font-serif) */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-serif: ui-serif, Georgia, 'Times New Roman', serif;
+
+  /* Radius */
+  --radius-card: 10px;
+  --radius-lane: 12px;
+  --radius-control: 8px;
+  --radius-count: 6px;
+  --radius-round: 50%;
+
+  /* Stroke widths */
+  --stroke: 1.5px;
+  --stroke-selected: 2.5px;
+  --stroke-delete-button: 2px;
+
+  /* Spacing */
+  --space-2: 2px;
+  --space-3: 3px;
+  --space-5: 5px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-22: 22px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-40: 40px;
+
+  /* Font sizes */
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-17: 17px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-22: 22px;
+  --fs-28: 28px;
+  --fs-36: 36px;
+
+  /* Line heights */
+  --lh-detail-title: 1.15;
+  --lh-card-title: 1.35;
+  --lh-text: 1.4;
+  --lh-description: 1.45;
+
+  /* Layout dimensions */
+  --header-height: 80px;
+  --statusbar-height: 64px;
+  --detail-width: 360px;
+  --page-gutter: var(--space-40);
+  --board-padding: var(--space-24);
+
+  /* Component dimensions */
+  --size-grip: 16px;
+  --size-badge-icon: 18px;
+  --size-lane-dot: 12px;
+  --size-history-dot: 14px;
+  --size-lane-rule-end: 10px;
+  --size-section-rule-end: 8px;
+  --size-section-bar-width: 4px;
+  --size-section-bar-height: 26px;
+  --size-icon-button: 28px;
+  --size-delete-button: 56px;
+  --size-delete-icon: 24px;
+  --size-sync-dot: 12px;
+  --history-line-left: 6.25px;
+  --history-dot-offset: 5px;
+  --history-dot-center: 12px;
+  --history-step-gap: var(--space-22);
+  --spinner-duration: 1s;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --page-gutter: var(--space-24);
+  }
+}
+
+@media (max-width: 639px) {
+  :root {
+    --board-padding: var(--space-16);
+  }
+}
