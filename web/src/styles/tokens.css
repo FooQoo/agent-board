@@ -132,7 +132,7 @@
     --header-height: 56px;
     --statusbar-height: 44px;
     --inset-left: clamp(24px, calc(24px + (100vw - 1024px) * 0.15625), 64px);
-    --inset-right-header: clamp(24px, calc(24px + (100vw - 1024px) * 0.15625), 64px);
+    --inset-right-header: 24px;
     --inset-right-board: clamp(24px, calc(24px + (100vw - 1024px) * 0.0625), 40px);
     --board-inset-block: 40px;
     --scroll-fade-height: 72px;

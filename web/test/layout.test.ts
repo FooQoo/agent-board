@@ -38,14 +38,13 @@ describe('wide layout tokens', () => {
     expect(token(block, '--board-inset-block')).toBe('40px');
   });
 
-  it('shrinks the left and header-right inset from 64px to 24px', () => {
-    for (const name of ['--inset-left', '--inset-right-header']) {
-      const e = token(block, name);
-      expect(evalClamp(e, 1024)).toBe(24);
-      expect(evalClamp(e, 1152)).toBe(44);
-      expect(evalClamp(e, 1280)).toBe(64);
-      expect(evalClamp(e, 1920)).toBe(64);
-    }
+  it('shrinks the left inset and keeps the header-right inset at 24px', () => {
+    const e = token(block, '--inset-left');
+    expect(evalClamp(e, 1024)).toBe(24);
+    expect(evalClamp(e, 1152)).toBe(44);
+    expect(evalClamp(e, 1280)).toBe(64);
+    expect(evalClamp(e, 1920)).toBe(64);
+    expect(token(block, '--inset-right-header')).toBe('24px');
   });
 
   it('shrinks the board right inset from 40px to 24px', () => {
