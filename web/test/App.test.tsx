@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
+import { selectLocale } from '../src/i18n';
 import type { Board } from '../src/types';
 import { FakeEventSource, jsonResponse } from './fakes';
 import { fixtureBoard } from './fixtures';
@@ -10,6 +11,8 @@ let current: Board;
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  window.localStorage.clear();
+  selectLocale('en');
   current = structuredClone(fixtureBoard);
   FakeEventSource.reset();
   vi.stubGlobal('EventSource', FakeEventSource);
@@ -31,6 +34,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
   document.head.innerHTML = '';
   document.title = '';
+  selectLocale('en');
+  window.localStorage.clear();
 });
 
 const lane = (name: string) => screen.getByRole('region', { name });

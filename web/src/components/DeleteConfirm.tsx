@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { deleteCard } from '../api';
 import type { Card } from '../types';
 
@@ -14,6 +15,7 @@ export interface DeleteConfirmProps {
 }
 
 export function DeleteConfirm({ card, focusOnMount, initialFailed = false, onCancel, onDeleted }: DeleteConfirmProps) {
+  const { t } = useTranslation();
   const [failed, setFailed] = useState(initialFailed);
   const [busy, setBusy] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -38,19 +40,19 @@ export function DeleteConfirm({ card, focusOnMount, initialFailed = false, onCan
   return (
     <div className="delete-confirm" role="group" aria-labelledby={messageId}>
       <p id={messageId} className="delete-confirm__message">
-        Delete #{card.id} "{card.title}"? This cannot be undone.
+        {t('delete.confirm', { id: card.id, title: card.title })}
       </p>
       {failed && (
         <p className="delete-confirm__error" role="alert">
-          Could not delete the card. Try again.
+          {t('delete.error')}
         </p>
       )}
       <div className="delete-confirm__buttons">
         <button type="button" className="button button--danger" disabled={busy} onClick={confirm}>
-          Delete
+          {t('delete.submit')}
         </button>
         <button ref={cancelRef} type="button" className="button button--outline" onClick={onCancel}>
-          Cancel
+          {t('delete.cancel')}
         </button>
       </div>
     </div>

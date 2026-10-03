@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { stateLabel } from '../lib/format';
 import type { Card } from '../types';
 import { ColumnChip } from './ColumnChip';
@@ -21,10 +22,11 @@ export interface DetailPanelProps {
 }
 
 export function DetailPanel({ card, onClose, onDeleted, initialConfirm, initialDeleteFailed }: DetailPanelProps) {
+  const { t } = useTranslation();
   if (card === null) {
     return (
-      <aside className="detail detail--empty" aria-label="Card details">
-        <p className="detail__empty-message">Select a card to see its details.</p>
+      <aside className="detail detail--empty" aria-label={t('detail.title')}>
+        <p className="detail__empty-message">{t('detail.selectPrompt')}</p>
       </aside>
     );
   }
@@ -47,6 +49,7 @@ interface DetailBodyProps extends Omit<DetailPanelProps, 'card'> {
 type ConfirmState = 'closed' | 'initial' | 'user';
 
 function DetailBody({ card, onClose, onDeleted, initialConfirm, initialDeleteFailed }: DetailBodyProps) {
+  const { t } = useTranslation();
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
@@ -60,10 +63,10 @@ function DetailBody({ card, onClose, onDeleted, initialConfirm, initialDeleteFai
   }, [confirm]);
 
   return (
-    <aside className="detail" aria-label="Card details">
+    <aside className="detail" aria-label={t('detail.title')}>
       <div className="detail__top">
         <span className="detail__id">#{card.id}</span>
-        <button type="button" className="icon-button" aria-label="Close details" onClick={onClose}>
+        <button type="button" className="icon-button" aria-label={t('detail.close')} onClick={onClose}>
           <Close />
         </button>
       </div>
@@ -75,13 +78,13 @@ function DetailBody({ card, onClose, onDeleted, initialConfirm, initialDeleteFai
       {card.run_state === 'pending' && card.pending_reason && (
         <p className="detail__reason">{card.pending_reason}</p>
       )}
-      <SectionHeading>Description</SectionHeading>
+      <SectionHeading>{t('detail.description')}</SectionHeading>
       {card.description === '' ? (
-        <p className="detail__description detail__description--empty">No description.</p>
+        <p className="detail__description detail__description--empty">{t('detail.noDescription')}</p>
       ) : (
         <p className="detail__description">{card.description}</p>
       )}
-      <SectionHeading>History</SectionHeading>
+      <SectionHeading>{t('history.title')}</SectionHeading>
       <HistoryTimeline transitions={card.transitions} />
       <div className="detail__spacer" />
       <div className="detail__actions">

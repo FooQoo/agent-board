@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { selectLocale } from '../../src/i18n';
 import { DetailPanel } from '../../src/components/DetailPanel';
-import { fixtureCard } from '../fixtures';
+import { fixtureCard, makeCard } from '../fixtures';
 
 const CONFIRM_TEXT = 'Delete #11 "Implement card moves"? This cannot be undone.';
 
@@ -16,15 +17,32 @@ async function openConfirm() {
 }
 
 beforeEach(() => {
+  selectLocale('en');
   document.head.innerHTML = '<meta name="skan-token" content="test-token">';
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
   document.head.innerHTML = '';
+  selectLocale('en');
 });
 
 describe('delete confirmation', () => {
+  it('interpolates Japanese confirmation and failure text without interpreting a card title as markup', async () => {
+    const card = makeCard({ id: 42, title: '<img src=x onerror="alert(1)"> & "quoted"' });
+    selectLocale('ja');
+    const { container } = render(<DetailPanel card={card} onClose={() => {}} onDeleted={() => {}} initialConfirm initialDeleteFailed />);
+
+    expect(container.querySelector('.delete-confirm__message')?.textContent).toBe(
+      '#42「<img src=x onerror="alert(1)"> & "quoted"」を削除しますか？ この操作は元に戻せません。',
+    );
+    expect(screen.getByRole('alert').textContent).toBe('カードを削除できませんでした。もう一度お試しください。');
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByRole('button', { name: '削除' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeTruthy();
+    selectLocale('en');
+  });
+
   it('opens the confirmation with Delete card', async () => {
     renderPanel();
     expect(screen.queryByText(CONFIRM_TEXT)).toBeNull();

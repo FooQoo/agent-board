@@ -84,11 +84,90 @@ ol {
 }
 
 .header__board {
+  min-width: 0;
   font-size: var(--fs-22);
   color: var(--header-board-name);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.header__spacer {
+  flex: 1;
+}
+
+.header__language {
+  position: relative;
+  z-index: 10;
+  flex: none;
+}
+
+.header__language-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--size-icon-button) + var(--space-8));
+  height: calc(var(--size-icon-button) + var(--space-8));
+  padding: 0;
+  border: var(--stroke) solid rgb(255 255 255 / 60%);
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--on-primary);
+  cursor: pointer;
+}
+
+.header__language-trigger svg {
+  width: var(--size-badge-icon);
+  height: var(--size-badge-icon);
+}
+
+.language-menu {
+  position: absolute;
+  top: calc(100% + var(--space-10));
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: calc(var(--detail-width) / 2);
+  max-width: calc(100vw - 2 * var(--page-gutter));
+  padding: var(--space-8);
+  border: var(--stroke) solid var(--divider);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: 0 var(--space-6) var(--space-14) color-mix(in srgb, var(--text-primary) 20%, transparent);
+}
+
+.language-menu__heading {
+  padding: 0 var(--space-8);
+  color: var(--text-muted);
+  font-size: var(--size-lane-dot);
+}
+
+.language-menu__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: calc(var(--space-32) + var(--space-2));
+  padding: 0 var(--space-8);
+  border: 0;
+  border-radius: var(--radius-count);
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.language-menu__option[aria-pressed='true'] {
+  background: var(--lane);
+}
+
+.language-menu__check {
+  flex: none;
+  width: var(--size-badge-icon);
+  height: var(--size-badge-icon);
+  color: var(--primary);
 }
 
 .status-bar {
@@ -701,6 +780,22 @@ ol {
 /* ---- Narrow layout: lanes stacked ---- */
 
 @media (max-width: 639px) {
+  .header {
+    gap: var(--space-10);
+  }
+
+  .header__app {
+    font-size: var(--fs-22);
+  }
+
+  .header__slash {
+    font-size: var(--fs-20);
+  }
+
+  .header__board {
+    font-size: var(--fs-16);
+  }
+
   .board__lanes {
     grid-template-columns: minmax(0, 1fr);
   }
