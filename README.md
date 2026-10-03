@@ -94,7 +94,3 @@ TZ=UTC pnpm --dir web test
 ```
 
 Tests set `TZ=UTC` so displayed times are fixed. Do not use port 7420 in tests; it is kept free for normal use. In tests, connect to `http://127.0.0.1:<port>/` rather than `localhost`.
-
-## Design documents
-
-Design documents, specifications, and plans are managed outside this repository.
