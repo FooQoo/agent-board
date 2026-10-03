@@ -162,6 +162,24 @@ impl SkanError {
     }
 }
 
+impl From<rusqlite::Error> for SkanError {
+    /// `SQLITE_BUSY` and `SQLITE_LOCKED` become `DatabaseBusy`; anything else
+    /// is a `DatabaseError` carrying the SQLite message.
+    fn from(error: rusqlite::Error) -> Self {
+        if let rusqlite::Error::SqliteFailure(failure, _) = &error
+            && matches!(
+                failure.code,
+                rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked
+            )
+        {
+            return SkanError::DatabaseBusy;
+        }
+        SkanError::DatabaseError {
+            reason: error.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -319,5 +337,21 @@ mod tests {
     #[test]
     fn display_is_the_message() {
         assert_eq!(SkanError::DatabaseBusy.to_string(), "the board is busy.");
+    }
+
+    #[test]
+    fn sqlite_busy_maps_to_database_busy_and_others_to_database_error() {
+        let busy = rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+            None,
+        );
+        assert_eq!(SkanError::from(busy), SkanError::DatabaseBusy);
+        let locked = rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_LOCKED),
+            None,
+        );
+        assert_eq!(SkanError::from(locked), SkanError::DatabaseBusy);
+        let other = SkanError::from(rusqlite::Error::QueryReturnedNoRows);
+        assert!(matches!(other, SkanError::DatabaseError { .. }));
     }
 }
