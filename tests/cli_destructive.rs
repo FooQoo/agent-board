@@ -411,3 +411,75 @@ fn rm_never_reuses_the_deleted_id() {
     let added = run(home.path(), &["add", "Three"]);
     assert_eq!(added.out, "Added #3 to Todo: Three\n");
 }
+
+// ---------------------------------------------- import over a board (piped)
+
+/// A file exported from a board named "demo" with two cards, in `source`.
+fn exported_file() -> (tempfile::TempDir, std::path::PathBuf) {
+    let source = board_with(&["Imported one", "Imported two"]);
+    let o = run(source.path(), &["export", "-o", "backup.json"]);
+    assert_eq!(o.code, 0, "{}", o.err);
+    let file = source.path().join("backup.json");
+    (source, file)
+}
+
+#[test]
+fn import_over_a_board_without_a_terminal_needs_confirmation_and_changes_nothing() {
+    let (_source, file) = exported_file();
+    let home = board_with(&["Existing"]);
+    let before = state_of(home.path());
+
+    let o = run_with_stdin(home.path(), &["import", file.to_str().unwrap()], "y\n");
+    assert_eq!(o.code, 1);
+    assert_eq!(o.out, "");
+    assert_eq!(
+        o.err,
+        format!(
+            "Error: replacing the board needs confirmation from a human.\nReason: {NEEDS_CONFIRMATION_REASON}\n"
+        )
+    );
+    assert_eq!(state_of(home.path()), before);
+}
+
+#[test]
+fn import_over_a_board_with_json_is_one_line_of_json_and_changes_nothing() {
+    let (_source, file) = exported_file();
+    let home = board_with(&["Existing"]);
+    let before = state_of(home.path());
+
+    let o = run(home.path(), &["import", file.to_str().unwrap(), "--json"]);
+    assert_eq!(o.code, 1);
+    assert_eq!(o.out, "");
+    assert_eq!(o.err.lines().count(), 1);
+    assert_eq!(json(&o.err)["error"]["code"], "confirmation_required");
+    assert_eq!(state_of(home.path()), before);
+}
+
+#[test]
+fn import_of_an_invalid_file_over_a_board_is_import_invalid_not_confirmation() {
+    let home = board_with(&["Existing"]);
+    std::fs::write(home.path().join("skan.json"), "not json").unwrap();
+    let before = state_of(home.path());
+
+    let o = run_with_stdin(home.path(), &["import"], "y\n");
+    assert_eq!(o.code, 1);
+    assert_eq!(o.out, "");
+    assert!(
+        o.err
+            .starts_with("Error: skan.json is not a valid board file.\nReason: "),
+        "{}",
+        o.err
+    );
+    assert!(!o.err.contains("confirmation"), "{}", o.err);
+    assert_eq!(state_of(home.path()), before);
+}
+
+#[test]
+fn import_without_a_board_needs_no_terminal() {
+    let (_source, file) = exported_file();
+    let home = tempfile::tempdir().unwrap();
+    let o = run_with_stdin(home.path(), &["import", file.to_str().unwrap()], "");
+    assert_eq!(o.code, 0, "{}", o.err);
+    assert_eq!(o.err, "");
+    assert_eq!(titles(home.path()), vec!["Imported one", "Imported two"]);
+}
