@@ -1,53 +1,76 @@
+<div align="center">
+
+<img src="web/public/logo.png" alt="SimpleKanban logo" width="120">
+
 # SimpleKanban
 
-[日本語](README.ja.md)
+**A kanban board where your coding agents report their progress.**
 
-A local kanban board for coding agents.
+Agents move the cards. You watch the board.
 
-## What it is
+[日本語](README.ja.md) · [Contributing](CONTRIBUTING.md)
 
-SimpleKanban lets an agent manage cards from the command line (`skan`) while a human follows the progress in a browser.
+![Local only](https://img.shields.io/badge/data-local%20only-1f6feb)
+![SQLite](https://img.shields.io/badge/storage-SQLite-1f6feb)
+![macOS and Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-1f6feb)
 
-- The CLI (`skan`) is for agents, and humans can use it too. It creates and edits cards, moves them between columns, reports whether a card is running or pending, and lists, shows, exports, and imports them.
-- The web view (`skan serve`) is for humans only. It shows the board, updates automatically, and can delete a card.
-- The board has three columns: Todo, Doing, and Done. Only cards in Doing have a run state: idle, running, or pending.
-- Everything is stored locally in a SQLite database. Nothing leaves your machine, and `skan serve` listens only on `127.0.0.1`.
+<img src="docs/images/board.png" alt="The SimpleKanban board with a card selected" width="860">
 
-## Language
+</div>
 
-The web UI opens in English. Use the globe button in the header to choose English or Japanese; the selection is saved in your browser. The interface does not choose a language from your browser or operating system settings. The CLI, its help and errors, and API and JSON values remain in English. Card content that you enter is not translated.
+## What is SimpleKanban?
 
-## Build
+When a coding agent works for a long time, you can't tell what it is doing, or whether it is stuck waiting for you. SimpleKanban fixes that.
 
-Build the web UI first, then the CLI. The CLI embeds the built UI.
+- **The agent reports with a command.** It adds cards, moves them across Todo, Doing, and Done, and says whether it is *running* or *pending*.
+- **You watch in the browser.** The board updates by itself, so you always see which cards are in progress and why one is waiting.
+- **Nothing leaves your machine.** Cards live in a local SQLite database, and the web view listens only on `127.0.0.1`.
 
-```sh
-pnpm --dir web install
-pnpm --dir web build
-cargo build
+```mermaid
+flowchart LR
+    A["Coding agent"] -- "skan CLI" --> D[("Local SQLite")]
+    D -- "skan serve" --> B["Your browser"]
 ```
 
-The binary is `target/debug/skan`.
+## Features
 
-## Usage
+**See what is happening at a glance.** Cards in Doing show a run state: Idle, Running, or Pending. A pending card shows the reason it is waiting.
+
+**You stay in control.** Only a human can delete a card or replace the board. Agents have to hand that decision to you.
+
+**Simple on purpose.** Three columns, one local board, no accounts, no cloud.
+
+**English and Japanese.** Switch the web view with the globe button in the header.
+
+## Get started
 
 ```sh
 skan init --name my-board          # create the board
 skan add "Write the setup guide"   # add a card to Todo
+skan serve --port 7420             # open http://127.0.0.1:7420/
+```
+
+Then let your agent run `skan mv 1 doing` and `skan state 1 running` as it works. Building from source is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+<details>
+<summary><strong>Commands</strong></summary>
+
+```sh
 skan mv 1 doing                    # move card #1 to Doing
 skan state 1 running               # report that card #1 is running
 skan state 1 pending --reason "Waiting for review"
 skan ls                            # list cards by column
 skan ls --column doing --state running
-skan serve --port 7420             # show the board in your browser
 ```
 
-Other commands: `edit`, `show`, `rm`, `export`, and `import`. Run `skan --help` or `skan <command> --help` for details.
+Other commands: `edit`, `show`, `rm`, `export`, and `import`. Run `skan --help` or `skan <command> --help` for details. Add `--json` to any command for machine-readable output.
 
-- Add `--json` to any command for machine-readable output.
-- Deleting a card (`rm`), re-running `init` on an existing board, and `import` over an existing board ask a human to confirm. Agents cannot do them.
+Deleting a card (`rm`), re-running `init` on an existing board, and `import` over an existing board ask a human to confirm. Agents cannot do them.
 
-## Rules for agents
+</details>
+
+<details>
+<summary><strong>Rules for agents</strong></summary>
 
 The same workflow and rules appear in `skan --help`.
 
@@ -69,52 +92,11 @@ Rules for agents:
   - Add --json to any command for machine-readable output.
 ```
 
-## Development
+</details>
 
-Run all commands from the repository root.
+<details>
+<summary><strong>Language</strong></summary>
 
-Common workflows use `just`:
+The web UI opens in English. Use the globe button in the header to choose English or Japanese; the selection is saved in your browser. The interface does not choose a language from your browser or operating system settings. The CLI, its help and errors, and API and JSON values remain in English. Card content that you enter is not translated.
 
-```sh
-just dev          # sample board with Vite HMR (port 5173)
-just build        # build the web UI, then the CLI
-just serve        # saved board with Vite HMR and Rust watch (port 7420)
-```
-
-`just dev` watches web files and updates the browser through HMR. `just serve` requires Watchexec; install it with `cargo install --locked watchexec-cli`. It watches Rust files, restarts the Rust API when they change, and serves the web UI through Vite with HMR. Open `http://127.0.0.1:7420/`; the Rust API uses port 7421. The board comes from the normal saved location, or from `SKAN_HOME` if set. A Rust restart reloads the page to refresh its delete token.
-
-Pass different ports as arguments, for example `just dev 5174` or `just serve 7500 7501` (web port, then Rust API port).
-
-For manual CLI experiments and tests, point `SKAN_HOME` at a temporary directory so your saved board is not touched. The default data area is `~/Library/Application Support/skan/` on macOS and `%APPDATA%\skan\` on Windows.
-
-```sh
-export SKAN_HOME="$(mktemp -d)"
-cargo run -- init --name dev
-cargo run -- serve --port <port>
-```
-
-The exported `SKAN_HOME` is shared by commands in this shell session. Set it again in a new session.
-
-To work on the web UI alone with sample data:
-
-```sh
-pnpm --dir web dev --mode mock --port <port>
-```
-
-Verification commands:
-
-```sh
-pnpm --dir web install
-pnpm --dir web build               # required before cargo build
-cargo build
-cargo fmt --all -- --check
-cargo clippy --all-targets -- -D warnings
-TZ=UTC cargo test
-pnpm --dir web typecheck
-pnpm --dir web check
-TZ=UTC pnpm --dir web test
-```
-
-Run `pnpm --dir web format` to apply the web formatter.
-
-Tests set `TZ=UTC` so displayed times are fixed. Do not use port 7420 in tests; it is kept free for normal use. In tests, connect to `http://127.0.0.1:<port>/` rather than `localhost`.
+</details>

@@ -1,53 +1,76 @@
+<div align="center">
+
+<img src="web/public/logo.png" alt="SimpleKanbanのロゴ" width="120">
+
 # SimpleKanban
 
-[English](README.md)
+**コーディングエージェントの進捗が見えるカンバンボード。**
 
-コーディングエージェント向けのローカルなカンバンボードです。
+カードを動かすのはエージェント。あなたはボードを眺めるだけ。
 
-## 概要
+[English](README.md) · [開発に参加する](CONTRIBUTING.ja.md)
 
-エージェントはコマンドラインの`skan`でカードを管理し、人間はブラウザで進捗を確認できます。
+![ローカル完結](https://img.shields.io/badge/data-local%20only-1f6feb)
+![SQLite](https://img.shields.io/badge/storage-SQLite-1f6feb)
+![macOS と Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-1f6feb)
 
-- CLIの`skan`では、カードの作成・編集、列間の移動、稼働状態の報告、一覧表示、詳細表示、エクスポート、インポートができます。人間もCLIを使えます。
-- Web画面(`skan serve`)は人間向けです。ボードを表示して自動更新し、カードを削除できます。
-- 列はTodo、Doing、Doneの3つです。稼働状態(idle、running、pending)があるのはDoing列のカードだけです。
-- すべてのデータはローカルのSQLiteデータベースに保存されます。マシンの外へデータは送信されません。`skan serve`は`127.0.0.1`だけで待ち受けます。
+<img src="docs/images/board.png" alt="カードを選択したSimpleKanbanのボード" width="860">
 
-## 表示言語
+</div>
 
-Web画面は英語で開きます。ヘッダーの地球ボタンからEnglishまたは日本語を選べます。選択した言語はブラウザに保存されます。ブラウザやOSの言語設定から表示言語を自動選択することはありません。CLI、helpとエラーメッセージ、APIとJSONの値は英語のままです。入力したカードの内容は翻訳されません。
+## SimpleKanbanとは
 
-## ビルド
+コーディングエージェントに長い作業を任せると、いま何をしているのか、あなたの返事を待って止まっていないのかが分かりません。SimpleKanbanはその状況を見えるようにします。
 
-最初にWeb画面をビルドし、その後CLIをビルドします。CLIにはビルド済みのWeb画面が含まれます。
+- **エージェントはコマンドで報告します。** カードを追加し、Todo・Doing・Doneの間で動かし、*running*(作業中)か*pending*(待機中)かを伝えます。
+- **あなたはブラウザで見るだけです。** ボードは自動で更新されるので、どのカードが進行中で、なぜ待っているのかがいつでも分かります。
+- **データはマシンの外へ出ません。** カードはローカルのSQLiteに保存され、Web画面は`127.0.0.1`だけで待ち受けます。
 
-```sh
-pnpm --dir web install
-pnpm --dir web build
-cargo build
+```mermaid
+flowchart LR
+    A["コーディングエージェント"] -- "skan CLI" --> D[("ローカルのSQLite")]
+    D -- "skan serve" --> B["あなたのブラウザ"]
 ```
 
-実行ファイルは`target/debug/skan`です。
+## 特徴
 
-## 使い方
+**いまの状況が一目で分かります。** Doing列のカードには稼働状態(Idle・Running・Pending)が表示されます。Pendingのカードには待っている理由も出ます。
+
+**判断は人間の手元に残ります。** カードの削除とボードの置き換えは人間だけができます。エージェントはその判断をあなたに任せるしかありません。
+
+**あえてシンプルにしています。** 列は3つ、ボードはローカルに1つだけ。アカウントもクラウドも要りません。
+
+**日本語と英語に対応しています。** ヘッダーの地球ボタンでWeb画面の言語を切り替えられます。
+
+## はじめかた
 
 ```sh
 skan init --name my-board          # ボードを作成
 skan add "Write the setup guide"   # Todo列にカードを追加
+skan serve --port 7420             # http://127.0.0.1:7420/ で表示
+```
+
+あとはエージェントが作業しながら`skan mv 1 doing`や`skan state 1 running`を実行します。ソースからのビルド方法は[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)を見てください。
+
+<details>
+<summary><strong>コマンド一覧</strong></summary>
+
+```sh
 skan mv 1 doing                    # カード#1をDoingへ移動
 skan state 1 running               # カード#1を実行中として報告
 skan state 1 pending --reason "Waiting for review"
 skan ls                            # 列ごとにカードを表示
 skan ls --column doing --state running
-skan serve --port 7420             # ブラウザでボードを表示
 ```
 
-その他のコマンド: `edit`、`show`、`rm`、`export`、`import`。詳しくは`skan --help`または`skan <command> --help`を実行してください。
+その他のコマンド: `edit`、`show`、`rm`、`export`、`import`。詳しくは`skan --help`または`skan <command> --help`を実行してください。どのコマンドにも`--json`を付けると、機械処理向けの出力になります。
 
-- どのコマンドにも`--json`を付けると、機械処理向けの出力になります。
-- カードの削除(`rm`)、既存ボードへの`init`の再実行、既存ボードへの`import`では、人間に確認を求めます。エージェントはこれらを実行できません。
+カードの削除(`rm`)、既存ボードへの`init`の再実行、既存ボードへの`import`では、人間に確認を求めます。エージェントはこれらを実行できません。
 
-## エージェント向けルール
+</details>
+
+<details>
+<summary><strong>エージェント向けルール</strong></summary>
 
 同じ進め方とルールは`skan --help`にも表示されます。コマンドの出力は英語のままです。
 
@@ -69,52 +92,11 @@ Rules for agents:
   - Add --json to any command for machine-readable output.
 ```
 
-## 開発
+</details>
 
-すべてのコマンドはリポジトリのルートから実行します。
+<details>
+<summary><strong>表示言語</strong></summary>
 
-よく使う操作は`just`で実行できます。
+Web画面は英語で開きます。ヘッダーの地球ボタンからEnglishまたは日本語を選べます。選択した言語はブラウザに保存されます。ブラウザやOSの言語設定から表示言語を自動選択することはありません。CLI、helpとエラーメッセージ、APIとJSONの値は英語のままです。入力したカードの内容は翻訳されません。
 
-```sh
-just dev          # サンプルデータでWeb画面を開発（ポート5173、Vite HMR）
-just build        # Web画面、CLIの順にビルド
-just serve        # 保存済みボードを表示（ポート7420、Vite HMRとRust監視）
-```
-
-`just dev`はWebファイルの変更を監視し、HMRで画面に反映します。`just serve`にはWatchexecが必要です。`cargo install --locked watchexec-cli`でインストールできます。Rustファイルを監視してAPIを再起動し、Web画面はViteのHMRで更新します。画面は`http://127.0.0.1:7420/`で開き、Rust APIはポート7421を使います。ボードは通常の保存先から読み込み、`SKAN_HOME`が設定されていればその保存先を使います。Rustの再起動時には削除用トークンを更新するため画面を再読み込みします。
-
-ポートを変える場合は`just dev 5174`、または`just serve 7500 7501`（Web、Rust APIの順）のように指定します。
-
-CLIを手動で試したりテストしたりするときは、実際のボードに触れないよう`SKAN_HOME`を一時ディレクトリに設定してください。macOSの既定のデータ保存先は`~/Library/Application Support/skan/`、Windowsでは`%APPDATA%\skan\`です。
-
-```sh
-export SKAN_HOME="$(mktemp -d)"
-cargo run -- init --name dev
-cargo run -- serve --port <port>
-```
-
-exportした`SKAN_HOME`は、そのシェルセッション内のコマンドで共有されます。新しいセッションでは再度設定してください。
-
-サンプルデータでWeb画面だけを開発するには、次を実行します。
-
-```sh
-pnpm --dir web dev --mode mock --port <port>
-```
-
-検証コマンド:
-
-```sh
-pnpm --dir web install
-pnpm --dir web build               # cargo buildの前に必要
-cargo build
-cargo fmt --all -- --check
-cargo clippy --all-targets -- -D warnings
-TZ=UTC cargo test
-pnpm --dir web typecheck
-pnpm --dir web check
-TZ=UTC pnpm --dir web test
-```
-
-Web のフォーマットを適用するには `pnpm --dir web format` を実行します。
-
-テストでは表示時刻を固定するため`TZ=UTC`を設定します。テストでは通常利用のために空けているポート7420を使わないでください。接続先には`localhost`ではなく`http://127.0.0.1:<port>/`を使います。
+</details>
