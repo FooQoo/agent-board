@@ -42,16 +42,32 @@ describe('language changes in the app', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: /Prepare the Windows build/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
-    expect(screen.getByText('Delete #14 "Prepare the Windows build"? This cannot be undone.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Prepare the Windows build/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen.getByText('Delete #14 "Prepare the Windows build"? This cannot be undone.'),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole('button', { name: /Prepare the Windows build/ })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
 
     await userEvent.click(screen.getByRole('button', { name: 'Language' }));
     await userEvent.click(screen.getByRole('button', { name: '日本語' }));
 
-    expect(await screen.findByText('#14「Prepare the Windows build」を削除しますか？ この操作は元に戻せません。')).toBeTruthy();
+    expect(
+      await screen.findByText(
+        '#14「Prepare the Windows build」を削除しますか？ この操作は元に戻せません。',
+      ),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: '削除' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Prepare the Windows build/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen
+        .getByRole('button', { name: /Prepare the Windows build/ })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
     expect(document.documentElement.lang).toBe('ja');
-    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => url === '/api/board')).toHaveLength(1));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([url]) => url === '/api/board')).toHaveLength(1),
+    );
   });
 });

@@ -12,7 +12,9 @@ describe('StatusBar', () => {
   });
 
   it('uses the plural for several cards and for none', () => {
-    const { rerender } = render(<StatusBar status="ready" cardCount={8} connected lastSyncedAt={synced} />);
+    const { rerender } = render(
+      <StatusBar status="ready" cardCount={8} connected lastSyncedAt={synced} />,
+    );
     expect(screen.getByText('8 cards')).toBeTruthy();
     rerender(<StatusBar status="ready" cardCount={0} connected lastSyncedAt={synced} />);
     expect(screen.getByText('0 cards')).toBeTruthy();
@@ -44,7 +46,9 @@ describe('StatusBar', () => {
   it('translates card counts and sync states while preserving the time format', async () => {
     await i18n.changeLanguage('ja');
     try {
-      const { rerender } = render(<StatusBar status="ready" cardCount={0} connected lastSyncedAt={synced} />);
+      const { rerender } = render(
+        <StatusBar status="ready" cardCount={0} connected lastSyncedAt={synced} />,
+      );
       expect(screen.getByText('0件')).toBeTruthy();
       expect(screen.getByText('同期済み 10:42')).toBeTruthy();
       rerender(<StatusBar status="ready" cardCount={8} connected={false} lastSyncedAt={synced} />);

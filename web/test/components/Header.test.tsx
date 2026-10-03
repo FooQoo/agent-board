@@ -26,9 +26,15 @@ describe('language selector', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     const group = screen.getByRole('group', { name: 'Language' });
     expect(group.querySelector('[role="menu"]')).toBeNull();
-    expect(screen.getByRole('button', { name: 'English' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: '日本語' }).getAttribute('aria-pressed')).toBe('false');
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })));
+    expect(screen.getByRole('button', { name: 'English' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('button', { name: '日本語' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })),
+    );
   });
 
   it('supports keyboard opening, Tab navigation, Space selection, and focus restoration', async () => {
@@ -36,7 +42,9 @@ describe('language selector', () => {
     const trigger = screen.getByRole('button', { name: 'Language' });
     trigger.focus();
     await userEvent.keyboard('{Enter}');
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })),
+    );
 
     await userEvent.keyboard('{Tab}');
     expect(document.activeElement).toBe(screen.getByRole('button', { name: '日本語' }));
@@ -44,7 +52,9 @@ describe('language selector', () => {
 
     expect(document.documentElement.lang).toBe('ja');
     expect(window.localStorage.getItem('skan.locale')).toBe('ja');
-    expect(screen.getByRole('button', { name: '表示言語' }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: '表示言語' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
     expect(document.activeElement).toBe(screen.getByRole('button', { name: '表示言語' }));
   });
 
@@ -54,7 +64,9 @@ describe('language selector', () => {
     trigger.focus();
     await userEvent.keyboard(' ');
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })),
+    );
 
     trigger.focus();
     await userEvent.keyboard(' ');
@@ -66,7 +78,9 @@ describe('language selector', () => {
     render(<Header boardName={null} />);
     const trigger = screen.getByRole('button', { name: 'Language' });
     await userEvent.click(trigger);
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })),
+    );
     await userEvent.keyboard('{Escape}');
 
     expect(screen.queryByRole('group', { name: 'Language' })).toBeNull();
@@ -82,6 +96,8 @@ describe('language selector', () => {
     await userEvent.click(document.body);
 
     expect(screen.queryByRole('group', { name: 'Language' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Language' }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Language' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
   });
 });

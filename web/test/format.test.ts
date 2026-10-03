@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { TFunction } from 'i18next';
-import { cardCountLabel, columnLabel, formatShort, formatTime, stateLabel } from '../src/lib/format';
+import {
+  cardCountLabel,
+  columnLabel,
+  formatShort,
+  formatTime,
+  stateLabel,
+} from '../src/lib/format';
 import { makeCard } from './fixtures';
 
 const translate = ((key: string, options?: Record<string, unknown>): string => {
@@ -72,9 +78,15 @@ describe('stateLabel', () => {
   });
 
   it('translates run state values only for doing cards', () => {
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'idle' }), translate)).toBe('未稼働');
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'running' }), translate)).toBe('稼働中');
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'pending' }), translate)).toBe('待機中');
+    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'idle' }), translate)).toBe(
+      '未稼働',
+    );
+    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'running' }), translate)).toBe(
+      '稼働中',
+    );
+    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'pending' }), translate)).toBe(
+      '待機中',
+    );
     expect(stateLabel(makeCard({ id: 1, column: 'todo' }), translate)).toBeNull();
   });
 

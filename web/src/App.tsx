@@ -37,8 +37,18 @@ export function App({ initial }: AppProps) {
   return (
     <div className="app">
       <Header boardName={boardName} />
-      <div className="app__body" ref={bodyRef} style={{ '--detail-width': `${width}px` } as CSSProperties}>
-        <Board status={status} cards={cards} selectedId={selected?.id ?? null} onSelect={setSelectedId} onRetry={reload} />
+      <div
+        className="app__body"
+        ref={bodyRef}
+        style={{ '--detail-width': `${width}px` } as CSSProperties}
+      >
+        <Board
+          status={status}
+          cards={cards}
+          selectedId={selected?.id ?? null}
+          onSelect={setSelectedId}
+          onRetry={reload}
+        />
         <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
         <DetailPanel
           card={selected}
@@ -51,7 +61,12 @@ export function App({ initial }: AppProps) {
           initialDeleteFailed={isMockCard ? mockInitial?.deleteFail : undefined}
         />
       </div>
-      <StatusBar status={status} cardCount={cards.length} connected={connected} lastSyncedAt={lastSyncedAt} />
+      <StatusBar
+        status={status}
+        cardCount={cards.length}
+        connected={connected}
+        lastSyncedAt={lastSyncedAt}
+      />
     </div>
   );
 }

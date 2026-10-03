@@ -19,7 +19,12 @@ export function Card({ card, selected, onSelect }: CardProps) {
     .join(' ');
 
   return (
-    <button type="button" className={className} aria-pressed={selected} onClick={() => onSelect(card.id)}>
+    <button
+      type="button"
+      className={className}
+      aria-pressed={selected}
+      onClick={() => onSelect(card.id)}
+    >
       <span className="card__top">
         <Grip />
         <span className="card__id">#{card.id}</span>
@@ -27,8 +32,12 @@ export function Card({ card, selected, onSelect }: CardProps) {
         {showsState && <RunStateBadge state={card.run_state} />}
       </span>
       <span className="card__title">{card.title}</span>
-      {pending && card.pending_reason && <span className="card__reason">{card.pending_reason}</span>}
-      <span className="card__updated">{t('card.updated', { date: formatShort(card.updated_at) })}</span>
+      {pending && card.pending_reason && (
+        <span className="card__reason">{card.pending_reason}</span>
+      )}
+      <span className="card__updated">
+        {t('card.updated', { date: formatShort(card.updated_at) })}
+      </span>
     </button>
   );
 }

@@ -15,7 +15,14 @@ describe('Lane scroll cue', () => {
     const list = container.querySelector('.lane__cards') as HTMLElement;
     Object.defineProperty(list, 'scrollHeight', { configurable: true, value: 600 });
     Object.defineProperty(list, 'clientHeight', { configurable: true, value: 200 });
-    rerender(<Lane column="done" cards={[fixtureCard(14), fixtureCard(15)]} selectedId={null} onSelect={vi.fn()} />);
+    rerender(
+      <Lane
+        column="done"
+        cards={[fixtureCard(14), fixtureCard(15)]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
     expect(scroll.dataset.more).toBe('true');
   });
 });

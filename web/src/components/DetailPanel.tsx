@@ -21,7 +21,13 @@ export interface DetailPanelProps {
   initialDeleteFailed?: boolean;
 }
 
-export function DetailPanel({ card, onClose, onDeleted, initialConfirm, initialDeleteFailed }: DetailPanelProps) {
+export function DetailPanel({
+  card,
+  onClose,
+  onDeleted,
+  initialConfirm,
+  initialDeleteFailed,
+}: DetailPanelProps) {
   const { t } = useTranslation();
   if (card === null) {
     return (
@@ -48,7 +54,13 @@ interface DetailBodyProps extends Omit<DetailPanelProps, 'card'> {
 
 type ConfirmState = 'closed' | 'initial' | 'user';
 
-function DetailBody({ card, onClose, onDeleted, initialConfirm, initialDeleteFailed }: DetailBodyProps) {
+function DetailBody({
+  card,
+  onClose,
+  onDeleted,
+  initialConfirm,
+  initialDeleteFailed,
+}: DetailBodyProps) {
   const { t } = useTranslation();
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
   const deleteButton = useRef<HTMLButtonElement>(null);
@@ -66,7 +78,12 @@ function DetailBody({ card, onClose, onDeleted, initialConfirm, initialDeleteFai
     <aside className="detail" aria-label={t('detail.title')}>
       <div className="detail__top">
         <span className="detail__id">#{card.id}</span>
-        <button type="button" className="icon-button" aria-label={t('detail.close')} onClick={onClose}>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={t('detail.close')}
+          onClick={onClose}
+        >
           <Close />
         </button>
       </div>
@@ -80,7 +97,9 @@ function DetailBody({ card, onClose, onDeleted, initialConfirm, initialDeleteFai
       )}
       <SectionHeading>{t('detail.description')}</SectionHeading>
       {card.description === '' ? (
-        <p className="detail__description detail__description--empty">{t('detail.noDescription')}</p>
+        <p className="detail__description detail__description--empty">
+          {t('detail.noDescription')}
+        </p>
       ) : (
         <p className="detail__description">{card.description}</p>
       )}

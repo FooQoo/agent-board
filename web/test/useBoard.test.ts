@@ -102,7 +102,13 @@ describe('useBoard', () => {
   it('treats a non-2xx response as an error', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify({ error: { code: 'database_error', message: 'x', reason: 'y' } }), { status: 500 })),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { code: 'database_error', message: 'x', reason: 'y' } }),
+            { status: 500 },
+          ),
+      ),
     );
     const { result } = renderHook(() => useBoard());
     await waitFor(() => expect(result.current.status).toBe('error'));

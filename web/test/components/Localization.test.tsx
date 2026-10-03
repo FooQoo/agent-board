@@ -46,7 +46,9 @@ describe('localized board content', () => {
     expect(screen.getByRole('button', { name: '再試行' })).toBeTruthy();
     rerender(<BoardMessage kind="empty" />);
     expect(screen.getByText('カードはまだありません。')).toBeTruthy();
-    expect(screen.getByText('エージェントは "skan add <title>" でカードを追加します。')).toBeTruthy();
+    expect(
+      screen.getByText('エージェントは "skan add <title>" でカードを追加します。'),
+    ).toBeTruthy();
   });
 
   it('localizes only the creation marker in history and preserves order, columns, and timestamps', async () => {
@@ -60,9 +62,10 @@ describe('localized board content', () => {
     expect(screen.getByText('作成 · 10/01 16:00')).toBeTruthy();
     expect(screen.getByText('進行中')).toBeTruthy();
     expect(screen.getByText('10/01 16:30')).toBeTruthy();
-    expect([...container.querySelectorAll('.history__step')].map((step) => step.getAttribute('data-column'))).toEqual([
-      'todo',
-      'doing',
-    ]);
+    expect(
+      [...container.querySelectorAll('.history__step')].map((step) =>
+        step.getAttribute('data-column'),
+      ),
+    ).toEqual(['todo', 'doing']);
   });
 });

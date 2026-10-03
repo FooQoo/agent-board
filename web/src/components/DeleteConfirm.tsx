@@ -14,7 +14,13 @@ export interface DeleteConfirmProps {
   onDeleted: () => void;
 }
 
-export function DeleteConfirm({ card, focusOnMount, initialFailed = false, onCancel, onDeleted }: DeleteConfirmProps) {
+export function DeleteConfirm({
+  card,
+  focusOnMount,
+  initialFailed = false,
+  onCancel,
+  onDeleted,
+}: DeleteConfirmProps) {
   const { t } = useTranslation();
   const [failed, setFailed] = useState(initialFailed);
   const [busy, setBusy] = useState(false);

@@ -7,7 +7,9 @@ const read = (path: string) => readFileSync(join(root, path), 'utf8');
 
 /** Evaluates `clamp(min, calc(min + (100vw - 1024px) * k), max)` at a viewport width. */
 function evalClamp(expr: string, vw: number): number {
-  const m = expr.match(/clamp\((\d+)px,\s*calc\(\1px \+ \(100vw - 1024px\) \* ([\d.]+)\),\s*(\d+)px\)/);
+  const m = expr.match(
+    /clamp\((\d+)px,\s*calc\(\1px \+ \(100vw - 1024px\) \* ([\d.]+)\),\s*(\d+)px\)/,
+  );
   if (!m) throw new Error(`unexpected clamp: ${expr}`);
   const [min, k, max] = [Number(m[1]), Number(m[2]), Number(m[3])];
   return Math.min(max, Math.max(min, min + (vw - 1024) * k));
@@ -23,7 +25,9 @@ function wideTokens(): string {
 function token(block: string, name: string): string {
   const m = block.match(new RegExp(`${name}:\\s*([^;]+);`));
   if (!m) throw new Error(`missing ${name}`);
-  return m[1]!.trim();
+  const value = m[1];
+  if (value === undefined) throw new Error(`missing ${name}`);
+  return value.trim();
 }
 
 describe('wide layout tokens', () => {
@@ -69,14 +73,20 @@ describe('wide layout rules', () => {
   };
 
   it('uses the insets for header, board and status bar', () => {
-    expect(rule('.header')).toMatch(/padding:\s*0 var\(--inset-right-header\) 0 var\(--inset-left\)/);
-    expect(rule('.board__lanes')).toMatch(
-      /padding:\s*var\(--board-inset-block\) var\(--inset-right-board\) var\(--board-inset-block\) var\(--inset-left\)/,
+    expect(rule('.header')).toMatch(
+      /padding:\s*0 var\(--inset-right-header\) 0 var\(--inset-left\)/,
     );
-    expect(rule('.status-bar')).toMatch(/padding:\s*0 var\(--inset-right-board\) 0 var\(--inset-left\)/);
+    expect(rule('.board__lanes')).toMatch(
+      /padding:\s*var\(--board-inset-block\)\s+var\(--inset-right-board\)\s+var\(--board-inset-block\)\s+var\(--inset-left\)/,
+    );
+    expect(rule('.status-bar')).toMatch(
+      /padding:\s*0 var\(--inset-right-board\) 0 var\(--inset-left\)/,
+    );
   });
 
   it('keeps the detail column definition', () => {
-    expect(rule('.app__body')).toContain('grid-template-columns: minmax(0, 1fr) var(--detail-width)');
+    expect(rule('.app__body')).toContain(
+      'grid-template-columns: minmax(0, 1fr) var(--detail-width)',
+    );
   });
 });

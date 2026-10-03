@@ -16,6 +16,7 @@ cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
 TZ=UTC cargo test
 pnpm --dir web typecheck
+pnpm --dir web check
 TZ=UTC pnpm --dir web test
 ```
 

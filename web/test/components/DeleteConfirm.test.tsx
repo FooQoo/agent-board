@@ -31,12 +31,22 @@ describe('delete confirmation', () => {
   it('interpolates Japanese confirmation and failure text without interpreting a card title as markup', async () => {
     const card = makeCard({ id: 42, title: '<img src=x onerror="alert(1)"> & "quoted"' });
     selectLocale('ja');
-    const { container } = render(<DetailPanel card={card} onClose={() => {}} onDeleted={() => {}} initialConfirm initialDeleteFailed />);
+    const { container } = render(
+      <DetailPanel
+        card={card}
+        onClose={() => {}}
+        onDeleted={() => {}}
+        initialConfirm
+        initialDeleteFailed
+      />,
+    );
 
     expect(container.querySelector('.delete-confirm__message')?.textContent).toBe(
       '#42「<img src=x onerror="alert(1)"> & "quoted"」を削除しますか？ この操作は元に戻せません。',
     );
-    expect(screen.getByRole('alert').textContent).toBe('カードを削除できませんでした。もう一度お試しください。');
+    expect(screen.getByRole('alert').textContent).toBe(
+      'カードを削除できませんでした。もう一度お試しください。',
+    );
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByRole('button', { name: '削除' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'キャンセル' })).toBeTruthy();
@@ -80,7 +90,10 @@ describe('delete confirmation', () => {
   });
 
   it('treats 404 as already deleted', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 404 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{}', { status: 404 })),
+    );
     const onDeleted = renderPanel();
     await openConfirm();
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
@@ -89,18 +102,26 @@ describe('delete confirmation', () => {
   });
 
   it('shows a failure message on 500 and keeps the confirmation open', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 500 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{}', { status: 500 })),
+    );
     const onDeleted = renderPanel();
     await openConfirm();
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    expect((await screen.findByRole('alert')).textContent).toBe('Could not delete the card. Try again.');
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Could not delete the card. Try again.',
+    );
     expect(onDeleted).not.toHaveBeenCalled();
     expect(screen.getByText(CONFIRM_TEXT)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy();
   });
 
   it('shows a failure message on 403', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 403 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{}', { status: 403 })),
+    );
     const onDeleted = renderPanel();
     await openConfirm();
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
@@ -109,7 +130,10 @@ describe('delete confirmation', () => {
   });
 
   it('shows a failure message when the request itself fails', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('network down'))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Promise.reject(new TypeError('network down'))),
+    );
     const onDeleted = renderPanel();
     await openConfirm();
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
@@ -133,7 +157,9 @@ describe('delete confirmation', () => {
   });
 
   it('closes the confirmation when another card is shown', async () => {
-    const { rerender } = render(<DetailPanel card={fixtureCard(11)} onClose={() => {}} onDeleted={() => {}} />);
+    const { rerender } = render(
+      <DetailPanel card={fixtureCard(11)} onClose={() => {}} onDeleted={() => {}} />,
+    );
     await openConfirm();
     rerender(<DetailPanel card={fixtureCard(13)} onClose={() => {}} onDeleted={() => {}} />);
     expect(screen.queryByText(/This cannot be undone/)).toBeNull();

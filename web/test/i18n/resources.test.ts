@@ -4,12 +4,16 @@ import { resources } from '../../src/i18n/resources';
 
 function leafPaths(value: unknown, prefix = ''): string[] {
   if (typeof value !== 'object' || value === null) return [prefix];
-  return Object.entries(value).flatMap(([key, child]) => leafPaths(child, prefix ? `${prefix}.${key}` : key));
+  return Object.entries(value).flatMap(([key, child]) =>
+    leafPaths(child, prefix ? `${prefix}.${key}` : key),
+  );
 }
 
 describe('translation resources', () => {
   it('provides matching English and Japanese keys', () => {
-    expect(leafPaths(resources.en.translation).sort()).toEqual(leafPaths(resources.ja.translation).sort());
+    expect(leafPaths(resources.en.translation).sort()).toEqual(
+      leafPaths(resources.ja.translation).sort(),
+    );
   });
 
   it('translates counts and interpolates values in both languages', async () => {

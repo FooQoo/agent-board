@@ -134,7 +134,8 @@ ol {
   border: var(--stroke) solid var(--divider);
   border-radius: var(--radius-control);
   background: var(--surface);
-  box-shadow: 0 var(--space-6) var(--space-14) color-mix(in srgb, var(--text-primary) 20%, transparent);
+  box-shadow: 0 var(--space-6) var(--space-14)
+    color-mix(in srgb, var(--text-primary) 20%, transparent);
 }
 
 .language-menu__heading {
@@ -159,7 +160,7 @@ ol {
   cursor: pointer;
 }
 
-.language-menu__option[aria-pressed='true'] {
+.language-menu__option[aria-pressed="true"] {
   background: var(--lane);
 }
 
@@ -200,11 +201,11 @@ ol {
   background: var(--primary);
 }
 
-.status-bar__dot[data-tone='idle'] {
+.status-bar__dot[data-tone="idle"] {
   background: var(--text-muted);
 }
 
-.status-bar__dot[data-tone='warn'] {
+.status-bar__dot[data-tone="warn"] {
   background: var(--pending-text);
 }
 
@@ -280,15 +281,15 @@ ol {
   border-radius: var(--radius-round);
 }
 
-.dot[data-column='todo'] {
+.dot[data-column="todo"] {
   background: var(--todo);
 }
 
-.dot[data-column='doing'] {
+.dot[data-column="doing"] {
   background: var(--doing);
 }
 
-.dot[data-column='done'] {
+.dot[data-column="done"] {
   background: var(--done);
 }
 
@@ -561,7 +562,7 @@ ol {
 
 /* The line joins the center of this dot to the center of the next one. */
 .history__step:not(:last-child)::before {
-  content: '';
+  content: "";
   position: absolute;
   top: var(--history-dot-center);
   bottom: calc(-1 * (var(--history-step-gap) + var(--history-dot-center)));
@@ -589,15 +590,15 @@ ol {
   font-weight: 600;
 }
 
-.history__step[data-column='todo'] .history__column {
+.history__step[data-column="todo"] .history__column {
   color: var(--todo);
 }
 
-.history__step[data-column='doing'] .history__column {
+.history__step[data-column="doing"] .history__column {
   color: var(--doing);
 }
 
-.history__step[data-column='done'] .history__column {
+.history__step[data-column="done"] .history__column {
   color: var(--done);
 }
 
@@ -762,7 +763,8 @@ ol {
     align-items: stretch;
     height: 100%;
     min-height: 0;
-    padding: var(--board-inset-block) var(--inset-right-board) var(--board-inset-block) var(--inset-left);
+    padding: var(--board-inset-block) var(--inset-right-board) var(--board-inset-block)
+      var(--inset-left);
   }
 
   .board--centered {
@@ -784,8 +786,8 @@ ol {
     overflow-y: auto;
   }
 
-  .lane__scroll[data-more='true']::after {
-    content: '';
+  .lane__scroll[data-more="true"]::after {
+    content: "";
     position: absolute;
     right: calc(-1 * var(--space-16));
     bottom: calc(-1 * var(--space-16));

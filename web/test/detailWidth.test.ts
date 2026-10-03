@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clampWidth, maxWidthFor, parseStoredWidth, readStoredWidth, writeStoredWidth } from '../src/lib/detailWidth';
+import {
+  clampWidth,
+  maxWidthFor,
+  parseStoredWidth,
+  readStoredWidth,
+  writeStoredWidth,
+} from '../src/lib/detailWidth';
 
 afterEach(() => {
   vi.restoreAllMocks();

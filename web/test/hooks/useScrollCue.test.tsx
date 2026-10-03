@@ -3,8 +3,12 @@ import { useRef } from 'react';
 import { describe, expect, it } from 'vitest';
 import { useScrollCue } from '../../src/hooks/useScrollCue';
 
-function setMetrics(el: HTMLElement, m: { scrollHeight?: number; clientHeight?: number; scrollTop?: number }) {
-  for (const [k, v] of Object.entries(m)) Object.defineProperty(el, k, { configurable: true, writable: true, value: v });
+function setMetrics(
+  el: HTMLElement,
+  m: { scrollHeight?: number; clientHeight?: number; scrollTop?: number },
+) {
+  for (const [k, v] of Object.entries(m))
+    Object.defineProperty(el, k, { configurable: true, writable: true, value: v });
 }
 
 function Probe({ dep }: { dep: number }) {

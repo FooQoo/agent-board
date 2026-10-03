@@ -27,7 +27,13 @@ export function Board({ status, cards, selectedId, onSelect, onRetry }: BoardPro
     <main className="board">
       <div className="board__lanes">
         {COLUMNS.map((column) => (
-          <Lane key={column} column={column} cards={groups[column]} selectedId={selectedId} onSelect={onSelect} />
+          <Lane
+            key={column}
+            column={column}
+            cards={groups[column]}
+            selectedId={selectedId}
+            onSelect={onSelect}
+          />
         ))}
       </div>
       {cards.length === 0 && <BoardMessage kind="empty" />}

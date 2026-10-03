@@ -37,7 +37,13 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-function sendError(res: ServerResponse, status: number, code: string, message: string, reason: string): void {
+function sendError(
+  res: ServerResponse,
+  status: number,
+  code: string,
+  message: string,
+  reason: string,
+): void {
   sendJson(res, status, { error: { code, message, reason } });
 }
 
@@ -68,7 +74,13 @@ export function mockApi(): Plugin {
 
         if (req.method === 'GET' && path === '/api/board') {
           if (params.get('fail') === '1') {
-            return sendError(res, 500, 'database_error', 'cannot open the board.', 'Mock failure (?fail=1).');
+            return sendError(
+              res,
+              500,
+              'database_error',
+              'cannot open the board.',
+              'Mock failure (?fail=1).',
+            );
           }
           const respond = () => {
             const body = params.get('empty') === '1' ? { ...state, cards: [] } : state;
@@ -84,7 +96,13 @@ export function mockApi(): Plugin {
 
         if (req.method === 'GET' && path === '/api/events') {
           if (params.get('disconnect') === '1') {
-            return sendError(res, 503, 'database_busy', 'the board is busy.', 'Mock disconnect (?disconnect=1).');
+            return sendError(
+              res,
+              503,
+              'database_busy',
+              'the board is busy.',
+              'Mock disconnect (?disconnect=1).',
+            );
           }
           res.writeHead(200, {
             'Content-Type': 'text/event-stream',
@@ -104,14 +122,32 @@ export function mockApi(): Plugin {
         const deleteMatch = /^\/api\/cards\/(\d+)$/.exec(path);
         if (req.method === 'DELETE' && deleteMatch) {
           if (!req.headers['x-skan-token']) {
-            return sendError(res, 403, 'forbidden', 'request refused.', 'Missing X-Skan-Token header.');
+            return sendError(
+              res,
+              403,
+              'forbidden',
+              'request refused.',
+              'Missing X-Skan-Token header.',
+            );
           }
           if (params.get('deleteFail') === '1') {
-            return sendError(res, 500, 'database_error', 'cannot open the board.', 'Mock failure (?deleteFail=1).');
+            return sendError(
+              res,
+              500,
+              'database_error',
+              'cannot open the board.',
+              'Mock failure (?deleteFail=1).',
+            );
           }
           const id = Number(deleteMatch[1]);
           if (!state.cards.some((card) => card.id === id)) {
-            return sendError(res, 404, 'card_not_found', `card #${id} not found.`, `No card has ID ${id}.`);
+            return sendError(
+              res,
+              404,
+              'card_not_found',
+              `card #${id} not found.`,
+              `No card has ID ${id}.`,
+            );
           }
           state = { ...state, cards: state.cards.filter((card) => card.id !== id) };
           res.statusCode = 204;

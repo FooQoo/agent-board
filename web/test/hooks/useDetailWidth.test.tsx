@@ -11,7 +11,12 @@ function makeBody(width: number) {
   let bodyWidth = width;
   body.getBoundingClientRect = () => ({ width: bodyWidth }) as DOMRect;
   vi.spyOn(window, 'getComputedStyle').mockImplementation(
-    () => ({ paddingLeft: '24px', paddingRight: '24px', columnGap: '12px' }) as unknown as CSSStyleDeclaration,
+    () =>
+      ({
+        paddingLeft: '24px',
+        paddingRight: '24px',
+        columnGap: '12px',
+      }) as unknown as CSSStyleDeclaration,
   );
   return {
     ref: { current: body },

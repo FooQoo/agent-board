@@ -111,7 +111,10 @@ cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
 TZ=UTC cargo test
 pnpm --dir web typecheck
+pnpm --dir web check
 TZ=UTC pnpm --dir web test
 ```
+
+Run `pnpm --dir web format` to apply the web formatter.
 
 Tests set `TZ=UTC` so displayed times are fixed. Do not use port 7420 in tests; it is kept free for normal use. In tests, connect to `http://127.0.0.1:<port>/` rather than `localhost`.

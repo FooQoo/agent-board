@@ -67,7 +67,12 @@ export function Header({ boardName }: { boardName: string | null }) {
           <Globe />
         </button>
         {open && (
-          <div id="language-options" className="language-menu" role="group" aria-label={languageLabel}>
+          <div
+            id="language-options"
+            className="language-menu"
+            role="group"
+            aria-label={languageLabel}
+          >
             <span className="language-menu__heading" aria-hidden="true">
               {languageLabel}
             </span>

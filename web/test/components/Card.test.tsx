@@ -17,9 +17,11 @@ describe('Card', () => {
 
   it('shows no run state for cards in Todo or Done', () => {
     const { rerender } = render(<Card card={fixtureCard(14)} selected={false} onSelect={noop} />);
-    for (const label of ['Idle', 'Running', 'Pending']) expect(screen.queryByText(label)).toBeNull();
+    for (const label of ['Idle', 'Running', 'Pending'])
+      expect(screen.queryByText(label)).toBeNull();
     rerender(<Card card={fixtureCard(8)} selected={false} onSelect={noop} />);
-    for (const label of ['Idle', 'Running', 'Pending']) expect(screen.queryByText(label)).toBeNull();
+    for (const label of ['Idle', 'Running', 'Pending'])
+      expect(screen.queryByText(label)).toBeNull();
   });
 
   it('shows the run state badge for cards in Doing', () => {
@@ -78,7 +80,9 @@ describe('Card', () => {
 
   it('reflects the selection and reports clicks', async () => {
     const onSelect = vi.fn();
-    const { rerender } = render(<Card card={fixtureCard(8)} selected={false} onSelect={onSelect} />);
+    const { rerender } = render(
+      <Card card={fixtureCard(8)} selected={false} onSelect={onSelect} />,
+    );
     const button = screen.getByRole('button', { name: /Initialize the board/ });
     expect(button.getAttribute('aria-pressed')).toBe('false');
     await userEvent.click(button);

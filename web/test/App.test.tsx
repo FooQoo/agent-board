@@ -64,7 +64,9 @@ describe('App', () => {
     expect(titles('Todo')).toEqual(['#14', '#15', '#16']);
     expect(titles('Doing')).toEqual(['#11', '#12', '#13']);
     expect(titles('Done')).toEqual(['#9', '#8']);
-    expect(within(lane('Done')).getByRole('heading', { name: 'Done' }).nextElementSibling?.textContent).toBe('2');
+    expect(
+      within(lane('Done')).getByRole('heading', { name: 'Done' }).nextElementSibling?.textContent,
+    ).toBe('2');
   });
 
   it('shows the details of a clicked card and clears them with Close details', async () => {
@@ -95,7 +97,12 @@ describe('App', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Implement card moves'));
 
-    current = { ...current, cards: current.cards.map((c) => (c.id === 11 ? { ...c, run_state: 'pending' as const, pending_reason: 'Waiting' } : c)) };
+    current = {
+      ...current,
+      cards: current.cards.map((c) =>
+        c.id === 11 ? { ...c, run_state: 'pending' as const, pending_reason: 'Waiting' } : c,
+      ),
+    };
     act(() => FakeEventSource.latest.emit('changed'));
 
     await waitFor(() => expect(screen.getAllByText('Pending').length).toBeGreaterThan(0));
@@ -122,7 +129,9 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(screen.getByText('Select a card to see its details.')).toBeTruthy());
-    await waitFor(() => expect(screen.queryByRole('button', { name: /Prepare the Windows build/ })).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /Prepare the Windows build/ })).toBeNull(),
+    );
     expect(screen.getByText('7 cards')).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith('/api/cards/14', {
       method: 'DELETE',
@@ -140,7 +149,9 @@ describe('App', () => {
   });
 
   it('shows the load error with Retry and recovers when retried', async () => {
-    fetchMock.mockImplementation(async () => jsonResponse({ error: { code: 'database_error', message: 'x', reason: 'y' } }, 500));
+    fetchMock.mockImplementation(async () =>
+      jsonResponse({ error: { code: 'database_error', message: 'x', reason: 'y' } }, 500),
+    );
     render(<App />);
     expect(await screen.findByText('Could not load the board.')).toBeTruthy();
     expect(screen.getByText('Not connected')).toBeTruthy();
@@ -165,7 +176,9 @@ describe('App', () => {
 
   it('starts from the sample-data state when given initial values', async () => {
     render(<App initial={{ select: 11, confirm: true, deleteFail: true }} />);
-    expect(await screen.findByText('Delete #11 "Implement card moves"? This cannot be undone.')).toBeTruthy();
+    expect(
+      await screen.findByText('Delete #11 "Implement card moves"? This cannot be undone.'),
+    ).toBeTruthy();
     expect(screen.getByText('Could not delete the card. Try again.')).toBeTruthy();
     expect(cardButton('Implement card moves').getAttribute('aria-pressed')).toBe('true');
   });

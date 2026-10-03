@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { DEFAULT_WIDTH, clampWidth, maxWidthFor, readStoredWidth, writeStoredWidth } from '../lib/detailWidth';
+import {
+  DEFAULT_WIDTH,
+  clampWidth,
+  maxWidthFor,
+  readStoredWidth,
+  writeStoredWidth,
+} from '../lib/detailWidth';
 
 export interface DetailWidth {
   width: number;
@@ -14,7 +20,10 @@ const px = (value: string) => Number.parseFloat(value) || 0;
  * The detail panel width: the width the user chose, clamped to what the current layout allows.
  * Narrowing the window never rewrites the chosen width, so widening brings it back.
  */
-export function useDetailWidth(bodyRef: RefObject<HTMLElement | null>, boardReady: boolean): DetailWidth {
+export function useDetailWidth(
+  bodyRef: RefObject<HTMLElement | null>,
+  boardReady: boolean,
+): DetailWidth {
   const [preferred, setPreferred] = useState(() => readStoredWidth() ?? DEFAULT_WIDTH);
   const [layoutMax, setLayoutMax] = useState(Number.POSITIVE_INFINITY);
   const preferredRef = useRef(preferred);
@@ -38,6 +47,7 @@ export function useDetailWidth(bodyRef: RefObject<HTMLElement | null>, boardRead
     );
   }, [bodyRef]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: boardReady triggers a fresh measurement when content becomes available
   useEffect(() => {
     measure();
   }, [measure, boardReady]);
@@ -45,7 +55,8 @@ export function useDetailWidth(bodyRef: RefObject<HTMLElement | null>, boardRead
   useEffect(() => {
     window.addEventListener('resize', measure);
     const body = bodyRef.current;
-    const observer = typeof ResizeObserver === 'undefined' || !body ? null : new ResizeObserver(measure);
+    const observer =
+      typeof ResizeObserver === 'undefined' || !body ? null : new ResizeObserver(measure);
     if (observer && body) observer.observe(body);
     return () => {
       window.removeEventListener('resize', measure);
@@ -54,7 +65,10 @@ export function useDetailWidth(bodyRef: RefObject<HTMLElement | null>, boardRead
   }, [measure, bodyRef]);
 
   const startDrag = useCallback((clientX: number) => {
-    drag.current = { startX: clientX, startWidth: clampWidth(preferredRef.current, layoutMaxRef.current) };
+    drag.current = {
+      startX: clientX,
+      startWidth: clampWidth(preferredRef.current, layoutMaxRef.current),
+    };
     document.body.classList.add('is-resizing');
   }, []);
 

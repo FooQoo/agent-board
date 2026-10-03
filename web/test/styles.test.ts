@@ -47,9 +47,9 @@ describe('tokens.css', () => {
   it('mirrors the radius variables and uses system font stacks', () => {
     expect(tokens).toContain('--radius-card: 10px;');
     expect(tokens).toContain('--radius-lane: 12px;');
-    expect(tokens).toMatch(/--font-sans: system-ui/);
-    expect(tokens).toMatch(/--font-mono: ui-monospace/);
-    expect(tokens).toMatch(/--font-serif: ui-serif/);
+    expect(tokens).toMatch(/--font-sans:\s*system-ui/);
+    expect(tokens).toMatch(/--font-mono:\s*ui-monospace/);
+    expect(tokens).toMatch(/--font-serif:\s*ui-serif/);
     expect(tokens).not.toContain('@font-face');
     expect(tokens).not.toContain('url(');
   });
@@ -61,13 +61,17 @@ describe('app.css', () => {
   it('takes colors, sizes and spacing from tokens instead of literals', () => {
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     const declarations = css.split('\n').filter((line) => /^\s+[a-z-]+:/.test(line));
-    const withLiteralLengths = declarations.filter((line) => /(^|[\s(])\d*\.?\d+(px|rem|em)\b/.test(line));
+    const withLiteralLengths = declarations.filter((line) =>
+      /(^|[\s(])\d*\.?\d+(px|rem|em)\b/.test(line),
+    );
     expect(withLiteralLengths).toEqual([]);
   });
 
   it('keeps the description line breaks and stops the spinner for reduced motion', () => {
     expect(css).toMatch(/\.detail__description\s*\{[^}]*white-space:\s*pre-wrap/);
-    expect(css).toMatch(/prefers-reduced-motion:\s*reduce\)\s*\{\s*\.spinner\s*\{\s*animation:\s*none/);
+    expect(css).toMatch(
+      /prefers-reduced-motion:\s*reduce\)\s*\{\s*\.spinner\s*\{\s*animation:\s*none/,
+    );
   });
 
   it('has the 1024px and 640px breakpoints', () => {

@@ -7,7 +7,8 @@ import './styles/tokens.css';
 import './styles/app.css';
 import './styles/resize.css';
 
-const initial = import.meta.env.MODE === 'mock' ? readMockInitial(window.location.search) : undefined;
+const initial =
+  import.meta.env.MODE === 'mock' ? readMockInitial(window.location.search) : undefined;
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');

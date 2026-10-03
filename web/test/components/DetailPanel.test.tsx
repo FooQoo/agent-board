@@ -59,7 +59,9 @@ describe('DetailPanel', () => {
   });
 
   it('draws one history point per transition with the column name and time', () => {
-    const { container } = render(<DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />);
+    const { container } = render(
+      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+    );
     const steps = container.querySelectorAll('.history__step');
     expect(steps).toHaveLength(3);
     const texts = Array.from(steps).map((step) => step.textContent);
@@ -84,7 +86,9 @@ describe('DetailPanel', () => {
   });
 
   it('shows the run state for a card in Doing and the reason for a pending card', () => {
-    const { rerender } = render(<DetailPanel card={fixtureCard(11)} onClose={noop} onDeleted={noop} />);
+    const { rerender } = render(
+      <DetailPanel card={fixtureCard(11)} onClose={noop} onDeleted={noop} />,
+    );
     expect(screen.getByText('Running')).toBeTruthy();
     rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
     expect(screen.getByText('Pending')).toBeTruthy();

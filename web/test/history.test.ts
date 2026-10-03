@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { historyItems } from '../src/lib/history';
 import type { Transition } from '../src/types';
 
-const t = (from: Transition['from'], to: Transition['to'], at: string): Transition => ({ from, to, at });
+const t = (from: Transition['from'], to: Transition['to'], at: string): Transition => ({
+  from,
+  to,
+  at,
+});
 
 describe('historyItems', () => {
   it('returns a semantic creation marker without localized display text', () => {

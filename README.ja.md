@@ -111,7 +111,10 @@ cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
 TZ=UTC cargo test
 pnpm --dir web typecheck
+pnpm --dir web check
 TZ=UTC pnpm --dir web test
 ```
+
+Web のフォーマットを適用するには `pnpm --dir web format` を実行します。
 
 テストでは表示時刻を固定するため`TZ=UTC`を設定します。テストでは通常利用のために空けているポート7420を使わないでください。接続先には`localhost`ではなく`http://127.0.0.1:<port>/`を使います。
