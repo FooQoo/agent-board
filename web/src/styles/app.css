@@ -261,7 +261,7 @@ ol {
 }
 
 .lane-header__name {
-  font-size: var(--fs-22);
+  font-size: var(--fs-18);
   font-weight: 600;
 }
 
@@ -270,7 +270,7 @@ ol {
   border-radius: var(--radius-count);
   background: var(--badge);
   font-family: var(--font-mono);
-  font-size: var(--fs-16);
+  font-size: var(--fs-14);
 }
 
 .dot {
@@ -503,7 +503,7 @@ ol {
   padding: var(--space-6) var(--space-16);
   border: var(--stroke) solid var(--primary);
   border-radius: var(--radius-control);
-  font-size: var(--fs-15);
+  font-size: var(--fs-17);
   color: var(--primary);
 }
 
