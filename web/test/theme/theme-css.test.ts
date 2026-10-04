@@ -8,7 +8,7 @@ const css = readFileSync(
   'utf8',
 ).replace(/\/\*[\s\S]*?\*\//g, '');
 
-/** Accent values of the approved design (r-accent, r-accent-soft) per accent: [light, dark]. */
+/** Expected accent values (r-accent, r-accent-soft) per accent: [light, dark]. */
 const DESIGN_ACCENT: Record<string, { accent: [string, string]; soft: [string, string] }> = {
   blue: { accent: ['#2563EB', '#6B9AFF'], soft: ['#E9EFFD', '#28354F'] },
   sky: { accent: ['#0284C7', '#4DB5F0'], soft: ['#E6F3F9', '#223B4C'] },
@@ -41,13 +41,15 @@ function declarations(selector: string): Record<string, string> {
 }
 
 describe('theme.css', () => {
-  it('has the accent tokens of every mode/accent combination, matching the design', () => {
+  it('has the accent tokens of every mode/accent combination, matching the design values', () => {
     for (const [mi, mode] of MODES.entries()) {
       for (const accent of ACCENTS) {
         const rule = declarations(`:root[data-mode="${mode}"][data-accent="${accent}"]`);
         const expected = DESIGN_ACCENT[accent];
         expect(rule['--r-accent']?.toUpperCase(), `${mode}/${accent}`).toBe(expected?.accent[mi]);
-        expect(rule['--r-accent-soft']?.toUpperCase(), `${mode}/${accent}`).toBe(expected?.soft[mi]);
+        expect(rule['--r-accent-soft']?.toUpperCase(), `${mode}/${accent}`).toBe(
+          expected?.soft[mi],
+        );
       }
     }
   });
