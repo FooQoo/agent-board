@@ -5,6 +5,12 @@
 - Keep source code, code comments, repository instructions, and the English README (`README.md`) in English. Localized UI resources and `README.ja.md` may use their target language; all other documentation remains in English.
 - Keep implementation and tests in this repository.
 
+## Portable paths and privacy
+
+- Never commit machine-specific absolute paths to hooks, configuration, scripts, documentation, or generated artifacts. This includes personal home directories and local checkout paths.
+- Use repository-relative paths for project files and executables, PATH for installed commands, or environment variables resolved at runtime. Keep machine-specific overrides in ignored local files.
+- Before committing, inspect the staged diff for personal paths, including `/Users/` and `/home/`, and remove them. Verify that changed hook commands still work without depending on a particular user's directory layout.
+
 ## Verification
 
 Run these from the repository root before you finish a change. Build the web UI first, because the Rust build embeds it.
