@@ -1,7 +1,10 @@
 use chrono::{TimeZone, Utc};
 use rusqlite::Connection;
-use skan::error::SkanError;
 use skan::store::Store;
+use skan::{
+    domain::{Actor, Assignee, NewCard},
+    error::SkanError,
+};
 
 fn now() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 2, 1, 0, 0).unwrap()
@@ -15,11 +18,11 @@ fn user_version(path: &std::path::Path) -> i64 {
 }
 
 #[test]
-fn a_new_database_gets_schema_version_1() {
+fn a_new_database_gets_schema_version_2() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
     Store::open(&path).unwrap();
-    assert_eq!(user_version(&path), 1);
+    assert_eq!(user_version(&path), 2);
 
     let conn = Connection::open(&path).unwrap();
     let mut tables: Vec<String> = conn
@@ -30,7 +33,7 @@ fn a_new_database_gets_schema_version_1() {
         .map(Result::unwrap)
         .collect();
     tables.sort();
-    assert_eq!(tables, vec!["board", "cards", "transitions"]);
+    assert_eq!(tables, vec!["board", "cards", "history"]);
     let journal: String = conn
         .query_row("PRAGMA journal_mode", [], |r| r.get(0))
         .unwrap();
@@ -46,16 +49,31 @@ fn open_creates_missing_directories() {
 }
 
 #[test]
-fn reopening_a_version_1_database_keeps_its_data() {
+fn a_version_1_database_is_rejected_without_migration() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
-    Store::open(&path)
-        .unwrap()
-        .create_board("main", now())
-        .unwrap();
-    let store = Store::open(&path).unwrap();
-    assert_eq!(store.board().unwrap().unwrap().name, "main");
+    make_database_with_version(&path, 1);
+    let err = Store::open(&path).err().unwrap();
+    assert!(matches!(err, SkanError::DatabaseError { .. }));
     assert_eq!(user_version(&path), 1);
+}
+
+#[test]
+fn a_non_empty_unversioned_database_is_rejected_without_wal_changes() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("board.db");
+    let conn = Connection::open(&path).unwrap();
+    conn.execute_batch("CREATE TABLE marker (v TEXT); INSERT INTO marker VALUES ('keep');")
+        .unwrap();
+    drop(conn);
+    let before = std::fs::read(&path).unwrap();
+    assert!(matches!(
+        Store::open(&path),
+        Err(SkanError::DatabaseError { .. })
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let entries: Vec<_> = std::fs::read_dir(dir.path()).unwrap().collect();
+    assert_eq!(entries.len(), 1);
 }
 
 #[test]
@@ -64,7 +82,17 @@ fn schema_enforces_the_model_constraints() {
     let path = dir.path().join("board.db");
     let store = Store::open(&path).unwrap();
     store.create_board("main", now()).unwrap();
-    store.add_card("a", "", now()).unwrap();
+    store
+        .add_work_card(
+            NewCard {
+                title: "a".into(),
+                description: "".into(),
+                assignee: Assignee::Ai,
+                actor: Actor::Ai,
+            },
+            now(),
+        )
+        .unwrap();
     let conn = Connection::open(&path).unwrap();
     // running outside doing violates the CHECK constraint
     assert!(
@@ -95,7 +123,7 @@ fn make_database_with_version(path: &std::path::Path, version: i64) {
 
 #[test]
 fn a_newer_schema_version_is_refused_and_left_untouched() {
-    for version in [2, 3, 99] {
+    for version in [3, 4, 99] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("board.db");
         make_database_with_version(&path, version);
@@ -105,7 +133,7 @@ fn a_newer_schema_version_is_refused_and_left_untouched() {
         assert_eq!(
             err,
             SkanError::DatabaseError {
-                reason: "The board was created by a newer version of skan.".into()
+                reason: "The board was created by a newer version of agboard.".into()
             }
         );
         assert_eq!(err.code(), "database_error");

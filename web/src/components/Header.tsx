@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { selectLocale, type Locale } from '../i18n';
-import { Check, Globe } from './icons';
+import { Check, Globe, Plus } from './icons';
 
-export function Header({ boardName }: { boardName: string | null }) {
+export function Header({
+  boardName,
+  onAdd = () => {},
+}: {
+  boardName: string | null;
+  onAdd?: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const locale: Locale = i18n.resolvedLanguage === 'ja' ? 'ja' : 'en';
   const [open, setOpen] = useState(false);
@@ -46,7 +52,7 @@ export function Header({ boardName }: { boardName: string | null }) {
     <header className="header">
       <h1 className="header__app">
         <img className="header__logo" src="/logo.png" alt="" width="44" height="44" />
-        <span>SimpleKanban</span>
+        <span>Agent Board</span>
       </h1>
       {boardName !== null && (
         <>
@@ -57,6 +63,12 @@ export function Header({ boardName }: { boardName: string | null }) {
         </>
       )}
       <span className="header__spacer" aria-hidden="true" />
+      {boardName !== null && (
+        <button type="button" className="header__add" onClick={onAdd}>
+          <Plus />
+          {t('dialog.addCard')}
+        </button>
+      )}
       <div className="header__language" ref={selectorRef}>
         <button
           ref={triggerRef}

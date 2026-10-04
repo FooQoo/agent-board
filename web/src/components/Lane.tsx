@@ -5,6 +5,7 @@ import { useScrollCue } from '../hooks/useScrollCue';
 import type { Card as CardModel, ColumnName } from '../types';
 import { Card } from './Card';
 import { LaneHeader } from './LaneHeader';
+import { useDroppable } from '@dnd-kit/react';
 
 export interface LaneProps {
   column: ColumnName;
@@ -17,8 +18,14 @@ export function Lane({ column, cards, selectedId, onSelect }: LaneProps) {
   const { t } = useTranslation();
   const listRef = useRef<HTMLUListElement>(null);
   const more = useScrollCue(listRef, cards);
+  const { ref, isDropTarget } = useDroppable({ id: `lane-${column}`, data: { column } });
   return (
-    <section className="lane" aria-label={columnLabel(column, t)}>
+    <section
+      ref={ref}
+      className="lane"
+      data-drop-target={isDropTarget ? 'true' : 'false'}
+      aria-label={columnLabel(column, t)}
+    >
       <LaneHeader column={column} count={cards.length} />
       <div className="lane__scroll" data-more={more ? 'true' : 'false'}>
         <ul className="lane__cards" ref={listRef}>

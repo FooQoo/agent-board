@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { resetBoard } from '../helpers/skan';
+import { resetBoard } from '../helpers/agboard';
 
 test.beforeEach(async ({ page }) => {
   resetBoard();
@@ -24,7 +24,7 @@ test('selecting a card shows its column, state, and description with line breaks
   await expect(panel).toContainText('Doing');
   await expect(panel).toContainText('Idle');
   await expect(panel.getByRole('heading', { name: 'Description' })).toBeVisible();
-  await expect(card(page, 13)).toHaveAttribute('aria-pressed', 'true');
+  await expect(card(page, 13)).toHaveAttribute('aria-current', 'true');
 
   // The description is shown as written, with its line break.
   const description = panel.getByText('Check the layout at 1280, 800, and 480 px.');
@@ -55,21 +55,21 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(panel.getByText(/^(Idle|Running|Pending)$/)).toHaveCount(0);
 });
 
-test('History lists one point per column move, oldest first, with Created on the first', async ({
+test('History shows the newest status change first with its actor and reason', async ({
   page,
 }) => {
   await card(page, 8).click();
   const history = details(page).getByRole('list');
   await expect(history.getByRole('listitem')).toHaveText([
-    /^Todo\s*Created · 10\/01 16:00$/,
-    /^Doing\s*10\/01 16:30$/,
-    /^Done\s*10\/02 09:48$/,
+    /^DoneAI10\/02 09:48Moved card$/,
+    /^DoingAI10\/01 16:30Moved card$/,
+    /^TodoAICreated · 10\/01 16:00$/,
   ]);
   await expect(history.getByText('Created')).toHaveCount(1);
   await expect(details(page).getByRole('heading', { name: 'History' })).toBeVisible();
 
   await card(page, 14).click();
-  await expect(history.getByRole('listitem')).toHaveText([/^Todo\s*Created · 10\/02 03:00$/]);
+  await expect(history.getByRole('listitem')).toHaveText([/^TodoAICreated · 10\/02 03:00$/]);
 });
 
 test('selecting another card switches the panel, and Close details clears it', async ({ page }) => {
@@ -79,12 +79,12 @@ test('selecting another card switches the panel, and Close details clears it', a
 
   await card(page, 9).click();
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Return the card list as JSON');
-  await expect(card(page, 8)).toHaveAttribute('aria-pressed', 'false');
-  await expect(card(page, 9)).toHaveAttribute('aria-pressed', 'true');
+  await expect(card(page, 8)).toHaveAttribute('aria-current', 'false');
+  await expect(card(page, 9)).toHaveAttribute('aria-current', 'true');
 
   await panel.getByRole('button', { name: 'Close details' }).click();
   await expect(panel).toContainText('Select a card to see its details.');
-  await expect(card(page, 9)).toHaveAttribute('aria-pressed', 'false');
+  await expect(card(page, 9)).toHaveAttribute('aria-current', 'false');
   await expect(panel.getByRole('heading', { level: 2 })).toHaveCount(0);
 });
 
@@ -102,7 +102,7 @@ test('opening, switching, and closing the panel never moves the board', async ({
 
   for (const id of [11, 12, 8]) {
     await card(page, id).click();
-    await expect(card(page, id)).toHaveAttribute('aria-pressed', 'true');
+    await expect(card(page, id)).toHaveAttribute('aria-current', 'true');
     expect(await measure()).toEqual(initial);
   }
   await details(page).getByRole('button', { name: 'Close details' }).click();
@@ -111,11 +111,11 @@ test('opening, switching, and closing the panel never moves the board', async ({
 });
 
 test('the card grips never take keyboard focus', async ({ page }) => {
-  // With nothing selected, Tab visits the language control and eight cards; grips stay out of the order.
+  // With nothing selected, Tab visits Add card, the language control, and eight cards; grips stay out of the order.
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 9; step++) {
+  for (let step = 0; step < 10; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
@@ -126,6 +126,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
     );
   }
   expect(visited).toEqual([
+    'BUTTON Add card',
     'BUTTON Language',
     'BUTTON #14',
     'BUTTON #15',
@@ -137,18 +138,21 @@ test('the card grips never take keyboard focus', async ({ page }) => {
     'BUTTON #8',
   ]);
 
-  // The next stops are the panel's own buttons, never a grip.
+  // The detail panel exposes its close, lane selector, and move action; the grip itself never receives focus.
   await card(page, 8).click();
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Close details' })).toBeFocused();
   await page.keyboard.press('Tab');
+  await expect(details(page).getByLabel('Move to')).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Delete card' })).toBeFocused();
 
-  // The language control, cards, Close details, and Delete card can be focused; grips cannot.
+  // Interactive controls can be focused, while icon grips are never independent tab stops.
   const focusable = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]')]
-      .filter((element) => element.tabIndex >= 0)
+      .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  expect(focusable).toHaveLength(1 + 8 + 2);
+  expect(focusable).toHaveLength(1 + 1 + 8 + 3);
+  expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

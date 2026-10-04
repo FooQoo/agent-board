@@ -2,7 +2,7 @@
 
 Usage: pty_answer.py <answer> <command> [args...]
 
-The command gets the terminal as stdin, stdout and stderr, so skan treats the
+The command gets the terminal as stdin, stdout and stderr, so agboard treats the
 run as interactive. Everything the command printed is written to stdout and
 the command's exit code becomes this script's exit code. Gives up after 20 s.
 """

@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="web/public/logo.png" alt="SimpleKanbanのロゴ" width="120">
+<img src="web/public/logo.png" alt="Agent Boardのロゴ" width="120">
 
-# SimpleKanban
+# Agent Board
 
-**コーディングエージェントの進捗が見えるカンバンボード。**
+**ユーザーとAIが一緒に作業を進める共有ボード。**
 
-カードを動かすのはエージェント。あなたはボードを眺めるだけ。
+AIが作業を登録し、ユーザーも状態の更新や判断への回答を行います。
 
 [English](README.md) · [開発に参加する](CONTRIBUTING.ja.md)
 
@@ -14,29 +14,30 @@
 ![SQLite](https://img.shields.io/badge/storage-SQLite-1f6feb)
 ![macOS と Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-1f6feb)
 
-<img src="docs/images/board.png" alt="カードを選択したSimpleKanbanのボード" width="860">
+<img src="docs/images/board.png" alt="Agent Boardのボード" width="860">
 
 </div>
 
-## SimpleKanbanとは
+## Agent Boardとは
 
-コーディングエージェントに長い作業を任せると、いま何をしているのか、あなたの返事を待って止まっていないのかが分かりません。SimpleKanbanはその状況を見えるようにします。
+エージェントに長い作業を任せると、どの作業が進み、何を待ち、何の返事が必要なのか分かりにくくなります。Agent Boardはユーザーとエージェントが同じ履歴つきボードを見て、作業の往復を続けられるようにします。
 
-- **エージェントはコマンドで報告します。** カードを追加し、Todo・Doing・Doneの間で動かし、*running*(作業中)か*pending*(待機中)かを伝えます。
-- **あなたはブラウザで見るだけです。** ボードは自動で更新されるので、どのカードが進行中で、なぜ待っているのかがいつでも分かります。
+- **AIが人とAIの作業を登録します。** 担当はAIまたはユーザーに固定され、カードの列と状態で進み具合を示します。
+- **ユーザーとAIが同じボードを更新します。** 状態変更には理由を残します。ユーザーが判断依頼に答えると、次のHookや`agboard snapshot`がその回答を含む全履歴をAIへ渡します。
 - **データはマシンの外へ出ません。** カードはローカルのSQLiteに保存され、Web画面は`127.0.0.1`だけで待ち受けます。
 
 ```mermaid
 flowchart LR
-    A["コーディングエージェント"] -- "skan CLI" --> D[("ローカルのSQLite")]
-    D -- "skan serve" --> B["あなたのブラウザ"]
+    A["AIエージェント"] -- "agboard CLI・Hook" --> D[("ローカルのSQLite")]
+    U["ユーザー"] -- "Agent Board UI" --> D
+    D -- "ローカルサーバー" --> B["ブラウザ"]
 ```
 
 ## 特徴
 
-**いまの状況が一目で分かります。** Doing列のカードには稼働状態(Idle・Running・Pending)が表示されます。Pendingのカードには待っている理由も出ます。
+**次に必要なことが分かります。** カードには担当と列が表示されます。進行中のAI担当カードにはIDLE・RUNNING・PENDINGを表示し、PENDINGの理由と履歴を確認できます。
 
-**判断は人間の手元に残ります。** カードの削除とボードの置き換えは人間だけができます。エージェントはその判断をあなたに任せるしかありません。
+**判断の経緯が残ります。** ユーザーは理由を添えてカードを移動し、判断依頼へ回答できます。AIは回答を読んで方針を見直し、作業を再開します。
 
 **あえてシンプルにしています。** 列は3つ、ボードはローカルに1つだけ。アカウントもクラウドも要りません。
 
@@ -45,58 +46,52 @@ flowchart LR
 ## はじめかた
 
 ```sh
-skan init --name my-board          # ボードを作成
-skan add "Write the setup guide"   # Todo列にカードを追加
-skan serve --port 7420             # http://127.0.0.1:7420/ で表示
+agboard init --name agent-board
+agboard serve --port 7420
 ```
 
-あとはエージェントが作業しながら`skan mv 1 doing`や`skan state 1 running`を実行します。ソースからのビルド方法は[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)を見てください。
+ブラウザからカードを登録するか、`agboard add "作業" --assignee ai --actor ai`で登録できます。Claude CodeとCodexのHook設定は[連携ガイド](integrations/README.md)を参照してください。ビルド方法は[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)にあります。
 
 <details>
-<summary><strong>コマンド一覧</strong></summary>
+<summary><strong>コマンド例</strong></summary>
 
 ```sh
-skan mv 1 doing                    # カード#1をDoingへ移動
-skan state 1 running               # カード#1を実行中として報告
-skan state 1 pending --reason "Waiting for review"
-skan ls                            # 列ごとにカードを表示
-skan ls --column doing --state running
+agboard snapshot --json
+agboard mv 1 doing --actor ai --reason "実装を開始する"
+agboard state 1 running --actor ai --reason "承認済みの変更を実装中"
+agboard state 1 pending --actor ai --reason "動作方針の判断が必要"
+agboard state 1 idle --actor human --request <request-id> --reason "現在の動作を維持する"
+agboard state 1 running --actor ai --reason "ユーザーの方針に沿って再開する"
+agboard mv 1 done --actor ai --reason "実装と検証が完了した"
+agboard wait --after <revision>
 ```
 
-その他のコマンド: `edit`、`show`、`rm`、`export`、`import`。詳しくは`skan --help`または`skan <command> --help`を実行してください。どのコマンドにも`--json`を付けると、機械処理向けの出力になります。
+その他のコマンド: `add`、`edit`、`show`、`rm`、`export`、`import`、`hook`。詳しくは`agboard --help`または`agboard <command> --help`を実行してください。`--json`で機械処理向けの出力になります。
 
-カードの削除(`rm`)、既存ボードへの`init`の再実行、既存ボードへの`import`では、人間に確認を求めます。エージェントはこれらを実行できません。
+`agboard --help`と[Agent Skills](integrations/README.md)にも同じ進め方を記載しています。
 
 </details>
 
 <details>
-<summary><strong>エージェント向けルール</strong></summary>
-
-同じ進め方とルールは`skan --help`にも表示されます。コマンドの出力は英語のままです。
+<summary><strong>エージェントの作業手順</strong></summary>
 
 ```text
-Workflow for agents:
-  skan ls --json                             # read the board first; a human may have moved cards
-  skan mv <id> doing                         # you start a card
-  skan state <id> running                    # you are working on it
-  skan state <id> pending --reason "<text>"  # you are waiting for a human or an external result
-  skan state <id> running                    # the wait is over
-  skan mv <id> done                          # you are finished (the card returns to idle)
-Do not leave a card running when you stop: finish it, or run `skan state <id> idle`.
-
-Rules for agents:
-  - Move a card to doing before you report running or pending.
-  - Report pending with --reason when you are waiting for something.
-  - Moving a card to todo or done resets it to idle.
-  - You cannot delete cards or replace the board. Ask a human to do it.
-  - Add --json to any command for machine-readable output.
+agboard snapshot --json                    # ボードと全履歴を読む
+agboard mv <id> doing --actor ai --reason "<理由>"
+agboard state <id> running --actor ai --reason "<理由>"
+agboard state <id> pending --actor ai --reason "<必要な判断>"
+agboard state <id> idle --actor human --request <id> --reason "<回答・方針>"
+agboard state <id> running --actor ai --reason "<回答を踏まえた進め方>"
+agboard mv <id> done --actor ai --reason "<完了した内容>"
 ```
+
+状態を変更するときはactorとreasonを必ず指定します。進められる作業がない場合は、定期取得せず変更通知を待ちます。
 
 </details>
 
 <details>
 <summary><strong>表示言語</strong></summary>
 
-Web画面は英語で開きます。ヘッダーの地球ボタンからEnglishまたは日本語を選べます。選択した言語はブラウザに保存されます。ブラウザやOSの言語設定から表示言語を自動選択することはありません。CLI、helpとエラーメッセージ、APIとJSONの値は英語のままです。入力したカードの内容は翻訳されません。
+Web画面は英語で開きます。ヘッダーの地球ボタンからEnglishまたは日本語を選べます。選択した言語はブラウザに保存されます。ブラウザやOSの言語設定からは自動選択しません。CLI、helpとエラーメッセージ、APIとJSONの値は英語です。入力したカード内容は翻訳されません。
 
 </details>

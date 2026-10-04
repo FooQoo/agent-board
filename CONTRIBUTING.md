@@ -1,4 +1,4 @@
-# Contributing to SimpleKanban
+# Contributing to Agent Board
 
 [日本語](CONTRIBUTING.ja.md)
 
@@ -12,7 +12,7 @@ pnpm --dir web build
 cargo build
 ```
 
-The binary is `target/debug/skan`.
+The binary is `target/debug/agboard`.
 
 ## Development
 

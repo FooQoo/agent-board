@@ -1,4 +1,4 @@
-//! The `skan` command line interface.
+//! The `agboard` command line interface.
 
 pub mod args;
 pub mod commands;

@@ -37,10 +37,10 @@ describe('Card', () => {
     const card = makeCard({
       id: 40,
       title: 'Keep this title as entered',
-      column: 'doing',
-      run_state: 'pending',
-      pending_reason: 'Keep this waiting reason as entered',
-      updated_at: '2026-10-02T10:08:00Z',
+      cardStatus: 'doing',
+      agentStatus: 'pending',
+      pendingReason: 'Keep this waiting reason as entered',
+      updatedAt: '2026-10-02T10:08:00Z',
     });
     try {
       render(<Card card={card} selected={true} onSelect={noop} />);
@@ -52,7 +52,7 @@ describe('Card', () => {
       expect(screen.getByText('更新 10/02 10:08')).toBeTruthy();
       expect(screen.getByText('Keep this title as entered')).toBeTruthy();
       expect(screen.getByText('Keep this waiting reason as entered')).toBeTruthy();
-      expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByRole('button').getAttribute('aria-current')).toBe('true');
     } finally {
       await i18n.changeLanguage('en');
     }
@@ -84,11 +84,11 @@ describe('Card', () => {
       <Card card={fixtureCard(8)} selected={false} onSelect={onSelect} />,
     );
     const button = screen.getByRole('button', { name: /Initialize the board/ });
-    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(button.getAttribute('aria-current')).toBe('false');
     await userEvent.click(button);
     expect(onSelect).toHaveBeenCalledWith(8);
     rerender(<Card card={fixtureCard(8)} selected={true} onSelect={onSelect} />);
-    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(button.getAttribute('aria-current')).toBe('true');
   });
 
   it('draws the grip as decoration that cannot take focus', async () => {

@@ -8,11 +8,11 @@ use axum::http::{HeaderMap, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::guard::{self, DeleteRequest};
 use super::{AppState, assets, events};
-use crate::domain::Card;
+use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState};
 use crate::error::SkanError;
 use crate::store::Store;
 
@@ -27,6 +27,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/notify", post(notify))
         .route("/api/health", get(health))
         .route("/api/cards/{id}", delete(delete_card))
+        .route("/api/cards", post(create_card))
+        .route("/api/cards/{id}/move", post(move_card))
+        .route("/api/cards/{id}/agent-status", post(set_agent_status))
+        .route("/api/cards/{id}/answer", post(answer_request))
         .layer(middleware::from_fn_with_state(state.clone(), host_guard))
         .with_state(state)
 }
@@ -64,7 +68,11 @@ fn error_response(
 fn skan_error_response(error: &SkanError) -> Response {
     let status = match error {
         SkanError::CardNotFound { .. } => StatusCode::NOT_FOUND,
-        SkanError::NotInitialized => StatusCode::CONFLICT,
+        SkanError::NotInitialized | SkanError::RequestChanged => StatusCode::CONFLICT,
+        SkanError::InvalidArgument { .. }
+        | SkanError::InvalidValue { .. }
+        | SkanError::InvalidStateForColumn { .. }
+        | SkanError::InvalidStateForAssignee => StatusCode::UNPROCESSABLE_ENTITY,
         SkanError::DatabaseBusy => StatusCode::SERVICE_UNAVAILABLE,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     };
@@ -113,7 +121,7 @@ async fn host_guard(State(state): State<Arc<AppState>>, request: Request, next: 
     if guard::host_allowed(header_text(request.headers(), "host"), state.port) {
         next.run(request).await
     } else {
-        forbidden("Open the board at http://127.0.0.1:<port>/ as printed by skan serve.")
+        forbidden("Open the board at http://127.0.0.1:<port>/ as printed by agboard serve.")
     }
 }
 
@@ -173,31 +181,35 @@ async fn logo_png() -> Response {
 
 // ---------------------------------------------------------------- API
 
-#[derive(Serialize)]
-struct BoardBody {
-    board: BoardView,
-    cards: Vec<Card>,
-}
-
-#[derive(Serialize)]
-struct BoardView {
-    name: String,
-    #[serde(with = "crate::clock::serde_utc")]
-    created_at: chrono::DateTime<chrono::Utc>,
-}
-
 async fn board(State(state): State<Arc<AppState>>) -> Response {
     match with_store(&state, |store| store.snapshot()).await {
-        Ok(snapshot) => json_response(
-            StatusCode::OK,
-            &BoardBody {
-                board: BoardView {
-                    name: snapshot.board.name,
-                    created_at: snapshot.board.created_at,
+        Ok(snapshot) => {
+            #[derive(Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct BoardInfo {
+                name: String,
+                #[serde(with = "crate::clock::serde_utc")]
+                created_at: chrono::DateTime<chrono::Utc>,
+            }
+            #[derive(Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct BoardResponse {
+                board: BoardInfo,
+                revision: i64,
+                cards: Vec<crate::domain::Card>,
+            }
+            json_response(
+                StatusCode::OK,
+                &BoardResponse {
+                    board: BoardInfo {
+                        name: snapshot.board.name,
+                        created_at: snapshot.board.created_at,
+                    },
+                    revision: snapshot.revision,
+                    cards: snapshot.cards,
                 },
-                cards: snapshot.cards,
-            },
-        ),
+            )
+        }
         Err(error) => skan_error_response(&error),
     }
 }
@@ -228,14 +240,8 @@ async fn delete_card(
     Path(raw_id): Path<String>,
     headers: HeaderMap,
 ) -> Response {
-    let request = DeleteRequest {
-        host: header_text(&headers, "host"),
-        origin: header_text(&headers, "origin"),
-        sec_fetch_site: header_text(&headers, "sec-fetch-site"),
-        token: header_text(&headers, "x-skan-token"),
-    };
-    if guard::check_delete(&request, state.port, &state.token).is_err() {
-        return forbidden("Cards can only be deleted from the board page.");
+    if !write_allowed(&headers, &state) {
+        return forbidden("Changes can only be made from the board page.");
     }
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
@@ -249,6 +255,204 @@ async fn delete_card(
         Ok(()) => {
             let _ = state.changed.send(());
             StatusCode::NO_CONTENT.into_response()
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+fn write_allowed(headers: &HeaderMap, state: &AppState) -> bool {
+    let request = DeleteRequest {
+        host: header_text(headers, "host"),
+        origin: header_text(headers, "origin"),
+        sec_fetch_site: header_text(headers, "sec-fetch-site"),
+        token: header_text(headers, "x-skan-token"),
+    };
+    guard::check_delete(&request, state.port, &state.token).is_ok()
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CreateCardInput {
+    title: String,
+    description: String,
+    assignee: Assignee,
+    actor: Actor,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct MoveInput {
+    card_status: Column,
+    actor: Actor,
+    reason: String,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AgentStateInput {
+    agent_status: RunState,
+    actor: Actor,
+    reason: String,
+    request_id: Option<String>,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AnswerInput {
+    request_id: String,
+    actor: Actor,
+    reason: String,
+}
+
+async fn create_card(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    axum::Json(input): axum::Json<CreateCardInput>,
+) -> Response {
+    if !write_allowed(&headers, &state) {
+        return forbidden("Changes can only be made from the board page.");
+    }
+    match with_store(&state, move |store| {
+        store.add_work_card(
+            NewCard {
+                title: input.title,
+                description: input.description,
+                assignee: input.assignee,
+                actor: input.actor,
+            },
+            chrono::Utc::now(),
+        )
+    })
+    .await
+    {
+        Ok(card) => {
+            let _ = state.changed.send(());
+            json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn move_card(
+    State(state): State<Arc<AppState>>,
+    Path(raw_id): Path<String>,
+    headers: HeaderMap,
+    axum::Json(input): axum::Json<MoveInput>,
+) -> Response {
+    if !write_allowed(&headers, &state) {
+        return forbidden("Changes can only be made from the board page.");
+    }
+    let Ok(id) = raw_id.parse::<i64>() else {
+        return error_response(
+            StatusCode::NOT_FOUND,
+            "card_not_found",
+            "card not found.",
+            "Card ID is invalid.",
+        );
+    };
+    match with_store(&state, move |store| {
+        store.move_work_card(
+            id,
+            input.card_status,
+            ChangeContext {
+                actor: input.actor,
+                reason: input.reason,
+            },
+            chrono::Utc::now(),
+        )
+    })
+    .await
+    {
+        Ok(result) => {
+            if result.changed {
+                let _ = state.changed.send(());
+            }
+            json_response(
+                StatusCode::OK,
+                &serde_json::json!({"card": result.value, "changed": result.changed}),
+            )
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn set_agent_status(
+    State(state): State<Arc<AppState>>,
+    Path(raw_id): Path<String>,
+    headers: HeaderMap,
+    axum::Json(input): axum::Json<AgentStateInput>,
+) -> Response {
+    if !write_allowed(&headers, &state) {
+        return forbidden("Changes can only be made from the board page.");
+    }
+    let Ok(id) = raw_id.parse::<i64>() else {
+        return error_response(
+            StatusCode::NOT_FOUND,
+            "card_not_found",
+            "card not found.",
+            "Card ID is invalid.",
+        );
+    };
+    match with_store(&state, move |store| {
+        store.set_agent_status(
+            id,
+            input.agent_status,
+            ChangeContext {
+                actor: input.actor,
+                reason: input.reason,
+            },
+            input.request_id.as_deref(),
+            chrono::Utc::now(),
+        )
+    })
+    .await
+    {
+        Ok(result) => {
+            if result.changed {
+                let _ = state.changed.send(());
+            }
+            json_response(
+                StatusCode::OK,
+                &serde_json::json!({"card": result.value, "changed": result.changed}),
+            )
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn answer_request(
+    State(state): State<Arc<AppState>>,
+    Path(raw_id): Path<String>,
+    headers: HeaderMap,
+    axum::Json(input): axum::Json<AnswerInput>,
+) -> Response {
+    if !write_allowed(&headers, &state) {
+        return forbidden("Changes can only be made from the board page.");
+    }
+    let Ok(id) = raw_id.parse::<i64>() else {
+        return error_response(
+            StatusCode::NOT_FOUND,
+            "card_not_found",
+            "card not found.",
+            "Card ID is invalid.",
+        );
+    };
+    match with_store(&state, move |store| {
+        store.answer_request(
+            id,
+            &input.request_id,
+            ChangeContext {
+                actor: input.actor,
+                reason: input.reason,
+            },
+            chrono::Utc::now(),
+        )
+    })
+    .await
+    {
+        Ok(card) => {
+            let _ = state.changed.send(());
+            json_response(
+                StatusCode::OK,
+                &serde_json::json!({"card": card, "changed": true}),
+            )
         }
         Err(error) => skan_error_response(&error),
     }

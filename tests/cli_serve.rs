@@ -1,8 +1,8 @@
-//! `skan serve` and the automatic notification after a write.
+//! `agboard serve` and the automatic notification after a write.
 //!
-//! These tests run the real `skan` binary with `SKAN_HOME` in a temporary
+//! These tests run the real `agboard` binary with `SKAN_HOME` in a temporary
 //! directory and `TZ=UTC`. They use only ports 7620 to 7629 (never 7420) and
-//! run one at a time, so a port can be reused from test to test. Every `skan
+//! run one at a time, so a port can be reused from test to test. Every `agboard
 //! serve` child is stopped when its handle is dropped, and the port is checked
 //! to be free again.
 
@@ -27,8 +27,8 @@ fn serial() -> MutexGuard<'static, ()> {
     SERIAL.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn skan(home: &Path) -> Command {
-    let mut cmd = Command::cargo_bin("skan").unwrap();
+fn agboard(home: &Path) -> Command {
+    let mut cmd = Command::cargo_bin("agboard").unwrap();
     cmd.env("SKAN_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home);
@@ -44,7 +44,14 @@ struct Output {
 
 fn run(home: &Path, args: &[&str]) -> Output {
     let start = Instant::now();
-    let output = skan(home).args(args).output().unwrap();
+    let mut args = args.to_vec();
+    match args.first().copied() {
+        Some("add") => args.extend(["--assignee", "ai", "--actor", "ai"]),
+        Some("mv") => args.extend(["--actor", "ai", "--reason", "test change"]),
+        Some("state") => args.extend(["--actor", "ai", "--reason", "test change"]),
+        _ => {}
+    }
+    let output = agboard(home).args(args).output().unwrap();
     Output {
         code: output.status.code().unwrap(),
         out: String::from_utf8(output.stdout).unwrap(),
@@ -55,7 +62,7 @@ fn run(home: &Path, args: &[&str]) -> Output {
 
 fn run_ok(home: &Path, args: &[&str]) -> Output {
     let o = run(home, args);
-    assert_eq!(o.code, 0, "skan {args:?} failed: {}", o.err);
+    assert_eq!(o.code, 0, "agboard {args:?} failed: {}", o.err);
     o
 }
 
@@ -75,7 +82,7 @@ fn port_is_free(port: u16) -> bool {
     TcpListener::bind((Ipv4Addr::LOCALHOST, port)).is_ok()
 }
 
-/// A stand-in for `skan serve`: answers every request with 204 and reports the
+/// A stand-in for `agboard serve`: answers every request with 204 and reports the
 /// request line of each one.
 struct FakeServe {
     requests: Receiver<String>,
@@ -142,7 +149,7 @@ impl Drop for FakeServe {
     }
 }
 
-/// A running `skan serve`. Dropping it stops the child (SIGTERM, then kill)
+/// A running `agboard serve`. Dropping it stops the child (SIGTERM, then kill)
 /// and checks that its port is free again.
 struct Serving {
     child: Child,
@@ -158,7 +165,7 @@ impl Serving {
     }
 
     fn spawn(home: &Path, args: &[&str], port: u16) -> Serving {
-        let mut child = StdCommand::new(assert_cmd::cargo::cargo_bin("skan"))
+        let mut child = StdCommand::new(assert_cmd::cargo::cargo_bin("agboard"))
             .args(args)
             .env("SKAN_HOME", home)
             .env("TZ", "UTC")
@@ -180,7 +187,7 @@ impl Serving {
         Serving { child, port, lines }
     }
 
-    /// `skan serve --port <port>`, waiting until it prints its first line.
+    /// `agboard serve --port <port>`, waiting until it prints its first line.
     fn start(home: &Path, port: u16) -> (Serving, String) {
         Serving::start_with(home, &["serve", "--port", &port.to_string()], port)
     }
@@ -188,7 +195,7 @@ impl Serving {
     fn first_line(&mut self) -> String {
         self.lines
             .recv_timeout(Duration::from_secs(10))
-            .expect("skan serve printed nothing within 10 s")
+            .expect("agboard serve printed nothing within 10 s")
     }
 
     fn addr(&self) -> SocketAddr {

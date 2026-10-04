@@ -11,4 +11,5 @@ pub mod mv;
 pub mod rm;
 pub mod serve;
 pub mod show;
+pub mod snapshot;
 pub mod state;

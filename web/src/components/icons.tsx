@@ -64,6 +64,15 @@ export function Check(props: IconProps) {
   );
 }
 
+export function Plus(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </Icon>
+  );
+}
+
 export function Trash(props: IconProps) {
   return (
     <Icon {...props}>

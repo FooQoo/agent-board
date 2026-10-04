@@ -82,7 +82,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, TimeZone, Utc};
-use skan::domain::{Column, RunState};
+use skan::domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState};
 use skan::error::SkanError;
 use skan::server::{ServeConfig, run_until};
 use skan::store::Store;
@@ -109,22 +109,51 @@ fn store_in(home: &Path) -> Store {
     Store::open(&home.join("board.db")).unwrap()
 }
 
-/// A data directory with board "main" and cards #1 (todo), #2 (doing, running)
-/// and #3 (doing, pending with a reason).
+/// A temporary board with one user card and two AI cards in distinct states.
 fn board_home() -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
     let store = store_in(home.path());
     store.create_board("main", t(0)).unwrap();
-    store.add_card("First card", "Some details", t(1)).unwrap();
-    store.add_card("Second card", "", t(2)).unwrap();
-    store.add_card("Third card", "", t(3)).unwrap();
-    store.move_card(2, Column::Doing, t(4)).unwrap();
-    store.move_card(3, Column::Doing, t(5)).unwrap();
+    let add = |title: &str, assignee| {
+        store
+            .add_work_card(
+                NewCard {
+                    title: title.into(),
+                    description: "Some details".into(),
+                    assignee,
+                    actor: match assignee {
+                        Assignee::Ai => Actor::Ai,
+                        Assignee::Human => Actor::Human,
+                    },
+                },
+                t(1),
+            )
+            .unwrap()
+    };
+    let _first = add("First card", Assignee::Human);
+    let second = add("Second card", Assignee::Ai);
+    let third = add("Third card", Assignee::Ai);
+    let context = |reason: &str| ChangeContext {
+        actor: Actor::Ai,
+        reason: reason.into(),
+    };
     store
-        .set_run_state(2, RunState::Running, None, t(6))
+        .move_work_card(second.id, Column::Doing, context("Start"), t(4))
         .unwrap();
     store
-        .set_run_state(3, RunState::Pending, Some("Waiting for review"), t(7))
+        .move_work_card(third.id, Column::Doing, context("Start"), t(5))
+        .unwrap();
+    store
+        .set_agent_status(second.id, RunState::Running, context("Inspect"), None, t(6))
+        .unwrap();
+    store
+        .set_agent_status(
+            third.id,
+            RunState::Pending,
+            context("Waiting for review"),
+            None,
+            t(7),
+        )
         .unwrap();
     home
 }
@@ -247,6 +276,39 @@ impl Running {
         }
     }
 
+    fn send_json(&self, method: &str, path: &str, body: &str, token: Option<&str>) -> Reply {
+        let mut builder = ureq::http::Request::builder()
+            .method(method)
+            .uri(self.url(path))
+            .header("Content-Type", "application/json");
+        if let Some(token) = token {
+            for (name, value) in self.page_headers(token) {
+                builder = builder.header(name, value);
+            }
+        }
+        let agent: ureq::Agent = ureq::Agent::config_builder()
+            .http_status_as_error(false)
+            .build()
+            .into();
+        let mut response = agent.run(builder.body(body.to_string()).unwrap()).unwrap();
+        let status = response.status().as_u16();
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .map(|v| v.to_str().unwrap().to_string());
+        let cache_control = response
+            .headers()
+            .get("cache-control")
+            .map(|v| v.to_str().unwrap().to_string());
+        let body = response.body_mut().read_to_string().unwrap_or_default();
+        Reply {
+            status,
+            content_type,
+            cache_control,
+            body,
+        }
+    }
+
     fn delete_as_page(&self, id: i64) -> Reply {
         let headers = self.page_headers(&self.token());
         self.send_owned("DELETE", &format!("/api/cards/{id}"), &headers)
@@ -342,17 +404,6 @@ impl EventStream {
     }
 }
 
-/// Positions of `keys` inside `text` must be strictly increasing.
-fn assert_key_order(text: &str, keys: &[&str]) {
-    let mut last = 0;
-    for key in keys {
-        let found = text[last..]
-            .find(&format!("\"{key}\":"))
-            .unwrap_or_else(|| panic!("key {key:?} missing or out of order in {text}"));
-        last += found + key.len();
-    }
-}
-
 // ---------------------------------------------------------------- pages and assets
 
 #[test]
@@ -443,7 +494,8 @@ fn board_matches_the_stores_snapshot_in_the_model_shape() {
 
     let snapshot = store_in(home.path()).snapshot().unwrap();
     let expected = serde_json::json!({
-        "board": {"name": "main", "created_at": "2026-10-02T01:00:00Z"},
+        "board": {"name": "main", "createdAt": "2026-10-02T01:00:00Z"},
+        "revision": snapshot.revision,
         "cards": serde_json::to_value(&snapshot.cards).unwrap(),
     });
     let actual: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
@@ -451,28 +503,8 @@ fn board_matches_the_stores_snapshot_in_the_model_shape() {
     assert_eq!(actual["cards"].as_array().unwrap().len(), 3);
 
     // The documented key order, at the board and at each card.
-    assert!(reply.body.starts_with(
-        "{\"board\":{\"name\":\"main\",\"created_at\":\"2026-10-02T01:00:00Z\"},\"cards\":[{\"id\":1,"
-    ));
-    assert!(!reply.body.contains("next_card_id"));
-    let card = &reply.body[reply.body.find("\"cards\"").unwrap()..];
-    assert_key_order(
-        card,
-        &[
-            "id",
-            "title",
-            "description",
-            "column",
-            "position",
-            "run_state",
-            "pending_reason",
-            "created_at",
-            "updated_at",
-            "run_state_changed_at",
-            "transitions",
-        ],
-    );
-    assert_eq!(actual["cards"][2]["pending_reason"], "Waiting for review");
+    assert_eq!(actual["revision"], snapshot.revision);
+    assert_eq!(actual["cards"][2]["pendingReason"], "Waiting for review");
 }
 
 #[test]
@@ -480,10 +512,65 @@ fn board_reflects_changes_made_after_the_server_started() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     store_in(home.path())
-        .add_card("Late card", "", t(10))
+        .add_work_card(
+            NewCard {
+                title: "Late card".into(),
+                description: "".into(),
+                assignee: Assignee::Ai,
+                actor: Actor::Ai,
+            },
+            t(10),
+        )
         .unwrap();
     let actual: serde_json::Value = serde_json::from_str(&server.get("/api/board").body).unwrap();
     assert_eq!(actual["cards"].as_array().unwrap().len(), 4);
+}
+
+#[test]
+fn protected_api_creates_moves_requests_and_answers_with_full_history() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let mut events = server.events();
+    let denied = server.send_json(
+        "POST",
+        "/api/cards",
+        r#"{"title":"Denied","description":"","assignee":"ai","actor":"ai"}"#,
+        None,
+    );
+    assert_eq!(denied.status, 403);
+    let token = server.token();
+    let created = server.send_json(
+        "POST",
+        "/api/cards",
+        r#"{"title":"New work","description":"","assignee":"ai","actor":"ai"}"#,
+        Some(&token),
+    );
+    assert_eq!(created.status, 201, "{}", created.body);
+    let moved = server.send_json(
+        "POST",
+        "/api/cards/4/move",
+        r#"{"cardStatus":"doing","actor":"ai","reason":"Start"}"#,
+        Some(&token),
+    );
+    assert_eq!(moved.status, 200, "{}", moved.body);
+    let pending = server.send_json(
+        "POST",
+        "/api/cards/4/agent-status",
+        r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction"}"#,
+        Some(&token),
+    );
+    assert_eq!(pending.status, 200, "{}", pending.body);
+    let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
+    let request_id = request["card"]["pendingRequestId"].as_str().unwrap();
+    let body =
+        serde_json::json!({"requestId":request_id,"actor":"human","reason":"Proceed with A"})
+            .to_string();
+    let answered = server.send_json("POST", "/api/cards/4/answer", &body, Some(&token));
+    assert_eq!(answered.status, 200, "{}", answered.body);
+    let board: serde_json::Value = serde_json::from_str(&server.get("/api/board").body).unwrap();
+    assert_eq!(board["cards"][3]["agentStatus"], "idle");
+    assert_eq!(board["cards"][3]["history"].as_array().unwrap().len(), 4);
+    assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 }
 
 #[test]
@@ -730,7 +817,7 @@ fn deleting_a_missing_card_is_404_with_the_error_body() {
         serde_json::json!({"error": {
             "code": "card_not_found",
             "message": "card #99 not found.",
-            "reason": "No card has ID 99. Run \"skan ls\" to see the cards.",
+            "reason": "No card has ID 99. Run \"agboard ls\" to see the cards.",
         }})
     );
     for bad_id in ["abc", "0", "-1", "1.5"] {

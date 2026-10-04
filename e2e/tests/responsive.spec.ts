@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { resetBoard } from '../helpers/skan';
+import { resetBoard } from '../helpers/agboard';
 
 test.beforeEach(() => {
   resetBoard();

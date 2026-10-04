@@ -1,115 +1,183 @@
-//! Board export and import: file format, validation, deterministic output.
-
-use std::ffi::OsString;
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-
+//! Versioned Agent Board backup format and validation.
 use serde::{Deserialize, Serialize};
 
-mod validate;
+use crate::{
+    domain::{
+        BoardMeta, BoardSnapshot, Card, Column, HistoryKind, RunState,
+        normalize_and_validate_description, validate_board_name, validate_title,
+        validate_work_reason,
+    },
+    error::SkanError,
+};
 
-use crate::domain::{BoardMeta, BoardSnapshot, Card};
-use crate::error::{FileAction, SkanError};
-
-/// The value of `format` in every export file.
-pub const FORMAT: &str = "skan-board";
-/// The only supported `version`.
-pub const VERSION: u32 = 1;
-
-/// The file name used when an export path is omitted or is a directory.
-const DEFAULT_FILE_NAME: &str = "skan.json";
-
-static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
-
-/// The export file (`skan.json`). Field order is the key order in the file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ExportFile {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Backup {
     pub format: String,
     pub version: u32,
     pub board: BoardMeta,
     pub cards: Vec<Card>,
 }
 
-/// Build the export file from a snapshot. Cards are in ascending ID order.
-pub fn to_export_file(snapshot: &BoardSnapshot) -> ExportFile {
-    let mut cards = snapshot.cards.clone();
-    cards.sort_by_key(|card| card.id);
-    ExportFile {
-        format: FORMAT.to_string(),
-        version: VERSION,
-        board: snapshot.board.clone(),
-        cards,
+impl Backup {
+    pub fn from_snapshot(snapshot: BoardSnapshot) -> Self {
+        Self {
+            format: "skan-board".into(),
+            version: 2,
+            board: snapshot.board,
+            cards: snapshot.cards,
+        }
     }
-}
 
-/// Render the file: 2-space indent, UTF-8, exactly one trailing newline.
-pub fn serialize(file: &ExportFile) -> String {
-    let mut text =
-        serde_json::to_string_pretty(file).expect("an export file is always serializable");
-    text.push('\n');
-    text
-}
-
-/// Resolve the output path for `skan export`: no argument means
-/// `<cwd>/skan.json`, a directory means `<dir>/skan.json`, anything else is
-/// the file itself. Relative arguments are resolved against `cwd`.
-pub fn resolve_output(arg: Option<&Path>, cwd: &Path) -> PathBuf {
-    let joined = match arg {
-        None => cwd.join(DEFAULT_FILE_NAME),
-        Some(arg) => {
-            let path = cwd.join(arg);
-            if path.is_dir() {
-                path.join(DEFAULT_FILE_NAME)
-            } else {
-                path
+    pub fn validate(self) -> Result<BoardSnapshot, SkanError> {
+        let invalid = |reason: &str| SkanError::ImportInvalid {
+            file: "skan.json".into(),
+            reason: reason.into(),
+        };
+        if self.format != "skan-board" || self.version != 2 {
+            return Err(invalid("Only skan-board version 2 is supported."));
+        }
+        let board_name =
+            validate_board_name(&self.board.name).map_err(|_| invalid("Board name is invalid."))?;
+        if board_name != self.board.name || self.board.next_card_id < 1 {
+            return Err(invalid("Board metadata is invalid."));
+        }
+        let mut ids = std::collections::HashSet::new();
+        let mut history_ids = std::collections::HashSet::new();
+        let mut positions = std::collections::HashSet::new();
+        let max_id = self.cards.iter().map(|c| c.id).max().unwrap_or(0);
+        if self.board.next_card_id <= max_id {
+            return Err(invalid("nextCardId must be greater than every card ID."));
+        }
+        for card in &self.cards {
+            if card.id < 1
+                || !ids.insert(card.id)
+                || card.position < 1
+                || !positions.insert((card.card_status, card.position))
+            {
+                return Err(invalid(
+                    "Card IDs and lane positions must be unique and positive.",
+                ));
+            }
+            validate_title(&card.title).map_err(|_| invalid("Card title is invalid."))?;
+            normalize_and_validate_description(&card.description)
+                .map_err(|_| invalid("Card description is invalid."))?;
+            if (card.assignee == crate::domain::Assignee::Human
+                || card.card_status != Column::Doing)
+                && card.agent_status != RunState::Idle
+            {
+                return Err(invalid(
+                    "Card agentStatus is invalid for its assignee or cardStatus.",
+                ));
+            }
+            if card.history.is_empty() {
+                return Err(invalid("Every card must include its created history."));
+            }
+            let mut lane = Column::Todo;
+            let mut state = RunState::Idle;
+            let mut pending: Option<&str> = None;
+            let mut pending_reason: Option<&str> = None;
+            for (i, event) in card.history.iter().enumerate() {
+                if event.id < 1 || !history_ids.insert(event.id) {
+                    return Err(invalid("History IDs must be unique and positive."));
+                }
+                if i == 0 {
+                    if event.kind != HistoryKind::Created
+                        || event.from_card_status.is_some()
+                        || event.from_agent_status.is_some()
+                        || event.reason.is_some()
+                        || event.to_card_status != Column::Todo
+                        || event.to_agent_status != RunState::Idle
+                    {
+                        return Err(invalid("History must begin with a valid created event."));
+                    }
+                } else {
+                    let reason = event
+                        .reason
+                        .as_deref()
+                        .ok_or_else(|| invalid("Every change history requires a reason."))?;
+                    validate_work_reason(reason)
+                        .map_err(|_| invalid("History reason is invalid."))?;
+                    if event.from_card_status != Some(lane)
+                        || event.from_agent_status != Some(state)
+                    {
+                        return Err(invalid("History changes are not continuous."));
+                    }
+                    match event.kind {
+                        HistoryKind::Created => {
+                            return Err(invalid("Created history may appear only first."));
+                        }
+                        HistoryKind::Lane => {
+                            if event.to_card_status == lane {
+                                return Err(invalid("Lane history must change the card status."));
+                            }
+                            if event.to_agent_status != RunState::Idle {
+                                return Err(invalid(
+                                    "Lane changes must reset agentStatus to idle.",
+                                ));
+                            }
+                            lane = event.to_card_status;
+                            state = RunState::Idle;
+                            pending = None;
+                        }
+                        HistoryKind::Agent => {
+                            if event.to_card_status != lane
+                                || event.to_agent_status == state
+                                || (card.assignee == crate::domain::Assignee::Human
+                                    && event.to_agent_status != RunState::Idle)
+                                || (lane != Column::Doing
+                                    && event.to_agent_status != RunState::Idle)
+                            {
+                                return Err(invalid("Agent status change is invalid."));
+                            }
+                            match event.to_agent_status {
+                                RunState::Pending => {
+                                    pending = event.request_id.as_deref();
+                                    pending_reason = Some(reason);
+                                    if pending.is_none() {
+                                        return Err(invalid(
+                                            "Pending history must have a request ID.",
+                                        ));
+                                    }
+                                }
+                                RunState::Idle if state == RunState::Pending => {
+                                    if event.request_id.as_deref() != pending {
+                                        return Err(invalid(
+                                            "Answer history does not match the pending request.",
+                                        ));
+                                    }
+                                    pending = None;
+                                    pending_reason = None;
+                                }
+                                _ => {
+                                    if event.request_id.is_some() {
+                                        return Err(invalid("Unexpected request ID in history."));
+                                    }
+                                    pending = None;
+                                    pending_reason = None;
+                                }
+                            }
+                            state = event.to_agent_status;
+                        }
+                    }
+                }
+            }
+            if lane != card.card_status
+                || state != card.agent_status
+                || pending != card.pending_request_id.as_deref()
+            {
+                return Err(invalid("History does not match the current card state."));
+            }
+            if (state == RunState::Pending) != card.pending_reason.is_some()
+                || pending_reason != card.pending_reason.as_deref()
+            {
+                return Err(invalid("Pending reason does not match current state."));
             }
         }
-    };
-    // Drop "." components so `./skan.json` and `skan.json` resolve alike.
-    joined.components().collect()
-}
-
-/// Write `contents` to `path` through a temporary file in the same directory,
-/// so a failure leaves any existing file untouched.
-pub fn write_atomic(path: &Path, contents: &str) -> Result<(), SkanError> {
-    let file_error = |reason: String| SkanError::FileError {
-        action: FileAction::Write,
-        file: path.display().to_string(),
-        reason,
-    };
-    let name = path
-        .file_name()
-        .ok_or_else(|| file_error("The path has no file name.".to_string()))?;
-    let dir = match path.parent() {
-        Some(parent) if !parent.as_os_str().is_empty() => parent,
-        _ => Path::new("."),
-    };
-
-    // A temporary file next to the target keeps the final rename on one file
-    // system. `rename` replaces an existing file on Unix and on Windows.
-    let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let mut temp_name = OsString::from(".");
-    temp_name.push(name);
-    temp_name.push(format!(".{}.{counter}.tmp", std::process::id()));
-    let temp_path = dir.join(temp_name);
-
-    let result = (|| -> std::io::Result<()> {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temp_path)?;
-        file.write_all(contents.as_bytes())?;
-        file.sync_all()?;
-        drop(file);
-        fs::rename(&temp_path, path)
-    })();
-    if let Err(error) = result {
-        let _ = fs::remove_file(&temp_path);
-        return Err(file_error(error.to_string()));
+        Ok(BoardSnapshot {
+            board: self.board,
+            revision: 0,
+            cards: self.cards,
+        })
     }
-    Ok(())
 }
-
-pub use validate::{read_and_validate, validate};

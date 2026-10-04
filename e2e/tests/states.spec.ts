@@ -3,12 +3,12 @@ import {
   initEmptyBoard,
   makeHome,
   removeHome,
-  skanOk,
+  agboardOk,
   startServe,
   statesPort,
   stopServe,
   type Serve,
-} from '../helpers/skan';
+} from '../helpers/agboard';
 
 // This spec stops and restarts its serve, so it owns port 7632 and its own
 // data directory and shares nothing with the other specs.
@@ -31,7 +31,7 @@ test.afterAll(async () => {
 
 test('an empty board shows the lanes and a hint for agents', async ({ page }) => {
   await page.goto('/');
-  await expect(page).toHaveTitle('Empty Board - SimpleKanban');
+  await expect(page).toHaveTitle('Empty Board - Agent Board');
   await expect(page.getByRole('banner')).toContainText('Empty Board');
   for (const name of ['Todo', 'Doing', 'Done']) {
     const lane = page.getByRole('region', { name });
@@ -39,7 +39,7 @@ test('an empty board shows the lanes and a hint for agents', async ({ page }) =>
     await expect(lane.getByText('0', { exact: true })).toBeVisible();
   }
   await expect(page.getByText('No cards yet.')).toBeVisible();
-  await expect(page.getByText('Agents add cards with "skan add <title>".')).toBeVisible();
+  await expect(page.getByText('Agents add cards with "agboard add <title>".')).toBeVisible();
   await expect(page.getByRole('contentinfo')).toContainText('0 cards');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced \d{2}:\d{2}$/);
 });
@@ -59,17 +59,17 @@ test('stopping the serve shows Disconnected, and restarting it reconnects and fe
   await expect(page.getByRole('contentinfo')).toContainText('0 cards');
 
   // The CLI still works while the serve is down, and the change waits for the screen.
-  skanOk(['add', 'Added while disconnected'], home);
+  agboardOk(['add', 'Added while disconnected'], home);
 
   serve = await startServe(statesPort, home);
   await expect(
-    page.getByRole('button', { name: /^#1 Added while disconnected / }),
+    page.getByRole('button', { name: /^#1 AI Added while disconnected / }),
   ).toBeVisible({ timeout: 30_000 });
   await expect(status).toHaveText(/^Synced \d{2}:\d{2}$/);
   await expect(page.getByRole('contentinfo')).toContainText('1 card');
   await expect(page.getByText('No cards yet.')).toHaveCount(0);
 
   // Live updates work again after the reconnect.
-  skanOk(['add', 'Added after reconnecting'], home);
-  await expect(page.getByRole('button', { name: /^#2 Added after reconnecting / })).toBeVisible();
+  agboardOk(['add', 'Added after reconnecting'], home);
+  await expect(page.getByRole('button', { name: /^#2 AI Added after reconnecting / })).toBeVisible();
 });

@@ -1,4 +1,4 @@
-# SimpleKanbanへの貢献
+# Agent Boardへの貢献
 
 [English](CONTRIBUTING.md)
 
@@ -12,7 +12,7 @@ pnpm --dir web build
 cargo build
 ```
 
-実行ファイルは`target/debug/skan`です。
+実行ファイルは`target/debug/agboard`です。
 
 ## 開発
 

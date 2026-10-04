@@ -6,14 +6,14 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use crate::domain::{Column, RunState};
+use crate::domain::{Actor, Assignee, Column, RunState};
 use crate::error::{FileAction, SkanError};
 
-/// `skan --help`: the design's text, so that an agent can use `skan` from this alone.
+/// `agboard --help`: the board workflow for agents.
 const TOP_HELP: &str = "\
-skan - a local kanban board for coding agents
+agboard - a shared local work board for users and agents
 
-Usage: skan [--json] <COMMAND>
+Usage: agboard [--json] <COMMAND>
 
 Commands:
   init    Create the board
@@ -24,18 +24,18 @@ Commands:
   rm      Delete a card (humans only; asks for confirmation)
   ls      List cards
   show    Show a card and its history
+  snapshot Fetch the complete board and history
+  hook    Add the latest board snapshot to an agent hook
+  wait    Wait for a board change and fetch its history
   export  Write the board to a JSON file
   import  Restore the board from a JSON file
   serve   Show the board in your browser
 
 Workflow for agents:
-  skan ls --json                             # read the board first; a human may have moved cards
-  skan mv <id> doing                         # you start a card
-  skan state <id> running                    # you are working on it
-  skan state <id> pending --reason \"<text>\"  # you are waiting for a human or an external result
-  skan state <id> running                    # the wait is over
-  skan mv <id> done                          # you are finished (the card returns to idle)
-Do not leave a card running when you stop: finish it, or run `skan state <id> idle`.
+  agboard ls --json
+  agboard mv <id> doing --actor ai --reason \"Start\"
+  agboard state <id> running --actor ai --reason \"Working\"
+  agboard state <id> pending --actor ai --reason \"Need a decision\"
 
 Rules for agents:
   - Move a card to doing before you report running or pending.
@@ -46,7 +46,7 @@ Rules for agents:
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "skan",
+    name = "agboard",
     version,
     disable_help_subcommand = true,
     override_help = TOP_HELP
@@ -77,6 +77,10 @@ pub enum Command {
     Ls(LsArgs),
     /// Show a card and its history
     Show(ShowArgs),
+    /// Fetch the complete board and history without modifying it
+    Snapshot(SnapshotArgs),
+    Hook(HookArgs),
+    Wait(WaitArgs),
     /// Write the board to a JSON file
     Export(ExportArgs),
     /// Restore the board from a JSON file
@@ -97,6 +101,9 @@ impl Command {
             Command::Rm(_) => "rm",
             Command::Ls(_) => "ls",
             Command::Show(_) => "show",
+            Command::Snapshot(_) => "snapshot",
+            Command::Hook(_) => "hook",
+            Command::Wait(_) => "wait",
             Command::Export(_) => "export",
             Command::Import(_) => "import",
             Command::Serve(_) => "serve",
@@ -104,9 +111,30 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 11] = [
-    "init", "add", "edit", "mv", "state", "rm", "ls", "show", "export", "import", "serve",
+pub const SUBCOMMAND_NAMES: [&str; 14] = [
+    "init", "add", "edit", "mv", "state", "rm", "ls", "show", "snapshot", "export", "import",
+    "serve", "hook", "wait",
 ];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum AgentArg {
+    Claude,
+    Codex,
+}
+
+#[derive(Args, Debug)]
+pub struct HookArgs {
+    #[arg(long, value_enum)]
+    pub agent: AgentArg,
+}
+
+#[derive(Args, Debug)]
+pub struct WaitArgs {
+    #[arg(long)]
+    pub after: i64,
+    #[arg(long)]
+    pub timeout: Option<u64>,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum ColumnArg {
@@ -155,7 +183,7 @@ pub struct DescriptionArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  skan init --name \"My project\"")]
+#[command(after_help = "Examples:\n  agboard init --name \"My project\"")]
 pub struct InitArgs {
     /// Name of the board
     #[arg(long, value_name = "NAME")]
@@ -164,18 +192,24 @@ pub struct InitArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  skan add \"Write the setup guide\"\n  skan add \"Fix the login bug\" --desc \"Users cannot sign in on Safari\"\n  skan add \"Plan the release\" --desc-file notes.txt\n  echo \"Details\" | skan add \"Write the docs\" --desc -"
+    after_help = "Examples:\n  agboard add \"Write the setup guide\"\n  agboard add \"Fix the login bug\" --desc \"Users cannot sign in on Safari\"\n  agboard add \"Plan the release\" --desc-file notes.txt\n  echo \"Details\" | agboard add \"Write the docs\" --desc -"
 )]
 pub struct AddArgs {
     /// Title of the card (1 to 100 characters, one line)
     pub title: String,
     #[command(flatten)]
     pub description: DescriptionArgs,
+    /// Who owns this card
+    #[arg(long, value_enum)]
+    pub assignee: AssigneeArg,
+    /// Who is creating this card
+    #[arg(long, value_enum)]
+    pub actor: ActorArg,
 }
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  skan edit 15 --title \"Write the install guide\"\n  skan edit 15 --desc \"Steps for macOS and Linux\"\n  skan edit 15 --desc \"\""
+    after_help = "Examples:\n  agboard edit 15 --title \"Write the install guide\"\n  agboard edit 15 --desc \"Steps for macOS and Linux\"\n  agboard edit 15 --desc \"\""
 )]
 pub struct EditArgs {
     /// ID of the card
@@ -188,30 +222,113 @@ pub struct EditArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  skan mv 12 doing\n  skan mv 12 done")]
+#[command(after_help = "Examples:\n  agboard mv 12 doing\n  agboard mv 12 done")]
 pub struct MvArgs {
     /// ID of the card
     pub id: i64,
     /// Column to move the card to
     pub column: ColumnArg,
+    #[command(flatten)]
+    pub change: ChangeArgs,
 }
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Run states:\n  idle     not working on it\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason\n\nExamples:\n  skan state 12 running\n  skan state 12 pending --reason \"Waiting for review\"\n  skan state 12 idle"
+    after_help = "Run states:\n  idle     not working on it\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason\n\nExamples:\n  agboard state 12 running\n  agboard state 12 pending --reason \"Waiting for review\"\n  agboard state 12 idle"
 )]
 pub struct StateArgs {
     /// ID of the card
     pub id: i64,
     /// Run state to report
     pub state: RunStateArg,
-    /// What a pending card is waiting for (only with pending)
-    #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
-    pub reason: Option<String>,
+    #[command(flatten)]
+    pub change: ChangeArgs,
+    /// Current pending request identifier, required when answering a request
+    #[arg(long, value_name = "ID")]
+    pub request: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum ActorArg {
+    Ai,
+    Human,
+}
+impl ActorArg {
+    pub fn actor(self) -> Actor {
+        match self {
+            Self::Ai => Actor::Ai,
+            Self::Human => Actor::Human,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum AssigneeArg {
+    Ai,
+    Human,
+}
+impl AssigneeArg {
+    pub fn assignee(self) -> Assignee {
+        match self {
+            Self::Ai => Assignee::Ai,
+            Self::Human => Assignee::Human,
+        }
+    }
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  skan rm 11")]
+pub struct ChangeArgs {
+    /// Required explanation; use - to read UTF-8 from stdin
+    #[arg(
+        long,
+        value_name = "TEXT",
+        allow_hyphen_values = true,
+        group = "reason_source",
+        required_unless_present = "reason_file"
+    )]
+    pub reason: Option<String>,
+    /// Read the explanation from a UTF-8 file
+    #[arg(
+        long,
+        value_name = "PATH",
+        group = "reason_source",
+        required_unless_present = "reason"
+    )]
+    pub reason_file: Option<PathBuf>,
+    /// Who is making this change
+    #[arg(long, value_enum, required = true)]
+    pub actor: ActorArg,
+}
+
+impl ChangeArgs {
+    pub fn resolve_reason(&self) -> Result<String, SkanError> {
+        let raw = if let Some(path) = &self.reason_file {
+            std::fs::read_to_string(path).map_err(|e| SkanError::FileError {
+                action: FileAction::Read,
+                file: path.display().to_string(),
+                reason: e.to_string(),
+            })?
+        } else {
+            let reason = self.reason.as_deref().unwrap_or_default();
+            if reason == "-" {
+                let mut value = String::new();
+                std::io::stdin()
+                    .read_to_string(&mut value)
+                    .map_err(|e| SkanError::FileError {
+                        action: FileAction::Read,
+                        file: "standard input".into(),
+                        reason: e.to_string(),
+                    })?;
+                value
+            } else {
+                reason.to_string()
+            }
+        };
+        crate::domain::validate_work_reason(&raw)
+    }
+}
+
+#[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  agboard rm 11")]
 pub struct RmArgs {
     /// ID of the card
     pub id: i64,
@@ -219,7 +336,7 @@ pub struct RmArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  skan ls\n  skan ls --column doing\n  skan ls --state pending --json"
+    after_help = "Examples:\n  agboard ls\n  agboard ls --column doing\n  agboard ls --state pending --json"
 )]
 pub struct LsArgs {
     /// Only list cards in this column
@@ -231,14 +348,17 @@ pub struct LsArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  skan show 12\n  skan show 12 --json")]
+#[command(after_help = "Examples:\n  agboard show 12\n  agboard show 12 --json")]
 pub struct ShowArgs {
     /// ID of the card
     pub id: i64,
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  skan export\n  skan export -o backup/board.json")]
+pub struct SnapshotArgs {}
+
+#[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  agboard export\n  agboard export -o backup/board.json")]
 pub struct ExportArgs {
     /// Output file, or a directory to write skan.json into
     #[arg(short, long, value_name = "PATH")]
@@ -246,14 +366,14 @@ pub struct ExportArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  skan import\n  skan import backup/board.json")]
+#[command(after_help = "Examples:\n  agboard import\n  agboard import backup/board.json")]
 pub struct ImportArgs {
     /// Board file to read (default: skan.json in the current directory)
     pub file: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  skan serve\n  skan serve --port 7500")]
+#[command(after_help = "Examples:\n  agboard serve\n  agboard serve --port 7500")]
 pub struct ServeArgs {
     /// Port to listen on (127.0.0.1 only)
     #[arg(long, value_name = "PORT", default_value_t = 7420)]
@@ -337,9 +457,10 @@ impl Cli {
                     command: Some("edit".to_string()),
                 })
             }
-            Command::State(args) if args.reason.is_some() && args.state != RunStateArg::Pending => {
-                Err(SkanError::ReasonRequiresPending)
-            }
+            Command::Snapshot(_) if !self.json => Err(SkanError::InvalidArgument {
+                message: "snapshot requires --json.".into(),
+                command: Some("snapshot".into()),
+            }),
             _ => Ok(()),
         }
     }

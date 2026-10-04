@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { listCards, mainHome, resetBoard } from '../helpers/skan';
+import { listCards, mainHome, resetBoard } from '../helpers/agboard';
 
 test.use({ locale: 'ja-JP' });
 
@@ -20,12 +20,12 @@ test('starts in English in a Japanese browser, switches and persists without tra
   const home = mainHome();
   expect(path.isAbsolute(home)).toBe(true);
   expect(path.dirname(home)).toBe(os.tmpdir());
-  expect(home).toContain('skan-e2e-main-');
+  expect(home).toContain('agent-board-e2e-main-');
   expect(home).not.toMatch(/Library\/Application Support\/skan$/);
   expect(await page.evaluate(() => navigator.language)).toBe('ja-JP');
   expect(await page.evaluate(() => localStorage.getItem('skan.locale'))).toBeNull();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.getByRole('banner')).toContainText('simplekanban');
+  await expect(page.getByRole('banner')).toContainText('Agent Board');
   await expect(lane(page, 'Todo')).toBeVisible();
   await expect(lane(page, 'Doing')).toBeVisible();
 
@@ -64,9 +64,9 @@ test('starts in English in a Japanese browser, switches and persists without tra
   const storedCard = listCards().find(({ id }) => id === 12);
   expect(storedCard).toMatchObject({
     title: 'Restore a board from JSON',
-    column: 'doing',
-    run_state: 'pending',
-    pending_reason: 'Waiting for confirmation on how to replace a board.',
+    cardStatus: 'doing',
+    agentStatus: 'pending',
+    pendingReason: 'Waiting for confirmation on how to replace a board.',
   });
 
   await expect(page.evaluate(() => localStorage.getItem('skan.locale'))).resolves.toBe('ja');
@@ -81,7 +81,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(lane(page, 'Todo')).toBeVisible();
   await expect(card(page, 12)).toContainText('Pending');
-  expect(listCards().find(({ id }) => id === 12)).toMatchObject({ column: 'doing', run_state: 'pending' });
+  expect(listCards().find(({ id }) => id === 12)).toMatchObject({ cardStatus: 'doing', agentStatus: 'pending' });
 });
 
 test('keyboard selection keeps an open delete confirmation and the selected card', async ({ page }, testInfo) => {
@@ -103,7 +103,7 @@ test('keyboard selection keeps an open delete confirmation and the selected card
   await expect(japaneseTrigger).toBeFocused();
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   await expect(menu).toHaveCount(0);
-  await expect(card(page, 12)).toHaveAttribute('aria-pressed', 'true');
+  await expect(card(page, 12)).toHaveAttribute('aria-current', 'true');
   const japanesePanel = page.getByRole('complementary', { name: 'カードの詳細' });
   await expect(
     japanesePanel.getByText('#12「Restore a board from JSON」を削除しますか？ この操作は元に戻せません。'),

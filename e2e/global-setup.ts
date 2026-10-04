@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { makeHome, mainPort, repoRoot, resetBoard, startServe } from './helpers/skan';
+import { makeHome, mainPort, repoRoot, resetBoard, startServe } from './helpers/agboard';
 import { state } from './helpers/state';
 
 function run(command: string, args: string[]): void {

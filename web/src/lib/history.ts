@@ -1,17 +1,24 @@
-import type { ColumnName, Transition } from '../types';
+import type { ColumnName, HistoryEvent } from '../types';
 
 export interface HistoryItem {
-  column: ColumnName;
-  /** True only for the creation transition. The view chooses its localized label. */
+  id: number;
+  statusKind: 'card' | 'agent';
+  status: ColumnName | import('../types').RunState;
+  actor: 'ai' | 'human';
+  reason: string | null;
   created: boolean;
   at: string;
 }
 
-/** One point per transition, oldest first. Returning to an earlier column adds a new point. */
-export function historyItems(transitions: Transition[]): HistoryItem[] {
-  return transitions.map((t) => ({
-    column: t.to,
-    created: t.from === null,
-    at: t.at,
+/** One status label per event, newest first. */
+export function historyItems(events: HistoryEvent[]): HistoryItem[] {
+  return [...events].reverse().map((event) => ({
+    id: event.id,
+    statusKind: event.kind === 'agent' ? 'agent' : 'card',
+    status: event.kind === 'agent' ? event.toAgentStatus : event.toCardStatus,
+    actor: event.actor,
+    reason: event.reason,
+    created: event.kind === 'created',
+    at: event.at,
   }));
 }

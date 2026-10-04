@@ -48,7 +48,7 @@ describe('language changes in the app', () => {
     expect(
       screen
         .getByRole('button', { name: /Prepare the Windows build/ })
-        .getAttribute('aria-pressed'),
+        .getAttribute('aria-current'),
     ).toBe('true');
 
     await userEvent.click(screen.getByRole('button', { name: 'Language' }));
@@ -63,7 +63,7 @@ describe('language changes in the app', () => {
     expect(
       screen
         .getByRole('button', { name: /Prepare the Windows build/ })
-        .getAttribute('aria-pressed'),
+        .getAttribute('aria-current'),
     ).toBe('true');
     expect(document.documentElement.lang).toBe('ja');
     await waitFor(() =>

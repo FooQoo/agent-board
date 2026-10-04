@@ -3,7 +3,7 @@ import type { Card, ColumnName } from '../types';
 /** Groups cards by column in display order: Todo and Doing oldest first, Done newest first. */
 export function groupCards(cards: Card[]): Record<ColumnName, Card[]> {
   const groups: Record<ColumnName, Card[]> = { todo: [], doing: [], done: [] };
-  for (const card of cards) groups[card.column].push(card);
+  for (const card of cards) groups[card.cardStatus].push(card);
   groups.todo.sort((a, b) => a.position - b.position);
   groups.doing.sort((a, b) => a.position - b.position);
   groups.done.sort((a, b) => b.position - a.position);

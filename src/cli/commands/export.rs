@@ -1,65 +1,65 @@
-use std::path::{Component, Path, PathBuf};
-
-use serde_json::json;
-
 use crate::cli::args::ExportArgs;
 use crate::cli::{Context, Outcome};
-use crate::error::{FileAction, SkanError};
-use crate::transfer;
+use crate::{
+    error::{FileAction, SkanError},
+    transfer::Backup,
+};
+use serde_json::json;
+use std::{fs, io::Write, path::PathBuf};
 
 pub fn run(ctx: &mut Context, args: &ExportArgs) -> Result<Outcome, SkanError> {
-    let cwd = std::env::current_dir().map_err(|e| SkanError::FileError {
-        action: FileAction::Read,
-        file: "the current directory".to_string(),
+    let destination = args
+        .output
+        .clone()
+        .unwrap_or_else(|| PathBuf::from("skan.json"));
+    let destination = if destination.is_dir() {
+        destination.join("skan.json")
+    } else {
+        destination
+    };
+    let snapshot = ctx.store.snapshot()?;
+    let backup = Backup::from_snapshot(snapshot);
+    let mut bytes = serde_json::to_vec_pretty(&backup).map_err(|e| SkanError::DatabaseError {
         reason: e.to_string(),
     })?;
-    run_in(ctx, args, &cwd)
-}
-
-/// Like [`run`], with the current directory given.
-pub fn run_in(ctx: &Context, args: &ExportArgs, cwd: &Path) -> Result<Outcome, SkanError> {
-    let snapshot = ctx.store.snapshot()?;
-    let file = transfer::to_export_file(&snapshot);
-    let path = transfer::resolve_output(args.output.as_deref(), cwd);
-    transfer::write_atomic(&path, &transfer::serialize(&file))?;
-
-    let count = file.cards.len();
+    bytes.push(b'\n');
+    let parent = destination
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| std::path::Path::new("."));
+    fs::create_dir_all(parent).map_err(|e| file_error(&destination, e))?;
+    let mut nonce = [0u8; 8];
+    getrandom::fill(&mut nonce).map_err(|e| SkanError::DatabaseError {
+        reason: e.to_string(),
+    })?;
+    let suffix = nonce.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let tmp = destination.with_extension(format!("agboard-{}-{suffix}.tmp", std::process::id()));
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)
+        .map_err(|e| file_error(&tmp, e))?;
+    let result = (|| {
+        file.write_all(&bytes)?;
+        file.sync_all()?;
+        drop(file);
+        fs::rename(&tmp, &destination)
+    })();
+    if let Err(e) = result {
+        let _ = fs::remove_file(&tmp);
+        return Err(file_error(&destination, e));
+    }
     Ok(Outcome {
-        // Writing a file does not change the board.
         changed: false,
-        human: format!(
-            "Exported {} to {}.\n",
-            cards_text(count),
-            display_path(&path, cwd)
-        ),
-        json: json!({"path": path.display().to_string(), "cards": count}),
+        human: format!("Exported board to {}.\n", destination.display()),
+        json: json!({"path": destination}),
     })
 }
 
-/// `1 card`, `8 cards`.
-pub(super) fn cards_text(count: usize) -> String {
-    match count {
-        1 => "1 card".to_string(),
-        n => format!("{n} cards"),
+fn file_error(path: &std::path::Path, error: std::io::Error) -> SkanError {
+    SkanError::FileError {
+        action: FileAction::Write,
+        file: path.display().to_string(),
+        reason: error.to_string(),
     }
-}
-
-/// A path as shown to a human: under `cwd` (or relative to it) as `./sub/file`,
-/// anything else as it is.
-pub(super) fn display_path(path: &Path, cwd: &Path) -> String {
-    let relative: PathBuf = if path.is_absolute() {
-        match path.strip_prefix(cwd) {
-            Ok(rest) => rest.to_path_buf(),
-            Err(_) => return path.display().to_string(),
-        }
-    } else {
-        path.to_path_buf()
-    };
-    if matches!(
-        relative.components().next(),
-        Some(Component::CurDir | Component::ParentDir)
-    ) {
-        return relative.display().to_string();
-    }
-    format!("./{}", relative.display())
 }

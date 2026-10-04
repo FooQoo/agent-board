@@ -8,11 +8,12 @@
 mod ops;
 mod rows;
 mod schema;
+mod work;
 
 use std::path::Path;
 use std::time::Duration;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OpenFlags};
 
 use crate::error::SkanError;
 
@@ -29,6 +30,25 @@ impl Store {
     /// parent directories are created.
     pub fn open(path: &Path) -> Result<Store, SkanError> {
         Store::open_with_busy_timeout(path, BUSY_TIMEOUT)
+    }
+
+    /// Open an existing initialized database without creating or modifying it.
+    pub fn open_read_only(path: &Path) -> Result<Store, SkanError> {
+        if !path.exists() {
+            return Err(SkanError::NotInitialized);
+        }
+        let conn = Connection::open_with_flags(
+            path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        conn.busy_timeout(BUSY_TIMEOUT)?;
+        let version = schema::user_version(&conn)?;
+        schema::check_version(version)?;
+        if version != 2 {
+            return Err(SkanError::NotInitialized);
+        }
+        conn.pragma_update(None, "query_only", true)?;
+        Ok(Store { conn })
     }
 
     /// Like [`Store::open`] with a custom wait time for write contention.

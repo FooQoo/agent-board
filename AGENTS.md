@@ -22,4 +22,4 @@ TZ=UTC pnpm --dir web test
 
 - Set `TZ=UTC` for tests so displayed times are fixed.
 - Tests must never touch the real data area (`~/Library/Application Support/skan/` on macOS). Point `SKAN_HOME` at a temporary directory, for example `SKAN_HOME=$(mktemp -d)`.
-- `skan serve` listens only on `127.0.0.1`. Do not use the default port 7420 in tests; it is kept free for normal use. Use a port from your assigned range, or port 0.
+- `agboard serve` listens only on `127.0.0.1`. Do not use the default port 7420 in tests; it is kept free for normal use. Use a port from your assigned range, or port 0.

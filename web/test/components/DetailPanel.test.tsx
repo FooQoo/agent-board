@@ -33,12 +33,14 @@ describe('DetailPanel', () => {
   });
 
   it('shows the id, title, column, description and history of the selected card', () => {
-    render(<DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />);
+    const { container } = render(
+      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+    );
     expect(screen.getByText('#8')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
-    expect(screen.getByText('Done', { selector: '.column-chip' })).toBeTruthy();
+    expect(container.querySelector('.detail__meta .status-label--done')?.textContent).toBe('Done');
     expect(screen.getByRole('heading', { name: 'Description' })).toBeTruthy();
-    expect(screen.getByText('Create the storage for the board with skan init.')).toBeTruthy();
+    expect(screen.getByText('Create the storage for the board with agboard init.')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'History' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Close details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete card' })).toBeTruthy();
@@ -58,27 +60,75 @@ describe('DetailPanel', () => {
     expect(screen.getByText('No description.')).toBeTruthy();
   });
 
-  it('draws one history point per transition with the column name and time', () => {
+  it('draws one history point per event with the changed status and time', () => {
     const { container } = render(
       <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
     );
     const steps = container.querySelectorAll('.history__step');
     expect(steps).toHaveLength(3);
     const texts = Array.from(steps).map((step) => step.textContent);
-    expect(texts).toEqual(['TodoCreated · 10/01 16:00', 'Doing10/01 16:30', 'Done10/02 09:48']);
-    expect(steps[0]?.getAttribute('data-column')).toBe('todo');
-    expect(steps[2]?.getAttribute('data-column')).toBe('done');
+    expect(texts).toEqual([
+      'DoneAI10/02 09:48Moved card',
+      'DoingAI10/01 16:30Moved card',
+      'TodoAICreated · 10/01 16:00',
+    ]);
+    expect(steps[0]?.getAttribute('data-column')).toBe('done');
+    expect(steps[2]?.getAttribute('data-column')).toBe('todo');
   });
 
   it('adds a point when a card returned to an earlier column', () => {
     const card = makeCard({
       id: 32,
-      column: 'doing',
-      transitions: [
-        { from: null, to: 'todo', at: '2026-10-01T16:00:00Z' },
-        { from: 'todo', to: 'doing', at: '2026-10-01T16:30:00Z' },
-        { from: 'doing', to: 'todo', at: '2026-10-01T17:00:00Z' },
-        { from: 'todo', to: 'doing', at: '2026-10-01T18:00:00Z' },
+      cardStatus: 'doing',
+      history: [
+        {
+          id: 1,
+          kind: 'created',
+          actor: 'ai',
+          reason: null,
+          fromCardStatus: null,
+          toCardStatus: 'todo',
+          fromAgentStatus: null,
+          toAgentStatus: 'idle',
+          requestId: null,
+          at: '2026-10-01T16:00:00Z',
+        },
+        {
+          id: 2,
+          kind: 'lane',
+          actor: 'ai',
+          reason: 'move',
+          fromCardStatus: 'todo',
+          toCardStatus: 'doing',
+          fromAgentStatus: 'idle',
+          toAgentStatus: 'idle',
+          requestId: null,
+          at: '2026-10-01T16:30:00Z',
+        },
+        {
+          id: 3,
+          kind: 'lane',
+          actor: 'human',
+          reason: 'move',
+          fromCardStatus: 'doing',
+          toCardStatus: 'todo',
+          fromAgentStatus: 'idle',
+          toAgentStatus: 'idle',
+          requestId: null,
+          at: '2026-10-01T17:00:00Z',
+        },
+        {
+          id: 4,
+          kind: 'lane',
+          actor: 'ai',
+          reason: 'move',
+          fromCardStatus: 'todo',
+          toCardStatus: 'doing',
+          fromAgentStatus: 'idle',
+          toAgentStatus: 'idle',
+          requestId: null,
+          at: '2026-10-01T18:00:00Z',
+        },
       ],
     });
     const { container } = render(<DetailPanel card={card} onClose={noop} onDeleted={noop} />);
@@ -89,10 +139,16 @@ describe('DetailPanel', () => {
     const { rerender } = render(
       <DetailPanel card={fixtureCard(11)} onClose={noop} onDeleted={noop} />,
     );
-    expect(screen.getByText('Running')).toBeTruthy();
+    expect(document.querySelector('.detail__meta .status-label--running')?.textContent).toBe(
+      'Running',
+    );
     rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
-    expect(screen.getByText('Pending')).toBeTruthy();
-    expect(screen.getByText('Waiting for confirmation on how to replace a board.')).toBeTruthy();
+    expect(document.querySelector('.detail__meta .status-label--pending')?.textContent).toBe(
+      'Pending',
+    );
+    expect(screen.getAllByText('Waiting for confirmation on how to replace a board.')).toHaveLength(
+      2,
+    );
     rerender(<DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />);
     expect(screen.queryByText('Idle')).toBeNull();
   });

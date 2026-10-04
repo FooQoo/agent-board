@@ -1,4 +1,4 @@
-import { removeHome, stopServe } from './helpers/skan';
+import { removeHome, stopServe } from './helpers/agboard';
 import { state } from './helpers/state';
 
 export default async function globalTeardown(): Promise<void> {

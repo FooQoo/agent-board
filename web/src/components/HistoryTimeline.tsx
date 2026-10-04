@@ -1,22 +1,28 @@
 import { useTranslation } from 'react-i18next';
-import { columnLabel, formatShort } from '../lib/format';
+import { formatShort } from '../lib/format';
 import { historyItems } from '../lib/history';
-import type { Transition } from '../types';
+import type { HistoryEvent } from '../types';
+import { StatusLabel } from './StatusLabel';
+import { AssigneeLabel } from './AssigneeLabel';
 
-export function HistoryTimeline({ transitions }: { transitions: Transition[] }) {
+export function HistoryTimeline({ events }: { events: HistoryEvent[] }) {
   const { t } = useTranslation();
-  const items = historyItems(transitions);
+  const items = historyItems(events);
   return (
     <ol className="history">
-      {items.map((item, index) => (
-        <li key={index} className="history__step" data-column={item.column}>
-          <span className="dot dot--history" data-column={item.column} aria-hidden="true" />
+      {items.map((item) => (
+        <li key={item.id} className="history__step" data-column={item.status}>
+          <span className="dot dot--history" data-column={item.status} aria-hidden="true" />
           <span className="history__text">
-            <span className="history__column">{columnLabel(item.column, t)}</span>
+            <span className="history__heading">
+              <StatusLabel kind={item.statusKind} status={item.status} />
+              <AssigneeLabel assignee={item.actor} />
+            </span>
             <span className="history__at">
               {item.created ? `${t('history.created')} · ` : ''}
               {formatShort(item.at)}
             </span>
+            {item.reason && <span className="history__reason">{item.reason}</span>}
           </span>
         </li>
       ))}

@@ -72,26 +72,30 @@ describe('columnLabel', () => {
 
 describe('stateLabel', () => {
   it('returns the run state label for doing cards', () => {
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'idle' }))).toBe('Idle');
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'running' }))).toBe('Running');
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'pending' }))).toBe('Pending');
+    expect(stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'idle' }))).toBe('Idle');
+    expect(stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'running' }))).toBe(
+      'Running',
+    );
+    expect(stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'pending' }))).toBe(
+      'Pending',
+    );
   });
 
   it('translates run state values only for doing cards', () => {
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'idle' }), translate)).toBe(
-      '未稼働',
-    );
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'running' }), translate)).toBe(
-      '稼働中',
-    );
-    expect(stateLabel(makeCard({ id: 1, column: 'doing', run_state: 'pending' }), translate)).toBe(
-      '待機中',
-    );
-    expect(stateLabel(makeCard({ id: 1, column: 'todo' }), translate)).toBeNull();
+    expect(
+      stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'idle' }), translate),
+    ).toBe('未稼働');
+    expect(
+      stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'running' }), translate),
+    ).toBe('稼働中');
+    expect(
+      stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'pending' }), translate),
+    ).toBe('待機中');
+    expect(stateLabel(makeCard({ id: 1, cardStatus: 'todo' }), translate)).toBeNull();
   });
 
   it('returns null for cards that are not in doing', () => {
-    expect(stateLabel(makeCard({ id: 1, column: 'todo' }))).toBeNull();
-    expect(stateLabel(makeCard({ id: 1, column: 'done' }))).toBeNull();
+    expect(stateLabel(makeCard({ id: 1, cardStatus: 'todo' }))).toBeNull();
+    expect(stateLabel(makeCard({ id: 1, cardStatus: 'done' }))).toBeNull();
   });
 });

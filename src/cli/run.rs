@@ -25,6 +25,49 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     if let Err(error) = cli.validate() {
         return fail(env, &error, cli.json);
     }
+    if let Command::Hook(args) = &cli.command {
+        let agent = match args.agent {
+            args::AgentArg::Claude => "claude",
+            args::AgentArg::Codex => "codex",
+        };
+        let mut stdin = std::io::stdin().lock();
+        if let Some(output) = crate::agent::hook::run(agent, &mut stdin, &env.db_path) {
+            write_text(env.stdout, &output);
+        }
+        return 0;
+    }
+    if let Command::Wait(args) = &cli.command {
+        let result = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|error| error.to_string())
+            .and_then(|runtime| {
+                runtime.block_on(crate::agent::wait::wait_for_change(
+                    args.after,
+                    args.timeout,
+                ))
+            });
+        return match result {
+            Ok(output) => {
+                write_text(env.stdout, &output);
+                0
+            }
+            Err(message) => {
+                let (code, reason) = message
+                    .split_once(": ")
+                    .unwrap_or(("board_unavailable", message.as_str()));
+                let body =
+                    serde_json::json!({"error":{"code":code,"message":reason,"reason":reason}})
+                        .to_string();
+                if cli.json {
+                    write_text(env.stderr, &(body + "\n"));
+                } else {
+                    write_text(env.stderr, &format!("{reason}\n"));
+                }
+                1
+            }
+        };
+    }
     match prepare_and_run(&cli, env) {
         // `serve` has already written its startup line while it ran.
         Ok(_) if matches!(cli.command, Command::Serve(_)) => 0,
@@ -45,7 +88,14 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
 }
 
 fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Context, Outcome), SkanError> {
-    let store = Store::open(&env.db_path)?;
+    let store = if matches!(cli.command, Command::Snapshot(_)) {
+        if !env.db_path.exists() {
+            return Err(SkanError::NotInitialized);
+        }
+        Store::open_read_only(&env.db_path)?
+    } else {
+        Store::open(&env.db_path)?
+    };
     // `init` and `import` create the board, so they look for it themselves.
     if !matches!(cli.command, Command::Init(_) | Command::Import(_)) && store.board()?.is_none() {
         return Err(SkanError::NotInitialized);
@@ -72,6 +122,10 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> 
         Command::Rm(args) => commands::rm::run(ctx, args),
         Command::Ls(args) => commands::ls::run(ctx, args),
         Command::Show(args) => commands::show::run(ctx, args),
+        Command::Snapshot(_) => commands::snapshot::run(ctx),
+        Command::Hook(_) | Command::Wait(_) => {
+            unreachable!("agent commands are handled before store setup")
+        }
         Command::Export(args) => commands::export::run(ctx, args),
         Command::Import(args) => commands::import::run(ctx, args),
         Command::Serve(args) => commands::serve::run(ctx, args),
@@ -88,7 +142,7 @@ fn fail(env: &mut Env, error: &SkanError, json: bool) -> i32 {
     error.exit_code()
 }
 
-/// Print and flush; a closed pipe (`skan ls | head`) is not an error.
+/// Print and flush; a closed pipe (`agboard ls | head`) is not an error.
 fn write_text(out: &mut dyn Write, text: &str) {
     let _ = out.write_all(text.as_bytes());
     if !text.ends_with('\n') {
@@ -98,7 +152,7 @@ fn write_text(out: &mut dyn Write, text: &str) {
 }
 
 /// Called once after a command that changed the board: tells a running
-/// `skan serve` so open browsers refresh. Best effort; the result is ignored
+/// `agboard serve` so open browsers refresh. Best effort; the result is ignored
 /// and the notification never takes longer than its own 300 ms budget.
 pub fn after_commit(_ctx: &Context) {
     let _ = crate::interact::notify::notify_serve();

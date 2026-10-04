@@ -1,7 +1,7 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { resetBoard } from '../helpers/skan';
+import { resetBoard } from '../helpers/agboard';
 
-// The seed is the eight cards of the approved mock; see fixtures/seed.skan.json.
+// The seed is the eight cards of the approved mock; see fixtures/agent-board.json.
 test.beforeEach(async ({ page }) => {
   resetBoard();
   await page.goto('/');
@@ -13,10 +13,10 @@ function lane(page: import('@playwright/test').Page, name: 'Todo' | 'Doing' | 'D
 }
 
 test('the header and the page title show the board name', async ({ page }) => {
-  await expect(page).toHaveTitle('simplekanban - SimpleKanban');
+  await expect(page).toHaveTitle('agent-board - Agent Board');
   const header = page.getByRole('banner');
-  await expect(header.getByRole('heading', { level: 1 })).toHaveText('SimpleKanban');
-  await expect(header).toContainText('simplekanban');
+  await expect(header.getByRole('heading', { level: 1 })).toHaveText('Agent Board');
+  await expect(header).toContainText('Agent Board');
 });
 
 test('three lanes show their names and card counts', async ({ page }) => {
@@ -32,13 +32,13 @@ test('three lanes show their names and card counts', async ({ page }) => {
 
 test('a card shows its ID, title, and update time', async ({ page }) => {
   await expect(
-    lane(page, 'Todo').getByRole('button', { name: '#14 Prepare the Windows build Updated 10/02 10:08' }),
+    lane(page, 'Todo').getByRole('button', { name: '#14 User Prepare the Windows build Updated 10/02 10:08' }),
   ).toBeVisible();
   await expect(
-    lane(page, 'Todo').getByRole('button', { name: '#15 Write the setup guide Updated 10/02 09:25' }),
+    lane(page, 'Todo').getByRole('button', { name: '#15 AI Write the setup guide Updated 10/02 09:25' }),
   ).toBeVisible();
   await expect(
-    lane(page, 'Done').getByRole('button', { name: '#8 Initialize the board Updated 10/02 09:48' }),
+    lane(page, 'Done').getByRole('button', { name: '#8 AI Initialize the board Updated 10/02 09:48' }),
   ).toBeVisible();
   // Todo and Doing are oldest first.
   await expect(lane(page, 'Todo').getByRole('button')).toHaveText([
@@ -53,12 +53,12 @@ test('Doing cards show Idle, Running, or Pending, and a pending card shows its r
 }) => {
   const doing = lane(page, 'Doing');
   await expect(
-    doing.getByRole('button', { name: '#11 Running Implement card moves Updated 10/02 10:42' }),
+    doing.getByRole('button', { name: '#11 AI Running Implement card moves Updated 10/02 10:42' }),
   ).toBeVisible();
   await expect(
-    doing.getByRole('button', { name: '#13 Idle Check the board display Updated 10/02 10:12' }),
+    doing.getByRole('button', { name: '#13 AI Idle Check the board display Updated 10/02 10:12' }),
   ).toBeVisible();
-  const pending = doing.getByRole('button', { name: /^#12 Pending Restore a board from JSON / });
+  const pending = doing.getByRole('button', { name: /^#12 AI Pending Restore a board from JSON / });
   await expect(pending).toBeVisible();
   await expect(pending).toContainText('Waiting for confirmation on how to replace a board.');
 

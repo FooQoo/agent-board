@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { listCards, resetBoard, skanOk, skanOnTerminal } from '../helpers/skan';
+import { listCards, resetBoard, agboardOk, agboardOnTerminal } from '../helpers/agboard';
 
 test.beforeEach(async ({ page }) => {
   resetBoard();
-  skanOk(['add', 'Disposable card', '--desc', 'Delete me']);
+  agboardOk(['add', 'Disposable card', '--desc', 'Delete me']);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
 });
@@ -39,7 +39,7 @@ test('Delete removes the card and clears the selection', async ({ page }) => {
   await expect(page.getByRole('contentinfo')).toContainText('8 cards');
   expect(listCards().map((c) => c.id)).not.toContain(DISPOSABLE);
   // The numbering goes on; IDs are never reused.
-  expect(JSON.parse(skanOk(['add', 'Next', '--json']).stdout).card.id).toBe(18);
+  expect(JSON.parse(agboardOk(['add', 'Next', '--json']).stdout).card.id).toBe(18);
 });
 
 test('a card the CLI deletes while selected clears the selection', async ({ page }) => {
@@ -47,7 +47,7 @@ test('a card the CLI deletes while selected clears the selection', async ({ page
   await expect(panel(page).getByRole('heading', { level: 2 })).toHaveText('Write the setup guide');
 
   // A person at a terminal confirms the deletion with y.
-  const result = skanOnTerminal('y', ['rm', '15']);
+  const result = agboardOnTerminal('y', ['rm', '15']);
   expect(result.code).toBe(0);
   expect(result.stdout).toContain('Deleted #15.');
 

@@ -1,4 +1,4 @@
-// Notification client for a running "skan serve".
+// Notification client for a running "agboard serve".
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
@@ -11,7 +11,7 @@ pub const NOTIFY_TIMEOUT: Duration = Duration::from_millis(300);
 /// Only the status line of the reply is needed.
 const MAX_STATUS_LINE: usize = 256;
 
-/// Tell the running `skan serve` (found through `serve.json`) that the board
+/// Tell the running `agboard serve` (found through `serve.json`) that the board
 /// changed. Best effort: returns `false` when there is no `serve.json`, nothing
 /// answers, the answer is not 204, or everything together takes longer than
 /// [`NOTIFY_TIMEOUT`]. Never panics.

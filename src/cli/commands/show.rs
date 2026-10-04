@@ -1,15 +1,14 @@
-use serde_json::json;
-
 use crate::cli::args::ShowArgs;
-use crate::cli::output::{card_value, show_text};
 use crate::cli::{Context, Outcome};
 use crate::error::SkanError;
+use serde_json::json;
 
 pub fn run(ctx: &mut Context, args: &ShowArgs) -> Result<Outcome, SkanError> {
     let card = ctx.store.card(args.id)?;
+    let human = crate::cli::output::show_text(&card);
     Ok(Outcome {
         changed: false,
-        human: show_text(&card),
-        json: json!({"card": card_value(&card)}),
+        human,
+        json: json!({"card": card}),
     })
 }

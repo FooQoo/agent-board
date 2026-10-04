@@ -6,9 +6,9 @@ const TOKEN_PATTERN = /<meta name="skan-token" content="([0-9a-f]{64})"/;
 /** Get the current delete token from the Rust server's rendered index. */
 async function fetchToken(backendOrigin: string): Promise<string> {
   const response = await fetch(backendOrigin, { signal: AbortSignal.timeout(2_000) });
-  if (!response.ok) throw new Error(`skan serve returned ${response.status}`);
+  if (!response.ok) throw new Error(`agboard serve returned ${response.status}`);
   const token = (await response.text()).match(TOKEN_PATTERN)?.[1];
-  if (!token) throw new Error('skan serve did not return a delete token');
+  if (!token) throw new Error('agboard serve did not return a delete token');
   return token;
 }
 

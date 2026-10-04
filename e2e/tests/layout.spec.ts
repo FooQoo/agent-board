@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { resetBoard, skanOk } from '../helpers/skan';
+import { resetBoard, agboardOk } from '../helpers/agboard';
 
 // Headless Chromium hides scrollbars by default; the scroll cue needs the real ones.
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
@@ -59,9 +59,9 @@ const computed = (page: Page, selector: string, props: string[]) =>
   );
 
 function fillDone(extra = 4): void {
-  for (let i = 0; i < extra; i += 1) skanOk(['add', `Extra done card ${i + 1}`]);
-  const cards = JSON.parse(skanOk(['ls', '--json']).stdout).cards as { id: number; title: string }[];
-  for (const c of cards.filter((x) => x.title.startsWith('Extra done card'))) skanOk(['mv', String(c.id), 'done']);
+  for (let i = 0; i < extra; i += 1) agboardOk(['add', `Extra done card ${i + 1}`]);
+  const cards = JSON.parse(agboardOk(['ls', '--json']).stdout).cards as { id: number; title: string }[];
+  for (const c of cards.filter((x) => x.title.startsWith('Extra done card'))) agboardOk(['mv', String(c.id), 'done']);
 }
 
 // ---------------------------------------------------------------- AC-1

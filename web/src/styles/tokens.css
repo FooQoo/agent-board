@@ -30,6 +30,7 @@
   /* Colors used by the mock frames but not defined as design variables */
   --header-board-name: #d6e6ff;
   --danger-bg: #fff1f0;
+  --dialog-backdrop: rgb(13 24 43 / 48%);
 
   /* Fonts (design: font-sans / font-mono / font-serif) */
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -98,6 +99,8 @@
   --size-brand-mark: 44px;
   --size-grip: 16px;
   --size-badge-icon: 18px;
+  --size-status-label-width: 108px;
+  --size-dialog-width: 640px;
   --size-lane-dot: 12px;
   --size-history-dot: 14px;
   --size-lane-rule-end: 10px;

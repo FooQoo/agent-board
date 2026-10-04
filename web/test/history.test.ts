@@ -1,53 +1,64 @@
 import { describe, expect, it } from 'vitest';
 import { historyItems } from '../src/lib/history';
-import type { Transition } from '../src/types';
+import type { HistoryEvent } from '../src/types';
 
-const t = (from: Transition['from'], to: Transition['to'], at: string): Transition => ({
-  from,
-  to,
-  at,
-});
+const events: HistoryEvent[] = [
+  {
+    id: 1,
+    kind: 'created',
+    actor: 'ai',
+    reason: null,
+    fromCardStatus: null,
+    toCardStatus: 'todo',
+    fromAgentStatus: null,
+    toAgentStatus: 'idle',
+    requestId: null,
+    at: '2026-10-01T16:00:00Z',
+  },
+  {
+    id: 2,
+    kind: 'lane',
+    actor: 'human',
+    reason: 'Start implementation',
+    fromCardStatus: 'todo',
+    toCardStatus: 'doing',
+    fromAgentStatus: 'idle',
+    toAgentStatus: 'idle',
+    requestId: null,
+    at: '2026-10-01T16:30:00Z',
+  },
+  {
+    id: 3,
+    kind: 'agent',
+    actor: 'ai',
+    reason: 'Need a decision',
+    fromCardStatus: 'doing',
+    toCardStatus: 'doing',
+    fromAgentStatus: 'idle',
+    toAgentStatus: 'pending',
+    requestId: '0123456789abcdef0123456789abcdef',
+    at: '2026-10-02T09:48:00Z',
+  },
+];
 
 describe('historyItems', () => {
-  it('returns a semantic creation marker without localized display text', () => {
-    expect(historyItems([t(null, 'todo', '2026-10-01T16:00:00Z')])).toEqual([
-      { column: 'todo', created: true, at: '2026-10-01T16:00:00Z' },
+  it('uses one changed status label per event, newest first, with actor and reason', () => {
+    const items = historyItems(events);
+    expect(items.map((item) => [item.statusKind, item.status])).toEqual([
+      ['agent', 'pending'],
+      ['card', 'doing'],
+      ['card', 'todo'],
     ]);
+    expect(items.map((item) => item.actor)).toEqual(['ai', 'human', 'ai']);
+    expect(items.map((item) => item.reason)).toEqual([
+      'Need a decision',
+      'Start implementation',
+      null,
+    ]);
+    expect(items.map((item) => item.created)).toEqual([false, false, true]);
   });
 
-  it('adds one point per transition from Todo to Doing to Done', () => {
-    const items = historyItems([
-      t(null, 'todo', '2026-10-01T16:00:00Z'),
-      t('todo', 'doing', '2026-10-01T16:30:00Z'),
-      t('doing', 'done', '2026-10-02T09:48:00Z'),
-    ]);
-    expect(items).toEqual([
-      { column: 'todo', created: true, at: '2026-10-01T16:00:00Z' },
-      { column: 'doing', created: false, at: '2026-10-01T16:30:00Z' },
-      { column: 'done', created: false, at: '2026-10-02T09:48:00Z' },
-    ]);
-  });
-
-  it('adds a point when a card returns to a column it was in before', () => {
-    const items = historyItems([
-      t(null, 'todo', '2026-10-01T16:00:00Z'),
-      t('todo', 'doing', '2026-10-01T16:30:00Z'),
-      t('doing', 'todo', '2026-10-01T17:00:00Z'),
-      t('todo', 'doing', '2026-10-01T18:00:00Z'),
-    ]);
-    expect(items.map((i) => i.column)).toEqual(['todo', 'doing', 'todo', 'doing']);
-    expect(items.map((i) => i.created)).toEqual([true, false, false, false]);
-  });
-
-  it('keeps the order of the input (oldest first)', () => {
-    const items = historyItems([
-      t(null, 'todo', '2026-10-01T16:00:00Z'),
-      t('todo', 'doing', '2026-10-01T16:30:00Z'),
-    ]);
-    expect(items.map((i) => i.at)).toEqual(['2026-10-01T16:00:00Z', '2026-10-01T16:30:00Z']);
-  });
-
-  it('returns an empty list for no transitions', () => {
+  it('returns an empty list for no history', () => {
     expect(historyItems([])).toEqual([]);
   });
 });

@@ -7,7 +7,7 @@ import { Lane } from '../../src/components/Lane';
 import { LaneHeader } from '../../src/components/LaneHeader';
 import { RunStateBadge } from '../../src/components/RunStateBadge';
 import { i18n } from '../../src/i18n';
-import type { Transition } from '../../src/types';
+import type { HistoryEvent } from '../../src/types';
 
 afterEach(async () => {
   await i18n.changeLanguage('en');
@@ -47,17 +47,39 @@ describe('localized board content', () => {
     rerender(<BoardMessage kind="empty" />);
     expect(screen.getByText('カードはまだありません。')).toBeTruthy();
     expect(
-      screen.getByText('エージェントは "skan add <title>" でカードを追加します。'),
+      screen.getByText('エージェントは "agboard add <title>" でカードを追加します。'),
     ).toBeTruthy();
   });
 
   it('localizes only the creation marker in history and preserves order, columns, and timestamps', async () => {
     await i18n.changeLanguage('ja');
-    const transitions: Transition[] = [
-      { from: null, to: 'todo', at: '2026-10-01T16:00:00Z' },
-      { from: 'todo', to: 'doing', at: '2026-10-01T16:30:00Z' },
+    const events: HistoryEvent[] = [
+      {
+        id: 1,
+        kind: 'created',
+        actor: 'ai',
+        reason: null,
+        fromCardStatus: null,
+        toCardStatus: 'todo',
+        fromAgentStatus: null,
+        toAgentStatus: 'idle',
+        requestId: null,
+        at: '2026-10-01T16:00:00Z',
+      },
+      {
+        id: 2,
+        kind: 'lane',
+        actor: 'human',
+        reason: '着手',
+        fromCardStatus: 'todo',
+        toCardStatus: 'doing',
+        fromAgentStatus: 'idle',
+        toAgentStatus: 'idle',
+        requestId: null,
+        at: '2026-10-01T16:30:00Z',
+      },
     ];
-    const { container } = render(<HistoryTimeline transitions={transitions} />);
+    const { container } = render(<HistoryTimeline events={events} />);
     expect(screen.getByText('未着手')).toBeTruthy();
     expect(screen.getByText('作成 · 10/01 16:00')).toBeTruthy();
     expect(screen.getByText('進行中')).toBeTruthy();
@@ -66,6 +88,6 @@ describe('localized board content', () => {
       [...container.querySelectorAll('.history__step')].map((step) =>
         step.getAttribute('data-column'),
       ),
-    ).toEqual(['todo', 'doing']);
+    ).toEqual(['doing', 'todo']);
   });
 });

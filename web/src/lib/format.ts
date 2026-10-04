@@ -36,6 +36,6 @@ const STATE_LABELS = {
 
 /** The run state is only shown for cards in Doing. */
 export function stateLabel(card: Card, t?: TFunction): string | null {
-  if (card.column !== 'doing') return null;
-  return t ? t(`runState.${card.run_state}`) : STATE_LABELS[card.run_state];
+  if (card.assignee !== 'ai' || card.cardStatus !== 'doing') return null;
+  return t ? t(`runState.${card.agentStatus}`) : STATE_LABELS[card.agentStatus];
 }

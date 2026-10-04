@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-/// Contents of `serve.json`: how the CLI finds a running `skan serve`.
+/// Contents of `serve.json`: how the CLI finds a running `agboard serve`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServeInfo {
     pub pid: u32,

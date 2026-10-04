@@ -10,17 +10,33 @@ export function fixtureCard(id: number): Card {
 }
 
 export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
+  const at = '2026-10-02T00:00:00Z';
   return {
     title: `Card ${overrides.id}`,
     description: '',
-    column: 'todo',
+    assignee: 'ai',
+    cardStatus: 'todo',
     position: 1,
-    run_state: 'idle',
-    pending_reason: null,
-    created_at: '2026-10-02T00:00:00Z',
-    updated_at: '2026-10-02T00:00:00Z',
-    run_state_changed_at: '2026-10-02T00:00:00Z',
-    transitions: [{ from: null, to: 'todo', at: '2026-10-02T00:00:00Z' }],
+    agentStatus: 'idle',
+    pendingReason: null,
+    pendingRequestId: null,
+    createdAt: at,
+    updatedAt: at,
+    agentStatusChangedAt: at,
+    history: [
+      {
+        id: 1,
+        kind: 'created',
+        actor: 'ai',
+        reason: null,
+        fromCardStatus: null,
+        toCardStatus: 'todo',
+        fromAgentStatus: null,
+        toAgentStatus: 'idle',
+        requestId: null,
+        at,
+      },
+    ],
     ...overrides,
   };
 }

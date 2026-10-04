@@ -1,23 +1,25 @@
+use crate::cli::args::LsArgs;
+use crate::cli::{Context, Outcome};
+use crate::{domain::Column, error::SkanError};
 use serde_json::json;
 
-use crate::cli::args::LsArgs;
-use crate::cli::output::{card_value, ls_text};
-use crate::cli::{Context, Outcome};
-use crate::domain::Column;
-use crate::error::SkanError;
-
 pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
-    let column = args.column.map(|c| c.column());
-    let state = args.state.map(|s| s.run_state());
-    let cards = ctx.store.list_cards(column, state)?;
-    let columns = match column {
-        Some(column) => vec![column],
-        None => vec![Column::Todo, Column::Doing, Column::Done],
-    };
-    let values: Vec<_> = cards.iter().map(card_value).collect();
+    let cards: Vec<_> = ctx
+        .store
+        .snapshot()?
+        .cards
+        .into_iter()
+        .filter(|card| {
+            args.column.is_none_or(|c| card.card_status == c.column())
+                && args
+                    .state
+                    .is_none_or(|s| card.agent_status == s.run_state())
+        })
+        .collect();
+    let text = crate::cli::output::ls_text(&cards, &[Column::Todo, Column::Doing, Column::Done]);
     Ok(Outcome {
         changed: false,
-        human: ls_text(&cards, &columns),
-        json: json!({"cards": values}),
+        human: text,
+        json: json!({"cards": cards}),
     })
 }

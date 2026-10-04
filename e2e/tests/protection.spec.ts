@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { listCards, resetBoard } from '../helpers/skan';
+import { listCards, resetBoard } from '../helpers/agboard';
 
 test.beforeEach(() => {
   resetBoard();

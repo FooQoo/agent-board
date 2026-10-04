@@ -14,10 +14,10 @@ describe('groupCards', () => {
 
   it('orders todo and doing by ascending position', () => {
     const groups = groupCards([
-      makeCard({ id: 1, column: 'todo', position: 3 }),
-      makeCard({ id: 2, column: 'todo', position: 1 }),
-      makeCard({ id: 3, column: 'doing', position: 2 }),
-      makeCard({ id: 4, column: 'doing', position: 1 }),
+      makeCard({ id: 1, cardStatus: 'todo', position: 3 }),
+      makeCard({ id: 2, cardStatus: 'todo', position: 1 }),
+      makeCard({ id: 3, cardStatus: 'doing', position: 2 }),
+      makeCard({ id: 4, cardStatus: 'doing', position: 1 }),
     ]);
     expect(ids(groups.todo)).toEqual([2, 1]);
     expect(ids(groups.doing)).toEqual([4, 3]);
@@ -25,9 +25,9 @@ describe('groupCards', () => {
 
   it('orders done by descending position', () => {
     const groups = groupCards([
-      makeCard({ id: 1, column: 'done', position: 1 }),
-      makeCard({ id: 2, column: 'done', position: 3 }),
-      makeCard({ id: 3, column: 'done', position: 2 }),
+      makeCard({ id: 1, cardStatus: 'done', position: 1 }),
+      makeCard({ id: 2, cardStatus: 'done', position: 3 }),
+      makeCard({ id: 3, cardStatus: 'done', position: 2 }),
     ]);
     expect(ids(groups.done)).toEqual([2, 3, 1]);
   });

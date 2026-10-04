@@ -1,5 +1,5 @@
 {
-  "name": "skan-e2e",
+  "name": "agent-board-e2e",
   "private": true,
   "type": "module",
   "scripts": {

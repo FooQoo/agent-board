@@ -1,9 +1,19 @@
 export type ColumnName = 'todo' | 'doing' | 'done';
 export type RunState = 'idle' | 'running' | 'pending';
+export type Assignee = 'ai' | 'human';
+export type Actor = 'ai' | 'human';
+export type HistoryKind = 'created' | 'lane' | 'agent';
 
-export interface Transition {
-  from: ColumnName | null;
-  to: ColumnName;
+export interface HistoryEvent {
+  id: number;
+  kind: HistoryKind;
+  actor: Actor;
+  reason: string | null;
+  fromCardStatus: ColumnName | null;
+  toCardStatus: ColumnName;
+  fromAgentStatus: RunState | null;
+  toAgentStatus: RunState;
+  requestId: string | null;
   at: string;
 }
 
@@ -11,24 +21,27 @@ export interface Card {
   id: number;
   title: string;
   description: string;
-  column: ColumnName;
+  assignee: Assignee;
+  cardStatus: ColumnName;
   position: number;
-  run_state: RunState;
-  pending_reason: string | null;
-  created_at: string;
-  updated_at: string;
-  run_state_changed_at: string;
-  transitions: Transition[];
+  agentStatus: RunState;
+  pendingReason: string | null;
+  pendingRequestId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  agentStatusChangedAt: string;
+  history: HistoryEvent[];
 }
 
 export interface BoardInfo {
   name: string;
-  created_at: string;
+  createdAt: string;
 }
 
 /** Response body of `GET /api/board`. */
 export interface Board {
   board: BoardInfo;
+  revision: number;
   cards: Card[];
 }
 

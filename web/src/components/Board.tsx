@@ -2,6 +2,7 @@ import { groupCards } from '../lib/board';
 import type { Card, ColumnName } from '../types';
 import { BoardMessage } from './BoardMessage';
 import { Lane } from './Lane';
+import { DragDropProvider } from '@dnd-kit/react';
 
 const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
 
@@ -11,9 +12,10 @@ export interface BoardProps {
   selectedId: number | null;
   onSelect: (id: number) => void;
   onRetry: () => void;
+  onMove: (card: Card, column: ColumnName) => void;
 }
 
-export function Board({ status, cards, selectedId, onSelect, onRetry }: BoardProps) {
+export function Board({ status, cards, selectedId, onSelect, onRetry, onMove }: BoardProps) {
   if (status !== 'ready') {
     return (
       <main className="board board--centered">
@@ -24,19 +26,34 @@ export function Board({ status, cards, selectedId, onSelect, onRetry }: BoardPro
 
   const groups = groupCards(cards);
   return (
-    <main className="board">
-      <div className="board__lanes">
-        {COLUMNS.map((column) => (
-          <Lane
-            key={column}
-            column={column}
-            cards={groups[column]}
-            selectedId={selectedId}
-            onSelect={onSelect}
-          />
-        ))}
-      </div>
-      {cards.length === 0 && <BoardMessage kind="empty" />}
-    </main>
+    <DragDropProvider
+      onDragEnd={(event) => {
+        if (event.canceled) return;
+        const cardId = event.operation.source?.data.cardId;
+        const column = event.operation.target?.data.column;
+        const card = cards.find((item) => item.id === cardId);
+        if (
+          card &&
+          (column === 'todo' || column === 'doing' || column === 'done') &&
+          card.cardStatus !== column
+        )
+          onMove(card, column);
+      }}
+    >
+      <main className="board">
+        <div className="board__lanes">
+          {COLUMNS.map((column) => (
+            <Lane
+              key={column}
+              column={column}
+              cards={groups[column]}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+        {cards.length === 0 && <BoardMessage kind="empty" />}
+      </main>
+    </DragDropProvider>
   );
 }

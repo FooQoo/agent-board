@@ -47,10 +47,10 @@ describe('App', () => {
     expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.getByText('Connecting…')).toBeTruthy();
 
-    await screen.findByRole('region', { name: 'Todo' });
-    expect(screen.getByRole('heading', { level: 1, name: 'SimpleKanban' })).toBeTruthy();
-    expect(screen.getByText('simplekanban')).toBeTruthy();
-    expect(document.title).toBe('simplekanban - SimpleKanban');
+    await screen.findByText('agent-board');
+    expect(screen.getByRole('heading', { level: 1, name: 'Agent Board' })).toBeTruthy();
+    expect(screen.getByText('agent-board')).toBeTruthy();
+    expect(document.title).toBe('agent-board - Agent Board');
     expect(screen.getByText('8 cards')).toBeTruthy();
   });
 
@@ -76,11 +76,11 @@ describe('App', () => {
 
     await userEvent.click(cardButton('Initialize the board'));
     expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
-    expect(cardButton('Initialize the board').getAttribute('aria-pressed')).toBe('true');
+    expect(cardButton('Initialize the board').getAttribute('aria-current')).toBe('true');
 
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
     expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(cardButton('Initialize the board').getAttribute('aria-pressed')).toBe('false');
+    expect(cardButton('Initialize the board').getAttribute('aria-current')).toBe('false');
   });
 
   it('switches the details when another card is clicked', async () => {
@@ -100,7 +100,7 @@ describe('App', () => {
     current = {
       ...current,
       cards: current.cards.map((c) =>
-        c.id === 11 ? { ...c, run_state: 'pending' as const, pending_reason: 'Waiting' } : c,
+        c.id === 11 ? { ...c, agentStatus: 'pending' as const, pendingReason: 'Waiting' } : c,
       ),
     };
     act(() => FakeEventSource.latest.emit('changed'));
@@ -143,7 +143,7 @@ describe('App', () => {
     current = { ...current, cards: [] };
     render(<App />);
     expect(await screen.findByText('No cards yet.')).toBeTruthy();
-    expect(screen.getByText('Agents add cards with "skan add <title>".')).toBeTruthy();
+    expect(screen.getByText('Agents add cards with "agboard add <title>".')).toBeTruthy();
     expect(screen.getAllByRole('region')).toHaveLength(3);
     expect(screen.getByText('0 cards')).toBeTruthy();
   });
@@ -180,7 +180,7 @@ describe('App', () => {
       await screen.findByText('Delete #11 "Implement card moves"? This cannot be undone.'),
     ).toBeTruthy();
     expect(screen.getByText('Could not delete the card. Try again.')).toBeTruthy();
-    expect(cardButton('Implement card moves').getAttribute('aria-pressed')).toBe('true');
+    expect(cardButton('Implement card moves').getAttribute('aria-current')).toBe('true');
   });
 
   it('does not open the sample confirmation for a card selected later', async () => {
