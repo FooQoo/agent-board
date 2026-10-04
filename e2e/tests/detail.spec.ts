@@ -54,7 +54,7 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
     await expect(spinner).toHaveCSS('animation-name', 'none');
   }
   await expect(card(page, 11).locator('.assignee-label svg')).toHaveCount(1);
-  await expect(panel.locator('.detail__meta .assignee-label')).toHaveCSS('border-top-style', 'solid');
+  await expect(panel.locator('.detail__meta .assignee-label')).toHaveCSS('border-top-style', 'none');
 
   // A card outside Doing has a column and no run state.
   await card(page, 8).click();
@@ -68,15 +68,16 @@ test('History shows the newest status change first with its actor and reason', a
   await card(page, 8).click();
   const history = details(page).getByRole('list');
   await expect(history.getByRole('listitem')).toHaveText([
-    /^DoneAI10\/02 09:48Moved card$/,
-    /^DoingAI10\/01 16:30Moved card$/,
-    /^TodoAICreated · 10\/01 16:00$/,
+    /^Done10\/02 09:48Moved card$/,
+    /^Doing10\/01 16:30Moved card$/,
+    /^TodoCreated · 10\/01 16:00$/,
   ]);
+  await expect(history.getByRole('img', { name: 'AI', exact: true })).toHaveCount(3);
   await expect(history.getByText('Created')).toHaveCount(1);
   await expect(details(page).getByRole('heading', { name: 'History' })).toBeVisible();
 
   await card(page, 14).click();
-  await expect(history.getByRole('listitem')).toHaveText([/^TodoAICreated · 10\/02 03:00$/]);
+  await expect(history.getByRole('listitem')).toHaveText([/^TodoCreated · 10\/02 03:00$/]);
 });
 
 test('selecting another card switches the panel, and Close details clears it', async ({ page }) => {

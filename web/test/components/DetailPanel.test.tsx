@@ -68,9 +68,9 @@ describe('DetailPanel', () => {
     expect(steps).toHaveLength(3);
     const texts = Array.from(steps).map((step) => step.textContent);
     expect(texts).toEqual([
-      'DoneAI10/02 09:48Moved card',
-      'DoingAI10/01 16:30Moved card',
-      'TodoAICreated · 10/01 16:00',
+      'Done10/02 09:48Moved card',
+      'Doing10/01 16:30Moved card',
+      'TodoCreated · 10/01 16:00',
     ]);
     expect(steps[0]?.getAttribute('data-column')).toBe('done');
     expect(steps[2]?.getAttribute('data-column')).toBe('todo');

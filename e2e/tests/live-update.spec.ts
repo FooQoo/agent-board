@@ -119,7 +119,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await expect(userCard).toBeVisible();
   await userCard.click();
   const panel = page.getByRole('complementary', { name: 'Card details' });
-  await expect(panel).toContainText('User');
+  await expect(panel.locator('.detail__meta').getByRole('img', { name: 'User', exact: true })).toBeVisible();
   await expect(panel.locator('select')).toHaveCount(0);
   const source = await userCard.boundingBox();
   const target = await lane(page, 'Doing').boundingBox();
@@ -139,7 +139,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await move.getByRole('button', { name: 'Save' }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#17 Review the release notes User / })).toBeVisible();
   await expect(panel.getByRole('listitem').first()).toContainText('The user is starting review now.');
-  await expect(panel.getByRole('listitem').first()).toContainText('User');
+  await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
 });
 
 test('a user answer returns a pending card to idle and records the full answer in history', async ({ page }) => {
@@ -154,7 +154,7 @@ test('a user answer returns a pending card to idle and records the full answer i
   await answer.getByRole('button', { name: 'Save' }).click();
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 Idle Restore a board from JSON AI / })).toBeVisible();
-  await expect(panel.getByRole('listitem').first()).toContainText('User');
+  await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
   await expect(panel.getByRole('listitem').first()).toContainText('Do not migrate or delete user data.');
   await expect(panel.getByRole('button', { name: 'Answer' })).toHaveCount(0);
 });
