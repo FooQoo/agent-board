@@ -114,7 +114,12 @@ export function ActionDialog({
                       checked={assignee === value}
                       onChange={() => setAssignee(value)}
                     />
-                    <AssigneeLabel assignee={value} />
+                    <span aria-hidden="true">
+                      <AssigneeLabel assignee={value} />
+                    </span>
+                    <span>
+                      {t(value === 'ai' ? 'dialog.assigneeAgent' : 'dialog.assigneeUser')}
+                    </span>
                   </label>
                 ))}
               </fieldset>

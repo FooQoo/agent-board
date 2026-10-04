@@ -110,6 +110,9 @@ test('the selection stays on a card that moves to another lane', async ({ page }
 test('users can add a card, choose its owner, and move it with a reason', async ({ page }) => {
   await page.getByRole('button', { name: 'Add card' }).click();
   const create = page.getByRole('dialog');
+  await expect(create.getByText('Agent', { exact: true })).toBeVisible();
+  await expect(create.getByText('User', { exact: true })).toBeVisible();
+  await expect(create.getByRole('radio', { name: 'Agent', exact: true })).toBeChecked();
   await create.getByLabel('Title').fill('Review the release notes');
   await create.getByLabel('Description').fill('Check the wording with the release owner.');
   await create.getByRole('radio', { name: 'User' }).check();
