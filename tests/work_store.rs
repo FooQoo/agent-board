@@ -1,5 +1,5 @@
 use chrono::{TimeZone, Utc};
-use skan::{
+use agent_board::{
     domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState},
     store::Store,
 };
@@ -255,7 +255,7 @@ fn moving_a_running_card_to_done_records_one_lane_event_and_resets_idle() {
     assert_eq!(done.value.agent_status, RunState::Idle);
     assert_eq!(done.value.history.len(), 4);
     let event = done.value.history.last().unwrap();
-    assert_eq!(event.kind, skan::domain::HistoryKind::Lane);
+    assert_eq!(event.kind, agent_board::domain::HistoryKind::Lane);
     assert_eq!(event.from_agent_status, Some(RunState::Running));
     assert_eq!(event.to_agent_status, RunState::Idle);
 }

@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Utc};
 use rusqlite::Connection;
-use skan::store::Store;
-use skan::{
+use agent_board::store::Store;
+use agent_board::{
     domain::{Actor, Assignee, NewCard},
     error::SkanError,
 };

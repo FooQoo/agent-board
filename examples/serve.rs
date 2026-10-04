@@ -5,7 +5,7 @@
 
 use std::process::ExitCode;
 
-use skan::server::{ServeConfig, run};
+use agent_board::server::{ServeConfig, run};
 
 fn parse_port(args: &[String]) -> Result<u16, String> {
     match args {

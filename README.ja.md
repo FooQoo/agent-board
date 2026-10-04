@@ -8,7 +8,7 @@
 
 AIが作業を登録し、ユーザーも状態の更新や判断への回答を行います。
 
-[English](README.md) · [開発に参加する](CONTRIBUTING.ja.md)
+[English](README.md) · [開発に参加する](CONTRIBUTING.ja.md) · [GitHubリポジトリ](https://github.com/FooQoo/agent-board)
 
 ![ローカル完結](https://img.shields.io/badge/data-local%20only-1f6feb)
 ![SQLite](https://img.shields.io/badge/storage-SQLite-1f6feb)

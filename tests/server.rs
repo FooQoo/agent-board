@@ -82,10 +82,10 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, TimeZone, Utc};
-use skan::domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState};
-use skan::error::SkanError;
-use skan::server::{ServeConfig, run_until};
-use skan::store::Store;
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState};
+use agent_board::error::SkanError;
+use agent_board::server::{ServeConfig, run_until};
+use agent_board::store::Store;
 
 // SKAN_HOME is process-global. It is only needed while a server starts (the
 // server captures its paths then), so the lock is released once it is ready.
@@ -908,7 +908,7 @@ fn a_keep_alive_comment_arrives_within_sixteen_seconds() {
 
 // ---------------------------------------------------------------- serve.json and startup
 
-use skan::paths::ServeInfo;
+use agent_board::paths::ServeInfo;
 
 fn serve_json(home: &Path) -> Option<ServeInfo> {
     let text = std::fs::read_to_string(home.join("serve.json")).ok()?;
@@ -973,7 +973,7 @@ fn serve_json_is_written_while_running_and_removed_when_the_server_stops() {
     assert_eq!(written.pid, std::process::id());
     assert_eq!(written.port, server.port());
     assert!(
-        skan::clock::parse_utc(&written.started_at).is_ok(),
+        agent_board::clock::parse_utc(&written.started_at).is_ok(),
         "{}",
         written.started_at
     );
@@ -1080,7 +1080,7 @@ fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let mut events = server.events();
-    let notified = with_home(home.path(), skan::interact::notify::notify_serve);
+    let notified = with_home(home.path(), agent_board::interact::notify::notify_serve);
     assert!(notified);
     events.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
 }
@@ -1094,12 +1094,12 @@ fn notify_serve_is_false_after_the_server_stopped() {
     // serve.json is gone, and a leftover one pointing at the closed port fails too.
     assert!(!with_home(
         home.path(),
-        skan::interact::notify::notify_serve
+        agent_board::interact::notify::notify_serve
     ));
     write_serve_json(home.path(), &info(std::process::id(), port));
     assert!(!with_home(
         home.path(),
-        skan::interact::notify::notify_serve
+        agent_board::interact::notify::notify_serve
     ));
 }
 

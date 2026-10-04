@@ -39,7 +39,7 @@ pub fn format_local_short(dt: DateTime<Utc>) -> String {
     dt.with_timezone(&Local).format("%m/%d %H:%M").to_string()
 }
 
-/// serde adapter: `#[serde(with = "skan::clock::serde_utc")]`.
+/// serde adapter: `#[serde(with = "agent_board::clock::serde_utc")]`.
 pub mod serde_utc {
     use chrono::{DateTime, Utc};
     use serde::{Deserialize, Deserializer, Serializer, de::Error};

@@ -1,7 +1,7 @@
-use skan::domain::{
+use agent_board::domain::{
     normalize_and_validate_description, validate_board_name, validate_reason, validate_title,
 };
-use skan::error::SkanError;
+use agent_board::error::SkanError;
 
 fn invalid(field: &str, reason: &str) -> SkanError {
     SkanError::InvalidValue {

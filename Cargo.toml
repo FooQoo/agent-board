@@ -1,6 +1,9 @@
 [package]
-name = "skan"
+name = "agent-board"
 version = "0.1.0"
+description = "A local, history-backed work board for users and AI agents."
+repository = "https://github.com/FooQoo/agent-board"
+homepage = "https://github.com/FooQoo/agent-board"
 edition = "2024"
 autobins = false
 

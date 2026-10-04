@@ -1,4 +1,4 @@
-use skan::domain::{Assignee, Column, RunState, check_work_state, validate_work_reason};
+use agent_board::domain::{Assignee, Column, RunState, check_work_state, validate_work_reason};
 
 #[test]
 fn only_ai_owned_doing_cards_can_run_or_wait() {

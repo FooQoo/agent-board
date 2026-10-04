@@ -1,3 +1,3 @@
 fn main() {
-    std::process::exit(skan::cli::run());
+    std::process::exit(agent_board::cli::run());
 }

@@ -4,9 +4,9 @@ use std::time::{Duration, Instant};
 
 use chrono::{TimeZone, Utc};
 use rusqlite::Connection;
-use skan::domain::{Actor, Assignee, NewCard};
-use skan::error::SkanError;
-use skan::store::Store;
+use agent_board::domain::{Actor, Assignee, NewCard};
+use agent_board::error::SkanError;
+use agent_board::store::Store;
 
 fn now() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 2, 1, 0, 0).unwrap()

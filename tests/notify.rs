@@ -8,7 +8,7 @@ use std::sync::Mutex;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use skan::interact::notify::{NOTIFY_TIMEOUT, notify_port, notify_serve};
+use agent_board::interact::notify::{NOTIFY_TIMEOUT, notify_port, notify_serve};
 
 // SKAN_HOME is process-global; tests that call `notify_serve` hold this lock.
 static ENV_LOCK: Mutex<()> = Mutex::new(());

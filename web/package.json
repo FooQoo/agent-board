@@ -1,6 +1,11 @@
 {
-  "name": "skan-web",
+  "name": "agent-board-web",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FooQoo/agent-board.git"
+  },
+  "homepage": "https://github.com/FooQoo/agent-board#readme",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

@@ -8,7 +8,7 @@
 
 AI agents register work for themselves and users. Users update cards and answer decisions.
 
-[日本語](README.ja.md) · [Contributing](CONTRIBUTING.md)
+[日本語](README.ja.md) · [Contributing](CONTRIBUTING.md) · [GitHub repository](https://github.com/FooQoo/agent-board)
 
 ![Local only](https://img.shields.io/badge/data-local%20only-1f6feb)
 ![SQLite](https://img.shields.io/badge/storage-SQLite-1f6feb)

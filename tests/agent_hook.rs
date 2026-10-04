@@ -23,7 +23,7 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
     let before = std::fs::read(&db_path).unwrap();
     let input = br#"{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"ignored"}}"#;
     let mut cursor = Cursor::new(input);
-    let result = skan::agent::hook::run("claude", &mut cursor, &db_path).unwrap();
+    let result = agent_board::agent::hook::run("claude", &mut cursor, &db_path).unwrap();
     let parsed: Value = serde_json::from_str(&result).unwrap();
     assert_eq!(
         parsed["hookSpecificOutput"]["hookEventName"],
@@ -38,7 +38,7 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
     assert_eq!(snapshot["cards"][0]["history"].as_array().unwrap().len(), 1);
     assert_eq!(before, std::fs::read(&db_path).unwrap());
     assert!(
-        skan::agent::hook::run(
+        agent_board::agent::hook::run(
             "codex",
             &mut Cursor::new(br#"{"hook_event_name":"PostToolUseFailure"}"#),
             &db_path
@@ -52,19 +52,19 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
     let home = tempdir().unwrap();
     let db_path = home.path().join("missing.db");
     let input = br#"{"hook_event_name":"SessionStart"}"#;
-    let output = skan::agent::hook::run("codex", &mut Cursor::new(input), &db_path).unwrap();
+    let output = agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path).unwrap();
     assert!(output.contains("AGBOARD_ERROR"));
     assert!(!db_path.exists());
     let oversized = vec![b'x'; 65_537];
-    let output = skan::agent::hook::run("claude", &mut Cursor::new(oversized), &db_path).unwrap();
+    let output = agent_board::agent::hook::run("claude", &mut Cursor::new(oversized), &db_path).unwrap();
     assert!(output.contains("hook_input_too_large"));
     assert!(!db_path.exists());
 }
 
 #[test]
 fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
-    use skan::domain::{Actor, Assignee, NewCard};
-    use skan::store::Store;
+    use agent_board::domain::{Actor, Assignee, NewCard};
+    use agent_board::store::Store;
     let home = tempdir().unwrap();
     let db_path = home.path().join("board.db");
     let store = Store::open(&db_path).unwrap();
@@ -84,7 +84,7 @@ fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
             .unwrap();
     }
     let input = br#"{"hook_event_name":"PostToolUse"}"#;
-    let output = skan::agent::hook::run("codex", &mut Cursor::new(input), &db_path).unwrap();
+    let output = agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path).unwrap();
     let parsed: Value = serde_json::from_str(&output).unwrap();
     assert!(
         parsed["hookSpecificOutput"]["additionalContext"]
