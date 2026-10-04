@@ -57,13 +57,15 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
   await expect(move).toContainText('Doing');
   // dnd-kit keeps the source in a dropping animation briefly after pointer-up.
   // Wait until that transition is finished before editing the newly opened dialog.
-  await expect(card(page, 16)).not.toHaveAttribute('data-dnd-dragging', 'true');
-  await expect(card(page, 16)).not.toHaveAttribute('data-dnd-dropping', '');
+  // The open dialog makes the board inert, so the card is located by CSS rather than by role.
+  const dragged = page.locator('button.card').filter({ hasText: /^#16(?!\d)/ }).first();
+  await expect(dragged).not.toHaveAttribute('data-dnd-dragging', 'true');
+  await expect(dragged).not.toHaveAttribute('data-dnd-dropping', '');
   await move.getByLabel('Reason').fill('Move after reviewing the board.');
   const moveResponse = page.waitForResponse(
     (response) => response.url().endsWith('/api/cards/16/move') && response.request().method() === 'POST',
   );
-  await move.getByRole('button', { name: 'Save' }).click();
+  await move.getByRole('button', { name: 'Move', exact: true }).click();
   const response = await moveResponse;
   expect(response.status(), await response.text()).toBe(200);
   await expect(move).toBeHidden();
@@ -116,7 +118,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await create.getByLabel('Title').fill('Review the release notes');
   await create.getByLabel('Description').fill('Check the wording with the release owner.');
   await create.getByRole('radio', { name: 'User' }).check();
-  await create.getByRole('button', { name: 'Save' }).click();
+  await create.getByRole('button', { name: 'Create card' }).click();
 
   const userCard = lane(page, 'Todo').getByRole('button', { name: /^#17 User Review the release notes / });
   await expect(userCard).toBeVisible();
@@ -132,14 +134,15 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
-  await expect(userCard).not.toHaveAttribute('data-dnd-dragging', 'true');
-  await expect(userCard).not.toHaveAttribute('data-dnd-dropping', '');
+  const draggedCard = page.locator('button.card').filter({ hasText: /^#17(?!\d)/ }).first();
+  await expect(draggedCard).not.toHaveAttribute('data-dnd-dragging', 'true');
+  await expect(draggedCard).not.toHaveAttribute('data-dnd-dropping', '');
 
   const move = page.getByRole('dialog');
   await expect(move).toContainText('Todo');
   await expect(move).toContainText('Doing');
   await move.getByLabel('Reason').fill('The user is starting review now.');
-  await move.getByRole('button', { name: 'Save' }).click();
+  await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#17 User Review the release notes / })).toBeVisible();
   await expect(panel.getByRole('listitem').first()).toContainText('The user is starting review now.');
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
@@ -154,7 +157,7 @@ test('a user answer returns a pending card to idle and records the full answer i
   const answer = page.getByRole('dialog');
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
   await answer.getByLabel('Answer and direction').fill(fullAnswer);
-  await answer.getByRole('button', { name: 'Save' }).click();
+  await answer.getByRole('button', { name: 'Send answer' }).click();
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();

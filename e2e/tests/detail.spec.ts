@@ -45,7 +45,11 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(card(page, 12).locator('.status-label svg')).toHaveCount(1);
   await expect(panel.locator('.status-label svg')).toHaveCount(0);
   await panel.getByRole('button', { name: 'Answer', exact: true }).click();
-  await expect(page.getByRole('dialog').locator('.status-label svg')).toHaveCount(0);
+  // The dialog shows the run state change as badges: the current state, an arrow, then Idle.
+  const answerState = page.getByRole('dialog').getByRole('group', { name: 'Status change' });
+  await expect(answerState.getByText('Pending')).toBeVisible();
+  await expect(answerState.getByText('Idle')).toBeVisible();
+  await expect(answerState).toHaveText(/Pending\s*Idle/);
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(panel).toContainText('Waiting for confirmation on how to replace a board.');
   await expect(panel).toContainText('No description.');
@@ -121,7 +125,7 @@ test('opening, switching, and closing the panel never moves the board', async ({
 });
 
 test('the card grips never take keyboard focus', async ({ page }) => {
-  // With nothing selected, Tab visits Add card, the language control, and eight cards; grips stay out of the order.
+  // With nothing selected, Tab visits Add card, the settings button, and eight cards; grips stay out of the order.
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
@@ -137,7 +141,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
   }
   expect(visited).toEqual([
     'BUTTON Add card',
-    'BUTTON Language',
+    'BUTTON Settings',
     'BUTTON #14',
     'BUTTON #15',
     'BUTTON #16',

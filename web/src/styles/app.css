@@ -125,14 +125,9 @@ ol {
   height: var(--size-badge-icon);
 }
 
-.header__language {
-  position: relative;
-  z-index: 10;
-  flex: none;
-}
-
-.header__language-trigger {
+.header__settings {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: calc(var(--size-icon-button) + var(--space-8));
@@ -145,59 +140,9 @@ ol {
   cursor: pointer;
 }
 
-.header__language-trigger svg {
+.header__settings svg {
   width: var(--size-badge-icon);
   height: var(--size-badge-icon);
-}
-
-.language-menu {
-  position: absolute;
-  top: calc(100% + var(--space-10));
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  width: calc(var(--detail-width) / 2);
-  max-width: calc(100vw - 2 * var(--page-gutter));
-  padding: var(--space-8);
-  border: var(--stroke) solid var(--divider);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  box-shadow: 0 var(--space-6) var(--space-14)
-    color-mix(in srgb, var(--text-primary) 20%, transparent);
-}
-
-.language-menu__heading {
-  padding: 0 var(--space-8);
-  color: var(--text-muted);
-  font-size: var(--size-lane-dot);
-}
-
-.language-menu__option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
-  width: 100%;
-  min-height: calc(var(--space-32) + var(--space-2));
-  padding: 0 var(--space-8);
-  border: 0;
-  border-radius: var(--radius-count);
-  background: transparent;
-  color: var(--text-primary);
-  text-align: left;
-  cursor: pointer;
-}
-
-.language-menu__option[aria-pressed="true"] {
-  background: var(--lane);
-}
-
-.language-menu__check {
-  flex: none;
-  width: var(--size-badge-icon);
-  height: var(--size-badge-icon);
-  color: var(--primary);
 }
 
 .status-bar {
@@ -576,94 +521,6 @@ ol {
   display: grid;
   gap: var(--space-10);
 }
-.action-dialog__backdrop {
-  position: fixed;
-  z-index: 100;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-20);
-  background: var(--dialog-backdrop);
-}
-.action-dialog {
-  width: min(var(--size-dialog-width), 100%);
-  max-height: 90dvh;
-  overflow: auto;
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  box-shadow: 0 var(--space-12) var(--space-24) var(--dialog-backdrop);
-}
-.action-dialog__header,
-.action-dialog__actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
-  padding: var(--space-20) var(--space-24);
-}
-.action-dialog__header {
-  border-bottom: var(--stroke) solid var(--divider);
-}
-.action-dialog__header h2 {
-  font-size: var(--fs-22);
-}
-.action-dialog form {
-  display: grid;
-  gap: var(--space-18);
-  padding: var(--space-24);
-}
-.action-dialog__field {
-  display: grid;
-  gap: var(--space-8);
-  font-weight: 600;
-}
-.action-dialog input:not([type="radio"]),
-.action-dialog textarea {
-  width: 100%;
-  padding: var(--space-10);
-  border: var(--stroke) solid var(--divider);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  font: inherit;
-}
-.action-dialog textarea {
-  resize: vertical;
-  white-space: pre-wrap;
-}
-.action-dialog__assignee {
-  display: flex;
-  gap: var(--space-20);
-  border: 0;
-  padding: 0;
-}
-.action-dialog__assignee legend {
-  margin-bottom: var(--space-8);
-  font-weight: 600;
-}
-.action-dialog__assignee label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-.action-dialog__context {
-  display: grid;
-  gap: var(--space-10);
-  color: var(--text-secondary);
-}
-.action-dialog__statuses {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-.action-dialog__error {
-  color: var(--danger);
-  overflow-wrap: anywhere;
-}
-.action-dialog__actions {
-  justify-content: flex-end;
-  padding: 0;
-}
 .button--secondary {
   border-color: var(--text-muted);
   background: transparent;
@@ -998,15 +855,6 @@ ol {
 /* ---- Narrow layout: lanes stacked ---- */
 
 @media (max-width: 639px) {
-  .action-dialog__backdrop:has(.action-dialog__assignee) {
-    padding: 0;
-  }
-  .action-dialog:has(.action-dialog__assignee) {
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    border-radius: 0;
-  }
   .header {
     gap: var(--space-10);
   }
