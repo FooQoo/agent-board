@@ -95,8 +95,8 @@ function DetailBody({
       <h2 className="detail__title">{card.title}</h2>
       <div className="detail__meta">
         <ColumnChip column={card.cardStatus} />
-        <AssigneeLabel assignee={card.assignee} />
         {state !== null && <RunStateBadge state={card.agentStatus} />}
+        <AssigneeLabel assignee={card.assignee} />
       </div>
       {card.agentStatus === 'pending' && card.pendingReason && (
         <div className="detail__pending">
