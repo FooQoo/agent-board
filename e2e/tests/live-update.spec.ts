@@ -120,8 +120,17 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await userCard.click();
   const panel = page.getByRole('complementary', { name: 'Card details' });
   await expect(panel).toContainText('User');
-  await panel.getByLabel('Move to').selectOption('doing');
-  await panel.getByRole('button', { name: 'Move', exact: true }).click();
+  await expect(panel.locator('select')).toHaveCount(0);
+  const source = await userCard.boundingBox();
+  const target = await lane(page, 'Doing').boundingBox();
+  if (!source || !target) throw new Error('Could not measure the drag source and target.');
+  await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
+  await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
+  await page.mouse.up();
+  await expect(userCard).not.toHaveAttribute('data-dnd-dragging', 'true');
+  await expect(userCard).not.toHaveAttribute('data-dnd-dropping', '');
 
   const move = page.getByRole('dialog');
   await expect(move).toContainText('Todo');
@@ -136,6 +145,8 @@ test('users can add a card, choose its owner, and move it with a reason', async 
 test('a user answer returns a pending card to idle and records the full answer in history', async ({ page }) => {
   await card(page, 12).click();
   const panel = page.getByRole('complementary', { name: 'Card details' });
+  await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-column', 'doing');
+  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(31, 111, 235)');
   await panel.getByRole('button', { name: 'Answer' }).click();
   const answer = page.getByRole('dialog');
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';

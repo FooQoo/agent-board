@@ -567,25 +567,6 @@ ol {
   display: grid;
   gap: var(--space-10);
 }
-.detail__move {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-.detail__move label {
-  color: var(--text-secondary);
-  font-size: var(--fs-13);
-}
-.detail__move select {
-  min-width: 0;
-  flex: 1;
-  padding: var(--space-8);
-  border: var(--stroke) solid var(--divider);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-}
-
 .action-dialog__backdrop {
   position: fixed;
   z-index: 100;

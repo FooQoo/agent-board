@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stateLabel } from '../lib/format';
-import type { Card, ColumnName } from '../types';
+import type { Card } from '../types';
 import { ColumnChip } from './ColumnChip';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
@@ -15,7 +15,6 @@ export interface DetailPanelProps {
   card: Card | null;
   onClose: () => void;
   onAnswer?: () => void;
-  onMove?: (column: ColumnName) => void;
   /** The card is gone (deleted here or already missing); the parent clears the selection and reloads. */
   onDeleted: () => void;
   /** Mock mode only: open the delete confirmation immediately. */
@@ -28,7 +27,6 @@ export function DetailPanel({
   card,
   onClose,
   onAnswer,
-  onMove,
   onDeleted,
   initialConfirm,
   initialDeleteFailed,
@@ -47,7 +45,6 @@ export function DetailPanel({
       card={card}
       onClose={onClose}
       onAnswer={onAnswer}
-      onMove={onMove}
       onDeleted={onDeleted}
       initialConfirm={initialConfirm}
       initialDeleteFailed={initialDeleteFailed}
@@ -65,14 +62,12 @@ function DetailBody({
   card,
   onClose,
   onAnswer,
-  onMove,
   onDeleted,
   initialConfirm,
   initialDeleteFailed,
 }: DetailBodyProps) {
   const { t } = useTranslation();
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
-  const [targetColumn, setTargetColumn] = useState<ColumnName | ''>('');
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
   const state = stateLabel(card);
@@ -102,35 +97,6 @@ function DetailBody({
         <ColumnChip column={card.cardStatus} />
         <AssigneeLabel assignee={card.assignee} />
         {state !== null && <RunStateBadge state={card.agentStatus} />}
-      </div>
-      <div className="detail__move">
-        <label htmlFor="card-status">{t('dialog.cardStatus')}</label>
-        <select
-          id="card-status"
-          value={targetColumn}
-          onChange={(event) => setTargetColumn(event.target.value as ColumnName | '')}
-        >
-          <option value="">{t('dialog.chooseStatus')}</option>
-          <option value="todo" disabled={card.cardStatus === 'todo'}>
-            {t('column.todo')}
-          </option>
-          <option value="doing" disabled={card.cardStatus === 'doing'}>
-            {t('column.doing')}
-          </option>
-          <option value="done" disabled={card.cardStatus === 'done'}>
-            {t('column.done')}
-          </option>
-        </select>
-        <button
-          className="button button--outline"
-          type="button"
-          disabled={onMove === undefined || targetColumn === ''}
-          onClick={() => {
-            if (targetColumn) onMove?.(targetColumn);
-          }}
-        >
-          {t('dialog.moveAction')}
-        </button>
       </div>
       {card.agentStatus === 'pending' && card.pendingReason && (
         <div className="detail__pending">

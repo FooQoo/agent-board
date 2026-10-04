@@ -2,6 +2,7 @@ import type { ColumnName, HistoryEvent } from '../types';
 
 export interface HistoryItem {
   id: number;
+  cardStatus: ColumnName;
   statusKind: 'card' | 'agent';
   status: ColumnName | import('../types').RunState;
   actor: 'ai' | 'human';
@@ -14,6 +15,7 @@ export interface HistoryItem {
 export function historyItems(events: HistoryEvent[]): HistoryItem[] {
   return [...events].reverse().map((event) => ({
     id: event.id,
+    cardStatus: event.toCardStatus,
     statusKind: event.kind === 'agent' ? 'agent' : 'card',
     status: event.kind === 'agent' ? event.toAgentStatus : event.toCardStatus,
     actor: event.actor,

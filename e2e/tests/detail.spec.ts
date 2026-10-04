@@ -138,12 +138,10 @@ test('the card grips never take keyboard focus', async ({ page }) => {
     'BUTTON #8',
   ]);
 
-  // The detail panel exposes its close, lane selector, and move action; the grip itself never receives focus.
+  // The detail panel exposes its close and delete actions; the grip itself never receives focus.
   await card(page, 8).click();
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Close details' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(details(page).getByLabel('Move to')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Delete card' })).toBeFocused();
 
@@ -153,6 +151,6 @@ test('the card grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  expect(focusable).toHaveLength(1 + 1 + 8 + 3);
+  expect(focusable).toHaveLength(1 + 1 + 8 + 2);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

@@ -57,9 +57,6 @@ export function App({ initial }: AppProps) {
         <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
         <DetailPanel
           card={selected}
-          onMove={(column) => {
-            if (selected) setDialog({ kind: 'move', card: selected, target: column });
-          }}
           onAnswer={() => {
             if (selected) setDialog({ kind: 'answer', card: selected });
           }}

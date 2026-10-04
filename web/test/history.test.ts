@@ -49,6 +49,7 @@ describe('historyItems', () => {
       ['card', 'doing'],
       ['card', 'todo'],
     ]);
+    expect(items.map((item) => item.cardStatus)).toEqual(['doing', 'doing', 'todo']);
     expect(items.map((item) => item.actor)).toEqual(['ai', 'human', 'ai']);
     expect(items.map((item) => item.reason)).toEqual([
       'Need a decision',

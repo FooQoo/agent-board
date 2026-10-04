@@ -11,8 +11,8 @@ export function HistoryTimeline({ events }: { events: HistoryEvent[] }) {
   return (
     <ol className="history">
       {items.map((item) => (
-        <li key={item.id} className="history__step" data-column={item.status}>
-          <span className="dot dot--history" data-column={item.status} aria-hidden="true" />
+        <li key={item.id} className="history__step" data-column={item.cardStatus}>
+          <span className="dot dot--history" data-column={item.cardStatus} aria-hidden="true" />
           <span className="history__text">
             <span className="history__heading">
               <StatusLabel kind={item.statusKind} status={item.status} />
