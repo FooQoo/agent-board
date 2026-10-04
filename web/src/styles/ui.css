@@ -1,0 +1,58 @@
+/*
+ * Tailwind CSS entry. Preflight is intentionally not imported so the existing app CSS keeps its
+ * base styles; only the theme and utilities layers are generated.
+ */
+@layer theme, base, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
+
+/* Minimal base for the shadcn/ui sources, replacing the Tailwind preflight that is not imported. */
+@layer base {
+  [data-slot] {
+    box-sizing: border-box;
+    border: 0 solid;
+  }
+
+  button[data-slot],
+  input[data-slot],
+  textarea[data-slot] {
+    margin: 0;
+    padding: 0;
+    font-family: inherit;
+    line-height: inherit;
+  }
+
+  button[data-slot] {
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+}
+
+/*
+ * Maps Tailwind's color utilities (used by the shadcn/ui sources in components/ui) to the
+ * semantic tokens in theme.css. The bare shadcn variable names (--primary, ...) are not defined
+ * on purpose: the existing tokens.css owns them until the app CSS is migrated.
+ */
+@theme inline {
+  --color-background: var(--r-bg);
+  --color-foreground: var(--r-text);
+  --color-card: var(--r-surface);
+  --color-card-foreground: var(--r-text);
+  --color-popover: var(--r-surface);
+  --color-popover-foreground: var(--r-text);
+  --color-primary: var(--r-accent);
+  --color-primary-foreground: var(--r-on-accent);
+  --color-secondary: var(--r-lane);
+  --color-secondary-foreground: var(--r-text);
+  --color-muted: var(--r-lane);
+  --color-muted-foreground: var(--r-muted);
+  --color-accent: var(--r-accent-soft);
+  --color-accent-foreground: var(--r-text);
+  --color-destructive: var(--r-danger);
+  --color-border: var(--r-border);
+  --color-input: var(--r-border);
+  --color-ring: var(--r-accent);
+}

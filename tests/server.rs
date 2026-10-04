@@ -61,8 +61,27 @@ fn build_script_stops_the_build_when_one_asset_is_missing() {
 }
 
 #[test]
-fn build_script_passes_and_watches_the_dist_directory_when_built() {
+fn build_script_stops_the_build_when_the_white_logo_is_missing() {
     let dir = fake_manifest(&["index.html", "assets/app.js", "assets/app.css", "logo.png"]);
+    let out = run_build_script(dir.path());
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("logo-white.png"), "{stderr}");
+    assert!(
+        stderr.contains("Run \"pnpm --dir web build\" first."),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn build_script_passes_and_watches_the_dist_directory_when_built() {
+    let dir = fake_manifest(&[
+        "index.html",
+        "assets/app.js",
+        "assets/app.css",
+        "logo.png",
+        "logo-white.png",
+    ]);
     let out = run_build_script(dir.path());
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
@@ -81,11 +100,11 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use chrono::{DateTime, TimeZone, Utc};
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState};
 use agent_board::error::SkanError;
 use agent_board::server::{ServeConfig, run_until};
 use agent_board::store::Store;
+use chrono::{DateTime, TimeZone, Utc};
 
 // SKAN_HOME is process-global. It is only needed while a server starts (the
 // server captures its paths then), so the lock is released once it is ready.
@@ -470,6 +489,21 @@ fn assets_are_served_with_their_content_types() {
     assert_eq!(
         logo_bytes,
         std::fs::read(dist.parent().unwrap().join("logo.png")).unwrap()
+    );
+
+    let white = server.get("/logo-white.png");
+    assert_eq!(white.status, 200);
+    assert_eq!(white.content_type.as_deref(), Some("image/png"));
+    assert_eq!(white.cache_control.as_deref(), Some("no-store"));
+    let white_bytes = ureq::get(server.url("/logo-white.png"))
+        .call()
+        .unwrap()
+        .body_mut()
+        .read_to_vec()
+        .unwrap();
+    assert_eq!(
+        white_bytes,
+        std::fs::read(dist.parent().unwrap().join("logo-white.png")).unwrap()
     );
 
     let css = server.get("/assets/app.css");
