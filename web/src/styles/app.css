@@ -492,10 +492,6 @@ ol {
   animation: spin var(--spinner-duration) linear infinite;
 }
 
-.spinner--static {
-  animation: none;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);

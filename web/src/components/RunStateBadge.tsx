@@ -3,10 +3,10 @@ import { StatusLabel } from './StatusLabel';
 
 export function RunStateBadge({
   state,
-  animated = false,
+  showIcon = false,
 }: {
   state: RunState;
-  animated?: boolean;
+  showIcon?: boolean;
 }) {
-  return <StatusLabel kind="agent" status={state} animated={animated} />;
+  return <StatusLabel kind="agent" status={state} showIcon={showIcon} />;
 }

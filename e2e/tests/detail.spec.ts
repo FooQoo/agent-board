@@ -42,6 +42,11 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
 
   await card(page, 12).click();
   await expect(panel).toContainText('Pending');
+  await expect(card(page, 12).locator('.status-label svg')).toHaveCount(1);
+  await expect(panel.locator('.status-label svg')).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Answer', exact: true }).click();
+  await expect(page.getByRole('dialog').locator('.status-label svg')).toHaveCount(0);
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(panel).toContainText('Waiting for confirmation on how to replace a board.');
   await expect(panel).toContainText('No description.');
 
@@ -49,10 +54,7 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(panel).toContainText('Running');
   await expect(panel).not.toContainText('Waiting for confirmation');
   await expect(card(page, 11).locator('.spinner')).toHaveCSS('animation-name', 'spin');
-  await expect(panel.locator('.detail__meta .spinner')).toHaveCSS('animation-name', 'none');
-  for (const spinner of await panel.locator('.history .spinner').all()) {
-    await expect(spinner).toHaveCSS('animation-name', 'none');
-  }
+  await expect(panel.locator('.status-label svg')).toHaveCount(0);
   await expect(card(page, 11).locator('.assignee-label svg')).toHaveCount(1);
   await expect(panel.locator('.detail__meta .assignee-label')).toHaveCSS('border-top-style', 'none');
 

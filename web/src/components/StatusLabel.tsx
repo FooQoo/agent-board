@@ -5,18 +5,18 @@ import { Pause, Spinner } from './icons';
 export function StatusLabel({
   kind,
   status,
-  animated = false,
+  showIcon = false,
 }: {
   kind: 'card' | 'agent';
-  animated?: boolean;
+  showIcon?: boolean;
   status: ColumnName | RunState;
 }) {
   const { t } = useTranslation();
   const text = kind === 'card' ? t(`column.${status}`) : t(`runState.${status}`);
   const icon =
-    kind === 'agent' && status === 'running' ? (
-      <Spinner className={animated ? undefined : 'spinner--static'} />
-    ) : kind === 'agent' && status === 'pending' ? (
+    showIcon && kind === 'agent' && status === 'running' ? (
+      <Spinner />
+    ) : showIcon && kind === 'agent' && status === 'pending' ? (
       <Pause />
     ) : null;
   return (

@@ -39,7 +39,7 @@ export function Card({ card, selected, onSelect }: CardProps) {
         <span className="card__id">#{card.id}</span>
         <AssigneeLabel assignee={card.assignee} />
         <span className="card__spacer" />
-        {showsState && <RunStateBadge state={card.agentStatus} animated />}
+        {showsState && <RunStateBadge state={card.agentStatus} showIcon />}
       </span>
       <span className="card__title">{card.title}</span>
       {pending && card.pendingReason && <span className="card__reason">{card.pendingReason}</span>}
