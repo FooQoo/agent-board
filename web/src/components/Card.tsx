@@ -37,13 +37,11 @@ export function Card({ card, selected, onSelect }: CardProps) {
       <span className="card__top">
         <Grip />
         <span className="card__id">#{card.id}</span>
+        <AssigneeLabel assignee={card.assignee} />
         <span className="card__spacer" />
         {showsState && <RunStateBadge state={card.agentStatus} animated />}
       </span>
       <span className="card__title">{card.title}</span>
-      <span className="card__assignee">
-        <AssigneeLabel assignee={card.assignee} />
-      </span>
       {pending && card.pendingReason && <span className="card__reason">{card.pendingReason}</span>}
       <span className="card__updated">
         {t('card.updated', { date: formatShort(card.updatedAt) })}

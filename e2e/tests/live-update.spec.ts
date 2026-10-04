@@ -22,7 +22,7 @@ async function notReloaded(page: Page): Promise<void> {
 
 test('agboard add shows a new card without reloading', async ({ page }) => {
   agboardOk(['add', 'Added while open', '--desc', 'From the CLI']);
-  await expect(lane(page, 'Todo').getByRole('button', { name: /^#17 Added while open AI Updated \d\d\/\d\d \d\d:\d\d$/ })).toBeVisible();
+  await expect(lane(page, 'Todo').getByRole('button', { name: /^#17 AI Added while open Updated \d\d\/\d\d \d\d:\d\d$/ })).toBeVisible();
   await expect(page.getByRole('contentinfo')).toContainText('9 cards');
   await expect(lane(page, 'Todo').getByText('4', { exact: true })).toBeVisible();
   // New Todo cards go to the end.
@@ -32,7 +32,7 @@ test('agboard add shows a new card without reloading', async ({ page }) => {
 
 test('agboard mv moves a card without reloading', async ({ page }) => {
   agboardOk(['mv', '16', 'doing']);
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 Idle Refine the empty board AI / })).toBeVisible();
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
   await expect(lane(page, 'Todo').getByRole('button')).toHaveCount(2);
   await expect(lane(page, 'Doing').getByRole('button')).toHaveCount(4);
 
@@ -68,7 +68,7 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
   expect(response.status(), await response.text()).toBe(200);
   await expect(move).toBeHidden();
 
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 Idle Refine the empty board AI / })).toBeVisible();
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
   await card(page, 16).click();
   await expect(page.getByRole('complementary', { name: 'Card details' }).getByRole('listitem').first()).toContainText('Move after reviewing the board.');
   await notReloaded(page);
@@ -77,15 +77,15 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
 test('agboard state updates the run state and reason without reloading', async ({ page }) => {
   const doing = lane(page, 'Doing');
   agboardOk(['state', '13', 'running']);
-  await expect(doing.getByRole('button', { name: /^#13 Running Check the board display AI / })).toBeVisible();
+  await expect(doing.getByRole('button', { name: /^#13 AI Running Check the board display / })).toBeVisible();
 
   agboardOk(['state', '13', 'pending', '--reason', 'Waiting for a review']);
-  const pending = doing.getByRole('button', { name: /^#13 Pending Check the board display AI / });
+  const pending = doing.getByRole('button', { name: /^#13 AI Pending Check the board display / });
   await expect(pending).toBeVisible();
   await expect(pending).toContainText('Waiting for a review');
 
   agboardOk(['state', '13', 'idle']);
-  await expect(doing.getByRole('button', { name: /^#13 Idle Check the board display AI / })).toBeVisible();
+  await expect(doing.getByRole('button', { name: /^#13 AI Idle Check the board display / })).toBeVisible();
   await expect(doing.getByText('Waiting for a review')).toHaveCount(0);
   await notReloaded(page);
 });
@@ -115,7 +115,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await create.getByRole('radio', { name: 'User' }).check();
   await create.getByRole('button', { name: 'Save' }).click();
 
-  const userCard = lane(page, 'Todo').getByRole('button', { name: /^#17 Review the release notes User / });
+  const userCard = lane(page, 'Todo').getByRole('button', { name: /^#17 User Review the release notes / });
   await expect(userCard).toBeVisible();
   await userCard.click();
   const panel = page.getByRole('complementary', { name: 'Card details' });
@@ -137,7 +137,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await expect(move).toContainText('Doing');
   await move.getByLabel('Reason').fill('The user is starting review now.');
   await move.getByRole('button', { name: 'Save' }).click();
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#17 Review the release notes User / })).toBeVisible();
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#17 User Review the release notes / })).toBeVisible();
   await expect(panel.getByRole('listitem').first()).toContainText('The user is starting review now.');
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
 });
@@ -153,7 +153,7 @@ test('a user answer returns a pending card to idle and records the full answer i
   await answer.getByLabel('Answer and direction').fill(fullAnswer);
   await answer.getByRole('button', { name: 'Save' }).click();
 
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 Idle Restore a board from JSON AI / })).toBeVisible();
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
   await expect(panel.getByRole('listitem').first()).toContainText('Do not migrate or delete user data.');
   await expect(panel.getByRole('button', { name: 'Answer' })).toHaveCount(0);
