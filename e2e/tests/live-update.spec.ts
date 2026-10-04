@@ -57,8 +57,10 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
   await expect(move).toContainText('Doing');
   // dnd-kit keeps the source in a dropping animation briefly after pointer-up.
   // Wait until that transition is finished before editing the newly opened dialog.
-  await expect(card(page, 16)).not.toHaveAttribute('data-dnd-dragging', 'true');
-  await expect(card(page, 16)).not.toHaveAttribute('data-dnd-dropping', '');
+  // The open dialog makes the board inert, so the card is located by CSS rather than by role.
+  const dragged = page.locator('button.card').filter({ hasText: /^#16(?!\d)/ }).first();
+  await expect(dragged).not.toHaveAttribute('data-dnd-dragging', 'true');
+  await expect(dragged).not.toHaveAttribute('data-dnd-dropping', '');
   await move.getByLabel('Reason').fill('Move after reviewing the board.');
   const moveResponse = page.waitForResponse(
     (response) => response.url().endsWith('/api/cards/16/move') && response.request().method() === 'POST',
@@ -132,8 +134,9 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
-  await expect(userCard).not.toHaveAttribute('data-dnd-dragging', 'true');
-  await expect(userCard).not.toHaveAttribute('data-dnd-dropping', '');
+  const draggedCard = page.locator('button.card').filter({ hasText: /^#17(?!\d)/ }).first();
+  await expect(draggedCard).not.toHaveAttribute('data-dnd-dragging', 'true');
+  await expect(draggedCard).not.toHaveAttribute('data-dnd-dropping', '');
 
   const move = page.getByRole('dialog');
   await expect(move).toContainText('Todo');

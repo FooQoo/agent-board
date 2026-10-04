@@ -248,8 +248,9 @@ test('dragging keeps the selection and the delete confirmation and selects no te
 
 test('Japanese: the handle is named in Japanese', async ({ page }) => {
   await open(page, 1280);
-  await page.getByRole('button', { name: 'Language' }).click();
-  await page.getByRole('button', { name: '日本語' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('radio', { name: '日本語' }).click();
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('separator', { name: 'カードの詳細の幅を変更' })).toBeVisible();
 });
 

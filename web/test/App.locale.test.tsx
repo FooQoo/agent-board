@@ -51,14 +51,18 @@ describe('language changes in the app', () => {
         .getAttribute('aria-current'),
     ).toBe('true');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Language' }));
-    await userEvent.click(screen.getByRole('button', { name: '日本語' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    await userEvent.click(screen.getByRole('radio', { name: '日本語' }));
+    expect(screen.getByRole('dialog', { name: '設定' })).toBeTruthy();
 
     expect(
       await screen.findByText(
         '#14「Prepare the Windows build」を削除しますか？ この操作は元に戻せません。',
       ),
     ).toBeTruthy();
+    // The dialog makes the board inert while it is open; closing it must leave everything as it was.
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('button', { name: '削除' })).toBeTruthy();
     expect(
       screen
