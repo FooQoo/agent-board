@@ -19,7 +19,6 @@ import { RadioGroup } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import '../styles/modal.css';
 import type { Assignee, Card, ColumnName, RunState } from '../types';
-import { AssigneeLabel } from './AssigneeLabel';
 
 export type DialogAction =
   | { kind: 'create' }
@@ -232,19 +231,21 @@ export function ActionDialog({
               <p className="modal__card">
                 #{action.card.id} {action.card.title}
               </p>
-              {action.kind === 'move' ? (
-                <div className="modal__statuses" role="group" aria-label={t('dialog.statusChange')}>
-                  <CardStatusBadge status={action.card.cardStatus} />
-                  <ArrowRightIcon className="modal__arrow" aria-hidden="true" />
-                  <CardStatusBadge status={action.target} />
-                </div>
-              ) : (
-                <div className="modal__statuses" role="group" aria-label={t('dialog.currentState')}>
-                  <CardStatusBadge status={action.card.cardStatus} />
-                  <RunStatusBadge status={action.card.agentStatus} />
-                  <AssigneeLabel assignee={action.card.assignee} />
-                </div>
-              )}
+              <div className="modal__statuses" role="group" aria-label={t('dialog.statusChange')}>
+                {action.kind === 'move' ? (
+                  <>
+                    <CardStatusBadge status={action.card.cardStatus} />
+                    <ArrowRightIcon className="modal__arrow" aria-hidden="true" />
+                    <CardStatusBadge status={action.target} />
+                  </>
+                ) : (
+                  <>
+                    <RunStatusBadge status={action.card.agentStatus} />
+                    <ArrowRightIcon className="modal__arrow" aria-hidden="true" />
+                    <RunStatusBadge status="idle" />
+                  </>
+                )}
+              </div>
               {action.kind === 'answer' && action.card.pendingReason && (
                 <div className="modal__request">
                   <span className="modal__request-label">{t('dialog.agentRequest')}</span>

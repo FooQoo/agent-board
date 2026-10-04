@@ -74,7 +74,7 @@ describe('create dialog', () => {
     expect(within(dialog).getByRole('radio', { name: 'User' })).toBeTruthy();
     expect(within(dialog).getByText('Todo')).toBeTruthy();
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeTruthy();
-    expect(within(dialog).getByRole('button', { name: 'Save' })).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Create card' })).toBeTruthy();
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeTruthy();
   });
 
@@ -84,7 +84,7 @@ describe('create dialog', () => {
     await userEvent.type(within(dialog).getByLabelText(/^Title/), '  Review notes  ');
     await userEvent.type(within(dialog).getByLabelText(/^Description/), 'Line 1\nLine 2');
     await userEvent.click(within(dialog).getByRole('radio', { name: 'User' }));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
       title: 'Review notes',
@@ -97,12 +97,12 @@ describe('create dialog', () => {
   it('rejects an empty and an over-long title without calling the API', async () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog, onClosed } = await openHost({ kind: 'create' }, onSubmit);
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
     expect((await within(dialog).findByRole('alert')).textContent).toBe('Enter a title.');
     const title = within(dialog).getByLabelText(/^Title/) as HTMLInputElement;
     expect(title.maxLength).toBe(100);
     await userEvent.type(title, 'あ'.repeat(100));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onClosed).toHaveBeenCalledTimes(1);
   });
@@ -115,7 +115,7 @@ describe('saving state', () => {
     const { dialog, onClosed } = await openHost({ kind: 'create' }, onSubmit);
     const title = within(dialog).getByLabelText(/^Title/);
     await userEvent.type(title, 'Slow save');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
 
     const saving = within(dialog).getByRole('button', { name: 'Saving…' });
     expect((saving as HTMLButtonElement).disabled).toBe(true);
@@ -151,7 +151,7 @@ describe('saving state', () => {
     await userEvent.type(within(dialog).getByLabelText(/^Title/), 'Keep me');
     await userEvent.type(within(dialog).getByLabelText(/^Description/), 'Body text');
     await userEvent.click(within(dialog).getByRole('radio', { name: 'User' }));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
     await act(async () => first.reject(new Error('The server said no.')));
 
     expect((await within(dialog).findByRole('alert')).textContent).toBe('The server said no.');
@@ -163,7 +163,7 @@ describe('saving state', () => {
     expect(within(dialog).getByRole('radio', { name: 'User' }).getAttribute('aria-checked')).toBe(
       'true',
     );
-    const save = within(dialog).getByRole('button', { name: 'Save' }) as HTMLButtonElement;
+    const save = within(dialog).getByRole('button', { name: 'Create card' }) as HTMLButtonElement;
     expect(save.disabled).toBe(false);
     expect(
       (within(dialog).getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled,
@@ -181,7 +181,7 @@ describe('saving state', () => {
     });
     const { dialog } = await openHost({ kind: 'create' }, onSubmit);
     await userEvent.type(within(dialog).getByLabelText(/^Title/), 'x');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
     expect((await within(dialog).findByRole('alert')).textContent).toBe(
       'Could not save the change.',
     );
@@ -261,33 +261,29 @@ describe('move dialog', () => {
     const transition = within(dialog).getByRole('group', { name: 'Status change' });
     expect(transition.textContent).toMatch(/Todo.*Doing/);
 
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
     expect((await within(dialog).findByRole('alert')).textContent).toBe(
       'Enter a reason up to 2,000 characters.',
     );
     expect(onSubmit).not.toHaveBeenCalled();
 
     await userEvent.type(within(dialog).getByLabelText(/^Reason/), 'Ready to start');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
     expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ reason: 'Ready to start' });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
   });
 });
 
 describe('answer dialog', () => {
-  it('lists the card status, the run state and the assignee in that order', async () => {
+  it('shows the run state change from the current state to Idle, as in the design', async () => {
     const card = fixtureCard(12);
     const { dialog } = await openHost({ kind: 'answer', card }, async () => undefined);
-    const group = within(dialog).getByRole('group', { name: 'Current state' });
-    const cardStatus = within(group).getByText('Doing');
-    const agentStatus = within(group).getByText('Pending');
-    const assignee = within(group).getByRole('img', {
-      name: card.assignee === 'ai' ? 'AI' : 'User',
-    });
-    const follows = (a: Node, b: Node) =>
-      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(follows(cardStatus, agentStatus)).toBe(true);
-    expect(follows(agentStatus, assignee)).toBe(true);
+    const group = within(dialog).getByRole('group', { name: 'Status change' });
+    expect(group.textContent).toMatch(/Pending.*Idle/);
+    expect(within(group).queryByText('Doing')).toBeNull();
+    expect(within(group).queryByRole('img')).toBeNull();
+    expect(group.querySelector('svg.lucide-arrow-right')).not.toBeNull();
+    expect(group.querySelector('svg.lucide-pause')).not.toBeNull();
   });
 
   it('shows the pending request and submits the answer', async () => {
@@ -297,7 +293,7 @@ describe('answer dialog', () => {
     expect(within(dialog).getByRole('heading', { name: 'Answer request' })).toBeTruthy();
     expect(within(dialog).getByText(card.pendingReason as string)).toBeTruthy();
     await userEvent.type(within(dialog).getByLabelText(/^Answer and direction/), 'Keep it.');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send answer' }));
     expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ reason: 'Keep it.' });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
   });

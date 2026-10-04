@@ -65,7 +65,7 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
   const moveResponse = page.waitForResponse(
     (response) => response.url().endsWith('/api/cards/16/move') && response.request().method() === 'POST',
   );
-  await move.getByRole('button', { name: 'Save' }).click();
+  await move.getByRole('button', { name: 'Move', exact: true }).click();
   const response = await moveResponse;
   expect(response.status(), await response.text()).toBe(200);
   await expect(move).toBeHidden();
@@ -118,7 +118,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await create.getByLabel('Title').fill('Review the release notes');
   await create.getByLabel('Description').fill('Check the wording with the release owner.');
   await create.getByRole('radio', { name: 'User' }).check();
-  await create.getByRole('button', { name: 'Save' }).click();
+  await create.getByRole('button', { name: 'Create card' }).click();
 
   const userCard = lane(page, 'Todo').getByRole('button', { name: /^#17 User Review the release notes / });
   await expect(userCard).toBeVisible();
@@ -142,7 +142,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await expect(move).toContainText('Todo');
   await expect(move).toContainText('Doing');
   await move.getByLabel('Reason').fill('The user is starting review now.');
-  await move.getByRole('button', { name: 'Save' }).click();
+  await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#17 User Review the release notes / })).toBeVisible();
   await expect(panel.getByRole('listitem').first()).toContainText('The user is starting review now.');
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
@@ -157,7 +157,7 @@ test('a user answer returns a pending card to idle and records the full answer i
   const answer = page.getByRole('dialog');
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
   await answer.getByLabel('Answer and direction').fill(fullAnswer);
-  await answer.getByRole('button', { name: 'Save' }).click();
+  await answer.getByRole('button', { name: 'Send answer' }).click();
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();

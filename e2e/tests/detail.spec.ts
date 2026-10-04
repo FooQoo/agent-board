@@ -45,12 +45,11 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(card(page, 12).locator('.status-label svg')).toHaveCount(1);
   await expect(panel.locator('.status-label svg')).toHaveCount(0);
   await panel.getByRole('button', { name: 'Answer', exact: true }).click();
-  // The dialog shows the card status, the run state and the assignee in that order, as badges.
-  const answerState = page.getByRole('dialog').getByRole('group', { name: 'Current state' });
-  await expect(answerState.getByText('Doing')).toBeVisible();
+  // The dialog shows the run state change as badges: the current state, an arrow, then Idle.
+  const answerState = page.getByRole('dialog').getByRole('group', { name: 'Status change' });
   await expect(answerState.getByText('Pending')).toBeVisible();
-  await expect(answerState.getByRole('img', { name: 'AI', exact: true })).toBeVisible();
-  expect(await answerState.evaluate((group) => [...group.children].map((child) => child.textContent || child.getAttribute('aria-label')))).toEqual(['Doing', 'Pending', 'AI']);
+  await expect(answerState.getByText('Idle')).toBeVisible();
+  await expect(answerState).toHaveText(/Pending\s*Idle/);
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(panel).toContainText('Waiting for confirmation on how to replace a board.');
   await expect(panel).toContainText('No description.');
