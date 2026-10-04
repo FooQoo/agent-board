@@ -55,8 +55,18 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
   const move = page.getByRole('dialog');
   await expect(move).toContainText('Todo');
   await expect(move).toContainText('Doing');
+  // dnd-kit keeps the source in a dropping animation briefly after pointer-up.
+  // Wait until that transition is finished before editing the newly opened dialog.
+  await expect(card(page, 16)).not.toHaveAttribute('data-dnd-dragging', 'true');
+  await expect(card(page, 16)).not.toHaveAttribute('data-dnd-dropping', '');
   await move.getByLabel('Reason').fill('Move after reviewing the board.');
+  const moveResponse = page.waitForResponse(
+    (response) => response.url().endsWith('/api/cards/16/move') && response.request().method() === 'POST',
+  );
   await move.getByRole('button', { name: 'Save' }).click();
+  const response = await moveResponse;
+  expect(response.status(), await response.text()).toBe(200);
+  await expect(move).toBeHidden();
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
   await card(page, 16).click();
