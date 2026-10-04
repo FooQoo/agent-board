@@ -63,7 +63,7 @@ test('stopping the serve shows Disconnected, and restarting it reconnects and fe
 
   serve = await startServe(statesPort, home);
   await expect(
-    page.getByRole('button', { name: /^#1 AI Added while disconnected / }),
+    page.getByRole('button', { name: /^#1 Added while disconnected AI / }),
   ).toBeVisible({ timeout: 30_000 });
   await expect(status).toHaveText(/^Synced \d{2}:\d{2}$/);
   await expect(page.getByRole('contentinfo')).toContainText('1 card');
@@ -71,5 +71,5 @@ test('stopping the serve shows Disconnected, and restarting it reconnects and fe
 
   // Live updates work again after the reconnect.
   agboardOk(['add', 'Added after reconnecting'], home);
-  await expect(page.getByRole('button', { name: /^#2 AI Added after reconnecting / })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^#2 Added after reconnecting AI / })).toBeVisible();
 });

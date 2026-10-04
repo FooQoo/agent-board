@@ -48,6 +48,13 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await card(page, 11).click();
   await expect(panel).toContainText('Running');
   await expect(panel).not.toContainText('Waiting for confirmation');
+  await expect(card(page, 11).locator('.spinner')).toHaveCSS('animation-name', 'spin');
+  await expect(panel.locator('.detail__meta .spinner')).toHaveCSS('animation-name', 'none');
+  for (const spinner of await panel.locator('.history .spinner').all()) {
+    await expect(spinner).toHaveCSS('animation-name', 'none');
+  }
+  await expect(card(page, 11).locator('.assignee-label svg')).toHaveCount(1);
+  await expect(panel.locator('.detail__meta .assignee-label')).toHaveCSS('border-top-style', 'solid');
 
   // A card outside Doing has a column and no run state.
   await card(page, 8).click();

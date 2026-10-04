@@ -474,13 +474,32 @@ ol {
   background: var(--surface);
 }
 .assignee-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  box-sizing: border-box;
+  min-width: var(--size-status-label-width);
+  padding: var(--space-6) var(--space-10);
+  border: var(--stroke) solid var(--divider);
+  border-radius: var(--radius-control);
+  background: var(--surface);
   color: var(--text-secondary);
-  font-size: var(--fs-12);
+  font-size: var(--fs-13);
   white-space: nowrap;
+}
+
+.assignee-label svg {
+  width: var(--size-badge-icon);
+  height: var(--size-badge-icon);
 }
 
 .spinner {
   animation: spin var(--spinner-duration) linear infinite;
+}
+
+.spinner--static {
+  animation: none;
 }
 
 @keyframes spin {

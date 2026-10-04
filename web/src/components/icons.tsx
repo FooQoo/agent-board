@@ -101,3 +101,22 @@ export function Spinner({ className = '', ...rest }: IconProps) {
     </Icon>
   );
 }
+
+export function Bot(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 8V4H9" />
+      <rect x="4" y="8" width="16" height="12" rx="2" />
+      <path d="M2 14h2M20 14h2M9 13v2M15 13v2" />
+    </Icon>
+  );
+}
+
+export function User(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </Icon>
+  );
+}

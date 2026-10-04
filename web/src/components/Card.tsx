@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { formatShort, stateLabel } from '../lib/format';
 import type { Card as CardModel } from '../types';
 import { Grip } from './icons';
+import { AssigneeLabel } from './AssigneeLabel';
 import { RunStateBadge } from './RunStateBadge';
 import { useDraggable } from '@dnd-kit/react';
 
@@ -37,10 +38,12 @@ export function Card({ card, selected, onSelect }: CardProps) {
         <Grip />
         <span className="card__id">#{card.id}</span>
         <span className="card__spacer" />
-        <span className="card__assignee">{t(`assignee.${card.assignee}`)}</span>
-        {showsState && <RunStateBadge state={card.agentStatus} />}
+        {showsState && <RunStateBadge state={card.agentStatus} animated />}
       </span>
       <span className="card__title">{card.title}</span>
+      <span className="card__assignee">
+        <AssigneeLabel assignee={card.assignee} />
+      </span>
       {pending && card.pendingReason && <span className="card__reason">{card.pendingReason}</span>}
       <span className="card__updated">
         {t('card.updated', { date: formatShort(card.updatedAt) })}
