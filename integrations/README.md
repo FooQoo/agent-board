@@ -1,6 +1,6 @@
 # Claude Code and Codex integration
 
-Agent Board hooks read a complete, read-only board snapshot after tools run. They pass that snapshot to the agent as `additionalContext`. The `skan-board` skill describes how to choose work, add reasons, request a decision, wait for changes, and resume from the user's answer.
+Agent Board hooks read a complete, read-only board snapshot after tools run. They pass that snapshot to the agent as `additionalContext`. The `agent-board` skill describes how to choose work, add reasons, request a decision, wait for changes, and resume from the user's answer.
 
 Install `agboard` and initialize the new board before enabling hooks:
 
@@ -12,15 +12,15 @@ Keep your own settings. Review the template and merge its hook entries into your
 
 ## Claude Code
 
-1. Install the `skan-board` skill in a project skill directory Claude Code reads, preserving the YAML frontmatter hooks. The canonical skill is maintained in the personal Wiki repository at `.agents/skills/skan-board/SKILL.md`.
+1. Install the `agent-board` skill in a project skill directory Claude Code reads, preserving the YAML frontmatter hooks. The canonical skill is maintained in the personal Wiki repository at `.agents/skills/agent-board/SKILL.md`.
 2. Merge `integrations/claude-code/settings.json`'s `SessionStart` entry into the project's `.claude/settings.json`. It refreshes the snapshot at startup, resume, clear, and compact.
-3. Invoke `/skan-board` once per session. Claude Code registers the skill's `PostToolUse` and `PostToolUseFailure` hooks for the rest of that session. Inspect `/hooks` and confirm the fixed `agboard hook --agent claude` command before trusting it.
+3. Invoke `/agent-board` once per session. Claude Code registers the skill's `PostToolUse` and `PostToolUseFailure` hooks for the rest of that session. Inspect `/hooks` and confirm the fixed `agboard hook --agent claude` command before trusting it.
 
 ## Codex CLI and Codex App
 
 1. Merge `integrations/codex/hooks.json` into the project's `.codex/hooks.json`; preserve existing hooks.
 2. Start Codex in the project and review/trust the hook definitions in `/hooks`.
-3. Use the `skan-board` skill at the start of the task. SessionStart refreshes the snapshot after startup, resume, clear, or compact; PostToolUse refreshes it after tools.
+3. Use the `agent-board` skill at the start of the task. SessionStart refreshes the snapshot after startup, resume, clear, or compact; PostToolUse refreshes it after tools.
 
 Both templates invoke a fixed command. Card content and tool input are never interpolated into shell commands. The hook does not change the board. It caps the hook input and complete context at 64 KiB and returns `AGBOARD_ERROR` instead of presenting a truncated snapshot as complete.
 
