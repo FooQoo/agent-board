@@ -1,5 +1,6 @@
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use tempfile::tempdir;
@@ -158,4 +159,42 @@ fn wait_timeout_and_unavailable_are_not_reported_as_board_changes() {
     let error: Value = serde_json::from_slice(&missing.stderr).unwrap();
     assert_eq!(error["error"]["code"], "board_unavailable");
     assert!(!home.path().join("board.db").exists());
+}
+
+#[test]
+fn wait_keeps_the_event_stream_open_until_its_timeout() {
+    let home = tempdir().unwrap();
+    assert!(
+        agboard(home.path(), &["init", "--name", "Agent Board"])
+            .status
+            .success()
+    );
+    let mut server = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("SKAN_HOME", home.path())
+        .args(["serve", "--port", "0"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut line = String::new();
+    BufReader::new(server.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    assert!(line.contains("http://127.0.0.1:"), "{line}");
+
+    let began = Instant::now();
+    let output = agboard(
+        home.path(),
+        &["--json", "wait", "--after", "0", "--timeout", "4"],
+    );
+    let elapsed = began.elapsed();
+    assert!(!output.status.success());
+    let error: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(error["error"]["code"], "wait_timeout");
+    assert!(
+        elapsed >= Duration::from_secs(3),
+        "wait ended after {elapsed:?}"
+    );
+    server.kill().unwrap();
+    let _ = server.wait();
 }

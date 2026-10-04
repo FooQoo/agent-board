@@ -98,23 +98,36 @@ pub async fn wait_for_change(after: i64, timeout_secs: Option<u64>) -> Result<St
     if connect_timeout.is_zero() {
         return final_snapshot(after);
     }
-    let response = client
-        .get(format!("{base}/api/events"))
-        .timeout(connect_timeout)
-        .header("Host", format!("127.0.0.1:{}", info.port))
-        .send()
-        .await
-        .and_then(reqwest::Response::error_for_status)
-        .map_err(|e| {
-            if e.is_timeout()
+    // Bound connection establishment without applying a request timeout to the
+    // response body: the SSE body is intentionally long-lived while we wait.
+    let response = match tokio::time::timeout(
+        connect_timeout,
+        client
+            .get(format!("{base}/api/events"))
+            .header("Host", format!("127.0.0.1:{}", info.port))
+            .send(),
+    )
+    .await
+    {
+        Ok(Ok(response)) => response
+            .error_for_status()
+            .map_err(|e| format!("board_unavailable: {e}"))?,
+        Ok(Err(error)) => {
+            if error.is_timeout()
                 && timeout_secs
                     .is_some_and(|seconds| began.elapsed() >= Duration::from_secs(seconds))
             {
-                "wait_timeout: no board change before timeout".to_owned()
-            } else {
-                format!("board_unavailable: {e}")
+                return final_snapshot(after);
             }
-        })?;
+            return Err(format!("board_unavailable: {error}"));
+        }
+        Err(_) => {
+            if timeout_secs.is_some_and(|seconds| began.elapsed() >= Duration::from_secs(seconds)) {
+                return final_snapshot(after);
+            }
+            return Err("board_unavailable: event stream connection timed out".into());
+        }
+    };
     let mut events = response.bytes_stream().eventsource();
     let mut ready = false;
     loop {
