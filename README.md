@@ -41,7 +41,7 @@ flowchart LR
 
 **Simple on purpose.** Three columns, one local board, no accounts, no cloud.
 
-**English and Japanese.** Switch the web view with the globe button in the header.
+**Your language and colors.** Open Settings in the header to switch the web view between English and Japanese and to pick one of 24 color themes (12 colors, each in light and dark).
 
 ## Get started
 
@@ -88,8 +88,8 @@ agboard mv <id> done --actor ai --reason "<what was completed>"
 </details>
 
 <details>
-<summary><strong>Language</strong></summary>
+<summary><strong>Language and theme</strong></summary>
 
-The web UI opens in English. Use the globe button in the header to choose English or Japanese; the selection is saved in your browser. The CLI, its help and errors, and API and JSON values remain in English. Card content is not translated.
+The web UI opens in English with the light blue theme. Open Settings in the header to choose English or Japanese and a color theme; changes apply immediately and are saved in your browser. Neither choice follows the browser or OS language or color scheme. The CLI, its help and errors, and API and JSON values remain in English. Card content is not translated.
 
 </details>
