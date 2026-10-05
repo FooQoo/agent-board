@@ -1,0 +1,346 @@
+/*
+ * Modal dialogs (settings and card actions). Layout, spacing and colors follow the design;
+ * the lengths are the design's own values, so this file is kept apart from app.css (which takes
+ * its lengths from tokens.css). The rules are unlayered on purpose: they sit above the Tailwind
+ * utilities of the shadcn/ui sources.
+ */
+[data-slot="dialog-overlay"] {
+  background: rgb(15 23 42 / 50%);
+}
+
+:root:not([data-mode="dark"]) [data-slot="dialog-overlay"]:has(+ .settings-dialog) {
+  background: rgb(15 23 42 / 40%);
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  /* The design measures the 28px padding from the outer edge; the 1px border takes one of it. */
+  padding: 27px;
+  border: 1px solid var(--r-border);
+  border-radius: 14px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  box-shadow: 0 12px 32px rgb(15 23 42 / 20%);
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal__title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.modal__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--r-muted);
+  cursor: pointer;
+}
+
+.modal__close:hover:not(:disabled) {
+  color: var(--r-text2);
+}
+
+.modal__close:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.modal__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.modal__close:focus-visible,
+.segmented__option:focus-visible,
+.theme-tile:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}
+
+.modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal__textarea {
+  field-sizing: fixed;
+  resize: none;
+}
+
+.modal__textarea--short {
+  height: 88px;
+}
+
+.modal__textarea--medium {
+  height: 110px;
+}
+
+.modal__textarea--tall {
+  height: 120px;
+}
+
+.modal__card,
+.modal__hint,
+.modal__caption,
+.modal__error {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 19px;
+}
+
+.modal__card {
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.modal__hint,
+.modal__caption {
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.modal__error {
+  color: var(--r-danger);
+  font-size: 13px;
+}
+
+.modal__statuses,
+.modal__destination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal__destination {
+  gap: 8px;
+}
+
+.modal__arrow {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--r-muted);
+}
+
+.modal__request {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* The design's 14px padding is measured from the outer edge; the 1px border takes one of it. */
+  padding: 13px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 10px;
+  background: var(--r-pend-bg);
+}
+
+.modal__request-label {
+  color: var(--r-pend-tx);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+}
+
+.modal__request-text {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 13px;
+  /* The design's text box is two 20px lines for the two-line request. */
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Segmented single choice (language, assignee). */
+.segmented {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--r-lane);
+}
+
+.segmented__option {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--r-text2);
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 19px;
+}
+
+.segmented__option[aria-checked="true"] {
+  border-color: var(--r-border);
+  background: var(--r-surface);
+  color: var(--r-text);
+  font-weight: 600;
+}
+
+.segmented__option svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* Settings dialog. */
+.settings-dialog {
+  width: 640px;
+  gap: 24px;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 13%);
+}
+
+:root[data-mode="dark"] .settings-dialog {
+  gap: 22px;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 20%);
+}
+
+.settings__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings__section--theme {
+  gap: 14px;
+}
+
+.settings__heading {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+}
+
+.settings__heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings__current {
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.settings__note {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.theme-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.theme-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.theme-row__mode {
+  flex: none;
+  width: 44px;
+  color: var(--r-text2);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 19px;
+}
+
+.theme-row__tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--tile-bg);
+  cursor: pointer;
+}
+
+.theme-tile__dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--tile-accent);
+}
+
+.theme-tile__check {
+  display: none;
+  width: 16px;
+  height: 16px;
+  color: var(--tile-accent);
+}
+
+.theme-tile[aria-checked="true"] {
+  border: 2px solid var(--tile-accent);
+}
+
+.theme-tile[aria-checked="true"] .theme-tile__dot {
+  display: none;
+}
+
+.theme-tile[aria-checked="true"] .theme-tile__check {
+  display: block;
+}

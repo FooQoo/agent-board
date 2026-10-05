@@ -1,103 +1,135 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { Header } from '../../src/components/Header';
+import { selectTheme } from '../../src/theme';
 
-describe('language selector', () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    selectLocale('en');
-  });
+function reset() {
+  window.localStorage.clear();
+  selectLocale('en');
+  selectTheme({ mode: 'light', accent: 'blue' });
+  window.localStorage.clear();
+}
 
+describe('settings entry in the header', () => {
+  beforeEach(reset);
   afterEach(() => {
     cleanup();
-    selectLocale('en');
-    window.localStorage.clear();
+    reset();
   });
 
-  it('opens from the globe, exposes the selection, and focuses the current language', async () => {
+  it('replaces the globe language menu with a Settings button', () => {
     render(<Header boardName="simplekanban" />);
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Language' })).toBeNull();
+    expect(document.querySelector('.language-menu, .header__language')).toBeNull();
+  });
 
-    const trigger = screen.getByRole('button', { name: 'Language' });
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  it('draws the white logo on a tile that takes the theme accent', () => {
+    const { container } = render(<Header boardName="simplekanban" />);
+    const logo = container.querySelector('.header__logo') as HTMLElement;
+    expect(logo.tagName).toBe('SPAN');
+    const image = logo.querySelector('img') as HTMLImageElement;
+    expect(image.getAttribute('src')).toBe('/logo-white.png');
+    expect(image.getAttribute('alt')).toBe('');
+    expect(container.querySelector('img[src="/logo.png"]')).toBeNull();
+  });
+
+  it('shows the real board name after a slash and the Add card button', () => {
+    const { container } = render(<Header boardName="my-board" />);
+    expect(container.querySelector('.header__board')?.textContent).toBe('my-board');
+    expect(container.querySelector('.header__slash')?.getAttribute('aria-hidden')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Add card' }).getAttribute('data-slot')).toBe(
+      'button',
+    );
+  });
+
+  it('shows only the logo, the app name and Settings while the board is unknown', () => {
+    const { container } = render(<Header boardName={null} />);
+    expect(container.querySelector('.header__slash')).toBeNull();
+    expect(container.querySelector('.header__board')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Settings' }).getAttribute('data-slot')).toBe(
+      'button',
+    );
+  });
+
+  it('keeps the Settings button while the board name is unknown (loading or error)', () => {
+    render(<Header boardName={null} />);
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+  });
+
+  it('opens the settings dialog, which holds the language choice', async () => {
+    render(<Header boardName="simplekanban" />);
+    const trigger = screen.getByRole('button', { name: 'Settings' });
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     await userEvent.click(trigger);
 
-    expect(trigger.getAttribute('aria-expanded')).toBe('true');
-    const group = screen.getByRole('group', { name: 'Language' });
-    expect(group.querySelector('[role="menu"]')).toBeNull();
-    expect(screen.getByRole('button', { name: 'English' }).getAttribute('aria-pressed')).toBe(
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    expect(dialog).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'English' }).getAttribute('aria-checked')).toBe(
       'true',
     );
-    expect(screen.getByRole('button', { name: '日本語' }).getAttribute('aria-pressed')).toBe(
+    expect(screen.getByRole('radio', { name: '日本語' }).getAttribute('aria-checked')).toBe(
       'false',
     );
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })),
+      expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'English' })),
     );
   });
 
   it('supports keyboard opening, Tab navigation, Space selection, and focus restoration', async () => {
     render(<Header boardName={null} />);
-    const trigger = screen.getByRole('button', { name: 'Language' });
+    const trigger = screen.getByRole('button', { name: 'Settings' });
     trigger.focus();
     await userEvent.keyboard('{Enter}');
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })),
+      expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'English' })),
     );
 
-    await userEvent.keyboard('{Tab}');
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: '日本語' }));
-    await userEvent.keyboard(' ');
-
+    // Radix moves the focus on a timer, so hold the key until it has landed.
+    await userEvent.keyboard('{ArrowRight>}');
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('radio', { name: '日本語' })),
+    );
+    await userEvent.keyboard('{/ArrowRight}');
     expect(document.documentElement.lang).toBe('ja');
     expect(window.localStorage.getItem('skan.locale')).toBe('ja');
-    expect(screen.getByRole('button', { name: '表示言語' }).getAttribute('aria-expanded')).toBe(
-      'false',
-    );
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: '表示言語' }));
-  });
+    expect(screen.getByRole('dialog', { name: '設定' })).toBeTruthy();
 
-  it('opens and closes the language selector with Space on the trigger', async () => {
-    render(<Header boardName={null} />);
-    const trigger = screen.getByRole('button', { name: 'Language' });
-    trigger.focus();
-    await userEvent.keyboard(' ');
-    expect(trigger.getAttribute('aria-expanded')).toBe('true');
-    await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })),
-    );
-
-    trigger.focus();
-    await userEvent.keyboard(' ');
-    expect(screen.queryByRole('group', { name: 'Language' })).toBeNull();
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  it('closes on Escape and restores focus to the trigger', async () => {
-    render(<Header boardName={null} />);
-    const trigger = screen.getByRole('button', { name: 'Language' });
-    await userEvent.click(trigger);
-    await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'English' })),
-    );
     await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '設定' }));
+  });
 
-    expect(screen.queryByRole('group', { name: 'Language' })).toBeNull();
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  it('opens with Space on the trigger and closes on Escape with focus on the trigger', async () => {
+    render(<Header boardName={null} />);
+    const trigger = screen.getByRole('button', { name: 'Settings' });
+    trigger.focus();
+    await userEvent.keyboard(' ');
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeTruthy();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 
-  it('closes when the user clicks outside the language selector', async () => {
+  it('closes when the user clicks the backdrop', async () => {
     render(<Header boardName="simplekanban" />);
-    await userEvent.click(screen.getByRole('button', { name: 'Language' }));
-    expect(screen.getByRole('group', { name: 'Language' })).toBeTruthy();
+    const trigger = screen.getByRole('button', { name: 'Settings' });
+    await userEvent.click(trigger);
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+    expect(overlay).not.toBeNull();
+    await userEvent.click(overlay as Element);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
 
-    await userEvent.click(document.body);
-
-    expect(screen.queryByRole('group', { name: 'Language' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Language' }).getAttribute('aria-expanded')).toBe(
-      'false',
-    );
+  it('still calls onAdd from the add button', async () => {
+    const onAdd = vi.fn();
+    render(<Header boardName="simplekanban" onAdd={onAdd} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Add card' }));
+    expect(onAdd).toHaveBeenCalledTimes(1);
   });
 });

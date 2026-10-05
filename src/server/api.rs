@@ -22,6 +22,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/assets/app.js", get(app_js))
         .route("/assets/app.css", get(app_css))
         .route("/logo.png", get(logo_png))
+        .route("/logo-white.png", get(logo_white_png))
         .route("/api/board", get(board))
         .route("/api/events", get(events::events))
         .route("/api/notify", post(notify))
@@ -175,6 +176,17 @@ async fn logo_png() -> Response {
             (header::CACHE_CONTROL, "no-store"),
         ],
         assets::LOGO_PNG,
+    )
+        .into_response()
+}
+
+async fn logo_white_png() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+        assets::LOGO_WHITE_PNG,
     )
         .into_response()
 }

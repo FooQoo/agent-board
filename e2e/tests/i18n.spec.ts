@@ -29,15 +29,21 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(lane(page, 'Todo')).toBeVisible();
   await expect(lane(page, 'Doing')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Language' }).click();
-  const englishOption = page.getByRole('button', { name: 'English' });
-  const japaneseOption = page.getByRole('button', { name: '日本語' });
-  await expect(englishOption).toHaveAttribute('aria-pressed', 'true');
-  await expect(japaneseOption).toHaveAttribute('aria-pressed', 'false');
-  await page.screenshot({ path: testInfo.outputPath('01-english-language-menu.png') });
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  const englishOption = settings.getByRole('radio', { name: 'English' });
+  const japaneseOption = settings.getByRole('radio', { name: '日本語' });
+  await expect(englishOption).toHaveAttribute('aria-checked', 'true');
+  await expect(japaneseOption).toHaveAttribute('aria-checked', 'false');
+  await page.screenshot({ path: testInfo.outputPath('01-english-settings.png') });
   await japaneseOption.click();
 
+  // The choice applies at once and the dialog stays open; the board behind it is inert until it closes.
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();
+  await expect(page.getByRole('radio', { name: '日本語' })).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(lane(page, '未着手').getByRole('heading', { level: 2 })).toHaveText('未着手');
   await expect(lane(page, '進行中').getByRole('heading', { level: 2 })).toHaveText('進行中');
   await expect(lane(page, '完了').getByRole('heading', { level: 2 })).toHaveText('完了');
@@ -76,9 +82,12 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(lane(page, '未着手')).toBeVisible();
   await expect(card(page, 12)).toContainText('待機中');
 
-  await page.getByRole('button', { name: '表示言語' }).click();
-  await page.getByRole('button', { name: 'English' }).click();
+  await page.getByRole('button', { name: '設定' }).click();
+  await page.getByRole('radio', { name: 'English' }).click();
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(lane(page, 'Todo')).toBeVisible();
   await expect(card(page, 12)).toContainText('Pending');
   expect(listCards().find(({ id }) => id === 12)).toMatchObject({ cardStatus: 'doing', agentStatus: 'pending' });
@@ -90,19 +99,24 @@ test('keyboard selection keeps an open delete confirmation and the selected card
   await panel.getByRole('button', { name: 'Delete card' }).click();
   await expect(panel.getByText('Delete #12 "Restore a board from JSON"? This cannot be undone.')).toBeVisible();
 
-  const trigger = page.getByRole('button', { name: 'Language' });
+  const trigger = page.getByRole('button', { name: 'Settings' });
   await trigger.focus();
   await page.keyboard.press('Enter');
-  const menu = page.getByRole('group', { name: 'Language' });
-  await expect(page.getByRole('button', { name: 'English' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: '日本語' })).toBeFocused();
-  await page.keyboard.press('Space');
-
-  const japaneseTrigger = page.getByRole('button', { name: '表示言語' });
-  await expect(japaneseTrigger).toBeFocused();
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'English' })).toBeFocused();
+  // The language options are one radio group: the arrow keys move between them and select.
+  // Radix selects on arrow keys only while the key is held, so hold it briefly like a person does.
+  await page.keyboard.press('ArrowLeft', { delay: 60 });
+  await expect(page.getByRole('radio', { name: '日本語' })).toBeFocused();
+  await expect(page.getByRole('radio', { name: '日本語' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
-  await expect(menu).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  const japaneseTrigger = page.getByRole('button', { name: '設定' });
+  await expect(japaneseTrigger).toBeFocused();
+  await expect(dialog).toHaveCount(0);
   await expect(card(page, 12)).toHaveAttribute('aria-current', 'true');
   const japanesePanel = page.getByRole('complementary', { name: 'カードの詳細' });
   await expect(
@@ -114,28 +128,41 @@ test('keyboard selection keeps an open delete confirmation and the selected card
   expect(listCards().map(({ id }) => id)).toContain(12);
 });
 
-test('the language menu stays within desktop, tablet, and mobile viewports', async ({ page }, testInfo) => {
+test('the settings dialog stays within the desktop viewports', async ({ page }, testInfo) => {
   for (const viewport of [
+    { width: 1024, height: 900 },
     { width: 1280, height: 900 },
-    { width: 800, height: 900 },
-    { width: 480, height: 900 },
+    { width: 1920, height: 1080 },
   ]) {
     await page.setViewportSize(viewport);
-    const board = page.getByRole('main');
+    // The open dialog makes the board inert, so it is located by CSS rather than by role.
+    const board = page.locator('main.board');
+    // The detail width follows the new viewport asynchronously; wait until the board width is stable.
+    let previous = -1;
+    await expect
+      .poll(async () => {
+        const width = (await board.boundingBox())!.width;
+        const stable = width === previous;
+        previous = width;
+        return stable;
+      })
+      .toBe(true);
     const before = await board.boundingBox();
-    await page.getByRole('button', { name: 'Language' }).click();
+    await page.getByRole('button', { name: 'Settings' }).click();
 
-    const menu = page.getByRole('group', { name: 'Language' });
-    const bounds = await menu.boundingBox();
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await expect(dialog).toBeVisible();
+    const bounds = await dialog.boundingBox();
     expect(bounds).not.toBeNull();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     expect((await board.boundingBox())!.width).toBe(before!.width);
-    if (viewport.width === 480) {
-      await page.screenshot({ path: testInfo.outputPath('04-mobile-language-menu.png') });
+    if (viewport.width === 1024) {
+      await page.screenshot({ path: testInfo.outputPath('04-narrow-desktop-settings.png') });
     }
 
-    await page.getByRole('button', { name: 'Language' }).click();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
   }
 });

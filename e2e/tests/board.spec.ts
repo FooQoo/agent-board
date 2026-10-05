@@ -1,7 +1,7 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { resetBoard } from '../helpers/agboard';
 
-// The seed is the eight cards of the approved mock; see fixtures/agent-board.json.
+// The seed is the eight sample cards; see fixtures/agent-board.json.
 test.beforeEach(async ({ page }) => {
   resetBoard();
   await page.goto('/');

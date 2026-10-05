@@ -56,7 +56,8 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
     assert!(output.contains("AGBOARD_ERROR"));
     assert!(!db_path.exists());
     let oversized = vec![b'x'; 65_537];
-    let output = agent_board::agent::hook::run("claude", &mut Cursor::new(oversized), &db_path).unwrap();
+    let output =
+        agent_board::agent::hook::run("claude", &mut Cursor::new(oversized), &db_path).unwrap();
     assert!(output.contains("hook_input_too_large"));
     assert!(!db_path.exists());
 }

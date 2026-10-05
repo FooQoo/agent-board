@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { selectLocale, type Locale } from '../i18n';
-import { Check, Globe, Plus } from './icons';
+import { PlusIcon, SettingsIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SettingsDialog } from './SettingsDialog';
 
 export function Header({
   boardName,
@@ -10,48 +11,16 @@ export function Header({
   boardName: string | null;
   onAdd?: () => void;
 }) {
-  const { t, i18n } = useTranslation();
-  const locale: Locale = i18n.resolvedLanguage === 'ja' ? 'ja' : 'en';
-  const [open, setOpen] = useState(false);
-  const selectorRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const selectedOptionRef = useRef<HTMLButtonElement>(null);
-  const languageLabel = t('language.label');
-
-  useEffect(() => {
-    if (!open) return;
-    selectedOptionRef.current?.focus();
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (event.target instanceof Node && !selectorRef.current?.contains(event.target)) {
-        setOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [open]);
-
-  const choose = (nextLocale: Locale) => {
-    selectLocale(nextLocale);
-    setOpen(false);
-    triggerRef.current?.focus();
-  };
+  const { t } = useTranslation();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
     <header className="header">
       <h1 className="header__app">
-        <img className="header__logo" src="/logo.png" alt="" width="44" height="44" />
+        <span className="header__logo">
+          <img src="/logo-white.png" alt="" width="24" height="24" />
+        </span>
         <span>Agent Board</span>
       </h1>
       {boardName !== null && (
@@ -64,56 +33,28 @@ export function Header({
       )}
       <span className="header__spacer" aria-hidden="true" />
       {boardName !== null && (
-        <button type="button" className="header__add" onClick={onAdd}>
-          <Plus />
+        <Button type="button" className="header__add" onClick={onAdd}>
+          <PlusIcon aria-hidden="true" />
           {t('dialog.addCard')}
-        </button>
+        </Button>
       )}
-      <div className="header__language" ref={selectorRef}>
-        <button
-          ref={triggerRef}
-          type="button"
-          className="header__language-trigger"
-          aria-label={languageLabel}
-          aria-expanded={open}
-          aria-controls="language-options"
-          onClick={() => setOpen((current) => !current)}
-        >
-          <Globe />
-        </button>
-        {open && (
-          <div
-            id="language-options"
-            className="language-menu"
-            role="group"
-            aria-label={languageLabel}
-          >
-            <span className="language-menu__heading" aria-hidden="true">
-              {languageLabel}
-            </span>
-            <button
-              ref={locale === 'en' ? selectedOptionRef : undefined}
-              type="button"
-              className="language-menu__option"
-              aria-pressed={locale === 'en'}
-              onClick={() => choose('en')}
-            >
-              <span>{t('language.english')}</span>
-              {locale === 'en' && <Check className="language-menu__check" />}
-            </button>
-            <button
-              ref={locale === 'ja' ? selectedOptionRef : undefined}
-              type="button"
-              className="language-menu__option"
-              aria-pressed={locale === 'ja'}
-              onClick={() => choose('ja')}
-            >
-              <span>{t('language.japanese')}</span>
-              {locale === 'ja' && <Check className="language-menu__check" />}
-            </button>
-          </div>
-        )}
-      </div>
+      <Button
+        ref={settingsButtonRef}
+        type="button"
+        variant="outline"
+        size="icon"
+        className="header__settings"
+        aria-label={t('settings.title')}
+        aria-haspopup="dialog"
+        onClick={() => setSettingsOpen(true)}
+      >
+        <SettingsIcon aria-hidden="true" />
+      </Button>
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        restoreFocusRef={settingsButtonRef}
+      />
     </header>
   );
 }

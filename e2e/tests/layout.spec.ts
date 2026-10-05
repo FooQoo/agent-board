@@ -58,78 +58,68 @@ const computed = (page: Page, selector: string, props: string[]) =>
     [selector, props] as const,
   );
 
-function fillDone(extra = 4): void {
+function fillDone(extra = 8): void {
   for (let i = 0; i < extra; i += 1) agboardOk(['add', `Extra done card ${i + 1}`]);
   const cards = JSON.parse(agboardOk(['ls', '--json']).stdout).cards as { id: number; title: string }[];
   for (const c of cards.filter((x) => x.title.startsWith('Extra done card'))) agboardOk(['mv', String(c.id), 'done']);
 }
 
-// ---------------------------------------------------------------- AC-1
+// ---------------------------------------------------------------- Desktop layout
 
-test('1280px: outer insets, header and footer match the wide layout', async ({ page }) => {
-  await open(page, 1280);
-  const lanes = await computed(page, '.board__lanes', ['padding-top', 'padding-right', 'padding-bottom', 'padding-left']);
-  expect([lanes['padding-top'], lanes['padding-right'], lanes['padding-bottom'], lanes['padding-left']]).toEqual([
-    '40px',
-    '40px',
-    '40px',
-    '64px',
-  ]);
-  const header = await computed(page, '.header', ['padding-left', 'padding-right']);
-  expect(header.height).toBe(56);
-  expect([header['padding-left'], header['padding-right']]).toEqual(['64px', '24px']);
-  const footer = await computed(page, '.status-bar', ['padding-left', 'padding-right']);
-  expect([footer['padding-left'], footer['padding-right']]).toEqual(['64px', '40px']);
+for (const width of [1024, 1280, 1920]) {
+  test(`${width}px: the same insets, header and footer at every width`, async ({ page }) => {
+    await open(page, width);
+    const lanes = await computed(page, '.board__lanes', ['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'column-gap']);
+    expect([lanes['padding-top'], lanes['padding-right'], lanes['padding-bottom'], lanes['padding-left']]).toEqual([
+      '24px',
+      '24px',
+      '24px',
+      '24px',
+    ]);
+    expect(lanes['column-gap']).toBe('16px');
+    const header = await computed(page, '.header', ['padding-left', 'padding-right']);
+    expect(header.height).toBe(56);
+    expect([header['padding-left'], header['padding-right']]).toEqual(['24px', '24px']);
+    const footer = await computed(page, '.status-bar', ['padding-left', 'padding-right']);
+    expect(footer.height).toBe(40);
+    expect([footer['padding-left'], footer['padding-right']]).toEqual(['24px', '24px']);
 
-  // Type sizes and lane padding are unchanged from the baseline.
-  const title = await computed(page, '.card__title', ['font-size']);
-  expect(title['font-size']).toBe('15px');
-  expect((await computed(page, '.lane', ['padding-left', 'padding-top']))['padding-left']).toBe('16px');
-  expect((await computed(page, '.lane', ['padding-top']))['padding-top']).toBe('16px');
+    // Type sizes and lane padding do not scale with the width.
+    expect((await computed(page, '.card__title', ['font-size']))['font-size']).toBe('14px');
+    expect((await computed(page, '.lane', ['padding-left']))['padding-left']).toBe('12px');
+
+    // Three lanes side by side, the detail column on the right, the handle and the close button usable.
+    const boxes = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
+    expect(boxes).toHaveLength(3);
+    expect(boxes[0].x).toBeLessThan(boxes[1].x);
+    expect(boxes[1].x).toBeLessThan(boxes[2].x);
+    for (const lane of boxes) expect(lane.width).toBeGreaterThanOrEqual(200);
+    const panelBox = await box(panel(page));
+    expect(panelBox.x + panelBox.width).toBe(width);
+    expect(boxes[2].x + boxes[2].width).toBeLessThanOrEqual(panelBox.x);
+    await expect(handle(page)).toBeVisible();
+    await card(page, 8).click();
+    await expect(panel(page).getByRole('button', { name: 'Close details' })).toBeVisible();
+    await panel(page).getByRole('button', { name: 'Close details' }).click();
+    await expect(panel(page).getByText('Select a card to see its details.')).toBeVisible();
+  });
+}
+
+test('1024px: the default width yields to the lanes (each stays at least 200px)', async ({ page }) => {
+  await open(page, 1024);
+  expect(await panelWidth(page)).toBe(344);
+  const lanes = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
+  for (const w of lanes) expect(w).toBeGreaterThanOrEqual(200);
 });
 
-// ---------------------------------------------------------------- AC-2
+test('1920px: the extra width goes to the lanes and the panel keeps its width', async ({ page }) => {
+  await open(page, 1920);
+  expect(await panelWidth(page)).toBe(360);
+  const lanes = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
+  for (const w of lanes) expect(w).toBeCloseTo((1920 - 360 - 48 - 32) / 3, 0);
+});
 
-for (const width of [1100, 1024]) {
-  test(`${width}px: insets shrink to at least 24px and the edges line up`, async ({ page }) => {
-    await open(page, width);
-    const lanes = await computed(page, '.board__lanes', ['padding-left', 'padding-right']);
-    const left = Number.parseFloat(lanes['padding-left'] as string);
-    const right = Number.parseFloat(lanes['padding-right'] as string);
-    expect(left).toBeLessThan(64);
-    expect(left).toBeGreaterThanOrEqual(24);
-    expect(right).toBeGreaterThanOrEqual(24);
-    if (width === 1024) {
-      expect(left).toBe(24);
-      expect(right).toBe(24);
-    }
-    const headerLeft = Number.parseFloat((await computed(page, '.header', ['padding-left']))['padding-left'] as string);
-    const footerLeft = Number.parseFloat((await computed(page, '.status-bar', ['padding-left']))['padding-left'] as string);
-    expect(headerLeft).toBe(left);
-    expect(footerLeft).toBe(left);
-
-    const lanesBox = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
-    if (width === 1024) {
-      for (const w of lanesBox) expect(w).toBeGreaterThanOrEqual(200);
-      expect(await panelWidth(page)).toBe(352);
-    }
-  });
-}
-
-for (const width of [800, 480]) {
-  test(`${width}px: the narrow layout is unchanged and has no handle`, async ({ page }) => {
-    await open(page, width);
-    await expect(handle(page)).toBeHidden();
-    const lanes = await computed(page, '.board__lanes', ['padding-left']);
-    expect(lanes['padding-left']).toBe(width === 800 ? '24px' : '16px');
-    const header = await computed(page, '.header', ['padding-left']);
-    expect(header['padding-left']).toBe('24px');
-    expect(header.height).toBe(80);
-    expect(await panelWidth(page)).toBe(width);
-  });
-}
-
-// ---------------------------------------------------------------- AC-3
+// ---------------------------------------------------------------- Scroll cue
 
 async function cue(page: Page, index: number) {
   return page.evaluate((i) => {
@@ -166,9 +156,8 @@ test('1280px: an overflowing Done lane shows the fade and a scrollbar until the 
   expect((await cue(page, 2)).fade).toBe(0);
 });
 
-test('800px: no fade and no custom scrollbar', async ({ page }) => {
-  fillDone();
-  await open(page, 800);
+test('1920px: a lane that fits its cards shows neither fade nor scrollbar', async ({ page }) => {
+  await open(page, 1920, 1200);
   for (const index of [0, 1, 2]) {
     const lane = await cue(page, index);
     expect(lane.more).toBe('false');
@@ -184,9 +173,9 @@ test('1280px: the handle is a vertical separator and the drag stops at the limit
   expect(await panelWidth(page)).toBe(360);
 
   await dragBy(page, -2000);
-  expect(await panelWidth(page)).toBe(552);
+  expect(await panelWidth(page)).toBe(560);
   const lanes = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
-  for (const w of lanes) expect(w).toBe(200);
+  for (const w of lanes) expect(w).toBeGreaterThanOrEqual(200);
 
   await dragBy(page, 2000);
   expect(await panelWidth(page)).toBe(280);
@@ -220,7 +209,7 @@ test('1280px then 1024px: the width follows the limit and returns', async ({ pag
   await dragBy(page, -140);
   expect(await panelWidth(page)).toBe(500);
   await page.setViewportSize({ width: 1024, height: 900 });
-  await expect.poll(() => panelWidth(page)).toBe(352);
+  await expect.poll(() => panelWidth(page)).toBe(344);
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect.poll(() => panelWidth(page)).toBe(500);
 });
@@ -248,8 +237,9 @@ test('dragging keeps the selection and the delete confirmation and selects no te
 
 test('Japanese: the handle is named in Japanese', async ({ page }) => {
   await open(page, 1280);
-  await page.getByRole('button', { name: 'Language' }).click();
-  await page.getByRole('button', { name: '日本語' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('radio', { name: '日本語' }).click();
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('separator', { name: 'カードの詳細の幅を変更' })).toBeVisible();
 });
 

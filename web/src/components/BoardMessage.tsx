@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
 
 export interface BoardMessageProps {
   kind: 'empty' | 'loading' | 'error';
@@ -18,9 +19,9 @@ export function BoardMessage({ kind, onRetry }: BoardMessageProps) {
     return (
       <div className="board-message board-message--error" role="alert">
         <p className="board-message__title">{t('board.loadError')}</p>
-        <button type="button" className="button button--primary" onClick={onRetry}>
+        <Button type="button" onClick={onRetry}>
           {t('board.retry')}
-        </button>
+        </Button>
       </div>
     );
   }

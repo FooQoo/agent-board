@@ -1,0 +1,160 @@
+/*
+ * Semantic theme tokens: neutral and status tokens depend on the mode, accent tokens on mode +
+ * accent.
+ * The theme module sets html[data-mode] and html[data-accent]; without them the page is
+ * light/blue. The accent is independent of the status colors (pending, danger, done).
+ */
+
+:root,
+:root[data-mode="light"] {
+  --r-bg: #f6f7f9;
+  --r-surface: #ffffff;
+  --r-lane: #eef0f4;
+  --r-border: #e1e5eb;
+  --r-text: #1b2430;
+  --r-text2: #566274;
+  --r-muted: #8590a1;
+  --r-on-accent: #ffffff;
+  --r-pend-bg: #fff6e3;
+  --r-pend-bd: #efd9a6;
+  --r-pend-tx: #9a5a06;
+  --r-danger: #d92d20;
+  --r-done: #2c8a6b;
+}
+
+:root[data-mode="dark"] {
+  --r-bg: #0f1318;
+  --r-surface: #171c23;
+  --r-lane: #12171d;
+  --r-border: #262d37;
+  --r-text: #e7eaee;
+  --r-text2: #a3acb9;
+  --r-muted: #6f7886;
+  --r-on-accent: #0f1318;
+  --r-pend-bg: #2a2210;
+  --r-pend-bd: #5a4716;
+  --r-pend-tx: #e9b04f;
+  --r-danger: #f2766e;
+  --r-done: #5cc4a0;
+}
+
+:root,
+:root[data-mode="light"][data-accent="blue"] {
+  --r-accent: #2563eb;
+  --r-accent-soft: #e9effd;
+}
+
+:root[data-mode="light"][data-accent="sky"] {
+  --r-accent: #0284c7;
+  --r-accent-soft: #e6f3f9;
+}
+
+:root[data-mode="light"][data-accent="cyan"] {
+  --r-accent: #0891b2;
+  --r-accent-soft: #e6f4f7;
+}
+
+:root[data-mode="light"][data-accent="teal"] {
+  --r-accent: #0d9488;
+  --r-accent-soft: #e7f4f3;
+}
+
+:root[data-mode="light"][data-accent="green"] {
+  --r-accent: #16a34a;
+  --r-accent-soft: #e8f6ed;
+}
+
+:root[data-mode="light"][data-accent="lime"] {
+  --r-accent: #65a30d;
+  --r-accent-soft: #f0f6e7;
+}
+
+:root[data-mode="light"][data-accent="yellow"] {
+  --r-accent: #ca8a04;
+  --r-accent-soft: #faf3e6;
+}
+
+:root[data-mode="light"][data-accent="orange"] {
+  --r-accent: #ea580c;
+  --r-accent-soft: #fdeee7;
+}
+
+:root[data-mode="light"][data-accent="red"] {
+  --r-accent: #dc2626;
+  --r-accent-soft: #fce9e9;
+}
+
+:root[data-mode="light"][data-accent="pink"] {
+  --r-accent: #db2777;
+  --r-accent-soft: #fbe9f1;
+}
+
+:root[data-mode="light"][data-accent="purple"] {
+  --r-accent: #7c3aed;
+  --r-accent-soft: #f2ebfd;
+}
+
+:root[data-mode="light"][data-accent="gray"] {
+  --r-accent: #475569;
+  --r-accent-soft: #edeef0;
+}
+
+:root[data-mode="dark"][data-accent="blue"] {
+  --r-accent: #6b9aff;
+  --r-accent-soft: #28354f;
+}
+
+:root[data-mode="dark"][data-accent="sky"] {
+  --r-accent: #4db5f0;
+  --r-accent-soft: #223b4c;
+}
+
+:root[data-mode="dark"][data-accent="cyan"] {
+  --r-accent: #3cc9e0;
+  --r-accent-soft: #1e3f49;
+}
+
+:root[data-mode="dark"][data-accent="teal"] {
+  --r-accent: #3dcbb8;
+  --r-accent-soft: #1f3f41;
+}
+
+:root[data-mode="dark"][data-accent="green"] {
+  --r-accent: #4cc97a;
+  --r-accent-soft: #223f34;
+}
+
+:root[data-mode="dark"][data-accent="lime"] {
+  --r-accent: #a3d94a;
+  --r-accent-soft: #33422b;
+}
+
+:root[data-mode="dark"][data-accent="yellow"] {
+  --r-accent: #f0c531;
+  --r-accent-soft: #423e26;
+}
+
+:root[data-mode="dark"][data-accent="orange"] {
+  --r-accent: #f59a52;
+  --r-accent-soft: #43352c;
+}
+
+:root[data-mode="dark"][data-accent="red"] {
+  --r-accent: #f47c7c;
+  --r-accent-soft: #432f35;
+}
+
+:root[data-mode="dark"][data-accent="pink"] {
+  --r-accent: #f472b6;
+  --r-accent-soft: #432d40;
+}
+
+:root[data-mode="dark"][data-accent="purple"] {
+  --r-accent: #a78bfa;
+  --r-accent-soft: #34324e;
+}
+
+:root[data-mode="dark"][data-accent="gray"] {
+  --r-accent: #94a3b8;
+  --r-accent-soft: #303741;
+}

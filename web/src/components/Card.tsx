@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { formatShort, stateLabel } from '../lib/format';
 import type { Card as CardModel } from '../types';
-import { Grip } from './icons';
+import { GripVerticalIcon } from 'lucide-react';
 import { AssigneeLabel } from './AssigneeLabel';
-import { RunStateBadge } from './RunStateBadge';
+import { StatusLabel } from './StatusLabel';
 import { useDraggable } from '@dnd-kit/react';
 
 export interface CardProps {
@@ -35,11 +35,11 @@ export function Card({ card, selected, onSelect }: CardProps) {
       onClick={() => onSelect(card.id)}
     >
       <span className="card__top">
-        <Grip />
+        <GripVerticalIcon aria-hidden="true" focusable="false" className="grip" />
         <span className="card__id">#{card.id}</span>
         <AssigneeLabel assignee={card.assignee} />
         <span className="card__spacer" />
-        {showsState && <RunStateBadge state={card.agentStatus} showIcon />}
+        {showsState && <StatusLabel kind="agent" status={card.agentStatus} />}
       </span>
       <span className="card__title">{card.title}</span>
       {pending && card.pendingReason && <span className="card__reason">{card.pendingReason}</span>}

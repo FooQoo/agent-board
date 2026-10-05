@@ -39,7 +39,7 @@ test('an empty board shows the lanes and a hint for agents', async ({ page }) =>
     await expect(lane.getByText('0', { exact: true })).toBeVisible();
   }
   await expect(page.getByText('No cards yet.')).toBeVisible();
-  await expect(page.getByText('Agents add cards with "agboard add <title>".')).toBeVisible();
+  await expect(page.getByText('Add a card to get started.')).toBeVisible();
   await expect(page.getByRole('contentinfo')).toContainText('0 cards');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced \d{2}:\d{2}$/);
 });

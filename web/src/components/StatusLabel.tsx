@@ -1,28 +1,41 @@
 import { useTranslation } from 'react-i18next';
+import { CheckIcon, LoaderIcon, PauseIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import type { ColumnName, RunState } from '../types';
-import { Pause, Spinner } from './icons';
 
+type Variant = 'default' | 'secondary' | 'outline' | 'muted' | 'pending';
+
+/** Card status and agent run state share one badge; the icons are decoration next to the text. */
 export function StatusLabel({
   kind,
   status,
-  showIcon = false,
 }: {
   kind: 'card' | 'agent';
-  showIcon?: boolean;
   status: ColumnName | RunState;
 }) {
   const { t } = useTranslation();
   const text = kind === 'card' ? t(`column.${status}`) : t(`runState.${status}`);
-  const icon =
-    showIcon && kind === 'agent' && status === 'running' ? (
-      <Spinner />
-    ) : showIcon && kind === 'agent' && status === 'pending' ? (
-      <Pause />
-    ) : null;
+  let variant: Variant;
+  let icon = null;
+  if (kind === 'card') {
+    variant = status === 'doing' ? 'default' : status === 'done' ? 'secondary' : 'outline';
+    if (status === 'done') icon = <CheckIcon aria-hidden="true" className="text-[var(--r-done)]" />;
+  } else if (status === 'running') {
+    variant = 'secondary';
+    icon = <LoaderIcon aria-hidden="true" className="spinner text-[var(--r-text2)]" />;
+  } else if (status === 'pending') {
+    variant = 'pending';
+    icon = <PauseIcon aria-hidden="true" />;
+  } else {
+    variant = 'muted';
+  }
   return (
-    <span className={`status-label status-label--${kind} status-label--${status}`}>
+    <Badge
+      variant={variant}
+      className={`status-label status-label--${kind} status-label--${status}`}
+    >
       {icon}
       {text}
-    </span>
+    </Badge>
   );
 }

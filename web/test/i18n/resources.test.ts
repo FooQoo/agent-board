@@ -9,6 +9,16 @@ function leafPaths(value: unknown, prefix = ''): string[] {
   );
 }
 
+describe('dialog texts', () => {
+  it('uses the design wording for the move title, the assignee and the confirm buttons', () => {
+    expect(resources.ja.translation.dialog.moveTitle).toBe('列を移動');
+    expect(resources.ja.translation.dialog.assigneeAgent).toBe('AI');
+    expect(resources.en.translation.dialog.submitCreate).toBe('Create card');
+    expect(resources.en.translation.dialog.submitMove).toBe('Move');
+    expect(resources.en.translation.dialog.submitAnswer).toBe('Send answer');
+  });
+});
+
 describe('translation resources', () => {
   it('provides matching English and Japanese keys', () => {
     expect(leafPaths(resources.en.translation).sort()).toEqual(

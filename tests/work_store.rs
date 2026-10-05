@@ -1,8 +1,8 @@
-use chrono::{TimeZone, Utc};
 use agent_board::{
     domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState},
     store::Store,
 };
+use chrono::{TimeZone, Utc};
 use tempfile::tempdir;
 
 fn now() -> chrono::DateTime<Utc> {

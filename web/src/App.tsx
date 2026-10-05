@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Board } from './components/Board';
 import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
@@ -32,7 +32,8 @@ export function App({ initial }: AppProps) {
     if (board) setSelectedId((current) => nextSelection(board.cards, current));
   }, [board]);
 
-  useEffect(() => {
+  // A layout effect, so the title is already set when the board name appears in the DOM.
+  useLayoutEffect(() => {
     document.title = boardName !== null ? `${boardName} - Agent Board` : 'Agent Board';
   }, [boardName]);
 
@@ -43,6 +44,7 @@ export function App({ initial }: AppProps) {
       <Header boardName={boardName} onAdd={() => setDialog({ kind: 'create' })} />
       <div
         className="app__body"
+        data-status={status}
         ref={bodyRef}
         style={{ '--detail-width': `${width}px` } as CSSProperties}
       >
@@ -54,20 +56,24 @@ export function App({ initial }: AppProps) {
           onRetry={reload}
           onMove={(card, column) => setDialog({ kind: 'move', card, target: column })}
         />
-        <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
-        <DetailPanel
-          card={selected}
-          onAnswer={() => {
-            if (selected) setDialog({ kind: 'answer', card: selected });
-          }}
-          onClose={() => setSelectedId(null)}
-          onDeleted={() => {
-            setSelectedId(null);
-            reload();
-          }}
-          initialConfirm={isMockCard ? mockInitial?.confirm : undefined}
-          initialDeleteFailed={isMockCard ? mockInitial?.deleteFail : undefined}
-        />
+        {status === 'ready' && (
+          <>
+            <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
+            <DetailPanel
+              card={selected}
+              onAnswer={() => {
+                if (selected) setDialog({ kind: 'answer', card: selected });
+              }}
+              onClose={() => setSelectedId(null)}
+              onDeleted={() => {
+                setSelectedId(null);
+                reload();
+              }}
+              initialConfirm={isMockCard ? mockInitial?.confirm : undefined}
+              initialDeleteFailed={isMockCard ? mockInitial?.deleteFail : undefined}
+            />
+          </>
+        )}
       </div>
       <StatusBar
         status={status}
