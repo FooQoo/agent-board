@@ -151,8 +151,10 @@ test('users can add a card, choose its owner, and move it with a reason', async 
 test('a user answer returns a pending card to idle and records the full answer in history', async ({ page }) => {
   await card(page, 12).click();
   const panel = page.getByRole('complementary', { name: 'Card details' });
+  // The newest event put the card to Pending, so its dot has the Pending color.
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-column', 'doing');
-  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(31, 111, 235)');
+  await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'pending');
+  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(217, 101, 11)');
   await panel.getByRole('button', { name: 'Answer' }).click();
   const answer = page.getByRole('dialog');
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
@@ -163,4 +165,7 @@ test('a user answer returns a pending card to idle and records the full answer i
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
   await expect(panel.getByRole('listitem').first()).toContainText('Do not migrate or delete user data.');
   await expect(panel.getByRole('button', { name: 'Answer' })).toHaveCount(0);
+  // The answer returned the run state to Idle: the new first dot has the Idle color.
+  await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'idle');
+  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(74, 100, 168)');
 });

@@ -120,11 +120,13 @@ function DetailBody({
         {confirm === 'closed' ? (
           <>
             {card.agentStatus === 'pending' && card.pendingReason && (
-              <Button type="button" onClick={onAnswer}>
-                {t('dialog.answerAction')}
-              </Button>
+              <>
+                <Button type="button" onClick={onAnswer}>
+                  {t('dialog.answerAction')}
+                </Button>
+                <span className="detail__spacer" aria-hidden="true" />
+              </>
             )}
-            <span className="detail__spacer" aria-hidden="true" />
             <DeleteButton ref={deleteButton} onClick={() => setConfirm('user')} />
           </>
         ) : (

@@ -599,16 +599,24 @@ ol {
   border-radius: 50%;
 }
 
-.dot[data-column="todo"] {
+.dot[data-tone="todo"] {
   background: var(--todo);
 }
 
-.dot[data-column="doing"] {
+.dot[data-tone="doing"] {
   background: var(--doing);
 }
 
-.dot[data-column="done"] {
+.dot[data-tone="done"] {
   background: var(--done);
+}
+
+.dot[data-tone="idle"] {
+  background: var(--text-secondary);
+}
+
+.dot[data-tone="pending"] {
+  background: var(--pending-text);
 }
 
 .dot--history {
@@ -714,6 +722,7 @@ ol {
 
 .board-message__title {
   font-size: 16px;
+  line-height: 24px;
   color: var(--r-text);
 }
 
@@ -723,6 +732,7 @@ ol {
 
 .board-message__sub {
   font-size: 13px;
+  line-height: 20px;
   color: var(--r-text2);
   overflow-wrap: anywhere;
 }

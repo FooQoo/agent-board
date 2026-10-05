@@ -65,9 +65,13 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(card(page, 11).locator('.assignee-label svg')).toHaveCount(1);
   await expect(panel.locator('.detail__meta .assignee-label')).toHaveCSS('border-top-style', 'none');
 
-  // A card outside Doing has a column and no run state.
+  // A card outside Doing has a column and no run state. Delete sits at the bottom left.
   await card(page, 8).click();
   await expect(panel).toContainText('Done');
+  const panelBox = (await panel.boundingBox())!;
+  const deleteBox = (await panel.getByRole('button', { name: 'Delete card' }).boundingBox())!;
+  expect(deleteBox.x - panelBox.x).toBeLessThan(40);
+  expect(panelBox.y + panelBox.height - (deleteBox.y + deleteBox.height)).toBeLessThan(40);
   await expect(panel.getByText(/^(Idle|Running|Pending)$/)).toHaveCount(0);
 });
 

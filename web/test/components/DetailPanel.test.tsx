@@ -220,4 +220,55 @@ describe('DetailPanel', () => {
       'outline',
     );
   });
+
+  it('colors a run state change dot by the new run state and other dots by the card status', () => {
+    const ev = (
+      id: number,
+      kind: 'created' | 'lane' | 'agent',
+      to: 'todo' | 'doing',
+      agent: 'idle' | 'running' | 'pending',
+    ) => ({
+      id,
+      kind,
+      actor: 'ai' as const,
+      reason: 'r',
+      fromCardStatus: null,
+      toCardStatus: to,
+      fromAgentStatus: null,
+      toAgentStatus: agent,
+      requestId: null,
+      at: `2026-10-01T1${id}:00:00Z`,
+    });
+    const card = makeCard({
+      id: 33,
+      cardStatus: 'doing',
+      history: [
+        ev(0, 'created', 'todo', 'idle'),
+        ev(1, 'lane', 'doing', 'idle'),
+        ev(2, 'agent', 'doing', 'running'),
+        ev(3, 'agent', 'doing', 'pending'),
+        ev(4, 'agent', 'doing', 'idle'),
+      ],
+    });
+    const { container } = render(<DetailPanel card={card} onClose={noop} onDeleted={noop} />);
+    const tones = Array.from(container.querySelectorAll('.history__step .dot')).map((dot) =>
+      dot.getAttribute('data-tone'),
+    );
+    // Newest first.
+    expect(tones).toEqual(['idle', 'pending', 'doing', 'doing', 'todo']);
+  });
+
+  it('puts Delete alone at the left of the action row, and Answer before Delete when pending', () => {
+    const { container, rerender } = render(
+      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+    );
+    const row = () => container.querySelector('.detail__actions') as HTMLElement;
+    expect(Array.from(row().children).map((el) => el.getAttribute('aria-label'))).toEqual([
+      'Delete card',
+    ]);
+    rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
+    expect(
+      Array.from(row().children).map((el) => el.textContent || el.getAttribute('aria-label')),
+    ).toEqual(['Answer', null, 'Delete card']);
+  });
 });
