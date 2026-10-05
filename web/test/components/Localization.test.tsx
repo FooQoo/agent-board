@@ -1,11 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { BoardMessage } from '../../src/components/BoardMessage';
-import { ColumnChip } from '../../src/components/ColumnChip';
 import { HistoryTimeline } from '../../src/components/HistoryTimeline';
 import { Lane } from '../../src/components/Lane';
 import { LaneHeader } from '../../src/components/LaneHeader';
-import { RunStateBadge } from '../../src/components/RunStateBadge';
+import { StatusLabel } from '../../src/components/StatusLabel';
 import { i18n } from '../../src/i18n';
 import type { HistoryEvent } from '../../src/types';
 
@@ -24,16 +23,16 @@ describe('localized board content', () => {
 
   it('translates column chips, lane headers, and run state badges', async () => {
     await i18n.changeLanguage('ja');
-    const { rerender } = render(<ColumnChip column="done" />);
+    const { rerender } = render(<StatusLabel kind="card" status="done" />);
     expect(screen.getByText('完了')).toBeTruthy();
     rerender(<LaneHeader column="doing" count={3} />);
     expect(screen.getByRole('heading', { name: '進行中' })).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();
-    rerender(<RunStateBadge state="idle" />);
+    rerender(<StatusLabel kind="agent" status="idle" />);
     expect(screen.getByText('未稼働')).toBeTruthy();
-    rerender(<RunStateBadge state="running" />);
+    rerender(<StatusLabel kind="agent" status="running" />);
     expect(screen.getByText('稼働中')).toBeTruthy();
-    rerender(<RunStateBadge state="pending" />);
+    rerender(<StatusLabel kind="agent" status="pending" />);
     expect(screen.getByText('待機中')).toBeTruthy();
   });
 
@@ -46,9 +45,7 @@ describe('localized board content', () => {
     expect(screen.getByRole('button', { name: '再試行' })).toBeTruthy();
     rerender(<BoardMessage kind="empty" />);
     expect(screen.getByText('カードはまだありません。')).toBeTruthy();
-    expect(
-      screen.getByText('エージェントは "agboard add <title>" でカードを追加します。'),
-    ).toBeTruthy();
+    expect(screen.getByText('「カード追加」から登録できます。')).toBeTruthy();
   });
 
   it('localizes only the creation marker in history and preserves order, columns, and timestamps', async () => {

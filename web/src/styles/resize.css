@@ -21,9 +21,9 @@
   gap: var(--grip-gap);
   width: var(--handle-width);
   height: var(--handle-height);
-  border: var(--stroke, 1px) solid var(--divider);
+  border: 1px solid var(--r-border);
   border-radius: var(--handle-radius);
-  background: var(--surface);
+  background: var(--r-surface);
   transform: translate(50%, -50%);
   touch-action: none;
   cursor: col-resize;
@@ -31,25 +31,19 @@
 
 .resize-handle:hover,
 .resize-handle:active {
-  border-color: var(--primary);
+  border-color: var(--r-accent);
 }
 
 .resize-handle__grip {
   width: var(--grip-width);
   height: var(--grip-height);
   border-radius: 1px;
-  background: var(--text-muted);
+  background: var(--r-muted);
 }
 
 .resize-handle:hover .resize-handle__grip,
 .resize-handle:active .resize-handle__grip {
-  background: var(--primary);
-}
-
-@media (max-width: 1023px) {
-  .resize-handle {
-    display: none;
-  }
+  background: var(--r-accent);
 }
 
 body.is-resizing {

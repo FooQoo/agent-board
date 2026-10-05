@@ -46,8 +46,14 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.getByText('Connecting…')).toBeTruthy();
+    expect(screen.queryByRole('complementary', { name: 'Card details' })).toBeNull();
+    expect(screen.queryByRole('separator')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
     await screen.findByText('agent-board');
+    expect(screen.getByRole('complementary', { name: 'Card details' })).toBeTruthy();
+    expect(screen.getByRole('separator', { name: 'Resize card details' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Agent Board' })).toBeTruthy();
     expect(screen.getByText('agent-board')).toBeTruthy();
     expect(document.title).toBe('agent-board - Agent Board');
@@ -143,7 +149,7 @@ describe('App', () => {
     current = { ...current, cards: [] };
     render(<App />);
     expect(await screen.findByText('No cards yet.')).toBeTruthy();
-    expect(screen.getByText('Agents add cards with "agboard add <title>".')).toBeTruthy();
+    expect(screen.getByText('Add a card to get started.')).toBeTruthy();
     expect(screen.getAllByRole('region')).toHaveLength(3);
     expect(screen.getByText('0 cards')).toBeTruthy();
   });
@@ -155,7 +161,11 @@ describe('App', () => {
     render(<App />);
     expect(await screen.findByText('Could not load the board.')).toBeTruthy();
     expect(screen.getByText('Not connected')).toBeTruthy();
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Retry' }).getAttribute('data-slot')).toBe('button');
+    expect(screen.queryByRole('complementary', { name: 'Card details' })).toBeNull();
+    expect(screen.queryByRole('separator')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
     fetchMock.mockImplementation(async () => jsonResponse(current));
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
