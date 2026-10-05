@@ -124,10 +124,10 @@ function DetailBody({
                 <Button type="button" onClick={onAnswer}>
                   {t('dialog.answerAction')}
                 </Button>
-                <span className="detail__spacer" aria-hidden="true" />
               </>
             )}
             <DeleteButton ref={deleteButton} onClick={() => setConfirm('user')} />
+            <span className="detail__spacer" aria-hidden="true" />
           </>
         ) : (
           <DeleteConfirm

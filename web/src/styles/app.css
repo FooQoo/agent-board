@@ -666,7 +666,7 @@ ol {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .detail__spacer {

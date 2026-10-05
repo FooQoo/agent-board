@@ -258,17 +258,17 @@ describe('DetailPanel', () => {
     expect(tones).toEqual(['idle', 'pending', 'doing', 'doing', 'todo']);
   });
 
-  it('puts Delete alone at the left of the action row, and Answer before Delete when pending', () => {
+  it('puts Delete at the left of the action row, directly after Answer when pending', () => {
     const { container, rerender } = render(
       <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
     );
     const row = () => container.querySelector('.detail__actions') as HTMLElement;
-    expect(Array.from(row().children).map((el) => el.getAttribute('aria-label'))).toEqual([
-      'Delete card',
-    ]);
+    expect(
+      Array.from(row().children).map((el) => el.textContent || el.getAttribute('aria-label')),
+    ).toEqual(['Delete card', null]);
     rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
     expect(
       Array.from(row().children).map((el) => el.textContent || el.getAttribute('aria-label')),
-    ).toEqual(['Answer', null, 'Delete card']);
+    ).toEqual(['Answer', 'Delete card', null]);
   });
 });
