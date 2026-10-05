@@ -6,9 +6,13 @@
 //! state.
 
 mod ops;
+mod projects;
 mod rows;
 mod schema;
+mod schema_v3;
 mod work;
+
+pub use projects::{ProjectCounters, ProjectStore};
 
 use std::path::Path;
 use std::time::Duration;
