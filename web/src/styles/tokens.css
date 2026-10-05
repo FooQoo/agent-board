@@ -1,38 +1,131 @@
 /*
- * Design tokens. Names and values mirror the variables of the approved design.
- * Fonts: the design uses Inter / IBM Plex Mono / Source Serif 4,
- * the implementation uses the system font stacks instead of font files.
+ * Design tokens for the history timeline (time, reason, line, dots), with light and dark values.
+ * The neutral palette, the accent and the status colors of the board are the r-* tokens in
+ * theme.css. Fonts are the system font stacks instead of font files. The layout is the desktop
+ * layout at every width, so nothing here depends on the viewport.
  */
-:root {
-  /* Colors: design variables */
-  --primary: #1f6feb;
-  --primary-strong: #1a4fb8;
+:root,
+:root[data-mode="light"] {
   --text-primary: #1a4fb8;
   --text-secondary: #4a64a8;
-  --text-muted: #6f84b8;
-  --on-primary: #ffffff;
-  --accent-cyan: #5ed1f2;
-  --surface: #ffffff;
-  --lane: #eef5fc;
-  --card-border: #a9d6f0;
   --divider: #8cc6ee;
-  --line: #2f6bdb;
-  --badge: #d7ecfb;
-  --selected: #1f4fd1;
-  --pending-bg: #fff8de;
-  --pending-border: #f1d27c;
-  --pending-text: #d9650b;
   --todo: #6e62a8;
-  --doing: #1f6feb;
   --done: #3e968a;
-  --danger: #e2342d;
+  --pending-text: #d9650b;
+}
 
-  /* Colors used by the mock frames but not defined as design variables */
-  --header-board-name: #d6e6ff;
-  --danger-bg: #fff1f0;
-  --dialog-backdrop: rgb(13 24 43 / 48%);
+:root[data-mode="dark"] {
+  --text-primary: #e7eaee;
+  --text-secondary: #a3acb9;
+  --divider: #3a4452;
+  --todo: #a99bea;
+  --done: #5cc4a0;
+  --pending-text: #e9b04f;
+}
 
-  /* Fonts (design: font-sans / font-mono / font-serif) */
+/* The Doing color follows the accent in the design. */
+:root {
+  --doing: #1f6feb;
+}
+
+:root[data-mode="light"][data-accent="blue"] {
+  --doing: #1f6feb;
+}
+
+:root[data-mode="light"][data-accent="sky"] {
+  --doing: #0284c7;
+}
+
+:root[data-mode="light"][data-accent="cyan"] {
+  --doing: #0891b2;
+}
+
+:root[data-mode="light"][data-accent="teal"] {
+  --doing: #0d9488;
+}
+
+:root[data-mode="light"][data-accent="green"] {
+  --doing: #16a34a;
+}
+
+:root[data-mode="light"][data-accent="lime"] {
+  --doing: #65a30d;
+}
+
+:root[data-mode="light"][data-accent="yellow"] {
+  --doing: #ca8a04;
+}
+
+:root[data-mode="light"][data-accent="orange"] {
+  --doing: #ea580c;
+}
+
+:root[data-mode="light"][data-accent="red"] {
+  --doing: #dc2626;
+}
+
+:root[data-mode="light"][data-accent="pink"] {
+  --doing: #db2777;
+}
+
+:root[data-mode="light"][data-accent="purple"] {
+  --doing: #7c3aed;
+}
+
+:root[data-mode="light"][data-accent="gray"] {
+  --doing: #475569;
+}
+
+:root[data-mode="dark"][data-accent="blue"] {
+  --doing: #6b9aff;
+}
+
+:root[data-mode="dark"][data-accent="sky"] {
+  --doing: #4db5f0;
+}
+
+:root[data-mode="dark"][data-accent="cyan"] {
+  --doing: #3cc9e0;
+}
+
+:root[data-mode="dark"][data-accent="teal"] {
+  --doing: #3dcbb8;
+}
+
+:root[data-mode="dark"][data-accent="green"] {
+  --doing: #4cc97a;
+}
+
+:root[data-mode="dark"][data-accent="lime"] {
+  --doing: #a3d94a;
+}
+
+:root[data-mode="dark"][data-accent="yellow"] {
+  --doing: #f0c531;
+}
+
+:root[data-mode="dark"][data-accent="orange"] {
+  --doing: #f59a52;
+}
+
+:root[data-mode="dark"][data-accent="red"] {
+  --doing: #f47c7c;
+}
+
+:root[data-mode="dark"][data-accent="pink"] {
+  --doing: #f472b6;
+}
+
+:root[data-mode="dark"][data-accent="purple"] {
+  --doing: #a78bfa;
+}
+
+:root[data-mode="dark"][data-accent="gray"] {
+  --doing: #94a3b8;
+}
+
+:root {
+  /* Fonts */
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono:
     ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -41,107 +134,7 @@
   /* Radius */
   --radius-card: 10px;
   --radius-lane: 12px;
-  --radius-control: 8px;
-  --radius-count: 6px;
-  --radius-round: 50%;
 
-  /* Stroke widths */
-  --stroke: 1.5px;
-  --stroke-selected: 2.5px;
-  --stroke-delete-button: 2px;
-
-  /* Spacing */
-  --space-2: 2px;
-  --space-3: 3px;
-  --space-5: 5px;
-  --space-6: 6px;
-  --space-8: 8px;
-  --space-10: 10px;
-  --space-12: 12px;
-  --space-14: 14px;
-  --space-16: 16px;
-  --space-18: 18px;
-  --space-20: 20px;
-  --space-22: 22px;
-  --space-24: 24px;
-  --space-28: 28px;
-  --space-32: 32px;
-  --space-40: 40px;
-
-  /* Font sizes */
-  --fs-12: 12px;
-  --fs-13: 13px;
-  --fs-14: 14px;
-  --fs-15: 15px;
-  --fs-16: 16px;
-  --fs-17: 17px;
-  --fs-18: 18px;
-  --fs-20: 20px;
-  --fs-22: 22px;
-  --fs-28: 28px;
-  --fs-36: 36px;
-
-  /* Line heights */
-  --lh-detail-title: 1.15;
-  --lh-card-title: 1.35;
-  --lh-text: 1.4;
-  --lh-description: 1.45;
-
-  /* Layout dimensions */
-  --header-height: 80px;
-  --statusbar-height: 64px;
+  /* Detail column width: the stored width is applied inline by the app; this is the default. */
   --detail-width: 360px;
-  --page-gutter: var(--space-40);
-  --board-padding: var(--space-24);
-  --board-message-min-height: 320px;
-
-  /* Component dimensions */
-  --size-brand-mark: 44px;
-  --size-grip: 16px;
-  --size-badge-icon: 18px;
-  --size-status-label-width: 108px;
-  --size-dialog-width: 640px;
-  --size-lane-dot: 12px;
-  --size-history-dot: 14px;
-  --size-lane-rule-end: 10px;
-  --size-section-rule-end: 8px;
-  --size-section-bar-width: 4px;
-  --size-section-bar-height: 26px;
-  --size-icon-button: 28px;
-  --size-delete-button: 56px;
-  --size-delete-icon: 24px;
-  --size-sync-dot: 12px;
-  --history-line-left: 6.25px;
-  --history-dot-offset: 5px;
-  --history-dot-center: 12px;
-  --history-step-gap: var(--space-22);
-  --spinner-duration: 1s;
-}
-
-@media (max-width: 1023px) {
-  :root {
-    --page-gutter: var(--space-24);
-  }
-}
-
-@media (max-width: 639px) {
-  :root {
-    --board-padding: var(--space-16);
-    --size-brand-mark: 32px;
-  }
-}
-
-@media (min-width: 1024px) {
-  :root {
-    /* 100vw equals the viewport width here: .app is fixed to the viewport height, so no page scrollbar. */
-    --header-height: 56px;
-    --statusbar-height: 44px;
-    --inset-left: clamp(24px, calc(24px + (100vw - 1024px) * 0.15625), 64px);
-    --inset-right-header: 24px;
-    --inset-right-board: clamp(24px, calc(24px + (100vw - 1024px) * 0.0625), 40px);
-    --board-inset-block: 40px;
-    --scroll-fade-height: 72px;
-    --scrollbar-width: 4px;
-    --scrollbar-thumb: rgb(31 111 235 / 55%);
-  }
 }

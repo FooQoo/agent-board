@@ -1,6 +1,6 @@
 /*
- * Semantic theme tokens. Names and values mirror the variables of the approved design
- * : neutral/status tokens depend on the mode, accent tokens on mode + accent.
+ * Semantic theme tokens: neutral and status tokens depend on the mode, accent tokens on mode +
+ * accent.
  * The theme module sets html[data-mode] and html[data-accent]; without them the page is
  * light/blue. The accent is independent of the status colors (pending, danger, done).
  */

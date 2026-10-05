@@ -42,8 +42,9 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
 
   await card(page, 12).click();
   await expect(panel).toContainText('Pending');
+  // The pause icon shows on the card and in the detail alike.
   await expect(card(page, 12).locator('.status-label svg')).toHaveCount(1);
-  await expect(panel.locator('.status-label svg')).toHaveCount(0);
+  await expect(panel.locator('.detail__meta .status-label--pending svg')).toHaveCount(1);
   await panel.getByRole('button', { name: 'Answer', exact: true }).click();
   // The dialog shows the run state change as badges: the current state, an arrow, then Idle.
   const answerState = page.getByRole('dialog').getByRole('group', { name: 'Status change' });
@@ -57,14 +58,20 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await card(page, 11).click();
   await expect(panel).toContainText('Running');
   await expect(panel).not.toContainText('Waiting for confirmation');
+  // The loader turns on the board card only; in the detail it is shown still.
   await expect(card(page, 11).locator('.spinner')).toHaveCSS('animation-name', 'spin');
-  await expect(panel.locator('.status-label svg')).toHaveCount(0);
+  await expect(panel.locator('.detail__meta .status-label--running svg')).toHaveCount(1);
+  await expect(panel.locator('.detail__meta .status-label--running svg')).toHaveCSS('animation-name', 'none');
   await expect(card(page, 11).locator('.assignee-label svg')).toHaveCount(1);
   await expect(panel.locator('.detail__meta .assignee-label')).toHaveCSS('border-top-style', 'none');
 
-  // A card outside Doing has a column and no run state.
+  // A card outside Doing has a column and no run state. Delete sits at the bottom left.
   await card(page, 8).click();
   await expect(panel).toContainText('Done');
+  const panelBox = (await panel.boundingBox())!;
+  const deleteBox = (await panel.getByRole('button', { name: 'Delete card' }).boundingBox())!;
+  expect(deleteBox.x - panelBox.x).toBeLessThan(40);
+  expect(panelBox.y + panelBox.height - (deleteBox.y + deleteBox.height)).toBeLessThan(40);
   await expect(panel.getByText(/^(Idle|Running|Pending)$/)).toHaveCount(0);
 });
 
@@ -74,16 +81,16 @@ test('History shows the newest status change first with its actor and reason', a
   await card(page, 8).click();
   const history = details(page).getByRole('list');
   await expect(history.getByRole('listitem')).toHaveText([
-    /^Done10\/02 09:48Moved card$/,
-    /^Doing10\/01 16:30Moved card$/,
-    /^TodoCreated · 10\/01 16:00$/,
+    /^10\/02 09:48DoneMoved card$/,
+    /^10\/01 16:30DoingMoved card$/,
+    /^Created · 10\/01 16:00Todo$/,
   ]);
   await expect(history.getByRole('img', { name: 'AI', exact: true })).toHaveCount(3);
   await expect(history.getByText('Created')).toHaveCount(1);
   await expect(details(page).getByRole('heading', { name: 'History' })).toBeVisible();
 
   await card(page, 14).click();
-  await expect(history.getByRole('listitem')).toHaveText([/^TodoCreated · 10\/02 03:00$/]);
+  await expect(history.getByRole('listitem')).toHaveText([/^Created · 10\/02 03:00Todo$/]);
 });
 
 test('selecting another card switches the panel, and Close details clears it', async ({ page }) => {

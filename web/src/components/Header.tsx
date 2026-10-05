@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SettingsIcon } from 'lucide-react';
+import { PlusIcon, SettingsIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { SettingsDialog } from './SettingsDialog';
-import { Plus } from './icons';
 
 export function Header({
   boardName,
@@ -18,7 +18,9 @@ export function Header({
   return (
     <header className="header">
       <h1 className="header__app">
-        <img className="header__logo" src="/logo.png" alt="" width="44" height="44" />
+        <span className="header__logo">
+          <img src="/logo-white.png" alt="" width="24" height="24" />
+        </span>
         <span>Agent Board</span>
       </h1>
       {boardName !== null && (
@@ -31,21 +33,23 @@ export function Header({
       )}
       <span className="header__spacer" aria-hidden="true" />
       {boardName !== null && (
-        <button type="button" className="header__add" onClick={onAdd}>
-          <Plus />
+        <Button type="button" className="header__add" onClick={onAdd}>
+          <PlusIcon aria-hidden="true" />
           {t('dialog.addCard')}
-        </button>
+        </Button>
       )}
-      <button
+      <Button
         ref={settingsButtonRef}
         type="button"
+        variant="outline"
+        size="icon"
         className="header__settings"
         aria-label={t('settings.title')}
         aria-haspopup="dialog"
         onClick={() => setSettingsOpen(true)}
       >
         <SettingsIcon aria-hidden="true" />
-      </button>
+      </Button>
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

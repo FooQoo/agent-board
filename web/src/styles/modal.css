@@ -1,5 +1,5 @@
 /*
- * Modal dialogs (settings and card actions). Layout, spacing and colors follow the approved design;
+ * Modal dialogs (settings and card actions). Layout, spacing and colors follow the design;
  * the lengths are the design's own values, so this file is kept apart from app.css (which takes
  * its lengths from tokens.css). The rules are unlayered on purpose: they sit above the Tailwind
  * utilities of the shadcn/ui sources.
@@ -343,21 +343,4 @@
 
 .theme-tile[aria-checked="true"] .theme-tile__check {
   display: block;
-}
-
-/*
- * The global `button { font: inherit; color: inherit }` of app.css is unlayered and so wins over the
- * Tailwind utilities of the Button source; restate the design's button text here.
- */
-.modal [data-slot="button"] {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.modal [data-slot="button"][data-variant="default"] {
-  color: var(--r-on-accent);
-}
-
-.modal [data-slot="button"][data-variant="outline"] {
-  color: var(--r-text);
 }

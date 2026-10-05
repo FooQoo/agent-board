@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
 import { deleteCard } from '../api';
 import type { Card } from '../types';
 
@@ -54,12 +55,12 @@ export function DeleteConfirm({
         </p>
       )}
       <div className="delete-confirm__buttons">
-        <button type="button" className="button button--danger" disabled={busy} onClick={confirm}>
-          {t('delete.submit')}
-        </button>
-        <button ref={cancelRef} type="button" className="button button--outline" onClick={onCancel}>
+        <Button ref={cancelRef} type="button" variant="outline" onClick={onCancel}>
           {t('delete.cancel')}
-        </button>
+        </Button>
+        <Button type="button" variant="destructive" disabled={busy} onClick={confirm}>
+          {t('delete.submit')}
+        </Button>
       </div>
     </div>
   );

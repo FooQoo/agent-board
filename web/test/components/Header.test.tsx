@@ -26,6 +26,35 @@ describe('settings entry in the header', () => {
     expect(document.querySelector('.language-menu, .header__language')).toBeNull();
   });
 
+  it('draws the white logo on a tile that takes the theme accent', () => {
+    const { container } = render(<Header boardName="simplekanban" />);
+    const logo = container.querySelector('.header__logo') as HTMLElement;
+    expect(logo.tagName).toBe('SPAN');
+    const image = logo.querySelector('img') as HTMLImageElement;
+    expect(image.getAttribute('src')).toBe('/logo-white.png');
+    expect(image.getAttribute('alt')).toBe('');
+    expect(container.querySelector('img[src="/logo.png"]')).toBeNull();
+  });
+
+  it('shows the real board name after a slash and the Add card button', () => {
+    const { container } = render(<Header boardName="my-board" />);
+    expect(container.querySelector('.header__board')?.textContent).toBe('my-board');
+    expect(container.querySelector('.header__slash')?.getAttribute('aria-hidden')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Add card' }).getAttribute('data-slot')).toBe(
+      'button',
+    );
+  });
+
+  it('shows only the logo, the app name and Settings while the board is unknown', () => {
+    const { container } = render(<Header boardName={null} />);
+    expect(container.querySelector('.header__slash')).toBeNull();
+    expect(container.querySelector('.header__board')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Settings' }).getAttribute('data-slot')).toBe(
+      'button',
+    );
+  });
+
   it('keeps the Settings button while the board name is unknown (loading or error)', () => {
     render(<Header boardName={null} />);
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();

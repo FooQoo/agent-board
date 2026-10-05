@@ -78,7 +78,7 @@ export const resources = {
         loadError: 'Could not load the board.',
         retry: 'Retry',
         empty: 'No cards yet.',
-        emptyHint: 'Agents add cards with "agboard add <title>".',
+        emptyHint: 'Add a card to get started.',
       },
       card: {
         updated: 'Updated {{date}}',
@@ -154,7 +154,7 @@ export const resources = {
       },
       assignee: { ai: 'AI', human: 'ユーザー' },
       dialog: {
-        addCard: 'カードを追加',
+        addCard: 'カード追加',
         createTitle: 'カードを追加',
         moveTitle: '列を移動',
         answerTitle: '判断依頼に回答',
@@ -190,7 +190,7 @@ export const resources = {
         loadError: 'ボードを読み込めませんでした。',
         retry: '再試行',
         empty: 'カードはまだありません。',
-        emptyHint: 'エージェントは "agboard add <title>" でカードを追加します。',
+        emptyHint: '「カード追加」から登録できます。',
       },
       card: {
         updated: '更新 {{date}}',

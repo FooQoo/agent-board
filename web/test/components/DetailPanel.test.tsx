@@ -68,9 +68,9 @@ describe('DetailPanel', () => {
     expect(steps).toHaveLength(3);
     const texts = Array.from(steps).map((step) => step.textContent);
     expect(texts).toEqual([
-      'Done10/02 09:48Moved card',
-      'Doing10/01 16:30Moved card',
-      'TodoCreated · 10/01 16:00',
+      '10/02 09:48DoneMoved card',
+      '10/01 16:30DoingMoved card',
+      'Created · 10/01 16:00Todo',
     ]);
     expect(steps[0]?.getAttribute('data-column')).toBe('done');
     expect(steps[2]?.getAttribute('data-column')).toBe('todo');
@@ -164,5 +164,111 @@ describe('DetailPanel', () => {
     render(<DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />);
     const region = screen.getByRole('complementary');
     expect(within(region).getByText('#8')).toBeTruthy();
+  });
+
+  it('puts the time first, then the changed status with the actor, then the reason', () => {
+    const { container } = render(
+      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+    );
+    const step = container.querySelector('.history__step') as HTMLElement;
+    const parts = Array.from(step.querySelectorAll('.history__text > *')).map((el) => el.className);
+    expect(parts).toEqual(['history__at', 'history__heading', 'history__reason']);
+    expect(step.querySelector('.history__heading .status-label')).not.toBeNull();
+    expect(step.querySelector('.history__heading .assignee-label')).not.toBeNull();
+  });
+
+  it('shows the status icons in the detail too and spins none of them outside the board', () => {
+    const { container } = render(
+      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+    );
+    expect(container.querySelector('.detail__meta .status-label svg.lucide-check')).not.toBeNull();
+    expect(container.querySelector('.detail__title')?.tagName).toBe('H2');
+  });
+
+  it('names the assignee next to the icon in the detail header', () => {
+    const { container } = render(
+      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+    );
+    const meta = container.querySelector('.detail__meta') as HTMLElement;
+    expect(meta.querySelector('.assignee-label')?.getAttribute('aria-label')).toBe('AI');
+    expect(meta.querySelector('.detail__assignee')?.textContent).toBe('AI');
+    expect(meta.querySelector('.detail__assignee')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('shows the pending request in a labelled box and keeps Answer and Delete in one row', () => {
+    const card = fixtureCard(12);
+    const { container } = render(<DetailPanel card={card} onClose={noop} onDeleted={noop} />);
+    const box = container.querySelector('.detail__pending') as HTMLElement;
+    expect(box.textContent).toContain('Decision request from the AI');
+    expect(box.textContent).toContain(card.pendingReason ?? 'missing');
+    expect(box.querySelector('button')).toBeNull();
+    const actions = container.querySelector('.detail__actions') as HTMLElement;
+    const names = Array.from(actions.querySelectorAll('button')).map(
+      (b) => b.textContent || b.getAttribute('aria-label'),
+    );
+    expect(names).toEqual(['Answer', 'Delete card']);
+  });
+
+  it('uses the shared Button for Delete and Cancel in the confirmation', async () => {
+    render(<DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    const group = screen.getByRole('group', { name: /^Delete #8/ });
+    expect(within(group).getByRole('button', { name: 'Delete' }).getAttribute('data-variant')).toBe(
+      'destructive',
+    );
+    expect(within(group).getByRole('button', { name: 'Cancel' }).getAttribute('data-variant')).toBe(
+      'outline',
+    );
+  });
+
+  it('colors a run state change dot by the new run state and other dots by the card status', () => {
+    const ev = (
+      id: number,
+      kind: 'created' | 'lane' | 'agent',
+      to: 'todo' | 'doing',
+      agent: 'idle' | 'running' | 'pending',
+    ) => ({
+      id,
+      kind,
+      actor: 'ai' as const,
+      reason: 'r',
+      fromCardStatus: null,
+      toCardStatus: to,
+      fromAgentStatus: null,
+      toAgentStatus: agent,
+      requestId: null,
+      at: `2026-10-01T1${id}:00:00Z`,
+    });
+    const card = makeCard({
+      id: 33,
+      cardStatus: 'doing',
+      history: [
+        ev(0, 'created', 'todo', 'idle'),
+        ev(1, 'lane', 'doing', 'idle'),
+        ev(2, 'agent', 'doing', 'running'),
+        ev(3, 'agent', 'doing', 'pending'),
+        ev(4, 'agent', 'doing', 'idle'),
+      ],
+    });
+    const { container } = render(<DetailPanel card={card} onClose={noop} onDeleted={noop} />);
+    const tones = Array.from(container.querySelectorAll('.history__step .dot')).map((dot) =>
+      dot.getAttribute('data-tone'),
+    );
+    // Newest first.
+    expect(tones).toEqual(['idle', 'pending', 'doing', 'doing', 'todo']);
+  });
+
+  it('puts Delete alone at the left of the action row, and Answer before Delete when pending', () => {
+    const { container, rerender } = render(
+      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+    );
+    const row = () => container.querySelector('.detail__actions') as HTMLElement;
+    expect(Array.from(row().children).map((el) => el.getAttribute('aria-label'))).toEqual([
+      'Delete card',
+    ]);
+    rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
+    expect(
+      Array.from(row().children).map((el) => el.textContent || el.getAttribute('aria-label')),
+    ).toEqual(['Answer', null, 'Delete card']);
   });
 });

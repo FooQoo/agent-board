@@ -128,15 +128,25 @@ test('keyboard selection keeps an open delete confirmation and the selected card
   expect(listCards().map(({ id }) => id)).toContain(12);
 });
 
-test('the settings dialog stays within desktop, tablet, and mobile viewports', async ({ page }, testInfo) => {
+test('the settings dialog stays within the desktop viewports', async ({ page }, testInfo) => {
   for (const viewport of [
+    { width: 1024, height: 900 },
     { width: 1280, height: 900 },
-    { width: 800, height: 900 },
-    { width: 480, height: 900 },
+    { width: 1920, height: 1080 },
   ]) {
     await page.setViewportSize(viewport);
     // The open dialog makes the board inert, so it is located by CSS rather than by role.
     const board = page.locator('main.board');
+    // The detail width follows the new viewport asynchronously; wait until the board width is stable.
+    let previous = -1;
+    await expect
+      .poll(async () => {
+        const width = (await board.boundingBox())!.width;
+        const stable = width === previous;
+        previous = width;
+        return stable;
+      })
+      .toBe(true);
     const before = await board.boundingBox();
     await page.getByRole('button', { name: 'Settings' }).click();
 
@@ -148,8 +158,8 @@ test('the settings dialog stays within desktop, tablet, and mobile viewports', a
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     expect((await board.boundingBox())!.width).toBe(before!.width);
-    if (viewport.width === 480) {
-      await page.screenshot({ path: testInfo.outputPath('04-mobile-settings.png') });
+    if (viewport.width === 1024) {
+      await page.screenshot({ path: testInfo.outputPath('04-narrow-desktop-settings.png') });
     }
 
     await page.keyboard.press('Escape');
