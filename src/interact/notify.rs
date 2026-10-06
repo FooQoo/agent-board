@@ -16,8 +16,15 @@ const MAX_STATUS_LINE: usize = 256;
 /// answers, the answer is not 204, or everything together takes longer than
 /// [`NOTIFY_TIMEOUT`]. Never panics.
 pub fn notify_serve() -> bool {
+    notify_serve_in(&paths::data_dir())
+}
+
+/// Like [`notify_serve`], but finds `serve.json` in `dir` instead of the
+/// default data directory. A command that works on one database tells the
+/// server that belongs to that same database.
+pub fn notify_serve_in(dir: &std::path::Path) -> bool {
     let start = Instant::now();
-    match paths::read_serve_info() {
+    match paths::read_serve_info_in(dir) {
         Some(info) => notify_port(info.port, NOTIFY_TIMEOUT.saturating_sub(start.elapsed())),
         None => false,
     }

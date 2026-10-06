@@ -31,7 +31,13 @@ pub fn serve_info_path() -> PathBuf {
 
 /// Read `serve.json`. A missing, unreadable or malformed file is `None`.
 pub fn read_serve_info() -> Option<ServeInfo> {
-    let text = std::fs::read_to_string(serve_info_path()).ok()?;
+    read_serve_info_in(&data_dir())
+}
+
+/// Read the `serve.json` inside `dir`: the data directory that holds the
+/// database a command was actually run against.
+pub fn read_serve_info_in(dir: &std::path::Path) -> Option<ServeInfo> {
+    let text = std::fs::read_to_string(dir.join("serve.json")).ok()?;
     serde_json::from_str(&text).ok()
 }
 

@@ -8,7 +8,7 @@ pub mod run;
 
 use std::ffi::OsString;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::clock::{Clock, SystemClock};
 use crate::domain::{ProjectId, ProjectMeta};
@@ -25,6 +25,9 @@ pub enum Target {
     Existing(ProjectMeta),
     /// No project has this name. Only `init` and `import` may create it.
     Missing { name: String },
+    /// The command works on the catalog of projects and names none
+    /// (`project create`, `project ls`, `serve`).
+    Catalog,
 }
 
 /// Everything a command runs with.
@@ -38,15 +41,25 @@ pub struct Context {
 }
 
 impl Context {
-    /// The project's ID. A project that does not exist is `project_not_found`;
-    /// nothing is substituted.
-    pub fn project_id(&self) -> Result<&ProjectId, SkanError> {
+    /// The resolved project. A project that does not exist is
+    /// `project_not_found`; a catalog-wide command has none. Nothing is
+    /// substituted.
+    pub fn project(&self) -> Result<&ProjectMeta, SkanError> {
         match &self.target {
-            Target::Existing(meta) => Ok(&meta.id),
+            Target::Existing(meta) => Ok(meta),
             Target::Missing { name } => Err(SkanError::ProjectNotFound {
                 project: name.clone(),
             }),
+            Target::Catalog => Err(SkanError::InvalidArgument {
+                message: "--project NAME is required.".to_string(),
+                command: None,
+            }),
         }
+    }
+
+    /// The resolved project's ID. Fixed for this run.
+    pub fn project_id(&self) -> Result<&ProjectId, SkanError> {
+        self.project().map(|meta| &meta.id)
     }
 }
 
@@ -65,8 +78,10 @@ pub struct Env<'a> {
     pub db_path: PathBuf,
     pub stdout: &'a mut dyn Write,
     pub stderr: &'a mut dyn Write,
-    /// Called once after a command that changed the board.
-    pub after_commit: &'a mut dyn FnMut(&Context),
+    /// Called once after a command that changed the stored data, with the
+    /// directory that holds the database. A running `serve` is found through
+    /// the `serve.json` in that same directory.
+    pub after_commit: &'a mut dyn FnMut(&Context, &Path),
 }
 
 /// Entry point of the command line interface. Returns the process exit code.
@@ -74,7 +89,7 @@ pub fn run() -> i32 {
     let args: Vec<OsString> = std::env::args_os().collect();
     let mut stdout = std::io::stdout().lock();
     let mut stderr = std::io::stderr().lock();
-    let mut after_commit = |ctx: &Context| run::after_commit(ctx);
+    let mut after_commit = |ctx: &Context, dir: &Path| run::after_commit(ctx, dir);
     let mut env = Env {
         clock: Box::new(SystemClock),
         db_path: crate::paths::db_path(),

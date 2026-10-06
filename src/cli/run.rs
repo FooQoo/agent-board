@@ -3,7 +3,7 @@
 use std::ffi::OsString;
 use std::io::Write;
 
-use crate::cli::args::{self, Cli, Command, Parsed};
+use crate::cli::args::{self, Cli, Command, Parsed, ProjectCommand};
 use crate::cli::{Context, Env, Outcome, Target, commands, errors, output};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
@@ -33,7 +33,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
         };
         let mut stdin = std::io::stdin().lock();
         if let Some(output) =
-            crate::agent::hook::run(agent, &mut stdin, &env.db_path, cli.project.as_deref())
+            crate::agent::hook::run(agent, &mut stdin, &env.db_path, cli.project())
         {
             write_text(env.stdout, &output);
         }
@@ -46,7 +46,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             .map_err(|error| error.to_string())
             .and_then(|runtime| {
                 runtime.block_on(crate::agent::wait::wait_for_change(
-                    cli.project.as_deref().unwrap_or_default(),
+                    cli.project().unwrap_or_default(),
                     args.after.clone(),
                     args.timeout,
                 ))
@@ -82,8 +82,15 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
                 outcome.human
             };
             write_text(env.stdout, &text);
-            if outcome.changed {
-                (env.after_commit)(&ctx);
+            if let (true, Some(ctx)) = (outcome.changed, &ctx) {
+                let dir = env
+                    .db_path
+                    .parent()
+                    .filter(|dir| !dir.as_os_str().is_empty())
+                    .unwrap_or_else(|| std::path::Path::new("."))
+                    .to_path_buf();
+                let dir = dir.as_path();
+                (env.after_commit)(ctx, dir);
             }
             0
         }
@@ -91,37 +98,82 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     }
 }
 
-fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Context, Outcome), SkanError> {
-    // `serve` shows every project and names none.
-    let name = match &cli.project {
+/// How a command uses the data area, which decides how it is opened.
+enum Access {
+    /// Reads one project; never creates the data area.
+    ReadProject,
+    /// Reads the catalog; without a data area the list is empty.
+    ReadCatalog,
+    /// Changes one project that must already exist.
+    ChangeProject,
+    /// `init` and `import`: change the project, or create it if it is missing.
+    ChangeOrCreateProject,
+    /// Changes the catalog or runs without a project (`project create`, `serve`).
+    Catalog,
+}
+
+fn access(command: &Command) -> Access {
+    match command {
+        Command::Ls(_) | Command::Show(_) | Command::Snapshot(_) | Command::Export(_) => {
+            Access::ReadProject
+        }
+        Command::Project(args) => match args.command {
+            ProjectCommand::Ls => Access::ReadCatalog,
+            ProjectCommand::Create(_) => Access::Catalog,
+            ProjectCommand::Rename(_) | ProjectCommand::Rm => Access::ChangeProject,
+        },
+        Command::Init(_) | Command::Import(_) => Access::ChangeOrCreateProject,
+        Command::Add(_)
+        | Command::Edit(_)
+        | Command::Mv(_)
+        | Command::State(_)
+        | Command::Rm(_) => Access::ChangeProject,
+        Command::Serve(_) | Command::Hook(_) | Command::Wait(_) => Access::Catalog,
+    }
+}
+
+fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome), SkanError> {
+    // The name is normalized once. `--project` is absent only for commands
+    // that work on the catalog; nothing is chosen for a command that lacks it.
+    let name = match cli.project() {
         Some(raw) => Some(validate_project_name(raw)?),
         None => None,
     };
-    let store = if matches!(cli.command, Command::Snapshot(_)) {
-        // A read never creates the data area: without one there is no project.
-        ProjectStore::open_read_only(&env.db_path).map_err(|error| match (&error, &name) {
-            (SkanError::NotInitialized, Some(name)) => SkanError::ProjectNotFound {
-                project: name.clone(),
-            },
-            _ => error,
-        })?
-    } else {
-        ProjectStore::open(&env.db_path)?
+    let access = access(&cli.command);
+    let not_found = |name: &Option<String>| SkanError::ProjectNotFound {
+        project: name.clone().unwrap_or_default(),
+    };
+    let store = match access {
+        Access::ReadProject | Access::ReadCatalog => {
+            // A read never creates the data area.
+            match ProjectStore::open_read_only(&env.db_path) {
+                Ok(store) => store,
+                Err(SkanError::NotInitialized) if matches!(access, Access::ReadCatalog) => {
+                    return Ok((None, commands::project::empty_list()));
+                }
+                Err(SkanError::NotInitialized) => return Err(not_found(&name)),
+                Err(error) => return Err(error),
+            }
+        }
+        // A project that cannot exist yet is not found; do not create the
+        // data area only to say so.
+        Access::ChangeProject if !env.db_path.exists() => return Err(not_found(&name)),
+        Access::ChangeProject | Access::ChangeOrCreateProject | Access::Catalog => {
+            ProjectStore::open(&env.db_path)?
+        }
     };
     let target = match name {
         Some(name) => match store.project_by_name(&name) {
             Ok(meta) => Target::Existing(meta),
             // `init` and `import` create a project that does not exist yet.
             Err(SkanError::ProjectNotFound { .. })
-                if matches!(cli.command, Command::Init(_) | Command::Import(_)) =>
+                if matches!(access, Access::ChangeOrCreateProject) =>
             {
                 Target::Missing { name }
             }
             Err(error) => return Err(error),
         },
-        None => Target::Missing {
-            name: String::new(),
-        },
+        None => Target::Catalog,
     };
     let mut ctx = Context {
         store,
@@ -133,11 +185,12 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Context, Outcome), SkanE
         interactive: false,
     };
     let outcome = dispatch(&mut ctx, &cli.command)?;
-    Ok((ctx, outcome))
+    Ok((Some(ctx), outcome))
 }
 
 fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> {
     match command {
+        Command::Project(args) => commands::project::run(ctx, args),
         Command::Init(args) => commands::init::run(ctx, args),
         Command::Add(args) => commands::add::run(ctx, args),
         Command::Edit(args) => commands::edit::run(ctx, args),
@@ -178,6 +231,6 @@ fn write_text(out: &mut dyn Write, text: &str) {
 /// Called once after a command that changed the board: tells a running
 /// `agboard serve` so open browsers refresh. Best effort; the result is ignored
 /// and the notification never takes longer than its own 300 ms budget.
-pub fn after_commit(_ctx: &Context) {
-    let _ = crate::interact::notify::notify_serve();
+pub fn after_commit(_ctx: &Context, dir: &std::path::Path) {
+    let _ = crate::interact::notify::notify_serve_in(dir);
 }
