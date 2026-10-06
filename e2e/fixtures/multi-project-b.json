@@ -1,0 +1,143 @@
+{
+  "format": "skan-board",
+  "version": 2,
+  "board": {
+    "name": "Beta",
+    "createdAt": "2026-10-01T07:30:00Z",
+    "nextCardId": 4
+  },
+  "cards": [
+    {
+      "id": 1,
+      "title": "Beta: benchmark the importer",
+      "description": "Measure Beta imports.",
+      "position": 1,
+      "assignee": "ai",
+      "cardStatus": "todo",
+      "agentStatus": "idle",
+      "pendingReason": null,
+      "pendingRequestId": null,
+      "createdAt": "2026-10-01T08:30:00Z",
+      "updatedAt": "2026-10-01T08:30:00Z",
+      "agentStatusChangedAt": "2026-10-01T08:30:00Z",
+      "history": [
+        {
+          "id": 1,
+          "kind": "created",
+          "actor": "ai",
+          "reason": null,
+          "fromCardStatus": null,
+          "toCardStatus": "todo",
+          "fromAgentStatus": null,
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T08:30:00Z"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Beta: pick the database",
+      "description": "",
+      "position": 1,
+      "assignee": "ai",
+      "cardStatus": "doing",
+      "agentStatus": "pending",
+      "pendingReason": "Which database should Beta use?",
+      "pendingRequestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "createdAt": "2026-10-01T09:15:00Z",
+      "updatedAt": "2026-10-01T10:15:00Z",
+      "agentStatusChangedAt": "2026-10-01T10:15:00Z",
+      "history": [
+        {
+          "id": 2,
+          "kind": "created",
+          "actor": "ai",
+          "reason": null,
+          "fromCardStatus": null,
+          "toCardStatus": "todo",
+          "fromAgentStatus": null,
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T09:15:00Z"
+        },
+        {
+          "id": 3,
+          "kind": "lane",
+          "actor": "ai",
+          "reason": "Start work",
+          "fromCardStatus": "todo",
+          "toCardStatus": "doing",
+          "fromAgentStatus": "idle",
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T09:45:00Z"
+        },
+        {
+          "id": 4,
+          "kind": "agent",
+          "actor": "ai",
+          "reason": "Which database should Beta use?",
+          "fromCardStatus": "doing",
+          "toCardStatus": "doing",
+          "fromAgentStatus": "idle",
+          "toAgentStatus": "pending",
+          "requestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "at": "2026-10-01T10:15:00Z"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Beta: refactor the parser",
+      "description": "",
+      "position": 2,
+      "assignee": "ai",
+      "cardStatus": "doing",
+      "agentStatus": "running",
+      "pendingReason": null,
+      "pendingRequestId": null,
+      "createdAt": "2026-10-01T10:30:00Z",
+      "updatedAt": "2026-10-01T10:50:00Z",
+      "agentStatusChangedAt": "2026-10-01T10:50:00Z",
+      "history": [
+        {
+          "id": 5,
+          "kind": "created",
+          "actor": "ai",
+          "reason": null,
+          "fromCardStatus": null,
+          "toCardStatus": "todo",
+          "fromAgentStatus": null,
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T10:30:00Z"
+        },
+        {
+          "id": 6,
+          "kind": "lane",
+          "actor": "ai",
+          "reason": "Start work",
+          "fromCardStatus": "todo",
+          "toCardStatus": "doing",
+          "fromAgentStatus": "idle",
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T10:40:00Z"
+        },
+        {
+          "id": 7,
+          "kind": "agent",
+          "actor": "ai",
+          "reason": "Working on the parser",
+          "fromCardStatus": "doing",
+          "toCardStatus": "doing",
+          "fromAgentStatus": "idle",
+          "toAgentStatus": "running",
+          "requestId": null,
+          "at": "2026-10-01T10:50:00Z"
+        }
+      ]
+    }
+  ]
+}

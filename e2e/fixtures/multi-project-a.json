@@ -1,0 +1,143 @@
+{
+  "format": "skan-board",
+  "version": 2,
+  "board": {
+    "name": "Alpha",
+    "createdAt": "2026-10-01T07:00:00Z",
+    "nextCardId": 4
+  },
+  "cards": [
+    {
+      "id": 1,
+      "title": "Alpha: draft the release notes",
+      "description": "Notes for the Alpha release.",
+      "position": 1,
+      "assignee": "human",
+      "cardStatus": "todo",
+      "agentStatus": "idle",
+      "pendingReason": null,
+      "pendingRequestId": null,
+      "createdAt": "2026-10-01T08:00:00Z",
+      "updatedAt": "2026-10-01T08:00:00Z",
+      "agentStatusChangedAt": "2026-10-01T08:00:00Z",
+      "history": [
+        {
+          "id": 1,
+          "kind": "created",
+          "actor": "human",
+          "reason": null,
+          "fromCardStatus": null,
+          "toCardStatus": "todo",
+          "fromAgentStatus": null,
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T08:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Alpha: choose the license",
+      "description": "",
+      "position": 1,
+      "assignee": "ai",
+      "cardStatus": "doing",
+      "agentStatus": "pending",
+      "pendingReason": "Which license should Alpha use?",
+      "pendingRequestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "createdAt": "2026-10-01T09:00:00Z",
+      "updatedAt": "2026-10-01T10:00:00Z",
+      "agentStatusChangedAt": "2026-10-01T10:00:00Z",
+      "history": [
+        {
+          "id": 2,
+          "kind": "created",
+          "actor": "ai",
+          "reason": null,
+          "fromCardStatus": null,
+          "toCardStatus": "todo",
+          "fromAgentStatus": null,
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T09:00:00Z"
+        },
+        {
+          "id": 3,
+          "kind": "lane",
+          "actor": "ai",
+          "reason": "Start work",
+          "fromCardStatus": "todo",
+          "toCardStatus": "doing",
+          "fromAgentStatus": "idle",
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T09:30:00Z"
+        },
+        {
+          "id": 4,
+          "kind": "agent",
+          "actor": "ai",
+          "reason": "Which license should Alpha use?",
+          "fromCardStatus": "doing",
+          "toCardStatus": "doing",
+          "fromAgentStatus": "idle",
+          "toAgentStatus": "pending",
+          "requestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "at": "2026-10-01T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Alpha: set up the repository",
+      "description": "Create the Alpha repository.",
+      "position": 1,
+      "assignee": "ai",
+      "cardStatus": "done",
+      "agentStatus": "idle",
+      "pendingReason": null,
+      "pendingRequestId": null,
+      "createdAt": "2026-10-01T11:00:00Z",
+      "updatedAt": "2026-10-01T11:40:00Z",
+      "agentStatusChangedAt": "2026-10-01T11:40:00Z",
+      "history": [
+        {
+          "id": 5,
+          "kind": "created",
+          "actor": "ai",
+          "reason": null,
+          "fromCardStatus": null,
+          "toCardStatus": "todo",
+          "fromAgentStatus": null,
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T11:00:00Z"
+        },
+        {
+          "id": 6,
+          "kind": "lane",
+          "actor": "ai",
+          "reason": "Start work",
+          "fromCardStatus": "todo",
+          "toCardStatus": "doing",
+          "fromAgentStatus": "idle",
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T11:10:00Z"
+        },
+        {
+          "id": 7,
+          "kind": "lane",
+          "actor": "ai",
+          "reason": "Repository is ready",
+          "fromCardStatus": "doing",
+          "toCardStatus": "done",
+          "fromAgentStatus": "idle",
+          "toAgentStatus": "idle",
+          "requestId": null,
+          "at": "2026-10-01T11:40:00Z"
+        }
+      ]
+    }
+  ]
+}
