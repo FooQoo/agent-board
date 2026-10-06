@@ -2,20 +2,30 @@
 use crate::domain::{Card, Column, RunState};
 use serde_json::Value;
 
-const KEY_ORDER: [&str; 34] = [
+/// The order of keys in JSON output. Keys not listed come last.
+///
+/// One list serves every object, so a key keeps one position: a project is
+/// `id, name, createdAt`, a board `name, nextCardId, createdAt`, and the
+/// snapshot root `fetchedAt, project, revision, cursor, board, cards`.
+const KEY_ORDER: [&str; 30] = [
     "error",
     "code",
     "message",
     "reason",
+    "fetchedAt",
+    "project",
+    "projects",
+    "catalogRevision",
+    "revision",
+    "cursor",
     "board",
     "card",
-    "path",
     "cards",
+    "path",
     "url",
+    "id",
     "name",
     "nextCardId",
-    "revision",
-    "id",
     "title",
     "description",
     "assignee",
@@ -28,6 +38,11 @@ const KEY_ORDER: [&str; 34] = [
     "updatedAt",
     "agentStatusChangedAt",
     "history",
+];
+
+/// The order of keys in one history event, which reuses the key `reason`.
+const EVENT_KEY_ORDER: [&str; 10] = [
+    "id",
     "kind",
     "actor",
     "reason",
@@ -42,12 +57,17 @@ const KEY_ORDER: [&str; 34] = [
 pub fn render_json(value: &Value) -> String {
     match value {
         Value::Object(map) => {
+            let order: &[&str] = if map.contains_key("kind") && map.contains_key("toCardStatus") {
+                &EVENT_KEY_ORDER
+            } else {
+                &KEY_ORDER
+            };
             let mut entries: Vec<_> = map.iter().collect();
             entries.sort_by_key(|(key, _)| {
-                KEY_ORDER
+                order
                     .iter()
                     .position(|item| item == key)
-                    .unwrap_or(KEY_ORDER.len())
+                    .unwrap_or(order.len())
             });
             format!(
                 "{{{}}}",

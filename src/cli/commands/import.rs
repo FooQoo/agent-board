@@ -63,6 +63,12 @@ pub fn run_with_io(
                     other => other,
                 })?
         }
+        Target::Catalog => {
+            return Err(SkanError::InvalidArgument {
+                message: "--project NAME is required.".to_string(),
+                command: Some("import".to_string()),
+            });
+        }
         Target::Existing(existing) => {
             if ctx.json || !ctx.interactive {
                 return Err(SkanError::ConfirmationRequired {

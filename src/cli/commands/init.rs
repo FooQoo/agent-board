@@ -42,6 +42,12 @@ pub fn run_with_io(
                 json: json!({"project": project, "board": board}),
             });
         }
+        Target::Catalog => {
+            return Err(SkanError::InvalidArgument {
+                message: "--project NAME is required.".to_string(),
+                command: Some("init".to_string()),
+            });
+        }
         Target::Existing(meta) => meta,
     };
 

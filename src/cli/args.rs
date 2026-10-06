@@ -19,6 +19,7 @@ Every command except serve works on one project, named with --project NAME.
 Nothing is chosen for you: leave it out and the command fails.
 
 Commands:
+  project Create, list, rename, or delete projects
   init    Create the project's board, or empty an existing one
   add     Add a card to Todo
   edit    Change a card's title or description
@@ -35,6 +36,8 @@ Commands:
   serve   Show the board in your browser
 
 Workflow for agents:
+  agboard project ls --json
+  agboard --project NAME snapshot --json
   agboard --project NAME ls --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
@@ -44,7 +47,8 @@ Rules for agents:
   - Move a card to doing before you report running or pending.
   - Report pending with --reason when you are waiting for something.
   - Moving a card to todo or done resets it to idle.
-  - You cannot delete cards or replace the board. Ask a human to do it.
+  - You cannot delete cards or projects, or replace a board. Ask a human to do it.
+  - After renaming a project, update the project name in your hook commands.
   - Add --json to any command for machine-readable output.";
 
 #[derive(Parser, Debug)]
@@ -55,9 +59,10 @@ Rules for agents:
     override_help = TOP_HELP
 )]
 pub struct Cli {
-    /// The project to work on. Required by every command except serve.
+    /// The project to work on. Required by every command except project
+    /// create, project ls and serve. Give it once.
     #[arg(long, global = true, value_name = "NAME")]
-    pub project: Option<String>,
+    project: Option<String>,
     /// Print machine-readable JSON instead of text.
     #[arg(long, global = true)]
     pub json: bool,
@@ -67,6 +72,8 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Create, list, rename, or delete projects
+    Project(ProjectArgs),
     /// Create the project's board, or empty an existing one
     Init(InitArgs),
     /// Add a card to Todo
@@ -85,7 +92,9 @@ pub enum Command {
     Show(ShowArgs),
     /// Fetch the complete board and history without modifying it
     Snapshot(SnapshotArgs),
+    /// Add the latest board snapshot to an agent hook
     Hook(HookArgs),
+    /// Wait for a board change and fetch its history
     Wait(WaitArgs),
     /// Write the board to a JSON file
     Export(ExportArgs),
@@ -99,6 +108,7 @@ impl Command {
     /// The subcommand's name as typed on the command line.
     pub fn name(&self) -> &'static str {
         match self {
+            Command::Project(_) => "project",
             Command::Init(_) => "init",
             Command::Add(_) => "add",
             Command::Edit(_) => "edit",
@@ -117,10 +127,46 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 14] = [
-    "init", "add", "edit", "mv", "state", "rm", "ls", "show", "snapshot", "export", "import",
-    "serve", "hook", "wait",
+pub const SUBCOMMAND_NAMES: [&str; 15] = [
+    "project", "init", "add", "edit", "mv", "state", "rm", "ls", "show", "snapshot", "export",
+    "import", "serve", "hook", "wait",
 ];
+
+#[derive(Args, Debug)]
+pub struct ProjectArgs {
+    #[command(subcommand)]
+    pub command: ProjectCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ProjectCommand {
+    /// Create an empty project (no --project needed)
+    #[command(after_help = "Examples:\n  agboard project create \"My project\"")]
+    Create(ProjectCreateArgs),
+    /// List the projects (no --project needed)
+    #[command(after_help = "Examples:\n  agboard project ls\n  agboard project ls --json")]
+    Ls,
+    /// Rename the project named with --project
+    #[command(
+        after_help = "Examples:\n  agboard --project \"My project\" project rename \"Renamed project\"\n\nHook commands name the project; update them after a rename."
+    )]
+    Rename(ProjectRenameArgs),
+    /// Delete the project named with --project and all its cards (humans only)
+    #[command(after_help = "Examples:\n  agboard --project \"My project\" project rm")]
+    Rm,
+}
+
+#[derive(Args, Debug)]
+pub struct ProjectCreateArgs {
+    /// Name of the new project (1 to 50 characters, one line)
+    pub name: String,
+}
+
+#[derive(Args, Debug)]
+pub struct ProjectRenameArgs {
+    /// The project's new name (1 to 50 characters, one line)
+    pub new_name: String,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum AgentArg {
@@ -129,12 +175,18 @@ pub enum AgentArg {
 }
 
 #[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  agboard --project demo hook --agent claude\n  agboard --project demo hook --agent codex"
+)]
 pub struct HookArgs {
     #[arg(long, value_enum)]
     pub agent: AgentArg,
 }
 
 #[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  agboard --project demo wait --after 0123456789abcdef0123456789abcdef:12 --json\n  agboard --project demo wait --after 0123456789abcdef0123456789abcdef:12 --timeout 60 --json"
+)]
 pub struct WaitArgs {
     /// Cursor to wait after, as printed by snapshot: <project-id>:<revision>
     #[arg(long, value_name = "CURSOR", value_parser = parse_cursor)]
@@ -366,6 +418,7 @@ pub struct ShowArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  agboard --project demo snapshot --json")]
 pub struct SnapshotArgs {}
 
 #[derive(Args, Debug)]
@@ -407,6 +460,12 @@ pub enum Parsed {
 /// Parse `args` (the first item is the program name).
 pub fn parse(args: &[OsString]) -> Result<Parsed, SkanError> {
     match Cli::try_parse_from(args) {
+        // The parser lets a later `--project` after the subcommand replace an
+        // earlier one before it; a command must never guess which one was meant.
+        Ok(_) if project_occurrences(args) > 1 => Err(SkanError::InvalidArgument {
+            message: "--project can be given only once.".to_string(),
+            command: subcommand_in(args),
+        }),
         Ok(cli) => Ok(Parsed::Run(cli)),
         Err(error) => {
             use clap::error::ErrorKind;
@@ -428,6 +487,32 @@ pub fn parse(args: &[OsString]) -> Result<Parsed, SkanError> {
             }
         }
     }
+}
+
+/// How many times `--project` appears as an option (not as the value of
+/// another option). Everything after `--` is a value.
+fn project_occurrences(args: &[OsString]) -> usize {
+    let mut count = 0;
+    let mut skip_next = false;
+    for arg in args.iter().skip(1) {
+        let Some(arg) = arg.to_str() else { continue };
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        match arg {
+            "--" => break,
+            "--project" => {
+                count += 1;
+                skip_next = true; // its value
+            }
+            // These take a value that may itself start with a dash.
+            "--desc" | "--reason" => skip_next = true,
+            _ if arg.starts_with("--project=") => count += 1,
+            _ => {}
+        }
+    }
+    count
 }
 
 /// The parser's one-line message: the first line without its `error: ` prefix,
@@ -462,7 +547,7 @@ impl Cli {
     /// board access so that a wrong command line always exits with 2.
     pub fn validate(&self) -> Result<(), SkanError> {
         let command = self.command.name();
-        match (&self.command, &self.project) {
+        match (&self.command, self.project()) {
             // `serve` shows every project, so naming one is a mistake.
             (Command::Serve(_), Some(_)) => {
                 return Err(SkanError::InvalidArgument {
@@ -472,6 +557,27 @@ impl Cli {
             }
             // The hook reports a missing project itself, as a hook error that
             // does not block the agent's tool result.
+            // Creating and listing projects name no project either.
+            (
+                Command::Project(ProjectArgs {
+                    command: ProjectCommand::Create(_) | ProjectCommand::Ls,
+                }),
+                Some(_),
+            ) => {
+                return Err(SkanError::InvalidArgument {
+                    message: format!(
+                        "project {} does not take --project.",
+                        self.project_subcommand_name()
+                    ),
+                    command: Some(command.to_string()),
+                });
+            }
+            (
+                Command::Project(ProjectArgs {
+                    command: ProjectCommand::Create(_) | ProjectCommand::Ls,
+                }),
+                None,
+            ) => {}
             (Command::Serve(_) | Command::Hook(_), None) => {}
             (_, None) => {
                 return Err(SkanError::InvalidArgument {
@@ -497,6 +603,26 @@ impl Cli {
                 command: Some("snapshot".into()),
             }),
             _ => Ok(()),
+        }
+    }
+}
+
+impl Cli {
+    /// The project named with `--project`, if any. Giving the option more than
+    /// once is rejected by [`parse`], so there is at most one.
+    pub fn project(&self) -> Option<&str> {
+        self.project.as_deref()
+    }
+
+    fn project_subcommand_name(&self) -> &'static str {
+        match &self.command {
+            Command::Project(ProjectArgs { command }) => match command {
+                ProjectCommand::Create(_) => "create",
+                ProjectCommand::Ls => "ls",
+                ProjectCommand::Rename(_) => "rename",
+                ProjectCommand::Rm => "rm",
+            },
+            _ => "",
         }
     }
 }

@@ -8,6 +8,7 @@ pub mod import;
 pub mod init;
 pub mod ls;
 pub mod mv;
+pub mod project;
 pub mod rm;
 pub mod serve;
 pub mod show;

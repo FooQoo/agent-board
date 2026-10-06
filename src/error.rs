@@ -162,7 +162,7 @@ impl SkanError {
                 "Read the latest board before answering this request.".into()
             }
             SkanError::ConfirmationRequired { .. } => {
-                "Run this command yourself in a terminal. Agents cannot delete cards or replace the board."
+                "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board."
                     .to_string()
             }
             SkanError::ImportInvalid { reason, .. } => reason.clone(),
@@ -316,7 +316,7 @@ mod tests {
             ),
             (
                 "deleting a card needs confirmation from a human.",
-                "Run this command yourself in a terminal. Agents cannot delete cards or replace the board.",
+                "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board.",
             ),
             (
                 "agboard.json is not a valid board file.",
