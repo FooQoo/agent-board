@@ -11,7 +11,8 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, SkanError> {
     let state = args.state.run_state();
     let actor = args.change.actor.actor();
     let context = ChangeContext { actor, reason };
-    let current = ctx.store.card(args.id)?;
+    let project_id = ctx.project_id()?;
+    let current = ctx.store.card(project_id, args.id)?;
     if args.request.is_some()
         && !(current.agent_status == RunState::Pending && state == RunState::Idle)
     {
@@ -30,13 +31,18 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, SkanError> {
                 })?;
         (
             ctx.store
-                .answer_request(args.id, request, context, ctx.clock.now())?,
+                .answer_request(project_id, args.id, request, context, ctx.clock.now())?,
             true,
         )
     } else {
-        let result = ctx
-            .store
-            .set_agent_status(args.id, state, context, None, ctx.clock.now())?;
+        let result = ctx.store.set_agent_status(
+            project_id,
+            args.id,
+            state,
+            context,
+            None,
+            ctx.clock.now(),
+        )?;
         (result.value, result.changed)
     };
     let human = if changed {

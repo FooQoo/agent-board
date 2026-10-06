@@ -6,7 +6,7 @@ use serde_json::json;
 pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
     let cards: Vec<_> = ctx
         .store
-        .snapshot()?
+        .snapshot(ctx.project_id()?)?
         .cards
         .into_iter()
         .filter(|card| {

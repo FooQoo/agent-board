@@ -1,25 +1,24 @@
 use std::io::Read;
 use std::path::Path;
 
-use serde::Serialize;
-
 use crate::{
     clock::{Clock, SystemClock, format_utc},
-    store::Store,
+    domain::{FetchedSnapshot, validate_project_name},
+    store::ProjectStore,
 };
 
 const MAX_BYTES: usize = 64 * 1024;
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Snapshot<'a> {
-    fetched_at: String,
-    revision: i64,
-    board: &'a crate::domain::BoardMeta,
-    cards: &'a [crate::domain::Card],
-}
-
-pub fn run(agent: &str, input: &mut dyn Read, db_path: &Path) -> Option<String> {
+/// Run the hook for the project named `project`. The name is resolved to a
+/// project ID once, and only that project's snapshot is returned. A missing or
+/// unknown project is reported as a hook error that never blocks the agent's
+/// tool result.
+pub fn run(
+    agent: &str,
+    input: &mut dyn Read,
+    db_path: &Path,
+    project: Option<&str>,
+) -> Option<String> {
     let mut bytes = Vec::new();
     if input
         .take((MAX_BYTES + 1) as u64)
@@ -55,16 +54,17 @@ pub fn run(agent: &str, input: &mut dyn Read, db_path: &Path) -> Option<String> 
     }
 
     let result = (|| -> Result<String, String> {
+        let name = project.ok_or_else(|| "--project NAME is required.".to_string())?;
+        let name = validate_project_name(name).map_err(|e| e.reason())?;
         if !db_path.exists() {
             return Err("Board database does not exist.".into());
         }
-        let store = Store::open_read_only(db_path).map_err(|e| e.to_string())?;
-        let snapshot = store.snapshot().map_err(|e| e.to_string())?;
-        let payload = Snapshot {
+        let store = ProjectStore::open_read_only(db_path).map_err(|e| e.to_string())?;
+        let id = store.project_by_name(&name).map_err(|e| e.reason())?.id;
+        let snapshot = store.snapshot(&id).map_err(|e| e.to_string())?;
+        let payload = FetchedSnapshot {
             fetched_at: format_utc(SystemClock.now()),
-            revision: snapshot.revision,
-            board: &snapshot.board,
-            cards: &snapshot.cards,
+            snapshot: &snapshot,
         };
         let json = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
         let context = format!("AGBOARD_SNAPSHOT\n{json}");

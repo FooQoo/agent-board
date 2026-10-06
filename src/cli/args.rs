@@ -6,17 +6,20 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use crate::domain::{Actor, Assignee, Column, RunState};
+use crate::domain::{Actor, Assignee, ChangeCursor, Column, RunState};
 use crate::error::{FileAction, SkanError};
 
 /// `agboard --help`: the board workflow for agents.
 const TOP_HELP: &str = "\
 agboard - a shared local work board for users and agents
 
-Usage: agboard [--json] <COMMAND>
+Usage: agboard --project NAME [--json] <COMMAND>
+
+Every command except serve works on one project, named with --project NAME.
+Nothing is chosen for you: leave it out and the command fails.
 
 Commands:
-  init    Create the board
+  init    Create the project's board, or empty an existing one
   add     Add a card to Todo
   edit    Change a card's title or description
   mv      Move a card to todo, doing, or done
@@ -32,10 +35,10 @@ Commands:
   serve   Show the board in your browser
 
 Workflow for agents:
-  agboard ls --json
-  agboard mv <id> doing --actor ai --reason \"Start\"
-  agboard state <id> running --actor ai --reason \"Working\"
-  agboard state <id> pending --actor ai --reason \"Need a decision\"
+  agboard --project NAME ls --json
+  agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
+  agboard --project NAME state <id> running --actor ai --reason \"Working\"
+  agboard --project NAME state <id> pending --actor ai --reason \"Need a decision\"
 
 Rules for agents:
   - Move a card to doing before you report running or pending.
@@ -52,6 +55,9 @@ Rules for agents:
     override_help = TOP_HELP
 )]
 pub struct Cli {
+    /// The project to work on. Required by every command except serve.
+    #[arg(long, global = true, value_name = "NAME")]
+    pub project: Option<String>,
     /// Print machine-readable JSON instead of text.
     #[arg(long, global = true)]
     pub json: bool,
@@ -61,7 +67,7 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    /// Create the board
+    /// Create the project's board, or empty an existing one
     Init(InitArgs),
     /// Add a card to Todo
     Add(AddArgs),
@@ -130,10 +136,15 @@ pub struct HookArgs {
 
 #[derive(Args, Debug)]
 pub struct WaitArgs {
-    #[arg(long)]
-    pub after: i64,
+    /// Cursor to wait after, as printed by snapshot: <project-id>:<revision>
+    #[arg(long, value_name = "CURSOR", value_parser = parse_cursor)]
+    pub after: ChangeCursor,
     #[arg(long)]
     pub timeout: Option<u64>,
+}
+
+fn parse_cursor(text: &str) -> Result<ChangeCursor, String> {
+    text.parse::<ChangeCursor>().map_err(|e| e.reason())
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
@@ -183,16 +194,12 @@ pub struct DescriptionArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  agboard init --name \"My project\"")]
-pub struct InitArgs {
-    /// Name of the board
-    #[arg(long, value_name = "NAME")]
-    pub name: String,
-}
+#[command(after_help = "Examples:\n  agboard --project \"My project\" init")]
+pub struct InitArgs {}
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard add \"Write the setup guide\"\n  agboard add \"Fix the login bug\" --desc \"Users cannot sign in on Safari\"\n  agboard add \"Plan the release\" --desc-file notes.txt\n  echo \"Details\" | agboard add \"Write the docs\" --desc -"
+    after_help = "Examples:\n  agboard --project demo add \"Write the setup guide\"\n  agboard --project demo add \"Fix the login bug\" --desc \"Users cannot sign in on Safari\"\n  agboard --project demo add \"Plan the release\" --desc-file notes.txt\n  echo \"Details\" | agboard --project demo add \"Write the docs\" --desc -"
 )]
 pub struct AddArgs {
     /// Title of the card (1 to 100 characters, one line)
@@ -209,7 +216,7 @@ pub struct AddArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard edit 15 --title \"Write the install guide\"\n  agboard edit 15 --desc \"Steps for macOS and Linux\"\n  agboard edit 15 --desc \"\""
+    after_help = "Examples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
 )]
 pub struct EditArgs {
     /// ID of the card
@@ -222,7 +229,9 @@ pub struct EditArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  agboard mv 12 doing\n  agboard mv 12 done")]
+#[command(
+    after_help = "Examples:\n  agboard --project demo mv 12 doing\n  agboard --project demo mv 12 done"
+)]
 pub struct MvArgs {
     /// ID of the card
     pub id: i64,
@@ -234,7 +243,7 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Run states:\n  idle     not working on it\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason\n\nExamples:\n  agboard state 12 running\n  agboard state 12 pending --reason \"Waiting for review\"\n  agboard state 12 idle"
+    after_help = "Run states:\n  idle     not working on it\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason\n\nExamples:\n  agboard --project demo state 12 running\n  agboard --project demo state 12 pending --reason \"Waiting for review\"\n  agboard --project demo state 12 idle"
 )]
 pub struct StateArgs {
     /// ID of the card
@@ -328,7 +337,7 @@ impl ChangeArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  agboard rm 11")]
+#[command(after_help = "Examples:\n  agboard --project demo rm 11")]
 pub struct RmArgs {
     /// ID of the card
     pub id: i64,
@@ -336,7 +345,7 @@ pub struct RmArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard ls\n  agboard ls --column doing\n  agboard ls --state pending --json"
+    after_help = "Examples:\n  agboard --project demo ls\n  agboard --project demo ls --column doing\n  agboard --project demo ls --state pending --json"
 )]
 pub struct LsArgs {
     /// Only list cards in this column
@@ -348,7 +357,9 @@ pub struct LsArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  agboard show 12\n  agboard show 12 --json")]
+#[command(
+    after_help = "Examples:\n  agboard --project demo show 12\n  agboard --project demo show 12 --json"
+)]
 pub struct ShowArgs {
     /// ID of the card
     pub id: i64,
@@ -358,7 +369,9 @@ pub struct ShowArgs {
 pub struct SnapshotArgs {}
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  agboard export\n  agboard export -o backup/board.json")]
+#[command(
+    after_help = "Examples:\n  agboard --project demo export\n  agboard --project demo export -o backup/board.json"
+)]
 pub struct ExportArgs {
     /// Output file, or a directory to write skan.json into
     #[arg(short, long, value_name = "PATH")]
@@ -366,7 +379,9 @@ pub struct ExportArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  agboard import\n  agboard import backup/board.json")]
+#[command(
+    after_help = "Examples:\n  agboard --project demo import\n  agboard --project demo import backup/board.json"
+)]
 pub struct ImportArgs {
     /// Board file to read (default: skan.json in the current directory)
     pub file: Option<PathBuf>,
@@ -446,6 +461,26 @@ impl Cli {
     /// Checks that depend on the combination of arguments, done before any
     /// board access so that a wrong command line always exits with 2.
     pub fn validate(&self) -> Result<(), SkanError> {
+        let command = self.command.name();
+        match (&self.command, &self.project) {
+            // `serve` shows every project, so naming one is a mistake.
+            (Command::Serve(_), Some(_)) => {
+                return Err(SkanError::InvalidArgument {
+                    message: "serve does not take --project.".to_string(),
+                    command: Some(command.to_string()),
+                });
+            }
+            // The hook reports a missing project itself, as a hook error that
+            // does not block the agent's tool result.
+            (Command::Serve(_) | Command::Hook(_), None) => {}
+            (_, None) => {
+                return Err(SkanError::InvalidArgument {
+                    message: "--project NAME is required.".to_string(),
+                    command: Some(command.to_string()),
+                });
+            }
+            (_, Some(_)) => {}
+        }
         match &self.command {
             Command::Edit(args)
                 if args.title.is_none()

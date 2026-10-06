@@ -4,6 +4,8 @@
 //! version, or with tables but no version, is rejected and left untouched;
 //! nothing here converts or deletes existing data.
 
+use std::time::{Duration, Instant};
+
 use rusqlite::Connection;
 
 use crate::error::SkanError;
@@ -93,30 +95,60 @@ pub(super) fn check_version(version: i64) -> Result<(), SkanError> {
     }
 }
 
-/// Check the schema version, set the per-connection pragmas and create the
-/// schema in a new, empty database.
-///
-/// The version is checked before anything else so that a database with another
-/// schema is never modified (not even its journal mode).
-pub(super) fn prepare(conn: &Connection) -> Result<(), SkanError> {
-    let version = user_version(conn)?;
-    check_version(version)?;
-
-    if version == 0 {
-        let object_count: i64 = conn.query_row(
+/// The schema version and the number of user tables, read together in one
+/// read transaction. Creating the schema and setting the version happen in one
+/// write transaction, so a reader sees either neither or both.
+fn version_and_object_count(conn: &Connection) -> Result<(i64, i64), SkanError> {
+    super::run_in_transaction(conn, "BEGIN", |conn| {
+        let version = user_version(conn)?;
+        let objects: i64 = conn.query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'",
             [],
             |row| row.get(0),
         )?;
-        if object_count != 0 {
-            return Err(SkanError::DatabaseError {
-                reason: "An unversioned non-empty database is not a fresh board.".into(),
-            });
+        Ok((version, objects))
+    })
+}
+
+/// Switch the database to WAL. Changing the journal mode needs a lock that
+/// SQLite does not always wait for, so another connection that is creating the
+/// same new database at that moment makes this fail at once with a busy error.
+/// Retry for as long as a write may wait.
+fn enable_wal(conn: &Connection, timeout: Duration) -> Result<(), SkanError> {
+    let deadline = Instant::now() + timeout;
+    loop {
+        match conn
+            .pragma_update_and_check(None, "journal_mode", "WAL", |row| row.get::<_, String>(0))
+        {
+            Ok(_) => return Ok(()),
+            Err(error) => match SkanError::from(error) {
+                SkanError::DatabaseBusy if Instant::now() < deadline => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                other => return Err(other),
+            },
         }
+    }
+}
+
+/// Check the schema version, set the per-connection pragmas and create the
+/// schema in a new, empty database. `timeout` bounds how long a concurrent
+/// first open of the same new database may be waited for.
+///
+/// The version is checked before anything else so that a database with another
+/// schema is never modified (not even its journal mode).
+pub(super) fn prepare(conn: &Connection, timeout: Duration) -> Result<(), SkanError> {
+    let (version, objects) = version_and_object_count(conn)?;
+    check_version(version)?;
+
+    if version == 0 && objects != 0 {
+        return Err(SkanError::DatabaseError {
+            reason: "An unversioned non-empty database is not a fresh board.".into(),
+        });
     }
 
     conn.pragma_update(None, "foreign_keys", true)?;
-    conn.pragma_update_and_check(None, "journal_mode", "WAL", |row| row.get::<_, String>(0))?;
+    enable_wal(conn, timeout)?;
 
     if version == 0 {
         super::run_in_transaction(conn, "BEGIN IMMEDIATE", |conn| {

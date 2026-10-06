@@ -7,6 +7,7 @@ pub fn run(ctx: &mut Context, args: &AddArgs) -> Result<Outcome, SkanError> {
     let mut stdin = std::io::stdin();
     let description = args.description.resolve(&mut stdin)?.unwrap_or_default();
     let card = ctx.store.add_work_card(
+        ctx.project_id()?,
         NewCard {
             title: args.title.clone(),
             description,

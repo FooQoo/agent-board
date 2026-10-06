@@ -7,6 +7,7 @@ pub fn run(ctx: &mut Context, args: &EditArgs) -> Result<Outcome, SkanError> {
     let mut stdin = std::io::stdin();
     let description = args.description.resolve(&mut stdin)?;
     let result = ctx.store.edit_card(
+        ctx.project_id()?,
         args.id,
         args.title.as_deref(),
         description.as_deref(),

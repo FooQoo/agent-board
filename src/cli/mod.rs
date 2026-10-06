@@ -11,16 +11,43 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::clock::{Clock, SystemClock};
-use crate::store::Store;
+use crate::domain::{ProjectId, ProjectMeta};
+use crate::error::SkanError;
+use crate::store::ProjectStore;
+
+/// The project a command was told to work on, resolved once from `--project`
+/// before the command runs. The ID, not the name, is used from then on, so a
+/// rename, a deletion or a same-name re-creation in the meantime can never
+/// redirect the command to another project.
+#[derive(Debug, Clone)]
+pub enum Target {
+    /// The project exists; its ID is fixed for this run.
+    Existing(ProjectMeta),
+    /// No project has this name. Only `init` and `import` may create it.
+    Missing { name: String },
+}
 
 /// Everything a command runs with.
 pub struct Context {
-    /// `init` and `import` check for a board themselves.
-    pub store: Store,
+    pub store: ProjectStore,
+    pub target: Target,
     pub clock: Box<dyn Clock>,
     pub json: bool,
     /// Whether a human can be asked to confirm. Always `false` for now.
     pub interactive: bool,
+}
+
+impl Context {
+    /// The project's ID. A project that does not exist is `project_not_found`;
+    /// nothing is substituted.
+    pub fn project_id(&self) -> Result<&ProjectId, SkanError> {
+        match &self.target {
+            Target::Existing(meta) => Ok(&meta.id),
+            Target::Missing { name } => Err(SkanError::ProjectNotFound {
+                project: name.clone(),
+            }),
+        }
+    }
 }
 
 /// What a command did.

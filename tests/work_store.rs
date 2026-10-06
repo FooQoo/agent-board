@@ -1,6 +1,6 @@
 use agent_board::{
     domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState},
-    store::Store,
+    store::ProjectStore,
 };
 use chrono::{TimeZone, Utc};
 use tempfile::tempdir;
@@ -19,10 +19,11 @@ fn context(actor: Actor, reason: &str) -> ChangeContext {
 fn creates_moves_and_records_status_history_with_revision() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("board.db");
-    let store = Store::open(&path).unwrap();
-    store.create_board("Agent Board", now()).unwrap();
+    let store = ProjectStore::open(&path).unwrap();
+    let project = store.create_project("Agent Board", now()).unwrap().id;
     let card = store
         .add_work_card(
+            &project,
             NewCard {
                 title: "Implement".into(),
                 description: "".into(),
@@ -37,9 +38,10 @@ fn creates_moves_and_records_status_history_with_revision() {
     assert_eq!(json["cardStatus"], "todo");
     assert_eq!(json["agentStatus"], "idle");
     assert!(json.get("column").is_none());
-    assert_eq!(store.snapshot().unwrap().revision, 1);
+    assert_eq!(store.snapshot(&project).unwrap().revision, 1);
     let moved = store
         .move_work_card(
+            &project,
             card.id,
             Column::Doing,
             context(Actor::Ai, "Start work"),
@@ -50,6 +52,7 @@ fn creates_moves_and_records_status_history_with_revision() {
     assert_eq!(moved.value.history.len(), 2);
     let running = store
         .set_agent_status(
+            &project,
             card.id,
             RunState::Running,
             context(Actor::Ai, "Inspecting"),
@@ -60,6 +63,7 @@ fn creates_moves_and_records_status_history_with_revision() {
     assert_eq!(running.value.history.len(), 3);
     let pending = store
         .set_agent_status(
+            &project,
             card.id,
             RunState::Pending,
             context(Actor::Ai, "Need a decision"),
@@ -72,6 +76,7 @@ fn creates_moves_and_records_status_history_with_revision() {
     assert!(
         store
             .set_agent_status(
+                &project,
                 card.id,
                 RunState::Running,
                 context(Actor::Ai, "Resume stale request"),
@@ -82,6 +87,7 @@ fn creates_moves_and_records_status_history_with_revision() {
     );
     let resumed = store
         .answer_request(
+            &project,
             card.id,
             &req,
             context(Actor::Human, "Proceed with option A"),
@@ -93,16 +99,17 @@ fn creates_moves_and_records_status_history_with_revision() {
         resumed.history.last().unwrap().request_id.as_deref(),
         Some(req.as_str())
     );
-    assert_eq!(store.snapshot().unwrap().revision, 5);
+    assert_eq!(store.snapshot(&project).unwrap().revision, 5);
 }
 
 #[test]
 fn invalid_assignee_and_stale_request_leave_state_unchanged() {
     let dir = tempdir().unwrap();
-    let store = Store::open(&dir.path().join("board.db")).unwrap();
-    store.create_board("Agent Board", now()).unwrap();
+    let store = ProjectStore::open(&dir.path().join("board.db")).unwrap();
+    let project = store.create_project("Agent Board", now()).unwrap().id;
     let user = store
         .add_work_card(
+            &project,
             NewCard {
                 title: "Review".into(),
                 description: "".into(),
@@ -115,6 +122,7 @@ fn invalid_assignee_and_stale_request_leave_state_unchanged() {
     assert!(
         store
             .set_agent_status(
+                &project,
                 user.id,
                 RunState::Running,
                 context(Actor::Human, "work"),
@@ -123,20 +131,26 @@ fn invalid_assignee_and_stale_request_leave_state_unchanged() {
             )
             .is_err()
     );
-    assert_eq!(store.snapshot().unwrap().revision, 1);
+    assert_eq!(store.snapshot(&project).unwrap().revision, 1);
     assert!(
         store
-            .answer_request(user.id, "stale", context(Actor::Human, "answer"), now())
+            .answer_request(
+                &project,
+                user.id,
+                "stale",
+                context(Actor::Human, "answer"),
+                now()
+            )
             .is_err()
     );
-    assert_eq!(store.snapshot().unwrap().revision, 1);
+    assert_eq!(store.snapshot(&project).unwrap().revision, 1);
 }
 
 #[test]
 fn read_only_open_does_not_create_missing_database() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("missing.db");
-    assert!(Store::open_read_only(&path).is_err());
+    assert!(ProjectStore::open_read_only(&path).is_err());
     assert!(!path.exists());
 }
 
@@ -144,10 +158,11 @@ fn read_only_open_does_not_create_missing_database() {
 fn history_failure_rolls_back_state_timestamp_and_revision() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("board.db");
-    let store = Store::open(&path).unwrap();
-    store.create_board("Agent Board", now()).unwrap();
+    let store = ProjectStore::open(&path).unwrap();
+    let project = store.create_project("Agent Board", now()).unwrap().id;
     let card = store
         .add_work_card(
+            &project,
             NewCard {
                 title: "Work".into(),
                 description: "".into(),
@@ -158,14 +173,21 @@ fn history_failure_rolls_back_state_timestamp_and_revision() {
         )
         .unwrap();
     store
-        .move_work_card(card.id, Column::Doing, context(Actor::Ai, "Start"), now())
+        .move_work_card(
+            &project,
+            card.id,
+            Column::Doing,
+            context(Actor::Ai, "Start"),
+            now(),
+        )
         .unwrap();
-    let before = store.snapshot().unwrap();
+    let before = store.snapshot(&project).unwrap();
     let conn = rusqlite::Connection::open(&path).unwrap();
     conn.execute_batch("CREATE TRIGGER reject_history BEFORE INSERT ON history WHEN NEW.kind='agent' BEGIN SELECT RAISE(ABORT, 'test failure'); END;").unwrap();
     assert!(
         store
             .set_agent_status(
+                &project,
                 card.id,
                 RunState::Running,
                 context(Actor::Ai, "Run"),
@@ -174,7 +196,7 @@ fn history_failure_rolls_back_state_timestamp_and_revision() {
             )
             .is_err()
     );
-    let after = store.snapshot().unwrap();
+    let after = store.snapshot(&project).unwrap();
     assert_eq!(after.revision, before.revision);
     assert_eq!(after.cards[0].agent_status, RunState::Idle);
     assert_eq!(after.cards[0].updated_at, before.cards[0].updated_at);
@@ -184,10 +206,11 @@ fn history_failure_rolls_back_state_timestamp_and_revision() {
 #[test]
 fn setting_the_same_agent_state_is_a_revision_preserving_noop() {
     let dir = tempdir().unwrap();
-    let store = Store::open(&dir.path().join("board.db")).unwrap();
-    store.create_board("Agent Board", now()).unwrap();
+    let store = ProjectStore::open(&dir.path().join("board.db")).unwrap();
+    let project = store.create_project("Agent Board", now()).unwrap().id;
     let card = store
         .add_work_card(
+            &project,
             NewCard {
                 title: "Work".into(),
                 description: "".into(),
@@ -198,11 +221,18 @@ fn setting_the_same_agent_state_is_a_revision_preserving_noop() {
         )
         .unwrap();
     store
-        .move_work_card(card.id, Column::Doing, context(Actor::Ai, "Start"), now())
+        .move_work_card(
+            &project,
+            card.id,
+            Column::Doing,
+            context(Actor::Ai, "Start"),
+            now(),
+        )
         .unwrap();
-    let before = store.snapshot().unwrap();
+    let before = store.snapshot(&project).unwrap();
     let result = store
         .set_agent_status(
+            &project,
             card.id,
             RunState::Idle,
             context(Actor::Ai, "No change"),
@@ -210,7 +240,7 @@ fn setting_the_same_agent_state_is_a_revision_preserving_noop() {
             now(),
         )
         .unwrap();
-    let after = store.snapshot().unwrap();
+    let after = store.snapshot(&project).unwrap();
     assert!(!result.changed);
     assert_eq!(before.revision, after.revision);
     assert_eq!(before.cards[0].history, after.cards[0].history);
@@ -219,10 +249,11 @@ fn setting_the_same_agent_state_is_a_revision_preserving_noop() {
 #[test]
 fn moving_a_running_card_to_done_records_one_lane_event_and_resets_idle() {
     let dir = tempdir().unwrap();
-    let store = Store::open(&dir.path().join("board.db")).unwrap();
-    store.create_board("Agent Board", now()).unwrap();
+    let store = ProjectStore::open(&dir.path().join("board.db")).unwrap();
+    let project = store.create_project("Agent Board", now()).unwrap().id;
     let card = store
         .add_work_card(
+            &project,
             NewCard {
                 title: "Finish".into(),
                 description: "".into(),
@@ -233,10 +264,17 @@ fn moving_a_running_card_to_done_records_one_lane_event_and_resets_idle() {
         )
         .unwrap();
     store
-        .move_work_card(card.id, Column::Doing, context(Actor::Ai, "Start"), now())
+        .move_work_card(
+            &project,
+            card.id,
+            Column::Doing,
+            context(Actor::Ai, "Start"),
+            now(),
+        )
         .unwrap();
     store
         .set_agent_status(
+            &project,
             card.id,
             RunState::Running,
             context(Actor::Ai, "Working"),
@@ -246,6 +284,7 @@ fn moving_a_running_card_to_done_records_one_lane_event_and_resets_idle() {
         .unwrap();
     let done = store
         .move_work_card(
+            &project,
             card.id,
             Column::Done,
             context(Actor::Human, "Reviewed and complete"),

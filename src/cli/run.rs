@@ -4,10 +4,11 @@ use std::ffi::OsString;
 use std::io::Write;
 
 use crate::cli::args::{self, Cli, Command, Parsed};
-use crate::cli::{Context, Env, Outcome, commands, errors, output};
+use crate::cli::{Context, Env, Outcome, Target, commands, errors, output};
 use crate::clock::SystemClock;
+use crate::domain::validate_project_name;
 use crate::error::SkanError;
-use crate::store::Store;
+use crate::store::ProjectStore;
 
 /// Runs `args` (the first item is the program name) and returns the process
 /// exit code.
@@ -31,7 +32,9 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             args::AgentArg::Codex => "codex",
         };
         let mut stdin = std::io::stdin().lock();
-        if let Some(output) = crate::agent::hook::run(agent, &mut stdin, &env.db_path) {
+        if let Some(output) =
+            crate::agent::hook::run(agent, &mut stdin, &env.db_path, cli.project.as_deref())
+        {
             write_text(env.stdout, &output);
         }
         return 0;
@@ -43,7 +46,8 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             .map_err(|error| error.to_string())
             .and_then(|runtime| {
                 runtime.block_on(crate::agent::wait::wait_for_change(
-                    args.after,
+                    cli.project.as_deref().unwrap_or_default(),
+                    args.after.clone(),
                     args.timeout,
                 ))
             });
@@ -88,20 +92,40 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
 }
 
 fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Context, Outcome), SkanError> {
-    let store = if matches!(cli.command, Command::Snapshot(_)) {
-        if !env.db_path.exists() {
-            return Err(SkanError::NotInitialized);
-        }
-        Store::open_read_only(&env.db_path)?
-    } else {
-        Store::open(&env.db_path)?
+    // `serve` shows every project and names none.
+    let name = match &cli.project {
+        Some(raw) => Some(validate_project_name(raw)?),
+        None => None,
     };
-    // `init` and `import` create the board, so they look for it themselves.
-    if !matches!(cli.command, Command::Init(_) | Command::Import(_)) && store.board()?.is_none() {
-        return Err(SkanError::NotInitialized);
-    }
+    let store = if matches!(cli.command, Command::Snapshot(_)) {
+        // A read never creates the data area: without one there is no project.
+        ProjectStore::open_read_only(&env.db_path).map_err(|error| match (&error, &name) {
+            (SkanError::NotInitialized, Some(name)) => SkanError::ProjectNotFound {
+                project: name.clone(),
+            },
+            _ => error,
+        })?
+    } else {
+        ProjectStore::open(&env.db_path)?
+    };
+    let target = match name {
+        Some(name) => match store.project_by_name(&name) {
+            Ok(meta) => Target::Existing(meta),
+            // `init` and `import` create a project that does not exist yet.
+            Err(SkanError::ProjectNotFound { .. })
+                if matches!(cli.command, Command::Init(_) | Command::Import(_)) =>
+            {
+                Target::Missing { name }
+            }
+            Err(error) => return Err(error),
+        },
+        None => Target::Missing {
+            name: String::new(),
+        },
+    };
     let mut ctx = Context {
         store,
+        target,
         // The clock moves into the context; a second run with the same Env
         // would use the system clock.
         clock: std::mem::replace(&mut env.clock, Box::new(SystemClock)),
