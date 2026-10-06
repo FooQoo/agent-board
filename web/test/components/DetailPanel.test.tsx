@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DetailPanel } from '../../src/components/DetailPanel';
 import { selectLocale } from '../../src/i18n';
-import { fixtureCard, makeCard } from '../fixtures';
+import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
 
 const noop = () => {};
 
@@ -12,11 +12,20 @@ describe('DetailPanel', () => {
 
   it('translates the detail region, empty selection, headings, and accessible controls', () => {
     selectLocale('ja');
-    const { rerender } = render(<DetailPanel card={null} onClose={noop} onDeleted={noop} />);
+    const { rerender } = render(
+      <DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onDeleted={noop} />,
+    );
     expect(screen.getByRole('complementary', { name: 'カードの詳細' })).toBeTruthy();
     expect(screen.getByText('カードを選択すると詳細を表示します。')).toBeTruthy();
 
-    rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(12)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     expect(screen.getByRole('button', { name: '詳細を閉じる' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'カードを削除' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: '説明' })).toBeTruthy();
@@ -26,7 +35,7 @@ describe('DetailPanel', () => {
   });
 
   it('asks for a selection when no card is selected', () => {
-    render(<DetailPanel card={null} onClose={noop} onDeleted={noop} />);
+    render(<DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onDeleted={noop} />);
     expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Delete card' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Close details' })).toBeNull();
@@ -34,7 +43,12 @@ describe('DetailPanel', () => {
 
   it('shows the id, title, column, description and history of the selected card', () => {
     const { container } = render(
-      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     expect(screen.getByText('#8')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
@@ -48,7 +62,9 @@ describe('DetailPanel', () => {
 
   it('keeps line breaks in the description and does not interpret markup', () => {
     const card = makeCard({ id: 31, description: 'Line one\nLine **two**\n<b>three</b>' });
-    const { container } = render(<DetailPanel card={card} onClose={noop} onDeleted={noop} />);
+    const { container } = render(
+      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
+    );
     const description = container.querySelector('.detail__description');
     expect(description?.textContent).toBe('Line one\nLine **two**\n<b>three</b>');
     expect(container.querySelector('b')).toBeNull();
@@ -56,13 +72,25 @@ describe('DetailPanel', () => {
   });
 
   it('shows a note when the description is empty', () => {
-    render(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
+    render(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(12)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     expect(screen.getByText('No description.')).toBeTruthy();
   });
 
   it('draws one history point per event with the changed status and time', () => {
     const { container } = render(
-      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     const steps = container.querySelectorAll('.history__step');
     expect(steps).toHaveLength(3);
@@ -131,44 +159,84 @@ describe('DetailPanel', () => {
         },
       ],
     });
-    const { container } = render(<DetailPanel card={card} onClose={noop} onDeleted={noop} />);
+    const { container } = render(
+      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
+    );
     expect(container.querySelectorAll('.history__step')).toHaveLength(4);
   });
 
   it('shows the run state for a card in Doing and the reason for a pending card', () => {
     const { rerender } = render(
-      <DetailPanel card={fixtureCard(11)} onClose={noop} onDeleted={noop} />,
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(11)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     expect(document.querySelector('.detail__meta .status-label--running')?.textContent).toBe(
       'Running',
     );
-    rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(12)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     expect(document.querySelector('.detail__meta .status-label--pending')?.textContent).toBe(
       'Pending',
     );
     expect(screen.getAllByText('Waiting for confirmation on how to replace a board.')).toHaveLength(
       2,
     );
-    rerender(<DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />);
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     expect(screen.queryByText('Idle')).toBeNull();
   });
 
   it('closes with the Close details button', async () => {
     const onClose = vi.fn();
-    render(<DetailPanel card={fixtureCard(8)} onClose={onClose} onDeleted={noop} />);
+    render(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={onClose}
+        onDeleted={noop}
+      />,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('renders the panel as a labelled region', () => {
-    render(<DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />);
+    render(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     const region = screen.getByRole('complementary');
     expect(within(region).getByText('#8')).toBeTruthy();
   });
 
   it('puts the time first, then the changed status with the actor, then the reason', () => {
     const { container } = render(
-      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     const step = container.querySelector('.history__step') as HTMLElement;
     const parts = Array.from(step.querySelectorAll('.history__text > *')).map((el) => el.className);
@@ -179,7 +247,12 @@ describe('DetailPanel', () => {
 
   it('shows the status icons in the detail too and spins none of them outside the board', () => {
     const { container } = render(
-      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     expect(container.querySelector('.detail__meta .status-label svg.lucide-check')).not.toBeNull();
     expect(container.querySelector('.detail__title')?.tagName).toBe('H2');
@@ -187,7 +260,12 @@ describe('DetailPanel', () => {
 
   it('names the assignee next to the icon in the detail header', () => {
     const { container } = render(
-      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     const meta = container.querySelector('.detail__meta') as HTMLElement;
     expect(meta.querySelector('.assignee-label')?.getAttribute('aria-label')).toBe('AI');
@@ -197,7 +275,9 @@ describe('DetailPanel', () => {
 
   it('shows the pending request in a labelled box and keeps Answer and Delete in one row', () => {
     const card = fixtureCard(12);
-    const { container } = render(<DetailPanel card={card} onClose={noop} onDeleted={noop} />);
+    const { container } = render(
+      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
+    );
     const box = container.querySelector('.detail__pending') as HTMLElement;
     expect(box.textContent).toContain('Decision request from the AI');
     expect(box.textContent).toContain(card.pendingReason ?? 'missing');
@@ -210,7 +290,14 @@ describe('DetailPanel', () => {
   });
 
   it('uses the shared Button for Delete and Cancel in the confirmation', async () => {
-    render(<DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />);
+    render(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
     const group = screen.getByRole('group', { name: /^Delete #8/ });
     expect(within(group).getByRole('button', { name: 'Delete' }).getAttribute('data-variant')).toBe(
@@ -250,7 +337,9 @@ describe('DetailPanel', () => {
         ev(4, 'agent', 'doing', 'idle'),
       ],
     });
-    const { container } = render(<DetailPanel card={card} onClose={noop} onDeleted={noop} />);
+    const { container } = render(
+      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
+    );
     const tones = Array.from(container.querySelectorAll('.history__step .dot')).map((dot) =>
       dot.getAttribute('data-tone'),
     );
@@ -260,13 +349,25 @@ describe('DetailPanel', () => {
 
   it('puts Delete at the left of the action row, directly after Answer when pending', () => {
     const { container, rerender } = render(
-      <DetailPanel card={fixtureCard(8)} onClose={noop} onDeleted={noop} />,
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(8)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
     );
     const row = () => container.querySelector('.detail__actions') as HTMLElement;
     expect(
       Array.from(row().children).map((el) => el.textContent || el.getAttribute('aria-label')),
     ).toEqual(['Delete card', null]);
-    rerender(<DetailPanel card={fixtureCard(12)} onClose={noop} onDeleted={noop} />);
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(12)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
     expect(
       Array.from(row().children).map((el) => el.textContent || el.getAttribute('aria-label')),
     ).toEqual(['Answer', 'Delete card', null]);

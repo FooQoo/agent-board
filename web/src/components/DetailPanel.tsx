@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stateLabel } from '../lib/format';
-import type { Card } from '../types';
+import { noOperations, type OperationControls } from '../lib/projectSession';
+import type { Card, ProjectId } from '../types';
 import { XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from './DeleteButton';
@@ -11,7 +12,13 @@ import { StatusLabel } from './StatusLabel';
 import { AssigneeLabel } from './AssigneeLabel';
 
 export interface DetailPanelProps {
+  /** The project the card belongs to. Part keys and delete requests use it. */
+  projectId: ProjectId | null;
   card: Card | null;
+  /** Used where the panel only holds a project state (switching, failure, none): the hint sits at the top. */
+  variant?: 'card' | 'state';
+  /** Tells the app about the delete confirmation, so the project cannot change under it. */
+  operations?: OperationControls;
   onClose: () => void;
   onAnswer?: () => void;
   /** The card is gone (deleted here or already missing); the parent clears the selection and reloads. */
@@ -23,7 +30,10 @@ export interface DetailPanelProps {
 }
 
 export function DetailPanel({
+  projectId,
   card,
+  variant = 'card',
+  operations = noOperations,
   onClose,
   onAnswer,
   onDeleted,
@@ -31,16 +41,21 @@ export function DetailPanel({
   initialDeleteFailed,
 }: DetailPanelProps) {
   const { t } = useTranslation();
-  if (card === null) {
+  if (card === null || projectId === null) {
     return (
-      <aside className="detail detail--empty" aria-label={t('detail.title')}>
+      <aside
+        className={`detail detail--empty${variant === 'state' ? ' detail--state' : ''}`}
+        aria-label={t('detail.title')}
+      >
         <p className="detail__empty-message">{t('detail.selectPrompt')}</p>
       </aside>
     );
   }
   return (
     <DetailBody
-      key={card.id}
+      key={`${projectId}:${card.id}`}
+      projectId={projectId}
+      operations={operations}
       card={card}
       onClose={onClose}
       onAnswer={onAnswer}
@@ -51,14 +66,19 @@ export function DetailPanel({
   );
 }
 
-interface DetailBodyProps extends Omit<DetailPanelProps, 'card'> {
+interface DetailBodyProps
+  extends Omit<DetailPanelProps, 'card' | 'variant' | 'operations' | 'projectId'> {
+  projectId: ProjectId;
   card: Card;
+  operations: OperationControls;
 }
 
 type ConfirmState = 'closed' | 'initial' | 'user';
 
 function DetailBody({
+  projectId,
   card,
+  operations,
   onClose,
   onAnswer,
   onDeleted,
@@ -70,6 +90,21 @@ function DetailBody({
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
   const state = stateLabel(card);
+  const operationsRef = useRef(operations);
+  operationsRef.current = operations;
+  const operationId = useRef<number | null>(null);
+  const confirming = confirm !== 'closed';
+
+  // The open confirmation is an operation: the project cannot change until it is done or cancelled.
+  useEffect(() => {
+    if (!confirming) return;
+    const id = operationsRef.current.begin('delete', projectId);
+    operationId.current = id;
+    return () => {
+      operationsRef.current.end(id);
+      operationId.current = null;
+    };
+  }, [confirming, projectId]);
 
   useEffect(() => {
     if (confirm === 'closed' && restoreFocus.current) {
@@ -131,6 +166,7 @@ function DetailBody({
           </>
         ) : (
           <DeleteConfirm
+            projectId={projectId}
             card={card}
             focusOnMount={confirm === 'user'}
             initialFailed={initialDeleteFailed}
@@ -138,7 +174,17 @@ function DetailBody({
               restoreFocus.current = true;
               setConfirm('closed');
             }}
-            onDeleted={onDeleted}
+            onSavingChange={(saving) => {
+              const id = operationId.current;
+              if (id === null) return;
+              if (saving) operations.saveStarted(id);
+              else operations.saveFailed(id);
+            }}
+            onDeleted={() => {
+              const id = operationId.current;
+              if (id !== null) operations.cardDeleted(id, projectId, card.id);
+              onDeleted();
+            }}
           />
         )}
       </div>

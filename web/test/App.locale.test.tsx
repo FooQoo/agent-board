@@ -1,33 +1,38 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { App } from '../src/App';
 import { selectLocale } from '../src/i18n';
 import type { Board } from '../src/types';
-import { FakeEventSource, jsonResponse } from './fakes';
-import { fixtureBoard } from './fixtures';
+import { FakeEventSource, jsonResponse, stubBackend, type FakeBackend } from './fakes';
+import { PROJECTS, PROJECT_A, fixtureBoard } from './fixtures';
+import { renderApp } from './renderApp';
 
 describe('language changes in the app', () => {
-  let current: Board;
+  let backend: FakeBackend;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     window.localStorage.clear();
     selectLocale('en');
-    current = structuredClone(fixtureBoard);
+    backend = {
+      projects: PROJECTS,
+      boards: { [PROJECT_A.id]: structuredClone(fixtureBoard) },
+      write: (url, init) => {
+        if (url === `/api/projects/${PROJECT_A.id}/cards/14` && init.method === 'DELETE') {
+          const board = backend.boards[PROJECT_A.id] as Board;
+          backend.boards[PROJECT_A.id] = {
+            ...board,
+            cards: board.cards.filter((card) => card.id !== 14),
+          };
+          return new Response(null, { status: 204 });
+        }
+        return jsonResponse({}, 404);
+      },
+    };
     FakeEventSource.reset();
     vi.stubGlobal('EventSource', FakeEventSource);
     document.head.innerHTML = '<meta name="skan-token" content="test-token">';
-    fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      if (url === '/api/board') return jsonResponse(current);
-      if (url === '/api/cards/14' && init?.method === 'DELETE') {
-        current = { ...current, cards: current.cards.filter((card) => card.id !== 14) };
-        return new Response(null, { status: 204 });
-      }
-      return jsonResponse({}, 404);
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    fetchMock = stubBackend(backend);
   });
 
   afterEach(() => {
@@ -38,7 +43,7 @@ describe('language changes in the app', () => {
   });
 
   it('keeps the selected card and open delete confirmation when switching languages', async () => {
-    render(<App />);
+    renderApp(`?project=${PROJECT_A.id}`);
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: /Prepare the Windows build/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
@@ -71,7 +76,9 @@ describe('language changes in the app', () => {
     ).toBe('true');
     expect(document.documentElement.lang).toBe('ja');
     await waitFor(() =>
-      expect(fetchMock.mock.calls.filter(([url]) => url === '/api/board')).toHaveLength(1),
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/board`),
+      ).toHaveLength(1),
     );
   });
 });

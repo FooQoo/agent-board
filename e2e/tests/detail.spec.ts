@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import { resetBoard } from '../helpers/agboard';
+import { resetBoard, mainProject } from '../helpers/agboard';
 
 test.beforeEach(async ({ page }) => {
-  resetBoard();
+  resetBoard(mainProject);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
 });
@@ -132,11 +132,11 @@ test('opening, switching, and closing the panel never moves the board', async ({
 });
 
 test('the card grips never take keyboard focus', async ({ page }) => {
-  // With nothing selected, Tab visits Add card, the settings button, and eight cards; grips stay out of the order.
+  // With nothing selected, Tab visits the project switcher, Add card, the settings button, and eight cards; grips stay out of the order.
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 10; step++) {
+  for (let step = 0; step < 11; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
@@ -147,6 +147,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
     );
   }
   expect(visited).toEqual([
+    'BUTTON agent-board',
     'BUTTON Add card',
     'BUTTON Settings',
     'BUTTON #14',
@@ -172,6 +173,6 @@ test('the card grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  expect(focusable).toHaveLength(1 + 1 + 8 + 2);
+  expect(focusable).toHaveLength(1 + 1 + 1 + 8 + 2);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

@@ -1,140 +1,210 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { StrictMode } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useBoard } from '../src/hooks/useBoard';
-import type { Board } from '../src/types';
-import { FakeEventSource, stubBoardFetch } from './fakes';
-import { fixtureBoard } from './fixtures';
+import { deferred, stubBackend, type FakeBackend } from './fakes';
+import { PROJECT_A, PROJECT_B, boardOf, fixtureBoard, makeCard } from './fixtures';
 
-let current: Board | Error;
+const boardA = fixtureBoard;
+const boardB = boardOf(PROJECT_B, [makeCard({ id: 8, title: 'B card eight' })], 2);
 
-beforeEach(() => {
-  current = fixtureBoard;
-  FakeEventSource.reset();
-  vi.stubGlobal('EventSource', FakeEventSource);
-});
+function backend(overrides: Partial<FakeBackend> = {}): FakeBackend {
+  return {
+    projects: [PROJECT_A, PROJECT_B],
+    boards: { [PROJECT_A.id]: boardA, [PROJECT_B.id]: boardB },
+    ...overrides,
+  };
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe('useBoard', () => {
-  it('starts loading and becomes ready once the board is fetched', async () => {
-    const fetchMock = stubBoardFetch(() => current);
-    const { result } = renderHook(() => useBoard());
+  it('starts loading and becomes ready once the board of the project is fetched', async () => {
+    const fetchMock = stubBackend(backend());
+    const { result } = renderHook(() => useBoard(PROJECT_A.id));
 
     expect(result.current.status).toBe('loading');
     expect(result.current.board).toBeNull();
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/board', expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/projects/${PROJECT_A.id}/board`,
+      expect.anything(),
+    );
     expect(result.current.board?.cards).toHaveLength(8);
-    expect(result.current.connected).toBe(true);
+    expect(result.current.fetchFailed).toBe(false);
     expect(result.current.lastSyncedAt).toBeInstanceOf(Date);
-    expect(FakeEventSource.latest.url).toBe('/api/events');
   });
 
-  it('fetches the board again on every changed event', async () => {
-    const fetchMock = stubBoardFetch(() => current);
-    const { result } = renderHook(() => useBoard());
-    await waitFor(() => expect(result.current.status).toBe('ready'));
-    const before = fetchMock.mock.calls.length;
-
-    current = { ...fixtureBoard, cards: fixtureBoard.cards.slice(0, 3) };
-    act(() => FakeEventSource.latest.emit('changed'));
-
-    await waitFor(() => expect(result.current.board?.cards).toHaveLength(3));
-    expect(fetchMock.mock.calls.length).toBe(before + 1);
+  it('does not fetch while no project is shown', () => {
+    const fetchMock = stubBackend(backend());
+    const { result } = renderHook(() => useBoard(null));
+    expect(result.current.status).toBe('loading');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('fetches the board again on the ready event', async () => {
-    const fetchMock = stubBoardFetch(() => current);
-    const { result } = renderHook(() => useBoard());
-    await waitFor(() => expect(result.current.status).toBe('ready'));
-    const before = fetchMock.mock.calls.length;
+  it('drops the old board at once when the project changes and loads the new one', async () => {
+    stubBackend(backend());
+    const { result, rerender } = renderHook(({ id }) => useBoard(id), {
+      initialProps: { id: PROJECT_A.id },
+    });
+    await waitFor(() => expect(result.current.board?.project.id).toBe(PROJECT_A.id));
 
-    act(() => FakeEventSource.latest.emit('ready'));
-
-    await waitFor(() => expect(fetchMock.mock.calls.length).toBe(before + 1));
+    rerender({ id: PROJECT_B.id });
+    expect(result.current.board).toBeNull();
+    expect(result.current.status).toBe('loading');
+    await waitFor(() => expect(result.current.board?.project.id).toBe(PROJECT_B.id));
+    expect(result.current.board?.cards).toHaveLength(1);
   });
 
-  it('switches to the disconnected state on an error event and keeps the last board', async () => {
-    stubBoardFetch(() => current);
-    const { result } = renderHook(() => useBoard());
-    await waitFor(() => expect(result.current.status).toBe('ready'));
-    const syncedAt = result.current.lastSyncedAt;
+  it('does not let a late answer for the old project replace the new one', async () => {
+    const lateA = deferred();
+    stubBackend(
+      backend({ gate: (url) => (url.includes(PROJECT_A.id) ? lateA.promise : undefined) }),
+    );
+    const { result, rerender } = renderHook(({ id }) => useBoard(id), {
+      initialProps: { id: PROJECT_A.id },
+    });
+    rerender({ id: PROJECT_B.id });
+    await waitFor(() => expect(result.current.board?.project.id).toBe(PROJECT_B.id));
 
-    act(() => FakeEventSource.latest.emit('error'));
+    await act(async () => {
+      lateA.resolve();
+      await Promise.resolve();
+    });
 
-    expect(result.current.connected).toBe(false);
-    expect(result.current.status).toBe('ready');
-    expect(result.current.board?.cards).toHaveLength(8);
-    expect(result.current.lastSyncedAt).toBe(syncedAt);
+    expect(result.current.board?.project.id).toBe(PROJECT_B.id);
+    expect(result.current.board?.cards).toHaveLength(1);
   });
 
-  it('returns to the connected state when the next fetch succeeds after reconnecting', async () => {
-    stubBoardFetch(() => current);
-    const { result } = renderHook(() => useBoard());
+  it('ignores the first answer for A when the project goes A to B to A and the answers arrive reversed', async () => {
+    const first = deferred();
+    const second = deferred();
+    let callsForA = 0;
+    const fake = backend({
+      gate: (url) => {
+        if (!url.includes(PROJECT_A.id)) return undefined;
+        callsForA += 1;
+        return callsForA === 1 ? first.promise : second.promise;
+      },
+    });
+    stubBackend(fake);
+    const { result, rerender } = renderHook(({ id }) => useBoard(id), {
+      initialProps: { id: PROJECT_A.id },
+    });
+    rerender({ id: PROJECT_B.id });
+    await waitFor(() => expect(result.current.board?.project.id).toBe(PROJECT_B.id));
+    rerender({ id: PROJECT_A.id });
+    expect(result.current.board).toBeNull();
+
+    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeCard({ id: 1, title: 'Newest' })], 9);
+    await act(async () => {
+      second.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(result.current.board?.cards[0]?.title).toBe('Newest'));
+
+    fake.boards[PROJECT_A.id] = boardA;
+    await act(async () => {
+      first.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.board?.cards[0]?.title).toBe('Newest');
+  });
+
+  it('is not overwritten by a request from the first StrictMode mount', async () => {
+    const early = deferred();
+    let calls = 0;
+    const fake = backend({
+      gate: () => {
+        calls += 1;
+        return calls === 1 ? early.promise : undefined;
+      },
+    });
+    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeCard({ id: 1, title: 'Stale' })], 1);
+    stubBackend(fake);
+    const { result } = renderHook(() => useBoard(PROJECT_A.id), { wrapper: StrictMode });
+    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeCard({ id: 1, title: 'Fresh' })], 2);
     await waitFor(() => expect(result.current.status).toBe('ready'));
-    act(() => FakeEventSource.latest.emit('error'));
-    expect(result.current.connected).toBe(false);
+    await act(async () => {
+      early.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.board?.cards[0]?.title).not.toBe('Stale');
+  });
 
-    act(() => FakeEventSource.latest.emit('ready'));
-
-    await waitFor(() => expect(result.current.connected).toBe(true));
+  it('reports a missing project as not_found, not as a failure to retry', async () => {
+    stubBackend(backend({ boards: { [PROJECT_A.id]: 'not_found' } }));
+    const { result } = renderHook(() => useBoard(PROJECT_A.id));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.error).toBe('not_found');
+    expect(result.current.board).toBeNull();
   });
 
   it('reports an error when the first fetch fails and recovers on reload', async () => {
-    const fetchMock = stubBoardFetch(() => current);
-    current = new Error('network down');
-    const { result } = renderHook(() => useBoard());
+    const fake = backend({ boards: { [PROJECT_A.id]: new Error('network down') } });
+    const fetchMock = stubBackend(fake);
+    const { result } = renderHook(() => useBoard(PROJECT_A.id));
 
     await waitFor(() => expect(result.current.status).toBe('error'));
-    expect(result.current.board).toBeNull();
-    expect(result.current.connected).toBe(false);
+    expect(result.current.error).toBe('failed');
+    expect(result.current.fetchFailed).toBe(true);
 
-    current = fixtureBoard;
+    fake.boards[PROJECT_A.id] = boardA;
     act(() => result.current.reload());
     expect(result.current.status).toBe('loading');
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('treats a non-2xx response as an error', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({ error: { code: 'database_error', message: 'x', reason: 'y' } }),
-            { status: 500 },
-          ),
-      ),
-    );
-    const { result } = renderHook(() => useBoard());
+  it('treats a 500 as a failure', async () => {
+    stubBackend(backend({ boards: { [PROJECT_A.id]: 500 } }));
+    const { result } = renderHook(() => useBoard(PROJECT_A.id));
     await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.error).toBe('failed');
   });
 
-  it('keeps the board but marks it disconnected when a refresh fails', async () => {
-    stubBoardFetch(() => current);
-    const { result } = renderHook(() => useBoard());
+  it('keeps the board but flags the failure when a refresh fails', async () => {
+    const fake = backend();
+    stubBackend(fake);
+    const { result } = renderHook(() => useBoard(PROJECT_A.id));
     await waitFor(() => expect(result.current.status).toBe('ready'));
+    const syncedAt = result.current.lastSyncedAt;
 
-    current = new Error('network down');
-    act(() => FakeEventSource.latest.emit('changed'));
+    fake.boards[PROJECT_A.id] = new Error('network down');
+    act(() => result.current.reload());
 
-    await waitFor(() => expect(result.current.connected).toBe(false));
+    await waitFor(() => expect(result.current.fetchFailed).toBe(true));
     expect(result.current.status).toBe('ready');
     expect(result.current.board?.cards).toHaveLength(8);
+    expect(result.current.lastSyncedAt).toBe(syncedAt);
   });
 
-  it('closes the EventSource when unmounted', async () => {
-    stubBoardFetch(() => current);
-    const { result, unmount } = renderHook(() => useBoard());
+  it('turns into not_found when a refresh finds the project deleted', async () => {
+    const fake = backend();
+    stubBackend(fake);
+    const { result } = renderHook(() => useBoard(PROJECT_A.id));
     await waitFor(() => expect(result.current.status).toBe('ready'));
-    const source = FakeEventSource.latest;
 
-    unmount();
+    fake.boards[PROJECT_A.id] = 'not_found';
+    act(() => result.current.reload());
 
-    expect(source.closed).toBe(true);
+    await waitFor(() => expect(result.current.error).toBe('not_found'));
+    expect(result.current.board).toBeNull();
+  });
+
+  it('refreshes the shown board without going back to loading', async () => {
+    const fake = backend();
+    stubBackend(fake);
+    const { result } = renderHook(() => useBoard(PROJECT_A.id));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    fake.boards[PROJECT_A.id] = { ...boardA, cards: boardA.cards.slice(0, 3) };
+    act(() => result.current.reload());
+
+    expect(result.current.status).toBe('ready');
+    await waitFor(() => expect(result.current.board?.cards).toHaveLength(3));
   });
 });

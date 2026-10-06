@@ -3,12 +3,19 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { DetailPanel } from '../../src/components/DetailPanel';
-import { fixtureCard, makeCard } from '../fixtures';
+import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
 
 const CONFIRM_TEXT = 'Delete #11 "Implement card moves"? This cannot be undone.';
 
 function renderPanel(onDeleted = vi.fn()) {
-  render(<DetailPanel card={fixtureCard(11)} onClose={() => {}} onDeleted={onDeleted} />);
+  render(
+    <DetailPanel
+      projectId={PROJECT_A.id}
+      card={fixtureCard(11)}
+      onClose={() => {}}
+      onDeleted={onDeleted}
+    />,
+  );
   return onDeleted;
 }
 
@@ -33,6 +40,7 @@ describe('delete confirmation', () => {
     selectLocale('ja');
     const { container } = render(
       <DetailPanel
+        projectId={PROJECT_A.id}
         card={card}
         onClose={() => {}}
         onDeleted={() => {}}
@@ -83,7 +91,7 @@ describe('delete confirmation', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('/api/cards/11', {
+    expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/cards/11`, {
       method: 'DELETE',
       headers: { 'X-Skan-Token': 'test-token' },
     });
@@ -158,10 +166,22 @@ describe('delete confirmation', () => {
 
   it('closes the confirmation when another card is shown', async () => {
     const { rerender } = render(
-      <DetailPanel card={fixtureCard(11)} onClose={() => {}} onDeleted={() => {}} />,
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(11)}
+        onClose={() => {}}
+        onDeleted={() => {}}
+      />,
     );
     await openConfirm();
-    rerender(<DetailPanel card={fixtureCard(13)} onClose={() => {}} onDeleted={() => {}} />);
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(13)}
+        onClose={() => {}}
+        onDeleted={() => {}}
+      />,
+    );
     expect(screen.queryByText(/This cannot be undone/)).toBeNull();
   });
 });

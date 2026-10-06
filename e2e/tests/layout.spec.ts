@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { resetBoard, agboardOk } from '../helpers/agboard';
+import { resetBoard, agboardOk, mainProject } from '../helpers/agboard';
 
 // Headless Chromium hides scrollbars by default; the scroll cue needs the real ones.
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
@@ -7,7 +7,7 @@ test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 const STORAGE_KEY = 'skan.detailWidth';
 
 test.beforeEach(() => {
-  resetBoard();
+  resetBoard(mainProject);
 });
 
 async function open(page: Page, width: number, height = 900): Promise<void> {
@@ -59,9 +59,9 @@ const computed = (page: Page, selector: string, props: string[]) =>
   );
 
 function fillDone(extra = 8): void {
-  for (let i = 0; i < extra; i += 1) agboardOk(['add', `Extra done card ${i + 1}`]);
-  const cards = JSON.parse(agboardOk(['ls', '--json']).stdout).cards as { id: number; title: string }[];
-  for (const c of cards.filter((x) => x.title.startsWith('Extra done card'))) agboardOk(['mv', String(c.id), 'done']);
+  for (let i = 0; i < extra; i += 1) agboardOk(mainProject, ['add', `Extra done card ${i + 1}`]);
+  const cards = JSON.parse(agboardOk(mainProject, ['ls', '--json']).stdout).cards as { id: number; title: string }[];
+  for (const c of cards.filter((x) => x.title.startsWith('Extra done card'))) agboardOk(mainProject, ['mv', String(c.id), 'done']);
 }
 
 // ---------------------------------------------------------------- Desktop layout

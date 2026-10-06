@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { Header } from '../../src/components/Header';
+import { PROJECTS, PROJECT_A } from '../fixtures';
 import { selectTheme } from '../../src/theme';
 
 function reset() {
@@ -20,14 +21,16 @@ describe('settings entry in the header', () => {
   });
 
   it('replaces the globe language menu with a Settings button', () => {
-    render(<Header boardName="simplekanban" />);
+    render(<Header projects={PROJECTS} activeProjectId={PROJECT_A.id} canAdd />);
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Language' })).toBeNull();
     expect(document.querySelector('.language-menu, .header__language')).toBeNull();
   });
 
   it('draws the white logo on a tile that takes the theme accent', () => {
-    const { container } = render(<Header boardName="simplekanban" />);
+    const { container } = render(
+      <Header projects={PROJECTS} activeProjectId={PROJECT_A.id} canAdd />,
+    );
     const logo = container.querySelector('.header__logo') as HTMLElement;
     expect(logo.tagName).toBe('SPAN');
     const image = logo.querySelector('img') as HTMLImageElement;
@@ -36,9 +39,15 @@ describe('settings entry in the header', () => {
     expect(container.querySelector('img[src="/logo.png"]')).toBeNull();
   });
 
-  it('shows the real board name after a slash and the Add card button', () => {
-    const { container } = render(<Header boardName="my-board" />);
-    expect(container.querySelector('.header__board')?.textContent).toBe('my-board');
+  it('shows the project switcher after a slash and the Add card button', () => {
+    const { container } = render(
+      <Header
+        projects={[{ ...PROJECT_A, name: 'my-board' }]}
+        activeProjectId={PROJECT_A.id}
+        canAdd
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'my-board' })).toBeTruthy();
     expect(container.querySelector('.header__slash')?.getAttribute('aria-hidden')).toBe('true');
     expect(screen.getByRole('button', { name: 'Add card' }).getAttribute('data-slot')).toBe(
       'button',
@@ -46,7 +55,7 @@ describe('settings entry in the header', () => {
   });
 
   it('shows only the logo, the app name and Settings while the board is unknown', () => {
-    const { container } = render(<Header boardName={null} />);
+    const { container } = render(<Header />);
     expect(container.querySelector('.header__slash')).toBeNull();
     expect(container.querySelector('.header__board')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
@@ -56,13 +65,13 @@ describe('settings entry in the header', () => {
   });
 
   it('keeps the Settings button while the board name is unknown (loading or error)', () => {
-    render(<Header boardName={null} />);
+    render(<Header />);
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
   });
 
   it('opens the settings dialog, which holds the language choice', async () => {
-    render(<Header boardName="simplekanban" />);
+    render(<Header projects={PROJECTS} activeProjectId={PROJECT_A.id} canAdd />);
     const trigger = screen.getByRole('button', { name: 'Settings' });
     expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     await userEvent.click(trigger);
@@ -81,7 +90,7 @@ describe('settings entry in the header', () => {
   });
 
   it('supports keyboard opening, Tab navigation, Space selection, and focus restoration', async () => {
-    render(<Header boardName={null} />);
+    render(<Header />);
     const trigger = screen.getByRole('button', { name: 'Settings' });
     trigger.focus();
     await userEvent.keyboard('{Enter}');
@@ -105,7 +114,7 @@ describe('settings entry in the header', () => {
   });
 
   it('opens with Space on the trigger and closes on Escape with focus on the trigger', async () => {
-    render(<Header boardName={null} />);
+    render(<Header />);
     const trigger = screen.getByRole('button', { name: 'Settings' });
     trigger.focus();
     await userEvent.keyboard(' ');
@@ -116,7 +125,7 @@ describe('settings entry in the header', () => {
   });
 
   it('closes when the user clicks the backdrop', async () => {
-    render(<Header boardName="simplekanban" />);
+    render(<Header projects={PROJECTS} activeProjectId={PROJECT_A.id} canAdd />);
     const trigger = screen.getByRole('button', { name: 'Settings' });
     await userEvent.click(trigger);
     const overlay = document.querySelector('[data-slot="dialog-overlay"]');
@@ -128,7 +137,7 @@ describe('settings entry in the header', () => {
 
   it('still calls onAdd from the add button', async () => {
     const onAdd = vi.fn();
-    render(<Header boardName="simplekanban" onAdd={onAdd} />);
+    render(<Header projects={PROJECTS} activeProjectId={PROJECT_A.id} canAdd onAdd={onAdd} />);
     await userEvent.click(screen.getByRole('button', { name: 'Add card' }));
     expect(onAdd).toHaveBeenCalledTimes(1);
   });

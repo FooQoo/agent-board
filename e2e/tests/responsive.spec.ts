@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { resetBoard } from '../helpers/agboard';
+import { resetBoard, mainProject } from '../helpers/agboard';
 
 // There is one desktop layout. These checks run it at the supported desktop widths.
 test.beforeEach(() => {
-  resetBoard();
+  resetBoard(mainProject);
 });
 
 type Box = { x: number; y: number; width: number; height: number };
