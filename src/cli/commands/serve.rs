@@ -4,7 +4,6 @@ use std::net::SocketAddr;
 use serde_json::json;
 
 use crate::cli::args::ServeArgs;
-use crate::cli::{Context, Outcome};
 use crate::error::SkanError;
 use crate::server::{self, ServeConfig};
 
@@ -12,16 +11,11 @@ use crate::server::{self, ServeConfig};
 ///
 /// The startup line goes straight to standard output from `on_ready`, so it
 /// appears only once the port is bound; `execute` prints nothing for `serve`
-/// afterwards. The command never changes the board, so `changed` is `false`.
-pub fn run(ctx: &mut Context, args: &ServeArgs) -> Result<Outcome, SkanError> {
-    let json = ctx.json;
+/// afterwards. The command works on the whole data area, never on one project
+/// or card, and changes nothing that needs a notification.
+pub fn run(json: bool, args: &ServeArgs) -> Result<(), SkanError> {
     server::run_until(ServeConfig { port: args.port }, shutdown_signal(), |addr| {
         announce(addr, json)
-    })?;
-    Ok(Outcome {
-        changed: false,
-        human: String::new(),
-        json: json!(null),
     })
 }
 

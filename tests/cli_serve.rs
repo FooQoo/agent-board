@@ -568,3 +568,59 @@ fn a_write_after_serve_was_killed_succeeds_quickly() {
     let (_again, first) = Serving::start(home.path(), 7628);
     assert!(first.starts_with("Serving at"), "{first}");
 }
+
+#[test]
+fn serve_refuses_a_database_with_another_schema_and_leaves_no_serve_json() {
+    let _lock = serial();
+    let home = tempfile::tempdir().unwrap();
+    let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
+    conn.execute_batch("CREATE TABLE board (id INTEGER); PRAGMA user_version = 2;")
+        .unwrap();
+    drop(conn);
+    assert!(port_is_free(7840));
+    let o = run(home.path(), &["serve", "--port", "7840"]);
+    assert_eq!(o.code, 1, "{}", o.err);
+    assert!(o.err.contains("schema version 2"), "{}", o.err);
+    assert!(!home.path().join("serve.json").exists());
+    assert!(port_is_free(7840));
+    // The old database is left as it was.
+    let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
+    let version: i64 = conn
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(version, 2);
+}
+
+#[test]
+fn serve_takes_no_project_and_changes_made_through_two_projects_are_notified() {
+    let _lock = serial();
+    let home = tempfile::tempdir().unwrap();
+    let o = agboard(home.path())
+        .args(["--project", "x", "serve", "--port", "7841"])
+        .output()
+        .unwrap();
+    assert_eq!(o.status.code(), Some(2));
+    assert!(port_is_free(7841));
+    assert!(!home.path().join("serve.json").exists());
+    assert!(!home.path().join("board.db").exists());
+
+    let (serving, _) = Serving::start(home.path(), 7841);
+    for name in ["alpha", "beta"] {
+        let o = agboard(home.path())
+            .args(["project", "create", name])
+            .output()
+            .unwrap();
+        assert_eq!(o.status.code(), Some(0));
+    }
+    let list: serde_json::Value = serde_json::from_str(
+        &ureq::get("http://127.0.0.1:7841/api/projects")
+            .call()
+            .unwrap()
+            .body_mut()
+            .read_to_string()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(list["projects"].as_array().unwrap().len(), 2);
+    drop(serving);
+}

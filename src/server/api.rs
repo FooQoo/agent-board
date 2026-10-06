@@ -3,8 +3,9 @@
 use std::sync::Arc;
 
 use axum::Router;
-use axum::extract::{Path, Request, State};
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::extract::rejection::JsonRejection;
+use axum::extract::{DefaultBodyLimit, FromRequest, Path, Request, State};
+use axum::http::{HeaderMap, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
@@ -16,6 +17,9 @@ use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, 
 use crate::error::SkanError;
 use crate::store::ProjectStore;
 
+/// The largest request body any route reads.
+const MAX_BODY: usize = 64 * 1024;
+
 pub(crate) fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(index))
@@ -26,6 +30,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/events", get(events::events))
         .route("/api/notify", post(notify))
         .route("/api/health", get(health))
+        .route("/api/projects", get(projects))
         .route("/api/projects/{project_id}/board", get(board))
         .route("/api/projects/{project_id}/cards", post(create_card))
         .route("/api/projects/{project_id}/cards/{id}", delete(delete_card))
@@ -41,6 +46,8 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
             "/api/projects/{project_id}/cards/{id}/answer",
             post(answer_request),
         )
+        .layer(DefaultBodyLimit::max(MAX_BODY))
+        .layer(middleware::from_fn_with_state(state.clone(), write_guard))
         .layer(middleware::from_fn_with_state(state.clone(), host_guard))
         .with_state(state)
 }
@@ -78,7 +85,9 @@ fn error_response(
 fn skan_error_response(error: &SkanError) -> Response {
     let status = match error {
         SkanError::CardNotFound { .. } | SkanError::ProjectNotFound { .. } => StatusCode::NOT_FOUND,
-        SkanError::NotInitialized | SkanError::RequestChanged => StatusCode::CONFLICT,
+        SkanError::NotInitialized
+        | SkanError::RequestChanged
+        | SkanError::ProjectNameExists { .. } => StatusCode::CONFLICT,
         SkanError::InvalidArgument { .. }
         | SkanError::InvalidValue { .. }
         | SkanError::InvalidStateForColumn { .. }
@@ -133,6 +142,64 @@ async fn host_guard(State(state): State<Arc<AppState>>, request: Request, next: 
     } else {
         forbidden("Open the board at http://127.0.0.1:<port>/ as printed by agboard serve.")
     }
+}
+
+/// Every request that changes data needs the page's Origin, Sec-Fetch-Site and
+/// token. This runs before the path, the body or the database is looked at, so
+/// a refusal never tells whether a project or card exists. `POST /api/notify`
+/// changes nothing and is open.
+async fn write_guard(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {
+    let reads = matches!(
+        *request.method(),
+        Method::GET | Method::HEAD | Method::OPTIONS
+    );
+    if reads || request.uri().path() == "/api/notify" || write_allowed(request.headers(), &state) {
+        next.run(request).await
+    } else {
+        forbidden("Changes can only be made from the board page.")
+    }
+}
+
+/// A JSON body whose failures use the API's error body: 400 for broken JSON,
+/// 413 for a body over the limit, 415 for another content type, and 422 for
+/// JSON that is well formed but not what the route takes.
+struct ApiJson<T>(T);
+
+impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for ApiJson<T> {
+    type Rejection = Response;
+
+    async fn from_request(request: Request, state: &S) -> Result<Self, Self::Rejection> {
+        match axum::Json::<T>::from_request(request, state).await {
+            Ok(axum::Json(value)) => Ok(ApiJson(value)),
+            Err(rejection) => Err(json_rejection(&rejection)),
+        }
+    }
+}
+
+fn json_rejection(rejection: &JsonRejection) -> Response {
+    let (status, code, reason) = match rejection.status() {
+        StatusCode::PAYLOAD_TOO_LARGE => (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "payload_too_large",
+            "Request bodies are limited to 64 KiB.",
+        ),
+        StatusCode::UNSUPPORTED_MEDIA_TYPE => (
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "unsupported_media_type",
+            "Send the body as application/json.",
+        ),
+        StatusCode::UNPROCESSABLE_ENTITY => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "The body is missing a field or has a value the route does not accept.",
+        ),
+        _ => (
+            StatusCode::BAD_REQUEST,
+            "invalid_json",
+            "The body is not valid JSON.",
+        ),
+    };
+    error_response(status, code, "request body is invalid.", reason)
 }
 
 // ---------------------------------------------------------------- store access
@@ -208,6 +275,14 @@ fn parse_project_id(raw: &str) -> Result<ProjectId, SkanError> {
     raw.parse()
 }
 
+/// The catalog: every project by name, without cards. Read in one transaction.
+async fn projects(State(state): State<Arc<AppState>>) -> Response {
+    match with_store(&state, |store| store.projects()).await {
+        Ok(catalog) => json_response(StatusCode::OK, &catalog),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
 async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<String>) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
@@ -273,11 +348,7 @@ async fn notify(State(state): State<Arc<AppState>>) -> StatusCode {
 async fn delete_card(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
-    headers: HeaderMap,
 ) -> Response {
-    if !write_allowed(&headers, &state) {
-        return forbidden("Changes can only be made from the board page.");
-    }
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
@@ -315,20 +386,23 @@ struct CreateCardInput {
     title: String,
     description: String,
     assignee: Assignee,
-    actor: Actor,
+    #[serde(rename = "actor", default)]
+    _actor: Option<serde_json::Value>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct MoveInput {
     card_status: Column,
-    actor: Actor,
+    #[serde(rename = "actor", default)]
+    _actor: Option<serde_json::Value>,
     reason: String,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AgentStateInput {
     agent_status: RunState,
-    actor: Actor,
+    #[serde(rename = "actor", default)]
+    _actor: Option<serde_json::Value>,
     reason: String,
     request_id: Option<String>,
 }
@@ -336,19 +410,16 @@ struct AgentStateInput {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AnswerInput {
     request_id: String,
-    actor: Actor,
+    #[serde(rename = "actor", default)]
+    _actor: Option<serde_json::Value>,
     reason: String,
 }
 
 async fn create_card(
     State(state): State<Arc<AppState>>,
     Path(raw_project): Path<String>,
-    headers: HeaderMap,
-    axum::Json(input): axum::Json<CreateCardInput>,
+    ApiJson(input): ApiJson<CreateCardInput>,
 ) -> Response {
-    if !write_allowed(&headers, &state) {
-        return forbidden("Changes can only be made from the board page.");
-    }
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
@@ -360,7 +431,7 @@ async fn create_card(
                 title: input.title,
                 description: input.description,
                 assignee: input.assignee,
-                actor: input.actor,
+                actor: Actor::Human,
             },
             chrono::Utc::now(),
         )
@@ -378,12 +449,8 @@ async fn create_card(
 async fn move_card(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
-    headers: HeaderMap,
-    axum::Json(input): axum::Json<MoveInput>,
+    ApiJson(input): ApiJson<MoveInput>,
 ) -> Response {
-    if !write_allowed(&headers, &state) {
-        return forbidden("Changes can only be made from the board page.");
-    }
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
@@ -402,7 +469,7 @@ async fn move_card(
             id,
             input.card_status,
             ChangeContext {
-                actor: input.actor,
+                actor: Actor::Human,
                 reason: input.reason,
             },
             chrono::Utc::now(),
@@ -426,12 +493,8 @@ async fn move_card(
 async fn set_agent_status(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
-    headers: HeaderMap,
-    axum::Json(input): axum::Json<AgentStateInput>,
+    ApiJson(input): ApiJson<AgentStateInput>,
 ) -> Response {
-    if !write_allowed(&headers, &state) {
-        return forbidden("Changes can only be made from the board page.");
-    }
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
@@ -450,7 +513,7 @@ async fn set_agent_status(
             id,
             input.agent_status,
             ChangeContext {
-                actor: input.actor,
+                actor: Actor::Human,
                 reason: input.reason,
             },
             input.request_id.as_deref(),
@@ -475,12 +538,8 @@ async fn set_agent_status(
 async fn answer_request(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
-    headers: HeaderMap,
-    axum::Json(input): axum::Json<AnswerInput>,
+    ApiJson(input): ApiJson<AnswerInput>,
 ) -> Response {
-    if !write_allowed(&headers, &state) {
-        return forbidden("Changes can only be made from the board page.");
-    }
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
@@ -499,7 +558,7 @@ async fn answer_request(
             id,
             &input.request_id,
             ChangeContext {
-                actor: input.actor,
+                actor: Actor::Human,
                 reason: input.reason,
             },
             chrono::Utc::now(),

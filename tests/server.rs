@@ -792,7 +792,15 @@ fn unknown_paths_are_404_and_wrong_methods_405() {
     let server = Running::start(home.path(), 0).unwrap();
     assert_eq!(server.get("/nope").status, 404);
     assert_eq!(server.get("/assets/other.js").status, 404);
-    assert_eq!(server.send("POST", &server.api("/board"), &[]).status, 405);
+    // A write-method request is guarded before the route is even matched.
+    assert_eq!(server.send("POST", &server.api("/board"), &[]).status, 403);
+    let headers = server.page_headers(&server.token());
+    assert_eq!(
+        server
+            .send_owned("POST", &server.api("/board"), &headers)
+            .status,
+        405
+    );
     assert_eq!(server.send("GET", "/api/notify", &[]).status, 405);
 }
 
