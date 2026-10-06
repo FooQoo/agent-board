@@ -161,9 +161,28 @@ impl Running {
             .timeout_global(Some(Duration::from_secs(15)))
             .build()
             .into();
-        let mut response = agent
-            .run(builder.body(body.unwrap_or("").to_string()).unwrap())
-            .unwrap();
+        let request = builder.body(body.unwrap_or("").to_string()).unwrap();
+        // The server answers a refused write before it reads the body and closes the connection, so on macOS
+        // the client can see the reset while it is still sending (an I/O error such as EINVAL) instead of the
+        // answer. That is a race in the client, not a different answer; ask again.
+        let mut attempts = 0;
+        let mut response = loop {
+            match agent.run(request.clone()) {
+                Ok(response) => break response,
+                Err(ureq::Error::Io(error))
+                    if attempts < 4
+                        && matches!(
+                            error.kind(),
+                            std::io::ErrorKind::InvalidInput
+                                | std::io::ErrorKind::BrokenPipe
+                                | std::io::ErrorKind::ConnectionReset
+                        ) =>
+                {
+                    attempts += 1;
+                }
+                Err(error) => panic!("{method} {path}: {error:?}"),
+            }
+        };
         Reply {
             status: response.status().as_u16(),
             body: response.body_mut().read_to_string().unwrap_or_default(),

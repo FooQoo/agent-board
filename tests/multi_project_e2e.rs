@@ -205,13 +205,29 @@ impl Serve {
             .timeout_global(Some(Duration::from_secs(15)))
             .build()
             .into();
-        let mut response = agent
-            .run(
-                builder
-                    .body(body.map(Value::to_string).unwrap_or_default())
-                    .unwrap(),
-            )
+        let request = builder
+            .body(body.map(Value::to_string).unwrap_or_default())
             .unwrap();
+        // A refused write is answered before its body is read and the connection is closed, so on macOS the
+        // client can see the reset (an I/O error such as EINVAL) while it is still sending. Ask again.
+        let mut attempts = 0;
+        let mut response = loop {
+            match agent.run(request.clone()) {
+                Ok(response) => break response,
+                Err(ureq::Error::Io(error))
+                    if attempts < 4
+                        && matches!(
+                            error.kind(),
+                            std::io::ErrorKind::InvalidInput
+                                | std::io::ErrorKind::BrokenPipe
+                                | std::io::ErrorKind::ConnectionReset
+                        ) =>
+                {
+                    attempts += 1;
+                }
+                Err(error) => panic!("{method} {path}: {error:?}"),
+            }
+        };
         Reply {
             status: response.status().as_u16(),
             body: response.body_mut().read_to_string().unwrap_or_default(),
