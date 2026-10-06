@@ -117,11 +117,11 @@ export function App({ initial }: AppProps) {
     }
   }, [boardData, session.selectedId]);
 
-  // A layout effect, so the title is already set when the project name appears in the DOM.
+  // The title names the project whenever the header does (also while its board loads). A layout effect,
+  // so the title is already set when the project name appears in the DOM.
   useLayoutEffect(() => {
-    document.title =
-      view === 'board' && activeName !== null ? `${activeName} - Agent Board` : 'Agent Board';
-  }, [view, activeName]);
+    document.title = activeName !== null ? `${activeName} - Agent Board` : 'Agent Board';
+  }, [activeName]);
 
   const reloadBoard = board.reload;
   const activeRef = useRef(activeId);
