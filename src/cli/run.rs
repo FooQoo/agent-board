@@ -40,12 +40,17 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
         return 0;
     }
     if let Command::Wait(args) = &cli.command {
+        // The name is resolved against the same board file the other
+        // commands use, and `validate` has already required it.
         let result = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .map_err(|error| error.to_string())
+            .map_err(|error| SkanError::BoardUnavailable {
+                reason: error.to_string(),
+            })
             .and_then(|runtime| {
                 runtime.block_on(crate::agent::wait::wait_for_change(
+                    &env.db_path,
                     cli.project().unwrap_or_default(),
                     args.after.clone(),
                     args.timeout,
@@ -56,20 +61,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
                 write_text(env.stdout, &output);
                 0
             }
-            Err(message) => {
-                let (code, reason) = message
-                    .split_once(": ")
-                    .unwrap_or(("board_unavailable", message.as_str()));
-                let body =
-                    serde_json::json!({"error":{"code":code,"message":reason,"reason":reason}})
-                        .to_string();
-                if cli.json {
-                    write_text(env.stderr, &(body + "\n"));
-                } else {
-                    write_text(env.stderr, &format!("{reason}\n"));
-                }
-                1
-            }
+            Err(error) => fail(env, &error, cli.json),
         };
     }
     // `serve` needs no project and no card context: it opens the data area

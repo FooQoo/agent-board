@@ -14,6 +14,32 @@ cargo build
 
 The binary is `target/debug/agboard`.
 
+## Install from source
+
+Agents and hooks run `agboard` from your `PATH`, so install your build there:
+
+```sh
+pnpm --dir web install
+pnpm --dir web build
+cargo install --path . --locked --force
+command -v agboard
+```
+
+Build the web UI first because the CLI embeds it. `cargo install` writes to `~/.cargo/bin` (or `$CARGO_HOME/bin`); that directory must be on your `PATH`. If `command -v agboard` prints nothing, add it, for example `export PATH="$HOME/.cargo/bin:$PATH"`, and open a new shell. After changing the code, run the three commands again to update the installed binary.
+
+The installed `agboard` and a development build are separate files. Hook commands call the installed one, while `cargo build`, `cargo run`, and `target/debug/agboard` use the working tree. Reinstall before checking a change through a hook.
+
+To try the installation without touching `~/.cargo/bin` or your board, install into a temporary root and use a temporary data area:
+
+```sh
+root="$(mktemp -d)"
+cargo install --path . --locked --root "$root"
+export SKAN_HOME="$(mktemp -d)"
+"$root/bin/agboard" --help
+"$root/bin/agboard" project create demo
+"$root/bin/agboard" --project demo ls
+```
+
 ## Development
 
 Run all commands from the repository root.
@@ -34,7 +60,8 @@ For manual CLI experiments and tests, point `SKAN_HOME` at a temporary directory
 
 ```sh
 export SKAN_HOME="$(mktemp -d)"
-cargo run -- init --name dev
+cargo run -- project create dev
+cargo run -- --project dev add "Try it" --assignee ai --actor ai
 cargo run -- serve --port <port>
 ```
 

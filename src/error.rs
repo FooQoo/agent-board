@@ -64,6 +64,16 @@ pub enum SkanError {
     PortInUse {
         port: u16,
     },
+    /// `agboard wait` could not read the board or reach the server.
+    BoardUnavailable {
+        reason: String,
+    },
+    /// The `--after` cursor does not fit the project or the board.
+    CursorInvalid {
+        reason: String,
+    },
+    /// `agboard wait` reached its `--timeout` with no change.
+    WaitTimeout,
 }
 
 impl SkanError {
@@ -86,6 +96,9 @@ impl SkanError {
             SkanError::DatabaseError { .. } => "database_error",
             SkanError::AlreadyServing { .. } => "already_serving",
             SkanError::PortInUse { .. } => "port_in_use",
+            SkanError::BoardUnavailable { .. } => "board_unavailable",
+            SkanError::CursorInvalid { .. } => "cursor_invalid",
+            SkanError::WaitTimeout => "wait_timeout",
         }
     }
 
@@ -127,6 +140,9 @@ impl SkanError {
             SkanError::DatabaseError { .. } => "cannot open the board.".to_string(),
             SkanError::AlreadyServing { .. } => "the board is already being served.".to_string(),
             SkanError::PortInUse { port } => format!("port {port} is already in use."),
+            SkanError::BoardUnavailable { .. } => "the board is unavailable.".to_string(),
+            SkanError::CursorInvalid { .. } => "the cursor is invalid.".to_string(),
+            SkanError::WaitTimeout => "no board change before the timeout.".to_string(),
         }
     }
 
@@ -173,6 +189,12 @@ impl SkanError {
                 format!("Open http://127.0.0.1:{port}/ or stop the other \"agboard serve\".")
             }
             SkanError::PortInUse { .. } => "Choose another port with --port.".to_string(),
+            SkanError::BoardUnavailable { reason } => reason.clone(),
+            SkanError::CursorInvalid { reason } => reason.clone(),
+            SkanError::WaitTimeout => {
+                "Nothing changed in the project. This is not an answer; read the snapshot before acting."
+                    .to_string()
+            }
         }
     }
 }
@@ -242,6 +264,13 @@ mod tests {
             },
             SkanError::AlreadyServing { port: 7420 },
             SkanError::PortInUse { port: 7420 },
+            SkanError::BoardUnavailable {
+                reason: "no running server".into(),
+            },
+            SkanError::CursorInvalid {
+                reason: "wrong project".into(),
+            },
+            SkanError::WaitTimeout,
         ]
     }
 
@@ -270,6 +299,9 @@ mod tests {
                 ("database_error", 1),
                 ("already_serving", 1),
                 ("port_in_use", 1),
+                ("board_unavailable", 1),
+                ("cursor_invalid", 1),
+                ("wait_timeout", 1),
             ]
         );
     }
@@ -338,6 +370,12 @@ mod tests {
             (
                 "port 7420 is already in use.",
                 "Choose another port with --port.",
+            ),
+            ("the board is unavailable.", "no running server"),
+            ("the cursor is invalid.", "wrong project"),
+            (
+                "no board change before the timeout.",
+                "Nothing changed in the project. This is not an answer; read the snapshot before acting.",
             ),
         ];
         let expected: Vec<(String, String)> = expected
