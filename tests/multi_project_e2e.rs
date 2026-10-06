@@ -123,7 +123,7 @@ fn project_names(home: &Path) -> Vec<String> {
         .collect()
 }
 
-fn card<'a>(snapshot: &'a Value, id: i64) -> &'a Value {
+fn card(snapshot: &Value, id: i64) -> &Value {
     snapshot["cards"]
         .as_array()
         .unwrap()
