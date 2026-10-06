@@ -72,9 +72,15 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             }
         };
     }
+    // `serve` needs no project and no card context: it opens the data area
+    // itself, writes its startup line while it runs, and prints nothing after.
+    if let Command::Serve(args) = &cli.command {
+        return match commands::serve::run(cli.json, args) {
+            Ok(()) => 0,
+            Err(error) => fail(env, &error, cli.json),
+        };
+    }
     match prepare_and_run(&cli, env) {
-        // `serve` has already written its startup line while it ran.
-        Ok(_) if matches!(cli.command, Command::Serve(_)) => 0,
         Ok((ctx, outcome)) => {
             let text = if cli.json {
                 format!("{}\n", output::render_json(&outcome.json))
@@ -108,7 +114,7 @@ enum Access {
     ChangeProject,
     /// `init` and `import`: change the project, or create it if it is missing.
     ChangeOrCreateProject,
-    /// Changes the catalog or runs without a project (`project create`, `serve`).
+    /// Changes the catalog or runs without a project (`project create`).
     Catalog,
 }
 
@@ -200,12 +206,11 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> 
         Command::Ls(args) => commands::ls::run(ctx, args),
         Command::Show(args) => commands::show::run(ctx, args),
         Command::Snapshot(_) => commands::snapshot::run(ctx),
-        Command::Hook(_) | Command::Wait(_) => {
-            unreachable!("agent commands are handled before store setup")
+        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) => {
+            unreachable!("serve and the agent commands are handled before store setup")
         }
         Command::Export(args) => commands::export::run(ctx, args),
         Command::Import(args) => commands::import::run(ctx, args),
-        Command::Serve(args) => commands::serve::run(ctx, args),
     }
 }
 
