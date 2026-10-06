@@ -509,3 +509,61 @@ describe('switching while a form is open', () => {
     ).toBe(false);
   });
 });
+
+describe('Japanese state screens use the approved texts', () => {
+  const hint = 'カードを選択すると詳細が表示されます。';
+
+  it('board loading', async () => {
+    selectLocale('ja');
+    const gate = deferred();
+    backend.gate = (url) => (url.endsWith('/board') ? gate.promise : undefined);
+    renderApp(urlOf(PROJECT_B.id));
+    expect(await screen.findByText('ボードを読み込み中…')).toBeTruthy();
+    expect(screen.getByText('読み込み中', { selector: '.status-bar__text' })).toBeTruthy();
+    expect(screen.getByText(hint)).toBeTruthy();
+    gate.resolve();
+  });
+
+  it('board load failure', async () => {
+    selectLocale('ja');
+    backend.boards[PROJECT_B.id] = 500;
+    renderApp(urlOf(PROJECT_B.id));
+    expect(await screen.findByText('ボードを読み込めませんでした')).toBeTruthy();
+    expect(
+      screen.getByText('もう一度お試しください。別のプロジェクトにも切り替えられます。'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: '再試行' })).toBeTruthy();
+    expect(screen.getByText('未同期', { selector: '.status-bar__text' })).toBeTruthy();
+    expect(screen.getByText(hint)).toBeTruthy();
+  });
+
+  it('no projects', async () => {
+    selectLocale('ja');
+    backend.projects = [];
+    renderApp(urlOf(PROJECT_A.id));
+    expect(await screen.findByText('プロジェクトがありません')).toBeTruthy();
+    expect(screen.getByText('CLIでプロジェクトを作成してください。')).toBeTruthy();
+    expect(screen.getByText('プロジェクトなし', { selector: '.status-bar__text' })).toBeTruthy();
+    expect(screen.getByText(hint)).toBeTruthy();
+  });
+
+  it('project not found', async () => {
+    selectLocale('ja');
+    renderApp(urlOf(missing));
+    expect(await screen.findByText('プロジェクトが見つかりません')).toBeTruthy();
+    expect(
+      screen.getByText(
+        '削除されたか、URLが無効です。上のメニューから別のプロジェクトを選択してください。',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('未選択', { selector: '.status-bar__text' })).toBeTruthy();
+    expect(screen.getByText(hint)).toBeTruthy();
+  });
+
+  it('the normal board keeps its own unselected text', async () => {
+    selectLocale('ja');
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: '未着手' });
+    expect(screen.getByText('カードを選択すると詳細を表示します。')).toBeTruthy();
+  });
+});

@@ -99,6 +99,7 @@ export const resources = {
       detail: {
         title: 'Card details',
         selectPrompt: 'Select a card to see its details.',
+        selectPromptState: 'Select a card to see its details.',
         close: 'Close details',
         resize: 'Resize card details',
         description: 'Description',
@@ -209,7 +210,7 @@ export const resources = {
         empty: 'カードはまだありません。',
         emptyHint: '「カード追加」から登録できます。',
         loadingBoard: 'ボードを読み込み中…',
-        boardLoadError: 'ボードを読み込めませんでした。',
+        boardLoadError: 'ボードを読み込めませんでした',
         boardLoadErrorHint: 'もう一度お試しください。別のプロジェクトにも切り替えられます。',
         noProjects: 'プロジェクトがありません',
         noProjectsHint: 'CLIでプロジェクトを作成してください。',
@@ -228,6 +229,7 @@ export const resources = {
       detail: {
         title: 'カードの詳細',
         selectPrompt: 'カードを選択すると詳細を表示します。',
+        selectPromptState: 'カードを選択すると詳細が表示されます。',
         close: '詳細を閉じる',
         resize: 'カードの詳細の幅を変更',
         description: '説明',

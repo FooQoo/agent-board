@@ -47,7 +47,9 @@ export function DetailPanel({
         className={`detail detail--empty${variant === 'state' ? ' detail--state' : ''}`}
         aria-label={t('detail.title')}
       >
-        <p className="detail__empty-message">{t('detail.selectPrompt')}</p>
+        <p className="detail__empty-message">
+          {t(variant === 'state' ? 'detail.selectPromptState' : 'detail.selectPrompt')}
+        </p>
       </aside>
     );
   }
