@@ -68,7 +68,10 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: 'agent-board' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
+    // The project name shows once the list is in; the board follows with its own request.
     await screen.findByText('agent-board');
+    expect(document.title).toBe('agent-board - Agent Board');
+    await screen.findByRole('region', { name: 'Todo' });
     expect(screen.getByRole('complementary', { name: 'Card details' })).toBeTruthy();
     expect(screen.getByRole('separator', { name: 'Resize card details' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Agent Board' })).toBeTruthy();
