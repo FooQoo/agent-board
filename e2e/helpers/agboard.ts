@@ -12,6 +12,10 @@ export const repoRoot = path.resolve(here, '..', '..');
 export const seedFile = path.resolve(here, '..', 'fixtures', 'agent-board.json');
 const ptyAnswer = path.resolve(here, 'agboard_pty_answer.py');
 
+/** Backups of two projects, `Alpha` and `Beta`. Both have a card #1 and a card #2 with different content. */
+export const alphaFixture = path.resolve(here, '..', 'fixtures', 'multi-project-a.json');
+export const betaFixture = path.resolve(here, '..', 'fixtures', 'multi-project-b.json');
+
 export const mainPort = 7631;
 export const statesPort = 7632;
 
@@ -168,6 +172,34 @@ export function resetBoard(project: string, home: string = mainHome()): void {
   } else {
     agboardOk(project, ['import', seedFile], home);
   }
+}
+
+/**
+ * Put `project` back to the backup in `file` (whose board name is the project name). A project that does not
+ * exist is created from it; an existing one is replaced, with the same ID, after a person's `y`.
+ */
+export function restoreProject(project: string, file: string, home: string = mainHome()): void {
+  if (listProjects(home).some((existing) => existing.name === project)) {
+    const result = agboardOnTerminal(project, 'y', ['import', file], home);
+    if (result.code !== 0) throw new Error(`restoring ${project} failed: ${result.stdout}${result.stderr}`);
+  } else {
+    agboardOk(project, ['import', file], home);
+  }
+}
+
+/** Delete `project` and its cards the way a person does: with a `y` on a terminal. */
+export function removeProject(project: string, home: string = mainHome()): void {
+  const result = agboardOnTerminal(project, 'y', ['project', 'rm'], home);
+  if (result.code !== 0) throw new Error(`deleting ${project} failed: ${result.stdout}${result.stderr}`);
+}
+
+/** Leave exactly `Alpha` and `Beta` in `home`, each restored from its backup. */
+export function resetAlphaBeta(home: string): void {
+  for (const project of listProjects(home)) {
+    if (project.name !== 'Alpha' && project.name !== 'Beta') removeProject(project.name, home);
+  }
+  restoreProject('Alpha', alphaFixture, home);
+  restoreProject('Beta', betaFixture, home);
 }
 
 function withTestDefaults(project: string, args: string[], home: string): string[] {
