@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
-  initEmptyBoard,
+  agboardOk,
+  createEmptyProject,
   makeHome,
   removeHome,
-  agboardOk,
   startServe,
   statesPort,
   stopServe,
@@ -20,7 +20,7 @@ let serve: Serve | undefined;
 
 test.beforeAll(async () => {
   home = makeHome('states');
-  initEmptyBoard(home, 'Empty Board');
+  createEmptyProject(home, 'Empty Board');
   serve = await startServe(statesPort, home);
 });
 
@@ -59,7 +59,7 @@ test('stopping the serve shows Disconnected, and restarting it reconnects and fe
   await expect(page.getByRole('contentinfo')).toContainText('0 cards');
 
   // The CLI still works while the serve is down, and the change waits for the screen.
-  agboardOk(['add', 'Added while disconnected'], home);
+  agboardOk('Empty Board', ['add', 'Added while disconnected'], home);
 
   serve = await startServe(statesPort, home);
   await expect(
@@ -70,6 +70,6 @@ test('stopping the serve shows Disconnected, and restarting it reconnects and fe
   await expect(page.getByText('No cards yet.')).toHaveCount(0);
 
   // Live updates work again after the reconnect.
-  agboardOk(['add', 'Added after reconnecting'], home);
+  agboardOk('Empty Board', ['add', 'Added after reconnecting'], home);
   await expect(page.getByRole('button', { name: /^#2 AI Added after reconnecting / })).toBeVisible();
 });

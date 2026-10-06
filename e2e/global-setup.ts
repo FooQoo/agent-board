@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { makeHome, mainPort, repoRoot, resetBoard, startServe } from './helpers/agboard';
+import { mainPort, mainProject, makeHome, repoRoot, resetBoard, startServe } from './helpers/agboard';
 import { state } from './helpers/state';
 
 function run(command: string, args: string[]): void {
@@ -16,6 +16,6 @@ export default async function globalSetup(): Promise<void> {
 
   const home = makeHome('main');
   process.env.SKAN_E2E_HOME = home;
-  resetBoard(home);
+  resetBoard(mainProject, home);
   state.serve = await startServe(mainPort, home);
 }

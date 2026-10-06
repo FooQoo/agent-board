@@ -2,15 +2,30 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon, SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { Project, ProjectId } from '../types';
+import { ProjectSwitcher } from './ProjectSwitcher';
 import { SettingsDialog } from './SettingsDialog';
 
-export function Header({
-  boardName,
-  onAdd = () => {},
-}: {
-  boardName: string | null;
+export interface HeaderProps {
+  /** The project list; `null` until it is known, which hides the switcher. */
+  projects?: Project[] | null;
+  activeProjectId?: ProjectId | null;
+  /** A card form or confirmation is open, so the project cannot change. */
+  switchDisabled?: boolean;
+  onSelectProject?: (projectId: ProjectId) => void;
+  /** Add card is offered only once the board of the project has loaded. */
+  canAdd?: boolean;
   onAdd?: () => void;
-}) {
+}
+
+export function Header({
+  projects = null,
+  activeProjectId = null,
+  switchDisabled = false,
+  onSelectProject = () => {},
+  canAdd = false,
+  onAdd = () => {},
+}: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
@@ -23,17 +38,24 @@ export function Header({
         </span>
         <span>Agent Board</span>
       </h1>
-      {boardName !== null && (
+      {projects !== null && (
         <>
           <span className="header__slash" aria-hidden="true">
             /
           </span>
-          <span className="header__board">{boardName}</span>
+          <div className="header__switcher">
+            <ProjectSwitcher
+              projects={projects}
+              activeProjectId={activeProjectId}
+              disabled={switchDisabled}
+              onSelect={onSelectProject}
+            />
+          </div>
         </>
       )}
       <span className="header__spacer" aria-hidden="true" />
-      {boardName !== null && (
-        <Button type="button" className="header__add" onClick={onAdd}>
+      {canAdd && (
+        <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
           <PlusIcon aria-hidden="true" />
           {t('dialog.addCard')}
         </Button>

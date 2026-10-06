@@ -1,9 +1,9 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { resetBoard } from '../helpers/agboard';
+import { resetBoard, mainProject } from '../helpers/agboard';
 
 // The seed is the eight sample cards; see fixtures/agent-board.json.
 test.beforeEach(async ({ page }) => {
-  resetBoard();
+  resetBoard(mainProject);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
 });

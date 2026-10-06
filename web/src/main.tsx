@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { NuqsAdapter } from 'nuqs/adapters/react';
 import './i18n';
 import { App } from './App';
 import { readMockInitial } from './mock';
@@ -19,6 +20,8 @@ const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');
 createRoot(root).render(
   <StrictMode>
-    <App initial={initial} />
+    <NuqsAdapter>
+      <App initial={initial} />
+    </NuqsAdapter>
   </StrictMode>,
 );

@@ -1,13 +1,14 @@
 import { groupCards } from '../lib/board';
 import type { Card, ColumnName } from '../types';
-import { BoardMessage } from './BoardMessage';
+import { BoardMessage, type BoardMessageKind } from './BoardMessage';
 import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
 
 const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
 
 export interface BoardProps {
-  status: 'loading' | 'ready' | 'error';
+  /** A state shown in place of the lanes; `null` shows the lanes. */
+  message: Exclude<BoardMessageKind, 'empty'> | null;
   cards: Card[];
   selectedId: number | null;
   onSelect: (id: number) => void;
@@ -15,11 +16,11 @@ export interface BoardProps {
   onMove: (card: Card, column: ColumnName) => void;
 }
 
-export function Board({ status, cards, selectedId, onSelect, onRetry, onMove }: BoardProps) {
-  if (status !== 'ready') {
+export function Board({ message, cards, selectedId, onSelect, onRetry, onMove }: BoardProps) {
+  if (message !== null) {
     return (
       <main className="board board--centered">
-        <BoardMessage kind={status} onRetry={onRetry} />
+        <BoardMessage kind={message} onRetry={onRetry} />
       </main>
     );
   }

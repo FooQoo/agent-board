@@ -1,5 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +14,9 @@ const ptyAnswer = path.resolve(here, 'agboard_pty_answer.py');
 
 export const mainPort = 7631;
 export const statesPort = 7632;
+
+/** The project the main serve shows. Every helper takes the project explicitly; none has a default. */
+export const mainProject = 'agent-board';
 
 export function agboardBinary(): string {
   return path.join(repoRoot, 'target', 'debug', 'agboard');
@@ -44,9 +47,21 @@ export interface AgboardResult {
   stderr: string;
 }
 
-/** Run `agboard <args>` against `home` (the main home by default), without a terminal. */
-export function agboard(args: string[], home: string = mainHome()): AgboardResult {
-  const result = spawnSync(agboardBinary(), withTestDefaults(args, home), {
+/**
+ * Run a project command, `agboard --project <project> <args>`, against `home` (the main home by default),
+ * without a terminal. The project is always named by the caller.
+ */
+export function agboard(project: string, args: string[], home: string = mainHome()): AgboardResult {
+  return run(['--project', project, ...withTestDefaults(project, args, home)], home);
+}
+
+/** Run a whole-catalog command such as `project create NAME` or `project ls`, which takes no `--project`. */
+export function agboardCatalog(args: string[], home: string = mainHome()): AgboardResult {
+  return run(args, home);
+}
+
+function run(args: string[], home: string): AgboardResult {
+  const result = spawnSync(agboardBinary(), args, {
     env: agboardEnv(home),
     cwd: home,
     encoding: 'utf8',
@@ -57,12 +72,37 @@ export function agboard(args: string[], home: string = mainHome()): AgboardResul
 }
 
 /** Like `agboard`, but the command must succeed. */
-export function agboardOk(args: string[], home: string = mainHome()): AgboardResult {
-  const result = agboard(args, home);
+export function agboardOk(project: string, args: string[], home: string = mainHome()): AgboardResult {
+  const result = agboard(project, args, home);
   if (result.code !== 0) {
-    throw new Error(`agboard ${args.join(' ')} exited ${result.code}: ${result.stderr}`);
+    throw new Error(`agboard --project ${project} ${args.join(' ')} exited ${result.code}: ${result.stderr}`);
   }
   return result;
+}
+
+/** Like `agboardCatalog`, but the command must succeed. */
+export function agboardCatalogOk(args: string[], home: string = mainHome()): AgboardResult {
+  const result = agboardCatalog(args, home);
+  if (result.code !== 0) throw new Error(`agboard ${args.join(' ')} exited ${result.code}: ${result.stderr}`);
+  return result;
+}
+
+export interface ProjectJson {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+/** The projects from `agboard project ls --json`. */
+export function listProjects(home: string = mainHome()): ProjectJson[] {
+  return JSON.parse(agboardCatalogOk(['project', 'ls', '--json'], home).stdout).projects;
+}
+
+/** The immutable ID of the project called `name`. */
+export function projectId(name: string, home: string = mainHome()): string {
+  const found = listProjects(home).find((project) => project.name === name);
+  if (!found) throw new Error(`project "${name}" does not exist`);
+  return found.id;
 }
 
 export interface CardJson {
@@ -75,9 +115,23 @@ export interface CardJson {
   pendingRequestId: string | null;
 }
 
-/** The cards from `agboard ls --json`. */
-export function listCards(home: string = mainHome()): CardJson[] {
-  return JSON.parse(agboardOk(['ls', '--json'], home).stdout).cards;
+/** The cards of `project` from `agboard ls --json`. */
+export function listCards(project: string, home: string = mainHome()): CardJson[] {
+  return JSON.parse(agboardOk(project, ['ls', '--json'], home).stdout).cards;
+}
+
+/**
+ * The ID the next card of `project` will get. Card IDs are never reused, so a board put back by `import`
+ * keeps counting upward; specs that create cards read this after the reset instead of assuming a number.
+ */
+export function nextCardId(project: string, home: string = mainHome()): number {
+  const file = path.join(mkdtempSync(path.join(os.tmpdir(), 'agent-board-e2e-export-')), 'export.json');
+  try {
+    agboardOk(project, ['export', '-o', file], home);
+    return (JSON.parse(readFileSync(file, 'utf8')) as { board: { nextCardId: number } }).board.nextCardId;
+  } finally {
+    rmSync(path.dirname(file), { recursive: true, force: true });
+  }
 }
 
 /**
@@ -86,11 +140,12 @@ export function listCards(home: string = mainHome()): CardJson[] {
  * a small Python helper, because Node cannot allocate one.
  */
 export function agboardOnTerminal(
+  project: string,
   answer: string,
   args: string[],
   home: string = mainHome(),
 ): AgboardResult {
-  const result = spawnSync('python3', [ptyAnswer, answer, agboardBinary(), ...args], {
+  const result = spawnSync('python3', [ptyAnswer, answer, agboardBinary(), '--project', project, ...args], {
     env: agboardEnv(home),
     cwd: home,
     encoding: 'utf8',
@@ -100,19 +155,22 @@ export function agboardOnTerminal(
 }
 
 /**
- * Put the board of `home` back to the version-two Agent Board fixture.
+ * Put `project` back to the version-two Agent Board fixture.
  *
- * This only clears the temporary test directory and imports the version-two fixture.
- * The running serve opens the database per request and notices nothing.
+ * The first call creates the project from the fixture. After that the same project, with the same ID, is
+ * replaced by `import` after a person's `y` on a terminal. No database file is touched, so the serve that
+ * is running keeps working. Card IDs keep counting upward (see `nextCardId`).
  */
-export function resetBoard(home: string = mainHome()): void {
-  for (const name of ['board.db', 'board.db-wal', 'board.db-shm']) {
-    rmSync(path.join(home, name), { force: true });
+export function resetBoard(project: string, home: string = mainHome()): void {
+  if (listProjects(home).some((existing) => existing.name === project)) {
+    const result = agboardOnTerminal(project, 'y', ['import', seedFile], home);
+    if (result.code !== 0) throw new Error(`resetting ${project} failed: ${result.stdout}${result.stderr}`);
+  } else {
+    agboardOk(project, ['import', seedFile], home);
   }
-  agboardOk(['import', seedFile], home);
 }
 
-function withTestDefaults(args: string[], home: string): string[] {
+function withTestDefaults(project: string, args: string[], home: string): string[] {
   const result = [...args];
   const command = result[0];
   if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai', '--actor', 'ai');
@@ -121,7 +179,7 @@ function withTestDefaults(args: string[], home: string): string[] {
     if (!result.includes('--reason') && !result.includes('--reason-file')) result.push('--reason', 'E2E user action');
   }
   if (command === 'state' && result[2] === 'idle' && !result.includes('--request')) {
-    const snapshot = spawnSync(agboardBinary(), ['snapshot', '--json'], { env: agboardEnv(home), encoding: 'utf8' });
+    const snapshot = spawnSync(agboardBinary(), ['--project', project, 'snapshot', '--json'], { env: agboardEnv(home), encoding: 'utf8' });
     if (snapshot.status === 0) {
       const card = (JSON.parse(snapshot.stdout).cards as CardJson[]).find((item) => item.id === Number(result[1]));
       if (card?.agentStatus === 'pending' && card.pendingRequestId) result.push('--request', card.pendingRequestId);
@@ -130,9 +188,9 @@ function withTestDefaults(args: string[], home: string): string[] {
   return result;
 }
 
-/** The data-directory-only setup: a board with no cards. */
-export function initEmptyBoard(home: string, name: string): void {
-  agboardOk(['init', '--name', name], home);
+/** A project with no cards. */
+export function createEmptyProject(home: string, name: string): void {
+  agboardCatalogOk(['project', 'create', name], home);
 }
 
 async function portIsFree(port: number): Promise<boolean> {

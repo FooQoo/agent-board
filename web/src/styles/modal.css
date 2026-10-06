@@ -344,3 +344,8 @@
 .theme-tile[aria-checked="true"] .theme-tile__check {
   display: block;
 }
+
+/* The project menu floats like the dialogs, with a lighter shadow. */
+.menu {
+  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+}
