@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     domain::{
-        BoardMeta, BoardSnapshot, Card, Column, HistoryKind, RunState,
-        normalize_and_validate_description, validate_board_name, validate_title,
+        BoardMeta, BoardSnapshot, Card, Column, HistoryKind, RunState, ValidatedBoard,
+        normalize_and_validate_description, validate_project_name, validate_title,
         validate_work_reason,
     },
     error::SkanError,
@@ -20,6 +20,8 @@ pub struct Backup {
 }
 
 impl Backup {
+    /// The backup of one project's board. The project ID, revision and cursor
+    /// are not part of the file.
     pub fn from_snapshot(snapshot: BoardSnapshot) -> Self {
         Self {
             format: "skan-board".into(),
@@ -29,7 +31,9 @@ impl Backup {
         }
     }
 
-    pub fn validate(self) -> Result<BoardSnapshot, SkanError> {
+    /// Check the whole backup. The result holds only what can be restored:
+    /// the board metadata and the cards.
+    pub fn validate(self) -> Result<ValidatedBoard, SkanError> {
         let invalid = |reason: &str| SkanError::ImportInvalid {
             file: "skan.json".into(),
             reason: reason.into(),
@@ -37,8 +41,9 @@ impl Backup {
         if self.format != "skan-board" || self.version != 2 {
             return Err(invalid("Only skan-board version 2 is supported."));
         }
-        let board_name =
-            validate_board_name(&self.board.name).map_err(|_| invalid("Board name is invalid."))?;
+        // The board name becomes the project name, so it follows that rule.
+        let board_name = validate_project_name(&self.board.name)
+            .map_err(|_| invalid("Board name is invalid."))?;
         if board_name != self.board.name || self.board.next_card_id < 1 {
             return Err(invalid("Board metadata is invalid."));
         }
@@ -174,9 +179,8 @@ impl Backup {
                 return Err(invalid("Pending reason does not match current state."));
             }
         }
-        Ok(BoardSnapshot {
-            board: self.board,
-            revision: 0,
+        Ok(ValidatedBoard {
+            metadata: self.board,
             cards: self.cards,
         })
     }

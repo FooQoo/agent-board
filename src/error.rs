@@ -134,7 +134,7 @@ impl SkanError {
     pub fn reason(&self) -> String {
         match self {
             SkanError::NotInitialized => {
-                "Run \"agboard init --name <name>\" to create one, or \"agboard import\" to restore one."
+                "Run \"agboard --project <name> init\" to create one, or \"agboard --project <name> import\" to restore one."
                     .to_string()
             }
             SkanError::ProjectNotFound { project } => format!(
@@ -283,7 +283,7 @@ mod tests {
         let expected: Vec<(&str, &str)> = vec![
             (
                 "no board found.",
-                "Run \"agboard init --name <name>\" to create one, or \"agboard import\" to restore one.",
+                "Run \"agboard --project <name> init\" to create one, or \"agboard --project <name> import\" to restore one.",
             ),
             (
                 "project not found.",

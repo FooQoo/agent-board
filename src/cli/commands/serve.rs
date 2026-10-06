@@ -14,10 +14,9 @@ use crate::server::{self, ServeConfig};
 /// appears only once the port is bound; `execute` prints nothing for `serve`
 /// afterwards. The command never changes the board, so `changed` is `false`.
 pub fn run(ctx: &mut Context, args: &ServeArgs) -> Result<Outcome, SkanError> {
-    let name = ctx.store.board()?.ok_or(SkanError::NotInitialized)?.name;
     let json = ctx.json;
     server::run_until(ServeConfig { port: args.port }, shutdown_signal(), |addr| {
-        announce(&name, addr, json)
+        announce(addr, json)
     })?;
     Ok(Outcome {
         changed: false,
@@ -28,12 +27,12 @@ pub fn run(ctx: &mut Context, args: &ServeArgs) -> Result<Outcome, SkanError> {
 
 /// Write the startup line (or, with `--json`, the URL object) and flush, so a
 /// reader on a pipe sees it before the server starts waiting.
-fn announce(name: &str, addr: SocketAddr, json: bool) {
+fn announce(addr: SocketAddr, json: bool) {
     let url = format!("http://127.0.0.1:{}/", addr.port());
     let line = if json {
         json!({ "url": url }).to_string()
     } else {
-        format!("Serving \"{name}\" at {url} (press Ctrl+C to stop)")
+        format!("Serving at {url} (press Ctrl+C to stop)")
     };
     let mut stdout = std::io::stdout().lock();
     let _ = writeln!(stdout, "{line}");

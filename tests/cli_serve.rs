@@ -45,11 +45,16 @@ struct Output {
 fn run(home: &Path, args: &[&str]) -> Output {
     let start = Instant::now();
     let mut args = args.to_vec();
-    match args.first().copied() {
+    let command = args.first().copied();
+    match command {
         Some("add") => args.extend(["--assignee", "ai", "--actor", "ai"]),
         Some("mv") => args.extend(["--actor", "ai", "--reason", "test change"]),
         Some("state") => args.extend(["--actor", "ai", "--reason", "test change"]),
         _ => {}
+    }
+    // Every command except `serve` works on one named project.
+    if command != Some("serve") {
+        args.splice(0..0, ["--project", "demo"]);
     }
     let output = agboard(home).args(args).output().unwrap();
     Output {
@@ -69,7 +74,7 @@ fn run_ok(home: &Path, args: &[&str]) -> Output {
 /// A tempdir with an initialized board named "demo".
 fn board() -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
-    run_ok(home.path(), &["init", "--name", "demo"]);
+    run_ok(home.path(), &["init"]);
     home
 }
 
@@ -370,24 +375,20 @@ fn commands_that_change_nothing_do_not_notify() {
 // ------------------------------------------------------------ the command
 
 #[test]
-fn serve_without_a_board_exits_4() {
+fn serve_starts_in_a_new_data_area_with_no_project() {
     let _serial = serial();
     let home = tempfile::tempdir().unwrap();
-    let o = run(home.path(), &["serve", "--port", "7620"]);
-    assert_eq!(o.code, 4, "{}", o.err);
-    assert_eq!(o.out, "");
-    assert!(o.err.contains("no board found."), "{}", o.err);
+    let (serving, first) = Serving::start(home.path(), 7620);
+    assert_eq!(
+        first,
+        "Serving at http://127.0.0.1:7620/ (press Ctrl+C to stop)"
+    );
+    let health = ureq::get("http://127.0.0.1:7620/api/health")
+        .call()
+        .unwrap();
+    assert_eq!(health.status().as_u16(), 200);
+    drop(serving);
     assert!(port_is_free(7620));
-    assert!(!home.path().join("serve.json").exists());
-}
-
-#[test]
-fn serve_without_a_board_reports_json_errors() {
-    let _serial = serial();
-    let home = tempfile::tempdir().unwrap();
-    let o = run(home.path(), &["serve", "--json", "--port", "7620"]);
-    assert_eq!(o.code, 4, "{}", o.err);
-    assert!(o.err.contains("\"not_initialized\""), "{}", o.err);
 }
 
 #[test]
@@ -397,7 +398,7 @@ fn serve_prints_the_startup_line_and_answers_health() {
     let (serving, first) = Serving::start(home.path(), 7621);
     assert_eq!(
         first,
-        "Serving \"demo\" at http://127.0.0.1:7621/ (press Ctrl+C to stop)"
+        "Serving at http://127.0.0.1:7621/ (press Ctrl+C to stop)"
     );
     let health = ureq::get("http://127.0.0.1:7621/api/health")
         .call()
@@ -565,5 +566,5 @@ fn a_write_after_serve_was_killed_succeeds_quickly() {
     assert!(o.elapsed < Duration::from_secs(1), "took {:?}", o.elapsed);
     // A new serve takes over the stale file.
     let (_again, first) = Serving::start(home.path(), 7628);
-    assert!(first.starts_with("Serving \"demo\""), "{first}");
+    assert!(first.starts_with("Serving at"), "{first}");
 }

@@ -7,23 +7,41 @@ use tempfile::tempdir;
 #[test]
 fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() {
     let home = tempdir().unwrap();
-    let init = Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home.path())
-        .args(["init", "--name", "Agent Board"])
-        .output()
-        .unwrap();
-    assert!(init.status.success());
-    let add = Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home.path())
-        .args(["add", "Question", "--assignee", "ai", "--actor", "ai"])
-        .output()
-        .unwrap();
-    assert!(add.status.success());
+    for project in ["Agent Board", "Other"] {
+        let init = Command::new(env!("CARGO_BIN_EXE_agboard"))
+            .env("SKAN_HOME", home.path())
+            .args(["--project", project, "init"])
+            .output()
+            .unwrap();
+        assert!(init.status.success());
+        let title = if project == "Other" {
+            "Not for this hook"
+        } else {
+            "Question"
+        };
+        let add = Command::new(env!("CARGO_BIN_EXE_agboard"))
+            .env("SKAN_HOME", home.path())
+            .args([
+                "--project",
+                project,
+                "add",
+                title,
+                "--assignee",
+                "ai",
+                "--actor",
+                "ai",
+            ])
+            .output()
+            .unwrap();
+        assert!(add.status.success());
+    }
     let db_path = home.path().join("board.db");
     let before = std::fs::read(&db_path).unwrap();
     let input = br#"{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"ignored"}}"#;
     let mut cursor = Cursor::new(input);
-    let result = agent_board::agent::hook::run("claude", &mut cursor, &db_path).unwrap();
+    let result =
+        agent_board::agent::hook::run("claude", &mut cursor, &db_path, Some("Agent Board"))
+            .unwrap();
     let parsed: Value = serde_json::from_str(&result).unwrap();
     assert_eq!(
         parsed["hookSpecificOutput"]["hookEventName"],
@@ -34,6 +52,15 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
         .unwrap();
     assert!(context.starts_with("AGBOARD_SNAPSHOT\n"));
     let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
+    assert_eq!(snapshot["project"]["name"], "Agent Board");
+    assert!(
+        snapshot["cursor"]
+            .as_str()
+            .unwrap()
+            .starts_with(snapshot["project"]["id"].as_str().unwrap())
+    );
+    // Only the named project's cards are passed on.
+    assert_eq!(snapshot["cards"].as_array().unwrap().len(), 1);
     assert_eq!(snapshot["cards"][0]["title"], "Question");
     assert_eq!(snapshot["cards"][0]["history"].as_array().unwrap().len(), 1);
     assert_eq!(before, std::fs::read(&db_path).unwrap());
@@ -41,7 +68,8 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
         agent_board::agent::hook::run(
             "codex",
             &mut Cursor::new(br#"{"hook_event_name":"PostToolUseFailure"}"#),
-            &db_path
+            &db_path,
+            Some("Agent Board")
         )
         .is_none()
     );
@@ -52,12 +80,25 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
     let home = tempdir().unwrap();
     let db_path = home.path().join("missing.db");
     let input = br#"{"hook_event_name":"SessionStart"}"#;
-    let output = agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path).unwrap();
+    let output =
+        agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path, Some("demo"))
+            .unwrap();
     assert!(output.contains("AGBOARD_ERROR"));
     assert!(!db_path.exists());
-    let oversized = vec![b'x'; 65_537];
+    // A hook without a project is an error report, not a guess.
     let output =
-        agent_board::agent::hook::run("claude", &mut Cursor::new(oversized), &db_path).unwrap();
+        agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path, None).unwrap();
+    assert!(output.contains("AGBOARD_ERROR"));
+    assert!(output.contains("--project NAME is required."));
+    assert!(!db_path.exists());
+    let oversized = vec![b'x'; 65_537];
+    let output = agent_board::agent::hook::run(
+        "claude",
+        &mut Cursor::new(oversized),
+        &db_path,
+        Some("demo"),
+    )
+    .unwrap();
     assert!(output.contains("hook_input_too_large"));
     assert!(!db_path.exists());
 }
@@ -65,15 +106,16 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
 #[test]
 fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
     use agent_board::domain::{Actor, Assignee, NewCard};
-    use agent_board::store::Store;
+    use agent_board::store::ProjectStore;
     let home = tempdir().unwrap();
     let db_path = home.path().join("board.db");
-    let store = Store::open(&db_path).unwrap();
+    let store = ProjectStore::open(&db_path).unwrap();
     let now = chrono::Utc::now();
-    store.create_board("Agent Board", now).unwrap();
+    let project = store.create_project("Agent Board", now).unwrap().id;
     for index in 0..60 {
         store
             .add_work_card(
+                &project,
                 NewCard {
                     title: format!("Card {index}"),
                     description: "あ".repeat(300),
@@ -85,7 +127,13 @@ fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
             .unwrap();
     }
     let input = br#"{"hook_event_name":"PostToolUse"}"#;
-    let output = agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path).unwrap();
+    let output = agent_board::agent::hook::run(
+        "codex",
+        &mut Cursor::new(input),
+        &db_path,
+        Some("Agent Board"),
+    )
+    .unwrap();
     let parsed: Value = serde_json::from_str(&output).unwrap();
     assert!(
         parsed["hookSpecificOutput"]["additionalContext"]
@@ -100,13 +148,13 @@ fn installed_binary_handles_hook_json_on_stdin() {
     let home = tempdir().unwrap();
     let init = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("SKAN_HOME", home.path())
-        .args(["init", "--name", "Agent Board"])
+        .args(["--project", "Agent Board", "init"])
         .output()
         .unwrap();
     assert!(init.status.success());
     let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("SKAN_HOME", home.path())
-        .args(["hook", "--agent", "codex"])
+        .args(["--project", "Agent Board", "hook", "--agent", "codex"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()

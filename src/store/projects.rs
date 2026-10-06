@@ -80,7 +80,7 @@ impl ProjectStore {
         }
         let conn = Connection::open(path)?;
         conn.busy_timeout(timeout)?;
-        schema_v3::prepare(&conn)?;
+        schema_v3::prepare(&conn, timeout)?;
         Ok(ProjectStore { conn })
     }
 
@@ -268,7 +268,7 @@ fn project_meta(id: &str, name: String, created_at: &str) -> Result<ProjectMeta,
     })
 }
 
-fn load_project(conn: &Connection, id: &ProjectId) -> Result<ProjectMeta, SkanError> {
+pub(super) fn load_project(conn: &Connection, id: &ProjectId) -> Result<ProjectMeta, SkanError> {
     conn.query_row(
         "SELECT name, created_at FROM projects WHERE id = ?1",
         [id.as_str()],
@@ -280,7 +280,10 @@ fn load_project(conn: &Connection, id: &ProjectId) -> Result<ProjectMeta, SkanEr
     .ok_or_else(|| not_found(id))
 }
 
-fn load_counters(conn: &Connection, id: &ProjectId) -> Result<ProjectCounters, SkanError> {
+pub(super) fn load_counters(
+    conn: &Connection,
+    id: &ProjectId,
+) -> Result<ProjectCounters, SkanError> {
     conn.query_row(
         "SELECT next_card_id, next_history_id, revision FROM projects WHERE id = ?1",
         [id.as_str()],
@@ -296,9 +299,21 @@ fn load_counters(conn: &Connection, id: &ProjectId) -> Result<ProjectCounters, S
     .ok_or_else(|| not_found(id))
 }
 
+/// Fail with `project_not_found` unless the project exists.
+pub(super) fn require_project(conn: &Connection, id: &ProjectId) -> Result<(), SkanError> {
+    let found = conn
+        .query_row(
+            "SELECT 1 FROM projects WHERE id = ?1",
+            [id.as_str()],
+            |_| Ok(()),
+        )
+        .optional()?;
+    found.ok_or_else(|| not_found(id))
+}
+
 /// Advance the catalog revision by one; fail the whole transaction at the
 /// 64-bit limit.
-fn bump_catalog(conn: &Connection) -> Result<(), SkanError> {
+pub(super) fn bump_catalog(conn: &Connection) -> Result<(), SkanError> {
     let changed = conn.execute(
         "UPDATE catalog_metadata SET revision = revision + 1
          WHERE id = 1 AND revision < 9223372036854775807",
@@ -314,7 +329,7 @@ fn bump_catalog(conn: &Connection) -> Result<(), SkanError> {
 
 /// Advance one project's revision by one; fail the whole transaction at the
 /// 64-bit limit.
-fn bump_project(conn: &Connection, id: &ProjectId) -> Result<(), SkanError> {
+pub(super) fn bump_project(conn: &Connection, id: &ProjectId) -> Result<(), SkanError> {
     let changed = conn.execute(
         "UPDATE projects SET revision = revision + 1
          WHERE id = ?1 AND revision < 9223372036854775807",
@@ -330,7 +345,7 @@ fn bump_project(conn: &Connection, id: &ProjectId) -> Result<(), SkanError> {
 
 /// Turn a violation of the unique project-name constraint into
 /// `ProjectNameExists`. Every other SQLite error keeps its own meaning.
-fn name_conflict(error: rusqlite::Error, name: &str) -> SkanError {
+pub(super) fn name_conflict(error: rusqlite::Error, name: &str) -> SkanError {
     if let rusqlite::Error::SqliteFailure(failure, Some(message)) = &error
         && failure.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE
         && message.contains("projects.name")

@@ -12,9 +12,9 @@ use serde::{Deserialize, Serialize};
 
 use super::guard::{self, DeleteRequest};
 use super::{AppState, assets, events};
-use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState};
+use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
 use crate::error::SkanError;
-use crate::store::Store;
+use crate::store::ProjectStore;
 
 pub(crate) fn router(state: Arc<AppState>) -> Router {
     Router::new()
@@ -23,15 +23,24 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/assets/app.css", get(app_css))
         .route("/logo.png", get(logo_png))
         .route("/logo-white.png", get(logo_white_png))
-        .route("/api/board", get(board))
         .route("/api/events", get(events::events))
         .route("/api/notify", post(notify))
         .route("/api/health", get(health))
-        .route("/api/cards/{id}", delete(delete_card))
-        .route("/api/cards", post(create_card))
-        .route("/api/cards/{id}/move", post(move_card))
-        .route("/api/cards/{id}/agent-status", post(set_agent_status))
-        .route("/api/cards/{id}/answer", post(answer_request))
+        .route("/api/projects/{project_id}/board", get(board))
+        .route("/api/projects/{project_id}/cards", post(create_card))
+        .route("/api/projects/{project_id}/cards/{id}", delete(delete_card))
+        .route(
+            "/api/projects/{project_id}/cards/{id}/move",
+            post(move_card),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/{id}/agent-status",
+            post(set_agent_status),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/{id}/answer",
+            post(answer_request),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), host_guard))
         .with_state(state)
 }
@@ -68,7 +77,7 @@ fn error_response(
 
 fn skan_error_response(error: &SkanError) -> Response {
     let status = match error {
-        SkanError::CardNotFound { .. } => StatusCode::NOT_FOUND,
+        SkanError::CardNotFound { .. } | SkanError::ProjectNotFound { .. } => StatusCode::NOT_FOUND,
         SkanError::NotInitialized | SkanError::RequestChanged => StatusCode::CONFLICT,
         SkanError::InvalidArgument { .. }
         | SkanError::InvalidValue { .. }
@@ -131,10 +140,10 @@ async fn host_guard(State(state): State<Arc<AppState>>, request: Request, next: 
 /// Open the database for one request and run `work` on a blocking thread.
 async fn with_store<T: Send + 'static>(
     state: &AppState,
-    work: impl FnOnce(Store) -> Result<T, SkanError> + Send + 'static,
+    work: impl FnOnce(ProjectStore) -> Result<T, SkanError> + Send + 'static,
 ) -> Result<T, SkanError> {
     let path = state.db_path.clone();
-    tokio::task::spawn_blocking(move || work(Store::open(&path)?))
+    tokio::task::spawn_blocking(move || work(ProjectStore::open(&path)?))
         .await
         .map_err(|e| SkanError::DatabaseError {
             reason: format!("The database task failed: {e}"),
@@ -193,8 +202,18 @@ async fn logo_white_png() -> Response {
 
 // ---------------------------------------------------------------- API
 
-async fn board(State(state): State<Arc<AppState>>) -> Response {
-    match with_store(&state, |store| store.snapshot()).await {
+/// The project named in the URL. The URL is a name for a project, never a
+/// credential: an ID that is not well formed is `invalid_value`.
+fn parse_project_id(raw: &str) -> Result<ProjectId, SkanError> {
+    raw.parse()
+}
+
+async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<String>) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    match with_store(&state, move |store| store.snapshot(&project_id)).await {
         Ok(snapshot) => {
             #[derive(Serialize)]
             #[serde(rename_all = "camelCase")]
@@ -206,18 +225,22 @@ async fn board(State(state): State<Arc<AppState>>) -> Response {
             #[derive(Serialize)]
             #[serde(rename_all = "camelCase")]
             struct BoardResponse {
+                project: crate::domain::ProjectMeta,
                 board: BoardInfo,
                 revision: i64,
+                cursor: crate::domain::ChangeCursor,
                 cards: Vec<crate::domain::Card>,
             }
             json_response(
                 StatusCode::OK,
                 &BoardResponse {
+                    project: snapshot.project,
                     board: BoardInfo {
                         name: snapshot.board.name,
                         created_at: snapshot.board.created_at,
                     },
                     revision: snapshot.revision,
+                    cursor: snapshot.cursor,
                     cards: snapshot.cards,
                 },
             )
@@ -249,12 +272,16 @@ async fn notify(State(state): State<Arc<AppState>>) -> StatusCode {
 
 async fn delete_card(
     State(state): State<Arc<AppState>>,
-    Path(raw_id): Path<String>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
     headers: HeaderMap,
 ) -> Response {
     if !write_allowed(&headers, &state) {
         return forbidden("Changes can only be made from the board page.");
     }
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
@@ -263,7 +290,7 @@ async fn delete_card(
             "Card IDs are positive whole numbers.",
         );
     };
-    match with_store(&state, move |store| store.delete_card(id)).await {
+    match with_store(&state, move |store| store.delete_card(&project_id, id)).await {
         Ok(()) => {
             let _ = state.changed.send(());
             StatusCode::NO_CONTENT.into_response()
@@ -315,14 +342,20 @@ struct AnswerInput {
 
 async fn create_card(
     State(state): State<Arc<AppState>>,
+    Path(raw_project): Path<String>,
     headers: HeaderMap,
     axum::Json(input): axum::Json<CreateCardInput>,
 ) -> Response {
     if !write_allowed(&headers, &state) {
         return forbidden("Changes can only be made from the board page.");
     }
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
     match with_store(&state, move |store| {
         store.add_work_card(
+            &project_id,
             NewCard {
                 title: input.title,
                 description: input.description,
@@ -344,13 +377,17 @@ async fn create_card(
 
 async fn move_card(
     State(state): State<Arc<AppState>>,
-    Path(raw_id): Path<String>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
     headers: HeaderMap,
     axum::Json(input): axum::Json<MoveInput>,
 ) -> Response {
     if !write_allowed(&headers, &state) {
         return forbidden("Changes can only be made from the board page.");
     }
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
@@ -361,6 +398,7 @@ async fn move_card(
     };
     match with_store(&state, move |store| {
         store.move_work_card(
+            &project_id,
             id,
             input.card_status,
             ChangeContext {
@@ -387,13 +425,17 @@ async fn move_card(
 
 async fn set_agent_status(
     State(state): State<Arc<AppState>>,
-    Path(raw_id): Path<String>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
     headers: HeaderMap,
     axum::Json(input): axum::Json<AgentStateInput>,
 ) -> Response {
     if !write_allowed(&headers, &state) {
         return forbidden("Changes can only be made from the board page.");
     }
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
@@ -404,6 +446,7 @@ async fn set_agent_status(
     };
     match with_store(&state, move |store| {
         store.set_agent_status(
+            &project_id,
             id,
             input.agent_status,
             ChangeContext {
@@ -431,13 +474,17 @@ async fn set_agent_status(
 
 async fn answer_request(
     State(state): State<Arc<AppState>>,
-    Path(raw_id): Path<String>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
     headers: HeaderMap,
     axum::Json(input): axum::Json<AnswerInput>,
 ) -> Response {
     if !write_allowed(&headers, &state) {
         return forbidden("Changes can only be made from the board page.");
     }
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
@@ -448,6 +495,7 @@ async fn answer_request(
     };
     match with_store(&state, move |store| {
         store.answer_request(
+            &project_id,
             id,
             &input.request_id,
             ChangeContext {

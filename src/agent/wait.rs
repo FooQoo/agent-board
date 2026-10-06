@@ -2,51 +2,76 @@
 
 use crate::{
     clock::{Clock, SystemClock, format_utc},
+    domain::{ChangeCursor, FetchedSnapshot, ProjectId, validate_project_name},
+    error::SkanError,
     paths,
-    store::Store,
+    store::ProjectStore,
 };
 use eventsource_stream::Eventsource;
 use futures_util::StreamExt;
-use serde::Serialize;
 use std::time::{Duration, Instant};
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Snapshot<'a> {
-    fetched_at: String,
-    revision: i64,
-    board: &'a crate::domain::BoardMeta,
-    cards: &'a [crate::domain::Card],
-}
 #[derive(serde::Deserialize)]
 struct Health {
     ok: bool,
     pid: u32,
 }
 
-fn snapshot_json() -> Result<(i64, String), String> {
+/// Why a read of the project failed, with the code the CLI reports.
+fn unavailable(error: &SkanError) -> String {
+    match error {
+        SkanError::ProjectNotFound { .. } => format!("project_not_found: {}", error.reason()),
+        other => format!("board_unavailable: {other}"),
+    }
+}
+
+/// Resolve `name` to the project's ID and check that the cursor belongs to it.
+/// The ID found here is the one the whole wait uses.
+fn resolve_project(name: &str, cursor: &ChangeCursor) -> Result<ProjectId, String> {
+    let name = validate_project_name(name).map_err(|e| format!("invalid_value: {}", e.reason()))?;
     let path = paths::db_path();
     if !path.exists() {
         return Err("board_unavailable: board database does not exist".into());
     }
-    let store = Store::open_read_only(&path).map_err(|e| format!("board_unavailable: {e}"))?;
-    let snapshot = store
-        .snapshot()
-        .map_err(|e| format!("board_unavailable: {e}"))?;
-    let value = Snapshot {
+    let store = ProjectStore::open_read_only(&path).map_err(|e| unavailable(&e))?;
+    let id = store
+        .project_by_name(&name)
+        .map_err(|e| unavailable(&e))?
+        .id;
+    if id != cursor.project_id {
+        return Err("cursor_invalid: the cursor belongs to a different project".into());
+    }
+    Ok(id)
+}
+
+fn snapshot_json(project_id: &ProjectId) -> Result<(i64, String), String> {
+    let path = paths::db_path();
+    if !path.exists() {
+        return Err("board_unavailable: board database does not exist".into());
+    }
+    let store = ProjectStore::open_read_only(&path).map_err(|e| unavailable(&e))?;
+    let snapshot = store.snapshot(project_id).map_err(|e| unavailable(&e))?;
+    let value = FetchedSnapshot {
         fetched_at: format_utc(SystemClock.now()),
-        revision: snapshot.revision,
-        board: &snapshot.board,
-        cards: &snapshot.cards,
+        snapshot: &snapshot,
     };
     let json = serde_json::to_string(&value).map_err(|e| format!("board_unavailable: {e}"))?;
     Ok((snapshot.revision, json))
 }
 
-pub async fn wait_for_change(after: i64, timeout_secs: Option<u64>) -> Result<String, String> {
+/// Wait for a change to the project named `project` after `cursor`. The
+/// project is resolved to its ID here, once; a later rename does not matter and
+/// a same-name re-creation is a different project.
+pub async fn wait_for_change(
+    project: &str,
+    cursor: ChangeCursor,
+    timeout_secs: Option<u64>,
+) -> Result<String, String> {
     let began = Instant::now();
+    let project_id = resolve_project(project, &cursor)?;
+    let after = cursor.revision;
     if timeout_secs == Some(0) {
-        return final_snapshot(after);
+        return final_snapshot(&project_id, after);
     }
     let info = paths::read_serve_info()
         .ok_or_else(|| "board_unavailable: no running Agent Board server".to_owned())?;
@@ -64,7 +89,7 @@ pub async fn wait_for_change(after: i64, timeout_secs: Option<u64>) -> Result<St
         })
         .unwrap_or(Duration::from_secs(3));
     if connect_timeout.is_zero() {
-        return final_snapshot(after);
+        return final_snapshot(&project_id, after);
     }
     let health: Health = client
         .get(format!("{base}/api/health"))
@@ -96,7 +121,7 @@ pub async fn wait_for_change(after: i64, timeout_secs: Option<u64>) -> Result<St
         })
         .unwrap_or(Duration::from_secs(3));
     if connect_timeout.is_zero() {
-        return final_snapshot(after);
+        return final_snapshot(&project_id, after);
     }
     // Bound connection establishment without applying a request timeout to the
     // response body: the SSE body is intentionally long-lived while we wait.
@@ -117,13 +142,13 @@ pub async fn wait_for_change(after: i64, timeout_secs: Option<u64>) -> Result<St
                 && timeout_secs
                     .is_some_and(|seconds| began.elapsed() >= Duration::from_secs(seconds))
             {
-                return final_snapshot(after);
+                return final_snapshot(&project_id, after);
             }
             return Err(format!("board_unavailable: {error}"));
         }
         Err(_) => {
             if timeout_secs.is_some_and(|seconds| began.elapsed() >= Duration::from_secs(seconds)) {
-                return final_snapshot(after);
+                return final_snapshot(&project_id, after);
             }
             return Err("board_unavailable: event stream connection timed out".into());
         }
@@ -146,7 +171,7 @@ pub async fn wait_for_change(after: i64, timeout_secs: Option<u64>) -> Result<St
         };
         let Some(event) = next else {
             if timeout_secs.is_some() {
-                return final_snapshot(after);
+                return final_snapshot(&project_id, after);
             }
             return Err("board_unavailable: event stream disconnected".into());
         };
@@ -155,7 +180,7 @@ pub async fn wait_for_change(after: i64, timeout_secs: Option<u64>) -> Result<St
             ready = true;
         }
         if ready && (event.event == "ready" || event.event == "changed") {
-            let (revision, json) = snapshot_json()?;
+            let (revision, json) = snapshot_json(&project_id)?;
             if revision > after {
                 return Ok(json);
             }
@@ -166,8 +191,8 @@ pub async fn wait_for_change(after: i64, timeout_secs: Option<u64>) -> Result<St
     }
 }
 
-fn final_snapshot(after: i64) -> Result<String, String> {
-    let (revision, json) = snapshot_json()?;
+fn final_snapshot(project_id: &ProjectId, after: i64) -> Result<String, String> {
+    let (revision, json) = snapshot_json(project_id)?;
     if revision > after {
         return Ok(json);
     }

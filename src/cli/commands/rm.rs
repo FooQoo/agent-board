@@ -20,7 +20,8 @@ pub fn run_with_io(
     input: &mut impl BufRead,
     output: &mut impl Write,
 ) -> Result<Outcome, SkanError> {
-    let card = ctx.store.card(args.id)?;
+    let project_id = ctx.project_id()?;
+    let card = ctx.store.card(project_id, args.id)?;
     if ctx.json || !ctx.interactive {
         return Err(SkanError::ConfirmationRequired {
             operation: "deleting a card".into(),
@@ -37,7 +38,7 @@ pub fn run_with_io(
             json: json!({"cancelled": true}),
         });
     }
-    ctx.store.delete_card(args.id)?;
+    ctx.store.delete_card(project_id, args.id)?;
     Ok(Outcome {
         changed: true,
         human: format!("Deleted #{}.\n", args.id),

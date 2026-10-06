@@ -17,7 +17,7 @@ pub fn run(ctx: &mut Context, args: &ExportArgs) -> Result<Outcome, SkanError> {
     } else {
         destination
     };
-    let snapshot = ctx.store.snapshot()?;
+    let snapshot = ctx.store.snapshot(ctx.project_id()?)?;
     let backup = Backup::from_snapshot(snapshot);
     let mut bytes = serde_json::to_vec_pretty(&backup).map_err(|e| SkanError::DatabaseError {
         reason: e.to_string(),

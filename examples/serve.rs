@@ -1,6 +1,6 @@
 //! Runs the web server on its own: `cargo run --example serve -- --port <PORT>`.
 //!
-//! The board in the data directory (`SKAN_HOME`) must already be initialized.
+//! The data directory is `SKAN_HOME`. A new one is served with no projects.
 //! Stop with Ctrl+C.
 
 use std::process::ExitCode;
