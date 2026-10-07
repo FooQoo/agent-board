@@ -36,11 +36,36 @@ function asBoard(project: Project, board: MockBoard, cards: Card[]): MockBoard {
   };
 }
 
+/** A card with a long Markdown description, to try the description rendering with sample data. */
+function longMarkdownCard(cards: Card[]): Card {
+  const template = cards[0] as Card;
+  const id = Math.max(...cards.map((card) => card.id)) + 1;
+  return {
+    ...template,
+    id,
+    title: 'Long Markdown description',
+    description: readFileSync(
+      resolve(import.meta.dirname, 'test/fixtures/long-markdown.md'),
+      'utf8',
+    ),
+    cardStatus: 'todo',
+    agentStatus: 'idle',
+    pendingReason: null,
+    pendingRequestId: null,
+    isDraft: false,
+    position: cards.filter((card) => card.cardStatus === 'todo').length + 1,
+  };
+}
+
+/** A picture for the sample pages, served from the dev server so that it is a real http image. */
+const SAMPLE_IMAGE =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="312" height="130" viewBox="0 0 312 130"><rect width="312" height="130" fill="#e9effd"/><g fill="none" stroke="#5a6f96" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" transform="translate(136 49)"><rect x="0" y="0" width="40" height="32" rx="4"/><circle cx="10" cy="10" r="3"/><path d="M40 24 28 13 8 32"/></g></svg>';
+
 function loadFixtures(): Record<string, MockBoard> {
   const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as MockBoard;
   const [first, second, third] = SAMPLE_PROJECTS as [Project, Project, Project];
   return {
-    [first.id]: asBoard(first, fixture, fixture.cards),
+    [first.id]: asBoard(first, fixture, [...fixture.cards, longMarkdownCard(fixture.cards)]),
     [second.id]: asBoard(second, fixture, fixture.cards.slice(0, 3)),
     [third.id]: asBoard(third, fixture, []),
   };
@@ -115,6 +140,10 @@ export function mockApi(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url ?? '/', 'http://127.0.0.1');
         const path = url.pathname;
+        if (path === '/__mock/sample.svg') {
+          res.setHeader('Content-Type', 'image/svg+xml');
+          return res.end(SAMPLE_IMAGE);
+        }
         if (!path.startsWith('/api/')) return next();
         const params = pageParams(req);
 
@@ -277,6 +306,7 @@ export function mockApi(): Plugin {
                 createdAt: now,
                 updatedAt: now,
                 agentStatusChangedAt: now,
+                isDraft: false,
                 history: [event],
               };
               update(projectId, (board) => [...board.cards, card]);

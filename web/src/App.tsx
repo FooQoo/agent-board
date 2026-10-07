@@ -215,6 +215,10 @@ export function App({ initial }: AppProps) {
               onAnswer={() => {
                 if (selected) openDialog({ kind: 'answer', card: selected });
               }}
+              onEdit={() => {
+                if (selected) openDialog({ kind: 'edit', card: selected });
+              }}
+              onToggleDraft={() => undefined}
               onClose={() => dispatch({ type: 'SELECT_CARD', id: null })}
               onDeleted={() => {
                 if (isProjectId(activeId)) refreshProject(activeId);
@@ -256,7 +260,7 @@ export function App({ initial }: AppProps) {
                 dialog.target as ColumnName,
                 data.reason ?? '',
               );
-            else
+            else if (dialog.kind === 'answer')
               await answerRequest(
                 projectId,
                 dialog.card.id,

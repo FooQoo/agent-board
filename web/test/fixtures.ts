@@ -47,6 +47,7 @@ export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
     createdAt: at,
     updatedAt: at,
     agentStatusChangedAt: at,
+    isDraft: false,
     history: [
       {
         id: 1,
