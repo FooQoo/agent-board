@@ -66,11 +66,18 @@ fn ctx(reason: &str) -> ChangeContext {
 struct Reply {
     status: u16,
     body: String,
+    headers: Vec<(String, String)>,
 }
 
 impl Reply {
     fn json(&self) -> Value {
         serde_json::from_str(&self.body).unwrap_or_else(|_| panic!("not JSON: {:?}", self.body))
+    }
+    fn header(&self, name: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(name))
+            .map(|(_, v)| v.as_str())
     }
     fn code(&self) -> String {
         self.json()["error"]["code"].as_str().unwrap().to_string()
@@ -183,8 +190,14 @@ impl Running {
                 Err(error) => panic!("{method} {path}: {error:?}"),
             }
         };
+        let headers = response
+            .headers()
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or_default().to_string()))
+            .collect();
         Reply {
             status: response.status().as_u16(),
+            headers,
             body: response.body_mut().read_to_string().unwrap_or_default(),
         }
     }
@@ -776,7 +789,7 @@ fn a_broken_body_is_400_a_too_large_one_413_and_a_wrong_value_422() {
 
     let big = format!(
         r#"{{"title":"{}","description":"","assignee":"ai"}}"#,
-        "x".repeat(70 * 1024)
+        "x".repeat(1024 * 1024 + 1)
     );
     let reply = server.write("POST", &path, Some(&big));
     assert_eq!(reply.status, 413, "{}", reply.body);
@@ -987,4 +1000,341 @@ fn serving_needs_no_project_and_stopping_removes_serve_json() {
     assert_eq!(server.get("/api/projects").json()["projects"], json!([]));
     server.stop();
     assert!(!home.path().join("serve.json").exists());
+}
+
+// ---------------------------------------------------------------- drafts and editing
+
+fn draft_card(home: &Path, project: &ProjectId, id: i64) {
+    store(home).set_draft(project, id, true).unwrap();
+}
+
+fn card_json(home: &Path, project: &ProjectId, id: i64) -> Value {
+    snapshot_json(home, project)["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["id"] == id)
+        .unwrap()
+        .clone()
+}
+
+#[test]
+fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
+    let (home, a, _) = two_projects();
+    draft_card(home.path(), &a, 1);
+    let server = Running::start(home.path());
+    let mut events = server.events();
+    let path = format!("/api/projects/{a}/cards/1");
+    let before_revision = snapshot_json(home.path(), &a)["revision"].as_i64().unwrap();
+
+    let reply = server.write("PATCH", &path, Some(r#"{"title":"New title"}"#));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["card"]["title"], "New title");
+    assert_eq!(reply.json()["card"]["isDraft"], true);
+    assert!(events.changed());
+    let after = snapshot_json(home.path(), &a);
+    assert_eq!(after["revision"].as_i64().unwrap(), before_revision + 1);
+
+    let reply = server.write("PATCH", &path, Some(r#"{"description":"Line1\r\nLine2"}"#));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["card"]["description"], "Line1\nLine2");
+
+    // Nothing differs: 200, no change, no notification.
+    events.wait_for("never-sent", Duration::from_millis(600));
+    let count = events.changed_count();
+    assert_eq!(count, 2);
+    let revision = snapshot_json(home.path(), &a)["revision"].clone();
+    let reply = server.write("PATCH", &path, Some(r#"{"title":"New title"}"#));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(snapshot_json(home.path(), &a)["revision"], revision);
+    events.wait_for("never-sent", Duration::from_millis(600));
+    assert_eq!(events.changed_count(), count);
+}
+
+#[test]
+fn patch_with_finalize_saves_and_confirms_in_one_operation() {
+    let (home, a, _) = two_projects();
+    draft_card(home.path(), &a, 1);
+    let server = Running::start(home.path());
+    let path = format!("/api/projects/{a}/cards/1");
+    let reply = server.write(
+        "PATCH",
+        &path,
+        Some(r#"{"title":"Final","description":"Body","finalize":true}"#),
+    );
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["card"]["isDraft"], false);
+    let stored = card_json(home.path(), &a, 1);
+    assert_eq!(stored["isDraft"], false);
+    assert_eq!(stored["title"], "Final");
+    assert_eq!(stored["description"], "Body");
+    // A confirmed card is no longer editable.
+    let reply = server.write("PATCH", &path, Some(r#"{"title":"Again"}"#));
+    assert_eq!(reply.status, 409, "{}", reply.body);
+    assert_eq!(reply.code(), "card_not_draft");
+    assert_eq!(card_json(home.path(), &a, 1)["title"], "Final");
+}
+
+#[test]
+fn patch_of_a_card_that_is_not_a_draft_is_409_and_changes_nothing() {
+    let (home, a, _) = two_projects();
+    let before = snapshot_json(home.path(), &a);
+    let server = Running::start(home.path());
+    let mut events = server.events();
+    let reply = server.write(
+        "PATCH",
+        &format!("/api/projects/{a}/cards/1"),
+        Some(r#"{"title":"X"}"#),
+    );
+    assert_eq!(reply.status, 409, "{}", reply.body);
+    assert_eq!(reply.code(), "card_not_draft");
+    assert_eq!(snapshot_json(home.path(), &a), before);
+    assert!(events.stays_quiet());
+}
+
+#[test]
+fn patch_description_limit_is_50000_characters_and_the_body_limit_1_mib() {
+    let (home, a, _) = two_projects();
+    draft_card(home.path(), &a, 1);
+    let server = Running::start(home.path());
+    let path = format!("/api/projects/{a}/cards/1");
+
+    // 50,000 Japanese characters are about 150 KB.
+    let ok = json!({"description": "あ".repeat(50_000)}).to_string();
+    assert!(ok.len() > 64 * 1024);
+    let reply = server.write("PATCH", &path, Some(&ok));
+    assert_eq!(
+        reply.status,
+        200,
+        "{}",
+        &reply.body[..reply.body.len().min(200)]
+    );
+
+    let over = json!({"description": "あ".repeat(50_001)}).to_string();
+    let reply = server.write("PATCH", &path, Some(&over));
+    assert_eq!(reply.status, 422);
+    assert_eq!(reply.code(), "invalid_value");
+    assert_eq!(
+        card_json(home.path(), &a, 1)["description"]
+            .as_str()
+            .unwrap()
+            .chars()
+            .count(),
+        50_000
+    );
+
+    let huge = json!({"description": "x".repeat(1024 * 1024 + 1)}).to_string();
+    let reply = server.write("PATCH", &path, Some(&huge));
+    assert_eq!(reply.status, 413);
+    assert_eq!(reply.code(), "payload_too_large");
+
+    // Registration takes the same size.
+    let create =
+        json!({"title":"Long","description":"あ".repeat(50_000),"assignee":"ai"}).to_string();
+    let reply = server.write("POST", &format!("/api/projects/{a}/cards"), Some(&create));
+    assert_eq!(
+        reply.status,
+        201,
+        "{}",
+        &reply.body[..reply.body.len().min(200)]
+    );
+}
+
+#[test]
+fn patch_rejects_bad_bodies_without_changing_anything() {
+    let (home, a, _) = two_projects();
+    draft_card(home.path(), &a, 1);
+    let before = snapshot_json(home.path(), &a);
+    let server = Running::start(home.path());
+    let path = format!("/api/projects/{a}/cards/1");
+
+    let reply = server.write("PATCH", &path, Some("{broken"));
+    assert_eq!(reply.status, 400);
+    let reply = server.write("PATCH", &path, Some(r#"{"title":"x","extra":1}"#));
+    assert_eq!(reply.status, 400, "{}", reply.body);
+
+    let reply = server.write("PATCH", &path, Some("{}"));
+    assert_eq!(reply.status, 422, "{}", reply.body);
+    assert_eq!(reply.code(), "invalid_argument");
+    assert!(
+        reply.json()["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Nothing to change")
+    );
+
+    let reply = server.write("PATCH", &path, Some(r#"{"title":""}"#));
+    assert_eq!(reply.status, 422);
+    assert_eq!(reply.code(), "invalid_value");
+
+    let reply = server.write(
+        "PATCH",
+        &format!("/api/projects/{a}/cards/99"),
+        Some(r#"{"title":"x"}"#),
+    );
+    assert_eq!(reply.status, 404);
+    assert_eq!(reply.code(), "card_not_found");
+    assert_eq!(snapshot_json(home.path(), &a), before);
+}
+
+#[test]
+fn put_draft_toggles_idle_cards_without_history_or_update_time() {
+    let (home, a, _) = two_projects();
+    let server = Running::start(home.path());
+    let mut events = server.events();
+    let path = format!("/api/projects/{a}/cards/1/draft");
+    let before = card_json(home.path(), &a, 1);
+    let revision = snapshot_json(home.path(), &a)["revision"].as_i64().unwrap();
+
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["card"]["isDraft"], true);
+    assert!(events.changed());
+    let after = card_json(home.path(), &a, 1);
+    assert_eq!(after["updatedAt"], before["updatedAt"]);
+    assert_eq!(after["history"], before["history"]);
+    assert_eq!(
+        snapshot_json(home.path(), &a)["revision"].as_i64().unwrap(),
+        revision + 1
+    );
+
+    // Same value: 200, no change, no notification.
+    let count = events.changed_count();
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    events.wait_for("never-sent", Duration::from_millis(600));
+    assert_eq!(events.changed_count(), count);
+
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":false}"#));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["card"]["isDraft"], false);
+
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true,"x":1}"#));
+    assert_eq!(reply.status, 400, "{}", reply.body);
+    let reply = server.write("PUT", &path, Some("{}"));
+    assert_eq!(reply.status, 422, "{}", reply.body);
+    let reply = server.write(
+        "PUT",
+        &format!("/api/projects/{a}/cards/99/draft"),
+        Some(r#"{"isDraft":true}"#),
+    );
+    assert_eq!(reply.status, 404);
+}
+
+#[test]
+fn put_draft_refuses_running_and_pending_cards() {
+    let (home, a, _) = two_projects();
+    let s = store(home.path());
+    s.move_work_card(&a, 2, Column::Doing, ctx("Start"), t(3))
+        .unwrap();
+    s.set_agent_status(&a, 2, RunState::Running, ctx("Go"), None, t(4))
+        .unwrap();
+    let before = snapshot_json(home.path(), &a);
+    let server = Running::start(home.path());
+    let path = format!("/api/projects/{a}/cards/2/draft");
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    assert_eq!(reply.status, 409, "{}", reply.body);
+    assert_eq!(reply.code(), "invalid_state_for_draft");
+
+    s.set_agent_status(&a, 2, RunState::Pending, ctx("Ask"), None, t(5))
+        .unwrap();
+    let before_pending = snapshot_json(home.path(), &a);
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    assert_eq!(reply.status, 409, "{}", reply.body);
+    assert_eq!(reply.code(), "invalid_state_for_draft");
+    assert_eq!(snapshot_json(home.path(), &a), before_pending);
+    assert_ne!(before, before_pending);
+}
+
+#[test]
+fn a_draft_card_can_be_moved_and_deleted_by_the_user_but_not_driven_by_the_ai_route() {
+    let (home, a, _) = two_projects();
+    draft_card(home.path(), &a, 2);
+    draft_card(home.path(), &a, 1);
+    let server = Running::start(home.path());
+    let base = format!("/api/projects/{a}/cards");
+
+    let reply = server.write(
+        "POST",
+        &format!("{base}/2/move"),
+        Some(r#"{"cardStatus":"doing","actor":"human","reason":"Start"}"#),
+    );
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["card"]["cardStatus"], "doing");
+    assert_eq!(reply.json()["card"]["agentStatus"], "idle");
+    assert_eq!(reply.json()["card"]["isDraft"], true);
+
+    let before = snapshot_json(home.path(), &a);
+    let reply = server.write(
+        "POST",
+        &format!("{base}/2/agent-status"),
+        Some(r#"{"agentStatus":"running","actor":"ai","reason":"Go"}"#),
+    );
+    assert_eq!(reply.status, 409, "{}", reply.body);
+    assert_eq!(reply.code(), "card_is_draft");
+    assert_eq!(snapshot_json(home.path(), &a), before);
+
+    let headers = server.page_headers(&server.token());
+    let reply = server.request("DELETE", &format!("{base}/1"), None, &headers, None);
+    assert_eq!(reply.status, 204);
+}
+
+#[test]
+fn patch_and_put_draft_need_the_write_guard_before_anything_else() {
+    let (home, a, _) = two_projects();
+    draft_card(home.path(), &a, 1);
+    let before = snapshot_json(home.path(), &a);
+    let server = Running::start(home.path());
+    let mut events = server.events();
+    let token = server.token();
+    let wrong = "0".repeat(64);
+    let good = server.page_headers(&token);
+    let mut bad_origin = good.clone();
+    bad_origin[0].1 = "http://evil.example".into();
+    let mut bad_site = good.clone();
+    bad_site[1].1 = "cross-site".into();
+    let mut bad_token = good.clone();
+    bad_token[2].1 = wrong;
+    let attempts: [Vec<(String, String)>; 4] = [Vec::new(), bad_origin, bad_site, bad_token];
+    for (method, suffix, body) in [
+        ("PATCH", "cards/1", r#"{"title":"Hacked"}"#),
+        ("PATCH", "cards/99", r#"{"title":"Hacked"}"#),
+        ("PUT", "cards/1/draft", r#"{"isDraft":false}"#),
+        ("PUT", "cards/99/draft", r#"{"isDraft":false}"#),
+    ] {
+        for headers in &attempts {
+            let reply = server.request(
+                method,
+                &format!("/api/projects/{a}/{suffix}"),
+                Some(body),
+                headers,
+                Some("application/json"),
+            );
+            assert_eq!(reply.status, 403, "{method} {suffix}: {}", reply.body);
+        }
+    }
+    assert_eq!(snapshot_json(home.path(), &a), before);
+    assert!(events.stays_quiet());
+}
+
+#[test]
+fn the_page_carries_a_content_security_policy_and_no_referrer() {
+    let (home, _, _) = two_projects();
+    let server = Running::start(home.path());
+    let page = server.get("/");
+    assert_eq!(page.status, 200);
+    assert_eq!(
+        page.header("content-security-policy"),
+        Some(
+            "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        )
+    );
+    assert_eq!(page.header("referrer-policy"), Some("no-referrer"));
+    for path in ["/assets/app.js", "/api/projects"] {
+        assert_eq!(
+            server.get(path).header("referrer-policy"),
+            Some("no-referrer"),
+            "{path}"
+        );
+    }
 }
