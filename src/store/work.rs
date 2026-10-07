@@ -4,7 +4,9 @@
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, params};
 
-use super::projects::{ProjectStore, bump_project, load_counters, load_project, require_project};
+use super::projects::{
+    ProjectStore, bump_project, load_catalog, load_counters, load_project, require_project,
+};
 use super::rows::{assignee_str, insert_event, load_card, load_cards};
 use crate::{clock::format_utc, domain::*, error::SkanError};
 
@@ -317,20 +319,45 @@ impl ProjectStore {
     pub fn snapshot(&self, project_id: &ProjectId) -> Result<BoardSnapshot, SkanError> {
         self.read(|conn| {
             let project = load_project(conn, project_id)?;
-            let counters = load_counters(conn, project_id)?;
-            let cards = load_cards(conn, project_id)?;
-            let cursor = ChangeCursor::new(project_id.clone(), counters.revision)?;
-            Ok(BoardSnapshot {
-                board: BoardMeta {
-                    name: project.name.clone(),
-                    next_card_id: counters.next_card_id,
-                    created_at: project.created_at,
-                },
-                project,
-                revision: counters.revision,
-                cursor,
-                cards,
+            board_snapshot(conn, project)
+        })
+    }
+
+    /// Every project's snapshot, ordered by project name, and the catalog
+    /// revision, all from one read transaction: no concurrent change shows in
+    /// only some of the projects. Each element equals what
+    /// [`ProjectStore::snapshot`] returns for that project. Writes and notifies
+    /// nothing.
+    pub fn all_snapshots(&self) -> Result<AllBoardsSnapshot, SkanError> {
+        self.read(|conn| {
+            let catalog = load_catalog(conn)?;
+            let projects = catalog
+                .projects
+                .into_iter()
+                .map(|project| board_snapshot(conn, project))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(AllBoardsSnapshot {
+                catalog_revision: catalog.catalog_revision,
+                projects,
             })
         })
     }
+}
+
+/// The board of an already loaded project, read on the caller's transaction.
+fn board_snapshot(conn: &Connection, project: ProjectMeta) -> Result<BoardSnapshot, SkanError> {
+    let counters = load_counters(conn, &project.id)?;
+    let cards = load_cards(conn, &project.id)?;
+    let cursor = ChangeCursor::new(project.id.clone(), counters.revision)?;
+    Ok(BoardSnapshot {
+        board: BoardMeta {
+            name: project.name.clone(),
+            next_card_id: counters.next_card_id,
+            created_at: project.created_at,
+        },
+        project,
+        revision: counters.revision,
+        cursor,
+        cards,
+    })
 }

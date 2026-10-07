@@ -112,6 +112,8 @@ enum Access {
 
 fn access(command: &Command) -> Access {
     match command {
+        // The list of every project reads the catalog and names no project.
+        Command::Ls(args) if args.all_projects => Access::ReadCatalog,
         Command::Ls(_) | Command::Show(_) | Command::Snapshot(_) | Command::Export(_) => {
             Access::ReadProject
         }
@@ -147,7 +149,7 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
             match ProjectStore::open_read_only(&env.db_path) {
                 Ok(store) => store,
                 Err(SkanError::NotInitialized) if matches!(access, Access::ReadCatalog) => {
-                    return Ok((None, commands::project::empty_list()));
+                    return Ok((None, empty_outcome(cli, env)));
                 }
                 Err(SkanError::NotInitialized) => return Err(not_found(&name)),
                 Err(error) => return Err(error),
@@ -184,6 +186,15 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
     };
     let outcome = dispatch(&mut ctx, &cli.command)?;
     Ok((Some(ctx), outcome))
+}
+
+/// What a catalog read returns when no data area exists yet: the same shape as
+/// an existing area without projects.
+fn empty_outcome(cli: &Cli, env: &Env) -> Outcome {
+    match &cli.command {
+        Command::Ls(_) => commands::ls::empty_all_projects(env.clock.as_ref()),
+        _ => commands::project::empty_list(),
+    }
 }
 
 fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> {

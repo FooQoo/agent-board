@@ -102,37 +102,7 @@ impl ProjectStore {
 
     /// Every project ordered by name, and the catalog revision, from one read.
     pub fn projects(&self) -> Result<ProjectCatalog, SkanError> {
-        self.read(|conn| {
-            let mut statement = conn.prepare(
-                "SELECT id, name, created_at FROM projects ORDER BY name COLLATE BINARY ASC",
-            )?;
-            let rows = statement.query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            })?;
-            let mut projects = Vec::new();
-            for row in rows {
-                let (id, name, created_at) = row?;
-                projects.push(project_meta(&id, name, &created_at)?);
-            }
-            let catalog_revision = conn
-                .query_row(
-                    "SELECT revision FROM catalog_metadata WHERE id = 1",
-                    [],
-                    |row| row.get(0),
-                )
-                .map_err(|e| match e {
-                    rusqlite::Error::QueryReturnedNoRows => missing_catalog_row(),
-                    other => other.into(),
-                })?;
-            Ok(ProjectCatalog {
-                projects,
-                catalog_revision,
-            })
-        })
+        self.read(load_catalog)
     }
 
     /// Resolve a project by its exact (untrimmed, case-sensitive) name.
@@ -265,6 +235,39 @@ fn project_meta(id: &str, name: String, created_at: &str) -> Result<ProjectMeta,
         id: id.parse().map_err(|_| corrupt("ID"))?,
         name,
         created_at: parse_utc(created_at).map_err(|_| corrupt("creation time"))?,
+    })
+}
+
+/// Every project ordered by name (binary order) and the catalog revision,
+/// read on the given connection so the caller controls the transaction.
+pub(super) fn load_catalog(conn: &Connection) -> Result<ProjectCatalog, SkanError> {
+    let mut statement =
+        conn.prepare("SELECT id, name, created_at FROM projects ORDER BY name COLLATE BINARY ASC")?;
+    let rows = statement.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+        ))
+    })?;
+    let mut projects = Vec::new();
+    for row in rows {
+        let (id, name, created_at) = row?;
+        projects.push(project_meta(&id, name, &created_at)?);
+    }
+    let catalog_revision = conn
+        .query_row(
+            "SELECT revision FROM catalog_metadata WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => missing_catalog_row(),
+            other => other.into(),
+        })?;
+    Ok(ProjectCatalog {
+        projects,
+        catalog_revision,
     })
 }
 

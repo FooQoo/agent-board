@@ -95,6 +95,16 @@ pub struct BoardSnapshot {
     pub cards: Vec<Card>,
 }
 
+/// Every project's board read in one transaction: the catalog revision and one
+/// [`BoardSnapshot`] per project, ordered by project name (binary order, as
+/// `project ls` lists them).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllBoardsSnapshot {
+    pub catalog_revision: i64,
+    pub projects: Vec<BoardSnapshot>,
+}
+
 /// A snapshot with the time it was fetched, as the CLI, the hook and wait
 /// print it. The fetch time is added by the reader, never stored.
 #[derive(Debug, Clone, Serialize)]
