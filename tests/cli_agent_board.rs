@@ -358,3 +358,232 @@ fn import_creates_a_missing_project_with_the_backup_content() {
     // Numbering continues after the imported card.
     assert_eq!(add_card(target.path(), "A", "next")["card"]["id"], 2);
 }
+
+/// Mark a card as a draft the way the Web does, directly in the database.
+fn make_draft(home: &std::path::Path, project: &str, id: i64) {
+    let db = rusqlite::Connection::open(home.join("board.db")).unwrap();
+    let changed = db
+        .execute(
+            "UPDATE cards SET is_draft = 1 WHERE id = ?1 AND project_id = \
+             (SELECT id FROM projects WHERE name = ?2)",
+            rusqlite::params![id, project],
+        )
+        .unwrap();
+    assert_eq!(changed, 1);
+}
+
+fn invoke_none(home: &std::path::Path, args: &[&str]) -> assert_cmd::assert::Assert {
+    Command::cargo_bin("agboard")
+        .unwrap()
+        .env("SKAN_HOME", home)
+        .env("TZ", "UTC")
+        .args(args)
+        .assert()
+}
+
+fn stdout_of(assert: assert_cmd::assert::Assert) -> String {
+    String::from_utf8(assert.success().get_output().stdout.clone()).unwrap()
+}
+
+#[test]
+fn ls_and_show_mark_drafts_and_json_carries_is_draft() {
+    let home = tempdir().unwrap();
+    assert!(invoke(home.path(), &["init"]).get_output().status.success());
+    add_card(home.path(), "Agent Board", "Plain");
+    add_card(home.path(), "Agent Board", "Sketch");
+    make_draft(home.path(), "Agent Board", 2);
+
+    let text = stdout_of(invoke(home.path(), &["ls"]));
+    assert!(text.contains("  #1 Plain [AI]\n"), "{text}");
+    assert!(text.contains("  #2 Sketch [AI] [draft]\n"), "{text}");
+    let filtered = stdout_of(invoke(
+        home.path(),
+        &["ls", "--column", "todo", "--state", "idle"],
+    ));
+    assert!(filtered.contains("#2 Sketch [AI] [draft]"));
+    assert!(!stdout_of(invoke(home.path(), &["ls", "--column", "doing"])).contains("[draft]"));
+
+    let listed = json_of(invoke(home.path(), &["ls", "--json"]));
+    assert_eq!(listed["cards"][0]["isDraft"], false);
+    assert_eq!(listed["cards"][1]["isDraft"], true);
+    let all = json_of(invoke_none(
+        home.path(),
+        &["ls", "--all-projects", "--json"],
+    ));
+    assert_eq!(all["projects"][0]["cards"][1]["isDraft"], true);
+    let all_text = stdout_of(invoke_none(home.path(), &["ls", "--all-projects"]));
+    assert!(all_text.contains("#2 Sketch [AI] [draft]"));
+
+    let shown = stdout_of(invoke(home.path(), &["show", "2"]));
+    assert!(shown.contains("Draft: yes\n"), "{shown}");
+    assert!(!stdout_of(invoke(home.path(), &["show", "1"])).contains("Draft"));
+    assert_eq!(
+        json_of(invoke(home.path(), &["show", "2", "--json"]))["card"]["isDraft"],
+        true
+    );
+    assert_eq!(
+        snapshot_of(home.path(), "Agent Board")["cards"][1]["isDraft"],
+        true
+    );
+}
+
+#[test]
+fn a_draft_refuses_edit_mv_and_state_and_changes_and_announces_nothing() {
+    use std::io::ErrorKind;
+    let home = tempdir().unwrap();
+    assert!(invoke(home.path(), &["init"]).get_output().status.success());
+    add_card(home.path(), "Agent Board", "Sketch");
+    make_draft(home.path(), "Agent Board", 1);
+    let before = stable(snapshot_of(home.path(), "Agent Board"));
+
+    // A fake `serve` that must never be told about a refused command.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::fs::write(
+        home.path().join("serve.json"),
+        format!(
+            r#"{{"pid":{},"port":{port},"started_at":"2026-10-02T01:00:00Z"}}"#,
+            std::process::id()
+        ),
+    )
+    .unwrap();
+
+    let attempts: [&[&str]; 4] = [
+        &["edit", "1", "--title", "New"],
+        &["edit", "1", "--desc", "New"],
+        &["mv", "1", "doing", "--actor", "ai", "--reason", "Start"],
+        &["state", "1", "running", "--actor", "ai", "--reason", "Work"],
+    ];
+    for args in attempts {
+        let human = invoke(home.path(), args).failure().code(1);
+        let stderr = String::from_utf8(human.get_output().stderr.clone()).unwrap();
+        assert!(stderr.starts_with("Error: card #1 is a draft"), "{stderr}");
+        assert!(
+            stderr.contains("Wait for the user to finalize it"),
+            "{stderr}"
+        );
+        let mut json_args = args.to_vec();
+        json_args.push("--json");
+        let json = invoke(home.path(), &json_args).failure().code(1);
+        let value: Value = serde_json::from_slice(&json.get_output().stderr).unwrap();
+        assert_eq!(value["error"]["code"], "card_is_draft");
+    }
+    assert_eq!(before, stable(snapshot_of(home.path(), "Agent Board")));
+    assert_eq!(
+        listener.accept().err().map(|e| e.kind()),
+        Some(ErrorKind::WouldBlock)
+    );
+
+    // Reading and adding still work while a draft exists.
+    assert!(
+        invoke(home.path(), &["show", "1"])
+            .get_output()
+            .status
+            .success()
+    );
+    assert!(invoke(home.path(), &["ls"]).get_output().status.success());
+    add_card(home.path(), "Agent Board", "Another");
+    assert_eq!(
+        snapshot_of(home.path(), "Agent Board")["cards"][1]["isDraft"],
+        false
+    );
+}
+
+#[test]
+fn descriptions_up_to_the_limit_pass_through_every_input() {
+    let home = tempdir().unwrap();
+    assert!(invoke(home.path(), &["init"]).get_output().status.success());
+    let text = "あ".repeat(50_000);
+    let added = json_of(invoke(
+        home.path(),
+        &[
+            "add",
+            "Long",
+            "--desc",
+            &text,
+            "--assignee",
+            "ai",
+            "--actor",
+            "ai",
+            "--json",
+        ],
+    ));
+    assert_eq!(
+        added["card"]["description"]
+            .as_str()
+            .unwrap()
+            .chars()
+            .count(),
+        50_000
+    );
+    let file = home.path().join("desc.md");
+    std::fs::write(&file, format!("{}\n", "い".repeat(50_000))).unwrap();
+    let edited = json_of(invoke(
+        home.path(),
+        &["edit", "1", "--desc-file", file.to_str().unwrap(), "--json"],
+    ));
+    assert_eq!(edited["card"]["description"], "い".repeat(50_000).as_str());
+    let piped = Command::cargo_bin("agboard")
+        .unwrap()
+        .env("SKAN_HOME", home.path())
+        .args([
+            "--project",
+            "Agent Board",
+            "edit",
+            "1",
+            "--desc",
+            "-",
+            "--json",
+        ])
+        .write_stdin("う".repeat(50_000))
+        .assert();
+    assert_eq!(
+        json_of(piped)["card"]["description"],
+        "う".repeat(50_000).as_str()
+    );
+    let shown = json_of(invoke(home.path(), &["show", "1", "--json"]));
+    assert_eq!(
+        shown["card"]["description"]
+            .as_str()
+            .unwrap()
+            .chars()
+            .count(),
+        50_000
+    );
+    let over = invoke(
+        home.path(),
+        &["edit", "1", "--desc", &"え".repeat(50_001), "--json"],
+    )
+    .failure();
+    let value: Value = serde_json::from_slice(&over.get_output().stderr).unwrap();
+    assert_eq!(value["error"]["code"], "invalid_value");
+}
+
+#[test]
+fn help_describes_markdown_limits_and_drafts() {
+    let help = |args: &[&str]| {
+        let out = Command::cargo_bin("agboard")
+            .unwrap()
+            .args(args)
+            .assert()
+            .success();
+        String::from_utf8(out.get_output().stdout.clone()).unwrap()
+    };
+    let top = help(&["--help"]);
+    for needle in [
+        "isDraft",
+        "card_is_draft",
+        "read-only",
+        "--desc-file",
+        "in full",
+    ] {
+        assert!(top.contains(needle), "top help lacks {needle}");
+    }
+    for sub in ["add", "edit"] {
+        let text = help(&[sub, "--help"]);
+        assert!(text.contains("Markdown"), "{sub}: {text}");
+        assert!(text.contains("50,000"), "{sub}: {text}");
+    }
+    assert!(help(&["edit", "--help"]).contains("card_is_draft"));
+}

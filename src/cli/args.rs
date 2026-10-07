@@ -51,7 +51,19 @@ Rules for agents:
   - Moving a card to todo or done resets it to idle.
   - You cannot delete cards or projects, or replace a board. Ask a human to do it.
   - After renaming a project, update the project name in your hook commands.
-  - Add --json to any command for machine-readable output.";
+  - Add --json to any command for machine-readable output.
+
+Descriptions and drafts:
+  - A description is Markdown, up to 50,000 characters. Give a long one with
+    --desc-file PATH (or --desc - on standard input), not --desc TEXT.
+  - Snapshots, `show`, `wait`, and the hook return every description in full.
+    If the hook's snapshot would exceed 256 KiB, it reports AGBOARD_ERROR
+    (context_too_large) instead; use `snapshot --json` to read the board.
+  - A card with \"isDraft\": true is a draft the user is still writing. It is
+    read-only for you: `edit`, `mv`, and `state` fail with card_is_draft
+    (exit code 1) and change nothing. Do not retry. Wait for the user to
+    finalize it, and work on other cards meanwhile. `add`, `show`, `ls`,
+    `snapshot`, and `wait` still work.";
 
 #[derive(Parser, Debug)]
 #[command(
@@ -239,10 +251,10 @@ impl RunStateArg {
 #[derive(Args, Debug, Clone, Default)]
 #[group(id = "description_source", multiple = false)]
 pub struct DescriptionArgs {
-    /// Description text; use "-" to read it from standard input
+    /// Description in Markdown, up to 50,000 characters; use "-" to read it from standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub desc: Option<String>,
-    /// Read the description from a file
+    /// Read the Markdown description (up to 50,000 characters) from a file
     #[arg(long, value_name = "PATH")]
     pub desc_file: Option<PathBuf>,
 }
@@ -270,7 +282,7 @@ pub struct AddArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
+    after_help = "A draft card (isDraft) is read-only for agents: edit fails with card_is_draft (exit code 1) and changes nothing. Wait for the user to finalize it, then try again.\n\nExamples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
 )]
 pub struct EditArgs {
     /// ID of the card
@@ -284,7 +296,7 @@ pub struct EditArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo mv 12 doing\n  agboard --project demo mv 12 done"
+    after_help = "A draft card (isDraft) is read-only for agents: mv fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nExamples:\n  agboard --project demo mv 12 doing\n  agboard --project demo mv 12 done"
 )]
 pub struct MvArgs {
     /// ID of the card
@@ -297,7 +309,7 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Run states:\n  idle     not working on it\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason\n\nExamples:\n  agboard --project demo state 12 running\n  agboard --project demo state 12 pending --reason \"Waiting for review\"\n  agboard --project demo state 12 idle"
+    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason\n\nExamples:\n  agboard --project demo state 12 running\n  agboard --project demo state 12 pending --reason \"Waiting for review\"\n  agboard --project demo state 12 idle"
 )]
 pub struct StateArgs {
     /// ID of the card

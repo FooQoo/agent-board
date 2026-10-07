@@ -7,7 +7,7 @@ use serde_json::Value;
 /// One list serves every object, so a key keeps one position: a project is
 /// `id, name, createdAt`, a board `name, nextCardId, createdAt`, and the
 /// snapshot root `fetchedAt, project, revision, cursor, board, cards`.
-const KEY_ORDER: [&str; 30] = [
+const KEY_ORDER: [&str; 31] = [
     "error",
     "code",
     "message",
@@ -34,6 +34,7 @@ const KEY_ORDER: [&str; 30] = [
     "agentStatus",
     "pendingReason",
     "pendingRequestId",
+    "isDraft",
     "createdAt",
     "updatedAt",
     "agentStatusChangedAt",
@@ -111,6 +112,9 @@ pub fn ls_text(cards: &[Card], columns: &[Column]) -> String {
                 crate::domain::Assignee::Ai => " [AI]",
                 crate::domain::Assignee::Human => " [User]",
             });
+            if card.is_draft {
+                out.push_str(" [draft]");
+            }
             if card.assignee == crate::domain::Assignee::Ai && column == &Column::Doing {
                 out.push_str(&format!(
                     " [{}]",
@@ -139,6 +143,9 @@ pub fn show_text(card: &Card) -> String {
             "Agent status: {}\n",
             state_text(card.agent_status, card.pending_reason.as_deref())
         ));
+    }
+    if card.is_draft {
+        out.push_str("Draft: yes\n");
     }
     if !card.description.is_empty() {
         out.push_str(&format!("Description:\n{}\n", card.description));

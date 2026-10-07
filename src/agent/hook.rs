@@ -11,8 +11,11 @@ use crate::{
     store::ProjectStore,
 };
 
-/// Largest hook input read, and largest snapshot JSON passed on, in UTF-8 bytes.
-const MAX_BYTES: usize = 64 * 1024;
+/// Largest hook input read, in UTF-8 bytes.
+const MAX_INPUT_BYTES: usize = 64 * 1024;
+
+/// Largest snapshot JSON passed on, in UTF-8 bytes.
+const MAX_SNAPSHOT_BYTES: usize = 256 * 1024;
 
 /// Why no snapshot could be produced. Shown to the agent as `AGBOARD_ERROR`.
 struct Failure {
@@ -44,10 +47,10 @@ pub fn run(
 ) -> Option<String> {
     let mut bytes = Vec::new();
     if input
-        .take((MAX_BYTES + 1) as u64)
+        .take((MAX_INPUT_BYTES + 1) as u64)
         .read_to_end(&mut bytes)
         .is_err()
-        || bytes.len() > MAX_BYTES
+        || bytes.len() > MAX_INPUT_BYTES
     {
         return Some(output(
             "PostToolUse",
@@ -123,11 +126,11 @@ fn snapshot_context(db_path: &Path, project: Option<&str>) -> Result<String, Fai
 /// Frame the snapshot JSON, or refuse it when it is over the limit. The whole
 /// JSON is passed or none of it: a snapshot is never cut short.
 fn snapshot_text(json: &str) -> Result<String, Failure> {
-    if json.len() > MAX_BYTES {
+    if json.len() > MAX_SNAPSHOT_BYTES {
         return Err(Failure::new(
             "context_too_large",
             format!(
-                "The complete board snapshot is {} bytes, over the 64 KiB limit.",
+                "The complete board snapshot is {} bytes, over the 256 KiB limit.",
                 json.len()
             ),
         ));
@@ -153,16 +156,16 @@ mod tests {
 
     #[test]
     fn the_limit_counts_utf8_bytes_of_the_snapshot_json() {
-        let at_limit = "a".repeat(MAX_BYTES);
+        let at_limit = "a".repeat(MAX_SNAPSHOT_BYTES);
         assert!(snapshot_text(&at_limit).is_ok());
-        let over = "a".repeat(MAX_BYTES + 1);
+        let over = "a".repeat(MAX_SNAPSHOT_BYTES + 1);
         assert_eq!(
             snapshot_text(&over).err().unwrap().code,
             "context_too_large"
         );
         // Fewer characters than the limit, more bytes than the limit.
-        let wide = "あ".repeat(MAX_BYTES / 3 + 1);
-        assert!(wide.chars().count() < MAX_BYTES);
+        let wide = "あ".repeat(MAX_SNAPSHOT_BYTES / 3 + 1);
+        assert!(wide.chars().count() < MAX_SNAPSHOT_BYTES);
         assert_eq!(
             snapshot_text(&wide).err().unwrap().code,
             "context_too_large"
