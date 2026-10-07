@@ -16,7 +16,7 @@ import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
-import { createCard, moveCard } from './api';
+import { createCard, editCard, moveCard } from './api';
 import { useBoard } from './hooks/useBoard';
 import { useBoardEvents } from './hooks/useBoardEvents';
 import { useDetailWidth } from './hooks/useDetailWidth';
@@ -213,7 +213,7 @@ export function App({ initial }: AppProps) {
               variant={view === 'board' ? 'card' : 'state'}
               operations={operations}
               onEdit={() => {
-                if (selected) openDialog({ kind: 'edit', card: selected });
+                if (selected?.isDraft) openDialog({ kind: 'edit', card: selected });
               }}
               onChanged={() => {
                 if (isProjectId(activeId)) refreshProject(activeId);
@@ -259,6 +259,12 @@ export function App({ initial }: AppProps) {
                 dialog.target as ColumnName,
                 data.reason ?? '',
               );
+            else if (dialog.kind === 'edit')
+              await editCard(projectId, dialog.card.id, {
+                title: data.title,
+                description: data.description,
+                finalize: data.finalize,
+              });
             refreshProject(projectId);
           }}
         />
