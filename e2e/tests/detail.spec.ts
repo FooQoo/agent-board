@@ -23,11 +23,11 @@ test('selecting a card shows its column, state, and description with line breaks
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Check the board display');
   await expect(panel).toContainText('Doing');
   await expect(panel).toContainText('Idle');
-  await expect(panel.getByRole('heading', { name: 'Description' })).toBeVisible();
+  await expect(panel.getByRole('tab', { name: 'Description' })).toHaveAttribute('aria-selected', 'true');
   await expect(card(page, 13)).toHaveAttribute('aria-current', 'true');
 
-  // The description is shown as written, with its line break.
-  const description = panel.getByText('Check the layout at 1280, 800, and 480 px.');
+  // The description is shown as written, with its line break kept.
+  const description = panel.getByRole('tabpanel').getByText('Check the layout at 1280, 800, and 480 px.');
   expect(await description.evaluate((element) => (element as HTMLElement).innerText)).toBe(
     'Check the layout at 1280, 800, and 480 px.\nLook for horizontal scrolling.',
   );
@@ -45,15 +45,18 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   // The pause icon shows on the card and in the detail alike.
   await expect(card(page, 12).locator('.status-label svg')).toHaveCount(1);
   await expect(panel.locator('.detail__meta .status-label--pending svg')).toHaveCount(1);
-  await panel.getByRole('button', { name: 'Answer', exact: true }).click();
-  // The dialog shows the run state change as badges: the current state, an arrow, then Idle.
-  const answerState = page.getByRole('dialog').getByRole('group', { name: 'Status change' });
-  await expect(answerState.getByText('Pending')).toBeVisible();
-  await expect(answerState.getByText('Idle')).toBeVisible();
-  await expect(answerState).toHaveText(/Pending\s*Idle/);
-  await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(panel).toContainText('Waiting for confirmation on how to replace a board.');
-  await expect(panel).toContainText('No description.');
+  // The request and Answer sit above the tabs, which keep showing the description.
+  const request = panel.getByRole('region', { name: 'The agent is waiting for your answer' });
+  await expect(request).toContainText('Waiting for confirmation on how to replace a board.');
+  await expect(panel.getByRole('tabpanel')).toContainText('No description.');
+  // Answer opens a text area in place, not a dialog; Cancel closes it again.
+  await request.getByRole('button', { name: 'Answer', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(request.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
+  await expect(panel.getByRole('tabpanel')).toContainText('No description.');
+  await request.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(request.getByRole('textbox')).toHaveCount(0);
+  await expect(request.getByRole('button', { name: 'Answer', exact: true })).toBeVisible();
 
   await card(page, 11).click();
   await expect(panel).toContainText('Running');
@@ -65,13 +68,18 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(card(page, 11).locator('.assignee-label svg')).toHaveCount(1);
   await expect(panel.locator('.detail__meta .assignee-label')).toHaveCSS('border-top-style', 'none');
 
-  // A card outside Doing has a column and no run state. Delete sits at the bottom left.
+  // A card outside Doing has a column and no run state. Delete is the right end of the toolbar beside the tabs.
   await card(page, 8).click();
   await expect(panel).toContainText('Done');
-  const panelBox = (await panel.boundingBox())!;
-  const deleteBox = (await panel.getByRole('button', { name: 'Delete card' }).boundingBox())!;
-  expect(deleteBox.x - panelBox.x).toBeLessThan(40);
-  expect(panelBox.y + panelBox.height - (deleteBox.y + deleteBox.height)).toBeLessThan(40);
+  const tabsBox = (await panel.getByRole('tablist').boundingBox())!;
+  const toolbar = panel.getByRole('toolbar', { name: 'Card actions' });
+  const toolbarButtons = toolbar.getByRole('button');
+  await expect(toolbarButtons).toHaveText(['Make draft', '']);
+  await expect(toolbarButtons.last()).toHaveAccessibleName('Delete card');
+  const deleteBox = (await toolbarButtons.last().boundingBox())!;
+  const makeDraftBox = (await toolbarButtons.first().boundingBox())!;
+  expect(deleteBox.x).toBeGreaterThan(makeDraftBox.x + makeDraftBox.width - 1);
+  expect(Math.abs(deleteBox.y - tabsBox.y)).toBeLessThan(tabsBox.height);
   await expect(panel.getByText(/^(Idle|Running|Pending)$/)).toHaveCount(0);
 });
 
@@ -79,7 +87,8 @@ test('History shows the newest status change first with its actor and reason', a
   page,
 }) => {
   await card(page, 8).click();
-  const history = details(page).getByRole('list');
+  await details(page).getByRole('tab', { name: /^History/ }).click();
+  const history = details(page).getByRole('tabpanel').getByRole('list');
   await expect(history.getByRole('listitem')).toHaveText([
     /^10\/02 09:48DoneMoved card$/,
     /^10\/01 16:30DoingMoved card$/,
@@ -87,9 +96,12 @@ test('History shows the newest status change first with its actor and reason', a
   ]);
   await expect(history.getByRole('img', { name: 'AI', exact: true })).toHaveCount(3);
   await expect(history.getByText('Created')).toHaveCount(1);
-  await expect(details(page).getByRole('heading', { name: 'History' })).toBeVisible();
+  await expect(details(page).getByRole('tab', { name: 'History 3' })).toHaveAttribute('aria-selected', 'true');
 
+  // Another card opens on the description again.
   await card(page, 14).click();
+  await expect(details(page).getByRole('tab', { name: 'Description' })).toHaveAttribute('aria-selected', 'true');
+  await details(page).getByRole('tab', { name: /^History/ }).click();
   await expect(history.getByRole('listitem')).toHaveText([/^Created · 10\/02 03:00Todo$/]);
 });
 
@@ -160,10 +172,14 @@ test('the card grips never take keyboard focus', async ({ page }) => {
     'BUTTON #8',
   ]);
 
-  // The detail panel exposes its close and delete actions; the grip itself never receives focus.
+  // The detail panel exposes close, the selected tab, and the toolbar actions; the grip itself never receives focus.
   await card(page, 8).click();
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Close details' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(details(page).getByRole('tab', { name: 'Description' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Delete card' })).toBeFocused();
 
@@ -173,6 +189,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  expect(focusable).toHaveLength(1 + 1 + 1 + 8 + 2);
+  // Project switcher, Add card, Settings, 8 cards, then Close details, the selected tab, Make draft, and Delete card.
+  expect(focusable).toHaveLength(1 + 1 + 1 + 8 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

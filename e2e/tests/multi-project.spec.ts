@@ -29,6 +29,8 @@ const synced = (page: Page) => page.getByRole('contentinfo').getByRole('status')
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
 const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
+/** The request of a pending card, above the tabs, where the answer is typed in place. */
+const request = (page: Page) => details(page).getByRole('region', { name: 'The agent is waiting for your answer' });
 /**
  * The project switcher, the first button in the header. An open menu or dialog hides the page behind it
  * from the accessibility tree, so it is found by CSS, which works in every state.
@@ -188,16 +190,17 @@ test.describe('two projects with the same card numbers', () => {
     await expect(page.getByRole('contentinfo')).toContainText('3 cards');
     await card(page, 2).click();
     await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Alpha: choose the license');
+    await details(page).getByRole('tab', { name: /^History/ }).click();
     await expect(details(page).getByRole('listitem')).toHaveCount(3);
 
     const betaBefore = snapshotOf('Beta', home);
     const fresh = nextCardId('Alpha', home);
 
     // Answer the pending request in Alpha with the board's own dialog.
-    await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
-    const answer = page.getByRole('dialog', { name: 'Answer request' });
-    await answer.getByRole('textbox', { name: 'Answer and direction (required)' }).fill('Use the MIT license.');
-    await answer.getByRole('button', { name: 'Send answer' }).click();
+    await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
+    const answer = request(page);
+    await answer.getByRole('textbox', { name: 'Your answer' }).fill('Use the MIT license.');
+    await answer.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(answer).toHaveCount(0);
     await expect(card(page, 2)).toContainText('Idle');
     await expect(details(page).getByRole('listitem').first()).toContainText('Use the MIT license.');
@@ -205,9 +208,9 @@ test.describe('two projects with the same card numbers', () => {
 
     // Create a card in Alpha; it gets the next Alpha number.
     await page.getByRole('button', { name: 'Add card' }).click();
-    const create = page.getByRole('dialog', { name: 'Add a card' });
-    await create.getByRole('textbox', { name: 'Title (required)' }).fill('Alpha: made on the page');
-    await create.getByRole('button', { name: 'Create card' }).click();
+    const create = page.getByRole('dialog', { name: 'Add card' });
+    await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Alpha: made on the page');
+    await create.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(create).toHaveCount(0);
     await expect(card(page, fresh)).toContainText('Alpha: made on the page');
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
@@ -236,14 +239,15 @@ test.describe('two projects with the same card numbers', () => {
     await expect(page.getByText('Alpha:')).toHaveCount(0);
     await expect(page.getByText('Use the MIT license.')).toHaveCount(0);
     await card(page, 2).click();
+    await details(page).getByRole('tab', { name: /^History/ }).click();
     await expect(details(page).getByRole('listitem')).toHaveCount(3);
 
     // And acting in Beta leaves Alpha as it was.
     const alphaBefore = snapshotOf('Alpha', home);
-    await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
-    const betaAnswer = page.getByRole('dialog', { name: 'Answer request' });
-    await betaAnswer.getByRole('textbox', { name: 'Answer and direction (required)' }).fill('Use SQLite.');
-    await betaAnswer.getByRole('button', { name: 'Send answer' }).click();
+    await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
+    const betaAnswer = request(page);
+    await betaAnswer.getByRole('textbox', { name: 'Your answer' }).fill('Use SQLite.');
+    await betaAnswer.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(betaAnswer).toHaveCount(0);
     await expect(card(page, 2)).toContainText('Idle');
     expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
@@ -373,7 +377,7 @@ test.describe('two projects with the same card numbers', () => {
       let close: () => Promise<void>;
       if (kind === 'create') {
         await page.getByRole('button', { name: 'Add card' }).click();
-        const dialog = page.getByRole('dialog', { name: 'Add a card' });
+        const dialog = page.getByRole('dialog', { name: 'Add card' });
         close = async () => {
           await dialog.getByRole('button', { name: 'Cancel' }).click();
         };
@@ -384,8 +388,8 @@ test.describe('two projects with the same card numbers', () => {
         };
       } else if (kind === 'answer') {
         await card(page, 2).click();
-        await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
-        const dialog = page.getByRole('dialog', { name: 'Answer request' });
+        await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
+        const dialog = request(page);
         close = async () => {
           await dialog.getByRole('button', { name: 'Cancel' }).click();
         };
@@ -421,8 +425,8 @@ test.describe('two projects with the same card numbers', () => {
     const fresh = nextCardId('Beta', home);
 
     await page.getByRole('button', { name: 'Add card' }).click();
-    const create = page.getByRole('dialog', { name: 'Add a card' });
-    await create.getByRole('textbox', { name: 'Title (required)' }).fill('Typed in Beta');
+    const create = page.getByRole('dialog', { name: 'Add card' });
+    await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed in Beta');
     // The browser walks the history back and forth several times while the form is open.
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
@@ -432,11 +436,11 @@ test.describe('two projects with the same card numbers', () => {
     await expect.poll(() => projectParam(page)).toBe(alpha);
     // The form stays, with what was typed, on the project it was opened in.
     await expect(create).toBeVisible();
-    await expect(create.getByRole('textbox', { name: 'Title (required)' })).toHaveValue('Typed in Beta');
+    await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed in Beta');
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
     await expect(switcherBehindDialog(page)).toBeDisabled();
 
-    await create.getByRole('button', { name: 'Create card' }).click();
+    await create.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(create).toHaveCount(0);
     // Done: the latest URL (Alpha) is shown now.
     await expect(switcher(page)).toHaveText('Alpha');
@@ -463,8 +467,8 @@ test.describe('two projects with the same card numbers', () => {
 
     // Cancel: the form closes and the screen follows the URL (Alpha).
     await page.getByRole('button', { name: 'Add card' }).click();
-    const create = page.getByRole('dialog', { name: 'Add a card' });
-    await create.getByRole('textbox', { name: 'Title (required)' }).fill('Never saved');
+    const create = page.getByRole('dialog', { name: 'Add card' });
+    await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Never saved');
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
@@ -493,12 +497,12 @@ test.describe('two projects with the same card numbers', () => {
     await page.goForward();
     await expect(switcher(page)).toHaveText('Beta');
     await card(page, 2).click();
-    await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
-    const answer = page.getByRole('dialog', { name: 'Answer request' });
-    await answer.getByRole('textbox', { name: 'Answer and direction (required)' }).fill('Beta answer.');
+    await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
+    const answer = request(page);
+    await answer.getByRole('textbox', { name: 'Your answer' }).fill('Beta answer.');
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
-    await answer.getByRole('button', { name: 'Send answer' }).click();
+    await answer.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(answer).toHaveCount(0);
     await expect(switcher(page)).toHaveText('Alpha');
     expect(listCards('Beta', home).find(({ id }) => id === 2)?.agentStatus).toBe('idle');
@@ -529,12 +533,12 @@ test.describe('two projects with the same card numbers', () => {
     });
 
     await page.getByRole('button', { name: 'Add card' }).click();
-    const create = page.getByRole('dialog', { name: 'Add a card' });
-    await create.getByRole('textbox', { name: 'Title (required)' }).fill('Kept title');
-    await create.getByRole('button', { name: 'Create card' }).click();
-    await expect(create.getByRole('alert')).toHaveText('The storage is busy.');
+    const create = page.getByRole('dialog', { name: 'Add card' });
+    await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Kept title');
+    await create.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(create.getByRole('alert')).toContainText('The storage is busy.');
     // Failure: the input is kept, the form stays on Beta, and the menu stays disabled.
-    await expect(create.getByRole('textbox', { name: 'Title (required)' })).toHaveValue('Kept title');
+    await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Kept title');
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
     await expect(switcherBehindDialog(page)).toBeDisabled();
     expect(listCards('Beta', home).map(({ title }) => title)).not.toContain('Kept title');
@@ -542,7 +546,7 @@ test.describe('two projects with the same card numbers', () => {
     // Saving: the answer is slow; during it the URL changes and the form cannot be left.
     mode = 'hold';
     const fresh = nextCardId('Beta', home);
-    await create.getByRole('button', { name: 'Create card' }).click();
+    await create.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(create.getByRole('button', { name: 'Saving…' })).toBeDisabled();
     await expect(switcherBehindDialog(page)).toBeDisabled();
     await page.goBack();
@@ -630,10 +634,10 @@ test.describe('two projects with the same card numbers', () => {
       // The person answers the request of Alpha's card #2 on the page.
       await open(page, alpha);
       await card(page, 2).click();
-      await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
-      const answer = page.getByRole('dialog', { name: 'Answer request' });
-      await answer.getByRole('textbox', { name: 'Answer and direction (required)' }).fill('Use the MIT license, please.');
-      await answer.getByRole('button', { name: 'Send answer' }).click();
+      await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
+      const answer = request(page);
+      await answer.getByRole('textbox', { name: 'Your answer' }).fill('Use the MIT license, please.');
+      await answer.getByRole('button', { name: 'Send', exact: true }).click();
       await expect(answer).toHaveCount(0);
 
       expect(await ended).toBe(0);
@@ -843,12 +847,14 @@ test.describe('two projects with the same card numbers', () => {
     await menuItem(page, 'Beta').click();
     await expect(switcher(page)).toHaveText('Beta');
     await expect(lane(page, '進行中').getByRole('button', { name: /^#2 AI 待機中 Beta: pick the database / })).toBeVisible();
-    // The answer dialog, in Japanese, for Beta's own request.
+    // The answer, in Japanese and typed in place, for Beta's own request.
     await card(page, 2).click();
-    await page.getByRole('complementary', { name: 'カードの詳細' }).getByRole('button', { name: '回答する', exact: true }).click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await page.keyboard.press('Escape');
+    const japanesePanel = page.getByRole('complementary', { name: 'カードの詳細' });
+    await japanesePanel.getByRole('button', { name: '回答する', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(japanesePanel.getByRole('textbox', { name: '回答' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(japanesePanel.getByRole('textbox')).toHaveCount(0);
 
     // The detail width a person chose belongs to the screen, not to the project.
     const panel = page.getByRole('complementary', { name: 'カードの詳細' });
