@@ -18,11 +18,11 @@ fn user_version(path: &std::path::Path) -> i64 {
 }
 
 #[test]
-fn a_new_database_gets_schema_version_3() {
+fn a_new_database_gets_schema_version_4() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
     ProjectStore::open(&path).unwrap();
-    assert_eq!(user_version(&path), 3);
+    assert_eq!(user_version(&path), 4);
 
     let conn = Connection::open(&path).unwrap();
     let mut tables: Vec<String> = conn
@@ -124,7 +124,7 @@ fn make_database_with_version(path: &std::path::Path, version: i64) {
 
 #[test]
 fn a_newer_schema_version_is_refused_and_left_untouched() {
-    for version in [4, 99] {
+    for version in [5, 99] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("board.db");
         make_database_with_version(&path, version);
@@ -151,7 +151,7 @@ fn a_newer_schema_version_is_refused_and_left_untouched() {
 
 #[test]
 fn an_older_schema_version_is_refused_without_conversion_and_left_untouched() {
-    for version in [1, 2] {
+    for version in [1, 2, 3] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("board.db");
         make_database_with_version(&path, version);
@@ -185,5 +185,54 @@ fn a_file_that_is_not_a_database_is_a_database_error() {
     let before = std::fs::read(&path).unwrap();
     let err = ProjectStore::open(&path).err().expect("open must fail");
     assert!(matches!(err, SkanError::DatabaseError { .. }), "{err:?}");
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+}
+
+#[test]
+fn schema_4_has_the_draft_column_and_its_checks() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("board.db");
+    let store = ProjectStore::open(&path).unwrap();
+    let project = store.create_project("main", now()).unwrap().id;
+    store
+        .add_work_card(
+            &project,
+            NewCard {
+                title: "a".into(),
+                description: "".into(),
+                assignee: Assignee::Ai,
+                actor: Actor::Ai,
+            },
+            now(),
+        )
+        .unwrap();
+    let conn = Connection::open(&path).unwrap();
+    let default: i64 = conn
+        .query_row("SELECT is_draft FROM cards WHERE id = 1", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(default, 0);
+    assert!(
+        conn.execute("UPDATE cards SET is_draft = 2 WHERE id = 1", [])
+            .is_err()
+    );
+    conn.execute("UPDATE cards SET is_draft = 1 WHERE id = 1", [])
+        .unwrap();
+    // a draft must be idle: the card cannot move to running, even in doing
+    conn.execute("UPDATE cards SET column_name = 'doing' WHERE id = 1", [])
+        .unwrap();
+    assert!(
+        conn.execute("UPDATE cards SET run_state = 'running' WHERE id = 1", [])
+            .is_err()
+    );
+}
+
+#[test]
+fn an_unversioned_database_with_tables_is_rejected_and_untouched() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("board.db");
+    make_database_with_version(&path, 0);
+    let before = std::fs::read(&path).unwrap();
+    let err = ProjectStore::open(&path).err().unwrap();
+    assert!(matches!(err, SkanError::DatabaseError { .. }));
     assert_eq!(std::fs::read(&path).unwrap(), before);
 }

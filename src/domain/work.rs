@@ -79,6 +79,9 @@ pub struct Card {
     pub updated_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
+    /// A draft is read-only for agents until the user finalizes it.
+    #[serde(default)]
+    pub is_draft: bool,
     pub history: Vec<HistoryEvent>,
 }
 

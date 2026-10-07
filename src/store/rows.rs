@@ -124,7 +124,8 @@ pub(super) fn load_card(
 ) -> Result<Card, SkanError> {
     let mut stmt = conn.prepare(
         "SELECT id, title, description, assignee, column_name, position, run_state,
-                pending_reason, pending_request_id, created_at, updated_at, run_state_changed_at
+                pending_reason, pending_request_id, created_at, updated_at, run_state_changed_at,
+                is_draft
          FROM cards WHERE project_id = ?1 AND id = ?2",
     )?;
     let mut card = stmt
@@ -159,6 +160,7 @@ pub(super) fn load_card(
                 created_at: time(9)?,
                 updated_at: time(10)?,
                 agent_status_changed_at: time(11)?,
+                is_draft: r.get::<_, i64>(12)? != 0,
                 history: Vec::new(),
             })
         })
@@ -227,8 +229,8 @@ pub(super) fn insert_cards(
         conn.execute(
             "INSERT INTO cards (project_id, id, title, description, assignee, column_name, position,
                                 run_state, pending_reason, pending_request_id, created_at,
-                                updated_at, run_state_changed_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                                updated_at, run_state_changed_at, is_draft)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             params![
                 project_id.as_str(),
                 card.id,
@@ -243,6 +245,7 @@ pub(super) fn insert_cards(
                 format_utc(card.created_at),
                 format_utc(card.updated_at),
                 format_utc(card.agent_status_changed_at),
+                i64::from(card.is_draft),
             ],
         )?;
         for event in &card.history {

@@ -75,6 +75,9 @@ impl Backup {
                     "Card agentStatus is invalid for its assignee or cardStatus.",
                 ));
             }
+            if card.is_draft && card.agent_status != RunState::Idle {
+                return Err(invalid("A draft card must have agentStatus idle."));
+            }
             if card.history.is_empty() {
                 return Err(invalid("Every card must include its created history."));
             }

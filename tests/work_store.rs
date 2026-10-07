@@ -298,3 +298,411 @@ fn moving_a_running_card_to_done_records_one_lane_event_and_resets_idle() {
     assert_eq!(event.from_agent_status, Some(RunState::Running));
     assert_eq!(event.to_agent_status, RunState::Idle);
 }
+
+mod drafts {
+    use super::*;
+    use agent_board::domain::ProjectId;
+    use agent_board::error::SkanError;
+
+    fn later(minutes: i64) -> chrono::DateTime<Utc> {
+        now() + chrono::Duration::minutes(minutes)
+    }
+
+    fn new_card(title: &str) -> NewCard {
+        NewCard {
+            title: title.into(),
+            description: String::new(),
+            assignee: Assignee::Ai,
+            actor: Actor::Ai,
+        }
+    }
+
+    fn setup() -> (tempfile::TempDir, ProjectStore, ProjectId) {
+        let dir = tempdir().unwrap();
+        let store = ProjectStore::open(&dir.path().join("board.db")).unwrap();
+        let project = store.create_project("Drafts", now()).unwrap().id;
+        store
+            .add_work_card(&project, new_card("one"), now())
+            .unwrap();
+        store
+            .add_work_card(&project, new_card("two"), later(1))
+            .unwrap();
+        (dir, store, project)
+    }
+
+    #[test]
+    fn descriptions_up_to_fifty_thousand_characters_are_stored() {
+        let (_dir, store, project) = setup();
+        let long = "あ".repeat(50_000);
+        let edited = store
+            .edit_card(&project, 1, None, Some(&long), later(2))
+            .unwrap();
+        assert_eq!(edited.value.description.chars().count(), 50_000);
+        let before = store.snapshot(&project).unwrap();
+        let err = store
+            .edit_card(&project, 1, None, Some(&"あ".repeat(50_001)), later(3))
+            .unwrap_err();
+        assert!(matches!(err, SkanError::InvalidValue { .. }));
+        assert_eq!(store.snapshot(&project).unwrap(), before);
+    }
+
+    #[test]
+    fn a_new_card_is_not_a_draft_and_json_carries_is_draft() {
+        let (_dir, store, project) = setup();
+        let card = store.card(&project, 1).unwrap();
+        assert!(!card.is_draft);
+        assert_eq!(serde_json::to_value(&card).unwrap()["isDraft"], false);
+    }
+
+    #[test]
+    fn set_draft_toggles_bumps_only_the_revision_and_is_idempotent() {
+        let (_dir, store, project) = setup();
+        let before = store.snapshot(&project).unwrap();
+        let drafted = store.set_draft(&project, 1, true).unwrap();
+        assert!(drafted.changed);
+        assert!(drafted.value.is_draft);
+        let after = store.snapshot(&project).unwrap();
+        assert_eq!(after.revision, before.revision + 1);
+        assert_eq!(drafted.value.updated_at, before.cards[0].updated_at);
+        assert_eq!(
+            drafted.value.agent_status_changed_at,
+            before.cards[0].agent_status_changed_at
+        );
+        assert_eq!(drafted.value.history, before.cards[0].history);
+        // the other card is untouched
+        assert_eq!(after.cards[1], before.cards[1]);
+
+        let same = store.set_draft(&project, 1, true).unwrap();
+        assert!(!same.changed);
+        assert_eq!(store.snapshot(&project).unwrap().revision, after.revision);
+
+        let back = store.set_draft(&project, 1, false).unwrap();
+        assert!(back.changed);
+        assert!(!back.value.is_draft);
+        assert_eq!(back.value.updated_at, before.cards[0].updated_at);
+        assert_eq!(
+            store.snapshot(&project).unwrap().revision,
+            after.revision + 1
+        );
+        let same = store.set_draft(&project, 1, false).unwrap();
+        assert!(!same.changed);
+    }
+
+    #[test]
+    fn set_draft_fails_for_missing_cards() {
+        let (_dir, store, project) = setup();
+        assert_eq!(
+            store.set_draft(&project, 9, true).unwrap_err(),
+            SkanError::CardNotFound { id: 9 }
+        );
+    }
+
+    #[test]
+    fn running_and_pending_cards_cannot_become_drafts() {
+        let (_dir, store, project) = setup();
+        store
+            .move_work_card(
+                &project,
+                1,
+                Column::Doing,
+                context(Actor::Ai, "go"),
+                later(2),
+            )
+            .unwrap();
+        store
+            .set_agent_status(
+                &project,
+                1,
+                RunState::Running,
+                context(Actor::Ai, "work"),
+                None,
+                later(3),
+            )
+            .unwrap();
+        let before = store.snapshot(&project).unwrap();
+        assert_eq!(
+            store.set_draft(&project, 1, true).unwrap_err(),
+            SkanError::InvalidStateForDraft {
+                id: 1,
+                state: RunState::Running
+            }
+        );
+        store
+            .set_agent_status(
+                &project,
+                1,
+                RunState::Pending,
+                context(Actor::Ai, "ask"),
+                None,
+                later(4),
+            )
+            .unwrap();
+        let before_pending = store.snapshot(&project).unwrap();
+        assert!(before.revision < before_pending.revision);
+        assert!(matches!(
+            store.set_draft(&project, 1, true).unwrap_err(),
+            SkanError::InvalidStateForDraft {
+                state: RunState::Pending,
+                ..
+            }
+        ));
+        assert_eq!(store.snapshot(&project).unwrap(), before_pending);
+    }
+
+    #[test]
+    fn a_draft_blocks_agent_writes_without_changing_anything() {
+        let (_dir, store, project) = setup();
+        store.set_draft(&project, 1, true).unwrap();
+        let before = store.snapshot(&project).unwrap();
+        let blocked = SkanError::CardIsDraft { id: 1 };
+        assert_eq!(
+            store
+                .edit_card(&project, 1, Some("new"), None, later(5))
+                .unwrap_err(),
+            blocked
+        );
+        assert_eq!(
+            store
+                .move_work_card(
+                    &project,
+                    1,
+                    Column::Doing,
+                    context(Actor::Ai, "go"),
+                    later(5)
+                )
+                .unwrap_err(),
+            blocked
+        );
+        // same-lane moves and unchanged edits are blocked too, whoever the actor is
+        assert_eq!(
+            store
+                .move_work_card(
+                    &project,
+                    1,
+                    Column::Todo,
+                    context(Actor::Human, "stay"),
+                    later(5)
+                )
+                .unwrap_err(),
+            blocked
+        );
+        assert_eq!(
+            store
+                .set_agent_status(
+                    &project,
+                    1,
+                    RunState::Idle,
+                    context(Actor::Human, "x"),
+                    None,
+                    later(5)
+                )
+                .unwrap_err(),
+            blocked
+        );
+        assert_eq!(store.snapshot(&project).unwrap(), before);
+    }
+
+    #[test]
+    fn user_moves_work_on_drafts_and_other_writes_are_not_blocked() {
+        let (_dir, store, project) = setup();
+        store.set_draft(&project, 1, true).unwrap();
+        let moved = store
+            .move_work_card_for_user(
+                &project,
+                1,
+                Column::Doing,
+                context(Actor::Human, "Start"),
+                later(5),
+            )
+            .unwrap();
+        assert!(moved.changed);
+        assert!(moved.value.is_draft);
+        assert_eq!(moved.value.card_status, Column::Doing);
+        assert_eq!(moved.value.history.len(), 2);
+        // adding a card and deleting a draft are allowed
+        store
+            .add_work_card(&project, new_card("three"), later(6))
+            .unwrap();
+        store.delete_card(&project, 1).unwrap();
+        assert!(matches!(
+            store.card(&project, 1),
+            Err(SkanError::CardNotFound { .. })
+        ));
+    }
+
+    #[test]
+    fn user_move_behaves_like_move_for_non_drafts() {
+        let (_dir, store, project) = setup();
+        let moved = store
+            .move_work_card_for_user(
+                &project,
+                2,
+                Column::Doing,
+                context(Actor::Human, "Start"),
+                later(5),
+            )
+            .unwrap();
+        assert!(moved.changed);
+        let same = store
+            .move_work_card_for_user(
+                &project,
+                2,
+                Column::Doing,
+                context(Actor::Human, "Start"),
+                later(6),
+            )
+            .unwrap();
+        assert!(!same.changed);
+    }
+
+    #[test]
+    fn finalizing_unblocks_agent_writes_and_drafts_are_per_card_and_project() {
+        let (_dir, store, project) = setup();
+        let other = store.create_project("Other", later(1)).unwrap().id;
+        store
+            .add_work_card(&other, new_card("same id"), later(1))
+            .unwrap();
+        store.set_draft(&project, 1, true).unwrap();
+        // card 2 and the other project's card 1 are not drafts
+        store
+            .edit_card(&project, 2, Some("fine"), None, later(5))
+            .unwrap();
+        store
+            .edit_card(&other, 1, Some("fine"), None, later(5))
+            .unwrap();
+        store.set_draft(&project, 1, false).unwrap();
+        store
+            .edit_card(&project, 1, Some("now ok"), None, later(6))
+            .unwrap();
+    }
+
+    #[test]
+    fn answer_request_is_not_blocked_by_the_draft_check() {
+        let (_dir, store, project) = setup();
+        store.set_draft(&project, 2, true).unwrap();
+        // answering a request that does not exist still fails as before
+        assert_eq!(
+            store
+                .answer_request(&project, 2, "nope", context(Actor::Human, "a"), later(5))
+                .unwrap_err(),
+            SkanError::RequestChanged
+        );
+    }
+
+    #[test]
+    fn edit_draft_card_requires_a_draft() {
+        let (_dir, store, project) = setup();
+        let before = store.snapshot(&project).unwrap();
+        assert_eq!(
+            store
+                .edit_draft_card(&project, 1, Some("x"), None, false, later(5))
+                .unwrap_err(),
+            SkanError::CardNotDraft { id: 1 }
+        );
+        assert_eq!(store.snapshot(&project).unwrap(), before);
+    }
+
+    #[test]
+    fn edit_draft_card_saves_and_finalizes() {
+        let (_dir, store, project) = setup();
+        store.set_draft(&project, 1, true).unwrap();
+        let base = store.snapshot(&project).unwrap();
+
+        // title only
+        let a = store
+            .edit_draft_card(&project, 1, Some("Title"), None, false, later(5))
+            .unwrap();
+        assert!(a.changed && a.value.is_draft);
+        assert_eq!(a.value.title, "Title");
+        assert_eq!(a.value.updated_at, later(5));
+        assert_eq!(
+            store.snapshot(&project).unwrap().revision,
+            base.revision + 1
+        );
+
+        // description only (CRLF normalized)
+        let b = store
+            .edit_draft_card(&project, 1, None, Some("a\r\nb"), false, later(6))
+            .unwrap();
+        assert_eq!(b.value.description, "a\nb");
+        assert_eq!(b.value.updated_at, later(6));
+
+        // nothing changes
+        let rev = store.snapshot(&project).unwrap().revision;
+        let c = store
+            .edit_draft_card(&project, 1, Some("Title"), Some("a\nb"), false, later(7))
+            .unwrap();
+        assert!(!c.changed);
+        assert_eq!(c.value.updated_at, later(6));
+        assert_eq!(store.snapshot(&project).unwrap().revision, rev);
+
+        // finalize alone: revision +1, updated_at unchanged
+        let d = store
+            .edit_draft_card(&project, 1, None, None, true, later(8))
+            .unwrap();
+        assert!(d.changed && !d.value.is_draft);
+        assert_eq!(d.value.updated_at, later(6));
+        assert_eq!(store.snapshot(&project).unwrap().revision, rev + 1);
+        // history untouched by all of this
+        assert_eq!(d.value.history, base.cards[0].history);
+    }
+
+    #[test]
+    fn edit_draft_card_saves_and_finalizes_in_one_step() {
+        let (_dir, store, project) = setup();
+        store.set_draft(&project, 1, true).unwrap();
+        let rev = store.snapshot(&project).unwrap().revision;
+        let done = store
+            .edit_draft_card(&project, 1, Some("T"), Some("body"), true, later(5))
+            .unwrap();
+        assert!(done.changed && !done.value.is_draft);
+        assert_eq!(done.value.title, "T");
+        assert_eq!(store.snapshot(&project).unwrap().revision, rev + 1);
+    }
+
+    #[test]
+    fn a_failed_validation_leaves_the_draft_and_its_text_untouched() {
+        let (_dir, store, project) = setup();
+        store.set_draft(&project, 1, true).unwrap();
+        let before = store.snapshot(&project).unwrap();
+        assert!(matches!(
+            store.edit_draft_card(
+                &project,
+                1,
+                Some("ok"),
+                Some(&"a".repeat(50_001)),
+                true,
+                later(5)
+            ),
+            Err(SkanError::InvalidValue { .. })
+        ));
+        assert!(matches!(
+            store.edit_draft_card(&project, 1, Some(""), None, true, later(5)),
+            Err(SkanError::InvalidValue { .. })
+        ));
+        assert_eq!(store.snapshot(&project).unwrap(), before);
+    }
+
+    #[test]
+    fn a_racing_draft_switch_and_edit_leave_one_consistent_result() {
+        for _ in 0..20 {
+            let (dir, store, project) = setup();
+            let second = ProjectStore::open(&dir.path().join("board.db")).unwrap();
+            let p2 = project.clone();
+            let handle = std::thread::spawn(move || {
+                second.edit_card(&p2, 1, Some("edited"), None, later(9))
+            });
+            let drafted = store.set_draft(&project, 1, true);
+            let edited = handle.join().unwrap();
+            drafted.unwrap();
+            let card = store.card(&project, 1).unwrap();
+            assert!(card.is_draft);
+            match edited {
+                Ok(_) => assert_eq!(card.title, "edited"),
+                Err(SkanError::CardIsDraft { id: 1 }) => assert_eq!(card.title, "one"),
+                Err(SkanError::DatabaseBusy) => {}
+                Err(other) => panic!("unexpected {other:?}"),
+            }
+        }
+    }
+}

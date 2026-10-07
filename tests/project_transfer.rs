@@ -650,3 +650,85 @@ mod commands {
         assert_eq!(f.store.project_by_name("A").unwrap().name, "A");
     }
 }
+
+#[test]
+fn drafts_survive_an_export_and_import_round_trip() {
+    let f = fixture();
+    let id = f.store.create_project("Drafts", now()).unwrap().id;
+    f.store.add_work_card(&id, card("plain"), now()).unwrap();
+    f.store.add_work_card(&id, card("draft"), later(1)).unwrap();
+    f.store.set_draft(&id, 2, true).unwrap();
+    let text = serde_json::to_string_pretty(&backup_of(&f.store, &id)).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(value["cards"][0]["isDraft"], false);
+    assert_eq!(value["cards"][1]["isDraft"], true);
+
+    let board = serde_json::from_str::<Backup>(&text)
+        .unwrap()
+        .validate()
+        .unwrap();
+    let copy = f.store.create_from_backup("Drafts", &board);
+    assert!(copy.is_err(), "name is taken");
+    f.store.restore_project(&id, &board).unwrap();
+    let cards = f.store.snapshot(&id).unwrap().cards;
+    assert!(!cards[0].is_draft);
+    assert!(cards[1].is_draft);
+}
+
+#[test]
+fn a_backup_without_is_draft_imports_as_non_drafts() {
+    let f = fixture();
+    let id = f.store.create_project("Old", now()).unwrap().id;
+    f.store.add_work_card(&id, card("one"), now()).unwrap();
+    let text = serde_json::to_string(&backup_of(&f.store, &id)).unwrap();
+    let mut value: serde_json::Value = serde_json::from_str(&text).unwrap();
+    for c in value["cards"].as_array_mut().unwrap() {
+        c.as_object_mut().unwrap().remove("isDraft");
+    }
+    let board = serde_json::from_value::<Backup>(value)
+        .unwrap()
+        .validate()
+        .unwrap();
+    let created = {
+        f.store.delete_project(&id).ok();
+        f.store.create_from_backup("Old", &board).unwrap()
+    };
+    let cards = f.store.snapshot(&created.id).unwrap().cards;
+    assert_eq!(cards.len(), 1);
+    assert!(!cards[0].is_draft);
+}
+
+#[test]
+fn a_draft_that_is_not_idle_is_rejected() {
+    let f = fixture();
+    let id = busy_project(&f.store, "Busy", now());
+    let mut value = serde_json::to_value(backup_of(&f.store, &id)).unwrap();
+    value["cards"][0]["isDraft"] = serde_json::json!(true);
+    let err = serde_json::from_value::<Backup>(value)
+        .unwrap()
+        .validate()
+        .unwrap_err();
+    assert!(matches!(err, SkanError::ImportInvalid { .. }));
+}
+
+#[test]
+fn a_backup_description_over_the_limit_is_rejected_and_the_limit_is_accepted() {
+    let f = fixture();
+    let id = f.store.create_project("Long", now()).unwrap().id;
+    f.store.add_work_card(&id, card("one"), now()).unwrap();
+    let mut value = serde_json::to_value(backup_of(&f.store, &id)).unwrap();
+    value["cards"][0]["description"] = serde_json::json!("a".repeat(50_000));
+    assert!(
+        serde_json::from_value::<Backup>(value.clone())
+            .unwrap()
+            .validate()
+            .is_ok()
+    );
+    value["cards"][0]["description"] = serde_json::json!("a".repeat(50_001));
+    assert!(
+        serde_json::from_value::<Backup>(value)
+            .unwrap()
+            .validate()
+            .is_err()
+    );
+}

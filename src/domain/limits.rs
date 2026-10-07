@@ -3,7 +3,7 @@ use crate::error::SkanError;
 const NAME_MAX: usize = 50;
 const TITLE_MAX: usize = 100;
 const REASON_MAX: usize = 100;
-const DESCRIPTION_MAX: usize = 300;
+const DESCRIPTION_MAX: usize = 50_000;
 
 fn invalid(field: &str, reason: impl Into<String>) -> SkanError {
     SkanError::InvalidValue {
@@ -47,7 +47,7 @@ pub fn validate_title(value: &str) -> Result<String, SkanError> {
         .ok_or_else(|| invalid("title", "Titles must be 1 to 100 characters on one line."))
 }
 
-/// Convert CRLF to LF, then require at most 300 Unicode scalar values.
+/// Convert CRLF to LF, then require at most 50,000 Unicode scalar values.
 /// Surrounding whitespace is kept.
 pub fn normalize_and_validate_description(value: &str) -> Result<String, SkanError> {
     let normalized = value.replace("\r\n", "\n");
@@ -55,7 +55,7 @@ pub fn normalize_and_validate_description(value: &str) -> Result<String, SkanErr
     if count > DESCRIPTION_MAX {
         return Err(invalid(
             "description",
-            format!("Descriptions must be 300 characters or fewer. This one has {count}."),
+            format!("Descriptions must be 50,000 characters or fewer. This one has {count}."),
         ));
     }
     Ok(normalized)
