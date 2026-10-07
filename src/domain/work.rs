@@ -82,10 +82,33 @@ pub struct Card {
     pub history: Vec<HistoryEvent>,
 }
 
+/// One project's board read in a single transaction: the project, its board
+/// metadata, revision, the cursor for that revision and every card with its
+/// full history.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BoardSnapshot {
+    pub project: super::ProjectMeta,
     pub board: super::BoardMeta,
     pub revision: i64,
+    pub cursor: super::ChangeCursor,
+    pub cards: Vec<Card>,
+}
+
+/// A snapshot with the time it was fetched, as the CLI, the hook and wait
+/// print it. The fetch time is added by the reader, never stored.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FetchedSnapshot<'a> {
+    pub fetched_at: String,
+    #[serde(flatten)]
+    pub snapshot: &'a BoardSnapshot,
+}
+
+/// A backup that passed every check, ready to be restored. It carries only
+/// what the backup file holds: no project ID, revision or cursor.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidatedBoard {
+    pub metadata: super::BoardMeta,
     pub cards: Vec<Card>,
 }

@@ -2,24 +2,30 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { deleteCard } from '../api';
-import type { Card } from '../types';
+import type { Card, ProjectId } from '../types';
 
 export interface DeleteConfirmProps {
+  /** The project the confirmation was opened in. The delete goes there, whatever is shown later. */
+  projectId: ProjectId;
   card: Card;
   /** The confirmation was opened by the user, so keyboard focus moves into it. */
   focusOnMount: boolean;
   /** Mock mode only: start in the failed state. */
   initialFailed?: boolean;
   onCancel: () => void;
+  /** Reports that the delete started (`true`) or failed and the confirmation stays (`false`). */
+  onSavingChange?: (saving: boolean) => void;
   /** Called when the card is gone, whether this request deleted it (204) or it was already gone (404). */
   onDeleted: () => void;
 }
 
 export function DeleteConfirm({
+  projectId,
   card,
   focusOnMount,
   initialFailed = false,
   onCancel,
+  onSavingChange,
   onDeleted,
 }: DeleteConfirmProps) {
   const { t } = useTranslation();
@@ -35,9 +41,11 @@ export function DeleteConfirm({
   const confirm = async () => {
     setBusy(true);
     setFailed(false);
-    const result = await deleteCard(card.id);
+    onSavingChange?.(true);
+    const result = await deleteCard(projectId, card.id);
     setBusy(false);
     if (result === 'failed') {
+      onSavingChange?.(false);
       setFailed(true);
     } else {
       onDeleted();

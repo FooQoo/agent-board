@@ -1,7 +1,31 @@
-import type { Board, Card } from '../src/types';
+import type { Board, Card, Project } from '../src/types';
 import boardJson from './fixtures/board.json';
 
 export const fixtureBoard = boardJson as Board;
+
+export const PROJECT_A: Project = fixtureBoard.project;
+export const PROJECT_B: Project = {
+  id: 'b2c3d4e5f60718293a4b5c6d7e8f90a1',
+  name: 'knowledge',
+  createdAt: '2026-10-01T08:00:00Z',
+};
+export const PROJECT_C: Project = {
+  id: 'c3d4e5f60718293a4b5c6d7e8f90a1b2',
+  name: 'tech-blog',
+  createdAt: '2026-10-01T09:00:00Z',
+};
+export const PROJECTS: Project[] = [PROJECT_A, PROJECT_B, PROJECT_C];
+
+/** A board of `project` with `cards`. */
+export function boardOf(project: Project, cards: Card[], revision = 1): Board {
+  return {
+    project,
+    board: { name: project.name, createdAt: project.createdAt },
+    revision,
+    cursor: `${project.id}:${revision}`,
+    cards,
+  };
+}
 
 export function fixtureCard(id: number): Card {
   const card = fixtureBoard.cards.find((c) => c.id === id);

@@ -1,33 +1,49 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { App } from '../src/App';
 import { selectLocale } from '../src/i18n';
 import type { Board } from '../src/types';
-import { FakeEventSource, jsonResponse } from './fakes';
-import { fixtureBoard } from './fixtures';
+import { FakeEventSource, jsonResponse, stubBackend, type FakeBackend } from './fakes';
+import { PROJECTS, PROJECT_A, fixtureBoard } from './fixtures';
+import { renderApp } from './renderApp';
 
-let current: Board;
+let backend: FakeBackend;
 let fetchMock: ReturnType<typeof vi.fn>;
+const SEARCH = `?project=${PROJECT_A.id}`;
+
+/** The board of project A as the fake server holds it. */
+function current(): Board {
+  return backend.boards[PROJECT_A.id] as Board;
+}
+function setCurrent(board: Board) {
+  backend.boards[PROJECT_A.id] = board;
+}
+function show(props?: Parameters<typeof renderApp>[1]) {
+  return renderApp(SEARCH, props);
+}
 
 beforeEach(() => {
   window.localStorage.clear();
   selectLocale('en');
-  current = structuredClone(fixtureBoard);
+  backend = {
+    projects: PROJECTS,
+    boards: { [PROJECT_A.id]: structuredClone(fixtureBoard) },
+    write: (url, init) => {
+      const match = /^\/api\/projects\/([0-9a-f]{32})\/cards\/(\d+)$/.exec(url);
+      if (match?.[1] === PROJECT_A.id && init.method === 'DELETE') {
+        setCurrent({
+          ...current(),
+          cards: current().cards.filter((c) => c.id !== Number(match[2])),
+        });
+        return new Response(null, { status: 204 });
+      }
+      return jsonResponse({}, 404);
+    },
+  };
   FakeEventSource.reset();
   vi.stubGlobal('EventSource', FakeEventSource);
   document.head.innerHTML = '<meta name="skan-token" content="test-token">';
-  fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    if (url === '/api/board') return jsonResponse(current);
-    const match = /^\/api\/cards\/(\d+)$/.exec(url);
-    if (match && init?.method === 'DELETE') {
-      current = { ...current, cards: current.cards.filter((c) => c.id !== Number(match[1])) };
-      return new Response(null, { status: 204 });
-    }
-    return jsonResponse({}, 404);
-  });
-  vi.stubGlobal('fetch', fetchMock);
+  fetchMock = stubBackend(backend);
 });
 
 afterEach(() => {
@@ -43,15 +59,19 @@ const cardButton = (title: string) => screen.getByRole('button', { name: new Reg
 
 describe('App', () => {
   it('shows Loading… first, then the board with its name in the header and the page title', async () => {
-    render(<App />);
+    show();
     expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.getByText('Connecting…')).toBeTruthy();
     expect(screen.queryByRole('complementary', { name: 'Card details' })).toBeNull();
     expect(screen.queryByRole('separator')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'agent-board' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
+    // The project name shows once the list is in; the board follows with its own request.
     await screen.findByText('agent-board');
+    expect(document.title).toBe('agent-board - Agent Board');
+    await screen.findByRole('region', { name: 'Todo' });
     expect(screen.getByRole('complementary', { name: 'Card details' })).toBeTruthy();
     expect(screen.getByRole('separator', { name: 'Resize card details' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Agent Board' })).toBeTruthy();
@@ -61,7 +81,7 @@ describe('App', () => {
   });
 
   it('lays the cards out in three lanes with counts, newest Done first', async () => {
-    render(<App />);
+    show();
     await screen.findByRole('region', { name: 'Todo' });
     const titles = (name: string) =>
       within(lane(name))
@@ -76,7 +96,7 @@ describe('App', () => {
   });
 
   it('shows the details of a clicked card and clears them with Close details', async () => {
-    render(<App />);
+    show();
     await screen.findByRole('region', { name: 'Todo' });
     expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
 
@@ -90,7 +110,7 @@ describe('App', () => {
   });
 
   it('switches the details when another card is clicked', async () => {
-    render(<App />);
+    show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Initialize the board'));
     await userEvent.click(cardButton('Implement card moves'));
@@ -99,16 +119,16 @@ describe('App', () => {
   });
 
   it('keeps the selection when the board changes and the card still exists', async () => {
-    render(<App />);
+    show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Implement card moves'));
 
-    current = {
-      ...current,
-      cards: current.cards.map((c) =>
+    setCurrent({
+      ...current(),
+      cards: current().cards.map((c) =>
         c.id === 11 ? { ...c, agentStatus: 'pending' as const, pendingReason: 'Waiting' } : c,
       ),
-    };
+    });
     act(() => FakeEventSource.latest.emit('changed'));
 
     await waitFor(() => expect(screen.getAllByText('Pending').length).toBeGreaterThan(0));
@@ -116,11 +136,11 @@ describe('App', () => {
   });
 
   it('clears the selection when the selected card disappears', async () => {
-    render(<App />);
+    show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Initialize the board'));
 
-    current = { ...current, cards: current.cards.filter((c) => c.id !== 8) };
+    setCurrent({ ...current(), cards: current().cards.filter((c) => c.id !== 8) });
     act(() => FakeEventSource.latest.emit('changed'));
 
     await waitFor(() => expect(screen.getByText('Select a card to see its details.')).toBeTruthy());
@@ -128,7 +148,7 @@ describe('App', () => {
   });
 
   it('deletes a card after confirmation, returns to no selection and fetches the board again', async () => {
-    render(<App />);
+    show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Prepare the Windows build'));
     await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
@@ -139,15 +159,15 @@ describe('App', () => {
       expect(screen.queryByRole('button', { name: /Prepare the Windows build/ })).toBeNull(),
     );
     expect(screen.getByText('7 cards')).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith('/api/cards/14', {
+    expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/cards/14`, {
       method: 'DELETE',
       headers: { 'X-Skan-Token': 'test-token' },
     });
   });
 
   it('shows the empty board message with three empty lanes', async () => {
-    current = { ...current, cards: [] };
-    render(<App />);
+    setCurrent({ ...current(), cards: [] });
+    show();
     expect(await screen.findByText('No cards yet.')).toBeTruthy();
     expect(screen.getByText('Add a card to get started.')).toBeTruthy();
     expect(screen.getAllByRole('region')).toHaveLength(3);
@@ -155,26 +175,24 @@ describe('App', () => {
   });
 
   it('shows the load error with Retry and recovers when retried', async () => {
-    fetchMock.mockImplementation(async () =>
-      jsonResponse({ error: { code: 'database_error', message: 'x', reason: 'y' } }, 500),
-    );
-    render(<App />);
-    expect(await screen.findByText('Could not load the board.')).toBeTruthy();
-    expect(screen.getByText('Not connected')).toBeTruthy();
+    backend.boards[PROJECT_A.id] = 500;
+    show();
+    expect(await screen.findByText('Could not load this board.')).toBeTruthy();
+    expect(screen.getByText('Not synced')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' }).getAttribute('data-slot')).toBe('button');
-    expect(screen.queryByRole('complementary', { name: 'Card details' })).toBeNull();
-    expect(screen.queryByRole('separator')).toBeNull();
+    expect(screen.getByRole('complementary', { name: 'Card details' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'agent-board' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
-    fetchMock.mockImplementation(async () => jsonResponse(current));
+    backend.boards[PROJECT_A.id] = structuredClone(fixtureBoard);
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await screen.findByRole('region', { name: 'Todo' });
-    expect(screen.queryByText('Could not load the board.')).toBeNull();
+    expect(screen.queryByText('Could not load this board.')).toBeNull();
   });
 
   it('keeps showing the board and says Disconnected when the update stream drops', async () => {
-    render(<App />);
+    show();
     await screen.findByRole('region', { name: 'Todo' });
     expect(screen.getByText(/^Synced \d\d:\d\d$/)).toBeTruthy();
 
@@ -185,7 +203,7 @@ describe('App', () => {
   });
 
   it('starts from the sample-data state when given initial values', async () => {
-    render(<App initial={{ select: 11, confirm: true, deleteFail: true }} />);
+    show({ initial: { select: 11, confirm: true, deleteFail: true } });
     expect(
       await screen.findByText('Delete #11 "Implement card moves"? This cannot be undone.'),
     ).toBeTruthy();
@@ -194,7 +212,7 @@ describe('App', () => {
   });
 
   it('does not open the sample confirmation for a card selected later', async () => {
-    render(<App initial={{ select: 11, confirm: true }} />);
+    show({ initial: { select: 11, confirm: true } });
     await screen.findByText(/This cannot be undone/);
     await userEvent.click(cardButton('Check the board display'));
     expect(screen.queryByText(/This cannot be undone/)).toBeNull();

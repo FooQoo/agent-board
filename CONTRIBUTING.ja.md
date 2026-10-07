@@ -14,6 +14,32 @@ cargo build
 
 実行ファイルは`target/debug/agboard`です。
 
+## ソースからインストール
+
+エージェントとHookは`PATH`上の`agboard`を実行するため、ビルドしたものを`PATH`上に導入します。
+
+```sh
+pnpm --dir web install
+pnpm --dir web build
+cargo install --path . --locked --force
+command -v agboard
+```
+
+CLIはWeb画面を含むため、先にWeb画面をビルドします。`cargo install`は`~/.cargo/bin`(または`$CARGO_HOME/bin`)へ書き込むので、そのディレクトリが`PATH`に入っている必要があります。`command -v agboard`が何も表示しない場合は、`export PATH="$HOME/.cargo/bin:$PATH"`のように追加し、新しいシェルを開いてください。コードを変更したら、3つのコマンドを再実行して導入版を更新します。
+
+導入した`agboard`と開発中のビルドは別のファイルです。Hookのコマンドは導入版を呼び、`cargo build`・`cargo run`・`target/debug/agboard`は作業ツリーの版を使います。Hookで変更を確認する前に再導入してください。
+
+`~/.cargo/bin`や自分のボードに触れずに導入を試すには、一時ディレクトリへ導入し、一時のデータ領域を使います。
+
+```sh
+root="$(mktemp -d)"
+cargo install --path . --locked --root "$root"
+export SKAN_HOME="$(mktemp -d)"
+"$root/bin/agboard" --help
+"$root/bin/agboard" project create demo
+"$root/bin/agboard" --project demo ls
+```
+
 ## 開発
 
 すべてのコマンドはリポジトリのルートから実行します。
@@ -34,7 +60,8 @@ CLIを手動で試したりテストしたりするときは、実際のボー�
 
 ```sh
 export SKAN_HOME="$(mktemp -d)"
-cargo run -- init --name dev
+cargo run -- project create dev
+cargo run -- --project dev add "試す" --assignee ai --actor ai
 cargo run -- serve --port <port>
 ```
 

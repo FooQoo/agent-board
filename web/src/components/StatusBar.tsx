@@ -6,6 +6,8 @@ export interface StatusBarProps {
   cardCount: number;
   connected: boolean;
   lastSyncedAt: Date | null;
+  /** A project state that replaces the count and the sync state with one line of text. */
+  note?: 'boardLoading' | 'notSynced' | 'noProjects' | 'noSelection';
 }
 
 type Tone = 'ok' | 'idle' | 'warn';
@@ -24,6 +26,15 @@ function describeSync(
 
 export function StatusBar(props: StatusBarProps) {
   const { t } = useTranslation();
+  if (props.note) {
+    return (
+      <footer className="status-bar">
+        <span className="status-bar__text" role="status">
+          {t(`status.${props.note}`)}
+        </span>
+      </footer>
+    );
+  }
   const sync = describeSync(props, t);
   return (
     <footer className="status-bar">

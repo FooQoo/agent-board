@@ -47,7 +47,7 @@ export function liveProxy(backendOrigin: string, webOrigin: string): ProxyOption
     configure(proxy) {
       proxy.on('proxyReq', (proxyReq, req) => {
         if (
-          req.method === 'DELETE' &&
+          (req.method === 'DELETE' || req.method === 'POST') &&
           req.headers.origin === webOrigin &&
           req.headers['sec-fetch-site'] === 'same-origin'
         ) {

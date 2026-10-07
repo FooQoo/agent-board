@@ -3,16 +3,19 @@
 mod card;
 mod column;
 mod limits;
+mod project;
 mod work;
 
 pub use card::BoardMeta;
 pub use column::{Column, RunState};
 pub use limits::{
-    normalize_and_validate_description, validate_board_name, validate_reason, validate_title,
+    normalize_and_validate_description, validate_board_name, validate_project_name,
+    validate_reason, validate_title,
 };
+pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use work::{
-    Actor, Assignee, BoardSnapshot, Card, ChangeContext, Changed, HistoryEvent, HistoryKind,
-    NewCard,
+    Actor, Assignee, BoardSnapshot, Card, ChangeContext, Changed, FetchedSnapshot, HistoryEvent,
+    HistoryKind, NewCard, ValidatedBoard,
 };
 
 const WORK_REASON_MAX: usize = 2_000;

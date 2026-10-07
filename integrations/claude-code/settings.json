@@ -6,7 +6,29 @@
         "hooks": [
           {
             "type": "command",
-            "command": "agboard hook --agent claude",
+            "command": "agboard --project 'PROJECT_NAME' hook --agent claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agboard --project 'PROJECT_NAME' hook --agent claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agboard --project 'PROJECT_NAME' hook --agent claude",
             "timeout": 10
           }
         ]

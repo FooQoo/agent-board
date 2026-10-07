@@ -15,6 +15,13 @@ pub enum FileAction {
 #[error("{}", self.message())]
 pub enum SkanError {
     NotInitialized,
+    /// `project` is the name or ID the caller used to look the project up.
+    ProjectNotFound {
+        project: String,
+    },
+    ProjectNameExists {
+        name: String,
+    },
     CardNotFound {
         id: i64,
     },
@@ -57,6 +64,16 @@ pub enum SkanError {
     PortInUse {
         port: u16,
     },
+    /// `agboard wait` could not read the board or reach the server.
+    BoardUnavailable {
+        reason: String,
+    },
+    /// The `--after` cursor does not fit the project or the board.
+    CursorInvalid {
+        reason: String,
+    },
+    /// `agboard wait` reached its `--timeout` with no change.
+    WaitTimeout,
 }
 
 impl SkanError {
@@ -64,6 +81,8 @@ impl SkanError {
     pub fn code(&self) -> &'static str {
         match self {
             SkanError::NotInitialized => "not_initialized",
+            SkanError::ProjectNotFound { .. } => "project_not_found",
+            SkanError::ProjectNameExists { .. } => "project_name_exists",
             SkanError::CardNotFound { .. } => "card_not_found",
             SkanError::InvalidArgument { .. } => "invalid_argument",
             SkanError::InvalidValue { .. } => "invalid_value",
@@ -77,13 +96,17 @@ impl SkanError {
             SkanError::DatabaseError { .. } => "database_error",
             SkanError::AlreadyServing { .. } => "already_serving",
             SkanError::PortInUse { .. } => "port_in_use",
+            SkanError::BoardUnavailable { .. } => "board_unavailable",
+            SkanError::CursorInvalid { .. } => "cursor_invalid",
+            SkanError::WaitTimeout => "wait_timeout",
         }
     }
 
     /// Process exit code for this error.
     pub fn exit_code(&self) -> i32 {
         match self {
-            SkanError::NotInitialized => 4,
+            SkanError::NotInitialized | SkanError::ProjectNotFound { .. } => 4,
+            SkanError::ProjectNameExists { .. } => 2,
             SkanError::CardNotFound { .. } => 3,
             SkanError::InvalidArgument { .. } | SkanError::InvalidValue { .. } => 2,
             SkanError::InvalidStateForAssignee => 2,
@@ -95,6 +118,8 @@ impl SkanError {
     pub fn message(&self) -> String {
         match self {
             SkanError::NotInitialized => "no board found.".to_string(),
+            SkanError::ProjectNotFound { .. } => "project not found.".to_string(),
+            SkanError::ProjectNameExists { name } => format!("project \"{name}\" already exists."),
             SkanError::CardNotFound { id } => format!("card #{id} not found."),
             SkanError::InvalidArgument { message, .. } => message.clone(),
             SkanError::InvalidValue { field, .. } => format!("{field} is invalid."),
@@ -115,6 +140,9 @@ impl SkanError {
             SkanError::DatabaseError { .. } => "cannot open the board.".to_string(),
             SkanError::AlreadyServing { .. } => "the board is already being served.".to_string(),
             SkanError::PortInUse { port } => format!("port {port} is already in use."),
+            SkanError::BoardUnavailable { .. } => "the board is unavailable.".to_string(),
+            SkanError::CursorInvalid { .. } => "the cursor is invalid.".to_string(),
+            SkanError::WaitTimeout => "no board change before the timeout.".to_string(),
         }
     }
 
@@ -122,8 +150,14 @@ impl SkanError {
     pub fn reason(&self) -> String {
         match self {
             SkanError::NotInitialized => {
-                "Run \"agboard init --name <name>\" to create one, or \"agboard import\" to restore one."
+                "Run \"agboard --project <name> init\" to create one, or \"agboard --project <name> import\" to restore one."
                     .to_string()
+            }
+            SkanError::ProjectNotFound { project } => format!(
+                "No project matches \"{project}\". Run \"agboard project ls\" to see the projects."
+            ),
+            SkanError::ProjectNameExists { .. } => {
+                "Project names must be unique. Choose another name.".to_string()
             }
             SkanError::CardNotFound { id } => {
                 format!("No card has ID {id}. Run \"agboard ls\" to see the cards.")
@@ -144,7 +178,7 @@ impl SkanError {
                 "Read the latest board before answering this request.".into()
             }
             SkanError::ConfirmationRequired { .. } => {
-                "Run this command yourself in a terminal. Agents cannot delete cards or replace the board."
+                "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board."
                     .to_string()
             }
             SkanError::ImportInvalid { reason, .. } => reason.clone(),
@@ -155,6 +189,12 @@ impl SkanError {
                 format!("Open http://127.0.0.1:{port}/ or stop the other \"agboard serve\".")
             }
             SkanError::PortInUse { .. } => "Choose another port with --port.".to_string(),
+            SkanError::BoardUnavailable { reason } => reason.clone(),
+            SkanError::CursorInvalid { reason } => reason.clone(),
+            SkanError::WaitTimeout => {
+                "Nothing changed in the project. This is not an answer; read the snapshot before acting."
+                    .to_string()
+            }
         }
     }
 }
@@ -184,6 +224,12 @@ mod tests {
     fn all_errors() -> Vec<SkanError> {
         vec![
             SkanError::NotInitialized,
+            SkanError::ProjectNotFound {
+                project: "Alpha".into(),
+            },
+            SkanError::ProjectNameExists {
+                name: "Alpha".into(),
+            },
             SkanError::CardNotFound { id: 7 },
             SkanError::InvalidArgument {
                 message: "unexpected argument '--x'".into(),
@@ -218,6 +264,13 @@ mod tests {
             },
             SkanError::AlreadyServing { port: 7420 },
             SkanError::PortInUse { port: 7420 },
+            SkanError::BoardUnavailable {
+                reason: "no running server".into(),
+            },
+            SkanError::CursorInvalid {
+                reason: "wrong project".into(),
+            },
+            SkanError::WaitTimeout,
         ]
     }
 
@@ -231,6 +284,8 @@ mod tests {
             got,
             vec![
                 ("not_initialized", 4),
+                ("project_not_found", 4),
+                ("project_name_exists", 2),
                 ("card_not_found", 3),
                 ("invalid_argument", 2),
                 ("invalid_value", 2),
@@ -244,6 +299,9 @@ mod tests {
                 ("database_error", 1),
                 ("already_serving", 1),
                 ("port_in_use", 1),
+                ("board_unavailable", 1),
+                ("cursor_invalid", 1),
+                ("wait_timeout", 1),
             ]
         );
     }
@@ -257,7 +315,15 @@ mod tests {
         let expected: Vec<(&str, &str)> = vec![
             (
                 "no board found.",
-                "Run \"agboard init --name <name>\" to create one, or \"agboard import\" to restore one.",
+                "Run \"agboard --project <name> init\" to create one, or \"agboard --project <name> import\" to restore one.",
+            ),
+            (
+                "project not found.",
+                "No project matches \"Alpha\". Run \"agboard project ls\" to see the projects.",
+            ),
+            (
+                "project \"Alpha\" already exists.",
+                "Project names must be unique. Choose another name.",
             ),
             (
                 "card #7 not found.",
@@ -282,7 +348,7 @@ mod tests {
             ),
             (
                 "deleting a card needs confirmation from a human.",
-                "Run this command yourself in a terminal. Agents cannot delete cards or replace the board.",
+                "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board.",
             ),
             (
                 "agboard.json is not a valid board file.",
@@ -304,6 +370,12 @@ mod tests {
             (
                 "port 7420 is already in use.",
                 "Choose another port with --port.",
+            ),
+            ("the board is unavailable.", "no running server"),
+            ("the cursor is invalid.", "wrong project"),
+            (
+                "no board change before the timeout.",
+                "Nothing changed in the project. This is not an answer; read the snapshot before acting.",
             ),
         ];
         let expected: Vec<(String, String)> = expected

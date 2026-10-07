@@ -3,8 +3,8 @@ use std::io::{BufRead, Write};
 use serde_json::json;
 
 use crate::cli::args::InitArgs;
-use crate::cli::{Context, Outcome};
-use crate::domain::validate_board_name;
+use crate::cli::{Context, Outcome, Target};
+use crate::domain::BoardMeta;
 use crate::error::SkanError;
 use crate::interact::confirm;
 
@@ -18,30 +18,46 @@ pub fn run(ctx: &mut Context, args: &InitArgs) -> Result<Outcome, SkanError> {
 /// Like [`run`], with the answer's source and the prompt's destination given.
 /// A human can be asked only when `ctx.interactive` is set and `ctx.json` is
 /// not.
+///
+/// `init` works on the one project named with `--project`: it creates the
+/// project when it does not exist, and otherwise empties that project's board
+/// after a human confirms. No other project is touched.
 pub fn run_with_io(
     ctx: &Context,
-    args: &InitArgs,
+    _args: &InitArgs,
     input: &mut impl BufRead,
     output: &mut impl Write,
 ) -> Result<Outcome, SkanError> {
-    let Some(existing) = ctx.store.board()? else {
-        let board = ctx.store.create_board(&args.name, ctx.clock.now())?;
-        return Ok(Outcome {
-            changed: true,
-            human: format!("Created board \"{}\".\n", board.name),
-            json: json!({"board": board}),
-        });
+    let existing = match &ctx.target {
+        Target::Missing { name } => {
+            let project = ctx.store.create_project(name, ctx.clock.now())?;
+            let board = BoardMeta {
+                name: project.name.clone(),
+                next_card_id: 1,
+                created_at: project.created_at,
+            };
+            return Ok(Outcome {
+                changed: true,
+                human: format!("Created project \"{}\".\n", project.name),
+                json: json!({"project": project, "board": board}),
+            });
+        }
+        Target::Catalog => {
+            return Err(SkanError::InvalidArgument {
+                message: "--project NAME is required.".to_string(),
+                command: Some("init".to_string()),
+            });
+        }
+        Target::Existing(meta) => meta,
     };
 
-    // Check the name before asking anyone to confirm it.
-    let name = validate_board_name(&args.name)?;
     if ctx.json || !ctx.interactive {
         return Err(SkanError::ConfirmationRequired {
             operation: "replacing the board".to_string(),
         });
     }
     let prompt = format!(
-        "A board \"{}\" already exists. Replace it with an empty board \"{name}\"? All cards and history will be deleted.",
+        "Project \"{}\" already has a board. Replace it with an empty board? All its cards and history will be deleted.",
         existing.name
     );
     if !confirm::confirm(&prompt, input, output)? {
@@ -51,13 +67,15 @@ pub fn run_with_io(
             json: json!({"cancelled": true}),
         });
     }
-    let board = ctx.store.reset_board(&name, ctx.clock.now())?;
+    // The ID was fixed before the question. If the project was deleted while
+    // the human decided, this is `project_not_found`, never another project.
+    let reset = ctx.store.reset_project(&existing.id)?;
     Ok(Outcome {
-        changed: true,
+        changed: reset.changed,
         human: format!(
-            "Replaced the board with an empty board \"{}\".\n",
-            board.name
+            "Replaced the board of project \"{}\" with an empty board.\n",
+            existing.name
         ),
-        json: json!({"board": board}),
+        json: json!({"project": existing, "board": reset.value}),
     })
 }

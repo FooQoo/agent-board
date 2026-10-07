@@ -31,6 +31,17 @@ pub fn validate_board_name(value: &str) -> Result<String, SkanError> {
     })
 }
 
+/// Project names follow the same rule as board names: trimmed, 1 to 50 Unicode
+/// scalar values, one line.
+pub fn validate_project_name(value: &str) -> Result<String, SkanError> {
+    one_line(value, NAME_MAX).ok_or_else(|| {
+        invalid(
+            "name",
+            "Project names must be 1 to 50 characters on one line.",
+        )
+    })
+}
+
 pub fn validate_title(value: &str) -> Result<String, SkanError> {
     one_line(value, TITLE_MAX)
         .ok_or_else(|| invalid("title", "Titles must be 1 to 100 characters on one line."))

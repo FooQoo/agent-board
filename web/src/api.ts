@@ -1,22 +1,60 @@
-import type { ApiError, Assignee, Board, Card, ColumnName } from './types';
+import type { ApiError, Assignee, Board, Card, ColumnName, ProjectId, ProjectList } from './types';
 
 const TOKEN_META = 'skan-token';
 
-/** The server puts the session token for deletes into `<meta name="skan-token">`. */
+/** The server puts the session token for writes into `<meta name="skan-token">`. */
 export function readToken(): string {
   const meta = document.querySelector<HTMLMetaElement>(`meta[name="${TOKEN_META}"]`);
   return meta?.content ?? '';
 }
 
-export async function fetchBoard(): Promise<Board> {
-  const response = await fetch('/api/board', {
+/** A failed read. `status` is 0 when the request never got an answer. */
+export class FetchError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null,
+  ) {
+    super(message);
+  }
+
+  /** The project does not exist (it was deleted, or the URL names an unknown ID). */
+  get projectNotFound(): boolean {
+    return this.status === 404 && this.code === 'project_not_found';
+  }
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const response = await fetch(path, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
   });
   if (!response.ok) {
-    throw new Error(`GET /api/board failed with status ${response.status}`);
+    let code: string | null = null;
+    try {
+      code = ((await response.json()) as Partial<ApiError>).error?.code ?? null;
+    } catch {
+      // The body was not JSON.
+    }
+    throw new FetchError(
+      `GET ${path} failed with status ${response.status}`,
+      response.status,
+      code,
+    );
   }
-  return (await response.json()) as Board;
+  return (await response.json()) as T;
+}
+
+function projectPath(projectId: ProjectId): string {
+  return `/api/projects/${encodeURIComponent(projectId)}`;
+}
+
+export function fetchProjects(): Promise<ProjectList> {
+  return getJson<ProjectList>('/api/projects');
+}
+
+export function fetchBoard(projectId: ProjectId): Promise<Board> {
+  return getJson<Board>(`${projectPath(projectId)}/board`);
 }
 
 /**
@@ -26,9 +64,9 @@ export async function fetchBoard(): Promise<Board> {
  */
 export type DeleteResult = 'deleted' | 'not_found' | 'failed';
 
-export async function deleteCard(id: number): Promise<DeleteResult> {
+export async function deleteCard(projectId: ProjectId, id: number): Promise<DeleteResult> {
   try {
-    const response = await fetch(`/api/cards/${id}`, {
+    const response = await fetch(`${projectPath(projectId)}/cards/${id}`, {
       method: 'DELETE',
       headers: { 'X-Skan-Token': readToken() },
     });
@@ -55,26 +93,33 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
   return body as T;
 }
 
-export async function createCard(input: {
-  title: string;
-  description: string;
-  assignee: Assignee;
-}) {
-  return postCard<{ card: Card }>('/api/cards', { ...input, actor: 'human' });
+export async function createCard(
+  projectId: ProjectId,
+  input: { title: string; description: string; assignee: Assignee },
+) {
+  return postCard<{ card: Card }>(`${projectPath(projectId)}/cards`, input);
 }
 
-export async function moveCard(id: number, cardStatus: ColumnName, reason: string) {
-  return postCard<{ card: Card; changed: boolean }>(`/api/cards/${id}/move`, {
+export async function moveCard(
+  projectId: ProjectId,
+  id: number,
+  cardStatus: ColumnName,
+  reason: string,
+) {
+  return postCard<{ card: Card; changed: boolean }>(`${projectPath(projectId)}/cards/${id}/move`, {
     cardStatus,
     reason,
-    actor: 'human',
   });
 }
 
-export async function answerRequest(id: number, requestId: string, reason: string) {
-  return postCard<{ card: Card; changed: boolean }>(`/api/cards/${id}/answer`, {
-    requestId,
-    reason,
-    actor: 'human',
-  });
+export async function answerRequest(
+  projectId: ProjectId,
+  id: number,
+  requestId: string,
+  reason: string,
+) {
+  return postCard<{ card: Card; changed: boolean }>(
+    `${projectPath(projectId)}/cards/${id}/answer`,
+    { requestId, reason },
+  );
 }

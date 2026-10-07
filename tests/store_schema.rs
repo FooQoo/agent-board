@@ -1,4 +1,4 @@
-use agent_board::store::Store;
+use agent_board::store::ProjectStore;
 use agent_board::{
     domain::{Actor, Assignee, NewCard},
     error::SkanError,
@@ -18,11 +18,11 @@ fn user_version(path: &std::path::Path) -> i64 {
 }
 
 #[test]
-fn a_new_database_gets_schema_version_2() {
+fn a_new_database_gets_schema_version_3() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
-    Store::open(&path).unwrap();
-    assert_eq!(user_version(&path), 2);
+    ProjectStore::open(&path).unwrap();
+    assert_eq!(user_version(&path), 3);
 
     let conn = Connection::open(&path).unwrap();
     let mut tables: Vec<String> = conn
@@ -33,7 +33,10 @@ fn a_new_database_gets_schema_version_2() {
         .map(Result::unwrap)
         .collect();
     tables.sort();
-    assert_eq!(tables, vec!["board", "cards", "history"]);
+    assert_eq!(
+        tables,
+        vec!["cards", "catalog_metadata", "history", "projects"]
+    );
     let journal: String = conn
         .query_row("PRAGMA journal_mode", [], |r| r.get(0))
         .unwrap();
@@ -44,7 +47,7 @@ fn a_new_database_gets_schema_version_2() {
 fn open_creates_missing_directories() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("a").join("b").join("board.db");
-    Store::open(&path).unwrap();
+    ProjectStore::open(&path).unwrap();
     assert!(path.exists());
 }
 
@@ -53,7 +56,7 @@ fn a_version_1_database_is_rejected_without_migration() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
     make_database_with_version(&path, 1);
-    let err = Store::open(&path).err().unwrap();
+    let err = ProjectStore::open(&path).err().unwrap();
     assert!(matches!(err, SkanError::DatabaseError { .. }));
     assert_eq!(user_version(&path), 1);
 }
@@ -68,7 +71,7 @@ fn a_non_empty_unversioned_database_is_rejected_without_wal_changes() {
     drop(conn);
     let before = std::fs::read(&path).unwrap();
     assert!(matches!(
-        Store::open(&path),
+        ProjectStore::open(&path),
         Err(SkanError::DatabaseError { .. })
     ));
     assert_eq!(std::fs::read(&path).unwrap(), before);
@@ -80,10 +83,11 @@ fn a_non_empty_unversioned_database_is_rejected_without_wal_changes() {
 fn schema_enforces_the_model_constraints() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
-    let store = Store::open(&path).unwrap();
-    store.create_board("main", now()).unwrap();
+    let store = ProjectStore::open(&path).unwrap();
+    let project = store.create_project("main", now()).unwrap().id;
     store
         .add_work_card(
+            &project,
             NewCard {
                 title: "a".into(),
                 description: "".into(),
@@ -104,13 +108,10 @@ fn schema_enforces_the_model_constraints() {
         conn.execute("UPDATE cards SET pending_reason = 'x' WHERE id = 1", [])
             .is_err()
     );
-    // a second board row is impossible
+    // a second catalog row is impossible
     assert!(
-        conn.execute(
-            "INSERT INTO board VALUES (2, 'x', 1, '2026-10-02T01:00:00Z')",
-            []
-        )
-        .is_err()
+        conn.execute("INSERT INTO catalog_metadata VALUES (2, 0)", [])
+            .is_err()
     );
 }
 
@@ -123,13 +124,13 @@ fn make_database_with_version(path: &std::path::Path, version: i64) {
 
 #[test]
 fn a_newer_schema_version_is_refused_and_left_untouched() {
-    for version in [3, 4, 99] {
+    for version in [4, 99] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("board.db");
         make_database_with_version(&path, version);
         let before = std::fs::read(&path).unwrap();
 
-        let err = Store::open(&path).err().expect("open must fail");
+        let err = ProjectStore::open(&path).err().expect("open must fail");
         assert_eq!(
             err,
             SkanError::DatabaseError {
@@ -149,6 +150,30 @@ fn a_newer_schema_version_is_refused_and_left_untouched() {
 }
 
 #[test]
+fn an_older_schema_version_is_refused_without_conversion_and_left_untouched() {
+    for version in [1, 2] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("board.db");
+        make_database_with_version(&path, version);
+        let before = std::fs::read(&path).unwrap();
+
+        let err = ProjectStore::open(&path).err().expect("open must fail");
+        assert_eq!(err.code(), "database_error");
+        assert!(
+            err.reason().contains("does not convert other versions"),
+            "{}",
+            err.reason()
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), before, "version {version}");
+        let names: Vec<String> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["board.db"], "version {version}");
+    }
+}
+
+#[test]
 fn a_file_that_is_not_a_database_is_a_database_error() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
@@ -158,7 +183,7 @@ fn a_file_that_is_not_a_database_is_a_database_error() {
     )
     .unwrap();
     let before = std::fs::read(&path).unwrap();
-    let err = Store::open(&path).err().expect("open must fail");
+    let err = ProjectStore::open(&path).err().expect("open must fail");
     assert!(matches!(err, SkanError::DatabaseError { .. }), "{err:?}");
     assert_eq!(std::fs::read(&path).unwrap(), before);
 }

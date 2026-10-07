@@ -1,12 +1,12 @@
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { listCards, mainHome, resetBoard } from '../helpers/agboard';
+import { listCards, mainHome, resetBoard, mainProject } from '../helpers/agboard';
 
 test.use({ locale: 'ja-JP' });
 
 test.beforeEach(async ({ page }) => {
-  resetBoard();
+  resetBoard(mainProject);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
 });
@@ -67,7 +67,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(panel.getByRole('list')).toContainText('作成');
   await page.screenshot({ path: testInfo.outputPath('02-japanese-board-detail.png') });
 
-  const storedCard = listCards().find(({ id }) => id === 12);
+  const storedCard = listCards(mainProject).find(({ id }) => id === 12);
   expect(storedCard).toMatchObject({
     title: 'Restore a board from JSON',
     cardStatus: 'doing',
@@ -90,7 +90,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(lane(page, 'Todo')).toBeVisible();
   await expect(card(page, 12)).toContainText('Pending');
-  expect(listCards().find(({ id }) => id === 12)).toMatchObject({ cardStatus: 'doing', agentStatus: 'pending' });
+  expect(listCards(mainProject).find(({ id }) => id === 12)).toMatchObject({ cardStatus: 'doing', agentStatus: 'pending' });
 });
 
 test('keyboard selection keeps an open delete confirmation and the selected card', async ({ page }, testInfo) => {
@@ -125,7 +125,7 @@ test('keyboard selection keeps an open delete confirmation and the selected card
   await expect(japanesePanel.getByRole('button', { name: '削除' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('03-japanese-delete-confirmation.png') });
   await japanesePanel.getByRole('button', { name: 'キャンセル' }).click();
-  expect(listCards().map(({ id }) => id)).toContain(12);
+  expect(listCards(mainProject).map(({ id }) => id)).toContain(12);
 });
 
 test('the settings dialog stays within the desktop viewports', async ({ page }, testInfo) => {

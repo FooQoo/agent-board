@@ -20,7 +20,7 @@ use tokio::sync::broadcast;
 use crate::clock::format_utc;
 use crate::error::SkanError;
 use crate::paths::{self, ServeInfo};
-use crate::store::Store;
+use crate::store::ProjectStore;
 
 /// How the web server is started.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,7 +54,7 @@ pub fn run_until<F: Future<Output = ()>>(
 ) -> Result<(), SkanError> {
     let db_path = paths::db_path();
     let serve_path = paths::serve_info_path();
-    require_board(&db_path)?;
+    open_database(&db_path)?;
     if let Some(info) = paths::read_serve_info()
         && instance::is_serving(&info)
     {
@@ -109,12 +109,11 @@ fn port_in_use(port: u16) -> SkanError {
     SkanError::PortInUse { port }
 }
 
-/// The board must exist before serving anything.
-fn require_board(db_path: &std::path::Path) -> Result<(), SkanError> {
-    match Store::open(db_path)?.board()? {
-        Some(_) => Ok(()),
-        None => Err(SkanError::NotInitialized),
-    }
+/// Open the database once before serving, so a database that cannot be used
+/// (another schema, a corrupt file) stops the server at startup. A new data
+/// area gets an empty catalog; serving needs no project.
+fn open_database(db_path: &std::path::Path) -> Result<(), SkanError> {
+    ProjectStore::open(db_path).map(|_| ())
 }
 
 /// Bind 127.0.0.1:`port`. Any failure to bind is reported as `PortInUse`.

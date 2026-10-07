@@ -38,12 +38,35 @@ export interface BoardInfo {
   createdAt: string;
 }
 
-/** Response body of `GET /api/board`. */
+/** The immutable identifier of a project: 32 lowercase hexadecimal digits. */
+export type ProjectId = string;
+
+export interface Project {
+  id: ProjectId;
+  name: string;
+  createdAt: string;
+}
+
+/** Response body of `GET /api/projects`. */
+export interface ProjectList {
+  projects: Project[];
+  catalogRevision: number;
+}
+
+/** Response body of `GET /api/projects/{projectId}/board`. */
 export interface Board {
+  project: Project;
   board: BoardInfo;
   revision: number;
+  cursor: string;
   cards: Card[];
 }
+
+/** What a card operation (create, move, answer) is asked to do. */
+export type DialogAction =
+  | { kind: 'create' }
+  | { kind: 'move'; card: Card; target: ColumnName }
+  | { kind: 'answer'; card: Card };
 
 /** Error body shared by the CLI `--json` output and the Web API. */
 export interface ApiError {

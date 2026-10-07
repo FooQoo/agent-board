@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Board } from '../src/types';
+import type { Board, Project, ProjectId } from '../src/types';
 
 type Listener = (event: Event) => void;
 
@@ -50,17 +50,62 @@ export function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-/** Replaces `fetch` with a mock that serves `GET /api/board` from `getBoard()`. */
-export function stubBoardFetch(getBoard: () => Board | Error) {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+/** What the fake backend answers: a body, a thrown network error, `not_found` or an HTTP status. */
+export type FakeAnswer<T> = T | Error | 'not_found' | number;
+
+export interface FakeBackend {
+  projects: FakeAnswer<Project[]>;
+  boards: Record<ProjectId, FakeAnswer<Board>>;
+  /** Awaited before a read is answered, so a test can answer requests in any order. */
+  gate?: (url: string) => Promise<void> | undefined;
+  /** Answers writes (POST/DELETE). Defaults to 204 for DELETE and `{card, changed}` for POST. */
+  write?: (url: string, init: RequestInit) => Response | Promise<Response>;
+}
+
+function errorResponse(status: number, code: string): Response {
+  return jsonResponse({ error: { code, message: 'x', reason: 'y' } }, status);
+}
+
+function answer<T>(value: FakeAnswer<T>, build: (body: T) => unknown): Response {
+  if (value instanceof Error) throw value;
+  if (value === 'not_found') return errorResponse(404, 'project_not_found');
+  if (typeof value === 'number') return errorResponse(value, 'database_error');
+  return jsonResponse(build(value));
+}
+
+/** Replaces `fetch` with a fake of the multi-project API. Mutate `backend` between steps. */
+export function stubBackend(backend: FakeBackend) {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url === '/api/board') {
-      const result = getBoard();
-      if (result instanceof Error) throw result;
-      return jsonResponse(result);
+    const method = init?.method ?? 'GET';
+    if (method !== 'GET') {
+      if (backend.write) return backend.write(url, init ?? {});
+      return method === 'DELETE'
+        ? new Response(null, { status: 204 })
+        : jsonResponse({ card: {}, changed: true });
     }
-    return jsonResponse({ error: { code: 'not_found', message: 'not found.', reason: url } }, 404);
+    await backend.gate?.(url);
+    if (url === '/api/projects') {
+      return answer(backend.projects, (projects) => ({ projects, catalogRevision: 1 }));
+    }
+    const match = /^\/api\/projects\/([0-9a-f]{32})\/board$/.exec(url);
+    if (match?.[1]) {
+      const found = backend.boards[match[1]];
+      return found === undefined
+        ? errorResponse(404, 'project_not_found')
+        : answer(found, (b) => b);
+    }
+    return errorResponse(404, 'not_found');
   });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
+}
+
+/** A promise that a test settles by hand. */
+export function deferred<T = void>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }

@@ -1,38 +1,42 @@
 import { expect, test } from '@playwright/test';
-import { listCards, resetBoard } from '../helpers/agboard';
+import { listCards, mainProject, projectId, resetBoard } from '../helpers/agboard';
+
+// Writes go to /api/projects/<ProjectId>/cards/<number>; the guard answers before it looks at the project.
+let card15: string;
 
 test.beforeEach(() => {
-  resetBoard();
+  resetBoard(mainProject);
+  card15 = `/api/projects/${projectId(mainProject)}/cards/15`;
 });
 
 test('a delete request without the token or an Origin is refused and the card stays', async ({
   request,
 }) => {
-  const before = listCards();
-  const response = await request.delete('/api/cards/15');
+  const before = listCards(mainProject);
+  const response = await request.delete(card15);
   expect(response.status()).toBe(403);
   expect((await response.json()).error.code).toBe('forbidden');
-  expect(listCards()).toEqual(before);
+  expect(listCards(mainProject)).toEqual(before);
 });
 
 test('a token alone, a bad token, or a wrong Origin is not enough', async ({ page, request }) => {
   await page.goto('/');
   const token = await page.locator('meta[name="skan-token"]').getAttribute('content');
   expect(token).toMatch(/^[0-9a-f]{64}$/);
-  const before = listCards();
+  const before = listCards(mainProject);
 
   // The right token, but the request does not come from the page.
-  const tokenOnly = await request.delete('/api/cards/15', { headers: { 'X-Skan-Token': token! } });
+  const tokenOnly = await request.delete(card15, { headers: { 'X-Skan-Token': token! } });
   expect(tokenOnly.status()).toBe(403);
 
   // The page's origin, but no token.
-  const originOnly = await request.delete('/api/cards/15', {
+  const originOnly = await request.delete(card15, {
     headers: { Origin: 'http://127.0.0.1:7631', 'Sec-Fetch-Site': 'same-origin' },
   });
   expect(originOnly.status()).toBe(403);
 
   // The page's origin and a wrong token.
-  const wrongToken = await request.delete('/api/cards/15', {
+  const wrongToken = await request.delete(card15, {
     headers: {
       Origin: 'http://127.0.0.1:7631',
       'Sec-Fetch-Site': 'same-origin',
@@ -42,7 +46,7 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
   expect(wrongToken.status()).toBe(403);
 
   // The right token from another site's origin.
-  const otherOrigin = await request.delete('/api/cards/15', {
+  const otherOrigin = await request.delete(card15, {
     headers: {
       Origin: 'http://example.com',
       'Sec-Fetch-Site': 'cross-site',
@@ -51,13 +55,13 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
   });
   expect(otherOrigin.status()).toBe(403);
 
-  expect(listCards()).toEqual(before);
+  expect(listCards(mainProject)).toEqual(before);
 });
 
 test('the token appears only in the page, never in the API responses', async ({ page, request }) => {
   await page.goto('/');
   const token = (await page.locator('meta[name="skan-token"]').getAttribute('content'))!;
-  for (const path of ['/api/board', '/api/health']) {
+  for (const path of ['/api/projects', `/api/projects/${projectId(mainProject)}/board`, '/api/health']) {
     expect(await (await request.get(path)).text()).not.toContain(token);
   }
 });

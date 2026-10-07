@@ -45,11 +45,16 @@ struct Output {
 fn run(home: &Path, args: &[&str]) -> Output {
     let start = Instant::now();
     let mut args = args.to_vec();
-    match args.first().copied() {
+    let command = args.first().copied();
+    match command {
         Some("add") => args.extend(["--assignee", "ai", "--actor", "ai"]),
         Some("mv") => args.extend(["--actor", "ai", "--reason", "test change"]),
         Some("state") => args.extend(["--actor", "ai", "--reason", "test change"]),
         _ => {}
+    }
+    // Every command except `serve` works on one named project.
+    if command != Some("serve") {
+        args.splice(0..0, ["--project", "demo"]);
     }
     let output = agboard(home).args(args).output().unwrap();
     Output {
@@ -69,7 +74,7 @@ fn run_ok(home: &Path, args: &[&str]) -> Output {
 /// A tempdir with an initialized board named "demo".
 fn board() -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
-    run_ok(home.path(), &["init", "--name", "demo"]);
+    run_ok(home.path(), &["init"]);
     home
 }
 
@@ -370,24 +375,20 @@ fn commands_that_change_nothing_do_not_notify() {
 // ------------------------------------------------------------ the command
 
 #[test]
-fn serve_without_a_board_exits_4() {
+fn serve_starts_in_a_new_data_area_with_no_project() {
     let _serial = serial();
     let home = tempfile::tempdir().unwrap();
-    let o = run(home.path(), &["serve", "--port", "7620"]);
-    assert_eq!(o.code, 4, "{}", o.err);
-    assert_eq!(o.out, "");
-    assert!(o.err.contains("no board found."), "{}", o.err);
+    let (serving, first) = Serving::start(home.path(), 7620);
+    assert_eq!(
+        first,
+        "Serving at http://127.0.0.1:7620/ (press Ctrl+C to stop)"
+    );
+    let health = ureq::get("http://127.0.0.1:7620/api/health")
+        .call()
+        .unwrap();
+    assert_eq!(health.status().as_u16(), 200);
+    drop(serving);
     assert!(port_is_free(7620));
-    assert!(!home.path().join("serve.json").exists());
-}
-
-#[test]
-fn serve_without_a_board_reports_json_errors() {
-    let _serial = serial();
-    let home = tempfile::tempdir().unwrap();
-    let o = run(home.path(), &["serve", "--json", "--port", "7620"]);
-    assert_eq!(o.code, 4, "{}", o.err);
-    assert!(o.err.contains("\"not_initialized\""), "{}", o.err);
 }
 
 #[test]
@@ -397,7 +398,7 @@ fn serve_prints_the_startup_line_and_answers_health() {
     let (serving, first) = Serving::start(home.path(), 7621);
     assert_eq!(
         first,
-        "Serving \"demo\" at http://127.0.0.1:7621/ (press Ctrl+C to stop)"
+        "Serving at http://127.0.0.1:7621/ (press Ctrl+C to stop)"
     );
     let health = ureq::get("http://127.0.0.1:7621/api/health")
         .call()
@@ -565,5 +566,61 @@ fn a_write_after_serve_was_killed_succeeds_quickly() {
     assert!(o.elapsed < Duration::from_secs(1), "took {:?}", o.elapsed);
     // A new serve takes over the stale file.
     let (_again, first) = Serving::start(home.path(), 7628);
-    assert!(first.starts_with("Serving \"demo\""), "{first}");
+    assert!(first.starts_with("Serving at"), "{first}");
+}
+
+#[test]
+fn serve_refuses_a_database_with_another_schema_and_leaves_no_serve_json() {
+    let _lock = serial();
+    let home = tempfile::tempdir().unwrap();
+    let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
+    conn.execute_batch("CREATE TABLE board (id INTEGER); PRAGMA user_version = 2;")
+        .unwrap();
+    drop(conn);
+    assert!(port_is_free(7840));
+    let o = run(home.path(), &["serve", "--port", "7840"]);
+    assert_eq!(o.code, 1, "{}", o.err);
+    assert!(o.err.contains("schema version 2"), "{}", o.err);
+    assert!(!home.path().join("serve.json").exists());
+    assert!(port_is_free(7840));
+    // The old database is left as it was.
+    let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
+    let version: i64 = conn
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(version, 2);
+}
+
+#[test]
+fn serve_takes_no_project_and_changes_made_through_two_projects_are_notified() {
+    let _lock = serial();
+    let home = tempfile::tempdir().unwrap();
+    let o = agboard(home.path())
+        .args(["--project", "x", "serve", "--port", "7841"])
+        .output()
+        .unwrap();
+    assert_eq!(o.status.code(), Some(2));
+    assert!(port_is_free(7841));
+    assert!(!home.path().join("serve.json").exists());
+    assert!(!home.path().join("board.db").exists());
+
+    let (serving, _) = Serving::start(home.path(), 7841);
+    for name in ["alpha", "beta"] {
+        let o = agboard(home.path())
+            .args(["project", "create", name])
+            .output()
+            .unwrap();
+        assert_eq!(o.status.code(), Some(0));
+    }
+    let list: serde_json::Value = serde_json::from_str(
+        &ureq::get("http://127.0.0.1:7841/api/projects")
+            .call()
+            .unwrap()
+            .body_mut()
+            .read_to_string()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(list["projects"].as_array().unwrap().len(), 2);
+    drop(serving);
 }

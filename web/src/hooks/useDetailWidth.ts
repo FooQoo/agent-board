@@ -16,13 +16,18 @@ export interface DetailWidth {
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 
+/** The padding and column gap of `.board__lanes` in app.css, for the states that show no lanes. */
+const LANES_PADDING = 24;
+const LANES_GAP = 16;
+
 /**
  * The detail panel width: the width the user chose, clamped to what the current layout allows.
  * Narrowing the window never rewrites the chosen width, so widening brings it back.
  */
 export function useDetailWidth(
   bodyRef: RefObject<HTMLElement | null>,
-  boardReady: boolean,
+  /** Changes when the content of the body changes (the lanes appear, a state message takes their place). */
+  contentKey: string | boolean,
 ): DetailWidth {
   const [preferred, setPreferred] = useState(() => readStoredWidth() ?? DEFAULT_WIDTH);
   const [layoutMax, setLayoutMax] = useState(Number.POSITIVE_INFINITY);
@@ -37,20 +42,21 @@ export function useDetailWidth(
     if (!body) return;
     const lanes = body.querySelector('.board__lanes');
     const style = lanes ? window.getComputedStyle(lanes) : null;
+    // A state message shows no lanes; it keeps the width the lanes would leave, so the panel does not jump.
     setLayoutMax(
       maxWidthFor({
         bodyWidth: body.getBoundingClientRect().width,
-        paddingLeft: style ? px(style.paddingLeft) : 0,
-        paddingRight: style ? px(style.paddingRight) : 0,
-        gap: style ? px(style.columnGap) : 0,
+        paddingLeft: style ? px(style.paddingLeft) : LANES_PADDING,
+        paddingRight: style ? px(style.paddingRight) : LANES_PADDING,
+        gap: style ? px(style.columnGap) : LANES_GAP,
       }),
     );
   }, [bodyRef]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: boardReady triggers a fresh measurement when content becomes available
+  // biome-ignore lint/correctness/useExhaustiveDependencies: contentKey triggers a fresh measurement when the content changes
   useEffect(() => {
     measure();
-  }, [measure, boardReady]);
+  }, [measure, contentKey]);
 
   useEffect(() => {
     window.addEventListener('resize', measure);

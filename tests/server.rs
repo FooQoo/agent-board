@@ -100,10 +100,10 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, RunState};
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
 use agent_board::error::SkanError;
 use agent_board::server::{ServeConfig, run_until};
-use agent_board::store::Store;
+use agent_board::store::ProjectStore;
 use chrono::{DateTime, TimeZone, Utc};
 
 // SKAN_HOME is process-global. It is only needed while a server starts (the
@@ -124,18 +124,24 @@ fn t(minute: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 2, 1, minute, 0).unwrap()
 }
 
-fn store_in(home: &Path) -> Store {
-    Store::open(&home.join("board.db")).unwrap()
+fn store_in(home: &Path) -> ProjectStore {
+    ProjectStore::open(&home.join("board.db")).unwrap()
+}
+
+/// The ID of the project named "main" in the data directory `home`.
+fn main_id(home: &Path) -> ProjectId {
+    store_in(home).project_by_name("main").unwrap().id
 }
 
 /// A temporary board with one user card and two AI cards in distinct states.
 fn board_home() -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
     let store = store_in(home.path());
-    store.create_board("main", t(0)).unwrap();
+    let main = store.create_project("main", t(0)).unwrap().id;
     let add = |title: &str, assignee| {
         store
             .add_work_card(
+                &main,
                 NewCard {
                     title: title.into(),
                     description: "Some details".into(),
@@ -157,16 +163,24 @@ fn board_home() -> tempfile::TempDir {
         reason: reason.into(),
     };
     store
-        .move_work_card(second.id, Column::Doing, context("Start"), t(4))
+        .move_work_card(&main, second.id, Column::Doing, context("Start"), t(4))
         .unwrap();
     store
-        .move_work_card(third.id, Column::Doing, context("Start"), t(5))
-        .unwrap();
-    store
-        .set_agent_status(second.id, RunState::Running, context("Inspect"), None, t(6))
+        .move_work_card(&main, third.id, Column::Doing, context("Start"), t(5))
         .unwrap();
     store
         .set_agent_status(
+            &main,
+            second.id,
+            RunState::Running,
+            context("Inspect"),
+            None,
+            t(6),
+        )
+        .unwrap();
+    store
+        .set_agent_status(
+            &main,
             third.id,
             RunState::Pending,
             context("Waiting for review"),
@@ -179,7 +193,7 @@ fn board_home() -> tempfile::TempDir {
 
 fn card_ids(home: &Path) -> Vec<i64> {
     let mut ids: Vec<i64> = store_in(home)
-        .snapshot()
+        .snapshot(&main_id(home))
         .unwrap()
         .cards
         .iter()
@@ -191,6 +205,8 @@ fn card_ids(home: &Path) -> Vec<i64> {
 
 struct Running {
     addr: SocketAddr,
+    /// `/api/projects/<id of "main">`, or empty when the data has no such project.
+    base: String,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
     handle: Option<JoinHandle<Result<(), SkanError>>>,
 }
@@ -216,6 +232,10 @@ impl Running {
             match ready_rx.recv_timeout(Duration::from_secs(10)) {
                 Ok(addr) => Ok(Running {
                     addr,
+                    base: ProjectStore::open_read_only(&home.join("board.db"))
+                        .and_then(|store| store.project_by_name("main"))
+                        .map(|project| format!("/api/projects/{}", project.id))
+                        .unwrap_or_default(),
                     stop: Some(stop_tx),
                     handle: Some(handle),
                 }),
@@ -229,6 +249,11 @@ impl Running {
 
     fn port(&self) -> u16 {
         self.addr.port()
+    }
+
+    /// A path below the "main" project's API.
+    fn api(&self, rest: &str) -> String {
+        format!("{}{rest}", self.base)
     }
 
     fn url(&self, path: &str) -> String {
@@ -330,7 +355,7 @@ impl Running {
 
     fn delete_as_page(&self, id: i64) -> Reply {
         let headers = self.page_headers(&self.token());
-        self.send_owned("DELETE", &format!("/api/cards/{id}"), &headers)
+        self.send_owned("DELETE", &self.api(&format!("/cards/{id}")), &headers)
     }
 
     /// Open `GET /api/events` and wait for the `ready` event.
@@ -522,14 +547,22 @@ fn assets_are_served_with_their_content_types() {
 fn board_matches_the_stores_snapshot_in_the_model_shape() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
-    let reply = server.get("/api/board");
+    let reply = server.get(&server.api("/board"));
     assert_eq!(reply.status, 200);
     assert_eq!(reply.content_type.as_deref(), Some("application/json"));
 
-    let snapshot = store_in(home.path()).snapshot().unwrap();
+    let snapshot = store_in(home.path())
+        .snapshot(&main_id(home.path()))
+        .unwrap();
     let expected = serde_json::json!({
+        "project": {
+            "id": snapshot.project.id.to_string(),
+            "name": "main",
+            "createdAt": "2026-10-02T01:00:00Z",
+        },
         "board": {"name": "main", "createdAt": "2026-10-02T01:00:00Z"},
         "revision": snapshot.revision,
+        "cursor": snapshot.cursor.to_string(),
         "cards": serde_json::to_value(&snapshot.cards).unwrap(),
     });
     let actual: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
@@ -547,6 +580,7 @@ fn board_reflects_changes_made_after_the_server_started() {
     let server = Running::start(home.path(), 0).unwrap();
     store_in(home.path())
         .add_work_card(
+            &main_id(home.path()),
             NewCard {
                 title: "Late card".into(),
                 description: "".into(),
@@ -556,7 +590,8 @@ fn board_reflects_changes_made_after_the_server_started() {
             t(10),
         )
         .unwrap();
-    let actual: serde_json::Value = serde_json::from_str(&server.get("/api/board").body).unwrap();
+    let actual: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
     assert_eq!(actual["cards"].as_array().unwrap().len(), 4);
 }
 
@@ -567,7 +602,7 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let mut events = server.events();
     let denied = server.send_json(
         "POST",
-        "/api/cards",
+        &server.api("/cards"),
         r#"{"title":"Denied","description":"","assignee":"ai","actor":"ai"}"#,
         None,
     );
@@ -575,21 +610,21 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let token = server.token();
     let created = server.send_json(
         "POST",
-        "/api/cards",
+        &server.api("/cards"),
         r#"{"title":"New work","description":"","assignee":"ai","actor":"ai"}"#,
         Some(&token),
     );
     assert_eq!(created.status, 201, "{}", created.body);
     let moved = server.send_json(
         "POST",
-        "/api/cards/4/move",
+        &server.api("/cards/4/move"),
         r#"{"cardStatus":"doing","actor":"ai","reason":"Start"}"#,
         Some(&token),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
     let pending = server.send_json(
         "POST",
-        "/api/cards/4/agent-status",
+        &server.api("/cards/4/agent-status"),
         r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction"}"#,
         Some(&token),
     );
@@ -599,12 +634,143 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let body =
         serde_json::json!({"requestId":request_id,"actor":"human","reason":"Proceed with A"})
             .to_string();
-    let answered = server.send_json("POST", "/api/cards/4/answer", &body, Some(&token));
+    let answered = server.send_json("POST", &server.api("/cards/4/answer"), &body, Some(&token));
     assert_eq!(answered.status, 200, "{}", answered.body);
-    let board: serde_json::Value = serde_json::from_str(&server.get("/api/board").body).unwrap();
+    let board: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
     assert_eq!(board["cards"][3]["agentStatus"], "idle");
     assert_eq!(board["cards"][3]["history"].as_array().unwrap().len(), 4);
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
+}
+
+/// Add a second project "other" that has a card with the same number as the
+/// first card of "main", and return its ID.
+fn add_other_project(home: &Path) -> ProjectId {
+    let store = store_in(home);
+    let other = store.create_project("other", t(0)).unwrap().id;
+    store
+        .add_work_card(
+            &other,
+            NewCard {
+                title: "Other first".into(),
+                description: String::new(),
+                assignee: Assignee::Ai,
+                actor: Actor::Ai,
+            },
+            t(1),
+        )
+        .unwrap();
+    other
+}
+
+#[test]
+fn the_same_card_number_in_two_projects_never_mixes_through_the_api() {
+    let home = board_home();
+    let other = add_other_project(home.path());
+    let main = main_id(home.path());
+    let server = Running::start(home.path(), 0).unwrap();
+    let token = server.token();
+    let before_main = store_in(home.path()).snapshot(&main).unwrap();
+
+    let moved = server.send_json(
+        "POST",
+        &format!("/api/projects/{other}/cards/1/move"),
+        r#"{"cardStatus":"doing","actor":"ai","reason":"Start"}"#,
+        Some(&token),
+    );
+    assert_eq!(moved.status, 200, "{}", moved.body);
+    let created = server.send_json(
+        "POST",
+        &format!("/api/projects/{other}/cards"),
+        r#"{"title":"Second in other","description":"","assignee":"ai","actor":"ai"}"#,
+        Some(&token),
+    );
+    assert_eq!(created.status, 201, "{}", created.body);
+    assert_eq!(store_in(home.path()).snapshot(&main).unwrap(), before_main);
+
+    let board: serde_json::Value =
+        serde_json::from_str(&server.get(&format!("/api/projects/{other}/board")).body).unwrap();
+    assert_eq!(board["project"]["name"], "other");
+    assert_eq!(board["cards"].as_array().unwrap().len(), 2);
+    assert_eq!(board["cards"][0]["cardStatus"], "doing");
+
+    // Card #3 exists only in "main": it cannot be reached through "other".
+    let headers = server.page_headers(&token);
+    let reply = server.send_owned(
+        "DELETE",
+        &format!("/api/projects/{other}/cards/3"),
+        &headers,
+    );
+    assert_eq!(reply.status, 404);
+    assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
+    let reply = server.send_owned("DELETE", &server.api("/cards/3"), &headers);
+    assert_eq!(reply.status, 204);
+    assert_eq!(card_ids(home.path()), vec![1, 2]);
+}
+
+#[test]
+fn a_project_that_does_not_exist_or_is_malformed_is_refused_before_any_change() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let token = server.token();
+    let ghost = ProjectId::generate().unwrap();
+    let before = store_in(home.path())
+        .snapshot(&main_id(home.path()))
+        .unwrap();
+
+    let reply = server.send_json(
+        "POST",
+        &format!("/api/projects/{ghost}/cards"),
+        r#"{"title":"Nowhere","description":"","assignee":"ai","actor":"ai"}"#,
+        Some(&token),
+    );
+    assert_eq!(reply.status, 404, "{}", reply.body);
+    let body: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
+    assert_eq!(body["error"]["code"], "project_not_found");
+
+    let reply = server.send_json(
+        "POST",
+        "/api/projects/not-an-id/cards",
+        r#"{"title":"Nowhere","description":"","assignee":"ai","actor":"ai"}"#,
+        Some(&token),
+    );
+    assert_eq!(reply.status, 422, "{}", reply.body);
+    assert_eq!(server.get("/api/projects/not-an-id/board").status, 422);
+    // The guard still comes first: no token, no existence check.
+    let reply = server.send_json(
+        "POST",
+        &format!("/api/projects/{ghost}/cards"),
+        r#"{"title":"Nowhere","description":"","assignee":"ai","actor":"ai"}"#,
+        None,
+    );
+    assert_eq!(reply.status, 403);
+    assert_eq!(
+        store_in(home.path())
+            .snapshot(&main_id(home.path()))
+            .unwrap(),
+        before
+    );
+}
+
+#[test]
+fn the_old_target_less_card_routes_do_not_exist() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let token = server.token();
+    assert_eq!(server.get("/api/board").status, 404);
+    let reply = server.send_json(
+        "POST",
+        "/api/cards",
+        r#"{"title":"Old","description":"","assignee":"ai","actor":"ai"}"#,
+        Some(&token),
+    );
+    assert_eq!(reply.status, 404);
+    let headers = server.page_headers(&token);
+    assert_eq!(
+        server.send_owned("DELETE", "/api/cards/1", &headers).status,
+        404
+    );
+    assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
 }
 
 #[test]
@@ -626,7 +792,15 @@ fn unknown_paths_are_404_and_wrong_methods_405() {
     let server = Running::start(home.path(), 0).unwrap();
     assert_eq!(server.get("/nope").status, 404);
     assert_eq!(server.get("/assets/other.js").status, 404);
-    assert_eq!(server.send("POST", "/api/board", &[]).status, 405);
+    // A write-method request is guarded before the route is even matched.
+    assert_eq!(server.send("POST", &server.api("/board"), &[]).status, 403);
+    let headers = server.page_headers(&server.token());
+    assert_eq!(
+        server
+            .send_owned("POST", &server.api("/board"), &headers)
+            .status,
+        405
+    );
     assert_eq!(server.send("GET", "/api/notify", &[]).status, 405);
 }
 
@@ -646,17 +820,19 @@ fn a_foreign_host_is_403_on_every_path() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let evil = format!("evil.example:{}", server.port());
+    let board = server.api("/board");
+    let card = server.api("/cards/1");
     let requests = [
         ("GET", "/"),
         ("GET", "/assets/app.js"),
         ("GET", "/assets/app.css"),
-        ("GET", "/api/board"),
+        ("GET", board.as_str()),
         ("GET", "/api/events"),
         ("GET", "/api/health"),
         ("POST", "/api/notify"),
-        ("DELETE", "/api/cards/1"),
+        ("DELETE", card.as_str()),
         ("GET", "/nope"),
-        ("POST", "/api/board"),
+        ("POST", board.as_str()),
     ];
     for (method, path) in requests {
         let reply = server.send(method, path, &[("Host", evil.as_str())]);
@@ -712,7 +888,7 @@ fn a_request_without_a_host_header_is_403() {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .unwrap();
-    write!(stream, "GET /api/board HTTP/1.0\r\n\r\n").unwrap();
+    write!(stream, "GET {} HTTP/1.0\r\n\r\n", server.api("/board")).unwrap();
     let mut response = String::new();
     let _ = stream.read_to_string(&mut response);
     assert!(
@@ -731,7 +907,8 @@ fn a_delete_meeting_all_four_conditions_returns_204_and_removes_the_card() {
     assert_eq!(reply.status, 204);
     assert_eq!(reply.body, "");
     assert_eq!(card_ids(home.path()), vec![1, 3]);
-    let board: serde_json::Value = serde_json::from_str(&server.get("/api/board").body).unwrap();
+    let board: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
     assert_eq!(board["cards"].as_array().unwrap().len(), 2);
 }
 
@@ -745,7 +922,7 @@ fn localhost_origin_and_host_also_delete() {
     let origin = format!("http://localhost:{port}");
     let reply = server.send(
         "DELETE",
-        "/api/cards/1",
+        &server.api("/cards/1"),
         &[
             ("Host", host.as_str()),
             ("Origin", origin.as_str()),
@@ -813,7 +990,7 @@ fn a_delete_missing_any_one_condition_is_403_and_the_card_remains() {
         if let Some(v) = token {
             headers.push(("X-Skan-Token", v));
         }
-        let reply = server.send("DELETE", "/api/cards/1", &headers);
+        let reply = server.send("DELETE", &server.api("/cards/1"), &headers);
         assert_eq!(reply.status, 403, "{name}");
         let body: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
         assert_eq!(body["error"]["code"], "forbidden", "{name}");
@@ -829,7 +1006,7 @@ fn the_token_is_not_accepted_from_a_query_string() {
     let origin = format!("http://127.0.0.1:{}", server.port());
     let reply = server.send(
         "DELETE",
-        &format!("/api/cards/1?token={token}"),
+        &server.api(&format!("/cards/1?token={token}")),
         &[
             ("Origin", origin.as_str()),
             ("Sec-Fetch-Site", "same-origin"),
@@ -856,7 +1033,7 @@ fn deleting_a_missing_card_is_404_with_the_error_body() {
     );
     for bad_id in ["abc", "0", "-1", "1.5"] {
         let headers = server.page_headers(&server.token());
-        let reply = server.send_owned("DELETE", &format!("/api/cards/{bad_id}"), &headers);
+        let reply = server.send_owned("DELETE", &server.api(&format!("/cards/{bad_id}")), &headers);
         assert_eq!(reply.status, 404, "{bad_id}");
     }
     assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
@@ -866,7 +1043,10 @@ fn deleting_a_missing_card_is_404_with_the_error_body() {
 fn the_guard_runs_before_the_existence_check() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
-    assert_eq!(server.send("DELETE", "/api/cards/99", &[]).status, 403);
+    assert_eq!(
+        server.send("DELETE", &server.api("/cards/99"), &[]).status,
+        403
+    );
 }
 
 // ---------------------------------------------------------------- SSE
@@ -921,7 +1101,10 @@ fn a_successful_delete_sends_changed_and_a_refused_one_does_not() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let mut events = server.events();
-    assert_eq!(server.send("DELETE", "/api/cards/1", &[]).status, 403);
+    assert_eq!(
+        server.send("DELETE", &server.api("/cards/1"), &[]).status,
+        403
+    );
     assert_eq!(server.delete_as_page(99).status, 404);
     assert!(
         !events.try_wait_for("event: changed", Duration::from_millis(300)),
@@ -1026,10 +1209,36 @@ fn serve_json_never_holds_the_session_token() {
 }
 
 #[test]
-fn an_uninitialized_board_is_not_initialized_and_leaves_no_serve_json() {
+fn a_new_data_area_is_served_with_no_projects_and_unknown_projects_are_404() {
     let home = tempfile::tempdir().unwrap();
+    let server = Running::start(home.path(), 0).unwrap();
+    assert!(home.path().join("serve.json").exists());
+    let ghost = ProjectId::generate().unwrap();
+    let reply = server.get(&format!("/api/projects/{ghost}/board"));
+    assert_eq!(reply.status, 404);
+    let body: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
+    assert_eq!(body["error"]["code"], "project_not_found");
+    server.stop().unwrap();
+    assert!(!home.path().join("serve.json").exists());
+}
+
+#[test]
+fn a_database_with_another_schema_is_not_served_and_leaves_no_serve_json() {
+    let home = tempfile::tempdir().unwrap();
+    let path = home.path().join("board.db");
+    {
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch("CREATE TABLE board (id INTEGER)")
+            .unwrap();
+        conn.pragma_update(None, "user_version", 2).unwrap();
+    }
+    let before = std::fs::read(&path).unwrap();
     let error = Running::start(home.path(), 0).err().unwrap();
-    assert_eq!(error, SkanError::NotInitialized);
+    assert!(
+        matches!(error, SkanError::DatabaseError { .. }),
+        "{error:?}"
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), before);
     assert!(!home.path().join("serve.json").exists());
 }
 
@@ -1234,11 +1443,17 @@ fn the_example_serves_and_cleans_up_on_sigterm() {
 }
 
 #[test]
-fn the_example_reports_an_uninitialized_board_with_exit_code_4() {
+fn the_example_reports_an_unusable_database_with_exit_code_1() {
     let home = tempfile::tempdir().unwrap();
+    {
+        let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
+        conn.execute_batch("CREATE TABLE board (id INTEGER)")
+            .unwrap();
+        conn.pragma_update(None, "user_version", 2).unwrap();
+    }
     let mut child = spawn_example(home.path(), &["--port", "7617"]);
     let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
-    assert_eq!(status.code(), Some(4));
+    assert_eq!(status.code(), Some(1));
     let mut stderr = String::new();
     child
         .stderr
@@ -1246,7 +1461,7 @@ fn the_example_reports_an_uninitialized_board_with_exit_code_4() {
         .unwrap()
         .read_to_string(&mut stderr)
         .unwrap();
-    assert!(stderr.contains("Error: no board found."), "{stderr}");
+    assert!(stderr.contains("Error: "), "{stderr}");
 }
 
 #[test]

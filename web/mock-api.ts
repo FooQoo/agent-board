@@ -2,19 +2,48 @@ import { readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
-import type { Actor, Assignee, Card, ColumnName, HistoryEvent } from './src/types';
+import type { Actor, Assignee, Card, ColumnName, HistoryEvent, Project } from './src/types';
 
 interface MockBoard {
+  project: Project;
   board: { name: string; createdAt: string };
   revision: number;
+  cursor: string;
   cards: Card[];
 }
 
 const FIXTURE_PATH = resolve(import.meta.dirname, 'test/fixtures/board.json');
 const SLOW_MS = 60 * 60 * 1000;
 
-function loadFixture(): MockBoard {
-  return JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as MockBoard;
+/** The sample projects. The first holds the fixture board, the second a smaller one, the third none. */
+const SAMPLE_PROJECTS: Project[] = [
+  {
+    id: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+    name: 'agent-board',
+    createdAt: '2026-10-01T07:00:00Z',
+  },
+  { id: 'b2c3d4e5f60718293a4b5c6d7e8f90a1', name: 'knowledge', createdAt: '2026-10-01T08:00:00Z' },
+  { id: 'c3d4e5f60718293a4b5c6d7e8f90a1b2', name: 'tech-blog', createdAt: '2026-10-01T09:00:00Z' },
+];
+
+function asBoard(project: Project, board: MockBoard, cards: Card[]): MockBoard {
+  return {
+    ...board,
+    project,
+    board: { name: project.name, createdAt: project.createdAt },
+    cursor: `${project.id}:${board.revision}`,
+    cards,
+  };
+}
+
+function loadFixtures(): Record<string, MockBoard> {
+  const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as MockBoard;
+  const [first, second, third] = SAMPLE_PROJECTS as [Project, Project, Project];
+  return {
+    [first.id]: asBoard(first, fixture, fixture.cards),
+    [second.id]: asBoard(second, fixture, fixture.cards.slice(0, 3)),
+    [third.id]: asBoard(third, fixture, []),
+  };
 }
 
 /** Page query parameters (`?empty=1` and so on) reach the API through the Referer header. */
@@ -55,25 +84,28 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
  * Serves `/api/*` from `test/fixtures/board.json` so the screens can be developed without the Rust server.
  * Only registered by `vite --mode mock`; it is never part of the production build.
  *
- * Page query parameters: `empty`, `fail`, `slow`, `disconnect` (see `UNIT_OF_WORK_2.md`).
+ * Page query parameters: `project` (which project is shown), `empty`, `fail` and `slow` (the board of the
+ * shown project), `projects=none` (no projects), `projectsFail=1` (the list fails), `disconnect`.
  */
 export function mockApi(): Plugin {
-  let state = loadFixture();
+  let boards = loadFixtures();
   const clients = new Set<ServerResponse>();
 
   const broadcastChanged = () => {
     for (const client of clients) client.write('event: changed\ndata: {}\n\n');
   };
-  const saveCard = (card: Card) => {
-    state = {
-      ...state,
-      revision: state.revision + 1,
-      cards: state.cards.map((item) => (item.id === card.id ? card : item)),
+  const update = (id: string, change: (board: MockBoard) => Card[]) => {
+    const board = boards[id];
+    if (!board) return;
+    const revision = board.revision + 1;
+    boards = {
+      ...boards,
+      [id]: { ...board, revision, cursor: `${id}:${revision}`, cards: change(board) },
     };
     broadcastChanged();
   };
-  const nextEventId = () =>
-    Math.max(0, ...state.cards.flatMap((card) => card.history.map((item) => item.id))) + 1;
+  const nextEventId = (board: MockBoard) =>
+    Math.max(0, ...board.cards.flatMap((card) => card.history.map((item) => item.id))) + 1;
 
   return {
     name: 'skan-mock-api',
@@ -86,7 +118,29 @@ export function mockApi(): Plugin {
         if (!path.startsWith('/api/')) return next();
         const params = pageParams(req);
 
-        if (req.method === 'GET' && path === '/api/board') {
+        if (req.method === 'GET' && path === '/api/projects') {
+          if (params.get('projectsFail') === '1') {
+            return sendError(
+              res,
+              500,
+              'database_error',
+              'cannot open the projects.',
+              'Mock failure (?projectsFail=1).',
+            );
+          }
+          const projects = params.get('projects') === 'none' ? [] : SAMPLE_PROJECTS;
+          return sendJson(res, 200, { projects, catalogRevision: 1 });
+        }
+
+        const projectMatch = /^\/api\/projects\/([^/]+)\/(board|cards.*)$/.exec(path);
+        const projectId = projectMatch?.[1] ?? '';
+        const rest = projectMatch?.[2] ?? '';
+        const found = boards[projectId];
+
+        if (req.method === 'GET' && rest === 'board') {
+          if (!found) {
+            return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
+          }
           if (params.get('fail') === '1') {
             return sendError(
               res,
@@ -97,8 +151,7 @@ export function mockApi(): Plugin {
             );
           }
           const respond = () => {
-            const body = params.get('empty') === '1' ? { ...state, cards: [] } : state;
-            sendJson(res, 200, body);
+            sendJson(res, 200, params.get('empty') === '1' ? { ...found, cards: [] } : found);
           };
           if (params.get('slow') === '1') {
             const timer = setTimeout(respond, SLOW_MS);
@@ -133,7 +186,7 @@ export function mockApi(): Plugin {
           return;
         }
 
-        const deleteMatch = /^\/api\/cards\/(\d+)$/.exec(path);
+        const deleteMatch = /^cards\/(\d+)$/.exec(rest);
         if (req.method === 'DELETE' && deleteMatch) {
           if (!req.headers['x-skan-token']) {
             return sendError(
@@ -143,6 +196,9 @@ export function mockApi(): Plugin {
               'request refused.',
               'Missing X-Skan-Token header.',
             );
+          }
+          if (!found) {
+            return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
           }
           if (params.get('deleteFail') === '1') {
             return sendError(
@@ -154,7 +210,7 @@ export function mockApi(): Plugin {
             );
           }
           const id = Number(deleteMatch[1]);
-          if (!state.cards.some((card) => card.id === id)) {
+          if (!found.cards.some((card) => card.id === id)) {
             return sendError(
               res,
               404,
@@ -163,19 +219,14 @@ export function mockApi(): Plugin {
               `No card has ID ${id}.`,
             );
           }
-          state = {
-            ...state,
-            revision: state.revision + 1,
-            cards: state.cards.filter((card) => card.id !== id),
-          };
+          update(projectId, (board) => board.cards.filter((card) => card.id !== id));
           res.statusCode = 204;
           res.end();
-          broadcastChanged();
           return;
         }
 
-        const cardMatch = /^\/api\/cards\/(\d+)\/(move|answer)$/.exec(path);
-        if (req.method === 'POST' && (path === '/api/cards' || cardMatch)) {
+        const cardMatch = /^cards\/(\d+)\/(move|answer)$/.exec(rest);
+        if (req.method === 'POST' && (rest === 'cards' || cardMatch)) {
           if (!req.headers['x-skan-token'])
             return sendError(
               res,
@@ -184,10 +235,13 @@ export function mockApi(): Plugin {
               'request refused.',
               'Missing X-Skan-Token header.',
             );
+          if (!found) {
+            return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
+          }
           try {
             const input = await readJson(req);
             const now = new Date().toISOString();
-            if (path === '/api/cards') {
+            if (rest === 'cards') {
               const title = String(input.title ?? '').trim();
               if (!title || title.length > 100 || !['ai', 'human'].includes(String(input.assignee)))
                 return sendError(
@@ -197,12 +251,11 @@ export function mockApi(): Plugin {
                   'invalid card.',
                   'A title and assignee are required.',
                 );
-              const id = Math.max(0, ...state.cards.map((card) => card.id)) + 1;
-              const actor = (input.actor === 'ai' ? 'ai' : 'human') as Actor;
+              const id = Math.max(0, ...found.cards.map((card) => card.id)) + 1;
               const event: HistoryEvent = {
-                id: nextEventId(),
+                id: nextEventId(found),
                 kind: 'created',
-                actor,
+                actor: 'human',
                 reason: null,
                 fromCardStatus: null,
                 toCardStatus: 'todo',
@@ -217,7 +270,7 @@ export function mockApi(): Plugin {
                 description: String(input.description ?? ''),
                 assignee: input.assignee as Assignee,
                 cardStatus: 'todo',
-                position: state.cards.filter((item) => item.cardStatus === 'todo').length + 1,
+                position: found.cards.filter((item) => item.cardStatus === 'todo').length + 1,
                 agentStatus: 'idle',
                 pendingReason: null,
                 pendingRequestId: null,
@@ -226,12 +279,11 @@ export function mockApi(): Plugin {
                 agentStatusChangedAt: now,
                 history: [event],
               };
-              state = { ...state, revision: state.revision + 1, cards: [...state.cards, card] };
-              broadcastChanged();
+              update(projectId, (board) => [...board.cards, card]);
               return sendJson(res, 201, { card });
             }
             const id = Number(cardMatch?.[1]);
-            const card = state.cards.find((item) => item.id === id);
+            const card = found.cards.find((item) => item.id === id);
             if (!card)
               return sendError(
                 res,
@@ -249,6 +301,10 @@ export function mockApi(): Plugin {
                 'invalid reason.',
                 'A reason up to 2,000 characters is required.',
               );
+            const saveCard = (updated: Card) =>
+              update(projectId, (board) =>
+                board.cards.map((item) => (item.id === updated.id ? updated : item)),
+              );
             if (cardMatch?.[2] === 'move') {
               const target = String(input.cardStatus) as ColumnName;
               if (!['todo', 'doing', 'done'].includes(target) || target === card.cardStatus)
@@ -260,9 +316,9 @@ export function mockApi(): Plugin {
                   'Choose a different card status.',
                 );
               const event: HistoryEvent = {
-                id: nextEventId(),
+                id: nextEventId(found),
                 kind: 'lane',
-                actor: input.actor === 'ai' ? 'ai' : 'human',
+                actor: 'human' as Actor,
                 reason,
                 fromCardStatus: card.cardStatus,
                 toCardStatus: target,
@@ -293,7 +349,7 @@ export function mockApi(): Plugin {
                 'Refresh the card and answer the current request.',
               );
             const event: HistoryEvent = {
-              id: nextEventId(),
+              id: nextEventId(found),
               kind: 'agent',
               actor: 'human',
               reason,
@@ -327,7 +383,7 @@ export function mockApi(): Plugin {
         }
 
         if (req.method === 'POST' && path === '/api/__mock/reset') {
-          state = loadFixture();
+          boards = loadFixtures();
           res.statusCode = 204;
           res.end();
           broadcastChanged();

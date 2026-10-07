@@ -18,12 +18,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import '../styles/modal.css';
-import type { Assignee, Card, ColumnName, RunState } from '../types';
+import type { Assignee, ColumnName, DialogAction, RunState } from '../types';
 
-export type DialogAction =
-  | { kind: 'create' }
-  | { kind: 'move'; card: Card; target: ColumnName }
-  | { kind: 'answer'; card: Card };
+export type { DialogAction };
 
 /** The button of a card on the board (the focus target after a drag-and-drop move). */
 function findCardButton(id: number): HTMLElement | null {
@@ -61,10 +58,14 @@ function RunStatusBadge({ status }: { status: RunState }) {
 export function ActionDialog({
   action,
   onClose,
+  onSavingChange,
   onSubmit,
 }: {
   action: DialogAction;
+  /** The dialog is done: saved, or cancelled. */
   onClose: () => void;
+  /** Reports that a save started (`true`) or failed and the input was kept (`false`). */
+  onSavingChange?: (saving: boolean) => void;
   onSubmit: (data: {
     title?: string;
     description?: string;
@@ -128,12 +129,14 @@ export function ActionDialog({
     }
     savingRef.current = true;
     setSaving(true);
+    onSavingChange?.(true);
     try {
       await onSubmit({ title: title.trim(), description, assignee, reason });
       savingRef.current = false;
       onClose();
     } catch (cause) {
       savingRef.current = false;
+      onSavingChange?.(false);
       setError(cause instanceof Error ? cause.message : t('dialog.saveFailed'));
     } finally {
       setSaving(false);
