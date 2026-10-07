@@ -353,13 +353,13 @@ describe('switching while a form is open', () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     const dialog = await openCreateForm();
-    await userEvent.type(within(dialog).getByLabelText('Title (required)'), 'Half written');
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'Half written');
 
     app.navigate(urlOf(PROJECT_C.id));
     app.navigate(urlOf(PROJECT_B.id));
     await act(async () => {});
 
-    expect(within(screen.getByRole('dialog')).getByLabelText('Title (required)')).toHaveProperty(
+    expect(within(screen.getByRole('dialog')).getByLabelText('Title')).toHaveProperty(
       'value',
       'Half written',
     );
@@ -378,12 +378,10 @@ describe('switching while a form is open', () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     const dialog = await openCreateForm();
-    await userEvent.type(within(dialog).getByLabelText('Title (required)'), 'New card');
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'New card');
 
     app.navigate(urlOf(PROJECT_B.id));
-    await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Create card' }),
-    );
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add' }));
 
     await screen.findByText('Eight in knowledge');
     const posts = writes();
@@ -406,20 +404,18 @@ describe('switching while a form is open', () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     const dialog = await openCreateForm();
-    await userEvent.type(within(dialog).getByLabelText('Title (required)'), 'Keep me');
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'Keep me');
     app.navigate(urlOf(PROJECT_B.id));
 
-    await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Create card' }),
-    );
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByText('The board is busy.')).toBeTruthy();
     const open = screen.getByRole('dialog');
-    expect(within(open).getByLabelText('Title (required)')).toHaveProperty('value', 'Keep me');
+    expect(within(open).getByLabelText('Title')).toHaveProperty('value', 'Keep me');
     expect(document.body.textContent).toContain('Initialize the board');
 
     backend.write = undefined;
-    await userEvent.click(within(open).getByRole('button', { name: 'Create card' }));
+    await userEvent.click(within(open).getByRole('button', { name: 'Add' }));
     await screen.findByText('Eight in knowledge');
   });
 

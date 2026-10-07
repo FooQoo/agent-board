@@ -2,8 +2,10 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiWriteError } from '../../src/api';
 import { ActionDialog, type DialogAction } from '../../src/components/ActionDialog';
 import { selectLocale } from '../../src/i18n';
+import { descriptionOf, setDescription } from '../editor/helpers';
 import { fixtureCard } from '../fixtures';
 
 type Data = Parameters<React.ComponentProps<typeof ActionDialog>['onSubmit']>[0];
@@ -63,48 +65,88 @@ afterEach(() => {
 });
 
 describe('create dialog', () => {
-  it('shows the form with the fixed destination and the assignee choice', async () => {
+  it('shows the add form with the AI as the default assignee', async () => {
     const { dialog } = await openHost({ kind: 'create' }, async () => undefined);
-    expect(within(dialog).getByRole('heading', { name: 'Add a card' })).toBeTruthy();
-    expect(within(dialog).getByLabelText(/^Title/)).toBeTruthy();
-    expect(within(dialog).getByLabelText(/^Description/)).toBeTruthy();
-    expect(within(dialog).getByRole('radio', { name: 'Agent' }).getAttribute('aria-checked')).toBe(
+    expect(dialog.textContent).toContain('Add card');
+    expect(dialog.textContent).toContain('New');
+    expect(within(dialog).getByLabelText('Title')).toBeTruthy();
+    expect(within(dialog).getByRole('textbox', { name: 'Description (Markdown)' })).toBeTruthy();
+    expect(within(dialog).getByRole('radio', { name: 'AI' }).getAttribute('aria-checked')).toBe(
       'true',
     );
-    expect(within(dialog).getByRole('radio', { name: 'User' })).toBeTruthy();
-    expect(within(dialog).getByText('Todo')).toBeTruthy();
+    expect(within(dialog).getByRole('radio', { name: 'User' }).getAttribute('aria-checked')).toBe(
+      'false',
+    );
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeTruthy();
-    expect(within(dialog).getByRole('button', { name: 'Create card' })).toBeTruthy();
+    expect(
+      (within(dialog).getByRole('button', { name: 'Add' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeTruthy();
+    expect(within(dialog).getByText('0 / 50,000')).toBeTruthy();
+    expect(within(dialog).getByRole('navigation', { name: 'Outline' }).textContent).toContain(
+      'Add a heading (## ) and the outline appears here.',
+    );
   });
 
-  it('submits the trimmed title, description and chosen assignee, then closes', async () => {
+  it('submits the trimmed title, the description and the chosen assignee, then closes', async () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog, onClosed } = await openHost({ kind: 'create' }, onSubmit);
-    await userEvent.type(within(dialog).getByLabelText(/^Title/), '  Review notes  ');
-    await userEvent.type(within(dialog).getByLabelText(/^Description/), 'Line 1\nLine 2');
+    await userEvent.type(within(dialog).getByLabelText('Title'), '  Review notes  ');
+    setDescription('## Goal\nLine 1\r\nLine 2');
     await userEvent.click(within(dialog).getByRole('radio', { name: 'User' }));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
       title: 'Review notes',
-      description: 'Line 1\nLine 2',
+      description: '## Goal\nLine 1\nLine 2',
       assignee: 'human',
     });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
   });
 
-  it('rejects an empty and an over-long title without calling the API', async () => {
+  it('adds with an empty description and the AI by default', async () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
-    const { dialog, onClosed } = await openHost({ kind: 'create' }, onSubmit);
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
-    expect((await within(dialog).findByRole('alert')).textContent).toBe('Enter a title.');
-    const title = within(dialog).getByLabelText(/^Title/) as HTMLInputElement;
+    const { dialog } = await openHost({ kind: 'create' }, onSubmit);
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'Only a title');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      title: 'Only a title',
+      description: '',
+      assignee: 'ai',
+    });
+  });
+
+  it('cannot add with an empty, blank or over-long title', async () => {
+    const onSubmit = vi.fn(async (_data: Data) => undefined);
+    const { dialog } = await openHost({ kind: 'create' }, onSubmit);
+    const add = within(dialog).getByRole('button', { name: 'Add' }) as HTMLButtonElement;
+    const title = within(dialog).getByLabelText('Title') as HTMLInputElement;
+    expect(add.disabled).toBe(true);
+    await userEvent.type(title, '   ');
+    expect(add.disabled).toBe(true);
     expect(title.maxLength).toBe(100);
+    await userEvent.clear(title);
     await userEvent.type(title, 'あ'.repeat(100));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
+    expect(add.disabled).toBe(false);
+    await userEvent.click(add);
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onClosed).toHaveBeenCalledTimes(1);
+  });
+
+  it('cannot add above 50,000 characters and shows the count in red', async () => {
+    const onSubmit = vi.fn(async (_data: Data) => undefined);
+    const { dialog } = await openHost({ kind: 'create' }, onSubmit);
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'Long');
+    setDescription('a'.repeat(50_000));
+    const add = within(dialog).getByRole('button', { name: 'Add' }) as HTMLButtonElement;
+    expect(add.disabled).toBe(false);
+    expect(within(dialog).getByText('50,000 / 50,000').getAttribute('data-over')).toBeNull();
+    setDescription('a'.repeat(50_001));
+    expect(add.disabled).toBe(true);
+    expect(within(dialog).getByText('50,001 / 50,000').getAttribute('data-over')).toBe('true');
+    expect(
+      within(dialog).getByText('Over the 50,000-character limit. Remove 1 character.'),
+    ).toBeTruthy();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
 
@@ -113,9 +155,9 @@ describe('saving state', () => {
     const pending = deferred();
     const onSubmit = vi.fn((_data: Data) => pending.promise);
     const { dialog, onClosed } = await openHost({ kind: 'create' }, onSubmit);
-    const title = within(dialog).getByLabelText(/^Title/);
+    const title = within(dialog).getByLabelText('Title');
     await userEvent.type(title, 'Slow save');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
 
     const saving = within(dialog).getByRole('button', { name: 'Saving…' });
     expect((saving as HTMLButtonElement).disabled).toBe(true);
@@ -125,9 +167,10 @@ describe('saving state', () => {
     expect(
       (within(dialog).getByRole('button', { name: 'Close' }) as HTMLButtonElement).disabled,
     ).toBe(true);
+    expect((title as HTMLInputElement).disabled).toBe(true);
+    expect(document.querySelector('.cm-content')?.getAttribute('contenteditable')).toBe('false');
 
     await userEvent.click(saving);
-    await userEvent.type(title, '{Enter}');
     await userEvent.keyboard('{Escape}');
     const overlay = document.querySelector('[data-slot="dialog-overlay"]');
     await userEvent.click(overlay as Element);
@@ -148,42 +191,40 @@ describe('saving state', () => {
       .mockImplementationOnce(() => first.promise)
       .mockResolvedValueOnce(undefined);
     const { dialog, onClosed } = await openHost({ kind: 'create' }, onSubmit);
-    await userEvent.type(within(dialog).getByLabelText(/^Title/), 'Keep me');
-    await userEvent.type(within(dialog).getByLabelText(/^Description/), 'Body text');
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'Keep me');
+    setDescription('Body text');
     await userEvent.click(within(dialog).getByRole('radio', { name: 'User' }));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
-    await act(async () => first.reject(new Error('The server said no.')));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+    await act(async () => first.reject(new ApiWriteError('The server said no.', 503, 'busy')));
 
-    expect((await within(dialog).findByRole('alert')).textContent).toBe('The server said no.');
+    expect((await within(dialog).findByRole('alert')).textContent).toContain('The server said no.');
     expect(onClosed).not.toHaveBeenCalled();
-    expect((within(dialog).getByLabelText(/^Title/) as HTMLInputElement).value).toBe('Keep me');
-    expect((within(dialog).getByLabelText(/^Description/) as HTMLTextAreaElement).value).toBe(
-      'Body text',
-    );
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('Keep me');
+    expect(descriptionOf()).toBe('Body text');
     expect(within(dialog).getByRole('radio', { name: 'User' }).getAttribute('aria-checked')).toBe(
       'true',
     );
-    const save = within(dialog).getByRole('button', { name: 'Create card' }) as HTMLButtonElement;
-    expect(save.disabled).toBe(false);
+    const add = within(dialog).getByRole('button', { name: 'Add' }) as HTMLButtonElement;
+    expect(add.disabled).toBe(false);
     expect(
       (within(dialog).getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled,
     ).toBe(false);
 
-    await userEvent.click(save);
+    await userEvent.click(add);
     expect(onSubmit).toHaveBeenCalledTimes(2);
     expect(onSubmit.mock.calls[1]?.[0]).toMatchObject({ title: 'Keep me', assignee: 'human' });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
   });
 
-  it('uses the generic message when the failure is not an Error', async () => {
+  it('uses the generic message when the failure is not a server answer', async () => {
     const onSubmit = vi.fn(async (_data: Data) => {
-      throw 'nope';
+      throw new TypeError('Failed to fetch');
     });
     const { dialog } = await openHost({ kind: 'create' }, onSubmit);
-    await userEvent.type(within(dialog).getByLabelText(/^Title/), 'x');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create card' }));
-    expect((await within(dialog).findByRole('alert')).textContent).toBe(
-      'Could not save the change.',
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'x');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Could not save. Your input is kept. Try again.',
     );
   });
 });
@@ -217,10 +258,10 @@ describe('closing and focus', () => {
 
   it('does not close on an outside click when idle (typed input is not discarded by accident)', async () => {
     const { dialog, onClosed } = await openHost({ kind: 'create' }, async () => undefined);
-    await userEvent.type(within(dialog).getByLabelText(/^Title/), 'draft');
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'draft');
     await userEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as Element);
     expect(onClosed).not.toHaveBeenCalled();
-    expect((within(dialog).getByLabelText(/^Title/) as HTMLInputElement).value).toBe('draft');
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('draft');
   });
 
   it('returns focus to the source card when there is no opener (drag move)', async () => {

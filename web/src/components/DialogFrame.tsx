@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import '../styles/modal.css';
 
 /** The button of a card on the board (the focus target after a drag-and-drop move). */
-function findCardButton(id: number): HTMLElement | null {
+export function findCardButton(id: number): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>('button.card')) {
     if (element.querySelector('.card__id')?.textContent === `#${id}`) return element;
   }

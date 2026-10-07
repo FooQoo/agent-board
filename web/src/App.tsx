@@ -16,7 +16,7 @@ import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
-import { answerRequest, createCard, moveCard } from './api';
+import { answerRequest, createCard, editCard, moveCard } from './api';
 import { useBoard } from './hooks/useBoard';
 import { useBoardEvents } from './hooks/useBoardEvents';
 import { useDetailWidth } from './hooks/useDetailWidth';
@@ -216,7 +216,7 @@ export function App({ initial }: AppProps) {
                 if (selected) openDialog({ kind: 'answer', card: selected });
               }}
               onEdit={() => {
-                if (selected) openDialog({ kind: 'edit', card: selected });
+                if (selected?.isDraft) openDialog({ kind: 'edit', card: selected });
               }}
               onToggleDraft={() => undefined}
               onClose={() => dispatch({ type: 'SELECT_CARD', id: null })}
@@ -260,6 +260,12 @@ export function App({ initial }: AppProps) {
                 dialog.target as ColumnName,
                 data.reason ?? '',
               );
+            else if (dialog.kind === 'edit')
+              await editCard(projectId, dialog.card.id, {
+                title: data.title,
+                description: data.description,
+                finalize: data.finalize,
+              });
             else if (dialog.kind === 'answer')
               await answerRequest(
                 projectId,

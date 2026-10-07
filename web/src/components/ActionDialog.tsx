@@ -1,7 +1,7 @@
 import type { Assignee, DialogAction } from '../types';
 import { AnswerDialog } from './AnswerDialog';
 import { CreateDialog } from './CreateDialog';
-import { EditDialog } from './EditDialog';
+import { EditDialog } from './editor/EditDialog';
 import { MoveDialog } from './MoveDialog';
 
 export type { DialogAction };
@@ -11,6 +11,8 @@ export interface ActionDialogData {
   description?: string;
   assignee?: Assignee;
   reason?: string;
+  /** Edit only: hand the card back to the agents in the same step. */
+  finalize?: boolean;
 }
 
 /** Opens the dialog for a card operation. Each operation has its own component. */
@@ -50,6 +52,13 @@ export function ActionDialog({
         />
       );
     case 'edit':
-      return <EditDialog card={action.card} onClose={onClose} />;
+      return (
+        <EditDialog
+          card={action.card}
+          onClose={onClose}
+          onSavingChange={onSavingChange}
+          onSubmit={onSubmit}
+        />
+      );
   }
 }
