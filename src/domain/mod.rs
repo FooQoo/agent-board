@@ -14,8 +14,8 @@ pub use limits::{
 };
 pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use work::{
-    Actor, Assignee, BoardSnapshot, Card, ChangeContext, Changed, FetchedSnapshot, HistoryEvent,
-    HistoryKind, NewCard, ValidatedBoard,
+    Actor, AllBoardsSnapshot, Assignee, BoardSnapshot, Card, ChangeContext, Changed,
+    FetchedSnapshot, HistoryEvent, HistoryKind, NewCard, ValidatedBoard,
 };
 
 const WORK_REASON_MAX: usize = 2_000;

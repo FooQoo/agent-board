@@ -1326,10 +1326,11 @@ fn help_lists_project_commands_and_every_example_names_its_project() {
             .collect();
         assert!(!examples.is_empty(), "{command:?} has no example:\n{help}");
         for example in examples {
+            // `ls --all-projects` reads every project and names none.
             let global = matches!(
                 command.as_slice(),
                 ["serve"] | ["project", "create"] | ["project", "ls"]
-            );
+            ) || example.contains("--all-projects");
             assert_eq!(
                 example.contains("--project"),
                 !global,

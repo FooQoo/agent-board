@@ -72,13 +72,14 @@ agboard project create "My project"
 agboard serve --port 7420
 ```
 
-`--project NAME` is required by every command except `project create`, `project ls`, and `serve`. Add cards in the browser or with `agboard --project "My project" add "Write the setup guide" --assignee ai --actor ai`. See [integrations](integrations/README.md) for Claude Code and Codex hooks. Build instructions are in [CONTRIBUTING.md](CONTRIBUTING.md).
+`--project NAME` is required by every command except `project create`, `project ls`, `serve`, and the read-only `ls --all-projects`. Add cards in the browser or with `agboard --project "My project" add "Write the setup guide" --assignee ai --actor ai`. See [integrations](integrations/README.md) for Claude Code and Codex hooks. Build instructions are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 <details>
 <summary><strong>Commands</strong></summary>
 
 ```sh
 agboard project ls --json
+agboard ls --all-projects --json
 agboard --project "My project" snapshot --json
 agboard --project "My project" mv 1 doing --actor ai --reason "Start implementation"
 agboard --project "My project" state 1 running --actor ai --reason "Implementing the approved change"
@@ -89,7 +90,7 @@ agboard --project "My project" mv 1 done --actor ai --reason "Implementation and
 agboard --project "My project" wait --after <cursor>
 ```
 
-Other commands: `add`, `edit`, `show`, `rm`, `export`, `import`, `project rename`, `project rm`, and `hook`. Run `agboard --help` or `agboard <command> --help` for details. Add `--json` for machine-readable output. `<cursor>` is the `cursor` field of a snapshot of the same project (`<project-id>:<revision>`).
+`ls --all-projects` reads every project's cards and full history in one consistent, read-only fetch (by project name; `--column` and `--state` apply to every project) and does not take `--project`. Other commands: `add`, `edit`, `show`, `rm`, `export`, `import`, `project rename`, `project rm`, and `hook`. Run `agboard --help` or `agboard <command> --help` for details. Add `--json` for machine-readable output. `<cursor>` is the `cursor` field of a snapshot of the same project (`<project-id>:<revision>`).
 
 </details>
 
