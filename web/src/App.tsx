@@ -16,7 +16,7 @@ import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
-import { answerRequest, createCard, moveCard } from './api';
+import { createCard, moveCard } from './api';
 import { useBoard } from './hooks/useBoard';
 import { useBoardEvents } from './hooks/useBoardEvents';
 import { useDetailWidth } from './hooks/useDetailWidth';
@@ -212,13 +212,12 @@ export function App({ initial }: AppProps) {
               card={selected}
               variant={view === 'board' ? 'card' : 'state'}
               operations={operations}
-              onAnswer={() => {
-                if (selected) openDialog({ kind: 'answer', card: selected });
-              }}
               onEdit={() => {
                 if (selected) openDialog({ kind: 'edit', card: selected });
               }}
-              onToggleDraft={() => undefined}
+              onChanged={() => {
+                if (isProjectId(activeId)) refreshProject(activeId);
+              }}
               onClose={() => dispatch({ type: 'SELECT_CARD', id: null })}
               onDeleted={() => {
                 if (isProjectId(activeId)) refreshProject(activeId);
@@ -258,13 +257,6 @@ export function App({ initial }: AppProps) {
                 projectId,
                 dialog.card.id,
                 dialog.target as ColumnName,
-                data.reason ?? '',
-              );
-            else if (dialog.kind === 'answer')
-              await answerRequest(
-                projectId,
-                dialog.card.id,
-                dialog.card.pendingRequestId ?? '',
                 data.reason ?? '',
               );
             refreshProject(projectId);

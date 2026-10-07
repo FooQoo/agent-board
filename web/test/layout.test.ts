@@ -43,10 +43,12 @@ describe('desktop layout', () => {
     expect(rule(css, '.lane')).toMatch(/border-radius:\s*var\(--radius-lane\)/);
   });
 
-  it('draws the detail column with a left border, 28px padding and an inner scrolling history', () => {
+  it('draws the detail column with a left border, 28px padding and a scrolling tab content', () => {
     const detail = rule(css, '.detail');
     expect(detail).toMatch(/padding:\s*28px/);
     expect(detail).toMatch(/border-left:\s*1px solid var\(--r-border\)/);
-    expect(rule(css, '.history')).toMatch(/overflow-y:\s*auto/);
+    expect(detail).toMatch(/gap:\s*18px/);
+    const viewport = rule(read('src/styles/detail.css'), '.detail__viewport');
+    expect(viewport).toMatch(/overflow-y:\s*auto/);
   });
 });

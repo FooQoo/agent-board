@@ -7,6 +7,10 @@ import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
 
 const noop = () => {};
 
+async function openHistory() {
+  await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+}
+
 describe('DetailPanel', () => {
   beforeEach(() => selectLocale('en'));
 
@@ -21,16 +25,17 @@ describe('DetailPanel', () => {
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(12)}
+        card={fixtureCard(15)}
         onClose={noop}
         onDeleted={noop}
       />,
     );
     expect(screen.getByRole('button', { name: '詳細を閉じる' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'カードを削除' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: '説明' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '下書きにする' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '本文' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /^履歴/ })).toBeTruthy();
     expect(screen.getByText('説明はありません。')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: '履歴' })).toBeTruthy();
     selectLocale('en');
   });
 
@@ -53,22 +58,23 @@ describe('DetailPanel', () => {
     expect(screen.getByText('#8')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
     expect(container.querySelector('.detail__meta .status-label--done')?.textContent).toBe('Done');
-    expect(screen.getByRole('heading', { name: 'Description' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Description', selected: true })).toBeTruthy();
     expect(screen.getByText('Create the storage for the board with agboard init.')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'History' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'History 3', selected: false })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Close details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete card' })).toBeTruthy();
   });
 
-  it('keeps line breaks in the description and does not interpret markup', () => {
+  it('shows every line break and shows markup as text', () => {
     const card = makeCard({ id: 31, description: 'Line one\nLine **two**\n<b>three</b>' });
     const { container } = render(
       <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
     );
-    const description = container.querySelector('.detail__description');
-    expect(description?.textContent).toBe('Line one\nLine **two**\n<b>three</b>');
+    const panel = screen.getByRole('tabpanel');
+    expect(panel.querySelectorAll('br')).toHaveLength(2);
+    expect(panel.querySelector('strong')?.textContent).toBe('two');
+    expect(panel.textContent).toContain('<b>three</b>');
     expect(container.querySelector('b')).toBeNull();
-    expect(container.querySelector('strong')).toBeNull();
   });
 
   it('shows a note when the description is empty', () => {
@@ -83,7 +89,7 @@ describe('DetailPanel', () => {
     expect(screen.getByText('No description.')).toBeTruthy();
   });
 
-  it('draws one history point per event with the changed status and time', () => {
+  it('draws one history point per event with the changed status and time', async () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
@@ -92,6 +98,7 @@ describe('DetailPanel', () => {
         onDeleted={noop}
       />,
     );
+    await openHistory();
     const steps = container.querySelectorAll('.history__step');
     expect(steps).toHaveLength(3);
     const texts = Array.from(steps).map((step) => step.textContent);
@@ -104,7 +111,7 @@ describe('DetailPanel', () => {
     expect(steps[2]?.getAttribute('data-column')).toBe('todo');
   });
 
-  it('adds a point when a card returned to an earlier column', () => {
+  it('adds a point when a card returned to an earlier column', async () => {
     const card = makeCard({
       id: 32,
       cardStatus: 'doing',
@@ -162,6 +169,7 @@ describe('DetailPanel', () => {
     const { container } = render(
       <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
     );
+    await openHistory();
     expect(container.querySelectorAll('.history__step')).toHaveLength(4);
   });
 
@@ -188,8 +196,8 @@ describe('DetailPanel', () => {
     expect(document.querySelector('.detail__meta .status-label--pending')?.textContent).toBe(
       'Pending',
     );
-    expect(screen.getAllByText('Waiting for confirmation on how to replace a board.')).toHaveLength(
-      2,
+    expect(document.querySelector('.detail__reason')?.textContent).toBe(
+      'Waiting for confirmation on how to replace a board.',
     );
     rerender(
       <DetailPanel
@@ -229,7 +237,7 @@ describe('DetailPanel', () => {
     expect(within(region).getByText('#8')).toBeTruthy();
   });
 
-  it('puts the time first, then the changed status with the actor, then the reason', () => {
+  it('puts the time first, then the changed status with the actor, then the reason', async () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
@@ -238,6 +246,7 @@ describe('DetailPanel', () => {
         onDeleted={noop}
       />,
     );
+    await openHistory();
     const step = container.querySelector('.history__step') as HTMLElement;
     const parts = Array.from(step.querySelectorAll('.history__text > *')).map((el) => el.className);
     expect(parts).toEqual(['history__at', 'history__heading', 'history__reason']);
@@ -273,22 +282,6 @@ describe('DetailPanel', () => {
     expect(meta.querySelector('.detail__assignee')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('shows the pending request in a labelled box and keeps Answer and Delete in one row', () => {
-    const card = fixtureCard(12);
-    const { container } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
-    );
-    const box = container.querySelector('.detail__pending') as HTMLElement;
-    expect(box.textContent).toContain('Decision request from the AI');
-    expect(box.textContent).toContain(card.pendingReason ?? 'missing');
-    expect(box.querySelector('button')).toBeNull();
-    const actions = container.querySelector('.detail__actions') as HTMLElement;
-    const names = Array.from(actions.querySelectorAll('button')).map(
-      (b) => b.textContent || b.getAttribute('aria-label'),
-    );
-    expect(names).toEqual(['Answer', 'Delete card']);
-  });
-
   it('uses the shared Button for Delete and Cancel in the confirmation', async () => {
     render(
       <DetailPanel
@@ -308,7 +301,7 @@ describe('DetailPanel', () => {
     );
   });
 
-  it('colors a run state change dot by the new run state and other dots by the card status', () => {
+  it('colors a run state change dot by the new run state and other dots by the card status', async () => {
     const ev = (
       id: number,
       kind: 'created' | 'lane' | 'agent',
@@ -340,36 +333,11 @@ describe('DetailPanel', () => {
     const { container } = render(
       <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
     );
+    await openHistory();
     const tones = Array.from(container.querySelectorAll('.history__step .dot')).map((dot) =>
       dot.getAttribute('data-tone'),
     );
     // Newest first.
     expect(tones).toEqual(['idle', 'pending', 'doing', 'doing', 'todo']);
-  });
-
-  it('puts Delete at the left of the action row, directly after Answer when pending', () => {
-    const { container, rerender } = render(
-      <DetailPanel
-        projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
-        onClose={noop}
-        onDeleted={noop}
-      />,
-    );
-    const row = () => container.querySelector('.detail__actions') as HTMLElement;
-    expect(
-      Array.from(row().children).map((el) => el.textContent || el.getAttribute('aria-label')),
-    ).toEqual(['Delete card', null]);
-    rerender(
-      <DetailPanel
-        projectId={PROJECT_A.id}
-        card={fixtureCard(12)}
-        onClose={noop}
-        onDeleted={noop}
-      />,
-    );
-    expect(
-      Array.from(row().children).map((el) => el.textContent || el.getAttribute('aria-label')),
-    ).toEqual(['Answer', 'Delete card', null]);
   });
 });

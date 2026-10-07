@@ -1,15 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { FilePenIcon, PencilIcon as EditIcon, XIcon } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { setDraft } from '../api';
 import { stateLabel } from '../lib/format';
+import { historyItems } from '../lib/history';
 import { noOperations, type OperationControls } from '../lib/projectSession';
 import type { Card, ProjectId } from '../types';
-import { XIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AssigneeLabel } from './AssigneeLabel';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
+import { DecisionRequest } from './detail/DecisionRequest';
+import { DetailTabs, type DetailTab, panelId, tabId } from './detail/DetailTabs';
+import { DraftBanner } from './detail/DraftBanner';
 import { HistoryTimeline } from './HistoryTimeline';
+import { MarkdownSections } from './markdown/MarkdownSections';
 import { StatusLabel } from './StatusLabel';
-import { AssigneeLabel } from './AssigneeLabel';
+import '../styles/detail.css';
 
 export interface DetailPanelProps {
   /** The project the card belongs to. Part keys and delete requests use it. */
@@ -20,11 +26,10 @@ export interface DetailPanelProps {
   /** Tells the app about the delete confirmation, so the project cannot change under it. */
   operations?: OperationControls;
   onClose: () => void;
-  onAnswer?: () => void;
-  /** The edit icon was pressed. The toolbar that calls this is added with the description tabs. */
-  onEdit?: () => void;
-  /** The draft toggle (Make draft / Finalize) was pressed. */
-  onToggleDraft?: () => void;
+  /** The edit icon (shown for a draft) was pressed. */
+  onEdit?: (card: Card) => void;
+  /** A draft toggle or an answer was saved: the board should be fetched again. */
+  onChanged?: () => void;
   /** The card is gone (deleted here or already missing); the parent clears the selection and reloads. */
   onDeleted: () => void;
   /** Mock mode only: open the delete confirmation immediately. */
@@ -39,9 +44,8 @@ export function DetailPanel({
   variant = 'card',
   operations = noOperations,
   onClose,
-  onAnswer,
   onEdit,
-  onToggleDraft,
+  onChanged,
   onDeleted,
   initialConfirm,
   initialDeleteFailed,
@@ -66,9 +70,8 @@ export function DetailPanel({
       operations={operations}
       card={card}
       onClose={onClose}
-      onAnswer={onAnswer}
       onEdit={onEdit}
-      onToggleDraft={onToggleDraft}
+      onChanged={onChanged}
       onDeleted={onDeleted}
       initialConfirm={initialConfirm}
       initialDeleteFailed={initialDeleteFailed}
@@ -90,15 +93,19 @@ function DetailBody({
   card,
   operations,
   onClose,
-  onAnswer,
-  onEdit: _onEdit,
-  onToggleDraft: _onToggleDraft,
+  onEdit,
+  onChanged,
   onDeleted,
   initialConfirm,
   initialDeleteFailed,
 }: DetailBodyProps) {
   const { t } = useTranslation();
+  const idBase = useId();
+  const [tab, setTab] = useState<DetailTab>('description');
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftFailed, setDraftFailed] = useState(false);
+  const draftBusy = useRef(false);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
   const state = stateLabel(card);
@@ -125,6 +132,24 @@ function DetailBody({
     }
   }, [confirm]);
 
+  const toggleDraft = async (isDraft: boolean) => {
+    if (draftBusy.current) return;
+    draftBusy.current = true;
+    setDraftSaving(true);
+    setDraftFailed(false);
+    try {
+      await setDraft(projectId, card.id, isDraft);
+      onChanged?.();
+    } catch {
+      setDraftFailed(true);
+    } finally {
+      draftBusy.current = false;
+      setDraftSaving(false);
+    }
+  };
+
+  const canMakeDraft = !card.isDraft && card.agentStatus === 'idle';
+
   return (
     <aside className="detail" aria-label={t('detail.title')}>
       <div className="detail__top">
@@ -147,58 +172,99 @@ function DetailBody({
           {t(`assignee.${card.assignee}`)}
         </span>
       </div>
-      {card.agentStatus === 'pending' && card.pendingReason && (
-        <div className="detail__pending">
-          <p className="detail__pending-label">{t('dialog.agentRequest')}</p>
-          <p className="detail__reason">{card.pendingReason}</p>
+      {card.isDraft && (
+        <DraftBanner
+          busy={draftSaving}
+          failed={draftFailed}
+          onFinalize={() => void toggleDraft(false)}
+        />
+      )}
+      {card.agentStatus === 'pending' && (
+        <DecisionRequest
+          projectId={projectId}
+          card={card}
+          operations={operations}
+          onChanged={onChanged}
+        />
+      )}
+      {confirming && (
+        <DeleteConfirm
+          projectId={projectId}
+          card={card}
+          focusOnMount={confirm === 'user'}
+          initialFailed={initialDeleteFailed}
+          onCancel={() => {
+            restoreFocus.current = true;
+            setConfirm('closed');
+          }}
+          onSavingChange={(saving) => {
+            const id = operationId.current;
+            if (id === null) return;
+            if (saving) operations.saveStarted(id);
+            else operations.saveFailed(id);
+          }}
+          onDeleted={() => {
+            const id = operationId.current;
+            if (id !== null) operations.cardDeleted(id, projectId, card.id);
+            onDeleted();
+          }}
+        />
+      )}
+      <DetailTabs
+        idBase={idBase}
+        tab={tab}
+        historyCount={historyItems(card.history).length}
+        onChange={setTab}
+      >
+        <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
+          {tab === 'description' && card.isDraft && (
+            <button
+              type="button"
+              className="detail__tool"
+              aria-label={t('detail.edit')}
+              title={t('detail.edit')}
+              onClick={() => onEdit?.(card)}
+            >
+              <EditIcon aria-hidden="true" />
+            </button>
+          )}
+          {tab === 'description' && canMakeDraft && (
+            <button
+              type="button"
+              className="detail__tool detail__tool--text"
+              disabled={draftSaving}
+              onClick={() => void toggleDraft(true)}
+            >
+              <FilePenIcon aria-hidden="true" />
+              {t('detail.makeDraft')}
+            </button>
+          )}
+          <DeleteButton ref={deleteButton} onClick={() => setConfirm('user')} />
         </div>
-      )}
-      <h3 className="detail__heading">{t('detail.description')}</h3>
-      {card.description === '' ? (
-        <p className="detail__description detail__description--empty">
-          {t('detail.noDescription')}
+      </DetailTabs>
+      {draftFailed && !card.isDraft && (
+        <p className="detail__error" role="alert">
+          {t('detail.saveError')}
         </p>
-      ) : (
-        <p className="detail__description">{card.description}</p>
       )}
-      <h3 className="detail__heading">{t('history.title')}</h3>
-      <HistoryTimeline events={card.history} />
-      <div className="detail__actions">
-        {confirm === 'closed' ? (
-          <>
-            {card.agentStatus === 'pending' && card.pendingReason && (
-              <>
-                <Button type="button" onClick={onAnswer}>
-                  {t('dialog.answerAction')}
-                </Button>
-              </>
-            )}
-            <DeleteButton ref={deleteButton} onClick={() => setConfirm('user')} />
-            <span className="detail__spacer" aria-hidden="true" />
-          </>
-        ) : (
-          <DeleteConfirm
-            projectId={projectId}
-            card={card}
-            focusOnMount={confirm === 'user'}
-            initialFailed={initialDeleteFailed}
-            onCancel={() => {
-              restoreFocus.current = true;
-              setConfirm('closed');
-            }}
-            onSavingChange={(saving) => {
-              const id = operationId.current;
-              if (id === null) return;
-              if (saving) operations.saveStarted(id);
-              else operations.saveFailed(id);
-            }}
-            onDeleted={() => {
-              const id = operationId.current;
-              if (id !== null) operations.cardDeleted(id, projectId, card.id);
-              onDeleted();
-            }}
-          />
-        )}
+      {/* Both panels stay mounted, so the folds of the description survive a look at the history. */}
+      <div
+        className="detail__viewport"
+        role="tabpanel"
+        id={panelId(idBase, 'description')}
+        aria-labelledby={tabId(idBase, 'description')}
+        hidden={tab !== 'description'}
+      >
+        <MarkdownSections source={card.description} />
+      </div>
+      <div
+        className="detail__viewport"
+        role="tabpanel"
+        id={panelId(idBase, 'history')}
+        aria-labelledby={tabId(idBase, 'history')}
+        hidden={tab !== 'history'}
+      >
+        <HistoryTimeline events={card.history} />
       </div>
     </aside>
   );

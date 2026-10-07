@@ -38,6 +38,7 @@ export function Card({ card, selected, onSelect }: CardProps) {
         <GripVerticalIcon aria-hidden="true" focusable="false" className="grip" />
         <span className="card__id">#{card.id}</span>
         <AssigneeLabel assignee={card.assignee} />
+        {card.isDraft && <span className="card__draft">{t('draft.label')}</span>}
         <span className="card__spacer" />
         {showsState && <StatusLabel kind="agent" status={card.agentStatus} />}
       </span>

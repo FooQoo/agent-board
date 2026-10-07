@@ -78,6 +78,17 @@ export async function deleteCard(projectId: ProjectId, id: number): Promise<Dele
   }
 }
 
+/** A rejected write. `code` is the API error code (for example `request_changed`), when the body has one. */
+export class WriteError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null,
+  ) {
+    super(message);
+  }
+}
+
 async function postCard<T>(path: string, value: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'POST',
@@ -89,7 +100,13 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
     changed?: boolean;
     error?: ApiError['error'];
   };
-  if (!response.ok) throw new Error(body.error?.reason ?? `Request failed (${response.status})`);
+  if (!response.ok) {
+    throw new WriteError(
+      body.error?.reason ?? `Request failed (${response.status})`,
+      response.status,
+      body.error?.code ?? null,
+    );
+  }
   return body as T;
 }
 
@@ -137,7 +154,11 @@ async function sendCard(
   });
   const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || body.card === undefined) {
-    throw new Error(body.error?.reason ?? `Request failed (${response.status})`);
+    throw new WriteError(
+      body.error?.reason ?? `Request failed (${response.status})`,
+      response.status,
+      body.error?.code ?? null,
+    );
   }
   return { card: body.card };
 }

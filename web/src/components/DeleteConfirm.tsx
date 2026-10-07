@@ -63,11 +63,23 @@ export function DeleteConfirm({
         </p>
       )}
       <div className="delete-confirm__buttons">
-        <Button ref={cancelRef} type="button" variant="outline" onClick={onCancel}>
-          {t('delete.cancel')}
-        </Button>
-        <Button type="button" variant="destructive" disabled={busy} onClick={confirm}>
+        <Button
+          type="button"
+          variant="destructive"
+          className="detail-btn"
+          disabled={busy}
+          onClick={confirm}
+        >
           {t('delete.submit')}
+        </Button>
+        <Button
+          ref={cancelRef}
+          type="button"
+          variant="outline"
+          className="detail-btn detail-btn--plain"
+          onClick={onCancel}
+        >
+          {t('delete.cancel')}
         </Button>
       </div>
     </div>

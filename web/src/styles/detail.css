@@ -1,0 +1,363 @@
+/*
+ * The detail column: the draft banner, the decision request with its answer form, the tabs with
+ * their toolbar, and the tab content. Colors are the r-* tokens of theme.css, so every theme works.
+ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Banners (draft and decision request) ---- */
+
+.detail__draft,
+.detail__request {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.detail__draft {
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+}
+
+.detail__request {
+  /* The 1px border sits inside the 12px padding, as in the design. */
+  padding: 11px;
+  border: 1px solid var(--r-pend-bd);
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+}
+
+.detail__banner-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+}
+
+.detail__banner-head svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.detail__banner-text,
+.detail__reason {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--r-text);
+  overflow-wrap: anywhere;
+}
+
+/* A long reason is cut at four lines until the person asks for the rest. */
+.detail__reason--clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+.detail__more {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+  color: var(--r-pend-tx);
+  cursor: pointer;
+}
+
+.detail__more svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* The buttons of the banners are 33px high; the ones inside the answer form are 29px. */
+.detail-btn {
+  align-self: flex-start;
+  height: 33px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.detail-btn--sm {
+  align-self: auto;
+  height: 29px;
+  font-size: 12px;
+}
+
+.detail-btn--plain {
+  font-weight: 400;
+  color: var(--r-text2);
+}
+
+.detail-btn--quiet {
+  padding: 0 10px;
+  font-weight: 400;
+  color: var(--r-text2);
+}
+
+.detail-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---- Answer form ---- */
+
+.detail__answer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail__answer-input.detail__answer-input {
+  min-height: 96px;
+  padding: 10px 12px;
+  border-color: var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--r-text);
+  resize: none;
+}
+
+.detail__answer-input.detail__answer-input:focus-visible {
+  border-color: var(--r-accent);
+  outline: none;
+  box-shadow: none;
+}
+
+.detail__answer-input.detail__answer-input[aria-invalid="true"] {
+  border-color: var(--r-danger);
+}
+
+.detail__answer-input.detail__answer-input:disabled {
+  background: var(--r-lane);
+  color: var(--r-muted);
+  opacity: 1;
+}
+
+.detail__hint,
+.detail__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--r-muted);
+}
+
+.detail__error {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--r-danger);
+}
+
+.detail__hint svg,
+.detail__error svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+}
+
+.detail__answer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---- Tabs and toolbar ---- */
+
+.detail__tabs {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 35px;
+  box-shadow: inset 0 -1px 0 var(--r-border);
+}
+
+.detail__tablist {
+  display: flex;
+  align-self: stretch;
+}
+
+.detail__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 35px;
+  padding: 8px 14px 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--r-muted);
+  cursor: pointer;
+}
+
+.detail__tab svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.detail__tab[aria-selected="true"] {
+  border-bottom-color: var(--r-accent);
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+.detail__tab-count {
+  margin-left: 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--r-muted);
+}
+
+.detail__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.detail__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 25px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.detail__tool:hover:not(:disabled) {
+  background: var(--r-lane);
+}
+
+.detail__tool:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.detail__tool svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.detail__tool--text {
+  height: 27px;
+  padding: 0 10px;
+  border: 1px solid var(--r-border);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 17px;
+}
+
+.detail__tool--delete {
+  color: var(--r-danger);
+}
+
+.detail__tab:focus-visible,
+.detail__tool:focus-visible,
+.detail__more:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 1px;
+}
+
+/* ---- Tab content ---- */
+
+.detail__viewport {
+  flex: 1 1 0;
+  min-height: 160px;
+  margin-right: -8px;
+  padding-right: 8px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.detail__viewport::-webkit-scrollbar {
+  width: 3px;
+}
+
+.detail__viewport::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: var(--divider);
+}
+
+.detail__viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .detail__viewport {
+    scrollbar-width: thin;
+    scrollbar-color: var(--divider) transparent;
+  }
+}
+
+/* ---- Tile ---- */
+
+.card__draft {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--r-border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  color: var(--r-text2);
+}
+
+/* ---- Description sections inside the column ---- */
+
+/* The dividers sit between sections only, and the count is plain text. */
+.detail .md-section:last-child {
+  border-bottom: 0;
+}
+
+.detail .md-section__count {
+  font-weight: 400;
+}
+
+/* A button that cannot be used now is a quiet gray one, as in the design. */
+.detail-btn:disabled {
+  opacity: 1;
+  background: var(--r-lane);
+  color: var(--r-muted);
+}
+
+.detail-btn--quiet:disabled {
+  background: transparent;
+}

@@ -273,28 +273,3 @@ describe('move dialog', () => {
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
   });
 });
-
-describe('answer dialog', () => {
-  it('shows the run state change from the current state to Idle, as in the design', async () => {
-    const card = fixtureCard(12);
-    const { dialog } = await openHost({ kind: 'answer', card }, async () => undefined);
-    const group = within(dialog).getByRole('group', { name: 'Status change' });
-    expect(group.textContent).toMatch(/Pending.*Idle/);
-    expect(within(group).queryByText('Doing')).toBeNull();
-    expect(within(group).queryByRole('img')).toBeNull();
-    expect(group.querySelector('svg.lucide-arrow-right')).not.toBeNull();
-    expect(group.querySelector('svg.lucide-pause')).not.toBeNull();
-  });
-
-  it('shows the pending request and submits the answer', async () => {
-    const card = fixtureCard(12);
-    const onSubmit = vi.fn(async (_data: Data) => undefined);
-    const { dialog, onClosed } = await openHost({ kind: 'answer', card }, onSubmit);
-    expect(within(dialog).getByRole('heading', { name: 'Answer request' })).toBeTruthy();
-    expect(within(dialog).getByText(card.pendingReason as string)).toBeTruthy();
-    await userEvent.type(within(dialog).getByLabelText(/^Answer and direction/), 'Keep it.');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Send answer' }));
-    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ reason: 'Keep it.' });
-    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-  });
-});

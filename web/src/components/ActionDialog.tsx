@@ -1,5 +1,4 @@
 import type { Assignee, DialogAction } from '../types';
-import { AnswerDialog } from './AnswerDialog';
 import { CreateDialog } from './CreateDialog';
 import { EditDialog } from './EditDialog';
 import { MoveDialog } from './MoveDialog';
@@ -35,15 +34,6 @@ export function ActionDialog({
         <MoveDialog
           card={action.card}
           target={action.target}
-          onClose={onClose}
-          onSavingChange={onSavingChange}
-          onSubmit={onSubmit}
-        />
-      );
-    case 'answer':
-      return (
-        <AnswerDialog
-          card={action.card}
           onClose={onClose}
           onSavingChange={onSavingChange}
           onSubmit={onSubmit}
