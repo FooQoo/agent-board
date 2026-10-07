@@ -11,7 +11,7 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 
-use super::{run_in_transaction, schema_v3};
+use super::{run_in_transaction, schema};
 use crate::clock::{format_utc, parse_utc};
 use crate::domain::{
     ChangeCursor, Changed, ProjectCatalog, ProjectId, ProjectMeta, validate_project_name,
@@ -57,9 +57,9 @@ impl ProjectStore {
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         )?;
         conn.busy_timeout(BUSY_TIMEOUT)?;
-        let version = schema_v3::user_version(&conn)?;
-        schema_v3::check_version(version)?;
-        if version != schema_v3::SCHEMA_VERSION {
+        let version = schema::user_version(&conn)?;
+        schema::check_version(version)?;
+        if version != schema::SCHEMA_VERSION {
             return Err(SkanError::NotInitialized);
         }
         conn.pragma_update(None, "query_only", true)?;
@@ -80,7 +80,7 @@ impl ProjectStore {
         }
         let conn = Connection::open(path)?;
         conn.busy_timeout(timeout)?;
-        schema_v3::prepare(&conn, timeout)?;
+        schema::prepare(&conn, timeout)?;
         Ok(ProjectStore { conn })
     }
 

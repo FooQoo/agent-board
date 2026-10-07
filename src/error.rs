@@ -41,6 +41,19 @@ pub enum SkanError {
         column: Column,
     },
     InvalidStateForAssignee,
+    /// The card is a draft: agents and the CLI cannot change it.
+    CardIsDraft {
+        id: i64,
+    },
+    /// A draft operation was applied to a card that is not a draft.
+    CardNotDraft {
+        id: i64,
+    },
+    /// Only cards whose agent status is idle can become drafts.
+    InvalidStateForDraft {
+        id: i64,
+        state: RunState,
+    },
     RequestChanged,
     ConfirmationRequired {
         operation: String,
@@ -88,6 +101,9 @@ impl SkanError {
             SkanError::InvalidValue { .. } => "invalid_value",
             SkanError::InvalidStateForColumn { .. } => "invalid_state_for_column",
             SkanError::InvalidStateForAssignee => "invalid_state_for_assignee",
+            SkanError::CardIsDraft { .. } => "card_is_draft",
+            SkanError::CardNotDraft { .. } => "card_not_draft",
+            SkanError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
             SkanError::RequestChanged => "request_changed",
             SkanError::ConfirmationRequired { .. } => "confirmation_required",
             SkanError::ImportInvalid { .. } => "import_invalid",
@@ -127,6 +143,13 @@ impl SkanError {
                 format!("cannot set #{id} to {}.", state.as_str())
             }
             SkanError::InvalidStateForAssignee => "state is invalid for this assignee.".into(),
+            SkanError::CardIsDraft { id } => {
+                format!("card #{id} is a draft and read-only for agents.")
+            }
+            SkanError::CardNotDraft { id } => format!("card #{id} is not a draft."),
+            SkanError::InvalidStateForDraft { id, state } => {
+                format!("cannot make #{id} a draft while it is {}.", state.as_str())
+            }
             SkanError::RequestChanged => "the pending request has changed.".into(),
             SkanError::ConfirmationRequired { operation } => {
                 format!("{operation} needs confirmation from a human.")
@@ -174,6 +197,15 @@ impl SkanError {
             SkanError::InvalidStateForAssignee => {
                 "Only AI-owned cards in Doing can be running or pending.".into()
             }
+            SkanError::CardIsDraft { .. } => {
+                "Wait for the user to finalize it, then try again.".into()
+            }
+            SkanError::CardNotDraft { id } => {
+                format!("Only a draft can be saved or finalized this way. #{id} is not a draft.")
+            }
+            SkanError::InvalidStateForDraft { id, .. } => format!(
+                "Only cards whose agent status is idle can become drafts. #{id} is not idle."
+            ),
             SkanError::RequestChanged => {
                 "Read the latest board before answering this request.".into()
             }
@@ -245,6 +277,12 @@ mod tests {
                 column: Column::Todo,
             },
             SkanError::InvalidStateForAssignee,
+            SkanError::CardIsDraft { id: 5 },
+            SkanError::CardNotDraft { id: 5 },
+            SkanError::InvalidStateForDraft {
+                id: 6,
+                state: RunState::Running,
+            },
             SkanError::RequestChanged,
             SkanError::ConfirmationRequired {
                 operation: "deleting a card".into(),
@@ -291,6 +329,9 @@ mod tests {
                 ("invalid_value", 2),
                 ("invalid_state_for_column", 1),
                 ("invalid_state_for_assignee", 2),
+                ("card_is_draft", 1),
+                ("card_not_draft", 1),
+                ("invalid_state_for_draft", 1),
                 ("request_changed", 1),
                 ("confirmation_required", 1),
                 ("import_invalid", 1),
@@ -341,6 +382,18 @@ mod tests {
             (
                 "state is invalid for this assignee.",
                 "Only AI-owned cards in Doing can be running or pending.",
+            ),
+            (
+                "card #5 is a draft and read-only for agents.",
+                "Wait for the user to finalize it, then try again.",
+            ),
+            (
+                "card #5 is not a draft.",
+                "Only a draft can be saved or finalized this way. #5 is not a draft.",
+            ),
+            (
+                "cannot make #6 a draft while it is running.",
+                "Only cards whose agent status is idle can become drafts. #6 is not idle.",
             ),
             (
                 "the pending request has changed.",

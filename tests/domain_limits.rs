@@ -101,14 +101,14 @@ fn counts_unicode_scalar_values_not_bytes() {
         Err(invalid("title", TITLE_REASON))
     );
     assert_eq!(
-        normalize_and_validate_description(&"あ".repeat(300)),
-        Ok("あ".repeat(300))
+        normalize_and_validate_description(&"あ".repeat(50_000)),
+        Ok("あ".repeat(50_000))
     );
     assert_eq!(
-        normalize_and_validate_description(&"あ".repeat(301)),
+        normalize_and_validate_description(&"あ".repeat(50_001)),
         Err(invalid(
             "description",
-            "Descriptions must be 300 characters or fewer. This one has 301."
+            "Descriptions must be 50,000 characters or fewer. This one has 50001."
         ))
     );
 }
@@ -117,21 +117,21 @@ fn counts_unicode_scalar_values_not_bytes() {
 fn description_limits() {
     assert_eq!(normalize_and_validate_description(""), Ok(String::new()));
     assert_eq!(
-        normalize_and_validate_description(&"a".repeat(300)),
-        Ok("a".repeat(300))
+        normalize_and_validate_description(&"a".repeat(50_000)),
+        Ok("a".repeat(50_000))
     );
     assert_eq!(
-        normalize_and_validate_description(&"a".repeat(301)),
+        normalize_and_validate_description(&"a".repeat(50_001)),
         Err(invalid(
             "description",
-            "Descriptions must be 300 characters or fewer. This one has 301."
+            "Descriptions must be 50,000 characters or fewer. This one has 50001."
         ))
     );
     assert_eq!(
-        normalize_and_validate_description(&"a".repeat(342)),
+        normalize_and_validate_description(&"a".repeat(50_342)),
         Err(invalid(
             "description",
-            "Descriptions must be 300 characters or fewer. This one has 342."
+            "Descriptions must be 50,000 characters or fewer. This one has 50342."
         ))
     );
 }
@@ -150,19 +150,19 @@ fn description_normalizes_crlf_before_counting() {
         normalize_and_validate_description("a\r\nb\r\nc"),
         Ok("a\nb\nc".to_string())
     );
-    // 150 x "a\r\n" is 450 raw characters but 300 after normalization
-    let crlf = "a\r\n".repeat(150);
+    // 150 x "a\r\n" is 75000 raw characters but 50000 after normalization
+    let crlf = "a\r\n".repeat(25_000);
     assert_eq!(
         normalize_and_validate_description(&crlf),
-        Ok("a\n".repeat(150))
+        Ok("a\n".repeat(25_000))
     );
-    // one more makes it 301 after normalization
-    let crlf = "a\r\n".repeat(150) + "b";
+    // one more makes it 50001 after normalization
+    let crlf = "a\r\n".repeat(25_000) + "b";
     assert_eq!(
         normalize_and_validate_description(&crlf),
         Err(invalid(
             "description",
-            "Descriptions must be 300 characters or fewer. This one has 301."
+            "Descriptions must be 50,000 characters or fewer. This one has 50001."
         ))
     );
 }

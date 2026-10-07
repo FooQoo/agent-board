@@ -132,6 +132,8 @@ impl ProjectStore {
         })
     }
 
+    /// Move a card to the end of a lane. A draft is read-only here, whoever
+    /// the actor is: the move fails with `card_is_draft`.
     pub fn move_work_card(
         &self,
         project_id: &ProjectId,
@@ -140,10 +142,37 @@ impl ProjectStore {
         ctx: ChangeContext,
         now: DateTime<Utc>,
     ) -> Result<Changed<Card>, SkanError> {
+        self.move_card(project_id, id, to, ctx, now, true)
+    }
+
+    /// The same move for a user working in the Web UI: drafts can be moved.
+    pub fn move_work_card_for_user(
+        &self,
+        project_id: &ProjectId,
+        id: i64,
+        to: Column,
+        ctx: ChangeContext,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<Card>, SkanError> {
+        self.move_card(project_id, id, to, ctx, now, false)
+    }
+
+    fn move_card(
+        &self,
+        project_id: &ProjectId,
+        id: i64,
+        to: Column,
+        ctx: ChangeContext,
+        now: DateTime<Utc>,
+        block_drafts: bool,
+    ) -> Result<Changed<Card>, SkanError> {
         let reason = validate_work_reason(&ctx.reason)?;
         self.write(|conn| {
             require_project(conn, project_id)?;
             let old = load_card(conn, project_id, id)?;
+            if block_drafts && old.is_draft {
+                return Err(SkanError::CardIsDraft { id });
+            }
             if old.card_status == to {
                 return Ok(Changed {
                     value: old,
@@ -202,6 +231,9 @@ impl ProjectStore {
         self.write(|conn| {
             require_project(conn, project_id)?;
             let old = load_card(conn, project_id, id)?;
+            if old.is_draft {
+                return Err(SkanError::CardIsDraft { id });
+            }
             check_work_state(old.assignee, old.card_status, state)?;
             if old.agent_status == state {
                 return Ok(Changed {

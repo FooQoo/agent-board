@@ -1,4 +1,4 @@
-//! Schema version 3: one database holding every project.
+//! Schema version 4: one database holding every project.
 //!
 //! Only a new, empty database is given this schema. A database with any other
 //! version, or with tables but no version, is rejected and left untouched;
@@ -11,7 +11,7 @@ use rusqlite::Connection;
 use crate::error::SkanError;
 
 /// The only schema version this build reads or writes.
-pub(super) const SCHEMA_VERSION: i64 = 3;
+pub(super) const SCHEMA_VERSION: i64 = 4;
 
 const SCHEMA: &str = "
 CREATE TABLE projects (
@@ -44,10 +44,12 @@ CREATE TABLE cards (
   created_at            TEXT    NOT NULL,
   updated_at            TEXT    NOT NULL,
   run_state_changed_at  TEXT    NOT NULL,
+  is_draft              INTEGER NOT NULL DEFAULT 0 CHECK (is_draft IN (0, 1)),
   PRIMARY KEY (project_id, id),
   UNIQUE (project_id, column_name, position),
   CHECK (run_state = 'idle' OR column_name = 'doing'),
   CHECK (assignee = 'ai' OR run_state = 'idle'),
+  CHECK (is_draft = 0 OR run_state = 'idle'),
   CHECK ((run_state = 'pending' AND pending_reason IS NOT NULL AND pending_request_id IS NOT NULL)
       OR (run_state != 'pending' AND pending_reason IS NULL AND pending_request_id IS NULL))
 );
@@ -79,7 +81,7 @@ pub(super) fn user_version(conn: &Connection) -> Result<i64, SkanError> {
     Ok(conn.query_row("PRAGMA user_version", [], |row| row.get(0))?)
 }
 
-/// Accept version 0 (a candidate new database) and version 3. Everything else
+/// Accept version 0 (a candidate new database) and version 4. Everything else
 /// is a `database_error`.
 pub(super) fn check_version(version: i64) -> Result<(), SkanError> {
     match version {

@@ -9,7 +9,7 @@ use super::projects::{
 use super::rows::{insert_cards, load_card};
 use crate::clock::{format_utc, parse_utc};
 use crate::domain::{
-    BoardMeta, Card, Changed, ProjectId, ProjectMeta, ValidatedBoard,
+    BoardMeta, Card, Changed, ProjectId, ProjectMeta, RunState, ValidatedBoard,
     normalize_and_validate_description, validate_project_name, validate_title,
 };
 use crate::error::SkanError;
@@ -47,6 +47,9 @@ impl ProjectStore {
         self.write(|conn| {
             require_project(conn, project_id)?;
             let card = load_card(conn, project_id, id)?;
+            if card.is_draft {
+                return Err(SkanError::CardIsDraft { id });
+            }
             let next_title = title.as_deref().unwrap_or(&card.title);
             let next_description = description.as_deref().unwrap_or(&card.description);
             if next_title == card.title && next_description == card.description {
@@ -62,6 +65,97 @@ impl ProjectStore {
                     next_title,
                     next_description,
                     format_utc(now),
+                    project_id.as_str(),
+                    id
+                ],
+            )?;
+            bump_project(conn, project_id)?;
+            Ok(Changed {
+                value: load_card(conn, project_id, id)?,
+                changed: true,
+            })
+        })
+    }
+
+    /// Turn the draft flag of an idle card on or off. Only the project's
+    /// revision advances: the card's update time and history stay as they are.
+    pub fn set_draft(
+        &self,
+        project_id: &ProjectId,
+        id: i64,
+        is_draft: bool,
+    ) -> Result<Changed<Card>, SkanError> {
+        self.write(|conn| {
+            require_project(conn, project_id)?;
+            let card = load_card(conn, project_id, id)?;
+            if card.is_draft == is_draft {
+                return Ok(Changed {
+                    value: card,
+                    changed: false,
+                });
+            }
+            if is_draft && card.agent_status != RunState::Idle {
+                return Err(SkanError::InvalidStateForDraft {
+                    id,
+                    state: card.agent_status,
+                });
+            }
+            conn.execute(
+                "UPDATE cards SET is_draft = ?1 WHERE project_id = ?2 AND id = ?3",
+                params![i64::from(is_draft), project_id.as_str(), id],
+            )?;
+            bump_project(conn, project_id)?;
+            Ok(Changed {
+                value: load_card(conn, project_id, id)?,
+                changed: true,
+            })
+        })
+    }
+
+    /// Save the title and description of a draft and, with `finalize`, turn it
+    /// into a normal card, in one transaction. The update time moves only when
+    /// the title or description changes.
+    pub fn edit_draft_card(
+        &self,
+        project_id: &ProjectId,
+        id: i64,
+        title: Option<&str>,
+        description: Option<&str>,
+        finalize: bool,
+        now: chrono::DateTime<Utc>,
+    ) -> Result<Changed<Card>, SkanError> {
+        let title = title.map(validate_title).transpose()?;
+        let description = description
+            .map(normalize_and_validate_description)
+            .transpose()?;
+        self.write(|conn| {
+            require_project(conn, project_id)?;
+            let card = load_card(conn, project_id, id)?;
+            if !card.is_draft {
+                return Err(SkanError::CardNotDraft { id });
+            }
+            let next_title = title.as_deref().unwrap_or(&card.title);
+            let next_description = description.as_deref().unwrap_or(&card.description);
+            let text_changed = next_title != card.title || next_description != card.description;
+            if !text_changed && !finalize {
+                return Ok(Changed {
+                    value: card,
+                    changed: false,
+                });
+            }
+            let updated_at = if text_changed {
+                format_utc(now)
+            } else {
+                format_utc(card.updated_at)
+            };
+            conn.execute(
+                "UPDATE cards SET title = ?1, description = ?2, updated_at = ?3, is_draft = ?4
+                 WHERE project_id = ?5 AND id = ?6",
+                params![
+                    next_title,
+                    next_description,
+                    updated_at,
+                    i64::from(!finalize),
                     project_id.as_str(),
                     id
                 ],

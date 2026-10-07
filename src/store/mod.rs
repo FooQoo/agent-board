@@ -8,7 +8,7 @@
 mod ops;
 mod projects;
 mod rows;
-mod schema_v3;
+mod schema;
 mod work;
 
 pub use projects::{ProjectCounters, ProjectStore};
