@@ -103,8 +103,7 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
     assert!(!db_path.exists());
 }
 
-#[test]
-fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
+fn board_with_descriptions(descriptions: &[String]) -> (tempfile::TempDir, std::path::PathBuf) {
     use agent_board::domain::{Actor, Assignee, NewCard};
     use agent_board::store::ProjectStore;
     let home = tempdir().unwrap();
@@ -112,13 +111,13 @@ fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
     let store = ProjectStore::open(&db_path).unwrap();
     let now = chrono::Utc::now();
     let project = store.create_project("Agent Board", now).unwrap().id;
-    for index in 0..60 {
+    for (index, description) in descriptions.iter().enumerate() {
         store
             .add_work_card(
                 &project,
                 NewCard {
                     title: format!("Card {index}"),
-                    description: "あ".repeat(300),
+                    description: description.clone(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
                 },
@@ -126,21 +125,87 @@ fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
             )
             .unwrap();
     }
-    let input = br#"{"hook_event_name":"PostToolUse"}"#;
+    (home, db_path)
+}
+
+fn hook_context(agent: &str, event: &str, db_path: &std::path::Path) -> String {
+    let input = format!(r#"{{"hook_event_name":"{event}"}}"#);
     let output = agent_board::agent::hook::run(
-        "codex",
-        &mut Cursor::new(input),
-        &db_path,
+        agent,
+        &mut Cursor::new(input.into_bytes()),
+        db_path,
         Some("Agent Board"),
     )
     .unwrap();
     let parsed: Value = serde_json::from_str(&output).unwrap();
-    assert!(
-        parsed["hookSpecificOutput"]["additionalContext"]
-            .as_str()
-            .unwrap()
-            .contains("context_too_large")
-    );
+    parsed["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+#[test]
+fn hook_passes_long_descriptions_whole_within_256_kib() {
+    let ten_kb = "a".repeat(10 * 1024);
+    let forty_kb = format!("{}\r\nend", "b".repeat(40 * 1024));
+    let (_home, db_path) =
+        board_with_descriptions(&[ten_kb.clone(), forty_kb, "c".repeat(30 * 1024)]);
+    for (agent, event) in [
+        ("claude", "PostToolUse"),
+        ("claude", "SessionStart"),
+        ("codex", "PostToolUse"),
+        ("codex", "SessionStart"),
+    ] {
+        let context = hook_context(agent, event, &db_path);
+        assert!(context.starts_with("AGBOARD_SNAPSHOT\n"), "{agent} {event}");
+        assert!(context.len() > 50 * 1024 && context.len() <= 256 * 1024);
+        let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
+        assert_eq!(snapshot["cards"][0]["description"], ten_kb.as_str());
+        assert_eq!(
+            snapshot["cards"][1]["description"].as_str().unwrap().len(),
+            40 * 1024 + 4
+        );
+        assert_eq!(snapshot["cards"][1]["isDraft"], false);
+    }
+}
+
+#[test]
+fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
+    // Two 150,000-byte descriptions are over 256 KiB together.
+    let (_home, db_path) = board_with_descriptions(&["あ".repeat(50_000), "あ".repeat(50_000)]);
+    for (agent, event) in [("claude", "PostToolUse"), ("codex", "SessionStart")] {
+        let context = hook_context(agent, event, &db_path);
+        assert!(context.starts_with("AGBOARD_ERROR\n"));
+        assert!(context.contains("context_too_large"));
+        assert!(context.contains("256 KiB"));
+        assert!(!context.contains("AGBOARD_SNAPSHOT"));
+    }
+}
+
+#[test]
+fn hook_input_limit_stays_at_64_kib() {
+    let (_home, db_path) = board_with_descriptions(&[]);
+    let mut at_limit = br#"{"hook_event_name":"PostToolUse","x":""#.to_vec();
+    at_limit.resize(64 * 1024 - 2, b'x');
+    at_limit.extend_from_slice(b"\"}");
+    assert_eq!(at_limit.len(), 64 * 1024);
+    let ok = agent_board::agent::hook::run(
+        "claude",
+        &mut Cursor::new(at_limit.clone()),
+        &db_path,
+        Some("Agent Board"),
+    )
+    .unwrap();
+    assert!(ok.contains("AGBOARD_SNAPSHOT"));
+    at_limit.push(b' ');
+    let over = agent_board::agent::hook::run(
+        "claude",
+        &mut Cursor::new(at_limit),
+        &db_path,
+        Some("Agent Board"),
+    )
+    .unwrap();
+    assert!(over.contains("hook_input_too_large"));
 }
 
 #[test]
