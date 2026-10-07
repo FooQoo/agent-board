@@ -8,7 +8,7 @@ use axum::extract::{DefaultBodyLimit, FromRequest, Path, Request, State};
 use axum::http::{HeaderMap, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, post, put};
 use serde::{Deserialize, Serialize};
 
 use super::guard::{self, DeleteRequest};
@@ -17,8 +17,15 @@ use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, 
 use crate::error::SkanError;
 use crate::store::ProjectStore;
 
-/// The largest request body any route reads.
-const MAX_BODY: usize = 64 * 1024;
+/// The largest request body any route reads. A description of 50,000
+/// characters can be about 150 KB of JSON, so this leaves room for that.
+const MAX_BODY: usize = 1024 * 1024;
+
+/// What the board page may load and do. Scripts, fonts and connections stay on
+/// this server; images may come from anywhere so a description can show them.
+/// `'unsafe-inline'` for styles is needed because the editor inserts `<style>`
+/// elements at run time.
+const CONTENT_SECURITY_POLICY: &str = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 pub(crate) fn router(state: Arc<AppState>) -> Router {
     Router::new()
@@ -33,7 +40,14 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/projects", get(projects))
         .route("/api/projects/{project_id}/board", get(board))
         .route("/api/projects/{project_id}/cards", post(create_card))
-        .route("/api/projects/{project_id}/cards/{id}", delete(delete_card))
+        .route(
+            "/api/projects/{project_id}/cards/{id}",
+            delete(delete_card).patch(edit_card),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/{id}/draft",
+            put(set_draft),
+        )
         .route(
             "/api/projects/{project_id}/cards/{id}/move",
             post(move_card),
@@ -49,6 +63,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(middleware::from_fn_with_state(state.clone(), write_guard))
         .layer(middleware::from_fn_with_state(state.clone(), host_guard))
+        .layer(middleware::from_fn(no_referrer))
         .with_state(state)
 }
 
@@ -87,6 +102,9 @@ fn skan_error_response(error: &SkanError) -> Response {
         SkanError::CardNotFound { .. } | SkanError::ProjectNotFound { .. } => StatusCode::NOT_FOUND,
         SkanError::NotInitialized
         | SkanError::RequestChanged
+        | SkanError::CardIsDraft { .. }
+        | SkanError::CardNotDraft { .. }
+        | SkanError::InvalidStateForDraft { .. }
         | SkanError::ProjectNameExists { .. } => StatusCode::CONFLICT,
         SkanError::InvalidArgument { .. }
         | SkanError::InvalidValue { .. }
@@ -135,6 +153,16 @@ fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     value.to_str().ok()
 }
 
+/// Every response tells the browser not to send a `Referer`.
+async fn no_referrer(request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+    response.headers_mut().insert(
+        header::REFERRER_POLICY,
+        header::HeaderValue::from_static("no-referrer"),
+    );
+    response
+}
+
 /// Every request, whatever the path, needs an accepted `Host`.
 async fn host_guard(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {
     if guard::host_allowed(header_text(request.headers(), "host"), state.port) {
@@ -176,12 +204,35 @@ impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for ApiJson<
     }
 }
 
+/// Like [`ApiJson`], but a field the route does not take is a broken request
+/// (400) rather than a value it does not accept (422).
+struct StrictJson<T>(T);
+
+impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for StrictJson<T> {
+    type Rejection = Response;
+
+    async fn from_request(request: Request, state: &S) -> Result<Self, Self::Rejection> {
+        match axum::Json::<T>::from_request(request, state).await {
+            Ok(axum::Json(value)) => Ok(StrictJson(value)),
+            Err(rejection) if rejection.body_text().contains("unknown field") => {
+                Err(error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_json",
+                    "request body is invalid.",
+                    "The body has a field this route does not take.",
+                ))
+            }
+            Err(rejection) => Err(json_rejection(&rejection)),
+        }
+    }
+}
+
 fn json_rejection(rejection: &JsonRejection) -> Response {
     let (status, code, reason) = match rejection.status() {
         StatusCode::PAYLOAD_TOO_LARGE => (
             StatusCode::PAYLOAD_TOO_LARGE,
             "payload_too_large",
-            "Request bodies are limited to 64 KiB.",
+            "Request bodies are limited to 1 MiB.",
         ),
         StatusCode::UNSUPPORTED_MEDIA_TYPE => (
             StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -231,10 +282,15 @@ fn text_response(content_type: &'static str, body: String) -> Response {
 }
 
 async fn index(State(state): State<Arc<AppState>>) -> Response {
-    text_response(
+    let mut response = text_response(
         "text/html; charset=utf-8",
         assets::render_index(assets::INDEX_HTML, &state.token),
-    )
+    );
+    response.headers_mut().insert(
+        header::CONTENT_SECURITY_POLICY,
+        header::HeaderValue::from_static(CONTENT_SECURITY_POLICY),
+    );
+    response
 }
 
 async fn app_js() -> Response {
@@ -399,6 +455,19 @@ struct MoveInput {
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct EditCardInput {
+    title: Option<String>,
+    description: Option<String>,
+    #[serde(default)]
+    finalize: bool,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DraftInput {
+    is_draft: bool,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AgentStateInput {
     agent_status: RunState,
     #[serde(rename = "actor", default)]
@@ -464,7 +533,7 @@ async fn move_card(
         );
     };
     match with_store(&state, move |store| {
-        store.move_work_card(
+        store.move_work_card_for_user(
             &project_id,
             id,
             input.card_status,
@@ -575,4 +644,87 @@ async fn answer_request(
         }
         Err(error) => skan_error_response(&error),
     }
+}
+
+/// A card ID from the URL; one that cannot be a card is `card_not_found`.
+fn parse_card_id(raw: &str) -> Result<i64, Box<Response>> {
+    raw.parse::<i64>().map_err(|_| {
+        Box::new(error_response(
+            StatusCode::NOT_FOUND,
+            "card_not_found",
+            "card not found.",
+            "Card ID is invalid.",
+        ))
+    })
+}
+
+/// A card as `{"card": ...}`, telling the browsers only if something changed.
+fn changed_card_response(
+    state: &AppState,
+    result: Result<crate::domain::Changed<crate::domain::Card>, SkanError>,
+) -> Response {
+    match result {
+        Ok(result) => {
+            if result.changed {
+                let _ = state.changed.send(());
+            }
+            json_response(StatusCode::OK, &serde_json::json!({"card": result.value}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+/// Save the title and description of a draft, and confirm it with `finalize`.
+async fn edit_card(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+    StrictJson(input): StrictJson<EditCardInput>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    if input.title.is_none() && input.description.is_none() && !input.finalize {
+        return skan_error_response(&SkanError::InvalidArgument {
+            message: "Nothing to change.".to_string(),
+            command: None,
+        });
+    }
+    let result = with_store(&state, move |store| {
+        store.edit_draft_card(
+            &project_id,
+            id,
+            input.title.as_deref(),
+            input.description.as_deref(),
+            input.finalize,
+            chrono::Utc::now(),
+        )
+    })
+    .await;
+    changed_card_response(&state, result)
+}
+
+/// Turn the draft flag of a card on or off.
+async fn set_draft(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+    StrictJson(input): StrictJson<DraftInput>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let result = with_store(&state, move |store| {
+        store.set_draft(&project_id, id, input.is_draft)
+    })
+    .await;
+    changed_card_response(&state, result)
 }
