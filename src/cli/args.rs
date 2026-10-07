@@ -16,7 +16,8 @@ agboard - a shared local work board for users and agents
 Usage: agboard --project NAME [--json] <COMMAND>
 
 Every command except serve works on one project, named with --project NAME.
-Nothing is chosen for you: leave it out and the command fails.
+Nothing is chosen for you: leave it out and the command fails. The one
+exception is the read-only `ls --all-projects`, which lists every project.
 
 Commands:
   project Create, list, rename, or delete projects
@@ -39,6 +40,7 @@ Workflow for agents:
   agboard project ls --json
   agboard --project NAME snapshot --json
   agboard --project NAME ls --json
+  agboard ls --all-projects --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
   agboard --project NAME state <id> pending --actor ai --reason \"Need a decision\"
@@ -397,9 +399,12 @@ pub struct RmArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo ls\n  agboard --project demo ls --column doing\n  agboard --project demo ls --state pending --json"
+    after_help = "Examples:\n  agboard --project demo ls\n  agboard --project demo ls --column doing\n  agboard --project demo ls --state pending --json\n  agboard ls --all-projects\n  agboard ls --all-projects --state pending --json"
 )]
 pub struct LsArgs {
+    /// List the cards of every project, read-only; do not give --project
+    #[arg(long)]
+    pub all_projects: bool,
     /// Only list cards in this column
     #[arg(long, value_name = "COLUMN")]
     pub column: Option<ColumnArg>,
@@ -548,6 +553,14 @@ impl Cli {
     pub fn validate(&self) -> Result<(), SkanError> {
         let command = self.command.name();
         match (&self.command, self.project()) {
+            // The read-only list of every project names no single project.
+            (Command::Ls(args), Some(_)) if args.all_projects => {
+                return Err(SkanError::InvalidArgument {
+                    message: "ls --all-projects does not take --project.".to_string(),
+                    command: Some(command.to_string()),
+                });
+            }
+            (Command::Ls(args), None) if args.all_projects => {}
             // `serve` shows every project, so naming one is a mistake.
             (Command::Serve(_), Some(_)) => {
                 return Err(SkanError::InvalidArgument {

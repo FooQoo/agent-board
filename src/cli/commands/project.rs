@@ -50,6 +50,9 @@ pub fn empty_list() -> Outcome {
     )
 }
 
+/// Shown instead of an empty project list.
+pub const NO_PROJECTS: &str = "No projects. Create one with: agboard project create NAME\n";
+
 fn list_outcome<'a>(value: serde_json::Value, names: impl Iterator<Item = &'a str>) -> Outcome {
     let mut human = String::new();
     for name in names {
@@ -57,7 +60,7 @@ fn list_outcome<'a>(value: serde_json::Value, names: impl Iterator<Item = &'a st
         human.push('\n');
     }
     if human.is_empty() {
-        human = "No projects. Create one with: agboard project create NAME\n".to_string();
+        human = NO_PROJECTS.to_string();
     }
     Outcome {
         changed: false,

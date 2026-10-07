@@ -72,13 +72,14 @@ agboard project create "My project"
 agboard serve --port 7420
 ```
 
-`project create`、`project ls`、`serve`以外のすべてのコマンドは`--project NAME`が必須です。ブラウザからカードを登録するか、`agboard --project "My project" add "作業" --assignee ai --actor ai`で登録できます。Claude CodeとCodexのHook設定は[連携ガイド](integrations/README.md)を参照してください。ビルド方法は[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)にあります。
+`project create`、`project ls`、`serve`、読み取り専用の`ls --all-projects`以外のすべてのコマンドは`--project NAME`が必須です。ブラウザからカードを登録するか、`agboard --project "My project" add "作業" --assignee ai --actor ai`で登録できます。Claude CodeとCodexのHook設定は[連携ガイド](integrations/README.md)を参照してください。ビルド方法は[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)にあります。
 
 <details>
 <summary><strong>コマンド例</strong></summary>
 
 ```sh
 agboard project ls --json
+agboard ls --all-projects --json
 agboard --project "My project" snapshot --json
 agboard --project "My project" mv 1 doing --actor ai --reason "実装を開始する"
 agboard --project "My project" state 1 running --actor ai --reason "承認済みの変更を実装中"
@@ -89,7 +90,7 @@ agboard --project "My project" mv 1 done --actor ai --reason "実装と検証が
 agboard --project "My project" wait --after <cursor>
 ```
 
-その他のコマンド: `add`、`edit`、`show`、`rm`、`export`、`import`、`project rename`、`project rm`、`hook`。詳しくは`agboard --help`または`agboard <command> --help`を実行してください。`--json`で機械処理向けの出力になります。`<cursor>`は同じプロジェクトのsnapshotの`cursor`(`<プロジェクトID>:<revision>`)です。
+`ls --all-projects`は全プロジェクトのカードと全履歴を、一度の読み取り専用の取得でプロジェクト名順に返します(`--column`・`--state`は全プロジェクトに適用。`--project`は指定できません)。その他のコマンド: `add`、`edit`、`show`、`rm`、`export`、`import`、`project rename`、`project rm`、`hook`。詳しくは`agboard --help`または`agboard <command> --help`を実行してください。`--json`で機械処理向けの出力になります。`<cursor>`は同じプロジェクトのsnapshotの`cursor`(`<プロジェクトID>:<revision>`)です。
 
 `agboard --help`と[Agent Skills](integrations/README.md)にも同じ進め方を記載しています。
 
