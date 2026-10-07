@@ -61,10 +61,10 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(panel).toContainText('進行中');
   await expect(panel).toContainText('待機中');
   await expect(panel).toContainText('Waiting for confirmation on how to replace a board.');
-  await expect(panel.getByRole('heading', { name: '説明' })).toBeVisible();
+  await expect(panel.getByRole('tab', { name: '本文' })).toHaveAttribute('aria-selected', 'true');
   await expect(panel.getByText('説明はありません。')).toBeVisible();
-  await expect(panel.getByRole('heading', { name: '履歴' })).toBeVisible();
-  await expect(panel.getByRole('list')).toContainText('作成');
+  await panel.getByRole('tab', { name: '履歴 3' }).click();
+  await expect(panel.getByRole('tabpanel').getByRole('list')).toContainText('作成');
   await page.screenshot({ path: testInfo.outputPath('02-japanese-board-detail.png') });
 
   const storedCard = listCards(mainProject).find(({ id }) => id === 12);
@@ -122,7 +122,7 @@ test('keyboard selection keeps an open delete confirmation and the selected card
   await expect(
     japanesePanel.getByText('#12「Restore a board from JSON」を削除しますか？ この操作は元に戻せません。'),
   ).toBeVisible();
-  await expect(japanesePanel.getByRole('button', { name: '削除' })).toBeVisible();
+  await expect(japanesePanel.getByRole('button', { name: '削除', exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('03-japanese-delete-confirmation.png') });
   await japanesePanel.getByRole('button', { name: 'キャンセル' }).click();
   expect(listCards(mainProject).map(({ id }) => id)).toContain(12);

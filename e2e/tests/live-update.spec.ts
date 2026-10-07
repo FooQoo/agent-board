@@ -76,7 +76,9 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
   await card(page, 16).click();
-  await expect(page.getByRole('complementary', { name: 'Card details' }).getByRole('listitem').first()).toContainText('Move after reviewing the board.');
+  const detail = page.getByRole('complementary', { name: 'Card details' });
+  await detail.getByRole('tab', { name: /^History/ }).click();
+  await expect(detail.getByRole('listitem').first()).toContainText('Move after reviewing the board.');
   await notReloaded(page);
 });
 
@@ -109,20 +111,20 @@ test('the selection stays on a card that moves to another lane', async ({ page }
   await expect(panel).toContainText('Done');
   // It left Doing, so the current status row no longer shows its fixed Idle state.
   await expect(panel.locator('.detail__meta .status-label--agent')).toHaveCount(0);
+  await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('listitem').first()).toContainText('E2E user action');
   await notReloaded(page);
 });
 
 test('users can add a card, choose its owner, and move it with a reason', async ({ page }) => {
   await page.getByRole('button', { name: 'Add card' }).click();
-  const create = page.getByRole('dialog');
-  await expect(create.getByText('Agent', { exact: true })).toBeVisible();
-  await expect(create.getByText('User', { exact: true })).toBeVisible();
-  await expect(create.getByRole('radio', { name: 'Agent', exact: true })).toBeChecked();
-  await create.getByLabel('Title').fill('Review the release notes');
-  await create.getByLabel('Description').fill('Check the wording with the release owner.');
+  const create = page.getByRole('dialog', { name: 'Add card' });
+  await expect(create.getByRole('radio', { name: 'AI', exact: true })).toBeChecked();
+  await expect(create.getByRole('radio', { name: 'User', exact: true })).not.toBeChecked();
+  await create.getByRole('textbox', { name: 'Title' }).fill('Review the release notes');
+  await create.getByRole('textbox', { name: 'Description (Markdown)' }).fill('Check the wording with the release owner.');
   await create.getByRole('radio', { name: 'User' }).check();
-  await create.getByRole('button', { name: 'Create card' }).click();
+  await create.getByRole('button', { name: 'Add', exact: true }).click();
 
   const userCard = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Review the release notes `) });
   await expect(userCard).toBeVisible();
@@ -148,6 +150,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await move.getByLabel('Reason').fill('The user is starting review now.');
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} User Review the release notes `) })).toBeVisible();
+  await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('listitem').first()).toContainText('The user is starting review now.');
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
 });
@@ -156,14 +159,16 @@ test('a user answer returns a pending card to idle and records the full answer i
   await card(page, 12).click();
   const panel = page.getByRole('complementary', { name: 'Card details' });
   // The newest event put the card to Pending, so its dot has the Pending color.
+  await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-column', 'doing');
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'pending');
   await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(217, 101, 11)');
+  // The request above the tabs takes the answer in place, with no dialog, while the history stays readable.
   await panel.getByRole('button', { name: 'Answer' }).click();
-  const answer = page.getByRole('dialog');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
-  await answer.getByLabel('Answer and direction').fill(fullAnswer);
-  await answer.getByRole('button', { name: 'Send answer' }).click();
+  await panel.getByRole('textbox', { name: 'Your answer' }).fill(fullAnswer);
+  await panel.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();

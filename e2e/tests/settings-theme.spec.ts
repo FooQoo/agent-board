@@ -1,3 +1,4 @@
+import { editorValue } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
@@ -482,8 +483,8 @@ test('Add card takes the focus to the title, keeps it inside, and gives it back;
   const add = page.getByRole('button', { name: 'Add card' });
   await add.focus();
   await page.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Add a card' });
-  await expect(dialog.getByRole('textbox', { name: 'Title (required)' })).toBeFocused();
+  const dialog = page.getByRole('dialog', { name: 'Add card' });
+  await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeFocused();
   for (let step = 0; step < 12; step += 1) {
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
@@ -493,14 +494,13 @@ test('Add card takes the focus to the title, keeps it inside, and gives it back;
     expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
   }
 
-  // An empty title is refused on the dialog itself, and the dialog stays.
-  await dialog.getByRole('button', { name: 'Create card' }).click();
-  await expect(dialog.getByRole('alert')).toHaveText('Enter a title.');
+  // Without a title there is nothing to add: the button stays disabled and the dialog stays.
+  await expect(dialog.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
   // A click on the page behind does not close it or lose what was typed.
-  await dialog.getByRole('textbox', { name: 'Title (required)' }).fill('Typed and kept');
+  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed and kept');
   await page.mouse.click(4, 4);
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('textbox', { name: 'Title (required)' })).toHaveValue('Typed and kept');
+  await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed and kept');
 
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
@@ -534,10 +534,12 @@ test('the move dialog and the answer dialog take the focus and give it back', as
   await card(page, 12).click();
   const answerButton = details(page).getByRole('button', { name: 'Answer', exact: true });
   await answerButton.click();
-  const answer = page.getByRole('dialog', { name: 'Answer request' });
-  await expect(answer.getByRole('textbox', { name: 'Answer and direction (required)' })).toBeFocused();
+  // The answer is typed in place, not in a dialog; the text area takes the focus.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const answerBox = details(page).getByRole('textbox', { name: 'Your answer' });
+  await expect(answerBox).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(answer).toHaveCount(0);
+  await expect(answerBox).toHaveCount(0);
   await expect(answerButton).toBeFocused();
   expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
 });
@@ -556,9 +558,9 @@ test('while a card is being saved the dialog cannot be submitted again or closed
     return route.fallback();
   });
   await page.getByRole('button', { name: 'Add card' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add a card' });
-  await dialog.getByRole('textbox', { name: 'Title (required)' }).fill('Saved once');
-  await dialog.getByRole('button', { name: 'Create card' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add card' });
+  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Saved once');
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
 
   const saving = dialog.getByRole('button', { name: 'Saving…' });
   await expect(saving).toBeDisabled();
@@ -583,11 +585,11 @@ test('changing the language does not translate or alter what was entered', async
   await openFresh(page);
   // Enter a card in English, move it with a reason, and answer a decision request.
   await page.getByRole('button', { name: 'Add card' }).click();
-  const create = page.getByRole('dialog', { name: 'Add a card' });
-  await create.getByRole('textbox', { name: 'Title (required)' }).fill('Draft the release note');
-  await create.getByRole('textbox', { name: 'Description' }).fill('Line one\nLine two');
+  const create = page.getByRole('dialog', { name: 'Add card' });
+  await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Draft the release note');
+  await create.getByRole('textbox', { name: 'Description (Markdown)' }).fill('Line one\nLine two');
   await create.getByRole('radio', { name: 'User' }).click();
-  await create.getByRole('button', { name: 'Create card' }).click();
+  await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Draft the release note `) })).toBeVisible();
   const move = await dragCardTo(page, fresh, 'Doing');
   await move.getByRole('textbox', { name: 'Reason (required)' }).fill('Starting the draft today.');
@@ -595,9 +597,9 @@ test('changing the language does not translate or alter what was entered', async
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
   await card(page, 12).click();
   await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
-  const answer = page.getByRole('dialog', { name: 'Answer request' });
-  await answer.getByRole('textbox', { name: 'Answer and direction (required)' }).fill('Keep the database name.');
-  await answer.getByRole('button', { name: 'Send answer' }).click();
+  const answer = details(page);
+  await answer.getByRole('textbox', { name: 'Your answer' }).fill('Keep the database name.');
+  await answer.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(card(page, 12)).toContainText('Idle');
 
   const before = listCards(mainProject);
@@ -617,6 +619,7 @@ test('changing the language does not translate or alter what was entered', async
   expect(await panel.getByText('Line one').evaluate((element) => (element as HTMLElement).innerText)).toBe(
     'Line one\nLine two',
   );
+  await panel.getByRole('tab', { name: '履歴 2' }).click();
   await expect(panel).toContainText('Starting the draft today.');
   await card(page, 12).click();
   await expect(panel).toContainText('Keep the database name.');
@@ -626,8 +629,8 @@ test('changing the language does not translate or alter what was entered', async
   await page.getByRole('button', { name: 'カード追加' }).click();
   const japaneseCreate = page.getByRole('dialog', { name: 'カードを追加' });
   await expect(japaneseCreate).toBeVisible();
-  await japaneseCreate.getByRole('textbox', { name: 'タイトル(必須)' }).fill('Release note review');
-  await japaneseCreate.getByRole('button', { name: '追加する' }).click();
+  await japaneseCreate.getByRole('textbox', { name: 'タイトル', exact: true }).fill('Release note review');
+  await japaneseCreate.getByRole('button', { name: '追加', exact: true }).click();
   await expect(lane(page, '未着手').getByRole('button', { name: new RegExp(`^#${fresh + 1} `) })).toContainText('Release note review');
   expect(listCards(mainProject).find(({ id }) => id === fresh + 1)?.title).toBe('Release note review');
 });
@@ -647,10 +650,10 @@ test('create, move with a reason, answer, delete, and live updates work with a c
 
   // Create.
   await page.getByRole('button', { name: 'Add card' }).click();
-  const create = page.getByRole('dialog', { name: 'Add a card' });
-  await create.getByRole('textbox', { name: 'Title (required)' }).fill('Review the themes');
-  await create.getByRole('textbox', { name: 'Description' }).fill('Check all 24 themes.');
-  await create.getByRole('button', { name: 'Create card' }).click();
+  const create = page.getByRole('dialog', { name: 'Add card' });
+  await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Review the themes');
+  await create.getByRole('textbox', { name: 'Description (Markdown)' }).fill('Check all 24 themes.');
+  await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create).toHaveCount(0);
   const created = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Review the themes Updated \\d\\d\\/\\d\\d \\d\\d:\\d\\d$`) });
   await expect(created).toBeVisible();
@@ -667,6 +670,7 @@ test('create, move with a reason, answer, delete, and live updates work with a c
   await expect(move).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} AI Idle Review the themes `) })).toBeVisible();
   await card(page, fresh).click();
+  await details(page).getByRole('tab', { name: /^History/ }).click();
   await expect(details(page).getByRole('listitem').first()).toContainText('Starting the review.');
   expect(listCards(mainProject).find(({ id }) => id === fresh)).toMatchObject({ cardStatus: 'doing' });
 
@@ -675,17 +679,17 @@ test('create, move with a reason, answer, delete, and live updates work with a c
   const panel = details(page);
   await expect(panel).toContainText('Pending');
   await panel.getByRole('button', { name: 'Answer', exact: true }).click();
-  const answer = page.getByRole('dialog', { name: 'Answer request' });
-  await expect(answer.getByRole('group', { name: 'Status change' })).toHaveText(/Pending\s*Idle/);
-  await answer.getByRole('textbox', { name: 'Answer and direction (required)' }).fill('Replace the board after a backup.');
-  await answer.getByRole('button', { name: 'Send answer' }).click();
+  const answer = panel.getByRole('region', { name: 'The agent is waiting for your answer' });
+  await answer.getByRole('textbox', { name: 'Your answer' }).fill('Replace the board after a backup.');
+  await answer.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(answer).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
+  await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('listitem').first()).toContainText('Replace the board after a backup.');
   await expect(panel.getByRole('button', { name: 'Answer', exact: true })).toHaveCount(0);
   expect(listCards(mainProject).find(({ id }) => id === 12)).toMatchObject({ agentStatus: 'idle', pendingReason: null });
 
-  // Delete from the bottom left of the details; Cancel keeps the card, Delete removes it.
+  // Delete from the toolbar beside the tabs; Cancel keeps the card, Delete removes it.
   await card(page, fresh).click();
   await panel.getByRole('button', { name: 'Delete card' }).click();
   const confirm = panel.getByRole('group', { name: `Delete #${fresh} "Review the themes"? This cannot be undone.` });
@@ -738,30 +742,31 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   });
 
   await page.getByRole('button', { name: 'Add card' }).click();
-  const create = page.getByRole('dialog', { name: 'Add a card' });
-  await create.getByRole('textbox', { name: 'Title (required)' }).fill('Typed title');
-  await create.getByRole('textbox', { name: 'Description' }).fill('Typed description\nsecond line');
+  const create = page.getByRole('dialog', { name: 'Add card' });
+  await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed title');
+  await create.getByRole('textbox', { name: 'Description (Markdown)' }).fill('Typed description\nsecond line');
   await create.getByRole('radio', { name: 'User' }).click();
-  await create.getByRole('button', { name: 'Create card' }).click();
-  await expect(create.getByRole('alert')).toHaveText('The storage is busy.');
+  await create.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(create.getByRole('alert')).toContainText('The storage is busy.');
   const keepsInput = async () => {
     await expect(create).toBeVisible();
-    await expect(create.getByRole('textbox', { name: 'Title (required)' })).toHaveValue('Typed title');
-    await expect(create.getByRole('textbox', { name: 'Description' })).toHaveValue('Typed description\nsecond line');
+    await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed title');
+    expect(await editorValue(create.getByRole('textbox', { name: 'Description (Markdown)' }))).toBe('Typed description\nsecond line');
     await expect(create.getByRole('radio', { name: 'User' })).toHaveAttribute('aria-checked', 'true');
-    await expect(create.getByRole('button', { name: 'Create card' })).toBeEnabled();
+    await expect(create.getByRole('button', { name: 'Add', exact: true })).toBeEnabled();
     await expect(create.getByRole('button', { name: 'Cancel' })).toBeEnabled();
   };
   await keepsInput();
   expect(listCards(mainProject).map(({ title }) => title)).not.toContain('Typed title');
 
   mode = 'abort';
-  await create.getByRole('button', { name: 'Create card' }).click();
-  await expect(create.getByRole('alert')).toHaveText('Failed to fetch');
+  await create.getByRole('button', { name: 'Add', exact: true }).click();
+  // A request that never reached the server has no reason of its own: the dialog's own message shows.
+  await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
   await keepsInput();
 
   mode = 'pass';
-  await create.getByRole('button', { name: 'Create card' }).click();
+  await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create).toHaveCount(0);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Typed title `) })).toBeVisible();
   expect(listCards(mainProject).filter(({ title }) => title === 'Typed title')).toHaveLength(1);
@@ -799,14 +804,15 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   });
   await card(page, 12).click();
   await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
-  const answer = page.getByRole('dialog', { name: 'Answer request' });
-  await answer.getByRole('textbox', { name: 'Answer and direction (required)' }).fill('Kept answer.');
-  await answer.getByRole('button', { name: 'Send answer' }).click();
-  await expect(answer.getByRole('alert')).toHaveText('The request was already answered.');
-  await expect(answer.getByRole('textbox', { name: 'Answer and direction (required)' })).toHaveValue('Kept answer.');
+  const answer = details(page).getByRole('region', { name: 'The agent is waiting for your answer' });
+  await answer.getByRole('textbox', { name: 'Your answer' }).fill('Kept answer.');
+  await answer.getByRole('button', { name: 'Send', exact: true }).click();
+  // The in-place answer shows the board's fixed save-failure text rather than the server's reason.
+  await expect(answer.getByRole('alert')).toHaveText('Could not save. Try again.');
+  await expect(answer.getByRole('textbox', { name: 'Your answer' })).toHaveValue('Kept answer.');
   expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
   answerFails = false;
-  await answer.getByRole('button', { name: 'Send answer' }).click();
+  await answer.getByRole('button', { name: /^(Send|Retry)$/ }).click();
   await expect(answer).toHaveCount(0);
   expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('idle');
 });
