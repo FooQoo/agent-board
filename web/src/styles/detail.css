@@ -361,3 +361,14 @@
 .detail-btn--quiet:disabled {
   background: transparent;
 }
+
+/* Keep the longer English action from squeezing the tab labels in a narrow detail column. */
+@container (max-width: 360px) {
+  .detail:lang(en) .detail__tool--text {
+    width: 31px;
+    flex: none;
+    gap: 0;
+    padding: 0;
+    font-size: 0;
+  }
+}

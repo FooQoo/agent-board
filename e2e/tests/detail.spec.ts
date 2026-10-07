@@ -75,7 +75,16 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   const toolbar = panel.getByRole('toolbar', { name: 'Card actions' });
   const toolbarButtons = toolbar.getByRole('button');
   await expect(toolbarButtons).toHaveText(['Make draft', '']);
+  await expect(toolbarButtons.first()).toHaveAttribute('title', 'Make draft');
+  await expect(toolbarButtons.first()).toHaveAccessibleName('Make draft');
   await expect(toolbarButtons.last()).toHaveAccessibleName('Delete card');
+  // At the default 360px detail width, the longer English label yields to its icon
+  // so the tabs and the actions remain on one line.
+  const makeDraftBounds = (await toolbarButtons.first().boundingBox())!;
+  const toolbarBounds = (await toolbar.boundingBox())!;
+  expect(makeDraftBounds.width).toBeGreaterThanOrEqual(29);
+  expect(makeDraftBounds.x + makeDraftBounds.width).toBeLessThanOrEqual(toolbarBounds.x + toolbarBounds.width);
+  expect(await toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   const deleteBox = (await toolbarButtons.last().boundingBox())!;
   const makeDraftBox = (await toolbarButtons.first().boundingBox())!;
   expect(deleteBox.x).toBeGreaterThan(makeDraftBox.x + makeDraftBox.width - 1);

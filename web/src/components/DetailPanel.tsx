@@ -232,6 +232,8 @@ function DetailBody({
             <button
               type="button"
               className="detail__tool detail__tool--text"
+              aria-label={t('detail.makeDraft')}
+              title={t('detail.makeDraft')}
               disabled={draftSaving}
               onClick={() => void toggleDraft(true)}
             >

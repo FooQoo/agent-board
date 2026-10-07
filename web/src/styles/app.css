@@ -404,6 +404,7 @@ ol {
 /* ---- Detail column ---- */
 
 .detail {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 18px;
