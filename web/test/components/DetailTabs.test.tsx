@@ -1,0 +1,198 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DetailPanel } from '../../src/components/DetailPanel';
+import { selectLocale } from '../../src/i18n';
+import type { Card } from '../../src/types';
+import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
+
+const noop = () => {};
+
+function renderPanel(card: Card, props: Partial<Parameters<typeof DetailPanel>[0]> = {}) {
+  return render(
+    <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} {...props} />,
+  );
+}
+
+const SECTIONED = '## Goal\n- one\n- two\n\n## Steps\n1. first\n2. second\n3. third';
+
+beforeEach(() => selectLocale('en'));
+
+describe('tabs', () => {
+  it('has a Description tab and a History tab with the number of history entries', () => {
+    renderPanel(fixtureCard(8));
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['Description', 'History 3']);
+    expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tabpanel')).toBeTruthy();
+    expect(screen.queryByRole('list', { name: /history/i })).toBeNull();
+  });
+
+  it('shows the history in the History tab and the description again in the Description tab', async () => {
+    const { container } = renderPanel(makeCard({ ...fixtureCard(8), description: 'Body text' }));
+    expect(screen.getByRole('tabpanel').textContent).toBe('Body text');
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    expect(screen.getByRole('tabpanel').querySelectorAll('.history__step')).toHaveLength(3);
+    expect(container.querySelectorAll('.history__step')).toHaveLength(3);
+    expect(screen.getByRole('tabpanel').textContent).not.toContain('Body text');
+    await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
+    expect(screen.getByRole('tabpanel').textContent).toBe('Body text');
+  });
+
+  it('moves between the tabs with the arrow keys', async () => {
+    renderPanel(fixtureCard(8));
+    screen.getByRole('tab', { name: 'Description' }).focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('tab', { name: /^History/ }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: /^History/ }));
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(screen.getByRole('tab', { name: 'Description' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+  });
+
+  it('shows the empty note for an empty description', () => {
+    renderPanel(fixtureCard(12));
+    expect(screen.getByRole('tabpanel').textContent).toBe('No description.');
+  });
+
+  it('puts the tabs below the header and the request area', () => {
+    const { container } = renderPanel(fixtureCard(12));
+    const order = Array.from(container.querySelector('.detail')?.children ?? []).map(
+      (el) => el.className.split(' ')[0],
+    );
+    expect(order).toEqual([
+      'detail__top',
+      'detail__title',
+      'detail__meta',
+      'detail__request',
+      'detail__tabs',
+      'detail__viewport',
+      'detail__viewport',
+    ]);
+  });
+});
+
+describe('folding the description', () => {
+  it('folds each H2 section with its count, all open at first', async () => {
+    renderPanel(makeCard({ id: 50, description: `Intro\n\n${SECTIONED}` }));
+    const goal = screen.getByRole('button', { name: /Goal/ });
+    const steps = screen.getByRole('button', { name: /Steps/ });
+    expect(goal.getAttribute('aria-expanded')).toBe('true');
+    expect(steps.getAttribute('aria-expanded')).toBe('true');
+    expect(goal.textContent).toContain('2');
+    expect(steps.textContent).toContain('3');
+    expect(screen.getByText('Intro')).toBeTruthy();
+
+    await userEvent.click(goal);
+    expect(goal.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('one')).toBeNull();
+    expect(screen.getByText('first')).toBeTruthy();
+    expect(screen.getByText('Intro')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /expand all|collapse all/i })).toBeNull();
+  });
+
+  it('keeps folds while the History tab is looked at and back, and resets them for another card', async () => {
+    const first = makeCard({ id: 50, description: SECTIONED });
+    const { rerender } = renderPanel(first);
+    await userEvent.click(screen.getByRole('button', { name: /Goal/ }));
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
+    expect(screen.getByRole('button', { name: /Goal/ }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={makeCard({ id: 51, description: SECTIONED })}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /Goal/ }).getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('returns to the Description tab when another card is shown', async () => {
+    const { rerender } = renderPanel(fixtureCard(8));
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(9)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
+    expect(screen.getByRole('tab', { name: 'Description' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+  });
+});
+
+describe('toolbar', () => {
+  const names = () =>
+    within(screen.getByRole('toolbar'))
+      .getAllByRole('button')
+      .map((b) => b.textContent || b.getAttribute('aria-label'));
+
+  it('offers Make draft and Delete for an idle card that is not a draft, Delete last', () => {
+    renderPanel(fixtureCard(8));
+    expect(names()).toEqual(['Make draft', 'Delete card']);
+  });
+
+  it('offers the edit icon and Delete for a draft', () => {
+    renderPanel({ ...fixtureCard(8), isDraft: true });
+    expect(names()).toEqual(['Edit card', 'Delete card']);
+  });
+
+  it('offers only Delete for running and pending cards', () => {
+    const { rerender } = renderPanel(fixtureCard(11));
+    expect(names()).toEqual(['Delete card']);
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={fixtureCard(12)}
+        onClose={noop}
+        onDeleted={noop}
+      />,
+    );
+    expect(names()).toEqual(['Delete card']);
+  });
+
+  it('offers Make draft to an idle card that has no run state of its own (Todo)', () => {
+    renderPanel(fixtureCard(14));
+    expect(names()).toEqual(['Make draft', 'Delete card']);
+  });
+
+  it('shows only Delete in the History tab', async () => {
+    renderPanel({ ...fixtureCard(8), isDraft: true });
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    expect(names()).toEqual(['Delete card']);
+  });
+
+  it('calls onEdit with the card when the edit icon is pressed', async () => {
+    const onEdit = vi.fn();
+    const card = { ...fixtureCard(8), isDraft: true };
+    renderPanel(card, { onEdit });
+    await userEvent.click(screen.getByRole('button', { name: 'Edit card' }));
+    expect(onEdit).toHaveBeenCalledWith(card);
+  });
+
+  it('opens the delete confirmation above the tabs', async () => {
+    const { container } = renderPanel(fixtureCard(8));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    const confirm = container.querySelector('.delete-confirm') as HTMLElement;
+    const tabs = container.querySelector('.detail__tabs') as HTMLElement;
+    expect(confirm.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Description' })).toBeTruthy();
+  });
+
+  it('names the toolbar buttons in Japanese', () => {
+    selectLocale('ja');
+    renderPanel({ ...fixtureCard(8), isDraft: true });
+    expect(names()).toEqual(['カードを編集', 'カードを削除']);
+  });
+});

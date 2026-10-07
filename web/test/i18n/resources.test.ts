@@ -15,7 +15,8 @@ describe('dialog texts', () => {
     expect(resources.ja.translation.dialog.assigneeAgent).toBe('AI');
     expect(resources.en.translation.dialog.submitCreate).toBe('Create card');
     expect(resources.en.translation.dialog.submitMove).toBe('Move');
-    expect(resources.en.translation.dialog.submitAnswer).toBe('Send answer');
+    expect(resources.en.translation.request.send).toBe('Send');
+    expect(resources.ja.translation.draft.finalize).toBe('確定する');
   });
 });
 

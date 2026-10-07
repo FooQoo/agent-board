@@ -64,11 +64,10 @@ export interface Board {
   cards: Card[];
 }
 
-/** What a card operation (create, move, answer, edit) is asked to do. */
+/** What a card dialog (create, move, edit) is asked to do. */
 export type DialogAction =
   | { kind: 'create' }
   | { kind: 'move'; card: Card; target: ColumnName }
-  | { kind: 'answer'; card: Card }
   | { kind: 'edit'; card: Card };
 
 /** Error body shared by the CLI `--json` output and the Web API. */

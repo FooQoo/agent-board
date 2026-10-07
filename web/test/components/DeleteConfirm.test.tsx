@@ -68,10 +68,11 @@ describe('delete confirmation', () => {
     expect(screen.getByText(CONFIRM_TEXT)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Delete card' })).toBeNull();
+    // The trash button stays in the toolbar under the confirmation.
+    expect(screen.getByRole('button', { name: 'Delete card' })).toBeTruthy();
   });
 
-  it('sends nothing when cancelled and brings the trash button back', async () => {
+  it('sends nothing when cancelled and puts the focus back on the trash button', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     const onDeleted = renderPanel();
@@ -80,7 +81,7 @@ describe('delete confirmation', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(onDeleted).not.toHaveBeenCalled();
     expect(screen.queryByText(CONFIRM_TEXT)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Delete card' })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete card' }));
   });
 
   it('sends DELETE with the session token and reports success on 204', async () => {

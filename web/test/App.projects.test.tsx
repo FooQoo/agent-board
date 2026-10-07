@@ -435,16 +435,18 @@ describe('switching while a form is open', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton(pendingA?.title ?? ''));
     await userEvent.click(screen.getByRole('button', { name: 'Answer' }));
-    const dialog = screen.getByRole('dialog');
-    await userEvent.type(
-      within(dialog).getByLabelText('Answer and direction (required)'),
-      'Go ahead',
-    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await userEvent.type(screen.getByRole('textbox', { name: 'Your answer' }), 'Go ahead');
+    expect(
+      (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
 
     app.navigate(urlOf(PROJECT_B.id));
-    await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Send answer' }),
-    );
+    await act(async () => {});
+    expect(
+      (screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement).value,
+    ).toBe('Go ahead');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await screen.findByText('Same number elsewhere');
     const posts = writes();
