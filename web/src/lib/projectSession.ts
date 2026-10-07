@@ -1,6 +1,6 @@
 import type { DialogAction, ProjectId } from '../types';
 
-export type OperationKind = 'create' | 'move' | 'answer' | 'delete';
+export type OperationKind = 'create' | 'move' | 'answer' | 'edit' | 'delete';
 
 /** A form or confirmation that must finish or be cancelled before the project can change. */
 export interface Operation {

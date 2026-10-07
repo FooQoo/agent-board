@@ -21,6 +21,10 @@ export interface DetailPanelProps {
   operations?: OperationControls;
   onClose: () => void;
   onAnswer?: () => void;
+  /** The edit icon was pressed. The toolbar that calls this is added with the description tabs. */
+  onEdit?: () => void;
+  /** The draft toggle (Make draft / Finalize) was pressed. */
+  onToggleDraft?: () => void;
   /** The card is gone (deleted here or already missing); the parent clears the selection and reloads. */
   onDeleted: () => void;
   /** Mock mode only: open the delete confirmation immediately. */
@@ -36,6 +40,8 @@ export function DetailPanel({
   operations = noOperations,
   onClose,
   onAnswer,
+  onEdit,
+  onToggleDraft,
   onDeleted,
   initialConfirm,
   initialDeleteFailed,
@@ -61,6 +67,8 @@ export function DetailPanel({
       card={card}
       onClose={onClose}
       onAnswer={onAnswer}
+      onEdit={onEdit}
+      onToggleDraft={onToggleDraft}
       onDeleted={onDeleted}
       initialConfirm={initialConfirm}
       initialDeleteFailed={initialDeleteFailed}
@@ -83,6 +91,8 @@ function DetailBody({
   operations,
   onClose,
   onAnswer,
+  onEdit: _onEdit,
+  onToggleDraft: _onToggleDraft,
   onDeleted,
   initialConfirm,
   initialDeleteFailed,

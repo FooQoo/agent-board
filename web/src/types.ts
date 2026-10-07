@@ -30,6 +30,8 @@ export interface Card {
   createdAt: string;
   updatedAt: string;
   agentStatusChangedAt: string;
+  /** A draft is read-only for agents until a person finalizes it. */
+  isDraft: boolean;
   history: HistoryEvent[];
 }
 
@@ -62,11 +64,12 @@ export interface Board {
   cards: Card[];
 }
 
-/** What a card operation (create, move, answer) is asked to do. */
+/** What a card operation (create, move, answer, edit) is asked to do. */
 export type DialogAction =
   | { kind: 'create' }
   | { kind: 'move'; card: Card; target: ColumnName }
-  | { kind: 'answer'; card: Card };
+  | { kind: 'answer'; card: Card }
+  | { kind: 'edit'; card: Card };
 
 /** Error body shared by the CLI `--json` output and the Web API. */
 export interface ApiError {

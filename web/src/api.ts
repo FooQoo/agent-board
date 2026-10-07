@@ -123,3 +123,38 @@ export async function answerRequest(
     { requestId, reason },
   );
 }
+
+/** Sends a write that answers `{card}` or an error body (PATCH and PUT). */
+async function sendCard(
+  method: 'PATCH' | 'PUT',
+  path: string,
+  value: unknown,
+): Promise<{ card: Card }> {
+  const response = await fetch(path, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-Skan-Token': readToken() },
+    body: JSON.stringify(value),
+  });
+  const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
+  if (!response.ok || body.card === undefined) {
+    throw new Error(body.error?.reason ?? `Request failed (${response.status})`);
+  }
+  return { card: body.card };
+}
+
+/**
+ * Saves the title and/or description of a draft. `finalize` also hands the card back to the agents
+ * in the same step. The server refuses a card that is not a draft.
+ */
+export async function editCard(
+  projectId: ProjectId,
+  id: number,
+  input: { title?: string; description?: string; finalize?: boolean },
+) {
+  return sendCard('PATCH', `${projectPath(projectId)}/cards/${id}`, input);
+}
+
+/** Makes a card a draft (`true`) or finalizes it (`false`). Only an idle card can become a draft. */
+export async function setDraft(projectId: ProjectId, id: number, isDraft: boolean) {
+  return sendCard('PUT', `${projectPath(projectId)}/cards/${id}/draft`, { isDraft });
+}

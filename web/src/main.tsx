@@ -18,10 +18,16 @@ const initial =
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');
-createRoot(root).render(
-  <StrictMode>
-    <NuqsAdapter>
-      <App initial={initial} />
-    </NuqsAdapter>
-  </StrictMode>,
-);
+if (import.meta.env.MODE === 'mock' && new URLSearchParams(window.location.search).has('view')) {
+  // Sample-data mode only: a single part on its own page (see `src/mockMarkdown.tsx`).
+  void import('./mockMarkdown').then(({ MarkdownSample }) => {
+    createRoot(root).render(<MarkdownSample search={window.location.search} />);
+  });
+} else
+  createRoot(root).render(
+    <StrictMode>
+      <NuqsAdapter>
+        <App initial={initial} />
+      </NuqsAdapter>
+    </StrictMode>,
+  );

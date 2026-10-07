@@ -1,0 +1,393 @@
+/*
+ * Rendered Markdown (descriptions) and the foldable H2 sections around it. Colors are the r-*
+ * tokens of theme.css; the two sizes are the narrow detail column (compact) and the wide
+ * preview (wide).
+ */
+
+.md {
+  --md-size: 13px;
+  --md-leading: 1.6;
+  --md-gap: 8px;
+  min-width: 0;
+  font-size: var(--md-size);
+  line-height: var(--md-leading);
+  color: var(--r-text2);
+  overflow-wrap: anywhere;
+}
+
+.md--wide {
+  --md-size: 14px;
+  --md-leading: 1.65;
+  --md-gap: 10px;
+}
+
+.md > * + * {
+  margin-top: var(--md-gap);
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--r-text);
+}
+
+.md h1 {
+  font-size: 16px;
+}
+
+.md h2 {
+  font-size: 14px;
+}
+
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  font-size: 13px;
+}
+
+.md--wide h1 {
+  font-size: 20px;
+}
+
+.md--wide h2 {
+  font-size: 16px;
+}
+
+.md--wide > * + h2,
+.md--wide > * + h1 {
+  margin-top: 18px;
+}
+
+.md--wide h3 {
+  font-size: 15px;
+}
+
+.md--wide h4,
+.md--wide h5,
+.md--wide h6 {
+  font-size: 14px;
+}
+
+.md strong {
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+.md del {
+  color: var(--r-muted);
+}
+
+.md a {
+  color: var(--r-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--r-border);
+}
+
+/* ---- Lists and checklists ---- */
+
+.md ul,
+.md ol {
+  padding-left: 18px;
+  list-style-position: outside;
+}
+
+.md ul {
+  list-style-type: disc;
+}
+
+.md ol {
+  list-style-type: decimal;
+}
+
+.md li {
+  line-height: 1.5;
+}
+
+.md--wide li {
+  line-height: 1.65;
+}
+
+.md--wide li + li {
+  margin-top: 8px;
+}
+
+.md li + li,
+.md li > ul,
+.md li > ol {
+  margin-top: 6px;
+}
+
+.md li::marker {
+  color: var(--r-muted);
+}
+
+.md li > p {
+  display: inline;
+}
+
+.md li.task-list-item {
+  list-style: none;
+}
+
+.md ul.contains-task-list {
+  padding-left: 0;
+}
+
+.md li.task-list-item:has(.md__check--on) {
+  color: var(--r-muted);
+}
+
+.md__check {
+  position: relative;
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  color: var(--r-muted);
+}
+
+.md__check--on {
+  color: var(--r-done);
+}
+
+.md__check input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.md__check svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- Code and quotes ---- */
+
+.md code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--r-lane);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--r-text);
+}
+
+.md pre {
+  overflow-x: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-lane);
+  line-height: 1.5;
+}
+
+.md pre code {
+  padding: 0;
+  background: transparent;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.md blockquote {
+  padding-left: 12px;
+  border-left: 3px solid var(--r-border);
+  color: var(--r-text2);
+}
+
+.md blockquote > * + * {
+  margin-top: 6px;
+}
+
+/* ---- Tables ---- */
+
+.md-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+}
+
+.md table {
+  min-width: 100%;
+  border-collapse: collapse;
+  overflow-wrap: normal;
+}
+
+.md th,
+.md td {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 19px;
+  border-top: 1px solid var(--r-border);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.md thead th {
+  border-top: 0;
+  background: var(--r-lane);
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+.md tbody tr:first-child td {
+  border-top: 0;
+}
+
+/* ---- Images ---- */
+
+.md__image {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0 10px 4px 0;
+  vertical-align: top;
+}
+
+/* Images written on consecutive lines sit side by side while they fit. */
+.md__image + br {
+  display: none;
+}
+
+.md__image:last-child {
+  margin-right: 0;
+}
+
+.md__image-picture {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  outline: 1px solid var(--r-border);
+  outline-offset: -1px;
+}
+
+.md__image-none {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 312px;
+  max-width: 100%;
+  height: 130px;
+  box-sizing: border-box;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-lane);
+  color: var(--r-muted);
+}
+
+.md__image-none svg {
+  width: 28px;
+  height: 28px;
+}
+
+.md__image-none-label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.md__image-caption {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--r-muted);
+}
+
+/* ---- Foldable sections ---- */
+
+.md-sections {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.md-sections > .md {
+  padding-bottom: 10px;
+}
+
+.md-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--r-border);
+}
+
+.md-section__heading {
+  margin: 0;
+  font-size: 13px;
+}
+
+.md-section__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--r-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.md-section__toggle svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--r-muted);
+}
+
+.md-section__toggle:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.md-section__title {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-weight: 600;
+  line-height: 19px;
+  overflow-wrap: anywhere;
+}
+
+.md-section__count {
+  flex: none;
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--r-muted);
+}
+
+.md-section__body {
+  min-width: 0;
+  padding-left: 20px;
+}
+
+.md-sections--wide .md-section__heading {
+  font-size: 16px;
+}
+
+.md-empty {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--r-muted);
+}
