@@ -50,6 +50,8 @@ export const editJa = {
     keepEditing: '編集に戻る',
     discard: '破棄して閉じる',
     attachments: '添付画像',
+    closeAttachments: '添付パネルを閉じる',
+    attachmentInvalid: '画像を追加できません: {{reason}}',
     attachmentsLabel: '画像添付',
     attachmentsEmpty: 'このカードに画像を追加',
     attachmentsDropHint: 'ファイル選択、ドラッグ＆ドロップ、貼り付けに対応',

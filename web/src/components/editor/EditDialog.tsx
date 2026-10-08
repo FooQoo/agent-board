@@ -1,3 +1,4 @@
+import { useMultipartRequest } from './useMultipartRequest';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionDialogData } from '../ActionDialog';
@@ -36,6 +37,7 @@ export function EditDialog({
         : '',
   });
   const flow = useSaveFlow({ onClose, onSavingChange });
+  const requestId = useMultipartRequest();
 
   const titleChanged = title.trim() !== card.title;
   const descriptionChanged = description !== initialDescription;
@@ -51,6 +53,17 @@ export function EditDialog({
     setLastFinalize(finalize);
     void flow.run(() =>
       onSubmit({
+        ...(attachmentChanged
+          ? {
+              requestId: requestId({
+                title: title.trim(),
+                description,
+                finalize,
+                attachments: attachmentState.attachments.map((a) => a.id),
+                removed,
+              }),
+            }
+          : {}),
         ...(titleChanged ? { title: title.trim() } : {}),
         ...(descriptionChanged ? { description } : {}),
         ...(attachmentChanged
@@ -106,6 +119,7 @@ export function EditDialog({
         description={description}
         onDescriptionChange={setDescription}
         disabled={flow.saving}
+        attachmentError={attachmentState.error}
         attachments={attachmentState.attachments}
         onFiles={attachmentState.addFiles}
         onRemoveAttachment={(id) => {

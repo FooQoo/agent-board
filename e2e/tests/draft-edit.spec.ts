@@ -286,8 +286,8 @@ test('a description of exactly 50,000 characters saves, and one more cannot be s
   expect(stored.isDraft).toBe(false);
 });
 
-test('only an idle card can be made a draft: running and pending cards have no Make draft', async ({ page }) => {
-  for (const [running, name] of [[11, 'running'], [12, 'pending']] as const) {
+test('idle and Pending cards can be made drafts, while running cards cannot', async ({ page }) => {
+  for (const [running, name] of [[11, 'running']] as const) {
     await card(page, running).click();
     await expect(details(page).getByRole('heading', { level: 2 })).toBeVisible();
     await expect(details(page).getByRole('button', { name: 'Make draft' }), name).toHaveCount(0);
@@ -295,7 +295,7 @@ test('only an idle card can be made a draft: running and pending cards have no M
     expect(await toolbarLabels(page)).toEqual(['Delete card']);
   }
   // An idle Doing card and a Done card can.
-  for (const idle of [13, 8]) {
+  for (const idle of [12, 13, 8]) {
     await card(page, idle).click();
     await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeVisible();
   }

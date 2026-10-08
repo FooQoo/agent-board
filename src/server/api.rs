@@ -26,7 +26,7 @@ const MAX_MULTIPART_BODY: usize = 52 * 1024 * 1024;
 /// this server; images may come from anywhere so a description can show them.
 /// `'unsafe-inline'` for styles is needed because the editor inserts `<style>`
 /// elements at run time.
-const CONTENT_SECURITY_POLICY: &str = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+const CONTENT_SECURITY_POLICY: &str = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 pub(crate) fn router(state: Arc<AppState>) -> Router {
     Router::new()
@@ -555,6 +555,8 @@ struct AnswerInput {
 struct MultipartMeta {
     request_id: String,
     #[serde(default)]
+    finalize: bool,
+    #[serde(default)]
     title: Option<String>,
     #[serde(default)]
     description: Option<String>,
@@ -948,6 +950,7 @@ async fn edit_card_multipart(
             "requestId is required.",
         );
     }
+    let finalize = payload.meta.finalize;
     let request_id = payload.meta.request_id;
     let additions = payload.additions;
     let removals = payload.meta.remove_attachment_ids;
@@ -960,7 +963,7 @@ async fn edit_card_multipart(
             .into_iter()
             .find(|c| c.id == id)
             .ok_or(SkanError::CardNotFound { id })?;
-        let after = store.save_card_attachments(
+        let after = store.save_draft_card_attachments(
             &project_id,
             id,
             title.as_deref(),
@@ -968,6 +971,7 @@ async fn edit_card_multipart(
             &additions,
             &removals,
             &request_id,
+            finalize,
             chrono::Utc::now(),
         )?;
         Ok((before != after, after))
@@ -1054,10 +1058,7 @@ async fn create_card_multipart(
         );
     }
     let result = with_store(&state, move |store| {
-        if let Some(card) = store.replay_attachment_request(&project_id, &request_id, &additions)? {
-            return Ok(card);
-        }
-        let card = store.add_work_card(
+        store.create_card_with_attachments(
             &project_id,
             NewCard {
                 title,
@@ -1065,15 +1066,7 @@ async fn create_card_multipart(
                 assignee,
                 actor: Actor::Human,
             },
-            chrono::Utc::now(),
-        )?;
-        store.save_card_attachments(
-            &project_id,
-            card.id,
-            None,
-            None,
             &additions,
-            &[],
             &request_id,
             chrono::Utc::now(),
         )

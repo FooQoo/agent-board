@@ -77,6 +77,58 @@ fn lane_end(conn: &Connection, project_id: &ProjectId, lane: Column) -> Result<i
     })
 }
 
+pub(super) fn add_work_card_in_transaction(
+    conn: &Connection,
+    project_id: &ProjectId,
+    new: NewCard,
+    now: DateTime<Utc>,
+) -> Result<Card, SkanError> {
+    let title = validate_title(&new.title)?;
+    let description = normalize_and_validate_description(&new.description)?;
+    let id = load_counters(conn, project_id)?.next_card_id;
+    let next_id = id.checked_add(1).ok_or_else(|| SkanError::DatabaseError {
+        reason: "Card ID overflow.".into(),
+    })?;
+    let position = lane_end(conn, project_id, Column::Todo)?;
+    conn.execute(
+        "INSERT INTO cards (project_id, id, title, description, assignee, column_name,
+                                position, run_state, created_at, updated_at,
+                                run_state_changed_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, 'todo', ?6, 'idle', ?7, ?7, ?7)",
+        params![
+            project_id.as_str(),
+            id,
+            title,
+            description,
+            assignee_str(new.assignee),
+            position,
+            format_utc(now)
+        ],
+    )?;
+    conn.execute(
+        "UPDATE projects SET next_card_id = ?1 WHERE id = ?2",
+        params![next_id, project_id.as_str()],
+    )?;
+    append_event(
+        conn,
+        project_id,
+        id,
+        EventDraft {
+            kind: HistoryKind::Created,
+            actor: new.actor,
+            reason: None,
+            from_card_status: None,
+            to_card_status: Column::Todo,
+            from_agent_status: None,
+            to_agent_status: RunState::Idle,
+            request_id: None,
+            at: now,
+        },
+    )?;
+    bump_project(conn, project_id)?;
+    load_card(conn, project_id, id)
+}
+
 impl ProjectStore {
     pub fn add_work_card(
         &self,
@@ -84,52 +136,7 @@ impl ProjectStore {
         new: NewCard,
         now: DateTime<Utc>,
     ) -> Result<Card, SkanError> {
-        let title = validate_title(&new.title)?;
-        let description = normalize_and_validate_description(&new.description)?;
-        self.write(|conn| {
-            let id = load_counters(conn, project_id)?.next_card_id;
-            let next_id = id.checked_add(1).ok_or_else(|| SkanError::DatabaseError {
-                reason: "Card ID overflow.".into(),
-            })?;
-            let position = lane_end(conn, project_id, Column::Todo)?;
-            conn.execute(
-                "INSERT INTO cards (project_id, id, title, description, assignee, column_name,
-                                    position, run_state, created_at, updated_at,
-                                    run_state_changed_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, 'todo', ?6, 'idle', ?7, ?7, ?7)",
-                params![
-                    project_id.as_str(),
-                    id,
-                    title,
-                    description,
-                    assignee_str(new.assignee),
-                    position,
-                    format_utc(now)
-                ],
-            )?;
-            conn.execute(
-                "UPDATE projects SET next_card_id = ?1 WHERE id = ?2",
-                params![next_id, project_id.as_str()],
-            )?;
-            append_event(
-                conn,
-                project_id,
-                id,
-                EventDraft {
-                    kind: HistoryKind::Created,
-                    actor: new.actor,
-                    reason: None,
-                    from_card_status: None,
-                    to_card_status: Column::Todo,
-                    from_agent_status: None,
-                    to_agent_status: RunState::Idle,
-                    request_id: None,
-                    at: now,
-                },
-            )?;
-            bump_project(conn, project_id)?;
-            load_card(conn, project_id, id)
-        })
+        self.write(|conn| add_work_card_in_transaction(conn, project_id, new, now))
     }
 
     /// Move a card to the end of a lane. A draft is read-only here, whoever

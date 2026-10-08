@@ -12,9 +12,11 @@ import { SectionFold } from './SectionFold';
 export function MarkdownSections({
   source,
   variant = 'compact',
+  resolveAttachment,
 }: {
   source: string;
   variant?: MarkdownVariant;
+  resolveAttachment?: (id: string) => string | null;
 }) {
   const { t } = useTranslation();
   const { preamble, sections } = useMemo(() => splitSections(source), [source]);
@@ -23,7 +25,10 @@ export function MarkdownSections({
   if (source.trim() === '') {
     return <p className="md-empty">{t('detail.noDescription')}</p>;
   }
-  if (sections.length === 0) return <MarkdownView source={preamble} variant={variant} />;
+  if (sections.length === 0)
+    return (
+      <MarkdownView source={preamble} variant={variant} resolveAttachment={resolveAttachment} />
+    );
 
   const toggle = (id: string) =>
     setClosed((current) => {
@@ -34,7 +39,9 @@ export function MarkdownSections({
 
   return (
     <div className={`md-sections md-sections--${variant}`}>
-      {preamble !== '' && <MarkdownView source={preamble} variant={variant} />}
+      {preamble !== '' && (
+        <MarkdownView source={preamble} variant={variant} resolveAttachment={resolveAttachment} />
+      )}
       {sections.map((section, index) => {
         const id = `${index}:${section.title}`;
         return (
@@ -46,7 +53,11 @@ export function MarkdownSections({
             onToggle={() => toggle(id)}
           >
             {section.markdown !== '' && (
-              <MarkdownView source={section.markdown} variant={variant} />
+              <MarkdownView
+                source={section.markdown}
+                variant={variant}
+                resolveAttachment={resolveAttachment}
+              />
             )}
           </SectionFold>
         );

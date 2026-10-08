@@ -14,6 +14,7 @@ export interface AttachmentState {
   cancel: () => void;
   reset: (attachments: readonly StoredAttachment[]) => void;
   clear: () => void;
+  error: string | null;
 }
 
 function storedAttachments(
@@ -29,7 +30,7 @@ function storedAttachments(
 
 function localId(): string {
   // A file can be selected more than once; this keeps each draft entry distinct.
-  return `local-${crypto.randomUUID()}`;
+  return crypto.randomUUID().replaceAll('-', '');
 }
 
 export function useAttachmentState({
@@ -39,6 +40,9 @@ export function useAttachmentState({
   const [attachments, setAttachments] = useState(() =>
     storedAttachments(initial, resolveStoredUrl),
   );
+  const [error, setError] = useState<string | null>(null);
+  const currentAttachments = useRef(attachments);
+  currentAttachments.current = attachments;
   const urls = useRef(new Set<string>());
   const resolver = useRef(resolveStoredUrl);
   resolver.current = resolveStoredUrl;
@@ -49,64 +53,67 @@ export function useAttachmentState({
   }, []);
 
   const addFiles = useCallback((files: Iterable<File>) => {
-    const next = Array.from(files)
-      .filter((file) => file.type.startsWith('image/'))
-      .map((file) => {
-        const url = URL.createObjectURL(file);
-        urls.current.add(url);
-        return {
-          id: localId(),
-          name: file.name,
-          mediaType: file.type,
-          size: file.size,
-          url,
-          source: 'local' as const,
-          file,
-        };
-      });
-    if (next.length > 0) setAttachments((current) => [...current, ...next]);
+    const selected = Array.from(files);
+    const current = currentAttachments.current;
+    if (
+      selected.some((f) => !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(f.type))
+    ) {
+      setError('PNG / JPEG / WebP / GIF');
+      return;
+    }
+    if (
+      selected.some((f) => f.size > 10 * 1024 * 1024) ||
+      current.length + selected.length > 20 ||
+      current.reduce((n, f) => n + f.size, 0) + selected.reduce((n, f) => n + f.size, 0) >
+        50 * 1024 * 1024
+    ) {
+      setError('10 MiB / image · 20 images · 50 MiB / card');
+      return;
+    }
+    setError(null);
+    const next = selected.map((file) => {
+      const url = URL.createObjectURL(file);
+      urls.current.add(url);
+      return {
+        id: localId(),
+        name: file.name,
+        mediaType: file.type,
+        size: file.size,
+        url,
+        source: 'local' as const,
+        file,
+      };
+    });
+    if (next.length > 0) {
+      currentAttachments.current = [...current, ...next];
+      setAttachments(currentAttachments.current);
+    }
   }, []);
 
-  const remove = useCallback(
-    (id: string) => {
-      setAttachments((current) => {
-        const removed = current.find((attachment) => attachment.id === id);
-        if (removed?.source === 'local') release(removed.url);
-        return current.filter((attachment) => attachment.id !== id);
-      });
-    },
-    [release],
-  );
+  const remove = useCallback((id: string) => {
+    setError(null);
+    setAttachments((current) => current.filter((attachment) => attachment.id !== id));
+  }, []);
 
   const cancel = useCallback(() => {
-    setAttachments((current) => {
-      current.forEach((attachment) => {
-        if (attachment.source === 'local') release(attachment.url);
-      });
-      return current.filter((attachment) => attachment.source === 'stored');
-    });
-  }, [release]);
+    setError(null);
+    setAttachments((current) => current.filter((a) => a.source === 'stored'));
+  }, []);
 
   const clear = useCallback(() => {
-    setAttachments((current) => {
-      current.forEach((attachment) => {
-        if (attachment.source === 'local') release(attachment.url);
-      });
-      return [];
-    });
-  }, [release]);
+    setError(null);
+    setAttachments([]);
+  }, []);
 
-  const reset = useCallback(
-    (next: readonly StoredAttachment[]) => {
-      setAttachments((current) => {
-        current.forEach((attachment) => {
-          if (attachment.source === 'local') release(attachment.url);
-        });
-        return storedAttachments(next, resolver.current);
-      });
-    },
-    [release],
-  );
+  const reset = useCallback((next: readonly StoredAttachment[]) => {
+    setError(null);
+    setAttachments(storedAttachments(next, resolver.current));
+  }, []);
+
+  useEffect(() => {
+    const active = new Set(attachments.filter((a) => a.source === 'local').map((a) => a.url));
+    for (const url of urls.current) if (!active.has(url)) release(url);
+  }, [attachments, release]);
 
   useEffect(
     () => () => {
@@ -118,5 +125,5 @@ export function useAttachmentState({
     [],
   );
 
-  return { attachments, addFiles, remove, cancel, reset, clear };
+  return { attachments, addFiles, remove, cancel, reset, clear, error };
 }

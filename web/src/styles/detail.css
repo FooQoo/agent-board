@@ -388,3 +388,115 @@
     display: none;
   }
 }
+
+/* The read-only image list follows the description, as in the approved Pen frame. */
+.detail-attachments {
+  margin-top: 18px;
+  padding: 16px 0;
+  border-top: 1px solid var(--r-border);
+}
+.detail-attachments__heading {
+  margin: 0 0 10px;
+  color: var(--r-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.detail-attachments__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.detail-attachments__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.detail-attachments__preview {
+  position: relative;
+  height: 92px;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-bg);
+  cursor: zoom-in;
+}
+.detail-attachments__preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.detail-attachments__preview > svg {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 3px;
+  background: rgb(15 23 42 / 65%);
+  color: white;
+}
+.detail-attachments__name {
+  overflow: hidden;
+  color: var(--r-text2);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detail-attachments__missing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  color: var(--r-muted);
+  font-size: 11px;
+}
+.detail-attachments__missing svg {
+  width: 22px;
+  height: 22px;
+}
+.detail-attachments__lightbox {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  max-width: calc(100vw - 64px);
+  padding: 0;
+  border: 0;
+  background: var(--r-surface);
+}
+.detail-attachments__lightbox img {
+  max-width: min(90vw, 1000px);
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+.detail-attachments__lightbox-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  cursor: pointer;
+}
+.detail-attachments__lightbox-close svg {
+  width: 18px;
+  height: 18px;
+}
+.detail-attachments button:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}

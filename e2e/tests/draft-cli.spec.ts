@@ -236,7 +236,7 @@ test('export keeps isDraft through a round trip, and a backup from before drafts
   const exported = path.join(work, 'draft-export.json');
   agboardOk(mainProject, ['export', '-o', exported]);
   const backup = JSON.parse(readFileSync(exported, 'utf8'));
-  expect(backup.version).toBe(2);
+  expect(backup.version).toBe(3);
   expect(backup.cards.find((c: { id: number }) => c.id === 13).isDraft).toBe(true);
   expect(backup.cards.filter((c: { isDraft: boolean }) => c.isDraft)).toHaveLength(1);
 
@@ -293,7 +293,7 @@ test('the hook hands over the whole description and isDraft; a snapshot over 256
   expect(Buffer.byteLength(overContext)).toBeLessThan(2_000);
 });
 
-test('a new data area is version 4 with is_draft, and older versions are refused without a change', async () => {
+test('a new data area is version 5 with is_draft and attachments, and older versions are refused without a change', async () => {
   const home = makeHome('schema');
   const copy = makeHome('schema-old');
   try {
@@ -301,11 +301,11 @@ test('a new data area is version 4 with is_draft, and older versions are refused
     const db = path.join(home, 'board.db');
     const sqlite = (file: string, sql: string) =>
       spawnSync('sqlite3', [file, sql], { encoding: 'utf8' }).stdout.trim();
-    expect(sqlite(db, 'PRAGMA user_version')).toBe('4');
+    expect(sqlite(db, 'PRAGMA user_version')).toBe('5');
     expect(sqlite(db, "SELECT count(*) FROM pragma_table_info('cards') WHERE name = 'is_draft'")).toBe('1');
 
     // The same database claiming version 3, then an unknown version: both are refused as they are.
-    for (const version of [3, 2, 99]) {
+    for (const version of [4, 3, 2, 99]) {
       agboardOk('Fresh', ['add', `Card for ${version}`], home);
       const target = path.join(copy, 'board.db');
       spawnSync('sqlite3', [db, 'PRAGMA wal_checkpoint(TRUNCATE)']);

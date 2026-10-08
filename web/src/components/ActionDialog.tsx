@@ -6,6 +6,7 @@ import { MoveDialog } from './MoveDialog';
 export type { DialogAction };
 
 export interface ActionDialogData {
+  requestId?: string;
   title?: string;
   description?: string;
   assignee?: Assignee;

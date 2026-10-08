@@ -120,3 +120,19 @@ describe('MarkdownView', () => {
     expect(screen.getByText('No image')).toBeTruthy();
   });
 });
+
+it('resolves only current-card attachment references and preserves missing-image text after removal', () => {
+  const id = '0123456789abcdef0123456789abcdef';
+  const source = `![capture](attachment:${id})`;
+  const { rerender } = render(
+    <MarkdownView
+      source={source}
+      resolveAttachment={(key) => (key === id ? 'blob:owned-image' : null)}
+    />,
+  );
+  expect(screen.getByRole('img', { name: 'capture' }).getAttribute('src')).toBe('blob:owned-image');
+  rerender(<MarkdownView source={source} resolveAttachment={() => null} />);
+  expect(screen.queryByRole('img')).toBeNull();
+  expect(screen.getByText('No image')).toBeTruthy();
+  expect(screen.getByText('capture')).toBeTruthy();
+});

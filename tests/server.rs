@@ -1493,3 +1493,217 @@ fn the_example_needs_a_port() {
     assert_eq!(status.code(), Some(2));
     assert!(!home.path().join("serve.json").exists());
 }
+
+/// Exercise the browser's real binary multipart body against the guarded HTTP route.
+fn multipart_save(
+    server: &Running,
+    method: &str,
+    path: &str,
+    meta: serde_json::Value,
+    image: bool,
+) -> Reply {
+    let boundary = "attachment-test-boundary";
+    let mut body = format!("--{boundary}\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{meta}\r\n").into_bytes();
+    if image {
+        body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"files\"; filename=\"test.png\"\r\nContent-Type: image/png\r\n\r\n").as_bytes());
+        body.extend_from_slice(&[
+            137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1,
+            8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207,
+            192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66,
+            96, 130,
+        ]);
+        body.extend_from_slice(b"\r\n");
+    }
+    body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
+    let mut builder = ureq::http::Request::builder()
+        .method(method)
+        .uri(server.url(path))
+        .header(
+            "Content-Type",
+            format!("multipart/form-data; boundary={boundary}"),
+        );
+    for (name, value) in server.page_headers(&server.token()) {
+        builder = builder.header(name, value);
+    }
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .build()
+        .into();
+    let mut response = agent.run(builder.body(body).unwrap()).unwrap();
+    Reply {
+        status: response.status().as_u16(),
+        content_type: None,
+        cache_control: None,
+        body: response.body_mut().read_to_string().unwrap(),
+    }
+}
+
+#[test]
+fn multipart_draft_edit_is_atomic_retryable_and_preserves_pending() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let first = "0123456789abcdef0123456789abcdef";
+    let second = "fedcba9876543210fedcba9876543210";
+    let create = serde_json::json!({"requestId":"create-image", "title":"Image", "description":"before", "assignee":"ai", "attachments":[{"id":first}]});
+    let before = store_in(home.path())
+        .snapshot(&main_id(home.path()))
+        .unwrap();
+    let mut invalid_create = create.clone();
+    invalid_create["requestId"] = "invalid-create".into();
+    invalid_create["attachments"][0]["id"] = "invalid-id".into();
+    assert_eq!(
+        multipart_save(
+            &server,
+            "POST",
+            &server.api("/cards/multipart"),
+            invalid_create,
+            true
+        )
+        .status,
+        422
+    );
+    assert_eq!(
+        store_in(home.path())
+            .snapshot(&main_id(home.path()))
+            .unwrap(),
+        before
+    );
+    let reply = multipart_save(
+        &server,
+        "POST",
+        &server.api("/cards/multipart"),
+        create.clone(),
+        true,
+    );
+    assert_eq!(reply.status, 201, "{}", reply.body);
+    let created: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
+    let id = created["card"]["id"].as_i64().unwrap();
+    let retry = multipart_save(
+        &server,
+        "POST",
+        &server.api("/cards/multipart"),
+        create,
+        true,
+    );
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&retry.body).unwrap()["card"]["id"],
+        id
+    );
+    let store = store_in(home.path());
+    let project = main_id(home.path());
+    store
+        .move_work_card(
+            &project,
+            id,
+            Column::Doing,
+            ChangeContext {
+                actor: Actor::Ai,
+                reason: "Start".into(),
+            },
+            t(8),
+        )
+        .unwrap();
+    let pending = store
+        .set_agent_status(
+            &project,
+            id,
+            RunState::Pending,
+            ChangeContext {
+                actor: Actor::Ai,
+                reason: "Review".into(),
+            },
+            None,
+            t(9),
+        )
+        .unwrap()
+        .value;
+    store.set_draft(&project, id, true).unwrap();
+    assert!(matches!(
+        store.add_attachment(
+            &project,
+            id,
+            agent_board::domain::AttachmentInput {
+                id: second.into(),
+                name: "test.png".into(),
+                bytes: vec![]
+            },
+            "cli-blocked",
+            t(10)
+        ),
+        Err(SkanError::CardIsDraft { .. })
+    ));
+    let edit = serde_json::json!({"requestId":"draft-edit", "description":"after", "finalize":false, "removeAttachmentIds":[first], "attachments":[{"id":second}]});
+    let path = server.api(&format!("/cards/{id}/multipart"));
+    let saved = multipart_save(&server, "PATCH", &path, edit.clone(), true);
+    assert_eq!(saved.status, 200, "{}", saved.body);
+    let saved: serde_json::Value = serde_json::from_str(&saved.body).unwrap();
+    assert_eq!(saved["card"]["isDraft"], true);
+    assert_eq!(saved["card"]["description"], "after");
+    assert_eq!(saved["card"]["attachments"][0]["id"], second);
+    assert_eq!(
+        saved["card"]["pendingRequestId"],
+        pending.pending_request_id.unwrap()
+    );
+    let revision = store.counters(&project).unwrap().revision;
+    assert_eq!(
+        multipart_save(&server, "PATCH", &path, edit.clone(), true).status,
+        200
+    );
+    assert_eq!(store.counters(&project).unwrap().revision, revision);
+    let mut conflict = edit;
+    conflict["finalize"] = true.into();
+    assert_eq!(
+        multipart_save(&server, "PATCH", &path, conflict, true).status,
+        409
+    );
+    let broken = serde_json::json!({"requestId":"broken-save", "description":"must roll back", "finalize":true, "removeAttachmentIds":[second,first], "attachments":[]});
+    assert_eq!(
+        multipart_save(&server, "PATCH", &path, broken, false).status,
+        404
+    );
+    let rolled_back = store
+        .snapshot(&project)
+        .unwrap()
+        .cards
+        .into_iter()
+        .find(|c| c.id == id)
+        .unwrap();
+    assert!(rolled_back.is_draft);
+    assert_eq!(rolled_back.description, "after");
+    assert_eq!(rolled_back.attachments.len(), 1);
+    assert_eq!(store.counters(&project).unwrap().revision, revision);
+    let finish = serde_json::json!({"requestId":"finalize-image", "finalize":true, "removeAttachmentIds":[second], "attachments":[]});
+    assert_eq!(
+        multipart_save(&server, "PATCH", &path, finish.clone(), false).status,
+        200
+    );
+    let finalized = store
+        .snapshot(&project)
+        .unwrap()
+        .cards
+        .into_iter()
+        .find(|c| c.id == id)
+        .unwrap();
+    assert!(!finalized.is_draft);
+    assert!(finalized.attachments.is_empty());
+    assert_eq!(finalized.agent_status, RunState::Pending);
+    assert_eq!(finalized.history, pending.history);
+    let revision = store.counters(&project).unwrap().revision;
+    assert_eq!(
+        multipart_save(&server, "PATCH", &path, finish, false).status,
+        200
+    );
+    assert_eq!(store.counters(&project).unwrap().revision, revision);
+    assert_eq!(
+        multipart_save(
+            &server,
+            "PATCH",
+            &path,
+            serde_json::json!({"requestId":"edit-nondraft", "attachments":[]}),
+            false
+        )
+        .status,
+        409
+    );
+    server.stop().unwrap();
+}

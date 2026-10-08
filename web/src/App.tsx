@@ -253,6 +253,7 @@ export function App({ initial }: AppProps) {
                   title: data.title ?? '',
                   description: data.description ?? '',
                   assignee: data.assignee as Assignee,
+                  requestId: data.requestId,
                   attachments: data.attachments,
                 });
               else
@@ -274,6 +275,7 @@ export function App({ initial }: AppProps) {
                   title: data.title,
                   description: data.description,
                   finalize: data.finalize,
+                  requestId: data.requestId,
                   attachments: data.attachments ?? [],
                   removedAttachmentIds: data.removedAttachmentIds,
                 });

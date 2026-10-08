@@ -50,6 +50,8 @@ export const editEn = {
     keepEditing: 'Keep editing',
     discard: 'Discard and close',
     attachments: 'Attachments',
+    closeAttachments: 'Close attachments panel',
+    attachmentInvalid: 'Could not add image: {{reason}}',
     attachmentsLabel: 'Image attachments',
     attachmentsEmpty: 'Add images to this card',
     attachmentsDropHint: 'Choose files, drag and drop, or paste an image',

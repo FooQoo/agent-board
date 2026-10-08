@@ -35,10 +35,23 @@ function ImagePlaceholder({ alt }: { alt: string }) {
   );
 }
 
-/** Only an external http(s) image is fetched. A failed load turns into the placeholder. */
-function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
+/** Resolve owned attachments or external http(s) images; failed loads become placeholders. */
+function MarkdownImage({
+  src,
+  alt,
+  resolveAttachment,
+}: {
+  src?: string;
+  alt?: string;
+  resolveAttachment?: (id: string) => string | null;
+}) {
   const [failed, setFailed] = useState(false);
-  const safe = src === undefined ? null : safeImageUrl(src);
+  const match = src?.match(/^attachment:([0-9a-f]{32})$/);
+  const safe = match
+    ? (resolveAttachment?.(match[1] ?? '') ?? null)
+    : src === undefined
+      ? null
+      : safeImageUrl(src);
   const text = alt ?? '';
   if (safe === null || failed) return <ImagePlaceholder alt={text} />;
   return (
@@ -87,15 +100,27 @@ const COMPONENTS: Components = {
 export const MarkdownView = memo(function MarkdownView({
   source,
   variant = 'compact',
+  resolveAttachment,
 }: {
   source: string;
   variant?: MarkdownVariant;
+  resolveAttachment?: (id: string) => string | null;
 }) {
   return (
     <div className={`md md--${variant}`}>
       <ReactMarkdown
         remarkPlugins={REMARK_PLUGINS}
-        components={COMPONENTS}
+        components={{
+          ...COMPONENTS,
+          img: ({ src, alt }) => (
+            <MarkdownImage
+              key={`${src}:${typeof src === 'string' && src.startsWith('attachment:') ? resolveAttachment?.(src.slice(11)) : ''}`}
+              src={typeof src === 'string' ? src : undefined}
+              alt={alt}
+              resolveAttachment={resolveAttachment}
+            />
+          ),
+        }}
         urlTransform={(url) => url}
       >
         {source}

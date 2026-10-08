@@ -1,3 +1,4 @@
+import { useMultipartRequest } from './editor/useMultipartRequest';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
@@ -14,6 +15,7 @@ export interface CreateInput {
   title: string;
   description: string;
   assignee: Assignee;
+  requestId?: string;
   attachments?: import('./editor/attachmentTypes').EditorAttachment[];
 }
 
@@ -35,6 +37,7 @@ export function CreateDialog({
   const [assignee, setAssignee] = useState<Assignee>('ai');
   const assigneeId = useId();
   const flow = useSaveFlow({ onClose, onSavingChange });
+  const requestId = useMultipartRequest();
   const attachmentState = useAttachmentState({ resolveStoredUrl: () => '' });
 
   const valid = titleProblem(title) === null && countChars(description) <= DESCRIPTION_LIMIT;
@@ -42,6 +45,16 @@ export function CreateDialog({
     if (!valid || flow.busy.current) return;
     void flow.run(() =>
       onSubmit({
+        ...(attachmentState.attachments.length
+          ? {
+              requestId: requestId({
+                title: title.trim(),
+                description,
+                assignee,
+                attachments: attachmentState.attachments.map((a) => a.id),
+              }),
+            }
+          : {}),
         title: title.trim(),
         description: normalizeNewlines(description),
         assignee,
@@ -78,6 +91,7 @@ export function CreateDialog({
         description={description}
         onDescriptionChange={setDescription}
         disabled={flow.saving}
+        attachmentError={attachmentState.error}
         attachments={attachmentState.attachments}
         onFiles={attachmentState.addFiles}
         onRemoveAttachment={attachmentState.remove}

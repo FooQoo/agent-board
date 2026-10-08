@@ -157,13 +157,14 @@ export function createCardMultipart(
     title: string;
     description: string;
     assignee: Assignee;
+    requestId?: string;
     attachments: readonly EditorAttachment[];
   },
 ) {
   return sendMultipart(
     `${projectPath(projectId)}/cards/multipart`,
     multipartBody(
-      { requestId: crypto.randomUUID(), ...input, attachments: undefined },
+      { ...input, requestId: input.requestId ?? crypto.randomUUID(), attachments: undefined },
       input.attachments,
     ),
     'POST',
@@ -235,6 +236,7 @@ export function editCardMultipart(
     title?: string;
     description?: string;
     finalize?: boolean;
+    requestId?: string;
     attachments: readonly EditorAttachment[];
     removedAttachmentIds?: readonly string[];
   },
@@ -242,7 +244,11 @@ export function editCardMultipart(
   const { attachments, removedAttachmentIds = [], ...meta } = input;
   return sendMultipart(
     `${projectPath(projectId)}/cards/${id}/multipart`,
-    multipartBody({ requestId: crypto.randomUUID(), ...meta }, attachments, removedAttachmentIds),
+    multipartBody(
+      { ...meta, requestId: input.requestId ?? crypto.randomUUID() },
+      attachments,
+      removedAttachmentIds,
+    ),
     'PATCH',
   );
 }

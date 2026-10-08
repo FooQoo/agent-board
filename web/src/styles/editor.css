@@ -179,132 +179,130 @@
   background: var(--r-accent-soft);
 }
 
-/* Attachment tray: it sits below the editor and does not change the editor's column width. */
-.editor-attachments {
-  flex: none;
-  padding: 14px 20px 0;
-  border-top: 1px solid var(--r-border);
+/* The approved desktop design uses a 240px, full-height right panel. */
+.editor__body {
+  position: relative;
 }
-
+.editor-attachments {
+  display: flex;
+  flex: 0 0 240px;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 16px;
+  border-left: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
 .editor-attachments__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 28px;
+  gap: 6px;
 }
-
 .editor-attachments__title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--r-text2);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
 }
 .editor-attachments__title svg {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
 }
 .editor-attachments__count {
   color: var(--r-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
-.editor-attachments__add {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
+.editor-attachments__close {
+  display: flex;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  align-items: center;
+  margin-left: auto;
   padding: 0;
-  border: 1px solid var(--r-border);
-  border-radius: 5px;
-  background: var(--r-surface);
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
   color: var(--r-muted);
   cursor: pointer;
 }
-.editor-attachments__add:hover:not(:disabled) {
-  color: var(--r-accent);
-  border-color: var(--r-accent);
+.editor-attachments__close svg {
+  width: 16px;
+  height: 16px;
 }
-.editor-attachments__add:disabled,
-.editor-attachments__remove:disabled {
-  cursor: default;
-  opacity: 0.5;
+.editor-attachments__add {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  font-size: 12px;
+  cursor: pointer;
 }
 .editor-attachments__add svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 .editor-attachments__input {
   display: none;
 }
 .editor-attachments__dropzone {
-  min-height: 76px;
-  margin: 6px 0 14px;
-  padding: 8px;
-  border: 1px dashed var(--r-border);
-  border-radius: 7px;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 .editor-attachments__dropzone--active {
-  border-color: var(--r-accent);
+  outline: 2px dashed var(--r-accent);
+  outline-offset: 4px;
   background: var(--r-accent-soft);
-}
-.editor-attachments__dropzone[data-empty="true"] {
-  display: grid;
-  place-items: center;
 }
 .editor-attachments__empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
+  gap: 8px;
   width: 100%;
-  min-height: 58px;
-  padding: 8px;
-  border: 0;
+  padding: 16px 8px;
+  border: 1px dashed var(--r-border);
+  border-radius: 6px;
   background: transparent;
   color: var(--r-muted);
-  font: inherit;
   font-size: 12px;
   cursor: pointer;
 }
 .editor-attachments__empty svg {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
 }
 .editor-attachments__empty small {
-  color: var(--r-muted);
   font-size: 11px;
 }
-.editor-attachments__empty:hover:not(:disabled) {
-  color: var(--r-accent);
-}
 .editor-attachments__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 .editor-attachments__tile {
   position: relative;
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   min-width: 0;
-  padding: 6px;
-  border: 1px solid var(--r-border);
-  border-radius: 7px;
-  background: var(--r-surface);
 }
 .editor-attachments__preview {
   position: relative;
-  width: 52px;
-  height: 46px;
+  width: 100%;
+  height: 104px;
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--r-bg);
   cursor: zoom-in;
 }
@@ -316,21 +314,23 @@
 }
 .editor-attachments__preview svg {
   position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 13px;
-  height: 13px;
+  right: 6px;
+  bottom: 6px;
+  width: 18px;
+  height: 18px;
   padding: 2px;
   border-radius: 3px;
   background: rgb(15 23 42 / 65%);
   color: white;
 }
 .editor-attachments__meta {
-  display: grid;
+  display: flex;
+  align-items: center;
   min-width: 0;
-  gap: 2px;
+  gap: 6px;
 }
 .editor-attachments__name {
+  flex: 1;
   overflow: hidden;
   color: var(--r-text2);
   font-size: 11px;
@@ -343,39 +343,59 @@
 }
 .editor-attachments__actions {
   display: flex;
-  align-items: center;
-  gap: 4px;
 }
 .editor-attachments__insert {
-  padding: 3px 5px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--r-accent-soft);
-  color: var(--r-accent);
-  font: inherit;
-  font-size: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  font-size: 12px;
   cursor: pointer;
 }
 .editor-attachments__remove {
-  display: inline-flex;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
   color: var(--r-muted);
   cursor: pointer;
+}
+.editor-attachments__remove svg {
+  width: 15px;
+  height: 15px;
 }
 .editor-attachments__remove:hover:not(:disabled) {
   background: var(--r-danger-soft, #fee2e2);
   color: var(--r-danger, #b91c1c);
 }
-.editor-attachments__remove svg {
-  width: 14px;
-  height: 14px;
+.editor-attachments button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.editor-attachments button:focus-visible,
+.editor__attachment-toggle:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}
+.editor-attachments__drop-hint {
+  margin: 0;
+  flex: none;
+  padding: 12px;
+  border: 1px dashed var(--r-border);
+  border-radius: 6px;
+  color: var(--r-muted);
+  font-size: 12px;
+  text-align: center;
 }
 .editor-attachments__lightbox {
   position: fixed;
@@ -385,7 +405,6 @@
   place-items: center;
   padding: 32px;
   background: rgb(15 23 42 / 72%);
-  cursor: zoom-out;
 }
 .editor-attachments__lightbox img {
   max-width: min(90vw, 1000px);
@@ -398,7 +417,7 @@
   position: absolute;
   top: 18px;
   right: 18px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 34px;
@@ -414,17 +433,46 @@
   width: 18px;
   height: 18px;
 }
-
-@media (max-width: 720px) {
+.editor__toolbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 37px;
+  padding-right: 6px;
+  border-bottom: 1px solid var(--r-border);
+  background: var(--r-lane);
+}
+.editor__attachment-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 5px 8px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  color: var(--r-text2);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.editor__attachment-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+.editor__attachment-toggle[aria-expanded="true"] {
+  border-color: var(--r-accent);
+  color: var(--r-accent);
+}
+@media (max-width: 991px) {
   .editor-attachments {
-    padding-inline: 12px;
-  }
-  .editor-attachments__empty {
-    flex-wrap: wrap;
-  }
-  .editor-attachments__empty small {
-    flex-basis: 100%;
-    text-align: center;
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: min(240px, 100%);
+    box-shadow: -8px 0 24px rgb(15 23 42 / 20%);
   }
 }
 
@@ -451,7 +499,7 @@
   flex-direction: column;
   gap: 14px;
   min-width: 0;
-  padding: 24px 32px;
+  padding: 24px;
 }
 
 .editor__field {
@@ -525,8 +573,8 @@
   flex: none;
   height: 37px;
   padding: 0 6px;
-  border-bottom: 1px solid var(--r-border);
-  background: var(--r-lane);
+  border-bottom: 0;
+  background: transparent;
 }
 
 .editor__tab {
@@ -781,4 +829,11 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.editor__attachment-error {
+  margin: 0;
+  color: var(--r-danger);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }

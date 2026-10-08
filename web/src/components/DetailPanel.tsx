@@ -10,6 +10,7 @@ import { AssigneeLabel } from './AssigneeLabel';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
 import { DecisionRequest } from './detail/DecisionRequest';
+import { DetailAttachments } from './detail/DetailAttachments';
 import { DetailTabs, type DetailTab, panelId, tabId } from './detail/DetailTabs';
 import { DraftBanner } from './detail/DraftBanner';
 import { HistoryTimeline } from './HistoryTimeline';
@@ -257,7 +258,19 @@ function DetailBody({
         aria-labelledby={tabId(idBase, 'description')}
         hidden={tab !== 'description'}
       >
-        <MarkdownSections source={card.description} />
+        <MarkdownSections
+          source={card.description}
+          resolveAttachment={(id) =>
+            card.attachments?.some((a) => a.id === id)
+              ? `/api/projects/${projectId}/cards/${card.id}/attachments/${id}`
+              : null
+          }
+        />
+        <DetailAttachments
+          projectId={projectId}
+          cardId={card.id}
+          attachments={card.attachments ?? []}
+        />
       </div>
       <div
         className="detail__viewport"

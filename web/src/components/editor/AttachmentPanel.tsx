@@ -1,5 +1,5 @@
 import {
-  ImageIcon,
+  PlusIcon,
   ImageOffIcon,
   Maximize2Icon,
   PaperclipIcon,
@@ -7,12 +7,15 @@ import {
   XIcon,
 } from 'lucide-react';
 import { useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
+import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useTranslation } from 'react-i18next';
 import type { EditorAttachment } from './attachmentTypes';
 import { formatAttachmentSize } from './attachmentTypes';
 import '../../styles/editor.css';
 
 export interface AttachmentPanelProps {
+  id?: string;
+  onClose?: () => void;
   attachments: readonly EditorAttachment[];
   onFiles: (files: File[]) => void;
   onRemove: (id: string) => void;
@@ -23,6 +26,8 @@ export interface AttachmentPanelProps {
 
 /** The compact attachment tray used by the editor. The editor owns persistence and saving. */
 export function AttachmentPanel({
+  id,
+  onClose,
   attachments,
   onFiles,
   onRemove,
@@ -34,12 +39,14 @@ export function AttachmentPanel({
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [zoom, setZoom] = useState<EditorAttachment | null>(null);
+  const zoomTrigger = useRef<HTMLButtonElement | null>(null);
 
   const acceptFiles = (files: FileList | File[]) => {
-    onFiles(Array.from(files).filter((file) => file.type.startsWith('image/')));
+    onFiles(Array.from(files));
   };
   const onDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
+    event.stopPropagation();
     setDragging(false);
     if (!disabled) acceptFiles(event.dataTransfer.files);
   };
@@ -54,6 +61,7 @@ export function AttachmentPanel({
 
   return (
     <section
+      id={id}
       className={`editor-attachments ${className}`}
       aria-label={t('editor.attachmentsLabel')}
       onPaste={onPaste}
@@ -64,28 +72,39 @@ export function AttachmentPanel({
           {t('editor.attachments')}
         </span>
         <span className="editor-attachments__count">{attachments.length}</span>
-        <button
-          type="button"
-          className="editor-attachments__add"
-          aria-label={t('editor.addAttachment')}
-          disabled={disabled}
-          onClick={() => input.current?.click()}
-        >
-          <ImageIcon aria-hidden="true" />
-        </button>
-        <input
-          ref={input}
-          className="editor-attachments__input"
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          multiple
-          disabled={disabled}
-          onChange={(event) => {
-            if (event.currentTarget.files) acceptFiles(event.currentTarget.files);
-            event.currentTarget.value = '';
-          }}
-        />
+        {onClose && (
+          <button
+            type="button"
+            className="editor-attachments__close"
+            aria-label={t('editor.closeAttachments')}
+            onClick={onClose}
+          >
+            <XIcon aria-hidden="true" />
+          </button>
+        )}
       </div>
+      <button
+        type="button"
+        className="editor-attachments__add"
+        aria-label={t('editor.addAttachment')}
+        disabled={disabled}
+        onClick={() => input.current?.click()}
+      >
+        <PlusIcon aria-hidden="true" />
+        {t('editor.addAttachment')}
+      </button>
+      <input
+        ref={input}
+        className="editor-attachments__input"
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        multiple
+        disabled={disabled}
+        onChange={(event) => {
+          if (event.currentTarget.files) acceptFiles(event.currentTarget.files);
+          event.currentTarget.value = '';
+        }}
+      />
       <div
         className={`editor-attachments__dropzone${dragging ? ' editor-attachments__dropzone--active' : ''}`}
         role="region"
@@ -121,25 +140,51 @@ export function AttachmentPanel({
                 disabled={disabled}
                 onRemove={() => onRemove(attachment.id)}
                 onInsert={onInsert ? () => onInsert(attachment) : undefined}
-                onZoom={() => setZoom(attachment)}
+                onZoom={(button) => {
+                  zoomTrigger.current = button;
+                  setZoom(attachment);
+                }}
               />
             ))}
           </div>
         )}
       </div>
-      {zoom !== null && (
-        <div className="editor-attachments__lightbox" role="dialog" aria-label={zoom.name}>
-          <button
-            type="button"
-            className="editor-attachments__lightbox-close"
-            aria-label={t('dialog.close')}
-            onClick={() => setZoom(null)}
-          >
-            <XIcon aria-hidden="true" />
-          </button>
-          <img src={zoom.url} alt={zoom.name} />
-        </div>
-      )}
+      <p className="editor-attachments__drop-hint">{t('editor.attachmentsDropHint')}</p>
+      <DialogPrimitive.Root
+        open={zoom !== null}
+        onOpenChange={(open) => {
+          if (!open) setZoom(null);
+        }}
+      >
+        {zoom !== null && (
+          <DialogPrimitive.Portal>
+            <DialogPrimitive.Content
+              className="editor-attachments__lightbox"
+              aria-describedby={undefined}
+              data-editor-attachment-zoom
+              onEscapeKeyDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setZoom(null);
+              }}
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                zoomTrigger.current?.focus();
+              }}
+            >
+              <DialogPrimitive.Title className="visually-hidden">{zoom.name}</DialogPrimitive.Title>
+              <DialogPrimitive.Close
+                data-editor-attachment-zoom-close
+                className="editor-attachments__lightbox-close"
+                aria-label={t('dialog.close')}
+              >
+                <XIcon aria-hidden="true" />
+              </DialogPrimitive.Close>
+              <img src={zoom.url} alt={zoom.name} />
+            </DialogPrimitive.Content>
+          </DialogPrimitive.Portal>
+        )}
+      </DialogPrimitive.Root>
     </section>
   );
 }
@@ -155,7 +200,7 @@ function AttachmentTile({
   disabled: boolean;
   onRemove: () => void;
   onInsert?: () => void;
-  onZoom: () => void;
+  onZoom: (button: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -164,7 +209,7 @@ function AttachmentTile({
         type="button"
         className="editor-attachments__preview"
         aria-label={t('editor.previewAttachment', { name: attachment.name })}
-        onClick={onZoom}
+        onClick={(event) => onZoom(event.currentTarget)}
       >
         <img src={attachment.url} alt="" />
         <Maximize2Icon aria-hidden="true" />
@@ -186,16 +231,16 @@ function AttachmentTile({
             {t('editor.insertAttachment')}
           </button>
         )}
-        <button
-          type="button"
-          className="editor-attachments__remove"
-          aria-label={t('editor.removeAttachment', { name: attachment.name })}
-          disabled={disabled}
-          onClick={onRemove}
-        >
-          <Trash2Icon aria-hidden="true" />
-        </button>
       </div>
+      <button
+        type="button"
+        className="editor-attachments__remove"
+        aria-label={t('editor.removeAttachment', { name: attachment.name })}
+        disabled={disabled}
+        onClick={onRemove}
+      >
+        <Trash2Icon aria-hidden="true" />
+      </button>
     </article>
   );
 }
