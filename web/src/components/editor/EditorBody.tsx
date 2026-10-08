@@ -11,6 +11,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
+import { AttachmentPanel } from './AttachmentPanel';
+import type { EditorAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, TITLE_LIMIT, countChars } from './limits';
 import { activeOutlineIndex, outlineOf } from './outline';
 import { Input } from '@/components/ui/input';
@@ -30,6 +32,10 @@ export interface EditorBodyProps {
   disabled: boolean;
   /** A field placed between the title and the description (the assignee of a new card). */
   extraField?: ReactNode;
+  attachments?: readonly EditorAttachment[];
+  onFiles?: (files: File[]) => void;
+  onRemoveAttachment?: (id: string) => void;
+  onInsertAttachment?: (attachment: EditorAttachment) => void;
 }
 
 /** The body shared by the edit and the add dialog: outline, title, description editor and preview. */
@@ -42,6 +48,10 @@ export function EditorBody({
   onDescriptionChange,
   disabled,
   extraField,
+  attachments = [],
+  onFiles,
+  onRemoveAttachment,
+  onInsertAttachment,
 }: EditorBodyProps) {
   const { t } = useTranslation();
   const ids = useId();
@@ -187,6 +197,18 @@ export function EditorBody({
             {tab === 'preview' && <PreviewBody source={description} />}
           </div>
         </div>
+        {onFiles && onRemoveAttachment && (
+          <AttachmentPanel
+            attachments={attachments}
+            onFiles={onFiles}
+            onRemove={onRemoveAttachment}
+            onInsert={(a) => {
+              editor.current?.insert(`![${a.name}](${a.url})`);
+              onInsertAttachment?.(a);
+            }}
+            disabled={disabled}
+          />
+        )}
         <p className="editor__hint" data-over={overLimit ? 'true' : undefined}>
           {overLimit ? (
             <>

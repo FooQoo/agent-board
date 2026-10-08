@@ -308,6 +308,7 @@ export function mockApi(): Plugin {
                 agentStatusChangedAt: now,
                 isDraft: false,
                 history: [event],
+                attachments: [],
               };
               update(projectId, (board) => [...board.cards, card]);
               return sendJson(res, 201, { card });

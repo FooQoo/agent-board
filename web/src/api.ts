@@ -1,4 +1,5 @@
 import type { ApiError, Assignee, Board, Card, ColumnName, ProjectId, ProjectList } from './types';
+import type { EditorAttachment } from './components/editor/attachmentTypes';
 
 const TOKEN_META = 'skan-token';
 
@@ -117,6 +118,58 @@ export async function createCard(
   return postCard<{ card: Card }>(`${projectPath(projectId)}/cards`, input);
 }
 
+function multipartBody(
+  meta: Record<string, unknown>,
+  attachments: readonly EditorAttachment[],
+  removed: readonly string[] = [],
+) {
+  const form = new FormData();
+  const additions = attachments.filter((a) => a.source === 'local');
+  form.append(
+    'metadata',
+    JSON.stringify({
+      ...meta,
+      removeAttachmentIds: removed,
+      attachments: additions.map((a) => ({ id: a.id, name: a.name })),
+    }),
+  );
+  for (const attachment of attachments)
+    if (attachment.source === 'local' && attachment.file)
+      form.append('file', attachment.file, attachment.name);
+  return form;
+}
+
+async function sendMultipart(path: string, body: FormData, method: 'POST' | 'PATCH') {
+  const response = await fetch(path, { method, headers: { 'X-Skan-Token': readToken() }, body });
+  const data = (await response.json()) as { card?: Card; error?: ApiError['error'] };
+  if (!response.ok || !data.card)
+    throw new WriteError(
+      data.error?.reason ?? `Request failed (${response.status})`,
+      response.status,
+      data.error?.code ?? null,
+    );
+  return { card: data.card };
+}
+
+export function createCardMultipart(
+  projectId: ProjectId,
+  input: {
+    title: string;
+    description: string;
+    assignee: Assignee;
+    attachments: readonly EditorAttachment[];
+  },
+) {
+  return sendMultipart(
+    `${projectPath(projectId)}/cards/multipart`,
+    multipartBody(
+      { requestId: crypto.randomUUID(), ...input, attachments: undefined },
+      input.attachments,
+    ),
+    'POST',
+  );
+}
+
 export async function moveCard(
   projectId: ProjectId,
   id: number,
@@ -173,6 +226,25 @@ export async function editCard(
   input: { title?: string; description?: string; finalize?: boolean },
 ) {
   return sendCard('PATCH', `${projectPath(projectId)}/cards/${id}`, input);
+}
+
+export function editCardMultipart(
+  projectId: ProjectId,
+  id: number,
+  input: {
+    title?: string;
+    description?: string;
+    finalize?: boolean;
+    attachments: readonly EditorAttachment[];
+    removedAttachmentIds?: readonly string[];
+  },
+) {
+  const { attachments, removedAttachmentIds = [], ...meta } = input;
+  return sendMultipart(
+    `${projectPath(projectId)}/cards/${id}/multipart`,
+    multipartBody({ requestId: crypto.randomUUID(), ...meta }, attachments, removedAttachmentIds),
+    'PATCH',
+  );
 }
 
 /** Makes a card a draft (`true`) or finalizes it (`false`). Only an idle card can become a draft. */

@@ -33,6 +33,15 @@ export interface Card {
   /** A draft is read-only for agents until a person finalizes it. */
   isDraft: boolean;
   history: HistoryEvent[];
+  attachments: Attachment[];
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  mediaType: string;
+  size: number;
+  createdAt: string;
 }
 
 export interface BoardInfo {

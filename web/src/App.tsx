@@ -16,7 +16,7 @@ import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
-import { createCard, editCard, moveCard } from './api';
+import { createCard, createCardMultipart, editCard, editCardMultipart, moveCard } from './api';
 import { useBoard } from './hooks/useBoard';
 import { useBoardEvents } from './hooks/useBoardEvents';
 import { useDetailWidth } from './hooks/useDetailWidth';
@@ -239,6 +239,7 @@ export function App({ initial }: AppProps) {
         <ActionDialog
           key={`${operation.id}:${operation.projectId}`}
           action={dialog}
+          projectId={operation.projectId}
           onClose={() => operations.end(operation.id)}
           onSavingChange={(saving) =>
             saving ? operations.saveStarted(operation.id) : operations.saveFailed(operation.id)
@@ -247,11 +248,19 @@ export function App({ initial }: AppProps) {
             // Writes go to the project the form was opened in, not to whatever the URL says now.
             const projectId = operation.projectId;
             if (dialog.kind === 'create')
-              await createCard(projectId, {
-                title: data.title ?? '',
-                description: data.description ?? '',
-                assignee: data.assignee as Assignee,
-              });
+              if (data.attachments?.length)
+                await createCardMultipart(projectId, {
+                  title: data.title ?? '',
+                  description: data.description ?? '',
+                  assignee: data.assignee as Assignee,
+                  attachments: data.attachments,
+                });
+              else
+                await createCard(projectId, {
+                  title: data.title ?? '',
+                  description: data.description ?? '',
+                  assignee: data.assignee as Assignee,
+                });
             else if (dialog.kind === 'move')
               await moveCard(
                 projectId,
@@ -260,11 +269,20 @@ export function App({ initial }: AppProps) {
                 data.reason ?? '',
               );
             else if (dialog.kind === 'edit')
-              await editCard(projectId, dialog.card.id, {
-                title: data.title,
-                description: data.description,
-                finalize: data.finalize,
-              });
+              if (data.attachments || data.removedAttachmentIds?.length)
+                await editCardMultipart(projectId, dialog.card.id, {
+                  title: data.title,
+                  description: data.description,
+                  finalize: data.finalize,
+                  attachments: data.attachments ?? [],
+                  removedAttachmentIds: data.removedAttachmentIds,
+                });
+              else
+                await editCard(projectId, dialog.card.id, {
+                  title: data.title,
+                  description: data.description,
+                  finalize: data.finalize,
+                });
             refreshProject(projectId);
           }}
         />

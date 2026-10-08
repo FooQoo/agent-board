@@ -12,6 +12,8 @@ export interface ActionDialogData {
   reason?: string;
   /** Edit only: hand the card back to the agents in the same step. */
   finalize?: boolean;
+  attachments?: import('./editor/attachmentTypes').EditorAttachment[];
+  removedAttachmentIds?: string[];
 }
 
 /** Opens the dialog for a card operation. Each operation has its own component. */
@@ -20,6 +22,7 @@ export function ActionDialog({
   onClose,
   onSavingChange,
   onSubmit,
+  projectId,
 }: {
   action: DialogAction;
   /** The dialog is done: saved, or cancelled. */
@@ -27,10 +30,18 @@ export function ActionDialog({
   /** Reports that a save started (`true`) or failed and the input was kept (`false`). */
   onSavingChange?: (saving: boolean) => void;
   onSubmit: (data: ActionDialogData) => Promise<void>;
+  projectId?: string;
 }) {
   switch (action.kind) {
     case 'create':
-      return <CreateDialog onClose={onClose} onSavingChange={onSavingChange} onSubmit={onSubmit} />;
+      return (
+        <CreateDialog
+          projectId={projectId}
+          onClose={onClose}
+          onSavingChange={onSavingChange}
+          onSubmit={onSubmit}
+        />
+      );
     case 'move':
       return (
         <MoveDialog
@@ -48,6 +59,7 @@ export function ActionDialog({
           onClose={onClose}
           onSavingChange={onSavingChange}
           onSubmit={onSubmit}
+          projectId={projectId}
         />
       );
   }

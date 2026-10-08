@@ -7,6 +7,7 @@ export interface MarkdownEditorHandle {
   /** Puts the cursor at `position` and scrolls it into view. */
   goTo: (position: number) => void;
   focus: () => void;
+  insert: (text: string) => void;
 }
 
 export interface MarkdownEditorProps {
@@ -117,6 +118,16 @@ export function MarkdownEditor({
     },
     focus() {
       viewRef.current?.focus();
+    },
+    insert(text) {
+      const view = viewRef.current;
+      if (view === null) return;
+      const { from, to } = view.state.selection.main;
+      view.dispatch({
+        changes: { from, to, insert: text },
+        selection: { anchor: from + text.length },
+      });
+      view.focus();
     },
   }));
 
