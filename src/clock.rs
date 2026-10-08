@@ -54,6 +54,21 @@ pub mod serde_utc {
     }
 }
 
+pub mod serde_opt_utc {
+    use chrono::{DateTime, Utc};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+
+    pub fn serialize<S: Serializer>(dt: &Option<DateTime<Utc>>, s: S) -> Result<S::Ok, S::Error> {
+        dt.map(super::format_utc).serialize(s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<DateTime<Utc>>, D::Error> {
+        Option::<String>::deserialize(d)?
+            .map(|text| super::parse_utc(&text).map_err(D::Error::custom))
+            .transpose()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::TimeZone;

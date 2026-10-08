@@ -23,6 +23,8 @@ pub enum HistoryKind {
     Created,
     Lane,
     Agent,
+    Archive,
+    Restore,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,6 +84,8 @@ pub struct Card {
     /// A draft is read-only for agents until the user finalizes it.
     #[serde(default)]
     pub is_draft: bool,
+    #[serde(with = "crate::clock::serde_opt_utc")]
+    pub archived_at: Option<DateTime<Utc>>,
     pub history: Vec<HistoryEvent>,
     #[serde(default)]
     pub attachments: Vec<Attachment>,
@@ -124,6 +128,13 @@ pub struct BoardSnapshot {
     pub revision: i64,
     pub cursor: super::ChangeCursor,
     pub cards: Vec<Card>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkArchiveResult {
+    pub cards: Vec<Card>,
+    pub archived_count: usize,
 }
 
 /// Every project's board read in one transaction: the catalog revision and one

@@ -160,6 +160,8 @@ pub fn show_text(card: &Card) -> String {
                 event.to_card_status.label()
             }
             crate::domain::HistoryKind::Agent => event.to_agent_status.label(),
+            crate::domain::HistoryKind::Archive => "Archive",
+            crate::domain::HistoryKind::Restore => "Restore",
         };
         out.push_str(&format!(
             "  {} {}: {}\n",

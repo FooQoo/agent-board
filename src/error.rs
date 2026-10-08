@@ -25,6 +25,13 @@ pub enum SkanError {
     CardNotFound {
         id: i64,
     },
+    CardArchived {
+        id: i64,
+    },
+    CardNotArchived {
+        id: i64,
+    },
+    ArchiveTargetsChanged,
     AttachmentNotFound {
         id: String,
     },
@@ -102,6 +109,9 @@ impl SkanError {
             SkanError::ProjectNotFound { .. } => "project_not_found",
             SkanError::ProjectNameExists { .. } => "project_name_exists",
             SkanError::CardNotFound { .. } => "card_not_found",
+            SkanError::CardArchived { .. } => "card_archived",
+            SkanError::CardNotArchived { .. } => "card_not_archived",
+            SkanError::ArchiveTargetsChanged => "archive_targets_changed",
             SkanError::AttachmentNotFound { .. } => "attachment_not_found",
             SkanError::AttachmentRequestConflict => "attachment_request_conflict",
             SkanError::AttachmentLimitExceeded => "attachment_limit_exceeded",
@@ -145,6 +155,9 @@ impl SkanError {
             SkanError::ProjectNotFound { .. } => "project not found.".to_string(),
             SkanError::ProjectNameExists { name } => format!("project \"{name}\" already exists."),
             SkanError::CardNotFound { id } => format!("card #{id} not found."),
+            SkanError::CardArchived { id } => format!("card #{id} is archived."),
+            SkanError::CardNotArchived { id } => format!("card #{id} is not archived."),
+            SkanError::ArchiveTargetsChanged => "archive targets changed.".into(),
             SkanError::AttachmentNotFound { id } => format!("attachment {id} not found."),
             SkanError::AttachmentRequestConflict => {
                 "attachment request was reused with different content.".into()
@@ -198,6 +211,9 @@ impl SkanError {
             SkanError::CardNotFound { id } => {
                 format!("No card has ID {id}. Run \"agboard ls\" to see the cards.")
             }
+            SkanError::CardArchived { .. } => "Restore the card before editing it.".into(),
+            SkanError::CardNotArchived { .. } => "Only an archived card can be deleted here.".into(),
+            SkanError::ArchiveTargetsChanged => "Read the latest Done cards and confirm the archive again.".into(),
             SkanError::AttachmentNotFound { .. } => "The attachment does not belong to this card.".into(),
             SkanError::AttachmentRequestConflict => "Use a new request ID when the content changes.".into(),
             SkanError::AttachmentLimitExceeded => "A card may contain at most 20 images and 50 MiB in total.".into(),

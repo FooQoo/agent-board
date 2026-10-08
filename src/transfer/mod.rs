@@ -204,6 +204,18 @@ impl Backup {
                             }
                             state = event.to_agent_status;
                         }
+                        HistoryKind::Archive | HistoryKind::Restore => {
+                            if event.to_card_status != lane
+                                || event.to_agent_status != RunState::Idle
+                                || event.from_card_status != Some(lane)
+                                || event.from_agent_status != Some(state)
+                            {
+                                return Err(invalid("Archive history is not continuous."));
+                            }
+                            state = RunState::Idle;
+                            pending = None;
+                            pending_reason = None;
+                        }
                     }
                 }
             }

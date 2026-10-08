@@ -29,6 +29,8 @@ pub(super) fn kind_str(value: HistoryKind) -> &'static str {
         HistoryKind::Created => "created",
         HistoryKind::Lane => "lane",
         HistoryKind::Agent => "agent",
+        HistoryKind::Archive => "archive",
+        HistoryKind::Restore => "restore",
     }
 }
 
@@ -81,6 +83,8 @@ pub(super) fn load_history(
                 "created" => HistoryKind::Created,
                 "lane" => HistoryKind::Lane,
                 "agent" => HistoryKind::Agent,
+                "archive" => HistoryKind::Archive,
+                "restore" => HistoryKind::Restore,
                 _ => {
                     return Err(conversion(
                         1,
@@ -125,7 +129,7 @@ pub(super) fn load_card(
     let mut stmt = conn.prepare(
         "SELECT id, title, description, assignee, column_name, position, run_state,
                 pending_reason, pending_request_id, created_at, updated_at, run_state_changed_at,
-                is_draft
+                is_draft, archived_at
          FROM cards WHERE project_id = ?1 AND id = ?2",
     )?;
     let mut card = stmt
@@ -161,6 +165,11 @@ pub(super) fn load_card(
                 updated_at: time(10)?,
                 agent_status_changed_at: time(11)?,
                 is_draft: r.get::<_, i64>(12)? != 0,
+                archived_at: r
+                    .get::<_, Option<String>>(13)?
+                    .map(|s| parse_utc(&s))
+                    .transpose()
+                    .map_err(|e| conversion(13, e))?,
                 history: Vec::new(),
                 attachments: Vec::new(),
             })
@@ -204,7 +213,37 @@ pub(super) fn load_cards(
     project_id: &ProjectId,
 ) -> Result<Vec<Card>, SkanError> {
     let ids = {
+        let mut stmt = conn.prepare(
+            "SELECT id FROM cards WHERE project_id = ?1 AND archived_at IS NULL ORDER BY id",
+        )?;
+        let rows = stmt.query_map([project_id.as_str()], |r| r.get::<_, i64>(0))?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
+    ids.into_iter()
+        .map(|id| load_card(conn, project_id, id))
+        .collect()
+}
+
+pub(super) fn load_cards_all(
+    conn: &Connection,
+    project_id: &ProjectId,
+) -> Result<Vec<Card>, SkanError> {
+    let ids = {
         let mut stmt = conn.prepare("SELECT id FROM cards WHERE project_id = ?1 ORDER BY id")?;
+        let rows = stmt.query_map([project_id.as_str()], |r| r.get::<_, i64>(0))?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
+    ids.into_iter()
+        .map(|id| load_card(conn, project_id, id))
+        .collect()
+}
+
+pub(super) fn load_cards_archived(
+    conn: &Connection,
+    project_id: &ProjectId,
+) -> Result<Vec<Card>, SkanError> {
+    let ids = {
+        let mut stmt = conn.prepare("SELECT id FROM cards WHERE project_id = ?1 AND archived_at IS NOT NULL ORDER BY archived_at DESC, id DESC")?;
         let rows = stmt.query_map([project_id.as_str()], |r| r.get::<_, i64>(0))?;
         rows.collect::<rusqlite::Result<Vec<_>>>()?
     };
@@ -252,8 +291,8 @@ pub(super) fn insert_cards(
         conn.execute(
             "INSERT INTO cards (project_id, id, title, description, assignee, column_name, position,
                                 run_state, pending_reason, pending_request_id, created_at,
-                                updated_at, run_state_changed_at, is_draft)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+                                updated_at, run_state_changed_at, is_draft, archived_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
             params![
                 project_id.as_str(),
                 card.id,
@@ -269,6 +308,7 @@ pub(super) fn insert_cards(
                 format_utc(card.updated_at),
                 format_utc(card.agent_status_changed_at),
                 i64::from(card.is_draft),
+                card.archived_at.map(format_utc),
             ],
         )?;
         for event in &card.history {

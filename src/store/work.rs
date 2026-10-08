@@ -68,7 +68,7 @@ fn append_event(
 /// The next free position at the end of a lane of one project.
 fn lane_end(conn: &Connection, project_id: &ProjectId, lane: Column) -> Result<i64, SkanError> {
     let last: i64 = conn.query_row(
-        "SELECT COALESCE(MAX(position), 0) FROM cards WHERE project_id = ?1 AND column_name = ?2",
+        "SELECT COALESCE(MAX(position), 0) FROM cards WHERE project_id = ?1 AND column_name = ?2 AND archived_at IS NULL",
         params![project_id.as_str(), lane.as_str()],
         |r| r.get(0),
     )?;
@@ -177,6 +177,9 @@ impl ProjectStore {
         self.write(|conn| {
             require_project(conn, project_id)?;
             let old = load_card(conn, project_id, id)?;
+            if old.archived_at.is_some() {
+                return Err(SkanError::CardArchived { id });
+            }
             if block_drafts && old.is_draft {
                 return Err(SkanError::CardIsDraft { id });
             }
@@ -238,6 +241,9 @@ impl ProjectStore {
         self.write(|conn| {
             require_project(conn, project_id)?;
             let old = load_card(conn, project_id, id)?;
+            if old.archived_at.is_some() {
+                return Err(SkanError::CardArchived { id });
+            }
             if old.is_draft {
                 return Err(SkanError::CardIsDraft { id });
             }
@@ -312,6 +318,9 @@ impl ProjectStore {
         self.write(|conn| {
             require_project(conn, project_id)?;
             let old = load_card(conn, project_id, id)?;
+            if old.archived_at.is_some() {
+                return Err(SkanError::CardArchived { id });
+            }
             if old.assignee != Assignee::Ai
                 || old.card_status != Column::Doing
                 || old.agent_status != RunState::Pending
