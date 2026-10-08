@@ -599,6 +599,8 @@ fn deleting_in_one_project_leaves_the_other_untouched() {
     let (home, a, b) = two_projects();
     let before_b = snapshot_json(home.path(), &b);
     let server = Running::start(home.path());
+    let archived = server.write("POST", &format!("/api/projects/{a}/cards/1/archive"), None);
+    assert_eq!(archived.status, 200, "{}", archived.body);
     let reply = server.write("DELETE", &format!("/api/projects/{a}/cards/1"), None);
     assert_eq!(reply.status, 204, "{}", reply.body);
     let ids: Vec<i64> = store(home.path())
@@ -954,13 +956,16 @@ fn each_confirmed_http_change_is_notified() {
     );
     assert_eq!(moved.status, 200);
     assert!(events.wait_for("event: changed", Duration::from_secs(3)));
+    let archived = server.write("POST", &format!("/api/projects/{a}/cards/3/archive"), None);
+    assert_eq!(archived.status, 200, "{}", archived.body);
+    assert!(events.wait_for("event: changed", Duration::from_secs(3)));
     let deleted = server.write("DELETE", &format!("/api/projects/{a}/cards/3"), None);
     assert_eq!(deleted.status, 204);
     let deadline = Instant::now() + Duration::from_secs(3);
-    while events.changed_count() < 3 && Instant::now() < deadline {
+    while events.changed_count() < 4 && Instant::now() < deadline {
         events.wait_for("never", Duration::from_millis(100));
     }
-    assert_eq!(events.changed_count(), 3, "{}", events.received);
+    assert_eq!(events.changed_count(), 4, "{}", events.received);
 }
 
 #[test]
@@ -1278,6 +1283,8 @@ fn a_draft_card_can_be_moved_and_deleted_by_the_user_but_not_driven_by_the_ai_ro
     assert_eq!(snapshot_json(home.path(), &a), before);
 
     let headers = server.page_headers(&server.token());
+    let archived = server.request("POST", &format!("{base}/1/archive"), None, &headers, None);
+    assert_eq!(archived.status, 200, "{}", archived.body);
     let reply = server.request("DELETE", &format!("{base}/1"), None, &headers, None);
     assert_eq!(reply.status, 204);
 }
