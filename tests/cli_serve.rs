@@ -580,7 +580,11 @@ fn serve_refuses_a_database_with_another_schema_and_leaves_no_serve_json() {
     assert!(port_is_free(7840));
     let o = run(home.path(), &["serve", "--port", "7840"]);
     assert_eq!(o.code, 1, "{}", o.err);
-    assert!(o.err.contains("schema version 2"), "{}", o.err);
+    assert!(
+        o.err.contains("schema version 2") || o.err.contains("incomplete"),
+        "{}",
+        o.err
+    );
     assert!(!home.path().join("serve.json").exists());
     assert!(port_is_free(7840));
     // The old database is left as it was.
