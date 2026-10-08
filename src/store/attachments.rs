@@ -66,6 +66,35 @@ fn check_limits(
 }
 
 impl ProjectStore {
+    /// Return the result of an identical multipart save, if it was recorded.
+    /// This is used before creating a card so a lost HTTP response can be
+    /// retried without creating a second card.
+    pub fn replay_attachment_request(
+        &self,
+        project: &ProjectId,
+        request_id: &str,
+        additions: &[AttachmentInput],
+    ) -> Result<Option<Card>, SkanError> {
+        self.read(|conn| {
+            require_project(conn, project)?;
+            let Some((card_id, expected)) = conn
+                .query_row(
+                    "SELECT card_id, digest FROM attachment_requests WHERE project_id = ?1 AND request_id = ?2",
+                    params![project.as_str(), request_id],
+                    |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Vec<u8>>(1)?)),
+                )
+                .optional()?
+            else {
+                return Ok(None);
+            };
+            let actual = digest("save", card_id, additions, &[], None, None);
+            if actual != expected {
+                return Err(SkanError::AttachmentRequestConflict);
+            }
+            Ok(Some(load_card(conn, project, card_id)?))
+        })
+    }
+
     pub fn attachment_data_for_card(
         &self,
         project: &ProjectId,
