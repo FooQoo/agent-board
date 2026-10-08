@@ -49,5 +49,13 @@ export const editEn = {
     discardBody: 'You have unsaved changes. If you close now, what you entered will be lost.',
     keepEditing: 'Keep editing',
     discard: 'Discard and close',
+    attachments: 'Attachments',
+    attachmentsLabel: 'Image attachments',
+    attachmentsEmpty: 'Add images to this card',
+    attachmentsDropHint: 'Choose files, drag and drop, or paste an image',
+    addAttachment: 'Add image attachment',
+    previewAttachment: 'Preview {{name}}',
+    removeAttachment: 'Remove {{name}}',
+    insertAttachment: 'Insert in description',
   },
 } as const;
