@@ -119,6 +119,8 @@ pub enum Command {
     Import(ImportArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
+    /// Migrate a legacy board explicitly
+    Migrate(MigrateArgs),
 }
 
 impl Command {
@@ -141,11 +143,12 @@ impl Command {
             Command::Export(_) => "export",
             Command::Import(_) => "import",
             Command::Serve(_) => "serve",
+            Command::Migrate(_) => "migrate",
         }
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 16] = [
+pub const SUBCOMMAND_NAMES: [&str; 17] = [
     "project",
     "init",
     "add",
@@ -162,6 +165,7 @@ pub const SUBCOMMAND_NAMES: [&str; 16] = [
     "serve",
     "hook",
     "wait",
+    "migrate",
 ];
 
 #[derive(Args, Debug)]
@@ -531,6 +535,9 @@ pub struct ServeArgs {
     pub port: u16,
 }
 
+#[derive(Args, Debug)]
+pub struct MigrateArgs {}
+
 /// What parsing the command line produced.
 #[derive(Debug)]
 pub enum Parsed {
@@ -669,7 +676,7 @@ impl Cli {
                 }),
                 None,
             ) => {}
-            (Command::Serve(_) | Command::Hook(_), None) => {}
+            (Command::Serve(_) | Command::Hook(_) | Command::Migrate(_), None) => {}
             (_, None) => {
                 return Err(SkanError::InvalidArgument {
                     message: "--project NAME is required.".to_string(),

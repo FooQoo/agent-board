@@ -72,6 +72,37 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, cli.json),
         };
     }
+    if let Command::Migrate(args) = &cli.command {
+        if let Some(dir) = env.db_path.parent()
+            && let Some(info) = crate::paths::read_serve_info_in(dir)
+            && crate::server::is_serving(&info)
+        {
+            return fail(
+                env,
+                &SkanError::DatabaseError {
+                    reason: "Stop the running agboard serve before migrating.".into(),
+                },
+                cli.json,
+            );
+        }
+        let guard = crate::lifecycle::LifecycleGuard::acquire(
+            env.db_path
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new(".")),
+        );
+        return match guard.and_then(|_guard| commands::migrate::run(args, &env.db_path)) {
+            Ok(outcome) => {
+                let text = if cli.json {
+                    format!("{}\n", output::render_json(&outcome.json))
+                } else {
+                    outcome.human
+                };
+                write_text(env.stdout, &text);
+                0
+            }
+            Err(error) => fail(env, &error, cli.json),
+        };
+    }
     match prepare_and_run(&cli, env) {
         Ok((ctx, outcome)) => {
             let text = if cli.json {
@@ -129,7 +160,9 @@ fn access(command: &Command) -> Access {
         | Command::Mv(_)
         | Command::State(_)
         | Command::Rm(_) => Access::ChangeProject,
-        Command::Serve(_) | Command::Hook(_) | Command::Wait(_) => Access::Catalog,
+        Command::Serve(_) | Command::Hook(_) | Command::Wait(_) | Command::Migrate(_) => {
+            Access::Catalog
+        }
     }
 }
 
@@ -211,7 +244,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> 
         Command::Ls(args) => commands::ls::run(ctx, args),
         Command::Show(args) => commands::show::run(ctx, args),
         Command::Snapshot(_) => commands::snapshot::run(ctx),
-        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) => {
+        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) | Command::Migrate(_) => {
             unreachable!("serve and the agent commands are handled before store setup")
         }
         Command::Export(args) => commands::export::run(ctx, args),

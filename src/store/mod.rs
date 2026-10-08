@@ -6,6 +6,7 @@
 //! state.
 
 mod attachments;
+pub mod migrations;
 mod ops;
 mod projects;
 mod rows;
