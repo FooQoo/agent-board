@@ -29,6 +29,7 @@ Commands:
   rm      Delete a card (humans only; asks for confirmation)
   ls      List cards
   show    Show a card and its history
+  attachment Add, list, or read image attachments
   snapshot Fetch the complete board and history
   hook    Add the latest board snapshot to an agent hook
   wait    Wait for a board change and fetch its history
@@ -104,6 +105,8 @@ pub enum Command {
     Ls(LsArgs),
     /// Show a card and its history
     Show(ShowArgs),
+    /// Add, list, or read image attachments
+    Attachment(AttachmentArgs),
     /// Fetch the complete board and history without modifying it
     Snapshot(SnapshotArgs),
     /// Add the latest board snapshot to an agent hook
@@ -131,6 +134,7 @@ impl Command {
             Command::Rm(_) => "rm",
             Command::Ls(_) => "ls",
             Command::Show(_) => "show",
+            Command::Attachment(_) => "attachment",
             Command::Snapshot(_) => "snapshot",
             Command::Hook(_) => "hook",
             Command::Wait(_) => "wait",
@@ -141,9 +145,23 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 15] = [
-    "project", "init", "add", "edit", "mv", "state", "rm", "ls", "show", "snapshot", "export",
-    "import", "serve", "hook", "wait",
+pub const SUBCOMMAND_NAMES: [&str; 16] = [
+    "project",
+    "init",
+    "add",
+    "edit",
+    "mv",
+    "state",
+    "rm",
+    "ls",
+    "show",
+    "attachment",
+    "snapshot",
+    "export",
+    "import",
+    "serve",
+    "hook",
+    "wait",
 ];
 
 #[derive(Args, Debug)]
@@ -435,6 +453,54 @@ pub struct ShowArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  agboard --project demo attachment ls 12\n  agboard --project demo attachment add 12 --file image.png --actor ai\n  agboard --project demo attachment get 12 <attachment-id> --output image.png"
+)]
+pub struct AttachmentArgs {
+    #[command(subcommand)]
+    pub command: AttachmentCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AttachmentCommand {
+    /// List image metadata for a card
+    Ls(AttachmentLsArgs),
+    /// Add an image file to a card
+    Add(AttachmentAddArgs),
+    /// Write an image attachment to a new file
+    Get(AttachmentGetArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct AttachmentLsArgs {
+    /// ID of the card
+    pub card_id: i64,
+}
+
+#[derive(Args, Debug)]
+pub struct AttachmentAddArgs {
+    /// ID of the card
+    pub card_id: i64,
+    /// Image file to add
+    #[arg(long, value_name = "PATH")]
+    pub file: PathBuf,
+    /// Who is making this change
+    #[arg(long, value_enum, required = true)]
+    pub actor: ActorArg,
+}
+
+#[derive(Args, Debug)]
+pub struct AttachmentGetArgs {
+    /// ID of the card
+    pub card_id: i64,
+    /// Attachment ID
+    pub attachment_id: String,
+    /// New output file; an existing file is never overwritten
+    #[arg(long, value_name = "PATH")]
+    pub output: PathBuf,
+}
+
+#[derive(Args, Debug)]
 #[command(after_help = "Examples:\n  agboard --project demo snapshot --json")]
 pub struct SnapshotArgs {}
 
@@ -626,6 +692,12 @@ impl Cli {
             Command::Snapshot(_) if !self.json => Err(SkanError::InvalidArgument {
                 message: "snapshot requires --json.".into(),
                 command: Some("snapshot".into()),
+            }),
+            Command::Attachment(AttachmentArgs {
+                command: AttachmentCommand::Get(args),
+            }) if args.output.as_os_str().is_empty() => Err(SkanError::InvalidArgument {
+                message: "--output PATH is required.".into(),
+                command: Some("attachment get".into()),
             }),
             _ => Ok(()),
         }

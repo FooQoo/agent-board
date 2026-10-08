@@ -2,6 +2,7 @@
 //! `pub fn run(ctx: &mut Context, args: &XxxArgs) -> Result<Outcome, SkanError>`.
 
 pub mod add;
+pub mod attachment;
 pub mod edit;
 pub mod export;
 pub mod import;

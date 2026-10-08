@@ -124,6 +124,7 @@ fn access(command: &Command) -> Access {
         },
         Command::Init(_) | Command::Import(_) => Access::ChangeOrCreateProject,
         Command::Add(_)
+        | Command::Attachment(_)
         | Command::Edit(_)
         | Command::Mv(_)
         | Command::State(_)
@@ -202,6 +203,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> 
         Command::Project(args) => commands::project::run(ctx, args),
         Command::Init(args) => commands::init::run(ctx, args),
         Command::Add(args) => commands::add::run(ctx, args),
+        Command::Attachment(args) => commands::attachment::run(ctx, args),
         Command::Edit(args) => commands::edit::run(ctx, args),
         Command::Mv(args) => commands::mv::run(ctx, args),
         Command::State(args) => commands::state::run(ctx, args),

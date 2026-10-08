@@ -7,7 +7,7 @@ use serde_json::Value;
 /// One list serves every object, so a key keeps one position: a project is
 /// `id, name, createdAt`, a board `name, nextCardId, createdAt`, and the
 /// snapshot root `fetchedAt, project, revision, cursor, board, cards`.
-const KEY_ORDER: [&str; 31] = [
+const KEY_ORDER: [&str; 34] = [
     "error",
     "code",
     "message",
@@ -20,7 +20,10 @@ const KEY_ORDER: [&str; 31] = [
     "cursor",
     "board",
     "card",
+    "cardId",
     "cards",
+    "attachment",
+    "attachments",
     "path",
     "url",
     "id",

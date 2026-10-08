@@ -120,6 +120,87 @@ fn snapshot_is_read_only_and_returns_full_history() {
 }
 
 #[test]
+fn attachment_cli_adds_lists_gets_bytes_and_refuses_drafts_and_overwrites() {
+    let home = tempdir().unwrap();
+    let files = tempdir().unwrap();
+    let source = files.path().join("source.png");
+    let output = files.path().join("output.png");
+    let original = b"not an image";
+    std::fs::write(&source, original).unwrap();
+    invoke(home.path(), &["init"]).success();
+    invoke(
+        home.path(),
+        &["add", "Work", "--assignee", "ai", "--actor", "ai"],
+    )
+    .success();
+    let invalid = invoke(
+        home.path(),
+        &[
+            "attachment",
+            "add",
+            "1",
+            "--file",
+            source.to_str().unwrap(),
+            "--actor",
+            "ai",
+        ],
+    );
+    invalid
+        .failure()
+        .stderr(predicates::str::contains("Only PNG"));
+
+    let png = vec![
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240,
+        31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ];
+    std::fs::write(&source, &png).unwrap();
+    let added = json_of(invoke(
+        home.path(),
+        &[
+            "attachment",
+            "add",
+            "1",
+            "--file",
+            source.to_str().unwrap(),
+            "--actor",
+            "ai",
+            "--json",
+        ],
+    ));
+    let id = added["attachment"]["id"].as_str().unwrap().to_owned();
+    assert_eq!(added["attachment"]["size"], png.len());
+    let listed = json_of(invoke(home.path(), &["attachment", "ls", "1", "--json"]));
+    assert_eq!(listed["attachments"].as_array().unwrap().len(), 1);
+    invoke(
+        home.path(),
+        &[
+            "attachment",
+            "get",
+            "1",
+            &id,
+            "--output",
+            output.to_str().unwrap(),
+        ],
+    )
+    .success();
+    assert_eq!(std::fs::read(&output).unwrap(), png);
+    invoke(
+        home.path(),
+        &[
+            "attachment",
+            "get",
+            "1",
+            &id,
+            "--output",
+            output.to_str().unwrap(),
+        ],
+    )
+    .failure();
+    assert_eq!(std::fs::read(&output).unwrap(), png);
+}
+
+#[test]
 fn no_legacy_skan_binary_is_built() {
     let metadata = std::process::Command::new("cargo")
         .args(["metadata", "--no-deps", "--format-version", "1"])
