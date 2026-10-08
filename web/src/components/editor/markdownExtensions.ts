@@ -23,11 +23,17 @@ const theme = EditorView.theme({
     overflow: 'auto',
   },
   '.cm-content': { padding: '14px 0', caretColor: 'var(--r-accent)' },
-  '.cm-line': { padding: '0 16px' },
+  '.cm-line': { padding: '0 16px', position: 'relative' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--r-accent)' },
   '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground':
     { background: 'color-mix(in srgb, var(--r-accent) 22%, transparent)' },
-  '.cm-placeholder': { color: 'var(--r-muted)' },
+  // Keep the hint outside the empty line's layout so the native caret is one line tall.
+  '.cm-placeholder': {
+    color: 'var(--r-muted)',
+    position: 'absolute',
+    pointerEvents: 'none',
+    maxWidth: 'calc(100% - 32px)',
+  },
   '.cm-md-heading': { color: 'var(--r-accent)' },
   '.cm-md-strong': { fontWeight: '700' },
   '.cm-md-emphasis': { fontStyle: 'italic' },
