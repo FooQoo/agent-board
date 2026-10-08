@@ -45,7 +45,7 @@ fn is_database_error(e: &SkanError) -> bool {
 // ---------- fresh database ----------
 
 #[test]
-fn a_new_database_gets_schema_version_4_with_an_empty_catalog() {
+fn a_new_database_gets_schema_version_5_with_an_empty_catalog() {
     let dir = tempfile::tempdir().unwrap();
     let path = db_path(&dir);
     let store = ProjectStore::open(&path).unwrap();
@@ -54,10 +54,17 @@ fn a_new_database_gets_schema_version_4_with_an_empty_catalog() {
     assert!(catalog.projects.is_empty());
     assert_eq!(catalog.catalog_revision, 0);
 
-    assert_eq!(user_version(&path), 4);
+    assert_eq!(user_version(&path), 5);
     assert_eq!(
         table_names(&path),
-        vec!["cards", "catalog_metadata", "history", "projects"]
+        vec![
+            "attachment_requests",
+            "attachments",
+            "cards",
+            "catalog_metadata",
+            "history",
+            "projects"
+        ]
     );
     let conn = raw(&path);
     let journal: String = conn
@@ -71,7 +78,7 @@ fn a_new_database_gets_schema_version_4_with_an_empty_catalog() {
 }
 
 #[test]
-fn reopening_a_version_4_database_keeps_its_content() {
+fn reopening_a_version_5_database_keeps_its_content() {
     let dir = tempfile::tempdir().unwrap();
     let path = db_path(&dir);
     let created = {
@@ -339,7 +346,7 @@ fn an_empty_file_is_accepted_as_a_new_database() {
     let path = dir.path().join("board.db");
     std::fs::write(&path, b"").unwrap();
     ProjectStore::open(&path).unwrap();
-    assert_eq!(user_version(&path), 4);
+    assert_eq!(user_version(&path), 5);
 }
 
 #[test]
@@ -437,7 +444,7 @@ fn read_only_reads_but_cannot_write_and_leaves_the_file_unchanged() {
     assert_eq!(ro.projects().unwrap().catalog_revision, 1);
     drop(ro);
     assert_eq!(std::fs::read(&path).unwrap(), before);
-    assert_eq!(user_version(&path), 4);
+    assert_eq!(user_version(&path), 5);
 }
 
 // ---------- atomicity and contention ----------
@@ -490,7 +497,7 @@ fn concurrent_first_open_of_a_new_database_creates_one_schema() {
     for h in handles {
         h.join().unwrap().unwrap();
     }
-    assert_eq!(user_version(&path), 4);
+    assert_eq!(user_version(&path), 5);
 }
 
 #[test]

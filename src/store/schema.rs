@@ -1,4 +1,4 @@
-//! Schema version 4: one database holding every project.
+//! Schema version 5: one database holding every project.
 //!
 //! Only a new, empty database is given this schema. A database with any other
 //! version, or with tables but no version, is rejected and left untouched;
@@ -11,7 +11,7 @@ use rusqlite::Connection;
 use crate::error::SkanError;
 
 /// The only schema version this build reads or writes.
-pub(super) const SCHEMA_VERSION: i64 = 4;
+pub(super) const SCHEMA_VERSION: i64 = 5;
 
 const SCHEMA: &str = "
 CREATE TABLE projects (
@@ -75,13 +75,38 @@ CREATE TABLE history (
 );
 CREATE INDEX history_by_card ON history (project_id, card_id, id);
 CREATE UNIQUE INDEX history_created_once ON history (project_id, card_id) WHERE kind = 'created';
+
+CREATE TABLE attachments (
+  project_id     TEXT NOT NULL,
+  card_id        INTEGER NOT NULL,
+  id             TEXT NOT NULL CHECK (length(id) = 32 AND id NOT GLOB '*[^0-9a-f]*'),
+  name           TEXT NOT NULL CHECK (length(name) >= 1),
+  media_type     TEXT NOT NULL CHECK (media_type IN ('image/png', 'image/jpeg', 'image/webp', 'image/gif')),
+  size           INTEGER NOT NULL CHECK (size >= 1 AND size <= 10485760),
+  created_at     TEXT NOT NULL,
+  bytes          BLOB NOT NULL,
+  PRIMARY KEY (project_id, card_id, id),
+  FOREIGN KEY (project_id, card_id) REFERENCES cards (project_id, id) ON DELETE CASCADE
+);
+CREATE INDEX attachments_by_card ON attachments (project_id, card_id, created_at, id);
+
+CREATE TABLE attachment_requests (
+  project_id TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  card_id INTEGER NOT NULL,
+  operation TEXT NOT NULL,
+  digest BLOB NOT NULL,
+  result_id TEXT,
+  PRIMARY KEY (project_id, request_id),
+  FOREIGN KEY (project_id, card_id) REFERENCES cards (project_id, id) ON DELETE CASCADE
+);
 ";
 
 pub(super) fn user_version(conn: &Connection) -> Result<i64, SkanError> {
     Ok(conn.query_row("PRAGMA user_version", [], |row| row.get(0))?)
 }
 
-/// Accept version 0 (a candidate new database) and version 4. Everything else
+/// Accept version 0 (a candidate new database) and version 5. Everything else
 /// is a `database_error`.
 pub(super) fn check_version(version: i64) -> Result<(), SkanError> {
     match version {
@@ -110,6 +135,24 @@ fn version_and_object_count(conn: &Connection) -> Result<(i64, i64), SkanError> 
         )?;
         Ok((version, objects))
     })
+}
+
+pub(super) fn has_expected_schema(conn: &Connection) -> Result<bool, SkanError> {
+    let mut stmt = conn.prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+    )?;
+    let names = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(names
+        == [
+            "attachment_requests",
+            "attachments",
+            "cards",
+            "catalog_metadata",
+            "history",
+            "projects",
+        ])
 }
 
 /// Switch the database to WAL. Changing the journal mode needs a lock that
@@ -146,6 +189,12 @@ pub(super) fn prepare(conn: &Connection, timeout: Duration) -> Result<(), SkanEr
     if version == 0 && objects != 0 {
         return Err(SkanError::DatabaseError {
             reason: "An unversioned non-empty database is not a fresh board.".into(),
+        });
+    }
+
+    if version == SCHEMA_VERSION && !has_expected_schema(conn)? {
+        return Err(SkanError::DatabaseError {
+            reason: "The board schema is incomplete or contains unexpected tables.".into(),
         });
     }
 

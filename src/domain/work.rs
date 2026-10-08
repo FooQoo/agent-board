@@ -83,6 +83,34 @@ pub struct Card {
     #[serde(default)]
     pub is_draft: bool,
     pub history: Vec<HistoryEvent>,
+    #[serde(default)]
+    pub attachments: Vec<Attachment>,
+}
+
+/// Metadata for an image attached to a card. The image bytes are deliberately
+/// excluded from snapshots and are returned only by an explicit read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Attachment {
+    pub id: String,
+    pub name: String,
+    pub media_type: String,
+    pub size: i64,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttachmentInput {
+    pub id: String,
+    pub name: String,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttachmentData {
+    pub metadata: Attachment,
+    pub bytes: Vec<u8>,
 }
 
 /// One project's board read in a single transaction: the project, its board
