@@ -66,6 +66,43 @@ function fillDone(extra = 8): void {
 
 // ---------------------------------------------------------------- Desktop layout
 
+for (const locale of ['en', 'ja']) {
+  for (const detailWidth of [280, 360, 560]) {
+    test(`${locale}: tabs and draft actions fit a ${detailWidth}px detail column`, async ({ page }, testInfo) => {
+      await page.addInitScript(({ locale, detailWidth }) => {
+        localStorage.setItem('skan.locale', locale);
+        localStorage.setItem('skan.detailWidth', String(detailWidth));
+      }, { locale, detailWidth });
+      await page.setViewportSize({ width: 1920, height: 900 });
+      await page.goto('/');
+      await card(page, 8).click();
+      const detail = page.locator('.detail');
+      const row = await box(detail.locator('.detail__tabs'));
+      const tabs = await box(detail.getByRole('tablist'));
+      const toolbar = await box(detail.getByRole('toolbar'));
+      expect(tabs.x + tabs.width).toBeLessThanOrEqual(toolbar.x + 1);
+      expect(toolbar.x + toolbar.width).toBeLessThanOrEqual(row.x + row.width + 1);
+      for (const tab of await detail.getByRole('tab').all()) {
+        const wrapped = await tab.evaluate((element) => {
+          const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
+          return Array.from(element.childNodes).some((node) => {
+            if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim()) return false;
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            return range.getBoundingClientRect().height > lineHeight * 1.1;
+          });
+        });
+        expect(wrapped, 'tab labels stay on one line').toBe(false);
+      }
+      const makeDraft = detail.getByRole('button', { name: locale === 'ja' ? '下書きにする' : 'Make draft' });
+      await expect(makeDraft).toHaveAttribute('title', locale === 'ja' ? '下書きにする' : 'Make draft');
+      await page.screenshot({ path: testInfo.outputPath('detail-toolbar.png') });
+      await makeDraft.click();
+      await expect(detail.getByRole('region', { name: locale === 'ja' ? '下書き' : 'Draft', exact: true })).toBeVisible();
+    });
+  }
+}
+
 for (const width of [1024, 1280, 1920]) {
   test(`${width}px: the same insets, header and footer at every width`, async ({ page }) => {
     await open(page, width);
