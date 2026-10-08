@@ -15,7 +15,8 @@ agboard - a shared local work board for users and agents
 
 Usage: agboard --project NAME [--json] <COMMAND>
 
-Every command except serve works on one project, named with --project NAME.
+Every board command names one project with --project NAME. The read-only
+`migrate` and `serve` commands operate on the whole data area.
 Nothing is chosen for you: leave it out and the command fails. The one
 exception is the read-only `ls --all-projects`, which lists every project.
 
@@ -36,6 +37,7 @@ Commands:
   export  Write the board to a JSON file
   import  Restore the board from a JSON file
   serve   Show the board in your browser
+  migrate Migrate the data area explicitly
 
 Workflow for agents:
   agboard project ls --json
@@ -650,6 +652,12 @@ impl Cli {
             (Command::Serve(_), Some(_)) => {
                 return Err(SkanError::InvalidArgument {
                     message: "serve does not take --project.".to_string(),
+                    command: Some(command.to_string()),
+                });
+            }
+            (Command::Migrate(_), Some(_)) => {
+                return Err(SkanError::InvalidArgument {
+                    message: "migrate does not take --project.".to_string(),
                     command: Some(command.to_string()),
                 });
             }

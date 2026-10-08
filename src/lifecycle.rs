@@ -33,5 +33,6 @@ impl Drop for LifecycleGuard {
         if let Some(conn) = self.conn.take() {
             let _ = conn.execute_batch("ROLLBACK");
         }
+        let _ = std::fs::remove_file(&self._path);
     }
 }
