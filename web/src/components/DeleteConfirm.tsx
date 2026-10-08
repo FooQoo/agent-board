@@ -1,13 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { deleteCard } from '../api';
+import { archiveCard, deleteCard } from '../api';
 import type { Card, ProjectId } from '../types';
 
 export interface DeleteConfirmProps {
   /** The project the confirmation was opened in. The delete goes there, whatever is shown later. */
   projectId: ProjectId;
   card: Card;
+  action?: 'archive' | 'delete';
   /** The confirmation was opened by the user, so keyboard focus moves into it. */
   focusOnMount: boolean;
   /** Mock mode only: start in the failed state. */
@@ -22,6 +23,7 @@ export interface DeleteConfirmProps {
 export function DeleteConfirm({
   projectId,
   card,
+  action = 'delete',
   focusOnMount,
   initialFailed = false,
   onCancel,
@@ -42,6 +44,18 @@ export function DeleteConfirm({
     setBusy(true);
     setFailed(false);
     onSavingChange?.(true);
+    if (action === 'archive') {
+      try {
+        await archiveCard(projectId, card.id);
+        setBusy(false);
+        onDeleted();
+      } catch {
+        setBusy(false);
+        onSavingChange?.(false);
+        setFailed(true);
+      }
+      return;
+    }
     const result = await deleteCard(projectId, card.id);
     setBusy(false);
     if (result === 'failed') {
@@ -55,7 +69,10 @@ export function DeleteConfirm({
   return (
     <div className="delete-confirm" role="group" aria-labelledby={messageId}>
       <p id={messageId} className="delete-confirm__message">
-        {t('delete.confirm', { id: card.id, title: card.title })}
+        {t(action === 'archive' ? 'archive.confirm' : 'delete.confirm', {
+          id: card.id,
+          title: card.title,
+        })}
       </p>
       {failed && (
         <p className="delete-confirm__error" role="alert">
@@ -70,7 +87,7 @@ export function DeleteConfirm({
           disabled={busy}
           onClick={confirm}
         >
-          {t('delete.submit')}
+          {t(action === 'archive' ? 'archive.submit' : 'delete.submit')}
         </Button>
         <Button
           ref={cancelRef}

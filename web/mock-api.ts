@@ -161,10 +161,21 @@ export function mockApi(): Plugin {
           return sendJson(res, 200, { projects, catalogRevision: 1 });
         }
 
-        const projectMatch = /^\/api\/projects\/([^/]+)\/(board|cards.*)$/.exec(path);
+        const projectMatch = /^\/api\/projects\/([^/]+)\/(board|archive|cards.*)$/.exec(path);
         const projectId = projectMatch?.[1] ?? '';
         const rest = projectMatch?.[2] ?? '';
         const found = boards[projectId];
+
+        if (req.method === 'GET' && rest === 'archive') {
+          if (!found)
+            return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
+          return sendJson(res, 200, {
+            project: found.project,
+            revision: found.revision,
+            cursor: found.cursor,
+            cards: found.cards.filter((card) => card.archivedAt),
+          });
+        }
 
         if (req.method === 'GET' && rest === 'board') {
           if (!found) {
@@ -180,7 +191,13 @@ export function mockApi(): Plugin {
             );
           }
           const respond = () => {
-            sendJson(res, 200, params.get('empty') === '1' ? { ...found, cards: [] } : found);
+            sendJson(
+              res,
+              200,
+              params.get('empty') === '1'
+                ? { ...found, cards: [] }
+                : { ...found, cards: found.cards.filter((card) => !card.archivedAt) },
+            );
           };
           if (params.get('slow') === '1') {
             const timer = setTimeout(respond, SLOW_MS);
@@ -254,6 +271,76 @@ export function mockApi(): Plugin {
           return;
         }
 
+        const archiveMatch = /^cards\/(\d+)\/(archive|restore)$/.exec(rest);
+        if (req.method === 'POST' && archiveMatch) {
+          if (!req.headers['x-skan-token'])
+            return sendError(
+              res,
+              403,
+              'forbidden',
+              'request refused.',
+              'Missing X-Skan-Token header.',
+            );
+          const id = Number(archiveMatch[1]);
+          const card = found?.cards.find((item) => item.id === id);
+          if (!card)
+            return sendError(res, 404, 'card_not_found', `card #${id} not found.`, 'Unknown ID.');
+          update(projectId, (board) =>
+            board.cards.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    archivedAt: archiveMatch[2] === 'archive' ? new Date().toISOString() : null,
+                    agentStatus: 'idle',
+                    pendingReason: null,
+                    pendingRequestId: null,
+                  }
+                : item,
+            ),
+          );
+          return sendJson(res, 200, {
+            card: {
+              ...card,
+              archivedAt: archiveMatch[2] === 'archive' ? new Date().toISOString() : null,
+              agentStatus: 'idle',
+              pendingReason: null,
+              pendingRequestId: null,
+            },
+          });
+        }
+
+        if (req.method === 'POST' && rest === 'cards/archive-done') {
+          if (!req.headers['x-skan-token'])
+            return sendError(
+              res,
+              403,
+              'forbidden',
+              'request refused.',
+              'Missing X-Skan-Token header.',
+            );
+          const input = await readJson(req);
+          const ids = new Set((Array.isArray(input.ids) ? input.ids : []).map(Number));
+          const archivedAt = new Date().toISOString();
+          let count = 0;
+          update(projectId, (board) =>
+            board.cards.map((item) => {
+              if (!ids.has(item.id) || item.cardStatus !== 'done' || item.archivedAt) return item;
+              count += 1;
+              return {
+                ...item,
+                archivedAt,
+                agentStatus: 'idle' as const,
+                pendingReason: null,
+                pendingRequestId: null,
+              };
+            }),
+          );
+          return sendJson(res, 200, {
+            cards: found?.cards.filter((card) => ids.has(card.id)) ?? [],
+            archivedCount: count,
+          });
+        }
+
         const cardMatch = /^cards\/(\d+)\/(move|answer)$/.exec(rest);
         if (req.method === 'POST' && (rest === 'cards' || cardMatch)) {
           if (!req.headers['x-skan-token'])
@@ -307,6 +394,7 @@ export function mockApi(): Plugin {
                 updatedAt: now,
                 agentStatusChangedAt: now,
                 isDraft: false,
+                archivedAt: null,
                 history: [event],
                 attachments: [],
               };

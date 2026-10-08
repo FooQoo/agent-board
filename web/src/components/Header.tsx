@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlusIcon, SettingsIcon } from 'lucide-react';
+import { ArchiveIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Project, ProjectId } from '../types';
 import { ProjectSwitcher } from './ProjectSwitcher';
@@ -16,6 +16,7 @@ export interface HeaderProps {
   /** Add card is offered only once the board of the project has loaded. */
   canAdd?: boolean;
   onAdd?: () => void;
+  onArchive?: () => void;
 }
 
 export function Header({
@@ -25,6 +26,7 @@ export function Header({
   onSelectProject = () => {},
   canAdd = false,
   onAdd = () => {},
+  onArchive = () => {},
 }: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -54,6 +56,18 @@ export function Header({
         </>
       )}
       <span className="header__spacer" aria-hidden="true" />
+      {canAdd && (
+        <Button
+          type="button"
+          variant="outline"
+          className="header__archive"
+          disabled={switchDisabled}
+          onClick={onArchive}
+        >
+          <ArchiveIcon aria-hidden="true" />
+          {t('archive.title')}
+        </Button>
+      )}
       {canAdd && (
         <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
           <PlusIcon aria-hidden="true" />

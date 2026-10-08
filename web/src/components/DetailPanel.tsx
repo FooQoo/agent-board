@@ -37,6 +37,9 @@ export interface DetailPanelProps {
   initialConfirm?: boolean;
   /** Mock mode only: show the delete failure message immediately. */
   initialDeleteFailed?: boolean;
+  /** Archive view changes the destructive action to permanent deletion. */
+  archived?: boolean;
+  onRestore?: () => void;
 }
 
 export function DetailPanel({
@@ -50,6 +53,8 @@ export function DetailPanel({
   onDeleted,
   initialConfirm,
   initialDeleteFailed,
+  archived = false,
+  onRestore,
 }: DetailPanelProps) {
   const { t } = useTranslation();
   if (card === null || projectId === null) {
@@ -76,6 +81,8 @@ export function DetailPanel({
       onDeleted={onDeleted}
       initialConfirm={initialConfirm}
       initialDeleteFailed={initialDeleteFailed}
+      archived={archived}
+      onRestore={onRestore}
     />
   );
 }
@@ -99,6 +106,8 @@ function DetailBody({
   onDeleted,
   initialConfirm,
   initialDeleteFailed,
+  archived,
+  onRestore,
 }: DetailBodyProps) {
   const { t } = useTranslation();
   const idBase = useId();
@@ -173,14 +182,14 @@ function DetailBody({
           {t(`assignee.${card.assignee}`)}
         </span>
       </div>
-      {card.isDraft && (
+      {card.isDraft && !archived && (
         <DraftBanner
           busy={draftSaving}
           failed={draftFailed}
           onFinalize={() => void toggleDraft(false)}
         />
       )}
-      {card.agentStatus === 'pending' && (
+      {!archived && card.agentStatus === 'pending' && (
         <DecisionRequest
           projectId={projectId}
           card={card}
@@ -192,6 +201,7 @@ function DetailBody({
         <DeleteConfirm
           projectId={projectId}
           card={card}
+          action={archived ? 'delete' : 'archive'}
           focusOnMount={confirm === 'user'}
           initialFailed={initialDeleteFailed}
           onCancel={() => {
@@ -218,7 +228,7 @@ function DetailBody({
         onChange={setTab}
       >
         <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
-          {tab === 'description' && card.isDraft && (
+          {tab === 'description' && !archived && card.isDraft && (
             <button
               type="button"
               className="detail__tool"
@@ -229,7 +239,7 @@ function DetailBody({
               <EditIcon aria-hidden="true" />
             </button>
           )}
-          {tab === 'description' && canMakeDraft && (
+          {tab === 'description' && !archived && canMakeDraft && (
             <button
               type="button"
               className="detail__tool detail__tool--text"
@@ -242,9 +252,18 @@ function DetailBody({
               {t('detail.makeDraft')}
             </button>
           )}
-          <DeleteButton ref={deleteButton} onClick={() => setConfirm('user')} />
+          <DeleteButton
+            ref={deleteButton}
+            action={archived ? 'delete' : 'archive'}
+            onClick={() => setConfirm('user')}
+          />
         </div>
       </DetailTabs>
+      {archived && onRestore && (
+        <button type="button" className="detail__restore" onClick={onRestore}>
+          {t('archive.restore')}
+        </button>
+      )}
       {draftFailed && !card.isDraft && (
         <p className="detail__error" role="alert">
           {t('detail.saveError')}

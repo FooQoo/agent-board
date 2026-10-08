@@ -64,6 +64,20 @@ export const commonJa = {
   card: {
     updated: '更新 {{date}}',
   },
+  archive: {
+    title: 'アーカイブ',
+    heading: 'アーカイブ済みカード',
+    back: 'ボードに戻る',
+    empty: 'アーカイブ済みカードはありません。',
+    loadError: 'アーカイブを読み込めませんでした。',
+    bulkTitle: '完了カードをアーカイブ',
+    bulkDescription: '{{count}}件をアーカイブします。',
+    bulkSubmit: '{{count}}件をアーカイブ',
+    cardTitle: 'タイトル',
+    assignee: '担当',
+    error: 'カードをアーカイブできませんでした。もう一度お試しください。',
+    restore: '復元',
+  },
   status: {
     cardCount_one: '{{count}}件',
     cardCount_other: '{{count}}件',

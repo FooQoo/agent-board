@@ -40,6 +40,13 @@ export const detailEn = {
     cancel: 'Cancel',
     error: 'Could not delete the card. Try again.',
   },
+  archive: {
+    buttonLabel: 'Archive card',
+    confirm: 'Archive #{{id}} "{{title}}"? You can restore it from the archive.',
+    submit: 'Archive',
+    restore: 'Restore',
+    error: 'Could not archive the card. Try again.',
+  },
   markdown: {
     noImage: 'No image',
   },

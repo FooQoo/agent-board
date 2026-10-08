@@ -64,6 +64,20 @@ export const commonEn = {
   card: {
     updated: 'Updated {{date}}',
   },
+  archive: {
+    title: 'Archive',
+    heading: 'Archived cards',
+    back: 'Back to board',
+    empty: 'No archived cards.',
+    loadError: 'Could not load the archive.',
+    bulkTitle: 'Archive completed cards',
+    bulkDescription: '{{count}} cards will be archived.',
+    bulkSubmit: 'Archive {{count}} cards',
+    cardTitle: 'Title',
+    assignee: 'Assignee',
+    error: 'Could not archive the cards. Try again.',
+    restore: 'Restore',
+  },
   status: {
     cardCount_one: '{{count}} card',
     cardCount_other: '{{count}} cards',

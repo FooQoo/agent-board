@@ -11,6 +11,7 @@ import {
 import { parseAsString, useQueryState } from 'nuqs';
 import { ActionDialog } from './components/ActionDialog';
 import { Board } from './components/Board';
+import { ArchiveView, BulkArchiveDialog } from './components/ArchiveView';
 import type { BoardMessageKind } from './components/BoardMessage';
 import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
@@ -67,6 +68,8 @@ const STATUS_NOTE: Partial<Record<View, StatusBarProps['note']>> = {
 
 export function App({ initial }: AppProps) {
   const [requested, setRequested] = useQueryState('project', parseAsString);
+  const [archiveMode, setArchiveMode] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [session, dispatch] = useReducer(sessionReducer, undefined, () =>
     initSession(requested, initial?.select ?? null),
   );
@@ -109,6 +112,9 @@ export function App({ initial }: AppProps) {
   const cards = boardData?.cards ?? [];
   const selected = findCard(cards, session.selectedId);
   const activeName = projects.projects.find((project) => project.id === activeId)?.name ?? null;
+  useEffect(() => {
+    if (activeId === null) setArchiveMode(false);
+  }, [activeId]);
 
   useEffect(() => {
     if (boardData) {
@@ -189,6 +195,10 @@ export function App({ initial }: AppProps) {
         onSelectProject={(projectId) => void setRequested(projectId, { history: 'push' })}
         canAdd={view === 'board'}
         onAdd={() => openDialog({ kind: 'create' })}
+        onArchive={() => {
+          setArchiveMode(true);
+          dispatch({ type: 'SELECT_CARD', id: null });
+        }}
       />
       <div
         className="app__body"
@@ -196,15 +206,20 @@ export function App({ initial }: AppProps) {
         ref={bodyRef}
         style={{ '--detail-width': `${width}px` } as CSSProperties}
       >
-        <Board
-          message={message}
-          cards={cards}
-          selectedId={selected?.id ?? null}
-          onSelect={(id) => dispatch({ type: 'SELECT_CARD', id })}
-          onRetry={retry}
-          onMove={(card, column) => openDialog({ kind: 'move', card, target: column })}
-        />
-        {detailShown && (
+        {archiveMode && isProjectId(activeId) ? (
+          <ArchiveView projectId={activeId} onBack={() => setArchiveMode(false)} />
+        ) : (
+          <Board
+            message={message}
+            cards={cards}
+            selectedId={selected?.id ?? null}
+            onSelect={(id) => dispatch({ type: 'SELECT_CARD', id })}
+            onRetry={retry}
+            onMove={(card, column) => openDialog({ kind: 'move', card, target: column })}
+            onArchiveDone={() => setBulkOpen(true)}
+          />
+        )}
+        {detailShown && !archiveMode && (
           <>
             <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
             <DetailPanel
@@ -220,6 +235,7 @@ export function App({ initial }: AppProps) {
               }}
               onClose={() => dispatch({ type: 'SELECT_CARD', id: null })}
               onDeleted={() => {
+                dispatch({ type: 'SELECT_CARD', id: null });
                 if (isProjectId(activeId)) refreshProject(activeId);
               }}
               initialConfirm={isMockCard ? mockInitial?.confirm : undefined}
@@ -286,6 +302,17 @@ export function App({ initial }: AppProps) {
                   finalize: data.finalize,
                 });
             refreshProject(projectId);
+          }}
+        />
+      )}
+      {bulkOpen && isProjectId(activeId) && (
+        <BulkArchiveDialog
+          projectId={activeId}
+          cards={cards.filter((card) => card.cardStatus === 'done')}
+          onClose={() => setBulkOpen(false)}
+          onDone={() => {
+            setBulkOpen(false);
+            refreshProject(activeId);
           }}
         />
       )}
