@@ -5,7 +5,7 @@ import { selectLocale } from '../../src/i18n';
 import { DetailPanel } from '../../src/components/DetailPanel';
 import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
 
-const CONFIRM_TEXT = 'Delete #11 "Implement card moves"? This cannot be undone.';
+const CONFIRM_TEXT = 'Archive #11 "Implement card moves"? You can restore it from the archive.';
 
 function renderPanel(onDeleted = vi.fn()) {
   render(
@@ -20,7 +20,7 @@ function renderPanel(onDeleted = vi.fn()) {
 }
 
 async function openConfirm() {
-  await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
 }
 
 beforeEach(() => {
@@ -34,7 +34,7 @@ afterEach(() => {
   selectLocale('en');
 });
 
-describe('delete confirmation', () => {
+describe('archive confirmation', () => {
   it('interpolates Japanese confirmation and failure text without interpreting a card title as markup', async () => {
     const card = makeCard({ id: 42, title: '<img src=x onerror="alert(1)"> & "quoted"' });
     selectLocale('ja');
@@ -50,26 +50,26 @@ describe('delete confirmation', () => {
     );
 
     expect(container.querySelector('.delete-confirm__message')?.textContent).toBe(
-      '#42「<img src=x onerror="alert(1)"> & "quoted"」を削除しますか？ この操作は元に戻せません。',
+      '#42「<img src=x onerror="alert(1)"> & "quoted"」をアーカイブしますか？ アーカイブ一覧から復元できます。',
     );
     expect(screen.getByRole('alert').textContent).toBe(
-      'カードを削除できませんでした。もう一度お試しください。',
+      'カードをアーカイブできませんでした。もう一度お試しください。',
     );
     expect(container.querySelector('img')).toBeNull();
-    expect(screen.getByRole('button', { name: '削除' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'アーカイブ' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'キャンセル' })).toBeTruthy();
     selectLocale('en');
   });
 
-  it('opens the confirmation with Delete card', async () => {
+  it('opens the confirmation with Archive card', async () => {
     renderPanel();
     expect(screen.queryByText(CONFIRM_TEXT)).toBeNull();
     await openConfirm();
     expect(screen.getByText(CONFIRM_TEXT)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Archive' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
     // The trash button stays in the toolbar under the confirmation.
-    expect(screen.getByRole('button', { name: 'Delete card' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Archive card' })).toBeTruthy();
   });
 
   it('sends nothing when cancelled and puts the focus back on the trash button', async () => {
@@ -81,33 +81,35 @@ describe('delete confirmation', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(onDeleted).not.toHaveBeenCalled();
     expect(screen.queryByText(CONFIRM_TEXT)).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete card' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Archive card' }));
   });
 
-  it('sends DELETE with the session token and reports success on 204', async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+  it('sends archive with the session token and reports success', async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ card: fixtureCard(11) }), { status: 200 }),
+    );
     vi.stubGlobal('fetch', fetchMock);
     const onDeleted = renderPanel();
     await openConfirm();
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
     await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/cards/11`, {
-      method: 'DELETE',
+    expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/cards/11/archive`, {
+      method: 'POST',
       headers: { 'X-Skan-Token': 'test-token' },
     });
   });
 
-  it('treats 404 as already deleted', async () => {
+  it('reports a missing archive target', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response('{}', { status: 404 })),
     );
     const onDeleted = renderPanel();
     await openConfirm();
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
-    expect(screen.queryByText('Could not delete the card. Try again.')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await waitFor(() => expect(onDeleted).not.toHaveBeenCalled());
+    expect(screen.getByText('Could not archive the card. Try again.')).toBeTruthy();
   });
 
   it('shows a failure message on 500 and keeps the confirmation open', async () => {
@@ -117,13 +119,13 @@ describe('delete confirmation', () => {
     );
     const onDeleted = renderPanel();
     await openConfirm();
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'Could not delete the card. Try again.',
+      'Could not archive the card. Try again.',
     );
     expect(onDeleted).not.toHaveBeenCalled();
     expect(screen.getByText(CONFIRM_TEXT)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Archive' })).toBeTruthy();
   });
 
   it('shows a failure message on 403', async () => {
@@ -133,8 +135,8 @@ describe('delete confirmation', () => {
     );
     const onDeleted = renderPanel();
     await openConfirm();
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    expect(await screen.findByText('Could not delete the card. Try again.')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    expect(await screen.findByText('Could not archive the card. Try again.')).toBeTruthy();
     expect(onDeleted).not.toHaveBeenCalled();
   });
 
@@ -145,8 +147,8 @@ describe('delete confirmation', () => {
     );
     const onDeleted = renderPanel();
     await openConfirm();
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    expect(await screen.findByText('Could not delete the card. Try again.')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    expect(await screen.findByText('Could not archive the card. Try again.')).toBeTruthy();
     expect(onDeleted).not.toHaveBeenCalled();
   });
 
@@ -154,13 +156,15 @@ describe('delete confirmation', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response('{}', { status: 500 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ card: fixtureCard(11) }), { status: 200 }),
+      );
     vi.stubGlobal('fetch', fetchMock);
     const onDeleted = renderPanel();
     await openConfirm();
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    await screen.findByText('Could not delete the card. Try again.');
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await screen.findByText('Could not archive the card. Try again.');
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
     await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -183,6 +187,6 @@ describe('delete confirmation', () => {
         onDeleted={() => {}}
       />,
     );
-    expect(screen.queryByText(/This cannot be undone/)).toBeNull();
+    expect(screen.queryByText(/You can restore it from the archive/)).toBeNull();
   });
 });

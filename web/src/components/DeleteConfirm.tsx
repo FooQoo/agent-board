@@ -76,7 +76,7 @@ export function DeleteConfirm({
       </p>
       {failed && (
         <p className="delete-confirm__error" role="alert">
-          {t('delete.error')}
+          {t(action === 'archive' ? 'archive.error' : 'delete.error')}
         </p>
       )}
       <div className="delete-confirm__buttons">

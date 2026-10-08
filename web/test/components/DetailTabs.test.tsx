@@ -140,17 +140,17 @@ describe('toolbar', () => {
 
   it('offers Make draft and Delete for an idle card that is not a draft, Delete last', () => {
     renderPanel(fixtureCard(8));
-    expect(names()).toEqual(['Make draft', 'Delete card']);
+    expect(names()).toEqual(['Make draft', 'Archive card']);
   });
 
   it('offers the edit icon and Delete for a draft', () => {
     renderPanel({ ...fixtureCard(8), isDraft: true });
-    expect(names()).toEqual(['Edit card', 'Delete card']);
+    expect(names()).toEqual(['Edit card', 'Archive card']);
   });
 
   it('offers Make draft for pending cards but only Delete for running cards', () => {
     const { rerender } = renderPanel(fixtureCard(11));
-    expect(names()).toEqual(['Delete card']);
+    expect(names()).toEqual(['Archive card']);
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
@@ -159,18 +159,18 @@ describe('toolbar', () => {
         onDeleted={noop}
       />,
     );
-    expect(names()).toEqual(['Make draft', 'Delete card']);
+    expect(names()).toEqual(['Make draft', 'Archive card']);
   });
 
   it('offers Make draft to an idle card that has no run state of its own (Todo)', () => {
     renderPanel(fixtureCard(14));
-    expect(names()).toEqual(['Make draft', 'Delete card']);
+    expect(names()).toEqual(['Make draft', 'Archive card']);
   });
 
   it('shows only Delete in the History tab', async () => {
     renderPanel({ ...fixtureCard(8), isDraft: true });
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    expect(names()).toEqual(['Delete card']);
+    expect(names()).toEqual(['Archive card']);
   });
 
   it('calls onEdit with the card when the edit icon is pressed', async () => {
@@ -183,7 +183,7 @@ describe('toolbar', () => {
 
   it('opens the delete confirmation above the tabs', async () => {
     const { container } = renderPanel(fixtureCard(8));
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
     const confirm = container.querySelector('.delete-confirm') as HTMLElement;
     const tabs = container.querySelector('.detail__tabs') as HTMLElement;
     expect(confirm.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -193,6 +193,6 @@ describe('toolbar', () => {
   it('names the toolbar buttons in Japanese', () => {
     selectLocale('ja');
     renderPanel({ ...fixtureCard(8), isDraft: true });
-    expect(names()).toEqual(['カードを編集', 'カードを削除']);
+    expect(names()).toEqual(['カードを編集', 'カードをアーカイブ']);
   });
 });

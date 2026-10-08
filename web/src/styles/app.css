@@ -394,7 +394,7 @@ ol {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgb(15 23 42 / 50%);
+  background: color-mix(in srgb, var(--r-text) 50%, transparent);
 }
 .bulk-archive__panel {
   display: flex;
@@ -407,7 +407,7 @@ ol {
   border-radius: 14px;
   background: var(--r-surface);
   color: var(--r-text);
-  box-shadow: 0 12px 32px rgb(15 23 42 / 20%);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--r-text) 20%, transparent);
 }
 .bulk-archive__panel h2,
 .bulk-archive__panel p {
@@ -460,7 +460,7 @@ ol {
 .bulk-archive__actions .bulk-archive__submit {
   border-color: var(--r-danger);
   background: var(--r-danger);
-  color: white;
+  color: var(--r-surface);
 }
 .bulk-archive__actions button:disabled {
   cursor: default;

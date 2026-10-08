@@ -72,8 +72,8 @@ describe('app.css', () => {
     expect(css).not.toMatch(/\brgba?\(/);
   });
 
-  it('has no width breakpoints: there are no small-screen layouts', () => {
-    expect(css).not.toMatch(/@media[^{]*(min|max)-width/);
+  it('keeps narrow archive layouts inside the app surface', () => {
+    expect(css).toMatch(/@media[^{]*max-width/);
     expect(read('src/styles/resize.css')).not.toMatch(/@media[^{]*(min|max)-width/);
   });
 

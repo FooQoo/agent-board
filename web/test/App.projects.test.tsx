@@ -454,11 +454,11 @@ describe('switching while a form is open', () => {
     });
   });
 
-  it('keeps the project and the confirmation open while a delete confirmation is open, and deletes in that project', async () => {
+  it('keeps the project and the confirmation open while an archive confirmation is open, and archives in that project', async () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Prepare the Windows build'));
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
     expect(
       (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
     ).toBe(true);
@@ -468,15 +468,15 @@ describe('switching while a form is open', () => {
 
     app.navigate(urlOf(PROJECT_B.id));
     await act(async () => {});
-    expect(screen.getByText(/Delete #14/)).toBeTruthy();
+    expect(screen.getByText(/Archive #14/)).toBeTruthy();
     expect(screen.queryByText('Eight in knowledge')).toBeNull();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
 
     await screen.findByText('Eight in knowledge');
     const calls = writes();
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/14`);
+    expect(calls[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/14/archive`);
     expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
   });
 
@@ -484,7 +484,7 @@ describe('switching while a form is open', () => {
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Prepare the Windows build'));
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(
       (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,

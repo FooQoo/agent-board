@@ -31,7 +31,7 @@ describe('DetailPanel', () => {
       />,
     );
     expect(screen.getByRole('button', { name: '詳細を閉じる' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'カードを削除' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'カードをアーカイブ' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '下書きにする' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: '本文' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: /^履歴/ })).toBeTruthy();
@@ -42,7 +42,7 @@ describe('DetailPanel', () => {
   it('asks for a selection when no card is selected', () => {
     render(<DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onDeleted={noop} />);
     expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Delete card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Archive card' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Close details' })).toBeNull();
   });
 
@@ -62,7 +62,7 @@ describe('DetailPanel', () => {
     expect(screen.getByText('Create the storage for the board with agboard init.')).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'History 3', selected: false })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Close details' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Delete card' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Archive card' })).toBeTruthy();
   });
 
   it('shows every line break and shows markup as text', () => {
@@ -291,11 +291,11 @@ describe('DetailPanel', () => {
         onDeleted={noop}
       />,
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
-    const group = screen.getByRole('group', { name: /^Delete #8/ });
-    expect(within(group).getByRole('button', { name: 'Delete' }).getAttribute('data-variant')).toBe(
-      'destructive',
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+    const group = screen.getByRole('group', { name: /^Archive #8/ });
+    expect(
+      within(group).getByRole('button', { name: 'Archive' }).getAttribute('data-variant'),
+    ).toBe('destructive');
     expect(within(group).getByRole('button', { name: 'Cancel' }).getAttribute('data-variant')).toBe(
       'outline',
     );
