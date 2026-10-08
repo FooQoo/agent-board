@@ -17,7 +17,7 @@ pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use work::{
     Actor, AllBoardsSnapshot, Assignee, Attachment, AttachmentData, AttachmentInput, BoardSnapshot,
     Card, ChangeContext, Changed, FetchedSnapshot, HistoryEvent, HistoryKind, NewCard,
-    ValidatedBoard,
+    ValidatedAttachment, ValidatedBoard,
 };
 
 const WORK_REASON_MAX: usize = 2_000;

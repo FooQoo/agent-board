@@ -142,7 +142,7 @@ fn no_legacy_skan_binary_is_built() {
 }
 
 #[test]
-fn version_two_backup_round_trips_identically_into_a_fresh_data_directory() {
+fn version_three_backup_round_trips_identically_into_a_fresh_data_directory() {
     let source = tempdir().unwrap();
     let restored = tempdir().unwrap();
     let files = tempdir().unwrap();
@@ -180,7 +180,7 @@ fn version_two_backup_round_trips_identically_into_a_fresh_data_directory() {
     let bytes = std::fs::read(&first).unwrap();
     let value: Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(value["format"], "skan-board");
-    assert_eq!(value["version"], 2);
+    assert_eq!(value["version"], 3);
     // The restored data area has no project yet: import creates it by name.
     invoke(restored.path(), &["import", first.to_str().unwrap()]).success();
     invoke(

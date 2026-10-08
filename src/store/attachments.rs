@@ -66,6 +66,14 @@ fn check_limits(
 }
 
 impl ProjectStore {
+    pub fn attachment_data_for_card(
+        &self,
+        project: &ProjectId,
+        card_id: i64,
+        id: &str,
+    ) -> Result<AttachmentData, SkanError> {
+        self.attachment(project, card_id, id)
+    }
     pub fn attachments(
         &self,
         project: &ProjectId,

@@ -152,4 +152,11 @@ pub struct FetchedSnapshot<'a> {
 pub struct ValidatedBoard {
     pub metadata: super::BoardMeta,
     pub cards: Vec<Card>,
+    pub attachments: Vec<ValidatedAttachment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidatedAttachment {
+    pub card_id: i64,
+    pub data: AttachmentData,
 }
