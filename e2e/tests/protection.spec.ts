@@ -134,13 +134,16 @@ test('with the guard, a draft switch and an edit follow the card rules; a bad bo
   await page.goto('/');
   const base = `/api/projects/${projectId(mainProject)}/cards`;
 
-  // Only an idle card can become a draft; a running and a pending card are refused.
-  for (const running of [11, 12]) {
+  // A running card is refused; a Pending card can be drafted without answering it.
+  for (const running of [11]) {
     const refused = await fromPage(page, 'PUT', `${base}/${running}/draft`, { isDraft: true });
     expect(refused.status, `#${running}`).toBe(409);
     expect(refused.body.error?.code, `#${running}`).toBe('invalid_state_for_draft');
     expect(shown(running).isDraft).toBe(false);
   }
+  const pendingBefore = shown(12);
+  expect((await fromPage(page, 'PUT', `${base}/12/draft`, { isDraft: true })).status).toBe(200);
+  expect(shown(12)).toMatchObject({ isDraft: true, agentStatus: 'pending', pendingRequestId: pendingBefore.pendingRequestId, pendingReason: pendingBefore.pendingReason });
   // An edit of a card that is not a draft is refused.
   const notDraft = await fromPage(page, 'PATCH', `${base}/13`, { description: 'Not allowed' });
   expect(notDraft.status).toBe(409);

@@ -162,6 +162,7 @@ pub(super) fn load_card(
                 agent_status_changed_at: time(11)?,
                 is_draft: r.get::<_, i64>(12)? != 0,
                 history: Vec::new(),
+                attachments: Vec::new(),
             })
         })
         .map_err(|e| {
@@ -172,7 +173,29 @@ pub(super) fn load_card(
             }
         })?;
     card.history = load_history(conn, project_id, id)?;
+    card.attachments = load_attachments(conn, project_id, id)?;
     Ok(card)
+}
+
+pub(super) fn load_attachments(
+    conn: &Connection,
+    project_id: &ProjectId,
+    card_id: i64,
+) -> Result<Vec<Attachment>, SkanError> {
+    let mut stmt = conn.prepare("SELECT id, name, media_type, size, created_at FROM attachments WHERE project_id = ?1 AND card_id = ?2 ORDER BY created_at, id")?;
+    let rows = stmt
+        .query_map(params![project_id.as_str(), card_id], |r| {
+            let created: String = r.get(4)?;
+            Ok(Attachment {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                media_type: r.get(2)?,
+                size: r.get(3)?,
+                created_at: parse_utc(&created).map_err(|e| conversion(4, e))?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(rows)
 }
 
 /// Every card of one project in ID order.

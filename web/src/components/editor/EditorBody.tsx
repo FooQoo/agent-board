@@ -1,4 +1,4 @@
-import { CircleAlertIcon, InfoIcon } from 'lucide-react';
+import { CircleAlertIcon, InfoIcon, PaperclipIcon } from 'lucide-react';
 import {
   useDeferredValue,
   useEffect,
@@ -11,6 +11,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
+import { AttachmentPanel } from './AttachmentPanel';
+import type { EditorAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, TITLE_LIMIT, countChars } from './limits';
 import { activeOutlineIndex, outlineOf } from './outline';
 import { Input } from '@/components/ui/input';
@@ -30,6 +32,11 @@ export interface EditorBodyProps {
   disabled: boolean;
   /** A field placed between the title and the description (the assignee of a new card). */
   extraField?: ReactNode;
+  attachments?: readonly EditorAttachment[];
+  attachmentError?: string | null;
+  onFiles?: (files: File[]) => void;
+  onRemoveAttachment?: (id: string) => void;
+  onInsertAttachment?: (attachment: EditorAttachment) => void;
 }
 
 /** The body shared by the edit and the add dialog: outline, title, description editor and preview. */
@@ -42,12 +49,19 @@ export function EditorBody({
   onDescriptionChange,
   disabled,
   extraField,
+  attachments = [],
+  attachmentError,
+  onFiles,
+  onRemoveAttachment,
+  onInsertAttachment,
 }: EditorBodyProps) {
   const { t } = useTranslation();
   const ids = useId();
   const titleId = `${ids}-title`;
   const labelId = `${ids}-label`;
   const [tab, setTab] = useState<Tab>('edit');
+  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
+  const pendingInsert = useRef<EditorAttachment | null>(null);
   const [cursor, setCursor] = useState(0);
   const editor = useRef<MarkdownEditorHandle>(null);
   const pendingJump = useRef<number | null>(null);
@@ -62,11 +76,18 @@ export function EditorBody({
 
   // The editor stays mounted (hidden) in the preview, so the cursor and the undo history survive.
   useEffect(() => {
+    if (tab === 'edit' && pendingInsert.current !== null) {
+      const a = pendingInsert.current;
+      pendingInsert.current = null;
+      const alt = a.name.replace(/[\\[\]!*_`]/g, '\\$&').replace(/[\r\n]/g, ' ');
+      editor.current?.insert(`\n\n![${alt}](attachment:${a.id})\n\n`);
+      onInsertAttachment?.(a);
+    }
     if (tab === 'edit' && pendingJump.current !== null) {
       editor.current?.goTo(pendingJump.current);
       pendingJump.current = null;
     }
-  }, [tab]);
+  }, [tab, onInsertAttachment]);
 
   const jumpTo = (position: number) => {
     pendingJump.current = position;
@@ -92,7 +113,35 @@ export function EditorBody({
   };
 
   return (
-    <div className="editor__body">
+    <div
+      role="region"
+      aria-label={t('editor.descriptionLabel')}
+      className="editor__body"
+      data-attachments-open={attachmentsOpen ? 'true' : undefined}
+      onPasteCapture={(event) => {
+        if (disabled || !onFiles) return;
+        const files = Array.from(event.clipboardData.files).filter((file) =>
+          file.type.startsWith('image/'),
+        );
+        if (files.length === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onFiles(files);
+        setAttachmentsOpen(true);
+      }}
+      onDragOver={(event) => {
+        if (!disabled && onFiles && event.dataTransfer.types.includes('Files'))
+          event.preventDefault();
+      }}
+      onDrop={(event) => {
+        if (disabled || !onFiles) return;
+        const files = Array.from(event.dataTransfer.files);
+        if (files.length === 0) return;
+        event.preventDefault();
+        onFiles(files);
+        setAttachmentsOpen(true);
+      }}
+    >
       <nav className="editor__outline" aria-label={t('editor.outlineName')}>
         <p className="editor__outline-label">{t('editor.outlineLabel')}</p>
         {outline.length === 0 ? (
@@ -142,23 +191,40 @@ export function EditorBody({
           </span>
         </div>
         <div className="editor__box" data-over={overLimit ? 'true' : undefined}>
-          <div className="editor__tabs" role="tablist" aria-label={t('editor.modes')}>
-            {tabs.map((entry, index) => (
+          <div className="editor__toolbar">
+            <div className="editor__tabs" role="tablist" aria-label={t('editor.modes')}>
+              {tabs.map((entry, index) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  id={`${ids}-tab-${entry.id}`}
+                  className="editor__tab"
+                  aria-selected={tab === entry.id}
+                  aria-controls={`${ids}-panel-${entry.id}`}
+                  tabIndex={tab === entry.id ? 0 : -1}
+                  onClick={() => setTab(entry.id)}
+                  onKeyDown={(event) => onTabKey(event, index)}
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+            {onFiles && onRemoveAttachment && (
               <button
-                key={entry.id}
                 type="button"
-                role="tab"
-                id={`${ids}-tab-${entry.id}`}
-                className="editor__tab"
-                aria-selected={tab === entry.id}
-                aria-controls={`${ids}-panel-${entry.id}`}
-                tabIndex={tab === entry.id ? 0 : -1}
-                onClick={() => setTab(entry.id)}
-                onKeyDown={(event) => onTabKey(event, index)}
+                className="editor__attachment-toggle"
+                disabled={disabled}
+                aria-expanded={attachmentsOpen}
+                aria-controls={`${ids}-attachments`}
+                onClick={() => setAttachmentsOpen((open) => !open)}
               >
-                {entry.label}
+                <PaperclipIcon aria-hidden="true" />
+                <span>
+                  {t('editor.attachments')} · {attachments.length}
+                </span>
               </button>
-            ))}
+            )}
           </div>
           <div
             role="tabpanel"
@@ -184,9 +250,21 @@ export function EditorBody({
             className="editor__panel editor__preview"
             hidden={tab !== 'preview'}
           >
-            {tab === 'preview' && <PreviewBody source={description} />}
+            {tab === 'preview' && (
+              <PreviewBody
+                source={description}
+                resolveAttachment={(id) =>
+                  attachments.find((attachment) => attachment.id === id)?.url ?? null
+                }
+              />
+            )}
           </div>
         </div>
+        {attachmentError && (
+          <p className="editor__attachment-error" role="alert">
+            {t('editor.attachmentInvalid', { reason: attachmentError })}
+          </p>
+        )}
         <p className="editor__hint" data-over={overLimit ? 'true' : undefined}>
           {overLimit ? (
             <>
@@ -207,12 +285,38 @@ export function EditorBody({
           )}
         </p>
       </div>
+      {onFiles && onRemoveAttachment && attachmentsOpen && (
+        <AttachmentPanel
+          id={`${ids}-attachments`}
+          attachments={attachments}
+          onFiles={onFiles}
+          onRemove={onRemoveAttachment}
+          onClose={() => setAttachmentsOpen(false)}
+          onInsert={(a) => {
+            if (tab === 'preview') {
+              pendingInsert.current = a;
+              setTab('edit');
+            } else {
+              const alt = a.name.replace(/[\\[\]!*_`]/g, '\\$&').replace(/[\r\n]/g, ' ');
+              editor.current?.insert(`\n\n![${alt}](attachment:${a.id})\n\n`);
+              onInsertAttachment?.(a);
+            }
+          }}
+          disabled={disabled}
+        />
+      )}
     </div>
   );
 }
 
-function PreviewBody({ source }: { source: string }) {
+function PreviewBody({
+  source,
+  resolveAttachment,
+}: {
+  source: string;
+  resolveAttachment: (id: string) => string | null;
+}) {
   const { t } = useTranslation();
   if (source.trim() === '') return <p className="md-empty">{t('detail.noDescription')}</p>;
-  return <MarkdownView source={source} variant="wide" />;
+  return <MarkdownView source={source} variant="wide" resolveAttachment={resolveAttachment} />;
 }

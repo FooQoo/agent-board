@@ -341,3 +341,40 @@ describe('DetailPanel', () => {
     expect(tones).toEqual(['idle', 'pending', 'doing', 'doing', 'todo']);
   });
 });
+
+it('shows every attachment after the description and only offers viewing controls', async () => {
+  selectLocale('en');
+  const attachment = {
+    id: '0123456789abcdef0123456789abcdef',
+    name: 'unreferenced.png',
+    mediaType: 'image/png',
+    size: 50,
+    createdAt: '2026-10-08T00:00:00Z',
+  };
+  const { container } = render(
+    <DetailPanel
+      projectId={PROJECT_A.id}
+      card={makeCard({
+        id: 1,
+        description: 'Text without an image reference',
+        attachments: [attachment],
+      })}
+      onClose={noop}
+      onDeleted={noop}
+    />,
+  );
+  const list = screen.getByRole('region', { name: 'Image attachments' });
+  expect(list.textContent).toContain('Attachments · 1');
+  expect(list.textContent).toContain('unreferenced.png');
+  expect(
+    container.querySelector('.detail__viewport > .detail-attachments:last-child'),
+  ).not.toBeNull();
+  expect(within(list).getAllByRole('button')).toHaveLength(1);
+  await userEvent.click(within(list).getByRole('button', { name: 'Preview unreferenced.png' }));
+  const zoom = screen.getByRole('dialog', { name: 'unreferenced.png' });
+  expect(within(zoom).getByRole('img').getAttribute('src')).toContain(
+    `/api/projects/${PROJECT_A.id}/cards/`,
+  );
+  await userEvent.click(within(zoom).getByRole('button', { name: 'Close' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+});

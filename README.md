@@ -74,6 +74,14 @@ agboard serve --port 7420
 
 `--project NAME` is required by every command except `project create`, `project ls`, `serve`, and the read-only `ls --all-projects`. Add cards in the browser or with `agboard --project "My project" add "Write the setup guide" --assignee ai --actor ai`. See [integrations](integrations/README.md) for Claude Code and Codex hooks. Build instructions are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Cards can also keep image attachments. The add command validates PNG, JPEG, WebP, and GIF files, records only metadata in snapshots and hooks, and stores the image bytes locally. `get` refuses to overwrite an existing output file:
+
+```sh
+agboard --project "My project" attachment add 12 --file diagram.png --actor ai
+agboard --project "My project" attachment ls 12 --json
+agboard --project "My project" attachment get 12 <attachment-id> --output diagram-copy.png
+```
+
 <details>
 <summary><strong>Commands</strong></summary>
 

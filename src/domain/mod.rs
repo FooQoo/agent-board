@@ -9,13 +9,15 @@ mod work;
 pub use card::BoardMeta;
 pub use column::{Column, RunState};
 pub use limits::{
-    normalize_and_validate_description, validate_board_name, validate_project_name,
-    validate_reason, validate_title,
+    MAX_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS,
+    normalize_and_validate_description, validate_attachment, validate_board_name,
+    validate_project_name, validate_reason, validate_title,
 };
 pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use work::{
-    Actor, AllBoardsSnapshot, Assignee, BoardSnapshot, Card, ChangeContext, Changed,
-    FetchedSnapshot, HistoryEvent, HistoryKind, NewCard, ValidatedBoard,
+    Actor, AllBoardsSnapshot, Assignee, Attachment, AttachmentData, AttachmentInput, BoardSnapshot,
+    Card, ChangeContext, Changed, FetchedSnapshot, HistoryEvent, HistoryKind, NewCard,
+    ValidatedAttachment, ValidatedBoard,
 };
 
 const WORK_REASON_MAX: usize = 2_000;

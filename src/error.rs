@@ -25,6 +25,11 @@ pub enum SkanError {
     CardNotFound {
         id: i64,
     },
+    AttachmentNotFound {
+        id: String,
+    },
+    AttachmentRequestConflict,
+    AttachmentLimitExceeded,
     /// `message` is the argument parser's message. `command` is the
     /// subcommand name used in the reason (`None` for the top level).
     InvalidArgument {
@@ -97,6 +102,9 @@ impl SkanError {
             SkanError::ProjectNotFound { .. } => "project_not_found",
             SkanError::ProjectNameExists { .. } => "project_name_exists",
             SkanError::CardNotFound { .. } => "card_not_found",
+            SkanError::AttachmentNotFound { .. } => "attachment_not_found",
+            SkanError::AttachmentRequestConflict => "attachment_request_conflict",
+            SkanError::AttachmentLimitExceeded => "attachment_limit_exceeded",
             SkanError::InvalidArgument { .. } => "invalid_argument",
             SkanError::InvalidValue { .. } => "invalid_value",
             SkanError::InvalidStateForColumn { .. } => "invalid_state_for_column",
@@ -137,6 +145,11 @@ impl SkanError {
             SkanError::ProjectNotFound { .. } => "project not found.".to_string(),
             SkanError::ProjectNameExists { name } => format!("project \"{name}\" already exists."),
             SkanError::CardNotFound { id } => format!("card #{id} not found."),
+            SkanError::AttachmentNotFound { id } => format!("attachment {id} not found."),
+            SkanError::AttachmentRequestConflict => {
+                "attachment request was reused with different content.".into()
+            }
+            SkanError::AttachmentLimitExceeded => "attachment limits were exceeded.".into(),
             SkanError::InvalidArgument { message, .. } => message.clone(),
             SkanError::InvalidValue { field, .. } => format!("{field} is invalid."),
             SkanError::InvalidStateForColumn { id, state, .. } => {
@@ -185,6 +198,9 @@ impl SkanError {
             SkanError::CardNotFound { id } => {
                 format!("No card has ID {id}. Run \"agboard ls\" to see the cards.")
             }
+            SkanError::AttachmentNotFound { .. } => "The attachment does not belong to this card.".into(),
+            SkanError::AttachmentRequestConflict => "Use a new request ID when the content changes.".into(),
+            SkanError::AttachmentLimitExceeded => "A card may contain at most 20 images and 50 MiB in total.".into(),
             SkanError::InvalidArgument { command, .. } => match command {
                 Some(command) => format!("Run \"agboard {command} --help\" for usage."),
                 None => "Run \"agboard --help\" for usage.".to_string(),

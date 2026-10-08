@@ -37,6 +37,14 @@ while time.monotonic() < deadline:
     elif child.poll() is not None:
         break
 
+# The terminal can reach EOF just before the child status is available.
+# Reap the child within the original deadline instead of reporting a false timeout.
+if child.poll() is None:
+    try:
+        child.wait(timeout=max(0.1, deadline - time.monotonic()))
+    except subprocess.TimeoutExpired:
+        pass
+
 if child.poll() is None:
     child.kill()
     child.wait()

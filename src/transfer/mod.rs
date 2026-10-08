@@ -1,11 +1,12 @@
 //! Versioned Agent Board backup format and validation.
+use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     domain::{
-        BoardMeta, BoardSnapshot, Card, Column, HistoryKind, RunState, ValidatedBoard,
-        normalize_and_validate_description, validate_project_name, validate_title,
-        validate_work_reason,
+        Attachment, AttachmentData, BoardMeta, BoardSnapshot, Card, Column, HistoryKind, RunState,
+        ValidatedAttachment, ValidatedBoard, normalize_and_validate_description,
+        validate_attachment, validate_project_name, validate_title, validate_work_reason,
     },
     error::SkanError,
 };
@@ -17,6 +18,21 @@ pub struct Backup {
     pub version: u32,
     pub board: BoardMeta,
     pub cards: Vec<Card>,
+    #[serde(default)]
+    pub attachments: Vec<BackupAttachment>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BackupAttachment {
+    pub card_id: i64,
+    pub id: String,
+    pub name: String,
+    pub media_type: String,
+    pub size: i64,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub data: String,
 }
 
 impl Backup {
@@ -25,10 +41,31 @@ impl Backup {
     pub fn from_snapshot(snapshot: BoardSnapshot) -> Self {
         Self {
             format: "skan-board".into(),
-            version: 2,
+            version: 3,
             board: snapshot.board,
             cards: snapshot.cards,
+            attachments: Vec::new(),
         }
+    }
+
+    pub fn from_snapshot_with_attachments(
+        snapshot: BoardSnapshot,
+        attachments: Vec<(i64, AttachmentData)>,
+    ) -> Self {
+        let mut backup = Self::from_snapshot(snapshot);
+        backup.attachments = attachments
+            .into_iter()
+            .map(|(card_id, data)| BackupAttachment {
+                card_id,
+                id: data.metadata.id,
+                name: data.metadata.name,
+                media_type: data.metadata.media_type,
+                size: data.metadata.size,
+                created_at: data.metadata.created_at,
+                data: STANDARD.encode(data.bytes),
+            })
+            .collect();
+        backup
     }
 
     /// Check the whole backup. The result holds only what can be restored:
@@ -38,8 +75,8 @@ impl Backup {
             file: "skan.json".into(),
             reason: reason.into(),
         };
-        if self.format != "skan-board" || self.version != 2 {
-            return Err(invalid("Only skan-board version 2 is supported."));
+        if self.format != "skan-board" || self.version != 3 {
+            return Err(invalid("Only skan-board version 3 is supported."));
         }
         // The board name becomes the project name, so it follows that rule.
         let board_name = validate_project_name(&self.board.name)
@@ -182,9 +219,74 @@ impl Backup {
                 return Err(invalid("Pending reason does not match current state."));
             }
         }
+        for attachment in &self.attachments {
+            let card = self
+                .cards
+                .iter()
+                .find(|card| card.id == attachment.card_id)
+                .ok_or_else(|| invalid("Attachment refers to a missing card."))?;
+            if !card.attachments.iter().any(|a| {
+                a.id == attachment.id
+                    && a.name == attachment.name
+                    && a.media_type == attachment.media_type
+                    && a.size == attachment.size
+                    && a.created_at == attachment.created_at
+            }) {
+                return Err(invalid("Attachment metadata does not match its card."));
+            }
+            let bytes = STANDARD
+                .decode(&attachment.data)
+                .map_err(|_| invalid("Attachment data is not valid Base64."))?;
+            if bytes.len() as i64 != attachment.size || attachment.size < 1 {
+                return Err(invalid("Attachment size does not match its data."));
+            }
+            let detected = validate_attachment(&attachment.id, &attachment.name, &bytes)
+                .map_err(|_| invalid("Attachment data is invalid."))?;
+            if detected != attachment.media_type {
+                return Err(invalid("Attachment media type does not match its data."));
+            }
+        }
+        let mut attachment_ids = std::collections::HashSet::new();
+        for attachment in &self.attachments {
+            if !attachment_ids.insert((attachment.card_id, attachment.id.as_str())) {
+                return Err(invalid("Attachment IDs must be unique per card."));
+            }
+        }
+        for card in &self.cards {
+            for metadata in &card.attachments {
+                if !self
+                    .attachments
+                    .iter()
+                    .any(|a| a.card_id == card.id && a.id == metadata.id)
+                {
+                    return Err(invalid("Every attachment metadata entry needs a payload."));
+                }
+            }
+        }
+        let attachments = self
+            .attachments
+            .into_iter()
+            .map(|a| {
+                let bytes = STANDARD.decode(a.data).expect("validated attachment data");
+                ValidatedAttachment {
+                    card_id: a.card_id,
+                    data: AttachmentData {
+                        metadata: Attachment {
+                            id: a.id,
+                            name: a.name,
+                            media_type: a.media_type,
+                            size: a.size,
+                            created_at: a.created_at,
+                        },
+                        bytes,
+                    },
+                }
+            })
+            .collect();
         Ok(ValidatedBoard {
             metadata: self.board,
             cards: self.cards,
+            attachments,
         })
     }
 }

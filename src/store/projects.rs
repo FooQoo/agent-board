@@ -62,6 +62,11 @@ impl ProjectStore {
         if version != schema::SCHEMA_VERSION {
             return Err(SkanError::NotInitialized);
         }
+        if !schema::has_expected_schema(&conn)? {
+            return Err(SkanError::DatabaseError {
+                reason: "The board schema is incomplete or contains unexpected tables.".into(),
+            });
+        }
         conn.pragma_update(None, "query_only", true)?;
         Ok(ProjectStore { conn })
     }

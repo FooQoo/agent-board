@@ -81,7 +81,7 @@ fn a_backup_holds_only_the_board_and_never_ids_revisions_or_cursors() {
     let value = serde_json::to_value(backup_of(&f.store, &id)).unwrap();
     let mut keys: Vec<_> = value.as_object().unwrap().keys().cloned().collect();
     keys.sort();
-    assert_eq!(keys, ["board", "cards", "format", "version"]);
+    assert_eq!(keys, ["attachments", "board", "cards", "format", "version"]);
     let mut board: Vec<_> = value["board"]
         .as_object()
         .unwrap()
@@ -96,7 +96,7 @@ fn a_backup_holds_only_the_board_and_never_ids_revisions_or_cursors() {
         "the project ID must not be exported"
     );
     assert!(!text.contains("revision") && !text.contains("cursor"));
-    assert_eq!(value["version"], 2);
+    assert_eq!(value["version"], 3);
     assert_eq!(value["format"], "skan-board");
 }
 
@@ -317,6 +317,7 @@ fn a_failure_in_the_middle_of_inserting_leaves_everything_unchanged() {
             created_at: now(),
         },
         cards,
+        attachments: vec![],
     };
     let before_a = f.store.snapshot(&a).unwrap();
     let before_b = f.store.snapshot(&b).unwrap();
@@ -336,6 +337,7 @@ fn a_failure_in_the_middle_of_inserting_leaves_everything_unchanged() {
             ..broken.metadata.clone()
         },
         cards: broken.cards.clone(),
+        attachments: vec![],
     };
     assert!(f.store.create_from_backup("C", &renamed).is_err());
     assert_eq!(f.store.projects().unwrap(), catalog);

@@ -62,6 +62,7 @@ export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
         at,
       },
     ],
+    attachments: [],
     ...overrides,
   };
 }

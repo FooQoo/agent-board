@@ -5,6 +5,7 @@
 //! so a failed operation leaves nothing behind and a read sees one consistent
 //! state.
 
+mod attachments;
 mod ops;
 mod projects;
 mod rows;

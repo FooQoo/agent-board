@@ -1,5 +1,55 @@
 use crate::error::SkanError;
 
+pub const MAX_ATTACHMENT_BYTES: usize = 10 * 1024 * 1024;
+pub const MAX_CARD_ATTACHMENTS: usize = 20;
+pub const MAX_CARD_ATTACHMENT_BYTES: usize = 50 * 1024 * 1024;
+
+pub fn validate_attachment(id: &str, name: &str, bytes: &[u8]) -> Result<&'static str, SkanError> {
+    if id.len() != 32
+        || !id
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+    {
+        return Err(SkanError::InvalidValue {
+            field: "attachmentId".into(),
+            reason: "Attachment IDs must be 32 lowercase hexadecimal characters.".into(),
+        });
+    }
+    if name.is_empty() || name.rsplit(['/', '\\']).next().unwrap_or(name).is_empty() {
+        return Err(SkanError::InvalidValue {
+            field: "name".into(),
+            reason: "Attachment names must not be empty.".into(),
+        });
+    }
+    if bytes.is_empty() || bytes.len() > MAX_ATTACHMENT_BYTES {
+        return Err(SkanError::InvalidValue {
+            field: "attachment".into(),
+            reason: "Images must be at most 10 MiB.".into(),
+        });
+    }
+    let format = image::guess_format(bytes).map_err(|_| SkanError::InvalidValue {
+        field: "attachment".into(),
+        reason: "Only PNG, JPEG, WebP, and GIF images are accepted.".into(),
+    })?;
+    let media_type = match format {
+        image::ImageFormat::Png => "image/png",
+        image::ImageFormat::Jpeg => "image/jpeg",
+        image::ImageFormat::WebP => "image/webp",
+        image::ImageFormat::Gif => "image/gif",
+        _ => {
+            return Err(SkanError::InvalidValue {
+                field: "attachment".into(),
+                reason: "Only PNG, JPEG, WebP, and GIF images are accepted.".into(),
+            });
+        }
+    };
+    image::load_from_memory_with_format(bytes, format).map_err(|_| SkanError::InvalidValue {
+        field: "attachment".into(),
+        reason: "The image is invalid.".into(),
+    })?;
+    Ok(media_type)
+}
+
 const NAME_MAX: usize = 50;
 const TITLE_MAX: usize = 100;
 const REASON_MAX: usize = 100;

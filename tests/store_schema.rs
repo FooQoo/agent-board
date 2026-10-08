@@ -18,11 +18,11 @@ fn user_version(path: &std::path::Path) -> i64 {
 }
 
 #[test]
-fn a_new_database_gets_schema_version_4() {
+fn a_new_database_gets_schema_version_5() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
     ProjectStore::open(&path).unwrap();
-    assert_eq!(user_version(&path), 4);
+    assert_eq!(user_version(&path), 5);
 
     let conn = Connection::open(&path).unwrap();
     let mut tables: Vec<String> = conn
@@ -35,7 +35,14 @@ fn a_new_database_gets_schema_version_4() {
     tables.sort();
     assert_eq!(
         tables,
-        vec!["cards", "catalog_metadata", "history", "projects"]
+        vec![
+            "attachment_requests",
+            "attachments",
+            "cards",
+            "catalog_metadata",
+            "history",
+            "projects"
+        ]
     );
     let journal: String = conn
         .query_row("PRAGMA journal_mode", [], |r| r.get(0))
@@ -124,7 +131,7 @@ fn make_database_with_version(path: &std::path::Path, version: i64) {
 
 #[test]
 fn a_newer_schema_version_is_refused_and_left_untouched() {
-    for version in [5, 99] {
+    for version in [6, 99] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("board.db");
         make_database_with_version(&path, version);

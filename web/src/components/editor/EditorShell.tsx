@@ -60,6 +60,17 @@ export function EditorShell({
         aria-describedby={undefined}
         // A click on the backdrop must not throw away what was typed into a new card; for an
         // existing draft it goes through the same unsaved-changes question as Cancel.
+        onEscapeKeyDown={(event) => {
+          // Escape belongs to the image viewer while it is open, even if native dialog
+          // listeners run before the nested viewer has processed the same key event.
+          const imageViewer = document.querySelector('[data-editor-attachment-zoom]');
+          if (imageViewer !== null) {
+            event.preventDefault();
+            imageViewer
+              .querySelector<HTMLButtonElement>('[data-editor-attachment-zoom-close]')
+              ?.click();
+          }
+        }}
         onPointerDownOutside={(event) => variant === 'create' && event.preventDefault()}
         onOpenAutoFocus={(event) => {
           event.preventDefault();

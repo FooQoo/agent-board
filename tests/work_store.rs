@@ -398,7 +398,7 @@ mod drafts {
     }
 
     #[test]
-    fn running_and_pending_cards_cannot_become_drafts() {
+    fn running_cards_cannot_become_drafts_but_pending_cards_can() {
         let (_dir, store, project) = setup();
         store
             .move_work_card(
@@ -439,14 +439,12 @@ mod drafts {
             .unwrap();
         let before_pending = store.snapshot(&project).unwrap();
         assert!(before.revision < before_pending.revision);
-        assert!(matches!(
-            store.set_draft(&project, 1, true).unwrap_err(),
-            SkanError::InvalidStateForDraft {
-                state: RunState::Pending,
-                ..
-            }
-        ));
-        assert_eq!(store.snapshot(&project).unwrap(), before_pending);
+        let pending_draft = store.set_draft(&project, 1, true).unwrap();
+        assert!(pending_draft.changed);
+        assert!(pending_draft.value.is_draft);
+        assert_eq!(pending_draft.value.agent_status, RunState::Pending);
+        let after_pending_draft = store.snapshot(&project).unwrap();
+        assert!(before_pending.revision < after_pending_draft.revision);
     }
 
     #[test]

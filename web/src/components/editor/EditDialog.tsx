@@ -1,3 +1,4 @@
+import { useMultipartRequest } from './useMultipartRequest';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionDialogData } from '../ActionDialog';
@@ -6,6 +7,7 @@ import { EditorBody } from './EditorBody';
 import { EditorShell } from './EditorShell';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines, titleProblem } from './limits';
 import { useSaveFlow } from './useSaveFlow';
+import { useAttachmentState } from './useAttachmentState';
 
 /** The dialog that edits the title and description of a draft; it saves, or saves and finalizes. */
 export function EditDialog({
@@ -13,22 +15,37 @@ export function EditDialog({
   onClose,
   onSavingChange,
   onSubmit,
+  projectId,
 }: {
   card: Card;
   onClose: () => void;
   onSavingChange?: (saving: boolean) => void;
   onSubmit: (data: ActionDialogData) => Promise<void>;
+  projectId?: string;
 }) {
   const { t } = useTranslation();
   const [initialDescription] = useState(() => normalizeNewlines(card.description));
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(initialDescription);
   const [lastFinalize, setLastFinalize] = useState(false);
+  const [removed, setRemoved] = useState<string[]>([]);
+  const attachmentState = useAttachmentState({
+    initial: card.attachments ?? [],
+    resolveStoredUrl: (attachment) =>
+      projectId
+        ? `/api/projects/${projectId}/cards/${card.id}/attachments/${encodeURIComponent(attachment.id)}`
+        : '',
+  });
   const flow = useSaveFlow({ onClose, onSavingChange });
+  const requestId = useMultipartRequest();
 
   const titleChanged = title.trim() !== card.title;
   const descriptionChanged = description !== initialDescription;
-  const dirty = titleChanged || descriptionChanged;
+  const attachmentChanged =
+    attachmentState.attachments.some((a) => a.source === 'local') ||
+    removed.length > 0 ||
+    attachmentState.attachments.length !== (card.attachments ?? []).length;
+  const dirty = titleChanged || descriptionChanged || attachmentChanged;
   const valid = titleProblem(title) === null && countChars(description) <= DESCRIPTION_LIMIT;
 
   const save = (finalize: boolean) => {
@@ -36,8 +53,22 @@ export function EditDialog({
     setLastFinalize(finalize);
     void flow.run(() =>
       onSubmit({
+        ...(attachmentChanged
+          ? {
+              requestId: requestId({
+                title: title.trim(),
+                description,
+                finalize,
+                attachments: attachmentState.attachments.map((a) => a.id),
+                removed,
+              }),
+            }
+          : {}),
         ...(titleChanged ? { title: title.trim() } : {}),
         ...(descriptionChanged ? { description } : {}),
+        ...(attachmentChanged
+          ? { attachments: attachmentState.attachments, removedAttachmentIds: removed }
+          : {}),
         ...(finalize ? { finalize: true } : {}),
       }),
     );
@@ -88,6 +119,15 @@ export function EditDialog({
         description={description}
         onDescriptionChange={setDescription}
         disabled={flow.saving}
+        attachmentError={attachmentState.error}
+        attachments={attachmentState.attachments}
+        onFiles={attachmentState.addFiles}
+        onRemoveAttachment={(id) => {
+          const item = attachmentState.attachments.find((attachment) => attachment.id === id);
+          if (item?.source === 'stored')
+            setRemoved((current) => (current.includes(id) ? current : [...current, id]));
+          attachmentState.remove(id);
+        }}
       />
     </EditorShell>
   );

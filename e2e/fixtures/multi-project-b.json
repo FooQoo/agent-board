@@ -1,6 +1,6 @@
 {
   "format": "skan-board",
-  "version": 2,
+  "version": 3,
   "board": {
     "name": "Beta",
     "createdAt": "2026-10-01T07:30:00Z",
