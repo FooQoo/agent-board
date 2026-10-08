@@ -260,8 +260,8 @@ fn version_three_backup_round_trips_identically_into_a_fresh_data_directory() {
     .success();
     let bytes = std::fs::read(&first).unwrap();
     let value: Value = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(value["format"], "skan-board");
-    assert_eq!(value["version"], 3);
+    assert_eq!(value["format"], "agboard-board");
+    assert_eq!(value["version"], 2);
     // The restored data area has no project yet: import creates it by name.
     invoke(restored.path(), &["import", first.to_str().unwrap()]).success();
     invoke(
