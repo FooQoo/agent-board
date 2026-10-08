@@ -39,7 +39,7 @@ export function liveApi(backendOrigin: string): Plugin {
   };
 }
 
-/** Keep the Rust delete guard's origin check intact behind the local proxy. */
+/** Keep the Rust write guard's origin check intact behind the local proxy. */
 export function liveProxy(backendOrigin: string, webOrigin: string): ProxyOptions {
   return {
     target: backendOrigin,
@@ -47,7 +47,7 @@ export function liveProxy(backendOrigin: string, webOrigin: string): ProxyOption
     configure(proxy) {
       proxy.on('proxyReq', (proxyReq, req) => {
         if (
-          (req.method === 'DELETE' || req.method === 'POST') &&
+          ['DELETE', 'POST', 'PUT', 'PATCH'].includes(req.method ?? '') &&
           req.headers.origin === webOrigin &&
           req.headers['sec-fetch-site'] === 'same-origin'
         ) {
