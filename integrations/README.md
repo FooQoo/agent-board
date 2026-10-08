@@ -8,6 +8,8 @@ Every hook command names its project with `--project`. The name is fixed in the 
 
 The payload contains the fetch time, the `project` (ID and name), the `revision`, the `cursor`, and every card of that project with its whole history and its full description (Markdown, up to 50,000 characters). A card with `"isDraft": true` is a draft the user is still writing; agents cannot change it (`edit`, `mv`, and `state` fail with `card_is_draft`) and should work on other cards until the user finalizes it. Nothing from another project is included. If the complete snapshot would exceed 256 KiB, or cannot be read, the agent gets `AGBOARD_ERROR` (`context_too_large`, `project_not_found`, `board_unavailable`, ...) and must not make board-dependent changes until a complete snapshot is available. A truncated snapshot is never presented as complete, and the original tool result is never blocked or changed.
 
+Image attachments follow the same project and card boundaries. Use `attachment add <card-id> --file PATH --actor ai|human` to add an image, `attachment ls <card-id>` to read metadata, and `attachment get <card-id> <attachment-id> --output PATH` to retrieve bytes. Snapshot, hook, and wait payloads contain attachment metadata only; image bytes are returned only by `get`. Draft cards, invalid or oversized image files, and cards outside the named project are rejected. Retrieval never overwrites an existing output file.
+
 ## Before you start
 
 1. Install `agboard` onto your `PATH` (see [Install](../README.md#install)). Hook commands run `agboard` from `PATH`, so they use the installed version, not a development build. Check with `command -v agboard`.
