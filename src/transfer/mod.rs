@@ -11,8 +11,7 @@ use crate::{
     error::SkanError,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Backup {
     pub format: String,
     pub version: u32,
@@ -20,6 +19,54 @@ pub struct Backup {
     pub cards: Vec<Card>,
     #[serde(default)]
     pub attachments: Vec<BackupAttachment>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct BackupInput {
+    format: String,
+    version: u32,
+    board: BoardMeta,
+    cards: Vec<Card>,
+    #[serde(default)]
+    attachments: Vec<BackupAttachment>,
+}
+
+impl<'de> Deserialize<'de> for Backup {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let mut input = BackupInput::deserialize(deserializer)?;
+        match (input.format.as_str(), input.version) {
+            // The pre-archive export is accepted as the first version of the
+            // new series. Cards did not have archivedAt, so serde's default
+            // gives every imported card its explicit NULL meaning.
+            ("skan-board", 3) | ("agboard-board", 1) => {
+                for card in &mut input.cards {
+                    card.archived_at = None;
+                }
+                input.format = "agboard-board".into();
+                input.version = 2;
+            }
+            ("agboard-board", 2) => {}
+            ("skan-board", 1 | 2) => {
+                return Err(serde::de::Error::custom(
+                    "old skan-board versions are not supported",
+                ));
+            }
+            _ => {
+                return Err(serde::de::Error::custom("unknown or future backup format"));
+            }
+        }
+        Ok(Self {
+            format: input.format,
+            version: input.version,
+            board: input.board,
+            cards: input.cards,
+            attachments: input.attachments,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +115,18 @@ impl Backup {
         backup
     }
 
+    /// Build the current export format. The legacy constructor remains useful
+    /// for fixtures representing the version 3 input format.
+    pub fn from_export_snapshot_with_attachments(
+        snapshot: BoardSnapshot,
+        attachments: Vec<(i64, AttachmentData)>,
+    ) -> Self {
+        let mut backup = Self::from_snapshot_with_attachments(snapshot, attachments);
+        backup.format = "agboard-board".into();
+        backup.version = 2;
+        backup
+    }
+
     /// Check the whole backup. The result holds only what can be restored:
     /// the board metadata and the cards.
     pub fn validate(self) -> Result<ValidatedBoard, SkanError> {
@@ -75,8 +134,10 @@ impl Backup {
             file: "skan.json".into(),
             reason: reason.into(),
         };
-        if self.format != "skan-board" || self.version != 3 {
-            return Err(invalid("Only skan-board version 3 is supported."));
+        if !((self.format == "agboard-board" && self.version == 2)
+            || (self.format == "skan-board" && self.version == 3))
+        {
+            return Err(invalid("Only agboard-board version 2 is supported."));
         }
         // The board name becomes the project name, so it follows that rule.
         let board_name = validate_project_name(&self.board.name)
@@ -95,7 +156,8 @@ impl Backup {
             if card.id < 1
                 || !ids.insert(card.id)
                 || card.position < 1
-                || !positions.insert((card.card_status, card.position))
+                || (card.archived_at.is_none()
+                    && !positions.insert((card.card_status, card.position)))
             {
                 return Err(invalid(
                     "Card IDs and lane positions must be unique and positive.",
@@ -115,6 +177,15 @@ impl Backup {
             if card.is_draft && card.agent_status != RunState::Idle {
                 return Err(invalid("A draft card must have agentStatus idle."));
             }
+            if card.archived_at.is_some()
+                && (card.agent_status != RunState::Idle
+                    || card.pending_reason.is_some()
+                    || card.pending_request_id.is_some())
+            {
+                return Err(invalid(
+                    "An archived card must be idle without a pending request.",
+                ));
+            }
             if card.history.is_empty() {
                 return Err(invalid("Every card must include its created history."));
             }
@@ -122,6 +193,8 @@ impl Backup {
             let mut state = RunState::Idle;
             let mut pending: Option<&str> = None;
             let mut pending_reason: Option<&str> = None;
+            let mut archived = false;
+            let mut replayed_archived_at = None;
             for (i, event) in card.history.iter().enumerate() {
                 if event.id < 1 || !history_ids.insert(event.id) {
                     return Err(invalid("History IDs must be unique and positive."));
@@ -153,6 +226,9 @@ impl Backup {
                             return Err(invalid("Created history may appear only first."));
                         }
                         HistoryKind::Lane => {
+                            if archived {
+                                return Err(invalid("An archived card cannot change lanes."));
+                            }
                             if event.to_card_status == lane {
                                 return Err(invalid("Lane history must change the card status."));
                             }
@@ -166,6 +242,9 @@ impl Backup {
                             pending = None;
                         }
                         HistoryKind::Agent => {
+                            if archived {
+                                return Err(invalid("An archived card cannot change agent state."));
+                            }
                             if event.to_card_status != lane
                                 || event.to_agent_status == state
                                 || (card.assignee == crate::domain::Assignee::Human
@@ -212,6 +291,24 @@ impl Backup {
                             {
                                 return Err(invalid("Archive history is not continuous."));
                             }
+                            if event.kind == HistoryKind::Archive {
+                                if archived {
+                                    return Err(invalid("A card cannot be archived twice."));
+                                }
+                                if event.request_id.as_deref() != pending {
+                                    return Err(invalid(
+                                        "Archive history does not match the pending request.",
+                                    ));
+                                }
+                                archived = true;
+                                replayed_archived_at = Some(event.at);
+                            } else {
+                                if !archived || event.request_id.is_some() {
+                                    return Err(invalid("Restore history is not continuous."));
+                                }
+                                archived = false;
+                                replayed_archived_at = None;
+                            }
                             state = RunState::Idle;
                             pending = None;
                             pending_reason = None;
@@ -229,6 +326,12 @@ impl Backup {
                 || pending_reason != card.pending_reason.as_deref()
             {
                 return Err(invalid("Pending reason does not match current state."));
+            }
+            if archived != card.archived_at.is_some() {
+                return Err(invalid("Archive history does not match archivedAt."));
+            }
+            if replayed_archived_at != card.archived_at {
+                return Err(invalid("archivedAt does not match archive history."));
             }
         }
         for attachment in &self.attachments {
