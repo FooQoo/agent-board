@@ -49,7 +49,7 @@ CREATE TABLE cards (
   UNIQUE (project_id, column_name, position),
   CHECK (run_state = 'idle' OR column_name = 'doing'),
   CHECK (assignee = 'ai' OR run_state = 'idle'),
-  CHECK (is_draft = 0 OR run_state = 'idle'),
+                   CHECK (is_draft = 0 OR run_state IN ('idle', 'pending')),
   CHECK ((run_state = 'pending' AND pending_reason IS NOT NULL AND pending_request_id IS NOT NULL)
       OR (run_state != 'pending' AND pending_reason IS NULL AND pending_request_id IS NULL))
 );

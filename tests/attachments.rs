@@ -42,7 +42,7 @@ fn attachments_are_blob_metadata_only_in_snapshot_and_are_atomic() {
             card.id,
             Some("Card 2"),
             Some("after"),
-            &[input.clone()],
+            std::slice::from_ref(&input),
             &[],
             "request-1",
             now,

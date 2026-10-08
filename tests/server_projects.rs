@@ -1222,7 +1222,7 @@ fn put_draft_toggles_idle_cards_without_history_or_update_time() {
 }
 
 #[test]
-fn put_draft_refuses_running_and_pending_cards() {
+fn put_draft_refuses_running_but_allows_pending_cards() {
     let (home, a, _) = two_projects();
     let s = store(home.path());
     s.move_work_card(&a, 2, Column::Doing, ctx("Start"), t(3))
@@ -1240,9 +1240,12 @@ fn put_draft_refuses_running_and_pending_cards() {
         .unwrap();
     let before_pending = snapshot_json(home.path(), &a);
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
-    assert_eq!(reply.status, 409, "{}", reply.body);
-    assert_eq!(reply.code(), "invalid_state_for_draft");
-    assert_eq!(snapshot_json(home.path(), &a), before_pending);
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["card"]["isDraft"], true);
+    assert!(
+        snapshot_json(home.path(), &a)["revision"].as_i64().unwrap()
+            > before_pending["revision"].as_i64().unwrap()
+    );
     assert_ne!(before, before_pending);
 }
 

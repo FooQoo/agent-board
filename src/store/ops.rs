@@ -89,7 +89,7 @@ impl ProjectStore {
         })
     }
 
-    /// Turn the draft flag of an idle card on or off. Only the project's
+    /// Turn the draft flag of an idle or pending card on or off. Only the project's
     /// revision advances: the card's update time and history stay as they are.
     pub fn set_draft(
         &self,
@@ -106,7 +106,7 @@ impl ProjectStore {
                     changed: false,
                 });
             }
-            if is_draft && card.agent_status != RunState::Idle {
+            if is_draft && card.agent_status == RunState::Running {
                 return Err(SkanError::InvalidStateForDraft {
                     id,
                     state: card.agent_status,

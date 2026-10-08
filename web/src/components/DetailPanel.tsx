@@ -148,7 +148,7 @@ function DetailBody({
     }
   };
 
-  const canMakeDraft = !card.isDraft && card.agentStatus === 'idle';
+  const canMakeDraft = !card.isDraft && card.agentStatus !== 'running';
 
   return (
     <aside className="detail" aria-label={t('detail.title')}>

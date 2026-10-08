@@ -148,7 +148,7 @@ describe('toolbar', () => {
     expect(names()).toEqual(['Edit card', 'Delete card']);
   });
 
-  it('offers only Delete for running and pending cards', () => {
+  it('offers Make draft for pending cards but only Delete for running cards', () => {
     const { rerender } = renderPanel(fixtureCard(11));
     expect(names()).toEqual(['Delete card']);
     rerender(
@@ -159,7 +159,7 @@ describe('toolbar', () => {
         onDeleted={noop}
       />,
     );
-    expect(names()).toEqual(['Delete card']);
+    expect(names()).toEqual(['Make draft', 'Delete card']);
   });
 
   it('offers Make draft to an idle card that has no run state of its own (Todo)', () => {
