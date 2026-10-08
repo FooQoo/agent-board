@@ -45,7 +45,7 @@ fn is_database_error(e: &SkanError) -> bool {
 // ---------- fresh database ----------
 
 #[test]
-fn a_new_database_gets_schema_version_5_with_an_empty_catalog() {
+fn a_new_database_gets_schema_version_2_with_an_empty_catalog() {
     let dir = tempfile::tempdir().unwrap();
     let path = db_path(&dir);
     let store = ProjectStore::open(&path).unwrap();
@@ -54,7 +54,7 @@ fn a_new_database_gets_schema_version_5_with_an_empty_catalog() {
     assert!(catalog.projects.is_empty());
     assert_eq!(catalog.catalog_revision, 0);
 
-    assert_eq!(user_version(&path), 5);
+    assert_eq!(user_version(&path), 2);
     assert_eq!(
         table_names(&path),
         vec![
@@ -63,7 +63,8 @@ fn a_new_database_gets_schema_version_5_with_an_empty_catalog() {
             "cards",
             "catalog_metadata",
             "history",
-            "projects"
+            "projects",
+            "storage_metadata"
         ]
     );
     let conn = raw(&path);
@@ -78,7 +79,7 @@ fn a_new_database_gets_schema_version_5_with_an_empty_catalog() {
 }
 
 #[test]
-fn reopening_a_version_5_database_keeps_its_content() {
+fn reopening_a_version_2_database_keeps_its_content() {
     let dir = tempfile::tempdir().unwrap();
     let path = db_path(&dir);
     let created = {
@@ -346,7 +347,7 @@ fn an_empty_file_is_accepted_as_a_new_database() {
     let path = dir.path().join("board.db");
     std::fs::write(&path, b"").unwrap();
     ProjectStore::open(&path).unwrap();
-    assert_eq!(user_version(&path), 5);
+    assert_eq!(user_version(&path), 2);
 }
 
 #[test]
@@ -365,7 +366,7 @@ fn a_version_0_database_with_user_tables_is_rejected_unchanged() {
 
 #[test]
 fn other_schema_versions_are_rejected_unchanged() {
-    for version in [1, 2, 3, 5, 99] {
+    for version in [1, 3, 5, 99] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("board.db");
         raw(&path)
@@ -444,7 +445,7 @@ fn read_only_reads_but_cannot_write_and_leaves_the_file_unchanged() {
     assert_eq!(ro.projects().unwrap().catalog_revision, 1);
     drop(ro);
     assert_eq!(std::fs::read(&path).unwrap(), before);
-    assert_eq!(user_version(&path), 5);
+    assert_eq!(user_version(&path), 2);
 }
 
 // ---------- atomicity and contention ----------
@@ -497,7 +498,7 @@ fn concurrent_first_open_of_a_new_database_creates_one_schema() {
     for h in handles {
         h.join().unwrap().unwrap();
     }
-    assert_eq!(user_version(&path), 5);
+    assert_eq!(user_version(&path), 2);
 }
 
 #[test]
