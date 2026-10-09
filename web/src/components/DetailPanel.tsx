@@ -221,6 +221,7 @@ function DetailBody({
             ref={deleteButton}
             action="delete"
             disabled={operationSaving}
+            showLabel
             onClick={() => setConfirm('user')}
           />
         </div>

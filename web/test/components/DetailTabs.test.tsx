@@ -213,7 +213,7 @@ describe('toolbar', () => {
       'detail__viewport',
     ]);
     expect(screen.getByRole('button', { name: 'Restore' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Delete card' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete card' }).textContent).toContain('Delete');
     expect(screen.queryByRole('toolbar')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
     expect(onRestore).toHaveBeenCalledTimes(1);
@@ -244,5 +244,12 @@ describe('toolbar', () => {
     selectLocale('ja');
     renderPanel({ ...fixtureCard(8), isDraft: true });
     expect(names()).toEqual(['カードを編集', 'カードをアーカイブ']);
+  });
+
+  it('shows the archived delete label in Japanese', () => {
+    selectLocale('ja');
+    renderPanel(fixtureCard(8), { archived: true, onRestore: vi.fn() });
+    const deleteButton = screen.getByRole('button', { name: 'カードを削除' });
+    expect(deleteButton.textContent).toContain('削除');
   });
 });

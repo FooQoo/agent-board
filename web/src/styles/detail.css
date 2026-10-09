@@ -255,7 +255,7 @@
   flex: none;
   align-items: center;
   gap: 8px;
-  margin: 0 0 16px;
+  margin: 0;
 }
 
 .detail__tool {
@@ -303,9 +303,13 @@
 
 .detail__archive-actions .detail__tool--delete {
   margin-left: auto;
-  width: 34px;
+  width: auto;
   height: 34px;
+  padding: 0 10px;
+  gap: 5px;
   border: 1px solid var(--r-danger);
+  font-size: 12px;
+  line-height: 17px;
 }
 
 .detail__tab:focus-visible,
@@ -332,7 +336,7 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  margin: 0 0 16px;
+  margin: 0;
   padding: 11px;
   border: 1px solid var(--r-danger);
   border-radius: 8px;
