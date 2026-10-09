@@ -228,6 +228,16 @@ describe('toolbar', () => {
     expect(onRemove).toHaveBeenCalledWith('delete', fixtureCard(8));
   });
 
+  it('matches the Pen Japanese delete confirmation copy', async () => {
+    selectLocale('ja');
+    renderPanel(fixtureCard(8), { archived: true, onRemove: vi.fn() });
+    await userEvent.click(screen.getByRole('button', { name: 'カードを削除' }));
+    expect(screen.getByText(
+      '#8「Initialize the board」を削除しますか？ 本文・画像・履歴も削除されます。この操作は元に戻せません。',
+    )).toBeTruthy();
+    selectLocale('en');
+  });
+
   it('shows restore failure in the selected detail and disables actions while saving', () => {
     renderPanel(fixtureCard(8), {
       archived: true,

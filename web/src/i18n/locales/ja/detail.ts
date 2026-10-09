@@ -35,7 +35,7 @@ export const detailJa = {
   },
   delete: {
     buttonLabel: 'カードを削除',
-    confirm: '#{{id}}「{{title}}」と本文・画像・履歴を削除しますか？ この操作は元に戻せません。',
+    confirm: '#{{id}}「{{title}}」を削除しますか？ 本文・画像・履歴も削除されます。この操作は元に戻せません。',
     submit: '削除',
     cancel: 'キャンセル',
     error: 'カードを削除できませんでした。もう一度お試しください。',
