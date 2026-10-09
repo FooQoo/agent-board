@@ -1,7 +1,8 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../src/i18n';
+import { groupCards } from '../src/lib/board';
 import type { Card } from '../src/types';
 import { FakeEventSource, deferred, jsonResponse, stubBackend, type FakeBackend } from './fakes';
 import {
@@ -162,6 +163,168 @@ describe('which project is shown', () => {
     await screen.findByRole('button', { name: 'renamed' });
     expect(screen.getByRole('heading', { level: 2, name: 'Eight in knowledge' })).toBeTruthy();
     expect(document.title).toBe('renamed - Agent Board');
+  });
+
+  it('keeps the archive list and shared detail column in the app shell', async () => {
+    backend.archives = {
+      [PROJECT_A.id]: [
+        makeCard({ id: 99, title: 'Archived task', archivedAt: '2026-10-08T12:00:00Z' }),
+      ],
+      [PROJECT_B.id]: [],
+      [PROJECT_C.id]: [],
+    };
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Archive' })).toBeTruthy();
+    expect(within(screen.getByRole('main')).getByText('1 archived card')).toBeTruthy();
+    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByRole('separator', { name: 'Resize card details' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Back to board' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: /Archived task/ }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Archived task' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByRole('separator', { name: 'Resize card details' })).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Back to board' }));
+    await screen.findByRole('region', { name: 'Todo' });
+  });
+
+  it('returns to the board when the project changes from the archive view', async () => {
+    backend.archives = { [PROJECT_A.id]: [], [PROJECT_B.id]: [], [PROJECT_C.id]: [] };
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await screen.findByRole('heading', { level: 2, name: 'Archive' });
+
+    await choose('agent-board', 'knowledge');
+
+    await screen.findByRole('region', { name: 'Todo' });
+    expect(screen.queryByRole('heading', { level: 2, name: 'Archive' })).toBeNull();
+    expect(screen.getByText('2 cards')).toBeTruthy();
+    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+  });
+
+  it('keeps the selected archive detail visible when only the ordinary board refresh fails', async () => {
+    backend.archives = {
+      [PROJECT_A.id]: [makeCard({ id: 96, title: 'Archived during board failure' })],
+    };
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Archived during board failure/ }),
+    );
+    backend.boards[PROJECT_A.id] = new Error('board temporarily unavailable');
+    const previousBoardRequests = fetchMock.mock.calls.filter(
+      ([url]) => url === `/api/projects/${PROJECT_A.id}/board`,
+    ).length;
+    act(() => FakeEventSource.latest.emit('changed'));
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/board`)
+          .length,
+      ).toBeGreaterThan(previousBoardRequests);
+    });
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Archived during board failure' }),
+    ).toBeTruthy();
+  });
+
+  it('discards a delayed archive response after switching to another project', async () => {
+    const gate = deferred();
+    backend.archives = {
+      [PROJECT_A.id]: [makeCard({ id: 98, title: 'Stale archived card' })],
+      [PROJECT_B.id]: [],
+      [PROJECT_C.id]: [],
+    };
+    backend.gate = (url) =>
+      url === `/api/projects/${PROJECT_A.id}/archive` ? gate.promise : undefined;
+    const app = renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    expect(await screen.findByText('Loading…')).toBeTruthy();
+
+    app.navigate(urlOf(PROJECT_B.id));
+    await screen.findByText('Eight in knowledge');
+    gate.resolve();
+    await act(async () => {});
+
+    expect(screen.queryByText('Stale archived card')).toBeNull();
+    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByText('2 cards')).toBeTruthy();
+  });
+
+  it('refreshes the archive count and list when the board event stream changes', async () => {
+    const initialArchive = [makeCard({ id: 97, title: 'First archived task' })];
+    backend.archives = {
+      [PROJECT_A.id]: initialArchive,
+      [PROJECT_B.id]: [],
+      [PROJECT_C.id]: [],
+    };
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await screen.findByRole('button', { name: /First archived task/ });
+    expect(within(screen.getByRole('main')).getByText('1 archived card')).toBeTruthy();
+
+    backend.archives[PROJECT_A.id] = [
+      ...initialArchive,
+      makeCard({ id: 96, title: 'Second archived task' }),
+    ];
+    act(() => FakeEventSource.latest.emit('changed'));
+
+    await screen.findByRole('button', { name: /Second archived task/ });
+    expect(within(screen.getByRole('main')).getByText('2 archived cards')).toBeTruthy();
+  });
+
+  it('shows the project not-found state when the active project is deleted from archive mode', async () => {
+    backend.archives = {
+      [PROJECT_A.id]: [makeCard({ id: 95, title: 'Archived from deleted project' })],
+      [PROJECT_B.id]: [],
+      [PROJECT_C.id]: [],
+    };
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await screen.findByRole('button', { name: /Archived from deleted project/ });
+
+    backend.projects = [PROJECT_B, PROJECT_C];
+    backend.boards[PROJECT_A.id] = 'not_found';
+    act(() => FakeEventSource.latest.emit('changed'));
+
+    expect(await screen.findByText('Project not found')).toBeTruthy();
+    expect(document.querySelector('.archive-list-pane')).toBeNull();
+    expect(screen.queryByText('Archived from deleted project')).toBeNull();
+    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(switcher('Choose a project')).toBeTruthy();
+
+    await choose('Choose a project', 'knowledge');
+    expect(await screen.findByText('Eight in knowledge')).toBeTruthy();
+  });
+
+  it('retries an initial archive fetch failure and shows the archived cards after recovery', async () => {
+    backend.archives = {
+      [PROJECT_A.id]: new Error('archive temporarily unavailable'),
+      [PROJECT_B.id]: [],
+      [PROJECT_C.id]: [],
+    };
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+
+    expect(await screen.findByText('Could not load the archive.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
+    backend.archives[PROJECT_A.id] = [makeCard({ id: 94, title: 'Recovered archived card' })];
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByRole('button', { name: /Recovered archived card/ })).toBeTruthy();
+    expect(within(screen.getByRole('main')).getByText('1 archived card')).toBeTruthy();
   });
 });
 
@@ -471,13 +634,143 @@ describe('switching while a form is open', () => {
     expect(screen.getByText(/Archive #14/)).toBeTruthy();
     expect(screen.queryByText('Eight in knowledge')).toBeNull();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await userEvent.click(
+      within(screen.getByRole('complementary')).getByRole('button', { name: 'Archive' }),
+    );
 
     await screen.findByText('Eight in knowledge');
     const calls = writes();
     expect(calls).toHaveLength(1);
     expect(calls[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/14/archive`);
     expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+  });
+
+  it('shows the project name and exact reversible-data note in the bulk archive dialog', async () => {
+    selectLocale('ja');
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('button', { name: '完了カードをアーカイブ' });
+
+    await userEvent.click(screen.getByRole('button', { name: '完了カードをアーカイブ' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByText('agent-board の完了カード2件をアーカイブします。'),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText('本文・画像・履歴は保持され、アーカイブ一覧から復元できます。'),
+    ).toBeTruthy();
+    expect(within(dialog).getAllByRole('row')).toHaveLength(3);
+    expect(within(dialog).getAllByText('AI')).toHaveLength(2);
+    expect(within(dialog).queryByRole('button', { name: /閉じる|Close/ })).toBeNull();
+  });
+
+  it('keeps the exact target snapshot after a 409 and sends fresh targets only after reopening', async () => {
+    const initialDoneIds = groupCards(fixtureBoard.cards).done.map((card) => card.id);
+    const submittedIds: number[][] = [];
+    let conflict = true;
+    backend.write = (url, init) => {
+      if (url !== `/api/projects/${PROJECT_A.id}/cards/archive-done`) return jsonResponse({}, 404);
+      submittedIds.push(JSON.parse(String(init.body)).ids as number[]);
+      if (conflict) {
+        conflict = false;
+        return jsonResponse(
+          { error: { code: 'request_changed', message: 'conflict', reason: 'changed' } },
+          409,
+        );
+      }
+      return jsonResponse({ cards: [], archivedCount: submittedIds.at(-1)?.length ?? 0 });
+    };
+
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive completed cards' }));
+    let dialog = screen.getByRole('dialog');
+    const targetRows = within(dialog).getAllByRole('row').slice(1);
+    expect(targetRows.map((row) => row.firstElementChild?.textContent)).toEqual(
+      initialDoneIds.map((id) => `#${id}`),
+    );
+
+    backend.boards[PROJECT_A.id] = boardOf(
+      PROJECT_A,
+      [
+        ...fixtureBoard.cards.filter((card) => card.id !== initialDoneIds[1]),
+        makeCard({ id: 17, title: 'Added after opening', cardStatus: 'done' }),
+      ],
+      2,
+    );
+    const boardUrl = `/api/projects/${PROJECT_A.id}/board`;
+    const readsBeforeChange = fetchMock.mock.calls.filter(([url]) => url === boardUrl).length;
+    act(() => FakeEventSource.latest.emit('changed'));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([url]) => url === boardUrl).length).toBeGreaterThan(
+        readsBeforeChange,
+      ),
+    );
+    expect(
+      within(dialog)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.firstElementChild?.textContent),
+    ).toEqual(initialDoneIds.map((id) => `#${id}`));
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Archive 2 cards' }));
+    expect(
+      await within(dialog).findByText(/Cards changed while this confirmation was open/),
+    ).toBeTruthy();
+    expect(
+      within(dialog)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.firstElementChild?.textContent),
+    ).toEqual(initialDoneIds.map((id) => `#${id}`));
+    expect(submittedIds).toEqual([initialDoneIds]);
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive completed cards' }));
+    dialog = screen.getByRole('dialog');
+    const reopenedIds = within(dialog)
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => Number(row.firstElementChild?.textContent?.slice(1)));
+    expect(reopenedIds).toEqual([initialDoneIds[0], 17]);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Archive 2 cards' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(submittedIds).toEqual([initialDoneIds, reopenedIds]);
+  });
+
+  it('keeps a pending bulk archive open and rejects duplicate submissions until the write settles', async () => {
+    const response = deferred<Response>();
+    const started = deferred<void>();
+    backend.write = (url) => {
+      if (url !== `/api/projects/${PROJECT_A.id}/cards/archive-done`) return jsonResponse({}, 404);
+      started.resolve();
+      return response.promise;
+    };
+
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive completed cards' }));
+    const dialog = screen.getByRole('dialog');
+    const submit = within(dialog).getByRole('button', { name: 'Archive 2 cards' });
+
+    await userEvent.dblClick(submit);
+    await started.promise;
+    await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(true));
+    expect(
+      writes().filter(([url]) => url === `/api/projects/${PROJECT_A.id}/cards/archive-done`),
+    ).toHaveLength(1);
+
+    await userEvent.keyboard('{Escape}');
+    fireEvent.pointerDown(document.body);
+    expect(screen.getByRole('dialog')).toBe(dialog);
+    expect(
+      (within(dialog).getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    await act(async () => {
+      response.resolve(jsonResponse({ cards: [], archivedCount: 2 }));
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it('lets the user switch again after the delete confirmation is cancelled', async () => {

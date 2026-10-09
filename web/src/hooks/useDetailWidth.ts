@@ -26,6 +26,7 @@ const LANES_GAP = 16;
  */
 export function useDetailWidth(
   bodyRef: RefObject<HTMLElement | null>,
+  layoutRef: RefObject<HTMLElement | null>,
   /** Changes when the content of the body changes (the lanes appear, a state message takes their place). */
   contentKey: string | boolean,
 ): DetailWidth {
@@ -40,8 +41,8 @@ export function useDetailWidth(
   const measure = useCallback(() => {
     const body = bodyRef.current;
     if (!body) return;
-    const lanes = body.querySelector('.board__lanes');
-    const style = lanes ? window.getComputedStyle(lanes) : null;
+    const layout = layoutRef.current;
+    const style = layout ? window.getComputedStyle(layout) : null;
     // A state message shows no lanes; it keeps the width the lanes would leave, so the panel does not jump.
     setLayoutMax(
       maxWidthFor({
@@ -51,7 +52,7 @@ export function useDetailWidth(
         gap: style ? px(style.columnGap) : LANES_GAP,
       }),
     );
-  }, [bodyRef]);
+  }, [bodyRef, layoutRef]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: contentKey triggers a fresh measurement when the content changes
   useEffect(() => {

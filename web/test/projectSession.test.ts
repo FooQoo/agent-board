@@ -114,6 +114,9 @@ describe('sessionReducer: operations hold the switch', () => {
       expect(state).toEqual({
         activeProjectId: B,
         selectedId: null,
+        viewMode: 'board',
+        archiveSelectedId: null,
+        bulkArchive: null,
         dialog: null,
         operation: null,
         pendingTarget: null,
@@ -201,5 +204,34 @@ describe('sessionReducer: deleted cards', () => {
       cardId: 8,
     });
     expect(state.selectedId).toBe(8);
+  });
+});
+
+describe('sessionReducer: archive view state', () => {
+  it('clears the archive view and its selection when another project is applied', () => {
+    const state = run(
+      initSession(A),
+      { type: 'SET_VIEW_MODE', mode: 'archive' },
+      { type: 'SELECT_ARCHIVE_CARD', id: 8 },
+      { type: 'URL_REQUESTED', projectId: B },
+    );
+    expect(state).toMatchObject({
+      activeProjectId: B,
+      viewMode: 'board',
+      archiveSelectedId: null,
+      bulkArchive: null,
+    });
+  });
+
+  it('keeps the bulk archive target snapshot attached to its project', () => {
+    const targets = [makeCard({ id: 8 })];
+    const state = run(
+      initSession(A),
+      { type: 'OPEN_OPERATION', operationId: 1, kind: 'archive-done', projectId: A },
+      { type: 'OPEN_BULK_ARCHIVE', projectId: A, targets },
+    );
+    targets.push(makeCard({ id: 9 }));
+    expect(state.bulkArchive?.projectId).toBe(A);
+    expect(state.bulkArchive?.targets.map((card) => card.id)).toEqual([8]);
   });
 });

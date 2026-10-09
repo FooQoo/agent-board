@@ -2,34 +2,38 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
-  useReducer,
   useRef,
   useState,
   type CSSProperties,
 } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
+import { useTranslation } from 'react-i18next';
 import { ActionDialog } from './components/ActionDialog';
 import { Board } from './components/Board';
-import { ArchiveView, BulkArchiveDialog } from './components/ArchiveView';
+import { BulkArchiveDialog } from './components/archive/BulkArchiveDialog';
+import { ArchiveList } from './components/archive/ArchiveList';
 import type { BoardMessageKind } from './components/BoardMessage';
 import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
-import { createCard, createCardMultipart, editCard, editCardMultipart, moveCard } from './api';
+import {
+  createCard,
+  createCardMultipart,
+  editCard,
+  editCardMultipart,
+  moveCard,
+  WriteError,
+} from './api';
 import { useBoard } from './hooks/useBoard';
+import { useArchive } from './hooks/useArchive';
+import { useCardLifecycle } from './hooks/useCardLifecycle';
 import { useBoardEvents } from './hooks/useBoardEvents';
 import { useDetailWidth } from './hooks/useDetailWidth';
 import { useProjects } from './hooks/useProjects';
-import { findCard, nextSelection } from './lib/board';
-import {
-  initSession,
-  isProjectId,
-  sessionReducer,
-  type OperationControls,
-  type OperationKind,
-} from './lib/projectSession';
+import { findCard, groupCards, nextSelection } from './lib/board';
+import { isProjectId } from './lib/projectSession';
+import { useProjectSession } from './hooks/useProjectSession';
 import type { Assignee, ColumnName, DialogAction, ProjectId } from './types';
 
 export interface AppProps {
@@ -67,23 +71,18 @@ const STATUS_NOTE: Partial<Record<View, StatusBarProps['note']>> = {
 };
 
 export function App({ initial }: AppProps) {
+  const { t } = useTranslation();
   const [requested, setRequested] = useQueryState('project', parseAsString);
-  const [archiveMode, setArchiveMode] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [session, dispatch] = useReducer(sessionReducer, undefined, () =>
-    initSession(requested, initial?.select ?? null),
-  );
+  const { session, dispatch, operations } = useProjectSession(requested, initial?.select ?? null);
   const projects = useProjects();
 
   const activeId = session.activeProjectId;
   const known =
     isProjectId(activeId) && projects.projects.some((project) => project.id === activeId);
   const board = useBoard(known ? activeId : null);
-
-  // The URL is the request; the reducer decides when it is applied.
-  useEffect(() => {
-    dispatch({ type: 'URL_REQUESTED', projectId: requested });
-  }, [requested]);
+  const archive = useArchive(session.viewMode === 'archive' && known ? activeId : null);
+  const archiveLifecycle = useCardLifecycle(operations);
+  const [archiveActionFailed, setArchiveActionFailed] = useState(false);
 
   // The first visit without a project in the URL shows the first project, replacing the history entry.
   const firstProject = projects.status === 'ready' ? (projects.projects[0] ?? null) : null;
@@ -102,6 +101,8 @@ export function App({ initial }: AppProps) {
   else if (board.status === 'ready') view = 'board';
   else view = board.status === 'error' ? 'board-error' : 'board-loading';
 
+  const archiveVisible = session.viewMode === 'archive' && known && view !== 'not-found';
+
   // A deleted project shows up in the list on the next refresh; ask for it right away.
   const reloadProjects = projects.reload;
   useEffect(() => {
@@ -111,17 +112,23 @@ export function App({ initial }: AppProps) {
   const boardData = view === 'board' ? board.board : null;
   const cards = boardData?.cards ?? [];
   const selected = findCard(cards, session.selectedId);
+  const archivedSelected =
+    archive.data?.cards.find((card) => card.id === session.archiveSelectedId) ?? null;
   const activeName = projects.projects.find((project) => project.id === activeId)?.name ?? null;
-  useEffect(() => {
-    if (activeId === null) setArchiveMode(false);
-  }, [activeId]);
-
   useEffect(() => {
     if (boardData) {
       const next = nextSelection(boardData.cards, session.selectedId);
       if (next !== session.selectedId) dispatch({ type: 'SELECT_CARD', id: next });
     }
-  }, [boardData, session.selectedId]);
+  }, [boardData, session.selectedId, dispatch]);
+  useEffect(() => {
+    if (
+      archive.status === 'ready' &&
+      session.archiveSelectedId !== null &&
+      !archive.data?.cards.some((card) => card.id === session.archiveSelectedId)
+    )
+      dispatch({ type: 'SELECT_ARCHIVE_CARD', id: null });
+  }, [archive.data, archive.status, session.archiveSelectedId, dispatch]);
 
   // The title names the project whenever the header does (also while its board loads). A layout effect,
   // so the title is already set when the project name appears in the DOM.
@@ -144,24 +151,8 @@ export function App({ initial }: AppProps) {
     useCallback(() => {
       reloadProjects();
       reloadBoard();
-    }, [reloadProjects, reloadBoard]),
-  );
-
-  const nextOperationId = useRef(0);
-  const operations: OperationControls = useMemo(
-    () => ({
-      begin: (kind: OperationKind, projectId: ProjectId, dialog?: DialogAction) => {
-        const operationId = ++nextOperationId.current;
-        dispatch({ type: 'OPEN_OPERATION', operationId, kind, projectId, dialog });
-        return operationId;
-      },
-      saveStarted: (operationId) => dispatch({ type: 'SAVE_STARTED', operationId }),
-      saveFailed: (operationId) => dispatch({ type: 'SAVE_FAILED', operationId }),
-      end: (operationId) => dispatch({ type: 'OPERATION_CANCELLED', operationId }),
-      cardDeleted: (operationId, projectId, cardId) =>
-        dispatch({ type: 'CARD_DELETED', operationId, projectId, cardId }),
-    }),
-    [],
+      archive.reload();
+    }, [reloadProjects, reloadBoard, archive.reload]),
   );
 
   const openDialog = (dialog: DialogAction) => {
@@ -171,9 +162,14 @@ export function App({ initial }: AppProps) {
 
   const detailShown = view !== 'projects-loading' && view !== 'projects-error';
   const bodyRef = useRef<HTMLDivElement>(null);
+  const layoutRef = useRef<HTMLElement>(null);
+  const attachLayoutRef = useCallback((node: HTMLElement | null) => {
+    layoutRef.current = node;
+  }, []);
   const { width, startDrag, moveDrag, endDrag } = useDetailWidth(
     bodyRef,
-    `${detailShown}:${view === 'board'}`,
+    layoutRef,
+    `${detailShown}:${session.viewMode}:${view}:${archive.status}`,
   );
   const [mockInitial] = useState(initial);
   const isMockCard = selected !== null && selected.id === mockInitial?.select;
@@ -192,12 +188,20 @@ export function App({ initial }: AppProps) {
         projects={detailShown ? projects.projects : null}
         activeProjectId={known ? activeId : null}
         switchDisabled={operation !== null}
-        onSelectProject={(projectId) => void setRequested(projectId, { history: 'push' })}
-        canAdd={view === 'board'}
+        onSelectProject={(projectId) => {
+          setArchiveActionFailed(false);
+          void setRequested(projectId, { history: 'push' });
+        }}
+        canAdd={view === 'board' && session.viewMode === 'board'}
+        viewMode={session.viewMode}
+        onBack={() => {
+          setArchiveActionFailed(false);
+          dispatch({ type: 'SET_VIEW_MODE', mode: 'board' });
+        }}
         onAdd={() => openDialog({ kind: 'create' })}
         onArchive={() => {
-          setArchiveMode(true);
-          dispatch({ type: 'SELECT_CARD', id: null });
+          setArchiveActionFailed(false);
+          dispatch({ type: 'SET_VIEW_MODE', mode: 'archive' });
         }}
       />
       <div
@@ -206,8 +210,17 @@ export function App({ initial }: AppProps) {
         ref={bodyRef}
         style={{ '--detail-width': `${width}px` } as CSSProperties}
       >
-        {archiveMode && isProjectId(activeId) ? (
-          <ArchiveView projectId={activeId} onBack={() => setArchiveMode(false)} />
+        {archiveVisible ? (
+          <ArchiveList
+            data={archive.data}
+            status={archive.status}
+            fetchFailed={archive.fetchFailed}
+            actionError={archiveActionFailed}
+            selectedId={session.archiveSelectedId}
+            onSelect={(id) => dispatch({ type: 'SELECT_ARCHIVE_CARD', id })}
+            onRetry={archive.reload}
+            layoutRef={attachLayoutRef}
+          />
         ) : (
           <Board
             message={message}
@@ -215,17 +228,34 @@ export function App({ initial }: AppProps) {
             selectedId={selected?.id ?? null}
             onSelect={(id) => dispatch({ type: 'SELECT_CARD', id })}
             onRetry={retry}
+            layoutRef={attachLayoutRef}
             onMove={(card, column) => openDialog({ kind: 'move', card, target: column })}
-            onArchiveDone={() => setBulkOpen(true)}
+            onArchiveDone={() => {
+              if (!isProjectId(activeId) || session.operation !== null) return;
+              operations.begin('archive-done', activeId);
+              dispatch({
+                type: 'OPEN_BULK_ARCHIVE',
+                projectId: activeId,
+                targets: groupCards(cards).done,
+              });
+            }}
           />
         )}
-        {detailShown && !archiveMode && (
+        {detailShown && (
           <>
             <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
             <DetailPanel
               projectId={known ? activeId : null}
-              card={selected}
-              variant={view === 'board' ? 'card' : 'state'}
+              card={archiveVisible ? archivedSelected : selected}
+              variant={
+                archiveVisible
+                  ? archive.status === 'ready'
+                    ? 'card'
+                    : 'state'
+                  : view === 'board'
+                    ? 'card'
+                    : 'state'
+              }
               operations={operations}
               onEdit={() => {
                 if (selected?.isDraft) openDialog({ kind: 'edit', card: selected });
@@ -233,10 +263,37 @@ export function App({ initial }: AppProps) {
               onChanged={() => {
                 if (isProjectId(activeId)) refreshProject(activeId);
               }}
-              onClose={() => dispatch({ type: 'SELECT_CARD', id: null })}
+              archived={archiveVisible}
+              onRestore={() => {
+                if (!isProjectId(activeId) || archivedSelected === null) return;
+                setArchiveActionFailed(false);
+                void archiveLifecycle
+                  .run('restore', activeId, { cardId: archivedSelected.id })
+                  .then((result) => {
+                    if (!result.ok) {
+                      setArchiveActionFailed(true);
+                      return;
+                    }
+                    dispatch({ type: 'SELECT_ARCHIVE_CARD', id: null });
+                    archive.reload();
+                    refreshProject(activeId);
+                  });
+              }}
+              onClose={() =>
+                dispatch({
+                  type: session.viewMode === 'archive' ? 'SELECT_ARCHIVE_CARD' : 'SELECT_CARD',
+                  id: null,
+                })
+              }
               onDeleted={() => {
-                dispatch({ type: 'SELECT_CARD', id: null });
-                if (isProjectId(activeId)) refreshProject(activeId);
+                dispatch({
+                  type: session.viewMode === 'archive' ? 'SELECT_ARCHIVE_CARD' : 'SELECT_CARD',
+                  id: null,
+                });
+                if (isProjectId(activeId)) {
+                  refreshProject(activeId);
+                  if (session.viewMode === 'archive') archive.reload();
+                }
               }}
               initialConfirm={isMockCard ? mockInitial?.confirm : undefined}
               initialDeleteFailed={isMockCard ? mockInitial?.deleteFail : undefined}
@@ -245,11 +302,12 @@ export function App({ initial }: AppProps) {
         )}
       </div>
       <StatusBar
-        status={barStatus}
-        cardCount={cards.length}
-        connected={connected}
-        lastSyncedAt={board.lastSyncedAt}
-        note={STATUS_NOTE[view]}
+        status={archiveVisible ? archive.status : barStatus}
+        cardCount={archiveVisible ? (archive.data?.cards.length ?? 0) : cards.length}
+        countKind={archiveVisible ? 'archive' : 'board'}
+        connected={archiveVisible ? !streamDown && !archive.fetchFailed : connected}
+        lastSyncedAt={archiveVisible ? archive.lastSyncedAt : board.lastSyncedAt}
+        note={archiveVisible ? undefined : STATUS_NOTE[view]}
       />
       {dialog && operation && (
         <ActionDialog
@@ -305,14 +363,36 @@ export function App({ initial }: AppProps) {
           }}
         />
       )}
-      {bulkOpen && isProjectId(activeId) && (
+      {session.bulkArchive && (
         <BulkArchiveDialog
-          projectId={activeId}
-          cards={cards.filter((card) => card.cardStatus === 'done')}
-          onClose={() => setBulkOpen(false)}
-          onDone={() => {
-            setBulkOpen(false);
-            refreshProject(activeId);
+          projectName={
+            projects.projects.find((project) => project.id === session.bulkArchive?.projectId)
+              ?.name ?? t('project.none')
+          }
+          targets={session.bulkArchive.targets}
+          saving={session.operation?.kind === 'archive-done' && session.operation.saving}
+          onCancel={() => {
+            if (session.operation?.kind === 'archive-done') operations.end(session.operation.id);
+            dispatch({ type: 'CLOSE_BULK_ARCHIVE' });
+          }}
+          onConfirm={async () => {
+            const bulkArchive = session.bulkArchive;
+            if (!bulkArchive) return;
+            const result = await archiveLifecycle.run(
+              'archive-done',
+              bulkArchive.projectId,
+              { cardIds: bulkArchive.targets.map((card) => card.id) },
+              { keepOperationOnError: true },
+            );
+            if (!result.ok) {
+              throw new Error(
+                result.error instanceof WriteError && result.error.status === 409
+                  ? t('archive.bulkConflict')
+                  : t('archive.error'),
+              );
+            }
+            dispatch({ type: 'CLOSE_BULK_ARCHIVE' });
+            refreshProject(bulkArchive.projectId);
           }}
         />
       )}

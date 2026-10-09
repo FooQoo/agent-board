@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../src/i18n';
@@ -70,7 +70,9 @@ describe('language changes in the app', () => {
     // The dialog makes the board inert while it is open; closing it must leave everything as it was.
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByRole('button', { name: 'アーカイブ' })).toBeTruthy();
+    expect(
+      within(screen.getByRole('complementary')).getByRole('button', { name: 'アーカイブ' }),
+    ).toBeTruthy();
     expect(
       screen
         .getByRole('button', { name: /Prepare the Windows build/ })

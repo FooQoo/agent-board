@@ -153,7 +153,9 @@ describe('App', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Prepare the Windows build'));
     await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await userEvent.click(
+      within(screen.getByRole('complementary')).getByRole('button', { name: 'Archive' }),
+    );
 
     await waitFor(() => expect(screen.getByText('Select a card to see its details.')).toBeTruthy());
     await waitFor(() =>

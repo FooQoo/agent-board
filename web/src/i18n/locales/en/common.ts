@@ -67,11 +67,21 @@ export const commonEn = {
   archive: {
     title: 'Archive',
     heading: 'Archived cards',
+    count_one: '{{count}} archived card',
+    count_other: '{{count}} archived cards',
+    description: 'Archived cards are kept here. Restoring returns them to their original lane.',
+    empty: 'No archived cards',
+    emptyHint: 'Cards you archive will appear here.',
     back: 'Back to board',
-    empty: 'No archived cards.',
     loadError: 'Could not load the archive.',
+    refreshError: 'Could not refresh the archive.',
     bulkTitle: 'Archive completed cards',
-    bulkDescription: '{{count}} cards will be archived.',
+    bulkDescription: 'Archive {{count}} completed cards in {{projectName}}.',
+    bulkTargets: '{{count}} cards to archive',
+    bulkRetentionNote:
+      'Descriptions, images, and history are kept. You can restore cards from the archive.',
+    bulkConflict:
+      'Cards changed while this confirmation was open, so none were archived. Cancel and reopen to refresh the target list.',
     bulkSubmit: 'Archive {{count}} cards',
     cardTitle: 'Title',
     assignee: 'Assignee',

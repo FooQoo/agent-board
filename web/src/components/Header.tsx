@@ -17,6 +17,8 @@ export interface HeaderProps {
   canAdd?: boolean;
   onAdd?: () => void;
   onArchive?: () => void;
+  viewMode?: 'board' | 'archive';
+  onBack?: () => void;
 }
 
 export function Header({
@@ -27,6 +29,8 @@ export function Header({
   canAdd = false,
   onAdd = () => {},
   onArchive = () => {},
+  viewMode = 'board',
+  onBack = () => {},
 }: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -56,7 +60,17 @@ export function Header({
         </>
       )}
       <span className="header__spacer" aria-hidden="true" />
-      {canAdd && (
+      {viewMode === 'archive' ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="header__back"
+          disabled={switchDisabled}
+          onClick={onBack}
+        >
+          {t('archive.back')}
+        </Button>
+      ) : canAdd ? (
         <Button
           type="button"
           variant="outline"
@@ -67,8 +81,8 @@ export function Header({
           <ArchiveIcon aria-hidden="true" />
           {t('archive.title')}
         </Button>
-      )}
-      {canAdd && (
+      ) : null}
+      {viewMode === 'board' && canAdd && (
         <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
           <PlusIcon aria-hidden="true" />
           {t('dialog.addCard')}

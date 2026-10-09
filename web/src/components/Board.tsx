@@ -15,6 +15,7 @@ export interface BoardProps {
   onRetry: () => void;
   onMove: (card: Card, column: ColumnName) => void;
   onArchiveDone?: () => void;
+  layoutRef?: (node: HTMLDivElement | null) => void;
 }
 
 export function Board({
@@ -25,6 +26,7 @@ export function Board({
   onRetry,
   onMove,
   onArchiveDone,
+  layoutRef,
 }: BoardProps) {
   if (message !== null) {
     return (
@@ -51,7 +53,7 @@ export function Board({
       }}
     >
       <main className="board">
-        <div className="board__lanes">
+        <div className="board__lanes" ref={layoutRef}>
           {COLUMNS.map((column) => (
             <Lane
               key={column}

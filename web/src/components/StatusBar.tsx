@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 export interface StatusBarProps {
   status: 'loading' | 'ready' | 'error';
   cardCount: number;
+  countKind?: 'board' | 'archive';
   connected: boolean;
   lastSyncedAt: Date | null;
   /** A project state that replaces the count and the sync state with one line of text. */
@@ -39,7 +40,11 @@ export function StatusBar(props: StatusBarProps) {
   return (
     <footer className="status-bar">
       <span className="status-bar__count">
-        {props.status === 'ready' ? cardCountLabel(props.cardCount, t) : '–'}
+        {props.status === 'ready'
+          ? props.countKind === 'archive'
+            ? t('archive.count', { count: props.cardCount })
+            : cardCountLabel(props.cardCount, t)
+          : '–'}
       </span>
       <span className="status-bar__sync" role="status">
         <span className="status-bar__dot" data-tone={sync.tone} aria-hidden="true" />

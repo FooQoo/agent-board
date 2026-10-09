@@ -73,7 +73,7 @@ describe('app.css', () => {
   });
 
   it('keeps narrow archive layouts inside the app surface', () => {
-    expect(css).toMatch(/@media[^{]*max-width/);
+    expect(read('src/styles/archive.css')).toMatch(/@media[^{]*max-width/);
     expect(read('src/styles/resize.css')).not.toMatch(/@media[^{]*(min|max)-width/);
   });
 
