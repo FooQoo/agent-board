@@ -11,6 +11,12 @@ build:
     pnpm --dir web build
     cargo build
 
+# Install the current checkout's CLI and embedded web UI globally.
+install:
+    pnpm --dir web install --frozen-lockfile
+    pnpm --dir web build
+    cargo install --path . --locked --force
+
 # Watch the saved board server and serve the web UI with HMR.
 serve port="7420" backend_port="7421": build
     #!/usr/bin/env bash
