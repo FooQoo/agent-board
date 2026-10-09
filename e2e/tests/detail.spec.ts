@@ -13,7 +13,7 @@ const card = (page: Page, id: number) => page.getByRole('button', { name: new Re
 test('with no card selected the panel shows a hint', async ({ page }) => {
   await expect(details(page)).toContainText('Select a card to see its details.');
   await expect(details(page).getByRole('button', { name: 'Close details' })).toHaveCount(0);
-  await expect(details(page).getByRole('button', { name: 'Delete card' })).toHaveCount(0);
+  await expect(details(page).getByRole('button', { name: 'Archive card' })).toHaveCount(0);
 });
 
 test('selecting a card shows its column, state, and description with line breaks', async ({ page }) => {
@@ -68,7 +68,7 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(card(page, 11).locator('.assignee-label svg')).toHaveCount(1);
   await expect(panel.locator('.detail__meta .assignee-label')).toHaveCSS('border-top-style', 'none');
 
-  // A card outside Doing has a column and no run state. Delete is the right end of the toolbar beside the tabs.
+  // A card outside Doing has a column and no run state. Archive is the right end of the toolbar beside the tabs.
   await card(page, 8).click();
   await expect(panel).toContainText('Done');
   const tabsBox = (await panel.getByRole('tablist').boundingBox())!;
@@ -77,7 +77,7 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(toolbarButtons).toHaveText(['Make draft', '']);
   await expect(toolbarButtons.first()).toHaveAttribute('title', 'Make draft');
   await expect(toolbarButtons.first()).toHaveAccessibleName('Make draft');
-  await expect(toolbarButtons.last()).toHaveAccessibleName('Delete card');
+  await expect(toolbarButtons.last()).toHaveAccessibleName('Archive card');
   // At the default 360px detail width, the longer English label yields to its icon
   // so the tabs and the actions remain on one line.
   const makeDraftBounds = (await toolbarButtons.first().boundingBox())!;
@@ -85,10 +85,10 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   expect(makeDraftBounds.width).toBeGreaterThanOrEqual(29);
   expect(makeDraftBounds.x + makeDraftBounds.width).toBeLessThanOrEqual(toolbarBounds.x + toolbarBounds.width);
   expect(await toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  const deleteBox = (await toolbarButtons.last().boundingBox())!;
+  const archiveBox = (await toolbarButtons.last().boundingBox())!;
   const makeDraftBox = (await toolbarButtons.first().boundingBox())!;
-  expect(deleteBox.x).toBeGreaterThan(makeDraftBox.x + makeDraftBox.width - 1);
-  expect(Math.abs(deleteBox.y - tabsBox.y)).toBeLessThan(tabsBox.height);
+  expect(archiveBox.x).toBeGreaterThan(makeDraftBox.x + makeDraftBox.width - 1);
+  expect(Math.abs(archiveBox.y - tabsBox.y)).toBeLessThan(tabsBox.height);
   await expect(panel.getByText(/^(Idle|Running|Pending)$/)).toHaveCount(0);
 });
 
@@ -153,11 +153,11 @@ test('opening, switching, and closing the panel never moves the board', async ({
 });
 
 test('the card grips never take keyboard focus', async ({ page }) => {
-  // With nothing selected, Tab visits the project switcher, Add card, the settings button, and eight cards; grips stay out of the order.
+  // With nothing selected, Tab visits the project switcher, Add card, Settings, bulk archive, and eight cards; grips stay out of the order.
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 11; step++) {
+  for (let step = 0; step < 13; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
@@ -169,6 +169,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
   }
   expect(visited).toEqual([
     'BUTTON agent-board',
+    'BUTTON Archive',
     'BUTTON Add card',
     'BUTTON Settings',
     'BUTTON #14',
@@ -177,6 +178,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
     'BUTTON #11',
     'BUTTON #12',
     'BUTTON #13',
+    'BUTTON Archive completed cards',
     'BUTTON #9',
     'BUTTON #8',
   ]);
@@ -190,7 +192,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(details(page).getByRole('button', { name: 'Delete card' })).toBeFocused();
+  await expect(details(page).getByRole('button', { name: 'Archive card' })).toBeFocused();
 
   // Interactive controls can be focused, while icon grips are never independent tab stops.
   const focusable = await page.evaluate(() =>
@@ -198,7 +200,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Project switcher, Add card, Settings, 8 cards, then Close details, the selected tab, Make draft, and Delete card.
-  expect(focusable).toHaveLength(1 + 1 + 1 + 8 + 4);
+  // Project switcher, Add card, Settings, bulk archive, 8 cards, then Close details, the selected tab, Make draft, and Archive card.
+  expect(focusable).toHaveLength(1 + 1 + 1 + 1 + 1 + 8 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

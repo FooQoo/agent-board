@@ -232,9 +232,11 @@ describe('toolbar', () => {
     selectLocale('ja');
     renderPanel(fixtureCard(8), { archived: true, onRemove: vi.fn() });
     await userEvent.click(screen.getByRole('button', { name: 'カードを削除' }));
-    expect(screen.getByText(
-      '#8「Initialize the board」を削除しますか？ 本文・画像・履歴も削除されます。この操作は元に戻せません。',
-    )).toBeTruthy();
+    expect(
+      screen.getByText(
+        '#8「Initialize the board」を削除しますか？ 本文・画像・履歴も削除されます。この操作は元に戻せません。',
+      ),
+    ).toBeTruthy();
     selectLocale('en');
   });
 

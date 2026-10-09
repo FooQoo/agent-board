@@ -215,7 +215,7 @@ test.describe('two projects with the same card numbers', () => {
     await expect(card(page, fresh)).toContainText('Alpha: made on the page');
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
 
-    // Move #1 with a reason, then delete #3.
+    // Move #1 with a reason, then archive #3.
     const move = await dragCardTo(page, 1, 'Doing');
     await move.getByRole('textbox', { name: 'Reason (required)' }).fill('Starting the notes.');
     await move.getByRole('button', { name: 'Move', exact: true }).click();
@@ -223,8 +223,8 @@ test.describe('two projects with the same card numbers', () => {
     await expect(lane(page, 'Doing').getByRole('button', { name: /^#1 User / })).toBeVisible();
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
     await card(page, 3).click();
-    await details(page).getByRole('button', { name: 'Delete card' }).click();
-    await details(page).getByRole('button', { name: 'Delete', exact: true }).click();
+    await details(page).getByRole('button', { name: 'Archive card' }).click();
+    await details(page).getByRole('button', { name: 'Archive', exact: true }).click();
     await expect(card(page, 3)).toHaveCount(0);
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
     expect(listCards('Alpha', home).map(({ id }) => id).sort()).toEqual([1, 2, fresh]);
@@ -366,7 +366,7 @@ test.describe('two projects with the same card numbers', () => {
     await expect.poll(() => projectParam(page)).toBe(beta);
     // Tab leaves the menu closed and moves on.
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: 'Add card' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Archive', exact: true })).toBeFocused();
   });
 
   for (const kind of ['create', 'move', 'answer', 'delete'] as const) {
@@ -395,11 +395,11 @@ test.describe('two projects with the same card numbers', () => {
         };
       } else {
         await card(page, 3).click();
-        await details(page).getByRole('button', { name: 'Delete card' }).click();
-        const confirm = details(page).getByRole('group', { name: /^Delete #3 / });
+        await details(page).getByRole('button', { name: 'Archive card' }).click();
+        const confirm = details(page).getByRole('group', { name: /^Archive #3 / });
         await expect(confirm).toBeVisible();
         close = async () => {
-          await confirm.getByRole('button', { name: 'Cancel' }).click();
+        await confirm.getByRole('button', { name: 'Cancel' }).click();
         };
       }
       await expect(switcherBehindDialog(page)).toBeDisabled();

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { agboardOk, mainProject, nextCardId, resetBoard } from '../helpers/agboard';
+import { agboardOk, mainOrigin, mainProject, nextCardId, resetBoard } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { longMarkdown } from '../helpers/markdown';
 import { waitForSync } from '../helpers/ui';
@@ -219,7 +219,7 @@ test('the page loads nothing from outside, and answers with the security headers
   await expect(body(page).getByRole('img', { name: 'sample picture' })).toBeVisible();
   const hosts = new Set(requested.map((url) => new URL(url).origin));
   // The page's own server and the sample image server only.
-  expect([...hosts].sort()).toEqual(['http://127.0.0.1:7631', images.origin].sort());
+  expect([...hosts].sort()).toEqual([mainOrigin, images.origin].sort());
 
   const response = await request.get('/');
   const policy = response.headers()['content-security-policy'];
