@@ -156,6 +156,18 @@ for (const mode of ["light", "dark"] as const) {
 				await expect(dialog).toBeVisible();
 				await expect(dialog).toHaveAttribute("data-slot", "dialog-content");
 				await expect(dialog.getByRole("row")).toHaveCount(25);
+				for (const row of await dialog.getByRole("row").all()) {
+					const idCell = row.locator("th, td").first();
+					const idLayout = await idCell.evaluate((element) => ({
+						whiteSpace: getComputedStyle(element).whiteSpace,
+						clientWidth: element.clientWidth,
+						scrollWidth: element.scrollWidth,
+					}));
+					expect(idLayout.whiteSpace).toBe("nowrap");
+					expect(idLayout.scrollWidth).toBeLessThanOrEqual(
+						idLayout.clientWidth,
+					);
+				}
 				await expect(dialog.getByText("agent-board")).toBeVisible();
 				await expect(
 					dialog.getByText(
@@ -282,6 +294,13 @@ for (const mode of ["light", "dark"] as const) {
 			expect(bounds.y).toBeGreaterThanOrEqual(15);
 			expect(bounds.y + bounds.height).toBeLessThanOrEqual(785);
 			const tableWrap = dialog.locator(".bulk-archive__table-wrap");
+			const firstId = dialog.getByRole("row").nth(1).locator("td").first();
+			await expect(firstId).toHaveCSS("white-space", "nowrap");
+			expect(
+				await firstId.evaluate(
+					(element) => element.scrollWidth <= element.clientWidth,
+				),
+			).toBe(true);
 			const geometry = await tableWrap.evaluate((element) => ({
 				clientHeight: element.clientHeight,
 				scrollHeight: element.scrollHeight,

@@ -260,7 +260,8 @@
 
 .bulk-archive__table th:first-child,
 .bulk-archive__table td:first-child {
-  width: 44px;
+  width: 54px;
+  white-space: nowrap;
 }
 
 .bulk-archive__table th:last-child,
