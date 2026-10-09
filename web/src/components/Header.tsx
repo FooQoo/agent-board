@@ -60,6 +60,12 @@ export function Header({
         </>
       )}
       <span className="header__spacer" aria-hidden="true" />
+      {viewMode === 'board' && canAdd && (
+        <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
+          <PlusIcon aria-hidden="true" />
+          {t('dialog.addCard')}
+        </Button>
+      )}
       {viewMode === 'archive' ? (
         <Button
           type="button"
@@ -82,12 +88,6 @@ export function Header({
           {t('archive.title')}
         </Button>
       ) : null}
-      {viewMode === 'board' && canAdd && (
-        <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
-          <PlusIcon aria-hidden="true" />
-          {t('dialog.addCard')}
-        </Button>
-      )}
       <Button
         ref={settingsButtonRef}
         type="button"
