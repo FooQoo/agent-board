@@ -8,6 +8,7 @@ pub mod export;
 pub mod import;
 pub mod init;
 pub mod ls;
+pub mod migrate;
 pub mod mv;
 pub mod project;
 pub mod rm;

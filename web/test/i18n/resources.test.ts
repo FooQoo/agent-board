@@ -48,7 +48,7 @@ describe('translation resources', () => {
     expect(english('card.updated', { date: '10/02 10:08' })).toBe('Updated 10/02 10:08');
     expect(japanese('card.updated', { date: '10/02 10:08' })).toBe('更新 10/02 10:08');
     expect(japanese('delete.confirm', { id: 4, title: '日本語のカード' })).toBe(
-      '#4「日本語のカード」を削除しますか？ この操作は元に戻せません。',
+      '#4「日本語のカード」を削除しますか？ 本文・画像・履歴も削除されます。この操作は元に戻せません。',
     );
   });
 

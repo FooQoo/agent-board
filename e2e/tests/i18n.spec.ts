@@ -93,11 +93,11 @@ test('starts in English in a Japanese browser, switches and persists without tra
   expect(listCards(mainProject).find(({ id }) => id === 12)).toMatchObject({ cardStatus: 'doing', agentStatus: 'pending' });
 });
 
-test('keyboard selection keeps an open delete confirmation and the selected card', async ({ page }, testInfo) => {
+test('keyboard selection keeps an open archive confirmation and the selected card', async ({ page }, testInfo) => {
   await card(page, 12).click();
   const panel = page.getByRole('complementary', { name: 'Card details' });
-  await panel.getByRole('button', { name: 'Delete card' }).click();
-  await expect(panel.getByText('Delete #12 "Restore a board from JSON"? This cannot be undone.')).toBeVisible();
+  await panel.getByRole('button', { name: 'Archive card' }).click();
+  await expect(panel.getByText('Archive #12 "Restore a board from JSON"? You can restore it from the archive.')).toBeVisible();
 
   const trigger = page.getByRole('button', { name: 'Settings' });
   await trigger.focus();
@@ -120,10 +120,10 @@ test('keyboard selection keeps an open delete confirmation and the selected card
   await expect(card(page, 12)).toHaveAttribute('aria-current', 'true');
   const japanesePanel = page.getByRole('complementary', { name: 'カードの詳細' });
   await expect(
-    japanesePanel.getByText('#12「Restore a board from JSON」を削除しますか？ この操作は元に戻せません。'),
+    japanesePanel.getByText('#12「Restore a board from JSON」をアーカイブしますか？ アーカイブ一覧から復元できます。'),
   ).toBeVisible();
-  await expect(japanesePanel.getByRole('button', { name: '削除', exact: true })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('03-japanese-delete-confirmation.png') });
+  await expect(japanesePanel.getByRole('button', { name: 'アーカイブ', exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('03-japanese-archive-confirmation.png') });
   await japanesePanel.getByRole('button', { name: 'キャンセル' }).click();
   expect(listCards(mainProject).map(({ id }) => id)).toContain(12);
 });

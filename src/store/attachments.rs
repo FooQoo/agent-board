@@ -224,6 +224,7 @@ impl ProjectStore {
         );
         self.write(|conn| {
             require_project(conn, project)?; let card = load_card(conn, project, card_id)?;
+            if card.archived_at.is_some() { return Err(SkanError::CardArchived { id: card_id }); }
             if finalize.is_none() && card.is_draft { return Err(SkanError::CardIsDraft { id: card_id }); }
             if let Some(existing) = conn.query_row("SELECT digest FROM attachment_requests WHERE project_id = ?1 AND request_id = ?2", params![project.as_str(), request_id], |r| r.get::<_, Vec<u8>>(0)).optional()? { if existing == digest { return load_card(conn, project, card_id); } return Err(SkanError::AttachmentRequestConflict); }
             match finalize {

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../src/i18n';
@@ -18,7 +18,7 @@ describe('language changes in the app', () => {
       projects: PROJECTS,
       boards: { [PROJECT_A.id]: structuredClone(fixtureBoard) },
       write: (url, init) => {
-        if (url === `/api/projects/${PROJECT_A.id}/cards/14` && init.method === 'DELETE') {
+        if (url === `/api/projects/${PROJECT_A.id}/cards/14/archive` && init.method === 'POST') {
           const board = backend.boards[PROJECT_A.id] as Board;
           backend.boards[PROJECT_A.id] = {
             ...board,
@@ -42,13 +42,15 @@ describe('language changes in the app', () => {
     window.localStorage.clear();
   });
 
-  it('keeps the selected card and open delete confirmation when switching languages', async () => {
+  it('keeps the selected card and open archive confirmation when switching languages', async () => {
     renderApp(`?project=${PROJECT_A.id}`);
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: /Prepare the Windows build/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
     expect(
-      screen.getByText('Delete #14 "Prepare the Windows build"? This cannot be undone.'),
+      screen.getByText(
+        'Archive #14 "Prepare the Windows build"? You can restore it from the archive.',
+      ),
     ).toBeTruthy();
     expect(
       screen
@@ -62,13 +64,15 @@ describe('language changes in the app', () => {
 
     expect(
       await screen.findByText(
-        '#14「Prepare the Windows build」を削除しますか？ この操作は元に戻せません。',
+        '#14「Prepare the Windows build」をアーカイブしますか？ アーカイブ一覧から復元できます。',
       ),
     ).toBeTruthy();
     // The dialog makes the board inert while it is open; closing it must leave everything as it was.
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByRole('button', { name: '削除' })).toBeTruthy();
+    expect(
+      within(screen.getByRole('complementary')).getByRole('button', { name: 'アーカイブ' }),
+    ).toBeTruthy();
     expect(
       screen
         .getByRole('button', { name: /Prepare the Windows build/ })

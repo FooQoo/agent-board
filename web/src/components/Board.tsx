@@ -14,9 +14,20 @@ export interface BoardProps {
   onSelect: (id: number) => void;
   onRetry: () => void;
   onMove: (card: Card, column: ColumnName) => void;
+  onArchiveDone?: () => void;
+  layoutRef?: (node: HTMLDivElement | null) => void;
 }
 
-export function Board({ message, cards, selectedId, onSelect, onRetry, onMove }: BoardProps) {
+export function Board({
+  message,
+  cards,
+  selectedId,
+  onSelect,
+  onRetry,
+  onMove,
+  onArchiveDone,
+  layoutRef,
+}: BoardProps) {
   if (message !== null) {
     return (
       <main className="board board--centered">
@@ -42,7 +53,7 @@ export function Board({ message, cards, selectedId, onSelect, onRetry, onMove }:
       }}
     >
       <main className="board">
-        <div className="board__lanes">
+        <div className="board__lanes" ref={layoutRef}>
           {COLUMNS.map((column) => (
             <Lane
               key={column}
@@ -50,6 +61,7 @@ export function Board({ message, cards, selectedId, onSelect, onRetry, onMove }:
               cards={groups[column]}
               selectedId={selectedId}
               onSelect={onSelect}
+              onArchive={column === 'done' ? onArchiveDone : undefined}
             />
           ))}
         </div>

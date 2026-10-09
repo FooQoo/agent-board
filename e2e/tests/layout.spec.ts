@@ -251,11 +251,11 @@ test('1280px then 1024px: the width follows the limit and returns', async ({ pag
   await expect.poll(() => panelWidth(page)).toBe(500);
 });
 
-test('dragging keeps the selection and the delete confirmation and selects no text', async ({ page }) => {
+test('dragging keeps the selection and the archive confirmation and selects no text', async ({ page }) => {
   await open(page, 1280);
   await card(page, 8).click();
-  await panel(page).getByRole('button', { name: 'Delete card' }).click();
-  const confirm = panel(page).getByRole('group', { name: /^Delete #8/ });
+  await panel(page).getByRole('button', { name: 'Archive card' }).click();
+  const confirm = panel(page).getByRole('group', { name: /^Archive #8/ });
   await expect(confirm).toBeVisible();
 
   const h = await box(handle(page));

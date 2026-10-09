@@ -1,4 +1,4 @@
-//! Schema version 5: one database holding every project.
+//! Schema version 2: one database holding every project.
 //!
 //! Only a new, empty database is given this schema. A database with any other
 //! version, or with tables but no version, is rejected and left untouched;
@@ -11,9 +11,9 @@ use rusqlite::Connection;
 use crate::error::SkanError;
 
 /// The only schema version this build reads or writes.
-pub(super) const SCHEMA_VERSION: i64 = 5;
+pub(super) const SCHEMA_VERSION: i64 = 2;
 
-const SCHEMA: &str = "
+pub(super) const SCHEMA: &str = "
 CREATE TABLE projects (
   id               TEXT    PRIMARY KEY
                    CHECK (length(id) = 32 AND id NOT GLOB '*[^0-9a-f]*'),
@@ -23,6 +23,13 @@ CREATE TABLE projects (
   next_history_id  INTEGER NOT NULL DEFAULT 1 CHECK (next_history_id >= 1),
   revision         INTEGER NOT NULL DEFAULT 0 CHECK (revision >= 0)
 );
+
+CREATE TABLE storage_metadata (
+  id       INTEGER PRIMARY KEY CHECK (id = 1),
+  format   TEXT NOT NULL CHECK (format = 'agboard-projects'),
+  lineage  INTEGER NOT NULL CHECK (lineage = 1)
+);
+INSERT INTO storage_metadata (id, format, lineage) VALUES (1, 'agboard-projects', 1);
 
 CREATE TABLE catalog_metadata (
   id        INTEGER PRIMARY KEY CHECK (id = 1),
@@ -45,8 +52,8 @@ CREATE TABLE cards (
   updated_at            TEXT    NOT NULL,
   run_state_changed_at  TEXT    NOT NULL,
   is_draft              INTEGER NOT NULL DEFAULT 0 CHECK (is_draft IN (0, 1)),
+  archived_at           TEXT,
   PRIMARY KEY (project_id, id),
-  UNIQUE (project_id, column_name, position),
   CHECK (run_state = 'idle' OR column_name = 'doing'),
   CHECK (assignee = 'ai' OR run_state = 'idle'),
                    CHECK (is_draft = 0 OR run_state IN ('idle', 'pending')),
@@ -58,7 +65,7 @@ CREATE TABLE history (
   project_id          TEXT    NOT NULL,
   id                  INTEGER NOT NULL CHECK (id >= 1),
   card_id             INTEGER NOT NULL CHECK (card_id >= 1),
-  kind                TEXT    NOT NULL CHECK (kind IN ('created', 'lane', 'agent')),
+  kind                TEXT    NOT NULL CHECK (kind IN ('created', 'lane', 'agent', 'archive', 'restore')),
   actor               TEXT    NOT NULL CHECK (actor IN ('ai', 'human')),
   reason              TEXT,
   from_column         TEXT CHECK (from_column IN ('todo', 'doing', 'done')),
@@ -100,13 +107,15 @@ CREATE TABLE attachment_requests (
   PRIMARY KEY (project_id, request_id),
   FOREIGN KEY (project_id, card_id) REFERENCES cards (project_id, id) ON DELETE CASCADE
 );
+CREATE UNIQUE INDEX cards_active_position ON cards (project_id, column_name, position)
+  WHERE archived_at IS NULL;
 ";
 
 pub(super) fn user_version(conn: &Connection) -> Result<i64, SkanError> {
     Ok(conn.query_row("PRAGMA user_version", [], |row| row.get(0))?)
 }
 
-/// Accept version 0 (a candidate new database) and version 5. Everything else
+/// Accept version 0 (a candidate new database) and version 2. Everything else
 /// is a `database_error`.
 pub(super) fn check_version(version: i64) -> Result<(), SkanError> {
     match version {
@@ -141,6 +150,23 @@ pub(super) fn has_expected_schema(conn: &Connection) -> Result<bool, SkanError> 
     let mut stmt = conn.prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
     )?;
+    let names = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(names
+        == [
+            "attachment_requests",
+            "attachments",
+            "cards",
+            "catalog_metadata",
+            "history",
+            "projects",
+            "storage_metadata",
+        ])
+}
+
+pub(super) fn has_expected_schema_legacy(conn: &Connection) -> Result<bool, SkanError> {
+    let mut stmt = conn.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")?;
     let names = stmt
         .query_map([], |row| row.get::<_, String>(0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;

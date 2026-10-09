@@ -18,11 +18,11 @@ fn user_version(path: &std::path::Path) -> i64 {
 }
 
 #[test]
-fn a_new_database_gets_schema_version_5() {
+fn a_new_database_gets_schema_version_2() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board.db");
     ProjectStore::open(&path).unwrap();
-    assert_eq!(user_version(&path), 5);
+    assert_eq!(user_version(&path), 2);
 
     let conn = Connection::open(&path).unwrap();
     let mut tables: Vec<String> = conn
@@ -41,7 +41,8 @@ fn a_new_database_gets_schema_version_5() {
             "cards",
             "catalog_metadata",
             "history",
-            "projects"
+            "projects",
+            "storage_metadata"
         ]
     );
     let journal: String = conn
@@ -158,7 +159,7 @@ fn a_newer_schema_version_is_refused_and_left_untouched() {
 
 #[test]
 fn an_older_schema_version_is_refused_without_conversion_and_left_untouched() {
-    for version in [1, 2, 3] {
+    for version in [1, 3, 4] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("board.db");
         make_database_with_version(&path, version);
@@ -167,7 +168,9 @@ fn an_older_schema_version_is_refused_without_conversion_and_left_untouched() {
         let err = ProjectStore::open(&path).err().expect("open must fail");
         assert_eq!(err.code(), "database_error");
         assert!(
-            err.reason().contains("does not convert other versions"),
+            err.reason().contains("does not convert other versions")
+                || err.reason().contains("incomplete")
+                || err.reason().contains("newer version"),
             "{}",
             err.reason()
         );

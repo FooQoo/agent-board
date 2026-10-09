@@ -64,11 +64,11 @@ test('a card becomes a draft, is edited with the keyboard, saved, and finalized 
   await expect(details(page).getByRole('button', { name: 'Edit card' })).toHaveCount(0);
   await makeDraft(page);
 
-  // The draft is marked on the tile and in the details; Edit replaces Make draft, with Delete at the right end.
+  // The draft is marked on the tile and in the details; Edit replaces Make draft, with Archive at the right end.
   await expect(card(page, id).getByText('Draft', { exact: true })).toHaveCount(1);
   const banner = details(page).getByRole('region', { name: 'Draft' });
   await expect(banner).toContainText('Agents can only read this card. Once you finalize it, agents can work on it.');
-  expect(await toolbarLabels(page)).toEqual(['Edit card', 'Delete card']);
+  expect(await toolbarLabels(page)).toEqual(['Edit card', 'Archive card']);
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toHaveCount(0);
 
   const { dialog, editor, content } = await openEditor(page);
@@ -292,7 +292,7 @@ test('idle and Pending cards can be made drafts, while running cards cannot', as
     await expect(details(page).getByRole('heading', { level: 2 })).toBeVisible();
     await expect(details(page).getByRole('button', { name: 'Make draft' }), name).toHaveCount(0);
     await expect(details(page).getByRole('button', { name: 'Edit card' }), name).toHaveCount(0);
-    expect(await toolbarLabels(page)).toEqual(['Delete card']);
+    expect(await toolbarLabels(page)).toEqual(['Archive card']);
   }
   // An idle Doing card and a Done card can.
   for (const idle of [12, 13, 8]) {
@@ -301,24 +301,24 @@ test('idle and Pending cards can be made drafts, while running cards cannot', as
   }
 });
 
-test('the toolbar puts delete at the right end; its confirmation sits above the tabs and is cancelled or confirmed', async ({
+test('the toolbar puts archive at the right end; its confirmation sits above the tabs and is cancelled or confirmed', async ({
   page,
 }) => {
   await makeDraft(page);
   const toolbar = details(page).getByRole('toolbar', { name: 'Card actions' });
   const edit = toolbar.getByRole('button', { name: 'Edit card' });
-  const del = toolbar.getByRole('button', { name: 'Delete card' });
+  const archive = toolbar.getByRole('button', { name: 'Archive card' });
   const editBox = (await edit.boundingBox())!;
-  const delBox = (await del.boundingBox())!;
-  expect(delBox.x).toBeGreaterThan(editBox.x + editBox.width - 1);
+  const archiveBox = (await archive.boundingBox())!;
+  expect(archiveBox.x).toBeGreaterThan(editBox.x + editBox.width - 1);
   // The right end of the toolbar is the right end of the tab row.
   const tabs = (await details(page).getByRole('tablist').boundingBox())!;
   const panel = (await details(page).boundingBox())!;
-  expect(delBox.x + delBox.width).toBeLessThanOrEqual(panel.x + panel.width);
-  expect(Math.abs(delBox.y + delBox.height / 2 - (tabs.y + tabs.height / 2))).toBeLessThan(tabs.height);
+  expect(archiveBox.x + archiveBox.width).toBeLessThanOrEqual(panel.x + panel.width);
+  expect(Math.abs(archiveBox.y + archiveBox.height / 2 - (tabs.y + tabs.height / 2))).toBeLessThan(tabs.height);
 
-  await del.click();
-  const ask = `Delete #${id} "Draft me"? This cannot be undone.`;
+  await archive.click();
+  const ask = `Archive #${id} "Draft me"? You can restore it from the archive.`;
   const confirm = details(page).getByRole('group', { name: ask });
   await expect(confirm).toBeVisible();
   // The confirmation is above the tab row, which moved down to make room.
@@ -330,18 +330,18 @@ test('the toolbar puts delete at the right end; its confirmation sits above the 
   await expect(confirm).toHaveCount(0);
   expect(listCards(mainProject).map((item) => item.id)).toContain(id);
 
-  // A failed delete says so and keeps the card; the second try works. A draft can be deleted by a person.
+  // A failed archive keeps the draft and confirmation; retry succeeds.
   let fail = true;
-  await page.route(`**/api/projects/*/cards/${id}`, async (route) => {
-    if (route.request().method() !== 'DELETE' || !fail) return route.fallback();
+  await page.route(`**/api/projects/*/cards/${id}/archive`, async (route) => {
+    if (route.request().method() !== 'POST' || !fail) return route.fallback();
     return route.fulfill({ status: 500, body: 'no' });
   });
-  await del.click();
-  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(confirm.getByRole('alert').or(details(page).getByRole('alert'))).toHaveText('Could not delete the card. Try again.');
+  await archive.click();
+  await confirm.getByRole('button', { name: 'Archive', exact: true }).click();
+  await expect(confirm.getByRole('alert').or(details(page).getByRole('alert'))).toHaveText('Could not archive the card. Try again.');
   expect(listCards(mainProject).map((item) => item.id)).toContain(id);
   fail = false;
-  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+  await confirm.getByRole('button', { name: 'Archive', exact: true }).click();
   await expect(card(page, id)).toHaveCount(0);
   await expect(details(page)).toContainText('Select a card to see its details.');
   expect(listCards(mainProject).map((item) => item.id)).not.toContain(id);

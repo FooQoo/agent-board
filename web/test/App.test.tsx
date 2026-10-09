@@ -29,13 +29,14 @@ beforeEach(() => {
     projects: PROJECTS,
     boards: { [PROJECT_A.id]: structuredClone(fixtureBoard) },
     write: (url, init) => {
-      const match = /^\/api\/projects\/([0-9a-f]{32})\/cards\/(\d+)$/.exec(url);
-      if (match?.[1] === PROJECT_A.id && init.method === 'DELETE') {
+      const match = /^\/api\/projects\/([0-9a-f]{32})\/cards\/(\d+)\/archive$/.exec(url);
+      if (match?.[1] === PROJECT_A.id && init.method === 'POST') {
+        const card = current().cards.find((c) => c.id === Number(match[2]));
         setCurrent({
           ...current(),
           cards: current().cards.filter((c) => c.id !== Number(match[2])),
         });
-        return new Response(null, { status: 204 });
+        return jsonResponse({ card: { ...card, archivedAt: '2026-10-08T00:00:00Z' } });
       }
       return jsonResponse({}, 404);
     },
@@ -85,7 +86,7 @@ describe('App', () => {
     await screen.findByRole('region', { name: 'Todo' });
     const titles = (name: string) =>
       within(lane(name))
-        .getAllByRole('button')
+        .getAllByRole('button', { name: /Updated/ })
         .map((b) => b.querySelector('.card__id')?.textContent);
     expect(titles('Todo')).toEqual(['#14', '#15', '#16']);
     expect(titles('Doing')).toEqual(['#11', '#12', '#13']);
@@ -147,20 +148,22 @@ describe('App', () => {
     expect(screen.getByText('7 cards')).toBeTruthy();
   });
 
-  it('deletes a card after confirmation, returns to no selection and fetches the board again', async () => {
+  it('archives a card after confirmation, returns to no selection and fetches the board again', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Prepare the Windows build'));
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+    await userEvent.click(
+      within(screen.getByRole('complementary')).getByRole('button', { name: 'Archive' }),
+    );
 
     await waitFor(() => expect(screen.getByText('Select a card to see its details.')).toBeTruthy());
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /Prepare the Windows build/ })).toBeNull(),
     );
     expect(screen.getByText('7 cards')).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/cards/14`, {
-      method: 'DELETE',
+    expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/cards/14/archive`, {
+      method: 'POST',
       headers: { 'X-Skan-Token': 'test-token' },
     });
   });
@@ -205,16 +208,18 @@ describe('App', () => {
   it('starts from the sample-data state when given initial values', async () => {
     show({ initial: { select: 11, confirm: true, deleteFail: true } });
     expect(
-      await screen.findByText('Delete #11 "Implement card moves"? This cannot be undone.'),
+      await screen.findByText(
+        'Archive #11 "Implement card moves"? You can restore it from the archive.',
+      ),
     ).toBeTruthy();
-    expect(screen.getByText('Could not delete the card. Try again.')).toBeTruthy();
+    expect(screen.getByText('Could not archive the card. Try again.')).toBeTruthy();
     expect(cardButton('Implement card moves').getAttribute('aria-current')).toBe('true');
   });
 
   it('does not open the sample confirmation for a card selected later', async () => {
     show({ initial: { select: 11, confirm: true } });
-    await screen.findByText(/This cannot be undone/);
+    await screen.findByText(/You can restore it from the archive/);
     await userEvent.click(cardButton('Check the board display'));
-    expect(screen.queryByText(/This cannot be undone/)).toBeNull();
+    expect(screen.queryByText(/You can restore it from the archive/)).toBeNull();
   });
 });

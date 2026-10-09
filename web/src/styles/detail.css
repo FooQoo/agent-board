@@ -250,6 +250,14 @@
   margin-left: auto;
 }
 
+.detail__archive-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
 .detail__tool {
   display: inline-flex;
   align-items: center;
@@ -293,6 +301,17 @@
   color: var(--r-danger);
 }
 
+.detail__archive-actions .detail__tool--delete {
+  margin-left: auto;
+  width: auto;
+  height: 34px;
+  padding: 0 10px;
+  gap: 5px;
+  border: 1px solid var(--r-danger);
+  font-size: 12px;
+  line-height: 17px;
+}
+
 .detail__tab:focus-visible,
 .detail__tool:focus-visible,
 .detail__more:focus-visible {
@@ -309,6 +328,37 @@
   padding-right: 8px;
   overflow-y: auto;
   scrollbar-gutter: stable;
+}
+
+.delete-confirm {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 11px;
+  border: 1px solid var(--r-danger);
+  border-radius: 8px;
+  background: var(--r-surface);
+}
+
+.delete-confirm__message {
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.delete-confirm__error {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--r-danger);
+}
+
+.delete-confirm__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .detail__viewport::-webkit-scrollbar {

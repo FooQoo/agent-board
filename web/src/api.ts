@@ -58,6 +58,44 @@ export function fetchBoard(projectId: ProjectId): Promise<Board> {
   return getJson<Board>(`${projectPath(projectId)}/board`);
 }
 
+export interface ArchiveResponse {
+  project: Board['project'];
+  revision: number;
+  cursor: string;
+  cards: Card[];
+}
+
+export function fetchArchive(projectId: ProjectId): Promise<ArchiveResponse> {
+  return getJson<ArchiveResponse>(`${projectPath(projectId)}/archive`);
+}
+
+async function postEmpty(path: string): Promise<{ card: Card }> {
+  const response = await fetch(path, { method: 'POST', headers: { 'X-Skan-Token': readToken() } });
+  const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
+  if (!response.ok || !body.card)
+    throw new WriteError(
+      body.error?.reason ?? `Request failed (${response.status})`,
+      response.status,
+      body.error?.code ?? null,
+    );
+  return { card: body.card };
+}
+
+export function archiveCard(projectId: ProjectId, id: number) {
+  return postEmpty(`${projectPath(projectId)}/cards/${id}/archive`);
+}
+
+export function restoreCard(projectId: ProjectId, id: number) {
+  return postEmpty(`${projectPath(projectId)}/cards/${id}/restore`);
+}
+
+export async function archiveDone(projectId: ProjectId, ids: readonly number[]) {
+  return postCard<{ cards: Card[]; archivedCount: number }>(
+    `${projectPath(projectId)}/cards/archive-done`,
+    { ids },
+  );
+}
+
 /**
  * - `deleted`: the server answered 204.
  * - `not_found`: the card is already gone (404).

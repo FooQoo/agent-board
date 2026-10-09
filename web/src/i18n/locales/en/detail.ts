@@ -35,10 +35,19 @@ export const detailEn = {
   },
   delete: {
     buttonLabel: 'Delete card',
-    confirm: 'Delete #{{id}} "{{title}}"? This cannot be undone.',
+    confirm:
+      'Delete #{{id}} "{{title}}" and its description, images, and history? This cannot be undone.',
     submit: 'Delete',
     cancel: 'Cancel',
     error: 'Could not delete the card. Try again.',
+  },
+  archive: {
+    buttonLabel: 'Archive card',
+    confirm: 'Archive #{{id}} "{{title}}"? You can restore it from the archive.',
+    submit: 'Archive',
+    error: 'Could not archive the card. Try again.',
+    restore: 'Restore',
+    restoreError: 'Could not restore the card. Try again.',
   },
   markdown: {
     noImage: 'No image',

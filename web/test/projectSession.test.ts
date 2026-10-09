@@ -114,6 +114,9 @@ describe('sessionReducer: operations hold the switch', () => {
       expect(state).toEqual({
         activeProjectId: B,
         selectedId: null,
+        viewMode: 'board',
+        archiveSelectedId: null,
+        bulkArchive: null,
         dialog: null,
         operation: null,
         pendingTarget: null,
@@ -169,7 +172,7 @@ describe('sessionReducer: saving', () => {
   });
 });
 
-describe('sessionReducer: deleted cards', () => {
+describe('sessionReducer: removed cards', () => {
   const card = makeCard({ id: 8 });
 
   it('clears the selection of the deleted card, finishes the operation and applies the pending request', () => {
@@ -177,7 +180,7 @@ describe('sessionReducer: deleted cards', () => {
       initSession(A, 8),
       { type: 'OPEN_OPERATION', operationId: 1, kind: 'delete', projectId: A },
       { type: 'URL_REQUESTED', projectId: B },
-      { type: 'CARD_DELETED', operationId: 1, projectId: A, cardId: card.id },
+      { type: 'CARD_REMOVED', operationId: 1, projectId: A, cardId: card.id },
     );
     expect(state.operation).toBeNull();
     expect(state.selectedId).toBeNull();
@@ -188,18 +191,47 @@ describe('sessionReducer: deleted cards', () => {
     const state = run(
       initSession(A, 8),
       { type: 'OPEN_OPERATION', operationId: 1, kind: 'delete', projectId: A },
-      { type: 'CARD_DELETED', operationId: 1, projectId: A, cardId: 8 },
+      { type: 'CARD_REMOVED', operationId: 1, projectId: A, cardId: 8 },
     );
     expect(state).toMatchObject({ activeProjectId: A, selectedId: null, operation: null });
   });
 
   it('does not clear the selection of the same card number in another project', () => {
     const state = run(initSession(B, 8), {
-      type: 'CARD_DELETED',
+      type: 'CARD_REMOVED',
       operationId: 9,
       projectId: A,
       cardId: 8,
     });
     expect(state.selectedId).toBe(8);
+  });
+});
+
+describe('sessionReducer: archive view state', () => {
+  it('clears the archive view and its selection when another project is applied', () => {
+    const state = run(
+      initSession(A),
+      { type: 'SET_VIEW_MODE', mode: 'archive' },
+      { type: 'SELECT_ARCHIVE_CARD', id: 8 },
+      { type: 'URL_REQUESTED', projectId: B },
+    );
+    expect(state).toMatchObject({
+      activeProjectId: B,
+      viewMode: 'board',
+      archiveSelectedId: null,
+      bulkArchive: null,
+    });
+  });
+
+  it('keeps the bulk archive target snapshot attached to its project', () => {
+    const targets = [makeCard({ id: 8 })];
+    const state = run(
+      initSession(A),
+      { type: 'OPEN_OPERATION', operationId: 1, kind: 'archive-done', projectId: A },
+      { type: 'OPEN_BULK_ARCHIVE', projectId: A, targets },
+    );
+    targets.push(makeCard({ id: 9 }));
+    expect(state.bulkArchive?.projectId).toBe(A);
+    expect(state.bulkArchive?.targets.map((card) => card.id)).toEqual([8]);
   });
 });

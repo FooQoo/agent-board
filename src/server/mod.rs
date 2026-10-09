@@ -45,6 +45,10 @@ pub fn run(config: ServeConfig) -> Result<(), SkanError> {
     run_until(config, termination_signal(), |_| {})
 }
 
+pub fn is_serving(info: &crate::paths::ServeInfo) -> bool {
+    instance::is_serving(info)
+}
+
 /// Serve until `shutdown` completes. `on_ready` receives the bound address once
 /// the server accepts connections.
 pub fn run_until<F: Future<Output = ()>>(
@@ -52,14 +56,15 @@ pub fn run_until<F: Future<Output = ()>>(
     shutdown: F,
     on_ready: impl FnOnce(SocketAddr),
 ) -> Result<(), SkanError> {
-    let db_path = paths::db_path();
     let serve_path = paths::serve_info_path();
-    open_database(&db_path)?;
     if let Some(info) = paths::read_serve_info()
         && instance::is_serving(&info)
     {
         return Err(SkanError::AlreadyServing { port: info.port });
     }
+    let _lifecycle = crate::lifecycle::LifecycleGuard::acquire(&paths::data_dir())?;
+    let db_path = paths::db_path();
+    open_database(&db_path)?;
     let listener = bind(config.port)?;
     let addr = listener
         .local_addr()

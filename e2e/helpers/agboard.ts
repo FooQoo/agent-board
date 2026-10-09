@@ -16,8 +16,9 @@ const ptyAnswer = path.resolve(here, 'agboard_pty_answer.py');
 export const alphaFixture = path.resolve(here, '..', 'fixtures', 'multi-project-a.json');
 export const betaFixture = path.resolve(here, '..', 'fixtures', 'multi-project-b.json');
 
-export const mainPort = 7631;
-export const statesPort = 7632;
+export const mainPort = Number(process.env.SKAN_E2E_MAIN_PORT ?? 7631);
+export const statesPort = Number(process.env.SKAN_E2E_STATES_PORT ?? 7632);
+export const mainOrigin = `http://127.0.0.1:${mainPort}`;
 
 /** The project the main serve shows. Every helper takes the project explicitly; none has a default. */
 export const mainProject = 'agent-board';

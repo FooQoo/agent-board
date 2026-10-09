@@ -8,7 +8,7 @@ let ask: string;
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
   disposable = nextCardId(mainProject);
-  ask = `Delete #${disposable} "Disposable card"? This cannot be undone.`;
+  ask = `Archive #${disposable} "Disposable card"? You can restore it from the archive.`;
   agboardOk(mainProject, ['add', 'Disposable card', '--desc', 'Delete me']);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
@@ -17,14 +17,14 @@ test.beforeEach(async ({ page }) => {
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
 const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
-test('Cancel closes the confirmation and keeps the card', async ({ page }) => {
+test('Cancel closes the archive confirmation and keeps the card', async ({ page }) => {
   await card(page, disposable).click();
-  await panel(page).getByRole('button', { name: 'Delete card' }).click();
+  await panel(page).getByRole('button', { name: 'Archive card' }).click();
 
   const confirm = panel(page).getByRole('group', { name: ask });
   await expect(confirm).toBeVisible();
   await expect(confirm).toContainText(ask);
-  await expect(confirm.getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
+  await expect(confirm.getByRole('button', { name: 'Archive', exact: true })).toBeVisible();
 
   await confirm.getByRole('button', { name: 'Cancel' }).click();
   await expect(confirm).toHaveCount(0);
@@ -33,10 +33,10 @@ test('Cancel closes the confirmation and keeps the card', async ({ page }) => {
   expect(listCards(mainProject).map((c) => c.id)).toContain(disposable);
 });
 
-test('Delete removes the card and clears the selection', async ({ page }) => {
+test('archive removes the card from the board and clears the selection', async ({ page }) => {
   await card(page, disposable).click();
-  await panel(page).getByRole('button', { name: 'Delete card' }).click();
-  await panel(page).getByRole('button', { name: 'Delete', exact: true }).click();
+  await panel(page).getByRole('button', { name: 'Archive card' }).click();
+  await panel(page).getByRole('button', { name: 'Archive', exact: true }).click();
 
   await expect(panel(page)).toContainText('Select a card to see its details.');
   await expect(card(page, disposable)).toHaveCount(0);

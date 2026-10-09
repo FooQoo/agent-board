@@ -7,10 +7,17 @@ import type { Card } from '../../src/types';
 import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
 
 const noop = () => {};
+const noRemove = async () => true;
 
 function renderPanel(card: Card, props: Partial<Parameters<typeof DetailPanel>[0]> = {}) {
   return render(
-    <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} {...props} />,
+    <DetailPanel
+      projectId={PROJECT_A.id}
+      card={card}
+      onClose={noop}
+      onRemove={noRemove}
+      {...props}
+    />,
   );
 }
 
@@ -109,7 +116,7 @@ describe('folding the description', () => {
         projectId={PROJECT_A.id}
         card={makeCard({ id: 51, description: SECTIONED })}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(screen.getByRole('button', { name: /Goal/ }).getAttribute('aria-expanded')).toBe('true');
@@ -123,7 +130,7 @@ describe('folding the description', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(9)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(screen.getByRole('tab', { name: 'Description' }).getAttribute('aria-selected')).toBe(
@@ -140,37 +147,37 @@ describe('toolbar', () => {
 
   it('offers Make draft and Delete for an idle card that is not a draft, Delete last', () => {
     renderPanel(fixtureCard(8));
-    expect(names()).toEqual(['Make draft', 'Delete card']);
+    expect(names()).toEqual(['Make draft', 'Archive card']);
   });
 
   it('offers the edit icon and Delete for a draft', () => {
     renderPanel({ ...fixtureCard(8), isDraft: true });
-    expect(names()).toEqual(['Edit card', 'Delete card']);
+    expect(names()).toEqual(['Edit card', 'Archive card']);
   });
 
   it('offers Make draft for pending cards but only Delete for running cards', () => {
     const { rerender } = renderPanel(fixtureCard(11));
-    expect(names()).toEqual(['Delete card']);
+    expect(names()).toEqual(['Archive card']);
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
         card={fixtureCard(12)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
-    expect(names()).toEqual(['Make draft', 'Delete card']);
+    expect(names()).toEqual(['Make draft', 'Archive card']);
   });
 
   it('offers Make draft to an idle card that has no run state of its own (Todo)', () => {
     renderPanel(fixtureCard(14));
-    expect(names()).toEqual(['Make draft', 'Delete card']);
+    expect(names()).toEqual(['Make draft', 'Archive card']);
   });
 
   it('shows only Delete in the History tab', async () => {
     renderPanel({ ...fixtureCard(8), isDraft: true });
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    expect(names()).toEqual(['Delete card']);
+    expect(names()).toEqual(['Archive card']);
   });
 
   it('calls onEdit with the card when the edit icon is pressed', async () => {
@@ -183,16 +190,78 @@ describe('toolbar', () => {
 
   it('opens the delete confirmation above the tabs', async () => {
     const { container } = renderPanel(fixtureCard(8));
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
     const confirm = container.querySelector('.delete-confirm') as HTMLElement;
     const tabs = container.querySelector('.detail__tabs') as HTMLElement;
     expect(confirm.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Description' })).toBeTruthy();
   });
 
+  it('places restore and delete above the content tabs and removes the normal toolbar', async () => {
+    const onRestore = vi.fn();
+    const onRemove = vi.fn(async () => true);
+    const { container } = renderPanel(fixtureCard(8), { archived: true, onRestore, onRemove });
+    const detail = container.querySelector('.detail') as HTMLElement;
+    const order = Array.from(detail.children).map((element) => element.className.split(' ')[0]);
+    expect(order).toEqual([
+      'detail__top',
+      'detail__title',
+      'detail__meta',
+      'detail__archive-actions',
+      'detail__tabs',
+      'detail__viewport',
+      'detail__viewport',
+    ]);
+    expect(screen.getByRole('button', { name: 'Restore' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete card' }).textContent).toContain('Delete');
+    expect(screen.queryByRole('toolbar')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    expect(onRestore).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the inline delete confirmation to call the lifecycle action and explains removed data', async () => {
+    const onRemove = vi.fn(async () => true);
+    renderPanel(fixtureCard(8), { archived: true, onRemove });
+    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    expect(screen.getByText(/description, images, and history/)).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(onRemove).toHaveBeenCalledWith('delete', fixtureCard(8));
+  });
+
+  it('matches the Pen Japanese delete confirmation copy', async () => {
+    selectLocale('ja');
+    renderPanel(fixtureCard(8), { archived: true, onRemove: vi.fn() });
+    await userEvent.click(screen.getByRole('button', { name: 'カードを削除' }));
+    expect(
+      screen.getByText(
+        '#8「Initialize the board」を削除しますか？ 本文・画像・履歴も削除されます。この操作は元に戻せません。',
+      ),
+    ).toBeTruthy();
+    selectLocale('en');
+  });
+
+  it('shows restore failure in the selected detail and disables actions while saving', () => {
+    renderPanel(fixtureCard(8), {
+      archived: true,
+      onRestore: vi.fn(),
+      restoreFailed: true,
+      operationSaving: true,
+    });
+    expect(screen.getByRole('alert').textContent).toBe('Could not restore the card. Try again.');
+    expect(screen.getByRole('button', { name: 'Restore' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Delete card' }).hasAttribute('disabled')).toBe(true);
+  });
+
   it('names the toolbar buttons in Japanese', () => {
     selectLocale('ja');
     renderPanel({ ...fixtureCard(8), isDraft: true });
-    expect(names()).toEqual(['カードを編集', 'カードを削除']);
+    expect(names()).toEqual(['カードを編集', 'カードをアーカイブ']);
+  });
+
+  it('shows the archived delete label in Japanese', () => {
+    selectLocale('ja');
+    renderPanel(fixtureCard(8), { archived: true, onRestore: vi.fn() });
+    const deleteButton = screen.getByRole('button', { name: 'カードを削除' });
+    expect(deleteButton.textContent).toContain('削除');
   });
 });

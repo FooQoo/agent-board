@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Board, Project, ProjectId } from '../src/types';
+import type { Board, Card, Project, ProjectId } from '../src/types';
 
 type Listener = (event: Event) => void;
 
@@ -56,6 +56,7 @@ export type FakeAnswer<T> = T | Error | 'not_found' | number;
 export interface FakeBackend {
   projects: FakeAnswer<Project[]>;
   boards: Record<ProjectId, FakeAnswer<Board>>;
+  archives?: Record<ProjectId, FakeAnswer<Card[]>>;
   /** Awaited before a read is answered, so a test can answer requests in any order. */
   gate?: (url: string) => Promise<void> | undefined;
   /** Answers writes (POST/DELETE). Defaults to 204 for DELETE and `{card, changed}` for POST. */
@@ -94,6 +95,21 @@ export function stubBackend(backend: FakeBackend) {
       return found === undefined
         ? errorResponse(404, 'project_not_found')
         : answer(found, (b) => b);
+    }
+    const archiveMatch = /^\/api\/projects\/([0-9a-f]{32})\/archive$/.exec(url);
+    if (archiveMatch?.[1]) {
+      const projectId = archiveMatch[1];
+      const project = Array.isArray(backend.projects)
+        ? backend.projects.find((item) => item.id === projectId)
+        : undefined;
+      if (!project) return errorResponse(404, 'project_not_found');
+      const archiveAnswer = backend.archives?.[projectId] ?? [];
+      return answer(archiveAnswer, (cards) => ({
+        project: project ?? { id: projectId, name: 'unknown', createdAt: '' },
+        revision: 1,
+        cursor: `${projectId}:1`,
+        cards,
+      }));
     }
     return errorResponse(404, 'not_found');
   });

@@ -629,15 +629,22 @@ fn a_database_of_an_old_schema_is_refused_and_never_converted() {
     assert!(!output.status.success());
     assert_eq!(error_of(&output)["code"], "database_error");
     assert_eq!(std::fs::read(&path).unwrap(), before);
-    assert_eq!(files(home.path()), ["board.db"]);
+    assert!(
+        files(home.path())
+            .iter()
+            .all(|name| *name == "board.db" || *name == "lifecycle.lock.db")
+    );
 
-    // There is no command that converts it.
-    for args in [vec!["migrate"], vec!["project", "migrate"], vec!["upgrade"]] {
+    // Migration is explicit, but this malformed legacy database is rejected.
+    let migrate = run(home.path(), None, &["migrate", "--json"]);
+    assert!(!migrate.status.success());
+    assert_eq!(error_of(&migrate)["code"], "database_error");
+    for args in [vec!["project", "migrate"], vec!["upgrade"]] {
         let output = run(home.path(), None, &args);
         assert!(!output.status.success(), "{args:?}");
     }
     let help = String::from_utf8_lossy(&run(home.path(), None, &["--help"]).stdout).to_lowercase();
-    assert!(!help.contains("migrat"), "{help}");
+    assert!(help.contains("migrat"), "{help}");
     assert_eq!(std::fs::read(&path).unwrap(), before);
 }
 

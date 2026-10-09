@@ -15,7 +15,8 @@ agboard - a shared local work board for users and agents
 
 Usage: agboard --project NAME [--json] <COMMAND>
 
-Every command except serve works on one project, named with --project NAME.
+Every board command names one project with --project NAME. The read-only
+`migrate` and `serve` commands operate on the whole data area.
 Nothing is chosen for you: leave it out and the command fails. The one
 exception is the read-only `ls --all-projects`, which lists every project.
 
@@ -36,6 +37,7 @@ Commands:
   export  Write the board to a JSON file
   import  Restore the board from a JSON file
   serve   Show the board in your browser
+  migrate Migrate the data area explicitly
 
 Workflow for agents:
   agboard project ls --json
@@ -119,6 +121,8 @@ pub enum Command {
     Import(ImportArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
+    /// Migrate a legacy board explicitly
+    Migrate(MigrateArgs),
 }
 
 impl Command {
@@ -141,11 +145,12 @@ impl Command {
             Command::Export(_) => "export",
             Command::Import(_) => "import",
             Command::Serve(_) => "serve",
+            Command::Migrate(_) => "migrate",
         }
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 16] = [
+pub const SUBCOMMAND_NAMES: [&str; 17] = [
     "project",
     "init",
     "add",
@@ -162,6 +167,7 @@ pub const SUBCOMMAND_NAMES: [&str; 16] = [
     "serve",
     "hook",
     "wait",
+    "migrate",
 ];
 
 #[derive(Args, Debug)]
@@ -531,6 +537,9 @@ pub struct ServeArgs {
     pub port: u16,
 }
 
+#[derive(Args, Debug)]
+pub struct MigrateArgs {}
+
 /// What parsing the command line produced.
 #[derive(Debug)]
 pub enum Parsed {
@@ -646,6 +655,12 @@ impl Cli {
                     command: Some(command.to_string()),
                 });
             }
+            (Command::Migrate(_), Some(_)) => {
+                return Err(SkanError::InvalidArgument {
+                    message: "migrate does not take --project.".to_string(),
+                    command: Some(command.to_string()),
+                });
+            }
             // The hook reports a missing project itself, as a hook error that
             // does not block the agent's tool result.
             // Creating and listing projects name no project either.
@@ -669,7 +684,7 @@ impl Cli {
                 }),
                 None,
             ) => {}
-            (Command::Serve(_) | Command::Hook(_), None) => {}
+            (Command::Serve(_) | Command::Hook(_) | Command::Migrate(_), None) => {}
             (_, None) => {
                 return Err(SkanError::InvalidArgument {
                     message: "--project NAME is required.".to_string(),

@@ -59,6 +59,9 @@ impl ProjectStore {
         self.write(|conn| {
             require_project(conn, project_id)?;
             let card = load_card(conn, project_id, id)?;
+            if card.archived_at.is_some() {
+                return Err(SkanError::CardArchived { id });
+            }
             if card.is_draft {
                 return Err(SkanError::CardIsDraft { id });
             }
@@ -100,6 +103,9 @@ impl ProjectStore {
         self.write(|conn| {
             require_project(conn, project_id)?;
             let card = load_card(conn, project_id, id)?;
+            if card.archived_at.is_some() {
+                return Err(SkanError::CardArchived { id });
+            }
             if card.is_draft == is_draft {
                 return Ok(Changed {
                     value: card,
@@ -143,6 +149,9 @@ impl ProjectStore {
         self.write(|conn| {
             require_project(conn, project_id)?;
             let card = load_card(conn, project_id, id)?;
+            if card.archived_at.is_some() {
+                return Err(SkanError::CardArchived { id });
+            }
             if !card.is_draft {
                 return Err(SkanError::CardNotDraft { id });
             }

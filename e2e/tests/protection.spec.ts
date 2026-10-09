@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { agboardOk, listCards, mainProject, projectId, resetBoard, type CardJson } from '../helpers/agboard';
+import { agboardOk, listCards, mainOrigin, mainPort, mainProject, projectId, resetBoard, type CardJson } from '../helpers/agboard';
 
 // Writes go to /api/projects/<ProjectId>/cards/<number>; the guard answers before it looks at the project.
 let card15: string;
@@ -31,14 +31,14 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
 
   // The page's origin, but no token.
   const originOnly = await request.delete(card15, {
-    headers: { Origin: 'http://127.0.0.1:7631', 'Sec-Fetch-Site': 'same-origin' },
+    headers: { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin' },
   });
   expect(originOnly.status()).toBe(403);
 
   // The page's origin and a wrong token.
   const wrongToken = await request.delete(card15, {
     headers: {
-      Origin: 'http://127.0.0.1:7631',
+      Origin: mainOrigin,
       'Sec-Fetch-Site': 'same-origin',
       'X-Skan-Token': '0'.repeat(64),
     },
@@ -113,11 +113,11 @@ test('the edit and the draft switch are refused without the guard, and nothing c
     const attempts: Record<string, string>[] = [
       {},
       { 'X-Skan-Token': token },
-      { Origin: 'http://127.0.0.1:7631', 'Sec-Fetch-Site': 'same-origin' },
-      { Origin: 'http://127.0.0.1:7631', 'Sec-Fetch-Site': 'same-origin', 'X-Skan-Token': '0'.repeat(64) },
+      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin' },
+      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin', 'X-Skan-Token': '0'.repeat(64) },
       { Origin: 'http://example.com', 'Sec-Fetch-Site': 'cross-site', 'X-Skan-Token': token },
-      { Origin: 'http://127.0.0.1:7631', 'Sec-Fetch-Site': 'cross-site', 'X-Skan-Token': token },
-      { Origin: 'http://127.0.0.1:7631', 'Sec-Fetch-Site': 'same-origin', 'X-Skan-Token': token, Host: 'evil.example:7631' },
+      { Origin: mainOrigin, 'Sec-Fetch-Site': 'cross-site', 'X-Skan-Token': token },
+      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin', 'X-Skan-Token': token, Host: `evil.example:${mainPort}` },
     ];
     for (const headers of attempts) {
       const response = await send(headers);

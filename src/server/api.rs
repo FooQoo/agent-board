@@ -40,6 +40,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/health", get(health))
         .route("/api/projects", get(projects))
         .route("/api/projects/{project_id}/board", get(board))
+        .route("/api/projects/{project_id}/archive", get(archive))
         .route("/api/projects/{project_id}/cards", post(create_card))
         .route(
             "/api/projects/{project_id}/cards/multipart",
@@ -48,6 +49,18 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route(
             "/api/projects/{project_id}/cards/{id}",
             delete(delete_card).patch(edit_card),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/archive-done",
+            post(archive_done),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/{id}/archive",
+            post(archive_card),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/{id}/restore",
+            post(restore_card),
         )
         .route(
             "/api/projects/{project_id}/cards/{id}/multipart",
@@ -126,6 +139,9 @@ fn skan_error_response(error: &SkanError) -> Response {
         | SkanError::InvalidStateForDraft { .. }
         | SkanError::ProjectNameExists { .. }
         | SkanError::AttachmentRequestConflict => StatusCode::CONFLICT,
+        SkanError::CardArchived { .. }
+        | SkanError::CardNotArchived { .. }
+        | SkanError::ArchiveTargetsChanged => StatusCode::CONFLICT,
         SkanError::InvalidArgument { .. }
         | SkanError::InvalidValue { .. }
         | SkanError::InvalidStateForColumn { .. }
@@ -445,6 +461,25 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
     }
 }
 
+async fn archive(State(state): State<Arc<AppState>>, Path(raw_project): Path<String>) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    match with_store(&state, move |store| store.archive_snapshot(&project_id)).await {
+        Ok(snapshot) => json_response(
+            StatusCode::OK,
+            &serde_json::json!({
+                "project": snapshot.project,
+                "revision": snapshot.revision,
+                "cursor": snapshot.cursor,
+                "cards": snapshot.cards,
+            }),
+        ),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
 async fn health() -> Response {
     #[derive(Serialize)]
     struct Health {
@@ -482,10 +517,88 @@ async fn delete_card(
             "Card IDs are positive whole numbers.",
         );
     };
-    match with_store(&state, move |store| store.delete_card(&project_id, id)).await {
+    match with_store(&state, move |store| {
+        store.delete_archived_card(&project_id, id)
+    })
+    .await
+    {
         Ok(()) => {
             let _ = state.changed.send(());
             StatusCode::NO_CONTENT.into_response()
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn archive_card(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let result = with_store(&state, move |store| {
+        store.archive_card(&project_id, id, chrono::Utc::now())
+    })
+    .await;
+    changed_card_response(&state, result)
+}
+
+async fn restore_card(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let result = with_store(&state, move |store| {
+        store.restore_card(&project_id, id, chrono::Utc::now())
+    })
+    .await;
+    changed_card_response(&state, result)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ArchiveDoneInput {
+    ids: Vec<i64>,
+}
+
+async fn archive_done(
+    State(state): State<Arc<AppState>>,
+    Path(raw_project): Path<String>,
+    StrictJson(input): StrictJson<ArchiveDoneInput>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let result = with_store(&state, move |store| {
+        store.archive_done(&project_id, &input.ids, chrono::Utc::now())
+    })
+    .await;
+    match result {
+        Ok(result) => {
+            if result.changed {
+                let _ = state.changed.send(());
+            }
+            json_response(
+                StatusCode::OK,
+                &serde_json::json!({
+                    "cards": result.value.cards,
+                    "archivedCount": result.value.archived_count,
+                }),
+            )
         }
         Err(error) => skan_error_response(&error),
     }

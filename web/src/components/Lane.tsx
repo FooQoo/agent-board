@@ -12,9 +12,10 @@ export interface LaneProps {
   cards: CardModel[];
   selectedId: number | null;
   onSelect: (id: number) => void;
+  onArchive?: () => void;
 }
 
-export function Lane({ column, cards, selectedId, onSelect }: LaneProps) {
+export function Lane({ column, cards, selectedId, onSelect, onArchive }: LaneProps) {
   const { t } = useTranslation();
   const listRef = useRef<HTMLUListElement>(null);
   const more = useScrollCue(listRef, cards);
@@ -26,7 +27,7 @@ export function Lane({ column, cards, selectedId, onSelect }: LaneProps) {
       data-drop-target={isDropTarget ? 'true' : 'false'}
       aria-label={columnLabel(column, t)}
     >
-      <LaneHeader column={column} count={cards.length} />
+      <LaneHeader column={column} count={cards.length} onArchive={onArchive} />
       <div className="lane__scroll" data-more={more ? 'true' : 'false'}>
         <ul className="lane__cards" ref={listRef}>
           {cards.map((card) => (

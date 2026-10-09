@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlusIcon, SettingsIcon } from 'lucide-react';
+import { ArchiveIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Project, ProjectId } from '../types';
 import { ProjectSwitcher } from './ProjectSwitcher';
@@ -16,6 +16,9 @@ export interface HeaderProps {
   /** Add card is offered only once the board of the project has loaded. */
   canAdd?: boolean;
   onAdd?: () => void;
+  onArchive?: () => void;
+  viewMode?: 'board' | 'archive';
+  onBack?: () => void;
 }
 
 export function Header({
@@ -25,6 +28,9 @@ export function Header({
   onSelectProject = () => {},
   canAdd = false,
   onAdd = () => {},
+  onArchive = () => {},
+  viewMode = 'board',
+  onBack = () => {},
 }: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -54,7 +60,29 @@ export function Header({
         </>
       )}
       <span className="header__spacer" aria-hidden="true" />
-      {canAdd && (
+      {viewMode === 'archive' ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="header__back"
+          disabled={switchDisabled}
+          onClick={onBack}
+        >
+          {t('archive.back')}
+        </Button>
+      ) : canAdd ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="header__archive"
+          disabled={switchDisabled}
+          onClick={onArchive}
+        >
+          <ArchiveIcon aria-hidden="true" />
+          {t('archive.title')}
+        </Button>
+      ) : null}
+      {viewMode === 'board' && canAdd && (
         <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
           <PlusIcon aria-hidden="true" />
           {t('dialog.addCard')}

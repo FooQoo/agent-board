@@ -637,7 +637,7 @@ test('changing the language does not translate or alter what was entered', async
 
 // ------------------------------------------------------------------ The board operations with a chosen theme
 
-test('create, move with a reason, answer, delete, and live updates work with a chosen theme', async ({ page }) => {
+test('create, move with a reason, answer, archive, and live updates work with a chosen theme', async ({ page }) => {
   await openFresh(page);
   const settings = await openSettings(page);
   await settings.getByRole('radio', { name: 'Dark Red' }).click();
@@ -689,16 +689,16 @@ test('create, move with a reason, answer, delete, and live updates work with a c
   await expect(panel.getByRole('button', { name: 'Answer', exact: true })).toHaveCount(0);
   expect(listCards(mainProject).find(({ id }) => id === 12)).toMatchObject({ agentStatus: 'idle', pendingReason: null });
 
-  // Delete from the toolbar beside the tabs; Cancel keeps the card, Delete removes it.
+  // Archive from the toolbar beside the tabs; Cancel keeps the card, Archive removes it from the board.
   await card(page, fresh).click();
-  await panel.getByRole('button', { name: 'Delete card' }).click();
-  const confirm = panel.getByRole('group', { name: `Delete #${fresh} "Review the themes"? This cannot be undone.` });
+  await panel.getByRole('button', { name: 'Archive card' }).click();
+  const confirm = panel.getByRole('group', { name: `Archive #${fresh} "Review the themes"? You can restore it from the archive.` });
   await expect(confirm).toBeVisible();
   await confirm.getByRole('button', { name: 'Cancel' }).click();
   await expect(confirm).toHaveCount(0);
   expect(listCards(mainProject).map(({ id }) => id)).toContain(fresh);
-  await panel.getByRole('button', { name: 'Delete card' }).click();
-  await panel.getByRole('button', { name: 'Delete', exact: true }).click();
+  await panel.getByRole('button', { name: 'Archive card' }).click();
+  await panel.getByRole('button', { name: 'Archive', exact: true }).click();
   await expect(panel).toContainText('Select a card to see its details.');
   await expect(card(page, fresh)).toHaveCount(0);
   await expect(page.getByRole('contentinfo')).toContainText('8 cards');
@@ -817,25 +817,25 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('idle');
 });
 
-test('a delete that fails keeps the card, the selection, and the confirmation', async ({ page }) => {
+test('an archive that fails keeps the card, the selection, and the confirmation', async ({ page }) => {
   agboardOk(mainProject, ['add', 'Disposable card']);
   await openFresh(page);
   let fails = true;
-  await page.route(`**/api/projects/*/cards/${fresh}`, async (route) => {
-    if (route.request().method() !== 'DELETE' || !fails) return route.fallback();
+  await page.route(`**/api/projects/*/cards/${fresh}/archive`, async (route) => {
+    if (route.request().method() !== 'POST' || !fails) return route.fallback();
     return route.fulfill({ status: 500, body: 'no' });
   });
   await card(page, fresh).click();
   const panel = details(page);
-  await panel.getByRole('button', { name: 'Delete card' }).click();
-  await panel.getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(panel.getByRole('alert')).toHaveText('Could not delete the card. Try again.');
-  await expect(panel.getByRole('group', { name: `Delete #${fresh} "Disposable card"? This cannot be undone.` })).toBeVisible();
+  await panel.getByRole('button', { name: 'Archive card' }).click();
+  await panel.getByRole('button', { name: 'Archive', exact: true }).click();
+  await expect(panel.getByRole('alert')).toHaveText('Could not archive the card. Try again.');
+  await expect(panel.getByRole('group', { name: `Archive #${fresh} "Disposable card"? You can restore it from the archive.` })).toBeVisible();
   await expect(card(page, fresh)).toHaveAttribute('aria-current', 'true');
   expect(listCards(mainProject).map(({ id }) => id)).toContain(fresh);
 
   fails = false;
-  await panel.getByRole('button', { name: 'Delete', exact: true }).click();
+  await panel.getByRole('button', { name: 'Archive', exact: true }).click();
   await expect(card(page, fresh)).toHaveCount(0);
   await expect(panel).toContainText('Select a card to see its details.');
   expect(listCards(mainProject).map(({ id }) => id)).not.toContain(fresh);
@@ -910,17 +910,17 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
   await shot(page, testInfo, '09-answer-dark-red.png');
   await page.keyboard.press('Escape');
 
-  // The delete confirmation and its failure.
+  // The archive confirmation and its failure.
   await card(page, fresh).click();
-  await details(page).getByRole('button', { name: 'Delete card' }).click();
-  await shot(page, testInfo, '10-delete-confirm-dark-red.png');
-  await page.route(`**/api/projects/*/cards/${fresh}`, (route) =>
-    route.request().method() === 'DELETE' ? route.fulfill({ status: 500, body: 'no' }) : route.fallback(),
+  await details(page).getByRole('button', { name: 'Archive card' }).click();
+  await shot(page, testInfo, '10-archive-confirm-dark-red.png');
+  await page.route(`**/api/projects/*/cards/${fresh}/archive`, (route) =>
+    route.request().method() === 'POST' ? route.fulfill({ status: 500, body: 'no' }) : route.fallback(),
   );
-  await details(page).getByRole('button', { name: 'Delete', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Archive', exact: true }).click();
   await expect(details(page).getByRole('alert')).toBeVisible();
-  await shot(page, testInfo, '11-delete-failed-dark-red.png');
-  await page.unroute(`**/api/projects/*/cards/${fresh}`);
+  await shot(page, testInfo, '11-archive-failed-dark-red.png');
+  await page.unroute(`**/api/projects/*/cards/${fresh}/archive`);
 
   // Loading and error states in the same theme.
   let release!: () => void;

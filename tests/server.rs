@@ -643,6 +643,64 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 }
 
+#[test]
+fn archive_api_has_separate_reads_bulk_operation_restore_and_delete_guard() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let token = server.token();
+    let mut events = server.events();
+
+    let archived = server.send_json("POST", &server.api("/cards/1/archive"), "", Some(&token));
+    assert_eq!(archived.status, 200, "{}", archived.body);
+    let card: serde_json::Value = serde_json::from_str(&archived.body).unwrap();
+    assert!(card["card"]["archivedAt"].is_string());
+    assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
+
+    let board: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+    assert!(
+        !board["cards"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["id"] == 1)
+    );
+    let archive: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
+    assert_eq!(archive["cards"].as_array().unwrap().len(), 1);
+    assert_eq!(archive["cards"][0]["id"], 1);
+
+    let restored = server.send_json("POST", &server.api("/cards/1/restore"), "", Some(&token));
+    assert_eq!(restored.status, 200, "{}", restored.body);
+    assert!(restored.body.contains("\"archivedAt\":null"));
+
+    let moved = server.send_json(
+        "POST",
+        &server.api("/cards/1/move"),
+        r#"{"cardStatus":"done","reason":"Finish"}"#,
+        Some(&token),
+    );
+    assert_eq!(moved.status, 200, "{}", moved.body);
+    let bulk = server.send_json(
+        "POST",
+        &server.api("/cards/archive-done"),
+        r#"{"ids":[1]}"#,
+        Some(&token),
+    );
+    assert_eq!(bulk.status, 200, "{}", bulk.body);
+    let body: serde_json::Value = serde_json::from_str(&bulk.body).unwrap();
+    assert_eq!(body["archivedCount"], 1);
+
+    let ordinary_delete = server.delete_as_page(2);
+    assert_eq!(ordinary_delete.status, 409, "{}", ordinary_delete.body);
+    let physical = server.delete_as_page(1);
+    assert_eq!(physical.status, 204, "{}", physical.body);
+    assert_eq!(server.get(&server.api("/archive")).status, 200);
+    let archive: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
+    assert!(archive["cards"].as_array().unwrap().is_empty());
+}
+
 /// Add a second project "other" that has a card with the same number as the
 /// first card of "main", and return its ID.
 fn add_other_project(home: &Path) -> ProjectId {
@@ -703,6 +761,8 @@ fn the_same_card_number_in_two_projects_never_mixes_through_the_api() {
     );
     assert_eq!(reply.status, 404);
     assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
+    let archived = server.send_json("POST", &server.api("/cards/3/archive"), "", Some(&token));
+    assert_eq!(archived.status, 200, "{}", archived.body);
     let reply = server.send_owned("DELETE", &server.api("/cards/3"), &headers);
     assert_eq!(reply.status, 204);
     assert_eq!(card_ids(home.path()), vec![1, 2]);
@@ -903,6 +963,13 @@ fn a_request_without_a_host_header_is_403() {
 fn a_delete_meeting_all_four_conditions_returns_204_and_removes_the_card() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
+    let archive = server.send_json(
+        "POST",
+        &server.api("/cards/2/archive"),
+        "",
+        Some(&server.token()),
+    );
+    assert_eq!(archive.status, 200, "{}", archive.body);
     let reply = server.delete_as_page(2);
     assert_eq!(reply.status, 204);
     assert_eq!(reply.body, "");
@@ -920,6 +987,8 @@ fn localhost_origin_and_host_also_delete() {
     let port = server.port();
     let host = format!("localhost:{port}");
     let origin = format!("http://localhost:{port}");
+    let archived = server.send_json("POST", &server.api("/cards/1/archive"), "", Some(&token));
+    assert_eq!(archived.status, 200, "{}", archived.body);
     let reply = server.send(
         "DELETE",
         &server.api("/cards/1"),
@@ -1111,6 +1180,13 @@ fn a_successful_delete_sends_changed_and_a_refused_one_does_not() {
         "{}",
         events.received
     );
+    let archive = server.send_json(
+        "POST",
+        &server.api("/cards/1/archive"),
+        "",
+        Some(&server.token()),
+    );
+    assert_eq!(archive.status, 200, "{}", archive.body);
     assert_eq!(server.delete_as_page(1).status, 204);
     events.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
 }

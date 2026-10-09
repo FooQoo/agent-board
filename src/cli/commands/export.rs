@@ -17,7 +17,7 @@ pub fn run(ctx: &mut Context, args: &ExportArgs) -> Result<Outcome, SkanError> {
     } else {
         destination
     };
-    let snapshot = ctx.store.snapshot(ctx.project_id()?)?;
+    let snapshot = ctx.store.export_snapshot(ctx.project_id()?)?;
     let payloads = snapshot
         .cards
         .iter()
@@ -32,7 +32,7 @@ pub fn run(ctx: &mut Context, args: &ExportArgs) -> Result<Outcome, SkanError> {
                 .map(|data| (card_id, data))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let backup = Backup::from_snapshot_with_attachments(snapshot, payloads);
+    let backup = Backup::from_export_snapshot_with_attachments(snapshot, payloads);
     let mut bytes = serde_json::to_vec_pretty(&backup).map_err(|e| SkanError::DatabaseError {
         reason: e.to_string(),
     })?;

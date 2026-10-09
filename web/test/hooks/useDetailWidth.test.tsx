@@ -20,6 +20,7 @@ function makeBody(width: number) {
   );
   return {
     ref: { current: body },
+    layoutRef: { current: lanes },
     setWidth: (w: number) => {
       bodyWidth = w;
       act(() => {
@@ -38,16 +39,16 @@ afterEach(() => {
 
 describe('useDetailWidth', () => {
   it('starts from the stored width, else 360', () => {
-    const { ref } = makeBody(1600);
-    expect(renderHook(() => useDetailWidth(ref, true)).result.current.width).toBe(360);
+    const { ref, layoutRef } = makeBody(1600);
+    expect(renderHook(() => useDetailWidth(ref, layoutRef, true)).result.current.width).toBe(360);
     window.localStorage.setItem('skan.detailWidth', '480');
-    expect(renderHook(() => useDetailWidth(ref, true)).result.current.width).toBe(480);
+    expect(renderHook(() => useDetailWidth(ref, layoutRef, true)).result.current.width).toBe(480);
   });
 
   it('widens by dragging left, narrows right, stops at the ends, saves once', () => {
-    const { ref } = makeBody(1600);
+    const { ref, layoutRef } = makeBody(1600);
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
-    const { result } = renderHook(() => useDetailWidth(ref, true));
+    const { result } = renderHook(() => useDetailWidth(ref, layoutRef, true));
     act(() => result.current.startDrag(500));
     expect(document.body.classList.contains('is-resizing')).toBe(true);
     act(() => result.current.moveDrag(400));
@@ -66,11 +67,11 @@ describe('useDetailWidth', () => {
   });
 
   it('keeps the dragged width when saving fails', () => {
-    const { ref } = makeBody(1600);
+    const { ref, layoutRef } = makeBody(1600);
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('full');
     });
-    const { result } = renderHook(() => useDetailWidth(ref, true));
+    const { result } = renderHook(() => useDetailWidth(ref, layoutRef, true));
     act(() => result.current.startDrag(500));
     act(() => result.current.moveDrag(420));
     act(() => result.current.endDrag());
@@ -78,9 +79,9 @@ describe('useDetailWidth', () => {
   });
 
   it('fits a shrinking layout and returns to the chosen width when it grows', () => {
-    const { ref, setWidth } = makeBody(1600);
+    const { ref, layoutRef, setWidth } = makeBody(1600);
     window.localStorage.setItem('skan.detailWidth', '500');
-    const { result } = renderHook(() => useDetailWidth(ref, true));
+    const { result } = renderHook(() => useDetailWidth(ref, layoutRef, true));
     expect(result.current.width).toBe(500);
     setWidth(1024);
     expect(result.current.width).toBe(352);

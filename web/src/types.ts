@@ -2,7 +2,7 @@ export type ColumnName = 'todo' | 'doing' | 'done';
 export type RunState = 'idle' | 'running' | 'pending';
 export type Assignee = 'ai' | 'human';
 export type Actor = 'ai' | 'human';
-export type HistoryKind = 'created' | 'lane' | 'agent';
+export type HistoryKind = 'created' | 'lane' | 'agent' | 'archive' | 'restore';
 
 export interface HistoryEvent {
   id: number;
@@ -32,6 +32,7 @@ export interface Card {
   agentStatusChangedAt: string;
   /** A draft is read-only for agents until a person finalizes it. */
   isDraft: boolean;
+  archivedAt?: string | null;
   history: HistoryEvent[];
   attachments: Attachment[];
 }

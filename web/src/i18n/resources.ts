@@ -7,6 +7,20 @@ import { editJa } from './locales/ja/edit';
 
 // One namespace (`translation`), assembled from one file per area: shared, card details, editing.
 export const resources = {
-  en: { translation: { ...commonEn, ...detailEn, ...editEn } },
-  ja: { translation: { ...commonJa, ...detailJa, ...editJa } },
+  en: {
+    translation: {
+      ...commonEn,
+      ...detailEn,
+      ...editEn,
+      archive: { ...commonEn.archive, ...detailEn.archive },
+    },
+  },
+  ja: {
+    translation: {
+      ...commonJa,
+      ...detailJa,
+      ...editJa,
+      archive: { ...commonJa.archive, ...detailJa.archive },
+    },
+  },
 } as const;

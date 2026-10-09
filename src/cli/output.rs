@@ -150,6 +150,9 @@ pub fn show_text(card: &Card) -> String {
     if card.is_draft {
         out.push_str("Draft: yes\n");
     }
+    if let Some(archived_at) = card.archived_at {
+        out.push_str(&format!("Archived at: {}\n", archived_at.to_rfc3339()));
+    }
     if !card.description.is_empty() {
         out.push_str(&format!("Description:\n{}\n", card.description));
     }
@@ -160,6 +163,8 @@ pub fn show_text(card: &Card) -> String {
                 event.to_card_status.label()
             }
             crate::domain::HistoryKind::Agent => event.to_agent_status.label(),
+            crate::domain::HistoryKind::Archive => "Archive",
+            crate::domain::HistoryKind::Restore => "Restore",
         };
         out.push_str(&format!(
             "  {} {}: {}\n",

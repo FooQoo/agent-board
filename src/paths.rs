@@ -29,6 +29,10 @@ pub fn serve_info_path() -> PathBuf {
     data_dir().join("serve.json")
 }
 
+pub fn lifecycle_lock_path() -> PathBuf {
+    data_dir().join("lifecycle.lock.db")
+}
+
 /// Read `serve.json`. A missing, unreadable or malformed file is `None`.
 pub fn read_serve_info() -> Option<ServeInfo> {
     read_serve_info_in(&data_dir())

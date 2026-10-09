@@ -155,6 +155,23 @@ ol {
   color: var(--r-text2);
 }
 
+@media (max-width: 400px) {
+  .header {
+    gap: 8px;
+    padding-inline: 8px;
+  }
+
+  .header__app {
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .header__logo {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 .status-bar {
   display: flex;
   align-items: center;
@@ -243,6 +260,32 @@ ol {
   font-size: 12px;
   line-height: 15px;
   color: var(--r-muted);
+}
+
+.lane-header__archive {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--r-muted);
+  background: transparent;
+  cursor: pointer;
+}
+.lane-header__archive:hover:not(:disabled) {
+  color: var(--r-danger);
+  background: var(--r-accent-soft);
+}
+.lane-header__archive:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.lane-header__archive svg {
+  width: 15px;
+  height: 15px;
 }
 
 .lane__scroll {
@@ -585,37 +628,6 @@ ol {
   color: var(--text-primary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.delete-confirm {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  /* The 1px border sits inside the 12px padding, as in the design. */
-  padding: 11px;
-  border: 1px solid var(--r-danger);
-  border-radius: 8px;
-  background: var(--r-surface);
-}
-
-.delete-confirm__message {
-  font-size: 13px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.delete-confirm__error {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--r-danger);
-}
-
-.delete-confirm__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 /* ---- Board messages (empty, loading, error) ---- */
