@@ -14,7 +14,6 @@ export interface ArchiveListProps {
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   onRetry: () => void;
-  actionError?: boolean;
   layoutRef?: (node: HTMLElement | null) => void;
 }
 
@@ -26,7 +25,6 @@ export function ArchiveList({
   selectedId,
   onSelect,
   onRetry,
-  actionError = false,
   layoutRef,
 }: ArchiveListProps) {
   const { t } = useTranslation();
@@ -67,12 +65,6 @@ export function ArchiveList({
           <Button type="button" variant="ghost" onClick={onRetry}>
             {t('board.retry')}
           </Button>
-        </p>
-      )}
-
-      {status === 'ready' && actionError && (
-        <p className="archive-list-pane__error" role="alert">
-          {t('archive.error')}
         </p>
       )}
 

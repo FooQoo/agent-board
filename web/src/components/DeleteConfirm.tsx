@@ -1,68 +1,53 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { archiveCard, deleteCard } from '../api';
-import type { Card, ProjectId } from '../types';
+import type { Card } from '../types';
 
 export interface DeleteConfirmProps {
-  /** The project the confirmation was opened in. The delete goes there, whatever is shown later. */
-  projectId: ProjectId;
   card: Card;
   action?: 'archive' | 'delete';
+  saving: boolean;
   /** The confirmation was opened by the user, so keyboard focus moves into it. */
   focusOnMount: boolean;
   /** Mock mode only: start in the failed state. */
   initialFailed?: boolean;
   onCancel: () => void;
-  /** Reports that the delete started (`true`) or failed and the confirmation stays (`false`). */
-  onSavingChange?: (saving: boolean) => void;
-  /** Called when the card is gone, whether this request deleted it (204) or it was already gone (404). */
-  onDeleted: () => void;
+  /** The parent runs the operation through its project lifecycle controls. */
+  onConfirm: () => Promise<boolean>;
 }
 
 export function DeleteConfirm({
-  projectId,
   card,
   action = 'delete',
+  saving,
   focusOnMount,
   initialFailed = false,
   onCancel,
-  onSavingChange,
-  onDeleted,
+  onConfirm,
 }: DeleteConfirmProps) {
   const { t } = useTranslation();
   const [failed, setFailed] = useState(initialFailed);
   const [busy, setBusy] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const messageId = useId();
+  const inFlight = useRef(false);
 
   useEffect(() => {
     if (focusOnMount) cancelRef.current?.focus();
   }, [focusOnMount]);
 
   const confirm = async () => {
+    if (inFlight.current || saving) return;
+    inFlight.current = true;
     setBusy(true);
     setFailed(false);
-    onSavingChange?.(true);
-    if (action === 'archive') {
-      try {
-        await archiveCard(projectId, card.id);
-        setBusy(false);
-        onDeleted();
-      } catch {
-        setBusy(false);
-        onSavingChange?.(false);
-        setFailed(true);
-      }
-      return;
-    }
-    const result = await deleteCard(projectId, card.id);
-    setBusy(false);
-    if (result === 'failed') {
-      onSavingChange?.(false);
+    try {
+      if (!(await onConfirm())) setFailed(true);
+    } catch {
       setFailed(true);
-    } else {
-      onDeleted();
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
     }
   };
 
@@ -84,8 +69,8 @@ export function DeleteConfirm({
           type="button"
           variant="destructive"
           className="detail-btn"
-          disabled={busy}
-          onClick={confirm}
+          disabled={busy || saving}
+          onClick={() => void confirm()}
         >
           {t(action === 'archive' ? 'archive.submit' : 'delete.submit')}
         </Button>
@@ -94,6 +79,7 @@ export function DeleteConfirm({
           type="button"
           variant="outline"
           className="detail-btn detail-btn--plain"
+          disabled={busy || saving}
           onClick={onCancel}
         >
           {t('delete.cancel')}

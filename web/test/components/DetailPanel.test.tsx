@@ -6,6 +6,7 @@ import { selectLocale } from '../../src/i18n';
 import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
 
 const noop = () => {};
+const noRemove = async () => true;
 
 async function openHistory() {
   await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
@@ -17,7 +18,7 @@ describe('DetailPanel', () => {
   it('translates the detail region, empty selection, headings, and accessible controls', () => {
     selectLocale('ja');
     const { rerender } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onDeleted={noop} />,
+      <DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onRemove={noRemove} />,
     );
     expect(screen.getByRole('complementary', { name: 'カードの詳細' })).toBeTruthy();
     expect(screen.getByText('カードを選択すると詳細を表示します。')).toBeTruthy();
@@ -27,7 +28,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(15)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(screen.getByRole('button', { name: '詳細を閉じる' })).toBeTruthy();
@@ -40,7 +41,7 @@ describe('DetailPanel', () => {
   });
 
   it('asks for a selection when no card is selected', () => {
-    render(<DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onDeleted={noop} />);
+    render(<DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onRemove={noRemove} />);
     expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Archive card' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Close details' })).toBeNull();
@@ -52,7 +53,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(screen.getByText('#8')).toBeTruthy();
@@ -68,7 +69,7 @@ describe('DetailPanel', () => {
   it('shows every line break and shows markup as text', () => {
     const card = makeCard({ id: 31, description: 'Line one\nLine **two**\n<b>three</b>' });
     const { container } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
+      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onRemove={noRemove} />,
     );
     const panel = screen.getByRole('tabpanel');
     expect(panel.querySelectorAll('br')).toHaveLength(2);
@@ -83,7 +84,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(12)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(screen.getByText('No description.')).toBeTruthy();
@@ -95,7 +96,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     await openHistory();
@@ -167,7 +168,7 @@ describe('DetailPanel', () => {
       ],
     });
     const { container } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
+      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onRemove={noRemove} />,
     );
     await openHistory();
     expect(container.querySelectorAll('.history__step')).toHaveLength(4);
@@ -179,7 +180,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(11)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(document.querySelector('.detail__meta .status-label--running')?.textContent).toBe(
@@ -190,7 +191,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(12)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(document.querySelector('.detail__meta .status-label--pending')?.textContent).toBe(
@@ -204,7 +205,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(screen.queryByText('Idle')).toBeNull();
@@ -217,7 +218,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={onClose}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
@@ -230,7 +231,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     const region = screen.getByRole('complementary');
@@ -243,7 +244,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     await openHistory();
@@ -260,7 +261,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(container.querySelector('.detail__meta .status-label svg.lucide-check')).not.toBeNull();
@@ -273,7 +274,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     const meta = container.querySelector('.detail__meta') as HTMLElement;
@@ -288,7 +289,7 @@ describe('DetailPanel', () => {
         projectId={PROJECT_A.id}
         card={fixtureCard(8)}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
@@ -331,7 +332,7 @@ describe('DetailPanel', () => {
       ],
     });
     const { container } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onDeleted={noop} />,
+      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onRemove={noRemove} />,
     );
     await openHistory();
     const tones = Array.from(container.querySelectorAll('.history__step .dot')).map((dot) =>
@@ -360,7 +361,7 @@ it('shows every attachment after the description and only offers viewing control
         attachments: [attachment],
       })}
       onClose={noop}
-      onDeleted={noop}
+      onRemove={noRemove}
     />,
   );
   const list = screen.getByRole('region', { name: 'Image attachments' });

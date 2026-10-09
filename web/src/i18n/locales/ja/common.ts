@@ -85,6 +85,7 @@ export const commonJa = {
     cardTitle: 'タイトル',
     assignee: '担当',
     error: 'カードをアーカイブできませんでした。もう一度お試しください。',
+    actions: 'アーカイブ済みカードの操作',
     restore: '復元',
   },
   status: {

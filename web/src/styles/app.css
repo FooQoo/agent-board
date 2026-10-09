@@ -288,16 +288,6 @@ ol {
   height: 15px;
 }
 
-.detail__restore {
-  margin: 0 24px 16px;
-  padding: 9px 12px;
-  border: 1px solid var(--r-accent);
-  border-radius: 7px;
-  background: var(--r-accent-soft);
-  color: var(--r-text);
-  cursor: pointer;
-}
-
 .lane__scroll {
   position: relative;
   flex: 1;
@@ -638,37 +628,6 @@ ol {
   color: var(--text-primary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.delete-confirm {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  /* The 1px border sits inside the 12px padding, as in the design. */
-  padding: 11px;
-  border: 1px solid var(--r-danger);
-  border-radius: 8px;
-  background: var(--r-surface);
-}
-
-.delete-confirm__message {
-  font-size: 13px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.delete-confirm__error {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--r-danger);
-}
-
-.delete-confirm__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 /* ---- Board messages (empty, loading, error) ---- */

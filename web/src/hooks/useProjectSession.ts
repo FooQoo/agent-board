@@ -42,10 +42,6 @@ export function useProjectSession(
         if (liveOperation.current?.id === operationId) liveOperation.current = null;
         dispatch({ type: 'OPERATION_CANCELLED', operationId });
       },
-      cardDeleted: (operationId, projectId, cardId) => {
-        if (liveOperation.current?.id === operationId) liveOperation.current = null;
-        dispatch({ type: 'CARD_DELETED', operationId, projectId, cardId });
-      },
       cardRemoved: (operationId, projectId, cardId) => {
         if (liveOperation.current?.id === operationId) liveOperation.current = null;
         dispatch({ type: 'CARD_REMOVED', operationId, projectId, cardId });

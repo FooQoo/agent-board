@@ -195,6 +195,145 @@ describe('which project is shown', () => {
     await screen.findByRole('region', { name: 'Todo' });
   });
 
+  it('restores the selected card through the lifecycle and returns it to its original lane idle', async () => {
+    const archived = makeCard({
+      id: 710,
+      title: 'Restore a pending card',
+      cardStatus: 'doing',
+      agentStatus: 'pending',
+      pendingReason: 'Waiting for approval',
+      pendingRequestId: 'request-710',
+      description: 'Preserved description',
+      archivedAt: '2026-10-09T01:00:00Z',
+    });
+    const archives = { [PROJECT_A.id]: [archived], [PROJECT_B.id]: [], [PROJECT_C.id]: [] };
+    backend.archives = archives;
+    backend.write = (url) => {
+      if (url !== `/api/projects/${PROJECT_A.id}/cards/${archived.id}/restore`)
+        return jsonResponse({}, 404);
+      const restored = {
+        ...archived,
+        archivedAt: null,
+        agentStatus: 'idle' as const,
+        pendingReason: null,
+        pendingRequestId: null,
+      };
+      archives[PROJECT_A.id] = [];
+      backend.boards[PROJECT_A.id] = boardOf(PROJECT_A, [...fixtureBoard.cards, restored], 12);
+      return jsonResponse({ card: restored });
+    };
+
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await userEvent.click(await screen.findByRole('button', { name: /Restore a pending card/ }));
+    const detail = screen.getByRole('complementary');
+    expect(within(detail).getByRole('button', { name: 'Restore' })).toBeTruthy();
+    expect(within(detail).getByRole('button', { name: 'Delete card' })).toBeTruthy();
+    const detailChildren = Array.from(detail.children).map((el) => el.className.split(' ')[0]);
+    expect(detailChildren.slice(0, 5)).toEqual([
+      'detail__top',
+      'detail__title',
+      'detail__meta',
+      'detail__archive-actions',
+      'detail__tabs',
+    ]);
+
+    await userEvent.click(within(detail).getByRole('button', { name: 'Restore' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /Restore a pending card/ })).toBeNull(),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Back to board' }));
+    const restoredButton = await screen.findByRole('button', { name: /Restore a pending card/ });
+    const doing = screen.getByRole('region', { name: 'Doing' });
+    expect(within(doing).getByRole('button', { name: /Restore a pending card/ })).toBe(
+      restoredButton,
+    );
+    await userEvent.click(restoredButton);
+    expect(screen.queryByText('Waiting for approval')).toBeNull();
+    expect(within(screen.getByRole('complementary')).getByText('Idle')).toBeTruthy();
+    expect(writes()[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/${archived.id}/restore`);
+  });
+
+  it('keeps the archived detail after restore failure and allows a retry', async () => {
+    const archived = makeCard({
+      id: 711,
+      title: 'Retry restore',
+      description: 'Keep this content visible',
+      archivedAt: '2026-10-09T01:00:00Z',
+    });
+    const archives = { [PROJECT_A.id]: [archived], [PROJECT_B.id]: [], [PROJECT_C.id]: [] };
+    backend.archives = archives;
+    let fail = true;
+    backend.write = (url) => {
+      if (url !== `/api/projects/${PROJECT_A.id}/cards/${archived.id}/restore`)
+        return jsonResponse({}, 404);
+      if (fail) return jsonResponse({ error: { reason: 'conflict' } }, 409);
+      archives[PROJECT_A.id] = [];
+      return jsonResponse({ card: { ...archived, archivedAt: null, agentStatus: 'idle' } });
+    };
+
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await userEvent.click(await screen.findByRole('button', { name: /Retry restore/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Could not restore the card. Try again.',
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Retry restore' })).toBeTruthy();
+    expect(screen.getByText('Keep this content visible')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Retry restore/ })).toBeTruthy();
+
+    fail = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Retry restore/ })).toBeNull());
+    expect(writes().filter(([url]) => String(url).endsWith('/restore'))).toHaveLength(2);
+  });
+
+  it('physically removes an archived card on DELETE 404 and keeps confirmation after a failed delete', async () => {
+    const archived = makeCard({
+      id: 712,
+      title: 'Permanently remove this card',
+      archivedAt: '2026-10-09T01:00:00Z',
+    });
+    const archives = { [PROJECT_A.id]: [archived], [PROJECT_B.id]: [], [PROJECT_C.id]: [] };
+    backend.archives = archives;
+    let failure = true;
+    backend.write = (url, init) => {
+      if (url !== `/api/projects/${PROJECT_A.id}/cards/${archived.id}` || init.method !== 'DELETE')
+        return jsonResponse({}, 404);
+      if (failure) return jsonResponse({ error: { reason: 'failed' } }, 500);
+      archives[PROJECT_A.id] = [];
+      return new Response(null, { status: 404 });
+    };
+
+    renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Permanently remove this card/ }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    expect(screen.getByText(/description, images, and history/)).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Could not delete the card. Try again.',
+    );
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Permanently remove this card' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
+
+    failure = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /Permanently remove this card/ })).toBeNull(),
+    );
+    expect(writes().filter(([, init]) => init?.method === 'DELETE')).toHaveLength(2);
+  });
+
   it('returns to the board when the project changes from the archive view', async () => {
     backend.archives = { [PROJECT_A.id]: [], [PROJECT_B.id]: [], [PROJECT_C.id]: [] };
     renderApp(urlOf(PROJECT_A.id));

@@ -9,6 +9,7 @@ import { deferred, jsonResponse } from '../fakes';
 import { PROJECT_A, fixtureCard } from '../fixtures';
 
 const noop = () => {};
+const noRemove = async () => true;
 
 function renderPanel(card: CardModel, onChanged = vi.fn()) {
   render(
@@ -16,7 +17,7 @@ function renderPanel(card: CardModel, onChanged = vi.fn()) {
       projectId={PROJECT_A.id}
       card={card}
       onClose={noop}
-      onDeleted={noop}
+      onRemove={noRemove}
       onChanged={onChanged}
     />,
   );

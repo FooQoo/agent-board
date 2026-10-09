@@ -172,7 +172,7 @@ describe('sessionReducer: saving', () => {
   });
 });
 
-describe('sessionReducer: deleted cards', () => {
+describe('sessionReducer: removed cards', () => {
   const card = makeCard({ id: 8 });
 
   it('clears the selection of the deleted card, finishes the operation and applies the pending request', () => {
@@ -180,7 +180,7 @@ describe('sessionReducer: deleted cards', () => {
       initSession(A, 8),
       { type: 'OPEN_OPERATION', operationId: 1, kind: 'delete', projectId: A },
       { type: 'URL_REQUESTED', projectId: B },
-      { type: 'CARD_DELETED', operationId: 1, projectId: A, cardId: card.id },
+      { type: 'CARD_REMOVED', operationId: 1, projectId: A, cardId: card.id },
     );
     expect(state.operation).toBeNull();
     expect(state.selectedId).toBeNull();
@@ -191,14 +191,14 @@ describe('sessionReducer: deleted cards', () => {
     const state = run(
       initSession(A, 8),
       { type: 'OPEN_OPERATION', operationId: 1, kind: 'delete', projectId: A },
-      { type: 'CARD_DELETED', operationId: 1, projectId: A, cardId: 8 },
+      { type: 'CARD_REMOVED', operationId: 1, projectId: A, cardId: 8 },
     );
     expect(state).toMatchObject({ activeProjectId: A, selectedId: null, operation: null });
   });
 
   it('does not clear the selection of the same card number in another project', () => {
     const state = run(initSession(B, 8), {
-      type: 'CARD_DELETED',
+      type: 'CARD_REMOVED',
       operationId: 9,
       projectId: A,
       cardId: 8,

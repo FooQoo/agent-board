@@ -55,9 +55,7 @@ export type SessionAction =
   | { type: 'SAVE_FAILED'; operationId: number }
   | { type: 'OPERATION_FINISHED'; operationId: number }
   | { type: 'OPERATION_CANCELLED'; operationId: number }
-  | { type: 'CARD_REMOVED'; operationId: number; projectId: ProjectId; cardId: number }
-  /** @deprecated Use CARD_REMOVED. Kept while existing detail callers are migrated. */
-  | { type: 'CARD_DELETED'; operationId: number; projectId: ProjectId; cardId: number };
+  | { type: 'CARD_REMOVED'; operationId: number; projectId: ProjectId; cardId: number };
 
 export function initSession(
   activeProjectId: ProjectId | null,
@@ -157,8 +155,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
     case 'OPERATION_CANCELLED':
       if (state.operation?.id !== action.operationId) return state;
       return finishOperation(state);
-    case 'CARD_REMOVED':
-    case 'CARD_DELETED': {
+    case 'CARD_REMOVED': {
       const cleared: SessionState =
         state.activeProjectId === action.projectId && state.selectedId === action.cardId
           ? { ...state, selectedId: null }
@@ -182,8 +179,7 @@ export interface OperationControls {
   saveFailed: (operationId: number) => void;
   /** The operation finished or was cancelled. */
   end: (operationId: number) => void;
-  cardDeleted: (operationId: number, projectId: ProjectId, cardId: number) => void;
-  cardRemoved?: (operationId: number, projectId: ProjectId, cardId: number) => void;
+  cardRemoved: (operationId: number, projectId: ProjectId, cardId: number) => void;
   isCurrent?: (operationId: number, projectId: ProjectId) => boolean;
 }
 
@@ -193,7 +189,6 @@ export const noOperations: OperationControls = {
   saveStarted: () => {},
   saveFailed: () => {},
   end: () => {},
-  cardDeleted: () => {},
   cardRemoved: () => {},
 };
 

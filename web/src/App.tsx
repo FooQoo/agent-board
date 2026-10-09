@@ -82,7 +82,10 @@ export function App({ initial }: AppProps) {
   const board = useBoard(known ? activeId : null);
   const archive = useArchive(session.viewMode === 'archive' && known ? activeId : null);
   const archiveLifecycle = useCardLifecycle(operations);
-  const [archiveActionFailed, setArchiveActionFailed] = useState(false);
+  const [restoreFailure, setRestoreFailure] = useState<{
+    projectId: ProjectId;
+    cardId: number;
+  } | null>(null);
 
   // The first visit without a project in the URL shows the first project, replacing the history entry.
   const firstProject = projects.status === 'ready' ? (projects.projects[0] ?? null) : null;
@@ -189,18 +192,15 @@ export function App({ initial }: AppProps) {
         activeProjectId={known ? activeId : null}
         switchDisabled={operation !== null}
         onSelectProject={(projectId) => {
-          setArchiveActionFailed(false);
           void setRequested(projectId, { history: 'push' });
         }}
         canAdd={view === 'board' && session.viewMode === 'board'}
         viewMode={session.viewMode}
         onBack={() => {
-          setArchiveActionFailed(false);
           dispatch({ type: 'SET_VIEW_MODE', mode: 'board' });
         }}
         onAdd={() => openDialog({ kind: 'create' })}
         onArchive={() => {
-          setArchiveActionFailed(false);
           dispatch({ type: 'SET_VIEW_MODE', mode: 'archive' });
         }}
       />
@@ -215,7 +215,6 @@ export function App({ initial }: AppProps) {
             data={archive.data}
             status={archive.status}
             fetchFailed={archive.fetchFailed}
-            actionError={archiveActionFailed}
             selectedId={session.archiveSelectedId}
             onSelect={(id) => dispatch({ type: 'SELECT_ARCHIVE_CARD', id })}
             onRetry={archive.reload}
@@ -264,20 +263,39 @@ export function App({ initial }: AppProps) {
                 if (isProjectId(activeId)) refreshProject(activeId);
               }}
               archived={archiveVisible}
+              operationSaving={session.operation?.saving ?? false}
+              restoreFailed={Boolean(
+                restoreFailure?.projectId === activeId &&
+                  restoreFailure.cardId === archivedSelected?.id,
+              )}
+              onRemove={async (action, card) => {
+                if (!isProjectId(activeId)) return false;
+                const projectId = activeId;
+                const result = await archiveLifecycle.run(
+                  action,
+                  projectId,
+                  { cardId: card.id },
+                  { keepOperationOnError: true },
+                );
+                if (!result.ok) return false;
+                refreshProject(projectId);
+                if (session.viewMode === 'archive') archive.reload();
+                return true;
+              }}
               onRestore={() => {
                 if (!isProjectId(activeId) || archivedSelected === null) return;
-                setArchiveActionFailed(false);
-                void archiveLifecycle
-                  .run('restore', activeId, { cardId: archivedSelected.id })
-                  .then((result) => {
-                    if (!result.ok) {
-                      setArchiveActionFailed(true);
-                      return;
-                    }
-                    dispatch({ type: 'SELECT_ARCHIVE_CARD', id: null });
-                    archive.reload();
-                    refreshProject(activeId);
-                  });
+                const projectId = activeId;
+                const cardId = archivedSelected.id;
+                setRestoreFailure(null);
+                void archiveLifecycle.run('restore', projectId, { cardId }).then((result) => {
+                  if (!result.ok) {
+                    setRestoreFailure({ projectId, cardId });
+                    return;
+                  }
+                  dispatch({ type: 'SELECT_ARCHIVE_CARD', id: null });
+                  archive.reload();
+                  refreshProject(projectId);
+                });
               }}
               onClose={() =>
                 dispatch({
@@ -285,16 +303,6 @@ export function App({ initial }: AppProps) {
                   id: null,
                 })
               }
-              onDeleted={() => {
-                dispatch({
-                  type: session.viewMode === 'archive' ? 'SELECT_ARCHIVE_CARD' : 'SELECT_CARD',
-                  id: null,
-                });
-                if (isProjectId(activeId)) {
-                  refreshProject(activeId);
-                  if (session.viewMode === 'archive') archive.reload();
-                }
-              }}
               initialConfirm={isMockCard ? mockInitial?.confirm : undefined}
               initialDeleteFailed={isMockCard ? mockInitial?.deleteFail : undefined}
             />

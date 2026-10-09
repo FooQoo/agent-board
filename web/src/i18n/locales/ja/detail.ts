@@ -35,7 +35,7 @@ export const detailJa = {
   },
   delete: {
     buttonLabel: 'カードを削除',
-    confirm: '#{{id}}「{{title}}」を削除しますか？ この操作は元に戻せません。',
+    confirm: '#{{id}}「{{title}}」と本文・画像・履歴を削除しますか？ この操作は元に戻せません。',
     submit: '削除',
     cancel: 'キャンセル',
     error: 'カードを削除できませんでした。もう一度お試しください。',
@@ -44,8 +44,9 @@ export const detailJa = {
     buttonLabel: 'カードをアーカイブ',
     confirm: '#{{id}}「{{title}}」をアーカイブしますか？ アーカイブ一覧から復元できます。',
     submit: 'アーカイブ',
-    restore: '復元',
     error: 'カードをアーカイブできませんでした。もう一度お試しください。',
+    restore: '復元',
+    restoreError: 'カードを復元できませんでした。もう一度お試しください。',
   },
   markdown: {
     noImage: 'No image',

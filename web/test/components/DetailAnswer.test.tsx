@@ -9,6 +9,7 @@ import { deferred, jsonResponse } from '../fakes';
 import { PROJECT_A, fixtureCard } from '../fixtures';
 
 const noop = () => {};
+const noRemove = async () => true;
 const LONG =
   'It is unclear whether to keep the existing data or start from scratch. There are three options: replace the old board, export it and import a new one, or keep both for now. Please decide which one to use.';
 
@@ -19,7 +20,7 @@ function operationsSpy(): OperationControls & { begin: ReturnType<typeof vi.fn> 
     saveStarted: vi.fn(),
     saveFailed: vi.fn(),
     end: vi.fn(),
-    cardDeleted: vi.fn(),
+    cardRemoved: vi.fn(),
   };
 }
 
@@ -34,7 +35,7 @@ function renderPanel(
       card={card}
       operations={extra.operations}
       onClose={noop}
-      onDeleted={noop}
+      onRemove={noRemove}
       onChanged={onChanged}
     />,
   );
@@ -245,7 +246,7 @@ describe('sending the answer', () => {
         projectId={PROJECT_A.id}
         card={{ ...first, pendingRequestId: 'new-request', pendingReason: 'A new question' }}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(screen.getByText('A new question')).toBeTruthy();
@@ -280,7 +281,7 @@ describe('sending the answer', () => {
         card={fixtureCard(8)}
         operations={operations}
         onClose={noop}
-        onDeleted={noop}
+        onRemove={noRemove}
       />,
     );
     expect(screen.queryByRole('textbox')).toBeNull();

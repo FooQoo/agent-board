@@ -86,6 +86,7 @@ export const commonEn = {
     cardTitle: 'Title',
     assignee: 'Assignee',
     error: 'Could not archive the cards. Try again.',
+    actions: 'Archived card actions',
     restore: 'Restore',
   },
   status: {
