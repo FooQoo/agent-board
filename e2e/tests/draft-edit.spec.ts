@@ -75,7 +75,7 @@ test('a card becomes a draft, is edited, saved, and finalized in one step', asyn
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toHaveCount(0);
 
   const { dialog, editor } = await openEditor(page);
-  await expect(dialog).toContainText('Editing draft');
+  await expect(dialog).toContainText('Edit card');
   // The dialog opens with the current text, nothing changed yet, and Save disabled.
   expect(await editorValue(editor)).toContain('## 作業内容\n\nOld text.');
   await expect(dialog.getByText('You have unsaved changes.')).toHaveCount(0);

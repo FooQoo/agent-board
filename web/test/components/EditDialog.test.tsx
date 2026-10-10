@@ -95,8 +95,8 @@ describe('edit dialog layout', () => {
   it('shows the header, the outline, the fields, the draft box and one Cancel and Save pair', async () => {
     const { dialog } = await openEdit();
     expect(within(dialog).getByText('#14')).toBeTruthy();
-    expect(within(dialog).getByText('CLI target selection')).toBeTruthy();
-    expect(within(dialog).getByText('Editing draft')).toBeTruthy();
+    expect(within(dialog).getByText('Edit card')).toBeTruthy();
+    expect(within(dialog).getByText('Draft', { selector: '.editor__badge' })).toBeTruthy();
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe(
       'CLI target selection',
     );
@@ -106,7 +106,7 @@ describe('edit dialog layout', () => {
       within(outline)
         .getAllByRole('button')
         .map((item) => item.textContent),
-    ).toEqual(['Goal', 'Done when']);
+    ).toEqual(['01Goal', '02Done when']);
     expect(within(dialog).queryByRole('tab')).toBeNull();
     expect(within(dialog).getByRole('checkbox', { name: 'Draft' }).getAttribute('data-state')).toBe(
       'checked',
@@ -121,7 +121,8 @@ describe('edit dialog layout', () => {
   it('shows the Japanese wording', async () => {
     selectLocale('ja');
     const { dialog } = await openEdit();
-    expect(within(dialog).getByText('下書きを編集中')).toBeTruthy();
+    expect(within(dialog).getByText('カードを編集')).toBeTruthy();
+    expect(within(dialog).getByText('下書き', { selector: '.editor__badge' })).toBeTruthy();
     expect(within(dialog).getByRole('checkbox', { name: '下書き' })).toBeTruthy();
     for (const name of ['キャンセル', '保存']) {
       expect(button(dialog, name)).toBeTruthy();
@@ -143,7 +144,7 @@ describe('edit dialog layout', () => {
         within(outline)
           .getAllByRole('button')
           .map((item) => item.textContent),
-      ).toEqual(['One', 'Two']),
+      ).toEqual(['01One', '02Two']),
     );
   });
 
@@ -242,6 +243,8 @@ describe('saving', () => {
     expect(button(dialog, 'Saving…').disabled).toBe(true);
     expect(button(dialog, 'Cancel').disabled).toBe(true);
     expect(button(dialog, 'Close').disabled).toBe(true);
+    expect(within(dialog).getByRole('status').textContent).toBe('Saving…');
+    expect(dialog.querySelector('.editor__footer')?.getAttribute('data-saving')).toBe('true');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).disabled).toBe(true);
     expect(bodyOf(dialog).disabled).toBe(true);
     expect(within(dialog).getByRole('checkbox', { name: 'Draft' }).hasAttribute('disabled')).toBe(
@@ -288,7 +291,9 @@ describe('save failures', () => {
     await userEvent.click(button(dialog, 'Save'));
 
     const alert = await within(dialog).findByRole('alert');
-    expect(alert.textContent).toContain('Description is too long.');
+    // The server's reason is not shown; the design's sentence is.
+    expect(alert.textContent).toContain('Could not save. Your input is kept. Try again.');
+    expect(alert.textContent).not.toContain('Description is too long.');
     expect(onClosed).not.toHaveBeenCalled();
     expect(descriptionOf(dialog)).toBe('keep this');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('kept title');
@@ -450,7 +455,7 @@ describe('with the real API client', () => {
     expect(JSON.parse(String(init?.body))).toEqual({ description: '## Body' });
   });
 
-  it('shows the reason of a 422 from the server and keeps the dialog', async () => {
+  it('shows the design sentence for a 422 from the server, not its reason, and keeps the dialog', async () => {
     stubFetch(422, {
       error: { code: 'invalid_value', message: 'x', reason: 'Description is 50,001 of 50,000.' },
     });
@@ -460,7 +465,7 @@ describe('with the real API client', () => {
     setDescription('x', dialog);
     await userEvent.click(button(dialog, 'Save'));
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
-      'Description is 50,001 of 50,000.',
+      'Could not save. Your input is kept. Try again.',
     );
     expect(onClosed).not.toHaveBeenCalled();
   });

@@ -715,7 +715,9 @@ describe('switching while a form is open', () => {
 
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add' }));
 
-    expect(await screen.findByText('The board is busy.')).toBeTruthy();
+    // The server's reason is not shown; the design's sentence is.
+    expect(await screen.findByText('Could not save. Your input is kept. Try again.')).toBeTruthy();
+    expect(screen.queryByText('The board is busy.')).toBeNull();
     const open = screen.getByRole('dialog');
     expect(within(open).getByLabelText('Title')).toHaveProperty('value', 'Keep me');
     expect(document.body.textContent).toContain('Initialize the board');

@@ -130,10 +130,10 @@ export function EditorShell({
             )}
           </div>
         )}
-        <div className="editor__footer">
+        <div className="editor__footer" data-saving={saving ? 'true' : undefined}>
           {footerStart}
           <span className="editor__status" role="status">
-            {status}
+            {saving ? t('editor.savingStatus') : status}
           </span>
           <button type="button" className="editor__btn" disabled={saving} onClick={requestClose}>
             {t('dialog.cancel')}

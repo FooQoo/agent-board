@@ -114,8 +114,8 @@ export function EditDialog({
   return (
     <EditorShell
       cardId={card.id}
-      title={card.title}
-      badge={t('editor.editingDraft')}
+      title={t('editor.editCardTitle')}
+      badge={t('editor.draft')}
       variant="edit"
       dirty={dirty}
       saving={flow.saving}
@@ -167,7 +167,7 @@ export function EditDialog({
             </div>
           ) : undefined
         }
-        attachmentError={attachmentState.error}
+        attachmentNotice={attachmentState.error}
         attachments={attachmentState.attachments}
         onFiles={attachmentState.addFiles}
         onRemoveAttachment={(id) => {

@@ -2,6 +2,7 @@ import { CircleAlertIcon } from 'lucide-react';
 import { useDeferredValue, useId, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AttachmentPanel } from './AttachmentPanel';
+import type { AttachmentNotice } from './useAttachmentState';
 import type { EditorAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, TITLE_LIMIT, countChars } from './limits';
 import { activeOutlineIndex, outlineOf } from './outline';
@@ -33,7 +34,8 @@ export interface EditorBodyProps {
   /** Shown under the outline in the left column (the task list of an epic). */
   sidebar?: ReactNode;
   attachments?: readonly EditorAttachment[];
-  attachmentError?: string | null;
+  /** Why the last picture was refused; the side panel shows it. */
+  attachmentNotice?: AttachmentNotice | null;
   onFiles?: (files: File[]) => void;
   onRemoveAttachment?: (id: string) => void;
 }
@@ -54,7 +56,7 @@ export function EditorBody({
   extraField,
   sidebar,
   attachments = [],
-  attachmentError,
+  attachmentNotice = null,
   onFiles,
   onRemoveAttachment,
 }: EditorBodyProps) {
@@ -120,6 +122,9 @@ export function EditorBody({
                 disabled={disabled}
                 onClick={() => editorRef.current?.goTo(index)}
               >
+                <span className="editor__outline-no" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
                 {item.text}
               </button>
             ))
@@ -167,11 +172,6 @@ export function EditorBody({
             }
           />
         </div>
-        {attachmentError && (
-          <p className="editor__attachment-error" role="alert">
-            {t('editor.attachmentInvalid', { reason: attachmentError })}
-          </p>
-        )}
         {overLimit && (
           <p className="editor__hint" data-over="true">
             <CircleAlertIcon aria-hidden="true" />
@@ -191,6 +191,7 @@ export function EditorBody({
           onFiles={onFiles}
           onRemove={onRemoveAttachment}
           onInsert={insertImage}
+          notice={attachmentNotice}
           disabled={disabled}
         />
       )}

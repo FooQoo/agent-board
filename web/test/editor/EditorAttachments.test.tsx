@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import type { RichMarkdownEditorHandle } from '../../src/components/editor/RichMarkdownEditor';
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditorShell } from '../../src/components/editor/EditorShell';
 import { EditorBody } from '../../src/components/editor/EditorBody';
 import { selectLocale } from '../../src/i18n';
+import type { AttachmentNotice } from '../../src/components/editor/useAttachmentState';
 import { editorSpy } from './fakeRichEditor';
 
 vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('./fakeRichEditor'));
@@ -26,7 +27,13 @@ beforeEach(() => {
   editorSpy.goTo.mockClear();
 });
 
-function Host({ onFiles = vi.fn(), error }: { onFiles?: (files: File[]) => void; error?: string }) {
+function Host({
+  onFiles = vi.fn(),
+  notice = null,
+}: {
+  onFiles?: (files: File[]) => void;
+  notice?: AttachmentNotice | null;
+}) {
   const [value, setValue] = useState('Before after');
   const editorRef = useRef<RichMarkdownEditorHandle>(null);
   return (
@@ -40,7 +47,7 @@ function Host({ onFiles = vi.fn(), error }: { onFiles?: (files: File[]) => void;
       attachments={[attachment]}
       onFiles={onFiles}
       onRemoveAttachment={() => {}}
-      attachmentError={error}
+      attachmentNotice={notice}
     />
   );
 }
@@ -115,9 +122,23 @@ describe('editor attachment side panel', () => {
     expect(descriptionBox().value).toBe('Before after');
   });
 
-  it('shows validation failures while retaining editable text', () => {
-    render(<Host error="PNG, JPEG, WebP, GIF" />);
-    expect(screen.getByRole('alert').textContent).toContain('PNG, JPEG, WebP, GIF');
+  it('shows a refused picture in the side panel, with its file name, and keeps the text', () => {
+    render(<Host notice={{ kind: 'tooLarge', name: 'large.png' }} />);
+    const panel = screen.getByRole('region', { name: 'Image attachments' });
+    const alert = within(panel).getByRole('alert');
+    expect(alert.textContent).toContain('Cannot add the image');
+    expect(alert.textContent).toContain('large.png is larger than 10 MB. Choose a smaller image.');
+    expect(document.querySelector('.editor__main [role="alert"]')).toBeNull();
     expect(descriptionBox().value).toBe('Before after');
+  });
+
+  it('shows the format and count notices in the design wording', () => {
+    const { unmount } = render(<Host notice={{ kind: 'format', name: 'notes.txt' }} />);
+    expect(screen.getByRole('alert').textContent).toContain(
+      'notes.txt is not a supported format. Choose a PNG, JPEG, WebP or GIF image.',
+    );
+    unmount();
+    render(<Host notice={{ kind: 'count' }} />);
+    expect(screen.getByRole('alert').textContent).toContain('A card holds up to 20 images.');
   });
 });

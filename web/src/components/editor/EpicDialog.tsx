@@ -1,6 +1,5 @@
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WriteError } from '../../api';
 import { epicInk } from '../../lib/epic';
 import type { Card, Epic } from '../../types';
 import { Checkbox } from '../ui/checkbox';
@@ -176,16 +175,15 @@ export function EpicDialog({
       busy.current = false;
       setSaving(false);
       onClose();
-    } catch (cause) {
+    } catch {
       busy.current = false;
       setSaving(false);
       onSavingChange?.(false);
       const stepLabel = stepName(step);
-      const reason = cause instanceof WriteError && cause.message ? ` ${cause.message}` : '';
       const base = somethingSaved.current
         ? t('epic.saveFailedAt', { step: stepLabel })
         : t('epic.saveFailedFirst', { step: stepLabel });
-      setError(`${base}${reason}`);
+      setError(base);
     }
   };
 
@@ -302,7 +300,7 @@ export function EpicDialog({
             onOpenTask={requestOpenTask}
           />
         }
-        attachmentError={attachmentState.error}
+        attachmentNotice={attachmentState.error}
         attachments={attachmentState.attachments}
         onFiles={attachmentState.addFiles}
         onRemoveAttachment={(id) => {

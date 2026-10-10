@@ -163,7 +163,7 @@ describe('epic dialog layout', () => {
       within(within(dialog).getByRole('navigation', { name: 'Outline' }))
         .getAllByRole('button')
         .map((item) => item.textContent),
-    ).toEqual(['Goal', 'Steps']);
+    ).toEqual(['01Goal', '02Steps']);
     expect(within(dialog).getByRole('heading', { name: 'Tasks' })).toBeTruthy();
     expect(rowIds(dialog)).toEqual(['24', '25', '27', '28', '29']);
     expect(include(dialog, 24).getAttribute('aria-checked')).toBe('true');

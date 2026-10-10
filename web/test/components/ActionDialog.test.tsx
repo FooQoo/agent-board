@@ -211,7 +211,10 @@ describe('saving state', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
     await act(async () => first.reject(new WriteError('The server said no.', 503, 'busy')));
 
-    expect((await within(dialog).findByRole('alert')).textContent).toContain('The server said no.');
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Could not save. Your input is kept. Try again.',
+    );
+    expect(within(dialog).queryByText('The server said no.')).toBeNull();
     expect(onClosed).not.toHaveBeenCalled();
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('Keep me');
     expect(descriptionOf()).toBe('Body text');

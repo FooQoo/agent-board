@@ -347,3 +347,46 @@
   font-weight: 400;
   line-height: 1.4;
 }
+
+/* A refused picture: the amber notice in the side panel, above the pictures. */
+.editor-attachments__notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.editor-attachments__notice > strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.editor-attachments__notice-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The chapter numbers of the outline. */
+.editor__outline-no {
+  margin-right: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* The outline label carries the accent rule the design draws under it. */
+.editor__outline-label {
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--r-accent);
+}
+
+/* While a save runs the draft box is faded, as the design shows. */
+.editor__footer[data-saving="true"] .editor__draft {
+  opacity: 0.45;
+}

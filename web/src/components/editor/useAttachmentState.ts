@@ -7,6 +7,16 @@ export interface UseAttachmentStateOptions {
   resolveStoredUrl: (attachment: StoredAttachment) => string;
 }
 
+/**
+ * Why the last picture was refused. `name` is the file that broke the rule, when one file did; the
+ * screen words it. Nothing is added when a notice is set.
+ */
+export type AttachmentNotice =
+  | { kind: 'format'; name: string }
+  | { kind: 'tooLarge'; name: string }
+  | { kind: 'count' }
+  | { kind: 'total' };
+
 export interface AttachmentState {
   attachments: EditorAttachment[];
   addFiles: (files: Iterable<File>) => void;
@@ -14,8 +24,13 @@ export interface AttachmentState {
   cancel: () => void;
   reset: (attachments: readonly StoredAttachment[]) => void;
   clear: () => void;
-  error: string | null;
+  error: AttachmentNotice | null;
 }
+
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const MAX_FILE = 10 * 1024 * 1024;
+const MAX_COUNT = 20;
+const MAX_TOTAL = 50 * 1024 * 1024;
 
 function storedAttachments(
   attachments: readonly StoredAttachment[],
@@ -40,7 +55,7 @@ export function useAttachmentState({
   const [attachments, setAttachments] = useState(() =>
     storedAttachments(initial, resolveStoredUrl),
   );
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AttachmentNotice | null>(null);
   const currentAttachments = useRef(attachments);
   currentAttachments.current = attachments;
   const urls = useRef(new Set<string>());
@@ -55,19 +70,25 @@ export function useAttachmentState({
   const addFiles = useCallback((files: Iterable<File>) => {
     const selected = Array.from(files);
     const current = currentAttachments.current;
-    if (
-      selected.some((f) => !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(f.type))
-    ) {
-      setError('PNG / JPEG / WebP / GIF');
+    const wrong = selected.find((f) => !IMAGE_TYPES.includes(f.type));
+    if (wrong) {
+      setError({ kind: 'format', name: wrong.name });
+      return;
+    }
+    const large = selected.find((f) => f.size > MAX_FILE);
+    if (large) {
+      setError({ kind: 'tooLarge', name: large.name });
+      return;
+    }
+    if (current.length + selected.length > MAX_COUNT) {
+      setError({ kind: 'count' });
       return;
     }
     if (
-      selected.some((f) => f.size > 10 * 1024 * 1024) ||
-      current.length + selected.length > 20 ||
       current.reduce((n, f) => n + f.size, 0) + selected.reduce((n, f) => n + f.size, 0) >
-        50 * 1024 * 1024
+      MAX_TOTAL
     ) {
-      setError('10 MiB / image · 20 images · 50 MiB / card');
+      setError({ kind: 'total' });
       return;
     }
     setError(null);

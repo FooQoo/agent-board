@@ -10,6 +10,8 @@ import { useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode }
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useTranslation } from 'react-i18next';
 import type { EditorAttachment } from './attachmentTypes';
+import type { TFunction } from 'i18next';
+import type { AttachmentNotice } from './useAttachmentState';
 import { formatAttachmentSize } from './attachmentTypes';
 import '../../styles/editor.css';
 
@@ -20,8 +22,23 @@ export interface AttachmentPanelProps {
   onFiles: (files: File[]) => void;
   onRemove: (id: string) => void;
   onInsert?: (attachment: EditorAttachment) => void;
+  /** Why the last picture was refused; shown above the list until the next change. */
+  notice?: AttachmentNotice | null;
   disabled?: boolean;
   className?: string;
+}
+
+function noticeText(notice: AttachmentNotice, t: TFunction): string {
+  switch (notice.kind) {
+    case 'format':
+      return t('editor.attachmentFormat', { name: notice.name });
+    case 'tooLarge':
+      return t('editor.attachmentTooLarge', { name: notice.name });
+    case 'count':
+      return t('editor.attachmentCount');
+    case 'total':
+      return t('editor.attachmentTotal');
+  }
 }
 
 /** The compact attachment tray used by the editor. The editor owns persistence and saving. */
@@ -32,6 +49,7 @@ export function AttachmentPanel({
   onFiles,
   onRemove,
   onInsert,
+  notice = null,
   disabled = false,
   className = '',
 }: AttachmentPanelProps) {
@@ -93,6 +111,12 @@ export function AttachmentPanel({
         <PlusIcon aria-hidden="true" />
         {t('editor.addAttachment')}
       </button>
+      {notice && (
+        <div className="editor-attachments__notice" role="alert">
+          <strong>{t('editor.attachmentRefusedTitle')}</strong>
+          <p className="editor-attachments__notice-text">{noticeText(notice, t)}</p>
+        </div>
+      )}
       <input
         ref={input}
         className="editor-attachments__input"

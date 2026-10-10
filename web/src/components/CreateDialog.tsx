@@ -117,7 +117,7 @@ export function CreateDialog({
         onDescriptionChange={setDescription}
         editorRef={editor}
         disabled={flow.saving}
-        attachmentError={attachmentState.error}
+        attachmentNotice={attachmentState.error}
         attachments={attachmentState.attachments}
         onFiles={attachmentState.addFiles}
         onRemoveAttachment={attachmentState.remove}
