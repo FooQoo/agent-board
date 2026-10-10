@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import type { RichMarkdownEditorHandle } from '../../src/components/editor/RichMarkdownEditor';
@@ -92,7 +92,7 @@ describe('editor attachment side panel', () => {
     expect(onFiles).toHaveBeenCalledExactlyOnceWith([file]);
   });
 
-  it('closes only the nested zoom on Escape, restores thumbnail focus and keeps the draft', async () => {
+  it('closes only the enlarged picture on Escape, returns focus to its thumbnail and keeps the draft', async () => {
     function ParentDialog() {
       const [open, setOpen] = useState(true);
       return open ? (
@@ -118,7 +118,9 @@ describe('editor attachment side panel', () => {
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'screen [one].png' })).toBeNull();
     expect(screen.getByRole('dialog', { name: 'Card editorNew' })).toBeTruthy();
-    expect(document.activeElement).toBe(thumbnail);
+    // The dialog is dirty, so a Escape that reached it would ask the question; it must not.
+    expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(thumbnail));
     expect(descriptionBox().value).toBe('Before after');
   });
 

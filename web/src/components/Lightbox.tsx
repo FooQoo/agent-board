@@ -11,10 +11,13 @@ import '../styles/lightbox.css';
 export function Lightbox({
   label,
   onClose,
+  onCloseAutoFocus,
   children,
 }: {
   label: string;
   onClose: () => void;
+  /** Where the focus goes when the picture closes; the default is the element focused before it. */
+  onCloseAutoFocus?: (event: Event) => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -25,7 +28,13 @@ export function Lightbox({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="lightbox" showCloseButton={false} aria-describedby={undefined}>
+      <DialogContent
+        className="lightbox"
+        data-lightbox
+        showCloseButton={false}
+        aria-describedby={undefined}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <DialogTitle className="visually-hidden">{label}</DialogTitle>
         <DialogClose className="lightbox__close" aria-label={t('dialog.close')}>
           <XIcon aria-hidden="true" />
