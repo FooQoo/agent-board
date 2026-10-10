@@ -1,6 +1,7 @@
 //! Card operations of one project. Every mutation records its audit event and
 //! advances the project's revision in the same immediate transaction, and every
 //! statement is limited to the project it was given.
+use super::legacy::{AllBoardsSnapshot, BoardSnapshot, RevisionCursor};
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, params};
 
@@ -396,7 +397,7 @@ impl ProjectStore {
 fn board_snapshot(conn: &Connection, project: ProjectMeta) -> Result<BoardSnapshot, SkanError> {
     let counters = load_counters(conn, &project.id)?;
     let cards = load_cards(conn, &project.id)?;
-    let cursor = ChangeCursor::new(project.id.clone(), counters.revision)?;
+    let cursor = RevisionCursor::new(project.id.clone(), counters.revision)?;
     Ok(BoardSnapshot {
         board: BoardMeta {
             name: project.name.clone(),

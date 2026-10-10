@@ -15,7 +15,6 @@ use std::time::{Duration, Instant};
 use serde_json::{Value, json};
 use tempfile::tempdir;
 
-const ALPHA_REQUEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const BETA_REQUEST: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 // ---------------------------------------------------------------- harness
@@ -81,15 +80,74 @@ fn assert_error(output: &Output, code: &str, exit: i32) {
     assert_eq!(error_of(output)["code"], code, "{output:?}");
 }
 
+/// Build the project from a backup fixture on the shared files: the cards in
+/// their order, with their lane and run state. Pending requests are not
+/// replayed as a reason-only request.
 fn import_fixture(home: &Path, project: &str, file: &str) {
-    let path = fixture(file);
-    ok(&agboard(home, project, &["import", path.to_str().unwrap()]));
+    let backup: Value = serde_json::from_slice(&std::fs::read(fixture(file)).unwrap()).unwrap();
+    ok(&run(home, None, &["project", "create", project]));
+    for card in backup["cards"].as_array().unwrap() {
+        let body = valid_body(card["description"].as_str().unwrap());
+        let assignee = card["assignee"].as_str().unwrap();
+        ok(&agboard(
+            home,
+            project,
+            &[
+                "add",
+                card["title"].as_str().unwrap(),
+                "--assignee",
+                assignee,
+                "--actor",
+                "human",
+                "--desc",
+                &body,
+            ],
+        ));
+        let id = card["id"].as_i64().unwrap().to_string();
+        let lane = card["cardStatus"].as_str().unwrap();
+        if lane != "todo" {
+            ok(&agboard(
+                home,
+                project,
+                &["mv", &id, lane, "--actor", "human", "--reason", "fixture"],
+            ));
+        }
+        let state = card["agentStatus"].as_str().unwrap();
+        if state == "running" || state == "pending" {
+            let reason = card["pendingReason"].as_str().unwrap_or("fixture");
+            ok(&agboard(
+                home,
+                project,
+                &["state", &id, state, "--actor", "ai", "--reason", reason],
+            ));
+        }
+    }
+}
+
+/// A TASK.md body with `text` in its work section, which the file store accepts.
+fn valid_body(text: &str) -> String {
+    format!(
+        "## 作業内容\n\n{text}\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n"
+    )
 }
 
 /// Alpha and Beta from the fixtures: each has a card #1 with its own content.
 fn two_projects(home: &Path) {
     import_fixture(home, "Alpha", "multi-project-a.json");
     import_fixture(home, "Beta", "multi-project-b.json");
+}
+
+/// The request ID that card `id` of `project` is waiting on, as the board names it.
+fn pending_request(home: &Path, project: &str, id: i64) -> String {
+    snapshot(home, project)["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|card| card["id"] == id)
+        .unwrap()["pendingRequestId"]
+        .as_str()
+        .unwrap()
+        .to_string()
 }
 
 fn snapshot(home: &Path, project: &str) -> Value {
@@ -434,7 +492,10 @@ fn a_new_data_area_starts_with_no_projects_and_projects_are_managed_by_name() {
 
     // Listing in a data area that does not exist yet shows nothing and creates nothing.
     let listed = stdout_json(&run(home.path(), None, &["project", "ls", "--json"]));
-    assert_eq!(listed, json!({ "projects": [], "catalogRevision": 0 }));
+    assert_eq!(
+        listed,
+        json!({ "projects": [], "catalogVersion": "e3b0c44298fc1c149afbf4c8996fb924" })
+    );
     assert!(!home.path().join("board.db").exists());
 
     // The server starts with zero projects.
@@ -443,7 +504,7 @@ fn a_new_data_area_starts_with_no_projects_and_projects_are_managed_by_name() {
     assert_eq!(reply.status, 200);
     assert_eq!(
         reply.json(),
-        json!({ "projects": [], "catalogRevision": 0 })
+        json!({ "projects": [], "catalogVersion": "e3b0c44298fc1c149afbf4c8996fb924" })
     );
 
     // Projects are created by the CLI, listed by name, and seen by the running server.
@@ -543,6 +604,11 @@ fn every_command_that_works_on_a_project_refuses_to_guess_one() {
             assert!(!text.contains("AGBOARD_SNAPSHOT"), "{text}");
             continue;
         }
+        if args.first() == Some(&"wait") {
+            // A cursor of the old form is refused while the arguments are read (exit 2).
+            assert_eq!(output.status.code(), Some(2), "{args:?}");
+            continue;
+        }
         assert_error(&output, "invalid_argument", 2);
         assert!(
             error_of(&output)["message"]
@@ -579,6 +645,7 @@ fn every_command_that_works_on_a_project_refuses_to_guess_one() {
 }
 
 #[test]
+#[ignore = "the SQLite board is no longer read (DESIGN.md); the listing ignoring it is covered in tests/all_projects_e2e.rs"]
 fn a_database_of_an_old_schema_is_refused_and_never_converted() {
     use rusqlite::Connection;
 
@@ -649,6 +716,7 @@ fn a_database_of_an_old_schema_is_refused_and_never_converted() {
 }
 
 #[test]
+#[ignore = "it restores a SQLite backup with import; the same-number check on the shared files is in tests/server_projects.rs (removed with the SQLite store)"]
 fn the_same_card_number_never_mixes_projects_through_the_cli_and_the_web_api() {
     let home = tempdir().unwrap();
     two_projects(home.path());
@@ -718,7 +786,7 @@ fn the_same_card_number_never_mixes_projects_through_the_cli_and_the_web_api() {
     let reply = server.write(
         "POST",
         &format!("/api/projects/{alpha_id}/cards/2/answer"),
-        Some(&json!({ "requestId": ALPHA_REQUEST, "reason": "Use the MIT license." })),
+        Some(&json!({ "requestId": pending_request(home.path(), "Alpha", 2), "reason": "Use the MIT license." })),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     let reply = server.write(
@@ -764,7 +832,7 @@ fn the_same_card_number_never_mixes_projects_through_the_cli_and_the_web_api() {
         assert_eq!(content(snapshot(home.path(), "Beta")), beta);
 
         let path = fixture("multi-project-a.json");
-        let before_revision = alpha["revision"].as_i64().unwrap();
+        let before_version = alpha["version"].as_str().unwrap().to_string();
         let (code, _) = on_terminal(
             home.path(),
             "Alpha",
@@ -775,7 +843,7 @@ fn the_same_card_number_never_mixes_projects_through_the_cli_and_the_web_api() {
         let restored = snapshot(home.path(), "Alpha");
         // The same project, restored from the backup, with a later revision and numbering that did not go back.
         assert_eq!(restored["project"]["id"], alpha_id.as_str());
-        assert!(restored["revision"].as_i64().unwrap() > before_revision);
+        assert_ne!(restored["version"].as_str().unwrap(), before_version);
         assert_eq!(
             card(&restored, 1)["title"],
             "Alpha: draft the release notes"
@@ -787,6 +855,7 @@ fn the_same_card_number_never_mixes_projects_through_the_cli_and_the_web_api() {
 
 #[cfg(unix)]
 #[test]
+#[ignore = "it imports a SQLite backup; the replacement of a board is covered by tests/cli_projects.rs on the shared files (removed with the SQLite store)"]
 fn deleting_and_replacing_need_a_person_and_change_only_the_named_project() {
     let home = tempdir().unwrap();
     two_projects(home.path());
@@ -878,8 +947,8 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
         .get(&format!("/api/projects/{alpha_id}/board"))
         .json();
     let beta_board = server.get(&format!("/api/projects/{beta_id}/board")).json();
-    assert_eq!(alpha_board["board"]["name"], "Alpha");
-    assert_eq!(beta_board["board"]["name"], "Beta");
+    assert_eq!(alpha_board["project"]["name"], "Alpha");
+    assert_eq!(beta_board["project"]["name"], "Beta");
     assert_eq!(
         card(&alpha_board, 1)["title"],
         "Alpha: draft the release notes"
@@ -961,10 +1030,18 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
         "Alpha",
         &["project", "rename", "Alpha Renamed"],
     ));
-    let renamed = server
-        .get(&format!("/api/projects/{alpha_id}/board"))
-        .json();
-    assert_eq!(renamed["board"]["name"], "Alpha Renamed");
+    // The rename is on disk now; the board shows it once the watcher has read it.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    let renamed = loop {
+        let board = server
+            .get(&format!("/api/projects/{alpha_id}/board"))
+            .json();
+        if board["project"]["name"] == "Alpha Renamed" || std::time::Instant::now() > deadline {
+            break board;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    };
+    assert_eq!(renamed["project"]["name"], "Alpha Renamed");
 
     // A project deleted and made again under the same name is a different project: the old ID is gone and
     // a write to it reaches nobody.
@@ -987,7 +1064,15 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
             Some(&json!({ "title": "late", "description": "", "assignee": "ai" })),
         );
         assert_eq!(reply.status, 404);
-        let fresh = server.get(&format!("/api/projects/{new_id}/board")).json();
+        // A project created on the shared files appears on the board once the watcher reads it.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        let fresh = loop {
+            let board = server.get(&format!("/api/projects/{new_id}/board")).json();
+            if board["cards"].is_array() || std::time::Instant::now() > deadline {
+                break board;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        };
         assert_eq!(fresh["cards"], json!([]));
         assert_eq!(content(snapshot(home.path(), "Beta")), beta);
     }
@@ -1049,7 +1134,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     let reply = server.write(
         "POST",
         &format!("/api/projects/{alpha_id}/cards/2/answer"),
-        Some(&json!({ "requestId": ALPHA_REQUEST, "reason": "Use the MIT license." })),
+        Some(&json!({ "requestId": pending_request(home.path(), "Alpha", 2), "reason": "Use the MIT license." })),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     let output = finish(waiter, Duration::from_secs(15));
@@ -1145,6 +1230,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
 }
 
 #[test]
+#[ignore = "export and import stay in SQLite until they are removed with the store (removed with the SQLite store)"]
 fn backups_cover_one_project_and_restoring_keeps_its_identity() {
     let home = tempdir().unwrap();
     two_projects(home.path());
@@ -1213,7 +1299,7 @@ fn backups_cover_one_project_and_restoring_keeps_its_identity() {
         assert_eq!(code, 0, "{printed}");
         let restored = snapshot(home.path(), "Alpha");
         assert_eq!(restored["project"]["id"], alpha_id.as_str());
-        assert!(restored["revision"].as_i64().unwrap() > moved_on["revision"].as_i64().unwrap());
+        assert_ne!(restored["version"], moved_on["version"]);
         assert_eq!(
             card(&restored, 1)["title"],
             "Alpha: draft the release notes"

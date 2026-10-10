@@ -30,7 +30,7 @@ pub fn run_with_io(
 ) -> Result<Outcome, SkanError> {
     let existing = match &ctx.target {
         Target::Missing { name } => {
-            let project = ctx.store.create_project(name, ctx.clock.now())?;
+            let project = ctx.files.create_project(name, ctx.clock.now())?;
             let board = BoardMeta {
                 name: project.name.clone(),
                 next_card_id: 1,
@@ -69,7 +69,7 @@ pub fn run_with_io(
     }
     // The ID was fixed before the question. If the project was deleted while
     // the human decided, this is `project_not_found`, never another project.
-    let reset = ctx.store.reset_project(&existing.id)?;
+    let reset = ctx.files.reset_project(&existing.id)?;
     Ok(Outcome {
         changed: reset.changed,
         human: format!(

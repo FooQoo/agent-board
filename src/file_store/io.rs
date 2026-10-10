@@ -87,9 +87,75 @@ pub fn sync_dir(dir: &Path) -> io::Result<()> {
     File::open(dir)?.sync_all()
 }
 
+/// Remove the temporary files and folders that a crashed save left below
+/// `shared`: names like `.<name>.tmp-<hex>` and `.new-<hex>` that are older
+/// than `older_than`. Canonical files are never touched, and symbolic links
+/// are not followed. Returns how many entries were removed.
+pub fn remove_stale_temporaries(shared: &Path, older_than: std::time::Duration) -> usize {
+    let mut removed = 0;
+    let mut pending = vec![shared.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.filter_map(Result::ok) {
+            let path = entry.path();
+            let Ok(meta) = fs::symlink_metadata(&path) else {
+                continue;
+            };
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let temporary =
+                name.starts_with('.') && (name.contains(".tmp-") || name.starts_with(".new-"));
+            if temporary {
+                let age = meta
+                    .created()
+                    .or_else(|_| meta.modified())
+                    .ok()
+                    .and_then(|t| t.elapsed().ok());
+                if age.is_some_and(|age| age >= older_than) {
+                    let result = if meta.is_dir() {
+                        fs::remove_dir_all(&path)
+                    } else {
+                        fs::remove_file(&path)
+                    };
+                    if result.is_ok() {
+                        removed += 1;
+                    }
+                }
+            } else if meta.is_dir() {
+                pending.push(path);
+            }
+        }
+    }
+    removed
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stale_temporaries_are_removed_and_canonical_files_are_kept() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("projects/p1");
+        fs::create_dir_all(project.join("tasks/.new-0123")).unwrap();
+        fs::write(project.join("tasks/1.txt"), "x").unwrap();
+        fs::write(project.join("project.json"), "{}").unwrap();
+        fs::write(project.join(".project.json.tmp-0123"), "half").unwrap();
+        // Nothing is older than an hour yet.
+        let hour = std::time::Duration::from_secs(3600);
+        assert_eq!(remove_stale_temporaries(root.path(), hour), 0);
+        assert!(project.join(".project.json.tmp-0123").exists());
+        // With no age limit, every temporary goes and the canonical files stay.
+        assert_eq!(
+            remove_stale_temporaries(root.path(), std::time::Duration::ZERO),
+            2
+        );
+        assert!(!project.join(".project.json.tmp-0123").exists());
+        assert!(!project.join("tasks/.new-0123").exists());
+        assert!(project.join("project.json").exists());
+        assert!(project.join("tasks/1.txt").exists());
+    }
 
     #[test]
     fn random_hex_has_the_requested_number_of_digits() {

@@ -13,9 +13,13 @@ use serde::{Deserialize, Serialize};
 
 use super::guard::{self, DeleteRequest};
 use super::{AppState, assets, events};
-use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+use crate::domain::{
+    Actor, Assignee, ChangeContext, Changed, Column, NewCard, ProjectId, RunState,
+};
 use crate::error::SkanError;
-use crate::store::ProjectStore;
+use crate::file_store::index::ProjectEntry;
+use crate::file_store::model::CardView;
+use crate::file_store::{Answer, FileStore};
 
 /// The largest request body any route reads. A description of 50,000
 /// characters can be about 150 KB of JSON, so this leaves room for that.
@@ -145,6 +149,7 @@ fn skan_error_response(error: &SkanError) -> Response {
         | SkanError::ArchiveTargetsChanged => StatusCode::CONFLICT,
         SkanError::InvalidArgument { .. }
         | SkanError::InvalidValue { .. }
+        | SkanError::FileInvalid { .. }
         | SkanError::InvalidStateForColumn { .. }
         | SkanError::InvalidStateForAssignee
         | SkanError::AttachmentLimitExceeded => StatusCode::UNPROCESSABLE_ENTITY,
@@ -337,17 +342,38 @@ impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for StrictJs
 
 // ---------------------------------------------------------------- store access
 
-/// Open the database for one request and run `work` on a blocking thread.
-async fn with_store<T: Send + 'static>(
+/// Run `work` on the shared files on a blocking thread.
+async fn with_files<T: Send + 'static>(
     state: &AppState,
-    work: impl FnOnce(ProjectStore) -> Result<T, SkanError> + Send + 'static,
+    work: impl FnOnce(FileStore) -> Result<T, SkanError> + Send + 'static,
 ) -> Result<T, SkanError> {
-    let path = state.db_path.clone();
-    tokio::task::spawn_blocking(move || work(ProjectStore::open(&path)?))
+    let shared = state.shared.clone();
+    tokio::task::spawn_blocking(move || work(FileStore::open(&shared)))
         .await
         .map_err(|e| SkanError::DatabaseError {
-            reason: format!("The database task failed: {e}"),
+            reason: format!("The file task failed: {e}"),
         })?
+}
+
+/// After a save made by this server, read the shared files again before the
+/// answer goes out, so the next read agrees with it. A `changed` is sent only
+/// if the catalog version moved, as for every other reload.
+fn refresh_index(state: &AppState) {
+    let mut index = state.index.write().unwrap_or_else(|e| e.into_inner());
+    if index.reload_all(&state.shared).unwrap_or(false) {
+        let _ = state.changed.send(());
+    }
+}
+
+/// The attachments are not in the shared files yet; a request that adds or
+/// removes one is refused with this answer until the attachment operations land.
+fn attachments_unavailable() -> Response {
+    error_response(
+        StatusCode::NOT_IMPLEMENTED,
+        "not_implemented",
+        "request body is invalid.",
+        "Image attachments are not stored in the shared files yet.",
+    )
 }
 
 // ---------------------------------------------------------------- pages
@@ -432,9 +458,46 @@ fn parse_project_id(raw: &str) -> Result<ProjectId, SkanError> {
 
 /// The catalog: every project by name, without cards. Read in one transaction.
 async fn projects(State(state): State<Arc<AppState>>) -> Response {
-    match with_store(&state, |store| store.projects()).await {
+    match with_files(&state, |files| files.catalog()).await {
         Ok(catalog) => json_response(StatusCode::OK, &catalog),
         Err(error) => skan_error_response(&error),
+    }
+}
+
+/// The project's index entry as its last good read, or the error of a defective
+/// project. A project that is not in the index is `project_not_found`.
+fn indexed_view(
+    state: &AppState,
+    id: &ProjectId,
+) -> Result<Arc<crate::file_store::reader::ProjectSnapshot>, SkanError> {
+    // A folder that is gone is a deleted project, even before the watcher reloads.
+    if !crate::file_store::layout::project_dir(&state.shared, id).is_dir() {
+        return Err(SkanError::ProjectNotFound {
+            project: id.to_string(),
+        });
+    }
+    let index = state.index.read().unwrap_or_else(|e| e.into_inner());
+    match index.entry(id) {
+        None => Err(SkanError::ProjectNotFound {
+            project: id.to_string(),
+        }),
+        Some(ProjectEntry::Ready { view, .. }) => Ok(view.clone()),
+        Some(ProjectEntry::Invalid { error, .. }) => Err(match error {
+            SkanError::FileInvalid {
+                file,
+                field,
+                reason,
+            } => SkanError::FileInvalid {
+                file: file.clone(),
+                field: field.clone(),
+                reason: reason.clone(),
+            },
+            other => SkanError::FileError {
+                action: crate::error::FileAction::Read,
+                file: id.to_string(),
+                reason: other.reason(),
+            },
+        }),
     }
 }
 
@@ -443,35 +506,32 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
     };
-    match with_store(&state, move |store| store.snapshot(&project_id)).await {
-        Ok(snapshot) => {
+    match indexed_view(&state, &project_id) {
+        Ok(view) => {
             #[derive(Serialize)]
             #[serde(rename_all = "camelCase")]
-            struct BoardInfo {
-                name: String,
-                #[serde(with = "crate::clock::serde_utc")]
-                created_at: chrono::DateTime<chrono::Utc>,
+            struct BoardResponse<'a> {
+                project: &'a crate::domain::ProjectMeta,
+                version: &'a str,
+                cursor: &'a crate::domain::ChangeCursor,
+                epics: &'a [crate::file_store::reader::EpicSnapshot],
+                cards: Vec<&'a CardView>,
+                problems: &'a [crate::file_store::model::Problem],
             }
-            #[derive(Serialize)]
-            #[serde(rename_all = "camelCase")]
-            struct BoardResponse {
-                project: crate::domain::ProjectMeta,
-                board: BoardInfo,
-                revision: i64,
-                cursor: crate::domain::ChangeCursor,
-                cards: Vec<crate::domain::Card>,
-            }
+            let cards = view
+                .cards
+                .iter()
+                .filter(|c| c.archived_at.is_none())
+                .collect();
             json_response(
                 StatusCode::OK,
                 &BoardResponse {
-                    project: snapshot.project,
-                    board: BoardInfo {
-                        name: snapshot.board.name,
-                        created_at: snapshot.board.created_at,
-                    },
-                    revision: snapshot.revision,
-                    cursor: snapshot.cursor,
-                    cards: snapshot.cards,
+                    project: &view.project,
+                    version: &view.version,
+                    cursor: &view.cursor,
+                    epics: &view.epics,
+                    cards,
+                    problems: &view.problems,
                 },
             )
         }
@@ -484,14 +544,14 @@ async fn archive(State(state): State<Arc<AppState>>, Path(raw_project): Path<Str
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
     };
-    match with_store(&state, move |store| store.archive_snapshot(&project_id)).await {
-        Ok(snapshot) => json_response(
+    match indexed_view(&state, &project_id) {
+        Ok(view) => json_response(
             StatusCode::OK,
             &serde_json::json!({
-                "project": snapshot.project,
-                "revision": snapshot.revision,
-                "cursor": snapshot.cursor,
-                "cards": snapshot.cards,
+                "project": view.project,
+                "version": view.version,
+                "cursor": view.cursor,
+                "cards": view.cards.iter().filter(|c| c.archived_at.is_some()).collect::<Vec<_>>(),
             }),
         ),
         Err(error) => skan_error_response(&error),
@@ -513,9 +573,10 @@ async fn health() -> Response {
     )
 }
 
-/// A change was made elsewhere (the CLI). Tell every connected browser.
+/// A change was made elsewhere (the CLI). Queue a reload of every project; the
+/// browsers hear about it only if a version actually changed.
 async fn notify(State(state): State<Arc<AppState>>) -> StatusCode {
-    let _ = state.changed.send(());
+    state.reloader.all();
     StatusCode::NO_CONTENT
 }
 
@@ -535,13 +596,13 @@ async fn delete_card(
             "Card IDs are positive whole numbers.",
         );
     };
-    match with_store(&state, move |store| {
+    match with_files(&state, move |store| {
         store.delete_archived_card(&project_id, id)
     })
     .await
     {
         Ok(()) => {
-            let _ = state.changed.send(());
+            refresh_index(&state);
             StatusCode::NO_CONTENT.into_response()
         }
         Err(error) => skan_error_response(&error),
@@ -560,7 +621,7 @@ async fn archive_card(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_store(&state, move |store| {
+    let result = with_files(&state, move |store| {
         store.archive_card(&project_id, id, chrono::Utc::now())
     })
     .await;
@@ -579,7 +640,7 @@ async fn restore_card(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_store(&state, move |store| {
+    let result = with_files(&state, move |store| {
         store.restore_card(&project_id, id, chrono::Utc::now())
     })
     .await;
@@ -601,14 +662,14 @@ async fn archive_done(
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
     };
-    let result = with_store(&state, move |store| {
+    let result = with_files(&state, move |store| {
         store.archive_done(&project_id, &input.ids, chrono::Utc::now())
     })
     .await;
     match result {
         Ok(result) => {
             if result.changed {
-                let _ = state.changed.send(());
+                refresh_index(&state);
             }
             json_response(
                 StatusCode::OK,
@@ -830,8 +891,8 @@ async fn create_card(
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
     };
-    match with_store(&state, move |store| {
-        store.add_work_card(
+    match with_files(&state, move |store| {
+        store.create_card(
             &project_id,
             NewCard {
                 title: input.title,
@@ -845,7 +906,7 @@ async fn create_card(
     .await
     {
         Ok(card) => {
-            let _ = state.changed.send(());
+            refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
         }
         Err(error) => skan_error_response(&error),
@@ -869,7 +930,7 @@ async fn move_card(
             "Card ID is invalid.",
         );
     };
-    match with_store(&state, move |store| {
+    match with_files(&state, move |store| {
         store.move_work_card_for_user(
             &project_id,
             id,
@@ -885,7 +946,7 @@ async fn move_card(
     {
         Ok(result) => {
             if result.changed {
-                let _ = state.changed.send(());
+                refresh_index(&state);
             }
             json_response(
                 StatusCode::OK,
@@ -913,7 +974,7 @@ async fn set_agent_status(
             "Card ID is invalid.",
         );
     };
-    match with_store(&state, move |store| {
+    match with_files(&state, move |store| {
         store.set_agent_status(
             &project_id,
             id,
@@ -930,7 +991,7 @@ async fn set_agent_status(
     {
         Ok(result) => {
             if result.changed {
-                let _ = state.changed.send(());
+                refresh_index(&state);
             }
             json_response(
                 StatusCode::OK,
@@ -958,14 +1019,15 @@ async fn answer_request(
             "Card ID is invalid.",
         );
     };
-    match with_store(&state, move |store| {
+    match with_files(&state, move |store| {
         store.answer_request(
             &project_id,
             id,
             &input.request_id,
-            ChangeContext {
+            Answer {
                 actor: Actor::Human,
-                reason: input.reason,
+                choice_id: None,
+                text: Some(input.reason),
             },
             chrono::Utc::now(),
         )
@@ -973,7 +1035,7 @@ async fn answer_request(
     .await
     {
         Ok(card) => {
-            let _ = state.changed.send(());
+            refresh_index(&state);
             json_response(
                 StatusCode::OK,
                 &serde_json::json!({"card": card, "changed": true}),
@@ -998,12 +1060,12 @@ fn parse_card_id(raw: &str) -> Result<i64, Box<Response>> {
 /// A card as `{"card": ...}`, telling the browsers only if something changed.
 fn changed_card_response(
     state: &AppState,
-    result: Result<crate::domain::Changed<crate::domain::Card>, SkanError>,
+    result: Result<Changed<CardView>, SkanError>,
 ) -> Response {
     match result {
         Ok(result) => {
             if result.changed {
-                let _ = state.changed.send(());
+                refresh_index(state);
             }
             json_response(StatusCode::OK, &serde_json::json!({"card": result.value}))
         }
@@ -1031,7 +1093,7 @@ async fn edit_card(
             command: None,
         });
     }
-    let result = with_store(&state, move |store| {
+    let result = with_files(&state, move |store| {
         store.edit_draft_card(
             &project_id,
             id,
@@ -1081,41 +1143,31 @@ async fn edit_card_multipart(
             "requestId is required.",
         );
     }
+    if !payload.additions.is_empty() || !payload.meta.remove_attachment_ids.is_empty() {
+        return attachments_unavailable();
+    }
     let finalize = payload.meta.finalize;
-    let request_id = payload.meta.request_id;
-    let additions = payload.additions;
-    let removals = payload.meta.remove_attachment_ids;
     let title = payload.meta.title;
     let description = payload.meta.description;
-    let result = with_store(&state, move |store| {
-        let before = store
-            .snapshot(&project_id)?
-            .cards
-            .into_iter()
-            .find(|c| c.id == id)
-            .ok_or(SkanError::CardNotFound { id })?;
-        let after = store.save_draft_card_attachments(
+    let result = with_files(&state, move |store| {
+        store.edit_draft_card(
             &project_id,
             id,
             title.as_deref(),
             description.as_deref(),
-            &additions,
-            &removals,
-            &request_id,
             finalize,
             chrono::Utc::now(),
-        )?;
-        Ok((before != after, after))
+        )
     })
     .await;
     match result {
-        Ok((changed, card)) => {
+        Ok(Changed { value, changed }) => {
             if changed {
-                let _ = state.changed.send(());
+                refresh_index(&state);
             }
             json_response(
                 StatusCode::OK,
-                &serde_json::json!({"card": card, "changed": changed}),
+                &serde_json::json!({"card": value, "changed": changed}),
             )
         }
         Err(error) => skan_error_response(&error),
@@ -1178,7 +1230,6 @@ async fn create_card_multipart(
             "A new card cannot remove attachments.",
         );
     }
-    let additions = payload.additions;
     let request_id = payload.meta.request_id;
     if request_id.is_empty() {
         return error_response(
@@ -1188,8 +1239,11 @@ async fn create_card_multipart(
             "requestId is required.",
         );
     }
-    let result = with_store(&state, move |store| {
-        store.create_card_with_attachments(
+    if !payload.additions.is_empty() {
+        return attachments_unavailable();
+    }
+    let result = with_files(&state, move |store| {
+        store.create_card(
             &project_id,
             NewCard {
                 title,
@@ -1197,15 +1251,13 @@ async fn create_card_multipart(
                 assignee,
                 actor: Actor::Human,
             },
-            &additions,
-            &request_id,
             chrono::Utc::now(),
         )
     })
     .await;
     match result {
         Ok(card) => {
-            let _ = state.changed.send(());
+            refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
         }
         Err(error) => skan_error_response(&error),
@@ -1224,20 +1276,12 @@ async fn get_attachment(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_store(&state, move |store| {
-        store.attachment_data_for_card(&project_id, id, &attachment_id)
-    })
-    .await;
+    let result = with_files(&state, move |store| store.card(&project_id, id)).await;
     match result {
-        Ok(data) => (
-            [
-                (header::CONTENT_TYPE, data.metadata.media_type.as_str()),
-                (header::CACHE_CONTROL, "no-store"),
-                (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
-            ],
-            data.bytes,
-        )
-            .into_response(),
+        Ok(card) => match card.attachments.iter().find(|a| a.id == attachment_id) {
+            None => skan_error_response(&SkanError::AttachmentNotFound { id: attachment_id }),
+            Some(_) => attachments_unavailable(),
+        },
         Err(error) => skan_error_response(&error),
     }
 }
@@ -1256,8 +1300,8 @@ async fn set_draft(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_store(&state, move |store| {
-        store.set_draft(&project_id, id, input.is_draft)
+    let result = with_files(&state, move |store| {
+        store.set_draft(&project_id, id, input.is_draft, chrono::Utc::now())
     })
     .await;
     changed_card_response(&state, result)

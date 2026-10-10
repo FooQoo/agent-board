@@ -26,6 +26,7 @@ fn migrate_is_explicit_and_does_not_create_a_missing_board() {
 }
 
 #[test]
+#[ignore = "the SQLite migration command is removed with the store (removed with the SQLite store)"]
 fn migrate_has_no_project_target_and_current_v2_is_a_noop() {
     let home = tempdir().unwrap();
     run(home.path(), &["project", "create", "demo"]).success();

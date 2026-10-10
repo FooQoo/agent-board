@@ -1,11 +1,10 @@
 //! Cards, history, state, positions and revisions of one project never mix
 //! with another's, even when both use the same card and history numbers.
 
-use agent_board::domain::{
-    Actor, Assignee, BoardSnapshot, ChangeContext, Column, NewCard, ProjectId, RunState,
-};
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
 use agent_board::error::SkanError;
 use agent_board::store::ProjectStore;
+use agent_board::store::legacy::BoardSnapshot;
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use rusqlite::Connection;
 use std::path::PathBuf;

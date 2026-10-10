@@ -91,31 +91,37 @@ pub struct ProjectMeta {
     pub created_at: DateTime<Utc>,
 }
 
-/// The project list (ordered by name) and the catalog revision, read together.
+/// The project list (ordered by name) and the catalog version, read together.
+/// The catalog version changes when a project is added, removed, renamed, or
+/// its content changes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectCatalog {
     pub projects: Vec<ProjectMeta>,
-    pub catalog_revision: i64,
+    pub catalog_version: String,
 }
 
-/// Identifies a point in one project's change stream: `<ProjectId>:<revision>`.
-///
-/// The revision is in `0..=i64::MAX`. A bare integer is not a cursor.
+/// Identifies the state of one project's shared files:
+/// `f1:<ProjectId>:<version>`, where the version is 32 lowercase hexadecimal
+/// digits computed from the content. A version has no order; a wait only asks
+/// whether it is still the same.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ChangeCursor {
     pub project_id: ProjectId,
-    pub revision: i64,
+    pub version: String,
 }
 
 impl ChangeCursor {
-    pub fn new(project_id: ProjectId, revision: i64) -> Result<ChangeCursor, SkanError> {
-        if revision < 0 {
-            return Err(invalid("cursor", "A cursor revision cannot be negative."));
+    pub fn new(project_id: ProjectId, version: &str) -> Result<ChangeCursor, SkanError> {
+        if !is_lower_hex(version) {
+            return Err(invalid(
+                "cursor",
+                "A cursor version is 32 lowercase hexadecimal digits.",
+            ));
         }
         Ok(ChangeCursor {
             project_id,
-            revision,
+            version: version.to_string(),
         })
     }
 }
@@ -124,26 +130,17 @@ impl FromStr for ChangeCursor {
     type Err = SkanError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bad = || invalid("cursor", "A cursor looks like <project-id>:<revision>.");
-        let (id, revision) = s.split_once(':').ok_or_else(bad)?;
+        let bad = || invalid("cursor", "A cursor looks like f1:<project-id>:<version>.");
+        let rest = s.strip_prefix("f1:").ok_or_else(bad)?;
+        let (id, version) = rest.split_once(':').ok_or_else(bad)?;
         let project_id: ProjectId = id.parse().map_err(|_| bad())?;
-        let canonical = !revision.is_empty()
-            && revision.bytes().all(|b| b.is_ascii_digit())
-            && (revision == "0" || !revision.starts_with('0'));
-        if !canonical {
-            return Err(bad());
-        }
-        let revision: i64 = revision.parse().map_err(|_| bad())?;
-        Ok(ChangeCursor {
-            project_id,
-            revision,
-        })
+        ChangeCursor::new(project_id, version).map_err(|_| bad())
     }
 }
 
 impl fmt::Display for ChangeCursor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.project_id, self.revision)
+        write!(f, "f1:{}:{}", self.project_id, self.version)
     }
 }
 
@@ -168,6 +165,7 @@ mod tests {
     use super::*;
 
     const ID: &str = "0123456789abcdef0123456789abcdef";
+    const VERSION: &str = "fedcba9876543210fedcba9876543210";
 
     #[test]
     fn project_id_accepts_32_lowercase_hex_digits() {
@@ -228,10 +226,10 @@ mod tests {
         );
         let catalog = ProjectCatalog {
             projects: vec![meta.clone()],
-            catalog_revision: 3,
+            catalog_version: VERSION.into(),
         };
         let json = serde_json::to_value(&catalog).unwrap();
-        assert_eq!(json["catalogRevision"], 3);
+        assert_eq!(json["catalogVersion"], VERSION);
         assert_eq!(json["projects"][0]["createdAt"], "2026-10-02T01:08:00Z");
         assert_eq!(
             serde_json::from_value::<ProjectCatalog>(json).unwrap(),
@@ -240,11 +238,11 @@ mod tests {
     }
 
     #[test]
-    fn cursor_parses_displays_and_round_trips() {
-        let text = format!("{ID}:42");
+    fn cursor_is_f1_with_the_project_id_and_a_content_version() {
+        let text = format!("f1:{ID}:{VERSION}");
         let cursor: ChangeCursor = text.parse().unwrap();
         assert_eq!(cursor.project_id.as_str(), ID);
-        assert_eq!(cursor.revision, 42);
+        assert_eq!(cursor.version, VERSION);
         assert_eq!(cursor.to_string(), text);
         assert_eq!(
             serde_json::to_string(&cursor).unwrap(),
@@ -257,46 +255,38 @@ mod tests {
     }
 
     #[test]
-    fn cursor_range_is_zero_to_i64_max() {
-        assert_eq!(
-            format!("{ID}:0").parse::<ChangeCursor>().unwrap().revision,
-            0
-        );
-        let max = format!("{ID}:9223372036854775807");
-        assert_eq!(max.parse::<ChangeCursor>().unwrap().revision, i64::MAX);
-        assert!(
-            format!("{ID}:9223372036854775808")
-                .parse::<ChangeCursor>()
-                .is_err()
-        );
-        assert!(format!("{ID}:-1").parse::<ChangeCursor>().is_err());
-        let id: ProjectId = ID.parse().unwrap();
-        assert!(ChangeCursor::new(id.clone(), -1).is_err());
-        assert_eq!(ChangeCursor::new(id, i64::MAX).unwrap().revision, i64::MAX);
-    }
-
-    #[test]
-    fn cursor_rejects_malformed_text_including_bare_integers() {
+    fn cursor_rejects_the_old_revision_form_and_malformed_text() {
         for bad in [
             "".to_string(),
+            "f1".to_string(),
+            format!("{ID}:42"),
+            format!("{ID}:{VERSION}"),
+            format!("f1:{ID}"),
+            format!("f1:{ID}:"),
+            format!("f1:{ID}:{}", &VERSION[1..]),
+            format!("f1:{ID}:{VERSION}0"),
+            format!("f1:{ID}:{}", VERSION.to_uppercase()),
+            format!("f1:{ID}:{VERSION}:x"),
+            format!("f2:{ID}:{VERSION}"),
+            format!("f1:{}:{VERSION}", ID.to_uppercase()),
+            format!("f1:{ID}:{VERSION} "),
             "42".to_string(),
-            ":42".to_string(),
-            ID.to_string(),
-            format!("{ID}:"),
-            format!("{ID}:+1"),
-            format!("{ID}: 1"),
-            format!("{ID}:1 "),
-            format!("{ID}:01"),
-            format!("{ID}:1:2"),
-            format!("{ID}:1.0"),
-            format!("{ID}:abc"),
-            format!("{}:1", ID.to_uppercase()),
-            "short:1".to_string(),
         ] {
             let err = bad.parse::<ChangeCursor>().unwrap_err();
             assert!(matches!(err, SkanError::InvalidValue { .. }), "{bad:?}");
         }
         assert!(serde_json::from_str::<ChangeCursor>("42").is_err());
-        assert!(serde_json::from_str::<ChangeCursor>("\"42\"").is_err());
+        assert!(serde_json::from_str::<ChangeCursor>(&format!("\"{ID}:42\"")).is_err());
+    }
+
+    #[test]
+    fn cursor_built_from_parts_needs_a_lowercase_version() {
+        let id: ProjectId = ID.parse().unwrap();
+        assert_eq!(
+            ChangeCursor::new(id.clone(), VERSION).unwrap().version,
+            VERSION
+        );
+        assert!(ChangeCursor::new(id.clone(), "42").is_err());
+        assert!(ChangeCursor::new(id, &VERSION.to_uppercase()).is_err());
     }
 }

@@ -19,7 +19,9 @@ pub fn run(
 }
 
 fn list(ctx: &mut Context, args: &AttachmentLsArgs) -> Result<Outcome, SkanError> {
-    let attachments = ctx.store.attachments(ctx.project_id()?, args.card_id)?;
+    let attachments = ctx
+        .legacy()?
+        .attachments(&ctx.legacy_project_id()?, args.card_id)?;
     let human = if attachments.is_empty() {
         format!("#{} has no attachments.\n", args.card_id)
     } else {
@@ -39,8 +41,8 @@ fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, SkanError
     let bytes = fs::read(&args.file).map_err(|e| file_error(&args.file, FileAction::Read, e))?;
     let id = random_id()?;
     let request_id = random_id()?;
-    let card = ctx.store.add_attachment(
-        ctx.project_id()?,
+    let card = ctx.legacy()?.add_attachment(
+        &ctx.legacy_project_id()?,
         args.card_id,
         AttachmentInput {
             id,
@@ -64,9 +66,11 @@ fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, SkanError
 }
 
 fn get(ctx: &mut Context, args: &AttachmentGetArgs) -> Result<Outcome, SkanError> {
-    let data =
-        ctx.store
-            .attachment_data_for_card(ctx.project_id()?, args.card_id, &args.attachment_id)?;
+    let data = ctx.legacy()?.attachment_data_for_card(
+        &ctx.legacy_project_id()?,
+        args.card_id,
+        &args.attachment_id,
+    )?;
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)

@@ -23,6 +23,9 @@ use assert_cmd::Command;
 static SERIAL: Mutex<()> = Mutex::new(());
 
 /// Tests share ports and the process table, so they run one at a time.
+/// A TASK.md body the file store accepts (the required headings and one completion condition).
+const BODY: &str = "## 作業内容\n\nDetails\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
+
 fn serial() -> MutexGuard<'static, ()> {
     SERIAL.lock().unwrap_or_else(|e| e.into_inner())
 }
@@ -326,7 +329,7 @@ fn a_write_that_changes_the_board_notifies_the_running_serve() {
     let fake = FakeServe::start(home.path(), 7620);
     let commands: &[&[&str]] = &[
         &["add", "First card"],
-        &["add", "Second card", "--desc", "Details"],
+        &["add", "Second card", "--desc", BODY],
         &["edit", "1", "--title", "Renamed"],
         &["mv", "1", "doing"],
         &["state", "1", "running"],
@@ -570,24 +573,23 @@ fn a_write_after_serve_was_killed_succeeds_quickly() {
 }
 
 #[test]
-fn serve_refuses_a_database_with_another_schema_and_leaves_no_serve_json() {
-    let _lock = serial();
+fn serve_ignores_an_old_database_and_leaves_it_unchanged() {
+    // DESIGN.md: a legacy board.db is neither read nor migrated nor deleted.
+    let _serial = serial();
     let home = tempfile::tempdir().unwrap();
     let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
     conn.execute_batch("CREATE TABLE board (id INTEGER); PRAGMA user_version = 2;")
         .unwrap();
     drop(conn);
+    {
+        let (serving, first) = Serving::start(home.path(), 7840);
+        assert_eq!(
+            first,
+            "Serving at http://127.0.0.1:7840/ (press Ctrl+C to stop)"
+        );
+        drop(serving);
+    }
     assert!(port_is_free(7840));
-    let o = run(home.path(), &["serve", "--port", "7840"]);
-    assert_eq!(o.code, 1, "{}", o.err);
-    assert!(
-        o.err.contains("schema version 2") || o.err.contains("incomplete"),
-        "{}",
-        o.err
-    );
-    assert!(!home.path().join("serve.json").exists());
-    assert!(port_is_free(7840));
-    // The old database is left as it was.
     let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |row| row.get(0))

@@ -35,8 +35,8 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
             .unwrap();
         assert!(add.status.success());
     }
-    let db_path = home.path().join("board.db");
-    let before = std::fs::read(&db_path).unwrap();
+    let db_path = home.path().join("shared");
+    let before = tree_of(&db_path);
     let input = br#"{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"ignored"}}"#;
     let mut cursor = Cursor::new(input);
     let result =
@@ -53,17 +53,15 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
     assert!(context.starts_with("AGBOARD_SNAPSHOT\n"));
     let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
     assert_eq!(snapshot["project"]["name"], "Agent Board");
-    assert!(
-        snapshot["cursor"]
-            .as_str()
-            .unwrap()
-            .starts_with(snapshot["project"]["id"].as_str().unwrap())
-    );
+    assert!(snapshot["cursor"].as_str().unwrap().starts_with(&format!(
+        "f1:{}:",
+        snapshot["project"]["id"].as_str().unwrap()
+    )));
     // Only the named project's cards are passed on.
     assert_eq!(snapshot["cards"].as_array().unwrap().len(), 1);
     assert_eq!(snapshot["cards"][0]["title"], "Question");
     assert_eq!(snapshot["cards"][0]["history"].as_array().unwrap().len(), 1);
-    assert_eq!(before, std::fs::read(&db_path).unwrap());
+    assert_eq!(before, tree_of(&db_path));
     assert!(
         agent_board::agent::hook::run(
             "codex",
@@ -103,21 +101,49 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
     assert!(!db_path.exists());
 }
 
+/// Every file below `dir` with its bytes, sorted: the state a read must not change.
+fn tree_of(dir: &std::path::Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
+    let mut found = Vec::new();
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(next) = pending.pop() {
+        for entry in std::fs::read_dir(&next).unwrap().map(Result::unwrap) {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else {
+                found.push((path.clone(), std::fs::read(&path).unwrap()));
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
+/// A TASK.md body whose work section holds `text`, which the file store accepts.
+fn task_body(text: &str) -> String {
+    format!(
+        "## 作業内容\n\n{text}\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n"
+    )
+}
+
 fn board_with_descriptions(descriptions: &[String]) -> (tempfile::TempDir, std::path::PathBuf) {
     use agent_board::domain::{Actor, Assignee, NewCard};
-    use agent_board::store::ProjectStore;
+    use agent_board::file_store::FileStore;
     let home = tempdir().unwrap();
-    let db_path = home.path().join("board.db");
-    let store = ProjectStore::open(&db_path).unwrap();
+    let db_path = home.path().join("shared");
+    let store = FileStore::open(&db_path);
     let now = chrono::Utc::now();
     let project = store.create_project("Agent Board", now).unwrap().id;
     for (index, description) in descriptions.iter().enumerate() {
+        // The description limit counts the whole TASK.md body, headings included.
+        let room = 50_000 - task_body("").chars().count();
+        let description: String = description.chars().take(room).collect();
         store
-            .add_work_card(
+            .create_card(
                 &project,
                 NewCard {
                     title: format!("Card {index}"),
-                    description: description.clone(),
+                    description: task_body(&description),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
                 },
@@ -160,11 +186,13 @@ fn hook_passes_long_descriptions_whole_within_256_kib() {
         assert!(context.starts_with("AGBOARD_SNAPSHOT\n"), "{agent} {event}");
         assert!(context.len() > 50 * 1024 && context.len() <= 256 * 1024);
         let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
-        assert_eq!(snapshot["cards"][0]["description"], ten_kb.as_str());
-        assert_eq!(
-            snapshot["cards"][1]["description"].as_str().unwrap().len(),
-            40 * 1024 + 4
+        assert!(
+            snapshot["cards"][0]["description"]
+                .as_str()
+                .unwrap()
+                .contains(ten_kb.as_str())
         );
+        assert!(snapshot["cards"][1]["description"].as_str().unwrap().len() > 40 * 1024);
         assert_eq!(snapshot["cards"][1]["isDraft"], false);
     }
 }

@@ -37,7 +37,7 @@ pub(super) fn new_id() -> Result<String, SkanError> {
 
 /// Check that the project exists and take its write lock. The returned folder
 /// is the project folder.
-pub(super) fn lock_project(
+pub(crate) fn lock_project(
     shared: &Path,
     project: &ProjectId,
 ) -> Result<(PathBuf, WriteLock), SkanError> {

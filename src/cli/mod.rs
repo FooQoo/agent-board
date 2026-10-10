@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use crate::clock::{Clock, SystemClock};
 use crate::domain::{ProjectId, ProjectMeta};
 use crate::error::SkanError;
+use crate::file_store::FileStore;
 use crate::store::ProjectStore;
 
 /// The project a command was told to work on, resolved once from `--project`
@@ -32,7 +33,12 @@ pub enum Target {
 
 /// Everything a command runs with.
 pub struct Context {
-    pub store: ProjectStore,
+    /// The shared files: the canonical store of every project.
+    pub files: FileStore,
+    /// The SQLite store, opened only by the commands that still use it
+    /// (attachments, export, import). Those commands are moved to the shared
+    /// files in a later step; until then they keep to the SQLite board.
+    pub legacy: Option<ProjectStore>,
     pub target: Target,
     pub clock: Box<dyn Clock>,
     pub json: bool,
@@ -61,6 +67,21 @@ impl Context {
     pub fn project_id(&self) -> Result<&ProjectId, SkanError> {
         self.project().map(|meta| &meta.id)
     }
+
+    /// The SQLite store, when this command was given one.
+    pub fn legacy(&self) -> Result<&ProjectStore, SkanError> {
+        self.legacy
+            .as_ref()
+            .ok_or_else(|| SkanError::DatabaseError {
+                reason: "The SQLite board is not open for this command.".into(),
+            })
+    }
+
+    /// The resolved project's ID in the SQLite store, found by name.
+    pub fn legacy_project_id(&self) -> Result<ProjectId, SkanError> {
+        let name = self.project()?.name.clone();
+        Ok(self.legacy()?.project_by_name(&name)?.id)
+    }
 }
 
 /// What a command did.
@@ -75,7 +96,10 @@ pub struct Outcome {
 /// output goes. Tests supply their own.
 pub struct Env<'a> {
     pub clock: Box<dyn Clock>,
+    /// The SQLite database of the data area (used only by the legacy commands).
     pub db_path: PathBuf,
+    /// The shared folder: the canonical files of every project.
+    pub shared_dir: PathBuf,
     pub stdout: &'a mut dyn Write,
     pub stderr: &'a mut dyn Write,
     /// Called once after a command that changed the stored data, with the
@@ -93,6 +117,7 @@ pub fn run() -> i32 {
     let mut env = Env {
         clock: Box::new(SystemClock),
         db_path: crate::paths::db_path(),
+        shared_dir: crate::paths::shared_dir(),
         stdout: &mut stdout,
         stderr: &mut stderr,
         after_commit: &mut after_commit,

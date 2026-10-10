@@ -1,10 +1,12 @@
 //! Card operations: creation, title and body edits, the draft flag, archive,
 //! restore, and deletion of an archived card.
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 
 use super::super::FileStore;
 use super::super::io;
@@ -375,4 +377,113 @@ fn draft_event(
     })?;
     event.is_draft = Some(is_draft);
     Ok(event)
+}
+
+/// The result of a bulk archive: every target as it is now, and how many this
+/// call archived. A resend of a finished bulk archive archives nothing.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveDoneResult {
+    pub cards: Vec<CardView>,
+    pub archived_count: usize,
+}
+
+impl FileStore {
+    /// Delete any card's folder, archived or not. The CLI `rm` uses this after
+    /// its own confirmation; the Web API deletes only archived cards.
+    pub fn delete_card(&self, project: &ProjectId, id: i64) -> Result<(), SkanError> {
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let folder = layout::task_dir(&project_dir, id);
+        if !folder.is_dir() {
+            return Err(SkanError::CardNotFound { id });
+        }
+        let tasks = layout::tasks_dir(&project_dir);
+        let label = layout::shared_label(shared, &folder);
+        let trash = tasks.join(format!(
+            ".deleting-{}",
+            io::random_hex(16).map_err(|e| io::write_error(&label, e))?
+        ));
+        fs::rename(&folder, &trash).map_err(|e| io::write_error(&label, e))?;
+        io::sync_dir(&tasks).map_err(|e| io::write_error(&label, e))?;
+        fs::remove_dir_all(&trash).map_err(|e| io::write_error(&label, e))
+    }
+
+    /// Archive every target that is done, under the write lock. The IDs must be
+    /// a non-empty list of unique positive integers. Each target must exist and
+    /// be either archived already (a resend) or in Done; otherwise nothing is
+    /// archived and the call is `archive_targets_changed`.
+    pub fn archive_done(
+        &self,
+        project: &ProjectId,
+        ids: &[i64],
+        now: DateTime<Utc>,
+    ) -> Result<Changed<ArchiveDoneResult>, SkanError> {
+        if ids.is_empty()
+            || ids.iter().any(|id| *id <= 0)
+            || ids.iter().collect::<HashSet<_>>().len() != ids.len()
+        {
+            return Err(SkanError::InvalidValue {
+                field: "ids".into(),
+                reason: "IDs must be a non-empty list of unique positive integers.".into(),
+            });
+        }
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut targets = Vec::with_capacity(ids.len());
+        for id in ids {
+            let task = match reader::read_task_strict(shared, project, *id) {
+                Ok(task) => task,
+                Err(SkanError::CardNotFound { .. }) => {
+                    return Err(SkanError::ArchiveTargetsChanged);
+                }
+                Err(other) => return Err(other),
+            };
+            if task.archived_at.is_none() && task.card_status != Column::Done {
+                return Err(SkanError::ArchiveTargetsChanged);
+            }
+            targets.push(task);
+        }
+        let at = stamp(now);
+        let mut archived_count = 0;
+        for mut task in targets {
+            if task.archived_at.is_some() {
+                continue;
+            }
+            let old_agent = task.agent_status;
+            let old_request = task.pending_request_id.clone();
+            let event = transition_event(Transition {
+                kind: HistoryKind::Archive,
+                actor: Actor::Human,
+                reason: Some(ARCHIVE_REASON),
+                from_card: Some(task.card_status),
+                to_card: task.card_status,
+                from_agent: Some(old_agent),
+                to_agent: RunState::Idle,
+                request_id: old_request.as_deref(),
+                at,
+            })?;
+            task.archived_at = Some(at);
+            task.agent_status = RunState::Idle;
+            task.pending_request_id = None;
+            task.updated_at = at;
+            if old_agent != RunState::Idle {
+                task.agent_status_changed_at = at;
+            }
+            task.history.push(event);
+            save_task(shared, &project_dir, &task)?;
+            archived_count += 1;
+        }
+        let cards = ids
+            .iter()
+            .map(|id| view(shared, project, *id))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Changed {
+            value: ArchiveDoneResult {
+                cards,
+                archived_count,
+            },
+            changed: archived_count > 0,
+        })
+    }
 }

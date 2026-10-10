@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use agent_board::domain::{ChangeCursor, ProjectId};
+use agent_board::domain::ProjectId;
 use agent_board::error::SkanError;
 use agent_board::store::ProjectStore;
+use agent_board::store::legacy::RevisionCursor as ChangeCursor;
 use chrono::{DateTime, TimeZone, Utc};
 use rusqlite::Connection;
 

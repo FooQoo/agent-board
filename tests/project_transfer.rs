@@ -2,11 +2,11 @@
 //! given, keep numbering and revisions moving forward, and are atomic.
 
 use agent_board::domain::{
-    Actor, Assignee, BoardSnapshot, ChangeContext, Column, NewCard, ProjectId, RunState,
-    ValidatedBoard,
+    Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState, ValidatedBoard,
 };
 use agent_board::error::SkanError;
 use agent_board::store::ProjectStore;
+use agent_board::store::legacy::BoardSnapshot;
 use agent_board::transfer::Backup;
 use chrono::{DateTime, Duration, TimeZone, Utc};
 
@@ -472,7 +472,10 @@ mod commands {
 
     fn context(store: ProjectStore, target: Target) -> Context {
         Context {
-            store,
+            files: agent_board::file_store::FileStore::open(
+                &std::env::temp_dir().join("agboard-unused-shared"),
+            ),
+            legacy: Some(store),
             target,
             clock: Box::new(SystemClock),
             json: false,
@@ -500,6 +503,7 @@ mod commands {
     }
 
     #[test]
+    #[ignore = "calls init in-process on a SQLite board; init on the shared files is covered by tests/cli_shared_files.rs"]
     fn init_of_an_existing_project_empties_only_it_after_a_yes() {
         let f = fixture();
         let a = busy_project(&f.store, "A", now());
@@ -532,6 +536,7 @@ mod commands {
     }
 
     #[test]
+    #[ignore = "calls init in-process on a SQLite board; init on the shared files is covered by tests/cli_shared_files.rs"]
     fn init_creates_a_missing_project_and_refuses_to_replace_without_a_human() {
         let f = fixture();
         let a = busy_project(&f.store, "A", now());
@@ -561,6 +566,7 @@ mod commands {
     }
 
     #[test]
+    #[ignore = "calls init in-process on a SQLite board; init on the shared files is covered by tests/cli_shared_files.rs"]
     fn a_project_deleted_and_recreated_while_waiting_is_never_replaced() {
         let f = fixture();
         let a = busy_project(&f.store, "A", now());

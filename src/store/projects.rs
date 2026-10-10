@@ -5,6 +5,7 @@
 //! every read in a single read transaction. The catalog operations never guess
 //! a project: a project is always named by its exact name or its [`ProjectId`].
 
+use super::legacy::{ProjectCatalog, RevisionCursor};
 use std::path::Path;
 use std::time::Duration;
 
@@ -13,9 +14,7 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 
 use super::{run_in_transaction, schema};
 use crate::clock::{format_utc, parse_utc};
-use crate::domain::{
-    ChangeCursor, Changed, ProjectCatalog, ProjectId, ProjectMeta, validate_project_name,
-};
+use crate::domain::{Changed, ProjectId, ProjectMeta, validate_project_name};
 use crate::error::SkanError;
 
 /// How long a write waits for another writer before giving up with
@@ -144,9 +143,9 @@ impl ProjectStore {
     }
 
     /// The cursor for the project's current revision.
-    pub fn cursor(&self, id: &ProjectId) -> Result<ChangeCursor, SkanError> {
+    pub fn cursor(&self, id: &ProjectId) -> Result<RevisionCursor, SkanError> {
         let counters = self.counters(id)?;
-        ChangeCursor::new(id.clone(), counters.revision)
+        RevisionCursor::new(id.clone(), counters.revision)
     }
 
     /// Create an empty project with a new ID, counters at 1 and revision 0, and

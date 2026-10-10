@@ -18,6 +18,8 @@ pub struct WriteLock {
 }
 
 impl WriteLock {
+    /// Wait at most `WRITE_LOCK_WAIT` for the holder; after that the write is
+    /// refused with `database_busy` and nothing is changed.
     pub fn acquire(path: &Path) -> Result<WriteLock, SkanError> {
         let label = path.display().to_string();
         let file = open_lock_file(path).map_err(|e| SkanError::FileError {
@@ -25,14 +27,28 @@ impl WriteLock {
             file: label.clone(),
             reason: e.to_string(),
         })?;
-        file.lock().map_err(|e| SkanError::FileError {
-            action: FileAction::Write,
-            file: label,
-            reason: e.to_string(),
-        })?;
-        Ok(WriteLock { _file: file })
+        let began = std::time::Instant::now();
+        loop {
+            match file.try_lock() {
+                Ok(()) => return Ok(WriteLock { _file: file }),
+                Err(TryLockError::WouldBlock) if began.elapsed() < WRITE_LOCK_WAIT => {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                Err(TryLockError::WouldBlock) => return Err(SkanError::DatabaseBusy),
+                Err(TryLockError::Error(e)) => {
+                    return Err(SkanError::FileError {
+                        action: FileAction::Write,
+                        file: label,
+                        reason: e.to_string(),
+                    });
+                }
+            }
+        }
     }
 }
+
+/// How long a write waits for another writer of the same project (ARCHITECTURE.md, "同時実行").
+pub const WRITE_LOCK_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// The lock that keeps one `serve` (or one explicit migration) running per
 /// data directory. A second holder is refused at once with `DatabaseBusy`.
