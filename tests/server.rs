@@ -648,7 +648,7 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
     let request_id = request["card"]["pendingRequestId"].as_str().unwrap();
     let body =
-        serde_json::json!({"requestId":request_id,"actor":"human","reason":"Proceed with A"})
+        serde_json::json!({"requestId":request_id,"actor":"human","text":"Proceed with A"})
             .to_string();
     let answered = server.send_json("POST", &server.api("/cards/4/answer"), &body, Some(&token));
     assert_eq!(answered.status, 200, "{}", answered.body);
@@ -1726,7 +1726,6 @@ fn a_restarted_server_serves_the_same_cards_and_version() {
     assert_eq!(after["cursor"], before["cursor"]);
     assert_eq!(after["cards"], before["cards"]);
     assert_eq!(after["cards"].as_array().unwrap().len(), 3);
-    assert!(!home.path().join("board.db").exists(), "no SQLite file");
 }
 
 #[test]

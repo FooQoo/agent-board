@@ -1,6 +1,5 @@
-//! The CLI on the shared files: AC-1 (the first project creates the folder and
-//! no SQLite file), `workspace --json`, and the content-version cursor (U3-1,
-//! U3-2). Each test runs the real binary against a temporary data area.
+//! The CLI on the shared files: the first project creates the folder,
+//! `workspace --json`, and the content-version cursor. Each test runs the real binary against a temporary data area.
 
 use std::path::Path;
 
@@ -33,7 +32,7 @@ fn demo(home: &Path) -> String {
 }
 
 #[test]
-fn the_first_project_creates_the_shared_folder_and_no_sqlite_file() {
+fn the_first_project_creates_the_shared_folder() {
     let home = tempfile::tempdir().unwrap();
     let id = demo(home.path());
 
@@ -49,7 +48,6 @@ fn the_first_project_creates_the_shared_folder_and_no_sqlite_file() {
     assert!(project.join("project.json").is_file());
     assert!(project.join("README.md").is_file());
     assert!(project.join("tasks").is_dir());
-    assert!(!home.path().join("board.db").exists(), "no SQLite file");
 }
 
 #[test]

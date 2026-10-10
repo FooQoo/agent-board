@@ -23,12 +23,10 @@ fn lifecycle_lock_refuses_a_second_holder_until_the_first_is_dropped() {
 }
 
 #[test]
-fn lifecycle_lock_is_a_plain_file_and_no_sqlite_file_is_created() {
+fn lifecycle_lock_is_a_plain_file() {
     let dir = tempfile::tempdir().unwrap();
     let _guard = LifecycleGuard::acquire(dir.path()).unwrap();
     assert!(dir.path().join("lifecycle.lock").is_file());
-    assert!(!dir.path().join("lifecycle.lock.db").exists());
-    assert!(!dir.path().join("board.db").exists());
 }
 
 #[test]

@@ -762,15 +762,14 @@ struct AgentStateInput {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AnswerInput {
-    #[serde(alias = "requestID")]
     request_id: String,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
     /// The choice of the request to answer with. Absent for a note only.
     #[serde(default)]
     choice_id: Option<String>,
-    /// The free-text note. The earlier name `reason` is still accepted.
-    #[serde(default, alias = "reason")]
+    /// The free-text note.
+    #[serde(default)]
     text: Option<String>,
 }
 
@@ -790,9 +789,8 @@ struct MultipartMeta {
     #[serde(default)]
     assignee: Option<Assignee>,
     #[serde(default)]
-    #[serde(alias = "removeAttachments", alias = "removeAttachmentIds")]
     remove_attachment_ids: Vec<String>,
-    #[serde(default, alias = "files", alias = "additions")]
+    #[serde(default)]
     attachments: Vec<MultipartAttachmentMeta>,
 }
 

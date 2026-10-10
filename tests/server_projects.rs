@@ -587,7 +587,7 @@ fn answering_uses_the_request_of_that_project_and_a_wrong_request_changes_nothin
     let server = Running::start(home.path());
 
     // beta's request does not answer alpha's card.
-    let body = json!({"requestId": request_b, "reason": "Go"}).to_string();
+    let body = json!({"requestId": request_b, "text": "Go"}).to_string();
     let reply = server.write(
         "POST",
         &format!("/api/projects/{a}/cards/2/answer"),
@@ -598,7 +598,7 @@ fn answering_uses_the_request_of_that_project_and_a_wrong_request_changes_nothin
     assert_eq!(snapshot_json(home.path(), &a), before_a);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 
-    let body = json!({"requestId": request_a, "reason": "Go"}).to_string();
+    let body = json!({"requestId": request_a, "text": "Go"}).to_string();
     let reply = server.write(
         "POST",
         &format!("/api/projects/{a}/cards/2/answer"),
@@ -727,7 +727,7 @@ fn write_routes() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
         (
             "POST",
             "/cards/2/answer",
-            Some(r#"{"requestId":"x","reason":"r"}"#),
+            Some(r#"{"requestId":"x","text":"r"}"#),
         ),
         ("DELETE", "/cards/1", None),
     ]
@@ -969,7 +969,7 @@ fn changes_that_do_not_change_anything_send_nothing() {
     let wrong_request = server.write(
         "POST",
         &format!("/api/projects/{a}/cards/2/answer"),
-        Some(r#"{"requestId":"nope","reason":"Go"}"#),
+        Some(r#"{"requestId":"nope","text":"Go"}"#),
     );
     assert_eq!(wrong_request.status, 409);
     assert!(events.stays_quiet(), "{}", events.received);

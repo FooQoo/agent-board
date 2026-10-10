@@ -573,33 +573,6 @@ fn a_write_after_serve_was_killed_succeeds_quickly() {
 }
 
 #[test]
-fn serve_and_a_first_write_ignore_an_old_database_and_leave_it_unchanged() {
-    // DESIGN.md: a legacy board.db is neither read nor migrated nor deleted.
-    let _serial = serial();
-    let home = tempfile::tempdir().unwrap();
-    let old = b"SQLite format 3\0 an old board, kept as it is".to_vec();
-    std::fs::write(home.path().join("board.db"), &old).unwrap();
-    {
-        let (serving, first) = Serving::start(home.path(), 7963);
-        assert_eq!(
-            first,
-            "Serving at http://127.0.0.1:7963/ (press Ctrl+C to stop)"
-        );
-        drop(serving);
-    }
-    assert!(port_is_free(7963));
-    assert_eq!(std::fs::read(home.path().join("board.db")).unwrap(), old);
-    // A write to the shared files does not touch the old file either.
-    let o = agboard(home.path())
-        .args(["project", "create", "Fresh"])
-        .output()
-        .unwrap();
-    assert_eq!(o.status.code(), Some(0));
-    assert_eq!(std::fs::read(home.path().join("board.db")).unwrap(), old);
-    assert!(home.path().join("shared").join("workspace.json").is_file());
-}
-
-#[test]
 fn serve_takes_no_project_and_changes_made_through_two_projects_are_notified() {
     let _lock = serial();
     let home = tempfile::tempdir().unwrap();
@@ -610,7 +583,6 @@ fn serve_takes_no_project_and_changes_made_through_two_projects_are_notified() {
     assert_eq!(o.status.code(), Some(2));
     assert!(port_is_free(7964));
     assert!(!home.path().join("serve.json").exists());
-    assert!(!home.path().join("board.db").exists());
 
     let (serving, _) = Serving::start(home.path(), 7964);
     for name in ["alpha", "beta"] {

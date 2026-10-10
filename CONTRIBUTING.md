@@ -67,7 +67,7 @@ cargo run -- serve --port <port>
 
 The exported `SKAN_HOME` is shared by commands in this shell session. Set it again in a new session.
 
-The data area holds `shared/` (the project folders as plain files), `serve.json` while a server runs, and the `lifecycle.lock` file. Nothing is stored in a database. A `board.db` file left by the SQLite version is never read, converted, or deleted by the code, so do not use one as test input.
+The data area holds `shared/` (the project folders as plain files), `serve.json` while a server runs, and the `lifecycle.lock` file. Nothing is stored in a database.
 
 To work on the web UI alone with sample data:
 

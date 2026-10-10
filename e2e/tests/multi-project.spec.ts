@@ -17,7 +17,7 @@ import {
 } from '../helpers/agboard';
 import { spawn, spawnSync } from 'node:child_process';
 
-// Several projects in one data area, shown by one serve. The CLI, the SQLite file, the HTTP server and
+// Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
 // the browser are real. The browser's requests are touched only where a test needs a slow or failing
 // answer for one request. Every test names its project; the page URL (`?project=<ID>`) is what the screen
 // shows. This spec owns port 7632 and its own data directory, like states.spec.ts.
@@ -140,7 +140,7 @@ test.describe('a new data area', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('a same-named project cannot be made, and an old database is refused instead of converted', async ({ page }) => {
+  test('a same-named project cannot be made', async ({ page }) => {
     const refused = agboardCatalogOk(['project', 'ls', '--json'], home);
     expect(JSON.parse(refused.stdout).projects.map((p: { name: string }) => p.name)).toEqual(['Alpha', 'Beta']);
     const again = spawnSync(agboardBinary(), ['project', 'create', 'Alpha'], {
@@ -243,7 +243,7 @@ test.describe('two projects with the same card numbers', () => {
     // And acting in Beta leaves Alpha as it was.
     const alphaBefore = snapshotOf('Alpha', home);
     const betaAnswer = request(page);
-    await betaAnswer.getByRole('textbox', { name: 'Your answer' }).fill('Use SQLite.');
+    await betaAnswer.getByRole('textbox', { name: 'Your answer' }).fill('Use plain files.');
     await betaAnswer.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(betaAnswer).toHaveCount(0);
     await expect(card(page, 2)).toContainText('Idle');

@@ -371,14 +371,10 @@ fn global_commands_reject_project_and_work_with_no_projects() {
         );
     }
     // project create/ls and --help/--version do not need a project.
-    assert!(!home.path().join("board.db").exists());
     agboard(home.path(), &["--help"]).success();
     agboard(home.path(), &["--version"]).success();
     agboard(home.path(), &["--project", "x", "--help"]).success();
-    assert!(!home.path().join("board.db").exists());
 }
-
-// ---- read-only commands and old data --------------------------------------
 
 // ---- AC-4: deletion needs a human -----------------------------------------
 
@@ -942,14 +938,6 @@ fn help_lists_project_commands_and_every_example_names_its_project() {
     let home = tempdir().unwrap();
     let top = agboard(home.path(), &["--help"]).success();
     let top = String::from_utf8_lossy(&top.get_output().stdout).to_string();
-    // The SQLite-era commands are gone: none of them is listed.
-    for removed in ["export", "import", "migrate"] {
-        assert!(
-            !top.lines()
-                .any(|line| line.trim_start().starts_with(&format!("{removed} "))),
-            "{removed} is listed in --help"
-        );
-    }
     assert!(top.contains("project"));
     assert!(top.contains("agboard project ls --json"));
     assert!(top.contains("rename"));

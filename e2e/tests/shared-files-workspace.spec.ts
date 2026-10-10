@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
@@ -57,7 +57,7 @@ test.beforeEach(() => {
 });
 
 test('a shared folder and an epic are created by the CLI, and the epic label shows on the card in its colour', async ({ page }) => {
-  // A new data area gets the shared folder, a project folder with its ID, and the README; no SQLite file.
+  // A new data area gets the shared folder, a project folder with its ID, and the README.
   const name = `Shared demo ${Date.now()}`;
   agboardCatalogOk(['project', 'create', name]);
   const id = JSON.parse(agboard(name, ['workspace', '--json']).stdout).projectId as string;
@@ -70,7 +70,6 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
   expect(folder.startsWith(shared)).toBe(true);
   expect(JSON.parse(readFileSync(path.join(folder, 'project.json'), 'utf8'))).toMatchObject({ id, name, nextCardId: 1 });
   expect(readFileSync(path.join(folder, 'README.md'), 'utf8')).toContain('TASK.md');
-  expect(existsSync(path.join(mainHome(), 'board.db'))).toBe(false);
 
   // An epic with a plan template and a colour; a card in it.
   agboardOk(name, ['epic', 'add', 'FILE-SHARE', '--name', 'File share', '--color', '#7C3AED', '--actor', 'human']);

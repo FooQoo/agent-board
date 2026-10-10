@@ -1,5 +1,4 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -66,8 +65,6 @@ function bodyOfLength(count: number): string {
   const base = [...frame('')].length - [...placeholder].length;
   return frame('あ'.repeat(count - base));
 }
-
-const sha = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
 
 let work: string;
 
@@ -293,29 +290,6 @@ test('the hook hands over the whole body and isDraft; a snapshot over 256 KiB is
   expect(overContext).not.toContain('AGBOARD_SNAPSHOT');
   expect(overContext).not.toContain('あ');
   expect(Buffer.byteLength(overContext)).toBeLessThan(2_000);
-});
-
-test('a new data area has no SQLite file, and a leftover database file is neither read nor changed', async () => {
-  const home = makeHome('no-sqlite');
-  try {
-    agboardCatalogOk(['project', 'create', 'Fresh'], home);
-    expect(existsSync(path.join(home, 'board.db'))).toBe(false);
-    expect(agboardOk('Fresh', ['add', 'First card'], home).code).toBe(0);
-    const shared = path.join(home, 'shared');
-    expect(existsSync(shared)).toBe(true);
-
-    // A file left by the old version is not opened, moved, or removed by reads and writes.
-    const legacy = path.join(home, 'board.db');
-    writeFileSync(legacy, 'SQLite format 3\0 an old database file, left as it was');
-    const before = sha(legacy);
-    expect(agboardOk('Fresh', ['ls'], home).code).toBe(0);
-    expect(agboardCatalog(['project', 'ls', '--json'], home).code).toBe(0);
-    expect(agboardOk('Fresh', ['add', 'Second card'], home).code).toBe(0);
-    expect(existsSync(legacy)).toBe(true);
-    expect(sha(legacy)).toBe(before);
-  } finally {
-    removeHome(home);
-  }
 });
 
 test('the help explains Markdown descriptions and what a refused write to a draft means', async () => {

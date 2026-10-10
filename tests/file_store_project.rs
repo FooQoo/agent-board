@@ -1,6 +1,5 @@
 //! Project creation and the project-level reads of the shared file store.
-//! Covers AC-1 (the empty data area gets the files and no SQLite file) and the
-//! refusal of unknown fields, unsupported versions, and mismatched IDs.
+//! Covers the files an empty data area gets and the refusal of unknown fields, unsupported versions, and mismatched IDs.
 
 use std::fs;
 use std::path::Path;
@@ -26,7 +25,7 @@ fn read_json(path: &Path) -> serde_json::Value {
 }
 
 #[test]
-fn an_empty_data_area_gets_workspace_project_and_readme_and_no_sqlite_file() {
+fn an_empty_data_area_gets_workspace_project_and_readme() {
     let (root, store) = store();
     let project = store.create_project("Alpha", now()).unwrap();
 
@@ -58,7 +57,7 @@ fn an_empty_data_area_gets_workspace_project_and_readme_and_no_sqlite_file() {
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
-    assert_eq!(entries, vec!["shared"], "no board.db or other file");
+    assert_eq!(entries, vec!["shared"], "only the shared folder");
 }
 
 #[test]

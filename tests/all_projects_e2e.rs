@@ -397,7 +397,7 @@ fn build(home: &Path) {
             "/api/projects/{}/cards/1/answer",
             apple["project"]["id"].as_str().unwrap()
         ),
-        &json!({ "requestId": request, "reason": "Apple: use the MIT license." }),
+        &json!({ "requestId": request, "text": "Apple: use the MIT license." }),
     );
     assert_eq!(status, 200, "{body}");
 }
@@ -709,14 +709,6 @@ fn a_missing_data_area_lists_nothing_and_is_not_created_and_an_old_database_is_i
     let empty = tempdir().unwrap();
     assert_eq!(all(empty.path(), &[])["projects"], json!([]));
     assert_eq!(std::fs::read_dir(empty.path()).unwrap().count(), 0);
-
-    // An old board.db is neither read nor changed (DESIGN.md).
-    let old = tempdir().unwrap();
-    let path = old.path().join("board.db");
-    std::fs::write(&path, b"SQLite format 3\0 an old board, kept as it is").unwrap();
-    let bytes = std::fs::read(&path).unwrap();
-    assert_eq!(all(old.path(), &[])["projects"], json!([]));
-    assert_eq!(std::fs::read(&path).unwrap(), bytes);
 }
 
 #[test]

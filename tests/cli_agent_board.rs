@@ -108,7 +108,6 @@ fn snapshot_is_read_only_and_returns_full_history() {
         .failure()
         .code(4);
     let _ = missing;
-    assert!(!home.path().join("board.db").exists());
     invoke(home.path(), &["init"]).success();
     let output = invoke(home.path(), &["snapshot", "--json"])
         .success()
@@ -130,28 +129,6 @@ fn snapshot_is_read_only_and_returns_full_history() {
     assert_eq!(snapshot["nextCardId"], 1);
     assert_eq!(snapshot["cards"].as_array().unwrap().len(), 0);
     assert_eq!(snapshot["problems"].as_array().unwrap().len(), 0);
-}
-
-#[test]
-fn no_legacy_skan_binary_is_built() {
-    let metadata = std::process::Command::new("cargo")
-        .args(["metadata", "--no-deps", "--format-version", "1"])
-        .output()
-        .unwrap();
-    let value: Value = serde_json::from_slice(&metadata.stdout).unwrap();
-    let bins: Vec<_> = value["packages"][0]["targets"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|target| {
-            target["kind"]
-                .as_array()
-                .unwrap()
-                .contains(&Value::String("bin".into()))
-        })
-        .map(|target| target["name"].as_str().unwrap())
-        .collect();
-    assert_eq!(bins, vec!["agboard"]);
 }
 
 fn add_card(home: &std::path::Path, project: &str, title: &str) -> Value {

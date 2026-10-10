@@ -142,14 +142,14 @@ fn answering_with_a_note_only_is_accepted_for_a_request_that_has_no_choices() {
             "--request",
             &request,
             "--reason",
-            "Use SQLite.",
+            "Use plain files.",
         ],
     );
     assert_eq!(code, 0, "{err}");
     let shown = card(home.path());
     assert_eq!(shown["agentStatus"], "idle");
     let answer = shown["history"].as_array().unwrap().last().unwrap().clone();
-    assert_eq!(answer["reason"], "Use SQLite.");
+    assert_eq!(answer["reason"], "Use plain files.");
     assert_eq!(answer["choiceId"], Value::Null);
 }
 

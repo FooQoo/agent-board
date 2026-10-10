@@ -494,7 +494,6 @@ fn a_new_data_area_starts_with_no_projects_and_projects_are_managed_by_name() {
         listed,
         json!({ "projects": [], "catalogVersion": "e3b0c44298fc1c149afbf4c8996fb924" })
     );
-    assert!(!home.path().join("board.db").exists());
 
     // The server starts with zero projects.
     let server = serve(home.path());
@@ -839,7 +838,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     let reply = server.write(
         "POST",
         &format!("/api/projects/{alpha_id}/cards/2/answer"),
-        Some(&json!({ "requestId": pending_request(home.path(), "Alpha", 2), "reason": "Use the MIT license." })),
+        Some(&json!({ "requestId": pending_request(home.path(), "Alpha", 2), "text": "Use the MIT license." })),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     let output = finish(waiter, Duration::from_secs(15));

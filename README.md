@@ -82,17 +82,6 @@ The data folder is `skan/` in your OS application data folder: `~/Library/Applic
 
 Back up a project by copying its whole folder. Find it with `agboard --project "My project" workspace --json` (the `folder` field). Stop `agboard serve` and the agents that work on the project before you copy, so that the copy is not taken in the middle of a change. Restore by putting the copied folder back in the same place while `agboard serve` is stopped.
 
-## Upgrading from the SQLite version
-
-Earlier versions kept boards in an SQLite file (`board.db`). This version does not read, convert, or delete that file, and it has no `export`, `import`, or `migrate` command. It starts with an empty `shared/` folder. To switch:
-
-1. Stop `agboard serve` and the agents that use the old version.
-2. Move the whole data folder `skan/` to another place, for example `~/agboard-old/`. Move the folder as a whole, including `board.db` and `backups/`, so nothing is left behind in the data folder.
-3. Install this version (see [Install](#install)).
-4. Create each project again with `agboard project create "<name>"`, then add its cards.
-
-Whether to keep or discard the moved folder is your decision. Agent Board never deletes it. To go back to the old version, install that version and use the moved folder with it; the new version cannot read it.
-
 Cards can also keep image attachments. The add command validates PNG, JPEG, WebP, and GIF files, records only metadata in snapshots and hooks, and stores the image bytes locally. `get` refuses to overwrite an existing output file:
 
 ```sh

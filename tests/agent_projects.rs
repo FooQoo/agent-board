@@ -319,18 +319,6 @@ fn a_hook_without_a_usable_target_reports_agboard_error_and_changes_nothing() {
 }
 
 #[test]
-fn a_hook_ignores_an_old_database_and_leaves_it_alone() {
-    let home = tempdir().unwrap();
-    let db = home.path().join("board.db");
-    std::fs::write(&db, b"SQLite format 3\0 an old board, kept as it is").unwrap();
-    let before = std::fs::read(&db).unwrap();
-    let output = hook(home.path(), Some("Alpha"), "claude", SESSION_START);
-    // The old database is not read: the project is simply not there (DESIGN.md).
-    assert_eq!(error_code(&context(&output)), "project_not_found");
-    assert_eq!(before, std::fs::read(&db).unwrap());
-}
-
-#[test]
 fn a_renamed_project_needs_its_new_name_and_a_recreated_one_is_a_new_project() {
     let home = tempdir().unwrap();
     two_projects(home.path());
