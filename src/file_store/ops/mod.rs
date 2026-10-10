@@ -8,7 +8,10 @@
 
 mod agent;
 mod answer;
+mod attachment;
 mod card;
+mod epic;
+mod evidence;
 
 pub use answer::Answer;
 

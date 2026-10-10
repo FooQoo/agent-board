@@ -4,9 +4,12 @@
 //! The file shapes are strict: unknown fields are rejected and every JSON file
 //! carries `formatVersion`. The view is what callers receive for a card.
 
+use std::path::PathBuf;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use super::validate::EpicId;
 use crate::domain::{Actor, Assignee, Attachment, Column, ProjectId, RunState};
 
 /// `workspace.json`: the marker of the shared area.
@@ -161,6 +164,78 @@ pub struct CardView {
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
     pub history: Vec<HistoryRecord>,
+}
+
+/// `epic.json`: an epic's metadata. Its plan is in PLAN.md.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct EpicFile {
+    pub format_version: u32,
+    pub id: EpicId,
+    pub name: String,
+    pub color: String,
+    pub is_draft: bool,
+    pub attachments: Vec<Attachment>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub created_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub updated_at: DateTime<Utc>,
+}
+
+/// An epic as callers receive it: `epic.json` plus PLAN.md.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EpicView {
+    pub id: EpicId,
+    pub name: String,
+    pub color: String,
+    pub is_draft: bool,
+    pub plan: String,
+    pub attachments: Vec<Attachment>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub created_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub updated_at: DateTime<Utc>,
+}
+
+/// The input of an epic creation. `id` is the ID as typed (folded to
+/// uppercase when stored). A missing or blank `plan` gets the PLAN.md template.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NewEpic {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+    pub plan: Option<String>,
+}
+
+/// The fields of an epic that an update may change. `None` keeps the value.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EpicUpdate {
+    pub name: Option<String>,
+    pub color: Option<String>,
+    pub is_draft: Option<bool>,
+    pub plan: Option<String>,
+}
+
+/// The owner of an image: a card (task) or an epic.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AttachmentOwner {
+    Card(i64),
+    Epic(EpicId),
+}
+
+/// An image's metadata with the path of its file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredAttachment {
+    pub metadata: Attachment,
+    pub path: PathBuf,
+}
+
+/// A text evidence record with its bytes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvidenceData {
+    pub record: EvidenceRecord,
+    pub bytes: Vec<u8>,
 }
 
 /// A format defect in a file that was read anyway. `file` is relative to the
