@@ -1,22 +1,8 @@
 /*
- * The parts of the card and epic editors added with the rich body: the large title, the draft box,
+ * The parts of the card and epic editors added with the rich body: the draft box,
  * the epic label row, the task list under the outline and its filter menu. Colors are the r-*
  * tokens of theme.css, as in editor.css.
  */
-.editor__input--title {
-  height: auto;
-  padding: 4px 0 4px 20px;
-  border: 0;
-  border-left: 2px solid var(--r-accent);
-  border-radius: 0;
-  background: transparent;
-  color: var(--r-text);
-  font-family: "Noto Serif JP", ui-serif, serif;
-  font-size: 32px;
-  font-weight: 400;
-  line-height: 1.5;
-}
-
 .editor__draft {
   display: flex;
   align-items: center;
@@ -269,10 +255,10 @@
   --crepe-color-inline-code: var(--r-text2);
   --crepe-color-inverse: var(--r-text);
   --crepe-color-on-inverse: var(--r-surface);
-  --crepe-font-default: "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  --crepe-font-default: var(--font-sans);
   --crepe-font-code: var(--font-mono);
-  --crepe-font-title: "Noto Serif JP", ui-serif, serif;
-  --crepe-base-font-size: 17px;
+  --crepe-font-title: var(--font-sans);
+  --crepe-base-font-size: 14px;
 }
 
 /* The body scrolls inside its box; the header and the footer stay in place. */
@@ -290,57 +276,11 @@
 }
 
 .editor__box .rich-markdown .ProseMirror {
-  counter-reset: chapter;
   min-height: 100%;
   max-width: none;
   margin: 0;
   padding: 24px 0;
-  color: var(--r-text);
-  font-family: "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
-  font-size: 17px;
-  line-height: 1.8;
   outline: none;
-}
-
-.editor__box .ProseMirror p {
-  margin: 0 0 20px;
-}
-
-.editor__box .ProseMirror h2 {
-  counter-increment: chapter;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin: 40px 0 20px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--r-border);
-  font-family: "Noto Serif JP", ui-serif, serif;
-  font-size: 31px;
-  font-weight: 400;
-  line-height: 1.3;
-}
-
-.editor__box .ProseMirror h2::before {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 66px;
-  height: 58px;
-  background: var(--r-accent-soft);
-  color: var(--r-accent);
-  content: counter(chapter, decimal-leading-zero);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 35px;
-  font-weight: 300;
-}
-
-.editor__box .ProseMirror h3 {
-  margin: 28px 0 14px;
-  font-family: "Noto Serif JP", ui-serif, serif;
-  font-size: 23px;
-  font-weight: 400;
-  line-height: 1.4;
 }
 
 /* A refused picture: the amber notice in the side panel, above the pictures. */
@@ -497,8 +437,7 @@
 /* The title shows no frame while it is edited: the caret is enough. It stays keyboard reachable. */
 .editor__input--title:focus,
 .editor__input--title:focus-visible {
-  border-color: transparent;
-  border-left-color: var(--r-accent);
+  border-color: var(--r-border);
   outline: none;
   box-shadow: none;
 }

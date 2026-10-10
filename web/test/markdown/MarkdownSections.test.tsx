@@ -9,13 +9,11 @@ afterEach(cleanup);
 const SOURCE = 'Intro text\n\n## Goals\n\nGoal body\n\n## Steps\n\n1. one\n2. two\n3. three\n';
 
 describe('MarkdownSections as chapters', () => {
-  it('shows the preamble without a number, then each H2 with a number from its order', () => {
+  it('shows the preamble, then each H2 as a plain heading with no number chip', () => {
     const { container } = render(<MarkdownSections source={SOURCE} />);
     expect(screen.getByText('Intro text')).toBeTruthy();
-    const numbers = [...container.querySelectorAll('.md-chapter__number')].map(
-      (n) => n.textContent,
-    );
-    expect(numbers).toEqual(['01', '02']);
+    expect(container.querySelector('.md-chapter__number')).toBeNull();
+    expect(container.querySelectorAll('.md-chapter')).toHaveLength(2);
     expect(screen.getByRole('heading', { level: 3, name: 'Goals' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 3, name: 'Steps' })).toBeTruthy();
   });
@@ -29,13 +27,11 @@ describe('MarkdownSections as chapters', () => {
     expect(container.querySelector('.md-section__count')).toBeNull();
   });
 
-  it('keeps the numbering when the description changes under the same card', () => {
+  it('keeps the chapters when the description changes under the same card', () => {
     const { container, rerender } = render(<MarkdownSections key="card-1" source={SOURCE} />);
     rerender(<MarkdownSections key="card-1" source={`${SOURCE}\nmore`} />);
-    const numbers = [...container.querySelectorAll('.md-chapter__number')].map(
-      (n) => n.textContent,
-    );
-    expect(numbers).toEqual(['01', '02']);
+    expect(container.querySelector('.md-chapter__number')).toBeNull();
+    expect(container.querySelectorAll('.md-chapter')).toHaveLength(2);
     expect(screen.getByText('Goal body')).toBeTruthy();
   });
 

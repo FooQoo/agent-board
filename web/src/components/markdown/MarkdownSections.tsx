@@ -34,7 +34,7 @@ export function MarkdownSections({
         <MarkdownView source={preamble} variant={variant} resolveAttachment={resolveAttachment} />
       )}
       {sections.map((section, index) => (
-        <Chapter key={`${index}:${section.title}`} number={index + 1} title={section.title}>
+        <Chapter key={`${index}:${section.title}`} title={section.title}>
           {section.markdown !== '' && (
             <MarkdownView
               source={section.markdown}
@@ -48,22 +48,11 @@ export function MarkdownSections({
   );
 }
 
-function Chapter({
-  number,
-  title,
-  children,
-}: {
-  number: number;
-  title: string;
-  children: React.ReactNode;
-}) {
+function Chapter({ title, children }: { title: string; children: React.ReactNode }) {
   const headingId = useId();
   return (
     <section className="md-chapter" aria-labelledby={headingId}>
       <header className="md-chapter__head">
-        <span className="md-chapter__number" aria-hidden="true">
-          {String(number).padStart(2, '0')}
-        </span>
         <h3 className="md-chapter__title" id={headingId}>
           {title}
         </h3>

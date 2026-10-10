@@ -83,12 +83,9 @@ describe('tabs', () => {
 });
 
 describe('chapters of the description', () => {
-  it('numbers each H2 chapter and keeps every chapter open, with no fold control', async () => {
+  it('shows each H2 chapter as a plain heading and keeps every chapter open, with no fold control', async () => {
     const { container } = renderPanel(makeCard({ id: 50, description: `Intro\n\n${SECTIONED}` }));
-    const numbers = [...container.querySelectorAll('.md-chapter__number')].map(
-      (n) => n.textContent,
-    );
-    expect(numbers).toEqual(['01', '02']);
+    expect(container.querySelector('.md-chapter__number')).toBeNull();
     expect(screen.getByRole('heading', { level: 3, name: 'Goal' })).toBeTruthy();
     expect(screen.getByText('one')).toBeTruthy();
     expect(screen.getByText('first')).toBeTruthy();

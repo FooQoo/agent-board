@@ -252,7 +252,7 @@
   border-radius: 6px;
   background: var(--r-surface);
   color: var(--r-text2);
-  font-family: var(--md-sans, inherit);
+  font-family: inherit;
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
