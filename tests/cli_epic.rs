@@ -179,6 +179,8 @@ fn edit_sets_and_clears_the_epic_of_a_card_and_ls_filters_by_it() {
     assert_eq!(code, 0, "{err}");
     let listed = json_ok(home.path(), &["--project", "Demo", "ls", "--json"]);
     assert_eq!(listed["cards"][0]["epicId"], "FILE-SHARE");
+    assert_eq!(listed["cards"][0]["epic"]["id"], "FILE-SHARE");
+    assert_eq!(listed["cards"][0]["epic"]["color"], "#111111");
     let filtered = json_ok(
         home.path(),
         &["--project", "Demo", "ls", "--epic", "FILE-SHARE", "--json"],
@@ -197,6 +199,7 @@ fn edit_sets_and_clears_the_epic_of_a_card_and_ls_filters_by_it() {
     assert_eq!(code, 0, "{err}");
     let cleared = json_ok(home.path(), &["--project", "Demo", "ls", "--json"]);
     assert_eq!(cleared["cards"][0]["epicId"], Value::Null);
+    assert_eq!(cleared["cards"][0]["epic"], Value::Null);
 }
 
 #[test]

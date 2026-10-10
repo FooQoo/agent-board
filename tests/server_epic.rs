@@ -163,6 +163,7 @@ fn a_card_takes_and_leaves_an_epic_over_http_and_a_person_may_change_an_archived
     let set = server.write("PUT", &path, Some(r#"{"epicId":"FILE-SHARE"}"#));
     assert_eq!(set.status, 200, "{}", set.body);
     assert_eq!(set.json()["card"]["epicId"], "FILE-SHARE");
+    assert_eq!(set.json()["card"]["epic"]["name"], "File share");
 
     let unknown = server.write("PUT", &path, Some(r#"{"epicId":"NOPE-1"}"#));
     assert_eq!(unknown.status, 404);
