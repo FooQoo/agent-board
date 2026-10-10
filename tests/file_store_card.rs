@@ -408,10 +408,9 @@ fn a_card_with_a_broken_task_file_is_left_out_and_reported_by_its_relative_path(
     let ids: Vec<i64> = snapshot.cards.iter().map(|c| c.id).collect();
     assert_eq!(ids, vec![1]);
     assert!(
-        snapshot
-            .problems
-            .iter()
-            .any(|p| p.file == "tasks/2/task.json" && p.field == "extra"),
+        snapshot.problems.iter().any(|p| p.file
+            == format!("projects/{}/tasks/2/task.json", fx.project)
+            && p.field == "extra"),
         "{:?}",
         snapshot.problems
     );
@@ -463,12 +462,9 @@ fn a_body_defect_returns_the_text_and_is_reported_without_rewriting_it() {
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
     assert_eq!(snapshot.cards.len(), 1);
     assert_eq!(snapshot.cards[0].description, broken);
-    assert!(
-        snapshot
-            .problems
-            .iter()
-            .any(|p| p.file == "tasks/1/TASK.md" && p.field == "## 実行記録")
-    );
+    assert!(snapshot.problems.iter().any(|p| p.file
+        == format!("projects/{}/tasks/1/TASK.md", fx.project)
+        && p.field == "## 実行記録"));
     assert_eq!(
         fs::read_to_string(fx.card_dir(1).join("TASK.md")).unwrap(),
         broken
@@ -501,7 +497,7 @@ fn a_missing_body_file_is_a_problem_with_an_empty_text() {
         snapshot
             .problems
             .iter()
-            .any(|p| p.file == "tasks/1/TASK.md")
+            .any(|p| p.file == format!("projects/{}/tasks/1/TASK.md", fx.project))
     );
 }
 

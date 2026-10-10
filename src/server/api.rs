@@ -514,7 +514,7 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
                 project: &'a crate::domain::ProjectMeta,
                 version: &'a str,
                 cursor: &'a crate::domain::ChangeCursor,
-                epics: &'a [crate::file_store::reader::EpicSnapshot],
+                epics: &'a [crate::file_store::model::EpicView],
                 cards: Vec<&'a CardView>,
                 problems: &'a [crate::file_store::model::Problem],
             }

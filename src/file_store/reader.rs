@@ -11,17 +11,19 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::FileStore;
 use super::index;
 use super::io;
 use super::layout;
-use super::model::{CardView, Problem, ProjectFile, TaskFile, WorkspaceFile, current_request};
+use super::model::{
+    CardView, EpicFile, EpicView, Problem, ProjectFile, TaskFile, WorkspaceFile, current_request,
+};
 use super::validate;
-use crate::domain::{Attachment, ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
+use crate::domain::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 use crate::error::SkanError;
 
 /// One project as the snapshot returns it: the project, its content version and
@@ -34,46 +36,15 @@ pub struct ProjectSnapshot {
     pub next_card_id: i64,
     pub version: String,
     pub cursor: ChangeCursor,
-    pub epics: Vec<EpicSnapshot>,
+    pub epics: Vec<EpicView>,
     pub cards: Vec<CardView>,
     pub problems: Vec<Problem>,
 }
 
-/// `epic.json` as the snapshot reads it: the fields of MODEL.md, strict.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-struct EpicJson {
-    format_version: u32,
-    id: String,
-    name: String,
-    color: String,
-    is_draft: bool,
-    attachments: Vec<Attachment>,
-    #[serde(with = "crate::clock::serde_utc")]
-    created_at: DateTime<Utc>,
-    #[serde(with = "crate::clock::serde_utc")]
-    updated_at: DateTime<Utc>,
-}
-
-/// An epic as the snapshot returns it: `epic.json` plus its PLAN.md.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EpicSnapshot {
-    pub id: String,
-    pub name: String,
-    pub color: String,
-    pub is_draft: bool,
-    pub plan: String,
-    pub attachments: Vec<Attachment>,
-    #[serde(with = "crate::clock::serde_utc")]
-    pub created_at: DateTime<Utc>,
-    #[serde(with = "crate::clock::serde_utc")]
-    pub updated_at: DateTime<Utc>,
-}
-
 /// Read every epic folder. An epic whose `epic.json` is defective is left out
-/// and reported in `problems`; its folder is never changed.
-fn read_epics(project_dir: &Path) -> (Vec<EpicSnapshot>, Vec<Problem>) {
+/// and reported in `problems`; its folder is never changed. A defect in
+/// PLAN.md is reported while the plan text is still returned.
+fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, Vec<Problem>) {
     let mut epics = Vec::new();
     let mut problems = Vec::new();
     let Ok(entries) = fs::read_dir(layout::epics_dir(project_dir)) else {
@@ -89,9 +60,9 @@ fn read_epics(project_dir: &Path) -> (Vec<EpicSnapshot>, Vec<Problem>) {
     folders.sort();
     for (name, folder) in folders {
         let json_path = folder.join("epic.json");
-        let json_label = layout::project_label(project_dir, &json_path);
-        let file: EpicJson = match io::read_bytes(&json_path, &json_label)
-            .and_then(|bytes| parse_file::<EpicJson>(&bytes, &json_label))
+        let json_label = layout::shared_label(shared, &json_path);
+        let file: EpicFile = match io::read_bytes(&json_path, &json_label)
+            .and_then(|bytes| parse_file::<EpicFile>(&bytes, &json_label))
         {
             Ok(file) => file,
             Err(error) => {
@@ -99,24 +70,35 @@ fn read_epics(project_dir: &Path) -> (Vec<EpicSnapshot>, Vec<Problem>) {
                 continue;
             }
         };
-        if file.id != name {
-            problems.push(Problem {
-                file: json_label,
-                field: "id".into(),
-                reason: "The ID does not match the folder name.".into(),
-            });
+        let defects = validate::check_epic(&file, &name);
+        if !defects.is_empty() {
+            problems.extend(defects.into_iter().map(|d| Problem {
+                file: json_label.clone(),
+                field: d.field,
+                reason: d.reason,
+            }));
             continue;
         }
         let plan_path = folder.join("PLAN.md");
-        let plan_label = layout::project_label(project_dir, &plan_path);
-        let plan = match io::read_text(&plan_path, &plan_label) {
-            Ok(text) => text,
-            Err(error) => {
-                problems.push(problem_of(error));
-                String::new()
-            }
-        };
-        epics.push(EpicSnapshot {
+        let plan_label = layout::shared_label(shared, &plan_path);
+        let plan =
+            match io::read_text(&plan_path, &plan_label) {
+                Ok(text) => {
+                    problems.extend(validate::check_plan_body(&text).into_iter().map(|d| {
+                        Problem {
+                            file: plan_label.clone(),
+                            field: d.field,
+                            reason: d.reason,
+                        }
+                    }));
+                    text
+                }
+                Err(error) => {
+                    problems.push(problem_of(error));
+                    String::new()
+                }
+            };
+        epics.push(EpicView {
             id: file.id,
             name: file.name,
             color: file.color,
@@ -345,7 +327,7 @@ pub(crate) fn read_card_lenient(
     let project_dir = layout::project_dir(shared, project_id);
     let dir = layout::task_dir(&project_dir, card_id);
     let json_path = layout::task_json(&dir);
-    let json_label = layout::project_label(&project_dir, &json_path);
+    let json_label = layout::shared_label(shared, &json_path);
     let task: TaskFile = match io::read_bytes(&json_path, &json_label)
         .and_then(|bytes| parse_file::<TaskFile>(&bytes, &json_label))
     {
@@ -364,7 +346,7 @@ pub(crate) fn read_card_lenient(
             .collect());
     }
     let md_path = layout::task_md(&dir);
-    let md_label = layout::project_label(&project_dir, &md_path);
+    let md_label = layout::shared_label(shared, &md_path);
     let (description, problems) = match io::read_text(&md_path, &md_label) {
         Ok(text) => {
             let problems = validate::check_task_body(&text)
@@ -485,7 +467,7 @@ pub fn read_snapshot(shared: &Path, project_id: &ProjectId) -> Result<ProjectSna
     let next_card_id = file.next_card_id;
     let project = meta_of(file);
     let mut cards = Vec::new();
-    let (epics, mut problems) = read_epics(&project_dir);
+    let (epics, mut problems) = read_epics(shared, &project_dir);
     for card_id in card_ids(&project_dir)? {
         match read_card_lenient(shared, project_id, card_id) {
             Ok(load) => {
