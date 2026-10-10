@@ -41,6 +41,27 @@ fn add_card(home: &Path, project: &str, title: &str) {
     ));
 }
 
+/// Every file below `dir` with its bytes, sorted: the state a read must not change.
+fn tree_of(dir: &Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
+    let mut found = Vec::new();
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(next) = pending.pop() {
+        let Ok(entries) = std::fs::read_dir(&next) else {
+            continue;
+        };
+        for entry in entries.map(Result::unwrap) {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else {
+                found.push((path.clone(), std::fs::read(&path).unwrap()));
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
 fn snapshot(home: &Path, project: &str) -> Value {
     let output = agboard(home, project, &["snapshot", "--json"]);
     ok(&output);
@@ -237,7 +258,7 @@ fn the_hook_passes_only_the_named_projects_complete_snapshot() {
             ],
         ));
     }
-    let before = std::fs::read(home.path().join("board.db")).unwrap();
+    let before = tree_of(&home.path().join("shared"));
     for (project, other, agent) in [("Alpha", "Beta", "claude"), ("Beta", "Alpha", "codex")] {
         let output = hook(home.path(), Some(project), agent, SESSION_START);
         assert!(output.stderr.is_empty());
@@ -255,15 +276,15 @@ fn the_hook_passes_only_the_named_projects_complete_snapshot() {
         assert!(context.contains(&format!("{project} started")));
         assert!(!context.contains(other), "{other} leaked into {project}");
     }
-    assert_eq!(before, std::fs::read(home.path().join("board.db")).unwrap());
+    assert_eq!(before, tree_of(&home.path().join("shared")));
 }
 
 #[test]
 fn a_hook_without_a_usable_target_reports_agboard_error_and_changes_nothing() {
     let home = tempdir().unwrap();
     two_projects(home.path());
-    let db = home.path().join("board.db");
-    let before = std::fs::read(&db).unwrap();
+    let shared = home.path().join("shared");
+    let before = tree_of(&shared);
 
     // No target at all: an error report, not a guess and not the only project.
     let output = hook(home.path(), None, "claude", SESSION_START);
@@ -278,13 +299,13 @@ fn a_hook_without_a_usable_target_reports_agboard_error_and_changes_nothing() {
     assert!(
         !context(&hook(home.path(), None, "codex", SESSION_START)).contains("AGBOARD_SNAPSHOT")
     );
-    assert_eq!(before, std::fs::read(&db).unwrap());
+    assert_eq!(before, tree_of(&shared));
 
     // No data area at all: nothing is created.
     let empty = tempdir().unwrap();
     let output = hook(empty.path(), Some("Alpha"), "claude", SESSION_START);
-    assert_eq!(error_code(&context(&output)), "board_unavailable");
-    assert!(!empty.path().join("board.db").exists());
+    assert_eq!(error_code(&context(&output)), "project_not_found");
+    assert!(!empty.path().join("shared").exists());
 
     // Events the agent does not use produce no output, even without a target.
     let output = hook(
@@ -298,7 +319,7 @@ fn a_hook_without_a_usable_target_reports_agboard_error_and_changes_nothing() {
 }
 
 #[test]
-fn a_hook_on_a_database_with_an_old_schema_is_an_error_and_leaves_it_alone() {
+fn a_hook_ignores_an_old_database_and_leaves_it_alone() {
     let home = tempdir().unwrap();
     let db = home.path().join("board.db");
     {
@@ -308,7 +329,8 @@ fn a_hook_on_a_database_with_an_old_schema_is_an_error_and_leaves_it_alone() {
     }
     let before = std::fs::read(&db).unwrap();
     let output = hook(home.path(), Some("Alpha"), "claude", SESSION_START);
-    assert_eq!(error_code(&context(&output)), "board_unavailable");
+    // The old database is not read: the project is simply not there (DESIGN.md).
+    assert_eq!(error_code(&context(&output)), "project_not_found");
     assert_eq!(before, std::fs::read(&db).unwrap());
 }
 
@@ -391,7 +413,7 @@ fn a_wait_for_an_unknown_project_or_database_exits_with_not_found() {
 }
 
 #[test]
-fn a_cursor_of_another_project_is_refused_and_a_wrong_revision_is_distinguished() {
+fn a_cursor_of_another_project_is_refused_and_an_old_form_is_invalid() {
     let home = tempdir().unwrap();
     two_projects(home.path());
     let alpha = snapshot(home.path(), "Alpha");
@@ -406,17 +428,17 @@ fn a_cursor_of_another_project_is_refused_and_a_wrong_revision_is_distinguished(
     assert!(!output.status.success());
     assert_eq!(error_of(&output)["error"]["code"], "cursor_invalid");
 
-    // A revision newer than the board's is invalid, not something to wait for.
+    // The form of the old revision cursor is refused, whatever project it names.
     let id = alpha["project"]["id"].as_str().unwrap();
-    let future = format!("{id}:{}", alpha["revision"].as_i64().unwrap() + 50);
+    let old_form = format!("{id}:3");
     let output = finish(
-        spawn_wait(home.path(), "Alpha", &future, Some("3")),
+        spawn_wait(home.path(), "Alpha", &old_form, Some("3")),
         Duration::from_secs(10),
     );
-    assert_eq!(error_of(&output)["error"]["code"], "cursor_invalid");
+    assert!(!output.status.success());
 
-    // An older revision is answered at once with the latest snapshot.
-    let old = format!("{id}:0");
+    // Any other version is answered at once with the latest snapshot.
+    let old = format!("f1:{id}:{}", "0".repeat(32));
     let began = Instant::now();
     let output = finish(
         spawn_wait(home.path(), "Alpha", &old, None),
@@ -425,7 +447,7 @@ fn a_cursor_of_another_project_is_refused_and_a_wrong_revision_is_distinguished(
     ok(&output);
     assert!(began.elapsed() < Duration::from_secs(5));
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(result["revision"], alpha["revision"]);
+    assert_eq!(result["version"], alpha["version"]);
     stop(server);
 }
 
@@ -505,17 +527,17 @@ fn deleting_the_project_while_waiting_is_an_error_and_a_same_name_project_is_not
     // needs a human, so this goes through the library, as the server's own
     // administrator would.
     {
-        let store = agent_board::store::ProjectStore::open(&home.path().join("board.db")).unwrap();
+        let store = agent_board::file_store::FileStore::open(&home.path().join("shared"));
         let id = store.project_by_name("Alpha").unwrap().id;
         store.delete_project(&id).unwrap();
         let now = chrono::Utc::now();
         let recreated = store.create_project("Alpha", now).unwrap();
         store
-            .add_work_card(
+            .create_card(
                 &recreated.id,
                 agent_board::domain::NewCard {
                     title: "Belongs to the new Alpha".into(),
-                    description: String::new(),
+                    description: "## 作業内容\n\nNew.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".into(),
                     assignee: agent_board::domain::Assignee::Ai,
                     actor: agent_board::domain::Actor::Ai,
                 },
@@ -649,7 +671,7 @@ fn consecutive_changes_return_the_latest_snapshot() {
     let output = finish(waiter, Duration::from_secs(10));
     ok(&output);
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert!(result["revision"].as_i64().unwrap() > alpha["revision"].as_i64().unwrap());
+    assert_ne!(result["version"], alpha["version"]);
     // Whatever it returns is a complete, current snapshot of Alpha.
     let latest = snapshot(home.path(), "Alpha");
     let cards = result["cards"].as_array().unwrap();

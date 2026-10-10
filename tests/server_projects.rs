@@ -16,8 +16,8 @@ use std::time::{Duration, Instant};
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
 use agent_board::error::SkanError;
+use agent_board::file_store::FileStore;
 use agent_board::server::{ServeConfig, run_until};
-use agent_board::store::ProjectStore;
 use chrono::{DateTime, TimeZone, Utc};
 use serde_json::{Value, json};
 
@@ -39,18 +39,45 @@ fn t(minute: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 2, 1, minute, 0).unwrap()
 }
 
-fn db(home: &Path) -> std::path::PathBuf {
-    home.join("board.db")
+fn store(home: &Path) -> FileStore {
+    FileStore::open(&home.join("shared"))
 }
 
-fn store(home: &Path) -> ProjectStore {
-    ProjectStore::open(&db(home)).unwrap()
+/// A TASK.md body that the file store accepts.
+const BODY: &str = "## 作業内容\n\nDetails\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
+
+/// A TASK.md body with `text` in its work section, which the file store accepts.
+fn body_with(text: &str) -> String {
+    format!(
+        "## 作業内容\n\n{text}\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n"
+    )
+}
+
+/// A TASK.md body of exactly `count` characters that the file store accepts.
+fn body_of(count: usize) -> String {
+    const HEAD: &str = "## 作業内容\n\n";
+    const TAIL: &str = "\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
+    let fixed = HEAD.chars().count() + TAIL.chars().count();
+    format!("{HEAD}{}{TAIL}", "あ".repeat(count - fixed))
+}
+
+/// Read `path` until `done` holds or three seconds pass. A save made outside
+/// the server reaches the reads after the watcher's short quiet period (AC-3).
+fn read_until(server: &Running, path: &str, done: impl Fn(&Value) -> bool) -> Value {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    loop {
+        let value = server.get(path).json();
+        if done(&value) || std::time::Instant::now() > deadline {
+            return value;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
 }
 
 fn card(title: &str, assignee: Assignee) -> NewCard {
     NewCard {
         title: title.into(),
-        description: String::new(),
+        description: BODY.into(),
         assignee,
         actor: Actor::Human,
     }
@@ -308,18 +335,18 @@ fn two_projects() -> (tempfile::TempDir, ProjectId, ProjectId) {
     let a = s.create_project("alpha", t(0)).unwrap().id;
     let b = s.create_project("beta", t(0)).unwrap().id;
     for id in [&a, &b] {
-        s.add_work_card(id, card("Human card", Assignee::Human), t(1))
+        s.create_card(id, card("Human card", Assignee::Human), t(1))
             .unwrap();
-        s.add_work_card(id, card("AI card", Assignee::Ai), t(2))
+        s.create_card(id, card("AI card", Assignee::Ai), t(2))
             .unwrap();
     }
     (home, a, b)
 }
 
 fn snapshot_json(home: &Path, id: &ProjectId) -> Value {
-    let snapshot = store(home).snapshot(id).unwrap();
+    let snapshot = store(home).board(id).unwrap();
     json!({
-        "revision": snapshot.revision,
+        "version": snapshot.version,
         "cards": serde_json::to_value(&snapshot.cards).unwrap(),
     })
 }
@@ -327,25 +354,28 @@ fn snapshot_json(home: &Path, id: &ProjectId) -> Value {
 // ---------------------------------------------------------------- project list
 
 #[test]
-fn the_list_of_a_new_data_area_is_empty_with_catalog_revision_zero() {
+fn the_list_of_a_new_data_area_is_empty_with_the_empty_catalog_version() {
     let home = tempfile::tempdir().unwrap();
     let server = Running::start(home.path());
     let reply = server.get("/api/projects");
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json(), json!({"projects": [], "catalogRevision": 0}));
+    assert_eq!(
+        reply.json(),
+        json!({"projects": [], "catalogVersion": "e3b0c44298fc1c149afbf4c8996fb924"})
+    );
 }
 
 #[test]
-fn the_list_has_every_project_by_name_with_no_cards_and_the_catalog_revision() {
+fn the_list_has_every_project_by_name_with_no_cards_and_the_catalog_version() {
     let (home, a, b) = two_projects();
     // Created out of name order on purpose.
     let zed = store(home.path()).create_project("Zed", t(3)).unwrap();
     let server = Running::start(home.path());
     let reply = server.get("/api/projects");
     assert_eq!(reply.status, 200, "{}", reply.body);
-    let catalog = store(home.path()).projects().unwrap();
+    let catalog = store(home.path()).catalog().unwrap();
     let body = reply.json();
-    assert_eq!(body["catalogRevision"], catalog.catalog_revision);
+    assert_eq!(body["catalogVersion"], catalog.catalog_version);
     let names: Vec<&str> = body["projects"]
         .as_array()
         .unwrap()
@@ -365,18 +395,19 @@ fn the_list_has_every_project_by_name_with_no_cards_and_the_catalog_revision() {
 }
 
 #[test]
-fn the_catalog_revision_follows_catalog_changes_and_the_list_is_re_read() {
+fn the_catalog_version_follows_catalog_changes_and_the_list_is_re_read() {
     let home = tempfile::tempdir().unwrap();
     let server = Running::start(home.path());
-    let before = server.get("/api/projects").json()["catalogRevision"]
-        .as_i64()
-        .unwrap();
+    let before = server.get("/api/projects").json()["catalogVersion"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let (code, _, err) = agboard(home.path(), &["project", "create", "fresh"]);
     assert_eq!(code, 0, "{err}");
     let after = server.get("/api/projects").json();
     assert_eq!(after["projects"].as_array().unwrap().len(), 1);
     assert_eq!(after["projects"][0]["name"], "fresh");
-    assert!(after["catalogRevision"].as_i64().unwrap() > before);
+    assert_ne!(after["catalogVersion"].as_str().unwrap(), before);
 }
 
 #[test]
@@ -424,9 +455,8 @@ fn the_board_has_the_full_history_the_cursor_and_no_next_card_id() {
     let body = reply.json();
     assert!(!reply.body.contains("nextCardId"));
     assert_eq!(body["project"]["id"], a.to_string());
-    assert_eq!(body["board"]["name"], "alpha");
-    let revision = body["revision"].as_i64().unwrap();
-    assert_eq!(body["cursor"], format!("{a}:{revision}"));
+    let version = body["version"].as_str().unwrap();
+    assert_eq!(body["cursor"], format!("f1:{a}:{version}"));
     assert_eq!(body["cards"].as_array().unwrap().len(), 2);
     assert_eq!(body["cards"][1]["history"].as_array().unwrap().len(), 2);
 }
@@ -604,7 +634,7 @@ fn deleting_in_one_project_leaves_the_other_untouched() {
     let reply = server.write("DELETE", &format!("/api/projects/{a}/cards/1"), None);
     assert_eq!(reply.status, 204, "{}", reply.body);
     let ids: Vec<i64> = store(home.path())
-        .snapshot(&a)
+        .board(&a)
         .unwrap()
         .cards
         .iter()
@@ -660,7 +690,9 @@ fn renaming_a_project_keeps_the_same_id_working() {
         &["--project", "alpha", "project", "rename", "renamed"],
     );
     assert_eq!(code, 0, "{err}");
-    let board = server.get(&format!("/api/projects/{a}/board")).json();
+    let board = read_until(&server, &format!("/api/projects/{a}/board"), |b| {
+        b["project"]["name"] == "renamed"
+    });
     assert_eq!(board["project"]["name"], "renamed");
     assert_eq!(board["project"]["id"], a.to_string());
     let reply = server.write(
@@ -811,10 +843,15 @@ fn a_broken_body_is_400_a_too_large_one_413_and_a_wrong_value_422() {
 
 #[test]
 fn a_busy_database_is_503() {
+    // Another writer holds the project's write lock: the write waits its 5 s
+    // and is then refused with database_busy, changing nothing.
     let (home, a, _) = two_projects();
     let server = Running::start(home.path());
-    let lock = rusqlite::Connection::open(db(home.path())).unwrap();
-    lock.execute_batch("BEGIN IMMEDIATE").unwrap();
+    let project_dir = home.path().join("shared/projects").join(a.as_str());
+    let _held = agent_board::file_store::lock::WriteLock::acquire(
+        &agent_board::file_store::layout::write_lock(&project_dir),
+    )
+    .unwrap();
     let reply = server.write(
         "POST",
         &format!("/api/projects/{a}/cards"),
@@ -822,8 +859,8 @@ fn a_busy_database_is_503() {
     );
     assert_eq!(reply.status, 503, "{}", reply.body);
     assert_eq!(reply.code(), "database_busy");
-    lock.execute_batch("ROLLBACK").unwrap();
-    assert_eq!(store(home.path()).snapshot(&a).unwrap().cards.len(), 2);
+    drop(_held);
+    assert_eq!(store(home.path()).board(&a).unwrap().cards.len(), 2);
 }
 
 // ---------------------------------------------------------------- notifications
@@ -1010,7 +1047,7 @@ fn serving_needs_no_project_and_stopping_removes_serve_json() {
 // ---------------------------------------------------------------- drafts and editing
 
 fn draft_card(home: &Path, project: &ProjectId, id: i64) {
-    store(home).set_draft(project, id, true).unwrap();
+    store(home).set_draft(project, id, true, t(9)).unwrap();
 }
 
 fn card_json(home: &Path, project: &ProjectId, id: i64) -> Value {
@@ -1030,7 +1067,10 @@ fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
     let server = Running::start(home.path());
     let mut events = server.events();
     let path = format!("/api/projects/{a}/cards/1");
-    let before_revision = snapshot_json(home.path(), &a)["revision"].as_i64().unwrap();
+    let before_revision = snapshot_json(home.path(), &a)["version"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let reply = server.write("PATCH", &path, Some(r#"{"title":"New title"}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
@@ -1038,20 +1078,30 @@ fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
     assert_eq!(reply.json()["card"]["isDraft"], true);
     assert!(events.changed());
     let after = snapshot_json(home.path(), &a);
-    assert_eq!(after["revision"].as_i64().unwrap(), before_revision + 1);
+    assert_ne!(after["version"].as_str().unwrap(), before_revision);
 
-    let reply = server.write("PATCH", &path, Some(r#"{"description":"Line1\r\nLine2"}"#));
+    let head = "## 作業内容\n\n";
+    let tail = "\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
+    let raw = format!("{head}Line1\r\nLine2{tail}");
+    let reply = server.write(
+        "PATCH",
+        &path,
+        Some(&json!({"description": raw}).to_string()),
+    );
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["description"], "Line1\nLine2");
+    assert_eq!(
+        reply.json()["card"]["description"],
+        format!("{head}Line1\nLine2{tail}")
+    );
 
     // Nothing differs: 200, no change, no notification.
     events.wait_for("never-sent", Duration::from_millis(600));
     let count = events.changed_count();
     assert_eq!(count, 2);
-    let revision = snapshot_json(home.path(), &a)["revision"].clone();
+    let revision = snapshot_json(home.path(), &a)["version"].clone();
     let reply = server.write("PATCH", &path, Some(r#"{"title":"New title"}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(snapshot_json(home.path(), &a)["revision"], revision);
+    assert_eq!(snapshot_json(home.path(), &a)["version"], revision);
     events.wait_for("never-sent", Duration::from_millis(600));
     assert_eq!(events.changed_count(), count);
 }
@@ -1065,14 +1115,17 @@ fn patch_with_finalize_saves_and_confirms_in_one_operation() {
     let reply = server.write(
         "PATCH",
         &path,
-        Some(r#"{"title":"Final","description":"Body","finalize":true}"#),
+        Some(
+            &json!({"title":"Final","description": body_with("Body"), "finalize": true})
+                .to_string(),
+        ),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(reply.json()["card"]["isDraft"], false);
     let stored = card_json(home.path(), &a, 1);
     assert_eq!(stored["isDraft"], false);
     assert_eq!(stored["title"], "Final");
-    assert_eq!(stored["description"], "Body");
+    assert_eq!(stored["description"], body_with("Body"));
     // A confirmed card is no longer editable.
     let reply = server.write("PATCH", &path, Some(r#"{"title":"Again"}"#));
     assert_eq!(reply.status, 409, "{}", reply.body);
@@ -1105,7 +1158,7 @@ fn patch_description_limit_is_50000_characters_and_the_body_limit_1_mib() {
     let path = format!("/api/projects/{a}/cards/1");
 
     // 50,000 Japanese characters are about 150 KB.
-    let ok = json!({"description": "あ".repeat(50_000)}).to_string();
+    let ok = json!({"description": body_of(50_000)}).to_string();
     assert!(ok.len() > 64 * 1024);
     let reply = server.write("PATCH", &path, Some(&ok));
     assert_eq!(
@@ -1134,8 +1187,7 @@ fn patch_description_limit_is_50000_characters_and_the_body_limit_1_mib() {
     assert_eq!(reply.code(), "payload_too_large");
 
     // Registration takes the same size.
-    let create =
-        json!({"title":"Long","description":"あ".repeat(50_000),"assignee":"ai"}).to_string();
+    let create = json!({"title":"Long","description":body_of(50_000),"assignee":"ai"}).to_string();
     let reply = server.write("POST", &format!("/api/projects/{a}/cards"), Some(&create));
     assert_eq!(
         reply.status,
@@ -1189,7 +1241,10 @@ fn put_draft_toggles_idle_cards_without_history_or_update_time() {
     let mut events = server.events();
     let path = format!("/api/projects/{a}/cards/1/draft");
     let before = card_json(home.path(), &a, 1);
-    let revision = snapshot_json(home.path(), &a)["revision"].as_i64().unwrap();
+    let revision = snapshot_json(home.path(), &a)["version"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
@@ -1197,10 +1252,17 @@ fn put_draft_toggles_idle_cards_without_history_or_update_time() {
     assert!(events.changed());
     let after = card_json(home.path(), &a, 1);
     assert_eq!(after["updatedAt"], before["updatedAt"]);
-    assert_eq!(after["history"], before["history"]);
-    assert_eq!(
-        snapshot_json(home.path(), &a)["revision"].as_i64().unwrap(),
-        revision + 1
+    // A real change adds one draft event and keeps the update time (MODEL.md, 下書き).
+    let added = after["history"].as_array().unwrap();
+    assert_eq!(added.len(), before["history"].as_array().unwrap().len() + 1);
+    assert_eq!(added.last().unwrap()["kind"], "draft");
+    // The flag is part of task.json, so the content version moves.
+    assert_ne!(
+        snapshot_json(home.path(), &a)["version"]
+            .as_str()
+            .unwrap()
+            .to_string(),
+        revision
     );
 
     // Same value: 200, no change, no notification.
@@ -1247,9 +1309,9 @@ fn put_draft_refuses_running_but_allows_pending_cards() {
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(reply.json()["card"]["isDraft"], true);
-    assert!(
-        snapshot_json(home.path(), &a)["revision"].as_i64().unwrap()
-            > before_pending["revision"].as_i64().unwrap()
+    assert_ne!(
+        snapshot_json(home.path(), &a)["version"],
+        before_pending["version"]
     );
     assert_ne!(before, before_pending);
 }

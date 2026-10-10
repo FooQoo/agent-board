@@ -102,8 +102,8 @@ use std::time::{Duration, Instant};
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
 use agent_board::error::SkanError;
+use agent_board::file_store::FileStore;
 use agent_board::server::{ServeConfig, run_until};
-use agent_board::store::ProjectStore;
 use chrono::{DateTime, TimeZone, Utc};
 
 // SKAN_HOME is process-global. It is only needed while a server starts (the
@@ -124,9 +124,12 @@ fn t(minute: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 2, 1, minute, 0).unwrap()
 }
 
-fn store_in(home: &Path) -> ProjectStore {
-    ProjectStore::open(&home.join("board.db")).unwrap()
+fn store_in(home: &Path) -> FileStore {
+    FileStore::open(&home.join("shared"))
 }
+
+/// A TASK.md body that the file store accepts.
+const BODY: &str = "## 作業内容\n\nSome details\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
 
 /// The ID of the project named "main" in the data directory `home`.
 fn main_id(home: &Path) -> ProjectId {
@@ -140,11 +143,11 @@ fn board_home() -> tempfile::TempDir {
     let main = store.create_project("main", t(0)).unwrap().id;
     let add = |title: &str, assignee| {
         store
-            .add_work_card(
+            .create_card(
                 &main,
                 NewCard {
                     title: title.into(),
-                    description: "Some details".into(),
+                    description: BODY.into(),
                     assignee,
                     actor: match assignee {
                         Assignee::Ai => Actor::Ai,
@@ -193,7 +196,7 @@ fn board_home() -> tempfile::TempDir {
 
 fn card_ids(home: &Path) -> Vec<i64> {
     let mut ids: Vec<i64> = store_in(home)
-        .snapshot(&main_id(home))
+        .board(&main_id(home))
         .unwrap()
         .cards
         .iter()
@@ -232,8 +235,8 @@ impl Running {
             match ready_rx.recv_timeout(Duration::from_secs(10)) {
                 Ok(addr) => Ok(Running {
                     addr,
-                    base: ProjectStore::open_read_only(&home.join("board.db"))
-                        .and_then(|store| store.project_by_name("main"))
+                    base: FileStore::open(&home.join("shared"))
+                        .project_by_name("main")
                         .map(|project| format!("/api/projects/{}", project.id))
                         .unwrap_or_default(),
                     stop: Some(stop_tx),
@@ -551,26 +554,25 @@ fn board_matches_the_stores_snapshot_in_the_model_shape() {
     assert_eq!(reply.status, 200);
     assert_eq!(reply.content_type.as_deref(), Some("application/json"));
 
-    let snapshot = store_in(home.path())
-        .snapshot(&main_id(home.path()))
-        .unwrap();
+    let snapshot = store_in(home.path()).board(&main_id(home.path())).unwrap();
     let expected = serde_json::json!({
         "project": {
             "id": snapshot.project.id.to_string(),
             "name": "main",
             "createdAt": "2026-10-02T01:00:00Z",
         },
-        "board": {"name": "main", "createdAt": "2026-10-02T01:00:00Z"},
-        "revision": snapshot.revision,
+        "version": snapshot.version,
         "cursor": snapshot.cursor.to_string(),
+        "epics": [],
         "cards": serde_json::to_value(&snapshot.cards).unwrap(),
+        "problems": [],
     });
     let actual: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
     assert_eq!(actual, expected);
     assert_eq!(actual["cards"].as_array().unwrap().len(), 3);
 
     // The documented key order, at the board and at each card.
-    assert_eq!(actual["revision"], snapshot.revision);
+    assert_eq!(actual["version"], snapshot.version);
     assert_eq!(actual["cards"][2]["pendingReason"], "Waiting for review");
 }
 
@@ -579,7 +581,7 @@ fn board_reflects_changes_made_after_the_server_started() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     store_in(home.path())
-        .add_work_card(
+        .create_card(
             &main_id(home.path()),
             NewCard {
                 title: "Late card".into(),
@@ -590,8 +592,17 @@ fn board_reflects_changes_made_after_the_server_started() {
             t(10),
         )
         .unwrap();
-    let actual: serde_json::Value =
-        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+    // A save made outside the server is seen after the watcher's short quiet
+    // period (AC-3), so the read waits for it instead of assuming it.
+    let deadline = Instant::now() + Duration::from_secs(3);
+    let actual = loop {
+        let actual: serde_json::Value =
+            serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+        if actual["cards"].as_array().unwrap().len() == 4 || Instant::now() > deadline {
+            break actual;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    };
     assert_eq!(actual["cards"].as_array().unwrap().len(), 4);
 }
 
@@ -707,7 +718,7 @@ fn add_other_project(home: &Path) -> ProjectId {
     let store = store_in(home);
     let other = store.create_project("other", t(0)).unwrap().id;
     store
-        .add_work_card(
+        .create_card(
             &other,
             NewCard {
                 title: "Other first".into(),
@@ -728,7 +739,7 @@ fn the_same_card_number_in_two_projects_never_mixes_through_the_api() {
     let main = main_id(home.path());
     let server = Running::start(home.path(), 0).unwrap();
     let token = server.token();
-    let before_main = store_in(home.path()).snapshot(&main).unwrap();
+    let before_main = store_in(home.path()).board(&main).unwrap();
 
     let moved = server.send_json(
         "POST",
@@ -744,7 +755,7 @@ fn the_same_card_number_in_two_projects_never_mixes_through_the_api() {
         Some(&token),
     );
     assert_eq!(created.status, 201, "{}", created.body);
-    assert_eq!(store_in(home.path()).snapshot(&main).unwrap(), before_main);
+    assert_eq!(store_in(home.path()).board(&main).unwrap(), before_main);
 
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&format!("/api/projects/{other}/board")).body).unwrap();
@@ -774,9 +785,7 @@ fn a_project_that_does_not_exist_or_is_malformed_is_refused_before_any_change() 
     let server = Running::start(home.path(), 0).unwrap();
     let token = server.token();
     let ghost = ProjectId::generate().unwrap();
-    let before = store_in(home.path())
-        .snapshot(&main_id(home.path()))
-        .unwrap();
+    let before = store_in(home.path()).board(&main_id(home.path())).unwrap();
 
     let reply = server.send_json(
         "POST",
@@ -805,9 +814,7 @@ fn a_project_that_does_not_exist_or_is_malformed_is_refused_before_any_change() 
     );
     assert_eq!(reply.status, 403);
     assert_eq!(
-        store_in(home.path())
-            .snapshot(&main_id(home.path()))
-            .unwrap(),
+        store_in(home.path()).board(&main_id(home.path())).unwrap(),
         before
     );
 }
@@ -1145,6 +1152,18 @@ fn notify_sends_changed_to_every_connected_client() {
     let server = Running::start(home.path(), 0).unwrap();
     let mut first = server.events();
     let mut second = server.events();
+    store_in(home.path())
+        .create_card(
+            &main_id(home.path()),
+            NewCard {
+                title: "Notified".into(),
+                description: BODY.into(),
+                assignee: Assignee::Ai,
+                actor: Actor::Ai,
+            },
+            t(12),
+        )
+        .unwrap();
     assert_eq!(server.send("POST", "/api/notify", &[]).status, 204);
     first.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
     second.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
@@ -1156,6 +1175,18 @@ fn each_notify_sends_one_changed() {
     let server = Running::start(home.path(), 0).unwrap();
     let mut events = server.events();
     for n in 1..=3 {
+        store_in(home.path())
+            .create_card(
+                &main_id(home.path()),
+                NewCard {
+                    title: format!("Notified {n}"),
+                    description: BODY.into(),
+                    assignee: Assignee::Ai,
+                    actor: Actor::Ai,
+                },
+                t(12),
+            )
+            .unwrap();
         server.send("POST", "/api/notify", &[]);
         let deadline = Instant::now() + Duration::from_secs(2);
         while events.count("event: changed") < n && Instant::now() < deadline {
@@ -1299,26 +1330,6 @@ fn a_new_data_area_is_served_with_no_projects_and_unknown_projects_are_404() {
 }
 
 #[test]
-fn a_database_with_another_schema_is_not_served_and_leaves_no_serve_json() {
-    let home = tempfile::tempdir().unwrap();
-    let path = home.path().join("board.db");
-    {
-        let conn = rusqlite::Connection::open(&path).unwrap();
-        conn.execute_batch("CREATE TABLE board (id INTEGER)")
-            .unwrap();
-        conn.pragma_update(None, "user_version", 2).unwrap();
-    }
-    let before = std::fs::read(&path).unwrap();
-    let error = Running::start(home.path(), 0).err().unwrap();
-    assert!(
-        matches!(error, SkanError::DatabaseError { .. }),
-        "{error:?}"
-    );
-    assert_eq!(std::fs::read(&path).unwrap(), before);
-    assert!(!home.path().join("serve.json").exists());
-}
-
-#[test]
 fn a_second_server_for_the_same_data_directory_is_already_serving() {
     let home = board_home();
     let first = Running::start(home.path(), 0).unwrap();
@@ -1399,6 +1410,18 @@ fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let mut events = server.events();
+    store_in(home.path())
+        .create_card(
+            &main_id(home.path()),
+            NewCard {
+                title: "From the CLI side".into(),
+                description: BODY.into(),
+                assignee: Assignee::Ai,
+                actor: Actor::Ai,
+            },
+            t(12),
+        )
+        .unwrap();
     let notified = with_home(home.path(), agent_board::interact::notify::notify_serve);
     assert!(notified);
     events.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
@@ -1568,218 +1591,4 @@ fn the_example_needs_a_port() {
     let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
     assert_eq!(status.code(), Some(2));
     assert!(!home.path().join("serve.json").exists());
-}
-
-/// Exercise the browser's real binary multipart body against the guarded HTTP route.
-fn multipart_save(
-    server: &Running,
-    method: &str,
-    path: &str,
-    meta: serde_json::Value,
-    image: bool,
-) -> Reply {
-    let boundary = "attachment-test-boundary";
-    let mut body = format!("--{boundary}\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{meta}\r\n").into_bytes();
-    if image {
-        body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"files\"; filename=\"test.png\"\r\nContent-Type: image/png\r\n\r\n").as_bytes());
-        body.extend_from_slice(&[
-            137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1,
-            8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207,
-            192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66,
-            96, 130,
-        ]);
-        body.extend_from_slice(b"\r\n");
-    }
-    body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
-    let mut builder = ureq::http::Request::builder()
-        .method(method)
-        .uri(server.url(path))
-        .header(
-            "Content-Type",
-            format!("multipart/form-data; boundary={boundary}"),
-        );
-    for (name, value) in server.page_headers(&server.token()) {
-        builder = builder.header(name, value);
-    }
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        .http_status_as_error(false)
-        .build()
-        .into();
-    let mut response = agent.run(builder.body(body).unwrap()).unwrap();
-    Reply {
-        status: response.status().as_u16(),
-        content_type: None,
-        cache_control: None,
-        body: response.body_mut().read_to_string().unwrap(),
-    }
-}
-
-#[test]
-fn multipart_draft_edit_is_atomic_retryable_and_preserves_pending() {
-    let home = board_home();
-    let server = Running::start(home.path(), 0).unwrap();
-    let first = "0123456789abcdef0123456789abcdef";
-    let second = "fedcba9876543210fedcba9876543210";
-    let create = serde_json::json!({"requestId":"create-image", "title":"Image", "description":"before", "assignee":"ai", "attachments":[{"id":first}]});
-    let before = store_in(home.path())
-        .snapshot(&main_id(home.path()))
-        .unwrap();
-    let mut invalid_create = create.clone();
-    invalid_create["requestId"] = "invalid-create".into();
-    invalid_create["attachments"][0]["id"] = "invalid-id".into();
-    assert_eq!(
-        multipart_save(
-            &server,
-            "POST",
-            &server.api("/cards/multipart"),
-            invalid_create,
-            true
-        )
-        .status,
-        422
-    );
-    assert_eq!(
-        store_in(home.path())
-            .snapshot(&main_id(home.path()))
-            .unwrap(),
-        before
-    );
-    let reply = multipart_save(
-        &server,
-        "POST",
-        &server.api("/cards/multipart"),
-        create.clone(),
-        true,
-    );
-    assert_eq!(reply.status, 201, "{}", reply.body);
-    let created: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
-    let id = created["card"]["id"].as_i64().unwrap();
-    let retry = multipart_save(
-        &server,
-        "POST",
-        &server.api("/cards/multipart"),
-        create,
-        true,
-    );
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&retry.body).unwrap()["card"]["id"],
-        id
-    );
-    let store = store_in(home.path());
-    let project = main_id(home.path());
-    store
-        .move_work_card(
-            &project,
-            id,
-            Column::Doing,
-            ChangeContext {
-                actor: Actor::Ai,
-                reason: "Start".into(),
-            },
-            t(8),
-        )
-        .unwrap();
-    let pending = store
-        .set_agent_status(
-            &project,
-            id,
-            RunState::Pending,
-            ChangeContext {
-                actor: Actor::Ai,
-                reason: "Review".into(),
-            },
-            None,
-            t(9),
-        )
-        .unwrap()
-        .value;
-    store.set_draft(&project, id, true).unwrap();
-    assert!(matches!(
-        store.add_attachment(
-            &project,
-            id,
-            agent_board::domain::AttachmentInput {
-                id: second.into(),
-                name: "test.png".into(),
-                bytes: vec![]
-            },
-            "cli-blocked",
-            t(10)
-        ),
-        Err(SkanError::CardIsDraft { .. })
-    ));
-    let edit = serde_json::json!({"requestId":"draft-edit", "description":"after", "finalize":false, "removeAttachmentIds":[first], "attachments":[{"id":second}]});
-    let path = server.api(&format!("/cards/{id}/multipart"));
-    let saved = multipart_save(&server, "PATCH", &path, edit.clone(), true);
-    assert_eq!(saved.status, 200, "{}", saved.body);
-    let saved: serde_json::Value = serde_json::from_str(&saved.body).unwrap();
-    assert_eq!(saved["card"]["isDraft"], true);
-    assert_eq!(saved["card"]["description"], "after");
-    assert_eq!(saved["card"]["attachments"][0]["id"], second);
-    assert_eq!(
-        saved["card"]["pendingRequestId"],
-        pending.pending_request_id.unwrap()
-    );
-    let revision = store.counters(&project).unwrap().revision;
-    assert_eq!(
-        multipart_save(&server, "PATCH", &path, edit.clone(), true).status,
-        200
-    );
-    assert_eq!(store.counters(&project).unwrap().revision, revision);
-    let mut conflict = edit;
-    conflict["finalize"] = true.into();
-    assert_eq!(
-        multipart_save(&server, "PATCH", &path, conflict, true).status,
-        409
-    );
-    let broken = serde_json::json!({"requestId":"broken-save", "description":"must roll back", "finalize":true, "removeAttachmentIds":[second,first], "attachments":[]});
-    assert_eq!(
-        multipart_save(&server, "PATCH", &path, broken, false).status,
-        404
-    );
-    let rolled_back = store
-        .snapshot(&project)
-        .unwrap()
-        .cards
-        .into_iter()
-        .find(|c| c.id == id)
-        .unwrap();
-    assert!(rolled_back.is_draft);
-    assert_eq!(rolled_back.description, "after");
-    assert_eq!(rolled_back.attachments.len(), 1);
-    assert_eq!(store.counters(&project).unwrap().revision, revision);
-    let finish = serde_json::json!({"requestId":"finalize-image", "finalize":true, "removeAttachmentIds":[second], "attachments":[]});
-    assert_eq!(
-        multipart_save(&server, "PATCH", &path, finish.clone(), false).status,
-        200
-    );
-    let finalized = store
-        .snapshot(&project)
-        .unwrap()
-        .cards
-        .into_iter()
-        .find(|c| c.id == id)
-        .unwrap();
-    assert!(!finalized.is_draft);
-    assert!(finalized.attachments.is_empty());
-    assert_eq!(finalized.agent_status, RunState::Pending);
-    assert_eq!(finalized.history, pending.history);
-    let revision = store.counters(&project).unwrap().revision;
-    assert_eq!(
-        multipart_save(&server, "PATCH", &path, finish, false).status,
-        200
-    );
-    assert_eq!(store.counters(&project).unwrap().revision, revision);
-    assert_eq!(
-        multipart_save(
-            &server,
-            "PATCH",
-            &path,
-            serde_json::json!({"requestId":"edit-nondraft", "attachments":[]}),
-            false
-        )
-        .status,
-        409
-    );
-    server.stop().unwrap();
 }
