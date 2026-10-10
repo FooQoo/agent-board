@@ -285,7 +285,7 @@
 }
 
 .rich-markdown .milkdown-code-block .hidden {
-  display: none !important;
+  display: none;
 }
 
 .rich-markdown .milkdown-code-block .language-picker {

@@ -1,11 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { useId, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionDialogData } from '../ActionDialog';
 import { epicInk } from '../../lib/epic';
 import type { Card } from '../../types';
-import { Checkbox } from '../ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { EditorBody, useOverLimit } from './EditorBody';
 import { EditorShell } from './EditorShell';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines, titleProblem } from './limits';
@@ -34,17 +32,14 @@ export function EditDialog({
   projectId?: string;
 }) {
   const { t } = useTranslation();
-  const draftId = useId();
   const editor = useRef<RichMarkdownEditorHandle>(null);
   // What the server has: the baseline the unsaved-change check compares with.
   const [saved, setSaved] = useState(() => ({
     title: card.title,
     description: normalizeNewlines(card.description),
-    isDraft: card.isDraft,
   }));
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(saved.description);
-  const [isDraft, setIsDraft] = useState(card.isDraft);
   const [removed, setRemoved] = useState<string[]>([]);
   const attachmentState = useAttachmentState({
     initial: card.attachments ?? [],
@@ -59,9 +54,7 @@ export function EditDialog({
   const localAdded = attachmentState.attachments.filter((a) => a.source === 'local');
   const imagesChanged = localAdded.length > 0 || removed.length > 0;
   const titleChanged = title.trim() !== saved.title;
-  const draftCleared = !isDraft && saved.isDraft;
-  const dirty =
-    titleChanged || description !== saved.description || isDraft !== saved.isDraft || imagesChanged;
+  const dirty = titleChanged || description !== saved.description || imagesChanged;
   const overLimit = useOverLimit(description);
   const valid = titleProblem(title) === null && countChars(description) <= DESCRIPTION_LIMIT;
 
@@ -96,18 +89,11 @@ export function EditDialog({
         await onSubmit({ description: text });
         setSaved((current) => ({ ...current, description: text }));
       }
-      // 3. The title and the draft flag. Clearing the draft box finalizes the card.
+      // 3. The title. The draft state is not changed here; finalizing is done in the detail panel.
       const nextTitle = title.trim();
-      if (nextTitle !== saved.title || draftCleared) {
-        await onSubmit({
-          ...(nextTitle !== saved.title ? { title: nextTitle } : {}),
-          ...(draftCleared ? { finalize: true } : {}),
-        });
-        setSaved((current) => ({
-          ...current,
-          title: nextTitle,
-          isDraft: draftCleared ? false : current.isDraft,
-        }));
+      if (nextTitle !== saved.title) {
+        await onSubmit({ title: nextTitle });
+        setSaved((current) => ({ ...current, title: nextTitle }));
       }
     });
   };
@@ -116,7 +102,7 @@ export function EditDialog({
     <EditorShell
       cardId={card.id}
       title={t('editor.editCardTitle')}
-      badge={t('editor.draft')}
+      badge=""
       variant="edit"
       dirty={dirty}
       saving={flow.saving}
@@ -125,18 +111,6 @@ export function EditDialog({
       overLimit={overLimit}
       onClose={onClose}
       status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
-      footerStart={
-        <div className="editor__draft">
-          <Checkbox
-            id={draftId}
-            checked={isDraft}
-            aria-label={t('editor.draft')}
-            disabled={flow.saving}
-            onCheckedChange={(checked) => setIsDraft(checked === true)}
-          />
-          <Label htmlFor={draftId}>{t('editor.draft')}</Label>
-        </div>
-      }
       actions={
         <Button type="button" disabled={flow.saving || !valid || !dirty} onClick={save}>
           {flow.saving ? t('dialog.saving') : t('editor.save')}

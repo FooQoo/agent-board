@@ -62,7 +62,7 @@ async function typeAtEnd(page: Page, editor: Locator, text: string): Promise<voi
   await page.keyboard.type(text);
 }
 
-test('a card becomes a draft, is edited, saved, and finalized in one step', async ({ page }) => {
+test('a card becomes a draft, is edited and saved, and finalized from the details', async ({ page }) => {
   // Before: an ordinary card offers Make draft, not Edit.
   await expect(details(page).getByRole('button', { name: 'Edit card' })).toHaveCount(0);
   await makeDraft(page);
@@ -105,16 +105,18 @@ test('a card becomes a draft, is edited, saved, and finalized in one step', asyn
   // Nothing is stored until it is saved.
   expect(show(id).description).toBe(SEED);
 
-  // Clearing the Draft box and saving finalizes the card in the same save.
-  await dialog.getByRole('checkbox', { name: 'Draft' }).click();
+  // Saving keeps the card a draft: the dialog has no draft box, and finalizing is done in the details.
+  await expect(dialog.getByRole('checkbox')).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
-
-  // The CLI sees the new text and a finalized card; the page shows it without the banner.
-  await expect.poll(() => show(id).isDraft).toBe(false);
-  expect(show(id)).toMatchObject({ title: 'Draft me, rewritten', isDraft: false, cardStatus: 'todo', agentStatus: 'idle' });
-  expect(show(id).description).toContain('Plan line.');
+  await expect.poll(() => show(id).description).toContain('Plan line.');
+  expect(show(id)).toMatchObject({ title: 'Draft me, rewritten', isDraft: true, cardStatus: 'todo', agentStatus: 'idle' });
   expect(show(id).description).toContain('## 実行記録');
+  await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
+
+  // Finalize from the banner: the page shows the card without the banner.
+  await details(page).getByRole('button', { name: 'Finalize' }).click();
+  await expect.poll(() => show(id).isDraft).toBe(false);
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Draft me, rewritten');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toHaveCount(0);
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeVisible();

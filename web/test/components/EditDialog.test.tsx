@@ -96,7 +96,8 @@ describe('edit dialog layout', () => {
     const { dialog } = await openEdit();
     expect(within(dialog).getByText('#14')).toBeTruthy();
     expect(within(dialog).getByText('Edit card')).toBeTruthy();
-    expect(within(dialog).getByText('Draft', { selector: '.editor__badge' })).toBeTruthy();
+    // The draft state is not edited here: no badge and no draft box.
+    expect(dialog.querySelector('.editor__badge')?.textContent ?? '').toBe('');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe(
       'CLI target selection',
     );
@@ -108,9 +109,7 @@ describe('edit dialog layout', () => {
         .map((item) => item.textContent),
     ).toEqual(['01Goal', '02Done when']);
     expect(within(dialog).queryByRole('tab')).toBeNull();
-    expect(within(dialog).getByRole('checkbox', { name: 'Draft' }).getAttribute('data-state')).toBe(
-      'checked',
-    );
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
     expect(button(dialog, 'Cancel')).toBeTruthy();
     expect(button(dialog, 'Save')).toBeTruthy();
     expect(within(dialog).queryByRole('button', { name: 'Save and finalize' })).toBeNull();
@@ -122,8 +121,7 @@ describe('edit dialog layout', () => {
     selectLocale('ja');
     const { dialog } = await openEdit();
     expect(within(dialog).getByText('カードを編集')).toBeTruthy();
-    expect(within(dialog).getByText('下書き', { selector: '.editor__badge' })).toBeTruthy();
-    expect(within(dialog).getByRole('checkbox', { name: '下書き' })).toBeTruthy();
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
     for (const name of ['キャンセル', '保存']) {
       expect(button(dialog, name)).toBeTruthy();
     }
@@ -189,27 +187,16 @@ describe('saving', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('saves the body first and then the title and draft, sending only what changed', async () => {
+  it('saves the body first and then the title, sending only what changed', async () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog, onClosed } = await openEdit(onSubmit);
     setDescription('## New body', dialog);
     setTitle('  Renamed  ', dialog);
-    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Draft' }));
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(onSubmit.mock.calls).toEqual([
-      [{ description: '## New body' }],
-      [{ title: 'Renamed', finalize: true }],
-    ]);
-  });
-
-  it('sends the draft flag alone when only the draft box was cleared', async () => {
-    const onSubmit = vi.fn(async (_data: Data) => undefined);
-    const { dialog, onClosed } = await openEdit(onSubmit);
-    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Draft' }));
-    await userEvent.click(button(dialog, 'Save'));
-    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(onSubmit.mock.calls).toEqual([[{ finalize: true }]]);
+    expect(onSubmit.mock.calls).toEqual([[{ description: '## New body' }], [{ title: 'Renamed' }]]);
+    // Saving never changes the draft state of the card.
+    expect(onSubmit.mock.calls.some(([data]) => 'finalize' in data)).toBe(false);
   });
 
   it('sends the removed stored images first, before the body', async () => {
@@ -262,9 +249,6 @@ describe('saving', () => {
     expect(dialog.querySelector('.editor__footer')?.getAttribute('data-saving')).toBe('true');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).disabled).toBe(true);
     expect(bodyOf(dialog).disabled).toBe(true);
-    expect(within(dialog).getByRole('checkbox', { name: 'Draft' }).hasAttribute('disabled')).toBe(
-      true,
-    );
 
     await userEvent.keyboard('{Escape}');
     await userEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as Element);

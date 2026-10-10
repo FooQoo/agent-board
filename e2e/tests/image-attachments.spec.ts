@@ -86,12 +86,13 @@ test('side attachments render, persist, retry safely and become No image after d
   await detail.getByRole('button', { name: 'Edit card' }).click();
   const edit = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit card`) });
   await edit.getByRole('button', { name: 'Remove capture.png' }).click();
-  // Finalize with the Draft box, then save.
-  await edit.getByRole('checkbox', { name: 'Draft' }).click();
+  // Save keeps the draft; finalizing is done from the details.
   await edit.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(edit).toHaveCount(0);
   expect(show().attachments).toHaveLength(0);
-  expect(show().isDraft).toBe(false);
+  expect(show().isDraft).toBe(true);
+  await detail.getByRole('button', { name: 'Finalize' }).click();
+  await expect.poll(() => show().isDraft).toBe(false);
   await expect(detail.getByText('No image', { exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('03-deleted-no-image.png') });
 });
