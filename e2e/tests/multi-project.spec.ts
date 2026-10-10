@@ -536,7 +536,8 @@ test.describe('two projects with the same card numbers', () => {
     const create = page.getByRole('dialog', { name: 'Add card' });
     await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Kept title');
     await create.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(create.getByRole('alert')).toContainText('The storage is busy.');
+    await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
+    await expect(create.getByRole('alert')).not.toContainText('The storage is busy.');
     // Failure: the input is kept, the form stays on Beta, and the menu stays disabled.
     await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Kept title');
     await expect(switcherBehindDialog(page)).toHaveText('Beta');

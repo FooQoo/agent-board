@@ -84,7 +84,7 @@ test('side attachments render, persist, retry safely and become No image after d
   // Delete the picture in the editor: the reference stays in the body and shows as No image.
   await detail.getByRole('button', { name: 'Make draft' }).click();
   await detail.getByRole('button', { name: 'Edit card' }).click();
-  const edit = page.getByRole('dialog', { name: new RegExp(`^#${id} Image round trip`) });
+  const edit = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit card`) });
   await edit.getByRole('button', { name: 'Remove capture.png' }).click();
   // Finalize with the Draft box, then save.
   await edit.getByRole('checkbox', { name: 'Draft' }).click();

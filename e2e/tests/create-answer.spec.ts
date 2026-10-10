@@ -62,9 +62,9 @@ test('a card is added with a title, the AI as the default owner, and a Markdown 
     taskBody(`Ship it.\n\n![found](${images.origin}/ok.png)\n\n![lost](${images.origin}/missing.png)`),
   );
   await expect(dialog.getByRole('navigation', { name: 'Outline' }).getByRole('button')).toHaveText([
-    '作業内容',
-    '完了条件と確認結果',
-    '実行記録',
+    '01作業内容',
+    '02完了条件と確認結果',
+    '03実行記録',
   ]);
   await expect(dialog.getByText(/^\d+ \/ 50,000$/)).not.toHaveText('0 / 50,000');
   await expect(add).toBeEnabled();
@@ -87,7 +87,7 @@ test('a card is added with a title, the AI as the default owner, and a Markdown 
   await expect(details(page).getByRole('combobox')).toHaveCount(0);
   await details(page).getByRole('button', { name: 'Make draft' }).click();
   await details(page).getByRole('button', { name: 'Edit card' }).click();
-  const editing = page.getByRole('dialog', { name: new RegExp(`^#${id} Plan the release`) });
+  const editing = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit card`) });
   await expect(editing).toBeVisible();
   await expect(editing.getByRole('radiogroup')).toHaveCount(0);
   await expect(editing.getByText('Assignee')).toHaveCount(0);

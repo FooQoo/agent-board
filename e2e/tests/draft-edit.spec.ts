@@ -47,7 +47,7 @@ async function makeDraft(page: Page): Promise<void> {
 
 async function openEditor(page: Page): Promise<{ dialog: Locator; editor: Locator }> {
   await details(page).getByRole('button', { name: 'Edit card' }).click();
-  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Draft me`) });
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit card`) });
   await expect(dialog).toBeVisible();
   const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
   // The rich editor loads its text after the dialog opens; typing before that is lost.
@@ -89,8 +89,8 @@ test('a card becomes a draft, is edited, saved, and finalized in one step', asyn
 
   // The outline lists the three required headings, and an entry takes the caret to its heading.
   const outline = dialog.getByRole('navigation', { name: 'Outline' });
-  await expect(outline.getByRole('button')).toHaveText(['作業内容', '完了条件と確認結果', '実行記録']);
-  await outline.getByRole('button', { name: '完了条件と確認結果' }).click();
+  await expect(outline.getByRole('button')).toHaveText(['01作業内容', '02完了条件と確認結果', '03実行記録']);
+  await outline.getByRole('button', { name: /完了条件と確認結果$/ }).click();
   await expect(editor).toBeFocused();
   await expect
     .poll(() =>
@@ -157,8 +157,9 @@ test('a failed save keeps the dialog and the text, and can be retried', async ({
   await typeAtEnd(page, editor, 'Typed and not lost.');
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
 
-  // The reason the server gave is shown, with a Retry; the dialog stays.
-  await expect(dialog.getByRole('alert')).toContainText('The storage is busy.');
+  // The design's sentence is shown, never the server's reason, with a Retry; the dialog stays.
+  await expect(dialog.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
+  await expect(dialog.getByRole('alert')).not.toContainText('The storage is busy.');
   await expect(dialog).toBeVisible();
   expect(await editorValue(editor)).toContain('Typed and not lost.');
   await expect(dialog.getByText('You have unsaved changes.')).toBeVisible();

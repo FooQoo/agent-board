@@ -743,7 +743,8 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Typed description\n\nsecond line'));
   await create.getByRole('radio', { name: 'User' }).click();
   await create.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(create.getByRole('alert')).toContainText('The storage is busy.');
+  await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
+  await expect(create.getByRole('alert')).not.toContainText('The storage is busy.');
   const keepsInput = async () => {
     await expect(create).toBeVisible();
     await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed title');
