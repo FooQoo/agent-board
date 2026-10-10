@@ -1,12 +1,5 @@
-import {
-  PlusIcon,
-  ImageOffIcon,
-  Maximize2Icon,
-  PaperclipIcon,
-  Trash2Icon,
-  XIcon,
-} from 'lucide-react';
-import { useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react';
+import { PlusIcon, Maximize2Icon, PaperclipIcon, Trash2Icon, XIcon } from 'lucide-react';
+import { useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Button } from '@/components/ui/button';
@@ -148,19 +141,7 @@ export function AttachmentPanel({
         }}
         onDrop={onDrop}
       >
-        {attachments.length === 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="editor-attachments__empty"
-            disabled={disabled}
-            onClick={() => input.current?.click()}
-          >
-            <ImageOffIcon aria-hidden="true" />
-            <span>{t('editor.attachmentsEmpty')}</span>
-            <small>{t('editor.attachmentsDropHint')}</small>
-          </Button>
-        ) : (
+        {attachments.length > 0 && (
           <div className="editor-attachments__list">
             {attachments.map((attachment) => (
               <AttachmentTile
@@ -177,8 +158,17 @@ export function AttachmentPanel({
             ))}
           </div>
         )}
+        {/* The one drop area, at the bottom of the panel: its guidance text opens the file picker. */}
+        <Button
+          type="button"
+          variant="ghost"
+          className="editor-attachments__drop"
+          disabled={disabled}
+          onClick={() => input.current?.click()}
+        >
+          {t('editor.attachmentsDropHint')}
+        </Button>
       </div>
-      <p className="editor-attachments__drop-hint">{t('editor.attachmentsDropHint')}</p>
       {zoom !== null && (
         <Lightbox
           label={zoom.name}
@@ -253,8 +243,4 @@ function AttachmentTile({
       </Button>
     </article>
   );
-}
-
-export function AttachmentDropHint({ children }: { children?: ReactNode }) {
-  return <span className="editor-attachments__drop-hint">{children}</span>;
 }

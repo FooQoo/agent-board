@@ -53,7 +53,6 @@ export const editEn = {
     attachmentCount: 'A card holds up to 20 images. Remove one to add another.',
     attachmentTotal: 'The images of a card hold up to 50 MB in total.',
     attachmentsLabel: 'Image attachments',
-    attachmentsEmpty: 'Add images to this card',
     attachmentsDropHint: 'Choose files, drag and drop, or paste an image',
     addAttachment: 'Add image attachment',
     previewAttachment: 'Preview {{name}}',

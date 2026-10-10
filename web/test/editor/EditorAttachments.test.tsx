@@ -146,7 +146,9 @@ describe('editor attachment side panel', () => {
 });
 
 describe('the empty picture state', () => {
-  it('is the shared button, so it takes the same look and focus rules as the other actions', () => {
+  const GUIDANCE = 'Choose files, drag and drop, or paste an image';
+
+  function renderEmpty() {
     const { container } = render(
       <EditorBody
         title="Empty"
@@ -160,8 +162,25 @@ describe('the empty picture state', () => {
         onRemoveAttachment={() => {}}
       />,
     );
-    const empty = container.querySelector('.editor-attachments__empty');
-    expect(empty?.tagName).toBe('BUTTON');
-    expect(empty?.getAttribute('data-slot')).toBe('button');
+    const panel = container.querySelector<HTMLElement>('.editor-attachments');
+    if (panel === null) throw new Error('no attachment panel');
+    return { panel };
+  }
+
+  it('shows the guidance once, as the one drop area at the bottom of the panel', () => {
+    const { panel } = renderEmpty();
+    expect(within(panel).getAllByText(GUIDANCE)).toHaveLength(1);
+    expect(within(panel).queryByText('Add images to this card')).toBeNull();
+    const area = panel.querySelector<HTMLElement>('.editor-attachments__dropzone');
+    expect(area).not.toBeNull();
+    expect(panel.lastElementChild).toBe(area);
+    expect(area?.contains(within(panel).getByText(GUIDANCE))).toBe(true);
+  });
+
+  it('is the shared button, so a click opens the file picker', () => {
+    const { panel } = renderEmpty();
+    const drop = within(panel).getByRole('button', { name: GUIDANCE });
+    expect(drop.getAttribute('data-slot')).toBe('button');
+    expect(panel.querySelector('.editor-attachments__drop-hint')).toBeNull();
   });
 });

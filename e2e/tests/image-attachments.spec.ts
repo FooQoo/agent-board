@@ -26,8 +26,8 @@ test('side attachments render, persist, retry safely and become No image after d
   // The caret goes to the end of the text, so the picture is inserted there and not over the selection.
   await body(dialog).getByText('Pictures follow.').click();
   await page.keyboard.press('End');
-  // The attachments pane is open beside the body from the start, with its empty hint.
-  await expect(dialog.getByText('Add images to this card')).toBeVisible();
+  // The attachments pane is open beside the body from the start, with its one drop area at the bottom.
+  await expect(dialog.getByRole('button', { name: 'Choose files, drag and drop, or paste an image' })).toBeVisible();
   await dialog.locator('input[type=file]').setInputFiles({ name: 'capture.png', mimeType: 'image/png', buffer: png });
   await expect
     .poll(() => dialog.locator('.editor-attachments__preview img').evaluate((img: HTMLImageElement) => img.naturalWidth))

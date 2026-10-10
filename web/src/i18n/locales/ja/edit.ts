@@ -54,7 +54,6 @@ export const editJa = {
     attachmentCount: '1つのカードに追加できる画像は20枚までです。',
     attachmentTotal: '1つのカードの画像は合計50 MBまでです。',
     attachmentsLabel: '画像添付',
-    attachmentsEmpty: 'このカードに画像を追加',
     attachmentsDropHint: 'ファイル選択、ドラッグ＆ドロップ、貼り付けに対応',
     addAttachment: '画像を添付',
     previewAttachment: '{{name}}をプレビュー',
