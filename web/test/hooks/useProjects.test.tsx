@@ -24,7 +24,7 @@ describe('useProjects', () => {
       'knowledge',
       'tech-blog',
     ]);
-    expect(result.current.catalogRevision).toBe(1);
+    expect(result.current.catalogVersion).toBe('f1');
     expect(fetchMock).toHaveBeenCalledWith('/api/projects', expect.anything());
   });
 

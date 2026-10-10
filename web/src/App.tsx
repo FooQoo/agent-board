@@ -256,6 +256,7 @@ export function App({ initial }: AppProps) {
                     : 'state'
               }
               operations={operations}
+              problems={archiveVisible ? [] : (boardData?.problems ?? [])}
               onEdit={() => {
                 if (selected?.isDraft) openDialog({ kind: 'edit', card: selected });
               }}

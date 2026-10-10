@@ -4,7 +4,7 @@ import type { HistoryEvent } from '../src/types';
 
 const events: HistoryEvent[] = [
   {
-    id: 1,
+    id: '1',
     kind: 'created',
     actor: 'ai',
     reason: null,
@@ -16,7 +16,7 @@ const events: HistoryEvent[] = [
     at: '2026-10-01T16:00:00Z',
   },
   {
-    id: 2,
+    id: '2',
     kind: 'lane',
     actor: 'human',
     reason: 'Start implementation',
@@ -28,7 +28,7 @@ const events: HistoryEvent[] = [
     at: '2026-10-01T16:30:00Z',
   },
   {
-    id: 3,
+    id: '3',
     kind: 'agent',
     actor: 'ai',
     reason: 'Need a decision',
@@ -57,6 +57,30 @@ describe('historyItems', () => {
       null,
     ]);
     expect(items.map((item) => item.created)).toEqual([false, false, true]);
+  });
+
+  it('shows an answer as the idle state with the chosen option and the text', () => {
+    const answered: HistoryEvent = {
+      id: '4',
+      kind: 'answer',
+      actor: 'human',
+      reason: 'Because of the layout',
+      fromCardStatus: 'doing',
+      toCardStatus: 'doing',
+      fromAgentStatus: 'pending',
+      toAgentStatus: 'idle',
+      requestId: '0123456789abcdef0123456789abcdef',
+      choiceId: 'keep',
+      choiceLabel: 'Keep the data',
+      at: '2026-10-02T10:00:00Z',
+    };
+    const [item] = historyItems([answered]);
+    expect(item).toMatchObject({
+      statusKind: 'agent',
+      status: 'idle',
+      choice: 'Keep the data',
+      reason: 'Because of the layout',
+    });
   });
 
   it('returns an empty list for no history', () => {

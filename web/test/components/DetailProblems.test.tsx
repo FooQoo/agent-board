@@ -1,0 +1,59 @@
+import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { DetailPanel } from '../../src/components/DetailPanel';
+import { selectLocale } from '../../src/i18n';
+import type { Problem } from '../../src/types';
+import { PROJECT_A, makeCard } from '../fixtures';
+
+const noop = () => {};
+const noRemove = async () => true;
+const card = makeCard({ id: 12, title: 'Card', description: '## 作業内容\n\n本文の内容\n' });
+
+beforeEach(() => selectLocale('en'));
+
+function panel(problems: Problem[]) {
+  return render(
+    <DetailPanel
+      projectId={PROJECT_A.id}
+      card={card}
+      problems={problems}
+      onClose={noop}
+      onRemove={noRemove}
+    />,
+  );
+}
+
+describe('file problems in the detail', () => {
+  it('shows the file, item and reason above the body and keeps the body as written', () => {
+    const { container } = panel([
+      {
+        file: 'tasks/12/TASK.md',
+        field: 'AC-1',
+        reason: 'A line starting with "- 根拠:" is missing.',
+      },
+    ]);
+    const warning = screen.getByRole('alert');
+    expect(warning.textContent).toBe(
+      'This file has a problem: tasks/12/TASK.md (AC-1) — A line starting with "- 根拠:" is missing.',
+    );
+    const body = screen.getByText('本文の内容');
+    expect(warning.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector('.md-chapter')).not.toBeNull();
+  });
+
+  it('shows the Japanese wording', () => {
+    selectLocale('ja');
+    panel([{ file: 'tasks/12/TASK.md', field: 'AC-1', reason: '理由' }]);
+    expect(screen.getByRole('alert').textContent).toBe(
+      'ファイルに不備があります: tasks/12/TASK.md（AC-1） — 理由',
+    );
+  });
+
+  it('shows only the problems of this card and none without a problem', () => {
+    const { unmount } = panel([{ file: 'tasks/99/TASK.md', field: 'AC-1', reason: 'other' }]);
+    expect(screen.queryByRole('alert')).toBeNull();
+    unmount();
+    panel([]);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});

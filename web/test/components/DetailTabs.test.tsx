@@ -82,44 +82,27 @@ describe('tabs', () => {
   });
 });
 
-describe('folding the description', () => {
-  it('folds each H2 section with its count, all open at first', async () => {
-    renderPanel(makeCard({ id: 50, description: `Intro\n\n${SECTIONED}` }));
-    const goal = screen.getByRole('button', { name: /Goal/ });
-    const steps = screen.getByRole('button', { name: /Steps/ });
-    expect(goal.getAttribute('aria-expanded')).toBe('true');
-    expect(steps.getAttribute('aria-expanded')).toBe('true');
-    expect(goal.textContent).toContain('2');
-    expect(steps.textContent).toContain('3');
-    expect(screen.getByText('Intro')).toBeTruthy();
-
-    await userEvent.click(goal);
-    expect(goal.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByText('one')).toBeNull();
+describe('chapters of the description', () => {
+  it('numbers each H2 chapter and keeps every chapter open, with no fold control', async () => {
+    const { container } = renderPanel(makeCard({ id: 50, description: `Intro\n\n${SECTIONED}` }));
+    const numbers = [...container.querySelectorAll('.md-chapter__number')].map(
+      (n) => n.textContent,
+    );
+    expect(numbers).toEqual(['01', '02']);
+    expect(screen.getByRole('heading', { level: 3, name: 'Goal' })).toBeTruthy();
+    expect(screen.getByText('one')).toBeTruthy();
     expect(screen.getByText('first')).toBeTruthy();
     expect(screen.getByText('Intro')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /expand all|collapse all/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Goal/ })).toBeNull();
+    expect(container.querySelector('[aria-expanded]')).toBeNull();
   });
 
-  it('keeps folds while the History tab is looked at and back, and resets them for another card', async () => {
-    const first = makeCard({ id: 50, description: SECTIONED });
-    const { rerender } = renderPanel(first);
-    await userEvent.click(screen.getByRole('button', { name: /Goal/ }));
+  it('keeps every chapter visible when the History tab is looked at and back', async () => {
+    renderPanel(makeCard({ id: 50, description: SECTIONED }));
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
     await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
-    expect(screen.getByRole('button', { name: /Goal/ }).getAttribute('aria-expanded')).toBe(
-      'false',
-    );
-
-    rerender(
-      <DetailPanel
-        projectId={PROJECT_A.id}
-        card={makeCard({ id: 51, description: SECTIONED })}
-        onClose={noop}
-        onRemove={noRemove}
-      />,
-    );
-    expect(screen.getByRole('button', { name: /Goal/ }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('one')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: 'Goal' })).toBeTruthy();
   });
 
   it('returns to the Description tab when another card is shown', async () => {

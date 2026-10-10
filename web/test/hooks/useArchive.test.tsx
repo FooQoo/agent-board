@@ -77,8 +77,8 @@ describe('useArchive', () => {
   it('does not apply a resource whose payload names another project', async () => {
     const mismatched: ArchiveResponse = {
       project: PROJECT_B,
-      revision: 1,
-      cursor: `${PROJECT_B.id}:1`,
+      version: 'v1',
+      cursor: `f1:${PROJECT_B.id}:v1`,
       cards: [makeCard({ id: 8, title: 'Wrong project' })],
     };
     let requests = 0;

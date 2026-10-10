@@ -33,6 +33,7 @@ export function HistoryTimeline({ events }: { events: HistoryEvent[] }) {
               <StatusLabel kind={item.statusKind} status={item.status} />
               <AssigneeLabel assignee={item.actor} />
             </span>
+            {item.choice && <span className="history__choice">{item.choice}</span>}
             {item.reason && <span className="history__reason">{item.reason}</span>}
           </span>
         </li>

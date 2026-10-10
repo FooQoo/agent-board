@@ -133,7 +133,7 @@
 }
 
 .detail__answer-input.detail__answer-input {
-  min-height: 96px;
+  min-height: 124px;
   padding: 10px 12px;
   border-color: var(--r-border);
   border-radius: 6px;
@@ -187,7 +187,42 @@
 .detail__answer-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 8px;
+}
+
+.detail__guide {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--r-text2);
+}
+
+/* The single choice: one radio per option, its text beside it. */
+.detail__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail__choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.detail__choice [role="radio"] {
+  flex: none;
+  margin-top: 2px;
+}
+
+.detail__choice-label {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--r-text);
+  cursor: pointer;
 }
 
 /* ---- Tabs and toolbar ---- */
@@ -396,13 +431,39 @@
 
 /* ---- Description sections inside the column ---- */
 
-/* The dividers sit between sections only, and the count is plain text. */
-.detail .md-section:last-child {
-  border-bottom: 0;
+/* The problems of a card's files, above its body: the text is shown as written. */
+.detail__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-danger);
+  border-radius: 8px;
+  color: var(--r-text);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.detail .md-section__count {
-  font-weight: 400;
+.detail__problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+}
+
+.detail__problem svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  color: var(--r-danger);
+}
+
+.detail__notice {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--r-accent);
 }
 
 /* A button that cannot be used now is a quiet gray one, as in the design. */

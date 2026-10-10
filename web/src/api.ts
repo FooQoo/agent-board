@@ -1,4 +1,15 @@
-import type { ApiError, Assignee, Board, Card, ColumnName, ProjectId, ProjectList } from './types';
+import type {
+  ApiError,
+  Assignee,
+  Board,
+  Card,
+  ColumnName,
+  Epic,
+  EpicRef,
+  Problem,
+  ProjectId,
+  ProjectList,
+} from './types';
 import type { EditorAttachment } from './components/editor/attachmentTypes';
 
 const TOKEN_META = 'skan-token';
@@ -46,6 +57,40 @@ async function getJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+/** A card as the server writes it: the epic is an ID that the board resolves against `epics`. */
+type WireCard = Omit<Card, 'epic'> & { epicId: string | null };
+
+/** The board as the server writes it. The snapshot joins each card with its epic. */
+interface WireBoard {
+  project: Board['project'];
+  version: string;
+  cursor: string;
+  epics: Epic[];
+  cards: WireCard[];
+  problems: Problem[];
+}
+
+function toCard(wire: WireCard, epics: readonly Epic[]): Card {
+  const { epicId, ...rest } = wire;
+  const found = epicId === null ? undefined : epics.find((e) => e.id === epicId);
+  const epic: EpicRef | null = found
+    ? { id: found.id, name: found.name, color: found.color }
+    : null;
+  return { ...rest, epic };
+}
+
+/** Turns a server board into the snapshot the screens use. An epic missing from `epics` leaves the card unlabeled. */
+export function toBoard(wire: WireBoard): Board {
+  return {
+    project: wire.project,
+    version: wire.version,
+    cursor: wire.cursor,
+    epics: wire.epics,
+    cards: wire.cards.map((card) => toCard(card, wire.epics)),
+    problems: wire.problems,
+  };
+}
+
 function projectPath(projectId: ProjectId): string {
   return `/api/projects/${encodeURIComponent(projectId)}`;
 }
@@ -54,19 +99,23 @@ export function fetchProjects(): Promise<ProjectList> {
   return getJson<ProjectList>('/api/projects');
 }
 
-export function fetchBoard(projectId: ProjectId): Promise<Board> {
-  return getJson<Board>(`${projectPath(projectId)}/board`);
+export async function fetchBoard(projectId: ProjectId): Promise<Board> {
+  return toBoard(await getJson<WireBoard>(`${projectPath(projectId)}/board`));
 }
 
 export interface ArchiveResponse {
   project: Board['project'];
-  revision: number;
+  version: string;
   cursor: string;
+  /** The archive response has no epic table, so an archived card carries no epic label. */
   cards: Card[];
 }
 
-export function fetchArchive(projectId: ProjectId): Promise<ArchiveResponse> {
-  return getJson<ArchiveResponse>(`${projectPath(projectId)}/archive`);
+export async function fetchArchive(projectId: ProjectId): Promise<ArchiveResponse> {
+  const wire = await getJson<Omit<ArchiveResponse, 'cards'> & { cards: WireCard[] }>(
+    `${projectPath(projectId)}/archive`,
+  );
+  return { ...wire, cards: wire.cards.map((card) => toCard(card, [])) };
 }
 
 async function postEmpty(path: string): Promise<{ card: Card }> {
@@ -77,6 +126,7 @@ async function postEmpty(path: string): Promise<{ card: Card }> {
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
+      body.error?.message ?? null,
     );
   return { card: body.card };
 }
@@ -117,15 +167,32 @@ export async function deleteCard(projectId: ProjectId, id: number): Promise<Dele
   }
 }
 
-/** A rejected write. `code` is the API error code (for example `request_changed`), when the body has one. */
+/**
+ * A rejected write. `code` is the API error code (for example `request_changed`), when the body has one.
+ * `detail` is the English message of the body (for `file_invalid`, it names the file).
+ */
 export class WriteError extends Error {
   constructor(
     message: string,
     readonly status: number,
     readonly code: string | null,
+    readonly detail: string | null = null,
   ) {
     super(message);
   }
+}
+
+/**
+ * The file, item and reason of a `file_invalid` answer, or null for other errors.
+ * The server sends `message` as "<file> is not valid." and `reason` as "<field>: <reason>" (or the reason alone).
+ */
+export function problemOf(error: unknown): Problem | null {
+  if (!(error instanceof WriteError) || error.code !== 'file_invalid') return null;
+  const file = (error.detail ?? '').replace(/ is not valid\.$/, '');
+  const reason = error.message;
+  const separator = reason.indexOf(': ');
+  if (separator === -1) return { file, field: '', reason };
+  return { file, field: reason.slice(0, separator), reason: reason.slice(separator + 2) };
 }
 
 async function postCard<T>(path: string, value: unknown): Promise<T> {
@@ -144,6 +211,7 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
+      body.error?.message ?? null,
     );
   }
   return body as T;
@@ -185,6 +253,7 @@ async function sendMultipart(path: string, body: FormData, method: 'POST' | 'PAT
       data.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       data.error?.code ?? null,
+      data.error?.message ?? null,
     );
   return { card: data.card };
 }
@@ -221,15 +290,17 @@ export async function moveCard(
   });
 }
 
-export async function answerRequest(
-  projectId: ProjectId,
-  id: number,
-  requestId: string,
-  reason: string,
-) {
+/** An answer to the request `requestId`. Either a choice, a text, or both; a blank answer is refused by the server. */
+export interface AnswerInput {
+  requestId: string;
+  choiceId?: string;
+  text?: string;
+}
+
+export async function answerRequest(projectId: ProjectId, id: number, input: AnswerInput) {
   return postCard<{ card: Card; changed: boolean }>(
     `${projectPath(projectId)}/cards/${id}/answer`,
-    { requestId, reason },
+    input,
   );
 }
 
@@ -250,6 +321,7 @@ async function sendCard(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
+      body.error?.message ?? null,
     );
   }
   return { card: body.card };
