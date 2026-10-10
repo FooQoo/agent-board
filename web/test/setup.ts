@@ -9,6 +9,17 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   };
 }
 
+if (typeof globalThis.IntersectionObserver === 'undefined') {
+  globalThis.IntersectionObserver = class IntersectionObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  } as unknown as typeof globalThis.IntersectionObserver;
+}
+
 // jsdom has no layout, but CodeMirror measures text through Range rectangles.
 const emptyRects = () => ({ length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] });
 if (typeof Range.prototype.getClientRects !== 'function') {
