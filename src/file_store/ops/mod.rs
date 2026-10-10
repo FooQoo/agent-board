@@ -9,6 +9,7 @@
 mod agent;
 mod answer;
 mod card;
+mod epic;
 
 pub use answer::Answer;
 

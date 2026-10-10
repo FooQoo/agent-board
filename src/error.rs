@@ -37,6 +37,19 @@ pub enum SkanError {
     },
     AttachmentRequestConflict,
     AttachmentLimitExceeded,
+    EvidenceNotFound {
+        id: String,
+    },
+    EpicIdTaken {
+        id: String,
+    },
+    EpicNotFound {
+        id: String,
+    },
+    /// Cards (archived ones included) still refer to the epic.
+    EpicInUse {
+        id: String,
+    },
     /// `message` is the argument parser's message. `command` is the
     /// subcommand name used in the reason (`None` for the top level).
     InvalidArgument {
@@ -137,6 +150,10 @@ impl SkanError {
             SkanError::AttachmentNotFound { .. } => "attachment_not_found",
             SkanError::AttachmentRequestConflict => "attachment_request_conflict",
             SkanError::AttachmentLimitExceeded => "attachment_limit_exceeded",
+            SkanError::EvidenceNotFound { .. } => "evidence_not_found",
+            SkanError::EpicIdTaken { .. } => "epic_id_taken",
+            SkanError::EpicNotFound { .. } => "epic_not_found",
+            SkanError::EpicInUse { .. } => "epic_in_use",
             SkanError::InvalidArgument { .. } => "invalid_argument",
             SkanError::InvalidValue { .. } => "invalid_value",
             SkanError::InvalidStateForColumn { .. } => "invalid_state_for_column",
@@ -190,6 +207,10 @@ impl SkanError {
                 "attachment request was reused with different content.".into()
             }
             SkanError::AttachmentLimitExceeded => "attachment limits were exceeded.".into(),
+            SkanError::EvidenceNotFound { id } => format!("evidence {id} not found."),
+            SkanError::EpicIdTaken { id } => format!("epic {id} already exists."),
+            SkanError::EpicNotFound { id } => format!("epic {id} not found."),
+            SkanError::EpicInUse { id } => format!("epic {id} is used by cards."),
             SkanError::InvalidArgument { message, .. } => message.clone(),
             SkanError::InvalidValue { field, .. } => format!("{field} is invalid."),
             SkanError::InvalidStateForColumn { id, state, .. } => {
@@ -252,6 +273,10 @@ impl SkanError {
             SkanError::AttachmentNotFound { .. } => "The attachment does not belong to this card.".into(),
             SkanError::AttachmentRequestConflict => "Use a new request ID when the content changes.".into(),
             SkanError::AttachmentLimitExceeded => "A card may contain at most 20 images and 50 MiB in total.".into(),
+            SkanError::EvidenceNotFound { .. } => "The evidence does not belong to this card.".into(),
+            SkanError::EpicIdTaken { .. } => "Choose another EPIC-ID.".into(),
+            SkanError::EpicNotFound { .. } => "No epic has this EPIC-ID in the project.".into(),
+            SkanError::EpicInUse { .. } => "Move or clear the cards that belong to this epic first.".into(),
             SkanError::InvalidArgument { command, .. } => match command {
                 Some(command) => format!("Run \"agboard {command} --help\" for usage."),
                 None => "Run \"agboard --help\" for usage.".to_string(),

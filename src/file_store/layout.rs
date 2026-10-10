@@ -1,9 +1,14 @@
-//! Paths inside the shared directory. Every function here only names a path;
-//! none of them touches the file system.
+//! Paths inside the shared directory. The functions here name paths and check
+//! the IDs that go into them; the one exception is `has_symlink_below`, which
+//! reads link metadata so that owned files are never reached through a link.
 
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
+use super::validate::{self, EpicId};
 use crate::domain::ProjectId;
+use crate::error::SkanError;
 
 /// The `format` value written to `workspace.json`.
 pub const FORMAT_NAME: &str = "agboard-files";
@@ -81,6 +86,99 @@ fn relative_label(base: &Path, path: &Path) -> String {
             .join("/"),
         Err(_) => path.display().to_string(),
     }
+}
+
+pub fn epic_dir(project_dir: &Path, id: &EpicId) -> PathBuf {
+    epics_dir(project_dir).join(id.as_str())
+}
+
+/// `epic.json` inside an epic folder.
+pub fn epic_file(epic_dir: &Path) -> PathBuf {
+    epic_dir.join("epic.json")
+}
+
+/// `PLAN.md` inside an epic folder.
+pub fn epic_plan(epic_dir: &Path) -> PathBuf {
+    epic_dir.join("PLAN.md")
+}
+
+/// The `assets/` folder of an owner (a card folder or an epic folder).
+pub fn assets_dir(owner_dir: &Path) -> PathBuf {
+    owner_dir.join("assets")
+}
+
+/// `tasks/<card-id>/assets/<attachment-id>.<ext>`. The ID is checked first.
+pub fn task_asset_path(
+    project_dir: &Path,
+    card_id: i64,
+    attachment_id: &str,
+    ext: &str,
+) -> Result<PathBuf, SkanError> {
+    check_card_id(card_id)?;
+    asset_file(&task_dir(project_dir, card_id), attachment_id, ext)
+}
+
+/// `epics/<EPIC-ID>/assets/<attachment-id>.<ext>`. The ID is checked first.
+pub fn epic_asset_path(
+    project_dir: &Path,
+    epic: &EpicId,
+    attachment_id: &str,
+    ext: &str,
+) -> Result<PathBuf, SkanError> {
+    asset_file(&epic_dir(project_dir, epic), attachment_id, ext)
+}
+
+fn asset_file(owner_dir: &Path, attachment_id: &str, ext: &str) -> Result<PathBuf, SkanError> {
+    validate::check_object_id(attachment_id, "attachmentId")?;
+    if !matches!(ext, "png" | "jpg" | "webp" | "gif") {
+        return Err(SkanError::InvalidValue {
+            field: "attachment".into(),
+            reason: "Only PNG, JPEG, WebP, and GIF images are accepted.".into(),
+        });
+    }
+    Ok(assets_dir(owner_dir).join(format!("{attachment_id}.{ext}")))
+}
+
+/// `tasks/<card-id>/evidence/<evidence-id>.log`. The ID is checked first.
+pub fn evidence_path(
+    project_dir: &Path,
+    card_id: i64,
+    evidence_id: &str,
+) -> Result<PathBuf, SkanError> {
+    check_card_id(card_id)?;
+    validate::check_object_id(evidence_id, "evidenceId")?;
+    let dir = task_dir(project_dir, card_id).join("evidence");
+    Ok(dir.join(format!("{evidence_id}.log")))
+}
+
+fn check_card_id(card_id: i64) -> Result<(), SkanError> {
+    if card_id < 1 {
+        return Err(SkanError::InvalidValue {
+            field: "cardId".into(),
+            reason: "Card IDs start at 1.".into(),
+        });
+    }
+    Ok(())
+}
+
+/// Whether `path`, or a folder or file between `project_dir` and it, is a
+/// symbolic link. A component that does not exist ends the walk with `false`.
+/// `path` must lie inside `project_dir`.
+pub fn has_symlink_below(project_dir: &Path, path: &Path) -> io::Result<bool> {
+    let rest = path
+        .strip_prefix(project_dir)
+        .map_err(|e| io::Error::other(e.to_string()))?;
+    let mut current = project_dir.to_path_buf();
+    for part in rest.components() {
+        current.push(part);
+        match fs::symlink_metadata(&current) {
+            Ok(meta) if meta.file_type().is_symlink() => return Ok(true),
+            Ok(_) => {}
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(false),
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(false)
 }
 
 /// The card ID a folder name stands for. Only canonical positive decimal
