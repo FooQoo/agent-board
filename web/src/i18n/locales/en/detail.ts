@@ -51,6 +51,11 @@ export const detailEn = {
   },
   markdown: {
     noImage: 'No image',
+    image: 'Image',
+    enlargeImage: 'Enlarge {{name}}',
+    enlargeDiagram: 'Enlarge diagram',
+    diagramLoading: 'Drawing the diagram…',
+    diagramError: 'The diagram cannot be drawn: {{message}}',
   },
   history: {
     title: 'History',

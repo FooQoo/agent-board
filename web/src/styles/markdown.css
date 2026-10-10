@@ -391,3 +391,85 @@
   line-height: 20px;
   color: var(--r-muted);
 }
+
+/* ---- Enlargeable pictures and captures ---- */
+
+.md__image-open {
+  all: unset;
+  display: block;
+  max-width: 100%;
+  border-radius: 6px;
+  cursor: zoom-in;
+}
+
+.md__image-open:focus-visible,
+.md-mermaid__open:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}
+
+/* Consecutive captures under one criterion: small thumbnails in one row. */
+.md-captures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.md-captures .md__image {
+  margin: 0;
+}
+
+.md-captures .md__image-picture {
+  width: auto;
+  height: 120px;
+  max-width: 160px;
+  object-fit: contain;
+}
+
+/* ---- Mermaid diagrams ---- */
+
+.md-mermaid {
+  margin: 0;
+  min-width: 0;
+}
+
+.md-mermaid__open {
+  all: unset;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  overflow-x: auto;
+  cursor: zoom-in;
+}
+
+.md-mermaid__svg {
+  display: block;
+}
+
+.md-mermaid__svg svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.md-mermaid__status {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.md-mermaid--error .md-mermaid__status {
+  color: var(--r-danger);
+}
+
+.md-mermaid__source {
+  margin: 6px 0 0;
+}
