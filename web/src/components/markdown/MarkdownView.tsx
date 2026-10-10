@@ -1,15 +1,35 @@
 import { ImageOffIcon, SquareCheckIcon, SquareIcon } from 'lucide-react';
-import { memo, useState } from 'react';
+import {
+  Children,
+  createContext,
+  isValidElement,
+  memo,
+  useContext,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import { safeImageUrl, safeLinkUrl } from '../../lib/markdown';
+import { Lightbox } from '../Lightbox';
+import { MermaidDiagram } from './MermaidDiagram';
 import '../../styles/markdown.css';
 
 export type MarkdownVariant = 'compact' | 'wide';
 
+/** Turns an owned attachment id into the URL to show; null when it is not one of the card's. */
+type AttachmentResolver = (id: string) => string | null;
+
 const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
+/** Two or more images that follow each other without text form one row of small captures. */
+const CAPTURE_ROW_MIN = 2;
+const ATTACHMENT_SOURCE = /^attachment:([0-9a-f]{32})$/;
+const ASSET_SOURCE = /^assets\/([0-9a-f]{32})\.(?:png|jpe?g|webp|gif)$/;
+
+const ResolverContext = createContext<AttachmentResolver | undefined>(undefined);
 
 /** A link that passes the allow-list opens in a new tab; any other target is shown as text. */
 function MarkdownLink({ href, children }: { href?: string; children?: React.ReactNode }) {
@@ -35,38 +55,65 @@ function ImagePlaceholder({ alt }: { alt: string }) {
   );
 }
 
-/** Resolve owned attachments or external http(s) images; failed loads become placeholders. */
-function MarkdownImage({
-  src,
-  alt,
-  resolveAttachment,
-}: {
-  src?: string;
-  alt?: string;
-  resolveAttachment?: (id: string) => string | null;
-}) {
-  const [failed, setFailed] = useState(false);
-  const match = src?.match(/^attachment:([0-9a-f]{32})$/);
-  const safe = match
-    ? (resolveAttachment?.(match[1] ?? '') ?? null)
-    : src === undefined
-      ? null
-      : safeImageUrl(src);
+/**
+ * The URL an image source shows, or null for No image. An owned reference (`attachment:<id>` or
+ * `assets/<id>.<ext>`) goes through the resolver only; any other relative or malformed reference
+ * is never fetched; external http(s) images pass the allow-list.
+ */
+function imageUrlOf(
+  src: string | undefined,
+  resolve: AttachmentResolver | undefined,
+): string | null {
+  if (src === undefined) return null;
+  const id = ATTACHMENT_SOURCE.exec(src)?.[1] ?? ASSET_SOURCE.exec(src)?.[1];
+  if (id !== undefined) return resolve?.(id) ?? null;
+  if (src.startsWith('attachment:') || src.startsWith('assets/')) return null;
+  return safeImageUrl(src);
+}
+
+/**
+ * An image: a picture that opens enlarged on a press, or the placeholder when it cannot be shown.
+ * A failed load is remembered per URL, so a new reference is tried again.
+ */
+function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
+  const { t } = useTranslation();
+  const resolve = useContext(ResolverContext);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const [enlarged, setEnlarged] = useState(false);
+  const url = imageUrlOf(src, resolve);
   const text = alt ?? '';
-  if (safe === null || failed) return <ImagePlaceholder alt={text} />;
+  const name = text !== '' ? text : t('markdown.image');
+  if (url === null || failedUrl === url) return <ImagePlaceholder alt={text} />;
   return (
     <span className="md__image">
-      <img
-        className="md__image-picture"
-        src={safe}
-        alt={text}
-        referrerPolicy="no-referrer"
-        loading="lazy"
-        onError={() => setFailed(true)}
-      />
+      <button
+        type="button"
+        className="md__image-open"
+        aria-label={t('markdown.enlargeImage', { name })}
+        onClick={() => setEnlarged(true)}
+      >
+        <img
+          className="md__image-picture"
+          src={url}
+          alt={text}
+          referrerPolicy="no-referrer"
+          loading="lazy"
+          onError={() => setFailedUrl(url)}
+        />
+      </button>
       {text !== '' && <span className="md__image-caption">{text}</span>}
+      {enlarged && (
+        <Lightbox label={name} onClose={() => setEnlarged(false)}>
+          <img src={url} alt={text} referrerPolicy="no-referrer" />
+        </Lightbox>
+      )}
     </span>
   );
+}
+
+/** The `img` component of the Markdown renderer; the paragraph grouping recognizes its elements. */
+function MarkdownImageNode({ src, alt }: { src?: string; alt?: string }) {
+  return <MarkdownImage src={typeof src === 'string' ? src : undefined} alt={alt} />;
 }
 
 /** A checklist box is a display only: it is disabled, out of the tab order and has no handler. */
@@ -80,17 +127,77 @@ function MarkdownCheckbox({ type, checked }: { type?: string; checked?: boolean 
   );
 }
 
+function isImageElement(node: ReactNode): node is ReactElement {
+  return isValidElement(node) && node.type === MarkdownImageNode;
+}
+
+/** A line break, or the white space between two images on consecutive lines. */
+function isBetweenImages(node: ReactNode): boolean {
+  if (typeof node === 'string') return node.trim() === '';
+  return isValidElement(node) && node.type === 'br';
+}
+
+/**
+ * Images that follow each other with nothing but line breaks between them form one row of small
+ * captures. Any other child is returned as it is, so text and a lone image keep their layout.
+ */
+function groupCaptures(children: ReactNode): ReactNode {
+  const output: ReactNode[] = [];
+  let run: ReactNode[] = [];
+  let images: ReactElement[] = [];
+
+  const flush = () => {
+    if (images.length >= CAPTURE_ROW_MIN) {
+      output.push(
+        <span className="md-captures" key={`captures-${output.length}`}>
+          {images}
+        </span>,
+      );
+    } else {
+      output.push(...run);
+    }
+    run = [];
+    images = [];
+  };
+
+  for (const node of Children.toArray(children)) {
+    if (isImageElement(node)) {
+      run.push(node);
+      images.push(node);
+    } else if (images.length > 0 && isBetweenImages(node)) {
+      run.push(node);
+    } else {
+      flush();
+      output.push(node);
+    }
+  }
+  flush();
+  return output;
+}
+
+/** The source of a Mermaid block: the text of its only `code` child, or null for other blocks. */
+function mermaidSourceOf(children: ReactNode): string | null {
+  const child = Children.toArray(children)[0];
+  if (!isValidElement<{ className?: string; children?: ReactNode }>(child)) return null;
+  if (!/(^|\s)language-mermaid(\s|$)/.test(child.props.className ?? '')) return null;
+  return String(child.props.children ?? '').replace(/\n$/, '');
+}
+
 const COMPONENTS: Components = {
   a: ({ href, children }) => <MarkdownLink href={href}>{children}</MarkdownLink>,
-  img: ({ src, alt }) => (
-    <MarkdownImage src={typeof src === 'string' ? src : undefined} alt={alt} />
-  ),
+  img: MarkdownImageNode,
   input: ({ type, checked }) => <MarkdownCheckbox type={type} checked={checked} />,
   table: ({ children }) => (
     <div className="md-scroll">
       <table>{children}</table>
     </div>
   ),
+  p: ({ children }) => <p>{groupCaptures(children)}</p>,
+  li: ({ className, children }) => <li className={className}>{groupCaptures(children)}</li>,
+  pre: ({ children }) => {
+    const source = mermaidSourceOf(children);
+    return source === null ? <pre>{children}</pre> : <MermaidDiagram source={source} />;
+  },
 };
 
 /**
@@ -104,27 +211,19 @@ export const MarkdownView = memo(function MarkdownView({
 }: {
   source: string;
   variant?: MarkdownVariant;
-  resolveAttachment?: (id: string) => string | null;
+  resolveAttachment?: AttachmentResolver;
 }) {
   return (
-    <div className={`md md--${variant}`}>
-      <ReactMarkdown
-        remarkPlugins={REMARK_PLUGINS}
-        components={{
-          ...COMPONENTS,
-          img: ({ src, alt }) => (
-            <MarkdownImage
-              key={`${src}:${typeof src === 'string' && src.startsWith('attachment:') ? resolveAttachment?.(src.slice(11)) : ''}`}
-              src={typeof src === 'string' ? src : undefined}
-              alt={alt}
-              resolveAttachment={resolveAttachment}
-            />
-          ),
-        }}
-        urlTransform={(url) => url}
-      >
-        {source}
-      </ReactMarkdown>
-    </div>
+    <ResolverContext.Provider value={resolveAttachment}>
+      <div className={`md md--${variant}`}>
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          components={COMPONENTS}
+          urlTransform={(url) => url}
+        >
+          {source}
+        </ReactMarkdown>
+      </div>
+    </ResolverContext.Provider>
   );
 });

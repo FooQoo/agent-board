@@ -51,6 +51,11 @@ export const detailJa = {
   },
   markdown: {
     noImage: 'No image',
+    image: '画像',
+    enlargeImage: '{{name}}を拡大',
+    enlargeDiagram: '図を拡大',
+    diagramLoading: '図を描いています…',
+    diagramError: '図を描けません: {{message}}',
   },
   history: {
     title: '履歴',
