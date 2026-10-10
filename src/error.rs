@@ -79,6 +79,28 @@ pub enum SkanError {
         file: String,
         reason: String,
     },
+    /// A shared file does not follow the format. `file` is relative to the
+    /// shared directory and `field` names the item at fault (may be empty).
+    FileInvalid {
+        file: String,
+        field: String,
+        reason: String,
+    },
+    /// A shared file could not be read at all.
+    FileUnreadable {
+        file: String,
+        reason: String,
+    },
+    /// A shared file declares a `formatVersion` this build does not read.
+    FormatUnsupported {
+        file: String,
+        version: String,
+    },
+    /// The answer names a choice that is not part of the pending request.
+    RequestChoiceUnknown {
+        request_id: String,
+        choice_id: String,
+    },
     DatabaseBusy,
     DatabaseError {
         reason: String,
@@ -126,6 +148,10 @@ impl SkanError {
             SkanError::ConfirmationRequired { .. } => "confirmation_required",
             SkanError::ImportInvalid { .. } => "import_invalid",
             SkanError::FileError { .. } => "file_error",
+            SkanError::FileInvalid { .. } => "file_invalid",
+            SkanError::FileUnreadable { .. } => "file_unreadable",
+            SkanError::FormatUnsupported { .. } => "format_unsupported",
+            SkanError::RequestChoiceUnknown { .. } => "request_choice_unknown",
             SkanError::DatabaseBusy => "database_busy",
             SkanError::DatabaseError { .. } => "database_error",
             SkanError::AlreadyServing { .. } => "already_serving",
@@ -144,6 +170,7 @@ impl SkanError {
             SkanError::CardNotFound { .. } => 3,
             SkanError::InvalidArgument { .. } | SkanError::InvalidValue { .. } => 2,
             SkanError::InvalidStateForAssignee => 2,
+            SkanError::RequestChoiceUnknown { .. } => 2,
             _ => 1,
         }
     }
@@ -185,6 +212,14 @@ impl SkanError {
                 FileAction::Read => format!("cannot read {file}."),
                 FileAction::Write => format!("cannot write {file}."),
             },
+            SkanError::FileInvalid { file, .. } => format!("{file} is not valid."),
+            SkanError::FileUnreadable { file, .. } => format!("cannot read {file}."),
+            SkanError::FormatUnsupported { file, .. } => {
+                format!("{file} has an unsupported format version.")
+            }
+            SkanError::RequestChoiceUnknown { .. } => {
+                "the choice is not part of this request.".into()
+            }
             SkanError::DatabaseBusy => "the board is busy.".to_string(),
             SkanError::DatabaseError { .. } => "cannot open the board.".to_string(),
             SkanError::AlreadyServing { .. } => "the board is already being served.".to_string(),
@@ -247,6 +282,20 @@ impl SkanError {
             }
             SkanError::ImportInvalid { reason, .. } => reason.clone(),
             SkanError::FileError { reason, .. } => reason.clone(),
+            SkanError::FileInvalid { field, reason, .. } => {
+                if field.is_empty() {
+                    reason.clone()
+                } else {
+                    format!("{field}: {reason}")
+                }
+            }
+            SkanError::FileUnreadable { reason, .. } => reason.clone(),
+            SkanError::FormatUnsupported { version, .. } => format!(
+                "Only formatVersion 1 is supported, found {version}. The file is not converted."
+            ),
+            SkanError::RequestChoiceUnknown { .. } => {
+                "Choose one of the choices in the pending request.".into()
+            }
             SkanError::DatabaseBusy => "Another agboard command is writing. Try again.".to_string(),
             SkanError::DatabaseError { reason } => reason.clone(),
             SkanError::AlreadyServing { port } => {
@@ -328,6 +377,23 @@ mod tests {
                 file: "a.json".into(),
                 reason: "No such file or directory (os error 2)".into(),
             },
+            SkanError::FileInvalid {
+                file: "projects/p/tasks/1/task.json".into(),
+                field: "title".into(),
+                reason: "Titles must be 1 to 100 characters on one line.".into(),
+            },
+            SkanError::FileUnreadable {
+                file: "projects/p/project.json".into(),
+                reason: "Permission denied (os error 13)".into(),
+            },
+            SkanError::FormatUnsupported {
+                file: "workspace.json".into(),
+                version: "2".into(),
+            },
+            SkanError::RequestChoiceUnknown {
+                request_id: "a".into(),
+                choice_id: "b".into(),
+            },
             SkanError::DatabaseBusy,
             SkanError::DatabaseError {
                 reason: "boom".into(),
@@ -368,6 +434,10 @@ mod tests {
                 ("confirmation_required", 1),
                 ("import_invalid", 1),
                 ("file_error", 1),
+                ("file_invalid", 1),
+                ("file_unreadable", 1),
+                ("format_unsupported", 1),
+                ("request_choice_unknown", 2),
                 ("database_busy", 1),
                 ("database_error", 1),
                 ("already_serving", 1),
@@ -442,6 +512,22 @@ mod tests {
             (
                 "cannot read a.json.",
                 "No such file or directory (os error 2)",
+            ),
+            (
+                "projects/p/tasks/1/task.json is not valid.",
+                "title: Titles must be 1 to 100 characters on one line.",
+            ),
+            (
+                "cannot read projects/p/project.json.",
+                "Permission denied (os error 13)",
+            ),
+            (
+                "workspace.json has an unsupported format version.",
+                "Only formatVersion 1 is supported, found 2. The file is not converted.",
+            ),
+            (
+                "the choice is not part of this request.",
+                "Choose one of the choices in the pending request.",
             ),
             (
                 "the board is busy.",

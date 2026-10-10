@@ -1,0 +1,378 @@
+//! Card operations: creation, title and body edits, the draft flag, archive,
+//! restore, and deletion of an archived card.
+
+use std::fs;
+use std::path::Path;
+
+use chrono::{DateTime, Utc};
+
+use super::super::FileStore;
+use super::super::io;
+use super::super::layout;
+use super::super::model::{CardView, HistoryKind, HistoryRecord, TaskFile};
+use super::super::reader;
+use super::super::validate;
+use super::{
+    Transition, lane_end, lock_project, save_project, save_task, stamp, transition_event,
+    write_text,
+};
+use crate::domain::{
+    Actor, Changed, Column, NewCard, ProjectId, RunState, normalize_and_validate_description,
+    validate_title,
+};
+use crate::error::SkanError;
+
+const ARCHIVE_REASON: &str = "Archived by user.";
+const RESTORE_REASON: &str = "Restored by user.";
+
+/// Write a new card folder: `task.json` and `TASK.md` go into a temporary
+/// folder that is renamed into place. A failure removes the temporary folder.
+fn write_new_card(
+    shared: &Path,
+    project_dir: &Path,
+    task: &TaskFile,
+    body: &str,
+) -> Result<(), SkanError> {
+    let tasks = layout::tasks_dir(project_dir);
+    let target = layout::task_dir(project_dir, task.id);
+    let label = layout::shared_label(shared, &target);
+    if target.exists() {
+        return Err(io::write_error(&label, "the card folder already exists"));
+    }
+    let temp = tasks.join(format!(
+        ".new-{}",
+        io::random_hex(16).map_err(|e| io::write_error(&label, e))?
+    ));
+    fs::create_dir(&temp).map_err(|e| io::write_error(&label, e))?;
+    let result = (|| -> Result<(), SkanError> {
+        io::write_json(
+            &layout::task_json(&temp),
+            task,
+            &format!("{label}/task.json"),
+        )?;
+        io::write_atomic(
+            &layout::task_md(&temp),
+            body.as_bytes(),
+            &format!("{label}/TASK.md"),
+        )?;
+        fs::rename(&temp, &target).map_err(|e| io::write_error(&label, e))?;
+        io::sync_dir(&tasks).map_err(|e| io::write_error(&label, e))
+    })();
+    if result.is_err() {
+        let _ = fs::remove_dir_all(&temp);
+    }
+    result
+}
+
+/// The card's view after a change, read back from the files.
+fn view(shared: &Path, project: &ProjectId, id: i64) -> Result<CardView, SkanError> {
+    reader::read_card(shared, project, id)
+}
+
+impl FileStore {
+    /// Create a card in the To Do lane at the end. The number is reserved in
+    /// `project.json` before the card folder is written, so a failed write
+    /// leaves a gap in the numbers and never reuses one. A body that is not
+    /// given (empty or blank) gets the TASK.md template.
+    pub fn create_card(
+        &self,
+        project: &ProjectId,
+        new: NewCard,
+        now: DateTime<Utc>,
+    ) -> Result<CardView, SkanError> {
+        let title = validate_title(&new.title)?;
+        let description = normalize_and_validate_description(&new.description)?;
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut file = reader::read_project_file(shared, project)?;
+        let id = file.next_card_id;
+        let body = if description.trim().is_empty() {
+            validate::task_template()
+        } else {
+            description
+        };
+        let label = layout::shared_label(
+            shared,
+            &layout::task_md(&layout::task_dir(&project_dir, id)),
+        );
+        validate::ensure_task_body(&body, &label)?;
+        let position = lane_end(shared, project, Column::Todo)?;
+        let at = stamp(now);
+        let task = TaskFile {
+            format_version: layout::FORMAT_VERSION,
+            id,
+            title,
+            assignee: new.assignee,
+            epic_id: None,
+            card_status: Column::Todo,
+            agent_status: RunState::Idle,
+            position,
+            is_draft: false,
+            archived_at: None,
+            pending_request_id: None,
+            created_at: at,
+            updated_at: at,
+            agent_status_changed_at: at,
+            attachments: Vec::new(),
+            evidence: Vec::new(),
+            history: vec![transition_event(Transition {
+                kind: HistoryKind::Created,
+                actor: new.actor,
+                reason: None,
+                from_card: None,
+                to_card: Column::Todo,
+                from_agent: None,
+                to_agent: RunState::Idle,
+                request_id: None,
+                at,
+            })?],
+        };
+        file.next_card_id = id
+            .checked_add(1)
+            .ok_or_else(|| io::write_error("project.json", "The card number overflowed."))?;
+        save_project(shared, &project_dir, &file)?;
+        write_new_card(shared, &project_dir, &task, &body)?;
+        view(shared, project, id)
+    }
+
+    /// Change the title and/or the body of a card that is neither archived nor
+    /// a draft. An unchanged value changes nothing and writes nothing.
+    pub fn edit_card(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        title: Option<&str>,
+        description: Option<&str>,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<CardView>, SkanError> {
+        let title = title.map(validate_title).transpose()?;
+        let description = description
+            .map(normalize_and_validate_description)
+            .transpose()?;
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_some() {
+            return Err(SkanError::CardArchived { id });
+        }
+        if task.is_draft {
+            return Err(SkanError::CardIsDraft { id });
+        }
+        let changed = write_text(shared, project, &project_dir, &mut task, title, description)?;
+        if !changed {
+            return Ok(Changed {
+                value: view(shared, project, id)?,
+                changed: false,
+            });
+        }
+        task.updated_at = stamp(now);
+        save_task(shared, &project_dir, &task)?;
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed: true,
+        })
+    }
+
+    /// Save the title and body of a draft. With `finalize`, the draft flag is
+    /// cleared in the same operation. `updatedAt` moves only when a text changes.
+    pub fn edit_draft_card(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        title: Option<&str>,
+        description: Option<&str>,
+        finalize: bool,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<CardView>, SkanError> {
+        let title = title.map(validate_title).transpose()?;
+        let description = description
+            .map(normalize_and_validate_description)
+            .transpose()?;
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_some() {
+            return Err(SkanError::CardArchived { id });
+        }
+        if !task.is_draft {
+            return Err(SkanError::CardNotDraft { id });
+        }
+        let text_changed =
+            write_text(shared, project, &project_dir, &mut task, title, description)?;
+        if !text_changed && !finalize {
+            return Ok(Changed {
+                value: view(shared, project, id)?,
+                changed: false,
+            });
+        }
+        let at = stamp(now);
+        if text_changed {
+            task.updated_at = at;
+        }
+        if finalize {
+            task.is_draft = false;
+            task.history.push(draft_event(&task, false, at)?);
+        }
+        save_task(shared, &project_dir, &task)?;
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed: true,
+        })
+    }
+
+    /// Turn the draft flag on or off. Only an idle or pending card can become a
+    /// draft. The update time does not move; the history records the change.
+    pub fn set_draft(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        is_draft: bool,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<CardView>, SkanError> {
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_some() {
+            return Err(SkanError::CardArchived { id });
+        }
+        if task.is_draft == is_draft {
+            return Ok(Changed {
+                value: view(shared, project, id)?,
+                changed: false,
+            });
+        }
+        if is_draft && task.agent_status == RunState::Running {
+            return Err(SkanError::InvalidStateForDraft {
+                id,
+                state: task.agent_status,
+            });
+        }
+        task.is_draft = is_draft;
+        task.history.push(draft_event(&task, is_draft, stamp(now))?);
+        save_task(shared, &project_dir, &task)?;
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed: true,
+        })
+    }
+
+    /// Archive a card. Its lane and position stay as they are, and its agent
+    /// state returns to idle with its request released.
+    pub fn archive_card(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<CardView>, SkanError> {
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_some() {
+            return Ok(Changed {
+                value: view(shared, project, id)?,
+                changed: false,
+            });
+        }
+        let at = stamp(now);
+        let old_agent = task.agent_status;
+        let old_request = task.pending_request_id.clone();
+        let event = transition_event(Transition {
+            kind: HistoryKind::Archive,
+            actor: Actor::Human,
+            reason: Some(ARCHIVE_REASON),
+            from_card: Some(task.card_status),
+            to_card: task.card_status,
+            from_agent: Some(old_agent),
+            to_agent: RunState::Idle,
+            request_id: old_request.as_deref(),
+            at,
+        })?;
+        task.archived_at = Some(at);
+        task.agent_status = RunState::Idle;
+        task.pending_request_id = None;
+        task.updated_at = at;
+        if old_agent != RunState::Idle {
+            task.agent_status_changed_at = at;
+        }
+        task.history.push(event);
+        save_task(shared, &project_dir, &task)?;
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed: true,
+        })
+    }
+
+    /// Restore an archived card to the end of its lane.
+    pub fn restore_card(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<CardView>, SkanError> {
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_none() {
+            return Ok(Changed {
+                value: view(shared, project, id)?,
+                changed: false,
+            });
+        }
+        let at = stamp(now);
+        let position = lane_end(shared, project, task.card_status)?;
+        let event = transition_event(Transition {
+            kind: HistoryKind::Restore,
+            actor: Actor::Human,
+            reason: Some(RESTORE_REASON),
+            from_card: Some(task.card_status),
+            to_card: task.card_status,
+            from_agent: Some(RunState::Idle),
+            to_agent: RunState::Idle,
+            request_id: None,
+            at,
+        })?;
+        task.archived_at = None;
+        task.position = position;
+        task.updated_at = at;
+        task.history.push(event);
+        save_task(shared, &project_dir, &task)?;
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed: true,
+        })
+    }
+
+    /// Delete an archived card's folder. Confirmation is the caller's job.
+    pub fn delete_archived_card(&self, project: &ProjectId, id: i64) -> Result<(), SkanError> {
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_none() {
+            return Err(SkanError::CardNotArchived { id });
+        }
+        let folder = layout::task_dir(&project_dir, id);
+        fs::remove_dir_all(&folder)
+            .map_err(|e| io::write_error(&layout::shared_label(shared, &folder), e))
+    }
+}
+
+/// A draft history event. The statuses are the card's current ones.
+fn draft_event(
+    task: &TaskFile,
+    is_draft: bool,
+    at: DateTime<Utc>,
+) -> Result<HistoryRecord, SkanError> {
+    let mut event = transition_event(Transition {
+        kind: HistoryKind::Draft,
+        actor: Actor::Human,
+        reason: None,
+        from_card: Some(task.card_status),
+        to_card: task.card_status,
+        from_agent: Some(task.agent_status),
+        to_agent: task.agent_status,
+        request_id: None,
+        at,
+    })?;
+    event.is_draft = Some(is_draft);
+    Ok(event)
+}

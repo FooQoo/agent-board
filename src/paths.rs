@@ -25,12 +25,17 @@ pub fn db_path() -> PathBuf {
     data_dir().join("board.db")
 }
 
+/// The shared file area: every project's canonical files live below it.
+pub fn shared_dir() -> PathBuf {
+    data_dir().join("shared")
+}
+
 pub fn serve_info_path() -> PathBuf {
     data_dir().join("serve.json")
 }
 
 pub fn lifecycle_lock_path() -> PathBuf {
-    data_dir().join("lifecycle.lock.db")
+    data_dir().join("lifecycle.lock")
 }
 
 /// Read `serve.json`. A missing, unreadable or malformed file is `None`.
@@ -106,6 +111,8 @@ mod tests {
         with_home(Some(tmp.path()), || {
             assert_eq!(data_dir(), tmp.path());
             assert_eq!(db_path(), tmp.path().join("board.db"));
+            assert_eq!(shared_dir(), tmp.path().join("shared"));
+            assert_eq!(lifecycle_lock_path(), tmp.path().join("lifecycle.lock"));
             assert_eq!(serve_info_path(), tmp.path().join("serve.json"));
         });
     }

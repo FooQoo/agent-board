@@ -3,6 +3,7 @@ pub mod cli;
 pub mod clock;
 pub mod domain;
 pub mod error;
+pub mod file_store;
 pub mod interact;
 pub mod lifecycle;
 pub mod paths;
