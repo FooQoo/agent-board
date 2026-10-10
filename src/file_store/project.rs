@@ -14,7 +14,7 @@ use super::lock::WriteLock;
 use super::model::{ProjectFile, WorkspaceFile};
 use super::reader;
 use crate::clock::{format_utc, parse_utc};
-use crate::domain::{ProjectId, ProjectMeta, validate_project_name};
+use crate::domain::{Changed, ProjectId, ProjectMeta, validate_project_name};
 use crate::error::SkanError;
 
 /// The README written into each new project folder: the entry point for
@@ -107,5 +107,61 @@ impl FileStore {
             name,
             created_at,
         })
+    }
+}
+
+impl FileStore {
+    /// Rename a project. The ID and the cards do not change. The name is
+    /// trimmed and checked against the other projects' names under the catalog
+    /// lock; a name equal to the current one changes nothing.
+    pub fn rename_project(
+        &self,
+        id: &ProjectId,
+        new_name: &str,
+    ) -> Result<Changed<ProjectMeta>, SkanError> {
+        let new_name = validate_project_name(new_name)?;
+        let shared = self.shared_dir();
+        let _catalog = WriteLock::acquire(&layout::catalog_lock(shared))?;
+        let dir = reader::project_dir_checked(shared, id)?;
+        let _project = WriteLock::acquire(&layout::write_lock(&dir))?;
+        let mut file = reader::read_project_file(shared, id)?;
+        if file.name == new_name {
+            return Ok(Changed {
+                value: reader::meta_of(file),
+                changed: false,
+            });
+        }
+        let taken = reader::list_projects(shared)?
+            .iter()
+            .any(|project| project.id != *id && project.name == new_name);
+        if taken {
+            return Err(SkanError::ProjectNameExists { name: new_name });
+        }
+        file.name = new_name;
+        let path = layout::project_file(&dir);
+        io::write_json(&path, &file, &layout::shared_label(shared, &path))?;
+        Ok(Changed {
+            value: reader::meta_of(file),
+            changed: true,
+        })
+    }
+
+    /// Delete a project and all its cards. The folder is first renamed out of
+    /// the projects folder, so it disappears from the list in one step, then
+    /// removed. Other projects are not touched.
+    pub fn delete_project(&self, id: &ProjectId) -> Result<(), SkanError> {
+        let shared = self.shared_dir();
+        let _catalog = WriteLock::acquire(&layout::catalog_lock(shared))?;
+        let dir = reader::project_dir_checked(shared, id)?;
+        let _project = WriteLock::acquire(&layout::write_lock(&dir))?;
+        let projects = layout::projects_dir(shared);
+        let label = layout::shared_label(shared, &dir);
+        let trash = projects.join(format!(
+            ".deleting-{}",
+            io::random_hex(16).map_err(|e| io::write_error(&label, e))?
+        ));
+        fs::rename(&dir, &trash).map_err(|e| io::write_error(&label, e))?;
+        io::sync_dir(&projects).map_err(|e| io::write_error(&label, e))?;
+        fs::remove_dir_all(&trash).map_err(|e| io::write_error(&label, e))
     }
 }
