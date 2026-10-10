@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useMultipartRequest } from './editor/useMultipartRequest';
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup } from '@/components/ui/radio-group';
 import type { Assignee } from '../types';
 import { Checkbox } from './ui/checkbox';
-import { EditorBody } from './editor/EditorBody';
+import { EditorBody, useOverLimit } from './editor/EditorBody';
 import { EditorShell } from './editor/EditorShell';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines, titleProblem } from './editor/limits';
 import type { RichMarkdownEditorHandle } from './editor/RichMarkdownEditor';
@@ -51,6 +52,7 @@ export function CreateDialog({
   const body = () => normalizeNewlines(editor.current?.markdown() ?? description);
   // Typed input counts as unsaved: closing asks first, as in the edit dialog.
   const dirty = title.trim() !== '' || description !== '' || attachmentState.attachments.length > 0;
+  const overLimit = useOverLimit(description);
   const valid = titleProblem(title) === null && countChars(description) <= DESCRIPTION_LIMIT;
   const add = () => {
     if (!valid || flow.busy.current) return;
@@ -85,6 +87,7 @@ export function CreateDialog({
       saving={flow.saving}
       error={flow.error}
       onRetry={add}
+      overLimit={overLimit}
       onClose={onClose}
       status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
       footerStart={
@@ -92,6 +95,7 @@ export function CreateDialog({
           <Checkbox
             id={draftId}
             checked={isDraft}
+            aria-label={t('editor.draft')}
             disabled={flow.saving}
             onCheckedChange={(checked) => setIsDraft(checked === true)}
           />
@@ -99,14 +103,9 @@ export function CreateDialog({
         </div>
       }
       actions={
-        <button
-          type="button"
-          className="editor__btn editor__btn--primary"
-          disabled={flow.saving || !valid}
-          onClick={add}
-        >
+        <Button type="button" disabled={flow.saving || !valid} onClick={add}>
           {flow.saving ? t('dialog.saving') : t('editor.add')}
-        </button>
+        </Button>
       }
     >
       <EditorBody

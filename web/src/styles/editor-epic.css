@@ -380,13 +380,121 @@
   font-weight: 500;
 }
 
-/* The outline label carries the accent rule the design draws under it. */
+/* The outline label: the blue progress line, with a square at its end, as the design draws it. */
 .editor__outline-label {
-  padding-bottom: 8px;
+  position: relative;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
   border-bottom: 2px solid var(--r-accent);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.editor__outline-label::after {
+  position: absolute;
+  right: 0;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  background: var(--r-accent);
+  content: "";
+}
+
+/* The chapters hang from a dotted rule, one dot per chapter; the current one is filled. */
+.editor__outline {
+  position: relative;
+  gap: 14px;
+  padding-left: 18px;
+}
+
+.editor__outline::before {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  border-left: 1px dotted var(--r-border);
+  content: "";
+}
+
+.editor__outline-item {
+  position: relative;
+  overflow: visible;
+  padding: 0;
+  white-space: normal;
+  text-overflow: clip;
+  line-height: 1.5;
+}
+
+.editor__outline-item::before {
+  position: absolute;
+  top: 6px;
+  left: -17px;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--r-border);
+  border-radius: 50%;
+  background: var(--r-surface);
+  content: "";
+}
+
+.editor__outline-item[aria-current="location"] {
+  background: transparent;
+  color: var(--r-accent);
+  font-weight: 600;
+}
+
+.editor__outline-item[aria-current="location"]::before {
+  border-color: var(--r-accent);
+  background: var(--r-accent);
 }
 
 /* While a save runs the draft box is faded, as the design shows. */
 .editor__footer[data-saving="true"] .editor__draft {
   opacity: 0.45;
+}
+
+/* The filter menu uses the dark ink of the design, not the accent: its checks and its Apply button. */
+.epic-filter .epic-filter__check[data-state="checked"] {
+  border-color: var(--r-text);
+  background: var(--r-text);
+  color: var(--r-surface);
+}
+
+.epic-filter .epic-filter__apply {
+  background: var(--r-text);
+  color: var(--r-surface);
+}
+
+.epic-filter .epic-filter__apply:hover:not(:disabled) {
+  background: var(--r-text);
+  opacity: 0.9;
+}
+
+/* The over-limit band above the footer: the message at the left, the count at the right. */
+.editor__limit {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 28px;
+  border-top: 1px solid var(--r-danger);
+  color: var(--r-danger);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.editor__limit svg {
+  width: 15px;
+  height: 15px;
+}
+
+.editor__limit-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.editor__limit-count {
+  flex: none;
+  font-family: var(--font-mono);
 }

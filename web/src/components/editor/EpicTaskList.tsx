@@ -81,14 +81,16 @@ export function EpicTaskList({
           }}
         >
           <PopoverTrigger asChild>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               className="epic-tasks__filter"
               aria-label={t('epic.filter')}
               title={t('epic.filter')}
             >
               <ListFilterIcon aria-hidden="true" />
-            </button>
+            </Button>
           </PopoverTrigger>
           <PopoverContent className="epic-filter" aria-label={t('epic.filterTitle')} align="end">
             <p className="epic-filter__title">{t('epic.filterTitle')}</p>
@@ -111,6 +113,7 @@ export function EpicTaskList({
               <Button
                 type="button"
                 variant="default"
+                className="epic-filter__apply"
                 onClick={() => {
                   setApplied(draft);
                   setMenuOpen(false);
@@ -169,7 +172,12 @@ function FilterChoice({
   const id = useId();
   return (
     <div className="epic-filter__choice">
-      <Checkbox id={id} checked={checked} onCheckedChange={(value) => onChange(value === true)} />
+      <Checkbox
+        id={id}
+        className="epic-filter__check"
+        checked={checked}
+        onCheckedChange={(value) => onChange(value === true)}
+      />
       <Label htmlFor={id}>{label}</Label>
     </div>
   );

@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionDialogData } from '../ActionDialog';
@@ -5,7 +6,7 @@ import { epicInk } from '../../lib/epic';
 import type { Card } from '../../types';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { EditorBody } from './EditorBody';
+import { EditorBody, useOverLimit } from './EditorBody';
 import { EditorShell } from './EditorShell';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines, titleProblem } from './limits';
 import type { RichMarkdownEditorHandle } from './RichMarkdownEditor';
@@ -61,6 +62,7 @@ export function EditDialog({
   const draftCleared = !isDraft && saved.isDraft;
   const dirty =
     titleChanged || description !== saved.description || isDraft !== saved.isDraft || imagesChanged;
+  const overLimit = useOverLimit(description);
   const valid = titleProblem(title) === null && countChars(description) <= DESCRIPTION_LIMIT;
 
   const save = () => {
@@ -110,7 +112,6 @@ export function EditDialog({
     });
   };
 
-  const failed = flow.error !== null;
   return (
     <EditorShell
       cardId={card.id}
@@ -121,6 +122,7 @@ export function EditDialog({
       saving={flow.saving}
       error={flow.error}
       onRetry={save}
+      overLimit={overLimit}
       onClose={onClose}
       status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
       footerStart={
@@ -128,6 +130,7 @@ export function EditDialog({
           <Checkbox
             id={draftId}
             checked={isDraft}
+            aria-label={t('editor.draft')}
             disabled={flow.saving}
             onCheckedChange={(checked) => setIsDraft(checked === true)}
           />
@@ -135,14 +138,9 @@ export function EditDialog({
         </div>
       }
       actions={
-        <button
-          type="button"
-          className="editor__btn editor__btn--primary"
-          disabled={flow.saving || !valid || !dirty}
-          onClick={save}
-        >
-          {flow.saving ? t('dialog.saving') : failed ? t('editor.retrySave') : t('editor.save')}
-        </button>
+        <Button type="button" disabled={flow.saving || !valid || !dirty} onClick={save}>
+          {flow.saving ? t('dialog.saving') : t('editor.save')}
+        </Button>
       }
     >
       <EditorBody

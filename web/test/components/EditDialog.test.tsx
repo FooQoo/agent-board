@@ -332,7 +332,8 @@ describe('save failures', () => {
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
       'Could not save. Your input is kept. Try again.',
     );
-    expect(button(dialog, 'Retry and save').disabled).toBe(false);
+    expect(button(dialog, 'Save').disabled).toBe(false);
+    expect(button(dialog, 'Retry').disabled).toBe(false);
   });
 });
 
@@ -387,11 +388,13 @@ describe('limits and the title', () => {
     const { dialog } = await openEdit(onSubmit);
     setDescription('あ'.repeat(50_000), dialog);
     expect(button(dialog, 'Save').disabled).toBe(false);
-    expect(within(dialog).getByText('50,000 / 50,000').getAttribute('data-over')).toBeNull();
+    expect(dialog.querySelector('.editor__counter')?.textContent).toBe('50,000 / 50,000');
+    expect(dialog.querySelector('.editor__counter')?.getAttribute('data-over')).toBeNull();
 
     setDescription('あ'.repeat(50_001), dialog);
     expect(button(dialog, 'Save').disabled).toBe(true);
-    expect(within(dialog).getByText('50,001 / 50,000').getAttribute('data-over')).toBe('true');
+    expect(dialog.querySelector('.editor__counter')?.textContent).toBe('50,001 / 50,000');
+    expect(dialog.querySelector('.editor__counter')?.getAttribute('data-over')).toBe('true');
     expect(
       within(dialog).getByText('Over the 50,000-character limit. Remove 1 character.'),
     ).toBeTruthy();

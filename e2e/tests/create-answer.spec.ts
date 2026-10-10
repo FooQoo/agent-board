@@ -125,7 +125,7 @@ test('a title or body over the limit cannot be added', async ({ page }) => {
   await expect.poll(shown).toBeGreaterThan(49_000);
   await page.waitForTimeout(300);
   await page.keyboard.insertText('x'.repeat(50_001 - (await shown())));
-  await expect(dialog.getByText('50,001 / 50,000')).toBeVisible();
+  await expect(dialog.locator('.editor__counter', { hasText: '50,001 / 50,000' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
   await expect(dialog.getByText('Over the 50,000-character limit. Remove 1 character.')).toBeVisible();
   await page.keyboard.press('Backspace');

@@ -1,4 +1,3 @@
-import { CircleAlertIcon } from 'lucide-react';
 import { useDeferredValue, useId, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AttachmentPanel } from './AttachmentPanel';
@@ -38,6 +37,25 @@ export interface EditorBodyProps {
   attachmentNotice?: AttachmentNotice | null;
   onFiles?: (files: File[]) => void;
   onRemoveAttachment?: (id: string) => void;
+}
+
+/**
+ * The over-limit band the dialog shows above its footer, or null while the text fits. The band says
+ * how many characters to remove; the counter next to the body shows the same count in red.
+ */
+export function useOverLimit(description: string): { message: string; count: string } | null {
+  const { t } = useTranslation();
+  const count = countChars(description);
+  const over = count - DESCRIPTION_LIMIT;
+  if (over <= 0) return null;
+  return {
+    message: t('editor.overLimit', {
+      count: over,
+      max: DESCRIPTION_LIMIT.toLocaleString('en-US'),
+      over: over.toLocaleString('en-US'),
+    }),
+    count: `${count.toLocaleString('en-US')} / ${DESCRIPTION_LIMIT.toLocaleString('en-US')}`,
+  };
 }
 
 /** The body shared by the edit and the add dialogs: outline, title, the rich editor and the images. */
@@ -172,18 +190,6 @@ export function EditorBody({
             }
           />
         </div>
-        {overLimit && (
-          <p className="editor__hint" data-over="true">
-            <CircleAlertIcon aria-hidden="true" />
-            <span role="status">
-              {t('editor.overLimit', {
-                count: over,
-                max: DESCRIPTION_LIMIT.toLocaleString('en-US'),
-                over: over.toLocaleString('en-US'),
-              })}
-            </span>
-          </p>
-        )}
       </div>
       {onFiles && onRemoveAttachment && (
         <AttachmentPanel

@@ -405,42 +405,6 @@
   font-size: 12px;
   text-align: center;
 }
-.editor-attachments__lightbox {
-  position: fixed;
-  z-index: 50;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 32px;
-  background: rgb(15 23 42 / 72%);
-}
-.editor-attachments__lightbox img {
-  max-width: min(90vw, 1000px);
-  max-height: 85vh;
-  object-fit: contain;
-  border-radius: 6px;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 30%);
-}
-.editor-attachments__lightbox-close {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 0;
-  border-radius: 5px;
-  background: rgb(15 23 42 / 65%);
-  color: white;
-  cursor: pointer;
-}
-.editor-attachments__lightbox-close svg {
-  width: 18px;
-  height: 18px;
-}
 /* The right column is always open; below 1100px both side columns narrow to 200px. */
 @media (max-width: 1100px) {
   .editor__side,
@@ -457,7 +421,6 @@
 }
 
 .editor__outline-item:focus-visible,
-.editor__btn:focus-visible,
 .editor__retry:focus-visible,
 .editor__close:focus-visible,
 .editor__segment:focus-visible {
@@ -664,58 +627,6 @@
   color: var(--r-muted);
   font-size: 12px;
   line-height: 17px;
-}
-
-.editor__btn {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  height: 35px;
-  padding: 0 16px;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--r-text2);
-  font: inherit;
-  font-size: 13px;
-  line-height: 19px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.editor__btn--secondary {
-  padding: 0 18px;
-  background: var(--r-surface);
-  font-weight: 500;
-}
-
-.editor__btn--primary {
-  padding: 0 18px;
-  border-color: var(--r-accent);
-  background: var(--r-accent);
-  color: var(--r-on-accent);
-  font-weight: 600;
-}
-
-.editor__btn--danger {
-  border-color: var(--r-danger);
-  background: var(--r-danger);
-  color: #fff;
-  font-weight: 600;
-}
-
-.editor__btn:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.editor__btn--secondary:disabled,
-.editor__btn--primary:disabled {
-  border-color: var(--r-border);
-  background: var(--r-lane);
-  color: var(--r-muted);
-  opacity: 1;
 }
 
 /* Discard question. */

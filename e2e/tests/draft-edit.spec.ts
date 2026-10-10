@@ -165,8 +165,8 @@ test('a failed save keeps the dialog and the text, and can be retried', async ({
   await expect(dialog.getByText('You have unsaved changes.')).toBeVisible();
   expect(show(id)).toMatchObject({ description: SEED, isDraft: true });
 
-  // After a failure Save reads "Retry and save"; the alert's own Retry repeats the save.
-  await expect(dialog.getByRole('button', { name: 'Retry and save' })).toBeEnabled();
+  // After a failure the primary button still reads "Save"; the alert's own Retry repeats the save.
+  await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
   fail = false;
   await dialog.getByRole('alert').getByRole('button', { name: 'Retry' }).click();
   await expect(dialog).toHaveCount(0);
@@ -252,12 +252,12 @@ test('a body of exactly 50,000 characters saves, and one more cannot be saved', 
   await expect.poll(shown).toBeGreaterThan(40_000);
   await page.waitForTimeout(300);
   await page.keyboard.insertText('あ'.repeat(50_000 - (await shown())));
-  await expect(dialog.getByText('50,000 / 50,000')).toBeVisible();
+  await expect(dialog.locator('.editor__counter', { hasText: '50,000 / 50,000' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
 
   // One character over: the count turns to the danger color, the limit is explained, and nothing can be saved.
   await page.keyboard.insertText('い');
-  const over = dialog.getByText('50,001 / 50,000');
+  const over = dialog.locator('.editor__counter', { hasText: '50,001 / 50,000' });
   await expect(over).toBeVisible();
   const color = await over.evaluate((element) => getComputedStyle(element).color);
   const normal = await dialog.getByText('Description (Markdown)').first().evaluate((element) => getComputedStyle(element).color);
@@ -267,7 +267,7 @@ test('a body of exactly 50,000 characters saves, and one more cannot be saved', 
   expect(show(id).description).toBe(SEED);
 
   await page.keyboard.press('Backspace');
-  await expect(dialog.getByText('50,000 / 50,000')).toBeVisible();
+  await expect(dialog.locator('.editor__counter', { hasText: '50,000 / 50,000' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   const stored = show(id);

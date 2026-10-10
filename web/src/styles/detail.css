@@ -477,8 +477,8 @@
   background: transparent;
 }
 
-/* Preserve room for the tabs in every language when the detail column is narrow. */
-@container (max-width: 360px) {
+/* Preserve room for the tabs in every language when the detail column is very narrow. */
+@container (max-width: 300px) {
   .detail__tool--text {
     width: 31px;
     flex: none;

@@ -153,10 +153,12 @@ describe('create dialog', () => {
     setDescription('a'.repeat(50_000));
     const add = within(dialog).getByRole('button', { name: 'Add' }) as HTMLButtonElement;
     expect(add.disabled).toBe(false);
-    expect(within(dialog).getByText('50,000 / 50,000').getAttribute('data-over')).toBeNull();
+    expect(dialog.querySelector('.editor__counter')?.textContent).toBe('50,000 / 50,000');
+    expect(dialog.querySelector('.editor__counter')?.getAttribute('data-over')).toBeNull();
     setDescription('a'.repeat(50_001));
     expect(add.disabled).toBe(true);
-    expect(within(dialog).getByText('50,001 / 50,000').getAttribute('data-over')).toBe('true');
+    expect(dialog.querySelector('.editor__counter')?.textContent).toBe('50,001 / 50,000');
+    expect(dialog.querySelector('.editor__counter')?.getAttribute('data-over')).toBe('true');
     expect(
       within(dialog).getByText('Over the 50,000-character limit. Remove 1 character.'),
     ).toBeTruthy();

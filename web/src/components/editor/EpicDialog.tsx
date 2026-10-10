@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { epicInk } from '../../lib/epic';
@@ -6,7 +7,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { DiscardConfirm } from './DiscardConfirm';
-import { EditorBody } from './EditorBody';
+import { EditorBody, useOverLimit } from './EditorBody';
 import { EditorShell } from './EditorShell';
 import type { EditorAttachment, StoredAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines } from './limits';
@@ -110,6 +111,7 @@ export function EpicDialog({
     .filter((id) => savedMembers.has(id) !== members.has(id))
     .sort((a, b) => a - b);
   const dirty = imagesChanged || planChanged || detailsChanged || changedTasks.length > 0;
+  const overLimit = useOverLimit(plan);
   const valid = nameIsValid(name) && colorValid && countChars(plan) <= DESCRIPTION_LIMIT;
 
   const currentPlan = () => normalizeNewlines(editor.current?.markdown() ?? plan);
@@ -201,7 +203,6 @@ export function EpicDialog({
     else onOpenTask(cardId);
   };
 
-  const failed = error !== null;
   return (
     <EditorShell
       idLabel={epic.id}
@@ -213,6 +214,7 @@ export function EpicDialog({
       saving={saving}
       error={error}
       onRetry={run}
+      overLimit={overLimit}
       onClose={onClose}
       status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
       footerStart={
@@ -220,6 +222,7 @@ export function EpicDialog({
           <Checkbox
             id={`${idPrefix}-draft`}
             checked={isDraft}
+            aria-label={t('editor.draft')}
             disabled={saving}
             onCheckedChange={(checked) => setIsDraft(checked === true)}
           />
@@ -227,14 +230,9 @@ export function EpicDialog({
         </div>
       }
       actions={
-        <button
-          type="button"
-          className="editor__btn editor__btn--primary"
-          disabled={saving || !valid || !dirty}
-          onClick={() => void run()}
-        >
-          {saving ? t('dialog.saving') : failed ? t('editor.retrySave') : t('editor.save')}
-        </button>
+        <Button type="button" disabled={saving || !valid || !dirty} onClick={() => void run()}>
+          {saving ? t('dialog.saving') : t('editor.save')}
+        </Button>
       }
     >
       <EditorBody
