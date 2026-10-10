@@ -154,7 +154,7 @@ describe('epic dialog layout', () => {
     const { dialog } = await openEpic(api);
     expect(within(dialog).getAllByText('FILE-SHARE').length).toBeGreaterThan(0);
     expect(within(dialog).getByText('Edit epic')).toBeTruthy();
-    expect(within(dialog).queryByText('Draft', { selector: '.editor__badge' })).toBeNull();
+    expect(within(dialog).getByText('Draft', { selector: '.editor__badge' })).toBeTruthy();
     expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).value).toBe(
       'File share',
     );

@@ -17,7 +17,6 @@ export const editJa = {
   },
   editor: {
     editingDraft: '下書きを編集中',
-    newBadge: '新規',
     addCardTitle: 'カードを追加',
     draft: '下書き',
     epic: 'エピック',

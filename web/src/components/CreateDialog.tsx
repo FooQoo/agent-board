@@ -49,8 +49,8 @@ export function CreateDialog({
   const attachmentState = useAttachmentState({ resolveStoredUrl: () => '' });
 
   const body = () => normalizeNewlines(editor.current?.markdown() ?? description);
-  // A new card closes without a question, as before; the footer still says when something is typed.
-  const typed = title.trim() !== '' || description !== '' || attachmentState.attachments.length > 0;
+  // Typed input counts as unsaved: closing asks first, as in the edit dialog.
+  const dirty = title.trim() !== '' || description !== '' || attachmentState.attachments.length > 0;
   const valid = titleProblem(title) === null && countChars(description) <= DESCRIPTION_LIMIT;
   const add = () => {
     if (!valid || flow.busy.current) return;
@@ -79,14 +79,14 @@ export function CreateDialog({
   return (
     <EditorShell
       title={t('editor.addCardTitle')}
-      badge={t('editor.newBadge')}
+      badge={t('editor.draft')}
       variant="create"
-      dirty={false}
+      dirty={dirty}
       saving={flow.saving}
       error={flow.error}
       onRetry={add}
       onClose={onClose}
-      status={typed ? t('editor.unsaved') : t('editor.noChanges')}
+      status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
       footerStart={
         <div className="editor__draft">
           <Checkbox

@@ -17,7 +17,6 @@ export const editEn = {
   },
   editor: {
     editingDraft: 'Editing draft',
-    newBadge: 'New',
     addCardTitle: 'Add card',
     draft: 'Draft',
     epic: 'Epic',

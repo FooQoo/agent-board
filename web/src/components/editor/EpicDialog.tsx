@@ -209,7 +209,7 @@ export function EpicDialog({
       idLabel={epic.id}
       returnFocusSelector={`[data-epic-label="${epic.id}"]`}
       title={t('epic.editTitle')}
-      badge={isDraft ? t('editor.draft') : ''}
+      badge={t('editor.draft')}
       variant="edit"
       dirty={dirty}
       saving={saving}

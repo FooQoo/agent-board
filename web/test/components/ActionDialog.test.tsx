@@ -82,7 +82,7 @@ describe('create dialog', () => {
   it('shows the add form with the AI as the default assignee', async () => {
     const { dialog } = await openHost({ kind: 'create' }, async () => undefined);
     expect(dialog.textContent).toContain('Add card');
-    expect(dialog.textContent).toContain('New');
+    expect(within(dialog).getByText('Draft', { selector: '.editor__badge' })).toBeTruthy();
     expect(within(dialog).getByLabelText('Title')).toBeTruthy();
     expect(within(dialog).getByRole('textbox', { name: 'Description (Markdown)' })).toBeTruthy();
     expect(within(dialog).getByRole('radio', { name: 'AI' }).getAttribute('aria-checked')).toBe(
@@ -276,6 +276,29 @@ describe('closing and focus', () => {
     await userEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as Element);
     expect(onClosed).not.toHaveBeenCalled();
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('draft');
+  });
+
+  it('closes an empty new card without a question', async () => {
+    const { dialog, onClosed } = await openHost({ kind: 'create' }, async () => undefined);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('Discard changes?')).toBeNull();
+  });
+
+  it('asks before closing a typed new card, like the edit dialog', async () => {
+    const { dialog, onClosed } = await openHost({ kind: 'create' }, async () => undefined);
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'half written');
+    expect(within(dialog).getByText('You have unsaved changes.')).toBeTruthy();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Discard changes?' });
+    expect(onClosed).not.toHaveBeenCalled();
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() => expect(screen.queryByText('Discard changes?')).toBeNull());
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('half written');
+    await userEvent.keyboard('{Escape}');
+    const again = await screen.findByRole('dialog', { name: 'Discard changes?' });
+    await userEvent.click(within(again).getByRole('button', { name: 'Discard and close' }));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
   });
 
   it('returns focus to the source card when there is no opener (drag move)', async () => {
