@@ -19,6 +19,7 @@ use std::path::{Path, PathBuf};
 use crate::domain::{ProjectId, ProjectMeta};
 use crate::error::SkanError;
 use model::CardView;
+pub use ops::Answer;
 use reader::ProjectSnapshot;
 
 /// The file-based store of one shared directory. Opening it reads nothing and

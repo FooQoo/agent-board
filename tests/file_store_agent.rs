@@ -1,0 +1,504 @@
+//! Lane moves and agent run states on the shared files: the rules of the
+//! state table (MODEL.md), reasons, request release on a move, and AC-6
+//! (a completion report stays in Doing; a Done card's text stays editable).
+
+use std::fs;
+use std::path::PathBuf;
+
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+use agent_board::error::SkanError;
+use agent_board::file_store::FileStore;
+use chrono::{TimeZone, Utc};
+
+fn now() -> chrono::DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 10, 4, 0, 0, 0).unwrap()
+}
+
+fn later() -> chrono::DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 10, 5, 0, 0, 0).unwrap()
+}
+
+fn ctx(actor: Actor, reason: &str) -> ChangeContext {
+    ChangeContext {
+        actor,
+        reason: reason.into(),
+    }
+}
+
+const VALID_BODY: &str = "## 作業内容\n\nDo the work.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. The thing works.\n  - 確認結果: 未確認\n  - 根拠: 手順\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
+
+struct Fixture {
+    _root: tempfile::TempDir,
+    shared: PathBuf,
+    store: FileStore,
+    project: ProjectId,
+}
+
+fn fixture() -> Fixture {
+    let root = tempfile::tempdir().unwrap();
+    let shared = root.path().join("shared");
+    let store = FileStore::open(&shared);
+    let project = store.create_project("Alpha", now()).unwrap().id;
+    Fixture {
+        _root: root,
+        shared,
+        store,
+        project,
+    }
+}
+
+impl Fixture {
+    fn task_path(&self, id: i64) -> PathBuf {
+        self.shared
+            .join("projects")
+            .join(self.project.as_str())
+            .join("tasks")
+            .join(id.to_string())
+            .join("task.json")
+    }
+
+    fn raw(&self, id: i64) -> serde_json::Value {
+        serde_json::from_str(&fs::read_to_string(self.task_path(id)).unwrap()).unwrap()
+    }
+
+    fn bytes(&self, id: i64) -> Vec<u8> {
+        fs::read(self.task_path(id)).unwrap()
+    }
+
+    fn ai_card(&self, title: &str) -> i64 {
+        self.store
+            .create_card(
+                &self.project,
+                NewCard {
+                    title: title.into(),
+                    description: String::new(),
+                    assignee: Assignee::Ai,
+                    actor: Actor::Ai,
+                },
+                now(),
+            )
+            .unwrap()
+            .id
+    }
+}
+
+#[test]
+fn reporting_running_on_a_todo_card_is_refused_and_changes_nothing() {
+    let fx = fixture();
+    let id = fx.ai_card("todo");
+    let before = fx.bytes(id);
+    let err = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Running,
+            ctx(Actor::Ai, "Start"),
+            None,
+            later(),
+        )
+        .unwrap_err();
+    assert!(matches!(err, SkanError::InvalidStateForAssignee), "{err:?}");
+    assert_eq!(fx.bytes(id), before);
+}
+
+#[test]
+fn running_on_a_human_card_in_doing_is_refused() {
+    let fx = fixture();
+    let id = fx
+        .store
+        .create_card(
+            &fx.project,
+            NewCard {
+                title: "human".into(),
+                description: String::new(),
+                assignee: Assignee::Human,
+                actor: Actor::Human,
+            },
+            now(),
+        )
+        .unwrap()
+        .id;
+    fx.store
+        .move_work_card_for_user(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Human, "Start"),
+            later(),
+        )
+        .unwrap();
+    let err = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Running,
+            ctx(Actor::Human, "x"),
+            None,
+            later(),
+        )
+        .unwrap_err();
+    assert!(matches!(err, SkanError::InvalidStateForAssignee), "{err:?}");
+}
+
+#[test]
+fn a_running_and_idle_card_in_doing_keeps_its_lane_and_records_each_reason() {
+    let fx = fixture();
+    let id = fx.ai_card("work");
+    let moved = fx
+        .store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Start work"),
+            later(),
+        )
+        .unwrap();
+    assert!(moved.changed);
+    assert_eq!(moved.value.card_status, Column::Doing);
+
+    fx.store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Running,
+            ctx(Actor::Ai, "Inspecting"),
+            None,
+            later(),
+        )
+        .unwrap();
+    let reported = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Idle,
+            ctx(Actor::Ai, "Report done"),
+            None,
+            later(),
+        )
+        .unwrap();
+    // AC-6: a completion report stays in Doing until the coordinator moves it.
+    assert_eq!(reported.value.card_status, Column::Doing);
+    assert_eq!(reported.value.agent_status, RunState::Idle);
+
+    let kinds: Vec<String> = fx.raw(id)["history"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["kind"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(kinds, vec!["created", "lane", "agent", "agent"]);
+    let reasons: Vec<String> = fx.raw(id)["history"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .skip(1)
+        .map(|e| e["reason"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(reasons, vec!["Start work", "Inspecting", "Report done"]);
+}
+
+#[test]
+fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
+    let fx = fixture();
+    let id = fx.ai_card("work");
+    fx.store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Start"),
+            later(),
+        )
+        .unwrap();
+    let pending = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Pending,
+            ctx(Actor::Ai, "Which way?"),
+            None,
+            later(),
+        )
+        .unwrap();
+    let request = pending.value.pending_request_id.clone().unwrap();
+    assert_eq!(pending.value.pending_reason.as_deref(), Some("Which way?"));
+
+    let done = fx
+        .store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Done,
+            ctx(Actor::Human, "Verified"),
+            later(),
+        )
+        .unwrap();
+    assert_eq!(done.value.card_status, Column::Done);
+    assert_eq!(done.value.agent_status, RunState::Idle);
+    assert!(done.value.pending_request_id.is_none());
+    let last = fx.raw(id)["history"]
+        .as_array()
+        .unwrap()
+        .last()
+        .unwrap()
+        .clone();
+    assert_eq!(last["kind"], "lane");
+    assert_eq!(last["requestId"], request);
+    assert_eq!(last["fromAgentStatus"], "pending");
+    assert_eq!(last["toAgentStatus"], "idle");
+}
+
+#[test]
+fn a_move_to_the_same_lane_changes_nothing() {
+    let fx = fixture();
+    let id = fx.ai_card("work");
+    fx.store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Start"),
+            later(),
+        )
+        .unwrap();
+    let before = fx.bytes(id);
+    let same = fx
+        .store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Again"),
+            later(),
+        )
+        .unwrap();
+    assert!(!same.changed);
+    assert_eq!(fx.bytes(id), before);
+}
+
+#[test]
+fn a_draft_card_refuses_agent_moves_and_accepts_user_moves() {
+    let fx = fixture();
+    let id = fx.ai_card("draft");
+    fx.store.set_draft(&fx.project, id, true, now()).unwrap();
+
+    let err = fx
+        .store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Start"),
+            later(),
+        )
+        .unwrap_err();
+    assert!(matches!(err, SkanError::CardIsDraft { id: 1 }), "{err:?}");
+
+    let moved = fx
+        .store
+        .move_work_card_for_user(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Human, "Start"),
+            later(),
+        )
+        .unwrap();
+    assert_eq!(moved.value.card_status, Column::Doing);
+}
+
+#[test]
+fn a_stale_or_missing_request_id_is_refused_when_leaving_pending() {
+    let fx = fixture();
+    let id = fx.ai_card("work");
+    fx.store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Start"),
+            later(),
+        )
+        .unwrap();
+    let pending = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Pending,
+            ctx(Actor::Ai, "Question"),
+            None,
+            later(),
+        )
+        .unwrap();
+    let request = pending.value.pending_request_id.unwrap();
+
+    for expected in [None, Some("ffffffffffffffffffffffffffffffff")] {
+        let err = fx
+            .store
+            .set_agent_status(
+                &fx.project,
+                id,
+                RunState::Running,
+                ctx(Actor::Ai, "Resume"),
+                expected,
+                later(),
+            )
+            .unwrap_err();
+        assert!(
+            matches!(err, SkanError::RequestChanged),
+            "{expected:?}: {err:?}"
+        );
+    }
+
+    let resumed = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Running,
+            ctx(Actor::Ai, "Resume"),
+            Some(&request),
+            later(),
+        )
+        .unwrap();
+    assert_eq!(resumed.value.agent_status, RunState::Running);
+    assert!(resumed.value.pending_request_id.is_none());
+}
+
+#[test]
+fn a_repeated_state_is_not_a_change_even_with_another_reason() {
+    let fx = fixture();
+    let id = fx.ai_card("work");
+    fx.store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Start"),
+            later(),
+        )
+        .unwrap();
+    fx.store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Running,
+            ctx(Actor::Ai, "first"),
+            None,
+            later(),
+        )
+        .unwrap();
+    let before = fx.bytes(id);
+    let again = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Running,
+            ctx(Actor::Ai, "second"),
+            None,
+            later(),
+        )
+        .unwrap();
+    assert!(!again.changed);
+    assert_eq!(fx.bytes(id), before);
+}
+
+#[test]
+fn a_blank_reason_is_refused_and_changes_nothing() {
+    let fx = fixture();
+    let id = fx.ai_card("work");
+    fx.store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Start"),
+            later(),
+        )
+        .unwrap();
+    let before = fx.bytes(id);
+    let err = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Running,
+            ctx(Actor::Ai, "   "),
+            None,
+            later(),
+        )
+        .unwrap_err();
+    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert_eq!(fx.bytes(id), before);
+}
+
+#[test]
+fn a_done_card_text_stays_editable_and_its_state_does_not_change() {
+    let fx = fixture();
+    let id = fx.ai_card("work");
+    fx.store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Doing,
+            ctx(Actor::Ai, "Start"),
+            later(),
+        )
+        .unwrap();
+    fx.store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Done,
+            ctx(Actor::Human, "Verified"),
+            later(),
+        )
+        .unwrap();
+
+    let edited = fx
+        .store
+        .edit_card(&fx.project, id, Some("Renamed"), Some(VALID_BODY), later())
+        .unwrap();
+    assert!(edited.changed);
+    assert_eq!(edited.value.card_status, Column::Done);
+    assert_eq!(edited.value.agent_status, RunState::Idle);
+    assert_eq!(edited.value.title, "Renamed");
+    assert_eq!(edited.value.description, VALID_BODY);
+    let snapshot = fx.store.snapshot(&fx.project).unwrap();
+    assert_eq!(snapshot.cards[0].card_status, Column::Done);
+    assert!(snapshot.problems.is_empty(), "{:?}", snapshot.problems);
+}
+
+#[test]
+fn running_on_a_done_card_is_refused_by_the_state_table() {
+    let fx = fixture();
+    let id = fx.ai_card("work");
+    fx.store
+        .move_work_card(
+            &fx.project,
+            id,
+            Column::Done,
+            ctx(Actor::Human, "Verified"),
+            later(),
+        )
+        .unwrap();
+    let err = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Running,
+            ctx(Actor::Ai, "x"),
+            None,
+            later(),
+        )
+        .unwrap_err();
+    assert!(matches!(err, SkanError::InvalidStateForAssignee), "{err:?}");
+}
