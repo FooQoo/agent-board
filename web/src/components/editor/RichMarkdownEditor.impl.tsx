@@ -1,5 +1,6 @@
 import { markdown } from '@codemirror/lang-markdown';
 import { LanguageDescription } from '@codemirror/language';
+import { languages } from '@codemirror/language-data';
 import { CrepeBuilder } from '@milkdown/crepe/builder';
 import { codeMirror } from '@milkdown/crepe/feature/code-mirror';
 import { cursor } from '@milkdown/crepe/feature/cursor';
@@ -25,18 +26,19 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import { useTranslation } from 'react-i18next';
 import '../../i18n';
 import type { AttachmentResolver } from '../../lib/markdown';
-import { mermaidThemeFromCss, renderMermaid, svgElementOf } from '../../lib/mermaid';
+import {
+  mermaidThemeFromCss,
+  renderMermaid,
+  svgElementOf,
+  watchPageTheme,
+  type MermaidTheme,
+  type RenderResult,
+} from '../../lib/mermaid';
 import { outlineOf } from './outline';
 import { richImageFeature, richLinkGuard, secondLevelHeadings } from './richMarkdownNodes';
 import type { RichMarkdownEditorHandle, RichMarkdownEditorProps } from './RichMarkdownEditor';
 import '../../styles/markdown.css';
 import './richMarkdown.css';
-
-const MARKDOWN_LANGUAGE = LanguageDescription.of({
-  name: 'Markdown',
-  alias: ['md', 'markdown'],
-  support: markdown(),
-});
 
 function errorBlock(message: string): HTMLElement {
   const box = document.createElement('div');
@@ -46,33 +48,86 @@ function errorBlock(message: string): HTMLElement {
   return box;
 }
 
-/**
- * The code-block preview for a Mermaid block: the same drawing as the viewer, or one line of the
- * error. The result is handed over later through `apply`; a wrong notation never blocks saving.
- */
-export function previewFor(
-  language: string,
-  content: string,
-  apply: (value: HTMLElement) => void,
-): null {
-  if (language !== 'mermaid') return null;
-  void renderMermaid(content, mermaidThemeFromCss()).then((result) => {
-    if (!result.ok) {
-      apply(errorBlock(result.message));
-      return;
-    }
-    const svg = svgElementOf(result.svg);
-    if (svg === null) {
-      apply(errorBlock(''));
-      return;
-    }
-    const box = document.createElement('div');
-    box.className = 'rich-mermaid';
-    box.append(svg);
-    apply(box);
-  });
-  return null;
+/** The drawing of a Mermaid block as an element: the diagram, or one line of the error. */
+function previewElement(result: RenderResult): HTMLElement {
+  if (!result.ok) return errorBlock(result.message);
+  const svg = svgElementOf(result.svg);
+  if (svg === null) return errorBlock('');
+  const box = document.createElement('div');
+  box.className = 'rich-mermaid';
+  box.append(svg);
+  return box;
 }
+
+interface PreviewEntry {
+  content: string;
+  apply: (value: HTMLElement) => void;
+  element: HTMLElement | null;
+  /** The element has been in the page; one that was and is gone belongs to a block that is gone. */
+  attached: boolean;
+}
+
+/**
+ * The Mermaid previews of one editor. A preview is drawn when its block is shown or changed, and
+ * drawn again when the page theme changes. The draw is cached per source and theme, so only a
+ * real change of colors draws again. A preview whose element left the page is no longer kept.
+ */
+export class MermaidPreviews {
+  private readonly entries = new Set<PreviewEntry>();
+  private theme: MermaidTheme = mermaidThemeFromCss();
+  private readonly stopWatching: () => void;
+
+  constructor() {
+    this.stopWatching = watchPageTheme(() => this.redrawIfThemeChanged());
+  }
+
+  /** The `renderPreview` of the code block; the element arrives through `apply`, so this returns null. */
+  render(language: string, content: string, apply: (value: HTMLElement) => void): null {
+    if (language !== 'mermaid') return null;
+    const entry: PreviewEntry = { content, apply, element: null, attached: false };
+    this.entries.add(entry);
+    this.draw(entry);
+    return null;
+  }
+
+  dispose(): void {
+    this.stopWatching();
+    this.entries.clear();
+  }
+
+  private draw(entry: PreviewEntry): void {
+    const theme = this.theme;
+    void renderMermaid(entry.content, theme).then((result) => {
+      // A drawing in older colors, or for a block that is gone, is not shown.
+      if (!this.entries.has(entry) || theme !== this.theme) return;
+      const element = previewElement(result);
+      entry.element = element;
+      entry.apply(element);
+    });
+  }
+
+  private redrawIfThemeChanged(): void {
+    const next = mermaidThemeFromCss();
+    if (next.id === this.theme.id) return;
+    this.theme = next;
+    for (const entry of this.entries) {
+      if (entry.element?.isConnected) entry.attached = true;
+      if (entry.attached && entry.element !== null && !entry.element.isConnected) {
+        this.entries.delete(entry);
+      }
+    }
+    for (const entry of this.entries) this.draw(entry);
+  }
+}
+
+const MARKDOWN_LANGUAGE = LanguageDescription.of({
+  name: 'Markdown',
+  alias: ['md', 'markdown'],
+  support: markdown(),
+});
+
+/** The languages offered for a code block, and the ones it highlights. */
+export const CODE_LANGUAGES = [MARKDOWN_LANGUAGE, ...languages];
 
 interface SessionProps {
   text: string;
@@ -96,8 +151,11 @@ function EditorSession(props: SessionProps) {
   const live = useRef(false);
   const original = useRef(props.text);
   const edited = useRef(false);
-  // The document as it was created; a document equal to it still has the original text.
-  const initialDoc = useRef<ProseNode | null>(null);
+  // The text the document is written as right after it was created. The writing of the original
+  // may differ from it (notation is normalized), but a change is only a change from this text.
+  const initialText = useRef<string | null>(null);
+  // Actions asked for before the editor was ready (a heading to go to, text to insert).
+  const pending = useRef<Array<() => void>>([]);
   const headings = useRef<{ dirty: boolean; offsets: number[] }>({ dirty: true, offsets: [] });
   const latest = useRef(props);
   latest.current = props;
@@ -107,6 +165,7 @@ function EditorSession(props: SessionProps) {
     const element = host.current;
     if (element === null) return;
     const created = new CrepeBuilder({ root: element, defaultValue: original.current });
+    const previews = new MermaidPreviews();
     // The offset of the nth second-level heading in the text this session reports.
     const currentHeadingOffsets = (index: number): number => {
       if (headings.current.dirty) {
@@ -136,8 +195,8 @@ function EditorSession(props: SessionProps) {
         });
       })
       .addFeature(codeMirror, {
-        languages: [MARKDOWN_LANGUAGE],
-        renderPreview: (language, content, apply) => previewFor(language, content, apply),
+        languages: CODE_LANGUAGES,
+        renderPreview: (language, content, apply) => previews.render(language, content, apply),
         previewOnlyByDefault: true,
       })
       .addFeature(listItem)
@@ -149,7 +208,11 @@ function EditorSession(props: SessionProps) {
       .on((api) => {
         api.markdownUpdated((_ctx, markdown) => {
           if (!live.current) return;
-          edited.current = true;
+          // Changes the editor makes by itself after it is ready (a code block taking its
+          // language, say) leave the text as it was, so they are not reported.
+          const changed = markdown !== initialText.current;
+          if (!changed && !edited.current) return;
+          edited.current = changed;
           headings.current.dirty = true;
           latest.current.onReport(markdown);
         });
@@ -172,15 +235,17 @@ function EditorSession(props: SessionProps) {
     void created.create().then(() => {
       if (disposed) return;
       created.editor.action((ctx) => {
-        initialDoc.current = ctx.get(editorViewCtx).state.doc;
+        initialText.current = ctx.get(serializerCtx)(ctx.get(editorViewCtx).state.doc);
       });
       live.current = true;
+      for (const run of pending.current.splice(0)) run();
       setReady(true);
     });
     return () => {
       disposed = true;
       live.current = false;
       builder.current = null;
+      previews.dispose();
       created.destroy().catch(() => undefined);
     };
   }, []);
@@ -193,9 +258,13 @@ function EditorSession(props: SessionProps) {
 
   useImperativeHandle(props.handle, () => {
     const withView = (run: (view: EditorView, ctx: Ctx) => void) => {
-      const current = builder.current;
-      if (current === null || !live.current) return;
-      current.editor.action((ctx) => run(ctx.get(editorViewCtx), ctx));
+      const perform = () => {
+        const current = builder.current;
+        if (current === null) return;
+        current.editor.action((ctx) => run(ctx.get(editorViewCtx), ctx));
+      };
+      if (live.current) perform();
+      else pending.current.push(perform);
     };
     return {
       goTo(index) {
@@ -225,12 +294,11 @@ function EditorSession(props: SessionProps) {
       },
       markdown() {
         const current = builder.current;
-        const start = initialDoc.current;
+        const start = initialText.current;
         if (current === null || !live.current || start === null) return original.current;
         return current.editor.action((ctx) => {
-          const doc = ctx.get(editorViewCtx).state.doc;
-          if (doc.eq(start)) return original.current;
-          return ctx.get(serializerCtx)(doc);
+          const text = ctx.get(serializerCtx)(ctx.get(editorViewCtx).state.doc);
+          return text === start ? original.current : text;
         });
       },
     };

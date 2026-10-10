@@ -4,6 +4,7 @@ import { Lightbox } from '../Lightbox';
 import {
   mermaidThemeFromCss,
   svgElementOf,
+  watchPageTheme,
   renderMermaid,
   type MermaidTheme,
   type RenderResult,
@@ -18,13 +19,9 @@ function useMermaidTheme(): MermaidTheme {
       const next = mermaidThemeFromCss();
       setTheme((current) => (current.id === next.id ? current : next));
     };
-    const observer = new MutationObserver(update);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-mode', 'data-accent', 'class', 'style'],
-    });
+    const stop = watchPageTheme(update);
     update();
-    return () => observer.disconnect();
+    return stop;
   }, []);
   return theme;
 }

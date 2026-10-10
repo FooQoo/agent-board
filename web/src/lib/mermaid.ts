@@ -146,3 +146,16 @@ export function svgElementOf(svg: string): SVGSVGElement | null {
   }
   return document.importNode(root, true) as unknown as SVGSVGElement;
 }
+
+/**
+ * Calls `onChange` when the page's theme may have changed (its mode, accent or colors). The caller
+ * compares the theme id before it redraws. Returns a function that stops watching.
+ */
+export function watchPageTheme(onChange: () => void): () => void {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-mode', 'data-accent', 'class', 'style'],
+  });
+  return () => observer.disconnect();
+}

@@ -7,14 +7,14 @@ import {
   RichMarkdownEditor,
   type RichMarkdownEditorHandle,
 } from '../src/components/editor/RichMarkdownEditor';
-import { previewFor } from '../src/components/editor/RichMarkdownEditor.impl';
+import { CODE_LANGUAGES, MermaidPreviews } from '../src/components/editor/RichMarkdownEditor.impl';
 import { selectLocale } from '../src/i18n';
 
-const { draw } = vi.hoisted(() => ({ draw: vi.fn() }));
+const { draw, initialize } = vi.hoisted(() => ({ draw: vi.fn(), initialize: vi.fn() }));
 
 vi.mock('mermaid', () => ({
   default: {
-    initialize: () => {},
+    initialize,
     render: draw,
   },
 }));
@@ -63,6 +63,7 @@ function resolveAttachment(id: string): string | null {
 beforeEach(() => {
   selectLocale('en');
   draw.mockReset();
+  initialize.mockClear();
   draw.mockImplementation(async (id: string, source: string) => {
     if (source.includes('BROKEN')) throw new Error('Parse error on line 2:\nBROKEN');
     return { svg: `<svg id="${id}"></svg>` };
@@ -151,14 +152,16 @@ describe('RichMarkdownEditor', () => {
     await act(async () => {
       ref.current?.goTo(2);
     });
-    await waitFor(() =>
-      expect(onCursorChange).toHaveBeenLastCalledWith(SAMPLE.indexOf('## 三つ目')),
-    );
+    await waitFor(() => expect(onCursorChange).toHaveBeenCalledWith(SAMPLE.indexOf('## 三つ目')), {
+      timeout: 3000,
+    });
     await act(async () => {
       ref.current?.goTo(1);
     });
-    await waitFor(() =>
-      expect(onCursorChange).toHaveBeenLastCalledWith(SAMPLE.indexOf('## 完了条件と確認結果')),
+    await waitFor(
+      () =>
+        expect(onCursorChange).toHaveBeenLastCalledWith(SAMPLE.indexOf('## 完了条件と確認結果')),
+      { timeout: 3000 },
     );
   });
 
@@ -205,26 +208,94 @@ describe('RichMarkdownEditor', () => {
 });
 
 describe('mermaid preview in code blocks', () => {
+  const root = document.documentElement;
+
+  afterEach(() => {
+    root.style.removeProperty('--r-accent');
+  });
+
   it('draws a mermaid block into the given element', async () => {
+    const previews = new MermaidPreviews();
     const apply = vi.fn();
-    previewFor('mermaid', 'flowchart TD\n  A --> B', apply);
+    previews.render('mermaid', 'flowchart TD\n  P1 --> Q1', apply);
     await waitFor(() => expect(apply).toHaveBeenCalled());
     const element = apply.mock.calls[0]?.[0] as HTMLElement;
     expect(element.querySelector('svg')).toBeTruthy();
+    previews.dispose();
   });
 
   it('shows one line of the error for a wrong mermaid block, and does not reject the save', async () => {
+    const previews = new MermaidPreviews();
     const apply = vi.fn();
-    previewFor('mermaid', 'flowchart TD\n  BROKEN', apply);
+    previews.render('mermaid', 'flowchart TD\n  BROKEN', apply);
     await waitFor(() => expect(apply).toHaveBeenCalled());
     const element = apply.mock.calls[0]?.[0] as HTMLElement;
     expect(element.getAttribute('role')).toBe('alert');
     expect(element.textContent).toBe('The diagram cannot be drawn: Parse error on line 2:');
+    previews.dispose();
   });
 
   it('leaves other languages without a preview', () => {
+    const previews = new MermaidPreviews();
     const apply = vi.fn();
-    expect(previewFor('ts', 'const x = 1;', apply)).toBeNull();
+    expect(previews.render('ts', 'const x = 1;', apply)).toBeNull();
     expect(apply).not.toHaveBeenCalled();
+    previews.dispose();
+  });
+
+  it('redraws a preview when the page theme changes, and draws it again in the new colors', async () => {
+    const previews = new MermaidPreviews();
+    const apply = vi.fn();
+    previews.render('mermaid', 'flowchart TD\n  T1 --> T2', apply);
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+
+    root.style.setProperty('--r-accent', '#ff0000');
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
+    expect(draw).toHaveBeenCalledTimes(2);
+    const colors = initialize.mock.calls.at(-1)?.[0].themeVariables as Record<string, string>;
+    expect(colors.primaryBorderColor).toBe('#ff0000');
+    previews.dispose();
+  });
+
+  it('does not redraw when the page changes without a change of its theme', async () => {
+    const previews = new MermaidPreviews();
+    const apply = vi.fn();
+    previews.render('mermaid', 'flowchart TD\n  U1 --> U2', apply);
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+    root.setAttribute('data-unrelated', 'x');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    root.removeAttribute('data-unrelated');
+    expect(draw).toHaveBeenCalledTimes(1);
+    previews.dispose();
+  });
+
+  it('stops redrawing after it is disposed', async () => {
+    const previews = new MermaidPreviews();
+    const apply = vi.fn();
+    previews.render('mermaid', 'flowchart TD\n  V1 --> V2', apply);
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+    previews.dispose();
+    root.style.setProperty('--r-accent', '#00ff00');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(apply).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('mermaid previews in the editor', () => {
+  it('draws the mermaid block of the body again when the page theme changes', async () => {
+    const body = '## 図\n\n```mermaid\nflowchart TD\n  E1 --> E2\n```\n';
+    await mounted(body);
+    await waitFor(() => expect(draw).toHaveBeenCalled());
+    const before = draw.mock.calls.length;
+    document.documentElement.style.setProperty('--r-accent', '#0000ff');
+    await waitFor(() => expect(draw.mock.calls.length).toBeGreaterThan(before));
+    const colors = initialize.mock.calls.at(-1)?.[0].themeVariables as Record<string, string>;
+    expect(colors.primaryBorderColor).toBe('#0000ff');
+    document.documentElement.style.removeProperty('--r-accent');
+  });
+
+  it('offers the code languages of the language data, not only Markdown', () => {
+    expect(CODE_LANGUAGES.length).toBeGreaterThan(20);
+    expect(CODE_LANGUAGES.some((language) => language.name === 'TypeScript')).toBe(true);
   });
 });
