@@ -1,4 +1,4 @@
-//! Exclusive lifecycle coordination for serve and explicit migrations.
+//! Exclusive lifecycle coordination for `serve`.
 //!
 //! The guard holds the data directory's `lifecycle.lock` file lock for as long
 //! as it lives. The lock file is left in place when the guard is dropped.

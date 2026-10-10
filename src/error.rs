@@ -83,10 +83,6 @@ pub enum SkanError {
     ConfirmationRequired {
         operation: String,
     },
-    ImportInvalid {
-        file: String,
-        reason: String,
-    },
     FileError {
         action: FileAction,
         file: String,
@@ -163,7 +159,6 @@ impl SkanError {
             SkanError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
             SkanError::RequestChanged => "request_changed",
             SkanError::ConfirmationRequired { .. } => "confirmation_required",
-            SkanError::ImportInvalid { .. } => "import_invalid",
             SkanError::FileError { .. } => "file_error",
             SkanError::FileInvalid { .. } => "file_invalid",
             SkanError::FileUnreadable { .. } => "file_unreadable",
@@ -228,7 +223,6 @@ impl SkanError {
             SkanError::ConfirmationRequired { operation } => {
                 format!("{operation} needs confirmation from a human.")
             }
-            SkanError::ImportInvalid { file, .. } => format!("{file} is not a valid board file."),
             SkanError::FileError { action, file, .. } => match action {
                 FileAction::Read => format!("cannot read {file}."),
                 FileAction::Write => format!("cannot write {file}."),
@@ -255,8 +249,7 @@ impl SkanError {
     pub fn reason(&self) -> String {
         match self {
             SkanError::NotInitialized => {
-                "Run \"agboard --project <name> init\" to create one, or \"agboard --project <name> import\" to restore one."
-                    .to_string()
+                "Run \"agboard --project <name> init\" to create one.".to_string()
             }
             SkanError::ProjectNotFound { project } => format!(
                 "No project matches \"{project}\". Run \"agboard project ls\" to see the projects."
@@ -305,7 +298,6 @@ impl SkanError {
                 "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board."
                     .to_string()
             }
-            SkanError::ImportInvalid { reason, .. } => reason.clone(),
             SkanError::FileError { reason, .. } => reason.clone(),
             SkanError::FileInvalid { field, reason, .. } => {
                 if field.is_empty() {
@@ -333,24 +325,6 @@ impl SkanError {
                 "Nothing changed in the project. This is not an answer; read the snapshot before acting."
                     .to_string()
             }
-        }
-    }
-}
-
-impl From<rusqlite::Error> for SkanError {
-    /// `SQLITE_BUSY` and `SQLITE_LOCKED` become `DatabaseBusy`; anything else
-    /// is a `DatabaseError` carrying the SQLite message.
-    fn from(error: rusqlite::Error) -> Self {
-        if let rusqlite::Error::SqliteFailure(failure, _) = &error
-            && matches!(
-                failure.code,
-                rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked
-            )
-        {
-            return SkanError::DatabaseBusy;
-        }
-        SkanError::DatabaseError {
-            reason: error.to_string(),
         }
     }
 }
@@ -392,10 +366,6 @@ mod tests {
             SkanError::RequestChanged,
             SkanError::ConfirmationRequired {
                 operation: "deleting a card".into(),
-            },
-            SkanError::ImportInvalid {
-                file: "agboard.json".into(),
-                reason: "Card #12 is pending but is in Todo.".into(),
             },
             SkanError::FileError {
                 action: FileAction::Read,
@@ -457,7 +427,6 @@ mod tests {
                 ("invalid_state_for_draft", 1),
                 ("request_changed", 1),
                 ("confirmation_required", 1),
-                ("import_invalid", 1),
                 ("file_error", 1),
                 ("file_invalid", 1),
                 ("file_unreadable", 1),
@@ -483,7 +452,7 @@ mod tests {
         let expected: Vec<(&str, &str)> = vec![
             (
                 "no board found.",
-                "Run \"agboard --project <name> init\" to create one, or \"agboard --project <name> import\" to restore one.",
+                "Run \"agboard --project <name> init\" to create one.",
             ),
             (
                 "project not found.",
@@ -529,10 +498,6 @@ mod tests {
             (
                 "deleting a card needs confirmation from a human.",
                 "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board.",
-            ),
-            (
-                "agboard.json is not a valid board file.",
-                "Card #12 is pending but is in Todo.",
             ),
             (
                 "cannot read a.json.",
@@ -603,21 +568,5 @@ mod tests {
     #[test]
     fn display_is_the_message() {
         assert_eq!(SkanError::DatabaseBusy.to_string(), "the board is busy.");
-    }
-
-    #[test]
-    fn sqlite_busy_maps_to_database_busy_and_others_to_database_error() {
-        let busy = rusqlite::Error::SqliteFailure(
-            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
-            None,
-        );
-        assert_eq!(SkanError::from(busy), SkanError::DatabaseBusy);
-        let locked = rusqlite::Error::SqliteFailure(
-            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_LOCKED),
-            None,
-        );
-        assert_eq!(SkanError::from(locked), SkanError::DatabaseBusy);
-        let other = SkanError::from(rusqlite::Error::QueryReturnedNoRows);
-        assert!(matches!(other, SkanError::DatabaseError { .. }));
     }
 }

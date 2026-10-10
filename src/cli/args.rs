@@ -16,7 +16,7 @@ agboard - a shared local work board for users and agents
 Usage: agboard --project NAME [--json] <COMMAND>
 
 Every board command names one project with --project NAME. The read-only
-`migrate` and `serve` commands operate on the whole data area.
+`serve` command operates on the whole data area.
 Nothing is chosen for you: leave it out and the command fails. The one
 exception is the read-only `ls --all-projects`, which lists every project.
 
@@ -36,13 +36,12 @@ Commands:
   snapshot Fetch the complete board and history
   hook    Add the latest board snapshot to an agent hook
   wait    Wait for a board change and fetch its history
-  export  Write the board to a JSON file
-  import  Restore the board from a JSON file
+  workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser
-  migrate Migrate the data area explicitly
 
 Workflow for agents:
   agboard project ls --json
+  agboard --project NAME workspace --json
   agboard --project NAME snapshot --json
   agboard --project NAME ls --json
   agboard ls --all-projects --json
@@ -55,6 +54,10 @@ Rules for agents:
   - Report pending with --reason when you are waiting for something.
   - Moving a card to todo or done resets it to idle.
   - You cannot delete cards or projects, or replace a board. Ask a human to do it.
+  - Get the shared folder from workspace --json; do not assume its location.
+  - Do not edit TASK.md of a draft card, and do not edit task.json, epic.json,
+    or project.json directly.
+  - Do not delete card or epic folders; ask a human to do it.
   - After renaming a project, update the project name in your hook commands.
   - Add --json to any command for machine-readable output.
 
@@ -121,16 +124,10 @@ pub enum Command {
     Hook(HookArgs),
     /// Wait for a board change and fetch its history
     Wait(WaitArgs),
-    /// Write the board to a JSON file
-    Export(ExportArgs),
-    /// Restore the board from a JSON file
-    Import(ImportArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
     /// Show the project's shared folder and where its files are
     Workspace(WorkspaceArgs),
-    /// Migrate a legacy board explicitly
-    Migrate(MigrateArgs),
 }
 
 impl Command {
@@ -152,16 +149,13 @@ impl Command {
             Command::Snapshot(_) => "snapshot",
             Command::Hook(_) => "hook",
             Command::Wait(_) => "wait",
-            Command::Export(_) => "export",
-            Command::Import(_) => "import",
             Command::Serve(_) => "serve",
-            Command::Migrate(_) => "migrate",
             Command::Workspace(_) => "workspace",
         }
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 19] = [
+pub const SUBCOMMAND_NAMES: [&str; 17] = [
     "project",
     "init",
     "add",
@@ -175,12 +169,10 @@ pub const SUBCOMMAND_NAMES: [&str; 19] = [
     "epic",
     "evidence",
     "snapshot",
-    "export",
-    "import",
     "serve",
     "hook",
     "wait",
-    "migrate",
+    "workspace",
 ];
 
 #[derive(Args, Debug)]
@@ -710,34 +702,12 @@ pub struct SnapshotArgs {}
 pub struct WorkspaceArgs {}
 
 #[derive(Args, Debug)]
-#[command(
-    after_help = "Examples:\n  agboard --project demo export\n  agboard --project demo export -o backup/board.json"
-)]
-pub struct ExportArgs {
-    /// Output file, or a directory to write skan.json into
-    #[arg(short, long, value_name = "PATH")]
-    pub output: Option<PathBuf>,
-}
-
-#[derive(Args, Debug)]
-#[command(
-    after_help = "Examples:\n  agboard --project demo import\n  agboard --project demo import backup/board.json"
-)]
-pub struct ImportArgs {
-    /// Board file to read (default: skan.json in the current directory)
-    pub file: Option<PathBuf>,
-}
-
-#[derive(Args, Debug)]
 #[command(after_help = "Examples:\n  agboard serve\n  agboard serve --port 7500")]
 pub struct ServeArgs {
     /// Port to listen on (127.0.0.1 only)
     #[arg(long, value_name = "PORT", default_value_t = 7420)]
     pub port: u16,
 }
-
-#[derive(Args, Debug)]
-pub struct MigrateArgs {}
 
 /// What parsing the command line produced.
 #[derive(Debug)]
@@ -854,12 +824,6 @@ impl Cli {
                     command: Some(command.to_string()),
                 });
             }
-            (Command::Migrate(_), Some(_)) => {
-                return Err(SkanError::InvalidArgument {
-                    message: "migrate does not take --project.".to_string(),
-                    command: Some(command.to_string()),
-                });
-            }
             // The hook reports a missing project itself, as a hook error that
             // does not block the agent's tool result.
             // Creating and listing projects name no project either.
@@ -883,7 +847,7 @@ impl Cli {
                 }),
                 None,
             ) => {}
-            (Command::Serve(_) | Command::Hook(_) | Command::Migrate(_), None) => {}
+            (Command::Serve(_) | Command::Hook(_), None) => {}
             (_, None) => {
                 return Err(SkanError::InvalidArgument {
                     message: "--project NAME is required.".to_string(),

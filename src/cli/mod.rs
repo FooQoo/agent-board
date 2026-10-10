@@ -14,7 +14,6 @@ use crate::clock::{Clock, SystemClock};
 use crate::domain::{ProjectId, ProjectMeta};
 use crate::error::SkanError;
 use crate::file_store::FileStore;
-use crate::store::ProjectStore;
 
 /// The project a command was told to work on, resolved once from `--project`
 /// before the command runs. The ID, not the name, is used from then on, so a
@@ -24,7 +23,7 @@ use crate::store::ProjectStore;
 pub enum Target {
     /// The project exists; its ID is fixed for this run.
     Existing(ProjectMeta),
-    /// No project has this name. Only `init` and `import` may create it.
+    /// No project has this name. Only `init` may create it.
     Missing { name: String },
     /// The command works on the catalog of projects and names none
     /// (`project create`, `project ls`, `serve`).
@@ -35,10 +34,6 @@ pub enum Target {
 pub struct Context {
     /// The shared files: the canonical store of every project.
     pub files: FileStore,
-    /// The SQLite store, opened only by the commands that still use it
-    /// (attachments, export, import). Those commands are moved to the shared
-    /// files in a later step; until then they keep to the SQLite board.
-    pub legacy: Option<ProjectStore>,
     pub target: Target,
     pub clock: Box<dyn Clock>,
     pub json: bool,
@@ -67,21 +62,6 @@ impl Context {
     pub fn project_id(&self) -> Result<&ProjectId, SkanError> {
         self.project().map(|meta| &meta.id)
     }
-
-    /// The SQLite store, when this command was given one.
-    pub fn legacy(&self) -> Result<&ProjectStore, SkanError> {
-        self.legacy
-            .as_ref()
-            .ok_or_else(|| SkanError::DatabaseError {
-                reason: "The SQLite board is not open for this command.".into(),
-            })
-    }
-
-    /// The resolved project's ID in the SQLite store, found by name.
-    pub fn legacy_project_id(&self) -> Result<ProjectId, SkanError> {
-        let name = self.project()?.name.clone();
-        Ok(self.legacy()?.project_by_name(&name)?.id)
-    }
 }
 
 /// What a command did.
@@ -96,15 +76,13 @@ pub struct Outcome {
 /// output goes. Tests supply their own.
 pub struct Env<'a> {
     pub clock: Box<dyn Clock>,
-    /// The SQLite database of the data area (used only by the legacy commands).
-    pub db_path: PathBuf,
     /// The shared folder: the canonical files of every project.
     pub shared_dir: PathBuf,
     pub stdout: &'a mut dyn Write,
     pub stderr: &'a mut dyn Write,
     /// Called once after a command that changed the stored data, with the
-    /// directory that holds the database. A running `serve` is found through
-    /// the `serve.json` in that same directory.
+    /// data directory (the parent of the shared folder). A running `serve` is
+    /// found through the `serve.json` in that same directory.
     pub after_commit: &'a mut dyn FnMut(&Context, &Path),
 }
 
@@ -116,7 +94,6 @@ pub fn run() -> i32 {
     let mut after_commit = |ctx: &Context, dir: &Path| run::after_commit(ctx, dir);
     let mut env = Env {
         clock: Box::new(SystemClock),
-        db_path: crate::paths::db_path(),
         shared_dir: crate::paths::shared_dir(),
         stdout: &mut stdout,
         stderr: &mut stderr,

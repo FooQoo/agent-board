@@ -13,7 +13,6 @@ use std::time::Duration;
 
 use agent_board::cli::{Context, Env, Target};
 use agent_board::clock::SystemClock;
-use agent_board::store::ProjectStore;
 use assert_cmd::Command;
 use serde_json::{Value, json};
 use tempfile::tempdir;
@@ -211,44 +210,6 @@ fn creating_or_renaming_to_an_existing_name_is_refused_and_changes_nothing() {
 }
 
 #[test]
-#[ignore = "the test builds the board in SQLite; rename on the shared files is covered by tests/multi_project_e2e.rs"]
-fn rename_keeps_the_id_and_cards_and_the_old_name_stops_resolving() {
-    let home = tempdir().unwrap();
-    two_projects(home.path());
-    add_card(home.path(), "A", "card of A");
-    let before = stdout_json(agboard(home.path(), &["project", "ls", "--json"]));
-    let id_of_a = before["projects"][0]["id"].clone();
-
-    let renamed = stdout_json(agboard(
-        home.path(),
-        &["--project", "A", "project", "rename", "Alpha", "--json"],
-    ));
-    assert_eq!(renamed["project"]["id"], id_of_a);
-    assert_eq!(renamed["project"]["name"], "Alpha");
-    assert!(renamed.get("changed").is_none());
-
-    assert_eq!(
-        error_code(agboard(home.path(), &["--project", "A", "ls", "--json"]), 4),
-        "project_not_found"
-    );
-    assert_eq!(titles(home.path(), "Alpha"), ["card of A"]);
-    let after = stdout_json(agboard(home.path(), &["project", "ls", "--json"]));
-    assert_eq!(
-        after["catalogRevision"],
-        before["catalogRevision"].as_i64().unwrap() + 1
-    );
-    let snapshot = stdout_json(agboard(
-        home.path(),
-        &["--project", "Alpha", "snapshot", "--json"],
-    ));
-    assert_eq!(snapshot["project"]["id"], id_of_a);
-    // The name can be taken again by a new, different project.
-    let reborn = stdout_json(agboard(home.path(), &["project", "create", "A", "--json"]));
-    assert_ne!(reborn["project"]["id"], id_of_a);
-    assert!(titles(home.path(), "A").is_empty());
-}
-
-#[test]
 fn renaming_to_the_same_normalized_name_succeeds_without_a_change() {
     let home = tempdir().unwrap();
     two_projects(home.path());
@@ -268,7 +229,6 @@ fn renaming_to_the_same_normalized_name_succeeds_without_a_change() {
 fn every_project_command_refuses_a_missing_project() {
     let home = tempdir().unwrap();
     two_projects(home.path());
-    std::fs::write(home.path().join("in.json"), "{}").unwrap();
     let before = world(home.path());
     let cursor = "0123456789abcdef0123456789abcdef:1";
     let commands: Vec<Vec<&str>> = vec![
@@ -281,8 +241,6 @@ fn every_project_command_refuses_a_missing_project() {
         vec!["ls"],
         vec!["show", "1"],
         vec!["snapshot", "--json"],
-        vec!["export"],
-        vec!["import", "in.json"],
         vec!["wait", "--after", cursor, "--timeout", "1", "--json"],
         vec!["project", "rename", "New"],
         vec!["project", "rm"],
@@ -317,7 +275,6 @@ fn every_project_command_refuses_a_missing_project() {
         );
     }
     assert_eq!(world(home.path()), before);
-    assert!(!home.path().join("skan.json").exists());
 }
 
 #[test]
@@ -329,7 +286,6 @@ fn an_unknown_project_is_not_found_and_never_replaced_by_another() {
         vec!["--project", "Nope", "ls", "--json"],
         vec!["--project", "Nope", "show", "1", "--json"],
         vec!["--project", "Nope", "snapshot", "--json"],
-        vec!["--project", "Nope", "export", "--json"],
         vec!["--project", "Nope", "rm", "1", "--json"],
         vec![
             "--project",
@@ -423,179 +379,6 @@ fn global_commands_reject_project_and_work_with_no_projects() {
 }
 
 // ---- read-only commands and old data --------------------------------------
-
-#[test]
-#[ignore = "the SQLite data area is no longer created or read; the shared files are covered by tests/cli_shared_files.rs"]
-fn reads_never_create_the_data_area() {
-    let home = tempdir().unwrap();
-    let area = home.path().join("fresh");
-    let run = |args: &[&str]| agboard(&area, args);
-    let empty = stdout_json(run(&["project", "ls", "--json"]));
-    assert_eq!(empty, json!({"projects": [], "catalogRevision": 0}));
-    let human = run(&["project", "ls"]).success();
-    assert!(!human.get_output().stdout.is_empty());
-    for args in [
-        vec!["--project", "P", "ls", "--json"],
-        vec!["--project", "P", "show", "1", "--json"],
-        vec!["--project", "P", "snapshot", "--json"],
-        vec!["--project", "P", "export", "--json"],
-        vec!["--project", "P", "rm", "1", "--json"],
-        vec!["--project", "P", "project", "rename", "Q", "--json"],
-        vec!["--project", "P", "project", "rm", "--json"],
-        vec!["--project", "P", "edit", "1", "--title", "t", "--json"],
-    ] {
-        assert_eq!(error_code(run(&args), 4), "project_not_found", "{args:?}");
-    }
-    assert!(!area.exists(), "nothing was created");
-}
-
-#[test]
-#[ignore = "the SQLite database is no longer read; the shared files are covered by tests/cli_shared_files.rs"]
-fn reads_do_not_modify_the_database_file() {
-    let home = tempdir().unwrap();
-    two_projects(home.path());
-    add_card(home.path(), "A", "x");
-    let db = home.path().join("board.db");
-    let modified = || std::fs::metadata(&db).unwrap().modified().unwrap();
-    let before = modified();
-    thread::sleep(Duration::from_millis(20));
-    for args in [
-        vec!["project", "ls", "--json"],
-        vec!["--project", "A", "ls", "--json"],
-        vec!["--project", "A", "show", "1", "--json"],
-        vec!["--project", "A", "snapshot", "--json"],
-    ] {
-        agboard(home.path(), &args).success();
-    }
-    assert_eq!(modified(), before);
-}
-
-#[test]
-#[ignore = "the SQLite board is no longer read (DESIGN.md); tests/cli_serve.rs and all_projects_e2e.rs cover it"]
-fn an_old_database_is_rejected_and_left_unchanged() {
-    let home = tempdir().unwrap();
-    let db = home.path().join("board.db");
-    {
-        let conn = rusqlite::Connection::open(&db).unwrap();
-        conn.execute_batch(
-            "CREATE TABLE board (id INTEGER PRIMARY KEY, name TEXT); \
-             INSERT INTO board VALUES (1, 'old'); PRAGMA user_version = 2;",
-        )
-        .unwrap();
-    }
-    let before = std::fs::read(&db).unwrap();
-    for args in [
-        vec!["project", "create", "A", "--json"],
-        vec!["project", "ls", "--json"],
-        vec!["--project", "A", "ls", "--json"],
-        vec!["--project", "A", "init", "--json"],
-        vec!["--project", "A", "project", "rm", "--json"],
-    ] {
-        assert_eq!(
-            error_code(agboard(home.path(), &args), 1),
-            "database_error",
-            "{args:?}"
-        );
-    }
-    assert_eq!(std::fs::read(&db).unwrap(), before);
-}
-
-#[test]
-#[ignore = "import stays in SQLite until it is removed with the store (removed with the SQLite store)"]
-fn create_init_and_import_build_the_new_format() {
-    let home = tempdir().unwrap();
-    agboard(home.path(), &["project", "create", "viaCreate"]).success();
-    let init = stdout_json(agboard(
-        home.path(),
-        &["--project", "viaInit", "init", "--json"],
-    ));
-    assert_eq!(init["project"]["name"], "viaInit");
-    assert_eq!(init["board"]["nextCardId"], 1);
-    add_card(home.path(), "viaInit", "exported");
-    let file = home.path().join("backup.json");
-    agboard(
-        home.path(),
-        &[
-            "--project",
-            "viaInit",
-            "export",
-            "-o",
-            file.to_str().unwrap(),
-        ],
-    )
-    .success();
-    let fresh = tempdir().unwrap();
-    let imported = stdout_json(agboard(
-        fresh.path(),
-        &[
-            "--project",
-            "viaInit",
-            "import",
-            file.to_str().unwrap(),
-            "--json",
-        ],
-    ));
-    assert_eq!(imported["project"]["name"], "viaInit");
-    assert_eq!(titles(fresh.path(), "viaInit"), ["exported"]);
-    // A new project from a backup needs a matching name; nothing is created.
-    let other = tempdir().unwrap();
-    assert_eq!(
-        error_code(
-            agboard(
-                other.path(),
-                &[
-                    "--project",
-                    "wrong",
-                    "import",
-                    file.to_str().unwrap(),
-                    "--json"
-                ]
-            ),
-            1
-        ),
-        "import_invalid"
-    );
-    let catalog = stdout_json(agboard(other.path(), &["project", "ls", "--json"]));
-    assert!(catalog["projects"].as_array().unwrap().is_empty());
-}
-
-#[test]
-#[ignore = "import stays in SQLite until it is removed with the store (removed with the SQLite store)"]
-fn init_and_import_touch_only_the_named_project() {
-    let home = tempdir().unwrap();
-    two_projects(home.path());
-    add_card(home.path(), "A", "a1");
-    add_card(home.path(), "B", "b1");
-    let file = home.path().join("b.json");
-    agboard(
-        home.path(),
-        &["--project", "B", "export", "-o", file.to_str().unwrap()],
-    )
-    .success();
-    let before = world(home.path());
-    // Without a human, replacement is refused and nothing changes.
-    for args in [
-        vec!["--project", "A", "init", "--json"],
-        vec!["--project", "A", "init"],
-        vec!["--project", "A", "import", file.to_str().unwrap(), "--json"],
-        vec!["--project", "A", "import", file.to_str().unwrap()],
-    ] {
-        let assert = agboard(home.path(), &args).failure().code(1);
-        let stderr = String::from_utf8_lossy(&assert.get_output().stderr).to_string();
-        if args.contains(&"--json") {
-            assert!(
-                stderr.contains("\"confirmation_required\""),
-                "{args:?}: {stderr}"
-            );
-        } else {
-            assert!(
-                stderr.contains("needs confirmation from a human"),
-                "{args:?}: {stderr}"
-            );
-        }
-    }
-    assert_eq!(world(home.path()), before);
-}
 
 // ---- AC-4: deletion needs a human -----------------------------------------
 
@@ -723,44 +506,6 @@ mod terminal {
     }
 
     #[test]
-    #[ignore = "import stays in SQLite until it is removed with the store (removed with the SQLite store)"]
-    fn card_rm_init_and_import_still_confirm_on_the_terminal() {
-        let home = tempdir().unwrap();
-        two_projects(home.path());
-        add_card(home.path(), "A", "a1");
-        let file = home.path().join("a.json");
-        agboard(
-            home.path(),
-            &["--project", "A", "export", "-o", file.to_str().unwrap()],
-        )
-        .success();
-        add_card(home.path(), "A", "a2");
-        let file = file.to_str().unwrap().to_string();
-
-        for args in [
-            vec!["--project", "A", "rm", "2"],
-            vec!["--project", "A", "init"],
-            vec!["--project", "A", "import", file.as_str()],
-        ] {
-            let before = world(home.path());
-            let mut term = session(home.path(), &args);
-            term.expect("[y/N] ").unwrap();
-            term.send_line("n").unwrap();
-            assert_eq!(finish(term), 0, "{args:?}");
-            assert_eq!(world(home.path()), before, "{args:?}");
-        }
-        // Yes on init empties A and leaves B alone.
-        add_card(home.path(), "B", "b1");
-        let b = world(home.path())["projects"][1].clone();
-        let mut term = session(home.path(), &["--project", "A", "init"]);
-        term.expect("[y/N] ").unwrap();
-        term.send_line("y").unwrap();
-        assert_eq!(finish(term), 0);
-        assert!(titles(home.path(), "A").is_empty());
-        assert_eq!(world(home.path())["projects"][1], b);
-    }
-
-    #[test]
     fn deleting_a_project_notifies_a_running_server_once() {
         let home = tempdir().unwrap();
         two_projects(home.path());
@@ -850,7 +595,7 @@ impl NotifySpy {
 }
 
 /// Run the CLI in this process with a spy instead of a server notification.
-fn in_process(db: &Path, args: &[&str]) -> (i32, String, String, usize, Vec<PathBuf>) {
+fn in_process(home: &Path, args: &[&str]) -> (i32, String, String, usize, Vec<PathBuf>) {
     let args: Vec<OsString> = std::iter::once("agboard")
         .chain(args.iter().copied())
         .map(OsString::from)
@@ -864,8 +609,7 @@ fn in_process(db: &Path, args: &[&str]) -> (i32, String, String, usize, Vec<Path
     };
     let mut env = Env {
         clock: Box::new(SystemClock),
-        db_path: db.to_path_buf(),
-        shared_dir: db.parent().unwrap().join("shared"),
+        shared_dir: home.join("shared"),
         stdout: &mut out,
         stderr: &mut err,
         after_commit: &mut spy,
@@ -881,16 +625,15 @@ fn in_process(db: &Path, args: &[&str]) -> (i32, String, String, usize, Vec<Path
 }
 
 #[test]
-fn only_a_confirmed_real_change_notifies_once_and_to_the_databases_own_directory() {
+fn only_a_confirmed_real_change_notifies_once_and_to_the_data_directory() {
     let home = tempdir().unwrap();
-    let db = home.path().join("board.db");
     let calls = |args: &[&str]| {
-        let (code, _, err, calls, dirs) = in_process(&db, args);
+        let (code, _, err, calls, dirs) = in_process(home.path(), args);
         for dir in &dirs {
             assert_eq!(
                 dir,
                 home.path(),
-                "the notification targets the db's own directory"
+                "the notification targets the data directory"
             );
         }
         (code, err, calls)
@@ -982,17 +725,7 @@ fn only_a_confirmed_real_change_notifies_once_and_to_the_databases_own_directory
     assert_eq!(calls(&["--project", "A2", "ls"]).2, 0);
     assert_eq!(calls(&["--project", "A2", "show", "1"]).2, 0);
     assert_eq!(calls(&["--project", "A2", "snapshot", "--json"]).2, 0);
-    assert_eq!(
-        calls(&[
-            "--project",
-            "A2",
-            "export",
-            "-o",
-            home.path().join("e.json").to_str().unwrap()
-        ])
-        .2,
-        0
-    );
+    assert_eq!(calls(&["--project", "A2", "workspace", "--json"]).2, 0);
 }
 
 #[test]
@@ -1056,37 +789,38 @@ impl<F: FnMut()> BufRead for SlowAnswer<F> {
 
 mod races {
     use super::*;
-    use agent_board::cli::args::{ImportArgs, InitArgs, ProjectRenameArgs, RmArgs};
-    use agent_board::cli::commands::{import, init, project, rm};
+    use agent_board::cli::args::ProjectRenameArgs;
+    use agent_board::cli::commands::project;
     use agent_board::domain::{Actor, Assignee, NewCard, ProjectId};
+    use agent_board::file_store::FileStore;
 
     struct World {
         _dir: tempfile::TempDir,
-        db: PathBuf,
-        /// The connection of the command under test.
-        mine: ProjectStore,
-        /// Another process's connection.
-        other: ProjectStore,
+        shared: PathBuf,
+        /// The store of the command under test.
+        mine: FileStore,
+        /// Another process's store on the same shared folder.
+        other: FileStore,
     }
 
     fn world() -> World {
         let dir = tempdir().unwrap();
-        let db = dir.path().join("board.db");
-        let mine = ProjectStore::open(&db).unwrap();
-        let other = ProjectStore::open(&db).unwrap();
+        let shared = dir.path().join("shared");
+        let mine = FileStore::open(&shared);
+        let other = FileStore::open(&shared);
         World {
             _dir: dir,
-            db,
+            shared,
             mine,
             other,
         }
     }
 
-    fn put(store: &ProjectStore, name: &str, card: &str) -> ProjectId {
+    fn put(store: &FileStore, name: &str, card: &str) -> ProjectId {
         let at = chrono::Utc::now();
         let id = store.create_project(name, at).unwrap().id;
         store
-            .add_work_card(
+            .create_card(
                 &id,
                 NewCard {
                     title: card.into(),
@@ -1103,8 +837,7 @@ mod races {
     fn context(w: &World, name: &str) -> Context {
         let meta = w.mine.project_by_name(name).unwrap();
         Context {
-            files: agent_board::file_store::FileStore::open(&w._dir.path().join("shared")),
-            legacy: Some(ProjectStore::open(&w.db).unwrap()),
+            files: FileStore::open(&w.shared),
             target: Target::Existing(meta),
             clock: Box::new(SystemClock),
             json: false,
@@ -1112,7 +845,7 @@ mod races {
         }
     }
 
-    fn snapshot_of(store: &ProjectStore, id: &ProjectId) -> Value {
+    fn snapshot_of(store: &FileStore, id: &ProjectId) -> Value {
         serde_json::to_value(store.snapshot(id).unwrap()).unwrap()
     }
 
@@ -1138,22 +871,6 @@ mod races {
         }
         assert_eq!(snapshot_of(&w.mine, &a), before.0);
         assert_eq!(snapshot_of(&w.mine, &b), before.1);
-    }
-
-    #[test]
-    #[ignore = "builds the board in SQLite in-process; the same races on the shared files are not covered yet"]
-    fn project_rm_yes_deletes_only_the_confirmed_id() {
-        let w = world();
-        let a = put(&w.mine, "A", "x");
-        let b = put(&w.mine, "B", "y");
-        let before_b = snapshot_of(&w.mine, &b);
-        let ctx = context(&w, "A");
-        let outcome =
-            project::rm_with_io(&ctx, &mut Cursor::new(b"y\n".to_vec()), &mut Vec::new()).unwrap();
-        assert!(outcome.changed);
-        assert!(outcome.human.contains("Deleted project \"A\""));
-        assert!(w.mine.project(&a).is_err());
-        assert_eq!(snapshot_of(&w.mine, &b), before_b);
     }
 
     #[test]
@@ -1196,27 +913,6 @@ mod races {
     }
 
     #[test]
-    #[ignore = "builds the board in SQLite in-process; the same races on the shared files are not covered yet"]
-    fn project_renamed_during_the_prompt_deletes_that_same_project_not_the_new_a() {
-        let w = world();
-        let a = put(&w.mine, "A", "original");
-        let ctx = context(&w, "A");
-        let mut newcomer = None;
-        let mut input = SlowAnswer::new("y\n", || {
-            w.other.rename_project(&a, "Renamed").unwrap();
-            newcomer = Some(put(&w.other, "A", "newcomer"));
-        });
-        let outcome = project::rm_with_io(&ctx, &mut input, &mut Vec::new()).unwrap();
-        assert!(outcome.changed);
-        let newcomer = newcomer.unwrap();
-        assert!(w.mine.project(&a).is_err(), "the confirmed ID is gone");
-        assert_eq!(
-            w.mine.snapshot(&newcomer).unwrap().cards[0].title,
-            "newcomer"
-        );
-    }
-
-    #[test]
     fn rename_follows_the_resolved_id_and_never_another_project() {
         let w = world();
         let a = put(&w.mine, "A", "original");
@@ -1234,79 +930,7 @@ mod races {
         .unwrap();
         assert_eq!(error.code(), "project_not_found");
         assert_eq!(snapshot_of(&w.other, &reborn), before);
-        assert_eq!(w.other.project(&reborn).unwrap().name, "A");
-    }
-
-    #[test]
-    #[ignore = "builds the board in SQLite in-process; the same races on the shared files are not covered yet"]
-    fn card_rm_confirmed_after_the_project_was_recreated_deletes_nothing() {
-        let w = world();
-        let a = put(&w.mine, "A", "original");
-        let ctx = context(&w, "A");
-        let mut reborn = None;
-        let mut input = SlowAnswer::new("y\n", || {
-            w.other.delete_project(&a).unwrap();
-            reborn = Some(put(&w.other, "A", "reborn"));
-        });
-        let error = rm::run_with_io(&ctx, &RmArgs { id: 1 }, &mut input, &mut Vec::new())
-            .err()
-            .unwrap();
-        assert_eq!(error.code(), "project_not_found");
-        let reborn = reborn.unwrap();
-        assert_eq!(w.mine.snapshot(&reborn).unwrap().cards.len(), 1);
-    }
-
-    #[test]
-    #[ignore = "builds the board in SQLite in-process; the same races on the shared files are not covered yet"]
-    fn a_new_project_import_never_overwrites_a_project_created_meanwhile() {
-        let w = world();
-        let source = put(&w.mine, "N", "from backup");
-        let backup =
-            agent_board::transfer::Backup::from_snapshot(w.mine.snapshot(&source).unwrap());
-        let file = w._dir.path().join("n.json");
-        std::fs::write(&file, serde_json::to_vec(&backup).unwrap()).unwrap();
-        w.mine.delete_project(&source).unwrap();
-
-        // Resolved as missing, then another process creates "N" before the import runs.
-        let ctx = Context {
-            files: agent_board::file_store::FileStore::open(&w._dir.path().join("shared")),
-            legacy: Some(ProjectStore::open(&w.db).unwrap()),
-            target: Target::Missing { name: "N".into() },
-            clock: Box::new(SystemClock),
-            json: false,
-            interactive: true,
-        };
-        let theirs = put(&w.other, "N", "theirs");
-        let error = import::run_with_io(
-            &ctx,
-            &ImportArgs { file: Some(file) },
-            &mut Cursor::new(b"y\n".to_vec()),
-            &mut Vec::new(),
-        )
-        .err()
-        .unwrap();
-        assert_eq!(error.code(), "project_name_exists");
-        assert_eq!(w.mine.snapshot(&theirs).unwrap().cards[0].title, "theirs");
-
-        // The same holds for init of a project that appeared meanwhile.
-        let ctx = Context {
-            files: agent_board::file_store::FileStore::open(&w._dir.path().join("shared")),
-            legacy: Some(ProjectStore::open(&w.db).unwrap()),
-            target: Target::Missing { name: "N".into() },
-            clock: Box::new(SystemClock),
-            json: false,
-            interactive: true,
-        };
-        let error = init::run_with_io(
-            &ctx,
-            &InitArgs {},
-            &mut Cursor::new(b"y\n".to_vec()),
-            &mut Vec::new(),
-        )
-        .err()
-        .unwrap();
-        assert_eq!(error.code(), "project_name_exists");
-        assert_eq!(w.mine.snapshot(&theirs).unwrap().cards[0].title, "theirs");
+        assert_eq!(w.other.snapshot(&reborn).unwrap().project.name, "A");
     }
 }
 
@@ -1317,14 +941,33 @@ fn help_lists_project_commands_and_every_example_names_its_project() {
     let home = tempdir().unwrap();
     let top = agboard(home.path(), &["--help"]).success();
     let top = String::from_utf8_lossy(&top.get_output().stdout).to_string();
+    // The SQLite-era commands are gone: none of them is listed.
+    for removed in ["export", "import", "migrate"] {
+        assert!(
+            !top.lines()
+                .any(|line| line.trim_start().starts_with(&format!("{removed} "))),
+            "{removed} is listed in --help"
+        );
+    }
     assert!(top.contains("project"));
     assert!(top.contains("agboard project ls --json"));
     assert!(top.contains("rename"));
     assert!(!top.contains("--name"));
 
     let mut commands: Vec<Vec<&str>> = [
-        "init", "add", "edit", "mv", "state", "rm", "ls", "show", "snapshot", "hook", "wait",
-        "export", "import", "serve",
+        "init",
+        "add",
+        "edit",
+        "mv",
+        "state",
+        "rm",
+        "ls",
+        "show",
+        "snapshot",
+        "hook",
+        "wait",
+        "workspace",
+        "serve",
     ]
     .iter()
     .map(|c| vec![*c])
