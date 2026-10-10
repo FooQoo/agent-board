@@ -120,6 +120,9 @@ pub fn ls_text(cards: &[CardView], columns: &[Column]) -> String {
             if card.is_draft {
                 out.push_str(" [draft]");
             }
+            if let Some(epic) = &card.epic_id {
+                out.push_str(&format!(" [{epic}]"));
+            }
             if card.assignee == crate::domain::Assignee::Ai && column == &Column::Doing {
                 out.push_str(&format!(
                     " [{}]",
@@ -148,6 +151,9 @@ pub fn show_text(card: &CardView) -> String {
             "Agent status: {}\n",
             state_text(card.agent_status, card.pending_reason.as_deref())
         ));
+    }
+    if let Some(epic) = &card.epic_id {
+        out.push_str(&format!("Epic: {epic}\n"));
     }
     if card.is_draft {
         out.push_str("Draft: yes\n");

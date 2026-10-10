@@ -16,7 +16,10 @@ use super::model::{
     Choice, EpicFile, HistoryKind, HistoryRecord, ProjectFile, TaskFile, WorkspaceFile,
     current_request,
 };
-use crate::domain::{RunState, check_work_state, validate_project_name, validate_title};
+use crate::domain::{
+    MAX_ANSWER_TEXT_CHARS, MAX_CHOICE_ID_CHARS, MAX_CHOICE_LABEL_CHARS, MAX_CHOICES,
+    MAX_QUESTION_CHARS, RunState, check_work_state, validate_project_name, validate_title,
+};
 
 /// An EPIC-ID in canonical form: `[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`, 1 to 64
 /// characters. `FromStr` accepts only the canonical form; `normalize` folds
@@ -397,12 +400,12 @@ pub fn check_epic(file: &EpicFile, folder_id: &str) -> Vec<Defect> {
 /// The first defect of a decision request's choices, if any. Field names are
 /// relative: `choices`, `choices.id`, or `choices.label`.
 pub fn choice_defect(choices: &[Choice]) -> Option<Defect> {
-    if choices.len() > 10 {
+    if choices.len() > MAX_CHOICES {
         return Some(defect("choices", "A request can have at most 10 choices."));
     }
     let mut ids = HashSet::new();
     for choice in choices {
-        let id_ok = (1..=64).contains(&choice.id.len())
+        let id_ok = (1..=MAX_CHOICE_ID_CHARS).contains(&choice.id.len())
             && choice
                 .id
                 .bytes()
@@ -420,7 +423,7 @@ pub fn choice_defect(choices: &[Choice]) -> Option<Defect> {
             ));
         }
         let label_chars = choice.label.trim().chars().count();
-        if !(1..=200).contains(&label_chars) {
+        if !(1..=MAX_CHOICE_LABEL_CHARS).contains(&label_chars) {
             return Some(defect(
                 "choices.label",
                 "Choice labels must be 1 to 200 characters.",
@@ -454,7 +457,7 @@ pub fn normalize_question(text: &str) -> Result<String, SkanError> {
     let normalized = text.replace("\r\n", "\n");
     let trimmed = normalized.trim();
     let count = trimmed.chars().count();
-    if count == 0 || count > 2_000 {
+    if count == 0 || count > MAX_QUESTION_CHARS {
         return Err(SkanError::InvalidValue {
             field: "question".into(),
             reason: "Questions must be 1 to 2000 characters.".into(),
@@ -471,7 +474,7 @@ pub fn normalize_answer_text(text: &str) -> Result<Option<String>, SkanError> {
     if trimmed.is_empty() {
         return Ok(None);
     }
-    if trimmed.chars().count() > 2_000 {
+    if trimmed.chars().count() > MAX_ANSWER_TEXT_CHARS {
         return Err(SkanError::InvalidValue {
             field: "text".into(),
             reason: "Answers must be 2,000 characters or fewer.".into(),

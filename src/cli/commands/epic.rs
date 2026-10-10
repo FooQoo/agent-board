@@ -1,0 +1,191 @@
+//! `epic add|ls|show|edit|rm`: epics of the project named with `--project`.
+
+use std::io::{BufRead, Write};
+
+use serde_json::{Value, json};
+
+use crate::cli::args::{EpicAddArgs, EpicArgs, EpicCommand, EpicEditArgs, EpicIdArgs};
+use crate::cli::{Context, Outcome};
+use crate::error::SkanError;
+use crate::file_store::model::{EpicUpdate, EpicView, NewEpic};
+use crate::file_store::reader::ProjectSnapshot;
+use crate::file_store::validate::EpicId;
+use crate::interact::confirm;
+
+pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, SkanError> {
+    match &args.command {
+        EpicCommand::Add(args) => add(ctx, args),
+        EpicCommand::Ls => ls(ctx),
+        EpicCommand::Show(args) => show(ctx, args),
+        EpicCommand::Edit(args) => edit(ctx, args),
+        EpicCommand::Rm(args) => {
+            ctx.interactive |= confirm::is_interactive(ctx.json);
+            rm_with_io(
+                ctx,
+                args,
+                &mut std::io::stdin().lock(),
+                &mut std::io::stderr(),
+            )
+        }
+    }
+}
+
+fn add(ctx: &mut Context, args: &EpicAddArgs) -> Result<Outcome, SkanError> {
+    // Epics keep no history, so the actor is only checked for presence; the
+    // command line requires it.
+    let _actor = args.actor.actor();
+    let epic = ctx.files.create_epic(
+        ctx.project_id()?,
+        NewEpic {
+            id: args.id.clone(),
+            name: args.name.clone(),
+            color: args.color.clone(),
+            is_draft: false,
+            plan: None,
+        },
+        ctx.clock.now(),
+    )?;
+    Ok(Outcome {
+        changed: true,
+        human: format!("Created epic {} {}.\n", epic.id, epic.name),
+        json: json!({"epic": epic}),
+    })
+}
+
+/// The JSON of an epic in a list: its metadata and how many cards name it,
+/// archived ones included, as the delete rule counts them.
+fn summary(epic: &EpicView, card_count: usize) -> Value {
+    let mut value = serde_json::to_value(epic).expect("epics serialize");
+    if let Value::Object(map) = &mut value {
+        map.remove("plan");
+        map.insert("cardCount".into(), json!(card_count));
+    }
+    value
+}
+
+/// How many cards of the snapshot name each epic, by EPIC-ID.
+fn card_count(snapshot: &ProjectSnapshot, epic: &str) -> usize {
+    snapshot
+        .cards
+        .iter()
+        .filter(|card| card.epic_id.as_deref() == Some(epic))
+        .count()
+}
+
+fn ls(ctx: &mut Context) -> Result<Outcome, SkanError> {
+    let snapshot = ctx.files.snapshot(ctx.project_id()?)?;
+    let mut epics = snapshot.epics.clone();
+    epics.sort_by(|a, b| a.id.cmp(&b.id));
+    if epics.is_empty() {
+        return Ok(Outcome {
+            changed: false,
+            human: "No epics.\n".into(),
+            json: json!({"epics": []}),
+        });
+    }
+    let mut human = String::new();
+    let mut listed = Vec::new();
+    for epic in &epics {
+        let count = card_count(&snapshot, epic.id.as_str());
+        human.push_str(&format!(
+            "{}  {}  {}{}  cards: {}\n",
+            epic.id,
+            epic.name,
+            epic.color,
+            if epic.is_draft { " [draft]" } else { "" },
+            count
+        ));
+        listed.push(summary(epic, count));
+    }
+    Ok(Outcome {
+        changed: false,
+        human,
+        json: json!({"epics": listed}),
+    })
+}
+
+fn show(ctx: &mut Context, args: &EpicIdArgs) -> Result<Outcome, SkanError> {
+    let id = EpicId::normalize(&args.id)?;
+    let project = ctx.project_id()?;
+    let epic = ctx.files.epic(project, &id)?;
+    let cards = card_count(&ctx.files.snapshot(project)?, id.as_str());
+    let mut human = format!(
+        "{}  {}\nColor: {}\nDraft: {}\nCards: {}\n\n{}",
+        epic.id,
+        epic.name,
+        epic.color,
+        if epic.is_draft { "yes" } else { "no" },
+        cards,
+        epic.plan
+    );
+    if !human.ends_with('\n') {
+        human.push('\n');
+    }
+    Ok(Outcome {
+        changed: false,
+        human,
+        json: json!({"epic": epic}),
+    })
+}
+
+fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, SkanError> {
+    let id = EpicId::normalize(&args.id)?;
+    let mut stdin = std::io::stdin();
+    let plan = args.plan.resolve(&mut stdin)?;
+    let result = ctx.files.update_epic(
+        ctx.project_id()?,
+        &id,
+        EpicUpdate {
+            name: args.name.clone(),
+            color: args.color.clone(),
+            is_draft: None,
+            plan,
+        },
+        ctx.clock.now(),
+    )?;
+    let human = if result.changed {
+        format!("Updated epic {id}.\n")
+    } else {
+        format!("Epic {id} is unchanged.\n")
+    };
+    Ok(Outcome {
+        changed: result.changed,
+        human,
+        json: json!({"epic": result.value}),
+    })
+}
+
+/// Delete an epic after a person confirms it at a terminal. The epic must
+/// exist, and the store refuses it while a card names it (`epic_in_use`).
+pub fn rm_with_io(
+    ctx: &Context,
+    args: &EpicIdArgs,
+    input: &mut impl BufRead,
+    output: &mut impl Write,
+) -> Result<Outcome, SkanError> {
+    let id = EpicId::normalize(&args.id)?;
+    let project = ctx.project_id()?;
+    ctx.files.epic(project, &id)?;
+    if ctx.json || !ctx.interactive {
+        return Err(SkanError::ConfirmationRequired {
+            operation: "deleting an epic".into(),
+        });
+    }
+    if !confirm::confirm(
+        &format!("Delete epic {id}? This cannot be undone."),
+        input,
+        output,
+    )? {
+        return Ok(Outcome {
+            changed: false,
+            human: "Cancelled. Nothing was changed.\n".into(),
+            json: json!({"cancelled": true}),
+        });
+    }
+    ctx.files.delete_epic(project, &id)?;
+    Ok(Outcome {
+        changed: true,
+        human: format!("Deleted epic {id}.\n"),
+        json: json!({"deleted": id.to_string()}),
+    })
+}

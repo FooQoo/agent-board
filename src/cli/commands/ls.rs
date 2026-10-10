@@ -13,6 +13,11 @@ fn keep(args: &LsArgs, card: &CardView) -> bool {
         && args
             .state
             .is_none_or(|s| card.agent_status == s.run_state())
+        && args.epic.as_deref().is_none_or(|epic| {
+            card.epic_id
+                .as_deref()
+                .is_some_and(|id| id.eq_ignore_ascii_case(epic))
+        })
 }
 
 pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
@@ -21,7 +26,7 @@ pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
     }
     let cards: Vec<CardView> = ctx
         .files
-        .snapshot(ctx.project_id()?)?
+        .board(ctx.project_id()?)?
         .cards
         .into_iter()
         .filter(|card| keep(args, card))

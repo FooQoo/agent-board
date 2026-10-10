@@ -20,7 +20,8 @@ use super::index;
 use super::io;
 use super::layout;
 use super::model::{
-    CardView, EpicFile, EpicView, Problem, ProjectFile, TaskFile, WorkspaceFile, current_request,
+    CardEpic, CardView, EpicFile, EpicView, Problem, ProjectFile, TaskFile, WorkspaceFile,
+    current_request,
 };
 use super::validate;
 use crate::domain::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
@@ -44,7 +45,7 @@ pub struct ProjectSnapshot {
 /// Read every epic folder. An epic whose `epic.json` is defective is left out
 /// and reported in `problems`; its folder is never changed. A defect in
 /// PLAN.md is reported while the plan text is still returned.
-fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, Vec<Problem>) {
+pub(super) fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, Vec<Problem>) {
     let mut epics = Vec::new();
     let mut problems = Vec::new();
     let Ok(entries) = fs::read_dir(layout::epics_dir(project_dir)) else {
@@ -388,6 +389,7 @@ pub(crate) fn card_view(
         description,
         assignee: task.assignee,
         epic_id: task.epic_id,
+        epic: None,
         card_status: task.card_status,
         position: task.position,
         agent_status: task.agent_status,
@@ -403,6 +405,20 @@ pub(crate) fn card_view(
         agent_status_changed_at: task.agent_status_changed_at,
         history: task.history,
     }
+}
+
+/// Resolve the epic of a card from the epics of its project. An epic ID that
+/// names no epic leaves the card with no epic.
+pub(crate) fn attach_epic(view: &mut CardView, epics: &[EpicView]) {
+    view.epic = view
+        .epic_id
+        .as_deref()
+        .and_then(|id| epics.iter().find(|epic| epic.id.as_str() == id))
+        .map(|epic| CardEpic {
+            id: epic.id.clone(),
+            name: epic.name.clone(),
+            color: epic.color.clone(),
+        });
 }
 
 /// Read and check `task.json` of one card. A missing card is `card_not_found`;
@@ -452,7 +468,9 @@ pub fn read_card(
     let body = read_body(shared, project_id, card_id)?;
     let project_dir = layout::project_dir(shared, project_id);
     let md_path = layout::task_md(&layout::task_dir(&project_dir, card_id));
-    Ok(card_view(task, body, file_time(&md_path)))
+    let mut view = card_view(task, body, file_time(&md_path));
+    attach_epic(&mut view, &read_epics(shared, &project_dir).0);
+    Ok(view)
 }
 
 /// The snapshot of one project: its project file (strict), and every card
@@ -476,6 +494,9 @@ pub fn read_snapshot(shared: &Path, project_id: &ProjectId) -> Result<ProjectSna
             }
             Err(found) => problems.extend(found),
         }
+    }
+    for card in &mut cards {
+        attach_epic(card, &epics);
     }
     Ok(ProjectSnapshot {
         project,

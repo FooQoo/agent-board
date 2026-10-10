@@ -4,6 +4,15 @@ pub const MAX_ATTACHMENT_BYTES: usize = 10 * 1024 * 1024;
 pub const MAX_CARD_ATTACHMENTS: usize = 20;
 pub const MAX_CARD_ATTACHMENT_BYTES: usize = 50 * 1024 * 1024;
 
+/// Decision requests: at most this many choices, each with a label of at most
+/// `MAX_CHOICE_LABEL_CHARS` and an ID of at most `MAX_CHOICE_ID_CHARS`.
+pub const MAX_CHOICES: usize = 10;
+pub const MAX_CHOICE_ID_CHARS: usize = 64;
+pub const MAX_CHOICE_LABEL_CHARS: usize = 200;
+/// A question, and a free-text answer, of at most this many characters.
+pub const MAX_QUESTION_CHARS: usize = 2_000;
+pub const MAX_ANSWER_TEXT_CHARS: usize = 2_000;
+
 pub fn validate_attachment(id: &str, name: &str, bytes: &[u8]) -> Result<&'static str, SkanError> {
     if id.len() != 32
         || !id

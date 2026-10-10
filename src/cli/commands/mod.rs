@@ -4,6 +4,8 @@
 pub mod add;
 pub mod attachment;
 pub mod edit;
+pub mod epic;
+pub mod evidence;
 pub mod export;
 pub mod import;
 pub mod init;

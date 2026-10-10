@@ -114,7 +114,8 @@ impl Fixture {
                 agent_board::file_store::model::NewEpic {
                     id: text.into(),
                     name: "Epic".into(),
-                    color: "#7C3AED".into(),
+                    color: Some("#7C3AED".into()),
+                    is_draft: false,
                     plan: None,
                 },
                 at(4),

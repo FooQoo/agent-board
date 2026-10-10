@@ -22,9 +22,8 @@ const EVIDENCE_LIMIT_REASON: &str =
     "A card may contain at most 20 evidence files and 50 MiB of evidence in total.";
 
 impl FileStore {
-    /// Register a UTF-8 text evidence for a card and write it to `evidence/`.
-    /// The limits follow the image limits: 10 MiB per file, 20 files, and
-    /// 50 MiB in total per card. Images and evidence are counted separately.
+    /// Register a UTF-8 text evidence from the agent side (the CLI). A draft
+    /// card refuses it with `card_is_draft`.
     pub fn add_evidence(
         &self,
         project: &ProjectId,
@@ -32,6 +31,33 @@ impl FileStore {
         name: &str,
         bytes: &[u8],
         now: DateTime<Utc>,
+    ) -> Result<EvidenceRecord, SkanError> {
+        self.add_evidence_gated(project, card_id, name, bytes, now, true)
+    }
+
+    /// Register a UTF-8 text evidence from a person in the Web UI. A draft card accepts it.
+    pub fn add_evidence_for_user(
+        &self,
+        project: &ProjectId,
+        card_id: i64,
+        name: &str,
+        bytes: &[u8],
+        now: DateTime<Utc>,
+    ) -> Result<EvidenceRecord, SkanError> {
+        self.add_evidence_gated(project, card_id, name, bytes, now, false)
+    }
+
+    /// Register a UTF-8 text evidence for a card and write it to `evidence/`.
+    /// The limits follow the image limits: 10 MiB per file, 20 files, and
+    /// 50 MiB in total per card. Images and evidence are counted separately.
+    fn add_evidence_gated(
+        &self,
+        project: &ProjectId,
+        card_id: i64,
+        name: &str,
+        bytes: &[u8],
+        now: DateTime<Utc>,
+        block_drafts: bool,
     ) -> Result<EvidenceRecord, SkanError> {
         if bytes.is_empty() {
             return Err(SkanError::InvalidValue {
@@ -64,7 +90,7 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(SkanError::CardArchived { id: card_id });
         }
-        if task.is_draft {
+        if block_drafts && task.is_draft {
             return Err(SkanError::CardIsDraft { id: card_id });
         }
         let total: usize = task
@@ -140,8 +166,7 @@ impl FileStore {
         Ok(EvidenceData { record, bytes })
     }
 
-    /// Remove a card's evidence from `task.json` and delete its file. The JSON
-    /// is saved first, so a file left by a failed removal is not referenced.
+    /// Remove a card's evidence from the agent side (the CLI). A draft card refuses it.
     pub fn delete_evidence(
         &self,
         project: &ProjectId,
@@ -149,13 +174,37 @@ impl FileStore {
         evidence_id: &str,
         now: DateTime<Utc>,
     ) -> Result<(), SkanError> {
+        self.delete_evidence_gated(project, card_id, evidence_id, now, true)
+    }
+
+    /// Remove a card's evidence from a person in the Web UI. A draft card accepts it.
+    pub fn delete_evidence_for_user(
+        &self,
+        project: &ProjectId,
+        card_id: i64,
+        evidence_id: &str,
+        now: DateTime<Utc>,
+    ) -> Result<(), SkanError> {
+        self.delete_evidence_gated(project, card_id, evidence_id, now, false)
+    }
+
+    /// Remove a card's evidence from `task.json` and delete its file. The JSON
+    /// is saved first, so a file left by a failed removal is not referenced.
+    fn delete_evidence_gated(
+        &self,
+        project: &ProjectId,
+        card_id: i64,
+        evidence_id: &str,
+        now: DateTime<Utc>,
+        block_drafts: bool,
+    ) -> Result<(), SkanError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, card_id)?;
         if task.archived_at.is_some() {
             return Err(SkanError::CardArchived { id: card_id });
         }
-        if task.is_draft {
+        if block_drafts && task.is_draft {
             return Err(SkanError::CardIsDraft { id: card_id });
         }
         let index = task

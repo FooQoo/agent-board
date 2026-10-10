@@ -107,6 +107,18 @@ pub fn assets_dir(owner_dir: &Path) -> PathBuf {
     owner_dir.join("assets")
 }
 
+/// The file extension of a stored image, by its media type. `None` for a type
+/// that is not an accepted image.
+pub fn asset_extension(media_type: &str) -> Option<&'static str> {
+    match media_type {
+        "image/png" => Some("png"),
+        "image/jpeg" => Some("jpg"),
+        "image/webp" => Some("webp"),
+        "image/gif" => Some("gif"),
+        _ => None,
+    }
+}
+
 /// `tasks/<card-id>/assets/<attachment-id>.<ext>`. The ID is checked first.
 pub fn task_asset_path(
     project_dir: &Path,

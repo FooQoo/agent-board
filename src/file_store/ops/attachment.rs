@@ -52,14 +52,17 @@ impl Loaded {
         }
     }
 
-    /// A card that is archived or a draft takes no image changes. Epics have
-    /// no such state.
-    fn ensure_writable(&self) -> Result<(), SkanError> {
+    /// A card that is archived takes no image changes for anyone. A draft
+    /// takes none from the agent side (`block_drafts`); a person may change
+    /// it. Epics have neither state.
+    fn ensure_writable(&self, block_drafts: bool) -> Result<(), SkanError> {
         match self {
             Loaded::Task(task) if task.archived_at.is_some() => {
                 Err(SkanError::CardArchived { id: task.id })
             }
-            Loaded::Task(task) if task.is_draft => Err(SkanError::CardIsDraft { id: task.id }),
+            Loaded::Task(task) if block_drafts && task.is_draft => {
+                Err(SkanError::CardIsDraft { id: task.id })
+            }
             _ => Ok(()),
         }
     }
@@ -102,16 +105,10 @@ fn asset_file(
 }
 
 fn extension(media_type: &str) -> Result<&'static str, SkanError> {
-    match media_type {
-        "image/png" => Ok("png"),
-        "image/jpeg" => Ok("jpg"),
-        "image/webp" => Ok("webp"),
-        "image/gif" => Ok("gif"),
-        _ => Err(SkanError::InvalidValue {
-            field: "attachment".into(),
-            reason: "Only PNG, JPEG, WebP, and GIF images are accepted.".into(),
-        }),
-    }
+    layout::asset_extension(media_type).ok_or_else(|| SkanError::InvalidValue {
+        field: "attachment".into(),
+        reason: "Only PNG, JPEG, WebP, and GIF images are accepted.".into(),
+    })
 }
 
 fn check_limits(existing: &[Attachment], added_bytes: usize) -> Result<(), SkanError> {
@@ -133,9 +130,8 @@ pub(super) fn last_part(name: &str) -> String {
 }
 
 impl FileStore {
-    /// Register an image for a card or an epic and write its file. The image
-    /// is validated before anything is written; a failed save of the owner's
-    /// JSON removes the new file again.
+    /// Register an image for a card or an epic, from the agent side (the CLI):
+    /// a draft card refuses it with `card_is_draft`.
     pub fn add_attachment(
         &self,
         project: &ProjectId,
@@ -143,10 +139,35 @@ impl FileStore {
         input: AttachmentInput,
         now: DateTime<Utc>,
     ) -> Result<Attachment, SkanError> {
+        self.add_attachment_gated(project, owner, input, now, true)
+    }
+
+    /// Register an image from a person in the Web UI: a draft card accepts it.
+    pub fn add_attachment_for_user(
+        &self,
+        project: &ProjectId,
+        owner: &AttachmentOwner,
+        input: AttachmentInput,
+        now: DateTime<Utc>,
+    ) -> Result<Attachment, SkanError> {
+        self.add_attachment_gated(project, owner, input, now, false)
+    }
+
+    /// Register an image and write its file. The image is validated before
+    /// anything is written; a failed save of the owner's JSON removes the new
+    /// file again.
+    fn add_attachment_gated(
+        &self,
+        project: &ProjectId,
+        owner: &AttachmentOwner,
+        input: AttachmentInput,
+        now: DateTime<Utc>,
+        block_drafts: bool,
+    ) -> Result<Attachment, SkanError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut loaded = load(shared, project, owner)?;
-        loaded.ensure_writable()?;
+        loaded.ensure_writable(block_drafts)?;
         let media_type = validate_attachment(&input.id, &input.name, &input.bytes)?;
         if loaded.attachments().iter().any(|a| a.id == input.id) {
             return Err(SkanError::InvalidValue {
@@ -184,8 +205,7 @@ impl FileStore {
         Ok(metadata)
     }
 
-    /// Remove an image from its owner and delete its file. The owner's JSON is
-    /// saved first, so a file left behind by a failed removal is not referenced.
+    /// Remove an image from the agent side (the CLI). A draft card refuses it.
     pub fn delete_attachment(
         &self,
         project: &ProjectId,
@@ -193,10 +213,34 @@ impl FileStore {
         attachment_id: &str,
         now: DateTime<Utc>,
     ) -> Result<(), SkanError> {
+        self.delete_attachment_gated(project, owner, attachment_id, now, true)
+    }
+
+    /// Remove an image from a person in the Web UI. A draft card accepts it.
+    pub fn delete_attachment_for_user(
+        &self,
+        project: &ProjectId,
+        owner: &AttachmentOwner,
+        attachment_id: &str,
+        now: DateTime<Utc>,
+    ) -> Result<(), SkanError> {
+        self.delete_attachment_gated(project, owner, attachment_id, now, false)
+    }
+
+    /// Remove an image from its owner and delete its file. The owner's JSON is
+    /// saved first, so a file left behind by a failed removal is not referenced.
+    fn delete_attachment_gated(
+        &self,
+        project: &ProjectId,
+        owner: &AttachmentOwner,
+        attachment_id: &str,
+        now: DateTime<Utc>,
+        block_drafts: bool,
+    ) -> Result<(), SkanError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut loaded = load(shared, project, owner)?;
-        loaded.ensure_writable()?;
+        loaded.ensure_writable(block_drafts)?;
         let index = loaded
             .attachments()
             .iter()
