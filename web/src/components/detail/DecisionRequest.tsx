@@ -73,7 +73,10 @@ export function DecisionRequest({
   const hasText = text.trim() !== '';
   const tooLong = [...text].length > MAX_ANSWER;
   const dirty = choiceId !== null || text !== '';
-  const sendable = !stale && (choiceId !== null || hasText) && !tooLong && phase !== 'sending';
+  // While the request-changed notice is up, the typed answer belongs to the old question: Send waits until the
+  // person edits the text again, so an old answer is never saved to a new question.
+  const sendable =
+    !stale && !changed && (choiceId !== null || hasText) && !tooLong && phase !== 'sending';
 
   useEffect(() => {
     mounted.current = true;

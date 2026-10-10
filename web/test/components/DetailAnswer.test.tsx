@@ -218,7 +218,7 @@ describe('answer form', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the latest request when the pending request changes under the form and sends with its id', async () => {
+  it('shows the latest request when the pending request changes under the form, and sends with its id only after the text is edited again', async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ card: pendingCard(), changed: true }));
     vi.stubGlobal('fetch', fetchMock);
     const first = pendingCard();
@@ -244,10 +244,14 @@ describe('answer form', () => {
     );
     expect(screen.queryByRole('radio', { name: 'Keep the data' })).toBeNull();
     expect(box().value).toBe('Answer');
+    // The old text is not sent as it is: Send waits until the person edits the text, which confirms it for the new question.
+    expect(send().hasAttribute('disabled')).toBe(true);
+    await userEvent.type(box(), ' again');
+    expect(send().hasAttribute('disabled')).toBe(false);
     await userEvent.click(send());
     expect(bodyOf(fetchMock.mock.calls[0] as unknown[])).toEqual({
       requestId: 'req-2',
-      text: 'Answer',
+      text: 'Answer again',
     });
   });
 
