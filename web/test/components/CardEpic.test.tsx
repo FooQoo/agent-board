@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { Card } from '../../src/components/Card';
 import { makeCard } from '../fixtures';
@@ -7,14 +9,17 @@ import { makeCard } from '../fixtures';
 const epic = { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' };
 
 describe('Card epic label', () => {
-  it('shows the EPIC-ID under the title and frames the card in the epic color', () => {
+  it('shows the EPIC-ID under the title and gives the card no epic-colored frame', () => {
     const card = makeCard({ id: 20, title: 'Labeled', epic });
     const { container } = render(<Card card={card} selected={false} onSelect={() => {}} />);
     const label = screen.getByRole('button', { name: 'FILE-SHARE' });
     const title = screen.getByText('Labeled');
     expect(title.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const root = container.querySelector('.card') as HTMLElement;
-    expect(root.style.getPropertyValue('--epic-color')).toBe('#7C3AED');
+    expect(root.classList.contains('card--epic')).toBe(false);
+    expect(root.getAttribute('style')).toBeNull();
+    // Only the label carries the epic color.
+    expect((label as HTMLElement).style.background).not.toBe('');
   });
 
   it('shows no epic label for a card without an epic', () => {
@@ -66,5 +71,16 @@ describe('Card epic label', () => {
     );
     await userEvent.click(screen.getByText('Plain'));
     expect(onSelect).toHaveBeenCalledWith(24);
+  });
+});
+
+describe('card frames', () => {
+  const css = readFileSync(join(import.meta.dirname, '../../src/styles/app.css'), 'utf8');
+
+  it('never take the epic color: a card has the normal border, a selected card the accent frame only', () => {
+    expect(css).not.toContain('epic-color');
+    expect(css).not.toContain('.card--epic');
+    const selected = css.slice(css.indexOf('.card--selected {'));
+    expect(selected.slice(0, selected.indexOf('}'))).toContain('border-color: var(--r-accent)');
   });
 });

@@ -79,7 +79,7 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
     epic: { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' },
   });
 
-  // The page shows the card with the epic label, and the label and the card frame take the epic colour.
+  // The page shows the card with the epic label, and only the label takes the epic colour (the card keeps its normal frame).
   await openBoard(page, name);
   const label = page.locator(`[data-epic-label="FILE-SHARE"]`);
   await expect(label).toHaveCount(1);

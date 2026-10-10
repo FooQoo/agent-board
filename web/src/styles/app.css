@@ -381,23 +381,6 @@ ol {
   position: relative;
 }
 
-/* An epic card keeps its epic color on the frame, also when it is selected or pending. */
-.card--epic {
-  border-color: var(--epic-color);
-}
-
-.card--epic.card--pending {
-  border-color: var(--epic-color);
-}
-
-/* The selected epic card keeps the epic frame and adds the theme accent as an outer ring. */
-.card--epic.card--selected {
-  border-color: var(--epic-color);
-  box-shadow:
-    0 0 0 2px var(--r-lane),
-    0 0 0 3.5px var(--r-accent);
-}
-
 .card__epic {
   position: relative;
   z-index: 1;

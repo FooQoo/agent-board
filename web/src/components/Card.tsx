@@ -3,7 +3,6 @@ import { formatShort, stateLabel } from '../lib/format';
 import { epicInk } from '../lib/epic';
 import type { Card as CardModel } from '../types';
 import { GripVerticalIcon, LayersIcon } from 'lucide-react';
-import type { CSSProperties } from 'react';
 import { AssigneeLabel } from './AssigneeLabel';
 import { StatusLabel } from './StatusLabel';
 import { useDraggable } from '@dnd-kit/react';
@@ -30,20 +29,17 @@ export function Card({ card, selected, onSelect, onOpenEpic = noop }: CardProps)
   const epic = card.epic;
   const className = [
     'card',
-    epic ? 'card--epic' : '',
     pending ? 'card--pending' : '',
     selected ? 'card--selected' : '',
     isDragging ? 'card--dragging' : '',
   ]
     .filter(Boolean)
     .join(' ');
-  const style = epic ? ({ '--epic-color': epic.color } as CSSProperties) : undefined;
 
   return (
     <div
       ref={ref}
       className={className}
-      style={style}
       role="button"
       tabIndex={0}
       aria-current={selected ? 'true' : 'false'}
