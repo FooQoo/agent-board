@@ -1,3 +1,5 @@
+import os from 'node:os';
+import path from 'node:path';
 import { defineConfig } from '@playwright/test';
 import { mainOrigin } from './helpers/agboard';
 
@@ -10,6 +12,8 @@ export default defineConfig({
   retries: 0,
   timeout: 60_000,
   expect: { timeout: 10_000 },
+  // Traces, screenshots, and failure context go to the OS temp directory, not into the repository.
+  outputDir: path.join(os.tmpdir(), 'agent-board-e2e-results'),
   reporter: [['list']],
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',

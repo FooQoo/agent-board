@@ -1,5 +1,6 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,7 +13,11 @@ export const repoRoot = path.resolve(here, '..', '..');
 export const seedFile = path.resolve(here, '..', 'fixtures', 'agent-board.json');
 const ptyAnswer = path.resolve(here, 'agboard_pty_answer.py');
 
-/** Backups of two projects, `Alpha` and `Beta`. Both have a card #1 and a card #2 with different content. */
+/**
+ * Backups of two projects, `Alpha` and `Beta`. Both have a card #1 and a card #2 with different content.
+ * The fixtures keep the card IDs and history of the board they were taken from; `seedProject` writes them
+ * into the shared folder in the current file format.
+ */
 export const alphaFixture = path.resolve(here, '..', 'fixtures', 'multi-project-a.json');
 export const betaFixture = path.resolve(here, '..', 'fixtures', 'multi-project-b.json');
 
@@ -110,6 +115,19 @@ export function projectId(name: string, home: string = mainHome()): string {
   return found.id;
 }
 
+export interface WorkspaceJson {
+  projectId: string;
+  folder: string;
+  readme: string;
+  tasks: string;
+  epics: string;
+}
+
+/** The shared folder of `project`, from `agboard workspace --json`. */
+export function workspace(project: string, home: string = mainHome()): WorkspaceJson {
+  return JSON.parse(agboardOk(project, ['workspace', '--json'], home).stdout);
+}
+
 export interface CardJson {
   id: number;
   title: string;
@@ -126,23 +144,179 @@ export function listCards(project: string, home: string = mainHome()): CardJson[
 }
 
 /**
- * The ID the next card of `project` will get. Card IDs are never reused, so a board put back by `import`
- * keeps counting upward; specs that create cards read this after the reset instead of assuming a number.
+ * The ID the next card of `project` will get, read from the project's `project.json`. Card IDs are never
+ * reused, so specs that create cards read this after the reset instead of assuming a number.
  */
 export function nextCardId(project: string, home: string = mainHome()): number {
-  const file = path.join(mkdtempSync(path.join(os.tmpdir(), 'agent-board-e2e-export-')), 'export.json');
-  try {
-    agboardOk(project, ['export', '-o', file], home);
-    return (JSON.parse(readFileSync(file, 'utf8')) as { board: { nextCardId: number } }).board.nextCardId;
-  } finally {
-    rmSync(path.dirname(file), { recursive: true, force: true });
+  const file = path.join(workspace(project, home).folder, 'project.json');
+  return (JSON.parse(readFileSync(file, 'utf8')) as { nextCardId: number }).nextCardId;
+}
+
+/**
+ * Wrap plain text in the required TASK.md body: the text goes under `## 作業内容`, and the other two required
+ * headings are added with the completion-condition template. Use it wherever a spec writes a card body
+ * through the CLI, because the CLI checks the required headings.
+ */
+export function taskBody(text: string): string {
+  return [
+    '## 作業内容',
+    '',
+    text.trim() === '' ? '（作業の目的と内容を書く）' : text.trim(),
+    '',
+    '## 完了条件と確認結果',
+    '',
+    '- [ ] AC-1. （完了条件を書く）',
+    '  - 確認結果: 未確認',
+    '  - 根拠: 未記入',
+    '  - 調整役の確認: 未確認',
+    '',
+    '## 実行記録',
+    '',
+    '',
+  ].join('\n');
+}
+
+/** Write a file the way the README asks people to: a temporary file in the same folder, renamed over the target. */
+export function replaceFileAtomically(file: string, content: string): void {
+  const temp = path.join(path.dirname(file), `.tmp-${randomBytes(6).toString('hex')}`);
+  writeFileSync(temp, content, 'utf8');
+  renameSync(temp, file);
+}
+
+function writeJson(file: string, value: unknown): void {
+  replaceFileAtomically(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+interface FixtureEvent {
+  kind: string;
+  actor: 'ai' | 'human';
+  reason: string | null;
+  fromCardStatus: string | null;
+  toCardStatus: string;
+  fromAgentStatus: string | null;
+  toAgentStatus: string;
+  requestId: string | null;
+  at: string;
+}
+
+interface FixtureCard {
+  id: number;
+  title: string;
+  description: string;
+  position: number;
+  assignee: 'ai' | 'human';
+  cardStatus: 'todo' | 'doing' | 'done';
+  agentStatus: 'idle' | 'running' | 'pending';
+  pendingReason: string | null;
+  pendingRequestId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  agentStatusChangedAt: string;
+  history: FixtureEvent[];
+}
+
+interface Fixture {
+  board: { name: string; createdAt: string; nextCardId: number };
+  cards: FixtureCard[];
+}
+
+/** The task.json and TASK.md of one fixture card, in the current file format. */
+function taskFilesFor(card: FixtureCard): { task: Record<string, unknown>; markdown: string } {
+  const history: Record<string, unknown>[] = card.history.map((event) => {
+    const entry: Record<string, unknown> = {
+      id: randomBytes(16).toString('hex'),
+      kind: event.kind,
+      actor: event.actor,
+      reason: event.reason,
+      fromCardStatus: event.fromCardStatus,
+      toCardStatus: event.toCardStatus,
+      fromAgentStatus: event.fromAgentStatus,
+      toAgentStatus: event.toAgentStatus,
+      requestId: event.requestId,
+      at: event.at,
+    };
+    if (event.toAgentStatus === 'pending') {
+      entry.question = event.reason ?? card.pendingReason ?? '';
+      entry.choices = [];
+    }
+    return entry;
+  });
+  // A pending card names its request in history; add the event when the fixture only gives the reason.
+  if (card.agentStatus === 'pending' && card.pendingRequestId && !history.some((event) => event.requestId === card.pendingRequestId)) {
+    history.push({
+      id: randomBytes(16).toString('hex'),
+      kind: 'agent',
+      actor: 'ai',
+      reason: card.pendingReason,
+      fromCardStatus: card.cardStatus,
+      toCardStatus: card.cardStatus,
+      fromAgentStatus: 'running',
+      toAgentStatus: 'pending',
+      requestId: card.pendingRequestId,
+      question: card.pendingReason ?? '',
+      choices: [],
+      at: card.agentStatusChangedAt,
+    });
+  }
+  const task = {
+    formatVersion: 1,
+    id: card.id,
+    title: card.title,
+    assignee: card.assignee,
+    epicId: null,
+    cardStatus: card.cardStatus,
+    agentStatus: card.agentStatus,
+    position: card.position,
+    isDraft: false,
+    archivedAt: null,
+    pendingRequestId: card.agentStatus === 'pending' ? card.pendingRequestId : null,
+    createdAt: card.createdAt,
+    updatedAt: card.updatedAt,
+    agentStatusChangedAt: card.agentStatusChangedAt,
+    attachments: [],
+    evidence: [],
+    history,
+  };
+  return { task, markdown: taskBody(card.description) };
+}
+
+/**
+ * Write the cards of a fixture into `project`'s shared folder, replacing its tasks and epics and keeping the
+ * project's identity. The project must already exist. The files are written directly, as a person would
+ * edit TASK.md, and the CLI reads them back on the next command.
+ */
+export function seedProject(project: string, file: string, home: string = mainHome()): void {
+  const folder = workspace(project, home).folder;
+  rmSync(path.join(folder, 'tasks'), { recursive: true, force: true });
+  rmSync(path.join(folder, 'epics'), { recursive: true, force: true });
+  const fixture = JSON.parse(readFileSync(file, 'utf8')) as Fixture;
+  for (const card of fixture.cards) {
+    const dir = path.join(folder, 'tasks', String(card.id));
+    mkdirSync(dir, { recursive: true });
+    const { task, markdown } = taskFilesFor(card);
+    writeJson(path.join(dir, 'task.json'), task);
+    replaceFileAtomically(path.join(dir, 'TASK.md'), markdown);
+    // The screen shows the newer of task.json's updatedAt and TASK.md's modification time, so both files
+    // carry the fixture's time and the seeded cards keep the times the specs expect.
+    const at = new Date(card.updatedAt);
+    utimesSync(path.join(dir, 'task.json'), at, at);
+    utimesSync(path.join(dir, 'TASK.md'), at, at);
+  }
+  const projectFile = path.join(folder, 'project.json');
+  const current = JSON.parse(readFileSync(projectFile, 'utf8')) as Record<string, unknown>;
+  writeJson(projectFile, { ...current, nextCardId: fixture.board.nextCardId });
+}
+
+/** Create `project` if it does not exist yet. */
+export function ensureProject(project: string, home: string = mainHome()): void {
+  if (!listProjects(home).some((existing) => existing.name === project)) {
+    agboardCatalogOk(['project', 'create', project], home);
   }
 }
 
 /**
- * Answer a "[y/N] " prompt of a human-only command (`rm`, `init`, `import`) the
- * way a person at a terminal would. Runs `agboard` on a pseudo-terminal through
- * a small Python helper, because Node cannot allocate one.
+ * Answer a "[y/N] " prompt of a human-only command (`rm`, `project rm`) the way a person at a terminal
+ * would. Runs `agboard` on a pseudo-terminal through a small Python helper, because Node cannot allocate one.
  */
 export function agboardOnTerminal(
   project: string,
@@ -160,32 +334,20 @@ export function agboardOnTerminal(
 }
 
 /**
- * Put `project` back to the version-two Agent Board fixture.
- *
- * The first call creates the project from the fixture. After that the same project, with the same ID, is
- * replaced by `import` after a person's `y` on a terminal. No database file is touched, so the serve that
- * is running keeps working. Card IDs keep counting upward (see `nextCardId`).
+ * Put `project` back to the version-two Agent Board fixture. The project keeps its ID; its tasks and epics are
+ * replaced by the fixture's cards.
  */
 export function resetBoard(project: string, home: string = mainHome()): void {
-  if (listProjects(home).some((existing) => existing.name === project)) {
-    const result = agboardOnTerminal(project, 'y', ['import', seedFile], home);
-    if (result.code !== 0) throw new Error(`resetting ${project} failed: ${result.stdout}${result.stderr}`);
-  } else {
-    agboardOk(project, ['import', seedFile], home);
-  }
+  restoreProject(project, seedFile, home);
 }
 
 /**
- * Put `project` back to the backup in `file` (whose board name is the project name). A project that does not
- * exist is created from it; an existing one is replaced, with the same ID, after a person's `y`.
+ * Put `project` back to the fixture in `file`. A project that does not exist is created first; an existing
+ * one keeps its ID and gets the fixture's cards.
  */
 export function restoreProject(project: string, file: string, home: string = mainHome()): void {
-  if (listProjects(home).some((existing) => existing.name === project)) {
-    const result = agboardOnTerminal(project, 'y', ['import', file], home);
-    if (result.code !== 0) throw new Error(`restoring ${project} failed: ${result.stdout}${result.stderr}`);
-  } else {
-    agboardOk(project, ['import', file], home);
-  }
+  ensureProject(project, home);
+  seedProject(project, file, home);
 }
 
 /** Delete `project` and its cards the way a person does: with a `y` on a terminal. */
@@ -203,8 +365,39 @@ export function resetAlphaBeta(home: string): void {
   restoreProject('Beta', betaFixture, home);
 }
 
-function withTestDefaults(project: string, args: string[], home: string): string[] {
+/** True when a body already has the three headings the CLI requires. */
+export function hasRequiredHeadings(text: string): boolean {
+  return ['## 作業内容', '## 完了条件と確認結果', '## 実行記録'].every((heading) => text.split('\n').some((line) => line.trim() === heading));
+}
+
+/**
+ * Descriptions given to `add` and `edit` in these specs are plain Markdown. The CLI requires the three TASK.md
+ * headings, so a body without them is wrapped with `taskBody`; a body that already has them is passed unchanged.
+ * The temporary files written for `--desc-file` live in the OS temp directory and are removed by the caller's
+ * home cleanup, since they are named with the home's basename.
+ */
+function withBodyTemplate(command: string, args: string[]): string[] {
+  if (command !== 'add' && command !== 'edit') return args;
   const result = [...args];
+  const descIndex = result.indexOf('--desc');
+  if (descIndex >= 0 && result[descIndex + 1] !== undefined && result[descIndex + 1] !== '-') {
+    const text = result[descIndex + 1];
+    if (!hasRequiredHeadings(text)) result[descIndex + 1] = taskBody(text);
+  }
+  const fileIndex = result.indexOf('--desc-file');
+  if (fileIndex >= 0 && result[fileIndex + 1] !== undefined) {
+    const text = readFileSync(result[fileIndex + 1], 'utf8');
+    if (!hasRequiredHeadings(text)) {
+      const wrapped = path.join(os.tmpdir(), `agboard-body-${randomBytes(6).toString('hex')}.md`);
+      writeFileSync(wrapped, taskBody(text), 'utf8');
+      result[fileIndex + 1] = wrapped;
+    }
+  }
+  return result;
+}
+
+function withTestDefaults(project: string, args: string[], home: string): string[] {
+  const result = withBodyTemplate(args[0], [...args]);
   const command = result[0];
   if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai', '--actor', 'ai');
   if ((command === 'mv' || command === 'state') && !result.includes('--actor')) {
