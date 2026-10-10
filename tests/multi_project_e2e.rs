@@ -632,7 +632,7 @@ fn a_database_of_an_old_schema_is_refused_and_never_converted() {
     assert!(
         files(home.path())
             .iter()
-            .all(|name| *name == "board.db" || *name == "lifecycle.lock.db")
+            .all(|name| *name == "board.db" || *name == "lifecycle.lock")
     );
 
     // Migration is explicit, but this malformed legacy database is rejected.
