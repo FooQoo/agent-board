@@ -253,7 +253,7 @@ async fn host_guard(State(state): State<Arc<AppState>>, request: Request, next: 
 }
 
 /// Every request that changes data needs the page's Origin, Sec-Fetch-Site and
-/// token. This runs before the path, the body or the database is looked at, so
+/// token. This runs before the path, the body or the shared files are looked at, so
 /// a refusal never tells whether a project or card exists. `POST /api/notify`
 /// changes nothing and is open.
 async fn write_guard(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {

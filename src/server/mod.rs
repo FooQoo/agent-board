@@ -1,7 +1,7 @@
 //! Local web server: API, SSE, delete protection, embedded assets.
 //!
 //! `run` builds its own tokio runtime; the rest of the CLI never starts one.
-//! The server listens on 127.0.0.1 only and opens the database per request.
+//! The server listens on 127.0.0.1 only and reads the shared files per request.
 
 mod api;
 pub mod assets;

@@ -19,8 +19,11 @@ fn run_build_script(manifest_dir: &Path) -> std::process::Output {
         "build.rs does not compile: {}",
         String::from_utf8_lossy(&compiled.stderr)
     );
+    // The script writes its chunk table into OUT_DIR: point it at a scratch
+    // folder, so the real build's table is never overwritten.
     Command::new(&exe)
         .env("CARGO_MANIFEST_DIR", manifest_dir)
+        .env("OUT_DIR", scratch.path())
         .output()
         .unwrap()
 }
@@ -1542,14 +1545,10 @@ fn the_example_serves_and_cleans_up_on_sigterm() {
 }
 
 #[test]
-fn the_example_reports_an_unusable_database_with_exit_code_1() {
+fn the_example_reports_an_unusable_shared_folder_with_exit_code_1() {
     let home = tempfile::tempdir().unwrap();
-    {
-        let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
-        conn.execute_batch("CREATE TABLE board (id INTEGER)")
-            .unwrap();
-        conn.pragma_update(None, "user_version", 2).unwrap();
-    }
+    // A file where the shared folder should be is not a folder of projects.
+    std::fs::write(home.path().join("shared"), b"not a folder").unwrap();
     let mut child = spawn_example(home.path(), &["--port", "7617"]);
     let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
     assert_eq!(status.code(), Some(1));

@@ -1,6 +1,6 @@
 //! End-to-end stories for `agboard ls --all-projects`.
 //!
-//! Everything here runs the real `agboard` binary against a real SQLite file in a temporary data area:
+//! Everything here runs the real `agboard` binary against the shared files in a temporary data area:
 //! the CLI, a real `agboard serve` on port 0 for the web answer and the change notifications, and a
 //! pseudo-terminal for the commands that need a person. The projects are built the way a user builds them
 //! (create, add, move, report, answer, delete, create again), not by writing to the store directly.
@@ -694,9 +694,7 @@ fn listing_changes_nothing_and_tells_a_running_server_nothing() {
 }
 
 #[test]
-fn a_missing_data_area_lists_nothing_and_is_not_created_and_an_old_schema_is_ignored() {
-    use rusqlite::Connection;
-
+fn a_missing_data_area_lists_nothing_and_is_not_created_and_an_old_database_is_ignored() {
     let parent = tempdir().unwrap();
     let home = parent.path().join("not-yet");
     let list = all(&home, &[]);
@@ -712,15 +710,10 @@ fn a_missing_data_area_lists_nothing_and_is_not_created_and_an_old_schema_is_ign
     assert_eq!(all(empty.path(), &[])["projects"], json!([]));
     assert_eq!(std::fs::read_dir(empty.path()).unwrap().count(), 0);
 
-    // A database of an older schema is neither read nor changed (DESIGN.md).
+    // An old board.db is neither read nor changed (DESIGN.md).
     let old = tempdir().unwrap();
     let path = old.path().join("board.db");
-    {
-        let conn = Connection::open(&path).unwrap();
-        conn.execute_batch("CREATE TABLE marker (v TEXT); INSERT INTO marker VALUES ('keep');")
-            .unwrap();
-        conn.pragma_update(None, "user_version", 2).unwrap();
-    }
+    std::fs::write(&path, b"SQLite format 3\0 an old board, kept as it is").unwrap();
     let bytes = std::fs::read(&path).unwrap();
     assert_eq!(all(old.path(), &[])["projects"], json!([]));
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
@@ -805,7 +798,13 @@ fn only_a_list_may_ask_for_every_project_and_never_together_with_a_project() {
             "1",
             "--all-projects",
         ],
-        vec!["--json", "--project", "Apple", "export", "--all-projects"],
+        vec![
+            "--json",
+            "--project",
+            "Apple",
+            "workspace",
+            "--all-projects",
+        ],
         vec!["--json", "--project", "Apple", "add", "x", "--all-projects"],
         vec!["--json", "project", "ls", "--all-projects"],
         vec!["--json", "serve", "--all-projects"],

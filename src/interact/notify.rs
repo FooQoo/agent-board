@@ -20,8 +20,8 @@ pub fn notify_serve() -> bool {
 }
 
 /// Like [`notify_serve`], but finds `serve.json` in `dir` instead of the
-/// default data directory. A command that works on one database tells the
-/// server that belongs to that same database.
+/// default data directory. A command that works in one data directory tells
+/// the server that belongs to that same directory.
 pub fn notify_serve_in(dir: &std::path::Path) -> bool {
     let start = Instant::now();
     match paths::read_serve_info_in(dir) {

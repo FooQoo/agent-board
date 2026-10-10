@@ -50,8 +50,7 @@ impl WriteLock {
 /// How long a write waits for another writer of the same project (ARCHITECTURE.md, "同時実行").
 pub const WRITE_LOCK_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
 
-/// The lock that keeps one `serve` (or one explicit migration) running per
-/// data directory. A second holder is refused at once with `DatabaseBusy`.
+/// The lock that keeps one `serve` running per data directory. A second holder is refused at once with `DatabaseBusy`.
 #[derive(Debug)]
 pub struct LifecycleLock {
     _file: File,

@@ -8,5 +8,3 @@ pub mod interact;
 pub mod lifecycle;
 pub mod paths;
 pub mod server;
-pub mod store;
-pub mod transfer;

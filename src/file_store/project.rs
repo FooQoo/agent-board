@@ -25,14 +25,17 @@ pub fn readme_text() -> String {
 \n\
 This folder is one Agent Board project. Its state is kept in these files.\n\
 \n\
-- `project.json`: the project ID, name, creation time, and the next card number. Do not edit it.\n\
+- `project.json`: the project ID, name, creation time, and the next card number. Do not edit it; use the `agboard` CLI.\n\
 - `tasks/<card-id>/task.json`: a card's state and history. Do not edit it; use the `agboard` CLI.\n\
-- `tasks/<card-id>/TASK.md`: a card's text. You may edit it. Write a temporary file in the same folder and rename it over TASK.md.\n\
+- `tasks/<card-id>/TASK.md`: a card's text. Edit it only for a card that is not a draft. Write a temporary file in the same folder and rename it over TASK.md.\n\
+- `epics/<epic-id>/epic.json`: an epic's fields. Do not edit it; use the `agboard` CLI.\n\
+- `epics/<epic-id>/PLAN.md`: an epic's plan. Write a temporary file in the same folder and rename it over PLAN.md.\n\
 - `.internal/`: lock files. Do not edit or delete them.\n\
 \n\
 Keep the required headings in TASK.md: `## 作業内容`, `## 完了条件と確認結果`, and `## 実行記録`.\n\
 A completion condition is written as `- [ ] AC-n. text`, followed by the lines `- 確認結果:`, `- 根拠:`, and `- 調整役の確認:`.\n\
-Do not edit TASK.md of a card that is a draft.\n"
+Do not edit TASK.md of a card that is a draft.\n\
+Do not delete a card folder or an epic folder. Ask a person to delete a card or an epic with the `agboard` CLI.\n"
         .to_string()
 }
 

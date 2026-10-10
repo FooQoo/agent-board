@@ -573,14 +573,12 @@ fn a_write_after_serve_was_killed_succeeds_quickly() {
 }
 
 #[test]
-fn serve_ignores_an_old_database_and_leaves_it_unchanged() {
+fn serve_and_a_first_write_ignore_an_old_database_and_leave_it_unchanged() {
     // DESIGN.md: a legacy board.db is neither read nor migrated nor deleted.
     let _serial = serial();
     let home = tempfile::tempdir().unwrap();
-    let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
-    conn.execute_batch("CREATE TABLE board (id INTEGER); PRAGMA user_version = 2;")
-        .unwrap();
-    drop(conn);
+    let old = b"SQLite format 3\0 an old board, kept as it is".to_vec();
+    std::fs::write(home.path().join("board.db"), &old).unwrap();
     {
         let (serving, first) = Serving::start(home.path(), 7840);
         assert_eq!(
@@ -590,11 +588,15 @@ fn serve_ignores_an_old_database_and_leaves_it_unchanged() {
         drop(serving);
     }
     assert!(port_is_free(7840));
-    let conn = rusqlite::Connection::open(home.path().join("board.db")).unwrap();
-    let version: i64 = conn
-        .query_row("PRAGMA user_version", [], |row| row.get(0))
+    assert_eq!(std::fs::read(home.path().join("board.db")).unwrap(), old);
+    // A write to the shared files does not touch the old file either.
+    let o = agboard(home.path())
+        .args(["project", "create", "Fresh"])
+        .output()
         .unwrap();
-    assert_eq!(version, 2);
+    assert_eq!(o.status.code(), Some(0));
+    assert_eq!(std::fs::read(home.path().join("board.db")).unwrap(), old);
+    assert!(home.path().join("shared").join("workspace.json").is_file());
 }
 
 #[test]

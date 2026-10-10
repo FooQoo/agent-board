@@ -21,10 +21,6 @@ pub fn data_dir() -> PathBuf {
         .join("skan")
 }
 
-pub fn db_path() -> PathBuf {
-    data_dir().join("board.db")
-}
-
 /// The shared file area: every project's canonical files live below it.
 pub fn shared_dir() -> PathBuf {
     data_dir().join("shared")
@@ -34,17 +30,13 @@ pub fn serve_info_path() -> PathBuf {
     data_dir().join("serve.json")
 }
 
-pub fn lifecycle_lock_path() -> PathBuf {
-    data_dir().join("lifecycle.lock")
-}
-
 /// Read `serve.json`. A missing, unreadable or malformed file is `None`.
 pub fn read_serve_info() -> Option<ServeInfo> {
     read_serve_info_in(&data_dir())
 }
 
-/// Read the `serve.json` inside `dir`: the data directory that holds the
-/// database a command was actually run against.
+/// Read the `serve.json` inside `dir`: the data directory a command was
+/// actually run against.
 pub fn read_serve_info_in(dir: &std::path::Path) -> Option<ServeInfo> {
     let text = std::fs::read_to_string(dir.join("serve.json")).ok()?;
     serde_json::from_str(&text).ok()
@@ -110,9 +102,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         with_home(Some(tmp.path()), || {
             assert_eq!(data_dir(), tmp.path());
-            assert_eq!(db_path(), tmp.path().join("board.db"));
             assert_eq!(shared_dir(), tmp.path().join("shared"));
-            assert_eq!(lifecycle_lock_path(), tmp.path().join("lifecycle.lock"));
             assert_eq!(serve_info_path(), tmp.path().join("serve.json"));
         });
     }

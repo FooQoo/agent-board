@@ -322,11 +322,7 @@ fn a_hook_without_a_usable_target_reports_agboard_error_and_changes_nothing() {
 fn a_hook_ignores_an_old_database_and_leaves_it_alone() {
     let home = tempdir().unwrap();
     let db = home.path().join("board.db");
-    {
-        let conn = rusqlite::Connection::open(&db).unwrap();
-        conn.execute_batch("CREATE TABLE board (id INTEGER); PRAGMA user_version = 2;")
-            .unwrap();
-    }
+    std::fs::write(&db, b"SQLite format 3\0 an old board, kept as it is").unwrap();
     let before = std::fs::read(&db).unwrap();
     let output = hook(home.path(), Some("Alpha"), "claude", SESSION_START);
     // The old database is not read: the project is simply not there (DESIGN.md).

@@ -9,7 +9,6 @@ use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
 use crate::error::SkanError;
 use crate::file_store::FileStore;
-use crate::store::ProjectStore;
 
 /// Runs `args` (the first item is the program name) and returns the process
 /// exit code.
@@ -73,37 +72,6 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, cli.json),
         };
     }
-    if let Command::Migrate(args) = &cli.command {
-        if let Some(dir) = env.db_path.parent()
-            && let Some(info) = crate::paths::read_serve_info_in(dir)
-            && crate::server::is_serving(&info)
-        {
-            return fail(
-                env,
-                &SkanError::DatabaseError {
-                    reason: "Stop the running agboard serve before migrating.".into(),
-                },
-                cli.json,
-            );
-        }
-        let guard = crate::lifecycle::LifecycleGuard::acquire(
-            env.db_path
-                .parent()
-                .unwrap_or_else(|| std::path::Path::new(".")),
-        );
-        return match guard.and_then(|_guard| commands::migrate::run(args, &env.db_path)) {
-            Ok(outcome) => {
-                let text = if cli.json {
-                    format!("{}\n", output::render_json(&outcome.json))
-                } else {
-                    outcome.human
-                };
-                write_text(env.stdout, &text);
-                0
-            }
-            Err(error) => fail(env, &error, cli.json),
-        };
-    }
     match prepare_and_run(&cli, env) {
         Ok((ctx, outcome)) => {
             let text = if cli.json {
@@ -114,7 +82,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             write_text(env.stdout, &text);
             if let (true, Some(ctx)) = (outcome.changed, &ctx) {
                 let dir = env
-                    .db_path
+                    .shared_dir
                     .parent()
                     .filter(|dir| !dir.as_os_str().is_empty())
                     .unwrap_or_else(|| std::path::Path::new("."))
@@ -136,7 +104,7 @@ enum Access {
     ReadCatalog,
     /// Changes one project that must already exist.
     ChangeProject,
-    /// `init` and `import`: change the project, or create it if it is missing.
+    /// `init`: change the project, or create it if it is missing.
     ChangeOrCreateProject,
     /// Changes the catalog or runs without a project (`project create`).
     Catalog,
@@ -146,11 +114,9 @@ fn access(command: &Command) -> Access {
     match command {
         // The list of every project reads the catalog and names no project.
         Command::Ls(args) if args.all_projects => Access::ReadCatalog,
-        Command::Ls(_)
-        | Command::Show(_)
-        | Command::Snapshot(_)
-        | Command::Export(_)
-        | Command::Workspace(_) => Access::ReadProject,
+        Command::Ls(_) | Command::Show(_) | Command::Snapshot(_) | Command::Workspace(_) => {
+            Access::ReadProject
+        }
         Command::Epic(args) => match args.command {
             EpicCommand::Ls | EpicCommand::Show(_) => Access::ReadProject,
             EpicCommand::Add(_) | EpicCommand::Edit(_) | EpicCommand::Rm(_) => {
@@ -166,23 +132,15 @@ fn access(command: &Command) -> Access {
             ProjectCommand::Create(_) => Access::Catalog,
             ProjectCommand::Rename(_) | ProjectCommand::Rm => Access::ChangeProject,
         },
-        Command::Init(_) | Command::Import(_) => Access::ChangeOrCreateProject,
+        Command::Init(_) => Access::ChangeOrCreateProject,
         Command::Add(_)
         | Command::Attachment(_)
         | Command::Edit(_)
         | Command::Mv(_)
         | Command::State(_)
         | Command::Rm(_) => Access::ChangeProject,
-        Command::Serve(_) | Command::Hook(_) | Command::Wait(_) | Command::Migrate(_) => {
-            Access::Catalog
-        }
+        Command::Serve(_) | Command::Hook(_) | Command::Wait(_) => Access::Catalog,
     }
-}
-
-/// The commands that still work on the SQLite board. Export and import move
-/// to the shared files in a later step.
-fn uses_sqlite(command: &Command) -> bool {
-    matches!(command, Command::Export(_) | Command::Import(_))
 }
 
 fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome), SkanError> {
@@ -197,7 +155,7 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
     let target = match name {
         Some(name) => match files.project_by_name(&name) {
             Ok(meta) => Target::Existing(meta),
-            // `init` and `import` create a project that does not exist yet.
+            // `init` creates a project that does not exist yet.
             Err(SkanError::ProjectNotFound { .. })
                 if matches!(access, Access::ChangeOrCreateProject) =>
             {
@@ -207,14 +165,8 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
         },
         None => Target::Catalog,
     };
-    let legacy = if uses_sqlite(&cli.command) {
-        Some(ProjectStore::open(&env.db_path)?)
-    } else {
-        None
-    };
     let mut ctx = Context {
         files,
-        legacy,
         target,
         // The clock moves into the context; a second run with the same Env
         // would use the system clock.
@@ -242,11 +194,9 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> 
         Command::Show(args) => commands::show::run(ctx, args),
         Command::Snapshot(_) => commands::snapshot::run(ctx),
         Command::Workspace(_) => commands::workspace::run(ctx),
-        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) | Command::Migrate(_) => {
+        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) => {
             unreachable!("serve and the agent commands are handled before store setup")
         }
-        Command::Export(args) => commands::export::run(ctx, args),
-        Command::Import(args) => commands::import::run(ctx, args),
     }
 }
 

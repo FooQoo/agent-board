@@ -42,11 +42,15 @@ fn an_empty_data_area_gets_workspace_project_and_readme_and_no_sqlite_file() {
     assert_eq!(project_json["name"], "Alpha");
     assert_eq!(project_json["createdAt"], "2026-10-04T00:00:00Z");
     assert_eq!(project_json["nextCardId"], 1);
-    assert!(
-        !fs::read_to_string(dir.join("README.md"))
-            .unwrap()
-            .is_empty()
-    );
+    let readme = fs::read_to_string(dir.join("README.md")).unwrap();
+    // The guidance for people and agents who touch the files directly (U9-6).
+    for rule in [
+        "Do not edit TASK.md of a card that is a draft.",
+        "Do not edit it; use the `agboard` CLI.",
+        "Do not delete a card folder or an epic folder.",
+    ] {
+        assert!(readme.contains(rule), "README lacks {rule:?}");
+    }
     assert!(dir.join("tasks").is_dir());
     assert!(dir.join("epics").is_dir());
 
