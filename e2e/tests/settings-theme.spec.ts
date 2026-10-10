@@ -1,8 +1,8 @@
-import { editorValue } from '../helpers/ui';
+import { editorValue, pasteMarkdown } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard } from '../helpers/agboard';
+import { agboardOk, listCards, mainProject, nextCardId, resetBoard, taskBody } from '../helpers/agboard';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The Rust serve on 7631 is real; only the browser storage and a few request
@@ -155,9 +155,8 @@ async function dragCardTo(page: Page, id: number, laneName: string): Promise<Loc
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   // dnd-kit keeps the source in a dropping animation briefly after the pointer is released.
-  const dragged = page.locator('button.card').filter({ hasText: new RegExp(`^#${id}(?!\\d)`) }).first();
-  await expect(dragged).not.toHaveAttribute('data-dnd-dragging', 'true');
-  await expect(dragged).not.toHaveAttribute('data-dnd-dropping', '');
+  const dragged = page.locator('.card').filter({ hasText: new RegExp(`^#${id}(?!\\d)`) }).first();
+  await expect(dragged).not.toHaveClass(/card--dragging/);
   return dialog;
 }
 
@@ -502,7 +501,9 @@ test('Add card takes the focus to the title, keeps it inside, and gives it back;
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed and kept');
 
+  // The typed title is unsaved, so Escape asks first; Discard and close then gives the focus back.
   await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(add).toBeFocused();
   expect(listCards(mainProject).map(({ title }) => title)).not.toContain('Typed and kept');
@@ -532,15 +533,13 @@ test('the move dialog and the answer dialog take the focus and give it back', as
   expect(listCards(mainProject).find(({ id }) => id === 16)?.cardStatus).toBe('todo');
 
   await card(page, 12).click();
-  const answerButton = details(page).getByRole('button', { name: 'Answer', exact: true });
-  await answerButton.click();
-  // The answer is typed in place, not in a dialog; the text area takes the focus.
+  // The answer is typed in place, not in a dialog: the form is open with the request, and its text area takes focus.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const answerBox = details(page).getByRole('textbox', { name: 'Your answer' });
+  await answerBox.click();
   await expect(answerBox).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(answerBox).toHaveCount(0);
-  await expect(answerButton).toBeFocused();
+  await details(page).getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(answerBox).toHaveValue('');
   expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
 });
 
@@ -587,7 +586,7 @@ test('changing the language does not translate or alter what was entered', async
   await page.getByRole('button', { name: 'Add card' }).click();
   const create = page.getByRole('dialog', { name: 'Add card' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Draft the release note');
-  await create.getByRole('textbox', { name: 'Description (Markdown)' }).fill('Line one\nLine two');
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Line one\n\nLine two'));
   await create.getByRole('radio', { name: 'User' }).click();
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Draft the release note `) })).toBeVisible();
@@ -596,7 +595,6 @@ test('changing the language does not translate or alter what was entered', async
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
   await card(page, 12).click();
-  await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
   const answer = details(page);
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Keep the database name.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
@@ -616,9 +614,8 @@ test('changing the language does not translate or alter what was entered', async
   const panel = details(page, 'カードの詳細');
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Draft the release note');
   await expect(panel.getByText('Line one')).toBeVisible();
-  expect(await panel.getByText('Line one').evaluate((element) => (element as HTMLElement).innerText)).toBe(
-    'Line one\nLine two',
-  );
+  expect(await panel.getByText('Line one').evaluate((element) => (element as HTMLElement).innerText)).toBe('Line one');
+  await expect(panel.getByText('Line two')).toBeVisible();
   await panel.getByRole('tab', { name: '履歴 2' }).click();
   await expect(panel).toContainText('Starting the draft today.');
   await card(page, 12).click();
@@ -652,7 +649,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await page.getByRole('button', { name: 'Add card' }).click();
   const create = page.getByRole('dialog', { name: 'Add card' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Review the themes');
-  await create.getByRole('textbox', { name: 'Description (Markdown)' }).fill('Check all 24 themes.');
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Check all 24 themes.'));
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create).toHaveCount(0);
   const created = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Review the themes Updated \\d\\d\\/\\d\\d \\d\\d:\\d\\d$`) });
@@ -678,7 +675,6 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await card(page, 12).click();
   const panel = details(page);
   await expect(panel).toContainText('Pending');
-  await panel.getByRole('button', { name: 'Answer', exact: true }).click();
   const answer = panel.getByRole('region', { name: 'The agent is waiting for your answer' });
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Replace the board after a backup.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
@@ -686,7 +682,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('listitem').first()).toContainText('Replace the board after a backup.');
-  await expect(panel.getByRole('button', { name: 'Answer', exact: true })).toHaveCount(0);
+  await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
   expect(listCards(mainProject).find(({ id }) => id === 12)).toMatchObject({ agentStatus: 'idle', pendingReason: null });
 
   // Archive from the toolbar beside the tabs; Cancel keeps the card, Archive removes it from the board.
@@ -744,14 +740,14 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   await page.getByRole('button', { name: 'Add card' }).click();
   const create = page.getByRole('dialog', { name: 'Add card' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed title');
-  await create.getByRole('textbox', { name: 'Description (Markdown)' }).fill('Typed description\nsecond line');
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Typed description\n\nsecond line'));
   await create.getByRole('radio', { name: 'User' }).click();
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create.getByRole('alert')).toContainText('The storage is busy.');
   const keepsInput = async () => {
     await expect(create).toBeVisible();
     await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed title');
-    expect(await editorValue(create.getByRole('textbox', { name: 'Description (Markdown)' }))).toBe('Typed description\nsecond line');
+    expect(await editorValue(create.getByRole('textbox', { name: 'Description (Markdown)' }))).toContain('Typed description\n\nsecond line');
     await expect(create.getByRole('radio', { name: 'User' })).toHaveAttribute('aria-checked', 'true');
     await expect(create.getByRole('button', { name: 'Add', exact: true })).toBeEnabled();
     await expect(create.getByRole('button', { name: 'Cancel' })).toBeEnabled();
@@ -803,7 +799,6 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
     });
   });
   await card(page, 12).click();
-  await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
   const answer = details(page).getByRole('region', { name: 'The agent is waiting for your answer' });
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Kept answer.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
@@ -906,7 +901,6 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
   await shot(page, testInfo, '08-move-dark-red.png');
   void move;
   await page.keyboard.press('Escape');
-  await details(page).getByRole('button', { name: 'Answer', exact: true }).click();
   await shot(page, testInfo, '09-answer-dark-red.png');
   await page.keyboard.press('Escape');
 

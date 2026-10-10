@@ -62,7 +62,8 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(panel).toContainText('待機中');
   await expect(panel).toContainText('Waiting for confirmation on how to replace a board.');
   await expect(panel.getByRole('tab', { name: '本文' })).toHaveAttribute('aria-selected', 'true');
-  await expect(panel.getByText('説明はありません。')).toBeVisible();
+  // An empty body is written as the TASK.md template; its placeholder shows in both languages.
+  await expect(panel.getByText('（作業の目的と内容を書く）')).toBeVisible();
   await panel.getByRole('tab', { name: '履歴 3' }).click();
   await expect(panel.getByRole('tabpanel').getByRole('list')).toContainText('作成');
   await page.screenshot({ path: testInfo.outputPath('02-japanese-board-detail.png') });
@@ -124,7 +125,10 @@ test('keyboard selection keeps an open archive confirmation and the selected car
   ).toBeVisible();
   await expect(japanesePanel.getByRole('button', { name: 'アーカイブ', exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('03-japanese-archive-confirmation.png') });
-  await japanesePanel.getByRole('button', { name: 'キャンセル' }).click();
+  await japanesePanel
+    .getByRole('group', { name: /をアーカイブしますか/ })
+    .getByRole('button', { name: 'キャンセル', exact: true })
+    .click();
   expect(listCards(mainProject).map(({ id }) => id)).toContain(12);
 });
 

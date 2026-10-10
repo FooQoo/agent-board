@@ -27,7 +27,6 @@ const details = (page: Page) => page.getByRole('complementary', { name: 'Card de
 const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const body = (page: Page) => details(page).getByRole('tabpanel');
 /** The fold button of an H2 section; its name carries the count. */
-const fold = (page: Page, title: string) => body(page).getByRole('button', { name: new RegExp(`^${title} \\d+$`) });
 
 async function addLongCard(title = 'Long markdown'): Promise<number> {
   const id = nextCardId(mainProject);
@@ -63,30 +62,37 @@ test('a long Markdown card shows every section open, with counts, tables, checkl
     'Intro line one before the first section.\nIntro line two, after a single line break.',
   );
 
-  // Every H2 starts open and shows how many items it holds; an H3 does not fold.
-  for (const [title, count] of [['Overview', 4], ['Data', 2], ['Pictures', 4], ['Raw HTML', 1]] as const) {
-    const heading = panel.getByRole('button', { name: `${title} ${count}` });
-    await expect(heading).toHaveAttribute('aria-expanded', 'true');
+  // The H2 sections of the body are plain headings, all shown; headings have no fold control.
+  for (const title of ['Overview', 'Data', 'Pictures', 'Raw HTML']) {
+    await expect(panel.getByRole('heading', { name: title })).toBeVisible();
   }
+  await expect(panel.getByRole('button', { name: /^(Overview|Data|Pictures|Raw HTML) \d+$/ })).toHaveCount(0);
   await expect(panel.getByRole('heading', { name: 'Detail heading' })).toBeVisible();
   await expect(panel.getByRole('heading', { name: 'Detail heading' }).getByRole('button')).toHaveCount(0);
   // There is no "open all / close all".
   await expect(details(page).getByRole('button', { name: /(expand|collapse|open|close) all/i })).toHaveCount(0);
 
   // The list, the checklist, the quote, the struck text, and the inline code.
-  await expect(panel.getByRole('listitem')).toHaveText(['first item', 'second item', 'finished task', 'open task']);
+  // The body's own items come first; the completion-condition template follows them.
+  expect((await panel.getByRole('listitem').allTextContents()).map((text) => text.trim()).slice(0, 4)).toEqual([
+    'first item',
+    'second item',
+    'finished task',
+    'open task',
+  ]);
   await expect(panel.locator('del')).toHaveText('struck text');
   await expect(panel.getByRole('code').filter({ hasText: 'inline code' })).toBeVisible();
   await expect(panel.locator('blockquote')).toHaveText('A quoted line.');
 
   // A checklist is shown only: the boxes are disabled, and a click changes nothing.
+  // The body's two boxes come first; the template's completion condition has a box too.
   const boxes = panel.getByRole('checkbox');
-  await expect(boxes).toHaveCount(2);
+  await expect(boxes).toHaveCount(3);
   await expect(boxes.first()).toBeChecked();
   await expect(boxes.first()).toBeDisabled();
-  await expect(boxes.last()).not.toBeChecked();
+  await expect(boxes.nth(1)).not.toBeChecked();
   await panel.getByText('open task').click({ force: true });
-  await expect(boxes.last()).not.toBeChecked();
+  await expect(boxes.nth(1)).not.toBeChecked();
   expect(JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card.description).toContain('- [ ] open task');
 
   // A wide table and a long code line scroll sideways inside the column; the page itself does not.
@@ -102,40 +108,27 @@ test('a long Markdown card shows every section open, with counts, tables, checkl
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test('H2 sections fold by hand, keep their state across tabs, and open again for another card', async ({ page }) => {
+test('headings do not fold: every section stays open across tabs and cards', async ({ page }) => {
   const id = await addLongCard();
   agboardOk(mainProject, ['add', 'Second card', '--desc', 'No sections here.']);
   await openCard(page, id);
   const panel = body(page);
-
-  await fold(page, 'Overview').click();
-  await expect(fold(page, 'Overview')).toHaveAttribute('aria-expanded', 'false');
-  await expect(panel.getByText('first item')).toBeHidden();
-  await expect(panel.getByText('Detail heading')).toBeHidden();
-  // The text before the first H2 and the other sections are still there.
-  await expect(panel.getByText('Intro line one before the first section.')).toBeVisible();
-  await expect(fold(page, 'Data')).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel.getByText('first item')).toBeVisible();
   await expect(panel.getByRole('table')).toBeVisible();
 
-  // A look at the history and back keeps the fold.
+  // A look at the history and back keeps every section open.
   await details(page).getByRole('tab', { name: /^History/ }).click();
   await details(page).getByRole('tab', { name: 'Description' }).click();
-  await expect(fold(page, 'Overview')).toHaveAttribute('aria-expanded', 'false');
-
-  // Opening it again by hand works, and a section can be shut and reopened.
-  await fold(page, 'Data').click();
-  await expect(panel.getByRole('table')).toBeHidden();
-  await fold(page, 'Data').click();
+  await expect(panel.getByText('first item')).toBeVisible();
   await expect(panel.getByRole('table')).toBeVisible();
 
-  // Another card, then back: every section is open again.
+  // Another card, then back: the same sections are shown.
   await card(page, id + 1).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Second card');
   await expect(panel).toContainText('No sections here.');
-  await expect(panel.getByRole('button', { name: /\d$/ })).toHaveCount(0);
   await card(page, id).click();
-  await expect(fold(page, 'Overview')).toHaveAttribute('aria-expanded', 'true');
   await expect(panel.getByText('first item')).toBeVisible();
+  await expect(panel.getByRole('table')).toBeVisible();
 });
 
 test('a body without H2 headings is shown whole, and an empty body says so', async ({ page }) => {
@@ -150,7 +143,8 @@ test('a body without H2 headings is shown whole, and an empty body says so', asy
 
   // A card without a description.
   await card(page, 12).click();
-  await expect(body(page)).toHaveText('No description.');
+  // An empty body is written as the TASK.md template, so its placeholder shows where the text goes.
+  await expect(body(page)).toContainText('（作業の目的と内容を書く）');
 });
 
 test('links open in a new tab without handing over the page, and other schemes stay text', async ({ page }) => {
@@ -185,7 +179,7 @@ test('only external http(s) images are fetched, without a Referer; everything el
   const id = await addLongCard();
   await openCard(page, id);
   const panel = body(page);
-  await panel.getByRole('button', { name: /^Pictures/ }).scrollIntoViewIfNeeded();
+  await panel.getByRole('heading', { name: 'Pictures' }).scrollIntoViewIfNeeded();
 
   const picture = panel.getByRole('img', { name: 'sample picture' });
   await expect(picture).toBeVisible();

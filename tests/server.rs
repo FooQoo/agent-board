@@ -1541,13 +1541,13 @@ fn example_stops_on(signal: &str, port: u16) {
 #[test]
 #[cfg(unix)]
 fn the_example_serves_and_cleans_up_on_sigint() {
-    example_stops_on("-INT", 7618);
+    example_stops_on("-INT", 7941);
 }
 
 #[test]
 #[cfg(unix)]
 fn the_example_serves_and_cleans_up_on_sigterm() {
-    example_stops_on("-TERM", 7619);
+    example_stops_on("-TERM", 7942);
 }
 
 #[test]
@@ -1555,7 +1555,7 @@ fn the_example_reports_an_unusable_shared_folder_with_exit_code_1() {
     let home = tempfile::tempdir().unwrap();
     // A file where the shared folder should be is not a folder of projects.
     std::fs::write(home.path().join("shared"), b"not a folder").unwrap();
-    let mut child = spawn_example(home.path(), &["--port", "7617"]);
+    let mut child = spawn_example(home.path(), &["--port", "7940"]);
     let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
     assert_eq!(status.code(), Some(1));
     let mut stderr = String::new();

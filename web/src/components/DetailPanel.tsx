@@ -314,7 +314,9 @@ function DetailBody({
         hidden={tab !== 'description'}
       >
         <ProblemNotice
-          problems={problems.filter((problem) => problem.file.startsWith(`tasks/${card.id}/`))}
+          problems={problems.filter((problem) =>
+            problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
+          )}
         />
         <MarkdownSections
           source={card.description}

@@ -14,7 +14,6 @@ pub enum FileAction {
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error("{}", self.message())]
 pub enum SkanError {
-    NotInitialized,
     /// `project` is the name or ID the caller used to look the project up.
     ProjectNotFound {
         project: String,
@@ -136,7 +135,6 @@ impl SkanError {
     /// Machine-readable error code (snake_case).
     pub fn code(&self) -> &'static str {
         match self {
-            SkanError::NotInitialized => "not_initialized",
             SkanError::ProjectNotFound { .. } => "project_not_found",
             SkanError::ProjectNameExists { .. } => "project_name_exists",
             SkanError::CardNotFound { .. } => "card_not_found",
@@ -177,7 +175,7 @@ impl SkanError {
     /// Process exit code for this error.
     pub fn exit_code(&self) -> i32 {
         match self {
-            SkanError::NotInitialized | SkanError::ProjectNotFound { .. } => 4,
+            SkanError::ProjectNotFound { .. } => 4,
             SkanError::ProjectNameExists { .. } => 2,
             SkanError::CardNotFound { .. } => 3,
             SkanError::InvalidArgument { .. } | SkanError::InvalidValue { .. } => 2,
@@ -190,7 +188,6 @@ impl SkanError {
     /// One-line summary of what went wrong.
     pub fn message(&self) -> String {
         match self {
-            SkanError::NotInitialized => "no board found.".to_string(),
             SkanError::ProjectNotFound { .. } => "project not found.".to_string(),
             SkanError::ProjectNameExists { name } => format!("project \"{name}\" already exists."),
             SkanError::CardNotFound { id } => format!("card #{id} not found."),
@@ -248,9 +245,6 @@ impl SkanError {
     /// What to do about it, or why it happened.
     pub fn reason(&self) -> String {
         match self {
-            SkanError::NotInitialized => {
-                "Run \"agboard --project <name> init\" to create one.".to_string()
-            }
             SkanError::ProjectNotFound { project } => format!(
                 "No project matches \"{project}\". Run \"agboard project ls\" to see the projects."
             ),
@@ -335,7 +329,6 @@ mod tests {
 
     fn all_errors() -> Vec<SkanError> {
         vec![
-            SkanError::NotInitialized,
             SkanError::ProjectNotFound {
                 project: "Alpha".into(),
             },
@@ -414,7 +407,6 @@ mod tests {
         assert_eq!(
             got,
             vec![
-                ("not_initialized", 4),
                 ("project_not_found", 4),
                 ("project_name_exists", 2),
                 ("card_not_found", 3),
@@ -450,10 +442,6 @@ mod tests {
             .map(|e| (e.message(), e.reason()))
             .collect();
         let expected: Vec<(&str, &str)> = vec![
-            (
-                "no board found.",
-                "Run \"agboard --project <name> init\" to create one.",
-            ),
             (
                 "project not found.",
                 "No project matches \"Alpha\". Run \"agboard project ls\" to see the projects.",

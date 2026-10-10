@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { agboardOk, mainProject, nextCardId, resetBoard } from '../helpers/agboard';
+import { agboardOk, mainProject, nextCardId, resetBoard, taskBody } from '../helpers/agboard';
+import { pasteMarkdown } from '../helpers/ui';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
 let fresh = 0;
@@ -62,9 +63,8 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
   // dnd-kit keeps the source in a dropping animation briefly after pointer-up.
   // Wait until that transition is finished before editing the newly opened dialog.
   // The open dialog makes the board inert, so the card is located by CSS rather than by role.
-  const dragged = page.locator('button.card').filter({ hasText: /^#16(?!\d)/ }).first();
-  await expect(dragged).not.toHaveAttribute('data-dnd-dragging', 'true');
-  await expect(dragged).not.toHaveAttribute('data-dnd-dropping', '');
+  const dragged = page.locator('.card').filter({ hasText: /^#16(?!\d)/ }).first();
+  await expect(dragged).not.toHaveClass(/card--dragging/);
   await move.getByLabel('Reason').fill('Move after reviewing the board.');
   const moveResponse = page.waitForResponse(
     (response) => response.url().endsWith('/cards/16/move') && response.request().method() === 'POST',
@@ -122,7 +122,7 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await expect(create.getByRole('radio', { name: 'AI', exact: true })).toBeChecked();
   await expect(create.getByRole('radio', { name: 'User', exact: true })).not.toBeChecked();
   await create.getByRole('textbox', { name: 'Title' }).fill('Review the release notes');
-  await create.getByRole('textbox', { name: 'Description (Markdown)' }).fill('Check the wording with the release owner.');
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Check the wording with the release owner.'));
   await create.getByRole('radio', { name: 'User' }).check();
   await create.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -140,9 +140,8 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
-  const draggedCard = page.locator('button.card').filter({ hasText: new RegExp(`^#${fresh}(?!\\d)`) }).first();
-  await expect(draggedCard).not.toHaveAttribute('data-dnd-dragging', 'true');
-  await expect(draggedCard).not.toHaveAttribute('data-dnd-dropping', '');
+  const draggedCard = page.locator('.card').filter({ hasText: new RegExp(`^#${fresh}(?!\\d)`) }).first();
+  await expect(draggedCard).not.toHaveClass(/card--dragging/);
 
   const move = page.getByRole('dialog');
   await expect(move).toContainText('Todo');
@@ -164,7 +163,6 @@ test('a user answer returns a pending card to idle and records the full answer i
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'pending');
   await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(217, 101, 11)');
   // The request above the tabs takes the answer in place, with no dialog, while the history stays readable.
-  await panel.getByRole('button', { name: 'Answer' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
   await panel.getByRole('textbox', { name: 'Your answer' }).fill(fullAnswer);
@@ -173,7 +171,7 @@ test('a user answer returns a pending card to idle and records the full answer i
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
   await expect(panel.getByRole('listitem').first()).toContainText('Do not migrate or delete user data.');
-  await expect(panel.getByRole('button', { name: 'Answer' })).toHaveCount(0);
+  await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
   // The answer returned the run state to Idle: the new first dot has the Idle color.
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'idle');
   await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(74, 100, 168)');
