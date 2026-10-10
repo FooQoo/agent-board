@@ -156,6 +156,7 @@ fn board_home() -> tempfile::TempDir {
                         Assignee::Ai => Actor::Ai,
                         Assignee::Human => Actor::Human,
                     },
+                    is_draft: false,
                 },
                 t(1),
             )
@@ -591,6 +592,7 @@ fn board_reflects_changes_made_after_the_server_started() {
                 description: "".into(),
                 assignee: Assignee::Ai,
                 actor: Actor::Ai,
+                is_draft: false,
             },
             t(10),
         )
@@ -728,6 +730,7 @@ fn add_other_project(home: &Path) -> ProjectId {
                 description: String::new(),
                 assignee: Assignee::Ai,
                 actor: Actor::Ai,
+                is_draft: false,
             },
             t(1),
         )
@@ -1163,6 +1166,7 @@ fn notify_sends_changed_to_every_connected_client() {
                 description: BODY.into(),
                 assignee: Assignee::Ai,
                 actor: Actor::Ai,
+                is_draft: false,
             },
             t(12),
         )
@@ -1186,6 +1190,7 @@ fn each_notify_sends_one_changed() {
                     description: BODY.into(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
+                    is_draft: false,
                 },
                 t(12),
             )
@@ -1421,6 +1426,7 @@ fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
                 description: BODY.into(),
                 assignee: Assignee::Ai,
                 actor: Actor::Ai,
+                is_draft: false,
             },
             t(12),
         )

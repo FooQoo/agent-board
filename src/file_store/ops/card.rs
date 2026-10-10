@@ -109,7 +109,7 @@ impl FileStore {
             card_status: Column::Todo,
             agent_status: RunState::Idle,
             position,
-            is_draft: false,
+            is_draft: new.is_draft,
             archived_at: None,
             pending_request_id: None,
             created_at: at,

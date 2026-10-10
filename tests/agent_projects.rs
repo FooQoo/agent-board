@@ -536,6 +536,7 @@ fn deleting_the_project_while_waiting_is_an_error_and_a_same_name_project_is_not
                     description: "## 作業内容\n\nNew.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".into(),
                     assignee: agent_board::domain::Assignee::Ai,
                     actor: agent_board::domain::Actor::Ai,
+                    is_draft: false,
                 },
                 now,
             )

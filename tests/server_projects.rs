@@ -80,6 +80,7 @@ fn card(title: &str, assignee: Assignee) -> NewCard {
         description: BODY.into(),
         assignee,
         actor: Actor::Human,
+        is_draft: false,
     }
 }
 

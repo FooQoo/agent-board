@@ -725,6 +725,8 @@ struct CreateCardInput {
     title: String,
     description: String,
     assignee: Assignee,
+    #[serde(default)]
+    is_draft: bool,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
 }
@@ -779,6 +781,9 @@ struct MultipartMeta {
     request_id: String,
     #[serde(default)]
     finalize: bool,
+    /// Only a new card takes it; an edit refuses it.
+    #[serde(default)]
+    is_draft: Option<bool>,
     #[serde(default)]
     title: Option<String>,
     #[serde(default)]
@@ -930,6 +935,7 @@ async fn create_card(
                 description: input.description,
                 assignee: input.assignee,
                 actor: Actor::Human,
+                is_draft: input.is_draft,
             },
             chrono::Utc::now(),
         )
@@ -1174,6 +1180,14 @@ async fn edit_card_multipart(
             "requestId is required.",
         );
     }
+    if payload.meta.is_draft.is_some() {
+        return error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "request body is invalid.",
+            "isDraft is only accepted when a card is added.",
+        );
+    }
     let finalize = payload.meta.finalize;
     let title = payload.meta.title;
     let description = payload.meta.description;
@@ -1263,6 +1277,7 @@ async fn create_card_multipart(
             "assignee is required.",
         );
     };
+    let is_draft = payload.meta.is_draft.unwrap_or(false);
     if !payload.meta.remove_attachment_ids.is_empty() {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -1295,6 +1310,7 @@ async fn create_card_multipart(
                 description,
                 assignee,
                 actor: Actor::Human,
+                is_draft,
             },
             now,
         )?;

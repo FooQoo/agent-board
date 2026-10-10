@@ -55,6 +55,8 @@ pub struct NewCard {
     pub description: String,
     pub assignee: Assignee,
     pub actor: Actor,
+    /// The card starts as a draft (agent idle). The default is a normal card.
+    pub is_draft: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -24,6 +24,7 @@ fn new_card(title: &str, description: &str) -> NewCard {
         description: description.into(),
         assignee: Assignee::Ai,
         actor: Actor::Ai,
+        is_draft: false,
     }
 }
 

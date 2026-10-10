@@ -51,6 +51,7 @@ impl Fixture {
                     description: String::new(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
+                    is_draft: false,
                 },
                 at(4),
             )

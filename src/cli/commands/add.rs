@@ -21,6 +21,7 @@ pub fn run(ctx: &mut Context, args: &AddArgs) -> Result<Outcome, SkanError> {
             description,
             assignee: args.assignee.assignee(),
             actor: args.actor.actor(),
+            is_draft: false,
         },
         ctx.clock.now(),
     )?;

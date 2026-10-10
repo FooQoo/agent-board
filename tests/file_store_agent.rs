@@ -74,6 +74,7 @@ impl Fixture {
                     description: String::new(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
+                    is_draft: false,
                 },
                 now(),
             )
@@ -114,6 +115,7 @@ fn running_on_a_human_card_in_doing_is_refused() {
                 description: String::new(),
                 assignee: Assignee::Human,
                 actor: Actor::Human,
+                is_draft: false,
             },
             now(),
         )
