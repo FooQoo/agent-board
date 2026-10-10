@@ -9,6 +9,7 @@ pub mod io;
 pub mod layout;
 pub mod lock;
 pub mod model;
+mod ops;
 pub mod project;
 pub mod reader;
 pub mod validate;
