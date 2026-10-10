@@ -9,6 +9,7 @@ export const editEn = {
     close: 'Close',
     statusChange: 'Status change',
     moveHint: 'The card stays where it is until you confirm.',
+    moveReasonDefault: '{{who}} changed the status from {{from}} to {{to}}.',
     reasonRequired: 'Enter a reason up to 2,000 characters.',
     saveFailed: 'Could not save the change.',
     cancel: 'Cancel',

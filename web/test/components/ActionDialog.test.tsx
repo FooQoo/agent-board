@@ -336,6 +336,21 @@ describe('closing and focus', () => {
 });
 
 describe('move dialog', () => {
+  it('opens with the sentence of the move in the current language, and submits what is in the field', async () => {
+    selectLocale('ja');
+    const onSubmit = vi.fn(async (_data: Data) => undefined);
+    const { dialog } = await openHost(
+      { kind: 'move', card: fixtureCard(14), target: 'done' },
+      onSubmit,
+    );
+    const reason = within(dialog).getByLabelText(/^変更理由/) as HTMLTextAreaElement;
+    expect(reason.value).toBe('ユーザーが未着手から完了に変更しました。');
+    await userEvent.click(within(dialog).getByRole('button', { name: '移動する' }));
+    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
+      reason: 'ユーザーが未着手から完了に変更しました。',
+    });
+  });
+
   it('shows the card, the current column to the target column, and requires a reason', async () => {
     const card = fixtureCard(14);
     const onSubmit = vi.fn(async (_data: Data) => undefined);
@@ -344,13 +359,16 @@ describe('move dialog', () => {
     const transition = within(dialog).getByRole('group', { name: 'Status change' });
     expect(transition.textContent).toMatch(/Todo.*Doing/);
 
+    const reason = within(dialog).getByLabelText(/^Reason/) as HTMLTextAreaElement;
+    expect(reason.value).toBe('User changed the status from Todo to Doing.');
+    await userEvent.clear(reason);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
     expect((await within(dialog).findByRole('alert')).textContent).toBe(
       'Enter a reason up to 2,000 characters.',
     );
     expect(onSubmit).not.toHaveBeenCalled();
 
-    await userEvent.type(within(dialog).getByLabelText(/^Reason/), 'Ready to start');
+    await userEvent.type(reason, 'Ready to start');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
     expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ reason: 'Ready to start' });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));

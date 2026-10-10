@@ -9,6 +9,7 @@ export const editJa = {
     close: '閉じる',
     statusChange: '状態の変更',
     moveHint: '確定するまでカードの状態は変わりません。',
+    moveReasonDefault: '{{who}}が{{from}}から{{to}}に変更しました。',
     reasonRequired: '理由を2,000文字以内で入力してください。',
     saveFailed: '変更を保存できませんでした。',
     cancel: 'キャンセル',
