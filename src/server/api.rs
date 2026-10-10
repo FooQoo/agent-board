@@ -171,8 +171,7 @@ fn skan_error_response(error: &SkanError) -> Response {
         | SkanError::AttachmentNotFound { .. }
         | SkanError::EvidenceNotFound { .. }
         | SkanError::EpicNotFound { .. } => StatusCode::NOT_FOUND,
-        SkanError::NotInitialized
-        | SkanError::RequestChanged
+        SkanError::RequestChanged
         | SkanError::CardIsDraft { .. }
         | SkanError::CardNotDraft { .. }
         | SkanError::InvalidStateForDraft { .. }

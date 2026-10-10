@@ -45,7 +45,6 @@ fn read_error(error: SkanError, name: &str) -> SkanError {
         SkanError::ProjectNotFound { .. } => SkanError::ProjectNotFound {
             project: name.to_string(),
         },
-        SkanError::NotInitialized => unavailable("The board does not exist."),
         other => unavailable(format!("{} {}", other.message(), other.reason())),
     }
 }
