@@ -1,0 +1,47 @@
+/*
+ * The enlarged view of one picture or diagram. It is the only dialog frame of that view: the
+ * dialog's own surface and close button, with the content in the middle and no other frame.
+ */
+
+.lightbox {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  max-width: calc(100vw - 64px);
+  padding: 0;
+  border: 0;
+  background: var(--r-surface);
+}
+.lightbox img {
+  max-width: min(90vw, 1000px);
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+.lightbox__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  cursor: pointer;
+}
+.lightbox__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.lightbox__diagram svg {
+  display: block;
+  max-width: min(90vw, 1000px);
+  max-height: 85vh;
+  height: auto;
+}

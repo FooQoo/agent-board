@@ -1,7 +1,7 @@
-import { ImageOffIcon, Maximize2Icon, XIcon } from 'lucide-react';
+import { ImageOffIcon, Maximize2Icon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '../ui/dialog';
+import { Lightbox } from '../Lightbox';
 import type { Attachment, ProjectId } from '../../types';
 
 /** A card's complete image list, including images not referenced in its description. */
@@ -41,29 +41,11 @@ export function DetailAttachments({
           </div>
         ))}
       </div>
-      <Dialog
-        open={zoom !== null}
-        onOpenChange={(open) => {
-          if (!open) setZoom(null);
-        }}
-      >
-        {zoom && (
-          <DialogContent
-            className="detail-attachments__lightbox"
-            showCloseButton={false}
-            aria-describedby={undefined}
-          >
-            <DialogTitle className="visually-hidden">{zoom.name}</DialogTitle>
-            <DialogClose
-              className="detail-attachments__lightbox-close"
-              aria-label={t('dialog.close')}
-            >
-              <XIcon aria-hidden="true" />
-            </DialogClose>
-            <img src={imageUrl(zoom.id)} alt={zoom.name} />
-          </DialogContent>
-        )}
-      </Dialog>
+      {zoom && (
+        <Lightbox label={zoom.name} onClose={() => setZoom(null)}>
+          <img src={imageUrl(zoom.id)} alt={zoom.name} />
+        </Lightbox>
+      )}
     </section>
   );
 }
