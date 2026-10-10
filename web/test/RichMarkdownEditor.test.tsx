@@ -299,3 +299,35 @@ describe('mermaid previews in the editor', () => {
     expect(CODE_LANGUAGES.some((language) => language.name === 'TypeScript')).toBe(true);
   });
 });
+
+describe('a pasted picture reference', () => {
+  function paste(text: string) {
+    const target = document.querySelector('.ProseMirror') as HTMLElement;
+    const event = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        getData: (type: string) => (type === 'text/plain' ? text : ''),
+        types: ['text/plain'],
+        files: [],
+      },
+    });
+    act(() => {
+      target.dispatchEvent(event);
+    });
+  }
+
+  it('keeps no title when the reference had none, so saving does not write the alt text as one', async () => {
+    const { ref } = await mounted('Intro');
+    paste('![found](https://example.com/ok.png)');
+    await waitFor(() => expect(ref.current?.markdown()).toContain('found'));
+    expect(ref.current?.markdown()).toContain('![found](https://example.com/ok.png)');
+    expect(ref.current?.markdown()).not.toContain('"found"');
+  });
+
+  it('keeps a title the reference has', async () => {
+    const { ref } = await mounted('Intro');
+    paste('![found](https://example.com/ok.png "Shot")');
+    await waitFor(() => expect(ref.current?.markdown()).toContain('found'));
+    expect(ref.current?.markdown()).toContain('![found](https://example.com/ok.png "Shot")');
+  });
+});

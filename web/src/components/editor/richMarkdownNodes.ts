@@ -108,6 +108,21 @@ export function richImageFeature(options: RichImageOptions) {
             'img',
             { src: node.attrs.src, alt: node.attrs.alt, title: node.attrs.title || undefined },
           ],
+          // The default rule takes the alt text as the title when there is none, so a pasted
+          // reference would gain a title of its own. The title is read only as it was written.
+          parseDOM: [
+            {
+              tag: 'img[src]',
+              getAttrs: (dom) => {
+                if (!(dom instanceof HTMLElement)) return false;
+                return {
+                  src: dom.getAttribute('src') || '',
+                  alt: dom.getAttribute('alt') || '',
+                  title: dom.getAttribute('title') || '',
+                };
+              },
+            },
+          ],
           parseMarkdown: {
             match: ({ type }) => type === 'image',
             runner: (state, node, type) => {
