@@ -1592,3 +1592,191 @@ fn the_example_needs_a_port() {
     assert_eq!(status.code(), Some(2));
     assert!(!home.path().join("serve.json").exists());
 }
+
+// ---------------------------------------------------------------- shared-file checks
+
+/// Read `/board` until `done` holds or three seconds pass. A save made outside
+/// the server reaches the board after the watcher's short quiet period (AC-3).
+fn board_until(server: &Running, done: impl Fn(&serde_json::Value) -> bool) -> serde_json::Value {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
+        let board: serde_json::Value =
+            serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+        if done(&board) || Instant::now() > deadline {
+            return board;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+/// The error code of a JSON error body.
+fn error_code_of(body: &str) -> String {
+    let value: serde_json::Value = serde_json::from_str(body).unwrap();
+    value["error"]["code"].as_str().unwrap().to_string()
+}
+
+#[test]
+fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() {
+    let home = board_home();
+    let project = main_id(home.path());
+    let server = Running::start(home.path(), 0).unwrap();
+    let md = home
+        .path()
+        .join("shared/projects")
+        .join(project.as_str())
+        .join("tasks/1/TASK.md");
+    let label = format!("projects/{project}/tasks/1/TASK.md");
+    // The 実行記録 heading is missing: the file is still being written, or was edited by hand.
+    let defective = "## 作業内容\n\nWork.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n";
+    std::fs::write(&md, defective).unwrap();
+
+    let board = board_until(&server, |b| !b["problems"].as_array().unwrap().is_empty());
+    let problems = board["problems"].as_array().unwrap();
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert_eq!(problems[0]["file"], label);
+    assert_eq!(problems[0]["field"], "## 実行記録");
+    assert!(!problems[0]["reason"].as_str().unwrap().is_empty());
+    // The card still shows the text as it was saved; the product does not rewrite it.
+    let card = board["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["id"] == 1)
+        .unwrap();
+    assert_eq!(card["description"], defective);
+
+    std::fs::write(&md, BODY).unwrap();
+    let board = board_until(&server, |b| b["problems"].as_array().unwrap().is_empty());
+    assert!(board["problems"].as_array().unwrap().is_empty(), "{board}");
+}
+
+#[test]
+fn the_board_lists_each_epic_with_its_fields_and_plan() {
+    use agent_board::file_store::model::NewEpic;
+    let home = board_home();
+    let project = main_id(home.path());
+    store_in(home.path())
+        .create_epic(
+            &project,
+            NewEpic {
+                id: "epic-1".into(),
+                name: "First epic".into(),
+                color: "#3366cc".into(),
+                plan: None,
+            },
+            t(12),
+        )
+        .unwrap();
+    let server = Running::start(home.path(), 0).unwrap();
+    let board = board_until(&server, |b| !b["epics"].as_array().unwrap().is_empty());
+    let epics = board["epics"].as_array().unwrap();
+    assert_eq!(epics.len(), 1, "{board}");
+    let epic = &epics[0];
+    assert_eq!(epic["id"], "EPIC-1");
+    assert_eq!(epic["name"], "First epic");
+    assert_eq!(epic["color"], "#3366CC");
+    assert_eq!(epic["isDraft"], false);
+    assert_eq!(
+        epic["plan"],
+        agent_board::file_store::validate::plan_template()
+    );
+    assert_eq!(epic["attachments"], serde_json::json!([]));
+    assert!(epic["createdAt"].is_string() && epic["updatedAt"].is_string());
+    let mut keys: Vec<&str> = epic
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        [
+            "attachments",
+            "color",
+            "createdAt",
+            "id",
+            "isDraft",
+            "name",
+            "plan",
+            "updatedAt"
+        ]
+    );
+}
+
+#[test]
+fn a_restarted_server_serves_the_same_cards_and_version() {
+    let home = board_home();
+    let first = Running::start(home.path(), 0).unwrap();
+    let before: serde_json::Value =
+        serde_json::from_str(&first.get(&first.api("/board")).body).unwrap();
+    first.stop().unwrap();
+    assert!(!home.path().join("serve.json").exists());
+
+    let second = Running::start(home.path(), 0).unwrap();
+    let after: serde_json::Value =
+        serde_json::from_str(&second.get(&second.api("/board")).body).unwrap();
+    assert_eq!(after["version"], before["version"]);
+    assert_eq!(after["cursor"], before["cursor"]);
+    assert_eq!(after["cards"], before["cards"]);
+    assert_eq!(after["cards"].as_array().unwrap().len(), 3);
+    assert!(!home.path().join("board.db").exists(), "no SQLite file");
+}
+
+#[test]
+fn archive_done_refuses_empty_and_repeated_lists_and_changed_targets_and_resends_are_idempotent() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let token = server.token();
+    let bulk = |body: &str| {
+        server.send_json(
+            "POST",
+            &server.api("/cards/archive-done"),
+            body,
+            Some(&token),
+        )
+    };
+
+    let empty = bulk(r#"{"ids":[]}"#);
+    assert_eq!(empty.status, 422, "{}", empty.body);
+    assert_eq!(error_code_of(&empty.body), "invalid_value");
+    let repeated = bulk(r#"{"ids":[1,1]}"#);
+    assert_eq!(repeated.status, 422, "{}", repeated.body);
+    assert_eq!(error_code_of(&repeated.body), "invalid_value");
+
+    // Card 1 is in Todo, so it is not a target: nothing is archived.
+    let not_done = bulk(r#"{"ids":[1]}"#);
+    assert_eq!(not_done.status, 409, "{}", not_done.body);
+    assert_eq!(error_code_of(&not_done.body), "archive_targets_changed");
+    let board: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+    assert_eq!(board["cards"].as_array().unwrap().len(), 3);
+
+    let moved = server.send_json(
+        "POST",
+        &server.api("/cards/1/move"),
+        r#"{"cardStatus":"done","reason":"Finish"}"#,
+        Some(&token),
+    );
+    assert_eq!(moved.status, 200, "{}", moved.body);
+    // A target that does not exist is a changed target too, and the others stay as they were.
+    let missing = bulk(r#"{"ids":[1,99]}"#);
+    assert_eq!(missing.status, 409, "{}", missing.body);
+    assert_eq!(error_code_of(&missing.body), "archive_targets_changed");
+    let archive: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
+    assert!(archive["cards"].as_array().unwrap().is_empty());
+
+    let done = bulk(r#"{"ids":[1]}"#);
+    assert_eq!(done.status, 200, "{}", done.body);
+    let body: serde_json::Value = serde_json::from_str(&done.body).unwrap();
+    assert_eq!(body["archivedCount"], 1);
+    assert!(body["cards"][0]["archivedAt"].is_string());
+
+    // A resend of the same bulk archive archives nothing and answers the same cards.
+    let again = bulk(r#"{"ids":[1]}"#);
+    assert_eq!(again.status, 200, "{}", again.body);
+    let body: serde_json::Value = serde_json::from_str(&again.body).unwrap();
+    assert_eq!(body["archivedCount"], 0);
+    assert!(body["cards"][0]["archivedAt"].is_string());
+}
