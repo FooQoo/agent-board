@@ -65,6 +65,7 @@ export function Card({ card, selected, onSelect, onOpenEpic = noop }: CardProps)
         <button
           type="button"
           className="card__epic"
+          data-epic-label={epic.id}
           style={{ background: epic.color, color: epicInk(epic.color) }}
           title={epic.name}
           onClick={(event) => {

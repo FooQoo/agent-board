@@ -671,6 +671,9 @@ describe('switching while a form is open', () => {
     await userEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
     );
+    // The typed title is unsaved, so the question comes first; discarding it applies the URL.
+    const question = await screen.findByRole('dialog', { name: 'Discard changes?' });
+    await userEvent.click(within(question).getByRole('button', { name: 'Discard and close' }));
     await screen.findByText('Eight in knowledge');
     expect(switcher('knowledge')).toBeTruthy();
     expect(app.updates()).toHaveLength(0);

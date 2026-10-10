@@ -129,7 +129,8 @@ export interface Board {
 export type DialogAction =
   | { kind: 'create' }
   | { kind: 'move'; card: Card; target: ColumnName }
-  | { kind: 'edit'; card: Card };
+  | { kind: 'edit'; card: Card }
+  | { kind: 'epic'; epic: Epic };
 
 /** Error body shared by the CLI `--json` output and the Web API. */
 export interface ApiError {

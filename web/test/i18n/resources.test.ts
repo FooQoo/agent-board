@@ -14,7 +14,8 @@ describe('dialog texts', () => {
     expect(resources.ja.translation.dialog.moveTitle).toBe('列を移動');
     expect(resources.ja.translation.editor.assigneeAi).toBe('AI');
     expect(resources.en.translation.editor.add).toBe('Add');
-    expect(resources.ja.translation.editor.saveAndFinalize).toBe('保存して確定');
+    expect(resources.ja.translation.editor.save).toBe('保存');
+    expect(resources.ja.translation.editor.discardAndMove).toBe('破棄して移動');
     expect(resources.en.translation.dialog.submitMove).toBe('Move');
     expect(resources.en.translation.request.send).toBe('Send');
     expect(resources.ja.translation.draft.finalize).toBe('確定する');

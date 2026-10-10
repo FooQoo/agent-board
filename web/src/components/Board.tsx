@@ -15,6 +15,8 @@ export interface BoardProps {
   onRetry: () => void;
   onMove: (card: Card, column: ColumnName) => void;
   onArchiveDone?: () => void;
+  /** The EPIC-ID label of a card was pressed. */
+  onOpenEpic?: (epicId: string) => void;
   layoutRef?: (node: HTMLDivElement | null) => void;
 }
 
@@ -26,6 +28,7 @@ export function Board({
   onRetry,
   onMove,
   onArchiveDone,
+  onOpenEpic,
   layoutRef,
 }: BoardProps) {
   if (message !== null) {
@@ -62,6 +65,7 @@ export function Board({
               selectedId={selectedId}
               onSelect={onSelect}
               onArchive={column === 'done' ? onArchiveDone : undefined}
+              onOpenEpic={onOpenEpic}
             />
           ))}
         </div>

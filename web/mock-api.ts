@@ -211,6 +211,91 @@ export function mockApi(): Plugin {
           return sendJson(res, 200, { projects, catalogVersion: 'mock-catalog' });
         }
 
+        // The epic and card writes of the editing dialogs (edit, epic, draft, membership).
+        const epicPath =
+          /^\/api\/projects\/([^/]+)\/epics\/([^/]+)(\/attachments(?:\/[^/]+)?)?$/.exec(path);
+        const cardWritePath =
+          /^\/api\/projects\/([^/]+)\/cards\/(\d+)(\/multipart|\/draft|\/epic)?$/.exec(path);
+        const method = req.method ?? '';
+        if (
+          (epicPath && ['PATCH', 'POST', 'DELETE'].includes(method)) ||
+          (cardWritePath && ['PATCH', 'PUT'].includes(method))
+        ) {
+          const target = boards[(epicPath ?? cardWritePath)?.[1] ?? ''];
+          if (!target)
+            return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
+          const input =
+            method === 'PATCH' && !epicPath?.[3] && !cardWritePath?.[3]
+              ? await readJson(req)
+              : null;
+          if (epicPath) {
+            const epicId = decodeURIComponent(epicPath[2] ?? '');
+            const epic = target.epics.find((item) => item.id === epicId);
+            if (!epic)
+              return sendError(res, 404, 'epic_not_found', 'epic not found.', 'Unknown ID.');
+            if (!epicPath[3]) {
+              const patch = input ?? {};
+              const next: Epic = {
+                ...epic,
+                name: typeof patch.name === 'string' ? patch.name : epic.name,
+                color: typeof patch.color === 'string' ? patch.color : epic.color,
+                isDraft: typeof patch.isDraft === 'boolean' ? patch.isDraft : epic.isDraft,
+                plan: typeof patch.plan === 'string' ? patch.plan : epic.plan,
+              };
+              boards = {
+                ...boards,
+                [target.project.id]: {
+                  ...target,
+                  revision: target.revision + 1,
+                  epics: target.epics.map((item) => (item.id === epicId ? next : item)),
+                },
+              };
+              broadcastChanged();
+              return sendJson(res, 200, { epic: next, changed: true });
+            }
+            // Images: the mock keeps the form body out of the way and answers with the epic as it is.
+            for await (const _ of req) void _;
+            return sendJson(res, 200, { epic });
+          }
+          const cardId = Number(cardWritePath?.[2]);
+          const card = target.cards.find((item) => item.id === cardId);
+          if (!card) return sendError(res, 404, 'card_not_found', 'card not found.', 'Unknown ID.');
+          const suffix = cardWritePath?.[3] ?? '';
+          let next: Card = card;
+          if (suffix === '/draft') {
+            const body = await readJson(req);
+            next = { ...card, isDraft: Boolean(body.isDraft) };
+          } else if (suffix === '/epic') {
+            const body = await readJson(req);
+            const epicId = typeof body.epicId === 'string' ? body.epicId : null;
+            const epic = epicId ? target.epics.find((item) => item.id === epicId) : undefined;
+            next = {
+              ...card,
+              epic: epic ? { id: epic.id, name: epic.name, color: epic.color } : null,
+            };
+          } else if (suffix === '/multipart') {
+            for await (const _ of req) void _;
+          } else {
+            const body = input ?? {};
+            next = {
+              ...card,
+              ...(typeof body.title === 'string' ? { title: body.title } : {}),
+              ...(typeof body.description === 'string' ? { description: body.description } : {}),
+              ...(body.finalize === true ? { isDraft: false } : {}),
+            };
+          }
+          boards = {
+            ...boards,
+            [target.project.id]: {
+              ...target,
+              revision: target.revision + 1,
+              cards: target.cards.map((item) => (item.id === cardId ? next : item)),
+            },
+          };
+          broadcastChanged();
+          return sendJson(res, 200, { card: toWireCard(next), changed: true });
+        }
+
         const projectMatch = /^\/api\/projects\/([^/]+)\/(board|archive|cards.*)$/.exec(path);
         const projectId = projectMatch?.[1] ?? '';
         const rest = projectMatch?.[2] ?? '';

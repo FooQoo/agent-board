@@ -1,70 +1,67 @@
-import { CircleAlertIcon, InfoIcon, PaperclipIcon } from 'lucide-react';
-import {
-  useDeferredValue,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { CircleAlertIcon } from 'lucide-react';
+import { useDeferredValue, useId, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MarkdownView } from '../markdown/MarkdownView';
-import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
 import { AttachmentPanel } from './AttachmentPanel';
 import type { EditorAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, TITLE_LIMIT, countChars } from './limits';
 import { activeOutlineIndex, outlineOf } from './outline';
+import { RichMarkdownEditor, type RichMarkdownEditorHandle } from './RichMarkdownEditor';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import '../../styles/editor.css';
 
-type Tab = 'edit' | 'preview';
-
 export interface EditorBodyProps {
   title: string;
   onTitleChange: (title: string) => void;
+  /** The label of the title field; the epic dialog calls its formal name a name. */
+  titleLabel?: string;
   titlePlaceholder?: string;
   titleInvalid?: boolean;
+  /** The Markdown body: a card's description or an epic's plan. */
   description: string;
   onDescriptionChange: (description: string) => void;
+  /** The accessible name of the body. */
+  bodyLabel?: string;
+  /** The handle of the rich editor: the dialog reads the text and inserts images through it. */
+  editorRef: RefObject<RichMarkdownEditorHandle | null>;
   /** The text is being saved: nothing can be edited. */
   disabled: boolean;
-  /** A field placed between the title and the description (the assignee of a new card). */
+  /** Shown above the title (the EPIC-ID label of a card, the label row of an epic). */
+  beforeTitle?: ReactNode;
+  /** A field placed between the title and the body (the assignee of a new card). */
   extraField?: ReactNode;
+  /** Shown under the outline in the left column (the task list of an epic). */
+  sidebar?: ReactNode;
   attachments?: readonly EditorAttachment[];
   attachmentError?: string | null;
   onFiles?: (files: File[]) => void;
   onRemoveAttachment?: (id: string) => void;
-  onInsertAttachment?: (attachment: EditorAttachment) => void;
 }
 
-/** The body shared by the edit and the add dialog: outline, title, description editor and preview. */
+/** The body shared by the edit and the add dialogs: outline, title, the rich editor and the images. */
 export function EditorBody({
   title,
   onTitleChange,
+  titleLabel,
   titlePlaceholder,
   titleInvalid,
   description,
   onDescriptionChange,
+  bodyLabel,
+  editorRef,
   disabled,
+  beforeTitle,
   extraField,
+  sidebar,
   attachments = [],
   attachmentError,
   onFiles,
   onRemoveAttachment,
-  onInsertAttachment,
 }: EditorBodyProps) {
   const { t } = useTranslation();
   const ids = useId();
   const titleId = `${ids}-title`;
-  const labelId = `${ids}-label`;
-  const [tab, setTab] = useState<Tab>('edit');
-  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
-  const pendingInsert = useRef<EditorAttachment | null>(null);
   const [cursor, setCursor] = useState(0);
-  const editor = useRef<MarkdownEditorHandle>(null);
-  const pendingJump = useRef<number | null>(null);
 
   const deferred = useDeferredValue(description);
   const outline = useMemo(() => outlineOf(deferred), [deferred]);
@@ -73,51 +70,18 @@ export function EditorBody({
   const count = countChars(description);
   const over = count - DESCRIPTION_LIMIT;
   const overLimit = over > 0;
+  const body = bodyLabel ?? t('editor.descriptionLabel');
 
-  // The editor stays mounted (hidden) in the preview, so the cursor and the undo history survive.
-  useEffect(() => {
-    if (tab === 'edit' && pendingInsert.current !== null) {
-      const a = pendingInsert.current;
-      pendingInsert.current = null;
-      const alt = a.name.replace(/[\\[\]!*_`]/g, '\\$&').replace(/[\r\n]/g, ' ');
-      editor.current?.insert(`\n\n![${alt}](attachment:${a.id})\n\n`);
-      onInsertAttachment?.(a);
-    }
-    if (tab === 'edit' && pendingJump.current !== null) {
-      editor.current?.goTo(pendingJump.current);
-      pendingJump.current = null;
-    }
-  }, [tab, onInsertAttachment]);
-
-  const jumpTo = (position: number) => {
-    pendingJump.current = position;
-    if (tab === 'edit') {
-      editor.current?.goTo(position);
-      pendingJump.current = null;
-    } else {
-      setTab('edit');
-    }
-  };
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'edit', label: t('editor.tabEdit') },
-    { id: 'preview', label: t('editor.tabPreview') },
-  ];
-  const onTabKey = (event: React.KeyboardEvent, index: number) => {
-    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
-    event.preventDefault();
-    const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
-    if (!next) return;
-    setTab(next.id);
-    document.getElementById(`${ids}-tab-${next.id}`)?.focus();
+  const insertImage = (attachment: EditorAttachment) => {
+    const alt = attachment.name.replace(/[\\[\]!*_`]/g, '\\$&').replace(/[\r\n]/g, ' ');
+    editorRef.current?.insert(`\n\n![${alt}](attachment:${attachment.id})\n\n`);
   };
 
   return (
     <div
       role="region"
-      aria-label={t('editor.descriptionLabel')}
+      aria-label={body}
       className="editor__body"
-      data-attachments-open={attachmentsOpen ? 'true' : undefined}
       onPasteCapture={(event) => {
         if (disabled || !onFiles) return;
         const files = Array.from(event.clipboardData.files).filter((file) =>
@@ -127,7 +91,6 @@ export function EditorBody({
         event.preventDefault();
         event.stopPropagation();
         onFiles(files);
-        setAttachmentsOpen(true);
       }}
       onDragOver={(event) => {
         if (!disabled && onFiles && event.dataTransfer.types.includes('Files'))
@@ -139,37 +102,40 @@ export function EditorBody({
         if (files.length === 0) return;
         event.preventDefault();
         onFiles(files);
-        setAttachmentsOpen(true);
       }}
     >
-      <nav className="editor__outline" aria-label={t('editor.outlineName')}>
-        <p className="editor__outline-label">{t('editor.outlineLabel')}</p>
-        {outline.length === 0 ? (
-          <p className="editor__outline-empty">{t('editor.outlineEmpty')}</p>
-        ) : (
-          outline.map((item, index) => (
-            <button
-              key={`${item.from}:${item.text}`}
-              type="button"
-              className="editor__outline-item"
-              aria-current={index === active ? 'location' : undefined}
-              title={item.text}
-              disabled={disabled}
-              onClick={() => jumpTo(item.from)}
-            >
-              {item.text}
-            </button>
-          ))
-        )}
-      </nav>
+      <div className="editor__side">
+        <nav className="editor__outline" aria-label={t('editor.outlineName')}>
+          <p className="editor__outline-label">{t('editor.outlineLabel')}</p>
+          {outline.length === 0 ? (
+            <p className="editor__outline-empty">{t('editor.outlineEmpty')}</p>
+          ) : (
+            outline.map((item, index) => (
+              <button
+                key={`${item.from}:${item.text}`}
+                type="button"
+                className="editor__outline-item"
+                aria-current={index === active ? 'location' : undefined}
+                title={item.text}
+                disabled={disabled}
+                onClick={() => editorRef.current?.goTo(index)}
+              >
+                {item.text}
+              </button>
+            ))
+          )}
+        </nav>
+        {sidebar}
+      </div>
       <div className="editor__main">
+        {beforeTitle}
         <div className="editor__field">
           <Label htmlFor={titleId} className="editor__label">
-            {t('editor.titleLabel')}
+            {titleLabel ?? t('editor.titleLabel')}
           </Label>
           <Input
             id={titleId}
-            className="editor__input"
+            className="editor__input editor__input--title"
             value={title}
             maxLength={TITLE_LIMIT}
             placeholder={titlePlaceholder}
@@ -180,9 +146,7 @@ export function EditorBody({
         </div>
         {extraField}
         <div className="editor__label-row">
-          <span className="editor__label" id={labelId}>
-            {t('editor.descriptionLabel')}
-          </span>
+          <span className="editor__label">{body}</span>
           <span className="editor__counter" data-over={overLimit ? 'true' : undefined}>
             {t('editor.counter', {
               count: count.toLocaleString('en-US'),
@@ -191,132 +155,45 @@ export function EditorBody({
           </span>
         </div>
         <div className="editor__box" data-over={overLimit ? 'true' : undefined}>
-          <div className="editor__toolbar">
-            <div className="editor__tabs" role="tablist" aria-label={t('editor.modes')}>
-              {tabs.map((entry, index) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  role="tab"
-                  id={`${ids}-tab-${entry.id}`}
-                  className="editor__tab"
-                  aria-selected={tab === entry.id}
-                  aria-controls={`${ids}-panel-${entry.id}`}
-                  tabIndex={tab === entry.id ? 0 : -1}
-                  onClick={() => setTab(entry.id)}
-                  onKeyDown={(event) => onTabKey(event, index)}
-                >
-                  {entry.label}
-                </button>
-              ))}
-            </div>
-            {onFiles && onRemoveAttachment && (
-              <button
-                type="button"
-                className="editor__attachment-toggle"
-                disabled={disabled}
-                aria-expanded={attachmentsOpen}
-                aria-controls={`${ids}-attachments`}
-                onClick={() => setAttachmentsOpen((open) => !open)}
-              >
-                <PaperclipIcon aria-hidden="true" />
-                <span>
-                  {t('editor.attachments')} · {attachments.length}
-                </span>
-              </button>
-            )}
-          </div>
-          <div
-            role="tabpanel"
-            id={`${ids}-panel-edit`}
-            aria-labelledby={`${ids}-tab-edit`}
-            className="editor__panel"
-            hidden={tab !== 'edit'}
-          >
-            <MarkdownEditor
-              ref={editor}
-              value={description}
-              onChange={onDescriptionChange}
-              onCursorChange={setCursor}
-              placeholder={t('editor.descriptionPlaceholder')}
-              aria-label={t('editor.descriptionLabel')}
-              disabled={disabled}
-            />
-          </div>
-          <div
-            role="tabpanel"
-            id={`${ids}-panel-preview`}
-            aria-labelledby={`${ids}-tab-preview`}
-            className="editor__panel editor__preview"
-            hidden={tab !== 'preview'}
-          >
-            {tab === 'preview' && (
-              <PreviewBody
-                source={description}
-                resolveAttachment={(id) =>
-                  attachments.find((attachment) => attachment.id === id)?.url ?? null
-                }
-              />
-            )}
-          </div>
+          <RichMarkdownEditor
+            ref={editorRef}
+            value={description}
+            onChange={onDescriptionChange}
+            onCursorChange={setCursor}
+            aria-label={body}
+            disabled={disabled}
+            resolveAttachment={(id) =>
+              attachments.find((attachment) => attachment.id === id)?.url ?? null
+            }
+          />
         </div>
         {attachmentError && (
           <p className="editor__attachment-error" role="alert">
             {t('editor.attachmentInvalid', { reason: attachmentError })}
           </p>
         )}
-        <p className="editor__hint" data-over={overLimit ? 'true' : undefined}>
-          {overLimit ? (
-            <>
-              <CircleAlertIcon aria-hidden="true" />
-              <span role="status">
-                {t('editor.overLimit', {
-                  count: over,
-                  max: DESCRIPTION_LIMIT.toLocaleString('en-US'),
-                  over: over.toLocaleString('en-US'),
-                })}
-              </span>
-            </>
-          ) : (
-            <>
-              <InfoIcon aria-hidden="true" />
-              <span>{t('editor.hint')}</span>
-            </>
-          )}
-        </p>
+        {overLimit && (
+          <p className="editor__hint" data-over="true">
+            <CircleAlertIcon aria-hidden="true" />
+            <span role="status">
+              {t('editor.overLimit', {
+                count: over,
+                max: DESCRIPTION_LIMIT.toLocaleString('en-US'),
+                over: over.toLocaleString('en-US'),
+              })}
+            </span>
+          </p>
+        )}
       </div>
-      {onFiles && onRemoveAttachment && attachmentsOpen && (
+      {onFiles && onRemoveAttachment && (
         <AttachmentPanel
-          id={`${ids}-attachments`}
           attachments={attachments}
           onFiles={onFiles}
           onRemove={onRemoveAttachment}
-          onClose={() => setAttachmentsOpen(false)}
-          onInsert={(a) => {
-            if (tab === 'preview') {
-              pendingInsert.current = a;
-              setTab('edit');
-            } else {
-              const alt = a.name.replace(/[\\[\]!*_`]/g, '\\$&').replace(/[\r\n]/g, ' ');
-              editor.current?.insert(`\n\n![${alt}](attachment:${a.id})\n\n`);
-              onInsertAttachment?.(a);
-            }
-          }}
+          onInsert={insertImage}
           disabled={disabled}
         />
       )}
     </div>
   );
-}
-
-function PreviewBody({
-  source,
-  resolveAttachment,
-}: {
-  source: string;
-  resolveAttachment: (id: string) => string | null;
-}) {
-  const { t } = useTranslation();
-  if (source.trim() === '') return <p className="md-empty">{t('detail.noDescription')}</p>;
-  return <MarkdownView source={source} variant="wide" resolveAttachment={resolveAttachment} />;
 }

@@ -1,0 +1,349 @@
+/*
+ * The parts of the card and epic editors added with the rich body: the large title, the draft box,
+ * the epic label row, the task list under the outline and its filter menu. Colors are the r-*
+ * tokens of theme.css, as in editor.css.
+ */
+.editor__input--title {
+  height: auto;
+  padding: 4px 0 4px 20px;
+  border: 0;
+  border-left: 2px solid var(--r-accent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--r-text);
+  font-family: "Noto Serif JP", ui-serif, serif;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.editor__input--title:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}
+
+.editor__draft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.editor__epic-row,
+.epic-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor__epic-caption,
+.epic-label-row__caption {
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.editor__epic-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.epic-label-row__swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.epic-label-row__swatch:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.epic-label-row__hex {
+  width: 104px;
+  height: 30px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.epic-label-row__error {
+  color: var(--r-danger);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+/* The task list under the outline. */
+.epic-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--r-border);
+}
+
+.epic-tasks__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.epic-tasks__title-text {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 19px;
+}
+
+.epic-tasks__dot,
+.epic-tasks__count {
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.epic-tasks__filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.epic-tasks__filter svg {
+  width: 15px;
+  height: 15px;
+}
+
+.epic-tasks__empty {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.epic-tasks__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.epic-tasks__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--r-border);
+}
+
+.epic-tasks__check {
+  margin-top: 2px;
+}
+
+.epic-tasks__body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.epic-tasks__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.epic-tasks__id {
+  font-family: var(--font-mono);
+}
+
+.epic-tasks__name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--r-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.epic-tasks__name:hover:not(:disabled) {
+  color: var(--r-accent);
+  text-decoration: underline;
+}
+
+.epic-tasks__name:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* The filter menu. */
+.epic-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 232px;
+  padding: 14px;
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 16%);
+}
+
+.epic-filter__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 19px;
+}
+
+.epic-filter__choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.epic-filter__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* The header badge is shown only when there is a badge text. */
+.editor__badge:empty {
+  display: none;
+}
+
+/* The footer's draft box and status share the button row. */
+.editor__footer {
+  align-items: center;
+}
+
+/*
+ * The rich body in the editor dialog: the Crepe toolbar and link tooltip take the app's tokens, and
+ * the text follows the design's sizes (body 17px, H2 31px with a numbered chapter, H3 23px).
+ */
+.rich-markdown {
+  --crepe-color-background: var(--r-surface);
+  --crepe-color-on-background: var(--r-text);
+  --crepe-color-surface: var(--r-surface);
+  --crepe-color-surface-low: var(--r-bg);
+  --crepe-color-on-surface: var(--r-text);
+  --crepe-color-on-surface-variant: var(--r-text2);
+  --crepe-color-outline: var(--r-border);
+  --crepe-color-primary: var(--r-accent);
+  --crepe-color-secondary: var(--r-accent-soft);
+  --crepe-color-on-secondary: var(--r-accent);
+  --crepe-color-hover: var(--r-accent-soft);
+  --crepe-color-selected: var(--r-accent-soft);
+  --crepe-color-inline-area: var(--r-lane);
+  --crepe-color-inline-code: var(--r-text2);
+  --crepe-color-inverse: var(--r-text);
+  --crepe-color-on-inverse: var(--r-surface);
+  --crepe-font-default: "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  --crepe-font-code: var(--font-mono);
+  --crepe-font-title: "Noto Serif JP", ui-serif, serif;
+  --crepe-base-font-size: 17px;
+}
+
+/* The body scrolls inside its box; the header and the footer stay in place. */
+.editor__box {
+  border: 0;
+  border-radius: 0;
+}
+
+.editor__box > .rich-markdown {
+  flex: 1 1 0;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.editor__box .rich-markdown .ProseMirror {
+  counter-reset: chapter;
+  min-height: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 24px 0;
+  color: var(--r-text);
+  font-family: "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.8;
+  outline: none;
+}
+
+.editor__box .ProseMirror p {
+  margin: 0 0 20px;
+}
+
+.editor__box .ProseMirror h2 {
+  counter-increment: chapter;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 40px 0 20px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--r-border);
+  font-family: "Noto Serif JP", ui-serif, serif;
+  font-size: 31px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.editor__box .ProseMirror h2::before {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 58px;
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+  content: counter(chapter, decimal-leading-zero);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 35px;
+  font-weight: 300;
+}
+
+.editor__box .ProseMirror h3 {
+  margin: 28px 0 14px;
+  font-family: "Noto Serif JP", ui-serif, serif;
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1.4;
+}
