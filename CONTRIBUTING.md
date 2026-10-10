@@ -67,6 +67,8 @@ cargo run -- serve --port <port>
 
 The exported `SKAN_HOME` is shared by commands in this shell session. Set it again in a new session.
 
+The data area holds `shared/` (the project folders as plain files), `serve.json` while a server runs, and the `lifecycle.lock` file. Nothing is stored in a database. A `board.db` file left by the SQLite version is never read, converted, or deleted by the code, so do not use one as test input.
+
 To work on the web UI alone with sample data:
 
 ```sh
@@ -89,4 +91,4 @@ TZ=UTC pnpm --dir web test
 
 Run `pnpm --dir web format` to apply the web formatter.
 
-Tests set `TZ=UTC` so displayed times are fixed. Do not use port 7420 in tests; it is kept free for normal use. In tests, connect to `http://127.0.0.1:<port>/` rather than `localhost`.
+Tests set `TZ=UTC` so displayed times are fixed. Tests never use the default data area: each one sets `SKAN_HOME` to a temporary directory. Do not use port 7420 in tests; it is kept free for normal use. In tests, connect to `http://127.0.0.1:<port>/` rather than `localhost`.

@@ -8,12 +8,22 @@ Every hook command names its project with `--project`. The name is fixed in the 
 
 The payload contains the fetch time, the `project` (ID and name), the `revision`, the `cursor`, and every card of that project with its whole history and its full description (Markdown, up to 50,000 characters). A card with `"isDraft": true` is a draft the user is still writing; agents cannot change it (`edit`, `mv`, and `state` fail with `card_is_draft`) and should work on other cards until the user finalizes it. Nothing from another project is included. If the complete snapshot would exceed 256 KiB, or cannot be read, the agent gets `AGBOARD_ERROR` (`context_too_large`, `project_not_found`, `board_unavailable`, ...) and must not make board-dependent changes until a complete snapshot is available. A truncated snapshot is never presented as complete, and the original tool result is never blocked or changed.
 
-Image attachments follow the same project and card boundaries. Use `attachment add <card-id> --file PATH --actor ai|human` to add an image, `attachment ls <card-id>` to read metadata, and `attachment get <card-id> <attachment-id> --output PATH` to retrieve bytes. Snapshot, hook, and wait payloads contain attachment metadata only; image bytes are returned only by `get`. Draft cards, invalid or oversized image files, and cards outside the named project are rejected. Retrieval never overwrites an existing output file.
+Image attachments follow the same project and card boundaries. Use `agboard --project NAME attachment add <card-id> --file PATH --actor ai|human` to add an image, `agboard --project NAME attachment ls <card-id>` to read metadata, and `agboard --project NAME attachment get <card-id> <attachment-id> --output PATH` to retrieve bytes. Snapshot, hook, and wait payloads contain attachment metadata only; image bytes are returned only by `get`. Draft cards, invalid or oversized image files, and cards outside the named project are rejected. Retrieval never overwrites an existing output file.
 
 ## Before you start
 
 1. Install `agboard` onto your `PATH` (see [Install](../README.md#install)). Hook commands run `agboard` from `PATH`, so they use the installed version, not a development build. Check with `command -v agboard`.
 2. Create the project, or use an existing one: `agboard project create "My project"`.
+3. Find the project's folder with `agboard --project "My project" workspace --json`. Its `folder` field is the absolute path, and its `README.md` is the entry point for the files in it.
+
+## Rules for agents on the shared files
+
+The project folder holds plain files that the CLI and the browser read. Agents may read them at any time. Agents may edit only these, and only as the folder's README allows:
+
+- A card's `TASK.md`, to record its work, its completion conditions and results, and its execution log. Never edit the `TASK.md` of a draft card (`"isDraft": true`); wait until the user finalizes it.
+- An epic's `PLAN.md`.
+
+Never edit `task.json`, `epic.json`, or `project.json` directly; use the `agboard` CLI for every change to a card, an epic, or a project. Never delete a card folder or an epic folder: ask a person to delete a card or an epic with the CLI. Do not put a machine-specific absolute path into a shared file.
 
 ## Set the project name in the template
 
