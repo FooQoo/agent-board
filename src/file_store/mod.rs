@@ -5,6 +5,7 @@
 //! are kept apart. JSON writes take the project's write lock, read the latest
 //! file, change only the required items, and replace the file atomically.
 
+pub mod index;
 pub mod io;
 pub mod layout;
 pub mod lock;
@@ -13,6 +14,7 @@ mod ops;
 pub mod project;
 pub mod reader;
 pub mod validate;
+pub mod watch;
 
 use std::path::{Path, PathBuf};
 
