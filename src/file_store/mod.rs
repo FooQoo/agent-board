@@ -8,6 +8,8 @@
 pub mod io;
 pub mod layout;
 pub mod lock;
+pub mod model;
+pub mod validate;
 
 use std::path::{Path, PathBuf};
 
