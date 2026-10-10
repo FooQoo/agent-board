@@ -3,7 +3,7 @@
 use std::ffi::OsString;
 use std::io::Write;
 
-use crate::cli::args::{self, Cli, Command, Parsed, ProjectCommand};
+use crate::cli::args::{self, Cli, Command, EpicCommand, EvidenceCommand, Parsed, ProjectCommand};
 use crate::cli::{Context, Env, Outcome, Target, commands, errors, output};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
@@ -151,6 +151,16 @@ fn access(command: &Command) -> Access {
         | Command::Snapshot(_)
         | Command::Export(_)
         | Command::Workspace(_) => Access::ReadProject,
+        Command::Epic(args) => match args.command {
+            EpicCommand::Ls | EpicCommand::Show(_) => Access::ReadProject,
+            EpicCommand::Add(_) | EpicCommand::Edit(_) | EpicCommand::Rm(_) => {
+                Access::ChangeProject
+            }
+        },
+        Command::Evidence(args) => match args.command {
+            EvidenceCommand::Show(_) => Access::ReadProject,
+            EvidenceCommand::Add(_) | EvidenceCommand::Rm(_) => Access::ChangeProject,
+        },
         Command::Project(args) => match args.command {
             ProjectCommand::Ls => Access::ReadCatalog,
             ProjectCommand::Create(_) => Access::Catalog,
@@ -169,13 +179,10 @@ fn access(command: &Command) -> Access {
     }
 }
 
-/// The commands that still work on the SQLite board. Attachments, export and
-/// import move to the shared files in a later step.
+/// The commands that still work on the SQLite board. Export and import move
+/// to the shared files in a later step.
 fn uses_sqlite(command: &Command) -> bool {
-    matches!(
-        command,
-        Command::Attachment(_) | Command::Export(_) | Command::Import(_)
-    )
+    matches!(command, Command::Export(_) | Command::Import(_))
 }
 
 fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome), SkanError> {
@@ -225,6 +232,8 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> 
         Command::Init(args) => commands::init::run(ctx, args),
         Command::Add(args) => commands::add::run(ctx, args),
         Command::Attachment(args) => commands::attachment::run(ctx, args),
+        Command::Epic(args) => commands::epic::run(ctx, args),
+        Command::Evidence(args) => commands::evidence::run(ctx, args),
         Command::Edit(args) => commands::edit::run(ctx, args),
         Command::Mv(args) => commands::mv::run(ctx, args),
         Command::State(args) => commands::state::run(ctx, args),

@@ -72,6 +72,19 @@ pub(super) fn epic_view(
     Ok(view_of(file, plan))
 }
 
+/// A `#RRGGBB` color that none of `used` has. The color is random; a collision
+/// is drawn again, so a saved color is never handed out twice.
+fn random_color<'a>(used: impl Iterator<Item = &'a str> + Clone) -> Result<String, SkanError> {
+    for _ in 0..1_000 {
+        let hex = io::random_hex(3).map_err(|e| io::write_error("epic.json", e))?;
+        let color = format!("#{}", hex.to_ascii_uppercase());
+        if !used.clone().any(|saved| saved.eq_ignore_ascii_case(&color)) {
+            return Ok(color);
+        }
+    }
+    Err(io::write_error("epic.json", "no free color could be drawn"))
+}
+
 fn save_epic(shared: &Path, dir: &Path, file: &EpicFile) -> Result<(), SkanError> {
     let path = layout::epic_file(dir);
     io::write_json(&path, file, &layout::shared_label(shared, &path))
@@ -103,10 +116,16 @@ impl FileStore {
     ) -> Result<EpicView, SkanError> {
         let id = EpicId::normalize(&new.id)?;
         let name = validate::validate_epic_name(&new.name)?;
-        let color = validate::normalize_color(&new.color)?;
         let plan = plan_to_store(new.plan)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
+        let color = match new.color.as_deref() {
+            Some(text) => validate::normalize_color(text)?,
+            None => {
+                let used = reader::read_epics(shared, &project_dir).0;
+                random_color(used.iter().map(|epic| epic.color.as_str()))?
+            }
+        };
 
         let target = layout::epic_dir(&project_dir, &id);
         if fs::symlink_metadata(&target).is_ok() {
@@ -128,7 +147,7 @@ impl FileStore {
             id: id.clone(),
             name,
             color,
-            is_draft: false,
+            is_draft: new.is_draft,
             attachments: Vec::new(),
             created_at: at,
             updated_at: at,

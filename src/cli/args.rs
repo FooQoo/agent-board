@@ -30,6 +30,8 @@ Commands:
   rm      Delete a card (humans only; asks for confirmation)
   ls      List cards
   show    Show a card and its history
+  epic    Create, list, show, edit, or delete epics and their plans
+  evidence Add, show, or delete a card's text evidence
   attachment Add, list, or read image attachments
   snapshot Fetch the complete board and history
   hook    Add the latest board snapshot to an agent hook
@@ -109,6 +111,10 @@ pub enum Command {
     Show(ShowArgs),
     /// Add, list, or read image attachments
     Attachment(AttachmentArgs),
+    /// Create, list, show, edit, or delete epics
+    Epic(EpicArgs),
+    /// Add, show, or delete a card's text evidence
+    Evidence(EvidenceArgs),
     /// Fetch the complete board and history without modifying it
     Snapshot(SnapshotArgs),
     /// Add the latest board snapshot to an agent hook
@@ -141,6 +147,8 @@ impl Command {
             Command::Ls(_) => "ls",
             Command::Show(_) => "show",
             Command::Attachment(_) => "attachment",
+            Command::Epic(_) => "epic",
+            Command::Evidence(_) => "evidence",
             Command::Snapshot(_) => "snapshot",
             Command::Hook(_) => "hook",
             Command::Wait(_) => "wait",
@@ -153,7 +161,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 17] = [
+pub const SUBCOMMAND_NAMES: [&str; 19] = [
     "project",
     "init",
     "add",
@@ -164,6 +172,8 @@ pub const SUBCOMMAND_NAMES: [&str; 17] = [
     "ls",
     "show",
     "attachment",
+    "epic",
+    "evidence",
     "snapshot",
     "export",
     "import",
@@ -305,6 +315,9 @@ pub struct AddArgs {
     /// Who is creating this card
     #[arg(long, value_enum)]
     pub actor: ActorArg,
+    /// Epic to put the card in (its EPIC-ID)
+    #[arg(long, value_name = "EPIC-ID")]
+    pub epic: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -319,6 +332,12 @@ pub struct EditArgs {
     pub title: Option<String>,
     #[command(flatten)]
     pub description: DescriptionArgs,
+    /// Put the card in this epic (its EPIC-ID)
+    #[arg(long, value_name = "EPIC-ID", conflicts_with = "clear_epic")]
+    pub epic: Option<String>,
+    /// Take the card out of its epic
+    #[arg(long, conflicts_with = "epic")]
+    pub clear_epic: bool,
 }
 
 #[derive(Args, Debug)]
@@ -336,18 +355,36 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason\n\nExamples:\n  agboard --project demo state 12 running\n  agboard --project demo state 12 pending --reason \"Waiting for review\"\n  agboard --project demo state 12 idle"
+    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason or --request-file\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --reason \"Waiting for review\"\n  agboard --project demo state 12 pending --actor ai --request-file question.json\n  agboard --project demo state 12 idle --actor human --request ID --choice proceed\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
 )]
 pub struct StateArgs {
     /// ID of the card
     pub id: i64,
     /// Run state to report
     pub state: RunStateArg,
-    #[command(flatten)]
-    pub change: ChangeArgs,
+    /// Required explanation (the question when pending); use - to read UTF-8 from stdin
+    #[arg(
+        long,
+        value_name = "TEXT",
+        allow_hyphen_values = true,
+        group = "reason_source"
+    )]
+    pub reason: Option<String>,
+    /// Read the explanation from a UTF-8 file
+    #[arg(long, value_name = "PATH", group = "reason_source")]
+    pub reason_file: Option<PathBuf>,
+    /// Who is making this change
+    #[arg(long, value_enum, required = true)]
+    pub actor: ActorArg,
     /// Current pending request identifier, required when answering a request
     #[arg(long, value_name = "ID")]
     pub request: Option<String>,
+    /// Choice of the pending request to answer with (its CHOICE_ID)
+    #[arg(long, value_name = "CHOICE_ID")]
+    pub choice: Option<String>,
+    /// A question and its choices (JSON) for a new pending request
+    #[arg(long, value_name = "PATH")]
+    pub request_file: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
@@ -403,30 +440,182 @@ pub struct ChangeArgs {
 
 impl ChangeArgs {
     pub fn resolve_reason(&self) -> Result<String, SkanError> {
-        let raw = if let Some(path) = &self.reason_file {
-            std::fs::read_to_string(path).map_err(|e| SkanError::FileError {
+        match read_reason(self.reason.as_deref(), self.reason_file.as_deref())? {
+            Some(raw) => crate::domain::validate_work_reason(&raw),
+            None => crate::domain::validate_work_reason(""),
+        }
+    }
+}
+
+/// The raw text of a reason given as `--reason` (`-` reads standard input) or
+/// as `--reason-file`, or `None` when neither was given. The text is not checked here.
+pub fn read_reason(
+    reason: Option<&str>,
+    reason_file: Option<&std::path::Path>,
+) -> Result<Option<String>, SkanError> {
+    if let Some(path) = reason_file {
+        return std::fs::read_to_string(path)
+            .map(Some)
+            .map_err(|e| SkanError::FileError {
                 action: FileAction::Read,
                 file: path.display().to_string(),
                 reason: e.to_string(),
-            })?
-        } else {
-            let reason = self.reason.as_deref().unwrap_or_default();
-            if reason == "-" {
-                let mut value = String::new();
-                std::io::stdin()
-                    .read_to_string(&mut value)
-                    .map_err(|e| SkanError::FileError {
-                        action: FileAction::Read,
-                        file: "standard input".into(),
-                        reason: e.to_string(),
-                    })?;
-                value
-            } else {
-                reason.to_string()
-            }
-        };
-        crate::domain::validate_work_reason(&raw)
+            });
     }
+    match reason {
+        None => Ok(None),
+        Some("-") => {
+            let mut value = String::new();
+            std::io::stdin()
+                .read_to_string(&mut value)
+                .map_err(|e| SkanError::FileError {
+                    action: FileAction::Read,
+                    file: "standard input".into(),
+                    reason: e.to_string(),
+                })?;
+            Ok(Some(value))
+        }
+        Some(text) => Ok(Some(text.to_string())),
+    }
+}
+
+#[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  agboard --project demo epic add file-share --name \"File share\" --actor human\n  agboard --project demo epic add file-share --name \"File share\" --color '#7C3AED' --actor human\n  agboard --project demo epic ls --json\n  agboard --project demo epic show FILE-SHARE\n  agboard --project demo epic edit FILE-SHARE --plan-file plan.md\n  agboard --project demo epic rm FILE-SHARE"
+)]
+pub struct EpicArgs {
+    #[command(subcommand)]
+    pub command: EpicCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum EpicCommand {
+    /// Create an epic with a plan template (EPIC-ID, name, and an optional color)
+    Add(EpicAddArgs),
+    /// List the epics in EPIC-ID order
+    Ls,
+    /// Show an epic, its color, and its full plan
+    Show(EpicIdArgs),
+    /// Change an epic's name, color, or plan
+    Edit(EpicEditArgs),
+    /// Delete an epic (humans only; asks for confirmation)
+    Rm(EpicIdArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct EpicIdArgs {
+    /// The epic's EPIC-ID (letters, digits, and hyphens; lowercase is folded)
+    pub id: String,
+}
+
+#[derive(Args, Debug)]
+pub struct EpicAddArgs {
+    /// The epic's EPIC-ID (letters, digits, and hyphens)
+    pub id: String,
+    /// Formal name of the epic (1 to 100 characters, one line)
+    #[arg(long, value_name = "NAME")]
+    pub name: String,
+    /// Color as #RRGGBB; a random color that no epic uses when omitted
+    #[arg(long, value_name = "#RRGGBB")]
+    pub color: Option<String>,
+    /// Who is making this change
+    #[arg(long, value_enum, required = true)]
+    pub actor: ActorArg,
+}
+
+#[derive(Args, Debug)]
+pub struct EpicEditArgs {
+    /// The epic's EPIC-ID
+    pub id: String,
+    /// New formal name
+    #[arg(long, value_name = "NAME")]
+    pub name: Option<String>,
+    /// New color as #RRGGBB
+    #[arg(long, value_name = "#RRGGBB")]
+    pub color: Option<String>,
+    #[command(flatten)]
+    pub plan: PlanArgs,
+}
+
+/// The two ways to give a plan: the text itself, or a file. `-` reads standard input.
+#[derive(Args, Debug, Clone, Default)]
+#[group(id = "plan_source", multiple = false)]
+pub struct PlanArgs {
+    /// Plan in Markdown, up to 50,000 characters; use "-" to read it from standard input
+    #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+    pub plan: Option<String>,
+    /// Read the Markdown plan (up to 50,000 characters) from a file
+    #[arg(long, value_name = "PATH")]
+    pub plan_file: Option<PathBuf>,
+}
+
+impl PlanArgs {
+    /// The plan the user asked for, or `None` when neither option was given.
+    pub fn resolve(&self, stdin: &mut dyn Read) -> Result<Option<String>, SkanError> {
+        if let Some(text) = &self.plan
+            && text == "-"
+        {
+            let mut buffer = String::new();
+            stdin
+                .read_to_string(&mut buffer)
+                .map_err(|e| SkanError::FileError {
+                    action: FileAction::Read,
+                    file: "standard input".to_string(),
+                    reason: e.to_string(),
+                })?;
+            return Ok(Some(strip_final_newline(buffer)));
+        }
+        if let Some(text) = &self.plan {
+            return Ok(Some(text.clone()));
+        }
+        if let Some(path) = &self.plan_file {
+            let text = std::fs::read_to_string(path).map_err(|e| SkanError::FileError {
+                action: FileAction::Read,
+                file: path.display().to_string(),
+                reason: e.to_string(),
+            })?;
+            return Ok(Some(strip_final_newline(text)));
+        }
+        Ok(None)
+    }
+}
+
+#[derive(Args, Debug)]
+pub struct EvidenceArgs {
+    #[command(subcommand)]
+    pub command: EvidenceCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum EvidenceCommand {
+    /// Add a UTF-8 text file to a card as evidence
+    Add(EvidenceAddArgs),
+    /// Print a card's evidence text
+    Show(EvidenceIdArgs),
+    /// Delete a card's evidence (humans only; asks for confirmation)
+    Rm(EvidenceIdArgs),
+}
+
+#[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  agboard --project demo evidence add 12 run.log\n  agboard --project demo evidence show 12 <evidence-id>"
+)]
+pub struct EvidenceAddArgs {
+    /// ID of the card
+    pub card_id: i64,
+    /// UTF-8 text file to add
+    pub path: PathBuf,
+    /// Name to show for the evidence; the file name when omitted
+    #[arg(long, value_name = "NAME")]
+    pub name: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct EvidenceIdArgs {
+    /// ID of the card
+    pub card_id: i64,
+    /// Evidence ID
+    pub evidence_id: String,
 }
 
 #[derive(Args, Debug)]
@@ -450,6 +639,9 @@ pub struct LsArgs {
     /// Only list cards with this run state
     #[arg(long, value_name = "STATE")]
     pub state: Option<RunStateArg>,
+    /// Only list cards in this epic (its EPIC-ID)
+    #[arg(long, value_name = "EPIC-ID")]
+    pub epic: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -704,11 +896,25 @@ impl Cli {
             Command::Edit(args)
                 if args.title.is_none()
                     && args.description.desc.is_none()
-                    && args.description.desc_file.is_none() =>
+                    && args.description.desc_file.is_none()
+                    && args.epic.is_none()
+                    && !args.clear_epic =>
             {
                 Err(SkanError::InvalidArgument {
-                    message: "nothing to change; give --title, --desc, or --desc-file.".to_string(),
+                    message: "nothing to change; give --title, --desc, --desc-file, --epic, or --clear-epic.".to_string(),
                     command: Some("edit".to_string()),
+                })
+            }
+            Command::Epic(EpicArgs {
+                command: EpicCommand::Edit(args),
+            }) if args.name.is_none()
+                && args.color.is_none()
+                && args.plan.plan.is_none()
+                && args.plan.plan_file.is_none() =>
+            {
+                Err(SkanError::InvalidArgument {
+                    message: "nothing to change; give --name, --color, --plan, or --plan-file.".to_string(),
+                    command: Some("epic edit".to_string()),
                 })
             }
             Command::Snapshot(_) if !self.json => Err(SkanError::InvalidArgument {

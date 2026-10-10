@@ -9,7 +9,8 @@ mod work;
 pub use card::BoardMeta;
 pub use column::{Column, RunState};
 pub use limits::{
-    MAX_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS,
+    MAX_ANSWER_TEXT_CHARS, MAX_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS,
+    MAX_CHOICE_ID_CHARS, MAX_CHOICE_LABEL_CHARS, MAX_CHOICES, MAX_QUESTION_CHARS,
     normalize_and_validate_description, validate_attachment, validate_board_name,
     validate_project_name, validate_reason, validate_title,
 };

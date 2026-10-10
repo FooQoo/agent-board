@@ -58,7 +58,8 @@ impl Fixture {
             NewEpic {
                 id: id.into(),
                 name: "File share".into(),
-                color: "#7c3aed".into(),
+                color: Some("#7c3aed".into()),
+                is_draft: false,
                 plan: None,
             },
             at(4),
@@ -184,7 +185,8 @@ fn colors_are_stored_as_uppercase_hex_and_other_colors_are_refused() {
                 NewEpic {
                     id: format!("BAD-{}", bad.len()),
                     name: "Bad".into(),
-                    color: bad.into(),
+                    color: Some(bad.into()),
+                    is_draft: false,
                     plan: None,
                 },
                 at(4),

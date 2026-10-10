@@ -136,8 +136,18 @@ pub fn current_request(task: &TaskFile) -> Option<&HistoryRecord> {
     })
 }
 
+/// The epic a card belongs to, resolved from the epic's own file. Renaming or
+/// recoloring the epic changes this; the card file keeps only the ID.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CardEpic {
+    pub id: EpicId,
+    pub name: String,
+    pub color: String,
+}
+
 /// A card as callers receive it: `task.json` plus `TASK.md`, with the pending
-/// question and choices resolved from history.
+/// question and choices resolved from history, and the epic resolved from its file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CardView {
@@ -146,6 +156,7 @@ pub struct CardView {
     pub description: String,
     pub assignee: Assignee,
     pub epic_id: Option<String>,
+    pub epic: Option<CardEpic>,
     pub card_status: Column,
     pub position: i64,
     pub agent_status: RunState,
@@ -199,12 +210,14 @@ pub struct EpicView {
 }
 
 /// The input of an epic creation. `id` is the ID as typed (folded to
-/// uppercase when stored). A missing or blank `plan` gets the PLAN.md template.
+/// uppercase when stored). A missing `color` gets a random one that no saved
+/// epic uses. A missing or blank `plan` gets the PLAN.md template.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NewEpic {
     pub id: String,
     pub name: String,
-    pub color: String,
+    pub color: Option<String>,
+    pub is_draft: bool,
     pub plan: Option<String>,
 }
 

@@ -1661,7 +1661,8 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
             NewEpic {
                 id: "epic-1".into(),
                 name: "First epic".into(),
-                color: "#3366cc".into(),
+                color: Some("#3366cc".into()),
+                is_draft: false,
                 plan: None,
             },
             t(12),
