@@ -6,9 +6,9 @@ use std::path::Path;
 
 use crate::{
     clock::{Clock, SystemClock, format_utc},
-    domain::{FetchedSnapshot, validate_project_name},
+    domain::validate_project_name,
     error::SkanError,
-    store::ProjectStore,
+    file_store::{FileStore, reader::FetchedSnapshot},
 };
 
 /// Largest hook input read, in UTF-8 bytes.
@@ -42,7 +42,7 @@ impl Failure {
 pub fn run(
     agent: &str,
     input: &mut dyn Read,
-    db_path: &Path,
+    shared: &Path,
     project: Option<&str>,
 ) -> Option<String> {
     let mut bytes = Vec::new();
@@ -81,12 +81,12 @@ pub fn run(
     if !allowed {
         return None;
     }
-    let context = snapshot_context(db_path, project).unwrap_or_else(|f| error_context(&f));
+    let context = snapshot_context(shared, project).unwrap_or_else(|f| error_context(&f));
     Some(output(event, &context))
 }
 
-/// The `AGBOARD_SNAPSHOT` context for the named project.
-fn snapshot_context(db_path: &Path, project: Option<&str>) -> Result<String, Failure> {
+/// The `AGBOARD_SNAPSHOT` context for the named project, read from the shared files.
+fn snapshot_context(shared: &Path, project: Option<&str>) -> Result<String, Failure> {
     let name = project.ok_or_else(|| {
         Failure::new(
             "invalid_argument",
@@ -95,23 +95,12 @@ fn snapshot_context(db_path: &Path, project: Option<&str>) -> Result<String, Fai
     })?;
     let name = validate_project_name(name)
         .map_err(|error| Failure::new("invalid_value", error.reason()))?;
-    let store = ProjectStore::open_read_only(db_path).map_err(|error| match error {
-        SkanError::NotInitialized => {
-            Failure::new("board_unavailable", "Board database does not exist.")
-        }
-        other => Failure::new(
-            "board_unavailable",
-            format!("{} {}", other.message(), other.reason()),
-        ),
+    let store = FileStore::open(shared);
+    let meta = store.project_by_name(&name).map_err(|error| match error {
+        SkanError::ProjectNotFound { .. } => Failure::new("project_not_found", error.reason()),
+        other => Failure::new("board_unavailable", other.reason()),
     })?;
-    let id = store
-        .project_by_name(&name)
-        .map_err(|error| match error {
-            SkanError::ProjectNotFound { .. } => Failure::new("project_not_found", error.reason()),
-            other => Failure::new("board_unavailable", other.reason()),
-        })?
-        .id;
-    let snapshot = store.snapshot(&id).map_err(|error| match error {
+    let snapshot = store.board(&meta.id).map_err(|error| match error {
         SkanError::ProjectNotFound { .. } => Failure::new("project_not_found", error.reason()),
         other => Failure::new("board_unavailable", other.reason()),
     })?;
