@@ -1,14 +1,28 @@
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WriteError } from '../../src/api';
 import { ActionDialog, type DialogAction } from '../../src/components/ActionDialog';
 import { selectLocale } from '../../src/i18n';
-import { descriptionOf, setDescription } from '../editor/helpers';
 import { fixtureCard } from '../fixtures';
 
+vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('../editor/fakeRichEditor'));
+
 type Data = Parameters<React.ComponentProps<typeof ActionDialog>['onSubmit']>[0];
+
+/** The body of the dialog: the rich editor's stand-in is a textarea labelled with its Markdown name. */
+function bodyOf(root: HTMLElement = screen.getByRole('dialog')): HTMLTextAreaElement {
+  return within(root).getByRole('textbox', { name: /Markdown/ }) as HTMLTextAreaElement;
+}
+
+function descriptionOf(root?: HTMLElement): string {
+  return bodyOf(root).value;
+}
+
+function setDescription(text: string, root?: HTMLElement): void {
+  fireEvent.change(bodyOf(root), { target: { value: text } });
+}
 
 function deferred() {
   let resolve!: () => void;
@@ -168,7 +182,7 @@ describe('saving state', () => {
       (within(dialog).getByRole('button', { name: 'Close' }) as HTMLButtonElement).disabled,
     ).toBe(true);
     expect((title as HTMLInputElement).disabled).toBe(true);
-    expect(document.querySelector('.cm-content')?.getAttribute('contenteditable')).toBe('false');
+    expect(bodyOf(dialog).disabled).toBe(true);
 
     await userEvent.click(saving);
     await userEvent.keyboard('{Escape}');

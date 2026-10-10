@@ -20,10 +20,11 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  width: 960px;
+  /* 1280 × 900 gives 1216 × 828; 960 × 900 gives 928 × 828 (the design's sizes). */
+  width: min(1216px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
-  height: 800px;
-  max-height: calc(100dvh - 32px);
+  height: min(828px, calc(100dvh - 72px));
+  max-height: calc(100dvh - 72px);
   padding: 0;
   overflow: hidden;
   /* The design measures everything from the outer edge, so the 1px border is drawn over the edge. */
@@ -131,16 +132,24 @@
 }
 
 /* Outline. */
+/* The left column: the outline, and under it the tasks of an epic. It scrolls as a whole. */
+.editor__side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 4px;
+  width: 220px;
+  padding: 24px 16px;
+  overflow-y: auto;
+  border-right: 1px solid var(--r-border);
+  background: var(--r-bg);
+}
+
 .editor__outline {
   display: flex;
   flex: none;
   flex-direction: column;
   gap: 4px;
-  width: 200px;
-  padding: 24px 16px;
-  overflow-y: auto;
-  border-right: 1px solid var(--r-border);
-  background: var(--r-bg);
 }
 
 .editor__outline-label {
@@ -185,7 +194,7 @@
 }
 .editor-attachments {
   display: flex;
-  flex: 0 0 240px;
+  flex: 0 0 220px;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
@@ -382,8 +391,7 @@
   cursor: default;
   opacity: 0.5;
 }
-.editor-attachments button:focus-visible,
-.editor__attachment-toggle:focus-visible {
+.editor-attachments button:focus-visible {
   outline: 2px solid var(--r-accent);
   outline-offset: 2px;
 }
@@ -433,46 +441,12 @@
   width: 18px;
   height: 18px;
 }
-.editor__toolbar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  height: 37px;
-  padding-right: 6px;
-  border-bottom: 1px solid var(--r-border);
-  background: var(--r-lane);
-}
-.editor__attachment-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  padding: 5px 8px;
-  border: 1px solid var(--r-border);
-  border-radius: 6px;
-  background: var(--r-surface);
-  color: var(--r-text2);
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.editor__attachment-toggle svg {
-  width: 15px;
-  height: 15px;
-}
-.editor__attachment-toggle[aria-expanded="true"] {
-  border-color: var(--r-accent);
-  color: var(--r-accent);
-}
-@media (max-width: 991px) {
+/* The right column is always open; below 1100px both side columns narrow to 200px. */
+@media (max-width: 1100px) {
+  .editor__side,
   .editor-attachments {
-    position: absolute;
-    z-index: 2;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    width: min(240px, 100%);
-    box-shadow: -8px 0 24px rgb(15 23 42 / 20%);
+    width: 200px;
+    flex-basis: 200px;
   }
 }
 
@@ -483,7 +457,6 @@
 }
 
 .editor__outline-item:focus-visible,
-.editor__tab:focus-visible,
 .editor__btn:focus-visible,
 .editor__retry:focus-visible,
 .editor__close:focus-visible,
@@ -564,56 +537,8 @@
   border-color: var(--r-danger);
 }
 
-.editor__box:has(.cm-focused):not([data-over="true"]) {
+.editor__box:has(.ProseMirror-focused):not([data-over="true"]) {
   border-color: var(--r-accent);
-}
-
-.editor__tabs {
-  display: flex;
-  flex: none;
-  height: 37px;
-  padding: 0 6px;
-  border-bottom: 0;
-  background: transparent;
-}
-
-.editor__tab {
-  height: 37px;
-  margin-bottom: -1px;
-  padding: 0 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--r-muted);
-  font: inherit;
-  font-size: 13px;
-  line-height: 19px;
-  cursor: pointer;
-}
-
-.editor__tab[aria-selected="true"] {
-  border-bottom-color: var(--r-accent);
-  color: var(--r-text);
-  font-weight: 600;
-}
-
-.editor__panel {
-  flex: 1 1 0;
-  min-height: 0;
-  background: var(--r-surface);
-}
-
-.editor__panel[hidden] {
-  display: none;
-}
-
-.md-editor {
-  height: 100%;
-}
-
-.editor__preview {
-  padding: 20px 28px;
-  overflow-y: auto;
 }
 
 .editor__hint {

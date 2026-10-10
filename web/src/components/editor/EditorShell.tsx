@@ -3,11 +3,17 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { findCardButton } from '../DialogFrame';
+import { DiscardConfirm } from './DiscardConfirm';
 import '../../styles/editor.css';
+import '../../styles/editor-epic.css';
 
 export interface EditorShellProps {
   /** `#14` — shown before the title when the dialog is about an existing card. */
   cardId?: number;
+  /** Shown before the title instead of `#cardId`, for an epic (its EPIC-ID). */
+  idLabel?: string;
+  /** The label the focus returns to when the dialog closes, if the opener is gone. */
+  returnFocusSelector?: string;
   title: string;
   badge: string;
   variant: 'edit' | 'create';
@@ -21,6 +27,8 @@ export interface EditorShellProps {
   onClose: () => void;
   /** The line at the left of the footer. */
   status?: string;
+  /** The box at the left of the footer, before the status (the draft box of a card or an epic). */
+  footerStart?: ReactNode;
   /** The buttons at the right of the footer, after Cancel. */
   actions: ReactNode;
   children: ReactNode;
@@ -29,6 +37,8 @@ export interface EditorShellProps {
 /** The large dialog of the editor: header, body, error line and footer, plus the discard question. */
 export function EditorShell({
   cardId,
+  idLabel,
+  returnFocusSelector,
   title,
   badge,
   variant,
@@ -38,6 +48,7 @@ export function EditorShell({
   onRetry,
   onClose,
   status,
+  footerStart,
   actions,
   children,
 }: EditorShellProps) {
@@ -51,6 +62,8 @@ export function EditorShell({
     if (dirty) setAsking(true);
     else onClose();
   };
+
+  const shownId = idLabel ?? (cardId !== undefined ? `#${cardId}` : undefined);
 
   return (
     <Dialog open onOpenChange={(open) => !open && requestClose()}>
@@ -81,6 +94,8 @@ export function EditorShell({
           event.preventDefault();
           if (opener instanceof HTMLElement && opener !== document.body && opener.isConnected) {
             opener.focus();
+          } else if (returnFocusSelector !== undefined) {
+            document.querySelector<HTMLElement>(returnFocusSelector)?.focus();
           } else if (cardId !== undefined) {
             findCardButton(cardId)?.focus();
           }
@@ -88,7 +103,7 @@ export function EditorShell({
       >
         <div className="editor__header">
           <DialogTitle className="editor__heading">
-            {cardId !== undefined && <span className="editor__id">#{cardId}</span>}
+            {shownId !== undefined && <span className="editor__id">{shownId}</span>}
             <span className="editor__title">{title}</span>
             <span className="editor__badge">{badge}</span>
           </DialogTitle>
@@ -115,6 +130,7 @@ export function EditorShell({
           </div>
         )}
         <div className="editor__footer">
+          {footerStart}
           <span className="editor__status" role="status">
             {status}
           </span>
@@ -123,33 +139,15 @@ export function EditorShell({
           </button>
           {actions}
         </div>
-        <Dialog open={asking} onOpenChange={setAsking}>
-          <DialogContent
-            className="editor-confirm"
-            showCloseButton={false}
-            aria-describedby="editor-confirm-body"
-          >
-            <DialogTitle className="editor-confirm__title">{t('editor.discardTitle')}</DialogTitle>
-            <p className="editor-confirm__body" id="editor-confirm-body">
-              {t('editor.discardBody')}
-            </p>
-            <div className="editor-confirm__actions">
-              <button type="button" className="editor__btn" onClick={() => setAsking(false)}>
-                {t('editor.keepEditing')}
-              </button>
-              <button
-                type="button"
-                className="editor__btn editor__btn--danger"
-                onClick={() => {
-                  setAsking(false);
-                  onClose();
-                }}
-              >
-                {t('editor.discard')}
-              </button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <DiscardConfirm
+          open={asking}
+          onOpenChange={setAsking}
+          onKeep={() => setAsking(false)}
+          onDiscard={() => {
+            setAsking(false);
+            onClose();
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

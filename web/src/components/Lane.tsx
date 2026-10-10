@@ -13,9 +13,10 @@ export interface LaneProps {
   selectedId: number | null;
   onSelect: (id: number) => void;
   onArchive?: () => void;
+  onOpenEpic?: (epicId: string) => void;
 }
 
-export function Lane({ column, cards, selectedId, onSelect, onArchive }: LaneProps) {
+export function Lane({ column, cards, selectedId, onSelect, onArchive, onOpenEpic }: LaneProps) {
   const { t } = useTranslation();
   const listRef = useRef<HTMLUListElement>(null);
   const more = useScrollCue(listRef, cards);
@@ -32,7 +33,12 @@ export function Lane({ column, cards, selectedId, onSelect, onArchive }: LanePro
         <ul className="lane__cards" ref={listRef}>
           {cards.map((card) => (
             <li key={card.id}>
-              <Card card={card} selected={card.id === selectedId} onSelect={onSelect} />
+              <Card
+                card={card}
+                selected={card.id === selectedId}
+                onSelect={onSelect}
+                onOpenEpic={onOpenEpic}
+              />
             </li>
           ))}
         </ul>

@@ -23,8 +23,10 @@ import {
   editCard,
   editCardMultipart,
   moveCard,
+  setDraft,
   WriteError,
 } from './api';
+import { epicApi } from './components/editor/epicApi';
 import { useBoard } from './hooks/useBoard';
 import { useArchive } from './hooks/useArchive';
 import { useCardLifecycle } from './hooks/useCardLifecycle';
@@ -228,6 +230,10 @@ export function App({ initial }: AppProps) {
             onSelect={(id) => dispatch({ type: 'SELECT_CARD', id })}
             onRetry={retry}
             layoutRef={attachLayoutRef}
+            onOpenEpic={(epicId) => {
+              const epic = boardData?.epics.find((item) => item.id === epicId);
+              if (epic) openDialog({ kind: 'epic', epic });
+            }}
             onMove={(card, column) => openDialog({ kind: 'move', card, target: column })}
             onArchiveDone={() => {
               if (!isProjectId(activeId) || session.operation !== null) return;
@@ -327,25 +333,38 @@ export function App({ initial }: AppProps) {
           onSavingChange={(saving) =>
             saving ? operations.saveStarted(operation.id) : operations.saveFailed(operation.id)
           }
+          cards={cards}
+          epicApi={
+            dialog.kind === 'epic'
+              ? epicApi(operation.projectId, dialog.epic.id, () =>
+                  refreshProject(operation.projectId),
+                )
+              : undefined
+          }
+          onOpenTask={(cardId) => {
+            // The epic dialog closes and the board shows the task in the detail panel.
+            operations.end(operation.id);
+            dispatch({ type: 'SELECT_CARD', id: cardId });
+          }}
           onSubmit={async (data) => {
             // Writes go to the project the form was opened in, not to whatever the URL says now.
             const projectId = operation.projectId;
-            if (dialog.kind === 'create')
-              if (data.attachments?.length)
-                await createCardMultipart(projectId, {
-                  title: data.title ?? '',
-                  description: data.description ?? '',
-                  assignee: data.assignee as Assignee,
-                  requestId: data.requestId,
-                  attachments: data.attachments,
-                });
-              else
-                await createCard(projectId, {
-                  title: data.title ?? '',
-                  description: data.description ?? '',
-                  assignee: data.assignee as Assignee,
-                });
-            else if (dialog.kind === 'move')
+            if (dialog.kind === 'create') {
+              const created = data.attachments?.length
+                ? await createCardMultipart(projectId, {
+                    title: data.title ?? '',
+                    description: data.description ?? '',
+                    assignee: data.assignee as Assignee,
+                    requestId: data.requestId,
+                    attachments: data.attachments,
+                  })
+                : await createCard(projectId, {
+                    title: data.title ?? '',
+                    description: data.description ?? '',
+                    assignee: data.assignee as Assignee,
+                  });
+              if (data.isDraft) await setDraft(projectId, created.card.id, true);
+            } else if (dialog.kind === 'move')
               await moveCard(
                 projectId,
                 dialog.card.id,
