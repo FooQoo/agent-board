@@ -1,13 +1,14 @@
 //! Small renderers shared by CLI commands.
-use crate::domain::{Card, Column, RunState};
+use crate::domain::{Column, RunState};
+use crate::file_store::model::{CardView, HistoryKind};
 use serde_json::Value;
 
 /// The order of keys in JSON output. Keys not listed come last.
 ///
 /// One list serves every object, so a key keeps one position: a project is
 /// `id, name, createdAt`, a board `name, nextCardId, createdAt`, and the
-/// snapshot root `fetchedAt, project, revision, cursor, board, cards`.
-const KEY_ORDER: [&str; 34] = [
+/// snapshot root `fetchedAt, project, version, cursor, nextCardId, cards, problems`.
+const KEY_ORDER: [&str; 35] = [
     "error",
     "code",
     "message",
@@ -15,8 +16,8 @@ const KEY_ORDER: [&str; 34] = [
     "fetchedAt",
     "project",
     "projects",
-    "catalogRevision",
-    "revision",
+    "catalogVersion",
+    "version",
     "cursor",
     "board",
     "card",
@@ -42,6 +43,7 @@ const KEY_ORDER: [&str; 34] = [
     "updatedAt",
     "agentStatusChangedAt",
     "history",
+    "problems",
 ];
 
 /// The order of keys in one history event, which reuses the key `reason`.
@@ -94,7 +96,7 @@ pub fn render_json(value: &Value) -> String {
     }
 }
 
-pub fn card_value(card: &Card) -> Value {
+pub fn card_value(card: &CardView) -> Value {
     serde_json::to_value(card).expect("Agent Board cards serialize")
 }
 
@@ -105,7 +107,7 @@ pub fn state_text(state: RunState, reason: Option<&str>) -> String {
     }
 }
 
-pub fn ls_text(cards: &[Card], columns: &[Column]) -> String {
+pub fn ls_text(cards: &[CardView], columns: &[Column]) -> String {
     let mut out = String::new();
     for column in columns {
         out.push_str(&format!("{}\n", column.label()));
@@ -130,7 +132,7 @@ pub fn ls_text(cards: &[Card], columns: &[Column]) -> String {
     out
 }
 
-pub fn show_text(card: &Card) -> String {
+pub fn show_text(card: &CardView) -> String {
     let mut out = format!(
         "#{} {}\nCard status: {}\nAssignee: {}\n",
         card.id,
@@ -159,12 +161,12 @@ pub fn show_text(card: &Card) -> String {
     out.push_str("History:\n");
     for event in card.history.iter().rev() {
         let status = match event.kind {
-            crate::domain::HistoryKind::Created | crate::domain::HistoryKind::Lane => {
-                event.to_card_status.label()
-            }
-            crate::domain::HistoryKind::Agent => event.to_agent_status.label(),
-            crate::domain::HistoryKind::Archive => "Archive",
-            crate::domain::HistoryKind::Restore => "Restore",
+            HistoryKind::Created | HistoryKind::Lane => event.to_card_status.label(),
+            HistoryKind::Agent | HistoryKind::Answer => event.to_agent_status.label(),
+            HistoryKind::Archive => "Archive",
+            HistoryKind::Restore => "Restore",
+            HistoryKind::Draft => "Draft",
+            HistoryKind::Epic => "Epic",
         };
         out.push_str(&format!(
             "  {} {}: {}\n",

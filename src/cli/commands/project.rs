@@ -25,7 +25,7 @@ pub fn run(ctx: &mut Context, args: &ProjectArgs) -> Result<Outcome, SkanError> 
 
 /// Create an empty project. A name already in use is `project_name_exists`.
 pub fn create(ctx: &Context, args: &ProjectCreateArgs) -> Result<Outcome, SkanError> {
-    let project = ctx.store.create_project(&args.name, ctx.clock.now())?;
+    let project = ctx.files.create_project(&args.name, ctx.clock.now())?;
     Ok(Outcome {
         changed: true,
         human: format!("Created project \"{}\".\n", project.name),
@@ -35,19 +35,11 @@ pub fn create(ctx: &Context, args: &ProjectCreateArgs) -> Result<Outcome, SkanEr
 
 /// The projects by name, with the catalog revision.
 pub fn ls(ctx: &Context) -> Result<Outcome, SkanError> {
-    let catalog = ctx.store.projects()?;
+    let catalog = ctx.files.catalog()?;
     Ok(list_outcome(
         serde_json::to_value(&catalog).expect("catalog serializes"),
         catalog.projects.iter().map(|p| p.name.as_str()),
     ))
-}
-
-/// The list when no data area exists yet: no projects, revision 0.
-pub fn empty_list() -> Outcome {
-    list_outcome(
-        json!({"projects": [], "catalogRevision": 0}),
-        std::iter::empty(),
-    )
 }
 
 /// Shown instead of an empty project list.
@@ -74,7 +66,7 @@ fn list_outcome<'a>(value: serde_json::Value, names: impl Iterator<Item = &'a st
 pub fn rename(ctx: &Context, args: &ProjectRenameArgs) -> Result<Outcome, SkanError> {
     let current = ctx.project()?;
     let old_name = current.name.clone();
-    let renamed = ctx.store.rename_project(&current.id, &args.new_name)?;
+    let renamed = ctx.files.rename_project(&current.id, &args.new_name)?;
     let human = if renamed.changed {
         format!(
             "Renamed project \"{old_name}\" to \"{}\".\n",
@@ -125,7 +117,7 @@ pub fn rm_with_io(
             json: json!({"cancelled": true}),
         });
     }
-    ctx.store.delete_project(&project.id)?;
+    ctx.files.delete_project(&project.id)?;
     Ok(Outcome {
         changed: true,
         human: format!("Deleted project \"{}\".\n", project.name),

@@ -3,6 +3,7 @@ use crate::cli::{Context, Outcome};
 use crate::{
     domain::{ChangeContext, RunState},
     error::SkanError,
+    file_store::Answer,
 };
 use serde_json::json;
 
@@ -12,7 +13,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, SkanError> {
     let actor = args.change.actor.actor();
     let context = ChangeContext { actor, reason };
     let project_id = ctx.project_id()?;
-    let current = ctx.store.card(project_id, args.id)?;
+    let current = ctx.files.card(project_id, args.id)?;
     if args.request.is_some()
         && !(current.agent_status == RunState::Pending && state == RunState::Idle)
     {
@@ -29,13 +30,18 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, SkanError> {
                     message: "--request is required when answering a pending request.".into(),
                     command: Some("state".into()),
                 })?;
+        let answer = Answer {
+            actor: context.actor,
+            choice_id: None,
+            text: Some(context.reason.clone()),
+        };
         (
-            ctx.store
-                .answer_request(project_id, args.id, request, context, ctx.clock.now())?,
+            ctx.files
+                .answer_request(project_id, args.id, request, answer, ctx.clock.now())?,
             true,
         )
     } else {
-        let result = ctx.store.set_agent_status(
+        let result = ctx.files.set_agent_status(
             project_id,
             args.id,
             state,

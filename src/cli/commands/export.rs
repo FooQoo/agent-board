@@ -17,7 +17,7 @@ pub fn run(ctx: &mut Context, args: &ExportArgs) -> Result<Outcome, SkanError> {
     } else {
         destination
     };
-    let snapshot = ctx.store.export_snapshot(ctx.project_id()?)?;
+    let snapshot = ctx.legacy()?.export_snapshot(&ctx.legacy_project_id()?)?;
     let payloads = snapshot
         .cards
         .iter()
@@ -27,7 +27,7 @@ pub fn run(ctx: &mut Context, args: &ExportArgs) -> Result<Outcome, SkanError> {
                 .map(move |a| (card.id, a.id.clone()))
         })
         .map(|(card_id, id)| {
-            ctx.store
+            ctx.legacy()?
                 .attachment_data_for_card(&snapshot.project.id, card_id, &id)
                 .map(|data| (card_id, data))
         })

@@ -53,7 +53,7 @@ pub fn run_with_io(
     // replaced, by ID, after a human confirms.
     let project = match &ctx.target {
         Target::Missing { name } => {
-            ctx.store
+            ctx.legacy()?
                 .create_from_backup(name, &board)
                 .map_err(|e| match e {
                     SkanError::ImportInvalid { reason, .. } => SkanError::ImportInvalid {
@@ -93,7 +93,8 @@ pub fn run_with_io(
                     json: json!({"cancelled": true}),
                 });
             }
-            ctx.store.restore_project(&existing.id, &board)?
+            let legacy_id = ctx.legacy_project_id()?;
+            ctx.legacy()?.restore_project(&legacy_id, &board)?
         }
     };
     Ok(Outcome {

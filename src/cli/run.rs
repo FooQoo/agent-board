@@ -8,6 +8,7 @@ use crate::cli::{Context, Env, Outcome, Target, commands, errors, output};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
 use crate::error::SkanError;
+use crate::file_store::FileStore;
 use crate::store::ProjectStore;
 
 /// Runs `args` (the first item is the program name) and returns the process
@@ -33,7 +34,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
         };
         let mut stdin = std::io::stdin().lock();
         if let Some(output) =
-            crate::agent::hook::run(agent, &mut stdin, &env.db_path, cli.project())
+            crate::agent::hook::run(agent, &mut stdin, &env.shared_dir, cli.project())
         {
             write_text(env.stdout, &output);
         }
@@ -50,7 +51,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             })
             .and_then(|runtime| {
                 runtime.block_on(crate::agent::wait::wait_for_change(
-                    &env.db_path,
+                    &env.shared_dir,
                     cli.project().unwrap_or_default(),
                     args.after.clone(),
                     args.timeout,
@@ -127,11 +128,11 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     }
 }
 
-/// How a command uses the data area, which decides how it is opened.
+/// How a command uses the projects, which decides how its target is resolved.
 enum Access {
-    /// Reads one project; never creates the data area.
+    /// Reads one project; the project must exist.
     ReadProject,
-    /// Reads the catalog; without a data area the list is empty.
+    /// Reads the catalog; without a shared folder the list is empty.
     ReadCatalog,
     /// Changes one project that must already exist.
     ChangeProject,
@@ -145,9 +146,11 @@ fn access(command: &Command) -> Access {
     match command {
         // The list of every project reads the catalog and names no project.
         Command::Ls(args) if args.all_projects => Access::ReadCatalog,
-        Command::Ls(_) | Command::Show(_) | Command::Snapshot(_) | Command::Export(_) => {
-            Access::ReadProject
-        }
+        Command::Ls(_)
+        | Command::Show(_)
+        | Command::Snapshot(_)
+        | Command::Export(_)
+        | Command::Workspace(_) => Access::ReadProject,
         Command::Project(args) => match args.command {
             ProjectCommand::Ls => Access::ReadCatalog,
             ProjectCommand::Create(_) => Access::Catalog,
@@ -166,6 +169,15 @@ fn access(command: &Command) -> Access {
     }
 }
 
+/// The commands that still work on the SQLite board. Attachments, export and
+/// import move to the shared files in a later step.
+fn uses_sqlite(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::Attachment(_) | Command::Export(_) | Command::Import(_)
+    )
+}
+
 fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome), SkanError> {
     // The name is normalized once. `--project` is absent only for commands
     // that work on the catalog; nothing is chosen for a command that lacks it.
@@ -174,30 +186,9 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
         None => None,
     };
     let access = access(&cli.command);
-    let not_found = |name: &Option<String>| SkanError::ProjectNotFound {
-        project: name.clone().unwrap_or_default(),
-    };
-    let store = match access {
-        Access::ReadProject | Access::ReadCatalog => {
-            // A read never creates the data area.
-            match ProjectStore::open_read_only(&env.db_path) {
-                Ok(store) => store,
-                Err(SkanError::NotInitialized) if matches!(access, Access::ReadCatalog) => {
-                    return Ok((None, empty_outcome(cli, env)));
-                }
-                Err(SkanError::NotInitialized) => return Err(not_found(&name)),
-                Err(error) => return Err(error),
-            }
-        }
-        // A project that cannot exist yet is not found; do not create the
-        // data area only to say so.
-        Access::ChangeProject if !env.db_path.exists() => return Err(not_found(&name)),
-        Access::ChangeProject | Access::ChangeOrCreateProject | Access::Catalog => {
-            ProjectStore::open(&env.db_path)?
-        }
-    };
+    let files = FileStore::open(&env.shared_dir);
     let target = match name {
-        Some(name) => match store.project_by_name(&name) {
+        Some(name) => match files.project_by_name(&name) {
             Ok(meta) => Target::Existing(meta),
             // `init` and `import` create a project that does not exist yet.
             Err(SkanError::ProjectNotFound { .. })
@@ -209,8 +200,14 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
         },
         None => Target::Catalog,
     };
+    let legacy = if uses_sqlite(&cli.command) {
+        Some(ProjectStore::open(&env.db_path)?)
+    } else {
+        None
+    };
     let mut ctx = Context {
-        store,
+        files,
+        legacy,
         target,
         // The clock moves into the context; a second run with the same Env
         // would use the system clock.
@@ -220,15 +217,6 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
     };
     let outcome = dispatch(&mut ctx, &cli.command)?;
     Ok((Some(ctx), outcome))
-}
-
-/// What a catalog read returns when no data area exists yet: the same shape as
-/// an existing area without projects.
-fn empty_outcome(cli: &Cli, env: &Env) -> Outcome {
-    match &cli.command {
-        Command::Ls(_) => commands::ls::empty_all_projects(env.clock.as_ref()),
-        _ => commands::project::empty_list(),
-    }
 }
 
 fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> {
@@ -244,6 +232,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> 
         Command::Ls(args) => commands::ls::run(ctx, args),
         Command::Show(args) => commands::show::run(ctx, args),
         Command::Snapshot(_) => commands::snapshot::run(ctx),
+        Command::Workspace(_) => commands::workspace::run(ctx),
         Command::Hook(_) | Command::Wait(_) | Command::Serve(_) | Command::Migrate(_) => {
             unreachable!("serve and the agent commands are handled before store setup")
         }

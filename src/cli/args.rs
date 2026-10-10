@@ -121,6 +121,8 @@ pub enum Command {
     Import(ImportArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
+    /// Show the project's shared folder and where its files are
+    Workspace(WorkspaceArgs),
     /// Migrate a legacy board explicitly
     Migrate(MigrateArgs),
 }
@@ -146,6 +148,7 @@ impl Command {
             Command::Import(_) => "import",
             Command::Serve(_) => "serve",
             Command::Migrate(_) => "migrate",
+            Command::Workspace(_) => "workspace",
         }
     }
 }
@@ -226,7 +229,7 @@ pub struct HookArgs {
     after_help = "Examples:\n  agboard --project demo wait --after 0123456789abcdef0123456789abcdef:12 --json\n  agboard --project demo wait --after 0123456789abcdef0123456789abcdef:12 --timeout 60 --json"
 )]
 pub struct WaitArgs {
-    /// Cursor to wait after, as printed by snapshot: <project-id>:<revision>
+    /// Cursor to wait after, as printed by snapshot: f1:<project-id>:<version>
     #[arg(long, value_name = "CURSOR", value_parser = parse_cursor)]
     pub after: ChangeCursor,
     #[arg(long)]
@@ -509,6 +512,10 @@ pub struct AttachmentGetArgs {
 #[derive(Args, Debug)]
 #[command(after_help = "Examples:\n  agboard --project demo snapshot --json")]
 pub struct SnapshotArgs {}
+
+#[derive(Args, Debug)]
+#[command(after_help = "Examples:\n  agboard --project demo workspace --json")]
+pub struct WorkspaceArgs {}
 
 #[derive(Args, Debug)]
 #[command(
