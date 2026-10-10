@@ -9,9 +9,16 @@ pub mod io;
 pub mod layout;
 pub mod lock;
 pub mod model;
+pub mod project;
+pub mod reader;
 pub mod validate;
 
 use std::path::{Path, PathBuf};
+
+use crate::domain::{ProjectId, ProjectMeta};
+use crate::error::SkanError;
+use model::CardView;
+use reader::ProjectSnapshot;
 
 /// The file-based store of one shared directory. Opening it reads nothing and
 /// creates nothing; the first project creation writes `workspace.json`.
@@ -29,5 +36,20 @@ impl FileStore {
 
     pub fn shared_dir(&self) -> &Path {
         &self.shared
+    }
+
+    /// Every project, sorted by name.
+    pub fn projects(&self) -> Result<Vec<ProjectMeta>, SkanError> {
+        reader::list_projects(&self.shared)
+    }
+
+    /// One project with its cards and the defects tolerated while reading.
+    pub fn snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+        reader::read_snapshot(&self.shared, id)
+    }
+
+    /// One card, read strictly.
+    pub fn card(&self, id: &ProjectId, card_id: i64) -> Result<CardView, SkanError> {
+        reader::read_card(&self.shared, id, card_id)
     }
 }
