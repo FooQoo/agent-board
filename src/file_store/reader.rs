@@ -11,26 +11,147 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::FileStore;
+use super::index;
 use super::io;
 use super::layout;
 use super::model::{CardView, Problem, ProjectFile, TaskFile, WorkspaceFile, current_request};
 use super::validate;
-use crate::domain::{ProjectId, ProjectMeta};
+use crate::domain::{Attachment, ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 use crate::error::SkanError;
 
-/// One project as the snapshot returns it: the project, its cards with their
-/// full history, and every defect that was tolerated while reading it.
+/// One project as the snapshot returns it: the project, its content version and
+/// the cursor for that version, its cards with their full history, and every
+/// defect that was tolerated while reading it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectSnapshot {
     pub project: ProjectMeta,
     pub next_card_id: i64,
+    pub version: String,
+    pub cursor: ChangeCursor,
+    pub epics: Vec<EpicSnapshot>,
     pub cards: Vec<CardView>,
     pub problems: Vec<Problem>,
+}
+
+/// `epic.json` as the snapshot reads it: the fields of MODEL.md, strict.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct EpicJson {
+    format_version: u32,
+    id: String,
+    name: String,
+    color: String,
+    is_draft: bool,
+    attachments: Vec<Attachment>,
+    #[serde(with = "crate::clock::serde_utc")]
+    created_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    updated_at: DateTime<Utc>,
+}
+
+/// An epic as the snapshot returns it: `epic.json` plus its PLAN.md.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EpicSnapshot {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+    pub is_draft: bool,
+    pub plan: String,
+    pub attachments: Vec<Attachment>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub created_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Read every epic folder. An epic whose `epic.json` is defective is left out
+/// and reported in `problems`; its folder is never changed.
+fn read_epics(project_dir: &Path) -> (Vec<EpicSnapshot>, Vec<Problem>) {
+    let mut epics = Vec::new();
+    let mut problems = Vec::new();
+    let Ok(entries) = fs::read_dir(layout::epics_dir(project_dir)) else {
+        return (epics, problems);
+    };
+    let mut folders: Vec<(String, PathBuf)> = entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let name = entry.file_name().to_str()?.to_owned();
+            (!name.starts_with('.') && entry.path().is_dir()).then(|| (name, entry.path()))
+        })
+        .collect();
+    folders.sort();
+    for (name, folder) in folders {
+        let json_path = folder.join("epic.json");
+        let json_label = layout::project_label(project_dir, &json_path);
+        let file: EpicJson = match io::read_bytes(&json_path, &json_label)
+            .and_then(|bytes| parse_file::<EpicJson>(&bytes, &json_label))
+        {
+            Ok(file) => file,
+            Err(error) => {
+                problems.push(problem_of(error));
+                continue;
+            }
+        };
+        if file.id != name {
+            problems.push(Problem {
+                file: json_label,
+                field: "id".into(),
+                reason: "The ID does not match the folder name.".into(),
+            });
+            continue;
+        }
+        let plan_path = folder.join("PLAN.md");
+        let plan_label = layout::project_label(project_dir, &plan_path);
+        let plan = match io::read_text(&plan_path, &plan_label) {
+            Ok(text) => text,
+            Err(error) => {
+                problems.push(problem_of(error));
+                String::new()
+            }
+        };
+        epics.push(EpicSnapshot {
+            id: file.id,
+            name: file.name,
+            color: file.color,
+            is_draft: file.is_draft,
+            plan,
+            attachments: file.attachments,
+            created_at: file.created_at,
+            updated_at: file.updated_at,
+        });
+    }
+    (epics, problems)
+}
+
+impl ProjectSnapshot {
+    /// The same snapshot without the archived cards (the board and the CLI snapshot).
+    pub fn without_archived(mut self) -> ProjectSnapshot {
+        self.cards.retain(|card| card.archived_at.is_none());
+        self
+    }
+
+    /// The same snapshot with only the archived cards (the archive list).
+    pub fn only_archived(mut self) -> ProjectSnapshot {
+        self.cards.retain(|card| card.archived_at.is_some());
+        self
+    }
+}
+
+/// A snapshot with the time it was fetched, as the CLI, the hook and wait print
+/// it. The fetch time is added here, never stored.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FetchedSnapshot<'a> {
+    pub fetched_at: String,
+    #[serde(flatten)]
+    pub snapshot: &'a ProjectSnapshot,
 }
 
 /// A card that was read leniently: its view and the defects of its text.
@@ -149,7 +270,13 @@ pub fn list_projects(shared: &Path) -> Result<Vec<ProjectMeta>, SkanError> {
         if !path.is_dir() {
             continue;
         }
-        projects.push(meta_of(read_project_file(shared, &id)?));
+        match read_project_file(shared, &id) {
+            Ok(file) => projects.push(meta_of(file)),
+            // A project deleted while the folder was being read is left out:
+            // the list shows it before or after the deletion, never half of it.
+            Err(_) if !path.is_dir() => continue,
+            Err(error) => return Err(error),
+        }
     }
     projects.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(projects)
@@ -350,11 +477,15 @@ pub fn read_card(
 /// with the defects that were tolerated.
 pub fn read_snapshot(shared: &Path, project_id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
     let project_dir = project_dir_checked(shared, project_id)?;
+    // The version is taken before the files are read: a save in between makes
+    // the next reload see a different version and read again.
+    let version = index::project_version(&project_dir);
+    let cursor = ChangeCursor::new(project_id.clone(), &version)?;
     let file = read_project_file(shared, project_id)?;
     let next_card_id = file.next_card_id;
     let project = meta_of(file);
     let mut cards = Vec::new();
-    let mut problems = Vec::new();
+    let (epics, mut problems) = read_epics(&project_dir);
     for card_id in card_ids(&project_dir)? {
         match read_card_lenient(shared, project_id, card_id) {
             Ok(load) => {
@@ -367,7 +498,69 @@ pub fn read_snapshot(shared: &Path, project_id: &ProjectId) -> Result<ProjectSna
     Ok(ProjectSnapshot {
         project,
         next_card_id,
+        version,
+        cursor,
+        epics,
         cards,
         problems,
     })
+}
+
+/// Every project's unarchived snapshot, with the catalog version of the same read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AllSnapshots {
+    pub catalog_version: String,
+    pub projects: Vec<ProjectSnapshot>,
+}
+
+impl FileStore {
+    /// The project list with the catalog version, computed from the files read now.
+    pub fn catalog(&self) -> Result<ProjectCatalog, SkanError> {
+        let all = self.all_snapshots()?;
+        Ok(ProjectCatalog {
+            projects: all.projects.iter().map(|p| p.project.clone()).collect(),
+            catalog_version: all.catalog_version,
+        })
+    }
+
+    /// The project with this name. A name that matches no project is
+    /// `project_not_found`.
+    pub fn project_by_name(&self, name: &str) -> Result<ProjectMeta, SkanError> {
+        list_projects(self.shared_dir())?
+            .into_iter()
+            .find(|project| project.name == name)
+            .ok_or_else(|| SkanError::ProjectNotFound {
+                project: name.to_string(),
+            })
+    }
+
+    /// One project's unarchived cards, with its version, its cursor, and the
+    /// defects of its files.
+    pub fn board(&self, id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+        Ok(read_snapshot(self.shared_dir(), id)?.without_archived())
+    }
+
+    /// One project's archived cards, read the same way as [`FileStore::board`].
+    pub fn archive_snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+        Ok(read_snapshot(self.shared_dir(), id)?.only_archived())
+    }
+
+    /// Every project's unarchived snapshot in name order, with the catalog
+    /// version. A project whose `project.json` is defective fails the whole read.
+    pub fn all_snapshots(&self) -> Result<AllSnapshots, SkanError> {
+        let mut projects = Vec::new();
+        for meta in list_projects(self.shared_dir())? {
+            projects.push(self.board(&meta.id)?);
+        }
+        let mut by_id: Vec<(&ProjectId, &str)> = projects
+            .iter()
+            .map(|p| (&p.project.id, p.version.as_str()))
+            .collect();
+        by_id.sort_by(|a, b| a.0.cmp(b.0));
+        let catalog_version = index::catalog_version_of(by_id);
+        Ok(AllSnapshots {
+            catalog_version,
+            projects,
+        })
+    }
 }

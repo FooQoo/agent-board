@@ -1,3 +1,4 @@
+use super::legacy::{BoardSnapshot, RevisionCursor};
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, params};
 
@@ -139,7 +140,7 @@ impl ProjectStore {
                 },
                 project: project_meta,
                 revision: counters.revision,
-                cursor: ChangeCursor::new(project.clone(), counters.revision)?,
+                cursor: RevisionCursor::new(project.clone(), counters.revision)?,
                 cards: load_cards_archived(conn, project)?,
             })
         })
@@ -157,7 +158,7 @@ impl ProjectStore {
                 },
                 project: project_meta,
                 revision: counters.revision,
-                cursor: ChangeCursor::new(project.clone(), counters.revision)?,
+                cursor: RevisionCursor::new(project.clone(), counters.revision)?,
                 cards: load_cards_all(conn, project)?,
             })
         })

@@ -2,9 +2,10 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 
+use crate::store::legacy::BoardSnapshot;
 use crate::{
     domain::{
-        Attachment, AttachmentData, BoardMeta, BoardSnapshot, Card, Column, HistoryKind, RunState,
+        Attachment, AttachmentData, BoardMeta, Card, Column, HistoryKind, RunState,
         ValidatedAttachment, ValidatedBoard, normalize_and_validate_description,
         validate_attachment, validate_project_name, validate_title, validate_work_reason,
     },

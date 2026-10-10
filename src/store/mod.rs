@@ -7,6 +7,7 @@
 
 mod archive;
 mod attachments;
+pub mod legacy;
 pub mod migrations;
 mod ops;
 mod projects;

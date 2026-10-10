@@ -15,9 +15,9 @@ pub use limits::{
 };
 pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use work::{
-    Actor, AllBoardsSnapshot, Assignee, Attachment, AttachmentData, AttachmentInput, BoardSnapshot,
-    BulkArchiveResult, Card, ChangeContext, Changed, FetchedSnapshot, HistoryEvent, HistoryKind,
-    NewCard, ValidatedAttachment, ValidatedBoard,
+    Actor, Assignee, Attachment, AttachmentData, AttachmentInput, BulkArchiveResult, Card,
+    ChangeContext, Changed, HistoryEvent, HistoryKind, NewCard, ValidatedAttachment,
+    ValidatedBoard,
 };
 
 const WORK_REASON_MAX: usize = 2_000;

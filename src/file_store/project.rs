@@ -14,6 +14,7 @@ use super::lock::WriteLock;
 use super::model::{ProjectFile, WorkspaceFile};
 use super::reader;
 use crate::clock::{format_utc, parse_utc};
+use crate::domain::BoardMeta;
 use crate::domain::{Changed, ProjectId, ProjectMeta, validate_project_name};
 use crate::error::SkanError;
 
@@ -163,5 +164,45 @@ impl FileStore {
         fs::rename(&dir, &trash).map_err(|e| io::write_error(&label, e))?;
         io::sync_dir(&projects).map_err(|e| io::write_error(&label, e))?;
         fs::remove_dir_all(&trash).map_err(|e| io::write_error(&label, e))
+    }
+}
+
+impl FileStore {
+    /// Empty one project's board. The ID, name, creation time and next card
+    /// number stay, so card numbers are never reused. The cards and epics
+    /// folders are moved aside and replaced by empty ones. `changed` is false
+    /// when there was nothing to remove.
+    pub fn reset_project(&self, id: &ProjectId) -> Result<Changed<BoardMeta>, SkanError> {
+        let shared = self.shared_dir();
+        let (dir, _project) = super::ops::lock_project(shared, id)?;
+        let file = reader::read_project_file(shared, id)?;
+        let board = BoardMeta {
+            name: file.name.clone(),
+            next_card_id: file.next_card_id,
+            created_at: file.created_at,
+        };
+        let had_content = !reader::card_ids(&dir)?.is_empty()
+            || fs::read_dir(layout::epics_dir(&dir))
+                .map(|mut entries| entries.next().is_some())
+                .unwrap_or(false);
+        for folder in [layout::tasks_dir(&dir), layout::epics_dir(&dir)] {
+            let label = layout::shared_label(shared, &folder);
+            let trash = dir.join(format!(
+                ".deleting-{}",
+                io::random_hex(16).map_err(|e| io::write_error(&label, e))?
+            ));
+            if folder.exists() {
+                fs::rename(&folder, &trash).map_err(|e| io::write_error(&label, e))?;
+            }
+            fs::create_dir(&folder).map_err(|e| io::write_error(&label, e))?;
+            io::sync_dir(&dir).map_err(|e| io::write_error(&label, e))?;
+            if trash.exists() {
+                fs::remove_dir_all(&trash).map_err(|e| io::write_error(&label, e))?;
+            }
+        }
+        Ok(Changed {
+            value: board,
+            changed: had_content,
+        })
     }
 }

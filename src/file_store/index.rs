@@ -123,18 +123,26 @@ impl ProjectIndex {
 
     /// Recompute the catalog version and report whether it changed.
     fn refresh_catalog(&mut self) -> bool {
-        let mut outer = Sha256::new();
-        for (id, entry) in &self.entries {
-            outer.update(id.as_str().as_bytes());
-            outer.update([0]);
-            outer.update(entry.version().as_bytes());
-            outer.update(b"\n");
-        }
-        let version = hex_prefix(&outer.finalize());
+        let version = catalog_version_of(self.entries.iter().map(|(id, e)| (id, e.version())));
         let changed = version != self.catalog_version;
         self.catalog_version = version;
         changed
     }
+}
+
+/// The catalog version of a list of `(project, version)` pairs, in the order
+/// given (callers pass them in ID order).
+pub fn catalog_version_of<'a>(
+    projects: impl IntoIterator<Item = (&'a ProjectId, &'a str)>,
+) -> String {
+    let mut outer = Sha256::new();
+    for (id, version) in projects {
+        outer.update(id.as_str().as_bytes());
+        outer.update([0]);
+        outer.update(version.as_bytes());
+        outer.update(b"\n");
+    }
+    hex_prefix(&outer.finalize())
 }
 
 /// The IDs of the project folders, in order. Only canonical folder names count.
