@@ -43,3 +43,30 @@ describe('rich body styling', () => {
     expect(css).toContain('var(--r-border)');
   });
 });
+
+describe('focus frames and code block headers', () => {
+  const read = (name: string) => readFileSync(join(SRC, 'styles', name), 'utf8');
+
+  it('the title shows no frame while it is edited, only the caret', () => {
+    const css = read('editor-epic.css');
+    const start = css.indexOf('.editor__input--title:focus');
+    expect(start).toBeGreaterThan(-1);
+    const block = css.slice(start, css.indexOf('}', start));
+    expect(block).toContain('outline: none');
+    expect(block).toContain('box-shadow: none');
+    expect(block).not.toMatch(/outline: [^n]/);
+  });
+
+  it('the code block header is hidden until the block is focused or selected', () => {
+    const css = read('rich-body.css');
+    expect(css).toMatch(/\.milkdown-code-block \.tools \{[^}]*display: none/);
+    expect(css).toContain('.milkdown-code-block:focus-within .tools');
+    expect(css).toContain('.milkdown-code-block.selected .tools');
+  });
+
+  it('the header is one compact row: the language at the left, the buttons at the right', () => {
+    const css = read('rich-body.css');
+    expect(css).toMatch(/\.milkdown-code-block \.tools \{[^}]*justify-content: space-between/);
+    expect(css).toMatch(/\.tools-button-group button \{[^}]*opacity: 1/);
+  });
+});

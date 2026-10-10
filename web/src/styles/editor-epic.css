@@ -17,11 +17,6 @@
   line-height: 1.5;
 }
 
-.editor__input--title:focus-visible {
-  outline: 2px solid var(--r-accent);
-  outline-offset: 2px;
-}
-
 .editor__draft {
   display: flex;
   align-items: center;
@@ -497,4 +492,13 @@
 .editor__limit-count {
   flex: none;
   font-family: var(--font-mono);
+}
+
+/* The title shows no frame while it is edited: the caret is enough. It stays keyboard reachable. */
+.editor__input--title:focus,
+.editor__input--title:focus-visible {
+  border-color: transparent;
+  border-left-color: var(--r-accent);
+  outline: none;
+  box-shadow: none;
 }

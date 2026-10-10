@@ -331,3 +331,21 @@ describe('a pasted picture reference', () => {
     expect(ref.current?.markdown()).toContain('![found](https://example.com/ok.png "Shot")');
   });
 });
+
+describe('the header of a code or diagram block', () => {
+  it('is shown only for the block that was clicked, and hides again when another place is clicked', async () => {
+    await mounted(SAMPLE);
+    await waitFor(() =>
+      expect(document.querySelectorAll('.milkdown-code-block').length).toBeGreaterThan(1),
+    );
+    const blocks = Array.from(document.querySelectorAll<HTMLElement>('.milkdown-code-block'));
+    expect(blocks.every((block) => block.getAttribute('data-active') === null)).toBe(true);
+    fireEvent.pointerDown(blocks[0] as HTMLElement);
+    expect(blocks[0]?.getAttribute('data-active')).toBe('true');
+    fireEvent.pointerDown(blocks[1] as HTMLElement);
+    expect(blocks[0]?.getAttribute('data-active')).toBeNull();
+    expect(blocks[1]?.getAttribute('data-active')).toBe('true');
+    fireEvent.pointerDown(document.querySelector('.ProseMirror p') as HTMLElement);
+    expect(blocks.every((block) => block.getAttribute('data-active') === null)).toBe(true);
+  });
+});

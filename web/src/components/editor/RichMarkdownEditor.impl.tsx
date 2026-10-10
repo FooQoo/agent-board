@@ -161,6 +161,22 @@ function EditorSession(props: SessionProps) {
   latest.current = props;
   const [ready, setReady] = useState(false);
 
+  // The header of a code or diagram block shows only for the block that was clicked.
+  useEffect(() => {
+    const element = host.current;
+    if (element === null) return;
+    const activate = (event: PointerEvent) => {
+      const target =
+        event.target instanceof Element ? event.target.closest('.milkdown-code-block') : null;
+      for (const block of element.querySelectorAll('.milkdown-code-block[data-active]')) {
+        if (block !== target) block.removeAttribute('data-active');
+      }
+      target?.setAttribute('data-active', 'true');
+    };
+    element.addEventListener('pointerdown', activate);
+    return () => element.removeEventListener('pointerdown', activate);
+  }, []);
+
   useEffect(() => {
     const element = host.current;
     if (element === null) return;
