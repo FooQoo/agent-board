@@ -94,3 +94,58 @@ mod tests {
         assert_ne!(a, b);
     }
 }
+
+// The on-demand web chunks that `build.rs` found in `web/dist/assets`, as
+// `ASSET_CHUNKS`: `(file name, bytes)`.
+include!(concat!(env!("OUT_DIR"), "/assets_table.rs"));
+
+/// Every on-demand chunk is an ES module.
+pub const CHUNK_CONTENT_TYPE: &str = "text/javascript; charset=utf-8";
+
+/// The bytes and content type of the chunk named `name`. Only names in the
+/// table are found, so `..`, `/` and any other name are `None`.
+pub fn lookup(name: &str) -> Option<(&'static [u8], &'static str)> {
+    find(ASSET_CHUNKS, name).map(|bytes| (bytes, CHUNK_CONTENT_TYPE))
+}
+
+fn find(table: &'static [(&'static str, &'static [u8])], name: &str) -> Option<&'static [u8]> {
+    table
+        .iter()
+        .find(|(known, _)| *known == name)
+        .map(|(_, bytes)| *bytes)
+}
+
+#[cfg(test)]
+mod chunk_tests {
+    use super::*;
+
+    static TABLE: &[(&str, &[u8])] = &[("app-a.js", b"alpha"), ("app-b.js", b"beta")];
+
+    #[test]
+    fn a_listed_name_finds_its_bytes() {
+        assert_eq!(find(TABLE, "app-b.js"), Some(&b"beta"[..]));
+        assert_eq!(find(TABLE, "app-a.js"), Some(&b"alpha"[..]));
+    }
+
+    #[test]
+    fn any_other_name_finds_nothing() {
+        for name in [
+            "",
+            "app-c.js",
+            "app-a",
+            "app-a.js/",
+            "../app-a.js",
+            "app-a.js\0",
+        ] {
+            assert_eq!(find(TABLE, name), None, "{name:?}");
+        }
+    }
+
+    #[test]
+    fn the_real_table_only_holds_app_chunks() {
+        for (name, _) in ASSET_CHUNKS {
+            assert!(name.starts_with("app-") && name.ends_with(".js"), "{name}");
+            assert!(!name.contains('/') && !name.contains(".."), "{name}");
+        }
+    }
+}
