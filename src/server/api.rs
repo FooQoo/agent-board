@@ -33,6 +33,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/", get(index))
         .route("/assets/app.js", get(app_js))
         .route("/assets/app.css", get(app_css))
+        .route("/assets/{name}", get(chunk))
         .route("/logo.png", get(logo_png))
         .route("/logo-white.png", get(logo_white_png))
         .route("/api/events", get(events::events))
@@ -380,6 +381,23 @@ async fn app_js() -> Response {
 
 async fn app_css() -> Response {
     text_response("text/css; charset=utf-8", assets::APP_CSS.to_string())
+}
+
+/// An on-demand web chunk. Only names in the build's table are served; the
+/// file name is looked up, never joined to a path. Chunks are named by their
+/// content hash, so they never change and can be cached for a year.
+async fn chunk(Path(name): Path<String>) -> Response {
+    match assets::lookup(&name) {
+        Some((bytes, content_type)) => (
+            [
+                (header::CONTENT_TYPE, content_type),
+                (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
+            ],
+            bytes,
+        )
+            .into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
 }
 
 async fn logo_png() -> Response {
