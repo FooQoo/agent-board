@@ -696,6 +696,7 @@ describe('switching while a form is open', () => {
       title: 'New card',
       description: '',
       assignee: 'ai',
+      isDraft: false,
     });
     expect(app.updates()).toHaveLength(0);
   });

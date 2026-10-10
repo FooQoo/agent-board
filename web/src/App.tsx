@@ -17,15 +17,7 @@ import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
-import {
-  createCard,
-  createCardMultipart,
-  editCard,
-  editCardMultipart,
-  moveCard,
-  setDraft,
-  WriteError,
-} from './api';
+import { createNewCard, editCard, editCardMultipart, moveCard, WriteError } from './api';
 import { epicApi } from './components/editor/epicApi';
 import { useBoard } from './hooks/useBoard';
 import { useArchive } from './hooks/useArchive';
@@ -350,20 +342,14 @@ export function App({ initial }: AppProps) {
             // Writes go to the project the form was opened in, not to whatever the URL says now.
             const projectId = operation.projectId;
             if (dialog.kind === 'create') {
-              const created = data.attachments?.length
-                ? await createCardMultipart(projectId, {
-                    title: data.title ?? '',
-                    description: data.description ?? '',
-                    assignee: data.assignee as Assignee,
-                    requestId: data.requestId,
-                    attachments: data.attachments,
-                  })
-                : await createCard(projectId, {
-                    title: data.title ?? '',
-                    description: data.description ?? '',
-                    assignee: data.assignee as Assignee,
-                  });
-              if (data.isDraft) await setDraft(projectId, created.card.id, true);
+              await createNewCard(projectId, {
+                title: data.title ?? '',
+                description: data.description ?? '',
+                assignee: data.assignee as Assignee,
+                isDraft: data.isDraft,
+                requestId: data.requestId,
+                attachments: data.attachments,
+              });
             } else if (dialog.kind === 'move')
               await moveCard(
                 projectId,

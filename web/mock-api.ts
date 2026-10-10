@@ -537,7 +537,7 @@ export function mockApi(): Plugin {
                 createdAt: now,
                 updatedAt: now,
                 agentStatusChangedAt: now,
-                isDraft: false,
+                isDraft: input.isDraft === true,
                 archivedAt: null,
                 history: [event],
                 attachments: [],

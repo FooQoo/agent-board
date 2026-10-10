@@ -219,9 +219,12 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
 
 export async function createCard(
   projectId: ProjectId,
-  input: { title: string; description: string; assignee: Assignee },
+  input: { title: string; description: string; assignee: Assignee; isDraft?: boolean },
 ) {
-  return postCard<{ card: Card }>(`${projectPath(projectId)}/cards`, input);
+  return postCard<{ card: Card }>(`${projectPath(projectId)}/cards`, {
+    ...input,
+    isDraft: input.isDraft ?? false,
+  });
 }
 
 function multipartBody(
@@ -264,6 +267,7 @@ export function createCardMultipart(
     title: string;
     description: string;
     assignee: Assignee;
+    isDraft?: boolean;
     requestId?: string;
     attachments: readonly EditorAttachment[];
   },
@@ -276,6 +280,39 @@ export function createCardMultipart(
     ),
     'POST',
   );
+}
+
+/**
+ * Adds a card in one request: with its images when there are some (multipart), and as a draft when
+ * `isDraft` is set. A refused request is not repeated here, so a failure never adds two cards.
+ */
+export async function createNewCard(
+  projectId: ProjectId,
+  input: {
+    title: string;
+    description: string;
+    assignee: Assignee;
+    isDraft?: boolean;
+    requestId?: string;
+    attachments?: readonly EditorAttachment[];
+  },
+) {
+  const isDraft = input.isDraft ?? false;
+  if (input.attachments?.length)
+    return createCardMultipart(projectId, {
+      title: input.title,
+      description: input.description,
+      assignee: input.assignee,
+      isDraft,
+      requestId: input.requestId,
+      attachments: input.attachments,
+    });
+  return createCard(projectId, {
+    title: input.title,
+    description: input.description,
+    assignee: input.assignee,
+    isDraft,
+  });
 }
 
 export async function moveCard(
