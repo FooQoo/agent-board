@@ -142,7 +142,7 @@
   padding: 24px 16px;
   overflow-y: auto;
   border-right: 1px solid var(--r-border);
-  background: var(--r-bg);
+  background: var(--r-surface);
 }
 
 .editor__outline {
@@ -277,7 +277,9 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  height: auto;
   padding: 16px 8px;
+  white-space: normal;
   border: 1px dashed var(--r-border);
   border-radius: 6px;
   background: transparent;

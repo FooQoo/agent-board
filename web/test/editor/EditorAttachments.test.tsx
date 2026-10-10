@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useRef, useState } from 'react';
+import { createRef, useRef, useState } from 'react';
 import type { RichMarkdownEditorHandle } from '../../src/components/editor/RichMarkdownEditor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditorShell } from '../../src/components/editor/EditorShell';
@@ -142,5 +142,26 @@ describe('editor attachment side panel', () => {
     unmount();
     render(<Host notice={{ kind: 'count' }} />);
     expect(screen.getByRole('alert').textContent).toContain('A card holds up to 20 images.');
+  });
+});
+
+describe('the empty picture state', () => {
+  it('is the shared button, so it takes the same look and focus rules as the other actions', () => {
+    const { container } = render(
+      <EditorBody
+        title="Empty"
+        onTitleChange={() => {}}
+        description=""
+        onDescriptionChange={() => {}}
+        editorRef={createRef<RichMarkdownEditorHandle>()}
+        disabled={false}
+        attachments={[]}
+        onFiles={vi.fn()}
+        onRemoveAttachment={() => {}}
+      />,
+    );
+    const empty = container.querySelector('.editor-attachments__empty');
+    expect(empty?.tagName).toBe('BUTTON');
+    expect(empty?.getAttribute('data-slot')).toBe('button');
   });
 });

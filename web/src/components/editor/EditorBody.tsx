@@ -85,7 +85,8 @@ export function EditorBody({
 
   const deferred = useDeferredValue(description);
   const outline = useMemo(() => outlineOf(deferred), [deferred]);
-  const active = activeOutlineIndex(outline, cursor);
+  // Before the first chapter the first one is the current one, as the design shows at the start.
+  const active = outline.length > 0 ? Math.max(activeOutlineIndex(outline, cursor), 0) : -1;
 
   const count = countChars(description);
   const over = count - DESCRIPTION_LIMIT;

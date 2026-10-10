@@ -149,8 +149,9 @@ export function AttachmentPanel({
         onDrop={onDrop}
       >
         {attachments.length === 0 ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
             className="editor-attachments__empty"
             disabled={disabled}
             onClick={() => input.current?.click()}
@@ -158,7 +159,7 @@ export function AttachmentPanel({
             <ImageOffIcon aria-hidden="true" />
             <span>{t('editor.attachmentsEmpty')}</span>
             <small>{t('editor.attachmentsDropHint')}</small>
-          </button>
+          </Button>
         ) : (
           <div className="editor-attachments__list">
             {attachments.map((attachment) => (

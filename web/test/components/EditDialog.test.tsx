@@ -148,6 +148,21 @@ describe('edit dialog layout', () => {
     );
   });
 
+  it('marks the first chapter as current when the text starts before any chapter', async () => {
+    const card = makeCard({
+      id: 14,
+      isDraft: true,
+      description:
+        'An introduction before the first chapter.\n\n## Goal\n\nText.\n\n## Done when\n\n- [ ] AC-1',
+    });
+    const { dialog } = await openEdit(undefined, card);
+    const items = within(dialog)
+      .getByRole('navigation', { name: 'Outline' })
+      .querySelectorAll('.editor__outline-item');
+    expect(items[0]?.getAttribute('aria-current')).toBe('location');
+    expect(items[1]?.getAttribute('aria-current')).toBeNull();
+  });
+
   it('moves to the nth second-level heading when its outline item is pressed', async () => {
     const { dialog } = await openEdit();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Done when' }));
