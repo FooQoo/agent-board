@@ -647,9 +647,8 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     assert_eq!(pending.status, 200, "{}", pending.body);
     let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
     let request_id = request["card"]["pendingRequestId"].as_str().unwrap();
-    let body =
-        serde_json::json!({"requestId":request_id,"actor":"human","text":"Proceed with A"})
-            .to_string();
+    let body = serde_json::json!({"requestId":request_id,"actor":"human","text":"Proceed with A"})
+        .to_string();
     let answered = server.send_json("POST", &server.api("/cards/4/answer"), &body, Some(&token));
     assert_eq!(answered.status, 200, "{}", answered.body);
     let board: serde_json::Value =
