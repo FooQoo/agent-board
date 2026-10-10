@@ -13,21 +13,16 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
-import { safeImageUrl, safeLinkUrl } from '../../lib/markdown';
+import { imageUrlOf, safeLinkUrl, type AttachmentResolver } from '../../lib/markdown';
 import { Lightbox } from '../Lightbox';
 import { MermaidDiagram } from './MermaidDiagram';
 import '../../styles/markdown.css';
 
 export type MarkdownVariant = 'compact' | 'wide';
 
-/** Turns an owned attachment id into the URL to show; null when it is not one of the card's. */
-type AttachmentResolver = (id: string) => string | null;
-
 const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 /** Two or more images that follow each other without text form one row of small captures. */
 const CAPTURE_ROW_MIN = 2;
-const ATTACHMENT_SOURCE = /^attachment:([0-9a-f]{32})$/;
-const ASSET_SOURCE = /^assets\/([0-9a-f]{32})\.(?:png|jpe?g|webp|gif)$/;
 
 const ResolverContext = createContext<AttachmentResolver | undefined>(undefined);
 
@@ -53,22 +48,6 @@ function ImagePlaceholder({ alt }: { alt: string }) {
       {alt !== '' && <span className="md__image-caption">{alt}</span>}
     </span>
   );
-}
-
-/**
- * The URL an image source shows, or null for No image. An owned reference (`attachment:<id>` or
- * `assets/<id>.<ext>`) goes through the resolver only; any other relative or malformed reference
- * is never fetched; external http(s) images pass the allow-list.
- */
-function imageUrlOf(
-  src: string | undefined,
-  resolve: AttachmentResolver | undefined,
-): string | null {
-  if (src === undefined) return null;
-  const id = ATTACHMENT_SOURCE.exec(src)?.[1] ?? ASSET_SOURCE.exec(src)?.[1];
-  if (id !== undefined) return resolve?.(id) ?? null;
-  if (src.startsWith('attachment:') || src.startsWith('assets/')) return null;
-  return safeImageUrl(src);
 }
 
 /**

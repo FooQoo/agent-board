@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Lightbox } from '../Lightbox';
 import {
   mermaidThemeFromCss,
+  svgElementOf,
   renderMermaid,
   type MermaidTheme,
   type RenderResult,
@@ -28,35 +29,13 @@ function useMermaidTheme(): MermaidTheme {
   return theme;
 }
 
-/**
- * The drawn SVG as DOM nodes. The text is parsed as SVG and never set as HTML; scripts and event
- * or `javascript:` attributes are dropped as well (the library already sanitizes its output).
- */
-function svgNodeOf(svg: string): SVGSVGElement | null {
-  const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
-  const root = parsed.documentElement;
-  if (root.localName !== 'svg' || parsed.getElementsByTagName('parsererror').length > 0)
-    return null;
-  for (const script of Array.from(root.querySelectorAll('script'))) script.remove();
-  for (const element of [root, ...Array.from(root.querySelectorAll('*'))]) {
-    for (const attribute of Array.from(element.attributes)) {
-      const name = attribute.name.toLowerCase();
-      const value = attribute.value.trim().toLowerCase();
-      if (name.startsWith('on') || value.startsWith('javascript:')) {
-        element.removeAttribute(attribute.name);
-      }
-    }
-  }
-  return document.importNode(root, true) as unknown as SVGSVGElement;
-}
-
 /** A drawn diagram placed in a span as nodes; the span is the only element it adds. */
 function DrawnSvg({ svg, className }: { svg: string; className: string }) {
   const host = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     const target = host.current;
     if (target === null) return;
-    const node = svgNodeOf(svg);
+    const node = svgElementOf(svg);
     if (node === null) target.replaceChildren();
     else target.replaceChildren(node);
   }, [svg]);
