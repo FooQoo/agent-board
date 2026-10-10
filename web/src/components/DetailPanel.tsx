@@ -5,7 +5,7 @@ import { setDraft } from '../api';
 import { stateLabel } from '../lib/format';
 import { historyItems } from '../lib/history';
 import { noOperations, type OperationControls } from '../lib/projectSession';
-import type { Card, ProjectId } from '../types';
+import type { Card, Problem, ProjectId } from '../types';
 import { Button } from '@/components/ui/button';
 import { AssigneeLabel } from './AssigneeLabel';
 import { DeleteButton } from './DeleteButton';
@@ -14,6 +14,7 @@ import { DecisionRequest } from './detail/DecisionRequest';
 import { DetailAttachments } from './detail/DetailAttachments';
 import { DetailTabs, type DetailTab, panelId, tabId } from './detail/DetailTabs';
 import { DraftBanner } from './detail/DraftBanner';
+import { ProblemNotice } from './detail/ProblemNotice';
 import { HistoryTimeline } from './HistoryTimeline';
 import { MarkdownSections } from './markdown/MarkdownSections';
 import { StatusLabel } from './StatusLabel';
@@ -40,6 +41,8 @@ export interface DetailPanelProps {
   initialDeleteFailed?: boolean;
   /** Archive view changes the destructive action to permanent deletion. */
   archived?: boolean;
+  /** The board's format defects. The ones of this card's files are shown above its body. */
+  problems?: readonly Problem[];
   onRestore?: () => void;
   operationSaving?: boolean;
   restoreFailed?: boolean;
@@ -60,6 +63,7 @@ export function DetailPanel({
   onRestore,
   operationSaving = false,
   restoreFailed = false,
+  problems = [],
 }: DetailPanelProps) {
   const { t } = useTranslation();
   if (card === null || projectId === null) {
@@ -90,15 +94,17 @@ export function DetailPanel({
       onRestore={onRestore}
       operationSaving={operationSaving}
       restoreFailed={restoreFailed}
+      problems={problems}
     />
   );
 }
 
 interface DetailBodyProps
-  extends Omit<DetailPanelProps, 'card' | 'variant' | 'operations' | 'projectId'> {
+  extends Omit<DetailPanelProps, 'card' | 'variant' | 'operations' | 'projectId' | 'problems'> {
   projectId: ProjectId;
   card: Card;
   operations: OperationControls;
+  problems: readonly Problem[];
 }
 
 type ConfirmState = 'closed' | 'initial' | 'user';
@@ -117,6 +123,7 @@ function DetailBody({
   onRestore,
   operationSaving,
   restoreFailed,
+  problems,
 }: DetailBodyProps) {
   const { t } = useTranslation();
   const idBase = useId();
@@ -124,6 +131,7 @@ function DetailBody({
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
   const [draftSaving, setDraftSaving] = useState(false);
   const [draftFailed, setDraftFailed] = useState(false);
+  const [answered, setAnswered] = useState(false);
   const draftBusy = useRef(false);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
@@ -195,12 +203,18 @@ function DetailBody({
           onFinalize={() => void toggleDraft(false)}
         />
       )}
+      {answered && (
+        <p className="detail__notice" role="status">
+          {t('request.resumed')}
+        </p>
+      )}
       {!archived && card.agentStatus === 'pending' && (
         <DecisionRequest
           projectId={projectId}
           card={card}
           operations={operations}
           onChanged={onChanged}
+          onAnswered={() => setAnswered(true)}
         />
       )}
       {archived && (
@@ -299,6 +313,9 @@ function DetailBody({
         aria-labelledby={tabId(idBase, 'description')}
         hidden={tab !== 'description'}
       >
+        <ProblemNotice
+          problems={problems.filter((problem) => problem.file.startsWith(`tasks/${card.id}/`))}
+        />
         <MarkdownSections
           source={card.description}
           resolveAttachment={(id) =>

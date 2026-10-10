@@ -8,65 +8,56 @@ afterEach(cleanup);
 
 const SOURCE = 'Intro text\n\n## Goals\n\nGoal body\n\n## Steps\n\n1. one\n2. two\n3. three\n';
 
-function toggle(name: RegExp) {
-  return screen.getByRole('button', { name });
-}
-
-describe('MarkdownSections', () => {
-  it('shows the preamble and every section open at first, with counts', () => {
-    render(<MarkdownSections source={SOURCE} />);
+describe('MarkdownSections as chapters', () => {
+  it('shows the preamble without a number, then each H2 with a number from its order', () => {
+    const { container } = render(<MarkdownSections source={SOURCE} />);
     expect(screen.getByText('Intro text')).toBeTruthy();
+    const numbers = [...container.querySelectorAll('.md-chapter__number')].map(
+      (n) => n.textContent,
+    );
+    expect(numbers).toEqual(['01', '02']);
+    expect(screen.getByRole('heading', { level: 3, name: 'Goals' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: 'Steps' })).toBeTruthy();
+  });
+
+  it('never folds a section: every body stays visible and no toggle or count is shown', () => {
+    const { container } = render(<MarkdownSections source={SOURCE} />);
     expect(screen.getByText('Goal body')).toBeTruthy();
     expect(screen.getByText('three')).toBeTruthy();
-    expect(toggle(/Goals/).getAttribute('aria-expanded')).toBe('true');
-    expect(toggle(/Goals/).textContent).toContain('1');
-    expect(toggle(/Steps/).textContent).toContain('3');
-  });
-
-  it('closes and opens a section by hand and keeps the preamble', () => {
-    render(<MarkdownSections source={SOURCE} />);
-    fireEvent.click(toggle(/Goals/));
-    expect(screen.queryByText('Goal body')).toBeNull();
-    expect(toggle(/Goals/).getAttribute('aria-expanded')).toBe('false');
-    expect(screen.getByText('three')).toBeTruthy();
-    expect(screen.getByText('Intro text')).toBeTruthy();
-    fireEvent.click(toggle(/Goals/));
-    expect(screen.getByText('Goal body')).toBeTruthy();
-  });
-
-  it('opens everything again when the key changes', () => {
-    const { rerender } = render(<MarkdownSections key="card-1" source={SOURCE} />);
-    fireEvent.click(toggle(/Goals/));
-    fireEvent.click(toggle(/Steps/));
-    expect(screen.queryByText('Goal body')).toBeNull();
-    rerender(<MarkdownSections key="card-2" source={SOURCE} />);
-    expect(screen.getByText('Goal body')).toBeTruthy();
-    expect(screen.getByText('three')).toBeTruthy();
-  });
-
-  it('keeps the open state when the same card gets a new description', () => {
-    const { rerender } = render(<MarkdownSections key="card-1" source={SOURCE} />);
-    fireEvent.click(toggle(/Goals/));
-    rerender(<MarkdownSections key="card-1" source={`${SOURCE}\nmore`} />);
-    expect(screen.queryByText('Goal body')).toBeNull();
-  });
-
-  it('shows the whole text without folding when there is no H2', () => {
-    render(<MarkdownSections source={'# Title\n\nJust text\n\n### Sub\n\n- a\n'} />);
-    expect(screen.getByText('Just text')).toBeTruthy();
-    expect(screen.getByText('Sub')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
+    expect(container.querySelector('[aria-expanded]')).toBeNull();
+    expect(container.querySelector('.md-section__count')).toBeNull();
   });
 
-  it('does not fold H3 under its section', () => {
+  it('keeps the numbering when the description changes under the same card', () => {
+    const { container, rerender } = render(<MarkdownSections key="card-1" source={SOURCE} />);
+    rerender(<MarkdownSections key="card-1" source={`${SOURCE}\nmore`} />);
+    const numbers = [...container.querySelectorAll('.md-chapter__number')].map(
+      (n) => n.textContent,
+    );
+    expect(numbers).toEqual(['01', '02']);
+    expect(screen.getByText('Goal body')).toBeTruthy();
+  });
+
+  it('shows the whole text without chapters when there is no H2', () => {
+    const { container } = render(
+      <MarkdownSections source={'# Title\n\nJust text\n\n### Sub\n\n- a\n'} />,
+    );
+    expect(screen.getByText('Just text')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: 'Sub' })).toBeTruthy();
+    expect(container.querySelector('.md-chapter')).toBeNull();
+  });
+
+  it('shows the H3 inside a chapter without folding it', () => {
     render(<MarkdownSections source={'## A\n\n### A1\n\ntext\n'} />);
-    expect(screen.getAllByRole('button')).toHaveLength(1);
     expect(screen.getByRole('heading', { level: 3, name: 'A1' })).toBeTruthy();
+    expect(screen.getByText('text')).toBeTruthy();
   });
 
-  it('does not offer to open or close everything', () => {
-    render(<MarkdownSections source={SOURCE} />);
-    expect(screen.getAllByRole('button')).toHaveLength(2);
+  it('does not split a code block or a quote at its ## lines', () => {
+    const { container } = render(<MarkdownSections source={'## Real\n\n```\n## Fake\n```\n'} />);
+    expect(container.querySelectorAll('.md-chapter')).toHaveLength(1);
+    expect(screen.getByText('## Fake', { exact: false })).toBeTruthy();
   });
 
   it('shows the empty message for a blank description', () => {
@@ -77,10 +68,45 @@ describe('MarkdownSections', () => {
     render(<MarkdownSections source="" />);
     expect(screen.getByText('説明はありません。')).toBeTruthy();
   });
+});
 
-  it('sets the title of a section from its plain text and does not split code', () => {
-    render(<MarkdownSections source={'## Real\n\n```\n## Fake\n```\n'} />);
-    expect(screen.getAllByRole('button')).toHaveLength(1);
-    expect(screen.getByText('## Fake', { exact: false })).toBeTruthy();
+const CONDITIONS = [
+  '## 完了条件と確認結果',
+  '',
+  '- [x] AC-1. 本文と画像を確認できる',
+  '  - 確認結果: 一覧と詳細で確認。',
+  '  - 根拠: #24の記録。',
+  '  - 調整役の確認: 未確認',
+  '',
+  '  ![first](https://example.com/one.png)',
+  '  ![second](https://example.com/two.png)',
+  '',
+  '- [ ] AC-2. 再開時に読める',
+  '  - 確認結果: 未確認',
+  '  - 根拠: 未記入',
+  '  - 調整役の確認: 未確認',
+].join('\n');
+
+describe('completion conditions in the reading view', () => {
+  it('shows each checkbox state as a display only and does not change it when pressed', () => {
+    const { container } = render(<MarkdownSections source={CONDITIONS} />);
+    const boxes = [...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    expect(boxes.map((box) => box.checked)).toEqual([true, false]);
+    expect(boxes.every((box) => box.disabled)).toBe(true);
+    fireEvent.click(boxes[1] as HTMLInputElement);
+    expect(boxes.map((box) => box.checked)).toEqual([true, false]);
+  });
+
+  it('keeps the detail lines under their condition', () => {
+    render(<MarkdownSections source={CONDITIONS} />);
+    expect(screen.getByText('確認結果: 一覧と詳細で確認。', { exact: false })).toBeTruthy();
+    expect(screen.getByText('根拠: #24の記録。', { exact: false })).toBeTruthy();
+  });
+
+  it('shows two consecutive captures under a condition as one row of small pictures', () => {
+    const { container } = render(<MarkdownSections source={CONDITIONS} />);
+    const row = container.querySelector('.md-captures');
+    expect(row).not.toBeNull();
+    expect(row?.querySelectorAll('img')).toHaveLength(2);
   });
 });

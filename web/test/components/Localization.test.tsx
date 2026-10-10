@@ -52,7 +52,7 @@ describe('localized board content', () => {
     await i18n.changeLanguage('ja');
     const events: HistoryEvent[] = [
       {
-        id: 1,
+        id: '1',
         kind: 'created',
         actor: 'ai',
         reason: null,
@@ -64,7 +64,7 @@ describe('localized board content', () => {
         at: '2026-10-01T16:00:00Z',
       },
       {
-        id: 2,
+        id: '2',
         kind: 'lane',
         actor: 'human',
         reason: '着手',

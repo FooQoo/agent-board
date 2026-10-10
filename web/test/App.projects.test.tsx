@@ -732,7 +732,6 @@ describe('switching while a form is open', () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton(pendingA?.title ?? ''));
-    await userEvent.click(screen.getByRole('button', { name: 'Answer' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     await userEvent.type(screen.getByRole('textbox', { name: 'Your answer' }), 'Go ahead');
     expect(
@@ -752,7 +751,7 @@ describe('switching while a form is open', () => {
     expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/${pendingA?.id}/answer`);
     expect(JSON.parse(String(posts[0]?.[1]?.body))).toMatchObject({
       requestId: pendingA?.pendingRequestId,
-      reason: 'Go ahead',
+      text: 'Go ahead',
     });
   });
 

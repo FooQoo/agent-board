@@ -2,10 +2,24 @@ export type ColumnName = 'todo' | 'doing' | 'done';
 export type RunState = 'idle' | 'running' | 'pending';
 export type Assignee = 'ai' | 'human';
 export type Actor = 'ai' | 'human';
-export type HistoryKind = 'created' | 'lane' | 'agent' | 'archive' | 'restore';
+export type HistoryKind =
+  | 'created'
+  | 'lane'
+  | 'agent'
+  | 'answer'
+  | 'draft'
+  | 'epic'
+  | 'archive'
+  | 'restore';
+
+/** One option of a decision request. */
+export interface Choice {
+  id: string;
+  label: string;
+}
 
 export interface HistoryEvent {
-  id: number;
+  id: string;
   kind: HistoryKind;
   actor: Actor;
   reason: string | null;
@@ -14,7 +28,62 @@ export interface HistoryEvent {
   fromAgentStatus: RunState | null;
   toAgentStatus: RunState;
   requestId: string | null;
+  question?: string | null;
+  choices?: Choice[];
+  choiceId?: string | null;
+  choiceLabel?: string | null;
+  isDraft?: boolean | null;
+  fromEpicId?: string | null;
+  toEpicId?: string | null;
   at: string;
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  mediaType: string;
+  size: number;
+  createdAt: string;
+}
+
+/** A text file kept as evidence of a card. */
+export interface EvidenceRecord {
+  id: string;
+  name: string;
+  size: number;
+  createdAt: string;
+}
+
+/** The epic a card belongs to, as the board shows it. */
+export interface EpicRef {
+  id: string;
+  name: string;
+  /** `#RRGGBB`. */
+  color: string;
+}
+
+export interface Epic extends EpicRef {
+  isDraft: boolean;
+  plan: string;
+  attachments: Attachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The immutable identifier of a project: 32 lowercase hexadecimal digits. */
+export type ProjectId = string;
+
+export interface Project {
+  id: ProjectId;
+  name: string;
+  createdAt: string;
+}
+
+/** A format defect in a shared file. `file` is relative to the shared folder. */
+export interface Problem {
+  file: string;
+  field: string;
+  reason: string;
 }
 
 export interface Card {
@@ -27,6 +96,8 @@ export interface Card {
   agentStatus: RunState;
   pendingReason: string | null;
   pendingRequestId: string | null;
+  pendingChoices: Choice[];
+  epic: EpicRef | null;
   createdAt: string;
   updatedAt: string;
   agentStatusChangedAt: string;
@@ -35,43 +106,23 @@ export interface Card {
   archivedAt?: string | null;
   history: HistoryEvent[];
   attachments: Attachment[];
-}
-
-export interface Attachment {
-  id: string;
-  name: string;
-  mediaType: string;
-  size: number;
-  createdAt: string;
-}
-
-export interface BoardInfo {
-  name: string;
-  createdAt: string;
-}
-
-/** The immutable identifier of a project: 32 lowercase hexadecimal digits. */
-export type ProjectId = string;
-
-export interface Project {
-  id: ProjectId;
-  name: string;
-  createdAt: string;
+  evidence: EvidenceRecord[];
 }
 
 /** Response body of `GET /api/projects`. */
 export interface ProjectList {
   projects: Project[];
-  catalogRevision: number;
+  catalogVersion: string;
 }
 
-/** Response body of `GET /api/projects/{projectId}/board`. */
+/** A board snapshot: `GET /api/projects/{projectId}/board`. */
 export interface Board {
   project: Project;
-  board: BoardInfo;
-  revision: number;
+  version: string;
   cursor: string;
+  epics: Epic[];
   cards: Card[];
+  problems: Problem[];
 }
 
 /** What a card dialog (create, move, edit) is asked to do. */

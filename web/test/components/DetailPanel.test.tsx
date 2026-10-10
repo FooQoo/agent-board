@@ -118,7 +118,7 @@ describe('DetailPanel', () => {
       cardStatus: 'doing',
       history: [
         {
-          id: 1,
+          id: '1',
           kind: 'created',
           actor: 'ai',
           reason: null,
@@ -130,7 +130,7 @@ describe('DetailPanel', () => {
           at: '2026-10-01T16:00:00Z',
         },
         {
-          id: 2,
+          id: '2',
           kind: 'lane',
           actor: 'ai',
           reason: 'move',
@@ -142,7 +142,7 @@ describe('DetailPanel', () => {
           at: '2026-10-01T16:30:00Z',
         },
         {
-          id: 3,
+          id: '3',
           kind: 'lane',
           actor: 'human',
           reason: 'move',
@@ -154,7 +154,7 @@ describe('DetailPanel', () => {
           at: '2026-10-01T17:00:00Z',
         },
         {
-          id: 4,
+          id: '4',
           kind: 'lane',
           actor: 'ai',
           reason: 'move',
@@ -309,7 +309,7 @@ describe('DetailPanel', () => {
       to: 'todo' | 'doing',
       agent: 'idle' | 'running' | 'pending',
     ) => ({
-      id,
+      id: String(id),
       kind,
       actor: 'ai' as const,
       reason: 'r',
