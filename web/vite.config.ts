@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           entryFileNames: 'assets/app.js',
-          chunkFileNames: 'assets/app-[name].js',
+          chunkFileNames: 'assets/app-[name]-[hash].js',
           assetFileNames: 'assets/app[extname]',
         },
       },
