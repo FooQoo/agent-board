@@ -73,6 +73,11 @@ export function MonitorView(props: MonitorViewProps) {
           ↻
         </Button>
       </div>
+      {props.routeNotice && (
+        <p className="monitor-route-notice" role="status">
+          {t('monitor.invalidSelection')}
+        </p>
+      )}
       <section className="monitor-summary" aria-label={t('monitor.summary')}>
         <button type="button" onClick={() => goTo('running')} aria-controls={listId}>
           <strong>{count('running', ordered.running.length)}</strong>
