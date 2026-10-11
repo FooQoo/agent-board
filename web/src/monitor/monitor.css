@@ -81,6 +81,15 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.monitor-route-notice {
+  flex: none;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--r-text);
+  background: var(--r-pend-bg);
+  font-size: 12px;
+}
 .monitor-summary {
   display: grid;
   flex: none;

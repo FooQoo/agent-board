@@ -68,6 +68,9 @@ export function ReadOnlyDetail(props: MonitorViewProps) {
                 evidenceUrl={(id) =>
                   props.readResolvers.evidenceUrl(selected.projectId, card.id, id)
                 }
+                problems={props.freshness.snapshotProblems
+                  .filter((problem) => problem.projectId === selected.projectId)
+                  .map(({ file, field, reason }) => ({ file, field, reason }))}
               />
               <footer className="monitor-detail-footer">
                 {t('monitor.detailFooter', {

@@ -58,4 +58,5 @@ export interface MonitorViewProps {
   onCloseCard(): void;
   onTabChange(tab: 'body' | 'history'): void;
   onRefresh(): void;
+  routeNotice?: boolean;
 }
