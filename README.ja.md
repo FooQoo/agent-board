@@ -8,13 +8,13 @@
 
 AIが作業を登録し、ユーザーも状態の更新や判断への回答を行います。
 
-[English](README.md) · [開発に参加する](CONTRIBUTING.ja.md) · [GitHubリポジトリ](https://github.com/FooQoo/agent-board)
+[English](README.md) · [使い方（英語）](docs/usage.md) · [開発に参加する](CONTRIBUTING.ja.md) · [GitHubリポジトリ](https://github.com/FooQoo/agent-board)
 
 ![ローカル完結](https://img.shields.io/badge/data-local%20only-1f6feb)
 ![プレーンファイル](https://img.shields.io/badge/storage-plain%20files-1f6feb)
 ![macOS と Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-1f6feb)
 
-<img src="docs/images/board.png" alt="Agent Boardのボード" width="860">
+<img src="docs/images/board.ja.png" alt="エピックと判断依頼を表示したサンプルボード" width="860">
 
 </div>
 
@@ -25,6 +25,7 @@ AIが作業を登録し、ユーザーも状態の更新や判断への回答を
 - **AIが人とAIの作業を登録します。** 担当はAIまたはユーザーに固定され、カードの列と状態で進み具合を示します。
 - **ユーザーとAIが同じボードを更新します。** 状態変更には理由を残します。ユーザーが判断依頼に答えると、次のHookや`agboard snapshot`がその回答を含む全履歴をAIへ渡します。
 - **すべてのコマンドが対象プロジェクトを指定します。** ボードには複数のプロジェクトがあり、コマンド・Hook・待機は`--project NAME`で対象を明示します。Web画面や別のエージェントの選択から推測することはありません。
+- **計画と結果はプレーンファイルに置きます。** 各カードには`TASK.md`(作業内容・完了条件と確認結果・実行記録)、各エピックには`PLAN.md`があります。エージェントも人も直接編集でき、ボードは追加の操作なしにファイルの変更へ追従します。
 - **データはマシンの外へ出ません。** カードはローカルの共有フォルダにあるファイルとして保存され、Web画面は`127.0.0.1`だけで待ち受けます。
 
 ```mermaid
@@ -38,32 +39,33 @@ flowchart LR
 
 **次に必要なことが分かります。** カードには担当と列が表示されます。進行中のAI担当カードにはIDLE・RUNNING・PENDINGを表示し、PENDINGの理由と履歴を確認できます。
 
-**判断の経緯が残ります。** ユーザーは理由を添えてカードを移動し、判断依頼へ回答できます。AIは回答を読んで方針を見直し、作業を再開します。
+**判断の経緯が残ります。** ユーザーは理由を添えてカードを移動し、判断依頼へ回答できます。AIは最大10件の選択肢を示せます。ユーザーは選択肢を1つ選ぶか、補足を書くか、その両方で答えます。AIは回答を読んで方針を見直し、作業を再開します。
 
-**あえてシンプルにしています。** プロジェクトごとに列は3つ、データ領域はローカルに1つだけ。アカウントもクラウドも要りません。
+**エピックで作業をまとめます。** エピックは計画と色を持ちます。カードは最大1つのエピックに所属し、ラベルで表示されます。計画・名前・色の編集と、エピックに含めるタスクの選択は、1つのダイアログで行えます。
+
+**整形表示のMarkdownエディタで編集できます。** カードとエピックの本文を、見出し・タスクリスト・表・コードブロック・Mermaidの図・画像を含めて、その場で編集できます。完了条件はチェックボックスで操作できます。
+
+**完了した作業をアーカイブできます。** カード単位、またはDoneの複数カードをまとめてアーカイブし、ボードを整理できます。必要になったカードはアーカイブから復元でき、完全削除もアーカイブ画面から行います。
+
+**証跡と画像。** カードの画像とテキストの証跡を、カードのファイルの隣に保存します。本文中の画像とMermaidの図は、クリックで拡大できます。
+
+**あえてシンプルにしています。** プロジェクトごとに列は3つ、データ領域はプレーンファイルでローカルに1つだけ。アカウントもクラウドも要りません。
 
 **言語と配色を選べます。** ヘッダーの設定から、Web画面の言語(日本語/English)と、24種類のカラーテーマ(12色のライトとダーク)を切り替えられます。
 
 ## インストール
 
-Agent Boardはソースからビルドします。エージェントやHookが実行できるよう、`agboard`を`PATH`上に導入します。
+Git、Rust（edition 2024に対応したCargoを含む）、Node.js、pnpmを使い、ソースからビルドします。
 
 ```sh
+git clone https://github.com/FooQoo/agent-board.git
+cd agent-board
 pnpm --dir web install
 pnpm --dir web build
 cargo install --path . --locked --force
 ```
 
-CLIはビルド済みのWeb画面を含むため、先にWeb画面をビルドします。`cargo install`は`agboard`を`~/.cargo/bin`(または`$CARGO_HOME/bin`)へ置くので、そのディレクトリが`PATH`に入っている必要があります。次で確認します。
-
-```sh
-command -v agboard
-agboard --help
-```
-
-`command -v agboard`が何も表示しない場合は、シェルのプロファイルに`export PATH="$HOME/.cargo/bin:$PATH"`のようにディレクトリを追加し、新しいシェルを開いてください。変更を取り込んで更新するときは、上の3つのコマンドを再実行します。`--force`で導入済みの版を置き換えます。
-
-Hookとエージェントスキルは`PATH`上の`agboard`を実行するため、この導入版が使われます。開発中のビルド(`cargo build`、`cargo run`、`target/debug/agboard`)は別の実行ファイルで、導入版は変わりません。変更をHookに反映するには再導入してください。
+`~/.cargo/bin`（または`$CARGO_HOME/bin`）を`PATH`に追加してください。`agboard`はWeb画面を含むため、先にWeb画面をビルドします。更新や導入確認は[使い方ガイド（英語）](docs/usage.md#installation-and-updates)を参照してください。
 
 ## はじめかた
 
@@ -72,60 +74,10 @@ agboard project create "My project"
 agboard serve --port 7420
 ```
 
-`project create`、`project ls`、`serve`、読み取り専用の`ls --all-projects`以外のすべてのコマンドは`--project NAME`が必須です。ブラウザからカードを登録するか、`agboard --project "My project" add "作業" --assignee ai --actor ai`で登録できます。Claude CodeとCodexのHook設定は[連携ガイド](integrations/README.md)を参照してください。ビルド方法は[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)にあります。
+[http://127.0.0.1:7420/](http://127.0.0.1:7420/)を開き、プロジェクトを選んでカードを追加します。ボードを操作するCLIコマンドでは、`--project NAME`で対象を指定します。
 
-プロジェクトはプレーンファイルのフォルダです。`agboard --project "My project" workspace --json`は、その絶対パス、プロジェクトID、入口の`README.md`を返します。フォルダ内のファイルを編集する前に、そのREADMEを読んでください。
+## ドキュメント
 
-## データとバックアップ
-
-データ領域は、OSのアプリデータ領域の`skan/`です。macOSでは`~/Library/Application Support/skan/`、Windowsでは`%APPDATA%\skan\`です。別の場所を使うには`SKAN_HOME`を設定します。プロジェクトは領域内の`shared/projects/<プロジェクトID>/`に保存されます。各プロジェクトのフォルダには`project.json`、`README.md`、カードごとのフォルダを置く`tasks/`、`epics/`があります。
-
-プロジェクトのバックアップは、フォルダ全体を複製して行います。場所は`agboard --project "My project" workspace --json`の`folder`で分かります。複製する前に`agboard serve`と、そのプロジェクトで作業しているエージェントを止め、変更の途中を写さないようにしてください。復元するときは、`agboard serve`を止めた状態で、複製したフォルダを元の場所へ戻します。
-
-<details>
-<summary><strong>コマンド例</strong></summary>
-
-```sh
-agboard project ls --json
-agboard ls --all-projects --json
-agboard --project "My project" snapshot --json
-agboard --project "My project" mv 1 doing --actor ai --reason "実装を開始する"
-agboard --project "My project" state 1 running --actor ai --reason "承認済みの変更を実装中"
-agboard --project "My project" state 1 pending --actor ai --reason "動作方針の判断が必要"
-agboard --project "My project" state 1 idle --actor human --request <request-id> --reason "現在の動作を維持する"
-agboard --project "My project" state 1 running --actor ai --reason "ユーザーの方針に沿って再開する"
-agboard --project "My project" mv 1 done --actor ai --reason "実装と検証が完了した"
-agboard --project "My project" wait --after <cursor>
-agboard --project "My project" workspace --json
-```
-
-`ls --all-projects`は全プロジェクトのカードと全履歴を、一度の読み取り専用の取得でプロジェクト名順に返します(`--column`・`--state`は全プロジェクトに適用。`--project`は指定できません)。その他のコマンド: `add`、`edit`、`show`、`rm`、`project rename`、`project rm`、`hook`。詳しくは`agboard --help`または`agboard <command> --help`を実行してください。`--json`で機械処理向けの出力になります。`<cursor>`は同じプロジェクトのsnapshotの`cursor`(`<プロジェクトID>:<revision>`)です。
-
-`agboard --help`と[Agent Skills](integrations/README.md)にも同じ進め方を記載しています。
-
-</details>
-
-<details>
-<summary><strong>エージェントの作業手順</strong></summary>
-
-```text
-agboard --project "<名前>" snapshot --json   # ボードと全履歴を読む
-agboard --project "<名前>" mv <id> doing --actor ai --reason "<理由>"
-agboard --project "<名前>" state <id> running --actor ai --reason "<理由>"
-agboard --project "<名前>" state <id> pending --actor ai --reason "<必要な判断>"
-agboard --project "<名前>" state <id> idle --actor human --request <id> --reason "<回答・方針>"
-agboard --project "<名前>" state <id> running --actor ai --reason "<回答を踏まえた進め方>"
-agboard --project "<名前>" mv <id> done --actor ai --reason "<完了した内容>"
-agboard --project "<名前>" wait --after "<cursor>"   # 進められる作業がないとき
-```
-
-状態を変更するときはactorとreasonを必ず指定します。指示された対象のプロジェクトだけを使い、指定がなければ確認します。snapshotやHookの内容が、期待する`project`と`cursor`であることを確かめてから動きます。進められる作業がない場合は、定期取得せず変更通知を待ちます。プロジェクトの名前が変わっても同じプロジェクトとして作業を続け、Hookコマンドの名前を更新します。プロジェクトのフォルダは`workspace --json`で確かめます。カードの`TASK.md`とエピックの`PLAN.md`は、フォルダのREADMEで許されている範囲だけ編集します。下書きのカードの`TASK.md`は編集せず、`task.json`・`epic.json`・`project.json`を直接編集せず、カードやエピックのフォルダを削除しないでください。これらの変更はCLIで行います。説明は最大50,000文字のMarkdownで、常に全文が渡されます。長い説明は`--desc-file`で渡してください。`isDraft`が`true`のカードはユーザーが書いている途中の下書きで、読み取り専用です。`edit`・`mv`・`state`は`card_is_draft`で失敗するため、ユーザーが確定するまで他のカードの作業を進めてください。Hookはsnapshotが256 KiB以内のときだけ渡します。読み取れない場合(`AGBOARD_ERROR`、プロジェクトなし、タイムアウト)は、ボードに依存する変更を止めて報告します。
-
-</details>
-
-<details>
-<summary><strong>表示言語とテーマ</strong></summary>
-
-Web画面は英語・ライトブルーで開きます。ヘッダーの設定からEnglishまたは日本語とカラーテーマを選べます。変更はすぐに反映され、ブラウザに保存されます。ブラウザやOSの言語・配色設定からは自動選択しません。CLI、helpとエラーメッセージ、APIとJSONの値は英語です。入力したカード内容は翻訳されません。
-
-</details>
+- [使い方ガイド（英語）](docs/usage.md) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
+- [Claude Code・Codexとの連携（英語）](integrations/README.md) — Hookとエージェントの設定。
+- [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

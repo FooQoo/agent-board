@@ -1,12 +1,14 @@
 # Claude Code and Codex integration
 
+For browser operations, CLI examples, and shared-file editing, see the [usage guide](../docs/usage.md).
+
 Agent Board hooks read one project's complete, read-only snapshot after tools run and pass it to the agent as `additionalContext`. The `agent-board` skill describes how to choose work, add reasons, request a decision, wait for changes, and resume from the user's answer.
 
 ## One project per hook
 
 Every hook command names its project with `--project`. The name is fixed in the command: the hook never takes the project from the working directory, the environment, the tool input, the web view, or another agent. A hook without `--project`, or with a name that does not exist, reports `AGBOARD_ERROR` instead of a snapshot.
 
-The payload contains the fetch time, the `project` (ID and name), the `revision`, the `cursor`, and every card of that project with its whole history and its full description (Markdown, up to 50,000 characters). A card with `"isDraft": true` is a draft the user is still writing; agents cannot change it (`edit`, `mv`, and `state` fail with `card_is_draft`) and should work on other cards until the user finalizes it. Nothing from another project is included. If the complete snapshot would exceed 256 KiB, or cannot be read, the agent gets `AGBOARD_ERROR` (`context_too_large`, `project_not_found`, `board_unavailable`, ...) and must not make board-dependent changes until a complete snapshot is available. A truncated snapshot is never presented as complete, and the original tool result is never blocked or changed.
+The payload contains the fetch time, the `project` (ID and name), the `version`, the `cursor`, and every card of that project with its whole history and its full description (Markdown, up to 50,000 characters). A card with `"isDraft": true` is a draft the user is still writing; agents cannot change it (`edit`, `mv`, and `state` fail with `card_is_draft`) and should work on other cards until the user finalizes it. Nothing from another project is included. If the complete snapshot would exceed 256 KiB, or cannot be read, the agent gets `AGBOARD_ERROR` (`context_too_large`, `project_not_found`, `board_unavailable`, ...) and must not make board-dependent changes until a complete snapshot is available. A truncated snapshot is never presented as complete, and the original tool result is never blocked or changed.
 
 Image attachments follow the same project and card boundaries. Use `agboard --project NAME attachment add <card-id> --file PATH --actor ai|human` to add an image, `agboard --project NAME attachment ls <card-id>` to read metadata, and `agboard --project NAME attachment get <card-id> <attachment-id> --output PATH` to retrieve bytes. Snapshot, hook, and wait payloads contain attachment metadata only; image bytes are returned only by `get`. Draft cards, invalid or oversized image files, and cards outside the named project are rejected. Retrieval never overwrites an existing output file.
 
