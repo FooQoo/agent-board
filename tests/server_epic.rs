@@ -95,7 +95,7 @@ fn an_epic_is_created_listed_read_and_changed_over_http() {
         color.starts_with('#') && color.len() == 7,
         "a color is chosen when none is given: {color}"
     );
-    assert!(epic["plan"].as_str().unwrap().contains("## Approach"));
+    assert!(epic["plan"].as_str().unwrap().contains("acceptance: []"));
 
     let listed = server.get(&epics);
     assert_eq!(listed.json()["epics"][0]["id"], "FILE-SHARE");

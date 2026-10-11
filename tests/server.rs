@@ -137,7 +137,8 @@ fn store_in(home: &Path) -> FileStore {
 }
 
 /// A TASK.md body that the file store accepts.
-const BODY: &str = "## 作業内容\n\nSome details\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
+const BODY: &str =
+    "---\nacceptance:\n  - id: AC-1\n    text: Done\n    done: false\n---\n\nSome details\n";
 
 /// The ID of the project named "main" in the data directory `home`.
 fn main_id(home: &Path) -> ProjectId {
@@ -1634,16 +1635,15 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
         .join(project.as_str())
         .join("tasks/1/TASK.md");
     let label = format!("projects/{project}/tasks/1/TASK.md");
-    // The execution log heading is missing from a file in the earlier Japanese format: it is
-    // still being written, or was edited by hand. The problem names the heading in English.
-    let defective = "## 作業内容\n\nWork.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n";
+    // A condition has no `done` key: the file is still being written, or was edited by hand.
+    let defective = "---\nacceptance:\n  - id: AC-1\n    text: Done\n---\n\nWork.\n";
     std::fs::write(&md, defective).unwrap();
 
     let board = board_until(&server, |b| !b["problems"].as_array().unwrap().is_empty());
     let problems = board["problems"].as_array().unwrap();
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert_eq!(problems[0]["file"], label);
-    assert_eq!(problems[0]["field"], "## Execution log");
+    assert_eq!(problems[0]["field"], "acceptance[0].done");
     assert!(!problems[0]["reason"].as_str().unwrap().is_empty());
     // The card still shows the text as it was saved; the product does not rewrite it.
     let card = board["cards"]
@@ -1702,7 +1702,10 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
     assert_eq!(
         keys,
         [
+            "acceptance",
+            "acceptanceError",
             "attachments",
+            "body",
             "color",
             "createdAt",
             "id",

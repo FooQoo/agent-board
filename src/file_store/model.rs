@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use super::frontmatter::AcceptanceItem;
 use super::validate::EpicId;
 use crate::domain::{Actor, Assignee, Attachment, Column, ProjectId, RunState};
 
@@ -154,6 +155,10 @@ pub struct CardView {
     pub id: i64,
     pub title: String,
     pub description: String,
+    /// TASK.md without its frontmatter. The whole file when the frontmatter has a defect.
+    pub body: String,
+    pub acceptance: Vec<AcceptanceItem>,
+    pub acceptance_error: bool,
     pub assignee: Assignee,
     pub epic_id: Option<String>,
     pub epic: Option<CardEpic>,
@@ -202,6 +207,10 @@ pub struct EpicView {
     pub color: String,
     pub is_draft: bool,
     pub plan: String,
+    /// PLAN.md without its frontmatter. The whole file when the frontmatter has a defect.
+    pub body: String,
+    pub acceptance: Vec<AcceptanceItem>,
+    pub acceptance_error: bool,
     pub attachments: Vec<Attachment>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,

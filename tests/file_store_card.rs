@@ -84,7 +84,7 @@ impl Fixture {
     }
 }
 
-const VALID_BODY: &str = "## 作業内容\n\nDo the work.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. The thing works.\n  - 確認結果: 未確認\n  - 根拠: 手順\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
+const VALID_BODY: &str = "---\nacceptance:\n  - id: AC-1\n    text: The thing works.\n    done: false\n---\n\nDo the work.\n";
 
 #[test]
 fn a_card_without_a_body_gets_the_template_headings_and_a_created_event() {
@@ -106,10 +106,11 @@ fn a_card_without_a_body_gets_the_template_headings_and_a_created_event() {
     assert_eq!(fx.next_card_id(), 2);
 
     let body = String::from_utf8(fx.body_bytes(1)).unwrap();
-    assert!(body.contains("## Work"));
-    assert!(body.contains("## Completion conditions"));
-    assert!(body.contains("## Execution log"));
+    assert_eq!(body, "---\nacceptance: []\n---\n\n");
     assert_eq!(card.description, body);
+    assert_eq!(card.body, "");
+    assert!(card.acceptance.is_empty());
+    assert!(!card.acceptance_error);
 }
 
 #[test]
@@ -143,15 +144,19 @@ fn a_failed_save_keeps_the_number_reserved_and_leaves_no_temporary_folder() {
 }
 
 #[test]
-fn a_body_without_the_required_headings_is_refused_and_creates_nothing() {
+fn a_body_with_a_defective_frontmatter_is_refused_and_creates_nothing() {
     let fx = fixture();
     let err = fx
         .store
-        .create_card(&fx.project, new_card("T", "just some text"), now())
+        .create_card(
+            &fx.project,
+            new_card("T", "---\nacceptance: nope\n---\n\njust some text"),
+            now(),
+        )
         .unwrap_err();
     match err {
         AgboardError::FileInvalid { file, field, .. } => {
-            assert_eq!(field, "## Work");
+            assert_eq!(field, "acceptance");
             assert!(file.ends_with("tasks/1/TASK.md"), "{file}");
         }
         other => panic!("unexpected error: {other:?}"),
@@ -166,17 +171,33 @@ fn a_body_without_the_required_headings_is_refused_and_creates_nothing() {
 }
 
 #[test]
-fn a_completion_condition_without_its_detail_line_is_refused() {
+fn a_condition_without_done_is_refused() {
     let fx = fixture();
-    let body = VALID_BODY.replace("  - 根拠: 手順\n", "");
+    let body = VALID_BODY.replace("    done: false\n", "");
     let err = fx
         .store
         .create_card(&fx.project, new_card("T", &body), now())
         .unwrap_err();
     match err {
-        AgboardError::FileInvalid { field, .. } => assert_eq!(field, "AC-1"),
+        AgboardError::FileInvalid { field, .. } => assert_eq!(field, "acceptance[0].done"),
         other => panic!("unexpected error: {other:?}"),
     }
+}
+
+#[test]
+fn a_card_view_carries_the_body_and_the_acceptance_conditions_of_its_frontmatter() {
+    let fx = fixture();
+    let card = fx
+        .store
+        .create_card(&fx.project, new_card("T", VALID_BODY), now())
+        .unwrap();
+    assert_eq!(card.body, "Do the work.\n");
+    assert_eq!(card.acceptance.len(), 1);
+    assert_eq!(card.acceptance[0].id, "AC-1");
+    assert_eq!(card.acceptance[0].text, "The thing works.");
+    assert!(!card.acceptance[0].done);
+    assert!(!card.acceptance_error);
+    assert_eq!(card.description, VALID_BODY);
 }
 
 #[test]
@@ -463,7 +484,7 @@ fn a_body_defect_returns_the_text_and_is_reported_without_rewriting_it() {
     fx.create("one");
     let broken = fs::read_to_string(fx.card_dir(1).join("TASK.md"))
         .unwrap()
-        .replace("## Execution log", "## Log");
+        .replace("acceptance: []", "acceptance: nope");
     fs::write(fx.card_dir(1).join("TASK.md"), &broken).unwrap();
 
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
@@ -471,7 +492,7 @@ fn a_body_defect_returns_the_text_and_is_reported_without_rewriting_it() {
     assert_eq!(snapshot.cards[0].description, broken);
     assert!(snapshot.problems.iter().any(|p| p.file
         == format!("projects/{}/tasks/1/TASK.md", fx.project)
-        && p.field == "## Execution log"));
+        && p.field == "acceptance"));
     assert_eq!(
         fs::read_to_string(fx.card_dir(1).join("TASK.md")).unwrap(),
         broken
@@ -483,7 +504,11 @@ fn a_half_written_body_reads_as_a_problem_and_recovers_when_it_is_finished() {
     let fx = fixture();
     fx.create("one");
     // What a reader sees while an agent is still writing the file.
-    fs::write(fx.card_dir(1).join("TASK.md"), "## 作業内容\n\nWriting").unwrap();
+    fs::write(
+        fx.card_dir(1).join("TASK.md"),
+        "---\nacceptance:\n  - id: AC-1\n    te",
+    )
+    .unwrap();
     let during = fx.store.snapshot(&fx.project).unwrap();
     assert_eq!(during.cards.len(), 1);
     assert!(!during.problems.is_empty());
