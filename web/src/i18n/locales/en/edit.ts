@@ -67,8 +67,6 @@ export const editEn = {
     nameInvalid: 'Enter a name up to 100 characters on one line.',
     colorLabel: 'Label color',
     colorPick: 'Choose a label color',
-    hex: 'HEX',
-    hexInvalid: 'Use #RRGGBB.',
     planLabel: 'Plan (Markdown)',
     tasks: 'Tasks',
     noTasks: 'No tasks to show.',

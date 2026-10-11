@@ -5,7 +5,6 @@ import { epicInk } from '../../lib/epic';
 import type { Card, Epic } from '../../types';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { DiscardConfirm } from './DiscardConfirm';
 import { EditorBody, useOverLimit } from './EditorBody';
 import { EditorShell } from './EditorShell';
@@ -29,7 +28,6 @@ export interface EpicApi {
 
 type Step = 'images' | 'plan' | 'details' | 'tasks';
 
-const HEX = /^#[0-9A-Fa-f]{6}$/;
 const NAME_LIMIT = 100;
 
 /** The name is one line of up to 100 characters. */
@@ -101,7 +99,6 @@ export function EpicDialog({
         : '',
   });
 
-  const colorValid = HEX.test(color);
   const localAdded = attachmentState.attachments.filter((a) => a.source === 'local');
   const imagesChanged = localAdded.length > 0 || removed.length > 0;
   const planChanged = plan !== saved.plan;
@@ -112,7 +109,7 @@ export function EpicDialog({
     .sort((a, b) => a - b);
   const dirty = imagesChanged || planChanged || detailsChanged || changedTasks.length > 0;
   const overLimit = useOverLimit(plan);
-  const valid = nameIsValid(name) && colorValid && countChars(plan) <= DESCRIPTION_LIMIT;
+  const valid = nameIsValid(name) && countChars(plan) <= DESCRIPTION_LIMIT;
 
   const currentPlan = () => normalizeNewlines(editor.current?.markdown() ?? plan);
 
@@ -251,8 +248,8 @@ export function EpicDialog({
             <span
               className="editor__epic-chip"
               style={{
-                background: colorValid ? color : saved.color,
-                color: epicInk(colorValid ? color : saved.color),
+                background: color,
+                color: epicInk(color),
               }}
               data-epic-label={epic.id}
             >
@@ -262,23 +259,10 @@ export function EpicDialog({
               type="color"
               className="epic-label-row__swatch"
               aria-label={t('epic.colorPick')}
-              value={colorValid ? color.toLowerCase() : saved.color.toLowerCase()}
+              value={color.toLowerCase()}
               disabled={saving}
               onChange={(event) => setColor(event.target.value.toUpperCase())}
             />
-            <Label htmlFor={`${idPrefix}-hex`} className="epic-label-row__caption">
-              {t('epic.hex')}
-            </Label>
-            <Input
-              id={`${idPrefix}-hex`}
-              className="epic-label-row__hex"
-              value={color}
-              maxLength={7}
-              disabled={saving}
-              aria-invalid={colorValid ? undefined : true}
-              onChange={(event) => setColor(event.target.value)}
-            />
-            {!colorValid && <span className="epic-label-row__error">{t('epic.hexInvalid')}</span>}
           </div>
         }
         sidebar={

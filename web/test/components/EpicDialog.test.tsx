@@ -124,7 +124,9 @@ function setName(text: string, root: HTMLElement) {
 }
 
 function setColor(text: string, root: HTMLElement) {
-  fireEvent.change(within(root).getByLabelText('HEX'), { target: { value: text } });
+  fireEvent.change(within(root).getByLabelText('Choose a label color'), {
+    target: { value: text },
+  });
 }
 
 /** The checkbox of the task with this ID in the task list. */
@@ -157,7 +159,8 @@ describe('epic dialog layout', () => {
     expect(aside.classList.contains('editor__aside')).toBe(true);
     const panel = within(aside).getByRole('region', { name: 'Image attachments' });
     expect(row.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(row).getByLabelText('HEX')).toBeTruthy();
+    expect(within(row).queryByLabelText('HEX')).toBeNull();
+    expect(within(row).queryByRole('textbox')).toBeNull();
     expect(within(row).getByLabelText('Choose a label color')).toBeTruthy();
     const main = dialog.querySelector('.editor__main') as HTMLElement;
     expect(main.contains(row)).toBe(false);
@@ -166,14 +169,16 @@ describe('epic dialog layout', () => {
     ).toBeTruthy();
   });
 
-  it('shows the invalid HEX error in the label row', async () => {
+  it('picks the color only with the swatch: the chip follows it and no HEX field or error exists', async () => {
     const { api } = fakeApi();
     const { dialog } = await openEpic(api);
-    setColor('#12', dialog);
     const row = dialog.querySelector('.epic-label-row') as HTMLElement;
-    expect(
-      within(row).getByText(/valid|HEX|#/i, { selector: '.epic-label-row__error' }),
-    ).toBeTruthy();
+    expect(within(dialog).queryByLabelText('HEX')).toBeNull();
+    setColor('#00ff00', dialog);
+    const chip = row.querySelector('.editor__epic-chip') as HTMLElement;
+    expect(chip.style.background).toBe('rgb(0, 255, 0)');
+    expect(within(dialog).queryByText('Use #RRGGBB.')).toBeNull();
+    expect(row.querySelector('.epic-label-row__error')).toBeNull();
   });
 
   it('shows the epic ID, the title, the outline, the task list, the name, color, plan and images', async () => {
@@ -185,7 +190,9 @@ describe('epic dialog layout', () => {
     expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).value).toBe(
       'File share',
     );
-    expect((within(dialog).getByLabelText('HEX') as HTMLInputElement).value).toBe('#7C3AED');
+    expect((within(dialog).getByLabelText('Choose a label color') as HTMLInputElement).value).toBe(
+      '#7c3aed',
+    );
     expect(
       within(within(dialog).getByRole('navigation', { name: 'Outline' }))
         .getAllByRole('button')
@@ -323,15 +330,11 @@ describe('saving', () => {
     expect(calls).toEqual(['setMembership:27:FILE-SHARE']);
   });
 
-  it('keeps Save disabled for an empty name and an invalid color', async () => {
+  it('keeps Save disabled for an empty name', async () => {
     const { api } = fakeApi();
     const { dialog } = await openEpic(api);
     setName('', dialog);
     expect(button(dialog, 'Save').disabled).toBe(true);
-    setName('File share', dialog);
-    setColor('red', dialog);
-    expect(button(dialog, 'Save').disabled).toBe(true);
-    expect(within(dialog).getByText('Use #RRGGBB.')).toBeTruthy();
   });
 
   it('blocks every edit and every close while saving', async () => {

@@ -59,7 +59,7 @@ test('the epic dialog saves its name, colour, plan, and tasks together, and its 
 
   // Name, colour, plan, and one more task in the epic; nothing is stored until Save.
   await dialog.getByRole('textbox', { name: 'Formal name' }).fill('File sharing');
-  await dialog.getByRole('textbox', { name: 'HEX' }).fill('#2563EB');
+  await dialog.getByLabel('Choose a label color').fill('#2563eb');
   await pasteMarkdown(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }), PLAN);
   await dialog.getByRole('checkbox', { name: 'Include in this epic: Refine the empty board' }).check();
   expect(epicOf('FILE-SHARE').name).toBe('File share');

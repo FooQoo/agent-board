@@ -26,8 +26,7 @@
   padding: 16px 16px 0;
 }
 
-.editor__epic-caption,
-.epic-label-row__caption {
+.editor__epic-caption {
   color: var(--r-muted);
   font-size: 12px;
   line-height: 17px;
@@ -57,19 +56,6 @@
 .epic-label-row__swatch:disabled {
   cursor: default;
   opacity: 0.5;
-}
-
-.epic-label-row__hex {
-  width: 88px;
-  height: 30px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.epic-label-row__error {
-  color: var(--r-danger);
-  font-size: 12px;
-  line-height: 17px;
 }
 
 /* The task list under the outline. */

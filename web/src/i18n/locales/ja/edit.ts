@@ -68,8 +68,6 @@ export const editJa = {
     nameInvalid: '名称は1行で100文字までです。',
     colorLabel: 'ラベル色',
     colorPick: 'ラベル色を選ぶ',
-    hex: 'HEX',
-    hexInvalid: '#RRGGBB の形式で入力してください。',
     planLabel: '全体計画(Markdown)',
     tasks: 'タスク',
     noTasks: '表示するタスクはありません。',
