@@ -532,10 +532,12 @@
 
 .editor__segment {
   display: inline-flex;
+  flex: 0 0 40px;
+  width: 40px;
   align-items: center;
   justify-content: center;
   height: 31px;
-  padding: 0 18px;
+  padding: 0;
   border: 0;
   background: var(--r-surface);
   color: var(--r-text2);
@@ -543,6 +545,11 @@
   font-size: 13px;
   line-height: 19px;
   cursor: pointer;
+}
+
+.editor__segment svg {
+  width: 16px;
+  height: 16px;
 }
 
 .editor__segment[aria-checked="true"] {

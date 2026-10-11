@@ -22,6 +22,15 @@ for (const locale of ['en', 'ja'] as const) {
       await page.getByRole('button', { name: locale === 'ja' ? 'カード追加' : 'Add card', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: locale === 'ja' ? 'カードを追加' : 'Add card' });
       await expect(dialog).toBeVisible();
+      const ai = dialog.getByRole('radio', { name: 'AI', exact: true });
+      const user = dialog.getByRole('radio', { name: locale === 'ja' ? 'ユーザー' : 'User', exact: true });
+      await expect(ai.locator('svg')).toBeVisible();
+      await expect(user.locator('svg')).toBeVisible();
+      await expect(ai).toHaveCSS('width', '40px');
+      await expect(user).toHaveCSS('width', '40px');
+      await expect(ai).toHaveAttribute('aria-checked', 'true');
+      await dialog.locator('.editor__segments').screenshot({ path: test.info().outputPath('assignee-icons.png') });
+
       const content = dialog.getByRole('textbox', { name: locale === 'ja' ? '説明(Markdown)' : 'Description (Markdown)' });
       await content.click({ position: { x: 18, y: 20 } });
       // The placeholder is the editor's own paragraph, shown while the body is empty.

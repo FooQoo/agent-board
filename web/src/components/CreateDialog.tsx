@@ -1,3 +1,4 @@
+import { BotIcon, UserRoundIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMultipartRequest } from './editor/useMultipartRequest';
 import { useId, useRef, useState } from 'react';
@@ -133,8 +134,18 @@ export function CreateDialog({
               onValueChange={(value) => setAssignee(value === 'human' ? 'human' : 'ai')}
             >
               {(['ai', 'human'] as const).map((value) => (
-                <RadioGroupPrimitive.Item key={value} value={value} className="editor__segment">
-                  {t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
+                <RadioGroupPrimitive.Item
+                  key={value}
+                  value={value}
+                  className="editor__segment"
+                  aria-label={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
+                  title={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
+                >
+                  {value === 'ai' ? (
+                    <BotIcon aria-hidden="true" />
+                  ) : (
+                    <UserRoundIcon aria-hidden="true" />
+                  )}
                 </RadioGroupPrimitive.Item>
               ))}
             </RadioGroup>
