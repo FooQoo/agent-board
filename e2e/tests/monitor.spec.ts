@@ -1,0 +1,249 @@
+import { expect, test, type Page } from '@playwright/test';
+import { removeProject } from '../helpers/agboard';
+import {
+  createMonitorHome,
+  addDenseMonitorFixture,
+  monitorOrigin,
+  monitorPort,
+  monitorProjectId,
+  removeMonitorHome,
+  startMonitorServe,
+  stopMonitorServe,
+  type MonitorServe,
+} from '../helpers/monitor';
+
+test.describe.configure({ mode: 'serial' });
+test.use({ baseURL: `${monitorOrigin}/` });
+
+let home: string;
+let serve: MonitorServe | undefined;
+let alpha: string;
+let beta: string;
+
+test.beforeAll(async () => {
+  home = createMonitorHome();
+  alpha = monitorProjectId(home, 'Alpha');
+  beta = monitorProjectId(home, 'Beta');
+  serve = await startMonitorServe(home);
+});
+
+test.afterAll(async () => {
+  await stopMonitorServe(serve);
+  if (home) removeMonitorHome(home);
+});
+
+test('loading is distinct from an empty project', async ({ page }) => {
+  let catalogReads = 0;
+  await page.route('**/monitor/api/projects', async (route) => {
+    catalogReads++;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.goto('/monitor/');
+  await expect(page.getByRole('region', { name: 'Cards' })).toContainText('Loading monitor…');
+  await expect(page.getByRole('status')).toContainText('Loading monitor…');
+  await expect(page.getByText('No pending decisions.')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  expect(catalogReads).toBeGreaterThan(0);
+
+  await page.getByRole('button', { name: 'All Projects' }).click();
+  await page.getByRole('menuitemradio', { name: 'Empty', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '0 Pending' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Cards' })).toContainText('No pending decisions.');
+  await expect(page.getByRole('region', { name: 'Cards' })).toContainText('No running work.');
+  await expect(page.getByRole('region', { name: 'Cards' })).toContainText('No completed work.');
+});
+
+test('monitor reads the shared language and theme settings', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.goto('/monitor/');
+  await expect(page.getByRole('status')).toContainText('Connected · Current');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByRole('radio', { name: '日本語' }).click();
+  const japaneseSettings = page.getByRole('dialog', { name: '設定' });
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await japaneseSettings.getByRole('radio', { name: 'ダーク・レッド' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'red');
+  await expect(page.getByRole('button', { name: '更新' })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('接続中 · 最新');
+});
+
+test('a lost event stream keeps the latest snapshot, manual refresh works, and visibility reconnects', async ({ page }) => {
+  await page.addInitScript(() => {
+    let current: DocumentVisibilityState = 'visible';
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => current });
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => current === 'hidden' });
+    Object.defineProperty(window, 'setMonitorVisibility', {
+      configurable: true,
+      value: (next: DocumentVisibilityState) => {
+        current = next;
+        document.dispatchEvent(new Event('visibilitychange'));
+      },
+    });
+  });
+  let catalogReads = 0;
+  await page.route('**/monitor/api/projects', async (route) => {
+    catalogReads++;
+    await route.continue();
+  });
+  await page.route('**/monitor/api/events', (route) => route.abort());
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.goto('/monitor/');
+  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  await expect(page.getByText('Updated · Automatic updates stopped')).toBeVisible();
+  const readsBeforeManualRefresh = catalogReads;
+  await page.getByRole('button', { name: 'Refresh' }).click();
+  await expect.poll(() => catalogReads).toBeGreaterThan(readsBeforeManualRefresh);
+  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+
+  await page.evaluate(() => (window as unknown as { setMonitorVisibility: (next: DocumentVisibilityState) => void }).setMonitorVisibility('hidden'));
+  await expect(page.getByText('Updated · Automatic updates stopped')).toBeVisible();
+  await page.unroute('**/monitor/api/events');
+  await page.evaluate(() => (window as unknown as { setMonitorVisibility: (next: DocumentVisibilityState) => void }).setMonitorVisibility('visible'));
+  await expect(page.getByText('Connected · Current')).toBeVisible();
+});
+
+const monitorCard = (page: Page, id: number, title: string) =>
+  page.getByRole('button', { name: new RegExp(`^#${id}.*${title}`) });
+
+test('the shared entry chooses once at the initial width, preserving query and fragment', async ({ page }) => {
+  for (const width of [375, 767]) {
+    await page.setViewportSize({ width, height: 640 });
+    await page.goto(`/?project=${alpha}&x=1#running`);
+    await expect(page).toHaveURL(`${monitorOrigin}/monitor/?project=${alpha}&x=1#running`);
+    await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(page).toHaveURL(`${monitorOrigin}/monitor/?project=${alpha}&x=1#running`);
+  }
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/?project=${alpha}&x=1#running`);
+    await expect(page).toHaveURL(`${monitorOrigin}/board/?project=${alpha}&x=1#running`);
+    await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
+  }
+
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.route('**/assets/access/entry.js', (route) => route.abort());
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Open read-only monitor' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open board' })).toBeVisible();
+});
+
+test('monitor renders both projects and same-number cards, preserves direct routes, and keeps all content inside its panels', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 640 });
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(new URL(request.url()).pathname));
+  await page.goto('/monitor/');
+  await expect(page.getByRole('button', { name: 'All Projects' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '3 Running' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Pending' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '9 Done' })).toBeVisible();
+  await expect(monitorCard(page, 1, 'Alpha pending review')).toBeVisible();
+  await expect(monitorCard(page, 1, 'Beta pending review')).toBeVisible();
+  await expect(monitorCard(page, 2, 'Alpha running one')).toBeVisible();
+  await expect(monitorCard(page, 3, 'Alpha running two')).toBeVisible();
+  await expect(monitorCard(page, 11, 'Alpha completed 8')).toHaveCount(1);
+  expect(requests).toContain('/assets/monitor/monitor.js');
+  expect(requests).not.toContain('/assets/app.js');
+  expect(requests).not.toContain('/assets/index.js');
+
+  const html = await page.request.get('/monitor/');
+  const htmlText = await html.text();
+  expect(html.status()).toBe(200);
+  expect(htmlText).not.toMatch(/agboard-token|\/assets\/app\.js|\/assets\/index\.js/);
+  const csp = html.headers()['content-security-policy'];
+  expect(csp).toContain("default-src 'none'");
+  expect(csp).toContain("connect-src 'self'");
+  for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+    const response = await page.request.fetch(`/monitor/api/projects/${alpha}/board`, { method });
+    expect(response.status(), `${method} must be rejected`).toBe(405);
+  }
+
+  await page.getByRole('button', { name: /^#4(?!\d)/ }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('tabpanel')).toContainText('A shared read-only detail with an owned image and Mermaid diagram.');
+  await expect(page).toHaveURL(new RegExp(`cardProject=${alpha}.*card=4`));
+  await page.getByRole('tab', { name: /History/ }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('Complete work');
+  await expect(page).toHaveURL(/tab=history/);
+  await page.getByRole('tab', { name: 'Description' }).click();
+  const detail = page.getByRole('complementary', { name: 'Card details' });
+  await expect(detail.getByRole('region', { name: 'Evidence' })).toContainText('run.log');
+  await expect.poll(() => detail.locator('.md__image-picture').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  await expect.poll(() => detail.locator('figure svg').count()).toBeGreaterThan(0);
+  await expect(detail.locator('figure svg')).toBeVisible();
+  await page.getByRole('button', { name: 'Close details' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).not.toHaveURL(/cardProject=/);
+
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  const overflow = await page.evaluate(() => ({
+    width: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    height: document.documentElement.clientHeight,
+    scrollHeight: document.documentElement.scrollHeight,
+  }));
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.width);
+  expect(overflow.scrollHeight).toBeLessThanOrEqual(overflow.height);
+});
+
+test('direct monitor and board URLs stay on their chosen view across reload and rotation', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.goto(`/monitor/?project=${alpha}`);
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await page.goto(`/board/?project=${alpha}`);
+  await page.setViewportSize({ width: 375, height: 640 });
+  await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
+});
+
+test('100 cards, 100-character titles and a 50,000-character detail remain reachable on a narrow screen', async ({ page }) => {
+  test.setTimeout(120_000);
+  await stopMonitorServe(serve);
+  const longProject = addDenseMonitorFixture(home);
+  serve = await startMonitorServe(home);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/monitor/');
+  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await page.getByRole('button', { name: 'All Projects' }).click();
+  await page.getByRole('menuitemradio', { name: 'Alpha', exact: true }).click();
+  await page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '96 Done' }).click();
+  const list = page.getByRole('region', { name: 'Cards' });
+  await expect(list.getByRole('button', { name: /#100 Done/ })).toBeVisible();
+  expect(await list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  await list.getByRole('button', { name: /#100 Done/ }).click();
+  const detail = page.getByRole('complementary', { name: 'Card details' });
+  await expect(detail).toContainText('Card 100');
+  await expect(detail.getByText('Long body tail marker.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Close details' }).click();
+  await page.getByRole('button', { name: 'Alpha', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: longProject, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`project=${monitorProjectId(home, longProject)}`));
+  await expect(page.getByRole('button', { name: /T{100}/ })).toBeVisible();
+  const width = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+});
+
+test('deleting the selected project clears the stale scope and removes it from the menu', async ({ page }) => {
+  const deleteMe = monitorProjectId(home, 'DeleteMe');
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.goto(`/monitor/?project=${deleteMe}`);
+  await expect(page.getByRole('button', { name: 'DeleteMe', exact: true })).toBeVisible();
+  removeProject('DeleteMe', home);
+  await expect(page.getByRole('button', { name: 'All Projects' })).toBeVisible();
+  await expect(page).not.toHaveURL(new RegExp(`project=${deleteMe}`));
+  await page.getByRole('button', { name: 'All Projects' }).click();
+  await expect(page.getByRole('menuitemradio', { name: 'DeleteMe', exact: true })).toHaveCount(0);
+});

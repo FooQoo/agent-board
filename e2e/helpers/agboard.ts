@@ -29,7 +29,7 @@ export const mainOrigin = `http://127.0.0.1:${mainPort}`;
 export const mainProject = 'agent-board';
 
 export function agboardBinary(): string {
-  return path.join(repoRoot, 'target', 'debug', 'agboard');
+  return process.env.AGBOARD_E2E_BINARY ?? path.join(repoRoot, 'target', 'debug', 'agboard');
 }
 
 /** The data directory shared by the main serve and the CLI helper. */
