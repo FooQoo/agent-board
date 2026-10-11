@@ -1,36 +1,29 @@
+---
+acceptance:
+  - id: AC-1
+    text: (Describe a condition that can be verified.)
+    done: false
+---
+
 ## Work
 
-<!-- The purpose of this task and what to do. -->
+(Describe the purpose of the work and what to do.)
 
-### Out of scope
+## Details
 
-<!-- What this task does not change. -->
+(Specification, expected behavior, and constraints.)
 
-### Details
+## Changes
 
-<!-- Specification, expected behavior, and constraints. -->
+(Files, components, or documents to change, as repository-relative paths.)
 
-### Changes
+## Verification plan
 
-<!-- Files, components, or documents to change, as repository-relative paths. -->
-
-### Verification plan
-
-<!-- How each completion condition will be verified: commands, checks, and expected results. -->
-
-## Completion conditions
-
-- [ ] AC-1. <!-- A condition that can be verified. -->
-  - Result: Not verified
-  - Evidence: Not recorded
-  - Coordinator check: Not checked
+(How each condition will be verified: commands, checks, and expected results.)
 
 ## Execution log
 
-<!-- Append entries in time order; never rewrite earlier ones.
+(Append entries in time order; never rewrite earlier ones.)
 - YYYY-MM-DD HH:mm Started: ...
 - YYYY-MM-DD HH:mm Ran `command`: result (evidence: <evidence-id>)
-- YYYY-MM-DD HH:mm Decision needed: facts / impact / options / recommendation
-- YYYY-MM-DD HH:mm Answer: ... -> how the plan changes
 - YYYY-MM-DD HH:mm Completed: summary, verified version or commit
--->

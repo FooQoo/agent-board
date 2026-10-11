@@ -241,39 +241,31 @@ The result contains `folder` (the project's absolute path), `projectId`, `readme
 
 Agents may edit a non-draft card's `TASK.md` and an epic's `PLAN.md` as that README allows. For direct edits, write a temporary file in the same folder and rename it over the original. The board follows file changes automatically. Use the CLI for metadata and status changes; never edit `task.json`, `epic.json`, `project.json`, or `.internal/` lock files directly, or delete card or epic folders directly. Keep personal absolute paths out of shared files.
 
-The Markdown format requires these headings:
-
-| File | Required headings |
-| --- | --- |
-| `TASK.md` | `## Work`, `## Completion conditions`, `## Execution log` |
-| `PLAN.md` | `## Goal`, `## Scope`, `## Completion conditions`, `## Approach` |
-
-Each completion condition has a unique positive `AC` number and three indented result lines. For example:
+TASK.md and PLAN.md hold their completion conditions in a YAML frontmatter at the top of the file. The body after it is free Markdown; no heading is required:
 
 ```markdown
-- [ ] AC-1. The setup guide covers the supported installation steps.
-  - Result: Not verified
-  - Evidence: Not recorded
-  - Coordinator check: Not checked
+---
+acceptance:
+  - id: AC-1
+    text: The setup guide covers the supported installation steps.
+    done: false
+  - id: AC-2
+    text: Deleting a card asks for confirmation.
+    done: true
+---
+
+## Background
+
+Any headings and text you need.
 ```
 
-Files created before the English names may use the earlier Japanese headings and labels. Both forms are accepted, and each heading or label may use either form:
+Each condition has three keys: `id` (`AC-` followed by a positive number without a leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (`true` or `false`). Other keys in the frontmatter are kept when the board writes the file. A file without a frontmatter has no conditions, and its whole text is the body.
 
-| English | Earlier Japanese form |
-| --- | --- |
-| `## Work` | `## 作業内容` |
-| `## Completion conditions` | `## 完了条件と確認結果` |
-| `## Execution log` | `## 実行記録` |
-| `## Goal` | `## 目的` |
-| `## Scope` | `## 対象範囲` |
-| `## Approach` | `## 進め方` |
-| `- Result:` | `- 確認結果:` |
-| `- Evidence:` | `- 根拠:` |
-| `- Coordinator check:` | `- 調整役の確認:` |
+If the frontmatter cannot be read (invalid YAML, a missing key, a duplicate ID, an empty text), the board reports the file, the item, and the reason as a problem. The card then shows no progress and its body is shown in full. The board never rewrites the file to fix it.
 
-New cards and epics get the English template. Existing files are not rewritten.
+Mark a condition `done: true` only after you have verified it, and record the result and the evidence in the body (for example in an execution log section). An agent can move a card to Done only when every condition is done; the board refuses the move and names the unmet IDs otherwise (`acceptance_unmet`). A person can always move a card.
 
-Record the verification result, supporting evidence, and coordinator confirmation before marking a condition complete. Preserve the required headings and result labels when editing in a text editor or the browser.
+New cards and epics start with an empty `acceptance` list. Files written before this format, with Japanese headings such as `## 作業内容` and `- [ ] AC-1.` lines, are read as bodies with no conditions; they are not converted.
 
 ## Data and backups
 

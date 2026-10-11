@@ -130,7 +130,7 @@ function loadFixtures(): Record<string, MockBoard> {
         card.id === 16
           ? {
               ...card,
-              body: '---\nacceptance:\n  - id: AC-1\n    text: \'\'\n---\n\nThe body stays visible.\n',
+              body: "---\nacceptance:\n  - id: AC-1\n    text: ''\n---\n\nThe body stays visible.\n",
               acceptance: [],
               acceptanceError: true,
             }

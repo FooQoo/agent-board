@@ -22,7 +22,7 @@ Image attachments follow the same project and card boundaries. Use `agboard --pr
 
 The project folder holds plain files that the CLI and the browser read. Agents may read them at any time. Agents may edit only these, and only as the folder's README allows:
 
-- A card's `TASK.md`, to record its work, its completion conditions and results, and its execution log. Never edit the `TASK.md` of a draft card (`"isDraft": true`); wait until the user finalizes it.
+- A card's `TASK.md`, to record its work and to set its completion conditions (`done`) in the frontmatter, and its execution log. Never edit the `TASK.md` of a draft card (`"isDraft": true`); wait until the user finalizes it.
 - An epic's `PLAN.md`.
 
 Never edit `task.json`, `epic.json`, or `project.json` directly; use the `agboard` CLI for every change to a card, an epic, or a project. Never delete a card folder or an epic folder: ask a person to delete a card or an epic with the CLI. Do not put a machine-specific absolute path into a shared file.
