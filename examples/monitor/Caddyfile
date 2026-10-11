@@ -1,0 +1,26 @@
+{
+	# This example runs Caddy in the foreground; keep its admin API disabled.
+	admin off
+	# Export the CA root explicitly; never alter this machine's trust stores.
+	skip_install_trust
+}
+
+https://{$LAN_IP}:{$HTTPS_PORT} {
+	# Bind only the chosen LAN interface. For a local test, use 127.0.0.1.
+	bind {$LAN_IP}
+	tls internal
+
+	# Protect every route, including HTML, assets, APIs, images, and SSE.
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+
+	reverse_proxy 127.0.0.1:{$REMOTE_PORT} {
+		# Keep the browser's public authority for the remote Host/Origin guard.
+		header_up Host {http.request.hostport}
+		header_up -Authorization
+		# U2 rejects proxy identity headers; do not inject Caddy's default value.
+		header_up -X-Forwarded-Host
+		flush_interval -1
+	}
+}
