@@ -14,10 +14,11 @@
 .acceptance-chip svg {
   width: 12px;
   height: 12px;
-  color: var(--r-accent);
+  color: var(--r-text2);
 }
 
-.acceptance-chip[data-complete="true"] {
+.acceptance-chip[data-complete="true"],
+.acceptance-chip[data-complete="true"] svg {
   color: var(--r-accent);
 }
 
