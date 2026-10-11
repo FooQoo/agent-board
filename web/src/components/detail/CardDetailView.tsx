@@ -5,6 +5,7 @@ import { historyItems } from '../../lib/history';
 import { stateLabel } from '../../lib/format';
 import type { Card, Problem, ProjectId } from '../../types';
 import { AssigneeLabel } from '../AssigneeLabel';
+import { AcceptanceView } from '../acceptance/AcceptanceView';
 import { HistoryTimeline } from '../HistoryTimeline';
 import { StatusLabel } from '../StatusLabel';
 import { MarkdownSections } from '../markdown/MarkdownSections';
@@ -107,8 +108,9 @@ export function CardDetailView({
             problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
           )}
         />
+        <AcceptanceView items={card.acceptanceError ? [] : card.acceptance} />
         <MarkdownSections
-          source={card.description}
+          source={card.body}
           resolveAttachment={(id) =>
             card.attachments.some((attachment) => attachment.id === id) ? attachmentUrl(id) : null
           }

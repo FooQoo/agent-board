@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { formatShort, stateLabel } from '../lib/format';
+import { AcceptanceProgress } from './acceptance/AcceptanceProgress';
 import { epicInk } from '../lib/epic';
 import type { Card as CardModel } from '../types';
 import { GripVerticalIcon, LayersIcon } from 'lucide-react';
@@ -99,8 +100,11 @@ export function Card({ card, selected, onSelect, onOpenEpic = noop }: CardProps)
           </button>
         )}
       </CardContent>
-      <span className="card__updated">
-        {t('card.updated', { date: formatShort(card.updatedAt) })}
+      <span className="card__foot">
+        <span className="card__updated">
+          {t('card.updated', { date: formatShort(card.updatedAt) })}
+        </span>
+        <AcceptanceProgress card={card} />
       </span>
     </div>
   );

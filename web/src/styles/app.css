@@ -870,3 +870,11 @@ ol {
   margin-left: auto;
   color: var(--r-muted);
 }
+
+/* The footer of a board card: the updated time, and the completion conditions when there are any. */
+.card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

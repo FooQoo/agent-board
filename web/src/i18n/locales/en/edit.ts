@@ -91,7 +91,7 @@ export const editEn = {
     saveFailedAt: 'Could not save {{step}}. Earlier changes were saved. Your input is kept.',
     saveFailedFirst: 'Could not save {{step}}. Your input is kept.',
   },
-  acceptance: {
+  acceptanceEdit: {
     title: 'Acceptance conditions',
     progress: '{{done}} of {{total}} done',
     savedIn: 'Saved in the frontmatter of the file',

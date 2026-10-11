@@ -92,7 +92,7 @@ export const editJa = {
     saveFailedAt: '{{step}}を保存できませんでした。先に保存した変更は残り、入力も残っています。',
     saveFailedFirst: '{{step}}を保存できませんでした。入力は残っています。',
   },
-  acceptance: {
+  acceptanceEdit: {
     title: '受け入れ条件',
     progress: '{{total}}件中{{done}}件を達成',
     savedIn: 'ファイルの frontmatter に保存',

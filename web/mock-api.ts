@@ -39,6 +39,20 @@ const SAMPLE_EPIC: Epic = {
 };
 const SAMPLE_EPIC_CARDS = [11, 12, 14];
 
+/** Completion conditions the sample cards show: one part done, and all done. */
+const SAMPLE_CONDITIONS: Record<number, Card['acceptance']> = {
+  11: [
+    { id: 'AC-1', text: 'Cards move between lanes', done: true },
+    { id: 'AC-2', text: 'Each move asks for a reason', done: true },
+    { id: 'AC-3', text: 'The history keeps the reason', done: false },
+    { id: 'AC-4', text: 'A waiting card goes back to idle', done: false },
+  ],
+  12: [
+    { id: 'AC-1', text: 'The board shows the restore', done: true },
+    { id: 'AC-2', text: 'The archive keeps the lane', done: true },
+  ],
+};
+
 const FIXTURE_PATH = resolve(import.meta.dirname, 'test/fixtures/board.json');
 const SLOW_MS = 60 * 60 * 1000;
 
@@ -106,14 +120,16 @@ const SAMPLE_IMAGE =
 function loadFixtures(): Record<string, MockBoard> {
   const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as Board;
   const withEpic = (cards: Card[]): Card[] =>
-    cards.map((card) =>
-      SAMPLE_EPIC_CARDS.includes(card.id)
+    cards.map((card) => {
+      const conditions = SAMPLE_CONDITIONS[card.id];
+      const withConditions = conditions ? { ...card, acceptance: conditions } : card;
+      return SAMPLE_EPIC_CARDS.includes(card.id)
         ? {
-            ...card,
+            ...withConditions,
             epic: { id: SAMPLE_EPIC.id, name: SAMPLE_EPIC.name, color: SAMPLE_EPIC.color },
           }
-        : card,
-    );
+        : withConditions;
+    });
   const [first, second, third] = SAMPLE_PROJECTS as [Project, Project, Project];
   return {
     [first.id]: asBoard(first, withEpic([...fixture.cards, longMarkdownCard(fixture.cards)])),

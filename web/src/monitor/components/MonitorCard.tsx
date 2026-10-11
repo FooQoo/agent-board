@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { formatShort } from '../../lib/format';
 import { CardContent } from '../../components/Card';
 import { StatusLabel } from '../../components/StatusLabel';
+import { AcceptanceProgress } from '../../components/acceptance/AcceptanceProgress';
 import type { MonitorCard as MonitorCardModel } from '../contracts';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { completedAt } from '../model/sort';
@@ -50,6 +51,7 @@ export function MonitorCard({
       />
       <span className="monitor-card__meta">
         <span>{item.projectName}</span>
+        <AcceptanceProgress card={card} />
         <span>
           {when
             ? formatShort(when)
