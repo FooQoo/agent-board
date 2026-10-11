@@ -49,6 +49,11 @@ fn fake_manifest(extra: &[&str]) -> tempfile::TempDir {
         "assets/app.css",
         "logo.png",
         "logo-white.png",
+        "access/index.html",
+        "access/entry.js",
+        "monitor/index.html",
+        "monitor/monitor.js",
+        "monitor/monitor.css",
     ];
     for rel in required.iter().chain(extra) {
         let path = dir.path().join("web/dist").join(rel);
@@ -56,6 +61,35 @@ fn fake_manifest(extra: &[&str]) -> tempfile::TempDir {
         std::fs::write(path, "x").unwrap();
     }
     dir
+}
+
+fn fake_pc_only_manifest() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    for rel in [
+        "index.html",
+        "assets/app.js",
+        "assets/app.css",
+        "logo.png",
+        "logo-white.png",
+    ] {
+        let path = dir.path().join("web/dist").join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, "x").unwrap();
+    }
+    dir
+}
+
+#[test]
+fn the_build_rejects_missing_isolated_assets_with_an_actionable_message() {
+    let dir = fake_pc_only_manifest();
+    let (output, _) = run_build_script(dir.path());
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("the access web assets are not built"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("pnpm --dir web build"), "{stderr}");
 }
 
 #[test]

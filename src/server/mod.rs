@@ -9,6 +9,8 @@ pub mod dist;
 mod events;
 pub mod guard;
 mod instance;
+pub mod monitor;
+pub mod remote;
 
 use std::future::Future;
 use std::net::{SocketAddr, TcpListener};

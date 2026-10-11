@@ -84,6 +84,11 @@ fn build_script_passes_and_watches_the_dist_directory_when_built() {
         "assets/app.css",
         "logo.png",
         "logo-white.png",
+        "access/index.html",
+        "access/entry.js",
+        "monitor/index.html",
+        "monitor/monitor.js",
+        "monitor/monitor.css",
     ]);
     let out = run_build_script(dir.path());
     assert!(out.status.success());

@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+:root {
+  font-family: system-ui, sans-serif;
+  color: var(--r-text);
+  background: var(--r-bg);
+}
+body {
+  margin: 0;
+}
+.monitor-shell {
+  min-height: 100vh;
+  padding: 1rem;
+  box-sizing: border-box;
+}

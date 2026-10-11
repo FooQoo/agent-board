@@ -12,6 +12,30 @@ pub const REQUIRED_FILES: [&str; 5] = [
     "logo-white.png",
 ];
 
+pub const ACCESS_REQUIRED_FILES: [&str; 2] = ["index.html", "entry.js"];
+pub const MONITOR_REQUIRED_FILES: [&str; 3] = ["index.html", "monitor.js", "monitor.css"];
+
+/// Required files missing beneath one isolated web asset namespace.
+pub fn missing_namespace_files<'a>(
+    dist: &Path,
+    namespace: &str,
+    required: &'a [&'a str],
+) -> Vec<&'a str> {
+    required
+        .iter()
+        .copied()
+        .filter(|rel| !dist.join(namespace).join(rel).is_file())
+        .collect()
+}
+
+/// Actionable error for an incomplete isolated web build.
+pub fn namespace_error_message(namespace: &str, missing: &[&str]) -> String {
+    format!(
+        "error: the {namespace} web assets are not built (missing in web/dist/{namespace}: {}).\nRun \"pnpm --dir web build\" first.",
+        missing.join(", ")
+    )
+}
+
 /// The required files that do not exist under `dist`.
 pub fn missing_files(dist: &Path) -> Vec<&'static str> {
     REQUIRED_FILES
@@ -88,5 +112,26 @@ mod tests {
         let message = error_message(&["index.html", "assets/app.js"]);
         assert!(message.contains("Run \"pnpm --dir web build\" first."));
         assert!(message.contains("index.html, assets/app.js"));
+    }
+
+    #[test]
+    fn incomplete_access_and_monitor_builds_name_the_files_and_build_command() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(
+            missing_namespace_files(tmp.path(), "access", &ACCESS_REQUIRED_FILES),
+            vec!["index.html", "entry.js"]
+        );
+        assert_eq!(
+            missing_namespace_files(tmp.path(), "monitor", &MONITOR_REQUIRED_FILES),
+            vec!["index.html", "monitor.js", "monitor.css"]
+        );
+        assert!(
+            namespace_error_message("access", &["entry.js"])
+                .contains("Run \"pnpm --dir web build\" first.")
+        );
+        assert!(
+            namespace_error_message("monitor", &["monitor.css"])
+                .contains("missing in web/dist/monitor: monitor.css")
+        );
     }
 }
