@@ -125,11 +125,13 @@ pub fn validate_epic_name(text: &str) -> Result<String, AgboardError> {
     Ok(trimmed.to_string())
 }
 
-/// A plan text with CRLF folded to LF, at most 50,000 characters. The
-/// required headings are checked separately by `check_plan_body`.
+/// A plan text with CRLF folded to LF, and at most 50,000 characters of
+/// Markdown body. The frontmatter is not counted, because the editor counts only
+/// the body.
 pub fn normalize_plan(text: &str) -> Result<String, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
-    let count = normalized.chars().count();
+    let body = super::frontmatter::parse(&normalized).body;
+    let count = body.chars().count();
     if count > 50_000 {
         return Err(AgboardError::InvalidValue {
             field: "plan".into(),
