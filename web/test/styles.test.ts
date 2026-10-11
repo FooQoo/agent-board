@@ -112,6 +112,6 @@ describe('source rules', () => {
 
 describe('index.html', () => {
   it('carries the session token placeholder for the server to replace', () => {
-    expect(read('index.html')).toContain('<meta name="skan-token" content="{{SKAN_TOKEN}}"');
+    expect(read('index.html')).toContain('<meta name="agboard-token" content="{{AGBOARD_TOKEN}}"');
   });
 });

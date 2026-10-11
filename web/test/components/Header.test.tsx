@@ -105,7 +105,7 @@ describe('settings entry in the header', () => {
     );
     await userEvent.keyboard('{/ArrowRight}');
     expect(document.documentElement.lang).toBe('ja');
-    expect(window.localStorage.getItem('skan.locale')).toBe('ja');
+    expect(window.localStorage.getItem('agboard.locale')).toBe('ja');
     expect(screen.getByRole('dialog', { name: '設定' })).toBeTruthy();
 
     await userEvent.keyboard('{Escape}');

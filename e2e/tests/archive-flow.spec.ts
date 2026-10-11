@@ -45,7 +45,7 @@ test('real archive detail preserves content, restores the lane, and permanently 
 	await page.setViewportSize({ width: 1280, height: 900 });
 	await page.addInitScript(() => {
 		localStorage.setItem('agboard.theme', JSON.stringify({ mode: 'light', accent: 'blue' }));
-		localStorage.setItem('skan.locale', 'ja');
+		localStorage.setItem('agboard.locale', 'ja');
 	});
 	await page.goto('/');
 	await waitForSync(page);

@@ -25,7 +25,7 @@ async function openConfirm() {
 
 beforeEach(() => {
   selectLocale('en');
-  document.head.innerHTML = '<meta name="skan-token" content="test-token">';
+  document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
 });
 
 describe('inline archive confirmation', () => {

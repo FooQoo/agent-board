@@ -21,12 +21,12 @@ test('a delete request without the token or an Origin is refused and the card st
 
 test('a token alone, a bad token, or a wrong Origin is not enough', async ({ page, request }) => {
   await page.goto('/');
-  const token = await page.locator('meta[name="skan-token"]').getAttribute('content');
+  const token = await page.locator('meta[name="agboard-token"]').getAttribute('content');
   expect(token).toMatch(/^[0-9a-f]{64}$/);
   const before = listCards(mainProject);
 
   // The right token, but the request does not come from the page.
-  const tokenOnly = await request.delete(card15, { headers: { 'X-Skan-Token': token! } });
+  const tokenOnly = await request.delete(card15, { headers: { 'X-Agboard-Token': token! } });
   expect(tokenOnly.status()).toBe(403);
 
   // The page's origin, but no token.
@@ -40,7 +40,7 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
     headers: {
       Origin: mainOrigin,
       'Sec-Fetch-Site': 'same-origin',
-      'X-Skan-Token': '0'.repeat(64),
+      'X-Agboard-Token': '0'.repeat(64),
     },
   });
   expect(wrongToken.status()).toBe(403);
@@ -50,7 +50,7 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
     headers: {
       Origin: 'http://example.com',
       'Sec-Fetch-Site': 'cross-site',
-      'X-Skan-Token': token!,
+      'X-Agboard-Token': token!,
     },
   });
   expect(otherOrigin.status()).toBe(403);
@@ -60,7 +60,7 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
 
 test('the token appears only in the page, never in the API responses', async ({ page, request }) => {
   await page.goto('/');
-  const token = (await page.locator('meta[name="skan-token"]').getAttribute('content'))!;
+  const token = (await page.locator('meta[name="agboard-token"]').getAttribute('content'))!;
   for (const path of ['/api/projects', `/api/projects/${projectId(mainProject)}/board`, '/api/health']) {
     expect(await (await request.get(path)).text()).not.toContain(token);
   }
@@ -85,10 +85,10 @@ async function fromPage(
 ): Promise<{ status: number; body: { error?: { code: string }; card?: Shown } }> {
   return page.evaluate(
     async ({ method, path, body, token }) => {
-      const meta = document.querySelector('meta[name="skan-token"]')?.getAttribute('content') ?? '';
+      const meta = document.querySelector('meta[name="agboard-token"]')?.getAttribute('content') ?? '';
       const response = await fetch(path, {
         method,
-        headers: { 'Content-Type': 'application/json', 'X-Skan-Token': token ?? meta },
+        headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': token ?? meta },
         body: JSON.stringify(body),
       });
       return { status: response.status, body: await response.json().catch(() => ({})) };
@@ -100,7 +100,7 @@ async function fromPage(
 test('the edit and the draft switch are refused without the guard, and nothing changes', async ({ page, request }) => {
   const card13 = `/api/projects/${projectId(mainProject)}/cards/13`;
   await page.goto('/');
-  const token = (await page.locator('meta[name="skan-token"]').getAttribute('content'))!;
+  const token = (await page.locator('meta[name="agboard-token"]').getAttribute('content'))!;
   const before = listCards(mainProject);
   const draftBefore = shown(13).isDraft;
 
@@ -112,12 +112,12 @@ test('the edit and the draft switch are refused without the guard, and nothing c
     // Nothing at all, the token only, an Origin only, a wrong token, and a foreign Origin with the right token.
     const attempts: Record<string, string>[] = [
       {},
-      { 'X-Skan-Token': token },
+      { 'X-Agboard-Token': token },
       { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin' },
-      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin', 'X-Skan-Token': '0'.repeat(64) },
-      { Origin: 'http://example.com', 'Sec-Fetch-Site': 'cross-site', 'X-Skan-Token': token },
-      { Origin: mainOrigin, 'Sec-Fetch-Site': 'cross-site', 'X-Skan-Token': token },
-      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin', 'X-Skan-Token': token, Host: `evil.example:${mainPort}` },
+      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin', 'X-Agboard-Token': '0'.repeat(64) },
+      { Origin: 'http://example.com', 'Sec-Fetch-Site': 'cross-site', 'X-Agboard-Token': token },
+      { Origin: mainOrigin, 'Sec-Fetch-Site': 'cross-site', 'X-Agboard-Token': token },
+      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin', 'X-Agboard-Token': token, Host: `evil.example:${mainPort}` },
     ];
     for (const headers of attempts) {
       const response = await send(headers);

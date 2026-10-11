@@ -18,7 +18,7 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
 
 use crate::clock::format_utc;
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::file_store::index::ProjectIndex;
 use crate::file_store::watch::{Reloader, Watch};
 use crate::paths::{self, ServeInfo};
@@ -47,7 +47,7 @@ pub(crate) struct AppState {
 }
 
 /// Serve until Ctrl+C (or SIGTERM on Unix).
-pub fn run(config: ServeConfig) -> Result<(), SkanError> {
+pub fn run(config: ServeConfig) -> Result<(), AgboardError> {
     run_until(config, termination_signal(), |_| {})
 }
 
@@ -61,12 +61,12 @@ pub fn run_until<F: Future<Output = ()>>(
     config: ServeConfig,
     shutdown: F,
     on_ready: impl FnOnce(SocketAddr),
-) -> Result<(), SkanError> {
+) -> Result<(), AgboardError> {
     let serve_path = paths::serve_info_path();
     if let Some(info) = paths::read_serve_info()
         && instance::is_serving(&info)
     {
-        return Err(SkanError::AlreadyServing { port: info.port });
+        return Err(AgboardError::AlreadyServing { port: info.port });
     }
     let _lifecycle = crate::lifecycle::LifecycleGuard::acquire(&paths::data_dir())?;
     let shared = paths::shared_dir();
@@ -119,19 +119,19 @@ pub fn run_until<F: Future<Output = ()>>(
     })
 }
 
-fn internal(reason: String) -> SkanError {
-    SkanError::DatabaseError { reason }
+fn internal(reason: String) -> AgboardError {
+    AgboardError::DatabaseError { reason }
 }
 
-fn port_in_use(port: u16) -> SkanError {
-    SkanError::PortInUse { port }
+fn port_in_use(port: u16) -> AgboardError {
+    AgboardError::PortInUse { port }
 }
 
 /// A temporary file or folder older than this is left over from a crash and is removed at startup.
 const STALE_TEMPORARY_AGE: std::time::Duration = std::time::Duration::from_secs(60 * 60);
 
 /// Bind 127.0.0.1:`port`. Any failure to bind is reported as `PortInUse`.
-fn bind(port: u16) -> Result<TcpListener, SkanError> {
+fn bind(port: u16) -> Result<TcpListener, AgboardError> {
     TcpListener::bind(("127.0.0.1", port)).map_err(|_| port_in_use(port))
 }
 

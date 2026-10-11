@@ -7,7 +7,7 @@ use std::io::Write;
 use crate::cli::args::{AttachmentAddArgs, AttachmentCommand, AttachmentGetArgs, AttachmentLsArgs};
 use crate::cli::{Context, Outcome};
 use crate::domain::AttachmentInput;
-use crate::error::{FileAction, SkanError};
+use crate::error::{AgboardError, FileAction};
 use crate::file_store::layout;
 use crate::file_store::model::AttachmentOwner;
 use serde_json::json;
@@ -15,7 +15,7 @@ use serde_json::json;
 pub fn run(
     ctx: &mut Context,
     args: &crate::cli::args::AttachmentArgs,
-) -> Result<Outcome, SkanError> {
+) -> Result<Outcome, AgboardError> {
     match &args.command {
         AttachmentCommand::Ls(args) => list(ctx, args),
         AttachmentCommand::Add(args) => add(ctx, args),
@@ -23,7 +23,7 @@ pub fn run(
     }
 }
 
-fn list(ctx: &mut Context, args: &AttachmentLsArgs) -> Result<Outcome, SkanError> {
+fn list(ctx: &mut Context, args: &AttachmentLsArgs) -> Result<Outcome, AgboardError> {
     let attachments = ctx.files.card(ctx.project_id()?, args.card_id)?.attachments;
     let human = if attachments.is_empty() {
         format!("#{} has no attachments.\n", args.card_id)
@@ -40,7 +40,7 @@ fn list(ctx: &mut Context, args: &AttachmentLsArgs) -> Result<Outcome, SkanError
     })
 }
 
-fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, SkanError> {
+fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, AgboardError> {
     let bytes = fs::read(&args.file).map_err(|e| file_error(&args.file, FileAction::Read, e))?;
     let id = random_id()?;
     let attachment = ctx.files.add_attachment(
@@ -70,7 +70,7 @@ fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, SkanError
     })
 }
 
-fn get(ctx: &mut Context, args: &AttachmentGetArgs) -> Result<Outcome, SkanError> {
+fn get(ctx: &mut Context, args: &AttachmentGetArgs) -> Result<Outcome, AgboardError> {
     let stored = ctx.files.attachment_path(
         ctx.project_id()?,
         &AttachmentOwner::Card(args.card_id),
@@ -95,16 +95,16 @@ fn get(ctx: &mut Context, args: &AttachmentGetArgs) -> Result<Outcome, SkanError
     })
 }
 
-fn random_id() -> Result<String, SkanError> {
-    crate::file_store::io::random_hex(16).map_err(|e| SkanError::FileError {
+fn random_id() -> Result<String, AgboardError> {
+    crate::file_store::io::random_hex(16).map_err(|e| AgboardError::FileError {
         action: FileAction::Write,
         file: "attachment".into(),
         reason: e.to_string(),
     })
 }
 
-fn file_error(path: &std::path::Path, action: FileAction, error: std::io::Error) -> SkanError {
-    SkanError::FileError {
+fn file_error(path: &std::path::Path, action: FileAction, error: std::io::Error) -> AgboardError {
+    AgboardError::FileError {
         action,
         file: path.display().to_string(),
         reason: error.to_string(),

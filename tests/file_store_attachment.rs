@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use agent_board::domain::{Actor, Assignee, AttachmentInput, NewCard, ProjectId};
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::layout;
 use agent_board::file_store::model::AttachmentOwner;
@@ -228,7 +228,7 @@ fn an_image_id_of_another_owner_is_refused_in_every_direction() {
         .attachment_path(&f.project, &other_card, &id(4))
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::AttachmentNotFound { .. }),
+        matches!(err, AgboardError::AttachmentNotFound { .. }),
         "{err:?}"
     );
     let err = f
@@ -236,7 +236,7 @@ fn an_image_id_of_another_owner_is_refused_in_every_direction() {
         .attachment_path(&f.project, &epic, &id(4))
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::AttachmentNotFound { .. }),
+        matches!(err, AgboardError::AttachmentNotFound { .. }),
         "{err:?}"
     );
 
@@ -245,7 +245,7 @@ fn an_image_id_of_another_owner_is_refused_in_every_direction() {
         .delete_attachment(&f.project, &other_card, &id(4), at(6))
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::AttachmentNotFound { .. }),
+        matches!(err, AgboardError::AttachmentNotFound { .. }),
         "{err:?}"
     );
     assert!(
@@ -271,7 +271,7 @@ fn path_like_attachment_ids_are_refused_and_nothing_is_written() {
             at(5),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     assert!(!f.card_assets(card).exists());
 
     let err = f
@@ -279,16 +279,16 @@ fn path_like_attachment_ids_are_refused_and_nothing_is_written() {
         .attachment_path(&f.project, &owner, "../../task")
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::AttachmentNotFound { .. }),
+        matches!(err, AgboardError::AttachmentNotFound { .. }),
         "{err:?}"
     );
 
     let err = layout::task_asset_path(&f.project_dir, card, "../x", "png").unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     let err = layout::task_asset_path(&f.project_dir, card, &id(5), "../png").unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     let err = layout::task_asset_path(&f.project_dir, 0, &id(5), "png").unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     let err = layout::epic_asset_path(
         &f.project_dir,
         &EpicId::normalize("ALPHA").unwrap(),
@@ -296,7 +296,7 @@ fn path_like_attachment_ids_are_refused_and_nothing_is_written() {
         "png",
     )
     .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 }
 
 #[test]
@@ -314,7 +314,7 @@ fn an_image_over_10_mib_is_refused_and_nothing_is_written() {
             at(5),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     assert!(!f.card_assets(card).exists());
     assert!(
         f.task_json(card)["attachments"]
@@ -343,7 +343,10 @@ fn the_twenty_first_image_of_one_owner_is_refused() {
         .store
         .add_attachment(&f.project, &owner, input(&id(200), "a.png", png()), at(5))
         .unwrap_err();
-    assert!(matches!(err, SkanError::AttachmentLimitExceeded), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::AttachmentLimitExceeded),
+        "{err:?}"
+    );
     assert_eq!(
         f.task_json(card)["attachments"].as_array().unwrap().len(),
         20
@@ -381,7 +384,10 @@ fn the_total_of_fifty_mib_is_enforced_per_owner() {
             at(5),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::AttachmentLimitExceeded), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::AttachmentLimitExceeded),
+        "{err:?}"
+    );
 }
 
 #[test]
@@ -397,7 +403,7 @@ fn a_file_that_is_not_png_jpeg_webp_or_gif_is_refused() {
             at(5),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 }
 
 #[test]
@@ -419,7 +425,7 @@ fn a_symbolic_link_in_the_owner_folder_is_refused_for_reads_and_writes() {
         .attachment_path(&f.project, &owner, &id(8))
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::AttachmentNotFound { .. }),
+        matches!(err, AgboardError::AttachmentNotFound { .. }),
         "{err:?}"
     );
 
@@ -427,14 +433,14 @@ fn a_symbolic_link_in_the_owner_folder_is_refused_for_reads_and_writes() {
         .store
         .add_attachment(&f.project, &owner, input(&id(9), "b.png", png()), at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::FileError { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::FileError { .. }), "{err:?}");
     assert!(!moved.join(format!("{}.png", id(9))).exists());
 
     let err = f
         .store
         .delete_attachment(&f.project, &owner, &id(8), at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::FileError { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::FileError { .. }), "{err:?}");
     assert!(moved.join(format!("{}.png", id(8))).is_file());
 }
 
@@ -457,7 +463,7 @@ fn a_symbolic_link_in_place_of_an_image_file_is_refused_for_reads() {
         .attachment_path(&f.project, &owner, &id(10))
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::AttachmentNotFound { .. }),
+        matches!(err, AgboardError::AttachmentNotFound { .. }),
         "{err:?}"
     );
 }
@@ -476,7 +482,7 @@ fn archived_and_draft_cards_refuse_image_changes() {
             at(6),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardArchived { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::CardArchived { .. }), "{err:?}");
 
     let draft = f.card();
     f.store.set_draft(&f.project, draft, true, at(5)).unwrap();
@@ -489,7 +495,7 @@ fn archived_and_draft_cards_refuse_image_changes() {
             at(6),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardIsDraft { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::CardIsDraft { .. }), "{err:?}");
 }
 
 #[test]
@@ -519,7 +525,7 @@ fn deleting_an_image_removes_its_record_and_its_file() {
         .attachment_path(&f.project, &owner, &id(13))
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::AttachmentNotFound { .. }),
+        matches!(err, AgboardError::AttachmentNotFound { .. }),
         "{err:?}"
     );
 }

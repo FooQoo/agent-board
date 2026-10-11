@@ -2,7 +2,7 @@
 
 use std::io::{BufRead, IsTerminal, Write};
 
-use crate::error::{FileAction, SkanError};
+use crate::error::{AgboardError, FileAction};
 
 /// True when a human can answer: no `--json`, and both stdin and stderr are
 /// terminals.
@@ -16,10 +16,10 @@ pub fn confirm(
     prompt: &str,
     input: &mut impl BufRead,
     output: &mut impl Write,
-) -> Result<bool, SkanError> {
+) -> Result<bool, AgboardError> {
     write!(output, "{prompt} [y/N] ")
         .and_then(|()| output.flush())
-        .map_err(|e| SkanError::FileError {
+        .map_err(|e| AgboardError::FileError {
             action: FileAction::Write,
             file: "standard error".to_string(),
             reason: e.to_string(),
@@ -28,7 +28,7 @@ pub fn confirm(
     let mut line = Vec::new();
     input
         .read_until(b'\n', &mut line)
-        .map_err(|e| SkanError::FileError {
+        .map_err(|e| AgboardError::FileError {
             action: FileAction::Read,
             file: "standard input".to_string(),
             reason: e.to_string(),

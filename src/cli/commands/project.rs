@@ -11,10 +11,10 @@ use serde_json::json;
 
 use crate::cli::args::{ProjectArgs, ProjectCommand, ProjectCreateArgs, ProjectRenameArgs};
 use crate::cli::{Context, Outcome};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::interact::confirm;
 
-pub fn run(ctx: &mut Context, args: &ProjectArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &ProjectArgs) -> Result<Outcome, AgboardError> {
     match &args.command {
         ProjectCommand::Create(args) => create(ctx, args),
         ProjectCommand::Ls => ls(ctx),
@@ -24,7 +24,7 @@ pub fn run(ctx: &mut Context, args: &ProjectArgs) -> Result<Outcome, SkanError> 
 }
 
 /// Create an empty project. A name already in use is `project_name_exists`.
-pub fn create(ctx: &Context, args: &ProjectCreateArgs) -> Result<Outcome, SkanError> {
+pub fn create(ctx: &Context, args: &ProjectCreateArgs) -> Result<Outcome, AgboardError> {
     let project = ctx.files.create_project(&args.name, ctx.clock.now())?;
     Ok(Outcome {
         changed: true,
@@ -34,7 +34,7 @@ pub fn create(ctx: &Context, args: &ProjectCreateArgs) -> Result<Outcome, SkanEr
 }
 
 /// The projects by name, with the catalog revision.
-pub fn ls(ctx: &Context) -> Result<Outcome, SkanError> {
+pub fn ls(ctx: &Context) -> Result<Outcome, AgboardError> {
     let catalog = ctx.files.catalog()?;
     Ok(list_outcome(
         serde_json::to_value(&catalog).expect("catalog serializes"),
@@ -63,7 +63,7 @@ fn list_outcome<'a>(value: serde_json::Value, names: impl Iterator<Item = &'a st
 
 /// Rename the resolved project, keeping its ID. The same normalized name is
 /// a success that changes nothing.
-pub fn rename(ctx: &Context, args: &ProjectRenameArgs) -> Result<Outcome, SkanError> {
+pub fn rename(ctx: &Context, args: &ProjectRenameArgs) -> Result<Outcome, AgboardError> {
     let current = ctx.project()?;
     let old_name = current.name.clone();
     let renamed = ctx.files.rename_project(&current.id, &args.new_name)?;
@@ -85,7 +85,7 @@ pub fn rename(ctx: &Context, args: &ProjectRenameArgs) -> Result<Outcome, SkanEr
     })
 }
 
-pub fn rm(ctx: &mut Context) -> Result<Outcome, SkanError> {
+pub fn rm(ctx: &mut Context) -> Result<Outcome, AgboardError> {
     ctx.interactive |= confirm::is_interactive(ctx.json);
     rm_with_io(ctx, &mut std::io::stdin().lock(), &mut std::io::stderr())
 }
@@ -99,10 +99,10 @@ pub fn rm_with_io(
     ctx: &Context,
     input: &mut impl BufRead,
     output: &mut impl Write,
-) -> Result<Outcome, SkanError> {
+) -> Result<Outcome, AgboardError> {
     let project = ctx.project()?;
     if ctx.json || !ctx.interactive {
-        return Err(SkanError::ConfirmationRequired {
+        return Err(AgboardError::ConfirmationRequired {
             operation: "deleting a project".to_string(),
         });
     }

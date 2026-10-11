@@ -7,7 +7,7 @@
 use std::fs::{self, File, OpenOptions, TryLockError};
 use std::path::Path;
 
-use crate::error::{FileAction, SkanError};
+use crate::error::{AgboardError, FileAction};
 
 /// The write lock of one project or of the catalog. Acquiring it waits for
 /// the current holder. Keep it only for reading the latest JSON through the
@@ -20,9 +20,9 @@ pub struct WriteLock {
 impl WriteLock {
     /// Wait at most `WRITE_LOCK_WAIT` for the holder; after that the write is
     /// refused with `database_busy` and nothing is changed.
-    pub fn acquire(path: &Path) -> Result<WriteLock, SkanError> {
+    pub fn acquire(path: &Path) -> Result<WriteLock, AgboardError> {
         let label = path.display().to_string();
-        let file = open_lock_file(path).map_err(|e| SkanError::FileError {
+        let file = open_lock_file(path).map_err(|e| AgboardError::FileError {
             action: FileAction::Write,
             file: label.clone(),
             reason: e.to_string(),
@@ -34,9 +34,9 @@ impl WriteLock {
                 Err(TryLockError::WouldBlock) if began.elapsed() < WRITE_LOCK_WAIT => {
                     std::thread::sleep(std::time::Duration::from_millis(10));
                 }
-                Err(TryLockError::WouldBlock) => return Err(SkanError::DatabaseBusy),
+                Err(TryLockError::WouldBlock) => return Err(AgboardError::DatabaseBusy),
                 Err(TryLockError::Error(e)) => {
-                    return Err(SkanError::FileError {
+                    return Err(AgboardError::FileError {
                         action: FileAction::Write,
                         file: label,
                         reason: e.to_string(),
@@ -57,19 +57,19 @@ pub struct LifecycleLock {
 }
 
 impl LifecycleLock {
-    pub fn acquire(data_dir: &Path) -> Result<LifecycleLock, SkanError> {
-        fs::create_dir_all(data_dir).map_err(|e| SkanError::DatabaseError {
+    pub fn acquire(data_dir: &Path) -> Result<LifecycleLock, AgboardError> {
+        fs::create_dir_all(data_dir).map_err(|e| AgboardError::DatabaseError {
             reason: e.to_string(),
         })?;
         let file = open_lock_file(&data_dir.join("lifecycle.lock")).map_err(|e| {
-            SkanError::DatabaseError {
+            AgboardError::DatabaseError {
                 reason: e.to_string(),
             }
         })?;
         match file.try_lock() {
             Ok(()) => Ok(LifecycleLock { _file: file }),
-            Err(TryLockError::WouldBlock) => Err(SkanError::DatabaseBusy),
-            Err(TryLockError::Error(e)) => Err(SkanError::DatabaseError {
+            Err(TryLockError::WouldBlock) => Err(AgboardError::DatabaseBusy),
+            Err(TryLockError::Error(e)) => Err(AgboardError::DatabaseError {
                 reason: e.to_string(),
             }),
         }

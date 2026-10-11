@@ -16,7 +16,7 @@ for (const mode of ["light", "dark"] as const) {
 							"agboard.theme",
 							JSON.stringify({ mode, accent: "blue" }),
 						);
-						localStorage.setItem("skan.locale", locale);
+						localStorage.setItem("agboard.locale", locale);
 					},
 					{ mode, locale },
 				);
@@ -245,7 +245,7 @@ for (const mode of ["light", "dark"] as const) {
 						"agboard.theme",
 						JSON.stringify({ mode, accent: "blue" }),
 					);
-					localStorage.setItem("skan.locale", locale);
+					localStorage.setItem("agboard.locale", locale);
 				},
 				{ mode, locale },
 			);
@@ -347,7 +347,7 @@ test("bulk archive Pen baseline shows two fixed cards and retention copy", async
 			"agboard.theme",
 			JSON.stringify({ mode: "light", accent: "blue" }),
 		);
-		localStorage.setItem("skan.locale", "ja");
+		localStorage.setItem("agboard.locale", "ja");
 	});
 	await page.goto("/");
 	await page.getByRole("button", { name: /Initialize the board/ }).click();
@@ -391,7 +391,7 @@ test("archive empty state matches the Pen guidance and shared detail placeholder
 			"agboard.theme",
 			JSON.stringify({ mode: "light", accent: "blue" }),
 		);
-		localStorage.setItem("skan.locale", "ja");
+		localStorage.setItem("agboard.locale", "ja");
 	});
 	await page.route("**/api/projects/*/archive", async (route) => {
 		const response = await route.fetch();

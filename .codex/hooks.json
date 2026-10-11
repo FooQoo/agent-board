@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./target/debug/agboard --project 'agent-board' hook --agent codex",
+            "command": "agboard --project 'agent-board' hook --agent codex",
             "timeout": 10,
             "additionalContextLimit": 0
           }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./target/debug/agboard --project 'agent-board' hook --agent codex",
+            "command": "agboard --project 'agent-board' hook --agent codex",
             "timeout": 10,
             "additionalContextLimit": 0
           }

@@ -2,7 +2,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { resources } from './resources';
 
-export const LOCALE_STORAGE_KEY = 'skan.locale';
+export const LOCALE_STORAGE_KEY = 'agboard.locale';
 export type Locale = 'en' | 'ja';
 export type LocaleStorage = Pick<Storage, 'getItem' | 'setItem'>;
 export type LocaleStorageProvider = () => LocaleStorage;

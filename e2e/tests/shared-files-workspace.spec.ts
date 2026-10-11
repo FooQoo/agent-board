@@ -38,7 +38,7 @@ async function openBoard(page: Page, project = mainProject): Promise<void> {
 function cliFrom(cwd: string, args: string[]): { code: number; stdout: string; stderr: string } {
   const result = spawnSync(agboardBinary(), args, {
     cwd,
-    env: { ...process.env, SKAN_HOME: mainHome(), TZ: 'UTC' },
+    env: { ...process.env, AGBOARD_HOME: mainHome(), TZ: 'UTC' },
     encoding: 'utf8',
   });
   return { code: result.status ?? -1, stdout: result.stdout, stderr: result.stderr };
@@ -105,7 +105,7 @@ test('two working directories read and write one shared TASK.md; the page and wa
   const cursor = JSON.parse(cliFrom(worktreeB, ['--project', mainProject, 'snapshot', '--json']).stdout).cursor as string;
   const waiter = spawn(agboardBinary(), ['--project', mainProject, '--json', 'wait', '--after', cursor, '--timeout', '30'], {
     cwd: worktreeB,
-    env: { ...process.env, SKAN_HOME: mainHome(), TZ: 'UTC' },
+    env: { ...process.env, AGBOARD_HOME: mainHome(), TZ: 'UTC' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let waited = '';
@@ -127,7 +127,7 @@ test('two working directories read and write one shared TASK.md; the page and wa
   let quietOut = '';
   const quiet = spawn(agboardBinary(), ['--project', mainProject, '--json', 'wait', '--after', cursor2, '--timeout', '6'], {
     cwd: worktreeB,
-    env: { ...process.env, SKAN_HOME: mainHome(), TZ: 'UTC' },
+    env: { ...process.env, AGBOARD_HOME: mainHome(), TZ: 'UTC' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   quiet.stdout.on('data', (chunk) => (quietOut += chunk));

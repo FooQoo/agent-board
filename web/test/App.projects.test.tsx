@@ -42,7 +42,7 @@ beforeEach(() => {
   selectLocale('en');
   FakeEventSource.reset();
   vi.stubGlobal('EventSource', FakeEventSource);
-  document.head.innerHTML = '<meta name="skan-token" content="test-token">';
+  document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
   restart();
 });
 

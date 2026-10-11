@@ -16,7 +16,7 @@ function lastCall(fetchMock: ReturnType<typeof vi.fn>) {
 }
 
 beforeEach(() => {
-  document.head.innerHTML = '<meta name="skan-token" content="test-token">';
+  document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -31,7 +31,7 @@ describe('editCard', () => {
     const { path, init, headers } = lastCall(fetchMock);
     expect(path).toBe(`/api/projects/${PROJECT}/cards/8`);
     expect(init.method).toBe('PATCH');
-    expect(headers['X-Skan-Token']).toBe('test-token');
+    expect(headers['X-Agboard-Token']).toBe('test-token');
     expect(headers['Content-Type']).toBe('application/json');
     expect(JSON.parse(init.body as string)).toEqual({ description: '# New', finalize: true });
     expect(result.card.id).toBe(8);
@@ -52,7 +52,7 @@ describe('setDraft', () => {
     const { path, init, headers } = lastCall(fetchMock);
     expect(path).toBe(`/api/projects/${PROJECT}/cards/9/draft`);
     expect(init.method).toBe('PUT');
-    expect(headers['X-Skan-Token']).toBe('test-token');
+    expect(headers['X-Agboard-Token']).toBe('test-token');
     expect(JSON.parse(init.body as string)).toEqual({ isDraft: true });
     expect(result.card.isDraft).toBe(true);
   });

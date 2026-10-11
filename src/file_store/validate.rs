@@ -29,7 +29,7 @@ pub struct EpicId(String);
 
 impl EpicId {
     /// Fold ASCII lowercase letters to uppercase, then check the grammar.
-    pub fn normalize(text: &str) -> Result<EpicId, SkanError> {
+    pub fn normalize(text: &str) -> Result<EpicId, AgboardError> {
         text.to_ascii_uppercase().parse()
     }
 
@@ -58,13 +58,13 @@ fn is_epic_id(text: &str) -> bool {
 }
 
 impl FromStr for EpicId {
-    type Err = SkanError;
+    type Err = AgboardError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if is_epic_id(s) {
             Ok(EpicId(s.to_string()))
         } else {
-            Err(SkanError::InvalidValue {
+            Err(AgboardError::InvalidValue {
                 field: "epicId".into(),
                 reason: "EPIC-IDs are 1 to 64 uppercase letters, digits, and hyphens, starting with a letter."
                     .into(),
@@ -89,19 +89,19 @@ impl<'de> Deserialize<'de> for EpicId {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let text = String::deserialize(d)?;
         text.parse()
-            .map_err(|e: SkanError| serde::de::Error::custom(e.reason()))
+            .map_err(|e: AgboardError| serde::de::Error::custom(e.reason()))
     }
 }
 
 /// `#RRGGBB` with uppercase digits, the stored form of an epic color.
 /// Surrounding whitespace is ignored and lowercase digits are folded.
-pub fn normalize_color(text: &str) -> Result<String, SkanError> {
+pub fn normalize_color(text: &str) -> Result<String, AgboardError> {
     let trimmed = text.trim();
     match trimmed.strip_prefix('#') {
         Some(hex) if hex.len() == 6 && hex.bytes().all(|b| b.is_ascii_hexdigit()) => {
             Ok(format!("#{}", hex.to_ascii_uppercase()))
         }
-        _ => Err(SkanError::InvalidValue {
+        _ => Err(AgboardError::InvalidValue {
             field: "color".into(),
             reason: "Colors are #RRGGBB: a # and six hexadecimal digits.".into(),
         }),
@@ -113,11 +113,11 @@ fn is_stored_color(text: &str) -> bool {
 }
 
 /// An epic's formal name: trimmed, 1 to 100 characters, one line.
-pub fn validate_epic_name(text: &str) -> Result<String, SkanError> {
+pub fn validate_epic_name(text: &str) -> Result<String, AgboardError> {
     let trimmed = text.trim();
     let count = trimmed.chars().count();
     if count == 0 || count > 100 || trimmed.contains(['\n', '\r']) {
-        return Err(SkanError::InvalidValue {
+        return Err(AgboardError::InvalidValue {
             field: "name".into(),
             reason: "Epic names must be 1 to 100 characters on one line.".into(),
         });
@@ -127,11 +127,11 @@ pub fn validate_epic_name(text: &str) -> Result<String, SkanError> {
 
 /// A plan text with CRLF folded to LF, at most 50,000 characters. The
 /// required headings are checked separately by `check_plan_body`.
-pub fn normalize_plan(text: &str) -> Result<String, SkanError> {
+pub fn normalize_plan(text: &str) -> Result<String, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
     let count = normalized.chars().count();
     if count > 50_000 {
-        return Err(SkanError::InvalidValue {
+        return Err(AgboardError::InvalidValue {
             field: "plan".into(),
             reason: "Plans must be 50,000 characters or fewer.".into(),
         });
@@ -141,17 +141,17 @@ pub fn normalize_plan(text: &str) -> Result<String, SkanError> {
 
 /// Check that an attachment or evidence ID has the stored form (32 lowercase
 /// hexadecimal characters). This is the check before a path is built from it.
-pub fn check_object_id(text: &str, field: &str) -> Result<(), SkanError> {
+pub fn check_object_id(text: &str, field: &str) -> Result<(), AgboardError> {
     if is_hex32(text) {
         Ok(())
     } else {
-        Err(SkanError::InvalidValue {
+        Err(AgboardError::InvalidValue {
             field: field.into(),
             reason: "IDs are 32 lowercase hexadecimal characters.".into(),
         })
     }
 }
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// One defect found by a check. `field` names the item.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -348,19 +348,19 @@ fn check_markdown(text: &str, required: &[&str]) -> Vec<Defect> {
 
 /// Turn the first defect of a TASK.md text into a `file_invalid` error.
 /// `file` is the path shown to the caller (relative to the shared directory).
-pub fn ensure_task_body(text: &str, file: &str) -> Result<(), SkanError> {
+pub fn ensure_task_body(text: &str, file: &str) -> Result<(), AgboardError> {
     first_defect_error(check_task_body(text), file)
 }
 
 /// The PLAN.md form of `ensure_task_body`.
-pub fn ensure_plan_body(text: &str, file: &str) -> Result<(), SkanError> {
+pub fn ensure_plan_body(text: &str, file: &str) -> Result<(), AgboardError> {
     first_defect_error(check_plan_body(text), file)
 }
 
-fn first_defect_error(defects: Vec<Defect>, file: &str) -> Result<(), SkanError> {
+fn first_defect_error(defects: Vec<Defect>, file: &str) -> Result<(), AgboardError> {
     match defects.into_iter().next() {
         None => Ok(()),
-        Some(d) => Err(SkanError::FileInvalid {
+        Some(d) => Err(AgboardError::FileInvalid {
             file: file.to_string(),
             field: d.field,
             reason: d.reason,
@@ -434,7 +434,7 @@ pub fn choice_defect(choices: &[Choice]) -> Option<Defect> {
 }
 
 /// Trim the labels of `choices` and check them. A violation is `InvalidValue`.
-pub fn normalize_choices(choices: Vec<Choice>) -> Result<Vec<Choice>, SkanError> {
+pub fn normalize_choices(choices: Vec<Choice>) -> Result<Vec<Choice>, AgboardError> {
     let normalized: Vec<Choice> = choices
         .into_iter()
         .map(|c| Choice {
@@ -444,7 +444,7 @@ pub fn normalize_choices(choices: Vec<Choice>) -> Result<Vec<Choice>, SkanError>
         .collect();
     match choice_defect(&normalized) {
         None => Ok(normalized),
-        Some(d) => Err(SkanError::InvalidValue {
+        Some(d) => Err(AgboardError::InvalidValue {
             field: d.field,
             reason: d.reason,
         }),
@@ -453,12 +453,12 @@ pub fn normalize_choices(choices: Vec<Choice>) -> Result<Vec<Choice>, SkanError>
 
 /// Normalize line endings (CRLF to LF), trim the outer whitespace, and require
 /// 1 to 2,000 characters. This is the rule of a decision request's question.
-pub fn normalize_question(text: &str) -> Result<String, SkanError> {
+pub fn normalize_question(text: &str) -> Result<String, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
     let trimmed = normalized.trim();
     let count = trimmed.chars().count();
     if count == 0 || count > MAX_QUESTION_CHARS {
-        return Err(SkanError::InvalidValue {
+        return Err(AgboardError::InvalidValue {
             field: "question".into(),
             reason: "Questions must be 1 to 2000 characters.".into(),
         });
@@ -468,14 +468,14 @@ pub fn normalize_question(text: &str) -> Result<String, SkanError> {
 
 /// Normalize a free-text answer. Blank text counts as no text (`None`). Text
 /// over 2,000 characters is `InvalidValue`.
-pub fn normalize_answer_text(text: &str) -> Result<Option<String>, SkanError> {
+pub fn normalize_answer_text(text: &str) -> Result<Option<String>, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
     let trimmed = normalized.trim();
     if trimmed.is_empty() {
         return Ok(None);
     }
     if trimmed.chars().count() > MAX_ANSWER_TEXT_CHARS {
-        return Err(SkanError::InvalidValue {
+        return Err(AgboardError::InvalidValue {
             field: "text".into(),
             reason: "Answers must be 2,000 characters or fewer.".into(),
         });
@@ -485,15 +485,15 @@ pub fn normalize_answer_text(text: &str) -> Result<Option<String>, SkanError> {
 
 /// Accept only `formatVersion: 1`. A missing version is `file_invalid`; any
 /// other version is `format_unsupported`. Nothing is converted.
-pub fn check_format_version(value: &Value, file: &str) -> Result<(), SkanError> {
+pub fn check_format_version(value: &Value, file: &str) -> Result<(), AgboardError> {
     match value.get("formatVersion") {
-        None => Err(SkanError::FileInvalid {
+        None => Err(AgboardError::FileInvalid {
             file: file.to_string(),
             field: "formatVersion".into(),
             reason: "formatVersion is required.".into(),
         }),
         Some(version) if version.as_u64() == Some(1) => Ok(()),
-        Some(version) => Err(SkanError::FormatUnsupported {
+        Some(version) => Err(AgboardError::FormatUnsupported {
             file: file.to_string(),
             version: version.to_string(),
         }),

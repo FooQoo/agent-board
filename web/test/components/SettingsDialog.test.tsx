@@ -171,13 +171,13 @@ describe('SettingsDialog selection', () => {
     }
   });
 
-  it('switches the language immediately, saves skan.locale, stays open and keeps focus', async () => {
+  it('switches the language immediately, saves agboard.locale, stays open and keeps focus', async () => {
     render(<Harness />);
     const japanese = screen.getByRole('radio', { name: '日本語' });
     await userEvent.click(japanese);
 
     expect(document.documentElement.lang).toBe('ja');
-    expect(window.localStorage.getItem('skan.locale')).toBe('ja');
+    expect(window.localStorage.getItem('agboard.locale')).toBe('ja');
     expect(screen.getByRole('dialog', { name: '設定' })).toBeTruthy();
     expect(screen.getByRole('radio', { name: '日本語' }).getAttribute('aria-checked')).toBe('true');
     expect(document.activeElement).toBe(screen.getByRole('radio', { name: '日本語' }));
@@ -186,7 +186,7 @@ describe('SettingsDialog selection', () => {
   it('does not touch the language or the other mode when only one is chosen', async () => {
     render(<Harness />);
     await userEvent.click(screen.getByRole('radio', { name: 'Dark Pink' }));
-    expect(window.localStorage.getItem('skan.locale')).toBeNull();
+    expect(window.localStorage.getItem('agboard.locale')).toBeNull();
     expect(document.documentElement.lang).toBe('en');
     await userEvent.click(screen.getByRole('radio', { name: '日本語' }));
     expect(document.documentElement.dataset.accent).toBe('pink');

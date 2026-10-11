@@ -3,7 +3,7 @@
 //! notifications that reach connected browsers.
 //!
 //! Servers listen on port 0 in a temporary data directory. The CLI is run as
-//! the real `agboard` binary against the same `SKAN_HOME`.
+//! the real `agboard` binary against the same `AGBOARD_HOME`.
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
@@ -15,7 +15,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::server::{ServeConfig, run_until};
 use chrono::{DateTime, TimeZone, Utc};
@@ -28,10 +28,10 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 fn with_home<T>(home: &Path, f: impl FnOnce() -> T) -> T {
     let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     // SAFETY: access to the environment is serialized by ENV_LOCK.
-    unsafe { std::env::set_var("SKAN_HOME", home) };
+    unsafe { std::env::set_var("AGBOARD_HOME", home) };
     let result = f();
     // SAFETY: as above.
-    unsafe { std::env::remove_var("SKAN_HOME") };
+    unsafe { std::env::remove_var("AGBOARD_HOME") };
     result
 }
 
@@ -115,7 +115,7 @@ impl Reply {
 struct Running {
     addr: SocketAddr,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
-    handle: Option<JoinHandle<Result<(), SkanError>>>,
+    handle: Option<JoinHandle<Result<(), AgboardError>>>,
 }
 
 impl Running {
@@ -151,7 +151,7 @@ impl Running {
 
     fn token(&self) -> String {
         let page = self.get("/").body;
-        let marker = "name=\"skan-token\" content=\"";
+        let marker = "name=\"agboard-token\" content=\"";
         let start = page.find(marker).expect("token meta tag") + marker.len();
         page[start..start + 64].to_string()
     }
@@ -160,7 +160,7 @@ impl Running {
         vec![
             ("Origin".into(), format!("http://127.0.0.1:{}", self.port())),
             ("Sec-Fetch-Site".into(), "same-origin".into()),
-            ("X-Skan-Token".into(), token.into()),
+            ("X-Agboard-Token".into(), token.into()),
         ]
     }
 
@@ -314,7 +314,7 @@ impl EventStream {
 
 fn agboard(home: &Path, args: &[&str]) -> (i32, String, String) {
     let output = Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home)
+        .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home)
         .args(args)
@@ -746,7 +746,7 @@ fn a_guard_violation_is_403_for_existing_and_missing_projects_alike() {
         let mut headers = vec![
             ("Origin".to_string(), format!("http://127.0.0.1:{port}")),
             ("Sec-Fetch-Site".to_string(), "same-origin".to_string()),
-            ("X-Skan-Token".to_string(), token.clone()),
+            ("X-Agboard-Token".to_string(), token.clone()),
         ];
         headers.retain(|(name, _)| name != skip);
         headers
@@ -761,8 +761,8 @@ fn a_guard_violation_is_403_for_existing_and_missing_projects_alike() {
         ("bad origin", wrong("Origin", "http://evil.example")),
         ("no fetch site", good("Sec-Fetch-Site")),
         ("cross-site", wrong("Sec-Fetch-Site", "cross-site")),
-        ("no token", good("X-Skan-Token")),
-        ("bad token", wrong("X-Skan-Token", &"0".repeat(64))),
+        ("no token", good("X-Agboard-Token")),
+        ("bad token", wrong("X-Agboard-Token", &"0".repeat(64))),
         ("bad host", {
             let mut headers = good("");
             headers.push(("Host".to_string(), "evil.example".to_string()));

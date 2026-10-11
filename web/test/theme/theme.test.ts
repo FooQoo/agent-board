@@ -197,9 +197,9 @@ describe('selectTheme', () => {
   });
 
   it('does not change the locale key', () => {
-    window.localStorage.setItem('skan.locale', 'ja');
+    window.localStorage.setItem('agboard.locale', 'ja');
     selectTheme({ mode: 'dark', accent: 'gray' });
-    expect(window.localStorage.getItem('skan.locale')).toBe('ja');
+    expect(window.localStorage.getItem('agboard.locale')).toBe('ja');
     window.localStorage.clear();
   });
 });

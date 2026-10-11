@@ -9,11 +9,11 @@ pub enum FileAction {
     Write,
 }
 
-/// Every error `skan` can report. Each variant maps to one error code in the
+/// Every error `agboard` can report. Each variant maps to one error code in the
 /// design's error table.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error("{}", self.message())]
-pub enum SkanError {
+pub enum AgboardError {
     /// `project` is the name or ID the caller used to look the project up.
     ProjectNotFound {
         project: String,
@@ -131,56 +131,56 @@ pub enum SkanError {
     WaitTimeout,
 }
 
-impl SkanError {
+impl AgboardError {
     /// Machine-readable error code (snake_case).
     pub fn code(&self) -> &'static str {
         match self {
-            SkanError::ProjectNotFound { .. } => "project_not_found",
-            SkanError::ProjectNameExists { .. } => "project_name_exists",
-            SkanError::CardNotFound { .. } => "card_not_found",
-            SkanError::CardArchived { .. } => "card_archived",
-            SkanError::CardNotArchived { .. } => "card_not_archived",
-            SkanError::ArchiveTargetsChanged => "archive_targets_changed",
-            SkanError::AttachmentNotFound { .. } => "attachment_not_found",
-            SkanError::AttachmentRequestConflict => "attachment_request_conflict",
-            SkanError::AttachmentLimitExceeded => "attachment_limit_exceeded",
-            SkanError::EvidenceNotFound { .. } => "evidence_not_found",
-            SkanError::EpicIdTaken { .. } => "epic_id_taken",
-            SkanError::EpicNotFound { .. } => "epic_not_found",
-            SkanError::EpicInUse { .. } => "epic_in_use",
-            SkanError::InvalidArgument { .. } => "invalid_argument",
-            SkanError::InvalidValue { .. } => "invalid_value",
-            SkanError::InvalidStateForColumn { .. } => "invalid_state_for_column",
-            SkanError::InvalidStateForAssignee => "invalid_state_for_assignee",
-            SkanError::CardIsDraft { .. } => "card_is_draft",
-            SkanError::CardNotDraft { .. } => "card_not_draft",
-            SkanError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
-            SkanError::RequestChanged => "request_changed",
-            SkanError::ConfirmationRequired { .. } => "confirmation_required",
-            SkanError::FileError { .. } => "file_error",
-            SkanError::FileInvalid { .. } => "file_invalid",
-            SkanError::FileUnreadable { .. } => "file_unreadable",
-            SkanError::FormatUnsupported { .. } => "format_unsupported",
-            SkanError::RequestChoiceUnknown { .. } => "request_choice_unknown",
-            SkanError::DatabaseBusy => "database_busy",
-            SkanError::DatabaseError { .. } => "database_error",
-            SkanError::AlreadyServing { .. } => "already_serving",
-            SkanError::PortInUse { .. } => "port_in_use",
-            SkanError::BoardUnavailable { .. } => "board_unavailable",
-            SkanError::CursorInvalid { .. } => "cursor_invalid",
-            SkanError::WaitTimeout => "wait_timeout",
+            AgboardError::ProjectNotFound { .. } => "project_not_found",
+            AgboardError::ProjectNameExists { .. } => "project_name_exists",
+            AgboardError::CardNotFound { .. } => "card_not_found",
+            AgboardError::CardArchived { .. } => "card_archived",
+            AgboardError::CardNotArchived { .. } => "card_not_archived",
+            AgboardError::ArchiveTargetsChanged => "archive_targets_changed",
+            AgboardError::AttachmentNotFound { .. } => "attachment_not_found",
+            AgboardError::AttachmentRequestConflict => "attachment_request_conflict",
+            AgboardError::AttachmentLimitExceeded => "attachment_limit_exceeded",
+            AgboardError::EvidenceNotFound { .. } => "evidence_not_found",
+            AgboardError::EpicIdTaken { .. } => "epic_id_taken",
+            AgboardError::EpicNotFound { .. } => "epic_not_found",
+            AgboardError::EpicInUse { .. } => "epic_in_use",
+            AgboardError::InvalidArgument { .. } => "invalid_argument",
+            AgboardError::InvalidValue { .. } => "invalid_value",
+            AgboardError::InvalidStateForColumn { .. } => "invalid_state_for_column",
+            AgboardError::InvalidStateForAssignee => "invalid_state_for_assignee",
+            AgboardError::CardIsDraft { .. } => "card_is_draft",
+            AgboardError::CardNotDraft { .. } => "card_not_draft",
+            AgboardError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
+            AgboardError::RequestChanged => "request_changed",
+            AgboardError::ConfirmationRequired { .. } => "confirmation_required",
+            AgboardError::FileError { .. } => "file_error",
+            AgboardError::FileInvalid { .. } => "file_invalid",
+            AgboardError::FileUnreadable { .. } => "file_unreadable",
+            AgboardError::FormatUnsupported { .. } => "format_unsupported",
+            AgboardError::RequestChoiceUnknown { .. } => "request_choice_unknown",
+            AgboardError::DatabaseBusy => "database_busy",
+            AgboardError::DatabaseError { .. } => "database_error",
+            AgboardError::AlreadyServing { .. } => "already_serving",
+            AgboardError::PortInUse { .. } => "port_in_use",
+            AgboardError::BoardUnavailable { .. } => "board_unavailable",
+            AgboardError::CursorInvalid { .. } => "cursor_invalid",
+            AgboardError::WaitTimeout => "wait_timeout",
         }
     }
 
     /// Process exit code for this error.
     pub fn exit_code(&self) -> i32 {
         match self {
-            SkanError::ProjectNotFound { .. } => 4,
-            SkanError::ProjectNameExists { .. } => 2,
-            SkanError::CardNotFound { .. } => 3,
-            SkanError::InvalidArgument { .. } | SkanError::InvalidValue { .. } => 2,
-            SkanError::InvalidStateForAssignee => 2,
-            SkanError::RequestChoiceUnknown { .. } => 2,
+            AgboardError::ProjectNotFound { .. } => 4,
+            AgboardError::ProjectNameExists { .. } => 2,
+            AgboardError::CardNotFound { .. } => 3,
+            AgboardError::InvalidArgument { .. } | AgboardError::InvalidValue { .. } => 2,
+            AgboardError::InvalidStateForAssignee => 2,
+            AgboardError::RequestChoiceUnknown { .. } => 2,
             _ => 1,
         }
     }
@@ -188,134 +188,136 @@ impl SkanError {
     /// One-line summary of what went wrong.
     pub fn message(&self) -> String {
         match self {
-            SkanError::ProjectNotFound { .. } => "project not found.".to_string(),
-            SkanError::ProjectNameExists { name } => format!("project \"{name}\" already exists."),
-            SkanError::CardNotFound { id } => format!("card #{id} not found."),
-            SkanError::CardArchived { id } => format!("card #{id} is archived."),
-            SkanError::CardNotArchived { id } => format!("card #{id} is not archived."),
-            SkanError::ArchiveTargetsChanged => "archive targets changed.".into(),
-            SkanError::AttachmentNotFound { id } => format!("attachment {id} not found."),
-            SkanError::AttachmentRequestConflict => {
+            AgboardError::ProjectNotFound { .. } => "project not found.".to_string(),
+            AgboardError::ProjectNameExists { name } => {
+                format!("project \"{name}\" already exists.")
+            }
+            AgboardError::CardNotFound { id } => format!("card #{id} not found."),
+            AgboardError::CardArchived { id } => format!("card #{id} is archived."),
+            AgboardError::CardNotArchived { id } => format!("card #{id} is not archived."),
+            AgboardError::ArchiveTargetsChanged => "archive targets changed.".into(),
+            AgboardError::AttachmentNotFound { id } => format!("attachment {id} not found."),
+            AgboardError::AttachmentRequestConflict => {
                 "attachment request was reused with different content.".into()
             }
-            SkanError::AttachmentLimitExceeded => "attachment limits were exceeded.".into(),
-            SkanError::EvidenceNotFound { id } => format!("evidence {id} not found."),
-            SkanError::EpicIdTaken { id } => format!("epic {id} already exists."),
-            SkanError::EpicNotFound { id } => format!("epic {id} not found."),
-            SkanError::EpicInUse { id } => format!("epic {id} is used by cards."),
-            SkanError::InvalidArgument { message, .. } => message.clone(),
-            SkanError::InvalidValue { field, .. } => format!("{field} is invalid."),
-            SkanError::InvalidStateForColumn { id, state, .. } => {
+            AgboardError::AttachmentLimitExceeded => "attachment limits were exceeded.".into(),
+            AgboardError::EvidenceNotFound { id } => format!("evidence {id} not found."),
+            AgboardError::EpicIdTaken { id } => format!("epic {id} already exists."),
+            AgboardError::EpicNotFound { id } => format!("epic {id} not found."),
+            AgboardError::EpicInUse { id } => format!("epic {id} is used by cards."),
+            AgboardError::InvalidArgument { message, .. } => message.clone(),
+            AgboardError::InvalidValue { field, .. } => format!("{field} is invalid."),
+            AgboardError::InvalidStateForColumn { id, state, .. } => {
                 format!("cannot set #{id} to {}.", state.as_str())
             }
-            SkanError::InvalidStateForAssignee => "state is invalid for this assignee.".into(),
-            SkanError::CardIsDraft { id } => {
+            AgboardError::InvalidStateForAssignee => "state is invalid for this assignee.".into(),
+            AgboardError::CardIsDraft { id } => {
                 format!("card #{id} is a draft and read-only for agents.")
             }
-            SkanError::CardNotDraft { id } => format!("card #{id} is not a draft."),
-            SkanError::InvalidStateForDraft { id, state } => {
+            AgboardError::CardNotDraft { id } => format!("card #{id} is not a draft."),
+            AgboardError::InvalidStateForDraft { id, state } => {
                 format!("cannot make #{id} a draft while it is {}.", state.as_str())
             }
-            SkanError::RequestChanged => "the pending request has changed.".into(),
-            SkanError::ConfirmationRequired { operation } => {
+            AgboardError::RequestChanged => "the pending request has changed.".into(),
+            AgboardError::ConfirmationRequired { operation } => {
                 format!("{operation} needs confirmation from a human.")
             }
-            SkanError::FileError { action, file, .. } => match action {
+            AgboardError::FileError { action, file, .. } => match action {
                 FileAction::Read => format!("cannot read {file}."),
                 FileAction::Write => format!("cannot write {file}."),
             },
-            SkanError::FileInvalid { file, .. } => format!("{file} is not valid."),
-            SkanError::FileUnreadable { file, .. } => format!("cannot read {file}."),
-            SkanError::FormatUnsupported { file, .. } => {
+            AgboardError::FileInvalid { file, .. } => format!("{file} is not valid."),
+            AgboardError::FileUnreadable { file, .. } => format!("cannot read {file}."),
+            AgboardError::FormatUnsupported { file, .. } => {
                 format!("{file} has an unsupported format version.")
             }
-            SkanError::RequestChoiceUnknown { .. } => {
+            AgboardError::RequestChoiceUnknown { .. } => {
                 "the choice is not part of this request.".into()
             }
-            SkanError::DatabaseBusy => "the board is busy.".to_string(),
-            SkanError::DatabaseError { .. } => "cannot open the board.".to_string(),
-            SkanError::AlreadyServing { .. } => "the board is already being served.".to_string(),
-            SkanError::PortInUse { port } => format!("port {port} is already in use."),
-            SkanError::BoardUnavailable { .. } => "the board is unavailable.".to_string(),
-            SkanError::CursorInvalid { .. } => "the cursor is invalid.".to_string(),
-            SkanError::WaitTimeout => "no board change before the timeout.".to_string(),
+            AgboardError::DatabaseBusy => "the board is busy.".to_string(),
+            AgboardError::DatabaseError { .. } => "cannot open the board.".to_string(),
+            AgboardError::AlreadyServing { .. } => "the board is already being served.".to_string(),
+            AgboardError::PortInUse { port } => format!("port {port} is already in use."),
+            AgboardError::BoardUnavailable { .. } => "the board is unavailable.".to_string(),
+            AgboardError::CursorInvalid { .. } => "the cursor is invalid.".to_string(),
+            AgboardError::WaitTimeout => "no board change before the timeout.".to_string(),
         }
     }
 
     /// What to do about it, or why it happened.
     pub fn reason(&self) -> String {
         match self {
-            SkanError::ProjectNotFound { project } => format!(
+            AgboardError::ProjectNotFound { project } => format!(
                 "No project matches \"{project}\". Run \"agboard project ls\" to see the projects."
             ),
-            SkanError::ProjectNameExists { .. } => {
+            AgboardError::ProjectNameExists { .. } => {
                 "Project names must be unique. Choose another name.".to_string()
             }
-            SkanError::CardNotFound { id } => {
+            AgboardError::CardNotFound { id } => {
                 format!("No card has ID {id}. Run \"agboard ls\" to see the cards.")
             }
-            SkanError::CardArchived { .. } => "Restore the card before editing it.".into(),
-            SkanError::CardNotArchived { .. } => "Only an archived card can be deleted here.".into(),
-            SkanError::ArchiveTargetsChanged => "Read the latest Done cards and confirm the archive again.".into(),
-            SkanError::AttachmentNotFound { .. } => "The attachment does not belong to this card.".into(),
-            SkanError::AttachmentRequestConflict => "Use a new request ID when the content changes.".into(),
-            SkanError::AttachmentLimitExceeded => "A card may contain at most 20 images and 50 MiB in total.".into(),
-            SkanError::EvidenceNotFound { .. } => "The evidence does not belong to this card.".into(),
-            SkanError::EpicIdTaken { .. } => "Choose another EPIC-ID.".into(),
-            SkanError::EpicNotFound { .. } => "No epic has this EPIC-ID in the project.".into(),
-            SkanError::EpicInUse { .. } => "Move or clear the cards that belong to this epic first.".into(),
-            SkanError::InvalidArgument { command, .. } => match command {
+            AgboardError::CardArchived { .. } => "Restore the card before editing it.".into(),
+            AgboardError::CardNotArchived { .. } => "Only an archived card can be deleted here.".into(),
+            AgboardError::ArchiveTargetsChanged => "Read the latest Done cards and confirm the archive again.".into(),
+            AgboardError::AttachmentNotFound { .. } => "The attachment does not belong to this card.".into(),
+            AgboardError::AttachmentRequestConflict => "Use a new request ID when the content changes.".into(),
+            AgboardError::AttachmentLimitExceeded => "A card may contain at most 20 images and 50 MiB in total.".into(),
+            AgboardError::EvidenceNotFound { .. } => "The evidence does not belong to this card.".into(),
+            AgboardError::EpicIdTaken { .. } => "Choose another EPIC-ID.".into(),
+            AgboardError::EpicNotFound { .. } => "No epic has this EPIC-ID in the project.".into(),
+            AgboardError::EpicInUse { .. } => "Move or clear the cards that belong to this epic first.".into(),
+            AgboardError::InvalidArgument { command, .. } => match command {
                 Some(command) => format!("Run \"agboard {command} --help\" for usage."),
                 None => "Run \"agboard --help\" for usage.".to_string(),
             },
-            SkanError::InvalidValue { reason, .. } => reason.clone(),
-            SkanError::InvalidStateForColumn { id, column, .. } => format!(
+            AgboardError::InvalidValue { reason, .. } => reason.clone(),
+            AgboardError::InvalidStateForColumn { id, column, .. } => format!(
                 "Only cards in Doing can be running or pending. #{id} is in {}.",
                 column.label()
             ),
-            SkanError::InvalidStateForAssignee => {
+            AgboardError::InvalidStateForAssignee => {
                 "Only AI-owned cards in Doing can be running or pending.".into()
             }
-            SkanError::CardIsDraft { .. } => {
+            AgboardError::CardIsDraft { .. } => {
                 "Wait for the user to finalize it, then try again.".into()
             }
-            SkanError::CardNotDraft { id } => {
+            AgboardError::CardNotDraft { id } => {
                 format!("Only a draft can be saved or finalized this way. #{id} is not a draft.")
             }
-            SkanError::InvalidStateForDraft { id, .. } => format!(
+            AgboardError::InvalidStateForDraft { id, .. } => format!(
                 "Only cards whose agent status is idle can become drafts. #{id} is not idle."
             ),
-            SkanError::RequestChanged => {
+            AgboardError::RequestChanged => {
                 "Read the latest board before answering this request.".into()
             }
-            SkanError::ConfirmationRequired { .. } => {
+            AgboardError::ConfirmationRequired { .. } => {
                 "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board."
                     .to_string()
             }
-            SkanError::FileError { reason, .. } => reason.clone(),
-            SkanError::FileInvalid { field, reason, .. } => {
+            AgboardError::FileError { reason, .. } => reason.clone(),
+            AgboardError::FileInvalid { field, reason, .. } => {
                 if field.is_empty() {
                     reason.clone()
                 } else {
                     format!("{field}: {reason}")
                 }
             }
-            SkanError::FileUnreadable { reason, .. } => reason.clone(),
-            SkanError::FormatUnsupported { version, .. } => format!(
+            AgboardError::FileUnreadable { reason, .. } => reason.clone(),
+            AgboardError::FormatUnsupported { version, .. } => format!(
                 "Only formatVersion 1 is supported, found {version}. The file is not converted."
             ),
-            SkanError::RequestChoiceUnknown { .. } => {
+            AgboardError::RequestChoiceUnknown { .. } => {
                 "Choose one of the choices in the pending request.".into()
             }
-            SkanError::DatabaseBusy => "Another agboard command is writing. Try again.".to_string(),
-            SkanError::DatabaseError { reason } => reason.clone(),
-            SkanError::AlreadyServing { port } => {
+            AgboardError::DatabaseBusy => "Another agboard command is writing. Try again.".to_string(),
+            AgboardError::DatabaseError { reason } => reason.clone(),
+            AgboardError::AlreadyServing { port } => {
                 format!("Open http://127.0.0.1:{port}/ or stop the other \"agboard serve\".")
             }
-            SkanError::PortInUse { .. } => "Choose another port with --port.".to_string(),
-            SkanError::BoardUnavailable { reason } => reason.clone(),
-            SkanError::CursorInvalid { reason } => reason.clone(),
-            SkanError::WaitTimeout => {
+            AgboardError::PortInUse { .. } => "Choose another port with --port.".to_string(),
+            AgboardError::BoardUnavailable { reason } => reason.clone(),
+            AgboardError::CursorInvalid { reason } => reason.clone(),
+            AgboardError::WaitTimeout => {
                 "Nothing changed in the project. This is not an answer; read the snapshot before acting."
                     .to_string()
             }
@@ -327,74 +329,74 @@ impl SkanError {
 mod tests {
     use super::*;
 
-    fn all_errors() -> Vec<SkanError> {
+    fn all_errors() -> Vec<AgboardError> {
         vec![
-            SkanError::ProjectNotFound {
+            AgboardError::ProjectNotFound {
                 project: "Alpha".into(),
             },
-            SkanError::ProjectNameExists {
+            AgboardError::ProjectNameExists {
                 name: "Alpha".into(),
             },
-            SkanError::CardNotFound { id: 7 },
-            SkanError::InvalidArgument {
+            AgboardError::CardNotFound { id: 7 },
+            AgboardError::InvalidArgument {
                 message: "unexpected argument '--x'".into(),
                 command: Some("add".into()),
             },
-            SkanError::InvalidValue {
+            AgboardError::InvalidValue {
                 field: "title".into(),
                 reason: "r".into(),
             },
-            SkanError::InvalidStateForColumn {
+            AgboardError::InvalidStateForColumn {
                 id: 11,
                 state: RunState::Running,
                 column: Column::Todo,
             },
-            SkanError::InvalidStateForAssignee,
-            SkanError::CardIsDraft { id: 5 },
-            SkanError::CardNotDraft { id: 5 },
-            SkanError::InvalidStateForDraft {
+            AgboardError::InvalidStateForAssignee,
+            AgboardError::CardIsDraft { id: 5 },
+            AgboardError::CardNotDraft { id: 5 },
+            AgboardError::InvalidStateForDraft {
                 id: 6,
                 state: RunState::Running,
             },
-            SkanError::RequestChanged,
-            SkanError::ConfirmationRequired {
+            AgboardError::RequestChanged,
+            AgboardError::ConfirmationRequired {
                 operation: "deleting a card".into(),
             },
-            SkanError::FileError {
+            AgboardError::FileError {
                 action: FileAction::Read,
                 file: "a.json".into(),
                 reason: "No such file or directory (os error 2)".into(),
             },
-            SkanError::FileInvalid {
+            AgboardError::FileInvalid {
                 file: "projects/p/tasks/1/task.json".into(),
                 field: "title".into(),
                 reason: "Titles must be 1 to 100 characters on one line.".into(),
             },
-            SkanError::FileUnreadable {
+            AgboardError::FileUnreadable {
                 file: "projects/p/project.json".into(),
                 reason: "Permission denied (os error 13)".into(),
             },
-            SkanError::FormatUnsupported {
+            AgboardError::FormatUnsupported {
                 file: "workspace.json".into(),
                 version: "2".into(),
             },
-            SkanError::RequestChoiceUnknown {
+            AgboardError::RequestChoiceUnknown {
                 request_id: "a".into(),
                 choice_id: "b".into(),
             },
-            SkanError::DatabaseBusy,
-            SkanError::DatabaseError {
+            AgboardError::DatabaseBusy,
+            AgboardError::DatabaseError {
                 reason: "boom".into(),
             },
-            SkanError::AlreadyServing { port: 7420 },
-            SkanError::PortInUse { port: 7420 },
-            SkanError::BoardUnavailable {
+            AgboardError::AlreadyServing { port: 7420 },
+            AgboardError::PortInUse { port: 7420 },
+            AgboardError::BoardUnavailable {
                 reason: "no running server".into(),
             },
-            SkanError::CursorInvalid {
+            AgboardError::CursorInvalid {
                 reason: "wrong project".into(),
             },
-            SkanError::WaitTimeout,
+            AgboardError::WaitTimeout,
         ]
     }
 
@@ -536,7 +538,7 @@ mod tests {
 
     #[test]
     fn invalid_argument_without_command_points_to_top_level_help() {
-        let e = SkanError::InvalidArgument {
+        let e = AgboardError::InvalidArgument {
             message: "bad".into(),
             command: None,
         };
@@ -545,7 +547,7 @@ mod tests {
 
     #[test]
     fn write_file_error_says_cannot_write() {
-        let e = SkanError::FileError {
+        let e = AgboardError::FileError {
             action: FileAction::Write,
             file: "out.json".into(),
             reason: "denied".into(),
@@ -555,6 +557,6 @@ mod tests {
 
     #[test]
     fn display_is_the_message() {
-        assert_eq!(SkanError::DatabaseBusy.to_string(), "the board is busy.");
+        assert_eq!(AgboardError::DatabaseBusy.to_string(), "the board is busy.");
     }
 }

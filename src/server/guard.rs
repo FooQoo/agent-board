@@ -40,7 +40,7 @@ pub fn fetch_site_allowed(site: Option<&str>) -> bool {
     site == Some("same-origin")
 }
 
-/// The `X-Skan-Token` value must equal the server's token. An empty expected
+/// The `X-Agboard-Token` value must equal the server's token. An empty expected
 /// token never matches. The comparison does not stop at the first difference.
 pub fn token_matches(provided: Option<&str>, expected: &str) -> bool {
     let Some(provided) = provided else {

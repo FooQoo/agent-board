@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::domain::{Actor, Assignee, ChangeCursor, Column, RunState};
-use crate::error::{FileAction, SkanError};
+use crate::error::{AgboardError, FileAction};
 
 /// `agboard --help`: the board workflow for agents.
 const TOP_HELP: &str = "\
@@ -431,7 +431,7 @@ pub struct ChangeArgs {
 }
 
 impl ChangeArgs {
-    pub fn resolve_reason(&self) -> Result<String, SkanError> {
+    pub fn resolve_reason(&self) -> Result<String, AgboardError> {
         match read_reason(self.reason.as_deref(), self.reason_file.as_deref())? {
             Some(raw) => crate::domain::validate_work_reason(&raw),
             None => crate::domain::validate_work_reason(""),
@@ -444,11 +444,11 @@ impl ChangeArgs {
 pub fn read_reason(
     reason: Option<&str>,
     reason_file: Option<&std::path::Path>,
-) -> Result<Option<String>, SkanError> {
+) -> Result<Option<String>, AgboardError> {
     if let Some(path) = reason_file {
         return std::fs::read_to_string(path)
             .map(Some)
-            .map_err(|e| SkanError::FileError {
+            .map_err(|e| AgboardError::FileError {
                 action: FileAction::Read,
                 file: path.display().to_string(),
                 reason: e.to_string(),
@@ -460,7 +460,7 @@ pub fn read_reason(
             let mut value = String::new();
             std::io::stdin()
                 .read_to_string(&mut value)
-                .map_err(|e| SkanError::FileError {
+                .map_err(|e| AgboardError::FileError {
                     action: FileAction::Read,
                     file: "standard input".into(),
                     reason: e.to_string(),
@@ -543,14 +543,14 @@ pub struct PlanArgs {
 
 impl PlanArgs {
     /// The plan the user asked for, or `None` when neither option was given.
-    pub fn resolve(&self, stdin: &mut dyn Read) -> Result<Option<String>, SkanError> {
+    pub fn resolve(&self, stdin: &mut dyn Read) -> Result<Option<String>, AgboardError> {
         if let Some(text) = &self.plan
             && text == "-"
         {
             let mut buffer = String::new();
             stdin
                 .read_to_string(&mut buffer)
-                .map_err(|e| SkanError::FileError {
+                .map_err(|e| AgboardError::FileError {
                     action: FileAction::Read,
                     file: "standard input".to_string(),
                     reason: e.to_string(),
@@ -561,7 +561,7 @@ impl PlanArgs {
             return Ok(Some(text.clone()));
         }
         if let Some(path) = &self.plan_file {
-            let text = std::fs::read_to_string(path).map_err(|e| SkanError::FileError {
+            let text = std::fs::read_to_string(path).map_err(|e| AgboardError::FileError {
                 action: FileAction::Read,
                 file: path.display().to_string(),
                 reason: e.to_string(),
@@ -719,11 +719,11 @@ pub enum Parsed {
 }
 
 /// Parse `args` (the first item is the program name).
-pub fn parse(args: &[OsString]) -> Result<Parsed, SkanError> {
+pub fn parse(args: &[OsString]) -> Result<Parsed, AgboardError> {
     match Cli::try_parse_from(args) {
         // The parser lets a later `--project` after the subcommand replace an
         // earlier one before it; a command must never guess which one was meant.
-        Ok(_) if project_occurrences(args) > 1 => Err(SkanError::InvalidArgument {
+        Ok(_) if project_occurrences(args) > 1 => Err(AgboardError::InvalidArgument {
             message: "--project can be given only once.".to_string(),
             command: subcommand_in(args),
         }),
@@ -734,7 +734,7 @@ pub fn parse(args: &[OsString]) -> Result<Parsed, SkanError> {
                 ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
                     Ok(Parsed::Print(error.to_string()))
                 }
-                kind => Err(SkanError::InvalidArgument {
+                kind => Err(AgboardError::InvalidArgument {
                     message: match kind {
                         // The parser would print the whole help text here.
                         ErrorKind::MissingSubcommand
@@ -806,12 +806,12 @@ fn subcommand_in(args: &[OsString]) -> Option<String> {
 impl Cli {
     /// Checks that depend on the combination of arguments, done before any
     /// board access so that a wrong command line always exits with 2.
-    pub fn validate(&self) -> Result<(), SkanError> {
+    pub fn validate(&self) -> Result<(), AgboardError> {
         let command = self.command.name();
         match (&self.command, self.project()) {
             // The read-only list of every project names no single project.
             (Command::Ls(args), Some(_)) if args.all_projects => {
-                return Err(SkanError::InvalidArgument {
+                return Err(AgboardError::InvalidArgument {
                     message: "ls --all-projects does not take --project.".to_string(),
                     command: Some(command.to_string()),
                 });
@@ -819,7 +819,7 @@ impl Cli {
             (Command::Ls(args), None) if args.all_projects => {}
             // `serve` shows every project, so naming one is a mistake.
             (Command::Serve(_), Some(_)) => {
-                return Err(SkanError::InvalidArgument {
+                return Err(AgboardError::InvalidArgument {
                     message: "serve does not take --project.".to_string(),
                     command: Some(command.to_string()),
                 });
@@ -833,7 +833,7 @@ impl Cli {
                 }),
                 Some(_),
             ) => {
-                return Err(SkanError::InvalidArgument {
+                return Err(AgboardError::InvalidArgument {
                     message: format!(
                         "project {} does not take --project.",
                         self.project_subcommand_name()
@@ -849,7 +849,7 @@ impl Cli {
             ) => {}
             (Command::Serve(_) | Command::Hook(_), None) => {}
             (_, None) => {
-                return Err(SkanError::InvalidArgument {
+                return Err(AgboardError::InvalidArgument {
                     message: "--project NAME is required.".to_string(),
                     command: Some(command.to_string()),
                 });
@@ -864,7 +864,7 @@ impl Cli {
                     && args.epic.is_none()
                     && !args.clear_epic =>
             {
-                Err(SkanError::InvalidArgument {
+                Err(AgboardError::InvalidArgument {
                     message: "nothing to change; give --title, --desc, --desc-file, --epic, or --clear-epic.".to_string(),
                     command: Some("edit".to_string()),
                 })
@@ -876,18 +876,18 @@ impl Cli {
                 && args.plan.plan.is_none()
                 && args.plan.plan_file.is_none() =>
             {
-                Err(SkanError::InvalidArgument {
+                Err(AgboardError::InvalidArgument {
                     message: "nothing to change; give --name, --color, --plan, or --plan-file.".to_string(),
                     command: Some("epic edit".to_string()),
                 })
             }
-            Command::Snapshot(_) if !self.json => Err(SkanError::InvalidArgument {
+            Command::Snapshot(_) if !self.json => Err(AgboardError::InvalidArgument {
                 message: "snapshot requires --json.".into(),
                 command: Some("snapshot".into()),
             }),
             Command::Attachment(AttachmentArgs {
                 command: AttachmentCommand::Get(args),
-            }) if args.output.as_os_str().is_empty() => Err(SkanError::InvalidArgument {
+            }) if args.output.as_os_str().is_empty() => Err(AgboardError::InvalidArgument {
                 message: "--output PATH is required.".into(),
                 command: Some("attachment get".into()),
             }),
@@ -920,7 +920,7 @@ impl DescriptionArgs {
     /// The description the user asked for: `None` when no option was given.
     /// `--desc -` reads `stdin` to the end. One trailing newline from a file
     /// or from standard input is dropped, since editors and `echo` add it.
-    pub fn resolve(&self, stdin: &mut dyn Read) -> Result<Option<String>, SkanError> {
+    pub fn resolve(&self, stdin: &mut dyn Read) -> Result<Option<String>, AgboardError> {
         if let Some(text) = &self.desc {
             if text != "-" {
                 return Ok(Some(text.clone()));
@@ -928,7 +928,7 @@ impl DescriptionArgs {
             let mut buffer = String::new();
             stdin
                 .read_to_string(&mut buffer)
-                .map_err(|e| SkanError::FileError {
+                .map_err(|e| AgboardError::FileError {
                     action: FileAction::Read,
                     file: "standard input".to_string(),
                     reason: e.to_string(),
@@ -936,7 +936,7 @@ impl DescriptionArgs {
             return Ok(Some(strip_final_newline(buffer)));
         }
         if let Some(path) = &self.desc_file {
-            let text = std::fs::read_to_string(path).map_err(|e| SkanError::FileError {
+            let text = std::fs::read_to_string(path).map_err(|e| AgboardError::FileError {
                 action: FileAction::Read,
                 file: path.display().to_string(),
                 reason: e.to_string(),

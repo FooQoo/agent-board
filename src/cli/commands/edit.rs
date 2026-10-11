@@ -1,11 +1,11 @@
 use crate::cli::args::EditArgs;
 use crate::cli::{Context, Outcome};
 use crate::domain::Actor;
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::file_store::validate::EpicId;
 use serde_json::json;
 
-pub fn run(ctx: &mut Context, args: &EditArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &EditArgs) -> Result<Outcome, AgboardError> {
     let mut stdin = std::io::stdin();
     let description = args.description.resolve(&mut stdin)?;
     // The target epic is checked first, so a wrong EPIC-ID changes nothing.

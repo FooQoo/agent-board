@@ -41,7 +41,7 @@ describe('useDetailWidth', () => {
   it('starts from the stored width, else 360', () => {
     const { ref, layoutRef } = makeBody(1600);
     expect(renderHook(() => useDetailWidth(ref, layoutRef, true)).result.current.width).toBe(360);
-    window.localStorage.setItem('skan.detailWidth', '480');
+    window.localStorage.setItem('agboard.detailWidth', '480');
     expect(renderHook(() => useDetailWidth(ref, layoutRef, true)).result.current.width).toBe(480);
   });
 
@@ -62,7 +62,7 @@ describe('useDetailWidth', () => {
     act(() => result.current.endDrag());
     act(() => result.current.endDrag());
     expect(setItem).toHaveBeenCalledTimes(1);
-    expect(window.localStorage.getItem('skan.detailWidth')).toBe(String(result.current.width));
+    expect(window.localStorage.getItem('agboard.detailWidth')).toBe(String(result.current.width));
     expect(document.body.classList.contains('is-resizing')).toBe(false);
   });
 
@@ -80,12 +80,12 @@ describe('useDetailWidth', () => {
 
   it('fits a shrinking layout and returns to the chosen width when it grows', () => {
     const { ref, layoutRef, setWidth } = makeBody(1600);
-    window.localStorage.setItem('skan.detailWidth', '500');
+    window.localStorage.setItem('agboard.detailWidth', '500');
     const { result } = renderHook(() => useDetailWidth(ref, layoutRef, true));
     expect(result.current.width).toBe(500);
     setWidth(1024);
     expect(result.current.width).toBe(352);
-    expect(window.localStorage.getItem('skan.detailWidth')).toBe('500');
+    expect(window.localStorage.getItem('agboard.detailWidth')).toBe('500');
     setWidth(1600);
     expect(result.current.width).toBe(500);
   });

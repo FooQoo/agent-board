@@ -9,7 +9,7 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::server::{ServeConfig, run_until};
 
 /// Compile the real `build.rs` and run it the way Cargo would, with
@@ -87,21 +87,21 @@ fn the_build_passes_with_no_chunks_and_the_table_is_empty() {
 
 // ---------------------------------------------------------------- harness
 
-// SKAN_HOME is process-global. It is only needed while a server starts (the
+// AGBOARD_HOME is process-global. It is only needed while a server starts (the
 // server captures its paths then), so the lock is released once it is ready.
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 struct Running {
     addr: SocketAddr,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
-    handle: Option<JoinHandle<Result<(), SkanError>>>,
+    handle: Option<JoinHandle<Result<(), AgboardError>>>,
 }
 
 impl Running {
     fn start(home: &Path) -> Running {
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // SAFETY: access to the environment is serialized by ENV_LOCK.
-        unsafe { std::env::set_var("SKAN_HOME", home) };
+        unsafe { std::env::set_var("AGBOARD_HOME", home) };
         let (ready_tx, ready_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
         let handle = std::thread::spawn(move || {
@@ -119,7 +119,7 @@ impl Running {
             .recv_timeout(Duration::from_secs(10))
             .expect("the server becomes ready");
         // SAFETY: as above.
-        unsafe { std::env::remove_var("SKAN_HOME") };
+        unsafe { std::env::remove_var("AGBOARD_HOME") };
         Running {
             addr,
             stop: Some(stop_tx),

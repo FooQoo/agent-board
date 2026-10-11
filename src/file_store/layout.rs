@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use super::validate::{self, EpicId};
 use crate::domain::ProjectId;
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// The `format` value written to `workspace.json`.
 pub const FORMAT_NAME: &str = "agboard-files";
@@ -125,7 +125,7 @@ pub fn task_asset_path(
     card_id: i64,
     attachment_id: &str,
     ext: &str,
-) -> Result<PathBuf, SkanError> {
+) -> Result<PathBuf, AgboardError> {
     check_card_id(card_id)?;
     asset_file(&task_dir(project_dir, card_id), attachment_id, ext)
 }
@@ -136,14 +136,14 @@ pub fn epic_asset_path(
     epic: &EpicId,
     attachment_id: &str,
     ext: &str,
-) -> Result<PathBuf, SkanError> {
+) -> Result<PathBuf, AgboardError> {
     asset_file(&epic_dir(project_dir, epic), attachment_id, ext)
 }
 
-fn asset_file(owner_dir: &Path, attachment_id: &str, ext: &str) -> Result<PathBuf, SkanError> {
+fn asset_file(owner_dir: &Path, attachment_id: &str, ext: &str) -> Result<PathBuf, AgboardError> {
     validate::check_object_id(attachment_id, "attachmentId")?;
     if !matches!(ext, "png" | "jpg" | "webp" | "gif") {
-        return Err(SkanError::InvalidValue {
+        return Err(AgboardError::InvalidValue {
             field: "attachment".into(),
             reason: "Only PNG, JPEG, WebP, and GIF images are accepted.".into(),
         });
@@ -156,16 +156,16 @@ pub fn evidence_path(
     project_dir: &Path,
     card_id: i64,
     evidence_id: &str,
-) -> Result<PathBuf, SkanError> {
+) -> Result<PathBuf, AgboardError> {
     check_card_id(card_id)?;
     validate::check_object_id(evidence_id, "evidenceId")?;
     let dir = task_dir(project_dir, card_id).join("evidence");
     Ok(dir.join(format!("{evidence_id}.log")))
 }
 
-fn check_card_id(card_id: i64) -> Result<(), SkanError> {
+fn check_card_id(card_id: i64) -> Result<(), AgboardError> {
     if card_id < 1 {
-        return Err(SkanError::InvalidValue {
+        return Err(AgboardError::InvalidValue {
             field: "cardId".into(),
             reason: "Card IDs start at 1.".into(),
         });

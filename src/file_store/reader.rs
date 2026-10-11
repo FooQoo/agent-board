@@ -25,7 +25,7 @@ use super::model::{
 };
 use super::validate;
 use crate::domain::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// One project as the snapshot returns it: the project, its content version and
 /// the cursor for that version, its cards with their full history, and every
@@ -145,8 +145,11 @@ pub(crate) struct CardLoad {
 
 /// Parse one shared JSON file. Syntax errors, the `formatVersion` gate, and
 /// the strict shape (unknown or missing fields) are all reported here.
-pub(crate) fn parse_file<T: DeserializeOwned>(bytes: &[u8], label: &str) -> Result<T, SkanError> {
-    let value: Value = serde_json::from_slice(bytes).map_err(|e| SkanError::FileInvalid {
+pub(crate) fn parse_file<T: DeserializeOwned>(
+    bytes: &[u8],
+    label: &str,
+) -> Result<T, AgboardError> {
+    let value: Value = serde_json::from_slice(bytes).map_err(|e| AgboardError::FileInvalid {
         file: label.to_string(),
         field: String::new(),
         reason: format!("The JSON is malformed: {e}."),
@@ -154,7 +157,7 @@ pub(crate) fn parse_file<T: DeserializeOwned>(bytes: &[u8], label: &str) -> Resu
     validate::check_format_version(&value, label)?;
     serde_json::from_value(value).map_err(|e| {
         let message = e.to_string();
-        SkanError::FileInvalid {
+        AgboardError::FileInvalid {
             file: label.to_string(),
             field: message.split('`').nth(1).unwrap_or("").to_string(),
             reason: message,
@@ -163,9 +166,9 @@ pub(crate) fn parse_file<T: DeserializeOwned>(bytes: &[u8], label: &str) -> Resu
 }
 
 /// The problem a tolerated read error stands for, with the file label kept.
-pub(crate) fn problem_of(error: SkanError) -> Problem {
+pub(crate) fn problem_of(error: AgboardError) -> Problem {
     match error {
-        SkanError::FileInvalid {
+        AgboardError::FileInvalid {
             file,
             field,
             reason,
@@ -174,12 +177,12 @@ pub(crate) fn problem_of(error: SkanError) -> Problem {
             field,
             reason,
         },
-        SkanError::FormatUnsupported { file, version } => Problem {
+        AgboardError::FormatUnsupported { file, version } => Problem {
             file,
             field: "formatVersion".into(),
             reason: format!("Only formatVersion 1 is supported, found {version}."),
         },
-        SkanError::FileUnreadable { file, reason } => Problem {
+        AgboardError::FileUnreadable { file, reason } => Problem {
             file,
             field: String::new(),
             reason,
@@ -198,19 +201,19 @@ fn file_time(path: &Path) -> Option<DateTime<Utc>> {
 }
 
 /// The project folder, or `project_not_found` when it does not exist.
-pub fn project_dir_checked(shared: &Path, id: &ProjectId) -> Result<PathBuf, SkanError> {
+pub fn project_dir_checked(shared: &Path, id: &ProjectId) -> Result<PathBuf, AgboardError> {
     let dir = layout::project_dir(shared, id);
     if dir.is_dir() {
         Ok(dir)
     } else {
-        Err(SkanError::ProjectNotFound {
+        Err(AgboardError::ProjectNotFound {
             project: id.to_string(),
         })
     }
 }
 
 /// Whether `workspace.json` exists. A present file must pass every check.
-pub fn workspace_present(shared: &Path) -> Result<bool, SkanError> {
+pub fn workspace_present(shared: &Path) -> Result<bool, AgboardError> {
     let path = layout::workspace_file(shared);
     if !path.is_file() {
         return Ok(false);
@@ -220,7 +223,7 @@ pub fn workspace_present(shared: &Path) -> Result<bool, SkanError> {
     let file: WorkspaceFile = parse_file(&bytes, &label)?;
     match validate::check_workspace(&file).into_iter().next() {
         None => Ok(true),
-        Some(d) => Err(SkanError::FileInvalid {
+        Some(d) => Err(AgboardError::FileInvalid {
             file: label,
             field: d.field,
             reason: d.reason,
@@ -230,7 +233,7 @@ pub fn workspace_present(shared: &Path) -> Result<bool, SkanError> {
 
 /// Every project, sorted by name (binary order). A project whose file is
 /// defective fails the whole list.
-pub fn list_projects(shared: &Path) -> Result<Vec<ProjectMeta>, SkanError> {
+pub fn list_projects(shared: &Path) -> Result<Vec<ProjectMeta>, AgboardError> {
     if !workspace_present(shared)? {
         return Ok(Vec::new());
     }
@@ -274,7 +277,7 @@ pub(crate) fn meta_of(file: ProjectFile) -> ProjectMeta {
 }
 
 /// Read and check `project.json` of a project.
-pub fn read_project_file(shared: &Path, id: &ProjectId) -> Result<ProjectFile, SkanError> {
+pub fn read_project_file(shared: &Path, id: &ProjectId) -> Result<ProjectFile, AgboardError> {
     let dir = project_dir_checked(shared, id)?;
     let path = layout::project_file(&dir);
     let label = layout::shared_label(shared, &path);
@@ -285,7 +288,7 @@ pub fn read_project_file(shared: &Path, id: &ProjectId) -> Result<ProjectFile, S
         .next()
     {
         None => Ok(file),
-        Some(d) => Err(SkanError::FileInvalid {
+        Some(d) => Err(AgboardError::FileInvalid {
             file: label,
             field: d.field,
             reason: d.reason,
@@ -295,7 +298,7 @@ pub fn read_project_file(shared: &Path, id: &ProjectId) -> Result<ProjectFile, S
 
 /// The card IDs of a project, in ascending order. Only folders with canonical
 /// names count; a temporary folder or a stray file is ignored.
-pub(crate) fn card_ids(project_dir: &Path) -> Result<Vec<i64>, SkanError> {
+pub(crate) fn card_ids(project_dir: &Path) -> Result<Vec<i64>, AgboardError> {
     let tasks = layout::tasks_dir(project_dir);
     if !tasks.is_dir() {
         return Ok(Vec::new());
@@ -427,11 +430,11 @@ pub(crate) fn read_task_strict(
     shared: &Path,
     project_id: &ProjectId,
     card_id: i64,
-) -> Result<TaskFile, SkanError> {
+) -> Result<TaskFile, AgboardError> {
     let project_dir = project_dir_checked(shared, project_id)?;
     let dir = layout::task_dir(&project_dir, card_id);
     if !dir.is_dir() {
-        return Err(SkanError::CardNotFound { id: card_id });
+        return Err(AgboardError::CardNotFound { id: card_id });
     }
     let path = layout::task_json(&dir);
     let label = layout::shared_label(shared, &path);
@@ -439,7 +442,7 @@ pub(crate) fn read_task_strict(
     let task: TaskFile = parse_file(&bytes, &label)?;
     match validate::check_task(&task, card_id).into_iter().next() {
         None => Ok(task),
-        Some(d) => Err(SkanError::FileInvalid {
+        Some(d) => Err(AgboardError::FileInvalid {
             file: label,
             field: d.field,
             reason: d.reason,
@@ -452,7 +455,7 @@ pub(crate) fn read_body(
     shared: &Path,
     project_id: &ProjectId,
     card_id: i64,
-) -> Result<String, SkanError> {
+) -> Result<String, AgboardError> {
     let project_dir = project_dir_checked(shared, project_id)?;
     let path = layout::task_md(&layout::task_dir(&project_dir, card_id));
     io::read_text(&path, &layout::shared_label(shared, &path))
@@ -463,7 +466,7 @@ pub fn read_card(
     shared: &Path,
     project_id: &ProjectId,
     card_id: i64,
-) -> Result<CardView, SkanError> {
+) -> Result<CardView, AgboardError> {
     let task = read_task_strict(shared, project_id, card_id)?;
     let body = read_body(shared, project_id, card_id)?;
     let project_dir = layout::project_dir(shared, project_id);
@@ -475,7 +478,10 @@ pub fn read_card(
 
 /// The snapshot of one project: its project file (strict), and every card
 /// with the defects that were tolerated.
-pub fn read_snapshot(shared: &Path, project_id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+pub fn read_snapshot(
+    shared: &Path,
+    project_id: &ProjectId,
+) -> Result<ProjectSnapshot, AgboardError> {
     let project_dir = project_dir_checked(shared, project_id)?;
     // The version is taken before the files are read: a save in between makes
     // the next reload see a different version and read again.
@@ -518,7 +524,7 @@ pub struct AllSnapshots {
 
 impl FileStore {
     /// The project list with the catalog version, computed from the files read now.
-    pub fn catalog(&self) -> Result<ProjectCatalog, SkanError> {
+    pub fn catalog(&self) -> Result<ProjectCatalog, AgboardError> {
         let all = self.all_snapshots()?;
         Ok(ProjectCatalog {
             projects: all.projects.iter().map(|p| p.project.clone()).collect(),
@@ -528,29 +534,29 @@ impl FileStore {
 
     /// The project with this name. A name that matches no project is
     /// `project_not_found`.
-    pub fn project_by_name(&self, name: &str) -> Result<ProjectMeta, SkanError> {
+    pub fn project_by_name(&self, name: &str) -> Result<ProjectMeta, AgboardError> {
         list_projects(self.shared_dir())?
             .into_iter()
             .find(|project| project.name == name)
-            .ok_or_else(|| SkanError::ProjectNotFound {
+            .ok_or_else(|| AgboardError::ProjectNotFound {
                 project: name.to_string(),
             })
     }
 
     /// One project's unarchived cards, with its version, its cursor, and the
     /// defects of its files.
-    pub fn board(&self, id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+    pub fn board(&self, id: &ProjectId) -> Result<ProjectSnapshot, AgboardError> {
         Ok(read_snapshot(self.shared_dir(), id)?.without_archived())
     }
 
     /// One project's archived cards, read the same way as [`FileStore::board`].
-    pub fn archive_snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+    pub fn archive_snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, AgboardError> {
         Ok(read_snapshot(self.shared_dir(), id)?.only_archived())
     }
 
     /// Every project's unarchived snapshot in name order, with the catalog
     /// version. A project whose `project.json` is defective fails the whole read.
-    pub fn all_snapshots(&self) -> Result<AllSnapshots, SkanError> {
+    pub fn all_snapshots(&self) -> Result<AllSnapshots, AgboardError> {
         let mut projects = Vec::new();
         for meta in list_projects(self.shared_dir())? {
             projects.push(self.board(&meta.id)?);

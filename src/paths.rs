@@ -10,15 +10,15 @@ pub struct ServeInfo {
     pub started_at: String,
 }
 
-/// The data directory: `$SKAN_HOME` if set (and not empty), otherwise `skan/`
+/// The data directory: `$AGBOARD_HOME` if set (and not empty), otherwise `agboard/`
 /// under the OS application data directory.
 pub fn data_dir() -> PathBuf {
-    if let Some(home) = std::env::var_os("SKAN_HOME").filter(|v| !v.is_empty()) {
+    if let Some(home) = std::env::var_os("AGBOARD_HOME").filter(|v| !v.is_empty()) {
         return PathBuf::from(home);
     }
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("skan")
+        .join("agboard")
 }
 
 /// The shared file area: every project's canonical files live below it.
@@ -65,25 +65,25 @@ mod tests {
 
     use super::*;
 
-    // SKAN_HOME is process-global, so tests that change it must not overlap.
+    // AGBOARD_HOME is process-global, so tests that change it must not overlap.
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn with_home<T>(home: Option<&std::path::Path>, f: impl FnOnce() -> T) -> T {
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let previous = std::env::var_os("SKAN_HOME");
+        let previous = std::env::var_os("AGBOARD_HOME");
         // SAFETY: access to the environment is serialized by ENV_LOCK.
         unsafe {
             match home {
-                Some(path) => std::env::set_var("SKAN_HOME", path),
-                None => std::env::remove_var("SKAN_HOME"),
+                Some(path) => std::env::set_var("AGBOARD_HOME", path),
+                None => std::env::remove_var("AGBOARD_HOME"),
             }
         }
         let result = f();
         // SAFETY: as above.
         unsafe {
             match previous {
-                Some(value) => std::env::set_var("SKAN_HOME", value),
-                None => std::env::remove_var("SKAN_HOME"),
+                Some(value) => std::env::set_var("AGBOARD_HOME", value),
+                None => std::env::remove_var("AGBOARD_HOME"),
             }
         }
         result
@@ -98,7 +98,7 @@ mod tests {
     }
 
     #[test]
-    fn data_dir_prefers_skan_home() {
+    fn data_dir_prefers_agboard_home() {
         let tmp = tempfile::tempdir().unwrap();
         with_home(Some(tmp.path()), || {
             assert_eq!(data_dir(), tmp.path());
@@ -108,9 +108,9 @@ mod tests {
     }
 
     #[test]
-    fn data_dir_defaults_to_skan_under_the_os_data_dir() {
+    fn data_dir_defaults_to_agboard_under_the_os_data_dir() {
         with_home(None, || {
-            assert_eq!(data_dir(), dirs::data_dir().unwrap().join("skan"));
+            assert_eq!(data_dir(), dirs::data_dir().unwrap().join("agboard"));
         });
     }
 
@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn write_serve_info_creates_the_data_dir() {
         let tmp = tempfile::tempdir().unwrap();
-        let home = tmp.path().join("nested").join("skan");
+        let home = tmp.path().join("nested").join("agboard");
         with_home(Some(&home), || {
             write_serve_info(&sample());
             assert_eq!(read_serve_info(), Some(sample()));

@@ -1,5 +1,5 @@
 {
-  "format": "skan-board",
+  "format": "agboard-board",
   "version": 3,
   "board": {
     "name": "Beta",

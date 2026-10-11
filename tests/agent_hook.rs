@@ -9,7 +9,7 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
     let home = tempdir().unwrap();
     for project in ["Agent Board", "Other"] {
         let init = Command::new(env!("CARGO_BIN_EXE_agboard"))
-            .env("SKAN_HOME", home.path())
+            .env("AGBOARD_HOME", home.path())
             .args(["--project", project, "init"])
             .output()
             .unwrap();
@@ -20,7 +20,7 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
             "Question"
         };
         let add = Command::new(env!("CARGO_BIN_EXE_agboard"))
-            .env("SKAN_HOME", home.path())
+            .env("AGBOARD_HOME", home.path())
             .args([
                 "--project",
                 project,
@@ -241,13 +241,13 @@ fn hook_input_limit_stays_at_64_kib() {
 fn installed_binary_handles_hook_json_on_stdin() {
     let home = tempdir().unwrap();
     let init = Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home.path())
+        .env("AGBOARD_HOME", home.path())
         .args(["--project", "Agent Board", "init"])
         .output()
         .unwrap();
     assert!(init.status.success());
     let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home.path())
+        .env("AGBOARD_HOME", home.path())
         .args(["--project", "Agent Board", "hook", "--agent", "codex"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

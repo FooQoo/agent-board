@@ -77,7 +77,7 @@ const JA_COLORS: Record<Accent, string> = {
 };
 
 const THEME_KEY = 'agboard.theme';
-const LOCALE_KEY = 'skan.locale';
+const LOCALE_KEY = 'agboard.locale';
 
 let pageErrors: string[] = [];
 

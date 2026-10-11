@@ -14,7 +14,7 @@ use crate::domain::{
     Actor, ChangeContext, Changed, Column, ProjectId, RunState, check_work_state,
     validate_work_reason,
 };
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 impl FileStore {
     /// Move a card to the end of a lane. A draft is refused for agents.
@@ -25,7 +25,7 @@ impl FileStore {
         to: Column,
         ctx: ChangeContext,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         self.move_card(project, id, to, ctx, now, true)
     }
 
@@ -37,7 +37,7 @@ impl FileStore {
         to: Column,
         ctx: ChangeContext,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         self.move_card(project, id, to, ctx, now, false)
     }
 
@@ -49,16 +49,16 @@ impl FileStore {
         ctx: ChangeContext,
         now: DateTime<Utc>,
         block_drafts: bool,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let reason = validate_work_reason(&ctx.reason)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(SkanError::CardArchived { id });
+            return Err(AgboardError::CardArchived { id });
         }
         if block_drafts && task.is_draft {
-            return Err(SkanError::CardIsDraft { id });
+            return Err(AgboardError::CardIsDraft { id });
         }
         if task.card_status == to {
             return Ok(Changed {
@@ -106,7 +106,7 @@ impl FileStore {
         ctx: ChangeContext,
         expected_request: Option<&str>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         self.change_state(
             project,
             id,
@@ -132,16 +132,16 @@ impl FileStore {
         expected_request: Option<&str>,
         choices: Vec<Choice>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let reason = validate_work_reason(reason)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(SkanError::CardArchived { id });
+            return Err(AgboardError::CardArchived { id });
         }
         if task.is_draft {
-            return Err(SkanError::CardIsDraft { id });
+            return Err(AgboardError::CardIsDraft { id });
         }
         check_work_state(task.assignee, task.card_status, state)?;
         if task.agent_status == state {
@@ -153,7 +153,7 @@ impl FileStore {
         if task.agent_status == RunState::Pending
             && expected_request != task.pending_request_id.as_deref()
         {
-            return Err(SkanError::RequestChanged);
+            return Err(AgboardError::RequestChanged);
         }
         let at = stamp(now);
         let request_id = if state == RunState::Pending {

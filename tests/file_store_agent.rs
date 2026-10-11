@@ -6,7 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use chrono::{TimeZone, Utc};
 
@@ -99,7 +99,10 @@ fn reporting_running_on_a_todo_card_is_refused_and_changes_nothing() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidStateForAssignee), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::InvalidStateForAssignee),
+        "{err:?}"
+    );
     assert_eq!(fx.bytes(id), before);
 }
 
@@ -141,7 +144,10 @@ fn running_on_a_human_card_in_doing_is_refused() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidStateForAssignee), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::InvalidStateForAssignee),
+        "{err:?}"
+    );
 }
 
 #[test]
@@ -299,7 +305,10 @@ fn a_draft_card_refuses_agent_moves_and_accepts_user_moves() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardIsDraft { id: 1 }), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::CardIsDraft { id: 1 }),
+        "{err:?}"
+    );
 
     let moved = fx
         .store
@@ -353,7 +362,7 @@ fn a_stale_or_missing_request_id_is_refused_when_leaving_pending() {
             )
             .unwrap_err();
         assert!(
-            matches!(err, SkanError::RequestChanged),
+            matches!(err, AgboardError::RequestChanged),
             "{expected:?}: {err:?}"
         );
     }
@@ -437,7 +446,7 @@ fn a_blank_reason_is_refused_and_changes_nothing() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     assert_eq!(fx.bytes(id), before);
 }
 
@@ -502,5 +511,8 @@ fn running_on_a_done_card_is_refused_by_the_state_table() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidStateForAssignee), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::InvalidStateForAssignee),
+        "{err:?}"
+    );
 }

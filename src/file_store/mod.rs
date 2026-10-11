@@ -19,7 +19,7 @@ pub mod watch;
 use std::path::{Path, PathBuf};
 
 use crate::domain::{ProjectId, ProjectMeta};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use model::CardView;
 pub use ops::Answer;
 use reader::ProjectSnapshot;
@@ -43,17 +43,17 @@ impl FileStore {
     }
 
     /// Every project, sorted by name.
-    pub fn projects(&self) -> Result<Vec<ProjectMeta>, SkanError> {
+    pub fn projects(&self) -> Result<Vec<ProjectMeta>, AgboardError> {
         reader::list_projects(&self.shared)
     }
 
     /// One project with its cards and the defects tolerated while reading.
-    pub fn snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+    pub fn snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, AgboardError> {
         reader::read_snapshot(&self.shared, id)
     }
 
     /// One card, read strictly.
-    pub fn card(&self, id: &ProjectId, card_id: i64) -> Result<CardView, SkanError> {
+    pub fn card(&self, id: &ProjectId, card_id: i64) -> Result<CardView, AgboardError> {
         reader::read_card(&self.shared, id, card_id)
     }
 }

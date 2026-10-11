@@ -1,7 +1,7 @@
 import type { Plugin, ProxyOptions } from 'vite';
 
-const TOKEN_PLACEHOLDER = '{{SKAN_TOKEN}}';
-const TOKEN_PATTERN = /<meta name="skan-token" content="([0-9a-f]{64})"/;
+const TOKEN_PLACEHOLDER = '{{AGBOARD_TOKEN}}';
+const TOKEN_PATTERN = /<meta name="agboard-token" content="([0-9a-f]{64})"/;
 
 /** Get the current delete token from the Rust server's rendered index. */
 async function fetchToken(backendOrigin: string): Promise<string> {
@@ -17,7 +17,7 @@ export function liveApi(backendOrigin: string): Plugin {
   let currentToken: string | undefined;
 
   return {
-    name: 'skan-live-api',
+    name: 'agboard-live-api',
     apply: 'serve',
     async transformIndexHtml(html) {
       const token = await fetchToken(backendOrigin);

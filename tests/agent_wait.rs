@@ -12,7 +12,7 @@ fn agboard(home: &std::path::Path, args: &[&str]) -> std::process::Output {
 
 fn agboard_for(home: &std::path::Path, project: &str, args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home)
+        .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["--project", project])
         .args(args)
@@ -22,7 +22,7 @@ fn agboard_for(home: &std::path::Path, project: &str, args: &[&str]) -> std::pro
 
 fn start_server(home: &std::path::Path) -> std::process::Child {
     let mut server = Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home)
+        .env("AGBOARD_HOME", home)
         .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -95,7 +95,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let mut server = start_server(home.path());
 
     let waiter = Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home.path())
+        .env("AGBOARD_HOME", home.path())
         .args([
             "--project",
             "Agent Board",
@@ -227,7 +227,7 @@ fn a_change_to_another_project_does_not_end_the_wait() {
     let mut server = start_server(home.path());
 
     let waiter = Command::new(env!("CARGO_BIN_EXE_agboard"))
-        .env("SKAN_HOME", home.path())
+        .env("AGBOARD_HOME", home.path())
         .args([
             "--project",
             "Agent Board",

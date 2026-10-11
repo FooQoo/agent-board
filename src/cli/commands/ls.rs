@@ -3,7 +3,7 @@ use crate::cli::{Context, Outcome};
 use crate::clock::{Clock, format_utc};
 use crate::file_store::model::CardView;
 use crate::file_store::reader::AllSnapshots;
-use crate::{domain::Column, error::SkanError};
+use crate::{domain::Column, error::AgboardError};
 use serde_json::json;
 
 const COLUMNS: [Column; 3] = [Column::Todo, Column::Doing, Column::Done];
@@ -20,7 +20,7 @@ fn keep(args: &LsArgs, card: &CardView) -> bool {
         })
 }
 
-pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, AgboardError> {
     if args.all_projects {
         return run_all_projects(ctx, args);
     }
@@ -41,7 +41,7 @@ pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
 
 /// Every project's board from one read, with the filters applied to each
 /// project's cards. A project with no matching card stays, with no cards.
-fn run_all_projects(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
+fn run_all_projects(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, AgboardError> {
     let fetched_at = format_utc(ctx.clock.now());
     let mut all = ctx.files.all_snapshots()?;
     for project in &mut all.projects {

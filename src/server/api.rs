@@ -17,7 +17,7 @@ use crate::domain::{
     Actor, Assignee, ChangeContext, Changed, Column, NewCard, ProjectId, RunState,
     validate_attachment,
 };
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::file_store::index::ProjectEntry;
 use crate::file_store::model::{AttachmentOwner, CardView, EpicUpdate, NewEpic};
 use crate::file_store::validate::EpicId;
@@ -164,32 +164,32 @@ fn error_response(
     json_response(status, &body)
 }
 
-fn skan_error_response(error: &SkanError) -> Response {
+fn agboard_error_response(error: &AgboardError) -> Response {
     let status = match error {
-        SkanError::CardNotFound { .. }
-        | SkanError::ProjectNotFound { .. }
-        | SkanError::AttachmentNotFound { .. }
-        | SkanError::EvidenceNotFound { .. }
-        | SkanError::EpicNotFound { .. } => StatusCode::NOT_FOUND,
-        SkanError::RequestChanged
-        | SkanError::CardIsDraft { .. }
-        | SkanError::CardNotDraft { .. }
-        | SkanError::InvalidStateForDraft { .. }
-        | SkanError::ProjectNameExists { .. }
-        | SkanError::AttachmentRequestConflict
-        | SkanError::EpicIdTaken { .. }
-        | SkanError::EpicInUse { .. } => StatusCode::CONFLICT,
-        SkanError::CardArchived { .. }
-        | SkanError::CardNotArchived { .. }
-        | SkanError::ArchiveTargetsChanged => StatusCode::CONFLICT,
-        SkanError::InvalidArgument { .. }
-        | SkanError::InvalidValue { .. }
-        | SkanError::FileInvalid { .. }
-        | SkanError::InvalidStateForColumn { .. }
-        | SkanError::InvalidStateForAssignee
-        | SkanError::RequestChoiceUnknown { .. }
-        | SkanError::AttachmentLimitExceeded => StatusCode::UNPROCESSABLE_ENTITY,
-        SkanError::DatabaseBusy => StatusCode::SERVICE_UNAVAILABLE,
+        AgboardError::CardNotFound { .. }
+        | AgboardError::ProjectNotFound { .. }
+        | AgboardError::AttachmentNotFound { .. }
+        | AgboardError::EvidenceNotFound { .. }
+        | AgboardError::EpicNotFound { .. } => StatusCode::NOT_FOUND,
+        AgboardError::RequestChanged
+        | AgboardError::CardIsDraft { .. }
+        | AgboardError::CardNotDraft { .. }
+        | AgboardError::InvalidStateForDraft { .. }
+        | AgboardError::ProjectNameExists { .. }
+        | AgboardError::AttachmentRequestConflict
+        | AgboardError::EpicIdTaken { .. }
+        | AgboardError::EpicInUse { .. } => StatusCode::CONFLICT,
+        AgboardError::CardArchived { .. }
+        | AgboardError::CardNotArchived { .. }
+        | AgboardError::ArchiveTargetsChanged => StatusCode::CONFLICT,
+        AgboardError::InvalidArgument { .. }
+        | AgboardError::InvalidValue { .. }
+        | AgboardError::FileInvalid { .. }
+        | AgboardError::InvalidStateForColumn { .. }
+        | AgboardError::InvalidStateForAssignee
+        | AgboardError::RequestChoiceUnknown { .. }
+        | AgboardError::AttachmentLimitExceeded => StatusCode::UNPROCESSABLE_ENTITY,
+        AgboardError::DatabaseBusy => StatusCode::SERVICE_UNAVAILABLE,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     };
     error_response(status, error.code(), error.message(), error.reason())
@@ -381,12 +381,12 @@ impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for StrictJs
 /// Run `work` on the shared files on a blocking thread.
 async fn with_files<T: Send + 'static>(
     state: &AppState,
-    work: impl FnOnce(FileStore) -> Result<T, SkanError> + Send + 'static,
-) -> Result<T, SkanError> {
+    work: impl FnOnce(FileStore) -> Result<T, AgboardError> + Send + 'static,
+) -> Result<T, AgboardError> {
     let shared = state.shared.clone();
     tokio::task::spawn_blocking(move || work(FileStore::open(&shared)))
         .await
-        .map_err(|e| SkanError::DatabaseError {
+        .map_err(|e| AgboardError::DatabaseError {
             reason: format!("The file task failed: {e}"),
         })?
 }
@@ -477,7 +477,7 @@ async fn logo_white_png() -> Response {
 
 /// The project named in the URL. The URL is a name for a project, never a
 /// credential: an ID that is not well formed is `invalid_value`.
-fn parse_project_id(raw: &str) -> Result<ProjectId, SkanError> {
+fn parse_project_id(raw: &str) -> Result<ProjectId, AgboardError> {
     raw.parse()
 }
 
@@ -485,7 +485,7 @@ fn parse_project_id(raw: &str) -> Result<ProjectId, SkanError> {
 async fn projects(State(state): State<Arc<AppState>>) -> Response {
     match with_files(&state, |files| files.catalog()).await {
         Ok(catalog) => json_response(StatusCode::OK, &catalog),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -494,30 +494,30 @@ async fn projects(State(state): State<Arc<AppState>>) -> Response {
 fn indexed_view(
     state: &AppState,
     id: &ProjectId,
-) -> Result<Arc<crate::file_store::reader::ProjectSnapshot>, SkanError> {
+) -> Result<Arc<crate::file_store::reader::ProjectSnapshot>, AgboardError> {
     // A folder that is gone is a deleted project, even before the watcher reloads.
     if !crate::file_store::layout::project_dir(&state.shared, id).is_dir() {
-        return Err(SkanError::ProjectNotFound {
+        return Err(AgboardError::ProjectNotFound {
             project: id.to_string(),
         });
     }
     let index = state.index.read().unwrap_or_else(|e| e.into_inner());
     match index.entry(id) {
-        None => Err(SkanError::ProjectNotFound {
+        None => Err(AgboardError::ProjectNotFound {
             project: id.to_string(),
         }),
         Some(ProjectEntry::Ready { view, .. }) => Ok(view.clone()),
         Some(ProjectEntry::Invalid { error, .. }) => Err(match error {
-            SkanError::FileInvalid {
+            AgboardError::FileInvalid {
                 file,
                 field,
                 reason,
-            } => SkanError::FileInvalid {
+            } => AgboardError::FileInvalid {
                 file: file.clone(),
                 field: field.clone(),
                 reason: reason.clone(),
             },
-            other => SkanError::FileError {
+            other => AgboardError::FileError {
                 action: crate::error::FileAction::Read,
                 file: id.to_string(),
                 reason: other.reason(),
@@ -529,7 +529,7 @@ fn indexed_view(
 async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<String>) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     match indexed_view(&state, &project_id) {
         Ok(view) => {
@@ -560,14 +560,14 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
                 },
             )
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
 async fn archive(State(state): State<Arc<AppState>>, Path(raw_project): Path<String>) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     match indexed_view(&state, &project_id) {
         Ok(view) => json_response(
@@ -579,7 +579,7 @@ async fn archive(State(state): State<Arc<AppState>>, Path(raw_project): Path<Str
                 "cards": view.cards.iter().filter(|c| c.archived_at.is_some()).collect::<Vec<_>>(),
             }),
         ),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -611,7 +611,7 @@ async fn delete_card(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
@@ -630,7 +630,7 @@ async fn delete_card(
             refresh_index(&state);
             StatusCode::NO_CONTENT.into_response()
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -640,7 +640,7 @@ async fn archive_card(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -659,7 +659,7 @@ async fn restore_card(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -685,7 +685,7 @@ async fn archive_done(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let result = with_files(&state, move |store| {
         store.archive_done(&project_id, &input.ids, chrono::Utc::now())
@@ -704,7 +704,7 @@ async fn archive_done(
                 }),
             )
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -713,7 +713,7 @@ fn write_allowed(headers: &HeaderMap, state: &AppState) -> bool {
         host: header_text(headers, "host"),
         origin: header_text(headers, "origin"),
         sec_fetch_site: header_text(headers, "sec-fetch-site"),
-        token: header_text(headers, "x-skan-token"),
+        token: header_text(headers, "x-agboard-token"),
     };
     guard::check_delete(&request, state.port, &state.token).is_ok()
 }
@@ -922,7 +922,7 @@ async fn create_card(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     match with_files(&state, move |store| {
         store.create_card(
@@ -943,7 +943,7 @@ async fn create_card(
             refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -954,7 +954,7 @@ async fn move_card(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
@@ -987,7 +987,7 @@ async fn move_card(
                 &serde_json::json!({"card": result.value, "changed": result.changed}),
             )
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -998,7 +998,7 @@ async fn set_agent_status(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
@@ -1032,7 +1032,7 @@ async fn set_agent_status(
                 &serde_json::json!({"card": result.value, "changed": result.changed}),
             )
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1043,7 +1043,7 @@ async fn answer_request(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
@@ -1075,7 +1075,7 @@ async fn answer_request(
                 &serde_json::json!({"card": card, "changed": true}),
             )
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1094,7 +1094,7 @@ fn parse_card_id(raw: &str) -> Result<i64, Box<Response>> {
 /// A card as `{"card": ...}`, telling the browsers only if something changed.
 fn changed_card_response(
     state: &AppState,
-    result: Result<Changed<CardView>, SkanError>,
+    result: Result<Changed<CardView>, AgboardError>,
 ) -> Response {
     match result {
         Ok(result) => {
@@ -1103,7 +1103,7 @@ fn changed_card_response(
             }
             json_response(StatusCode::OK, &serde_json::json!({"card": result.value}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1115,14 +1115,14 @@ async fn edit_card(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
     if input.title.is_none() && input.description.is_none() && !input.finalize {
-        return skan_error_response(&SkanError::InvalidArgument {
+        return agboard_error_response(&AgboardError::InvalidArgument {
             message: "Nothing to change.".to_string(),
             command: None,
         });
@@ -1148,7 +1148,7 @@ async fn edit_card_multipart(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1222,7 +1222,7 @@ async fn edit_card_multipart(
                 &serde_json::json!({"card": value, "changed": changed}),
             )
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1233,7 +1233,7 @@ async fn create_card_multipart(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let multipart = match multipart {
         Ok(value) => value,
@@ -1294,7 +1294,7 @@ async fn create_card_multipart(
     }
     for input in &payload.additions {
         if let Err(error) = validate_attachment(&input.id, &input.name, &input.bytes) {
-            return skan_error_response(&error);
+            return agboard_error_response(&error);
         }
     }
     let additions = payload.additions;
@@ -1323,7 +1323,7 @@ async fn create_card_multipart(
             refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1335,7 +1335,7 @@ async fn set_draft(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1364,7 +1364,7 @@ fn file_response(content_type: &str, bytes: Vec<u8>) -> Response {
 }
 
 /// The bytes of a file the store has already checked the path of.
-fn read_checked(store: &FileStore, path: &std::path::Path) -> Result<Vec<u8>, SkanError> {
+fn read_checked(store: &FileStore, path: &std::path::Path) -> Result<Vec<u8>, AgboardError> {
     let label = crate::file_store::layout::shared_label(store.shared_dir(), path);
     crate::file_store::io::read_bytes(path, &label)
 }
@@ -1422,7 +1422,7 @@ async fn list_card_attachments(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1433,7 +1433,7 @@ async fn list_card_attachments(
             StatusCode::OK,
             &serde_json::json!({"cardId": card.id, "attachments": card.attachments}),
         ),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1444,7 +1444,7 @@ async fn add_card_attachment(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1487,7 +1487,7 @@ async fn add_card_attachment(
             refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1497,7 +1497,7 @@ async fn get_card_attachment(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1512,7 +1512,7 @@ async fn get_card_attachment(
     .await;
     match result {
         Ok((media_type, bytes)) => file_response(&media_type, bytes),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1522,7 +1522,7 @@ async fn delete_card_attachment(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1543,7 +1543,7 @@ async fn delete_card_attachment(
             refresh_index(&state);
             json_response(StatusCode::OK, &serde_json::json!({"card": card}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1555,7 +1555,7 @@ async fn add_card_evidence(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1578,7 +1578,7 @@ async fn add_card_evidence(
             refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1589,7 +1589,7 @@ async fn get_card_evidence(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1601,7 +1601,7 @@ async fn get_card_evidence(
     .await
     {
         Ok(data) => file_response("text/plain; charset=utf-8", data.bytes),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1611,7 +1611,7 @@ async fn delete_card_evidence(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1627,7 +1627,7 @@ async fn delete_card_evidence(
             refresh_index(&state);
             json_response(StatusCode::OK, &serde_json::json!({"card": card}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1657,7 +1657,7 @@ async fn set_card_epic(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let id = match parse_card_id(&raw_id) {
         Ok(id) => id,
@@ -1675,7 +1675,7 @@ async fn set_card_epic(
         Some(None) => None,
         Some(Some(raw)) => match raw.parse::<EpicId>() {
             Ok(id) => Some(id),
-            Err(error) => return skan_error_response(&error),
+            Err(error) => return agboard_error_response(&error),
         },
     };
     let result = with_files(&state, move |store| {
@@ -1717,7 +1717,7 @@ struct EpicPatchInput {
     plan: Option<String>,
 }
 
-fn parse_epic_id(raw: &str) -> Result<EpicId, SkanError> {
+fn parse_epic_id(raw: &str) -> Result<EpicId, AgboardError> {
     raw.parse()
 }
 
@@ -1727,11 +1727,11 @@ async fn list_epics(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     match indexed_view(&state, &project_id) {
         Ok(view) => json_response(StatusCode::OK, &serde_json::json!({"epics": view.epics})),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1741,15 +1741,15 @@ async fn get_epic(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let epic_id = match parse_epic_id(&raw_epic) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     match with_files(&state, move |store| store.epic(&project_id, &epic_id)).await {
         Ok(epic) => json_response(StatusCode::OK, &serde_json::json!({"epic": epic})),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1760,7 +1760,7 @@ async fn create_epic(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let new = NewEpic {
         id: input.id,
@@ -1778,7 +1778,7 @@ async fn create_epic(
             refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"epic": epic}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1789,11 +1789,11 @@ async fn update_epic(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let epic_id = match parse_epic_id(&raw_epic) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let update = EpicUpdate {
         name: input.name,
@@ -1815,7 +1815,7 @@ async fn update_epic(
                 &serde_json::json!({"epic": value, "changed": changed}),
             )
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1825,18 +1825,18 @@ async fn list_epic_attachments(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let epic_id = match parse_epic_id(&raw_epic) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     match with_files(&state, move |store| store.epic(&project_id, &epic_id)).await {
         Ok(epic) => json_response(
             StatusCode::OK,
             &serde_json::json!({"epicId": epic.id, "attachments": epic.attachments}),
         ),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1847,11 +1847,11 @@ async fn add_epic_attachment(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let epic_id = match parse_epic_id(&raw_epic) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let Ok(multipart) = multipart else {
         return multipart_too_large();
@@ -1890,7 +1890,7 @@ async fn add_epic_attachment(
             refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"epic": epic}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1900,11 +1900,11 @@ async fn get_epic_attachment(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let epic_id = match parse_epic_id(&raw_epic) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let result = with_files(&state, move |store| {
         let stored =
@@ -1915,7 +1915,7 @@ async fn get_epic_attachment(
     .await;
     match result {
         Ok((media_type, bytes)) => file_response(&media_type, bytes),
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -1925,11 +1925,11 @@ async fn delete_epic_attachment(
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let epic_id = match parse_epic_id(&raw_epic) {
         Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let result = with_files(&state, move |store| {
         store.delete_attachment_for_user(
@@ -1946,6 +1946,6 @@ async fn delete_epic_attachment(
             refresh_index(&state);
             json_response(StatusCode::OK, &serde_json::json!({"epic": epic}))
         }
-        Err(error) => skan_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }

@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use agent_board::domain::{Actor, Assignee, Changed, NewCard, ProjectId};
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::CardView;
 use chrono::{TimeZone, Utc};
@@ -123,7 +123,7 @@ fn a_failed_save_keeps_the_number_reserved_and_leaves_no_temporary_folder() {
         .store
         .create_card(&fx.project, new_card("second", ""), now())
         .unwrap_err();
-    assert!(matches!(err, SkanError::FileError { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::FileError { .. }), "{err:?}");
 
     let leftovers: Vec<String> = fs::read_dir(fx.project_dir().join("tasks"))
         .unwrap()
@@ -150,7 +150,7 @@ fn a_body_without_the_required_headings_is_refused_and_creates_nothing() {
         .create_card(&fx.project, new_card("T", "just some text"), now())
         .unwrap_err();
     match err {
-        SkanError::FileInvalid { file, field, .. } => {
+        AgboardError::FileInvalid { file, field, .. } => {
             assert_eq!(field, "## 作業内容");
             assert!(file.ends_with("tasks/1/TASK.md"), "{file}");
         }
@@ -174,7 +174,7 @@ fn a_completion_condition_without_its_detail_line_is_refused() {
         .create_card(&fx.project, new_card("T", &body), now())
         .unwrap_err();
     match err {
-        SkanError::FileInvalid { field, .. } => assert_eq!(field, "AC-1"),
+        AgboardError::FileInvalid { field, .. } => assert_eq!(field, "AC-1"),
         other => panic!("unexpected error: {other:?}"),
     }
 }
@@ -241,7 +241,10 @@ fn a_draft_refuses_agent_edits_and_its_files_stay_unchanged() {
         .store
         .edit_card(&fx.project, 1, Some("Changed"), Some(VALID_BODY), later())
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardIsDraft { id: 1 }), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::CardIsDraft { id: 1 }),
+        "{err:?}"
+    );
     assert_eq!(fx.task_bytes(1), task);
     assert_eq!(fx.body_bytes(1), body);
 }
@@ -294,7 +297,10 @@ fn a_card_that_is_not_a_draft_is_refused_by_the_draft_edit() {
         .store
         .edit_draft_card(&fx.project, 1, Some("X"), None, false, later())
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardNotDraft { id: 1 }), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::CardNotDraft { id: 1 }),
+        "{err:?}"
+    );
 }
 
 #[test]
@@ -322,7 +328,7 @@ fn archiving_keeps_the_lane_and_position_and_restoring_puts_the_card_at_the_lane
         .edit_card(&fx.project, 1, Some("x"), None, later())
         .unwrap_err();
     assert!(
-        matches!(edit, SkanError::CardArchived { id: 1 }),
+        matches!(edit, AgboardError::CardArchived { id: 1 }),
         "{edit:?}"
     );
 
@@ -339,7 +345,7 @@ fn deleting_needs_an_archived_card_and_then_removes_its_folder() {
     fx.create("one");
     let err = fx.store.delete_archived_card(&fx.project, 1).unwrap_err();
     assert!(
-        matches!(err, SkanError::CardNotArchived { id: 1 }),
+        matches!(err, AgboardError::CardNotArchived { id: 1 }),
         "{err:?}"
     );
 
@@ -348,7 +354,7 @@ fn deleting_needs_an_archived_card_and_then_removes_its_folder() {
     assert!(!fx.card_dir(1).exists());
     assert!(matches!(
         fx.store.card(&fx.project, 1),
-        Err(SkanError::CardNotFound { id: 1 })
+        Err(AgboardError::CardNotFound { id: 1 })
     ));
 }
 
@@ -448,7 +454,7 @@ fn writing_to_a_card_with_a_broken_task_file_is_refused() {
         .store
         .edit_card(&fx.project, 1, Some("x"), None, later())
         .unwrap_err();
-    assert!(matches!(err, SkanError::FileInvalid { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::FileInvalid { .. }), "{err:?}");
 }
 
 #[test]

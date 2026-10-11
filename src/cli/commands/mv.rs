@@ -1,9 +1,9 @@
 use crate::cli::args::MvArgs;
 use crate::cli::{Context, Outcome};
-use crate::{domain::ChangeContext, error::SkanError};
+use crate::{domain::ChangeContext, error::AgboardError};
 use serde_json::json;
 
-pub fn run(ctx: &mut Context, args: &MvArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &MvArgs) -> Result<Outcome, AgboardError> {
     let reason = args.change.resolve_reason()?;
     let changed = ctx.files.move_work_card(
         ctx.project_id()?,

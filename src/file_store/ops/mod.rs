@@ -26,7 +26,7 @@ use super::model::{HistoryKind, HistoryRecord, ProjectFile, TaskFile};
 use super::reader;
 use crate::clock::{format_utc, parse_utc};
 use crate::domain::{Actor, Column, ProjectId, RunState};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// A timestamp as it is stored: UTC, second precision.
 pub(super) fn stamp(now: DateTime<Utc>) -> DateTime<Utc> {
@@ -34,7 +34,7 @@ pub(super) fn stamp(now: DateTime<Utc>) -> DateTime<Utc> {
 }
 
 /// A new 32-character lowercase hexadecimal identifier (history and request IDs).
-pub(super) fn new_id() -> Result<String, SkanError> {
+pub(super) fn new_id() -> Result<String, AgboardError> {
     io::random_hex(16).map_err(|e| io::write_error("task.json", e))
 }
 
@@ -43,7 +43,7 @@ pub(super) fn new_id() -> Result<String, SkanError> {
 pub(crate) fn lock_project(
     shared: &Path,
     project: &ProjectId,
-) -> Result<(PathBuf, WriteLock), SkanError> {
+) -> Result<(PathBuf, WriteLock), AgboardError> {
     let dir = reader::project_dir_checked(shared, project)?;
     let lock = WriteLock::acquire(&layout::write_lock(&dir))?;
     Ok((dir, lock))
@@ -53,7 +53,7 @@ pub(super) fn save_project(
     shared: &Path,
     project_dir: &Path,
     file: &ProjectFile,
-) -> Result<(), SkanError> {
+) -> Result<(), AgboardError> {
     let path = layout::project_file(project_dir);
     io::write_json(&path, file, &layout::shared_label(shared, &path))
 }
@@ -62,7 +62,7 @@ pub(super) fn save_task(
     shared: &Path,
     project_dir: &Path,
     task: &TaskFile,
-) -> Result<(), SkanError> {
+) -> Result<(), AgboardError> {
     let path = layout::task_json(&layout::task_dir(project_dir, task.id));
     io::write_json(&path, task, &layout::shared_label(shared, &path))
 }
@@ -72,7 +72,7 @@ pub(super) fn save_body(
     project_dir: &Path,
     card_id: i64,
     text: &str,
-) -> Result<(), SkanError> {
+) -> Result<(), AgboardError> {
     let path = layout::task_md(&layout::task_dir(project_dir, card_id));
     io::write_atomic(&path, text.as_bytes(), &layout::shared_label(shared, &path))
 }
@@ -90,7 +90,7 @@ pub(super) struct Transition<'a> {
     pub at: DateTime<Utc>,
 }
 
-pub(super) fn transition_event(t: Transition<'_>) -> Result<HistoryRecord, SkanError> {
+pub(super) fn transition_event(t: Transition<'_>) -> Result<HistoryRecord, AgboardError> {
     Ok(HistoryRecord {
         id: new_id()?,
         kind: t.kind,
@@ -114,7 +114,11 @@ pub(super) fn transition_event(t: Transition<'_>) -> Result<HistoryRecord, SkanE
 
 /// The position after the last unarchived card of a lane, read from the files.
 /// Cards whose `task.json` is broken are not counted.
-pub(super) fn lane_end(shared: &Path, project: &ProjectId, lane: Column) -> Result<i64, SkanError> {
+pub(super) fn lane_end(
+    shared: &Path,
+    project: &ProjectId,
+    lane: Column,
+) -> Result<i64, AgboardError> {
     let project_dir = layout::project_dir(shared, project);
     let mut last = 0;
     for card_id in reader::card_ids(&project_dir)? {
@@ -139,7 +143,7 @@ pub(super) fn write_text(
     task: &mut TaskFile,
     title: Option<String>,
     description: Option<String>,
-) -> Result<bool, SkanError> {
+) -> Result<bool, AgboardError> {
     let current_body = reader::read_body(shared, project, task.id)?;
     let next_title = title.unwrap_or_else(|| task.title.clone());
     let next_body = description.unwrap_or_else(|| current_body.clone());

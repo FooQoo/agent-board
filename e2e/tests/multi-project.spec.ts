@@ -71,7 +71,7 @@ async function dragCardTo(page: Page, id: number, laneName: string): Promise<Loc
 /** The project's snapshot from the CLI, without the time it was fetched. */
 function snapshotOf(project: string, home: string): unknown {
   const result = spawnSync(agboardBinary(), ['--project', project, 'snapshot', '--json'], {
-    env: { ...process.env, SKAN_HOME: home, TZ: 'UTC' },
+    env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' },
     encoding: 'utf8',
   });
   if (result.status !== 0) throw new Error(`snapshot of ${project} failed: ${result.stderr}`);
@@ -144,7 +144,7 @@ test.describe('a new data area', () => {
     const refused = agboardCatalogOk(['project', 'ls', '--json'], home);
     expect(JSON.parse(refused.stdout).projects.map((p: { name: string }) => p.name)).toEqual(['Alpha', 'Beta']);
     const again = spawnSync(agboardBinary(), ['project', 'create', 'Alpha'], {
-      env: { ...process.env, SKAN_HOME: home },
+      env: { ...process.env, AGBOARD_HOME: home },
       encoding: 'utf8',
     });
     expect(again.status).toBe(2);
@@ -612,7 +612,7 @@ test.describe('two projects with the same card numbers', () => {
   test('a person answers on the page; the waiting agent of that project gets the answer, and its hook shows the whole history', async ({
     page,
   }) => {
-    const env = { ...process.env, SKAN_HOME: home, TZ: 'UTC' };
+    const env = { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' };
     const snapshot = JSON.parse(
       spawnSync(agboardBinary(), ['--project', 'Alpha', 'snapshot', '--json'], { env, encoding: 'utf8' }).stdout,
     ) as { cursor: string };
@@ -833,7 +833,7 @@ test.describe('two projects with the same card numbers', () => {
   test('existing screens work in every project: Japanese and the detail width', async ({ page }) => {
     await page.addInitScript(() => {
       try {
-        if (!localStorage.getItem('skan.locale')) localStorage.setItem('skan.locale', 'ja');
+        if (!localStorage.getItem('agboard.locale')) localStorage.setItem('agboard.locale', 'ja');
       } catch {
         // storage is not available
       }
@@ -1043,7 +1043,7 @@ test.describe('long names and many projects', () => {
   }
 
   test('in Japanese the header controls fit with the 50-character name as well', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('skan.locale', 'ja'));
+    await page.addInitScript(() => localStorage.setItem('agboard.locale', 'ja'));
     await page.setViewportSize({ width: 1024, height: 768 });
     await open(page, projectId(longName, home));
     await expect(page.getByRole('button', { name: 'カード追加' })).toBeVisible();

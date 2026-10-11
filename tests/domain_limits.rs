@@ -1,10 +1,10 @@
 use agent_board::domain::{
     normalize_and_validate_description, validate_board_name, validate_reason, validate_title,
 };
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 
-fn invalid(field: &str, reason: &str) -> SkanError {
-    SkanError::InvalidValue {
+fn invalid(field: &str, reason: &str) -> AgboardError {
+    AgboardError::InvalidValue {
         field: field.into(),
         reason: reason.into(),
     }

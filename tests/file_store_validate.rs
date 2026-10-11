@@ -1,7 +1,7 @@
 //! Shape checks for shared files: the TASK.md headings and completion
 //! conditions, the answer inputs, and the formatVersion gate.
 
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::model::Choice;
 use agent_board::file_store::validate::{
     check_format_version, check_task_body, ensure_task_body, normalize_answer_text,
@@ -70,7 +70,7 @@ fn ensure_task_body_names_the_file_and_the_item() {
     let body = valid_body().replace("## 実行記録", "## 記録");
     let err = ensure_task_body(&body, "projects/p/tasks/1/TASK.md").unwrap_err();
     match err {
-        SkanError::FileInvalid { file, field, .. } => {
+        AgboardError::FileInvalid { file, field, .. } => {
             assert_eq!(file, "projects/p/tasks/1/TASK.md");
             assert_eq!(field, "## 実行記録");
         }
@@ -87,7 +87,7 @@ fn choices_are_limited_to_ten_unique_ascii_ids_with_short_labels() {
     let eleven: Vec<Choice> = (0..11).map(|i| choice(&format!("c{i}"), "Label")).collect();
     assert!(matches!(
         normalize_choices(eleven),
-        Err(SkanError::InvalidValue { .. })
+        Err(AgboardError::InvalidValue { .. })
     ));
     for bad in [
         vec![choice("a", "x"), choice("a", "y")],
@@ -101,7 +101,7 @@ fn choices_are_limited_to_ten_unique_ascii_ids_with_short_labels() {
         assert!(
             matches!(
                 normalize_choices(bad.clone()),
-                Err(SkanError::InvalidValue { .. })
+                Err(AgboardError::InvalidValue { .. })
             ),
             "{bad:?}"
         );
@@ -136,11 +136,11 @@ fn only_format_version_one_passes_and_nothing_is_converted() {
     let future = serde_json::json!({"formatVersion": 2});
     assert!(matches!(
         check_format_version(&future, "project.json"),
-        Err(SkanError::FormatUnsupported { .. })
+        Err(AgboardError::FormatUnsupported { .. })
     ));
     let missing = serde_json::json!({"id": "x"});
     assert!(matches!(
         check_format_version(&missing, "project.json"),
-        Err(SkanError::FileInvalid { .. })
+        Err(AgboardError::FileInvalid { .. })
     ));
 }

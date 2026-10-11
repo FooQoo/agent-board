@@ -22,7 +22,7 @@ use crate::domain::{
     Attachment, AttachmentInput, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS, ProjectId,
     validate_attachment,
 };
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// The record that owns the images, read strictly.
 enum Loaded {
@@ -55,20 +55,24 @@ impl Loaded {
     /// A card that is archived takes no image changes for anyone. A draft
     /// takes none from the agent side (`block_drafts`); a person may change
     /// it. Epics have neither state.
-    fn ensure_writable(&self, block_drafts: bool) -> Result<(), SkanError> {
+    fn ensure_writable(&self, block_drafts: bool) -> Result<(), AgboardError> {
         match self {
             Loaded::Task(task) if task.archived_at.is_some() => {
-                Err(SkanError::CardArchived { id: task.id })
+                Err(AgboardError::CardArchived { id: task.id })
             }
             Loaded::Task(task) if block_drafts && task.is_draft => {
-                Err(SkanError::CardIsDraft { id: task.id })
+                Err(AgboardError::CardIsDraft { id: task.id })
             }
             _ => Ok(()),
         }
     }
 }
 
-fn load(shared: &Path, project: &ProjectId, owner: &AttachmentOwner) -> Result<Loaded, SkanError> {
+fn load(
+    shared: &Path,
+    project: &ProjectId,
+    owner: &AttachmentOwner,
+) -> Result<Loaded, AgboardError> {
     match owner {
         AttachmentOwner::Card(id) => Ok(Loaded::Task(reader::read_task_strict(
             shared, project, *id,
@@ -79,7 +83,7 @@ fn load(shared: &Path, project: &ProjectId, owner: &AttachmentOwner) -> Result<L
     }
 }
 
-fn save(shared: &Path, project_dir: &Path, loaded: &Loaded) -> Result<(), SkanError> {
+fn save(shared: &Path, project_dir: &Path, loaded: &Loaded) -> Result<(), AgboardError> {
     match loaded {
         Loaded::Task(task) => save_task(shared, project_dir, task),
         Loaded::Epic(epic) => {
@@ -96,7 +100,7 @@ fn asset_file(
     owner: &AttachmentOwner,
     attachment_id: &str,
     media_type: &str,
-) -> Result<PathBuf, SkanError> {
+) -> Result<PathBuf, AgboardError> {
     let ext = extension(media_type)?;
     match owner {
         AttachmentOwner::Card(id) => layout::task_asset_path(project_dir, *id, attachment_id, ext),
@@ -104,14 +108,14 @@ fn asset_file(
     }
 }
 
-fn extension(media_type: &str) -> Result<&'static str, SkanError> {
-    layout::asset_extension(media_type).ok_or_else(|| SkanError::InvalidValue {
+fn extension(media_type: &str) -> Result<&'static str, AgboardError> {
+    layout::asset_extension(media_type).ok_or_else(|| AgboardError::InvalidValue {
         field: "attachment".into(),
         reason: "Only PNG, JPEG, WebP, and GIF images are accepted.".into(),
     })
 }
 
-fn check_limits(existing: &[Attachment], added_bytes: usize) -> Result<(), SkanError> {
+fn check_limits(existing: &[Attachment], added_bytes: usize) -> Result<(), AgboardError> {
     let total: usize = existing
         .iter()
         .map(|a| usize::try_from(a.size).unwrap_or(0))
@@ -119,7 +123,7 @@ fn check_limits(existing: &[Attachment], added_bytes: usize) -> Result<(), SkanE
     if existing.len() + 1 > MAX_CARD_ATTACHMENTS
         || total.saturating_add(added_bytes) > MAX_CARD_ATTACHMENT_BYTES
     {
-        return Err(SkanError::AttachmentLimitExceeded);
+        return Err(AgboardError::AttachmentLimitExceeded);
     }
     Ok(())
 }
@@ -138,7 +142,7 @@ impl FileStore {
         owner: &AttachmentOwner,
         input: AttachmentInput,
         now: DateTime<Utc>,
-    ) -> Result<Attachment, SkanError> {
+    ) -> Result<Attachment, AgboardError> {
         self.add_attachment_gated(project, owner, input, now, true)
     }
 
@@ -149,7 +153,7 @@ impl FileStore {
         owner: &AttachmentOwner,
         input: AttachmentInput,
         now: DateTime<Utc>,
-    ) -> Result<Attachment, SkanError> {
+    ) -> Result<Attachment, AgboardError> {
         self.add_attachment_gated(project, owner, input, now, false)
     }
 
@@ -163,14 +167,14 @@ impl FileStore {
         input: AttachmentInput,
         now: DateTime<Utc>,
         block_drafts: bool,
-    ) -> Result<Attachment, SkanError> {
+    ) -> Result<Attachment, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut loaded = load(shared, project, owner)?;
         loaded.ensure_writable(block_drafts)?;
         let media_type = validate_attachment(&input.id, &input.name, &input.bytes)?;
         if loaded.attachments().iter().any(|a| a.id == input.id) {
-            return Err(SkanError::InvalidValue {
+            return Err(AgboardError::InvalidValue {
                 field: "attachmentId".into(),
                 reason: "Attachment IDs must be unique.".into(),
             });
@@ -212,7 +216,7 @@ impl FileStore {
         owner: &AttachmentOwner,
         attachment_id: &str,
         now: DateTime<Utc>,
-    ) -> Result<(), SkanError> {
+    ) -> Result<(), AgboardError> {
         self.delete_attachment_gated(project, owner, attachment_id, now, true)
     }
 
@@ -223,7 +227,7 @@ impl FileStore {
         owner: &AttachmentOwner,
         attachment_id: &str,
         now: DateTime<Utc>,
-    ) -> Result<(), SkanError> {
+    ) -> Result<(), AgboardError> {
         self.delete_attachment_gated(project, owner, attachment_id, now, false)
     }
 
@@ -236,7 +240,7 @@ impl FileStore {
         attachment_id: &str,
         now: DateTime<Utc>,
         block_drafts: bool,
-    ) -> Result<(), SkanError> {
+    ) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut loaded = load(shared, project, owner)?;
@@ -245,7 +249,7 @@ impl FileStore {
             .attachments()
             .iter()
             .position(|a| a.id == attachment_id)
-            .ok_or_else(|| SkanError::AttachmentNotFound {
+            .ok_or_else(|| AgboardError::AttachmentNotFound {
                 id: attachment_id.to_string(),
             })?;
         let media_type = loaded.attachments()[index].media_type.clone();
@@ -273,7 +277,7 @@ impl FileStore {
         project: &ProjectId,
         owner: &AttachmentOwner,
         attachment_id: &str,
-    ) -> Result<StoredAttachment, SkanError> {
+    ) -> Result<StoredAttachment, AgboardError> {
         let shared = self.shared_dir();
         let project_dir = reader::project_dir_checked(shared, project)?;
         let loaded = load(shared, project, owner)?;
@@ -282,7 +286,7 @@ impl FileStore {
             .iter()
             .find(|a| a.id == attachment_id)
             .cloned()
-            .ok_or_else(|| SkanError::AttachmentNotFound {
+            .ok_or_else(|| AgboardError::AttachmentNotFound {
                 id: attachment_id.to_string(),
             })?;
         let path = asset_file(&project_dir, owner, &metadata.id, &metadata.media_type)?;
@@ -290,7 +294,7 @@ impl FileStore {
         let linked = layout::has_symlink_below(&project_dir, &path)
             .map_err(|e| io::read_error(&label, e))?;
         if linked || !path.is_file() {
-            return Err(SkanError::AttachmentNotFound {
+            return Err(AgboardError::AttachmentNotFound {
                 id: attachment_id.to_string(),
             });
         }

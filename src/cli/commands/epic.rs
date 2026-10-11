@@ -6,13 +6,13 @@ use serde_json::{Value, json};
 
 use crate::cli::args::{EpicAddArgs, EpicArgs, EpicCommand, EpicEditArgs, EpicIdArgs};
 use crate::cli::{Context, Outcome};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::file_store::model::{EpicUpdate, EpicView, NewEpic};
 use crate::file_store::reader::ProjectSnapshot;
 use crate::file_store::validate::EpicId;
 use crate::interact::confirm;
 
-pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, AgboardError> {
     match &args.command {
         EpicCommand::Add(args) => add(ctx, args),
         EpicCommand::Ls => ls(ctx),
@@ -30,7 +30,7 @@ pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, SkanError> {
     }
 }
 
-fn add(ctx: &mut Context, args: &EpicAddArgs) -> Result<Outcome, SkanError> {
+fn add(ctx: &mut Context, args: &EpicAddArgs) -> Result<Outcome, AgboardError> {
     // Epics keep no history, so the actor is only checked for presence; the
     // command line requires it.
     let _actor = args.actor.actor();
@@ -72,7 +72,7 @@ fn card_count(snapshot: &ProjectSnapshot, epic: &str) -> usize {
         .count()
 }
 
-fn ls(ctx: &mut Context) -> Result<Outcome, SkanError> {
+fn ls(ctx: &mut Context) -> Result<Outcome, AgboardError> {
     let snapshot = ctx.files.snapshot(ctx.project_id()?)?;
     let mut epics = snapshot.epics.clone();
     epics.sort_by(|a, b| a.id.cmp(&b.id));
@@ -104,7 +104,7 @@ fn ls(ctx: &mut Context) -> Result<Outcome, SkanError> {
     })
 }
 
-fn show(ctx: &mut Context, args: &EpicIdArgs) -> Result<Outcome, SkanError> {
+fn show(ctx: &mut Context, args: &EpicIdArgs) -> Result<Outcome, AgboardError> {
     let id = EpicId::normalize(&args.id)?;
     let project = ctx.project_id()?;
     let epic = ctx.files.epic(project, &id)?;
@@ -128,7 +128,7 @@ fn show(ctx: &mut Context, args: &EpicIdArgs) -> Result<Outcome, SkanError> {
     })
 }
 
-fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, SkanError> {
+fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError> {
     let id = EpicId::normalize(&args.id)?;
     let mut stdin = std::io::stdin();
     let plan = args.plan.resolve(&mut stdin)?;
@@ -162,12 +162,12 @@ pub fn rm_with_io(
     args: &EpicIdArgs,
     input: &mut impl BufRead,
     output: &mut impl Write,
-) -> Result<Outcome, SkanError> {
+) -> Result<Outcome, AgboardError> {
     let id = EpicId::normalize(&args.id)?;
     let project = ctx.project_id()?;
     ctx.files.epic(project, &id)?;
     if ctx.json || !ctx.interactive {
-        return Err(SkanError::ConfirmationRequired {
+        return Err(AgboardError::ConfirmationRequired {
             operation: "deleting an epic".into(),
         });
     }

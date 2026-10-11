@@ -5,10 +5,10 @@ use serde_json::json;
 use crate::cli::args::InitArgs;
 use crate::cli::{Context, Outcome, Target};
 use crate::domain::BoardMeta;
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::interact::confirm;
 
-pub fn run(ctx: &mut Context, args: &InitArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &InitArgs) -> Result<Outcome, AgboardError> {
     // `run.rs` does not know about terminals yet; ask here.
     ctx.interactive = ctx.interactive || confirm::is_interactive(ctx.json);
     let stdin = std::io::stdin();
@@ -27,7 +27,7 @@ pub fn run_with_io(
     _args: &InitArgs,
     input: &mut impl BufRead,
     output: &mut impl Write,
-) -> Result<Outcome, SkanError> {
+) -> Result<Outcome, AgboardError> {
     let existing = match &ctx.target {
         Target::Missing { name } => {
             let project = ctx.files.create_project(name, ctx.clock.now())?;
@@ -43,7 +43,7 @@ pub fn run_with_io(
             });
         }
         Target::Catalog => {
-            return Err(SkanError::InvalidArgument {
+            return Err(AgboardError::InvalidArgument {
                 message: "--project NAME is required.".to_string(),
                 command: Some("init".to_string()),
             });
@@ -52,7 +52,7 @@ pub fn run_with_io(
     };
 
     if ctx.json || !ctx.interactive {
-        return Err(SkanError::ConfirmationRequired {
+        return Err(AgboardError::ConfirmationRequired {
             operation: "replacing the board".to_string(),
         });
     }

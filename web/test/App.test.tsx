@@ -43,7 +43,7 @@ beforeEach(() => {
   };
   FakeEventSource.reset();
   vi.stubGlobal('EventSource', FakeEventSource);
-  document.head.innerHTML = '<meta name="skan-token" content="test-token">';
+  document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
   fetchMock = stubBackend(backend);
 });
 
@@ -164,7 +164,7 @@ describe('App', () => {
     expect(screen.getByText('7 cards')).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/cards/14/archive`, {
       method: 'POST',
-      headers: { 'X-Skan-Token': 'test-token' },
+      headers: { 'X-Agboard-Token': 'test-token' },
     });
   });
 

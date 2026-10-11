@@ -7,7 +7,7 @@ use crate::cli::args::{self, Cli, Command, EpicCommand, EvidenceCommand, Parsed,
 use crate::cli::{Context, Env, Outcome, Target, commands, errors, output};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::file_store::FileStore;
 
 /// Runs `args` (the first item is the program name) and returns the process
@@ -45,7 +45,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
         let result = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .map_err(|error| SkanError::BoardUnavailable {
+            .map_err(|error| AgboardError::BoardUnavailable {
                 reason: error.to_string(),
             })
             .and_then(|runtime| {
@@ -143,7 +143,7 @@ fn access(command: &Command) -> Access {
     }
 }
 
-fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome), SkanError> {
+fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome), AgboardError> {
     // The name is normalized once. `--project` is absent only for commands
     // that work on the catalog; nothing is chosen for a command that lacks it.
     let name = match cli.project() {
@@ -156,7 +156,7 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
         Some(name) => match files.project_by_name(&name) {
             Ok(meta) => Target::Existing(meta),
             // `init` creates a project that does not exist yet.
-            Err(SkanError::ProjectNotFound { .. })
+            Err(AgboardError::ProjectNotFound { .. })
                 if matches!(access, Access::ChangeOrCreateProject) =>
             {
                 Target::Missing { name }
@@ -178,7 +178,7 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
     Ok((Some(ctx), outcome))
 }
 
-fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> {
+fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardError> {
     match command {
         Command::Project(args) => commands::project::run(ctx, args),
         Command::Init(args) => commands::init::run(ctx, args),
@@ -200,7 +200,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, SkanError> 
     }
 }
 
-fn fail(env: &mut Env, error: &SkanError, json: bool) -> i32 {
+fn fail(env: &mut Env, error: &AgboardError, json: bool) -> i32 {
     let text = if json {
         errors::json(error)
     } else {

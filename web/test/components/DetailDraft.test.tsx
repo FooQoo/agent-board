@@ -28,7 +28,7 @@ const draftOf = (card: CardModel): CardModel => ({ ...card, isDraft: true });
 
 beforeEach(() => {
   selectLocale('en');
-  document.head.innerHTML = '<meta name="skan-token" content="test-token">';
+  document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
 });
 afterEach(() => {
   vi.unstubAllGlobals();

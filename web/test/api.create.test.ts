@@ -14,7 +14,7 @@ function respond(status: number, body: unknown) {
 }
 
 beforeEach(() => {
-  document.head.innerHTML = '<meta name="skan-token" content="test-token">';
+  document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
 });
 
 afterEach(() => vi.unstubAllGlobals());

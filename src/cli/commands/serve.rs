@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use serde_json::json;
 
 use crate::cli::args::ServeArgs;
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::server::{self, ServeConfig};
 
 /// Serve the board until Ctrl+C (or SIGTERM), then return.
@@ -13,7 +13,7 @@ use crate::server::{self, ServeConfig};
 /// appears only once the port is bound; `execute` prints nothing for `serve`
 /// afterwards. The command works on the whole data area, never on one project
 /// or card, and changes nothing that needs a notification.
-pub fn run(json: bool, args: &ServeArgs) -> Result<(), SkanError> {
+pub fn run(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
     server::run_until(ServeConfig { port: args.port }, shutdown_signal(), |addr| {
         announce(addr, json)
     })

@@ -16,7 +16,7 @@ use super::{lock_project, new_id, save_task, stamp};
 use crate::domain::{
     MAX_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS, ProjectId,
 };
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 const EVIDENCE_LIMIT_REASON: &str =
     "A card may contain at most 20 evidence files and 50 MiB of evidence in total.";
@@ -31,7 +31,7 @@ impl FileStore {
         name: &str,
         bytes: &[u8],
         now: DateTime<Utc>,
-    ) -> Result<EvidenceRecord, SkanError> {
+    ) -> Result<EvidenceRecord, AgboardError> {
         self.add_evidence_gated(project, card_id, name, bytes, now, true)
     }
 
@@ -43,7 +43,7 @@ impl FileStore {
         name: &str,
         bytes: &[u8],
         now: DateTime<Utc>,
-    ) -> Result<EvidenceRecord, SkanError> {
+    ) -> Result<EvidenceRecord, AgboardError> {
         self.add_evidence_gated(project, card_id, name, bytes, now, false)
     }
 
@@ -58,28 +58,28 @@ impl FileStore {
         bytes: &[u8],
         now: DateTime<Utc>,
         block_drafts: bool,
-    ) -> Result<EvidenceRecord, SkanError> {
+    ) -> Result<EvidenceRecord, AgboardError> {
         if bytes.is_empty() {
-            return Err(SkanError::InvalidValue {
+            return Err(AgboardError::InvalidValue {
                 field: "evidence".into(),
                 reason: "Evidence must not be empty.".into(),
             });
         }
         if bytes.len() > MAX_ATTACHMENT_BYTES {
-            return Err(SkanError::InvalidValue {
+            return Err(AgboardError::InvalidValue {
                 field: "evidence".into(),
                 reason: "Evidence must be at most 10 MiB.".into(),
             });
         }
         if std::str::from_utf8(bytes).is_err() {
-            return Err(SkanError::InvalidValue {
+            return Err(AgboardError::InvalidValue {
                 field: "evidence".into(),
                 reason: "Evidence must be UTF-8 text.".into(),
             });
         }
         let name = last_part(name);
         if name.is_empty() {
-            return Err(SkanError::InvalidValue {
+            return Err(AgboardError::InvalidValue {
                 field: "name".into(),
                 reason: "Evidence names must not be empty.".into(),
             });
@@ -88,10 +88,10 @@ impl FileStore {
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, card_id)?;
         if task.archived_at.is_some() {
-            return Err(SkanError::CardArchived { id: card_id });
+            return Err(AgboardError::CardArchived { id: card_id });
         }
         if block_drafts && task.is_draft {
-            return Err(SkanError::CardIsDraft { id: card_id });
+            return Err(AgboardError::CardIsDraft { id: card_id });
         }
         let total: usize = task
             .evidence
@@ -101,7 +101,7 @@ impl FileStore {
         if task.evidence.len() + 1 > MAX_CARD_ATTACHMENTS
             || total.saturating_add(bytes.len()) > MAX_CARD_ATTACHMENT_BYTES
         {
-            return Err(SkanError::InvalidValue {
+            return Err(AgboardError::InvalidValue {
                 field: "evidence".into(),
                 reason: EVIDENCE_LIMIT_REASON.into(),
             });
@@ -141,7 +141,7 @@ impl FileStore {
         project: &ProjectId,
         card_id: i64,
         evidence_id: &str,
-    ) -> Result<EvidenceData, SkanError> {
+    ) -> Result<EvidenceData, AgboardError> {
         let shared = self.shared_dir();
         let project_dir = reader::project_dir_checked(shared, project)?;
         let task = reader::read_task_strict(shared, project, card_id)?;
@@ -150,7 +150,7 @@ impl FileStore {
             .iter()
             .find(|e| e.id == evidence_id)
             .cloned()
-            .ok_or_else(|| SkanError::EvidenceNotFound {
+            .ok_or_else(|| AgboardError::EvidenceNotFound {
                 id: evidence_id.to_string(),
             })?;
         let path = layout::evidence_path(&project_dir, card_id, &record.id)?;
@@ -158,7 +158,7 @@ impl FileStore {
         let linked = layout::has_symlink_below(&project_dir, &path)
             .map_err(|e| io::read_error(&label, e))?;
         if linked || !path.is_file() {
-            return Err(SkanError::EvidenceNotFound {
+            return Err(AgboardError::EvidenceNotFound {
                 id: evidence_id.to_string(),
             });
         }
@@ -173,7 +173,7 @@ impl FileStore {
         card_id: i64,
         evidence_id: &str,
         now: DateTime<Utc>,
-    ) -> Result<(), SkanError> {
+    ) -> Result<(), AgboardError> {
         self.delete_evidence_gated(project, card_id, evidence_id, now, true)
     }
 
@@ -184,7 +184,7 @@ impl FileStore {
         card_id: i64,
         evidence_id: &str,
         now: DateTime<Utc>,
-    ) -> Result<(), SkanError> {
+    ) -> Result<(), AgboardError> {
         self.delete_evidence_gated(project, card_id, evidence_id, now, false)
     }
 
@@ -197,21 +197,21 @@ impl FileStore {
         evidence_id: &str,
         now: DateTime<Utc>,
         block_drafts: bool,
-    ) -> Result<(), SkanError> {
+    ) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, card_id)?;
         if task.archived_at.is_some() {
-            return Err(SkanError::CardArchived { id: card_id });
+            return Err(AgboardError::CardArchived { id: card_id });
         }
         if block_drafts && task.is_draft {
-            return Err(SkanError::CardIsDraft { id: card_id });
+            return Err(AgboardError::CardIsDraft { id: card_id });
         }
         let index = task
             .evidence
             .iter()
             .position(|e| e.id == evidence_id)
-            .ok_or_else(|| SkanError::EvidenceNotFound {
+            .ok_or_else(|| AgboardError::EvidenceNotFound {
                 id: evidence_id.to_string(),
             })?;
         let path = layout::evidence_path(&project_dir, card_id, evidence_id)?;

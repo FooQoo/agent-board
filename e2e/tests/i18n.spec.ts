@@ -21,9 +21,9 @@ test('starts in English in a Japanese browser, switches and persists without tra
   expect(path.isAbsolute(home)).toBe(true);
   expect(path.dirname(home)).toBe(os.tmpdir());
   expect(home).toContain('agent-board-e2e-main-');
-  expect(home).not.toMatch(/Library\/Application Support\/skan$/);
+  expect(home).not.toMatch(/Library\/Application Support\/agboard$/);
   expect(await page.evaluate(() => navigator.language)).toBe('ja-JP');
-  expect(await page.evaluate(() => localStorage.getItem('skan.locale'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('agboard.locale'))).toBeNull();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('banner')).toContainText('Agent Board');
   await expect(lane(page, 'Todo')).toBeVisible();
@@ -76,7 +76,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
     pendingReason: 'Waiting for confirmation on how to replace a board.',
   });
 
-  await expect(page.evaluate(() => localStorage.getItem('skan.locale'))).resolves.toBe('ja');
+  await expect(page.evaluate(() => localStorage.getItem('agboard.locale'))).resolves.toBe('ja');
   await page.reload();
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^同期済み/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');

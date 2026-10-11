@@ -10,7 +10,7 @@ fn invoke(home: &std::path::Path, args: &[&str]) -> assert_cmd::assert::Assert {
 fn invoke_for(home: &std::path::Path, project: &str, args: &[&str]) -> assert_cmd::assert::Assert {
     let mut command = Command::cargo_bin("agboard").unwrap();
     command
-        .env("SKAN_HOME", home)
+        .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["--project", project])
         .args(args)
@@ -184,7 +184,7 @@ fn a_command_needs_a_project_that_exists_and_never_guesses_one() {
     // No --project: refused even though exactly one project exists.
     Command::cargo_bin("agboard")
         .unwrap()
-        .env("SKAN_HOME", home.path())
+        .env("AGBOARD_HOME", home.path())
         .args(["ls"])
         .assert()
         .failure()
@@ -216,7 +216,7 @@ fn make_draft(home: &std::path::Path, project: &str, id: i64) {
 fn invoke_none(home: &std::path::Path, args: &[&str]) -> assert_cmd::assert::Assert {
     Command::cargo_bin("agboard")
         .unwrap()
-        .env("SKAN_HOME", home)
+        .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(args)
         .assert()
@@ -367,7 +367,7 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
     assert_eq!(edited["card"]["description"], body_of(50000, 'い').as_str());
     let piped = Command::cargo_bin("agboard")
         .unwrap()
-        .env("SKAN_HOME", home.path())
+        .env("AGBOARD_HOME", home.path())
         .args([
             "--project",
             "Agent Board",

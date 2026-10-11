@@ -23,7 +23,7 @@ fn foreign(server: &Running) -> Vec<(String, String)> {
     vec![
         ("Origin".into(), "http://evil.example".into()),
         ("Sec-Fetch-Site".into(), "cross-site".into()),
-        ("X-Skan-Token".into(), token),
+        ("X-Agboard-Token".into(), token),
     ]
 }
 

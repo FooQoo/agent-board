@@ -183,9 +183,9 @@ export function mockApi(): Plugin {
     );
 
   return {
-    name: 'skan-mock-api',
+    name: 'agboard-mock-api',
     apply: 'serve',
-    transformIndexHtml: (html) => html.replace('{{SKAN_TOKEN}}', 'mock-token'),
+    transformIndexHtml: (html) => html.replace('{{AGBOARD_TOKEN}}', 'mock-token'),
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url ?? '/', 'http://127.0.0.1');
@@ -376,13 +376,13 @@ export function mockApi(): Plugin {
 
         const deleteMatch = /^cards\/(\d+)$/.exec(rest);
         if (req.method === 'DELETE' && deleteMatch) {
-          if (!req.headers['x-skan-token']) {
+          if (!req.headers['x-agboard-token']) {
             return sendError(
               res,
               403,
               'forbidden',
               'request refused.',
-              'Missing X-Skan-Token header.',
+              'Missing X-Agboard-Token header.',
             );
           }
           if (!found) {
@@ -415,13 +415,13 @@ export function mockApi(): Plugin {
 
         const archiveMatch = /^cards\/(\d+)\/(archive|restore)$/.exec(rest);
         if (req.method === 'POST' && archiveMatch) {
-          if (!req.headers['x-skan-token'])
+          if (!req.headers['x-agboard-token'])
             return sendError(
               res,
               403,
               'forbidden',
               'request refused.',
-              'Missing X-Skan-Token header.',
+              'Missing X-Agboard-Token header.',
             );
           const id = Number(archiveMatch[1]);
           const card = found?.cards.find((item) => item.id === id);
@@ -452,13 +452,13 @@ export function mockApi(): Plugin {
         }
 
         if (req.method === 'POST' && rest === 'cards/archive-done') {
-          if (!req.headers['x-skan-token'])
+          if (!req.headers['x-agboard-token'])
             return sendError(
               res,
               403,
               'forbidden',
               'request refused.',
-              'Missing X-Skan-Token header.',
+              'Missing X-Agboard-Token header.',
             );
           const input = await readJson(req);
           const ids = new Set((Array.isArray(input.ids) ? input.ids : []).map(Number));
@@ -485,13 +485,13 @@ export function mockApi(): Plugin {
 
         const cardMatch = /^cards\/(\d+)\/(move|answer)$/.exec(rest);
         if (req.method === 'POST' && (rest === 'cards' || cardMatch)) {
-          if (!req.headers['x-skan-token'])
+          if (!req.headers['x-agboard-token'])
             return sendError(
               res,
               403,
               'forbidden',
               'request refused.',
-              'Missing X-Skan-Token header.',
+              'Missing X-Agboard-Token header.',
             );
           if (!found) {
             return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');

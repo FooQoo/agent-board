@@ -1,10 +1,10 @@
 use crate::cli::args::RmArgs;
 use crate::cli::{Context, Outcome};
-use crate::{error::SkanError, interact::confirm};
+use crate::{error::AgboardError, interact::confirm};
 use serde_json::json;
 use std::io::{BufRead, Write};
 
-pub fn run(ctx: &mut Context, args: &RmArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &RmArgs) -> Result<Outcome, AgboardError> {
     ctx.interactive |= confirm::is_interactive(ctx.json);
     run_with_io(
         ctx,
@@ -19,11 +19,11 @@ pub fn run_with_io(
     args: &RmArgs,
     input: &mut impl BufRead,
     output: &mut impl Write,
-) -> Result<Outcome, SkanError> {
+) -> Result<Outcome, AgboardError> {
     let project_id = ctx.project_id()?;
     let card = ctx.files.card(project_id, args.id)?;
     if ctx.json || !ctx.interactive {
-        return Err(SkanError::ConfirmationRequired {
+        return Err(AgboardError::ConfirmationRequired {
             operation: "deleting a card".into(),
         });
     }

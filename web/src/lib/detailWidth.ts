@@ -2,7 +2,7 @@ export const DEFAULT_WIDTH = 360;
 export const MIN_WIDTH = 280;
 export const MAX_WIDTH = 560;
 export const MIN_LANE_WIDTH = 200;
-export const STORAGE_KEY = 'skan.detailWidth';
+export const STORAGE_KEY = 'agboard.detailWidth';
 
 export interface LayoutMetrics {
   bodyWidth: number;

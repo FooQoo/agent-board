@@ -8,7 +8,7 @@ use serde_json::Value;
 
 fn agboard(home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("agboard").unwrap();
-    cmd.env("SKAN_HOME", home)
+    cmd.env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home);
     cmd

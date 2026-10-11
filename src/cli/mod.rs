@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use crate::clock::{Clock, SystemClock};
 use crate::domain::{ProjectId, ProjectMeta};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 use crate::file_store::FileStore;
 
 /// The project a command was told to work on, resolved once from `--project`
@@ -45,13 +45,13 @@ impl Context {
     /// The resolved project. A project that does not exist is
     /// `project_not_found`; a catalog-wide command has none. Nothing is
     /// substituted.
-    pub fn project(&self) -> Result<&ProjectMeta, SkanError> {
+    pub fn project(&self) -> Result<&ProjectMeta, AgboardError> {
         match &self.target {
             Target::Existing(meta) => Ok(meta),
-            Target::Missing { name } => Err(SkanError::ProjectNotFound {
+            Target::Missing { name } => Err(AgboardError::ProjectNotFound {
                 project: name.clone(),
             }),
-            Target::Catalog => Err(SkanError::InvalidArgument {
+            Target::Catalog => Err(AgboardError::InvalidArgument {
                 message: "--project NAME is required.".to_string(),
                 command: None,
             }),
@@ -59,7 +59,7 @@ impl Context {
     }
 
     /// The resolved project's ID. Fixed for this run.
-    pub fn project_id(&self) -> Result<&ProjectId, SkanError> {
+    pub fn project_id(&self) -> Result<&ProjectId, AgboardError> {
         self.project().map(|meta| &meta.id)
     }
 }

@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use agent_board::domain::{Actor, Assignee, NewCard, ProjectId};
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::layout;
 use chrono::{TimeZone, Utc};
@@ -114,13 +114,13 @@ fn evidence_must_be_non_empty_utf8_text() {
         .store
         .add_evidence(&f.project, card, "bin.log", &[0xff, 0xfe, 0x00], at(5))
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 
     let err = f
         .store
         .add_evidence(&f.project, card, "empty.log", b"", at(5))
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 
     assert!(f.task_json(card)["evidence"].as_array().unwrap().is_empty());
     assert!(!f.evidence_dir(card).exists());
@@ -141,14 +141,20 @@ fn evidence_is_checked_against_the_card_that_owns_it() {
         .store
         .read_evidence(&f.project, other, &record.id)
         .unwrap_err();
-    assert!(matches!(err, SkanError::EvidenceNotFound { .. }), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::EvidenceNotFound { .. }),
+        "{err:?}"
+    );
     assert_eq!(err.code(), "evidence_not_found");
 
     let err = f
         .store
         .delete_evidence(&f.project, other, &record.id, at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::EvidenceNotFound { .. }), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::EvidenceNotFound { .. }),
+        "{err:?}"
+    );
     assert!(file.is_file(), "the owner's file is untouched");
 }
 
@@ -163,15 +169,15 @@ fn path_like_evidence_ids_are_refused() {
     for bad in ["../task", "../../project", "/etc/passwd", "ABC"] {
         let err = f.store.read_evidence(&f.project, card, bad).unwrap_err();
         assert!(
-            matches!(err, SkanError::EvidenceNotFound { .. }),
+            matches!(err, AgboardError::EvidenceNotFound { .. }),
             "{bad}: {err:?}"
         );
     }
 
     let err = layout::evidence_path(&f.project_dir, card, "../x").unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     let err = layout::evidence_path(&f.project_dir, 0, &id(1)).unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 }
 
 #[test]
@@ -188,12 +194,12 @@ fn archived_and_draft_cards_refuse_evidence_changes_but_allow_reads() {
         .store
         .add_evidence(&f.project, archived, "new.log", b"new", at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardArchived { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::CardArchived { .. }), "{err:?}");
     let err = f
         .store
         .delete_evidence(&f.project, archived, &kept.id, at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardArchived { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::CardArchived { .. }), "{err:?}");
     let data = f
         .store
         .read_evidence(&f.project, archived, &kept.id)
@@ -206,7 +212,7 @@ fn archived_and_draft_cards_refuse_evidence_changes_but_allow_reads() {
         .store
         .add_evidence(&f.project, draft, "new.log", b"new", at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardIsDraft { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::CardIsDraft { .. }), "{err:?}");
 }
 
 #[test]
@@ -229,12 +235,18 @@ fn deleting_evidence_removes_its_record_and_file() {
         .store
         .read_evidence(&f.project, card, &record.id)
         .unwrap_err();
-    assert!(matches!(err, SkanError::EvidenceNotFound { .. }), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::EvidenceNotFound { .. }),
+        "{err:?}"
+    );
     let err = f
         .store
         .delete_evidence(&f.project, card, &record.id, at(7))
         .unwrap_err();
-    assert!(matches!(err, SkanError::EvidenceNotFound { .. }), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::EvidenceNotFound { .. }),
+        "{err:?}"
+    );
 }
 
 #[test]
@@ -254,13 +266,16 @@ fn a_symbolic_link_in_the_evidence_folder_is_not_read() {
         .store
         .read_evidence(&f.project, card, &record.id)
         .unwrap_err();
-    assert!(matches!(err, SkanError::EvidenceNotFound { .. }), "{err:?}");
+    assert!(
+        matches!(err, AgboardError::EvidenceNotFound { .. }),
+        "{err:?}"
+    );
 
     let err = f
         .store
         .add_evidence(&f.project, card, "new.log", b"new", at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::FileError { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::FileError { .. }), "{err:?}");
     assert!(!moved.join(format!("{}.log", id(99))).exists());
 }
 
@@ -277,7 +292,7 @@ fn the_evidence_limits_follow_the_image_limits() {
         .store
         .add_evidence(&f.project, card, "run.log", b"x", at(5))
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     assert_eq!(f.task_json(card)["evidence"].as_array().unwrap().len(), 20);
 
     let other = f.card();
@@ -286,7 +301,7 @@ fn the_evidence_limits_follow_the_image_limits() {
         .store
         .add_evidence(&f.project, other, "big.log", &big, at(5))
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 }
 
 #[test]
@@ -302,7 +317,7 @@ fn an_evidence_name_keeps_only_its_last_part() {
         .store
         .add_evidence(&f.project, card, "", b"x", at(5))
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 }
 
 #[cfg(unix)]

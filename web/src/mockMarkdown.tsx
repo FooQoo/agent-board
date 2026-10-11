@@ -3,7 +3,7 @@ import { MarkdownView } from './components/markdown/MarkdownView';
 
 const DETAIL = `## 目的・責務
 
-skan initでボードの保存領域を作る。保存先が既にあれば、変更しない。
+agboard initでボードの保存領域を作る。保存先が既にあれば、変更しない。
 
 ## 受け入れ条件
 

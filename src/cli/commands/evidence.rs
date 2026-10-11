@@ -8,10 +8,10 @@ use serde_json::json;
 
 use crate::cli::args::{EvidenceAddArgs, EvidenceArgs, EvidenceCommand, EvidenceIdArgs};
 use crate::cli::{Context, Outcome};
-use crate::error::{FileAction, SkanError};
+use crate::error::{AgboardError, FileAction};
 use crate::interact::confirm;
 
-pub fn run(ctx: &mut Context, args: &EvidenceArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &EvidenceArgs) -> Result<Outcome, AgboardError> {
     match &args.command {
         EvidenceCommand::Add(args) => add(ctx, args),
         EvidenceCommand::Show(args) => show(ctx, args),
@@ -32,8 +32,8 @@ fn relative_path(evidence_id: &str) -> String {
     format!("evidence/{evidence_id}.log")
 }
 
-fn add(ctx: &mut Context, args: &EvidenceAddArgs) -> Result<Outcome, SkanError> {
-    let bytes = std::fs::read(&args.path).map_err(|e| SkanError::FileError {
+fn add(ctx: &mut Context, args: &EvidenceAddArgs) -> Result<Outcome, AgboardError> {
+    let bytes = std::fs::read(&args.path).map_err(|e| AgboardError::FileError {
         action: FileAction::Read,
         file: args.path.display().to_string(),
         reason: e.to_string(),
@@ -65,7 +65,7 @@ fn add(ctx: &mut Context, args: &EvidenceAddArgs) -> Result<Outcome, SkanError> 
     })
 }
 
-fn show(ctx: &mut Context, args: &EvidenceIdArgs) -> Result<Outcome, SkanError> {
+fn show(ctx: &mut Context, args: &EvidenceIdArgs) -> Result<Outcome, AgboardError> {
     let data = ctx
         .files
         .read_evidence(ctx.project_id()?, args.card_id, &args.evidence_id)?;
@@ -83,24 +83,24 @@ pub fn rm_with_io(
     args: &EvidenceIdArgs,
     input: &mut impl BufRead,
     output: &mut impl Write,
-) -> Result<Outcome, SkanError> {
+) -> Result<Outcome, AgboardError> {
     let project = ctx.project_id()?;
     let card = ctx.files.card(project, args.card_id)?;
     if !card.evidence.iter().any(|e| e.id == args.evidence_id) {
-        return Err(SkanError::EvidenceNotFound {
+        return Err(AgboardError::EvidenceNotFound {
             id: args.evidence_id.clone(),
         });
     }
     // The card's state is checked before a person is asked, so no confirmation
     // is requested for a removal that cannot happen.
     if card.archived_at.is_some() {
-        return Err(SkanError::CardArchived { id: args.card_id });
+        return Err(AgboardError::CardArchived { id: args.card_id });
     }
     if card.is_draft {
-        return Err(SkanError::CardIsDraft { id: args.card_id });
+        return Err(AgboardError::CardIsDraft { id: args.card_id });
     }
     if ctx.json || !ctx.interactive {
-        return Err(SkanError::ConfirmationRequired {
+        return Err(AgboardError::ConfirmationRequired {
             operation: "deleting evidence".into(),
         });
     }

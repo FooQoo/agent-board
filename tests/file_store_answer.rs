@@ -6,7 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::model::Choice;
 use agent_board::file_store::{Answer, FileStore};
 use chrono::{TimeZone, Utc};
@@ -304,12 +304,12 @@ fn an_empty_answer_is_refused_and_changes_nothing() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     let err = fx
         .store
         .answer_request(&fx.project, id, &request, answer(None, None), later())
         .unwrap_err();
-    assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     assert_eq!(fx.bytes(id), before);
 }
 
@@ -342,7 +342,7 @@ fn an_unknown_choice_is_refused_and_changes_nothing() {
         )
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::RequestChoiceUnknown { .. }),
+        matches!(err, AgboardError::RequestChoiceUnknown { .. }),
         "{err:?}"
     );
     assert_eq!(fx.bytes(id), before);
@@ -378,7 +378,7 @@ fn a_choice_is_unknown_for_a_reason_only_request() {
         )
         .unwrap_err();
     assert!(
-        matches!(err, SkanError::RequestChoiceUnknown { .. }),
+        matches!(err, AgboardError::RequestChoiceUnknown { .. }),
         "{err:?}"
     );
 }
@@ -422,7 +422,7 @@ fn an_answer_to_a_resolved_or_replaced_request_is_refused() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::RequestChanged), "{err:?}");
+    assert!(matches!(err, AgboardError::RequestChanged), "{err:?}");
 
     // A new request replaces the old one; the old ID no longer answers.
     let second = fx
@@ -450,7 +450,7 @@ fn an_answer_to_a_resolved_or_replaced_request_is_refused() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::RequestChanged), "{err:?}");
+    assert!(matches!(err, AgboardError::RequestChanged), "{err:?}");
     fx.store
         .answer_request(
             &fx.project,
@@ -476,7 +476,7 @@ fn an_answer_to_a_card_that_is_not_pending_is_refused() {
             later(),
         )
         .unwrap_err();
-    assert!(matches!(err, SkanError::RequestChanged), "{err:?}");
+    assert!(matches!(err, AgboardError::RequestChanged), "{err:?}");
 }
 
 #[test]
@@ -501,7 +501,7 @@ fn the_choices_and_the_question_are_limited() {
             .store
             .request_decision(&fx.project, id, Actor::Ai, &question, choices, later())
             .unwrap_err();
-        assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+        assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     }
     assert_eq!(fx.bytes(id), before);
 }

@@ -16,7 +16,7 @@ use super::reader;
 use crate::clock::{format_utc, parse_utc};
 use crate::domain::BoardMeta;
 use crate::domain::{Changed, ProjectId, ProjectMeta, validate_project_name};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// The README written into each new project folder: the entry point for
 /// people and agents who edit the shared files directly.
@@ -40,7 +40,7 @@ Do not delete a card folder or an epic folder. Ask a person to delete a card or 
 }
 
 /// Write `workspace.json` if it does not exist yet. A file that exists must pass.
-pub(crate) fn ensure_workspace(shared: &std::path::Path) -> Result<(), SkanError> {
+pub(crate) fn ensure_workspace(shared: &std::path::Path) -> Result<(), AgboardError> {
     if reader::workspace_present(shared)? {
         return Ok(());
     }
@@ -54,7 +54,11 @@ pub(crate) fn ensure_workspace(shared: &std::path::Path) -> Result<(), SkanError
 impl FileStore {
     /// Create an empty project with a new ID and the next card number at 1.
     /// The name is trimmed and must be unique (case-sensitive) among projects.
-    pub fn create_project(&self, name: &str, now: DateTime<Utc>) -> Result<ProjectMeta, SkanError> {
+    pub fn create_project(
+        &self,
+        name: &str,
+        now: DateTime<Utc>,
+    ) -> Result<ProjectMeta, AgboardError> {
         let name = validate_project_name(name)?;
         let id = ProjectId::generate()?;
         let created_at = parse_utc(&format_utc(now)).unwrap_or(now);
@@ -66,7 +70,7 @@ impl FileStore {
             .iter()
             .any(|project| project.name == name)
         {
-            return Err(SkanError::ProjectNameExists { name });
+            return Err(AgboardError::ProjectNameExists { name });
         }
         ensure_workspace(shared)?;
 
@@ -78,7 +82,7 @@ impl FileStore {
         ));
         let target = layout::project_dir(shared, &id);
         let label = format!("projects/{}", id.as_str());
-        let result = (|| -> Result<(), SkanError> {
+        let result = (|| -> Result<(), AgboardError> {
             fs::create_dir(&temp).map_err(|e| io::write_error(&label, e))?;
             fs::create_dir(layout::tasks_dir(&temp)).map_err(|e| io::write_error(&label, e))?;
             fs::create_dir(layout::epics_dir(&temp)).map_err(|e| io::write_error(&label, e))?;
@@ -122,7 +126,7 @@ impl FileStore {
         &self,
         id: &ProjectId,
         new_name: &str,
-    ) -> Result<Changed<ProjectMeta>, SkanError> {
+    ) -> Result<Changed<ProjectMeta>, AgboardError> {
         let new_name = validate_project_name(new_name)?;
         let shared = self.shared_dir();
         let _catalog = WriteLock::acquire(&layout::catalog_lock(shared))?;
@@ -139,7 +143,7 @@ impl FileStore {
             .iter()
             .any(|project| project.id != *id && project.name == new_name);
         if taken {
-            return Err(SkanError::ProjectNameExists { name: new_name });
+            return Err(AgboardError::ProjectNameExists { name: new_name });
         }
         file.name = new_name;
         let path = layout::project_file(&dir);
@@ -153,7 +157,7 @@ impl FileStore {
     /// Delete a project and all its cards. The folder is first renamed out of
     /// the projects folder, so it disappears from the list in one step, then
     /// removed. Other projects are not touched.
-    pub fn delete_project(&self, id: &ProjectId) -> Result<(), SkanError> {
+    pub fn delete_project(&self, id: &ProjectId) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let _catalog = WriteLock::acquire(&layout::catalog_lock(shared))?;
         let dir = reader::project_dir_checked(shared, id)?;
@@ -175,7 +179,7 @@ impl FileStore {
     /// number stay, so card numbers are never reused. The cards and epics
     /// folders are moved aside and replaced by empty ones. `changed` is false
     /// when there was nothing to remove.
-    pub fn reset_project(&self, id: &ProjectId) -> Result<Changed<BoardMeta>, SkanError> {
+    pub fn reset_project(&self, id: &ProjectId) -> Result<Changed<BoardMeta>, AgboardError> {
         let shared = self.shared_dir();
         let (dir, _project) = super::ops::lock_project(shared, id)?;
         let file = reader::read_project_file(shared, id)?;

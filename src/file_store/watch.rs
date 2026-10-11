@@ -21,7 +21,7 @@ use tokio::time::Instant;
 
 use super::index::ProjectIndex;
 use crate::domain::ProjectId;
-use crate::error::{FileAction, SkanError};
+use crate::error::{AgboardError, FileAction};
 
 /// How long a target waits for further events before it is reloaded.
 pub const DEBOUNCE: Duration = Duration::from_millis(200);
@@ -90,7 +90,7 @@ impl Watch {
         shared: &Path,
         index: Arc<RwLock<ProjectIndex>>,
         changed: broadcast::Sender<()>,
-    ) -> Result<(Watch, Reloader), SkanError> {
+    ) -> Result<(Watch, Reloader), AgboardError> {
         std::fs::create_dir_all(shared).map_err(|e| watch_error(shared, e))?;
         let root = shared.canonicalize().map_err(|e| watch_error(shared, e))?;
         let (tx, rx) = mpsc::unbounded_channel::<Target>();
@@ -126,8 +126,8 @@ impl Watch {
     }
 }
 
-fn watch_error(shared: &Path, error: impl std::fmt::Display) -> SkanError {
-    SkanError::FileError {
+fn watch_error(shared: &Path, error: impl std::fmt::Display) -> AgboardError {
+    AgboardError::FileError {
         action: FileAction::Read,
         file: shared.display().to_string(),
         reason: format!("Cannot watch the shared folder: {error}"),

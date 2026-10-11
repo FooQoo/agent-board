@@ -1,6 +1,6 @@
 //! The web UI files embedded in the executable and the session token.
 
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// `web/dist/index.html`, with [`TOKEN_PLACEHOLDER`] in the token `<meta>`.
 pub const INDEX_HTML: &str =
@@ -23,7 +23,7 @@ pub const LOGO_WHITE_PNG: &[u8] = include_bytes!(concat!(
 ));
 
 /// What the web build leaves in `index.html` for the server to fill in.
-pub const TOKEN_PLACEHOLDER: &str = "{{SKAN_TOKEN}}";
+pub const TOKEN_PLACEHOLDER: &str = "{{AGBOARD_TOKEN}}";
 
 /// Number of random bytes behind a session token (64 hex characters).
 const TOKEN_BYTES: usize = 32;
@@ -39,9 +39,9 @@ pub fn to_hex(bytes: &[u8]) -> String {
 }
 
 /// A new session token: 32 random bytes as 64 lowercase hex characters.
-pub fn new_token() -> Result<String, SkanError> {
+pub fn new_token() -> Result<String, AgboardError> {
     let mut bytes = [0u8; TOKEN_BYTES];
-    getrandom::fill(&mut bytes).map_err(|e| SkanError::DatabaseError {
+    getrandom::fill(&mut bytes).map_err(|e| AgboardError::DatabaseError {
         reason: format!("Cannot create a session token: {e}"),
     })?;
     Ok(to_hex(&bytes))
@@ -59,10 +59,10 @@ mod tests {
 
     #[test]
     fn render_index_replaces_the_placeholder() {
-        let html = r#"<meta name="skan-token" content="{{SKAN_TOKEN}}" />"#;
+        let html = r#"<meta name="agboard-token" content="{{AGBOARD_TOKEN}}" />"#;
         assert_eq!(
             render_index(html, "abc123"),
-            r#"<meta name="skan-token" content="abc123" />"#
+            r#"<meta name="agboard-token" content="abc123" />"#
         );
     }
 

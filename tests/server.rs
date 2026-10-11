@@ -104,22 +104,22 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::server::{ServeConfig, run_until};
 use chrono::{DateTime, TimeZone, Utc};
 
-// SKAN_HOME is process-global. It is only needed while a server starts (the
+// AGBOARD_HOME is process-global. It is only needed while a server starts (the
 // server captures its paths then), so the lock is released once it is ready.
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn with_home<T>(home: &Path, f: impl FnOnce() -> T) -> T {
     let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     // SAFETY: access to the environment is serialized by ENV_LOCK.
-    unsafe { std::env::set_var("SKAN_HOME", home) };
+    unsafe { std::env::set_var("AGBOARD_HOME", home) };
     let result = f();
     // SAFETY: as above.
-    unsafe { std::env::remove_var("SKAN_HOME") };
+    unsafe { std::env::remove_var("AGBOARD_HOME") };
     result
 }
 
@@ -215,13 +215,13 @@ struct Running {
     /// `/api/projects/<id of "main">`, or empty when the data has no such project.
     base: String,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
-    handle: Option<JoinHandle<Result<(), SkanError>>>,
+    handle: Option<JoinHandle<Result<(), AgboardError>>>,
 }
 
 impl Running {
     /// Start a server for the data directory `home` on `port` (0 = any) and
     /// wait until it is ready, or return the error it stopped with.
-    fn start(home: &Path, port: u16) -> Result<Running, SkanError> {
+    fn start(home: &Path, port: u16) -> Result<Running, AgboardError> {
         with_home(home, || {
             let (ready_tx, ready_rx) = mpsc::channel();
             let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
@@ -272,14 +272,14 @@ impl Running {
         vec![
             ("Origin".into(), format!("http://127.0.0.1:{}", self.port())),
             ("Sec-Fetch-Site".into(), "same-origin".into()),
-            ("X-Skan-Token".into(), token.into()),
+            ("X-Agboard-Token".into(), token.into()),
         ]
     }
 
     /// Fetch the session token the way a browser would, from `GET /`.
     fn token(&self) -> String {
         let page = self.get("/");
-        let marker = "name=\"skan-token\" content=\"";
+        let marker = "name=\"agboard-token\" content=\"";
         let start = page.body.find(marker).expect("token meta tag") + marker.len();
         page.body[start..start + 64].to_string()
     }
@@ -385,11 +385,11 @@ impl Running {
         events
     }
 
-    fn stop(mut self) -> Result<(), SkanError> {
+    fn stop(mut self) -> Result<(), AgboardError> {
         self.shutdown()
     }
 
-    fn shutdown(&mut self) -> Result<(), SkanError> {
+    fn shutdown(&mut self) -> Result<(), AgboardError> {
         if let Some(stop) = self.stop.take() {
             let _ = stop.send(());
         }
@@ -468,14 +468,13 @@ fn index_is_html_with_a_fresh_64_hex_token() {
         Some("text/html; charset=utf-8")
     );
     assert_eq!(page.cache_control.as_deref(), Some("no-store"));
-    assert!(!page.body.contains("{{SKAN_TOKEN}}"));
+    assert!(!page.body.contains("{{AGBOARD_TOKEN}}"));
     let token = server.token();
     assert_eq!(token.len(), 64);
     assert!(token.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')));
-    assert!(
-        page.body
-            .contains(&format!("<meta name=\"skan-token\" content=\"{token}\" />"))
-    );
+    assert!(page.body.contains(&format!(
+        "<meta name=\"agboard-token\" content=\"{token}\" />"
+    )));
     assert!(page.body.contains("src=\"/assets/app.js\""));
 }
 
@@ -1008,7 +1007,7 @@ fn localhost_origin_and_host_also_delete() {
             ("Host", host.as_str()),
             ("Origin", origin.as_str()),
             ("Sec-Fetch-Site", "same-origin"),
-            ("X-Skan-Token", token.as_str()),
+            ("X-Agboard-Token", token.as_str()),
         ],
     );
     assert_eq!(reply.status, 204);
@@ -1069,7 +1068,7 @@ fn a_delete_missing_any_one_condition_is_403_and_the_card_remains() {
             headers.push(("Sec-Fetch-Site", v));
         }
         if let Some(v) = token {
-            headers.push(("X-Skan-Token", v));
+            headers.push(("X-Agboard-Token", v));
         }
         let reply = server.send("DELETE", &server.api("/cards/1"), &headers);
         assert_eq!(reply.status, 403, "{name}");
@@ -1342,13 +1341,13 @@ fn a_second_server_for_the_same_data_directory_is_already_serving() {
     let first = Running::start(home.path(), 0).unwrap();
     let before = serve_json(home.path());
     let error = Running::start(home.path(), 0).err().unwrap();
-    assert_eq!(error, SkanError::AlreadyServing { port: first.port() });
+    assert_eq!(error, AgboardError::AlreadyServing { port: first.port() });
     // The first server is untouched.
     assert_eq!(serve_json(home.path()), before);
     assert_eq!(first.get("/api/health").status, 200);
     // Asking for the running server's own port is also "already serving".
     let error = Running::start(home.path(), first.port()).err().unwrap();
-    assert_eq!(error, SkanError::AlreadyServing { port: first.port() });
+    assert_eq!(error, AgboardError::AlreadyServing { port: first.port() });
     first.stop().unwrap();
 }
 
@@ -1358,7 +1357,7 @@ fn a_port_in_use_by_something_else_is_port_in_use() {
     let blocker = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = blocker.local_addr().unwrap().port();
     let error = Running::start(home.path(), port).err().unwrap();
-    assert_eq!(error, SkanError::PortInUse { port });
+    assert_eq!(error, AgboardError::PortInUse { port });
     assert_eq!(error.code(), "port_in_use");
     assert!(!home.path().join("serve.json").exists());
 }
@@ -1389,7 +1388,7 @@ fn a_serve_json_whose_port_answers_with_the_same_pid_means_already_serving() {
     let (port, fake) = fake_health_server(2);
     write_serve_json(home.path(), &info(2, port));
     let error = Running::start(home.path(), 0).err().unwrap();
-    assert_eq!(error, SkanError::AlreadyServing { port });
+    assert_eq!(error, AgboardError::AlreadyServing { port });
     fake.join().unwrap();
 }
 
@@ -1477,7 +1476,7 @@ fn serve_example() -> std::path::PathBuf {
 fn spawn_example(home: &Path, args: &[&str]) -> Child {
     Command::new(serve_example())
         .args(args)
-        .env("SKAN_HOME", home)
+        .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .stdout(Stdio::null())
         .stderr(Stdio::piped())

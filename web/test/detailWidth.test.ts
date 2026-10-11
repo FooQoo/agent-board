@@ -42,7 +42,7 @@ describe('clampWidth', () => {
 describe('storage', () => {
   it('round-trips an integer', () => {
     expect(writeStoredWidth(412)).toBe(true);
-    expect(window.localStorage.getItem('skan.detailWidth')).toBe('412');
+    expect(window.localStorage.getItem('agboard.detailWidth')).toBe('412');
     expect(readStoredWidth()).toBe(412);
   });
   it('survives a storage that throws', () => {

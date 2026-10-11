@@ -18,7 +18,7 @@ use futures_util::StreamExt;
 use crate::{
     clock::{Clock, SystemClock, format_utc},
     domain::{ChangeCursor, ProjectId, validate_project_name},
-    error::SkanError,
+    error::AgboardError,
     file_store::{FileStore, reader::FetchedSnapshot},
     paths,
 };
@@ -32,17 +32,17 @@ struct Health {
     pid: u32,
 }
 
-fn unavailable(reason: impl Into<String>) -> SkanError {
-    SkanError::BoardUnavailable {
+fn unavailable(reason: impl Into<String>) -> AgboardError {
+    AgboardError::BoardUnavailable {
         reason: reason.into(),
     }
 }
 
 /// A failure to read the board. A project that is gone keeps its own error
 /// (exit code 4); every other failure is "unavailable".
-fn read_error(error: SkanError, name: &str) -> SkanError {
+fn read_error(error: AgboardError, name: &str) -> AgboardError {
     match error {
-        SkanError::ProjectNotFound { .. } => SkanError::ProjectNotFound {
+        AgboardError::ProjectNotFound { .. } => AgboardError::ProjectNotFound {
             project: name.to_string(),
         },
         other => unavailable(format!("{} {}", other.message(), other.reason())),
@@ -58,7 +58,7 @@ struct Reader<'a> {
 
 impl Reader<'_> {
     /// The project's version and its complete snapshot as JSON, from one read.
-    fn read(&self) -> Result<(String, String), SkanError> {
+    fn read(&self) -> Result<(String, String), AgboardError> {
         let store = FileStore::open(self.shared);
         let snapshot = store
             .board(&self.id)
@@ -72,26 +72,26 @@ impl Reader<'_> {
     }
 
     /// The snapshot when its version is not the cursor's; `None` when it still is.
-    fn compare(&self, version: &str) -> Result<Option<String>, SkanError> {
+    fn compare(&self, version: &str) -> Result<Option<String>, AgboardError> {
         let (current, json) = self.read()?;
         Ok((current != version).then_some(json))
     }
 
     /// The last look when the time is up: a change that arrived is a success.
-    fn last_look(&self, version: &str) -> Result<String, SkanError> {
-        self.compare(version)?.ok_or(SkanError::WaitTimeout)
+    fn last_look(&self, version: &str) -> Result<String, AgboardError> {
+        self.compare(version)?.ok_or(AgboardError::WaitTimeout)
     }
 }
 
 /// Resolve `name` to its project, once, and check that the cursor belongs to it.
-fn resolve(shared: &Path, name: &str, cursor: &ChangeCursor) -> Result<ProjectId, SkanError> {
+fn resolve(shared: &Path, name: &str, cursor: &ChangeCursor) -> Result<ProjectId, AgboardError> {
     let name = validate_project_name(name)?;
     let id = FileStore::open(shared)
         .project_by_name(&name)
         .map_err(|error| read_error(error, &name))?
         .id;
     if id != cursor.project_id {
-        return Err(SkanError::CursorInvalid {
+        return Err(AgboardError::CursorInvalid {
             reason: "The cursor belongs to a different project. Use the cursor from a snapshot of this project."
                 .into(),
         });
@@ -122,7 +122,7 @@ pub async fn wait_for_change(
     project: &str,
     cursor: ChangeCursor,
     timeout_secs: Option<u64>,
-) -> Result<String, SkanError> {
+) -> Result<String, AgboardError> {
     let began = Instant::now();
     let timeout = timeout_secs.map(Duration::from_secs);
     let id = resolve(shared, project, &cursor)?;

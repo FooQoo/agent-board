@@ -9,7 +9,7 @@ use serde_json::json;
 use crate::cli::args::{StateArgs, read_reason};
 use crate::cli::{Context, Outcome};
 use crate::domain::{ChangeContext, RunState, validate_work_reason};
-use crate::error::{FileAction, SkanError};
+use crate::error::{AgboardError, FileAction};
 use crate::file_store::Answer;
 use crate::file_store::model::Choice;
 
@@ -22,8 +22,8 @@ struct RequestFile {
     choices: Vec<Choice>,
 }
 
-fn invalid(message: &str) -> SkanError {
-    SkanError::InvalidArgument {
+fn invalid(message: &str) -> AgboardError {
+    AgboardError::InvalidArgument {
         message: message.into(),
         command: Some("state".into()),
     }
@@ -31,19 +31,19 @@ fn invalid(message: &str) -> SkanError {
 
 /// The request in `--request-file`. A file that cannot be read is `file_error`;
 /// one that is not the expected JSON is `invalid_value`.
-fn read_request_file(path: &Path) -> Result<RequestFile, SkanError> {
-    let text = std::fs::read_to_string(path).map_err(|e| SkanError::FileError {
+fn read_request_file(path: &Path) -> Result<RequestFile, AgboardError> {
+    let text = std::fs::read_to_string(path).map_err(|e| AgboardError::FileError {
         action: FileAction::Read,
         file: path.display().to_string(),
         reason: e.to_string(),
     })?;
-    serde_json::from_str(&text).map_err(|e| SkanError::InvalidValue {
+    serde_json::from_str(&text).map_err(|e| AgboardError::InvalidValue {
         field: "request-file".into(),
         reason: format!("The request file must be JSON with a question and choices: {e}."),
     })
 }
 
-pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, SkanError> {
+pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError> {
     let state = args.state.run_state();
     let actor = args.actor.actor();
     let reason = read_reason(args.reason.as_deref(), args.reason_file.as_deref())?

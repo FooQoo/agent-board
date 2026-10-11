@@ -16,7 +16,7 @@ fn bin() -> Command {
 
 fn agboard(home: &Path, project: &str, args: &[&str]) -> Output {
     bin()
-        .env("SKAN_HOME", home)
+        .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["--project", project])
         .args(args)
@@ -77,7 +77,7 @@ fn content(mut snapshot: Value) -> Value {
 /// Runs `agboard [--project NAME] hook --agent AGENT` with `input` on stdin.
 fn hook(home: &Path, project: Option<&str>, agent: &str, input: &str) -> Output {
     let mut command = bin();
-    command.env("SKAN_HOME", home);
+    command.env("AGBOARD_HOME", home);
     if let Some(project) = project {
         command.args(["--project", project]);
     }
@@ -132,7 +132,7 @@ impl Drop for Server {
 
 fn start_server(home: &Path) -> Server {
     let mut server = bin()
-        .env("SKAN_HOME", home)
+        .env("AGBOARD_HOME", home)
         .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -152,9 +152,14 @@ fn stop(server: Server) {
 
 fn spawn_wait(home: &Path, project: &str, after: &str, timeout: Option<&str>) -> Child {
     let mut command = bin();
-    command
-        .env("SKAN_HOME", home)
-        .args(["--project", project, "--json", "wait", "--after", after]);
+    command.env("AGBOARD_HOME", home).args([
+        "--project",
+        project,
+        "--json",
+        "wait",
+        "--after",
+        after,
+    ]);
     if let Some(timeout) = timeout {
         command.args(["--timeout", timeout]);
     }

@@ -11,7 +11,7 @@ for (const locale of ['en', 'ja'] as const) {
     test(`${locale}/${mode}: an empty editor shows its placeholder and takes the caret`, async ({ page }) => {
       await page.addInitScript(
         ({ locale, mode }) => {
-          localStorage.setItem('skan.locale', locale);
+          localStorage.setItem('agboard.locale', locale);
           localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' }));
         },
         { locale, mode },

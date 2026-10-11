@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use agent_board::domain::{Actor, Assignee, NewCard, ProjectId};
-use agent_board::error::SkanError;
+use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::{CardView, EpicUpdate, EpicView, NewEpic};
 use agent_board::file_store::validate::EpicId;
@@ -52,7 +52,7 @@ impl Fixture {
         self.project_dir().join("tasks").join(id.to_string())
     }
 
-    fn new_epic(&self, id: &str) -> Result<EpicView, SkanError> {
+    fn new_epic(&self, id: &str) -> Result<EpicView, AgboardError> {
         self.store.create_epic(
             &self.project,
             NewEpic {
@@ -129,7 +129,7 @@ fn creating_an_epic_with_a_taken_id_is_refused_and_changes_nothing() {
 
     let err = f.new_epic("file-share").unwrap_err();
 
-    assert!(matches!(err, SkanError::EpicIdTaken { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::EpicIdTaken { .. }), "{err:?}");
     assert_eq!(err.code(), "epic_id_taken");
     assert_eq!(
         bytes_of(f.epic_dir("FILE-SHARE").join("epic.json")),
@@ -156,7 +156,7 @@ fn epic_ids_outside_the_grammar_are_refused_and_no_folder_is_made() {
     ] {
         let err = f.new_epic(bad).unwrap_err();
         assert!(
-            matches!(err, SkanError::InvalidValue { .. }),
+            matches!(err, AgboardError::InvalidValue { .. }),
             "{bad:?} gave {err:?}"
         );
     }
@@ -194,7 +194,7 @@ fn colors_are_stored_as_uppercase_hex_and_other_colors_are_refused() {
             )
             .unwrap_err();
         assert!(
-            matches!(err, SkanError::InvalidValue { .. }),
+            matches!(err, AgboardError::InvalidValue { .. }),
             "{bad:?} gave {err:?}"
         );
     }
@@ -214,7 +214,7 @@ fn an_epic_used_by_a_card_cannot_be_deleted_even_when_the_card_is_archived() {
 
     let err = f.store.delete_epic(&f.project, &epic).unwrap_err();
 
-    assert!(matches!(err, SkanError::EpicInUse { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::EpicInUse { .. }), "{err:?}");
     assert_eq!(err.code(), "epic_in_use");
     assert_eq!(
         bytes_of(f.epic_dir("FILE-SHARE").join("epic.json")),
@@ -236,7 +236,7 @@ fn an_unused_epic_is_removed_with_its_folder() {
         .store
         .epic(&f.project, &epic_id("FILE-SHARE"))
         .unwrap_err();
-    assert!(matches!(err, SkanError::EpicNotFound { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::EpicNotFound { .. }), "{err:?}");
     assert_eq!(err.code(), "epic_not_found");
 }
 
@@ -312,7 +312,7 @@ fn setting_an_unknown_epic_is_refused_and_changes_nothing() {
         )
         .unwrap_err();
 
-    assert!(matches!(err, SkanError::EpicNotFound { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::EpicNotFound { .. }), "{err:?}");
     assert_eq!(bytes_of(f.card_dir(card.id).join("task.json")), task_before);
 }
 
@@ -330,7 +330,7 @@ fn an_agent_cannot_change_the_epic_of_an_archived_or_draft_card_but_a_human_can(
         .store
         .set_card_epic(&f.project, archived.id, Some(&alpha), Actor::Ai, at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardArchived { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::CardArchived { .. }), "{err:?}");
     let human = f
         .store
         .set_card_epic(&f.project, archived.id, Some(&alpha), Actor::Human, at(6))
@@ -345,7 +345,7 @@ fn an_agent_cannot_change_the_epic_of_an_archived_or_draft_card_but_a_human_can(
         .store
         .set_card_epic(&f.project, draft.id, Some(&alpha), Actor::Ai, at(6))
         .unwrap_err();
-    assert!(matches!(err, SkanError::CardIsDraft { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::CardIsDraft { .. }), "{err:?}");
     let human = f
         .store
         .set_card_epic(&f.project, draft.id, Some(&alpha), Actor::Human, at(6))
@@ -414,7 +414,7 @@ fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
     assert!(
         matches!(
             err,
-            SkanError::FileInvalid { .. } | SkanError::InvalidValue { .. }
+            AgboardError::FileInvalid { .. } | AgboardError::InvalidValue { .. }
         ),
         "{err:?}"
     );
@@ -446,7 +446,7 @@ fn the_epic_name_is_trimmed_and_must_fit_on_one_line() {
                 at(5),
             )
             .unwrap_err();
-        assert!(matches!(err, SkanError::InvalidValue { .. }), "{err:?}");
+        assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     }
     let trimmed = f
         .store

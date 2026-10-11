@@ -13,7 +13,7 @@ use super::super::reader;
 use super::super::validate;
 use super::{Transition, lock_project, save_task, stamp, transition_event};
 use crate::domain::{Actor, Assignee, Changed, Column, ProjectId, RunState};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// An answer to the pending request: a choice, a note, or both.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +35,7 @@ impl FileStore {
         question: &str,
         choices: Vec<Choice>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let question = validate::normalize_question(question)?;
         let choices = validate::normalize_choices(choices)?;
         self.change_state(
@@ -60,11 +60,11 @@ impl FileStore {
         request_id: &str,
         answer: Answer,
         now: DateTime<Utc>,
-    ) -> Result<CardView, SkanError> {
+    ) -> Result<CardView, AgboardError> {
         let text = validate::normalize_answer_text(answer.text.as_deref().unwrap_or(""))?;
         let choice_id = answer.choice_id.filter(|c| !c.is_empty());
         if choice_id.is_none() && text.is_none() {
-            return Err(SkanError::InvalidValue {
+            return Err(AgboardError::InvalidValue {
                 field: "answer".into(),
                 reason: "Choose an option, write a text answer, or both.".into(),
             });
@@ -74,17 +74,17 @@ impl FileStore {
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(SkanError::CardArchived { id });
+            return Err(AgboardError::CardArchived { id });
         }
         if task.assignee != Assignee::Ai
             || task.card_status != Column::Doing
             || task.agent_status != RunState::Pending
             || task.pending_request_id.as_deref() != Some(request_id)
         {
-            return Err(SkanError::RequestChanged);
+            return Err(AgboardError::RequestChanged);
         }
         let choices = current_request(&task)
-            .ok_or(SkanError::RequestChanged)?
+            .ok_or(AgboardError::RequestChanged)?
             .choices
             .clone()
             .unwrap_or_default();
@@ -94,7 +94,7 @@ impl FileStore {
                 choices
                     .iter()
                     .find(|c| &c.id == choice)
-                    .ok_or_else(|| SkanError::RequestChoiceUnknown {
+                    .ok_or_else(|| AgboardError::RequestChoiceUnknown {
                         request_id: request_id.to_string(),
                         choice_id: choice.clone(),
                     })?

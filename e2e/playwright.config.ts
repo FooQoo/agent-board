@@ -3,7 +3,7 @@ import path from 'node:path';
 import { defineConfig } from '@playwright/test';
 import { mainOrigin } from './helpers/agboard';
 
-// The main serve (port 7631) and the CLI helper share one SKAN_HOME, so the
+// The main serve (port 7631) and the CLI helper share one AGBOARD_HOME, so the
 // specs run one at a time. states.spec.ts starts its own serve on 7632.
 export default defineConfig({
   testDir: './tests',

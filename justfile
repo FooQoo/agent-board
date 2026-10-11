@@ -50,4 +50,4 @@ serve port="7420" backend_port="7421": build
         echo "The Rust server did not start." >&2
         exit 1
     fi
-    SKAN_BACKEND_PORT="{{backend_port}}" SKAN_WEB_PORT="{{port}}" pnpm --dir web dev --mode live --host 127.0.0.1 --port "{{port}}" --strictPort
+    AGBOARD_BACKEND_PORT="{{backend_port}}" AGBOARD_WEB_PORT="{{port}}" pnpm --dir web dev --mode live --host 127.0.0.1 --port "{{port}}" --strictPort

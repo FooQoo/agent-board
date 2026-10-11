@@ -7,7 +7,7 @@ use std::path::Path;
 use crate::{
     clock::{Clock, SystemClock, format_utc},
     domain::validate_project_name,
-    error::SkanError,
+    error::AgboardError,
     file_store::{FileStore, reader::FetchedSnapshot},
 };
 
@@ -97,11 +97,11 @@ fn snapshot_context(shared: &Path, project: Option<&str>) -> Result<String, Fail
         .map_err(|error| Failure::new("invalid_value", error.reason()))?;
     let store = FileStore::open(shared);
     let meta = store.project_by_name(&name).map_err(|error| match error {
-        SkanError::ProjectNotFound { .. } => Failure::new("project_not_found", error.reason()),
+        AgboardError::ProjectNotFound { .. } => Failure::new("project_not_found", error.reason()),
         other => Failure::new("board_unavailable", other.reason()),
     })?;
     let snapshot = store.board(&meta.id).map_err(|error| match error {
-        SkanError::ProjectNotFound { .. } => Failure::new("project_not_found", error.reason()),
+        AgboardError::ProjectNotFound { .. } => Failure::new("project_not_found", error.reason()),
         other => Failure::new("board_unavailable", other.reason()),
     })?;
     let json = serde_json::to_string(&FetchedSnapshot {

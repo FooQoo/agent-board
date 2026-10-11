@@ -12,9 +12,9 @@ import type {
 } from './types';
 import type { EditorAttachment } from './components/editor/attachmentTypes';
 
-const TOKEN_META = 'skan-token';
+const TOKEN_META = 'agboard-token';
 
-/** The server puts the session token for writes into `<meta name="skan-token">`. */
+/** The server puts the session token for writes into `<meta name="agboard-token">`. */
 export function readToken(): string {
   const meta = document.querySelector<HTMLMetaElement>(`meta[name="${TOKEN_META}"]`);
   return meta?.content ?? '';
@@ -119,7 +119,10 @@ export async function fetchArchive(projectId: ProjectId): Promise<ArchiveRespons
 }
 
 async function postEmpty(path: string): Promise<{ card: Card }> {
-  const response = await fetch(path, { method: 'POST', headers: { 'X-Skan-Token': readToken() } });
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'X-Agboard-Token': readToken() },
+  });
   const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || !body.card)
     throw new WriteError(
@@ -157,7 +160,7 @@ export async function deleteCard(projectId: ProjectId, id: number): Promise<Dele
   try {
     const response = await fetch(`${projectPath(projectId)}/cards/${id}`, {
       method: 'DELETE',
-      headers: { 'X-Skan-Token': readToken() },
+      headers: { 'X-Agboard-Token': readToken() },
     });
     if (response.status === 204) return 'deleted';
     if (response.status === 404) return 'not_found';
@@ -198,7 +201,7 @@ export function problemOf(error: unknown): Problem | null {
 async function postCard<T>(path: string, value: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Skan-Token': readToken() },
+    headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': readToken() },
     body: JSON.stringify(value),
   });
   const body = (await response.json()) as {
@@ -249,7 +252,7 @@ function multipartBody(
 }
 
 async function sendMultipart(path: string, body: FormData, method: 'POST' | 'PATCH') {
-  const response = await fetch(path, { method, headers: { 'X-Skan-Token': readToken() }, body });
+  const response = await fetch(path, { method, headers: { 'X-Agboard-Token': readToken() }, body });
   const data = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || !data.card)
     throw new WriteError(
@@ -349,7 +352,7 @@ async function sendCard(
 ): Promise<{ card: Card }> {
   const response = await fetch(path, {
     method,
-    headers: { 'Content-Type': 'application/json', 'X-Skan-Token': readToken() },
+    headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': readToken() },
     body: JSON.stringify(value),
   });
   const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
@@ -416,7 +419,7 @@ async function sendEpic(
     method,
     headers: {
       ...(isForm || body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      'X-Skan-Token': readToken(),
+      'X-Agboard-Token': readToken(),
     },
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   });

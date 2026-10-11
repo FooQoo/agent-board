@@ -1,6 +1,6 @@
 //! `agboard serve` and the automatic notification after a write.
 //!
-//! These tests run the real `agboard` binary with `SKAN_HOME` in a temporary
+//! These tests run the real `agboard` binary with `AGBOARD_HOME` in a temporary
 //! directory and `TZ=UTC`. They use only ports 7943 to 7962 (never 7420) and
 //! run one at a time, so a port can be reused from test to test. Every `agboard
 //! serve` child is stopped when its handle is dropped, and the port is checked
@@ -32,7 +32,7 @@ fn serial() -> MutexGuard<'static, ()> {
 
 fn agboard(home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("agboard").unwrap();
-    cmd.env("SKAN_HOME", home)
+    cmd.env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home);
     cmd
@@ -175,7 +175,7 @@ impl Serving {
     fn spawn(home: &Path, args: &[&str], port: u16) -> Serving {
         let mut child = StdCommand::new(assert_cmd::cargo::cargo_bin("agboard"))
             .args(args)
-            .env("SKAN_HOME", home)
+            .env("AGBOARD_HOME", home)
             .env("TZ", "UTC")
             .current_dir(home)
             .stdin(Stdio::null())
@@ -339,7 +339,7 @@ fn a_write_that_changes_the_board_notifies_the_running_serve() {
         assert_eq!(
             fake.next(QUICK).as_deref(),
             Some(NOTIFY_LINE),
-            "skan {args:?} sent no notification"
+            "agboard {args:?} sent no notification"
         );
     }
     assert_eq!(fake.next(SILENCE), None, "more notifications than writes");
@@ -503,7 +503,7 @@ fn a_subscriber_receives_changed_after_add_mv_and_state() {
         run_ok(home.path(), args);
         assert!(
             events.wait_for_changed(i + 1, QUICK),
-            "no changed event within 2 s after skan {args:?}; got {:?}",
+            "no changed event within 2 s after agboard {args:?}; got {:?}",
             events.received
         );
         assert!(start.elapsed() < QUICK + Duration::from_secs(1));

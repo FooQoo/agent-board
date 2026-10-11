@@ -15,7 +15,7 @@ export default async function globalSetup(): Promise<void> {
   run('cargo', ['build']);
 
   const home = makeHome('main');
-  process.env.SKAN_E2E_HOME = home;
+  process.env.AGBOARD_E2E_HOME = home;
   resetBoard(mainProject, home);
   state.serve = await startServe(mainPort, home);
 }

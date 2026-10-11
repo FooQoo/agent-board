@@ -22,7 +22,7 @@ use crate::domain::{
     Actor, Changed, Column, NewCard, ProjectId, RunState, normalize_and_validate_description,
     validate_title,
 };
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 const ARCHIVE_REASON: &str = "Archived by user.";
 const RESTORE_REASON: &str = "Restored by user.";
@@ -34,7 +34,7 @@ fn write_new_card(
     project_dir: &Path,
     task: &TaskFile,
     body: &str,
-) -> Result<(), SkanError> {
+) -> Result<(), AgboardError> {
     let tasks = layout::tasks_dir(project_dir);
     let target = layout::task_dir(project_dir, task.id);
     let label = layout::shared_label(shared, &target);
@@ -46,7 +46,7 @@ fn write_new_card(
         io::random_hex(16).map_err(|e| io::write_error(&label, e))?
     ));
     fs::create_dir(&temp).map_err(|e| io::write_error(&label, e))?;
-    let result = (|| -> Result<(), SkanError> {
+    let result = (|| -> Result<(), AgboardError> {
         io::write_json(
             &layout::task_json(&temp),
             task,
@@ -67,7 +67,7 @@ fn write_new_card(
 }
 
 /// The card's view after a change, read back from the files.
-fn view(shared: &Path, project: &ProjectId, id: i64) -> Result<CardView, SkanError> {
+fn view(shared: &Path, project: &ProjectId, id: i64) -> Result<CardView, AgboardError> {
     reader::read_card(shared, project, id)
 }
 
@@ -81,7 +81,7 @@ impl FileStore {
         project: &ProjectId,
         new: NewCard,
         now: DateTime<Utc>,
-    ) -> Result<CardView, SkanError> {
+    ) -> Result<CardView, AgboardError> {
         let title = validate_title(&new.title)?;
         let description = normalize_and_validate_description(&new.description)?;
         let shared = self.shared_dir();
@@ -146,7 +146,7 @@ impl FileStore {
         title: Option<&str>,
         description: Option<&str>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let description = description
             .map(normalize_and_validate_description)
@@ -155,10 +155,10 @@ impl FileStore {
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(SkanError::CardArchived { id });
+            return Err(AgboardError::CardArchived { id });
         }
         if task.is_draft {
-            return Err(SkanError::CardIsDraft { id });
+            return Err(AgboardError::CardIsDraft { id });
         }
         let changed = write_text(shared, project, &project_dir, &mut task, title, description)?;
         if !changed {
@@ -185,7 +185,7 @@ impl FileStore {
         description: Option<&str>,
         finalize: bool,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let description = description
             .map(normalize_and_validate_description)
@@ -194,10 +194,10 @@ impl FileStore {
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(SkanError::CardArchived { id });
+            return Err(AgboardError::CardArchived { id });
         }
         if !task.is_draft {
-            return Err(SkanError::CardNotDraft { id });
+            return Err(AgboardError::CardNotDraft { id });
         }
         let text_changed =
             write_text(shared, project, &project_dir, &mut task, title, description)?;
@@ -230,12 +230,12 @@ impl FileStore {
         id: i64,
         is_draft: bool,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(SkanError::CardArchived { id });
+            return Err(AgboardError::CardArchived { id });
         }
         if task.is_draft == is_draft {
             return Ok(Changed {
@@ -244,7 +244,7 @@ impl FileStore {
             });
         }
         if is_draft && task.agent_status == RunState::Running {
-            return Err(SkanError::InvalidStateForDraft {
+            return Err(AgboardError::InvalidStateForDraft {
                 id,
                 state: task.agent_status,
             });
@@ -265,7 +265,7 @@ impl FileStore {
         project: &ProjectId,
         id: i64,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -310,7 +310,7 @@ impl FileStore {
         project: &ProjectId,
         id: i64,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -345,12 +345,12 @@ impl FileStore {
     }
 
     /// Delete an archived card's folder. Confirmation is the caller's job.
-    pub fn delete_archived_card(&self, project: &ProjectId, id: i64) -> Result<(), SkanError> {
+    pub fn delete_archived_card(&self, project: &ProjectId, id: i64) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_none() {
-            return Err(SkanError::CardNotArchived { id });
+            return Err(AgboardError::CardNotArchived { id });
         }
         let folder = layout::task_dir(&project_dir, id);
         fs::remove_dir_all(&folder)
@@ -363,7 +363,7 @@ fn draft_event(
     task: &TaskFile,
     is_draft: bool,
     at: DateTime<Utc>,
-) -> Result<HistoryRecord, SkanError> {
+) -> Result<HistoryRecord, AgboardError> {
     let mut event = transition_event(Transition {
         kind: HistoryKind::Draft,
         actor: Actor::Human,
@@ -391,12 +391,12 @@ pub struct ArchiveDoneResult {
 impl FileStore {
     /// Delete any card's folder, archived or not. The CLI `rm` uses this after
     /// its own confirmation; the Web API deletes only archived cards.
-    pub fn delete_card(&self, project: &ProjectId, id: i64) -> Result<(), SkanError> {
+    pub fn delete_card(&self, project: &ProjectId, id: i64) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let folder = layout::task_dir(&project_dir, id);
         if !folder.is_dir() {
-            return Err(SkanError::CardNotFound { id });
+            return Err(AgboardError::CardNotFound { id });
         }
         let tasks = layout::tasks_dir(&project_dir);
         let label = layout::shared_label(shared, &folder);
@@ -418,12 +418,12 @@ impl FileStore {
         project: &ProjectId,
         ids: &[i64],
         now: DateTime<Utc>,
-    ) -> Result<Changed<ArchiveDoneResult>, SkanError> {
+    ) -> Result<Changed<ArchiveDoneResult>, AgboardError> {
         if ids.is_empty()
             || ids.iter().any(|id| *id <= 0)
             || ids.iter().collect::<HashSet<_>>().len() != ids.len()
         {
-            return Err(SkanError::InvalidValue {
+            return Err(AgboardError::InvalidValue {
                 field: "ids".into(),
                 reason: "IDs must be a non-empty list of unique positive integers.".into(),
             });
@@ -434,13 +434,13 @@ impl FileStore {
         for id in ids {
             let task = match reader::read_task_strict(shared, project, *id) {
                 Ok(task) => task,
-                Err(SkanError::CardNotFound { .. }) => {
-                    return Err(SkanError::ArchiveTargetsChanged);
+                Err(AgboardError::CardNotFound { .. }) => {
+                    return Err(AgboardError::ArchiveTargetsChanged);
                 }
                 Err(other) => return Err(other),
             };
             if task.archived_at.is_none() && task.card_status != Column::Done {
-                return Err(SkanError::ArchiveTargetsChanged);
+                return Err(AgboardError::ArchiveTargetsChanged);
             }
             targets.push(task);
         }

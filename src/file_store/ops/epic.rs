@@ -15,7 +15,7 @@ use super::super::reader;
 use super::super::validate::{self, EpicId};
 use super::{Transition, lock_project, save_task, stamp, transition_event};
 use crate::domain::{Actor, Changed, ProjectId};
-use crate::error::SkanError;
+use crate::error::AgboardError;
 
 /// The epic folder and its `epic.json`, read strictly. A missing folder is
 /// `epic_not_found`; a defect in the file is `file_invalid`.
@@ -23,11 +23,11 @@ pub(super) fn read_epic_file(
     shared: &Path,
     project: &ProjectId,
     id: &EpicId,
-) -> Result<(PathBuf, EpicFile), SkanError> {
+) -> Result<(PathBuf, EpicFile), AgboardError> {
     let project_dir = reader::project_dir_checked(shared, project)?;
     let dir = layout::epic_dir(&project_dir, id);
     if !dir.is_dir() {
-        return Err(SkanError::EpicNotFound { id: id.to_string() });
+        return Err(AgboardError::EpicNotFound { id: id.to_string() });
     }
     let path = layout::epic_file(&dir);
     let label = layout::shared_label(shared, &path);
@@ -35,7 +35,7 @@ pub(super) fn read_epic_file(
     let file: EpicFile = reader::parse_file(&bytes, &label)?;
     match validate::check_epic(&file, id.as_str()).into_iter().next() {
         None => Ok((dir, file)),
-        Some(d) => Err(SkanError::FileInvalid {
+        Some(d) => Err(AgboardError::FileInvalid {
             file: label,
             field: d.field,
             reason: d.reason,
@@ -43,7 +43,7 @@ pub(super) fn read_epic_file(
     }
 }
 
-fn read_plan(shared: &Path, dir: &Path) -> Result<String, SkanError> {
+fn read_plan(shared: &Path, dir: &Path) -> Result<String, AgboardError> {
     let path = layout::epic_plan(dir);
     io::read_text(&path, &layout::shared_label(shared, &path))
 }
@@ -66,7 +66,7 @@ pub(super) fn epic_view(
     shared: &Path,
     project: &ProjectId,
     id: &EpicId,
-) -> Result<EpicView, SkanError> {
+) -> Result<EpicView, AgboardError> {
     let (dir, file) = read_epic_file(shared, project, id)?;
     let plan = read_plan(shared, &dir)?;
     Ok(view_of(file, plan))
@@ -74,7 +74,7 @@ pub(super) fn epic_view(
 
 /// A `#RRGGBB` color that none of `used` has. The color is random; a collision
 /// is drawn again, so a saved color is never handed out twice.
-fn random_color<'a>(used: impl Iterator<Item = &'a str> + Clone) -> Result<String, SkanError> {
+fn random_color<'a>(used: impl Iterator<Item = &'a str> + Clone) -> Result<String, AgboardError> {
     for _ in 0..1_000 {
         let hex = io::random_hex(3).map_err(|e| io::write_error("epic.json", e))?;
         let color = format!("#{}", hex.to_ascii_uppercase());
@@ -85,19 +85,19 @@ fn random_color<'a>(used: impl Iterator<Item = &'a str> + Clone) -> Result<Strin
     Err(io::write_error("epic.json", "no free color could be drawn"))
 }
 
-fn save_epic(shared: &Path, dir: &Path, file: &EpicFile) -> Result<(), SkanError> {
+fn save_epic(shared: &Path, dir: &Path, file: &EpicFile) -> Result<(), AgboardError> {
     let path = layout::epic_file(dir);
     io::write_json(&path, file, &layout::shared_label(shared, &path))
 }
 
-fn save_plan(shared: &Path, dir: &Path, text: &str) -> Result<(), SkanError> {
+fn save_plan(shared: &Path, dir: &Path, text: &str) -> Result<(), AgboardError> {
     let path = layout::epic_plan(dir);
     io::write_atomic(&path, text.as_bytes(), &layout::shared_label(shared, &path))
 }
 
 /// The plan to store: the given text with CRLF folded, or the template when
 /// no text (or only whitespace) is given.
-fn plan_to_store(plan: Option<String>) -> Result<String, SkanError> {
+fn plan_to_store(plan: Option<String>) -> Result<String, AgboardError> {
     match plan {
         Some(text) if !text.trim().is_empty() => validate::normalize_plan(&text),
         _ => Ok(validate::plan_template()),
@@ -113,7 +113,7 @@ impl FileStore {
         project: &ProjectId,
         new: NewEpic,
         now: DateTime<Utc>,
-    ) -> Result<EpicView, SkanError> {
+    ) -> Result<EpicView, AgboardError> {
         let id = EpicId::normalize(&new.id)?;
         let name = validate::validate_epic_name(&new.name)?;
         let plan = plan_to_store(new.plan)?;
@@ -129,7 +129,7 @@ impl FileStore {
 
         let target = layout::epic_dir(&project_dir, &id);
         if fs::symlink_metadata(&target).is_ok() {
-            return Err(SkanError::EpicIdTaken { id: id.to_string() });
+            return Err(AgboardError::EpicIdTaken { id: id.to_string() });
         }
         let label = layout::shared_label(shared, &target);
         let plan_label = format!("{label}/PLAN.md");
@@ -152,7 +152,7 @@ impl FileStore {
             created_at: at,
             updated_at: at,
         };
-        let result = (|| -> Result<(), SkanError> {
+        let result = (|| -> Result<(), AgboardError> {
             fs::create_dir(&temp).map_err(|e| io::write_error(&label, e))?;
             save_epic(shared, &temp, &file)?;
             io::write_atomic(&layout::epic_plan(&temp), plan.as_bytes(), &plan_label)?;
@@ -167,7 +167,7 @@ impl FileStore {
     }
 
     /// Read one epic with its plan.
-    pub fn epic(&self, project: &ProjectId, id: &EpicId) -> Result<EpicView, SkanError> {
+    pub fn epic(&self, project: &ProjectId, id: &EpicId) -> Result<EpicView, AgboardError> {
         epic_view(self.shared_dir(), project, id)
     }
 
@@ -180,7 +180,7 @@ impl FileStore {
         id: &EpicId,
         update: EpicUpdate,
         now: DateTime<Utc>,
-    ) -> Result<Changed<EpicView>, SkanError> {
+    ) -> Result<Changed<EpicView>, AgboardError> {
         let name = update
             .name
             .as_deref()
@@ -241,17 +241,17 @@ impl FileStore {
     /// Delete an epic folder. Refused with `epic_in_use` while any card, archived
     /// ones included, names the epic. The folder is renamed out of the way first,
     /// then removed. A folder whose `epic.json` is broken can still be deleted.
-    pub fn delete_epic(&self, project: &ProjectId, id: &EpicId) -> Result<(), SkanError> {
+    pub fn delete_epic(&self, project: &ProjectId, id: &EpicId) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let dir = layout::epic_dir(&project_dir, id);
         if !dir.is_dir() {
-            return Err(SkanError::EpicNotFound { id: id.to_string() });
+            return Err(AgboardError::EpicNotFound { id: id.to_string() });
         }
         for card_id in reader::card_ids(&project_dir)? {
             let task = reader::read_task_strict(shared, project, card_id)?;
             if task.epic_id.as_deref() == Some(id.as_str()) {
-                return Err(SkanError::EpicInUse { id: id.to_string() });
+                return Err(AgboardError::EpicInUse { id: id.to_string() });
             }
         }
         let epics = layout::epics_dir(&project_dir);
@@ -275,16 +275,16 @@ impl FileStore {
         epic: Option<&EpicId>,
         actor: Actor,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, SkanError> {
+    ) -> Result<Changed<CardView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, card_id)?;
         if matches!(actor, Actor::Ai) {
             if task.archived_at.is_some() {
-                return Err(SkanError::CardArchived { id: card_id });
+                return Err(AgboardError::CardArchived { id: card_id });
             }
             if task.is_draft {
-                return Err(SkanError::CardIsDraft { id: card_id });
+                return Err(AgboardError::CardIsDraft { id: card_id });
             }
         }
         if let Some(id) = epic {
