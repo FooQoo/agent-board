@@ -1,6 +1,6 @@
 //! End-to-end stories for `agboard ls --all-projects`.
 //!
-//! Everything here runs the real `agboard` binary against a real SQLite file in a temporary data area:
+//! Everything here runs the real `agboard` binary against the shared files in a temporary data area:
 //! the CLI, a real `agboard serve` on port 0 for the web answer and the change notifications, and a
 //! pseudo-terminal for the commands that need a person. The projects are built the way a user builds them
 //! (create, add, move, report, answer, delete, create again), not by writing to the store directly.
@@ -38,6 +38,13 @@ fn agboard(home: &Path, project: &str, args: &[&str]) -> Output {
     let mut full = vec!["--project", project];
     full.extend(args);
     run(home, &full)
+}
+
+/// A TASK.md body with `text` in its work section, which the file store accepts.
+fn valid_body(text: &str) -> String {
+    format!(
+        "## 作業内容\n\n{text}\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n"
+    )
 }
 
 fn ok(output: &Output) {
@@ -157,7 +164,7 @@ fn add(home: &Path, project: &str, title: &str, assignee: &str) {
             "--actor",
             "human",
             "--desc",
-            &format!("about {title}"),
+            &valid_body(&format!("about {title}")),
         ],
     ));
 }
@@ -188,6 +195,7 @@ fn area(dir: &Path) -> Vec<(String, Vec<u8>)> {
             let name = e.file_name().to_string_lossy().into_owned();
             !name.ends_with("-wal") && !name.ends_with("-shm")
         })
+        .filter(|e| e.path().is_file())
         .map(|e| {
             (
                 e.file_name().to_string_lossy().into_owned(),
@@ -389,7 +397,7 @@ fn build(home: &Path) {
             "/api/projects/{}/cards/1/answer",
             apple["project"]["id"].as_str().unwrap()
         ),
-        &json!({ "requestId": request, "reason": "Apple: use the MIT license." }),
+        &json!({ "requestId": request, "text": "Apple: use the MIT license." }),
     );
     assert_eq!(status, 200, "{body}");
 }
@@ -402,11 +410,11 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
     build(home.path());
 
     let list = all(home.path(), &[]);
-    // The root: the time of the read, every project, and the catalog revision (the four creations).
+    // The root: the time of the read, every project, and the catalog version.
     let root = list.as_object().unwrap();
     let mut keys: Vec<&String> = root.keys().collect();
     keys.sort();
-    assert_eq!(keys, ["catalogRevision", "fetchedAt", "projects"]);
+    assert_eq!(keys, ["catalogVersion", "fetchedAt", "projects"]);
     assert!(list["fetchedAt"].as_str().unwrap().ends_with('Z'));
     assert_eq!(
         list["catalogRevision"],
@@ -421,7 +429,14 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
         let listed = entry(&list, name);
         assert_eq!(listed, &own, "{name}");
         let keys: Vec<&String> = listed.as_object().unwrap().keys().collect();
-        for key in ["project", "revision", "cursor", "board", "cards"] {
+        for key in [
+            "project",
+            "version",
+            "cursor",
+            "nextCardId",
+            "cards",
+            "problems",
+        ] {
             assert!(keys.iter().any(|k| *k == key), "{name} lacks {key}");
         }
         assert_eq!(
@@ -431,9 +446,9 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
         assert_eq!(
             listed["cursor"],
             format!(
-                "{}:{}",
+                "f1:{}:{}",
                 listed["project"]["id"].as_str().unwrap(),
-                listed["revision"]
+                listed["version"].as_str().unwrap()
             )
             .as_str()
         );
@@ -486,7 +501,7 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
     assert_eq!(mango["history"].as_array().unwrap().len(), 3);
     // A project without cards is still there.
     assert_eq!(entry(&list, "Kiwi")["cards"], json!([]));
-    assert_eq!(entry(&list, "Kiwi")["board"]["nextCardId"], 1);
+    assert_eq!(entry(&list, "Kiwi")["nextCardId"], 1);
 }
 
 #[test]
@@ -539,7 +554,7 @@ fn filters_apply_to_every_project_and_keep_the_projects_with_no_match() {
                 .collect();
             let got = entry(&filtered, name);
             assert_eq!(got["cards"], Value::Array(want), "{name} {args:?}");
-            for key in ["project", "revision", "cursor", "board"] {
+            for key in ["project", "version", "cursor"] {
                 assert_eq!(got[key], entry(&full, name)[key], "{name} {args:?} {key}");
             }
             // Each project agrees with its own filtered `ls`.
@@ -604,10 +619,7 @@ fn a_deleted_project_leaves_the_list_and_a_new_one_with_the_same_name_starts_emp
         assert_eq!(entry(&after, name), entry(&before, name), "{name}");
         assert_eq!(entry(&after, name), &content(home.path(), name), "{name}");
     }
-    assert_eq!(
-        after["catalogRevision"],
-        before["catalogRevision"].as_i64().unwrap() + 1
-    );
+    assert_ne!(after["catalogVersion"], before["catalogVersion"]);
 
     // Created again under the old name, it is a different project with no cards and its own numbering.
     ok(&run(home.path(), &["project", "create", "Mango"]));
@@ -616,8 +628,7 @@ fn a_deleted_project_leaves_the_list_and_a_new_one_with_the_same_name_starts_emp
     let mango = entry(&again, "Mango");
     assert_ne!(mango["project"]["id"], old_id.as_str());
     assert_eq!(mango["cards"], json!([]));
-    assert_eq!(mango["board"]["nextCardId"], 1);
-    assert_eq!(mango["revision"], 0);
+    assert_eq!(mango["nextCardId"], 1);
     assert_eq!(mango, &content(home.path(), "Mango"));
     assert_eq!(entry(&again, "Apple"), entry(&before, "Apple"));
     assert_eq!(entry(&again, "Zebra"), entry(&before, "Zebra"));
@@ -639,7 +650,7 @@ fn a_deleted_project_leaves_the_list_and_a_new_one_with_the_same_name_starts_emp
     }
     let empty = all(home.path(), &[]);
     assert_eq!(empty["projects"], json!([]));
-    assert!(empty["catalogRevision"].as_i64().unwrap() > 0);
+    assert_eq!(empty["catalogVersion"].as_str().unwrap().len(), 32);
 }
 
 #[test]
@@ -683,14 +694,12 @@ fn listing_changes_nothing_and_tells_a_running_server_nothing() {
 }
 
 #[test]
-fn a_missing_data_area_lists_nothing_and_is_not_created_and_an_old_schema_is_refused() {
-    use rusqlite::Connection;
-
+fn a_missing_data_area_lists_nothing_and_is_not_created_and_an_old_database_is_ignored() {
     let parent = tempdir().unwrap();
     let home = parent.path().join("not-yet");
     let list = all(&home, &[]);
     assert_eq!(list["projects"], json!([]));
-    assert_eq!(list["catalogRevision"], 0);
+    assert_eq!(list["catalogVersion"], "e3b0c44298fc1c149afbf4c8996fb924");
     assert!(list["fetchedAt"].is_string());
     let text = all_text(&home, &[]);
     assert!(text.contains("agboard project create"), "{text}");
@@ -700,31 +709,6 @@ fn a_missing_data_area_lists_nothing_and_is_not_created_and_an_old_schema_is_ref
     let empty = tempdir().unwrap();
     assert_eq!(all(empty.path(), &[])["projects"], json!([]));
     assert_eq!(std::fs::read_dir(empty.path()).unwrap().count(), 0);
-
-    // A database of an older schema is refused and left alone.
-    let old = tempdir().unwrap();
-    let path = old.path().join("board.db");
-    {
-        let conn = Connection::open(&path).unwrap();
-        conn.execute_batch("CREATE TABLE marker (v TEXT); INSERT INTO marker VALUES ('keep');")
-            .unwrap();
-        conn.pragma_update(None, "user_version", 2).unwrap();
-    }
-    let bytes = std::fs::read(&path).unwrap();
-    for args in [
-        vec!["--json", "ls", "--all-projects"],
-        vec!["ls", "--all-projects", "--json"],
-        vec!["--json", "ls", "--all-projects", "--state", "pending"],
-    ] {
-        assert_error(&run(old.path(), &args), "database_error", 1);
-        assert_eq!(std::fs::read(&path).unwrap(), bytes, "{args:?}");
-        let mut names: Vec<String> = std::fs::read_dir(old.path())
-            .unwrap()
-            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-            .collect();
-        names.sort();
-        assert_eq!(names, ["board.db"], "{args:?}");
-    }
 }
 
 #[test]
@@ -757,13 +741,14 @@ fn a_listing_is_one_moment_even_while_another_command_keeps_changing_two_project
         let north = entry(&list, "North");
         let south = entry(&list, "South");
         let (n, s) = (
-            north["revision"].as_i64().unwrap(),
-            south["revision"].as_i64().unwrap(),
+            // The card counts stand in for the revisions: each save adds one card.
+            north["cards"].as_array().unwrap().len() as i64,
+            south["cards"].as_array().unwrap().len() as i64,
         );
         assert!(n - s == 0 || n - s == 1, "North {n} and South {s}");
         assert_eq!(north["cards"].as_array().unwrap().len() as i64, n);
         assert_eq!(south["cards"].as_array().unwrap().len() as i64, s);
-        // Each project's history matches its revision too: one event per card.
+        // Each project's history: one event per card.
         for c in north["cards"].as_array().unwrap() {
             assert_eq!(c["history"].as_array().unwrap().len(), 1);
         }
@@ -775,8 +760,8 @@ fn a_listing_is_one_moment_even_while_another_command_keeps_changing_two_project
     writer.join().unwrap();
     assert!(reads >= 5);
     let last = all(home.path(), &[]);
-    assert_eq!(entry(&last, "North")["revision"], 25);
-    assert_eq!(entry(&last, "South")["revision"], 25);
+    assert_eq!(entry(&last, "North")["cards"].as_array().unwrap().len(), 25);
+    assert_eq!(entry(&last, "South")["cards"].as_array().unwrap().len(), 25);
 }
 
 #[test]
@@ -805,7 +790,13 @@ fn only_a_list_may_ask_for_every_project_and_never_together_with_a_project() {
             "1",
             "--all-projects",
         ],
-        vec!["--json", "--project", "Apple", "export", "--all-projects"],
+        vec![
+            "--json",
+            "--project",
+            "Apple",
+            "workspace",
+            "--all-projects",
+        ],
         vec!["--json", "--project", "Apple", "add", "x", "--all-projects"],
         vec!["--json", "project", "ls", "--all-projects"],
         vec!["--json", "serve", "--all-projects"],

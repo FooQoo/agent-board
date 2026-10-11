@@ -1,0 +1,569 @@
+//! Reading shared files.
+//!
+//! Two styles of read exist. The strict reads (`read_*`) fail on the first
+//! defect of the file they need, and writes depend on them. The snapshot read
+//! keeps going: a broken card is left out and reported in `problems`, and a
+//! TASK.md with a format defect is returned as it is, with the defect reported.
+//! `project.json` is the one file whose defect fails the whole snapshot.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
+use chrono::{DateTime, Utc};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use serde_json::Value;
+
+use super::FileStore;
+use super::index;
+use super::io;
+use super::layout;
+use super::model::{
+    CardEpic, CardView, EpicFile, EpicView, Problem, ProjectFile, TaskFile, WorkspaceFile,
+    current_request,
+};
+use super::validate;
+use crate::domain::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
+use crate::error::SkanError;
+
+/// One project as the snapshot returns it: the project, its content version and
+/// the cursor for that version, its cards with their full history, and every
+/// defect that was tolerated while reading it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectSnapshot {
+    pub project: ProjectMeta,
+    pub next_card_id: i64,
+    pub version: String,
+    pub cursor: ChangeCursor,
+    pub epics: Vec<EpicView>,
+    pub cards: Vec<CardView>,
+    pub problems: Vec<Problem>,
+}
+
+/// Read every epic folder. An epic whose `epic.json` is defective is left out
+/// and reported in `problems`; its folder is never changed. A defect in
+/// PLAN.md is reported while the plan text is still returned.
+pub(super) fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, Vec<Problem>) {
+    let mut epics = Vec::new();
+    let mut problems = Vec::new();
+    let Ok(entries) = fs::read_dir(layout::epics_dir(project_dir)) else {
+        return (epics, problems);
+    };
+    let mut folders: Vec<(String, PathBuf)> = entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let name = entry.file_name().to_str()?.to_owned();
+            (!name.starts_with('.') && entry.path().is_dir()).then(|| (name, entry.path()))
+        })
+        .collect();
+    folders.sort();
+    for (name, folder) in folders {
+        let json_path = folder.join("epic.json");
+        let json_label = layout::shared_label(shared, &json_path);
+        let file: EpicFile = match io::read_bytes(&json_path, &json_label)
+            .and_then(|bytes| parse_file::<EpicFile>(&bytes, &json_label))
+        {
+            Ok(file) => file,
+            Err(error) => {
+                problems.push(problem_of(error));
+                continue;
+            }
+        };
+        let defects = validate::check_epic(&file, &name);
+        if !defects.is_empty() {
+            problems.extend(defects.into_iter().map(|d| Problem {
+                file: json_label.clone(),
+                field: d.field,
+                reason: d.reason,
+            }));
+            continue;
+        }
+        let plan_path = folder.join("PLAN.md");
+        let plan_label = layout::shared_label(shared, &plan_path);
+        let plan =
+            match io::read_text(&plan_path, &plan_label) {
+                Ok(text) => {
+                    problems.extend(validate::check_plan_body(&text).into_iter().map(|d| {
+                        Problem {
+                            file: plan_label.clone(),
+                            field: d.field,
+                            reason: d.reason,
+                        }
+                    }));
+                    text
+                }
+                Err(error) => {
+                    problems.push(problem_of(error));
+                    String::new()
+                }
+            };
+        epics.push(EpicView {
+            id: file.id,
+            name: file.name,
+            color: file.color,
+            is_draft: file.is_draft,
+            plan,
+            attachments: file.attachments,
+            created_at: file.created_at,
+            updated_at: file.updated_at,
+        });
+    }
+    (epics, problems)
+}
+
+impl ProjectSnapshot {
+    /// The same snapshot without the archived cards (the board and the CLI snapshot).
+    pub fn without_archived(mut self) -> ProjectSnapshot {
+        self.cards.retain(|card| card.archived_at.is_none());
+        self
+    }
+
+    /// The same snapshot with only the archived cards (the archive list).
+    pub fn only_archived(mut self) -> ProjectSnapshot {
+        self.cards.retain(|card| card.archived_at.is_some());
+        self
+    }
+}
+
+/// A snapshot with the time it was fetched, as the CLI, the hook and wait print
+/// it. The fetch time is added here, never stored.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FetchedSnapshot<'a> {
+    pub fetched_at: String,
+    #[serde(flatten)]
+    pub snapshot: &'a ProjectSnapshot,
+}
+
+/// A card that was read leniently: its view and the defects of its text.
+pub(crate) struct CardLoad {
+    pub view: CardView,
+    pub problems: Vec<Problem>,
+}
+
+/// Parse one shared JSON file. Syntax errors, the `formatVersion` gate, and
+/// the strict shape (unknown or missing fields) are all reported here.
+pub(crate) fn parse_file<T: DeserializeOwned>(bytes: &[u8], label: &str) -> Result<T, SkanError> {
+    let value: Value = serde_json::from_slice(bytes).map_err(|e| SkanError::FileInvalid {
+        file: label.to_string(),
+        field: String::new(),
+        reason: format!("The JSON is malformed: {e}."),
+    })?;
+    validate::check_format_version(&value, label)?;
+    serde_json::from_value(value).map_err(|e| {
+        let message = e.to_string();
+        SkanError::FileInvalid {
+            file: label.to_string(),
+            field: message.split('`').nth(1).unwrap_or("").to_string(),
+            reason: message,
+        }
+    })
+}
+
+/// The problem a tolerated read error stands for, with the file label kept.
+pub(crate) fn problem_of(error: SkanError) -> Problem {
+    match error {
+        SkanError::FileInvalid {
+            file,
+            field,
+            reason,
+        } => Problem {
+            file,
+            field,
+            reason,
+        },
+        SkanError::FormatUnsupported { file, version } => Problem {
+            file,
+            field: "formatVersion".into(),
+            reason: format!("Only formatVersion 1 is supported, found {version}."),
+        },
+        SkanError::FileUnreadable { file, reason } => Problem {
+            file,
+            field: String::new(),
+            reason,
+        },
+        other => Problem {
+            file: String::new(),
+            field: String::new(),
+            reason: other.reason(),
+        },
+    }
+}
+
+fn file_time(path: &Path) -> Option<DateTime<Utc>> {
+    let modified = fs::metadata(path).ok()?.modified().ok()?;
+    DateTime::from_timestamp(DateTime::<Utc>::from(modified).timestamp(), 0)
+}
+
+/// The project folder, or `project_not_found` when it does not exist.
+pub fn project_dir_checked(shared: &Path, id: &ProjectId) -> Result<PathBuf, SkanError> {
+    let dir = layout::project_dir(shared, id);
+    if dir.is_dir() {
+        Ok(dir)
+    } else {
+        Err(SkanError::ProjectNotFound {
+            project: id.to_string(),
+        })
+    }
+}
+
+/// Whether `workspace.json` exists. A present file must pass every check.
+pub fn workspace_present(shared: &Path) -> Result<bool, SkanError> {
+    let path = layout::workspace_file(shared);
+    if !path.is_file() {
+        return Ok(false);
+    }
+    let label = layout::shared_label(shared, &path);
+    let bytes = io::read_bytes(&path, &label)?;
+    let file: WorkspaceFile = parse_file(&bytes, &label)?;
+    match validate::check_workspace(&file).into_iter().next() {
+        None => Ok(true),
+        Some(d) => Err(SkanError::FileInvalid {
+            file: label,
+            field: d.field,
+            reason: d.reason,
+        }),
+    }
+}
+
+/// Every project, sorted by name (binary order). A project whose file is
+/// defective fails the whole list.
+pub fn list_projects(shared: &Path) -> Result<Vec<ProjectMeta>, SkanError> {
+    if !workspace_present(shared)? {
+        return Ok(Vec::new());
+    }
+    let dir = layout::projects_dir(shared);
+    if !dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    let entries =
+        fs::read_dir(&dir).map_err(|e| io::read_error(&layout::shared_label(shared, &dir), e))?;
+    let mut projects = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| io::read_error(&layout::shared_label(shared, &dir), e))?;
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let Ok(id) = ProjectId::from_str(name) else {
+            continue;
+        };
+        if !path.is_dir() {
+            continue;
+        }
+        match read_project_file(shared, &id) {
+            Ok(file) => projects.push(meta_of(file)),
+            // A project deleted while the folder was being read is left out:
+            // the list shows it before or after the deletion, never half of it.
+            Err(_) if !path.is_dir() => continue,
+            Err(error) => return Err(error),
+        }
+    }
+    projects.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(projects)
+}
+
+pub(crate) fn meta_of(file: ProjectFile) -> ProjectMeta {
+    ProjectMeta {
+        id: file.id,
+        name: file.name,
+        created_at: file.created_at,
+    }
+}
+
+/// Read and check `project.json` of a project.
+pub fn read_project_file(shared: &Path, id: &ProjectId) -> Result<ProjectFile, SkanError> {
+    let dir = project_dir_checked(shared, id)?;
+    let path = layout::project_file(&dir);
+    let label = layout::shared_label(shared, &path);
+    let bytes = io::read_bytes(&path, &label)?;
+    let file: ProjectFile = parse_file(&bytes, &label)?;
+    match validate::check_project(&file, id.as_str())
+        .into_iter()
+        .next()
+    {
+        None => Ok(file),
+        Some(d) => Err(SkanError::FileInvalid {
+            file: label,
+            field: d.field,
+            reason: d.reason,
+        }),
+    }
+}
+
+/// The card IDs of a project, in ascending order. Only folders with canonical
+/// names count; a temporary folder or a stray file is ignored.
+pub(crate) fn card_ids(project_dir: &Path) -> Result<Vec<i64>, SkanError> {
+    let tasks = layout::tasks_dir(project_dir);
+    if !tasks.is_dir() {
+        return Ok(Vec::new());
+    }
+    let label = layout::project_label(project_dir, &tasks);
+    let entries = fs::read_dir(&tasks).map_err(|e| io::read_error(&label, e))?;
+    let mut ids = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| io::read_error(&label, e))?;
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let name = entry.file_name();
+        if let Some(id) = name.to_str().and_then(layout::parse_card_dir) {
+            ids.push(id);
+        }
+    }
+    ids.sort_unstable();
+    Ok(ids)
+}
+
+/// Read a card for a snapshot. A defect in `task.json` fails the card, and
+/// the caller reports it as problems. A defect in TASK.md returns the text.
+pub(crate) fn read_card_lenient(
+    shared: &Path,
+    project_id: &ProjectId,
+    card_id: i64,
+) -> Result<CardLoad, Vec<Problem>> {
+    let project_dir = layout::project_dir(shared, project_id);
+    let dir = layout::task_dir(&project_dir, card_id);
+    let json_path = layout::task_json(&dir);
+    let json_label = layout::shared_label(shared, &json_path);
+    let task: TaskFile = match io::read_bytes(&json_path, &json_label)
+        .and_then(|bytes| parse_file::<TaskFile>(&bytes, &json_label))
+    {
+        Ok(task) => task,
+        Err(error) => return Err(vec![problem_of(error)]),
+    };
+    let defects = validate::check_task(&task, card_id);
+    if !defects.is_empty() {
+        return Err(defects
+            .into_iter()
+            .map(|d| Problem {
+                file: json_label.clone(),
+                field: d.field,
+                reason: d.reason,
+            })
+            .collect());
+    }
+    let md_path = layout::task_md(&dir);
+    let md_label = layout::shared_label(shared, &md_path);
+    let (description, problems) = match io::read_text(&md_path, &md_label) {
+        Ok(text) => {
+            let problems = validate::check_task_body(&text)
+                .into_iter()
+                .map(|d| Problem {
+                    file: md_label.clone(),
+                    field: d.field,
+                    reason: d.reason,
+                })
+                .collect();
+            (text, problems)
+        }
+        Err(error) => (String::new(), vec![problem_of(error)]),
+    };
+    Ok(CardLoad {
+        view: card_view(task, description, file_time(&md_path)),
+        problems,
+    })
+}
+
+/// Build the card view from its two files. `updatedAt` is the newer of the
+/// task's own time and the TASK.md modification time.
+pub(crate) fn card_view(
+    task: TaskFile,
+    description: String,
+    body_modified: Option<DateTime<Utc>>,
+) -> CardView {
+    let (pending_reason, pending_choices) = match current_request(&task) {
+        Some(event) => (
+            event.question.clone(),
+            event.choices.clone().unwrap_or_default(),
+        ),
+        None => (None, Vec::new()),
+    };
+    let updated_at = body_modified.map_or(task.updated_at, |m| m.max(task.updated_at));
+    CardView {
+        id: task.id,
+        title: task.title,
+        description,
+        assignee: task.assignee,
+        epic_id: task.epic_id,
+        epic: None,
+        card_status: task.card_status,
+        position: task.position,
+        agent_status: task.agent_status,
+        is_draft: task.is_draft,
+        pending_request_id: task.pending_request_id,
+        pending_reason,
+        pending_choices,
+        archived_at: task.archived_at,
+        attachments: task.attachments,
+        evidence: task.evidence,
+        created_at: task.created_at,
+        updated_at,
+        agent_status_changed_at: task.agent_status_changed_at,
+        history: task.history,
+    }
+}
+
+/// Resolve the epic of a card from the epics of its project. An epic ID that
+/// names no epic leaves the card with no epic.
+pub(crate) fn attach_epic(view: &mut CardView, epics: &[EpicView]) {
+    view.epic = view
+        .epic_id
+        .as_deref()
+        .and_then(|id| epics.iter().find(|epic| epic.id.as_str() == id))
+        .map(|epic| CardEpic {
+            id: epic.id.clone(),
+            name: epic.name.clone(),
+            color: epic.color.clone(),
+        });
+}
+
+/// Read and check `task.json` of one card. A missing card is `card_not_found`;
+/// a defect in the file is `file_invalid` with the shared-relative path.
+pub(crate) fn read_task_strict(
+    shared: &Path,
+    project_id: &ProjectId,
+    card_id: i64,
+) -> Result<TaskFile, SkanError> {
+    let project_dir = project_dir_checked(shared, project_id)?;
+    let dir = layout::task_dir(&project_dir, card_id);
+    if !dir.is_dir() {
+        return Err(SkanError::CardNotFound { id: card_id });
+    }
+    let path = layout::task_json(&dir);
+    let label = layout::shared_label(shared, &path);
+    let bytes = io::read_bytes(&path, &label)?;
+    let task: TaskFile = parse_file(&bytes, &label)?;
+    match validate::check_task(&task, card_id).into_iter().next() {
+        None => Ok(task),
+        Some(d) => Err(SkanError::FileInvalid {
+            file: label,
+            field: d.field,
+            reason: d.reason,
+        }),
+    }
+}
+
+/// The text of a card's TASK.md.
+pub(crate) fn read_body(
+    shared: &Path,
+    project_id: &ProjectId,
+    card_id: i64,
+) -> Result<String, SkanError> {
+    let project_dir = project_dir_checked(shared, project_id)?;
+    let path = layout::task_md(&layout::task_dir(&project_dir, card_id));
+    io::read_text(&path, &layout::shared_label(shared, &path))
+}
+
+/// One card, read strictly: `task.json` must pass, and TASK.md must be readable.
+pub fn read_card(
+    shared: &Path,
+    project_id: &ProjectId,
+    card_id: i64,
+) -> Result<CardView, SkanError> {
+    let task = read_task_strict(shared, project_id, card_id)?;
+    let body = read_body(shared, project_id, card_id)?;
+    let project_dir = layout::project_dir(shared, project_id);
+    let md_path = layout::task_md(&layout::task_dir(&project_dir, card_id));
+    let mut view = card_view(task, body, file_time(&md_path));
+    attach_epic(&mut view, &read_epics(shared, &project_dir).0);
+    Ok(view)
+}
+
+/// The snapshot of one project: its project file (strict), and every card
+/// with the defects that were tolerated.
+pub fn read_snapshot(shared: &Path, project_id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+    let project_dir = project_dir_checked(shared, project_id)?;
+    // The version is taken before the files are read: a save in between makes
+    // the next reload see a different version and read again.
+    let version = index::project_version(&project_dir);
+    let cursor = ChangeCursor::new(project_id.clone(), &version)?;
+    let file = read_project_file(shared, project_id)?;
+    let next_card_id = file.next_card_id;
+    let project = meta_of(file);
+    let mut cards = Vec::new();
+    let (epics, mut problems) = read_epics(shared, &project_dir);
+    for card_id in card_ids(&project_dir)? {
+        match read_card_lenient(shared, project_id, card_id) {
+            Ok(load) => {
+                cards.push(load.view);
+                problems.extend(load.problems);
+            }
+            Err(found) => problems.extend(found),
+        }
+    }
+    for card in &mut cards {
+        attach_epic(card, &epics);
+    }
+    Ok(ProjectSnapshot {
+        project,
+        next_card_id,
+        version,
+        cursor,
+        epics,
+        cards,
+        problems,
+    })
+}
+
+/// Every project's unarchived snapshot, with the catalog version of the same read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AllSnapshots {
+    pub catalog_version: String,
+    pub projects: Vec<ProjectSnapshot>,
+}
+
+impl FileStore {
+    /// The project list with the catalog version, computed from the files read now.
+    pub fn catalog(&self) -> Result<ProjectCatalog, SkanError> {
+        let all = self.all_snapshots()?;
+        Ok(ProjectCatalog {
+            projects: all.projects.iter().map(|p| p.project.clone()).collect(),
+            catalog_version: all.catalog_version,
+        })
+    }
+
+    /// The project with this name. A name that matches no project is
+    /// `project_not_found`.
+    pub fn project_by_name(&self, name: &str) -> Result<ProjectMeta, SkanError> {
+        list_projects(self.shared_dir())?
+            .into_iter()
+            .find(|project| project.name == name)
+            .ok_or_else(|| SkanError::ProjectNotFound {
+                project: name.to_string(),
+            })
+    }
+
+    /// One project's unarchived cards, with its version, its cursor, and the
+    /// defects of its files.
+    pub fn board(&self, id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+        Ok(read_snapshot(self.shared_dir(), id)?.without_archived())
+    }
+
+    /// One project's archived cards, read the same way as [`FileStore::board`].
+    pub fn archive_snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, SkanError> {
+        Ok(read_snapshot(self.shared_dir(), id)?.only_archived())
+    }
+
+    /// Every project's unarchived snapshot in name order, with the catalog
+    /// version. A project whose `project.json` is defective fails the whole read.
+    pub fn all_snapshots(&self) -> Result<AllSnapshots, SkanError> {
+        let mut projects = Vec::new();
+        for meta in list_projects(self.shared_dir())? {
+            projects.push(self.board(&meta.id)?);
+        }
+        let mut by_id: Vec<(&ProjectId, &str)> = projects
+            .iter()
+            .map(|p| (&p.project.id, p.version.as_str()))
+            .collect();
+        by_id.sort_by(|a, b| a.0.cmp(b.0));
+        let catalog_version = index::catalog_version_of(by_id);
+        Ok(AllSnapshots {
+            catalog_version,
+            projects,
+        })
+    }
+}

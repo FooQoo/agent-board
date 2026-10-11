@@ -6,7 +6,7 @@ export interface UseProjectsResult {
   /** `loading` and `error` last until the first list arrives; a later failure keeps the old list. */
   status: 'loading' | 'ready' | 'error';
   projects: Project[];
-  catalogRevision: number | null;
+  catalogVersion: string | null;
   /** True when the last fetch failed. */
   fetchFailed: boolean;
   reload: () => void;
@@ -17,7 +17,7 @@ export function useProjects(): UseProjectsResult {
   const [state, setState] = useState<Omit<UseProjectsResult, 'reload'>>({
     status: 'loading',
     projects: [],
-    catalogRevision: null,
+    catalogVersion: null,
     fetchFailed: false,
   });
   const generation = useRef(0);
@@ -30,7 +30,7 @@ export function useProjects(): UseProjectsResult {
         setState({
           status: 'ready',
           projects: list.projects,
-          catalogRevision: list.catalogRevision,
+          catalogVersion: list.catalogVersion,
           fetchFailed: false,
         });
       },

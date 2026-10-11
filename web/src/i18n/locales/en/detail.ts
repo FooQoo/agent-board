@@ -12,6 +12,8 @@ export const detailEn = {
     toolbar: 'Card actions',
     edit: 'Edit card',
     makeDraft: 'Make draft',
+    problem: 'This file has a problem: {{file}} ({{field}}) — {{reason}}',
+    problemNoField: 'This file has a problem: {{file}} — {{reason}}',
     saveError: 'Could not save. Try again.',
   },
   draft: {
@@ -21,12 +23,14 @@ export const detailEn = {
   },
   request: {
     title: 'The agent is waiting for your answer',
-    answer: 'Answer',
     showMore: 'Show more',
     label: 'Your answer',
     placeholder: 'Write your answer…',
-    hintEmpty: 'Enter your answer.',
-    hint: 'Saved to the history. The agent continues from there.',
+    choices: 'Choices',
+    guideChoice: 'Choose an option, or answer in your own words.',
+    guideText: 'Answer in your own words.',
+    saveHint: 'Saved to the history. The coordinator reviews it and resumes the work.',
+    resumed: 'Saved. The coordinator resumes the work.',
     send: 'Send',
     sending: 'Sending…',
     retry: 'Retry',
@@ -51,6 +55,11 @@ export const detailEn = {
   },
   markdown: {
     noImage: 'No image',
+    image: 'Image',
+    enlargeImage: 'Enlarge {{name}}',
+    enlargeDiagram: 'Enlarge diagram',
+    diagramLoading: 'Drawing the diagram…',
+    diagramError: 'The diagram cannot be drawn: {{message}}',
   },
   history: {
     title: 'History',

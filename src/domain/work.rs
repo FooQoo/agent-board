@@ -55,6 +55,8 @@ pub struct NewCard {
     pub description: String,
     pub assignee: Assignee,
     pub actor: Actor,
+    /// The card starts as a draft (agent idle). The default is a normal card.
+    pub is_draft: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,44 +119,11 @@ pub struct AttachmentData {
     pub bytes: Vec<u8>,
 }
 
-/// One project's board read in a single transaction: the project, its board
-/// metadata, revision, the cursor for that revision and every card with its
-/// full history.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BoardSnapshot {
-    pub project: super::ProjectMeta,
-    pub board: super::BoardMeta,
-    pub revision: i64,
-    pub cursor: super::ChangeCursor,
-    pub cards: Vec<Card>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BulkArchiveResult {
     pub cards: Vec<Card>,
     pub archived_count: usize,
-}
-
-/// Every project's board read in one transaction: the catalog revision and one
-/// [`BoardSnapshot`] per project, ordered by project name (binary order, as
-/// `project ls` lists them).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AllBoardsSnapshot {
-    pub catalog_revision: i64,
-    pub projects: Vec<BoardSnapshot>,
-}
-
-/// A snapshot with the time it was fetched, as the CLI, the hook and wait
-/// print it. The fetch time is added by the reader, never stored.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FetchedSnapshot<'a> {
-    pub fetched_at: String,
-    #[serde(flatten)]
-    pub snapshot: &'a BoardSnapshot,
 }
 
 /// A backup that passed every check, ready to be restored. It carries only

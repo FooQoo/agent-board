@@ -21,7 +21,14 @@ export function MoveDialog({
   onSubmit: (data: { reason: string }) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const [reason, setReason] = useState('');
+  // A default for the field only: whatever is in it when the dialog is submitted is the reason.
+  const [reason, setReason] = useState(() =>
+    t('dialog.moveReasonDefault', {
+      who: t('assignee.human'),
+      from: t(`column.${card.cardStatus}`),
+      to: t(`column.${target}`),
+    }),
+  );
   const reasonId = useId();
 
   return (
@@ -53,6 +60,7 @@ export function MoveDialog({
           className="modal__textarea modal__textarea--tall"
           value={reason}
           onChange={(event) => setReason(event.target.value)}
+          onFocus={(event) => event.currentTarget.select()}
           maxLength={2000}
         />
       </div>

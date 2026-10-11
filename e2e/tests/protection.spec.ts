@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { agboardOk, listCards, mainOrigin, mainPort, mainProject, projectId, resetBoard, type CardJson } from '../helpers/agboard';
+import { agboardOk, listCards, mainOrigin, mainPort, mainProject, projectId, resetBoard, taskBody, type CardJson } from '../helpers/agboard';
 
 // Writes go to /api/projects/<ProjectId>/cards/<number>; the guard answers before it looks at the project.
 let card15: string;
@@ -148,29 +148,32 @@ test('with the guard, a draft switch and an edit follow the card rules; a bad bo
   const notDraft = await fromPage(page, 'PATCH', `${base}/13`, { description: 'Not allowed' });
   expect(notDraft.status).toBe(409);
   expect(notDraft.body.error?.code).toBe('card_not_draft');
-  expect(shown(13).description).toBe('Check the layout at 1280, 800, and 480 px.\nLook for horizontal scrolling.');
+  expect(shown(13).description).toContain('Check the layout at 1280, 800, and 480 px.\nLook for horizontal scrolling.');
 
   // A draft takes an edit; CRLF becomes LF; finalize hands it back in the same step.
   expect((await fromPage(page, 'PUT', `${base}/13/draft`, { isDraft: true })).status).toBe(200);
-  const edited = await fromPage(page, 'PATCH', `${base}/13`, { description: 'one\r\ntwo' });
+  const edited = await fromPage(page, 'PATCH', `${base}/13`, { description: taskBody('one\r\ntwo') });
   expect(edited.status).toBe(200);
-  expect(shown(13)).toMatchObject({ description: 'one\ntwo', isDraft: true });
+  expect(shown(13).description).toContain('one\ntwo');
+  expect(shown(13).isDraft).toBe(true);
 
   // Too long: refused with the reason, and the stored text is the previous one. An empty title and an empty edit too.
   const tooLong = await fromPage(page, 'PATCH', `${base}/13`, { description: 'あ'.repeat(50_001) });
   expect(tooLong.status).toBe(422);
-  expect(shown(13).description).toBe('one\ntwo');
+  expect(shown(13).description).toContain('one\ntwo');
   expect((await fromPage(page, 'PATCH', `${base}/13`, { title: '' })).status).toBeGreaterThanOrEqual(400);
   expect((await fromPage(page, 'PATCH', `${base}/13`, {})).status).toBeGreaterThanOrEqual(400);
-  expect(shown(13)).toMatchObject({ description: 'one\ntwo', title: 'Check the board display', isDraft: true });
+  expect(shown(13).description).toContain('one\ntwo');
+  expect(shown(13)).toMatchObject({ title: 'Check the board display', isDraft: true });
   // A body over 1 MiB is refused before it is read in full.
   const huge = await fromPage(page, 'PATCH', `${base}/13`, { description: 'x'.repeat(1_200_000) });
   expect(huge.status).toBe(413);
-  expect(shown(13).description).toBe('one\ntwo');
+  expect(shown(13).description).toContain('one\ntwo');
 
   const finalized = await fromPage(page, 'PATCH', `${base}/13`, { title: 'Final title', finalize: true });
   expect(finalized.status).toBe(200);
-  expect(shown(13)).toMatchObject({ title: 'Final title', isDraft: false, description: 'one\ntwo' });
+  expect(shown(13)).toMatchObject({ title: 'Final title', isDraft: false });
+  expect(shown(13).description).toContain('one\ntwo');
   // It is no longer a draft, so the next edit is refused.
   expect((await fromPage(page, 'PATCH', `${base}/13`, { title: 'Again' })).status).toBe(409);
 });

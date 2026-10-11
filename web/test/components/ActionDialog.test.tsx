@@ -1,14 +1,28 @@
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WriteError } from '../../src/api';
 import { ActionDialog, type DialogAction } from '../../src/components/ActionDialog';
 import { selectLocale } from '../../src/i18n';
-import { descriptionOf, setDescription } from '../editor/helpers';
 import { fixtureCard } from '../fixtures';
 
+vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('../editor/fakeRichEditor'));
+
 type Data = Parameters<React.ComponentProps<typeof ActionDialog>['onSubmit']>[0];
+
+/** The body of the dialog: the rich editor's stand-in is a textarea labelled with its Markdown name. */
+function bodyOf(root: HTMLElement = screen.getByRole('dialog')): HTMLTextAreaElement {
+  return within(root).getByRole('textbox', { name: /Markdown/ }) as HTMLTextAreaElement;
+}
+
+function descriptionOf(root?: HTMLElement): string {
+  return bodyOf(root).value;
+}
+
+function setDescription(text: string, root?: HTMLElement): void {
+  fireEvent.change(bodyOf(root), { target: { value: text } });
+}
 
 function deferred() {
   let resolve!: () => void;
@@ -68,7 +82,7 @@ describe('create dialog', () => {
   it('shows the add form with the AI as the default assignee', async () => {
     const { dialog } = await openHost({ kind: 'create' }, async () => undefined);
     expect(dialog.textContent).toContain('Add card');
-    expect(dialog.textContent).toContain('New');
+    expect(within(dialog).getByText('Draft', { selector: '.editor__badge' })).toBeTruthy();
     expect(within(dialog).getByLabelText('Title')).toBeTruthy();
     expect(within(dialog).getByRole('textbox', { name: 'Description (Markdown)' })).toBeTruthy();
     expect(within(dialog).getByRole('radio', { name: 'AI' }).getAttribute('aria-checked')).toBe(
@@ -139,10 +153,12 @@ describe('create dialog', () => {
     setDescription('a'.repeat(50_000));
     const add = within(dialog).getByRole('button', { name: 'Add' }) as HTMLButtonElement;
     expect(add.disabled).toBe(false);
-    expect(within(dialog).getByText('50,000 / 50,000').getAttribute('data-over')).toBeNull();
+    expect(dialog.querySelector('.editor__counter')?.textContent).toBe('50,000 / 50,000');
+    expect(dialog.querySelector('.editor__counter')?.getAttribute('data-over')).toBeNull();
     setDescription('a'.repeat(50_001));
     expect(add.disabled).toBe(true);
-    expect(within(dialog).getByText('50,001 / 50,000').getAttribute('data-over')).toBe('true');
+    expect(dialog.querySelector('.editor__counter')?.textContent).toBe('50,001 / 50,000');
+    expect(dialog.querySelector('.editor__counter')?.getAttribute('data-over')).toBe('true');
     expect(
       within(dialog).getByText('Over the 50,000-character limit. Remove 1 character.'),
     ).toBeTruthy();
@@ -168,7 +184,7 @@ describe('saving state', () => {
       (within(dialog).getByRole('button', { name: 'Close' }) as HTMLButtonElement).disabled,
     ).toBe(true);
     expect((title as HTMLInputElement).disabled).toBe(true);
-    expect(document.querySelector('.cm-content')?.getAttribute('contenteditable')).toBe('false');
+    expect(bodyOf(dialog).disabled).toBe(true);
 
     await userEvent.click(saving);
     await userEvent.keyboard('{Escape}');
@@ -197,7 +213,10 @@ describe('saving state', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
     await act(async () => first.reject(new WriteError('The server said no.', 503, 'busy')));
 
-    expect((await within(dialog).findByRole('alert')).textContent).toContain('The server said no.');
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Could not save. Your input is kept. Try again.',
+    );
+    expect(within(dialog).queryByText('The server said no.')).toBeNull();
     expect(onClosed).not.toHaveBeenCalled();
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('Keep me');
     expect(descriptionOf()).toBe('Body text');
@@ -264,6 +283,29 @@ describe('closing and focus', () => {
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('draft');
   });
 
+  it('closes an empty new card without a question', async () => {
+    const { dialog, onClosed } = await openHost({ kind: 'create' }, async () => undefined);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('Discard changes?')).toBeNull();
+  });
+
+  it('asks before closing a typed new card, like the edit dialog', async () => {
+    const { dialog, onClosed } = await openHost({ kind: 'create' }, async () => undefined);
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'half written');
+    expect(within(dialog).getByText('You have unsaved changes.')).toBeTruthy();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Discard changes?' });
+    expect(onClosed).not.toHaveBeenCalled();
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() => expect(screen.queryByText('Discard changes?')).toBeNull());
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('half written');
+    await userEvent.keyboard('{Escape}');
+    const again = await screen.findByRole('dialog', { name: 'Discard changes?' });
+    await userEvent.click(within(again).getByRole('button', { name: 'Discard and close' }));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+  });
+
   it('returns focus to the source card when there is no opener (drag move)', async () => {
     const card = fixtureCard(14);
     function DragHost() {
@@ -294,6 +336,21 @@ describe('closing and focus', () => {
 });
 
 describe('move dialog', () => {
+  it('opens with the sentence of the move in the current language, and submits what is in the field', async () => {
+    selectLocale('ja');
+    const onSubmit = vi.fn(async (_data: Data) => undefined);
+    const { dialog } = await openHost(
+      { kind: 'move', card: fixtureCard(14), target: 'done' },
+      onSubmit,
+    );
+    const reason = within(dialog).getByLabelText(/^変更理由/) as HTMLTextAreaElement;
+    expect(reason.value).toBe('ユーザーが未着手から完了に変更しました。');
+    await userEvent.click(within(dialog).getByRole('button', { name: '移動する' }));
+    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
+      reason: 'ユーザーが未着手から完了に変更しました。',
+    });
+  });
+
   it('shows the card, the current column to the target column, and requires a reason', async () => {
     const card = fixtureCard(14);
     const onSubmit = vi.fn(async (_data: Data) => undefined);
@@ -302,13 +359,16 @@ describe('move dialog', () => {
     const transition = within(dialog).getByRole('group', { name: 'Status change' });
     expect(transition.textContent).toMatch(/Todo.*Doing/);
 
+    const reason = within(dialog).getByLabelText(/^Reason/) as HTMLTextAreaElement;
+    expect(reason.value).toBe('User changed the status from Todo to Doing.');
+    await userEvent.clear(reason);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
     expect((await within(dialog).findByRole('alert')).textContent).toBe(
       'Enter a reason up to 2,000 characters.',
     );
     expect(onSubmit).not.toHaveBeenCalled();
 
-    await userEvent.type(within(dialog).getByLabelText(/^Reason/), 'Ready to start');
+    await userEvent.type(reason, 'Ready to start');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
     expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ reason: 'Ready to start' });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));

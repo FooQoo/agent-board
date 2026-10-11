@@ -48,15 +48,16 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   // The request and Answer sit above the tabs, which keep showing the description.
   const request = panel.getByRole('region', { name: 'The agent is waiting for your answer' });
   await expect(request).toContainText('Waiting for confirmation on how to replace a board.');
-  await expect(panel.getByRole('tabpanel')).toContainText('No description.');
-  // Answer opens a text area in place, not a dialog; Cancel closes it again.
-  await request.getByRole('button', { name: 'Answer', exact: true }).click();
+  // An empty body is written as the TASK.md template, so the placeholder shows where the text goes.
+  await expect(panel.getByRole('tabpanel')).toContainText('（作業の目的と内容を書く）');
+  // The answer is typed in place, with no dialog: the text area is open at once, and Cancel clears what was typed.
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(request.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
-  await expect(panel.getByRole('tabpanel')).toContainText('No description.');
+  await request.getByRole('textbox', { name: 'Your answer' }).fill('Typed in place');
   await request.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(request.getByRole('textbox')).toHaveCount(0);
-  await expect(request.getByRole('button', { name: 'Answer', exact: true })).toBeVisible();
+  await expect(request.getByRole('textbox', { name: 'Your answer' })).toHaveValue('');
+  await expect(request.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
+  // An empty body is written as the TASK.md template, so the placeholder shows where the text goes.
+  await expect(panel.getByRole('tabpanel')).toContainText('（作業の目的と内容を書く）');
 
   await card(page, 11).click();
   await expect(panel).toContainText('Running');
@@ -169,18 +170,18 @@ test('the card grips never take keyboard focus', async ({ page }) => {
   }
   expect(visited).toEqual([
     'BUTTON agent-board',
-    'BUTTON Archive',
     'BUTTON Add card',
+    'BUTTON Archive',
     'BUTTON Settings',
-    'BUTTON #14',
-    'BUTTON #15',
-    'BUTTON #16',
-    'BUTTON #11',
-    'BUTTON #12',
-    'BUTTON #13',
+    'DIV #14',
+    'DIV #15',
+    'DIV #16',
+    'DIV #11',
+    'DIV #12',
+    'DIV #13',
     'BUTTON Archive completed cards',
-    'BUTTON #9',
-    'BUTTON #8',
+    'DIV #9',
+    'DIV #8',
   ]);
 
   // The detail panel exposes close, the selected tab, and the toolbar actions; the grip itself never receives focus.

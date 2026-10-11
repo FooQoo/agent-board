@@ -11,7 +11,7 @@ AIが作業を登録し、ユーザーも状態の更新や判断への回答を
 [English](README.md) · [開発に参加する](CONTRIBUTING.ja.md) · [GitHubリポジトリ](https://github.com/FooQoo/agent-board)
 
 ![ローカル完結](https://img.shields.io/badge/data-local%20only-1f6feb)
-![SQLite](https://img.shields.io/badge/storage-SQLite-1f6feb)
+![プレーンファイル](https://img.shields.io/badge/storage-plain%20files-1f6feb)
 ![macOS と Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-1f6feb)
 
 <img src="docs/images/board.png" alt="Agent Boardのボード" width="860">
@@ -25,11 +25,11 @@ AIが作業を登録し、ユーザーも状態の更新や判断への回答を
 - **AIが人とAIの作業を登録します。** 担当はAIまたはユーザーに固定され、カードの列と状態で進み具合を示します。
 - **ユーザーとAIが同じボードを更新します。** 状態変更には理由を残します。ユーザーが判断依頼に答えると、次のHookや`agboard snapshot`がその回答を含む全履歴をAIへ渡します。
 - **すべてのコマンドが対象プロジェクトを指定します。** ボードには複数のプロジェクトがあり、コマンド・Hook・待機は`--project NAME`で対象を明示します。Web画面や別のエージェントの選択から推測することはありません。
-- **データはマシンの外へ出ません。** カードはローカルのSQLiteに保存され、Web画面は`127.0.0.1`だけで待ち受けます。
+- **データはマシンの外へ出ません。** カードはローカルの共有フォルダにあるファイルとして保存され、Web画面は`127.0.0.1`だけで待ち受けます。
 
 ```mermaid
 flowchart LR
-    A["AIエージェント"] -- "agboard CLI・Hook" --> D[("ローカルのSQLite")]
+    A["AIエージェント"] -- "agboard CLI・Hook" --> D[("ローカルの共有フォルダ")]
     U["ユーザー"] -- "Agent Board UI" --> D
     D -- "ローカルサーバー" --> B["ブラウザ"]
 ```
@@ -74,6 +74,14 @@ agboard serve --port 7420
 
 `project create`、`project ls`、`serve`、読み取り専用の`ls --all-projects`以外のすべてのコマンドは`--project NAME`が必須です。ブラウザからカードを登録するか、`agboard --project "My project" add "作業" --assignee ai --actor ai`で登録できます。Claude CodeとCodexのHook設定は[連携ガイド](integrations/README.md)を参照してください。ビルド方法は[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)にあります。
 
+プロジェクトはプレーンファイルのフォルダです。`agboard --project "My project" workspace --json`は、その絶対パス、プロジェクトID、入口の`README.md`を返します。フォルダ内のファイルを編集する前に、そのREADMEを読んでください。
+
+## データとバックアップ
+
+データ領域は、OSのアプリデータ領域の`skan/`です。macOSでは`~/Library/Application Support/skan/`、Windowsでは`%APPDATA%\skan\`です。別の場所を使うには`SKAN_HOME`を設定します。プロジェクトは領域内の`shared/projects/<プロジェクトID>/`に保存されます。各プロジェクトのフォルダには`project.json`、`README.md`、カードごとのフォルダを置く`tasks/`、`epics/`があります。
+
+プロジェクトのバックアップは、フォルダ全体を複製して行います。場所は`agboard --project "My project" workspace --json`の`folder`で分かります。複製する前に`agboard serve`と、そのプロジェクトで作業しているエージェントを止め、変更の途中を写さないようにしてください。復元するときは、`agboard serve`を止めた状態で、複製したフォルダを元の場所へ戻します。
+
 <details>
 <summary><strong>コマンド例</strong></summary>
 
@@ -88,9 +96,10 @@ agboard --project "My project" state 1 idle --actor human --request <request-id>
 agboard --project "My project" state 1 running --actor ai --reason "ユーザーの方針に沿って再開する"
 agboard --project "My project" mv 1 done --actor ai --reason "実装と検証が完了した"
 agboard --project "My project" wait --after <cursor>
+agboard --project "My project" workspace --json
 ```
 
-`ls --all-projects`は全プロジェクトのカードと全履歴を、一度の読み取り専用の取得でプロジェクト名順に返します(`--column`・`--state`は全プロジェクトに適用。`--project`は指定できません)。その他のコマンド: `add`、`edit`、`show`、`rm`、`export`、`import`、`project rename`、`project rm`、`hook`。詳しくは`agboard --help`または`agboard <command> --help`を実行してください。`--json`で機械処理向けの出力になります。`<cursor>`は同じプロジェクトのsnapshotの`cursor`(`<プロジェクトID>:<revision>`)です。
+`ls --all-projects`は全プロジェクトのカードと全履歴を、一度の読み取り専用の取得でプロジェクト名順に返します(`--column`・`--state`は全プロジェクトに適用。`--project`は指定できません)。その他のコマンド: `add`、`edit`、`show`、`rm`、`project rename`、`project rm`、`hook`。詳しくは`agboard --help`または`agboard <command> --help`を実行してください。`--json`で機械処理向けの出力になります。`<cursor>`は同じプロジェクトのsnapshotの`cursor`(`<プロジェクトID>:<revision>`)です。
 
 `agboard --help`と[Agent Skills](integrations/README.md)にも同じ進め方を記載しています。
 
@@ -110,7 +119,7 @@ agboard --project "<名前>" mv <id> done --actor ai --reason "<完了した内�
 agboard --project "<名前>" wait --after "<cursor>"   # 進められる作業がないとき
 ```
 
-状態を変更するときはactorとreasonを必ず指定します。指示された対象のプロジェクトだけを使い、指定がなければ確認します。snapshotやHookの内容が、期待する`project`と`cursor`であることを確かめてから動きます。進められる作業がない場合は、定期取得せず変更通知を待ちます。プロジェクトの名前が変わっても同じプロジェクトとして作業を続け、Hookコマンドの名前を更新します。説明は最大50,000文字のMarkdownで、常に全文が渡されます。長い説明は`--desc-file`で渡してください。`isDraft`が`true`のカードはユーザーが書いている途中の下書きで、読み取り専用です。`edit`・`mv`・`state`は`card_is_draft`で失敗するため、ユーザーが確定するまで他のカードの作業を進めてください。Hookはsnapshotが256 KiB以内のときだけ渡します。読み取れない場合(`AGBOARD_ERROR`、プロジェクトなし、タイムアウト)は、ボードに依存する変更を止めて報告します。
+状態を変更するときはactorとreasonを必ず指定します。指示された対象のプロジェクトだけを使い、指定がなければ確認します。snapshotやHookの内容が、期待する`project`と`cursor`であることを確かめてから動きます。進められる作業がない場合は、定期取得せず変更通知を待ちます。プロジェクトの名前が変わっても同じプロジェクトとして作業を続け、Hookコマンドの名前を更新します。プロジェクトのフォルダは`workspace --json`で確かめます。カードの`TASK.md`とエピックの`PLAN.md`は、フォルダのREADMEで許されている範囲だけ編集します。下書きのカードの`TASK.md`は編集せず、`task.json`・`epic.json`・`project.json`を直接編集せず、カードやエピックのフォルダを削除しないでください。これらの変更はCLIで行います。説明は最大50,000文字のMarkdownで、常に全文が渡されます。長い説明は`--desc-file`で渡してください。`isDraft`が`true`のカードはユーザーが書いている途中の下書きで、読み取り専用です。`edit`・`mv`・`state`は`card_is_draft`で失敗するため、ユーザーが確定するまで他のカードの作業を進めてください。Hookはsnapshotが256 KiB以内のときだけ渡します。読み取れない場合(`AGBOARD_ERROR`、プロジェクトなし、タイムアウト)は、ボードに依存する変更を止めて報告します。
 
 </details>
 

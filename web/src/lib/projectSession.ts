@@ -5,6 +5,7 @@ export type OperationKind =
   | 'move'
   | 'answer'
   | 'edit'
+  | 'epic'
   | 'delete'
   | 'archive'
   | 'restore'

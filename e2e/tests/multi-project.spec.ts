@@ -17,7 +17,7 @@ import {
 } from '../helpers/agboard';
 import { spawn, spawnSync } from 'node:child_process';
 
-// Several projects in one data area, shown by one serve. The CLI, the SQLite file, the HTTP server and
+// Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
 // the browser are real. The browser's requests are touched only where a test needs a slow or failing
 // answer for one request. Every test names its project; the page URL (`?project=<ID>`) is what the screen
 // shows. This spec owns port 7632 and its own data directory, like states.spec.ts.
@@ -63,9 +63,8 @@ async function dragCardTo(page: Page, id: number, laneName: string): Promise<Loc
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   // dnd-kit keeps the source in a dropping animation briefly after the pointer is released.
-  const dragged = page.locator('button.card').filter({ hasText: new RegExp(`^#${id}(?!\\d)`) }).first();
-  await expect(dragged).not.toHaveAttribute('data-dnd-dragging', 'true');
-  await expect(dragged).not.toHaveAttribute('data-dnd-dropping', '');
+  const dragged = page.locator('.card').filter({ hasText: new RegExp(`^#${id}(?!\\d)`) }).first();
+  await expect(dragged).not.toHaveClass(/card--dragging/);
   return dialog;
 }
 
@@ -141,7 +140,7 @@ test.describe('a new data area', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('a same-named project cannot be made, and an old database is refused instead of converted', async ({ page }) => {
+  test('a same-named project cannot be made', async ({ page }) => {
     const refused = agboardCatalogOk(['project', 'ls', '--json'], home);
     expect(JSON.parse(refused.stdout).projects.map((p: { name: string }) => p.name)).toEqual(['Alpha', 'Beta']);
     const again = spawnSync(agboardBinary(), ['project', 'create', 'Alpha'], {
@@ -197,7 +196,6 @@ test.describe('two projects with the same card numbers', () => {
     const fresh = nextCardId('Alpha', home);
 
     // Answer the pending request in Alpha with the board's own dialog.
-    await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
     const answer = request(page);
     await answer.getByRole('textbox', { name: 'Your answer' }).fill('Use the MIT license.');
     await answer.getByRole('button', { name: 'Send', exact: true }).click();
@@ -244,9 +242,8 @@ test.describe('two projects with the same card numbers', () => {
 
     // And acting in Beta leaves Alpha as it was.
     const alphaBefore = snapshotOf('Alpha', home);
-    await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
     const betaAnswer = request(page);
-    await betaAnswer.getByRole('textbox', { name: 'Your answer' }).fill('Use SQLite.');
+    await betaAnswer.getByRole('textbox', { name: 'Your answer' }).fill('Use plain files.');
     await betaAnswer.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(betaAnswer).toHaveCount(0);
     await expect(card(page, 2)).toContainText('Idle');
@@ -311,7 +308,7 @@ test.describe('two projects with the same card numbers', () => {
     await expect(details(page)).toContainText('Select a card to see its details.');
     await expect(details(page).getByRole('heading', { level: 2 })).toHaveCount(0);
     await expect(card(page, 1)).toHaveText(/Beta: benchmark the importer/);
-    await expect(page.locator('button.card[aria-current="true"]')).toHaveCount(0);
+    await expect(page.locator('.card[aria-current="true"]')).toHaveCount(0);
     await switcher(page).click();
     await expect(menuItem(page, 'Beta')).toHaveAttribute('aria-checked', 'true');
     await expect(menuItem(page, 'Alpha')).toHaveAttribute('aria-checked', 'false');
@@ -366,7 +363,8 @@ test.describe('two projects with the same card numbers', () => {
     await expect.poll(() => projectParam(page)).toBe(beta);
     // Tab leaves the menu closed and moves on.
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: 'Archive', exact: true })).toBeFocused();
+    // The header order is project, Add card, Archive, Settings.
+    await expect(page.getByRole('button', { name: 'Add card', exact: true })).toBeFocused();
   });
 
   for (const kind of ['create', 'move', 'answer', 'delete'] as const) {
@@ -388,8 +386,9 @@ test.describe('two projects with the same card numbers', () => {
         };
       } else if (kind === 'answer') {
         await card(page, 2).click();
-        await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
         const dialog = request(page);
+        // Typed text holds the project in place; Cancel clears it and frees the menu.
+        await dialog.getByRole('textbox', { name: 'Your answer' }).fill('Typed in the form.');
         close = async () => {
           await dialog.getByRole('button', { name: 'Cancel' }).click();
         };
@@ -472,7 +471,9 @@ test.describe('two projects with the same card numbers', () => {
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
+    // The typed title is unsaved, so the question comes first; discarding closes the form.
     await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Discard and close' }).click();
     await expect(create).toHaveCount(0);
     await expect(switcher(page)).toHaveText('Alpha');
     expect(listCards('Beta', home).map(({ title }) => title)).not.toContain('Never saved');
@@ -497,7 +498,6 @@ test.describe('two projects with the same card numbers', () => {
     await page.goForward();
     await expect(switcher(page)).toHaveText('Beta');
     await card(page, 2).click();
-    await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
     const answer = request(page);
     await answer.getByRole('textbox', { name: 'Your answer' }).fill('Beta answer.');
     await page.goBack();
@@ -536,7 +536,8 @@ test.describe('two projects with the same card numbers', () => {
     const create = page.getByRole('dialog', { name: 'Add card' });
     await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Kept title');
     await create.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(create.getByRole('alert')).toContainText('The storage is busy.');
+    await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
+    await expect(create.getByRole('alert')).not.toContainText('The storage is busy.');
     // Failure: the input is kept, the form stays on Beta, and the menu stays disabled.
     await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Kept title');
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
@@ -634,7 +635,6 @@ test.describe('two projects with the same card numbers', () => {
       // The person answers the request of Alpha's card #2 on the page.
       await open(page, alpha);
       await card(page, 2).click();
-      await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
       const answer = request(page);
       await answer.getByRole('textbox', { name: 'Your answer' }).fill('Use the MIT license, please.');
       await answer.getByRole('button', { name: 'Send', exact: true }).click();
@@ -850,11 +850,12 @@ test.describe('two projects with the same card numbers', () => {
     // The answer, in Japanese and typed in place, for Beta's own request.
     await card(page, 2).click();
     const japanesePanel = page.getByRole('complementary', { name: 'カードの詳細' });
-    await japanesePanel.getByRole('button', { name: '回答する', exact: true }).click();
+    // The answer form is part of the request, open at once; no dialog opens.
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(japanesePanel.getByRole('textbox', { name: '回答' })).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(japanesePanel.getByRole('textbox')).toHaveCount(0);
+    await japanesePanel.getByRole('textbox', { name: '回答' }).fill('Typed then cleared.');
+    await japanesePanel.getByRole('button', { name: 'キャンセル', exact: true }).click();
+    await expect(japanesePanel.getByRole('textbox', { name: '回答' })).toHaveValue('');
 
     // The detail width a person chose belongs to the screen, not to the project.
     const panel = page.getByRole('complementary', { name: 'カードの詳細' });

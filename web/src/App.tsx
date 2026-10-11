@@ -17,14 +17,8 @@ import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
-import {
-  createCard,
-  createCardMultipart,
-  editCard,
-  editCardMultipart,
-  moveCard,
-  WriteError,
-} from './api';
+import { createNewCard, editCard, editCardMultipart, moveCard, WriteError } from './api';
+import { epicApi } from './components/editor/epicApi';
 import { useBoard } from './hooks/useBoard';
 import { useArchive } from './hooks/useArchive';
 import { useCardLifecycle } from './hooks/useCardLifecycle';
@@ -228,6 +222,10 @@ export function App({ initial }: AppProps) {
             onSelect={(id) => dispatch({ type: 'SELECT_CARD', id })}
             onRetry={retry}
             layoutRef={attachLayoutRef}
+            onOpenEpic={(epicId) => {
+              const epic = boardData?.epics.find((item) => item.id === epicId);
+              if (epic) openDialog({ kind: 'epic', epic });
+            }}
             onMove={(card, column) => openDialog({ kind: 'move', card, target: column })}
             onArchiveDone={() => {
               if (!isProjectId(activeId) || session.operation !== null) return;
@@ -256,6 +254,7 @@ export function App({ initial }: AppProps) {
                     : 'state'
               }
               operations={operations}
+              problems={archiveVisible ? [] : (boardData?.problems ?? [])}
               onEdit={() => {
                 if (selected?.isDraft) openDialog({ kind: 'edit', card: selected });
               }}
@@ -326,25 +325,32 @@ export function App({ initial }: AppProps) {
           onSavingChange={(saving) =>
             saving ? operations.saveStarted(operation.id) : operations.saveFailed(operation.id)
           }
+          cards={cards}
+          epicApi={
+            dialog.kind === 'epic'
+              ? epicApi(operation.projectId, dialog.epic.id, () =>
+                  refreshProject(operation.projectId),
+                )
+              : undefined
+          }
+          onOpenTask={(cardId) => {
+            // The epic dialog closes and the board shows the task in the detail panel.
+            operations.end(operation.id);
+            dispatch({ type: 'SELECT_CARD', id: cardId });
+          }}
           onSubmit={async (data) => {
             // Writes go to the project the form was opened in, not to whatever the URL says now.
             const projectId = operation.projectId;
-            if (dialog.kind === 'create')
-              if (data.attachments?.length)
-                await createCardMultipart(projectId, {
-                  title: data.title ?? '',
-                  description: data.description ?? '',
-                  assignee: data.assignee as Assignee,
-                  requestId: data.requestId,
-                  attachments: data.attachments,
-                });
-              else
-                await createCard(projectId, {
-                  title: data.title ?? '',
-                  description: data.description ?? '',
-                  assignee: data.assignee as Assignee,
-                });
-            else if (dialog.kind === 'move')
+            if (dialog.kind === 'create') {
+              await createNewCard(projectId, {
+                title: data.title ?? '',
+                description: data.description ?? '',
+                assignee: data.assignee as Assignee,
+                isDraft: data.isDraft,
+                requestId: data.requestId,
+                attachments: data.attachments,
+              });
+            } else if (dialog.kind === 'move')
               await moveCard(
                 projectId,
                 dialog.card.id,

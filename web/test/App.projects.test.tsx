@@ -671,6 +671,9 @@ describe('switching while a form is open', () => {
     await userEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
     );
+    // The typed title is unsaved, so the question comes first; discarding it applies the URL.
+    const question = await screen.findByRole('dialog', { name: 'Discard changes?' });
+    await userEvent.click(within(question).getByRole('button', { name: 'Discard and close' }));
     await screen.findByText('Eight in knowledge');
     expect(switcher('knowledge')).toBeTruthy();
     expect(app.updates()).toHaveLength(0);
@@ -693,6 +696,7 @@ describe('switching while a form is open', () => {
       title: 'New card',
       description: '',
       assignee: 'ai',
+      isDraft: false,
     });
     expect(app.updates()).toHaveLength(0);
   });
@@ -711,7 +715,9 @@ describe('switching while a form is open', () => {
 
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add' }));
 
-    expect(await screen.findByText('The board is busy.')).toBeTruthy();
+    // The server's reason is not shown; the design's sentence is.
+    expect(await screen.findByText('Could not save. Your input is kept. Try again.')).toBeTruthy();
+    expect(screen.queryByText('The board is busy.')).toBeNull();
     const open = screen.getByRole('dialog');
     expect(within(open).getByLabelText('Title')).toHaveProperty('value', 'Keep me');
     expect(document.body.textContent).toContain('Initialize the board');
@@ -732,7 +738,6 @@ describe('switching while a form is open', () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton(pendingA?.title ?? ''));
-    await userEvent.click(screen.getByRole('button', { name: 'Answer' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     await userEvent.type(screen.getByRole('textbox', { name: 'Your answer' }), 'Go ahead');
     expect(
@@ -752,7 +757,7 @@ describe('switching while a form is open', () => {
     expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/${pendingA?.id}/answer`);
     expect(JSON.parse(String(posts[0]?.[1]?.body))).toMatchObject({
       requestId: pendingA?.pendingRequestId,
-      reason: 'Go ahead',
+      text: 'Go ahead',
     });
   });
 

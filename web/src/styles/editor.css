@@ -20,10 +20,11 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  width: 960px;
+  /* 1280 × 900 gives 1216 × 828; 960 × 900 gives 928 × 828 (the design's sizes). */
+  width: min(1216px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
-  height: 800px;
-  max-height: calc(100dvh - 32px);
+  height: min(828px, calc(100dvh - 72px));
+  max-height: calc(100dvh - 72px);
   padding: 0;
   overflow: hidden;
   /* The design measures everything from the outer edge, so the 1px border is drawn over the edge. */
@@ -131,16 +132,24 @@
 }
 
 /* Outline. */
+/* The left column: the outline, and under it the tasks of an epic. It scrolls as a whole. */
+.editor__side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 4px;
+  width: 220px;
+  padding: 24px 16px;
+  overflow-y: auto;
+  border-right: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
 .editor__outline {
   display: flex;
   flex: none;
   flex-direction: column;
   gap: 4px;
-  width: 200px;
-  padding: 24px 16px;
-  overflow-y: auto;
-  border-right: 1px solid var(--r-border);
-  background: var(--r-bg);
 }
 
 .editor__outline-label {
@@ -183,15 +192,22 @@
 .editor__body {
   position: relative;
 }
+/* The right column: an optional row (the epic of a card) above the images panel. */
+.editor__aside {
+  display: flex;
+  flex: 0 0 220px;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
 .editor-attachments {
   display: flex;
-  flex: 0 0 240px;
+  flex: 1 1 0;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
   padding: 16px;
-  border-left: 1px solid var(--r-border);
-  background: var(--r-surface);
 }
 .editor-attachments__header {
   display: flex;
@@ -253,7 +269,10 @@
   display: none;
 }
 .editor-attachments__dropzone {
+  display: flex;
   flex: 1 1 0;
+  flex-direction: column;
+  gap: 14px;
   min-height: 0;
   overflow-y: auto;
 }
@@ -262,26 +281,21 @@
   outline-offset: 4px;
   background: var(--r-accent-soft);
 }
-.editor-attachments__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+.editor-attachments__drop {
+  flex: none;
+  height: auto;
   width: 100%;
-  padding: 16px 8px;
+  margin-top: auto;
+  padding: 12px;
   border: 1px dashed var(--r-border);
   border-radius: 6px;
   background: transparent;
   color: var(--r-muted);
   font-size: 12px;
-  cursor: pointer;
-}
-.editor-attachments__empty svg {
-  width: 24px;
-  height: 24px;
-}
-.editor-attachments__empty small {
-  font-size: 11px;
+  font-weight: 400;
+  line-height: 17px;
+  white-space: normal;
+  text-align: center;
 }
 .editor-attachments__list {
   display: flex;
@@ -382,97 +396,16 @@
   cursor: default;
   opacity: 0.5;
 }
-.editor-attachments button:focus-visible,
-.editor__attachment-toggle:focus-visible {
+.editor-attachments button:focus-visible {
   outline: 2px solid var(--r-accent);
   outline-offset: 2px;
 }
-.editor-attachments__drop-hint {
-  margin: 0;
-  flex: none;
-  padding: 12px;
-  border: 1px dashed var(--r-border);
-  border-radius: 6px;
-  color: var(--r-muted);
-  font-size: 12px;
-  text-align: center;
-}
-.editor-attachments__lightbox {
-  position: fixed;
-  z-index: 50;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 32px;
-  background: rgb(15 23 42 / 72%);
-}
-.editor-attachments__lightbox img {
-  max-width: min(90vw, 1000px);
-  max-height: 85vh;
-  object-fit: contain;
-  border-radius: 6px;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 30%);
-}
-.editor-attachments__lightbox-close {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 0;
-  border-radius: 5px;
-  background: rgb(15 23 42 / 65%);
-  color: white;
-  cursor: pointer;
-}
-.editor-attachments__lightbox-close svg {
-  width: 18px;
-  height: 18px;
-}
-.editor__toolbar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  height: 37px;
-  padding-right: 6px;
-  border-bottom: 1px solid var(--r-border);
-  background: var(--r-lane);
-}
-.editor__attachment-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  padding: 5px 8px;
-  border: 1px solid var(--r-border);
-  border-radius: 6px;
-  background: var(--r-surface);
-  color: var(--r-text2);
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.editor__attachment-toggle svg {
-  width: 15px;
-  height: 15px;
-}
-.editor__attachment-toggle[aria-expanded="true"] {
-  border-color: var(--r-accent);
-  color: var(--r-accent);
-}
-@media (max-width: 991px) {
-  .editor-attachments {
-    position: absolute;
-    z-index: 2;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    width: min(240px, 100%);
-    box-shadow: -8px 0 24px rgb(15 23 42 / 20%);
+/* The right column is always open; below 1100px both side columns narrow to 200px. */
+@media (max-width: 1100px) {
+  .editor__side,
+  .editor__aside {
+    width: 200px;
+    flex-basis: 200px;
   }
 }
 
@@ -483,8 +416,6 @@
 }
 
 .editor__outline-item:focus-visible,
-.editor__tab:focus-visible,
-.editor__btn:focus-visible,
 .editor__retry:focus-visible,
 .editor__close:focus-visible,
 .editor__segment:focus-visible {
@@ -564,56 +495,8 @@
   border-color: var(--r-danger);
 }
 
-.editor__box:has(.cm-focused):not([data-over="true"]) {
+.editor__box:has(.ProseMirror-focused):not([data-over="true"]) {
   border-color: var(--r-accent);
-}
-
-.editor__tabs {
-  display: flex;
-  flex: none;
-  height: 37px;
-  padding: 0 6px;
-  border-bottom: 0;
-  background: transparent;
-}
-
-.editor__tab {
-  height: 37px;
-  margin-bottom: -1px;
-  padding: 0 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--r-muted);
-  font: inherit;
-  font-size: 13px;
-  line-height: 19px;
-  cursor: pointer;
-}
-
-.editor__tab[aria-selected="true"] {
-  border-bottom-color: var(--r-accent);
-  color: var(--r-text);
-  font-weight: 600;
-}
-
-.editor__panel {
-  flex: 1 1 0;
-  min-height: 0;
-  background: var(--r-surface);
-}
-
-.editor__panel[hidden] {
-  display: none;
-}
-
-.md-editor {
-  height: 100%;
-}
-
-.editor__preview {
-  padding: 20px 28px;
-  overflow-y: auto;
 }
 
 .editor__hint {
@@ -741,58 +624,6 @@
   line-height: 17px;
 }
 
-.editor__btn {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  height: 35px;
-  padding: 0 16px;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--r-text2);
-  font: inherit;
-  font-size: 13px;
-  line-height: 19px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.editor__btn--secondary {
-  padding: 0 18px;
-  background: var(--r-surface);
-  font-weight: 500;
-}
-
-.editor__btn--primary {
-  padding: 0 18px;
-  border-color: var(--r-accent);
-  background: var(--r-accent);
-  color: var(--r-on-accent);
-  font-weight: 600;
-}
-
-.editor__btn--danger {
-  border-color: var(--r-danger);
-  background: var(--r-danger);
-  color: #fff;
-  font-weight: 600;
-}
-
-.editor__btn:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.editor__btn--secondary:disabled,
-.editor__btn--primary:disabled {
-  border-color: var(--r-border);
-  background: var(--r-lane);
-  color: var(--r-muted);
-  opacity: 1;
-}
-
 /* Discard question. */
 .editor-confirm {
   display: flex;
@@ -829,11 +660,4 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-}
-
-.editor__attachment-error {
-  margin: 0;
-  color: var(--r-danger);
-  font-size: 12px;
-  overflow-wrap: anywhere;
 }

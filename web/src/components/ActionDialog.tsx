@@ -1,6 +1,7 @@
-import type { Assignee, DialogAction } from '../types';
+import type { Assignee, Card, DialogAction } from '../types';
 import { CreateDialog } from './CreateDialog';
 import { EditDialog } from './editor/EditDialog';
+import { EpicDialog, type EpicApi } from './editor/EpicDialog';
 import { MoveDialog } from './MoveDialog';
 
 export type { DialogAction };
@@ -11,19 +12,24 @@ export interface ActionDialogData {
   description?: string;
   assignee?: Assignee;
   reason?: string;
+  /** Create: the card is made a draft once it is added. */
+  isDraft?: boolean;
   /** Edit only: hand the card back to the agents in the same step. */
   finalize?: boolean;
   attachments?: import('./editor/attachmentTypes').EditorAttachment[];
   removedAttachmentIds?: string[];
 }
 
-/** Opens the dialog for a card operation. Each operation has its own component. */
+/** Opens the dialog for a card or epic operation. Each operation has its own component. */
 export function ActionDialog({
   action,
   onClose,
   onSavingChange,
   onSubmit,
   projectId,
+  cards = [],
+  epicApi,
+  onOpenTask,
 }: {
   action: DialogAction;
   /** The dialog is done: saved, or cancelled. */
@@ -32,6 +38,12 @@ export function ActionDialog({
   onSavingChange?: (saving: boolean) => void;
   onSubmit: (data: ActionDialogData) => Promise<void>;
   projectId?: string;
+  /** The tasks of the project, for the epic dialog's task list. */
+  cards?: readonly Card[];
+  /** The writes of the epic dialog, bound to the project it was opened in. */
+  epicApi?: EpicApi;
+  /** The epic dialog asks for the board to show a task. */
+  onOpenTask?: (cardId: number) => void;
 }) {
   switch (action.kind) {
     case 'create':
@@ -61,6 +73,19 @@ export function ActionDialog({
           onSavingChange={onSavingChange}
           onSubmit={onSubmit}
           projectId={projectId}
+        />
+      );
+    case 'epic':
+      if (epicApi === undefined || onOpenTask === undefined) return null;
+      return (
+        <EpicDialog
+          epic={action.epic}
+          cards={cards}
+          api={epicApi}
+          projectId={projectId}
+          onOpenTask={onOpenTask}
+          onClose={onClose}
+          onSavingChange={onSavingChange}
         />
       );
   }

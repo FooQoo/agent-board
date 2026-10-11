@@ -1,13 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { splitSections } from '../../lib/markdown';
 import { MarkdownView, type MarkdownVariant } from './MarkdownView';
-import { SectionFold } from './SectionFold';
 
 /**
- * A description folded at its H2 headings. Every section is open at first and only the reader
- * closes one. The open state lives here, so a new `key` (another card) opens everything again.
- * A description without an H2 is shown whole.
+ * A description as chapters: each H2 is a numbered heading over its body, and no chapter folds. The number
+ * is made here from the order of the H2s, so it is never written into the text. A description without an H2
+ * is shown whole.
  */
 export function MarkdownSections({
   source,
@@ -20,7 +19,6 @@ export function MarkdownSections({
 }) {
   const { t } = useTranslation();
   const { preamble, sections } = useMemo(() => splitSections(source), [source]);
-  const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
 
   if (source.trim() === '') {
     return <p className="md-empty">{t('detail.noDescription')}</p>;
@@ -30,38 +28,36 @@ export function MarkdownSections({
       <MarkdownView source={preamble} variant={variant} resolveAttachment={resolveAttachment} />
     );
 
-  const toggle = (id: string) =>
-    setClosed((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-
   return (
     <div className={`md-sections md-sections--${variant}`}>
       {preamble !== '' && (
         <MarkdownView source={preamble} variant={variant} resolveAttachment={resolveAttachment} />
       )}
-      {sections.map((section, index) => {
-        const id = `${index}:${section.title}`;
-        return (
-          <SectionFold
-            key={id}
-            title={section.title}
-            count={section.count}
-            open={!closed.has(id)}
-            onToggle={() => toggle(id)}
-          >
-            {section.markdown !== '' && (
-              <MarkdownView
-                source={section.markdown}
-                variant={variant}
-                resolveAttachment={resolveAttachment}
-              />
-            )}
-          </SectionFold>
-        );
-      })}
+      {sections.map((section, index) => (
+        <Chapter key={`${index}:${section.title}`} title={section.title}>
+          {section.markdown !== '' && (
+            <MarkdownView
+              source={section.markdown}
+              variant={variant}
+              resolveAttachment={resolveAttachment}
+            />
+          )}
+        </Chapter>
+      ))}
     </div>
+  );
+}
+
+function Chapter({ title, children }: { title: string; children: React.ReactNode }) {
+  const headingId = useId();
+  return (
+    <section className="md-chapter" aria-labelledby={headingId}>
+      <header className="md-chapter__head">
+        <h3 className="md-chapter__title" id={headingId}>
+          {title}
+        </h3>
+      </header>
+      {children}
+    </section>
   );
 }

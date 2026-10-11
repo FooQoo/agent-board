@@ -14,7 +14,6 @@ pub enum FileAction {
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error("{}", self.message())]
 pub enum SkanError {
-    NotInitialized,
     /// `project` is the name or ID the caller used to look the project up.
     ProjectNotFound {
         project: String,
@@ -37,6 +36,19 @@ pub enum SkanError {
     },
     AttachmentRequestConflict,
     AttachmentLimitExceeded,
+    EvidenceNotFound {
+        id: String,
+    },
+    EpicIdTaken {
+        id: String,
+    },
+    EpicNotFound {
+        id: String,
+    },
+    /// Cards (archived ones included) still refer to the epic.
+    EpicInUse {
+        id: String,
+    },
     /// `message` is the argument parser's message. `command` is the
     /// subcommand name used in the reason (`None` for the top level).
     InvalidArgument {
@@ -70,14 +82,32 @@ pub enum SkanError {
     ConfirmationRequired {
         operation: String,
     },
-    ImportInvalid {
-        file: String,
-        reason: String,
-    },
     FileError {
         action: FileAction,
         file: String,
         reason: String,
+    },
+    /// A shared file does not follow the format. `file` is relative to the
+    /// shared directory and `field` names the item at fault (may be empty).
+    FileInvalid {
+        file: String,
+        field: String,
+        reason: String,
+    },
+    /// A shared file could not be read at all.
+    FileUnreadable {
+        file: String,
+        reason: String,
+    },
+    /// A shared file declares a `formatVersion` this build does not read.
+    FormatUnsupported {
+        file: String,
+        version: String,
+    },
+    /// The answer names a choice that is not part of the pending request.
+    RequestChoiceUnknown {
+        request_id: String,
+        choice_id: String,
     },
     DatabaseBusy,
     DatabaseError {
@@ -105,7 +135,6 @@ impl SkanError {
     /// Machine-readable error code (snake_case).
     pub fn code(&self) -> &'static str {
         match self {
-            SkanError::NotInitialized => "not_initialized",
             SkanError::ProjectNotFound { .. } => "project_not_found",
             SkanError::ProjectNameExists { .. } => "project_name_exists",
             SkanError::CardNotFound { .. } => "card_not_found",
@@ -115,6 +144,10 @@ impl SkanError {
             SkanError::AttachmentNotFound { .. } => "attachment_not_found",
             SkanError::AttachmentRequestConflict => "attachment_request_conflict",
             SkanError::AttachmentLimitExceeded => "attachment_limit_exceeded",
+            SkanError::EvidenceNotFound { .. } => "evidence_not_found",
+            SkanError::EpicIdTaken { .. } => "epic_id_taken",
+            SkanError::EpicNotFound { .. } => "epic_not_found",
+            SkanError::EpicInUse { .. } => "epic_in_use",
             SkanError::InvalidArgument { .. } => "invalid_argument",
             SkanError::InvalidValue { .. } => "invalid_value",
             SkanError::InvalidStateForColumn { .. } => "invalid_state_for_column",
@@ -124,8 +157,11 @@ impl SkanError {
             SkanError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
             SkanError::RequestChanged => "request_changed",
             SkanError::ConfirmationRequired { .. } => "confirmation_required",
-            SkanError::ImportInvalid { .. } => "import_invalid",
             SkanError::FileError { .. } => "file_error",
+            SkanError::FileInvalid { .. } => "file_invalid",
+            SkanError::FileUnreadable { .. } => "file_unreadable",
+            SkanError::FormatUnsupported { .. } => "format_unsupported",
+            SkanError::RequestChoiceUnknown { .. } => "request_choice_unknown",
             SkanError::DatabaseBusy => "database_busy",
             SkanError::DatabaseError { .. } => "database_error",
             SkanError::AlreadyServing { .. } => "already_serving",
@@ -139,11 +175,12 @@ impl SkanError {
     /// Process exit code for this error.
     pub fn exit_code(&self) -> i32 {
         match self {
-            SkanError::NotInitialized | SkanError::ProjectNotFound { .. } => 4,
+            SkanError::ProjectNotFound { .. } => 4,
             SkanError::ProjectNameExists { .. } => 2,
             SkanError::CardNotFound { .. } => 3,
             SkanError::InvalidArgument { .. } | SkanError::InvalidValue { .. } => 2,
             SkanError::InvalidStateForAssignee => 2,
+            SkanError::RequestChoiceUnknown { .. } => 2,
             _ => 1,
         }
     }
@@ -151,7 +188,6 @@ impl SkanError {
     /// One-line summary of what went wrong.
     pub fn message(&self) -> String {
         match self {
-            SkanError::NotInitialized => "no board found.".to_string(),
             SkanError::ProjectNotFound { .. } => "project not found.".to_string(),
             SkanError::ProjectNameExists { name } => format!("project \"{name}\" already exists."),
             SkanError::CardNotFound { id } => format!("card #{id} not found."),
@@ -163,6 +199,10 @@ impl SkanError {
                 "attachment request was reused with different content.".into()
             }
             SkanError::AttachmentLimitExceeded => "attachment limits were exceeded.".into(),
+            SkanError::EvidenceNotFound { id } => format!("evidence {id} not found."),
+            SkanError::EpicIdTaken { id } => format!("epic {id} already exists."),
+            SkanError::EpicNotFound { id } => format!("epic {id} not found."),
+            SkanError::EpicInUse { id } => format!("epic {id} is used by cards."),
             SkanError::InvalidArgument { message, .. } => message.clone(),
             SkanError::InvalidValue { field, .. } => format!("{field} is invalid."),
             SkanError::InvalidStateForColumn { id, state, .. } => {
@@ -180,11 +220,18 @@ impl SkanError {
             SkanError::ConfirmationRequired { operation } => {
                 format!("{operation} needs confirmation from a human.")
             }
-            SkanError::ImportInvalid { file, .. } => format!("{file} is not a valid board file."),
             SkanError::FileError { action, file, .. } => match action {
                 FileAction::Read => format!("cannot read {file}."),
                 FileAction::Write => format!("cannot write {file}."),
             },
+            SkanError::FileInvalid { file, .. } => format!("{file} is not valid."),
+            SkanError::FileUnreadable { file, .. } => format!("cannot read {file}."),
+            SkanError::FormatUnsupported { file, .. } => {
+                format!("{file} has an unsupported format version.")
+            }
+            SkanError::RequestChoiceUnknown { .. } => {
+                "the choice is not part of this request.".into()
+            }
             SkanError::DatabaseBusy => "the board is busy.".to_string(),
             SkanError::DatabaseError { .. } => "cannot open the board.".to_string(),
             SkanError::AlreadyServing { .. } => "the board is already being served.".to_string(),
@@ -198,10 +245,6 @@ impl SkanError {
     /// What to do about it, or why it happened.
     pub fn reason(&self) -> String {
         match self {
-            SkanError::NotInitialized => {
-                "Run \"agboard --project <name> init\" to create one, or \"agboard --project <name> import\" to restore one."
-                    .to_string()
-            }
             SkanError::ProjectNotFound { project } => format!(
                 "No project matches \"{project}\". Run \"agboard project ls\" to see the projects."
             ),
@@ -217,6 +260,10 @@ impl SkanError {
             SkanError::AttachmentNotFound { .. } => "The attachment does not belong to this card.".into(),
             SkanError::AttachmentRequestConflict => "Use a new request ID when the content changes.".into(),
             SkanError::AttachmentLimitExceeded => "A card may contain at most 20 images and 50 MiB in total.".into(),
+            SkanError::EvidenceNotFound { .. } => "The evidence does not belong to this card.".into(),
+            SkanError::EpicIdTaken { .. } => "Choose another EPIC-ID.".into(),
+            SkanError::EpicNotFound { .. } => "No epic has this EPIC-ID in the project.".into(),
+            SkanError::EpicInUse { .. } => "Move or clear the cards that belong to this epic first.".into(),
             SkanError::InvalidArgument { command, .. } => match command {
                 Some(command) => format!("Run \"agboard {command} --help\" for usage."),
                 None => "Run \"agboard --help\" for usage.".to_string(),
@@ -245,8 +292,21 @@ impl SkanError {
                 "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board."
                     .to_string()
             }
-            SkanError::ImportInvalid { reason, .. } => reason.clone(),
             SkanError::FileError { reason, .. } => reason.clone(),
+            SkanError::FileInvalid { field, reason, .. } => {
+                if field.is_empty() {
+                    reason.clone()
+                } else {
+                    format!("{field}: {reason}")
+                }
+            }
+            SkanError::FileUnreadable { reason, .. } => reason.clone(),
+            SkanError::FormatUnsupported { version, .. } => format!(
+                "Only formatVersion 1 is supported, found {version}. The file is not converted."
+            ),
+            SkanError::RequestChoiceUnknown { .. } => {
+                "Choose one of the choices in the pending request.".into()
+            }
             SkanError::DatabaseBusy => "Another agboard command is writing. Try again.".to_string(),
             SkanError::DatabaseError { reason } => reason.clone(),
             SkanError::AlreadyServing { port } => {
@@ -263,31 +323,12 @@ impl SkanError {
     }
 }
 
-impl From<rusqlite::Error> for SkanError {
-    /// `SQLITE_BUSY` and `SQLITE_LOCKED` become `DatabaseBusy`; anything else
-    /// is a `DatabaseError` carrying the SQLite message.
-    fn from(error: rusqlite::Error) -> Self {
-        if let rusqlite::Error::SqliteFailure(failure, _) = &error
-            && matches!(
-                failure.code,
-                rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked
-            )
-        {
-            return SkanError::DatabaseBusy;
-        }
-        SkanError::DatabaseError {
-            reason: error.to_string(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn all_errors() -> Vec<SkanError> {
         vec![
-            SkanError::NotInitialized,
             SkanError::ProjectNotFound {
                 project: "Alpha".into(),
             },
@@ -319,14 +360,27 @@ mod tests {
             SkanError::ConfirmationRequired {
                 operation: "deleting a card".into(),
             },
-            SkanError::ImportInvalid {
-                file: "agboard.json".into(),
-                reason: "Card #12 is pending but is in Todo.".into(),
-            },
             SkanError::FileError {
                 action: FileAction::Read,
                 file: "a.json".into(),
                 reason: "No such file or directory (os error 2)".into(),
+            },
+            SkanError::FileInvalid {
+                file: "projects/p/tasks/1/task.json".into(),
+                field: "title".into(),
+                reason: "Titles must be 1 to 100 characters on one line.".into(),
+            },
+            SkanError::FileUnreadable {
+                file: "projects/p/project.json".into(),
+                reason: "Permission denied (os error 13)".into(),
+            },
+            SkanError::FormatUnsupported {
+                file: "workspace.json".into(),
+                version: "2".into(),
+            },
+            SkanError::RequestChoiceUnknown {
+                request_id: "a".into(),
+                choice_id: "b".into(),
             },
             SkanError::DatabaseBusy,
             SkanError::DatabaseError {
@@ -353,7 +407,6 @@ mod tests {
         assert_eq!(
             got,
             vec![
-                ("not_initialized", 4),
                 ("project_not_found", 4),
                 ("project_name_exists", 2),
                 ("card_not_found", 3),
@@ -366,8 +419,11 @@ mod tests {
                 ("invalid_state_for_draft", 1),
                 ("request_changed", 1),
                 ("confirmation_required", 1),
-                ("import_invalid", 1),
                 ("file_error", 1),
+                ("file_invalid", 1),
+                ("file_unreadable", 1),
+                ("format_unsupported", 1),
+                ("request_choice_unknown", 2),
                 ("database_busy", 1),
                 ("database_error", 1),
                 ("already_serving", 1),
@@ -386,10 +442,6 @@ mod tests {
             .map(|e| (e.message(), e.reason()))
             .collect();
         let expected: Vec<(&str, &str)> = vec![
-            (
-                "no board found.",
-                "Run \"agboard --project <name> init\" to create one, or \"agboard --project <name> import\" to restore one.",
-            ),
             (
                 "project not found.",
                 "No project matches \"Alpha\". Run \"agboard project ls\" to see the projects.",
@@ -436,12 +488,24 @@ mod tests {
                 "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board.",
             ),
             (
-                "agboard.json is not a valid board file.",
-                "Card #12 is pending but is in Todo.",
-            ),
-            (
                 "cannot read a.json.",
                 "No such file or directory (os error 2)",
+            ),
+            (
+                "projects/p/tasks/1/task.json is not valid.",
+                "title: Titles must be 1 to 100 characters on one line.",
+            ),
+            (
+                "cannot read projects/p/project.json.",
+                "Permission denied (os error 13)",
+            ),
+            (
+                "workspace.json has an unsupported format version.",
+                "Only formatVersion 1 is supported, found 2. The file is not converted.",
+            ),
+            (
+                "the choice is not part of this request.",
+                "Choose one of the choices in the pending request.",
             ),
             (
                 "the board is busy.",
@@ -492,21 +556,5 @@ mod tests {
     #[test]
     fn display_is_the_message() {
         assert_eq!(SkanError::DatabaseBusy.to_string(), "the board is busy.");
-    }
-
-    #[test]
-    fn sqlite_busy_maps_to_database_busy_and_others_to_database_error() {
-        let busy = rusqlite::Error::SqliteFailure(
-            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
-            None,
-        );
-        assert_eq!(SkanError::from(busy), SkanError::DatabaseBusy);
-        let locked = rusqlite::Error::SqliteFailure(
-            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_LOCKED),
-            None,
-        );
-        assert_eq!(SkanError::from(locked), SkanError::DatabaseBusy);
-        let other = SkanError::from(rusqlite::Error::QueryReturnedNoRows);
-        assert!(matches!(other, SkanError::DatabaseError { .. }));
     }
 }

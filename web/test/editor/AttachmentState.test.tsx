@@ -49,3 +49,38 @@ it('reuses the same write ID on retry and changes it when input changes', () => 
   expect(result.current({ title: 'card', ids: ['a'] })).toBe(first);
   expect(result.current({ title: 'changed', ids: ['a'] })).not.toBe(first);
 });
+it('names the file that is too large, and reports the count and the total as limits', () => {
+  const { result } = renderHook(() => useAttachmentState({ resolveStoredUrl: () => '' }));
+  const large = new File(['x'], 'large.png', { type: 'image/png' });
+  Object.defineProperty(large, 'size', { value: 11 * 1024 * 1024 });
+  act(() => result.current.addFiles([large]));
+  expect(result.current.error).toEqual({ kind: 'tooLarge', name: 'large.png' });
+  expect(result.current.attachments).toHaveLength(0);
+
+  act(() =>
+    result.current.addFiles(
+      Array.from(
+        { length: 21 },
+        (_, index) => new File(['x'], `${index}.png`, { type: 'image/png' }),
+      ),
+    ),
+  );
+  expect(result.current.error).toEqual({ kind: 'count' });
+
+  const sized = Array.from({ length: 6 }, (_, index) => {
+    const file = new File(['x'], `${index}.gif`, { type: 'image/gif' });
+    Object.defineProperty(file, 'size', { value: 9 * 1024 * 1024 });
+    return file;
+  });
+  act(() => result.current.addFiles(sized));
+  expect(result.current.error).toEqual({ kind: 'total' });
+});
+
+it('names the file of a wrong format and clears the notice on the next valid pick', () => {
+  const { result } = renderHook(() => useAttachmentState({ resolveStoredUrl: () => '' }));
+  act(() => result.current.addFiles([new File(['x'], 'notes.txt', { type: 'text/plain' })]));
+  expect(result.current.error).toEqual({ kind: 'format', name: 'notes.txt' });
+  act(() => result.current.addFiles([new File(['x'], 'ok.png', { type: 'image/png' })]));
+  expect(result.current.error).toBeNull();
+  expect(result.current.attachments).toHaveLength(1);
+});

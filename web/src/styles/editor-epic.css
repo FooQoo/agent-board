@@ -1,0 +1,435 @@
+/*
+ * The parts of the card and epic editors added with the rich body: the draft box,
+ * the epic label row, the task list under the outline and its filter menu. Colors are the r-*
+ * tokens of theme.css, as in editor.css.
+ */
+.editor__draft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.editor__epic-row,
+.epic-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor__aside > .editor__epic-row,
+.editor__aside > .epic-label-row {
+  flex: none;
+  padding: 16px 16px 0;
+}
+
+.editor__epic-caption {
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.editor__epic-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.epic-label-row__swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.epic-label-row__swatch:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* The task list under the outline. */
+.epic-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--r-border);
+}
+
+.epic-tasks__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.epic-tasks__title-text {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 19px;
+}
+
+.epic-tasks__dot,
+.epic-tasks__count {
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.epic-tasks__filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.epic-tasks__filter svg {
+  width: 15px;
+  height: 15px;
+}
+
+.epic-tasks__empty {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.epic-tasks__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.epic-tasks__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--r-border);
+}
+
+.epic-tasks__check {
+  margin-top: 2px;
+}
+
+.epic-tasks__body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.epic-tasks__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.epic-tasks__id {
+  font-family: var(--font-mono);
+}
+
+.epic-tasks__name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--r-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.epic-tasks__name:hover:not(:disabled) {
+  color: var(--r-accent);
+  text-decoration: underline;
+}
+
+.epic-tasks__name:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* The filter menu. */
+.epic-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 232px;
+  padding: 14px;
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 16%);
+}
+
+.epic-filter__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 19px;
+}
+
+.epic-filter__choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.epic-filter__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* The header badge is shown only when there is a badge text. */
+.editor__badge:empty {
+  display: none;
+}
+
+/* The footer's draft box and status share the button row. */
+.editor__footer {
+  align-items: center;
+}
+
+/*
+ * The rich body in the editor dialog: the Crepe toolbar and link tooltip take the app's tokens, and
+ * the text follows the design's sizes (body 17px, H2 31px with a numbered chapter, H3 23px).
+ */
+.rich-markdown {
+  --crepe-color-background: var(--r-surface);
+  --crepe-color-on-background: var(--r-text);
+  --crepe-color-surface: var(--r-surface);
+  --crepe-color-surface-low: var(--r-bg);
+  --crepe-color-on-surface: var(--r-text);
+  --crepe-color-on-surface-variant: var(--r-text2);
+  --crepe-color-outline: var(--r-border);
+  --crepe-color-primary: var(--r-accent);
+  --crepe-color-secondary: var(--r-accent-soft);
+  --crepe-color-on-secondary: var(--r-accent);
+  --crepe-color-hover: var(--r-accent-soft);
+  --crepe-color-selected: var(--r-accent-soft);
+  --crepe-color-inline-area: var(--r-lane);
+  --crepe-color-inline-code: var(--r-text2);
+  --crepe-color-inverse: var(--r-text);
+  --crepe-color-on-inverse: var(--r-surface);
+  --crepe-font-default: var(--font-sans);
+  --crepe-font-code: var(--font-mono);
+  --crepe-font-title: var(--font-sans);
+  --crepe-base-font-size: 14px;
+}
+
+/* The body scrolls inside its box; the header and the footer stay in place. */
+.editor__box {
+  border: 0;
+  border-radius: 0;
+}
+
+.editor__box > .rich-markdown {
+  flex: 1 1 0;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.editor__box .rich-markdown .ProseMirror {
+  min-height: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 24px 0;
+  outline: none;
+}
+
+/* A refused picture: the amber notice in the side panel, above the pictures. */
+.editor-attachments__notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.editor-attachments__notice > strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.editor-attachments__notice-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The chapter numbers of the outline. */
+.editor__outline-no {
+  margin-right: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* The outline label: the blue progress line, with a square at its end, as the design draws it. */
+.editor__outline-label {
+  position: relative;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--r-accent);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.editor__outline-label::after {
+  position: absolute;
+  right: 0;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  background: var(--r-accent);
+  content: "";
+}
+
+/* The chapters hang from a dotted rule, one dot per chapter; the current one is filled. */
+.editor__outline {
+  position: relative;
+  gap: 14px;
+  padding-left: 18px;
+}
+
+.editor__outline::before {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  border-left: 1px dotted var(--r-border);
+  content: "";
+}
+
+.editor__outline-item {
+  position: relative;
+  overflow: visible;
+  padding: 0;
+  white-space: normal;
+  text-overflow: clip;
+  line-height: 1.5;
+}
+
+.editor__outline-item::before {
+  position: absolute;
+  top: 6px;
+  left: -17px;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--r-border);
+  border-radius: 50%;
+  background: var(--r-surface);
+  content: "";
+}
+
+.editor__outline-item[aria-current="location"] {
+  background: transparent;
+  color: var(--r-accent);
+  font-weight: 600;
+}
+
+.editor__outline-item[aria-current="location"]::before {
+  border-color: var(--r-accent);
+  background: var(--r-accent);
+}
+
+/* While a save runs the draft box is faded, as the design shows. */
+.editor__footer[data-saving="true"] .editor__draft {
+  opacity: 0.45;
+}
+
+/* The filter menu uses the dark ink of the design, not the accent: its checks and its Apply button. */
+.epic-filter .epic-filter__check[data-state="checked"] {
+  border-color: var(--r-text);
+  background: var(--r-text);
+  color: var(--r-surface);
+}
+
+.epic-filter .epic-filter__apply {
+  background: var(--r-text);
+  color: var(--r-surface);
+}
+
+.epic-filter .epic-filter__apply:hover:not(:disabled) {
+  background: var(--r-text);
+  opacity: 0.9;
+}
+
+/* The over-limit band above the footer: the message at the left, the count at the right. */
+.editor__limit {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 28px;
+  border-top: 1px solid var(--r-danger);
+  color: var(--r-danger);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.editor__limit svg {
+  width: 15px;
+  height: 15px;
+}
+
+.editor__limit-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.editor__limit-count {
+  flex: none;
+  font-family: var(--font-mono);
+}
+
+/* The title shows no frame while it is edited: the caret is enough. It stays keyboard reachable. */
+.editor__input--title:focus,
+.editor__input--title:focus-visible {
+  border-color: var(--r-border);
+  outline: none;
+  box-shadow: none;
+}

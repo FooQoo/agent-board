@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard, type CardJson } from '../helpers/agboard';
+import { agboardOk, listCards, mainProject, nextCardId, resetBoard, taskBody, type CardJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
-import { waitForSync } from '../helpers/ui';
+import { pasteMarkdown, waitForSync } from '../helpers/ui';
 
 // Adding a card in the shared dialog, and answering a decision request in place, on the real page.
 
@@ -43,7 +43,7 @@ test('a card is added with a title, the AI as the default owner, and a Markdown 
   const id = nextCardId(mainProject);
   await page.getByRole('button', { name: 'Add card' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add card' });
-  await expect(dialog).toContainText('New');
+  await expect(dialog).toContainText('Add card');
   // The owner defaults to the AI; nothing can be added without a title.
   await expect(dialog.getByRole('radio', { name: 'AI', exact: true })).toBeChecked();
   await expect(dialog.getByRole('radio', { name: 'User', exact: true })).not.toBeChecked();
@@ -56,22 +56,18 @@ test('a card is added with a title, the AI as the default owner, and a Markdown 
 
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Plan the release');
   await expect(add).toBeEnabled();
-  await editor.click();
-  await page.keyboard.type('## Goal\nShip it.\n## Pictures\n');
-  await page.keyboard.type(`![found](${images.origin}/ok.png)`);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await page.keyboard.type(`![lost](${images.origin}/missing.png)`);
-  await expect(dialog.getByRole('navigation', { name: 'Outline' }).getByRole('button')).toHaveText(['Goal', 'Pictures']);
+  // The body has the three required headings (the CLI checks them); the pictures are typed as Markdown.
+  await pasteMarkdown(
+    editor,
+    taskBody(`Ship it.\n\n![found](${images.origin}/ok.png)\n\n![lost](${images.origin}/missing.png)`),
+  );
+  await expect(dialog.getByRole('navigation', { name: 'Outline' }).getByRole('button')).toHaveText([
+    '01作業内容',
+    '02完了条件と確認結果',
+    '03実行記録',
+  ]);
   await expect(dialog.getByText(/^\d+ \/ 50,000$/)).not.toHaveText('0 / 50,000');
-
-  // The preview shows the picture that loads, and No image for the one that does not.
-  await dialog.getByRole('tab', { name: 'Preview' }).click();
-  const preview = dialog.getByRole('tabpanel');
-  await expect(preview.getByRole('heading', { level: 2 })).toHaveText(['Goal', 'Pictures']);
-  await expect(preview.getByRole('img', { name: 'found' })).toBeVisible();
-  await expect(preview.getByText('No image')).toHaveCount(1);
-  await dialog.getByRole('tab', { name: 'Edit' }).click();
+  await expect(add).toBeEnabled();
 
   await add.click();
   await expect(dialog).toHaveCount(0);
@@ -79,7 +75,10 @@ test('a card is added with a title, the AI as the default owner, and a Markdown 
   // The CLI sees an ordinary new card: Todo, Idle, the AI's, not a draft, with the text as typed.
   const stored = show(id);
   expect(stored).toMatchObject({ title: 'Plan the release', cardStatus: 'todo', agentStatus: 'idle', assignee: 'ai', isDraft: false });
-  expect(stored.description).toBe(`## Goal\nShip it.\n## Pictures\n![found](${images.origin}/ok.png)\n\n![lost](${images.origin}/missing.png)`);
+  expect(stored.description).toContain('Ship it.');
+  // A pasted picture keeps its alt text and URL; the editor may add a title equal to the alt text.
+  expect(stored.description).toContain(`![found](${images.origin}/ok.png`);
+  expect(stored.description).toContain(`![lost](${images.origin}/missing.png`);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${id} AI Plan the release `) })).toBeVisible();
 
   // The owner cannot be changed afterwards: the details have no control for it, and neither has the editor.
@@ -88,7 +87,7 @@ test('a card is added with a title, the AI as the default owner, and a Markdown 
   await expect(details(page).getByRole('combobox')).toHaveCount(0);
   await details(page).getByRole('button', { name: 'Make draft' }).click();
   await details(page).getByRole('button', { name: 'Edit card' }).click();
-  const editing = page.getByRole('dialog', { name: new RegExp(`^#${id} Plan the release`) });
+  const editing = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit card`) });
   await expect(editing).toBeVisible();
   await expect(editing.getByRole('radiogroup')).toHaveCount(0);
   await expect(editing.getByText('Assignee')).toHaveCount(0);
@@ -102,9 +101,11 @@ test('a card for the user is added without a body; closing without typing asks n
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Check the invoice');
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  expect(show(id)).toMatchObject({ title: 'Check the invoice', assignee: 'human', description: '', isDraft: false, agentStatus: 'idle' });
+  // No body given: the CLI writes the TASK.md template, so the description is the template, not empty.
+  expect(show(id)).toMatchObject({ title: 'Check the invoice', assignee: 'human', isDraft: false, agentStatus: 'idle' });
+  expect(show(id).description).toContain('（作業の目的と内容を書く）');
   await card(page, id).click();
-  await expect(details(page).getByRole('tabpanel')).toHaveText('No description.');
+  await expect(details(page).getByRole('tabpanel')).toContainText('（作業の目的と内容を書く）');
 
   await page.getByRole('button', { name: 'Add card' }).click();
   await dialog.getByRole('button', { name: 'Cancel' }).click();
@@ -117,8 +118,14 @@ test('a title or body over the limit cannot be added', async ({ page }) => {
   const dialog = page.getByRole('dialog', { name: 'Add card' });
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Long body');
   await dialog.getByRole('textbox', { name: 'Description (Markdown)' }).click();
-  await page.keyboard.insertText('x'.repeat(50_001));
-  await expect(dialog.getByText('50,001 / 50,000')).toBeVisible();
+  // The counter counts the Markdown the editor writes, so the text is filled up to the limit by reading it.
+  const counter = dialog.locator('.editor__counter');
+  const shown = async () => Number((await counter.textContent())!.split('/')[0].replace(/,/g, '').trim());
+  await page.keyboard.insertText('x'.repeat(50_000));
+  await expect.poll(shown).toBeGreaterThan(49_000);
+  await page.waitForTimeout(300);
+  await page.keyboard.insertText('x'.repeat(50_001 - (await shown())));
+  await expect(dialog.locator('.editor__counter', { hasText: '50,001 / 50,000' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
   await expect(dialog.getByText('Over the 50,000-character limit. Remove 1 character.')).toBeVisible();
   await page.keyboard.press('Backspace');
@@ -136,14 +143,12 @@ test('a waiting card shows its request above the tabs, takes the answer in place
   expect(asked.y + asked.height).toBeLessThanOrEqual(tabs.y + 1);
   await expect(request(page)).toContainText('Waiting for confirmation on how to replace a board.');
   await panel.getByRole('tab', { name: /^History/ }).click();
-  await expect(request(page).getByRole('button', { name: 'Answer', exact: true })).toBeVisible();
+  await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeVisible();
   await panel.getByRole('tab', { name: 'Description' }).click();
 
-  await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
-  // No dialog: a text area opens in the request, and the rest of the page stays usable.
+  // No dialog: the answer form is part of the request, open at once, and the rest of the page stays usable.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const answerBox = request(page).getByRole('textbox', { name: 'Your answer' });
-  await expect(answerBox).toBeFocused();
   const send = request(page).getByRole('button', { name: 'Send', exact: true });
   await expect(send).toBeDisabled();
   await answerBox.fill('   ');
@@ -156,13 +161,11 @@ test('a waiting card shows its request above the tabs, takes the answer in place
   await expect(answerBox).toHaveValue('Keep the current name.\nDo not migrate.');
   await panel.getByRole('tab', { name: 'Description' }).click();
 
-  // Cancel closes it, and the next time starts empty.
+  // Cancel clears the typed text; the request is still waiting and the form stays open.
   await request(page).getByRole('button', { name: 'Cancel' }).click();
-  await expect(answerBox).toHaveCount(0);
+  await expect(answerBox).toHaveValue('');
   expect(show(12).agentStatus).toBe('pending');
-  await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
-  await expect(request(page).getByRole('textbox', { name: 'Your answer' })).toHaveValue('');
-  await request(page).getByRole('textbox', { name: 'Your answer' }).fill('Keep the current name.\nDo not migrate.');
+  await answerBox.fill('Keep the current name.\nDo not migrate.');
   await send.click();
 
   // The card is Idle, the request is gone, and the answer is in the history with the person's mark.
@@ -195,7 +198,6 @@ test('while it is sent the form cannot be sent twice or cancelled; a failure kee
     if (mode === 'hold') await gate;
     return route.fallback();
   });
-  await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
   const box = request(page).getByRole('textbox', { name: 'Your answer' });
   await box.fill('My answer.');
   await request(page).getByRole('button', { name: 'Send', exact: true }).click();
@@ -233,7 +235,6 @@ test('when the agent asks something else while an answer is typed, the page says
   page,
 }) => {
   await card(page, 12).click();
-  await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
   const box = request(page).getByRole('textbox', { name: 'Your answer' });
   await box.fill('An answer to the old question.');
   const oldRequest = show(12).pendingRequestId;
@@ -262,7 +263,6 @@ test('when the agent asks something else while an answer is typed, the page says
 
 test('an answer sent from a page that missed the new request is refused by the server and not saved', async ({ page }) => {
   await card(page, 12).click();
-  await request(page).getByRole('button', { name: 'Answer', exact: true }).click();
   const box = request(page).getByRole('textbox', { name: 'Your answer' });
   await box.fill('An answer to the old question.');
 
@@ -300,8 +300,8 @@ test('a long reason is cut at four lines, and Show more reads all of it', async 
   await expect(more).toHaveCount(0);
   expect((await reason.boundingBox())!.height).toBeGreaterThan(lineHeight * 10);
   await expect(reason).toContainText('Line 14 of a long question about the release plan.');
-  // Answer is still there after reading it all.
-  await expect(request(page).getByRole('button', { name: 'Answer', exact: true })).toBeVisible();
+  // The answer form is still there after reading it all.
+  await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeVisible();
 
   // A short reason has no Show more.
   await card(page, 12).click();

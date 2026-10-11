@@ -9,6 +9,30 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   };
 }
 
+// jsdom has no layout: every observed element counts as visible, once, after it is observed.
+if (typeof globalThis.IntersectionObserver === 'undefined') {
+  globalThis.IntersectionObserver = class StubIntersectionObserver {
+    private readonly callback: IntersectionObserverCallback;
+    constructor(callback: IntersectionObserverCallback) {
+      this.callback = callback;
+    }
+    observe(target: Element) {
+      const entry = { target, isIntersecting: true, intersectionRatio: 1 };
+      setTimeout(() => {
+        this.callback(
+          [entry as unknown as IntersectionObserverEntry],
+          this as unknown as IntersectionObserver,
+        );
+      }, 0);
+    }
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  } as unknown as typeof globalThis.IntersectionObserver;
+}
+
 // jsdom has no layout, but CodeMirror measures text through Range rectangles.
 const emptyRects = () => ({ length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] });
 if (typeof Range.prototype.getClientRects !== 'function') {

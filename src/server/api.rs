@@ -9,13 +9,19 @@ use axum::http::{HeaderMap, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, patch, post, put};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use super::guard::{self, DeleteRequest};
 use super::{AppState, assets, events};
-use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+use crate::domain::{
+    Actor, Assignee, ChangeContext, Changed, Column, NewCard, ProjectId, RunState,
+    validate_attachment,
+};
 use crate::error::SkanError;
-use crate::store::ProjectStore;
+use crate::file_store::index::ProjectEntry;
+use crate::file_store::model::{AttachmentOwner, CardView, EpicUpdate, NewEpic};
+use crate::file_store::validate::EpicId;
+use crate::file_store::{Answer, FileStore};
 
 /// The largest request body any route reads. A description of 50,000
 /// characters can be about 150 KB of JSON, so this leaves room for that.
@@ -33,6 +39,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/", get(index))
         .route("/assets/app.js", get(app_js))
         .route("/assets/app.css", get(app_css))
+        .route("/assets/{name}", get(chunk))
         .route("/logo.png", get(logo_png))
         .route("/logo-white.png", get(logo_white_png))
         .route("/api/events", get(events::events))
@@ -68,11 +75,41 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         )
         .route(
             "/api/projects/{project_id}/cards/{id}/attachments",
-            patch(edit_card_multipart),
+            get(list_card_attachments)
+                .post(add_card_attachment)
+                .patch(edit_card_multipart),
         )
         .route(
             "/api/projects/{project_id}/cards/{id}/attachments/{attachment_id}",
-            get(get_attachment),
+            get(get_card_attachment).delete(delete_card_attachment),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/{id}/evidence",
+            post(add_card_evidence),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/{id}/evidence/{evidence_id}",
+            get(get_card_evidence).delete(delete_card_evidence),
+        )
+        .route(
+            "/api/projects/{project_id}/cards/{id}/epic",
+            put(set_card_epic),
+        )
+        .route(
+            "/api/projects/{project_id}/epics",
+            get(list_epics).post(create_epic),
+        )
+        .route(
+            "/api/projects/{project_id}/epics/{epic_id}",
+            get(get_epic).patch(update_epic),
+        )
+        .route(
+            "/api/projects/{project_id}/epics/{epic_id}/attachments",
+            get(list_epic_attachments).post(add_epic_attachment),
+        )
+        .route(
+            "/api/projects/{project_id}/epics/{epic_id}/attachments/{attachment_id}",
+            get(get_epic_attachment).delete(delete_epic_attachment),
         )
         .route(
             "/api/projects/{project_id}/cards/{id}/draft",
@@ -131,21 +168,26 @@ fn skan_error_response(error: &SkanError) -> Response {
     let status = match error {
         SkanError::CardNotFound { .. }
         | SkanError::ProjectNotFound { .. }
-        | SkanError::AttachmentNotFound { .. } => StatusCode::NOT_FOUND,
-        SkanError::NotInitialized
-        | SkanError::RequestChanged
+        | SkanError::AttachmentNotFound { .. }
+        | SkanError::EvidenceNotFound { .. }
+        | SkanError::EpicNotFound { .. } => StatusCode::NOT_FOUND,
+        SkanError::RequestChanged
         | SkanError::CardIsDraft { .. }
         | SkanError::CardNotDraft { .. }
         | SkanError::InvalidStateForDraft { .. }
         | SkanError::ProjectNameExists { .. }
-        | SkanError::AttachmentRequestConflict => StatusCode::CONFLICT,
+        | SkanError::AttachmentRequestConflict
+        | SkanError::EpicIdTaken { .. }
+        | SkanError::EpicInUse { .. } => StatusCode::CONFLICT,
         SkanError::CardArchived { .. }
         | SkanError::CardNotArchived { .. }
         | SkanError::ArchiveTargetsChanged => StatusCode::CONFLICT,
         SkanError::InvalidArgument { .. }
         | SkanError::InvalidValue { .. }
+        | SkanError::FileInvalid { .. }
         | SkanError::InvalidStateForColumn { .. }
         | SkanError::InvalidStateForAssignee
+        | SkanError::RequestChoiceUnknown { .. }
         | SkanError::AttachmentLimitExceeded => StatusCode::UNPROCESSABLE_ENTITY,
         SkanError::DatabaseBusy => StatusCode::SERVICE_UNAVAILABLE,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -210,7 +252,7 @@ async fn host_guard(State(state): State<Arc<AppState>>, request: Request, next: 
 }
 
 /// Every request that changes data needs the page's Origin, Sec-Fetch-Site and
-/// token. This runs before the path, the body or the database is looked at, so
+/// token. This runs before the path, the body or the shared files are looked at, so
 /// a refusal never tells whether a project or card exists. `POST /api/notify`
 /// changes nothing and is open.
 async fn write_guard(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {
@@ -336,17 +378,27 @@ impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for StrictJs
 
 // ---------------------------------------------------------------- store access
 
-/// Open the database for one request and run `work` on a blocking thread.
-async fn with_store<T: Send + 'static>(
+/// Run `work` on the shared files on a blocking thread.
+async fn with_files<T: Send + 'static>(
     state: &AppState,
-    work: impl FnOnce(ProjectStore) -> Result<T, SkanError> + Send + 'static,
+    work: impl FnOnce(FileStore) -> Result<T, SkanError> + Send + 'static,
 ) -> Result<T, SkanError> {
-    let path = state.db_path.clone();
-    tokio::task::spawn_blocking(move || work(ProjectStore::open(&path)?))
+    let shared = state.shared.clone();
+    tokio::task::spawn_blocking(move || work(FileStore::open(&shared)))
         .await
         .map_err(|e| SkanError::DatabaseError {
-            reason: format!("The database task failed: {e}"),
+            reason: format!("The file task failed: {e}"),
         })?
+}
+
+/// After a save made by this server, read the shared files again before the
+/// answer goes out, so the next read agrees with it. A `changed` is sent only
+/// if the catalog version moved, as for every other reload.
+fn refresh_index(state: &AppState) {
+    let mut index = state.index.write().unwrap_or_else(|e| e.into_inner());
+    if index.reload_all(&state.shared).unwrap_or(false) {
+        let _ = state.changed.send(());
+    }
 }
 
 // ---------------------------------------------------------------- pages
@@ -382,6 +434,23 @@ async fn app_css() -> Response {
     text_response("text/css; charset=utf-8", assets::APP_CSS.to_string())
 }
 
+/// An on-demand web chunk. Only names in the build's table are served; the
+/// file name is looked up, never joined to a path. Chunks are named by their
+/// content hash, so they never change and can be cached for a year.
+async fn chunk(Path(name): Path<String>) -> Response {
+    match assets::lookup(&name) {
+        Some((bytes, content_type)) => (
+            [
+                (header::CONTENT_TYPE, content_type),
+                (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
+            ],
+            bytes,
+        )
+            .into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
 async fn logo_png() -> Response {
     (
         [
@@ -414,9 +483,46 @@ fn parse_project_id(raw: &str) -> Result<ProjectId, SkanError> {
 
 /// The catalog: every project by name, without cards. Read in one transaction.
 async fn projects(State(state): State<Arc<AppState>>) -> Response {
-    match with_store(&state, |store| store.projects()).await {
+    match with_files(&state, |files| files.catalog()).await {
         Ok(catalog) => json_response(StatusCode::OK, &catalog),
         Err(error) => skan_error_response(&error),
+    }
+}
+
+/// The project's index entry as its last good read, or the error of a defective
+/// project. A project that is not in the index is `project_not_found`.
+fn indexed_view(
+    state: &AppState,
+    id: &ProjectId,
+) -> Result<Arc<crate::file_store::reader::ProjectSnapshot>, SkanError> {
+    // A folder that is gone is a deleted project, even before the watcher reloads.
+    if !crate::file_store::layout::project_dir(&state.shared, id).is_dir() {
+        return Err(SkanError::ProjectNotFound {
+            project: id.to_string(),
+        });
+    }
+    let index = state.index.read().unwrap_or_else(|e| e.into_inner());
+    match index.entry(id) {
+        None => Err(SkanError::ProjectNotFound {
+            project: id.to_string(),
+        }),
+        Some(ProjectEntry::Ready { view, .. }) => Ok(view.clone()),
+        Some(ProjectEntry::Invalid { error, .. }) => Err(match error {
+            SkanError::FileInvalid {
+                file,
+                field,
+                reason,
+            } => SkanError::FileInvalid {
+                file: file.clone(),
+                field: field.clone(),
+                reason: reason.clone(),
+            },
+            other => SkanError::FileError {
+                action: crate::error::FileAction::Read,
+                file: id.to_string(),
+                reason: other.reason(),
+            },
+        }),
     }
 }
 
@@ -425,35 +531,32 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
     };
-    match with_store(&state, move |store| store.snapshot(&project_id)).await {
-        Ok(snapshot) => {
+    match indexed_view(&state, &project_id) {
+        Ok(view) => {
             #[derive(Serialize)]
             #[serde(rename_all = "camelCase")]
-            struct BoardInfo {
-                name: String,
-                #[serde(with = "crate::clock::serde_utc")]
-                created_at: chrono::DateTime<chrono::Utc>,
+            struct BoardResponse<'a> {
+                project: &'a crate::domain::ProjectMeta,
+                version: &'a str,
+                cursor: &'a crate::domain::ChangeCursor,
+                epics: &'a [crate::file_store::model::EpicView],
+                cards: Vec<&'a CardView>,
+                problems: &'a [crate::file_store::model::Problem],
             }
-            #[derive(Serialize)]
-            #[serde(rename_all = "camelCase")]
-            struct BoardResponse {
-                project: crate::domain::ProjectMeta,
-                board: BoardInfo,
-                revision: i64,
-                cursor: crate::domain::ChangeCursor,
-                cards: Vec<crate::domain::Card>,
-            }
+            let cards = view
+                .cards
+                .iter()
+                .filter(|c| c.archived_at.is_none())
+                .collect();
             json_response(
                 StatusCode::OK,
                 &BoardResponse {
-                    project: snapshot.project,
-                    board: BoardInfo {
-                        name: snapshot.board.name,
-                        created_at: snapshot.board.created_at,
-                    },
-                    revision: snapshot.revision,
-                    cursor: snapshot.cursor,
-                    cards: snapshot.cards,
+                    project: &view.project,
+                    version: &view.version,
+                    cursor: &view.cursor,
+                    epics: &view.epics,
+                    cards,
+                    problems: &view.problems,
                 },
             )
         }
@@ -466,14 +569,14 @@ async fn archive(State(state): State<Arc<AppState>>, Path(raw_project): Path<Str
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
     };
-    match with_store(&state, move |store| store.archive_snapshot(&project_id)).await {
-        Ok(snapshot) => json_response(
+    match indexed_view(&state, &project_id) {
+        Ok(view) => json_response(
             StatusCode::OK,
             &serde_json::json!({
-                "project": snapshot.project,
-                "revision": snapshot.revision,
-                "cursor": snapshot.cursor,
-                "cards": snapshot.cards,
+                "project": view.project,
+                "version": view.version,
+                "cursor": view.cursor,
+                "cards": view.cards.iter().filter(|c| c.archived_at.is_some()).collect::<Vec<_>>(),
             }),
         ),
         Err(error) => skan_error_response(&error),
@@ -495,9 +598,10 @@ async fn health() -> Response {
     )
 }
 
-/// A change was made elsewhere (the CLI). Tell every connected browser.
+/// A change was made elsewhere (the CLI). Queue a reload of every project; the
+/// browsers hear about it only if a version actually changed.
 async fn notify(State(state): State<Arc<AppState>>) -> StatusCode {
-    let _ = state.changed.send(());
+    state.reloader.all();
     StatusCode::NO_CONTENT
 }
 
@@ -517,13 +621,13 @@ async fn delete_card(
             "Card IDs are positive whole numbers.",
         );
     };
-    match with_store(&state, move |store| {
+    match with_files(&state, move |store| {
         store.delete_archived_card(&project_id, id)
     })
     .await
     {
         Ok(()) => {
-            let _ = state.changed.send(());
+            refresh_index(&state);
             StatusCode::NO_CONTENT.into_response()
         }
         Err(error) => skan_error_response(&error),
@@ -542,7 +646,7 @@ async fn archive_card(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_store(&state, move |store| {
+    let result = with_files(&state, move |store| {
         store.archive_card(&project_id, id, chrono::Utc::now())
     })
     .await;
@@ -561,7 +665,7 @@ async fn restore_card(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_store(&state, move |store| {
+    let result = with_files(&state, move |store| {
         store.restore_card(&project_id, id, chrono::Utc::now())
     })
     .await;
@@ -583,14 +687,14 @@ async fn archive_done(
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
     };
-    let result = with_store(&state, move |store| {
+    let result = with_files(&state, move |store| {
         store.archive_done(&project_id, &input.ids, chrono::Utc::now())
     })
     .await;
     match result {
         Ok(result) => {
             if result.changed {
-                let _ = state.changed.send(());
+                refresh_index(&state);
             }
             json_response(
                 StatusCode::OK,
@@ -620,6 +724,8 @@ struct CreateCardInput {
     title: String,
     description: String,
     assignee: Assignee,
+    #[serde(default)]
+    is_draft: bool,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
 }
@@ -656,11 +762,15 @@ struct AgentStateInput {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AnswerInput {
-    #[serde(alias = "requestID")]
     request_id: String,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
-    reason: String,
+    /// The choice of the request to answer with. Absent for a note only.
+    #[serde(default)]
+    choice_id: Option<String>,
+    /// The free-text note.
+    #[serde(default)]
+    text: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -669,6 +779,9 @@ struct MultipartMeta {
     request_id: String,
     #[serde(default)]
     finalize: bool,
+    /// Only a new card takes it; an edit refuses it.
+    #[serde(default)]
+    is_draft: Option<bool>,
     #[serde(default)]
     title: Option<String>,
     #[serde(default)]
@@ -676,9 +789,8 @@ struct MultipartMeta {
     #[serde(default)]
     assignee: Option<Assignee>,
     #[serde(default)]
-    #[serde(alias = "removeAttachments", alias = "removeAttachmentIds")]
     remove_attachment_ids: Vec<String>,
-    #[serde(default, alias = "files", alias = "additions")]
+    #[serde(default)]
     attachments: Vec<MultipartAttachmentMeta>,
 }
 
@@ -812,14 +924,15 @@ async fn create_card(
         Ok(id) => id,
         Err(error) => return skan_error_response(&error),
     };
-    match with_store(&state, move |store| {
-        store.add_work_card(
+    match with_files(&state, move |store| {
+        store.create_card(
             &project_id,
             NewCard {
                 title: input.title,
                 description: input.description,
                 assignee: input.assignee,
                 actor: Actor::Human,
+                is_draft: input.is_draft,
             },
             chrono::Utc::now(),
         )
@@ -827,7 +940,7 @@ async fn create_card(
     .await
     {
         Ok(card) => {
-            let _ = state.changed.send(());
+            refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
         }
         Err(error) => skan_error_response(&error),
@@ -851,7 +964,7 @@ async fn move_card(
             "Card ID is invalid.",
         );
     };
-    match with_store(&state, move |store| {
+    match with_files(&state, move |store| {
         store.move_work_card_for_user(
             &project_id,
             id,
@@ -867,7 +980,7 @@ async fn move_card(
     {
         Ok(result) => {
             if result.changed {
-                let _ = state.changed.send(());
+                refresh_index(&state);
             }
             json_response(
                 StatusCode::OK,
@@ -895,7 +1008,7 @@ async fn set_agent_status(
             "Card ID is invalid.",
         );
     };
-    match with_store(&state, move |store| {
+    match with_files(&state, move |store| {
         store.set_agent_status(
             &project_id,
             id,
@@ -912,7 +1025,7 @@ async fn set_agent_status(
     {
         Ok(result) => {
             if result.changed {
-                let _ = state.changed.send(());
+                refresh_index(&state);
             }
             json_response(
                 StatusCode::OK,
@@ -940,14 +1053,15 @@ async fn answer_request(
             "Card ID is invalid.",
         );
     };
-    match with_store(&state, move |store| {
+    match with_files(&state, move |store| {
         store.answer_request(
             &project_id,
             id,
             &input.request_id,
-            ChangeContext {
+            Answer {
                 actor: Actor::Human,
-                reason: input.reason,
+                choice_id: input.choice_id,
+                text: input.text,
             },
             chrono::Utc::now(),
         )
@@ -955,7 +1069,7 @@ async fn answer_request(
     .await
     {
         Ok(card) => {
-            let _ = state.changed.send(());
+            refresh_index(&state);
             json_response(
                 StatusCode::OK,
                 &serde_json::json!({"card": card, "changed": true}),
@@ -980,12 +1094,12 @@ fn parse_card_id(raw: &str) -> Result<i64, Box<Response>> {
 /// A card as `{"card": ...}`, telling the browsers only if something changed.
 fn changed_card_response(
     state: &AppState,
-    result: Result<crate::domain::Changed<crate::domain::Card>, SkanError>,
+    result: Result<Changed<CardView>, SkanError>,
 ) -> Response {
     match result {
         Ok(result) => {
             if result.changed {
-                let _ = state.changed.send(());
+                refresh_index(state);
             }
             json_response(StatusCode::OK, &serde_json::json!({"card": result.value}))
         }
@@ -1013,7 +1127,7 @@ async fn edit_card(
             command: None,
         });
     }
-    let result = with_store(&state, move |store| {
+    let result = with_files(&state, move |store| {
         store.edit_draft_card(
             &project_id,
             id,
@@ -1063,41 +1177,49 @@ async fn edit_card_multipart(
             "requestId is required.",
         );
     }
+    if payload.meta.is_draft.is_some() {
+        return error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "request body is invalid.",
+            "isDraft is only accepted when a card is added.",
+        );
+    }
     let finalize = payload.meta.finalize;
-    let request_id = payload.meta.request_id;
-    let additions = payload.additions;
-    let removals = payload.meta.remove_attachment_ids;
     let title = payload.meta.title;
     let description = payload.meta.description;
-    let result = with_store(&state, move |store| {
-        let before = store
-            .snapshot(&project_id)?
-            .cards
-            .into_iter()
-            .find(|c| c.id == id)
-            .ok_or(SkanError::CardNotFound { id })?;
-        let after = store.save_draft_card_attachments(
+    let removed = payload.meta.remove_attachment_ids;
+    let additions = payload.additions;
+    let attachments_changed = !removed.is_empty() || !additions.is_empty();
+    let result = with_files(&state, move |store| {
+        let now = chrono::Utc::now();
+        // Images first, then the text and the draft flag.
+        let owner = AttachmentOwner::Card(id);
+        for attachment_id in &removed {
+            store.delete_attachment_for_user(&project_id, &owner, attachment_id, now)?;
+        }
+        for input in additions {
+            store.add_attachment_for_user(&project_id, &owner, input, now)?;
+        }
+        store.edit_draft_card(
             &project_id,
             id,
             title.as_deref(),
             description.as_deref(),
-            &additions,
-            &removals,
-            &request_id,
             finalize,
-            chrono::Utc::now(),
-        )?;
-        Ok((before != after, after))
+            now,
+        )
     })
     .await;
     match result {
-        Ok((changed, card)) => {
+        Ok(Changed { value, changed }) => {
+            let changed = changed || attachments_changed;
             if changed {
-                let _ = state.changed.send(());
+                refresh_index(&state);
             }
             json_response(
                 StatusCode::OK,
-                &serde_json::json!({"card": card, "changed": changed}),
+                &serde_json::json!({"card": value, "changed": changed}),
             )
         }
         Err(error) => skan_error_response(&error),
@@ -1152,6 +1274,7 @@ async fn create_card_multipart(
             "assignee is required.",
         );
     };
+    let is_draft = payload.meta.is_draft.unwrap_or(false);
     if !payload.meta.remove_attachment_ids.is_empty() {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -1160,7 +1283,6 @@ async fn create_card_multipart(
             "A new card cannot remove attachments.",
         );
     }
-    let additions = payload.additions;
     let request_id = payload.meta.request_id;
     if request_id.is_empty() {
         return error_response(
@@ -1170,56 +1292,37 @@ async fn create_card_multipart(
             "requestId is required.",
         );
     }
-    let result = with_store(&state, move |store| {
-        store.create_card_with_attachments(
+    for input in &payload.additions {
+        if let Err(error) = validate_attachment(&input.id, &input.name, &input.bytes) {
+            return skan_error_response(&error);
+        }
+    }
+    let additions = payload.additions;
+    let result = with_files(&state, move |store| {
+        let now = chrono::Utc::now();
+        let card = store.create_card(
             &project_id,
             NewCard {
                 title,
                 description,
                 assignee,
                 actor: Actor::Human,
+                is_draft,
             },
-            &additions,
-            &request_id,
-            chrono::Utc::now(),
-        )
+            now,
+        )?;
+        let owner = AttachmentOwner::Card(card.id);
+        for input in additions {
+            store.add_attachment_for_user(&project_id, &owner, input, now)?;
+        }
+        store.card(&project_id, card.id)
     })
     .await;
     match result {
         Ok(card) => {
-            let _ = state.changed.send(());
+            refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
         }
-        Err(error) => skan_error_response(&error),
-    }
-}
-
-async fn get_attachment(
-    State(state): State<Arc<AppState>>,
-    Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return skan_error_response(&error),
-    };
-    let id = match parse_card_id(&raw_id) {
-        Ok(id) => id,
-        Err(response) => return *response,
-    };
-    let result = with_store(&state, move |store| {
-        store.attachment_data_for_card(&project_id, id, &attachment_id)
-    })
-    .await;
-    match result {
-        Ok(data) => (
-            [
-                (header::CONTENT_TYPE, data.metadata.media_type.as_str()),
-                (header::CACHE_CONTROL, "no-store"),
-                (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
-            ],
-            data.bytes,
-        )
-            .into_response(),
         Err(error) => skan_error_response(&error),
     }
 }
@@ -1238,9 +1341,611 @@ async fn set_draft(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_store(&state, move |store| {
-        store.set_draft(&project_id, id, input.is_draft)
+    let result = with_files(&state, move |store| {
+        store.set_draft(&project_id, id, input.is_draft, chrono::Utc::now())
     })
     .await;
     changed_card_response(&state, result)
+}
+
+// ---------------------------------------------------------------- images and evidence
+
+/// A stored file's bytes with the headers that stop a browser from sniffing them.
+fn file_response(content_type: &str, bytes: Vec<u8>) -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, content_type.to_string()),
+            (header::CACHE_CONTROL, "no-store".to_string()),
+            (header::X_CONTENT_TYPE_OPTIONS, "nosniff".to_string()),
+        ],
+        bytes,
+    )
+        .into_response()
+}
+
+/// The bytes of a file the store has already checked the path of.
+fn read_checked(store: &FileStore, path: &std::path::Path) -> Result<Vec<u8>, SkanError> {
+    let label = crate::file_store::layout::shared_label(store.shared_dir(), path);
+    crate::file_store::io::read_bytes(path, &label)
+}
+
+fn invalid_multipart(reason: &str) -> Response {
+    error_response(
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "invalid_multipart",
+        "request body is invalid.",
+        reason,
+    )
+}
+
+fn multipart_too_large() -> Response {
+    error_response(
+        StatusCode::PAYLOAD_TOO_LARGE,
+        "payload_too_large",
+        "request body is invalid.",
+        "Multipart bodies are limited to 52 MiB.",
+    )
+}
+
+/// The one file of a text upload: its `file` part and the file name sent with it.
+async fn parse_single_file(mut multipart: Multipart) -> Result<(String, Vec<u8>), Response> {
+    let mut file = None;
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| invalid_multipart("The multipart body could not be read."))?
+    {
+        if field.name() != Some("file") {
+            return Err(invalid_multipart(
+                "The multipart body contains an unknown part.",
+            ));
+        }
+        if file.is_some() {
+            return Err(invalid_multipart("Send exactly one file part."));
+        }
+        let name = field.file_name().unwrap_or_default().to_owned();
+        let bytes = field
+            .bytes()
+            .await
+            .map_err(|_| invalid_multipart("The file part could not be read."))?;
+        file = Some((name, bytes.to_vec()));
+    }
+    file.ok_or_else(|| invalid_multipart("A file part is required."))
+}
+
+/// The images of a card: the list, the registration, and the delivery of one of them.
+/// The owner is checked with the project and the ID, so another card's image
+/// is `attachment_not_found`.
+async fn list_card_attachments(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    match with_files(&state, move |store| store.card(&project_id, id)).await {
+        Ok(card) => json_response(
+            StatusCode::OK,
+            &serde_json::json!({"cardId": card.id, "attachments": card.attachments}),
+        ),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn add_card_attachment(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+    multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let Ok(multipart) = multipart else {
+        return multipart_too_large();
+    };
+    let payload = match parse_multipart(multipart).await {
+        Ok(value) => value,
+        Err(response) => return response,
+    };
+    if payload.meta.request_id.is_empty() {
+        return error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "request body is invalid.",
+            "requestId is required.",
+        );
+    }
+    if payload.additions.is_empty() {
+        return error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "request body is invalid.",
+            "Send at least one image.",
+        );
+    }
+    let additions = payload.additions;
+    let result = with_files(&state, move |store| {
+        let owner = AttachmentOwner::Card(id);
+        for input in additions {
+            store.add_attachment_for_user(&project_id, &owner, input, chrono::Utc::now())?;
+        }
+        store.card(&project_id, id)
+    })
+    .await;
+    match result {
+        Ok(card) => {
+            refresh_index(&state);
+            json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn get_card_attachment(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let result = with_files(&state, move |store| {
+        let stored =
+            store.attachment_path(&project_id, &AttachmentOwner::Card(id), &attachment_id)?;
+        let bytes = read_checked(&store, &stored.path)?;
+        Ok((stored.metadata.media_type, bytes))
+    })
+    .await;
+    match result {
+        Ok((media_type, bytes)) => file_response(&media_type, bytes),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn delete_card_attachment(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let result = with_files(&state, move |store| {
+        store.delete_attachment_for_user(
+            &project_id,
+            &AttachmentOwner::Card(id),
+            &attachment_id,
+            chrono::Utc::now(),
+        )?;
+        store.card(&project_id, id)
+    })
+    .await;
+    match result {
+        Ok(card) => {
+            refresh_index(&state);
+            json_response(StatusCode::OK, &serde_json::json!({"card": card}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+/// Add a text evidence to a card. A person may do this on a draft.
+async fn add_card_evidence(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+    multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let Ok(multipart) = multipart else {
+        return multipart_too_large();
+    };
+    let (name, bytes) = match parse_single_file(multipart).await {
+        Ok(value) => value,
+        Err(response) => return response,
+    };
+    let result = with_files(&state, move |store| {
+        store.add_evidence_for_user(&project_id, id, &name, &bytes, chrono::Utc::now())?;
+        store.card(&project_id, id)
+    })
+    .await;
+    match result {
+        Ok(card) => {
+            refresh_index(&state);
+            json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+/// The text of a card's evidence, as plain text that a browser shows without sniffing.
+async fn get_card_evidence(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    match with_files(&state, move |store| {
+        store.read_evidence(&project_id, id, &evidence_id)
+    })
+    .await
+    {
+        Ok(data) => file_response("text/plain; charset=utf-8", data.bytes),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn delete_card_evidence(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let result = with_files(&state, move |store| {
+        store.delete_evidence_for_user(&project_id, id, &evidence_id, chrono::Utc::now())?;
+        store.card(&project_id, id)
+    })
+    .await;
+    match result {
+        Ok(card) => {
+            refresh_index(&state);
+            json_response(StatusCode::OK, &serde_json::json!({"card": card}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+// ---------------------------------------------------------------- epics
+
+/// `epicId` of `PUT .../epic`: an EPIC-ID, or `null` to take the card out of
+/// its epic. A missing field is `None` and is refused.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SetEpicInput {
+    #[serde(default, deserialize_with = "present_or_null")]
+    epic_id: Option<Option<String>>,
+}
+
+fn present_or_null<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Option<String>>, D::Error> {
+    Option::<String>::deserialize(deserializer).map(Some)
+}
+
+/// Set or clear the epic of a card. A person may do this on any card, including
+/// an archived one or a draft.
+async fn set_card_epic(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+    StrictJson(input): StrictJson<SetEpicInput>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let id = match parse_card_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    let epic = match input.epic_id {
+        None => {
+            return error_response(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "invalid_value",
+                "request body is invalid.",
+                "epicId is required (an EPIC-ID, or null).",
+            );
+        }
+        Some(None) => None,
+        Some(Some(raw)) => match raw.parse::<EpicId>() {
+            Ok(id) => Some(id),
+            Err(error) => return skan_error_response(&error),
+        },
+    };
+    let result = with_files(&state, move |store| {
+        store.set_card_epic(
+            &project_id,
+            id,
+            epic.as_ref(),
+            Actor::Human,
+            chrono::Utc::now(),
+        )
+    })
+    .await;
+    changed_card_response(&state, result)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CreateEpicInput {
+    id: String,
+    name: String,
+    #[serde(default)]
+    color: Option<String>,
+    #[serde(default)]
+    is_draft: bool,
+    #[serde(default)]
+    plan: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct EpicPatchInput {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    color: Option<String>,
+    #[serde(default)]
+    is_draft: Option<bool>,
+    #[serde(default)]
+    plan: Option<String>,
+}
+
+fn parse_epic_id(raw: &str) -> Result<EpicId, SkanError> {
+    raw.parse()
+}
+
+async fn list_epics(
+    State(state): State<Arc<AppState>>,
+    Path(raw_project): Path<String>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    match indexed_view(&state, &project_id) {
+        Ok(view) => json_response(StatusCode::OK, &serde_json::json!({"epics": view.epics})),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn get_epic(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_epic)): Path<(String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let epic_id = match parse_epic_id(&raw_epic) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    match with_files(&state, move |store| store.epic(&project_id, &epic_id)).await {
+        Ok(epic) => json_response(StatusCode::OK, &serde_json::json!({"epic": epic})),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn create_epic(
+    State(state): State<Arc<AppState>>,
+    Path(raw_project): Path<String>,
+    ApiJson(input): ApiJson<CreateEpicInput>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let new = NewEpic {
+        id: input.id,
+        name: input.name,
+        color: input.color,
+        is_draft: input.is_draft,
+        plan: input.plan,
+    };
+    match with_files(&state, move |store| {
+        store.create_epic(&project_id, new, chrono::Utc::now())
+    })
+    .await
+    {
+        Ok(epic) => {
+            refresh_index(&state);
+            json_response(StatusCode::CREATED, &serde_json::json!({"epic": epic}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn update_epic(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_epic)): Path<(String, String)>,
+    StrictJson(input): StrictJson<EpicPatchInput>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let epic_id = match parse_epic_id(&raw_epic) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let update = EpicUpdate {
+        name: input.name,
+        color: input.color,
+        is_draft: input.is_draft,
+        plan: input.plan,
+    };
+    match with_files(&state, move |store| {
+        store.update_epic(&project_id, &epic_id, update, chrono::Utc::now())
+    })
+    .await
+    {
+        Ok(Changed { value, changed }) => {
+            if changed {
+                refresh_index(&state);
+            }
+            json_response(
+                StatusCode::OK,
+                &serde_json::json!({"epic": value, "changed": changed}),
+            )
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn list_epic_attachments(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_epic)): Path<(String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let epic_id = match parse_epic_id(&raw_epic) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    match with_files(&state, move |store| store.epic(&project_id, &epic_id)).await {
+        Ok(epic) => json_response(
+            StatusCode::OK,
+            &serde_json::json!({"epicId": epic.id, "attachments": epic.attachments}),
+        ),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn add_epic_attachment(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_epic)): Path<(String, String)>,
+    multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let epic_id = match parse_epic_id(&raw_epic) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let Ok(multipart) = multipart else {
+        return multipart_too_large();
+    };
+    let payload = match parse_multipart(multipart).await {
+        Ok(value) => value,
+        Err(response) => return response,
+    };
+    if payload.meta.request_id.is_empty() {
+        return error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "request body is invalid.",
+            "requestId is required.",
+        );
+    }
+    if payload.additions.is_empty() {
+        return error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "request body is invalid.",
+            "Send at least one image.",
+        );
+    }
+    let additions = payload.additions;
+    let result = with_files(&state, move |store| {
+        let owner = AttachmentOwner::Epic(epic_id.clone());
+        for input in additions {
+            store.add_attachment_for_user(&project_id, &owner, input, chrono::Utc::now())?;
+        }
+        store.epic(&project_id, &epic_id)
+    })
+    .await;
+    match result {
+        Ok(epic) => {
+            refresh_index(&state);
+            json_response(StatusCode::CREATED, &serde_json::json!({"epic": epic}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn get_epic_attachment(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_epic, attachment_id)): Path<(String, String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let epic_id = match parse_epic_id(&raw_epic) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let result = with_files(&state, move |store| {
+        let stored =
+            store.attachment_path(&project_id, &AttachmentOwner::Epic(epic_id), &attachment_id)?;
+        let bytes = read_checked(&store, &stored.path)?;
+        Ok((stored.metadata.media_type, bytes))
+    })
+    .await;
+    match result {
+        Ok((media_type, bytes)) => file_response(&media_type, bytes),
+        Err(error) => skan_error_response(&error),
+    }
+}
+
+async fn delete_epic_attachment(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_epic, attachment_id)): Path<(String, String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let epic_id = match parse_epic_id(&raw_epic) {
+        Ok(id) => id,
+        Err(error) => return skan_error_response(&error),
+    };
+    let result = with_files(&state, move |store| {
+        store.delete_attachment_for_user(
+            &project_id,
+            &AttachmentOwner::Epic(epic_id.clone()),
+            &attachment_id,
+            chrono::Utc::now(),
+        )?;
+        store.epic(&project_id, &epic_id)
+    })
+    .await;
+    match result {
+        Ok(epic) => {
+            refresh_index(&state);
+            json_response(StatusCode::OK, &serde_json::json!({"epic": epic}))
+        }
+        Err(error) => skan_error_response(&error),
+    }
 }

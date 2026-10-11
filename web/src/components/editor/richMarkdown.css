@@ -1,0 +1,135 @@
+/*
+ * The rich Markdown editor. The body text, headings, lists, quotes and code take the viewer's
+ * rules (the `md` classes on the root); this file adds only what the editor needs to be operated:
+ * the editing surface, the placeholder, the picture reference, the floating toolbar and link box.
+ * Colors are the r-* tokens of the page, not the Crepe theme.
+ */
+
+.rich-markdown {
+  position: relative;
+  min-width: 0;
+}
+
+.rich-markdown .ProseMirror {
+  min-height: 240px;
+  outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.rich-markdown .ProseMirror:focus-visible {
+  outline: none;
+}
+
+.rich-markdown .crepe-placeholder::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--r-muted);
+  pointer-events: none;
+}
+
+/* A picture in the body: the viewer's size and frame, not editable as text. */
+.rich-markdown .rich-image {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0 10px 4px 0;
+  vertical-align: top;
+  user-select: none;
+}
+
+.rich-markdown .rich-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  outline: 1px solid var(--r-border);
+  outline-offset: -1px;
+}
+
+.rich-markdown .rich-image__none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 312px;
+  max-width: 100%;
+  height: 130px;
+  box-sizing: border-box;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-lane);
+  color: var(--r-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rich-markdown .rich-image__caption {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--r-muted);
+}
+
+.rich-markdown .rich-image--selected img {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}
+
+/* A Mermaid block shown in the code block's preview. */
+.rich-markdown .rich-mermaid {
+  padding: 12px;
+  overflow-x: auto;
+  background: var(--r-surface);
+}
+
+.rich-markdown .rich-mermaid svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.rich-markdown .rich-mermaid--error {
+  color: var(--r-danger);
+  font-size: 13px;
+}
+
+/* The floating bar of a selection and the link box take the page's surface and border. */
+.rich-markdown .milkdown-toolbar,
+.rich-markdown .milkdown-link-tooltip {
+  z-index: 40;
+  box-sizing: border-box;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+}
+
+.rich-markdown .milkdown-toolbar button,
+.rich-markdown .milkdown-link-tooltip button {
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.rich-markdown .milkdown-toolbar button:focus-visible,
+.rich-markdown .milkdown-link-tooltip button:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 1px;
+}
+
+.rich-markdown .milkdown-code-block {
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-lane);
+  overflow: hidden;
+}
+
+.rich-markdown .milkdown-table-block {
+  position: relative;
+}
+
+.rich-markdown .milkdown-table-block .table-wrapper {
+  overflow-x: auto;
+}

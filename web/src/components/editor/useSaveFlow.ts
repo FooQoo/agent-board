@@ -33,11 +33,13 @@ export function useSaveFlow({
       } catch (cause) {
         busy.current = false;
         onSavingChange?.(false);
-        if (cause instanceof WriteError) {
-          setError(cause.code === 'card_not_draft' ? t('editor.notDraft') : cause.message);
-        } else {
-          setError(t('editor.saveFailed'));
-        }
+        // The server's reason is not shown: a known code has its own sentence, any other failure
+        // gets the design's sentence, and the input stays in both cases.
+        setError(
+          cause instanceof WriteError && cause.code === 'card_not_draft'
+            ? t('editor.notDraft')
+            : t('editor.saveFailed'),
+        );
       } finally {
         setSaving(false);
       }

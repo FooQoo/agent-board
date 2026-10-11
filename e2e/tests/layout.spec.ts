@@ -58,7 +58,7 @@ const computed = (page: Page, selector: string, props: string[]) =>
     [selector, props] as const,
   );
 
-function fillDone(extra = 8): void {
+function fillDone(extra = 14): void {
   for (let i = 0; i < extra; i += 1) agboardOk(mainProject, ['add', `Extra done card ${i + 1}`]);
   const cards = JSON.parse(agboardOk(mainProject, ['ls', '--json']).stdout).cards as { id: number; title: string }[];
   for (const c of cards.filter((x) => x.title.startsWith('Extra done card'))) agboardOk(mainProject, ['mv', String(c.id), 'done']);
@@ -175,6 +175,8 @@ async function cue(page: Page, index: number) {
 test('1280px: an overflowing Done lane shows the fade and a scrollbar until the bottom', async ({ page }) => {
   fillDone();
   await open(page, 1280);
+  // The board follows the files a moment after they change, so the lane is measured once all 16 cards are shown.
+  await expect(page.locator('.lane__cards').nth(2).locator('.card')).toHaveCount(16);
   const done = await cue(page, 2);
   expect(done.overflows).toBe(true);
   expect(done.more).toBe('true');
@@ -195,6 +197,8 @@ test('1280px: an overflowing Done lane shows the fade and a scrollbar until the 
 
 test('1920px: a lane that fits its cards shows neither fade nor scrollbar', async ({ page }) => {
   await open(page, 1920, 1200);
+  // The board follows the reset files a moment later; the fixture's lanes are measured once they are shown.
+  await expect(page.locator('.lane__cards').nth(2).locator('.card')).toHaveCount(2);
   for (const index of [0, 1, 2]) {
     const lane = await cue(page, index);
     expect(lane.more).toBe('false');

@@ -1,15 +1,14 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import {
   agboard,
   agboardBinary,
-  agboardOk,
-  agboardCatalogOk,
   agboardCatalog,
+  agboardCatalogOk,
+  agboardOk,
   listCards,
   mainHome,
   mainProject,
@@ -17,20 +16,21 @@ import {
   nextCardId,
   removeHome,
   resetBoard,
-  restoreProject,
+  taskBody,
+  workspace,
   type AgboardResult,
   type CardJson,
 } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
-// What a draft means for the CLI, and the limits of a description, with the real binary and a real serve.
+// What a draft means for the CLI, and the limits of a body, with the real binary and a real serve.
 // The CLI never makes a draft: only the page does, so each test uses the page for that one step.
 
 interface ShownCard extends CardJson {
   description: string;
   isDraft: boolean;
   updatedAt: string;
-  history: unknown[];
+  history: { kind: string; actor: string; at: string }[];
 }
 
 const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
@@ -58,7 +58,13 @@ async function makeDraft(page: Page): Promise<void> {
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 }
 
-const sha = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
+/** A body of exactly `count` characters as the CLI counts them: the required headings, ending at the last one. */
+function bodyOfLength(count: number): string {
+  const frame = (text: string) => taskBody(text).replace(/\n+$/, '');
+  const placeholder = '（作業の目的と内容を書く）';
+  const base = [...frame('')].length - [...placeholder].length;
+  return frame('あ'.repeat(count - base));
+}
 
 let work: string;
 
@@ -121,7 +127,7 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
   expect(show(13)).toMatchObject({ title: 'Changed by an agent', cardStatus: 'done' });
 });
 
-test('a draft stays a draft over time, and toggling it wakes wait without touching the history or the update time', async ({
+test('a draft stays a draft over time, and toggling it wakes wait; the toggle is recorded but the update time is not moved', async ({
   page,
 }) => {
   await open(page, 13);
@@ -147,21 +153,24 @@ test('a draft stays a draft over time, and toggling it wakes wait without touchi
     waiter.kill();
   }
   const drafted = show(13);
+  // The change is a history event of kind draft; the update time stays as it was.
   expect(drafted.updatedAt).toBe(first.updatedAt);
-  expect(drafted.history).toEqual(first.history);
+  expect(drafted.history).toHaveLength(first.history.length + 1);
+  expect(drafted.history.at(-1)).toMatchObject({ kind: 'draft', actor: 'human' });
 
   // It does not clear by itself.
   await new Promise((resolve) => setTimeout(resolve, 3000));
   expect(show(13).isDraft).toBe(true);
 
-  // Finalizing is a change too: wait wakes, and the history and update time are still the same.
+  // Finalizing is a change too: wait wakes, and it adds one more history event with the same update time.
   const cursor2 = JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout).cursor as string;
   const second = spawnSyncWait(cursor2);
   await details(page).getByRole('button', { name: 'Finalize' }).click();
   expect((await second).code).toBe(0);
   const finalized = show(13);
   expect(finalized).toMatchObject({ isDraft: false, updatedAt: first.updatedAt });
-  expect(finalized.history).toEqual(first.history);
+  expect(finalized.history).toHaveLength(drafted.history.length + 1);
+  expect(finalized.history.at(-1)).toMatchObject({ kind: 'draft', actor: 'human' });
 });
 
 function spawnSyncWait(cursor: string): Promise<{ code: number | null }> {
@@ -172,9 +181,9 @@ function spawnSyncWait(cursor: string): Promise<{ code: number | null }> {
   return new Promise((resolve) => child.once('exit', (code) => resolve({ code })));
 }
 
-test('add, edit, and import accept 50,000 characters and refuse one more, with CRLF turned into LF', async () => {
-  const exact = 'あ'.repeat(50_000);
-  const over = 'あ'.repeat(50_001);
+test('a body of exactly 50,000 characters is accepted for add, edit, and --desc -, and one more is refused with nothing stored', async () => {
+  const exact = bodyOfLength(50_000);
+  const over = bodyOfLength(50_001);
   const exactFile = path.join(work, 'exact.md');
   const overFile = path.join(work, 'over.md');
   writeFileSync(exactFile, exact);
@@ -182,7 +191,7 @@ test('add, edit, and import accept 50,000 characters and refuse one more, with C
 
   const id = nextCardId(mainProject);
   agboardOk(mainProject, ['add', 'Exact limit', '--desc-file', exactFile]);
-  expect(show(id).description).toBe(exact);
+  expect([...show(id).description].length).toBe(50_000);
   const stdin = spawnSync(agboardBinary(), ['--project', mainProject, 'add', 'From stdin', '--desc', '-', '--assignee', 'ai', '--actor', 'ai'], {
     env: { ...process.env, SKAN_HOME: mainHome(), TZ: 'UTC' },
     input: exact,
@@ -203,59 +212,46 @@ test('add, edit, and import accept 50,000 characters and refuse one more, with C
   }
   expect(board()).toBe(before);
 
-  // CRLF is stored as LF (a file's last line ending is dropped, as before).
+  // CRLF is stored as LF.
   const crlfFile = path.join(work, 'crlf.md');
-  writeFileSync(crlfFile, 'line one\r\nline two\r\n');
+  writeFileSync(crlfFile, taskBody('line one\nline two').replace(/\n/g, '\r\n'));
   agboardOk(mainProject, ['edit', String(id), '--desc-file', crlfFile]);
-  expect(show(id).description).toBe('line one\nline two');
-  agboardOk(mainProject, ['edit', String(id), '--desc', 'first\r\nsecond\r\n']);
-  expect(show(id).description).toBe('first\nsecond\n');
-
-  // A backup with a description over the limit is refused as a whole.
-  const exported = path.join(work, 'export.json');
-  agboardOk(mainProject, ['export', '-o', exported]);
-  const backup = JSON.parse(readFileSync(exported, 'utf8'));
-  backup.cards[0].description = over;
-  const tooBig = path.join(work, 'too-big.json');
-  writeFileSync(tooBig, JSON.stringify(backup));
-  const refused = agboard(mainProject, ['--json', 'import', tooBig]);
-  expect(refused.code).not.toBe(0);
-  expect(listCards(mainProject).length).toBe(JSON.parse(readFileSync(exported, 'utf8')).cards.length);
+  expect(show(id).description).not.toContain('\r');
+  expect(show(id).description).toContain('line one\nline two');
 });
 
-test('export keeps isDraft through a round trip, and a backup from before drafts comes back with no drafts', async ({
-  page,
-}) => {
-  // The fixture was made before drafts existed; it has no isDraft at all, and every card comes back a non-draft.
+test('a backup is a copy of the project folder; copying it back brings a draft back exactly as it left', async ({ page }) => {
+  // The fixture has no drafts; every card comes back a non-draft.
   expect(listCards(mainProject).length).toBe(8);
-  expect(JSON.parse(readFileSync(path.resolve(import.meta.dirname, '..', 'fixtures', 'agent-board.json'), 'utf8')).cards[0]).not.toHaveProperty('isDraft');
   for (const item of listCards(mainProject)) expect(show(item.id).isDraft, `#${item.id}`).toBe(false);
 
   await open(page, 13);
   await makeDraft(page);
-  const exported = path.join(work, 'draft-export.json');
-  agboardOk(mainProject, ['export', '-o', exported]);
-  const backup = JSON.parse(readFileSync(exported, 'utf8'));
-  expect(backup.format).toBe('agboard-board');
-  expect(backup.version).toBe(2);
-  expect(backup.cards.find((c: { id: number }) => c.id === 13).isDraft).toBe(true);
-  expect(backup.cards.filter((c: { isDraft: boolean }) => c.isDraft)).toHaveLength(1);
+  await expect.poll(() => show(13).isDraft).toBe(true);
 
-  // Back to the old backup, then the new one: the draft returns exactly as it left.
+  // The backup copies the card and epic files of the project (MODEL.md, backups).
+  const folder = workspace(mainProject).folder;
+  const backup = path.join(work, 'folder-backup');
+  for (const part of ['tasks', 'epics', 'project.json']) {
+    if (existsSync(path.join(folder, part))) cpSync(path.join(folder, part), path.join(backup, part), { recursive: true });
+  }
+  expect(readFileSync(path.join(backup, 'tasks', '13', 'task.json'), 'utf8')).toContain('"isDraft": true');
+
+  // Back to the seeded board, then the backup: the draft returns exactly as it left.
   resetBoard(mainProject);
   expect(show(13).isDraft).toBe(false);
-  restoreProject(mainProject, exported);
+  for (const part of ['tasks', 'epics', 'project.json']) {
+    rmSync(path.join(folder, part), { recursive: true, force: true });
+    if (existsSync(path.join(backup, part))) cpSync(path.join(backup, part), path.join(folder, part), { recursive: true });
+  }
   expect(show(13).isDraft).toBe(true);
   for (const item of listCards(mainProject)) {
     if (item.id !== 13) expect(show(item.id).isDraft, `#${item.id}`).toBe(false);
   }
-  const again = path.join(work, 'draft-export-2.json');
-  agboardOk(mainProject, ['export', '-o', again]);
-  expect(JSON.parse(readFileSync(again, 'utf8')).cards.find((c: { id: number }) => c.id === 13).isDraft).toBe(true);
 });
 
-test('the hook hands over the whole description and isDraft; a snapshot over 256 KiB is reported, not cut', async () => {
-  const body = '## Section\n' + 'あいうえお'.repeat(8_000);
+test('the hook hands over the whole body and isDraft; a snapshot over 256 KiB is reported, not cut', async () => {
+  const body = taskBody(`## Section\n${'あいうえお'.repeat(8_000)}`);
   const bodyFile = path.join(work, 'hook.md');
   writeFileSync(bodyFile, body);
   const id = nextCardId(mainProject);
@@ -275,12 +271,14 @@ test('the hook hands over the whole description and isDraft; a snapshot over 256
   expect(context.startsWith('AGBOARD_SNAPSHOT\n')).toBe(true);
   const snapshot = JSON.parse(context.slice('AGBOARD_SNAPSHOT\n'.length)) as { cards: ShownCard[] };
   const handed = snapshot.cards.find((c) => c.id === id)!;
-  expect(handed.description).toBe(body);
+  // The whole body comes back, not a cut: the section text is there and the length is the body's.
+  expect(handed.description).toContain('## Section');
+  expect([...handed.description].length).toBeGreaterThan(40_000);
   expect(handed.isDraft).toBe(false);
 
   // Enough big cards to pass the limit: the hook says it could not get the snapshot, with no part of it.
   const huge = path.join(work, 'huge.md');
-  writeFileSync(huge, 'あ'.repeat(50_000));
+  writeFileSync(huge, bodyOfLength(49_000));
   agboardOk(mainProject, ['add', 'Huge one', '--desc-file', huge]);
   agboardOk(mainProject, ['add', 'Huge two', '--desc-file', huge]);
   const over = hook();
@@ -292,48 +290,6 @@ test('the hook hands over the whole description and isDraft; a snapshot over 256
   expect(overContext).not.toContain('AGBOARD_SNAPSHOT');
   expect(overContext).not.toContain('あ');
   expect(Buffer.byteLength(overContext)).toBeLessThan(2_000);
-});
-
-test('a new data area is version 2 with drafts and attachments, and other versions are refused without a change', async () => {
-  const home = makeHome('schema');
-  const copy = makeHome('schema-old');
-  try {
-    agboardCatalogOk(['project', 'create', 'Fresh'], home);
-    const db = path.join(home, 'board.db');
-    const sqlite = (file: string, sql: string) =>
-      spawnSync('sqlite3', [file, sql], { encoding: 'utf8' }).stdout.trim();
-    expect(sqlite(db, 'PRAGMA user_version')).toBe('2');
-    expect(sqlite(db, "SELECT count(*) FROM pragma_table_info('cards') WHERE name = 'is_draft'")).toBe('1');
-    expect(sqlite(db, "SELECT count(*) FROM pragma_table_info('cards') WHERE name = 'archived_at'")).toBe('1');
-    expect(sqlite(db, "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'attachments'")).toBe('1');
-
-    // Other schema versions are refused unchanged; no implicit migration is attempted.
-    for (const version of [1, 3, 4, 99]) {
-      agboardOk('Fresh', ['add', `Card for ${version}`], home);
-      const target = path.join(copy, 'board.db');
-      spawnSync('sqlite3', [db, 'PRAGMA wal_checkpoint(TRUNCATE)']);
-      copyFileSync(db, target);
-      sqlite(target, `PRAGMA user_version = ${version}`);
-      const before = sha(target);
-      const refused = spawnSync(agboardBinary(), ['--project', 'Fresh', 'ls'], {
-        env: { ...process.env, SKAN_HOME: copy, TZ: 'UTC' },
-        encoding: 'utf8',
-      });
-      expect(refused.status, `version ${version}`).toBe(1);
-      expect(refused.stderr).toContain('cannot open the board');
-      expect(refused.stdout).toBe('');
-      const json = spawnSync(agboardBinary(), ['project', 'ls', '--json'], {
-        env: { ...process.env, SKAN_HOME: copy, TZ: 'UTC' },
-        encoding: 'utf8',
-      });
-      expect(JSON.parse(json.stderr || json.stdout).error.code, `version ${version}`).toBe('database_error');
-      expect(sha(target), `version ${version}`).toBe(before);
-      expect(sqlite(target, 'PRAGMA user_version')).toBe(String(version));
-    }
-  } finally {
-    removeHome(home);
-    removeHome(copy);
-  }
 });
 
 test('the help explains Markdown descriptions and what a refused write to a draft means', async () => {

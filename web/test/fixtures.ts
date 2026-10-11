@@ -1,7 +1,7 @@
 import type { Board, Card, Project } from '../src/types';
 import boardJson from './fixtures/board.json';
 
-export const fixtureBoard = boardJson as Board;
+export const fixtureBoard = boardJson as unknown as Board;
 
 export const PROJECT_A: Project = fixtureBoard.project;
 export const PROJECT_B: Project = {
@@ -20,10 +20,11 @@ export const PROJECTS: Project[] = [PROJECT_A, PROJECT_B, PROJECT_C];
 export function boardOf(project: Project, cards: Card[], revision = 1): Board {
   return {
     project,
-    board: { name: project.name, createdAt: project.createdAt },
-    revision,
-    cursor: `${project.id}:${revision}`,
+    version: `v${revision}`,
+    cursor: `f1:${project.id}:v${revision}`,
+    epics: [],
     cards,
+    problems: [],
   };
 }
 
@@ -44,13 +45,15 @@ export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
     agentStatus: 'idle',
     pendingReason: null,
     pendingRequestId: null,
+    pendingChoices: [],
+    epic: null,
     createdAt: at,
     updatedAt: at,
     agentStatusChangedAt: at,
     isDraft: false,
     history: [
       {
-        id: 1,
+        id: '1',
         kind: 'created',
         actor: 'ai',
         reason: null,
@@ -63,6 +66,7 @@ export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
       },
     ],
     attachments: [],
+    evidence: [],
     ...overrides,
   };
 }

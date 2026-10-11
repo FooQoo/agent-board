@@ -87,7 +87,7 @@ export function stubBackend(backend: FakeBackend) {
     }
     await backend.gate?.(url);
     if (url === '/api/projects') {
-      return answer(backend.projects, (projects) => ({ projects, catalogRevision: 1 }));
+      return answer(backend.projects, (projects) => ({ projects, catalogVersion: 'f1' }));
     }
     const match = /^\/api\/projects\/([0-9a-f]{32})\/board$/.exec(url);
     if (match?.[1]) {

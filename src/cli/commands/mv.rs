@@ -5,7 +5,7 @@ use serde_json::json;
 
 pub fn run(ctx: &mut Context, args: &MvArgs) -> Result<Outcome, SkanError> {
     let reason = args.change.resolve_reason()?;
-    let changed = ctx.store.move_work_card(
+    let changed = ctx.files.move_work_card(
         ctx.project_id()?,
         args.id,
         args.column.column(),

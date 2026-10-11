@@ -1,26 +1,32 @@
 use crate::cli::args::LsArgs;
 use crate::cli::{Context, Outcome};
 use crate::clock::{Clock, format_utc};
-use crate::domain::{AllBoardsSnapshot, Card};
+use crate::file_store::model::CardView;
+use crate::file_store::reader::AllSnapshots;
 use crate::{domain::Column, error::SkanError};
 use serde_json::json;
 
 const COLUMNS: [Column; 3] = [Column::Todo, Column::Doing, Column::Done];
 
-fn keep(args: &LsArgs, card: &Card) -> bool {
+fn keep(args: &LsArgs, card: &CardView) -> bool {
     args.column.is_none_or(|c| card.card_status == c.column())
         && args
             .state
             .is_none_or(|s| card.agent_status == s.run_state())
+        && args.epic.as_deref().is_none_or(|epic| {
+            card.epic_id
+                .as_deref()
+                .is_some_and(|id| id.eq_ignore_ascii_case(epic))
+        })
 }
 
 pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
     if args.all_projects {
         return run_all_projects(ctx, args);
     }
-    let cards: Vec<_> = ctx
-        .store
-        .snapshot(ctx.project_id()?)?
+    let cards: Vec<CardView> = ctx
+        .files
+        .board(ctx.project_id()?)?
         .cards
         .into_iter()
         .filter(|card| keep(args, card))
@@ -37,25 +43,14 @@ pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
 /// project's cards. A project with no matching card stays, with no cards.
 fn run_all_projects(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, SkanError> {
     let fetched_at = format_utc(ctx.clock.now());
-    let mut all = ctx.store.all_snapshots()?;
+    let mut all = ctx.files.all_snapshots()?;
     for project in &mut all.projects {
         project.cards.retain(|card| keep(args, card));
     }
     Ok(all_projects_outcome(&fetched_at, &all))
 }
 
-/// The result when there is no data area: no projects, catalog revision 0.
-pub fn empty_all_projects(clock: &dyn Clock) -> Outcome {
-    let all = AllBoardsSnapshot {
-        catalog_revision: 0,
-        projects: Vec::new(),
-    };
-    all_projects_outcome(&format_utc(clock.now()), &all)
-}
-
-fn all_projects_outcome(fetched_at: &str, all: &AllBoardsSnapshot) -> Outcome {
-    let mut json = serde_json::to_value(all).expect("snapshots serialize");
-    json["fetchedAt"] = json!(fetched_at);
+fn all_projects_outcome(fetched_at: &str, all: &AllSnapshots) -> Outcome {
     let human = if all.projects.is_empty() {
         super::project::NO_PROJECTS.to_string()
     } else {
@@ -74,6 +69,20 @@ fn all_projects_outcome(fetched_at: &str, all: &AllBoardsSnapshot) -> Outcome {
     Outcome {
         changed: false,
         human,
-        json,
+        json: json!({
+            "fetchedAt": fetched_at,
+            "catalogVersion": all.catalog_version,
+            "projects": all.projects,
+        }),
     }
+}
+
+/// The result when there is no shared folder: no projects and the catalog
+/// version of an empty list.
+pub fn empty_all_projects(clock: &dyn Clock) -> Outcome {
+    let all = AllSnapshots {
+        catalog_version: crate::file_store::index::catalog_version_of(std::iter::empty()),
+        projects: Vec::new(),
+    };
+    all_projects_outcome(&format_utc(clock.now()), &all)
 }

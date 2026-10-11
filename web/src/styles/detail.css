@@ -133,7 +133,7 @@
 }
 
 .detail__answer-input.detail__answer-input {
-  min-height: 96px;
+  min-height: 124px;
   padding: 10px 12px;
   border-color: var(--r-border);
   border-radius: 6px;
@@ -187,7 +187,42 @@
 .detail__answer-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 8px;
+}
+
+.detail__guide {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--r-text2);
+}
+
+/* The single choice: one radio per option, its text beside it. */
+.detail__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail__choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.detail__choice [role="radio"] {
+  flex: none;
+  margin-top: 2px;
+}
+
+.detail__choice-label {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--r-text);
+  cursor: pointer;
 }
 
 /* ---- Tabs and toolbar ---- */
@@ -396,13 +431,39 @@
 
 /* ---- Description sections inside the column ---- */
 
-/* The dividers sit between sections only, and the count is plain text. */
-.detail .md-section:last-child {
-  border-bottom: 0;
+/* The problems of a card's files, above its body: the text is shown as written. */
+.detail__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-danger);
+  border-radius: 8px;
+  color: var(--r-text);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.detail .md-section__count {
-  font-weight: 400;
+.detail__problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+}
+
+.detail__problem svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  color: var(--r-danger);
+}
+
+.detail__notice {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--r-accent);
 }
 
 /* A button that cannot be used now is a quiet gray one, as in the design. */
@@ -416,8 +477,27 @@
   background: transparent;
 }
 
-/* Preserve room for the tabs in every language when the detail column is narrow. */
+/* A narrow detail column keeps the text button: its label wraps to two lines, and the tabs are a
+   little tighter, so the tab row and the toolbar still share one row. */
 @container (max-width: 360px) {
+  .detail__tab {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .detail__tool--text {
+    height: auto;
+    min-height: 27px;
+    max-width: 74px;
+    padding: 2px 8px;
+    line-height: 13px;
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+/* Preserve room for the tabs in every language when the detail column is very narrow. */
+@container (max-width: 300px) {
   .detail__tool--text {
     width: 31px;
     flex: none;
@@ -510,41 +590,6 @@
 .detail-attachments__missing svg {
   width: 22px;
   height: 22px;
-}
-.detail-attachments__lightbox {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: fit-content;
-  max-width: calc(100vw - 64px);
-  padding: 0;
-  border: 0;
-  background: var(--r-surface);
-}
-.detail-attachments__lightbox img {
-  max-width: min(90vw, 1000px);
-  max-height: 85vh;
-  object-fit: contain;
-  border-radius: 6px;
-}
-.detail-attachments__lightbox-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--r-border);
-  border-radius: 6px;
-  background: var(--r-surface);
-  color: var(--r-text);
-  cursor: pointer;
-}
-.detail-attachments__lightbox-close svg {
-  width: 18px;
-  height: 18px;
 }
 .detail-attachments button:focus-visible {
   outline: 2px solid var(--r-accent);

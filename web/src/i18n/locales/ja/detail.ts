@@ -12,6 +12,8 @@ export const detailJa = {
     toolbar: 'カードの操作',
     edit: 'カードを編集',
     makeDraft: '下書きにする',
+    problem: 'ファイルに不備があります: {{file}}（{{field}}） — {{reason}}',
+    problemNoField: 'ファイルに不備があります: {{file}} — {{reason}}',
     saveError: '保存できませんでした。もう一度お試しください。',
   },
   draft: {
@@ -21,12 +23,14 @@ export const detailJa = {
   },
   request: {
     title: 'AIが回答を待っています',
-    answer: '回答する',
     showMore: '続きを読む',
     label: '回答',
     placeholder: '回答を書く…',
-    hintEmpty: '回答を入力してください。',
-    hint: '履歴に記録され、AIが続きから再開します',
+    choices: '選択肢',
+    guideChoice: '選択肢を選ぶか、自由記述で回答できます。',
+    guideText: '自由記述で回答できます。',
+    saveHint: '回答は履歴に保存されます。調整役が確認して作業を再開します。',
+    resumed: '回答を保存しました。調整役が作業を再開します。',
     send: '送信',
     sending: '送信中…',
     retry: '再試行',
@@ -51,6 +55,11 @@ export const detailJa = {
   },
   markdown: {
     noImage: 'No image',
+    image: '画像',
+    enlargeImage: '{{name}}を拡大',
+    enlargeDiagram: '図を拡大',
+    diagramLoading: '図を描いています…',
+    diagramError: '図を描けません: {{message}}',
   },
   history: {
     title: '履歴',

@@ -1,11 +1,15 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { createRef, useRef, useState } from 'react';
+import type { RichMarkdownEditorHandle } from '../../src/components/editor/RichMarkdownEditor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditorShell } from '../../src/components/editor/EditorShell';
 import { EditorBody } from '../../src/components/editor/EditorBody';
 import { selectLocale } from '../../src/i18n';
-import { descriptionOf, viewIn } from './helpers';
+import type { AttachmentNotice } from '../../src/components/editor/useAttachmentState';
+import { editorSpy } from './fakeRichEditor';
+
+vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('./fakeRichEditor'));
 
 const attachment = {
   id: '0123456789abcdef0123456789abcdef',
@@ -15,74 +19,72 @@ const attachment = {
   source: 'local' as const,
   size: 123,
 };
+
 afterEach(cleanup);
-beforeEach(() => selectLocale('en'));
-function Host({ onFiles = vi.fn(), error }: { onFiles?: (files: File[]) => void; error?: string }) {
+beforeEach(() => {
+  selectLocale('en');
+  editorSpy.insert.mockClear();
+  editorSpy.goTo.mockClear();
+});
+
+function Host({
+  onFiles = vi.fn(),
+  notice = null,
+}: {
+  onFiles?: (files: File[]) => void;
+  notice?: AttachmentNotice | null;
+}) {
   const [value, setValue] = useState('Before after');
+  const editorRef = useRef<RichMarkdownEditorHandle>(null);
   return (
     <EditorBody
       title="Test"
       onTitleChange={() => {}}
       description={value}
       onDescriptionChange={setValue}
+      editorRef={editorRef}
       disabled={false}
       attachments={[attachment]}
       onFiles={onFiles}
       onRemoveAttachment={() => {}}
-      attachmentError={error}
+      attachmentNotice={notice}
     />
   );
 }
 
+const descriptionBox = () =>
+  screen.getByRole('textbox', { name: 'Description (Markdown)' }) as HTMLTextAreaElement;
+
 describe('editor attachment side panel', () => {
-  it('starts closed and opens and closes from the toolbar without changing editor text', async () => {
+  it('is always open on the right, with no toggle and no close button', () => {
     render(<Host />);
-    const user = userEvent.setup();
-    const toggle = screen.getByRole('button', { name: 'Attachments · 1' });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(
-      screen.queryByRole('region', { name: 'Choose files, drag and drop, or paste an image' }),
-    ).toBeNull();
-    await user.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(document.querySelector('.editor__main + .editor-attachments')).not.toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Close attachments panel' }));
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(descriptionOf()).toBe('Before after');
+    const panel = screen.getByRole('region', { name: 'Image attachments' });
+    expect(panel.classList.contains('editor-attachments')).toBe(true);
+    expect(screen.queryByRole('button', { name: /Attachments · 1/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close attachments panel' })).toBeNull();
+    expect(screen.getByText('screen [one].png')).toBeTruthy();
+    expect(descriptionBox().value).toBe('Before after');
   });
 
-  it('inserts a stable reference at the preserved cursor from preview and returns focus to edit', async () => {
+  it('inserts a stable reference at the cursor of the editor', async () => {
     render(<Host />);
-    const user = userEvent.setup();
-    act(() => viewIn().dispatch({ selection: { anchor: 7 } }));
-    await user.click(screen.getByRole('tab', { name: 'Preview' }));
-    await user.click(screen.getByRole('button', { name: 'Attachments · 1' }));
-    await user.click(screen.getByRole('button', { name: 'Insert in description' }));
-    expect(descriptionOf()).toBe(
-      'Before \n\n![screen \\[one\\].png](attachment:0123456789abcdef0123456789abcdef)\n\nafter',
+    await userEvent.click(screen.getByRole('button', { name: 'Insert in description' }));
+    expect(editorSpy.insert).toHaveBeenCalledExactlyOnceWith(
+      '\n\n![screen \\[one\\].png](attachment:0123456789abcdef0123456789abcdef)\n\n',
     );
-    expect(screen.getByRole('tab', { name: 'Edit' }).getAttribute('aria-selected')).toBe('true');
-    expect(document.activeElement).toBe(document.querySelector('.cm-content'));
-    expect(descriptionOf()).not.toContain('blob:');
   });
 
-  it('adds a clipboard image from the description and opens the side panel once', () => {
+  it('adds a clipboard image pasted into the description', () => {
     const onFiles = vi.fn();
     render(<Host onFiles={onFiles} />);
     const file = new File(['test'], 'paste.png', { type: 'image/png' });
-    fireEvent.paste(screen.getByRole('textbox', { name: 'Description (Markdown)' }), {
-      clipboardData: { files: [file] },
-    });
+    fireEvent.paste(descriptionBox(), { clipboardData: { files: [file] } });
     expect(onFiles).toHaveBeenCalledExactlyOnceWith([file]);
-    expect(
-      screen.getByRole('button', { name: 'Attachments · 1' }).getAttribute('aria-expanded'),
-    ).toBe('true');
   });
 
-  it('passes all selected files to validation instead of silently filtering invalid formats', async () => {
+  it('passes all selected files to validation instead of silently filtering invalid formats', () => {
     const onFiles = vi.fn();
     render(<Host onFiles={onFiles} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Attachments · 1' }));
     const file = new File(['text'], 'invalid.txt', { type: 'text/plain' });
     const input = document.querySelector('input[type="file"]');
     if (input === null) throw new Error('missing file input');
@@ -90,7 +92,7 @@ describe('editor attachment side panel', () => {
     expect(onFiles).toHaveBeenCalledExactlyOnceWith([file]);
   });
 
-  it('closes only the nested zoom on Escape, restores thumbnail focus and preserves the editor draft', async () => {
+  it('closes only the enlarged picture on Escape, returns focus to its thumbnail and keeps the draft', async () => {
     function ParentDialog() {
       const [open, setOpen] = useState(true);
       return open ? (
@@ -110,22 +112,75 @@ describe('editor attachment side panel', () => {
     }
     render(<ParentDialog />);
     const user = userEvent.setup();
-    act(() => viewIn().dispatch({ selection: { anchor: 7 } }));
-    await user.click(screen.getByRole('button', { name: 'Attachments · 1' }));
     const thumbnail = screen.getByRole('button', { name: 'Preview screen [one].png' });
     await user.click(thumbnail);
     expect(screen.getByRole('dialog', { name: 'screen [one].png' })).toBeTruthy();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'screen [one].png' })).toBeNull();
     expect(screen.getByRole('dialog', { name: 'Card editorNew' })).toBeTruthy();
-    expect(document.activeElement).toBe(thumbnail);
-    expect(descriptionOf()).toBe('Before after');
-    expect(viewIn().state.selection.main.head).toBe(7);
+    // The dialog is dirty, so a Escape that reached it would ask the question; it must not.
+    expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(thumbnail));
+    expect(descriptionBox().value).toBe('Before after');
   });
 
-  it('shows validation failures while retaining editable text', () => {
-    render(<Host error="PNG, JPEG, WebP, GIF" />);
-    expect(screen.getByRole('alert').textContent).toContain('PNG, JPEG, WebP, GIF');
-    expect(descriptionOf()).toBe('Before after');
+  it('shows a refused picture in the side panel, with its file name, and keeps the text', () => {
+    render(<Host notice={{ kind: 'tooLarge', name: 'large.png' }} />);
+    const panel = screen.getByRole('region', { name: 'Image attachments' });
+    const alert = within(panel).getByRole('alert');
+    expect(alert.textContent).toContain('Cannot add the image');
+    expect(alert.textContent).toContain('large.png is larger than 10 MB. Choose a smaller image.');
+    expect(document.querySelector('.editor__main [role="alert"]')).toBeNull();
+    expect(descriptionBox().value).toBe('Before after');
+  });
+
+  it('shows the format and count notices in the design wording', () => {
+    const { unmount } = render(<Host notice={{ kind: 'format', name: 'notes.txt' }} />);
+    expect(screen.getByRole('alert').textContent).toContain(
+      'notes.txt is not a supported format. Choose a PNG, JPEG, WebP or GIF image.',
+    );
+    unmount();
+    render(<Host notice={{ kind: 'count' }} />);
+    expect(screen.getByRole('alert').textContent).toContain('A card holds up to 20 images.');
+  });
+});
+
+describe('the empty picture state', () => {
+  const GUIDANCE = 'Choose files, drag and drop, or paste an image';
+
+  function renderEmpty() {
+    const { container } = render(
+      <EditorBody
+        title="Empty"
+        onTitleChange={() => {}}
+        description=""
+        onDescriptionChange={() => {}}
+        editorRef={createRef<RichMarkdownEditorHandle>()}
+        disabled={false}
+        attachments={[]}
+        onFiles={vi.fn()}
+        onRemoveAttachment={() => {}}
+      />,
+    );
+    const panel = container.querySelector<HTMLElement>('.editor-attachments');
+    if (panel === null) throw new Error('no attachment panel');
+    return { panel };
+  }
+
+  it('shows the guidance once, as the one drop area at the bottom of the panel', () => {
+    const { panel } = renderEmpty();
+    expect(within(panel).getAllByText(GUIDANCE)).toHaveLength(1);
+    expect(within(panel).queryByText('Add images to this card')).toBeNull();
+    const area = panel.querySelector<HTMLElement>('.editor-attachments__dropzone');
+    expect(area).not.toBeNull();
+    expect(panel.lastElementChild).toBe(area);
+    expect(area?.contains(within(panel).getByText(GUIDANCE))).toBe(true);
+  });
+
+  it('is the shared button, so a click opens the file picker', () => {
+    const { panel } = renderEmpty();
+    const drop = within(panel).getByRole('button', { name: GUIDANCE });
+    expect(drop.getAttribute('data-slot')).toBe('button');
+    expect(panel.querySelector('.editor-attachments__drop-hint')).toBeNull();
   });
 });

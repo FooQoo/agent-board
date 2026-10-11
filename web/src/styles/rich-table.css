@@ -1,0 +1,166 @@
+/*
+ * Table controls: the grips above a column and left of a row, the buttons they open and the add
+ * buttons on the grid lines. Crepe positions them; they stay hidden until the table is used.
+ */
+.rich-markdown .milkdown-table-block .handle {
+  position: absolute;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.rich-markdown .milkdown-table-block .handle[data-show="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rich-markdown .milkdown-table-block .milkdown-icon svg {
+  fill: currentColor;
+}
+
+.rich-markdown .milkdown-table-block .cell-handle {
+  z-index: 50;
+  left: -999px;
+  top: -999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--r-border);
+  border-radius: 100px;
+  background: var(--r-surface);
+  color: var(--r-text2);
+  cursor: grab;
+}
+
+.rich-markdown .milkdown-table-block .cell-handle:hover {
+  background: var(--r-accent-soft);
+}
+
+.rich-markdown .milkdown-table-block .cell-handle[data-role="col-drag-handle"] {
+  width: 28px;
+  height: 16px;
+  transform: translateY(50%);
+}
+
+.rich-markdown .milkdown-table-block .cell-handle[data-role="row-drag-handle"] {
+  width: 16px;
+  height: 28px;
+  transform: translateX(50%);
+}
+
+.rich-markdown .milkdown-table-block .cell-handle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rich-markdown .milkdown-table-block .cell-handle .button-group {
+  position: absolute;
+  top: -44px;
+  left: 50%;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
+  transform: translateX(-50%);
+}
+
+.rich-markdown .milkdown-table-block .cell-handle .button-group[data-show="false"] {
+  display: none;
+}
+
+.rich-markdown .milkdown-table-block .cell-handle .button-group button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.rich-markdown .milkdown-table-block .cell-handle .button-group button:hover {
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+}
+
+.rich-markdown .milkdown-table-block .cell-handle .button-group svg {
+  width: 18px;
+  height: 18px;
+}
+
+.rich-markdown .milkdown-table-block .line-handle {
+  z-index: 20;
+  background: var(--r-accent);
+}
+
+.rich-markdown .milkdown-table-block .line-handle[data-role="x-line-drag-handle"] {
+  height: 1px;
+  z-index: 2;
+}
+
+.rich-markdown .milkdown-table-block .line-handle[data-role="y-line-drag-handle"] {
+  width: 1px;
+  z-index: 1;
+}
+
+.rich-markdown .milkdown-table-block .line-handle .add-button {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--r-border);
+  border-radius: 100px;
+  background: var(--r-surface);
+  color: var(--r-text2);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.rich-markdown .milkdown-table-block .line-handle .add-button:hover {
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+}
+
+.rich-markdown .milkdown-table-block .line-handle[data-role="x-line-drag-handle"] .add-button {
+  width: 16px;
+  height: 28px;
+}
+
+.rich-markdown .milkdown-table-block .line-handle[data-role="y-line-drag-handle"] .add-button {
+  width: 28px;
+  height: 16px;
+}
+
+.rich-markdown .milkdown-table-block .line-handle .add-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rich-markdown .milkdown-table-block .line-handle[data-display-type="indicator"] .add-button {
+  display: none;
+}
+
+.rich-markdown .milkdown-table-block .drag-preview {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: var(--r-surface);
+  opacity: 0.5;
+  outline: 1px solid var(--r-accent);
+  outline-offset: -1px;
+}
+
+.rich-markdown .milkdown-table-block .drag-preview[data-show="false"] {
+  display: none;
+}
+
+.rich-markdown .milkdown-table-block.readonly .handle {
+  display: none;
+}

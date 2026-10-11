@@ -1,0 +1,341 @@
+/*
+ * The parts of the rich body that Crepe draws itself: the selection format bar, the link input and
+ * preview, the list markers and the task checkboxes. The Crepe theme stylesheet is not loaded (the
+ * rich editor keeps that decision), so these rules restate the parts this editor shows, in the app's
+ * tokens: the same colors and sizes as the reading view (markdown.css).
+ */
+
+/* Selection format bar. Crepe positions it; these rules only give it the app's look. */
+.rich-markdown .milkdown-toolbar {
+  z-index: 10;
+  position: absolute;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 16%);
+}
+
+.rich-markdown .milkdown-toolbar[data-show="false"] {
+  display: none;
+}
+
+.rich-markdown .milkdown-toolbar .divider {
+  width: 1px;
+  height: 24px;
+  margin: 10px 2px;
+  background: var(--r-border);
+}
+
+.rich-markdown .milkdown-toolbar .toolbar-item {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.rich-markdown .milkdown-toolbar .toolbar-item:hover,
+.rich-markdown .milkdown-toolbar .toolbar-item:active {
+  background: var(--r-accent-soft);
+}
+
+.rich-markdown .milkdown-toolbar .toolbar-item svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+  fill: currentColor;
+}
+
+.rich-markdown .milkdown-toolbar .toolbar-item.active {
+  color: var(--r-accent);
+}
+
+/* Link: the input that opens on a link, and the preview of a link. */
+.rich-markdown .milkdown-link-edit,
+.rich-markdown .milkdown-link-preview {
+  position: absolute;
+  z-index: 10;
+}
+
+.rich-markdown .milkdown-link-edit[data-show="false"],
+.rich-markdown .milkdown-link-preview[data-show="false"] {
+  display: none;
+}
+
+.rich-markdown .link-edit,
+.rich-markdown .link-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 4px 8px 4px 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 16%);
+}
+
+.rich-markdown .link-edit .input-area {
+  width: 220px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--r-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.rich-markdown .link-edit .input-area::placeholder {
+  color: var(--r-muted);
+}
+
+.rich-markdown .link-preview .link-display {
+  overflow: hidden;
+  max-width: 260px;
+  color: var(--r-accent);
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rich-markdown .link-preview .link-display:hover {
+  text-decoration: underline;
+}
+
+.rich-markdown .link-edit .button,
+.rich-markdown .link-preview .button,
+.rich-markdown .link-preview .link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.rich-markdown .link-edit .button:hover,
+.rich-markdown .link-preview .button:hover,
+.rich-markdown .link-preview .link-icon:hover {
+  background: var(--r-accent-soft);
+}
+
+.rich-markdown .link-edit .button svg,
+.rich-markdown .link-preview .button svg,
+.rich-markdown .link-preview .link-icon svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+  fill: currentColor;
+}
+
+/* Lists: the marker of a bullet and the task checkbox sit in a column before the text. */
+.rich-markdown .milkdown-list-item-block {
+  display: block;
+  padding: 0;
+}
+
+.rich-markdown .milkdown-list-item-block > .list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.rich-markdown .milkdown-list-item-block > .list-item > .children {
+  min-width: 0;
+  flex: 1;
+}
+
+.rich-markdown .milkdown-list-item-block .label-wrapper {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 30px;
+  color: var(--r-muted);
+}
+
+.rich-markdown .milkdown-list-item-block .label-wrapper svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+  fill: currentColor;
+}
+
+.rich-markdown .milkdown-list-item-block .label-wrapper .label {
+  color: var(--r-accent);
+  text-align: right;
+}
+
+.rich-markdown .milkdown-list-item-block .label-wrapper .checked,
+.rich-markdown .milkdown-list-item-block .label-wrapper .unchecked {
+  cursor: pointer;
+}
+
+.rich-markdown .milkdown-list-item-block .label-wrapper .checked {
+  color: var(--r-accent);
+}
+
+.rich-markdown .milkdown-list-item-block .label-wrapper .unchecked {
+  color: var(--r-muted);
+}
+
+.rich-markdown .milkdown-list-item-block .label-wrapper .readonly {
+  cursor: not-allowed;
+}
+
+.rich-markdown .ProseMirror ul,
+.rich-markdown .ProseMirror ol {
+  padding-left: 18px;
+}
+
+.rich-markdown .ProseMirror li + li {
+  margin-top: 8px;
+}
+
+/*
+ * Code and diagram blocks. Without the Crepe theme the header is drawn here: one compact row with
+ * the language at the left and the buttons at the right. It shows only while the block is focused or
+ * selected; otherwise the block is just the code, or just the diagram.
+ */
+.rich-markdown .milkdown-code-block {
+  position: relative;
+  margin: 12px 0;
+  padding: 0;
+}
+
+.rich-markdown .milkdown-code-block .tools {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+.rich-markdown .milkdown-code-block:focus-within .tools,
+.rich-markdown .milkdown-code-block.selected .tools,
+.rich-markdown .milkdown-code-block[data-active="true"] .tools {
+  display: flex;
+}
+
+.rich-markdown .milkdown-code-block .tools .tools-button-group {
+  display: flex;
+  gap: 4px;
+}
+
+.rich-markdown .milkdown-code-block .tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  color: var(--r-text2);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  opacity: 1;
+  cursor: pointer;
+}
+
+.rich-markdown .milkdown-code-block .tools .tools-button-group button {
+  opacity: 1;
+}
+
+.rich-markdown .milkdown-code-block .tools button:hover {
+  background: var(--r-accent-soft);
+}
+
+.rich-markdown .milkdown-code-block .tools button svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+
+.rich-markdown .milkdown-code-block .tools .language-button {
+  opacity: 1;
+}
+
+.rich-markdown .milkdown-code-block .tools .language-button .expand-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+.rich-markdown .milkdown-code-block .hidden {
+  display: none;
+}
+
+.rich-markdown .milkdown-code-block .language-picker {
+  position: absolute;
+  z-index: 20;
+  width: max-content;
+  padding-top: 4px;
+}
+
+.rich-markdown .milkdown-code-block .list-wrapper {
+  width: 220px;
+  padding: 6px 0;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 16%);
+}
+
+.rich-markdown .milkdown-code-block .language-list {
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.rich-markdown .milkdown-code-block .language-list-item {
+  padding: 4px 12px;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.rich-markdown .milkdown-code-block .language-list-item:hover {
+  background: var(--r-accent-soft);
+}
+
+.rich-markdown .milkdown-code-block .cm-editor {
+  outline: none;
+  background: transparent;
+}
+
+.rich-markdown .milkdown-code-block .cm-gutters {
+  border-right: 0;
+  background: transparent;
+  color: var(--r-text2);
+}
+
+/* CodeMirror's light-blue current-line wash lowers the text contrast on a dark page. */
+.rich-markdown .milkdown-code-block .cm-activeLine,
+.rich-markdown .milkdown-code-block .cm-activeLineGutter {
+  background: transparent;
+}

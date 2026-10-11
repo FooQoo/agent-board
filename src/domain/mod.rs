@@ -9,15 +9,16 @@ mod work;
 pub use card::BoardMeta;
 pub use column::{Column, RunState};
 pub use limits::{
-    MAX_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS,
+    MAX_ANSWER_TEXT_CHARS, MAX_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS,
+    MAX_CHOICE_ID_CHARS, MAX_CHOICE_LABEL_CHARS, MAX_CHOICES, MAX_QUESTION_CHARS,
     normalize_and_validate_description, validate_attachment, validate_board_name,
     validate_project_name, validate_reason, validate_title,
 };
 pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use work::{
-    Actor, AllBoardsSnapshot, Assignee, Attachment, AttachmentData, AttachmentInput, BoardSnapshot,
-    BulkArchiveResult, Card, ChangeContext, Changed, FetchedSnapshot, HistoryEvent, HistoryKind,
-    NewCard, ValidatedAttachment, ValidatedBoard,
+    Actor, Assignee, Attachment, AttachmentData, AttachmentInput, BulkArchiveResult, Card,
+    ChangeContext, Changed, HistoryEvent, HistoryKind, NewCard, ValidatedAttachment,
+    ValidatedBoard,
 };
 
 const WORK_REASON_MAX: usize = 2_000;

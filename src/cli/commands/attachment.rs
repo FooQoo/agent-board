@@ -1,3 +1,6 @@
+//! `attachment ls|add|get`: a card's images, kept in the card's `assets/`
+//! folder. The CLI is the agent side, so a draft card refuses an addition.
+
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 
@@ -5,6 +8,8 @@ use crate::cli::args::{AttachmentAddArgs, AttachmentCommand, AttachmentGetArgs, 
 use crate::cli::{Context, Outcome};
 use crate::domain::AttachmentInput;
 use crate::error::{FileAction, SkanError};
+use crate::file_store::layout;
+use crate::file_store::model::AttachmentOwner;
 use serde_json::json;
 
 pub fn run(
@@ -19,7 +24,7 @@ pub fn run(
 }
 
 fn list(ctx: &mut Context, args: &AttachmentLsArgs) -> Result<Outcome, SkanError> {
-    let attachments = ctx.store.attachments(ctx.project_id()?, args.card_id)?;
+    let attachments = ctx.files.card(ctx.project_id()?, args.card_id)?.attachments;
     let human = if attachments.is_empty() {
         format!("#{} has no attachments.\n", args.card_id)
     } else {
@@ -38,12 +43,11 @@ fn list(ctx: &mut Context, args: &AttachmentLsArgs) -> Result<Outcome, SkanError
 fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, SkanError> {
     let bytes = fs::read(&args.file).map_err(|e| file_error(&args.file, FileAction::Read, e))?;
     let id = random_id()?;
-    let request_id = random_id()?;
-    let card = ctx.store.add_attachment(
+    let attachment = ctx.files.add_attachment(
         ctx.project_id()?,
-        args.card_id,
+        &AttachmentOwner::Card(args.card_id),
         AttachmentInput {
-            id,
+            id: id.clone(),
             name: args
                 .file
                 .file_name()
@@ -52,27 +56,34 @@ fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, SkanError
                 .to_owned(),
             bytes,
         },
-        &request_id,
         ctx.clock.now(),
     )?;
-    let attachment = card.attachments.last().expect("new attachment is returned");
+    let ext = layout::asset_extension(&attachment.media_type).unwrap_or("png");
+    let path = format!("assets/{id}.{ext}");
     Ok(Outcome {
         changed: true,
-        human: format!("Added attachment {} to #{}.\n", attachment.id, args.card_id),
-        json: json!({"cardId": args.card_id, "attachment": attachment}),
+        human: format!(
+            "Added attachment {} to #{}: {path}\n",
+            attachment.id, args.card_id
+        ),
+        json: json!({"cardId": args.card_id, "attachment": attachment, "path": path}),
     })
 }
 
 fn get(ctx: &mut Context, args: &AttachmentGetArgs) -> Result<Outcome, SkanError> {
-    let data =
-        ctx.store
-            .attachment_data_for_card(ctx.project_id()?, args.card_id, &args.attachment_id)?;
+    let stored = ctx.files.attachment_path(
+        ctx.project_id()?,
+        &AttachmentOwner::Card(args.card_id),
+        &args.attachment_id,
+    )?;
+    let bytes =
+        fs::read(&stored.path).map_err(|e| file_error(&stored.path, FileAction::Read, e))?;
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&args.output)
         .map_err(|e| file_error(&args.output, FileAction::Write, e))?;
-    if let Err(e) = file.write_all(&data.bytes).and_then(|_| file.sync_all()) {
+    if let Err(e) = file.write_all(&bytes).and_then(|_| file.sync_all()) {
         drop(file);
         let _ = fs::remove_file(&args.output);
         return Err(file_error(&args.output, FileAction::Write, e));
@@ -80,16 +91,16 @@ fn get(ctx: &mut Context, args: &AttachmentGetArgs) -> Result<Outcome, SkanError
     Ok(Outcome {
         changed: false,
         human: format!("Wrote attachment to {}.\n", args.output.display()),
-        json: json!({"path": args.output, "attachment": data.metadata}),
+        json: json!({"path": args.output, "attachment": stored.metadata}),
     })
 }
 
 fn random_id() -> Result<String, SkanError> {
-    let mut bytes = [0u8; 16];
-    getrandom::fill(&mut bytes).map_err(|e| SkanError::DatabaseError {
+    crate::file_store::io::random_hex(16).map_err(|e| SkanError::FileError {
+        action: FileAction::Write,
+        file: "attachment".into(),
         reason: e.to_string(),
-    })?;
-    Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
+    })
 }
 
 fn file_error(path: &std::path::Path, action: FileAction, error: std::io::Error) -> SkanError {

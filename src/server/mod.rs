@@ -1,7 +1,7 @@
 //! Local web server: API, SSE, delete protection, embedded assets.
 //!
 //! `run` builds its own tokio runtime; the rest of the CLI never starts one.
-//! The server listens on 127.0.0.1 only and opens the database per request.
+//! The server listens on 127.0.0.1 only and reads the shared files per request.
 
 mod api;
 pub mod assets;
@@ -13,14 +13,15 @@ mod instance;
 use std::future::Future;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use tokio::sync::broadcast;
 
 use crate::clock::format_utc;
 use crate::error::SkanError;
+use crate::file_store::index::ProjectIndex;
+use crate::file_store::watch::{Reloader, Watch};
 use crate::paths::{self, ServeInfo};
-use crate::store::ProjectStore;
 
 /// How the web server is started.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,8 +36,13 @@ pub(crate) struct AppState {
     pub port: u16,
     /// Session token for browser deletes. Only `GET /` reveals it.
     pub token: String,
-    pub db_path: PathBuf,
-    /// Sends one unit per change; each SSE connection subscribes.
+    /// The shared folder that holds every project's canonical files.
+    pub shared: PathBuf,
+    /// The index of the shared files, kept current by the watcher.
+    pub index: Arc<RwLock<ProjectIndex>>,
+    /// Queues a reload after a save made by this server or a notification.
+    pub reloader: Reloader,
+    /// Sends one unit when the catalog version changes; each SSE connection subscribes.
     pub changed: broadcast::Sender<()>,
 }
 
@@ -63,21 +69,12 @@ pub fn run_until<F: Future<Output = ()>>(
         return Err(SkanError::AlreadyServing { port: info.port });
     }
     let _lifecycle = crate::lifecycle::LifecycleGuard::acquire(&paths::data_dir())?;
-    let db_path = paths::db_path();
-    open_database(&db_path)?;
+    let shared = paths::shared_dir();
+    crate::file_store::io::remove_stale_temporaries(&shared, STALE_TEMPORARY_AGE);
     let listener = bind(config.port)?;
     let addr = listener
         .local_addr()
         .map_err(|_| port_in_use(config.port))?;
-
-    let (changed, _) = broadcast::channel(16);
-    let state = Arc::new(AppState {
-        port: addr.port(),
-        token: assets::new_token()?,
-        db_path,
-        changed,
-    });
-    let app = api::router(state);
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -88,6 +85,22 @@ pub fn run_until<F: Future<Output = ()>>(
             .set_nonblocking(true)
             .and_then(|()| tokio::net::TcpListener::from_std(listener))
             .map_err(|e| internal(format!("Cannot listen on {addr}: {e}")))?;
+
+        // The watch exists before the first read, so a change made during the
+        // read is queued and read again.
+        let index = Arc::new(RwLock::new(ProjectIndex::default()));
+        let (changed, _) = broadcast::channel(16);
+        let (_watch, reloader) = Watch::start(&shared, index.clone(), changed.clone())?;
+        let state = Arc::new(AppState {
+            port: addr.port(),
+            token: assets::new_token()?,
+            shared,
+            index,
+            reloader,
+            changed,
+        });
+        let app = api::router(state);
+
         let pid = std::process::id();
         paths::write_serve_info(&ServeInfo {
             pid,
@@ -114,12 +127,8 @@ fn port_in_use(port: u16) -> SkanError {
     SkanError::PortInUse { port }
 }
 
-/// Open the database once before serving, so a database that cannot be used
-/// (another schema, a corrupt file) stops the server at startup. A new data
-/// area gets an empty catalog; serving needs no project.
-fn open_database(db_path: &std::path::Path) -> Result<(), SkanError> {
-    ProjectStore::open(db_path).map(|_| ())
-}
+/// A temporary file or folder older than this is left over from a crash and is removed at startup.
+const STALE_TEMPORARY_AGE: std::time::Duration = std::time::Duration::from_secs(60 * 60);
 
 /// Bind 127.0.0.1:`port`. Any failure to bind is reported as `PortInUse`.
 fn bind(port: u16) -> Result<TcpListener, SkanError> {

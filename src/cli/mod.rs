@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use crate::clock::{Clock, SystemClock};
 use crate::domain::{ProjectId, ProjectMeta};
 use crate::error::SkanError;
-use crate::store::ProjectStore;
+use crate::file_store::FileStore;
 
 /// The project a command was told to work on, resolved once from `--project`
 /// before the command runs. The ID, not the name, is used from then on, so a
@@ -23,7 +23,7 @@ use crate::store::ProjectStore;
 pub enum Target {
     /// The project exists; its ID is fixed for this run.
     Existing(ProjectMeta),
-    /// No project has this name. Only `init` and `import` may create it.
+    /// No project has this name. Only `init` may create it.
     Missing { name: String },
     /// The command works on the catalog of projects and names none
     /// (`project create`, `project ls`, `serve`).
@@ -32,7 +32,8 @@ pub enum Target {
 
 /// Everything a command runs with.
 pub struct Context {
-    pub store: ProjectStore,
+    /// The shared files: the canonical store of every project.
+    pub files: FileStore,
     pub target: Target,
     pub clock: Box<dyn Clock>,
     pub json: bool,
@@ -75,12 +76,13 @@ pub struct Outcome {
 /// output goes. Tests supply their own.
 pub struct Env<'a> {
     pub clock: Box<dyn Clock>,
-    pub db_path: PathBuf,
+    /// The shared folder: the canonical files of every project.
+    pub shared_dir: PathBuf,
     pub stdout: &'a mut dyn Write,
     pub stderr: &'a mut dyn Write,
     /// Called once after a command that changed the stored data, with the
-    /// directory that holds the database. A running `serve` is found through
-    /// the `serve.json` in that same directory.
+    /// data directory (the parent of the shared folder). A running `serve` is
+    /// found through the `serve.json` in that same directory.
     pub after_commit: &'a mut dyn FnMut(&Context, &Path),
 }
 
@@ -92,7 +94,7 @@ pub fn run() -> i32 {
     let mut after_commit = |ctx: &Context, dir: &Path| run::after_commit(ctx, dir);
     let mut env = Env {
         clock: Box::new(SystemClock),
-        db_path: crate::paths::db_path(),
+        shared_dir: crate::paths::shared_dir(),
         stdout: &mut stdout,
         stderr: &mut stderr,
         after_commit: &mut after_commit,

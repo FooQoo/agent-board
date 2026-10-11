@@ -91,7 +91,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     assert!(baseline.status.success());
     let baseline: Value = serde_json::from_slice(&baseline.stdout).unwrap();
     let after = baseline["cursor"].as_str().unwrap().to_string();
-    assert!(after.ends_with(&format!(":{}", baseline["revision"])));
+    assert!(after.ends_with(&format!(":{}", baseline["version"].as_str().unwrap())));
     let mut server = start_server(home.path());
 
     let waiter = Command::new(env!("CARGO_BIN_EXE_agboard"))
@@ -136,7 +136,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
         String::from_utf8_lossy(&output.stderr)
     );
     let snapshot: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert!(snapshot["revision"].as_i64().unwrap() > baseline["revision"].as_i64().unwrap());
+    assert_ne!(snapshot["version"], baseline["version"]);
     assert_eq!(snapshot["cards"][0]["title"], "Answer the user");
     assert_eq!(snapshot["cards"][0]["agentStatus"], "idle");
     assert_eq!(snapshot["cards"][0]["history"].as_array().unwrap().len(), 4);
@@ -174,15 +174,16 @@ fn wait_timeout_and_unavailable_are_not_reported_as_board_changes() {
             "--json",
             "wait",
             "--after",
-            "0123456789abcdef0123456789abcdef:0",
+            "f1:0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef",
             "--timeout",
             "0",
         ],
     );
     assert!(!missing.status.success());
     let error: Value = serde_json::from_slice(&missing.stderr).unwrap();
-    assert_eq!(error["error"]["code"], "board_unavailable");
-    assert!(!home.path().join("board.db").exists());
+    // The project does not exist in an empty data area: nothing is created.
+    assert_eq!(error["error"]["code"], "project_not_found");
+    assert!(!home.path().join("shared").exists());
 }
 
 #[test]

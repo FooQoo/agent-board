@@ -5,6 +5,9 @@
 //! that ID is read, so a rename keeps the wait on the same project, a deletion
 //! ends it with `project_not_found`, and a project created later under the same
 //! name is never followed.
+//!
+//! A cursor names a content version. A different version now is an answer at
+//! once; the same version waits for the server's `changed` and reads again.
 
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -14,10 +17,10 @@ use futures_util::StreamExt;
 
 use crate::{
     clock::{Clock, SystemClock, format_utc},
-    domain::{ChangeCursor, FetchedSnapshot, ProjectId, validate_project_name},
+    domain::{ChangeCursor, ProjectId, validate_project_name},
     error::SkanError,
+    file_store::{FileStore, reader::FetchedSnapshot},
     paths,
-    store::ProjectStore,
 };
 
 /// How long connecting to the server (health check, then event stream) may take.
@@ -42,63 +45,48 @@ fn read_error(error: SkanError, name: &str) -> SkanError {
         SkanError::ProjectNotFound { .. } => SkanError::ProjectNotFound {
             project: name.to_string(),
         },
-        SkanError::NotInitialized => unavailable("The board database does not exist."),
         other => unavailable(format!("{} {}", other.message(), other.reason())),
     }
 }
 
 /// Reads of the one project with a fixed ID.
 struct Reader<'a> {
-    db_path: &'a Path,
+    shared: &'a Path,
     name: &'a str,
     id: ProjectId,
 }
 
 impl Reader<'_> {
-    /// The project's revision and its complete snapshot as JSON, from one read.
-    fn read(&self) -> Result<(i64, String), SkanError> {
-        let store = ProjectStore::open_read_only(self.db_path)
-            .map_err(|error| read_error(error, self.name))?;
+    /// The project's version and its complete snapshot as JSON, from one read.
+    fn read(&self) -> Result<(String, String), SkanError> {
+        let store = FileStore::open(self.shared);
         let snapshot = store
-            .snapshot(&self.id)
+            .board(&self.id)
             .map_err(|error| read_error(error, self.name))?;
         let json = serde_json::to_string(&FetchedSnapshot {
             fetched_at: format_utc(SystemClock.now()),
             snapshot: &snapshot,
         })
         .map_err(|error| unavailable(error.to_string()))?;
-        Ok((snapshot.revision, json))
+        Ok((snapshot.version.clone(), json))
     }
 
-    /// Compare the board with the cursor: a newer revision is the answer, an
-    /// older board than the cursor is an invalid cursor, an equal one means
-    /// nothing changed yet.
-    fn compare(&self, after: i64) -> Result<Option<String>, SkanError> {
-        let (revision, json) = self.read()?;
-        if revision > after {
-            Ok(Some(json))
-        } else if revision < after {
-            Err(SkanError::CursorInvalid {
-                reason: "The cursor's revision is newer than the project's. Read a snapshot and use its cursor."
-                    .into(),
-            })
-        } else {
-            Ok(None)
-        }
+    /// The snapshot when its version is not the cursor's; `None` when it still is.
+    fn compare(&self, version: &str) -> Result<Option<String>, SkanError> {
+        let (current, json) = self.read()?;
+        Ok((current != version).then_some(json))
     }
 
     /// The last look when the time is up: a change that arrived is a success.
-    fn last_look(&self, after: i64) -> Result<String, SkanError> {
-        self.compare(after)?.ok_or(SkanError::WaitTimeout)
+    fn last_look(&self, version: &str) -> Result<String, SkanError> {
+        self.compare(version)?.ok_or(SkanError::WaitTimeout)
     }
 }
 
-/// Resolve `name` against the board at `db_path`, once, and check that the
-/// cursor belongs to the project it names.
-fn resolve(db_path: &Path, name: &str, cursor: &ChangeCursor) -> Result<ProjectId, SkanError> {
+/// Resolve `name` to its project, once, and check that the cursor belongs to it.
+fn resolve(shared: &Path, name: &str, cursor: &ChangeCursor) -> Result<ProjectId, SkanError> {
     let name = validate_project_name(name)?;
-    let store = ProjectStore::open_read_only(db_path).map_err(|error| read_error(error, &name))?;
-    let id = store
+    let id = FileStore::open(shared)
         .project_by_name(&name)
         .map_err(|error| read_error(error, &name))?
         .id;
@@ -130,25 +118,26 @@ fn expired(began: Instant, timeout: Option<Duration>) -> bool {
 /// connection and an invalid cursor are errors, never answers. Nothing is
 /// written and no polling happens; the only repeated reads follow server events.
 pub async fn wait_for_change(
-    db_path: &Path,
+    shared: &Path,
     project: &str,
     cursor: ChangeCursor,
     timeout_secs: Option<u64>,
 ) -> Result<String, SkanError> {
     let began = Instant::now();
     let timeout = timeout_secs.map(Duration::from_secs);
-    let id = resolve(db_path, project, &cursor)?;
+    let id = resolve(shared, project, &cursor)?;
     let reader = Reader {
-        db_path,
+        shared,
         name: project,
         id,
     };
-    let after = cursor.revision;
+    let after = cursor.version.as_str();
     if timeout == Some(Duration::ZERO) {
         return reader.last_look(after);
     }
 
-    let dir = db_path
+    // The data area holds both the shared folder and serve.json.
+    let dir = shared
         .parent()
         .filter(|dir| !dir.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
