@@ -539,8 +539,9 @@
 
 .editor__segment {
   display: inline-flex;
-  flex: 0 0 40px;
-  width: 40px;
+  flex: 0 0 100px;
+  width: 100px;
+  gap: 6px;
   align-items: center;
   justify-content: center;
   height: 31px;

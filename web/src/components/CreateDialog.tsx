@@ -146,6 +146,7 @@ export function CreateDialog({
                   ) : (
                     <UserRoundIcon aria-hidden="true" />
                   )}
+                  <span>{t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}</span>
                 </RadioGroupPrimitive.Item>
               ))}
             </RadioGroup>

@@ -23,11 +23,13 @@ for (const locale of ['en', 'ja'] as const) {
       const dialog = page.getByRole('dialog', { name: locale === 'ja' ? 'カードを追加' : 'Add card' });
       await expect(dialog).toBeVisible();
       const ai = dialog.getByRole('radio', { name: 'AI', exact: true });
-      const user = dialog.getByRole('radio', { name: locale === 'ja' ? 'ユーザー' : 'User', exact: true });
+      const user = dialog.getByRole('radio', { name: locale === 'ja' ? 'ユーザ' : 'User', exact: true });
       await expect(ai.locator('svg')).toBeVisible();
       await expect(user.locator('svg')).toBeVisible();
-      await expect(ai).toHaveCSS('width', '40px');
-      await expect(user).toHaveCSS('width', '40px');
+      await expect(ai).toHaveText('AI');
+      await expect(user).toHaveText(locale === 'ja' ? 'ユーザ' : 'User');
+      await expect(ai).toHaveCSS('width', '100px');
+      await expect(user).toHaveCSS('width', '100px');
       await expect(ai).toHaveAttribute('aria-checked', 'true');
       await dialog.locator('.editor__segments').screenshot({ path: test.info().outputPath('assignee-icons.png') });
 
