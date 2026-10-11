@@ -99,6 +99,7 @@ export function EpicTaskList({
               checked={draft.thisEpic && draft.other}
               onChange={(checked) => setDraft({ thisEpic: checked, other: checked })}
             />
+            <div className="epic-filter__separator" />
             <FilterChoice
               label={t('epic.filterThis')}
               checked={draft.thisEpic}
@@ -110,6 +111,9 @@ export function EpicTaskList({
               onChange={(checked) => setDraft({ ...draft, other: checked })}
             />
             <div className="epic-filter__actions">
+              <Button type="button" variant="outline" onClick={() => setMenuOpen(false)}>
+                {t('dialog.cancel')}
+              </Button>
               <Button
                 type="button"
                 variant="default"

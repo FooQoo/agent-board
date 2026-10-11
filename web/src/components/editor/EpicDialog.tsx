@@ -12,6 +12,7 @@ import type { EditorAttachment, StoredAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines } from './limits';
 import type { RichMarkdownEditorHandle } from './RichMarkdownEditor';
 import { EpicTaskList } from './EpicTaskList';
+import { EpicColorPicker } from './EpicColorPicker';
 import { useAttachmentState } from './useAttachmentState';
 import { useMultipartRequest } from './useMultipartRequest';
 
@@ -255,14 +256,7 @@ export function EpicDialog({
             >
               {epic.id}
             </span>
-            <input
-              type="color"
-              className="epic-label-row__swatch"
-              aria-label={t('epic.colorPick')}
-              value={color.toLowerCase()}
-              disabled={saving}
-              onChange={(event) => setColor(event.target.value.toUpperCase())}
-            />
+            <EpicColorPicker color={color} disabled={saving} onChange={setColor} />
           </div>
         }
         sidebar={

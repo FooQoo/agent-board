@@ -59,7 +59,9 @@ test('the epic dialog saves its name, colour, plan, and tasks together, and its 
 
   // Name, colour, plan, and one more task in the epic; nothing is stored until Save.
   await dialog.getByRole('textbox', { name: 'Formal name' }).fill('File sharing');
-  await dialog.getByLabel('Choose a label color').fill('#2563eb');
+  await dialog.getByRole('button', { name: 'Choose a label color' }).click();
+  await page.getByLabel('HEX', { exact: true }).fill('#2563eb');
+  await page.getByLabel('HEX', { exact: true }).press('Escape');
   await pasteMarkdown(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }), PLAN);
   await dialog.getByRole('checkbox', { name: 'Include in this epic: Refine the empty board' }).check();
   expect(epicOf('FILE-SHARE').name).toBe('File share');
@@ -130,3 +132,59 @@ test('the plan without its required headings is refused with the reason, and the
   await expect(dialog).toHaveCount(0);
   expect(epicOf('FILE-SHARE')).toMatchObject({ name: 'File share, planned' });
 });
+
+for (const locale of ['en', 'ja'] as const) {
+  for (const mode of ['light', 'dark'] as const) {
+    test(`epic palette and task filter match the design in ${locale}, ${mode}`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: locale === 'ja' ? 960 : 1280, height: 900 });
+      await page.addInitScript(({ locale, mode }) => {
+        localStorage.setItem('agboard.locale', locale);
+        localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' }));
+      }, { locale, mode });
+      await page.goto(`/?project=${projectId(mainProject)}`);
+      await waitForSync(page);
+      const epicLabel = page.locator('[data-epic-label="FILE-SHARE"]').first();
+      await expect(epicLabel).toHaveCSS('background-color', 'rgb(124, 58, 237)');
+      await epicLabel.click();
+      const dialog = page.locator('.editor-dialog');
+      const pick = locale === 'en' ? 'Choose a label color' : 'ラベル色を選ぶ';
+      await dialog.getByRole('button', { name: pick }).click();
+      const palette = page.locator('.epic-color');
+      await expect(palette).toBeVisible();
+      await expect(palette.getByLabel('HEX', { exact: true })).toHaveValue('#7C3AED');
+      await expect(palette).toHaveCSS('width', '260px');
+      await expect(palette.locator('.epic-color__map')).toHaveCSS('height', '136px');
+      await palette.screenshot({ path: testInfo.outputPath('palette.png') });
+      const box = await palette.locator('.epic-color__map').boundingBox();
+      if (!box) throw new Error('Color map has no bounds');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.2);
+      await page.mouse.up();
+      await expect(palette.getByLabel('HEX', { exact: true })).not.toHaveValue('#7C3AED');
+      await palette.getByLabel('HEX', { exact: true }).fill('#00ff00');
+      await expect(dialog.locator('.editor__epic-chip')).toHaveCSS('background-color', 'rgb(0, 255, 0)');
+      expect(epicOf('FILE-SHARE').color).toBe('#7C3AED');
+      await palette.getByLabel('HEX', { exact: true }).press('Escape');
+      await expect(dialog).toBeVisible();
+
+      const initialCount = await dialog.locator('.epic-tasks__row').count();
+      await dialog.getByRole('button', { name: locale === 'en' ? 'Filter tasks' : 'タスクを絞り込む' }).click();
+      const filter = page.locator('.epic-filter');
+      await expect(filter).toHaveCSS('width', '248px');
+      await filter.screenshot({ path: testInfo.outputPath('filter.png') });
+      await filter.getByRole('checkbox', { name: locale === 'en' ? 'Other' : 'その他', exact: true }).uncheck();
+      await filter.getByRole('button', { name: locale === 'en' ? 'Cancel' : 'キャンセル', exact: true }).click();
+      await expect(dialog.locator('.epic-tasks__row')).toHaveCount(initialCount);
+      await dialog.getByRole('button', { name: locale === 'en' ? 'Filter tasks' : 'タスクを絞り込む' }).click();
+      await expect(filter.getByRole('checkbox', { name: locale === 'en' ? 'Other' : 'その他', exact: true })).toBeChecked();
+      await filter.getByRole('checkbox', { name: locale === 'en' ? 'Other' : 'その他', exact: true }).uncheck();
+      await filter.getByRole('button', { name: locale === 'en' ? 'Apply' : '適用', exact: true }).click();
+      await expect(dialog.locator('.epic-tasks__row')).toHaveCount(1);
+      expect(cardOf(14).epicId).toBe('FILE-SHARE');
+      await dialog.getByRole('button', { name: locale === 'en' ? 'Save' : '保存', exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+      expect(epicOf('FILE-SHARE').color).toBe('#00FF00');
+    });
+  }
+}

@@ -124,9 +124,10 @@ function setName(text: string, root: HTMLElement) {
 }
 
 function setColor(text: string, root: HTMLElement) {
-  fireEvent.change(within(root).getByLabelText('Choose a label color'), {
-    target: { value: text },
-  });
+  const trigger = within(root).getByRole('button', { name: 'Choose a label color' });
+  fireEvent.click(trigger);
+  fireEvent.change(screen.getByLabelText('HEX'), { target: { value: text } });
+  fireEvent.click(trigger);
 }
 
 /** The checkbox of the task with this ID in the task list. */
@@ -169,7 +170,7 @@ describe('epic dialog layout', () => {
     ).toBeTruthy();
   });
 
-  it('picks the color only with the swatch: the chip follows it and no HEX field or error exists', async () => {
+  it('previews the color from the palette HEX field on the label', async () => {
     const { api } = fakeApi();
     const { dialog } = await openEpic(api);
     const row = dialog.querySelector('.epic-label-row') as HTMLElement;
@@ -190,9 +191,9 @@ describe('epic dialog layout', () => {
     expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).value).toBe(
       'File share',
     );
-    expect((within(dialog).getByLabelText('Choose a label color') as HTMLInputElement).value).toBe(
-      '#7c3aed',
-    );
+    expect(
+      (within(dialog).getByLabelText('Choose a label color') as HTMLButtonElement).style.background,
+    ).toBe('rgb(124, 58, 237)');
     expect(
       within(within(dialog).getByRole('navigation', { name: 'Outline' }))
         .getAllByRole('button')
@@ -230,6 +231,22 @@ describe('epic dialog layout', () => {
 });
 
 describe('task filter', () => {
+  it('cancels the tentative filter and restores the applied choices when reopened', async () => {
+    const { api } = fakeApi();
+    const { dialog } = await openEpic(api);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Filter tasks' }));
+    const menu = await screen.findByRole('dialog', { name: 'Tasks to show' });
+    await userEvent.click(within(menu).getByRole('checkbox', { name: 'Other' }));
+    await userEvent.click(within(menu).getByRole('button', { name: 'Cancel' }));
+    expect(rowIds(dialog)).toEqual(['24', '25', '27', '28', '29']);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Filter tasks' }));
+    const reopened = await screen.findByRole('dialog', { name: 'Tasks to show' });
+    expect(
+      within(reopened).getByRole('checkbox', { name: 'Other' }).getAttribute('aria-checked'),
+    ).toBe('true');
+    expect(api.setMembership).not.toHaveBeenCalled();
+  });
+
   it('shows only the chosen tasks after Apply, and changes nothing that is saved', async () => {
     const { api } = fakeApi();
     const { dialog } = await openEpic(api);
