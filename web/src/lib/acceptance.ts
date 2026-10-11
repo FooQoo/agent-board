@@ -1,3 +1,5 @@
+import type { AcceptanceItem } from '../types';
+
 /** How many completion conditions of a card or epic are done, and whether all of them are. */
 export interface AcceptanceProgress {
   done: number;
@@ -22,4 +24,30 @@ export function nextId(seenIds: readonly string[]): string {
     if (match) largest = Math.max(largest, Number(match[1]));
   }
   return `AC-${largest + 1}`;
+}
+
+/** The index of the first condition whose text is blank or longer than 2,000 characters, or null. */
+export function acceptanceProblem(items: readonly AcceptanceItem[]): number | null {
+  const index = items.findIndex((item) => {
+    const length = [...item.text.trim()].length;
+    return length === 0 || length > 2000;
+  });
+  return index === -1 ? null : index;
+}
+
+/**
+ * The whole text of a new file: the frontmatter with the conditions, then the body. Strings are written as
+ * JSON, which is also valid YAML. A file that exists is written by the server instead, which keeps its keys.
+ */
+export function composeNewText(body: string, items: readonly AcceptanceItem[]): string {
+  const list =
+    items.length === 0
+      ? ' []'
+      : items
+          .map(
+            (item) =>
+              `\n  - id: ${JSON.stringify(item.id)}\n    text: ${JSON.stringify(item.text)}\n    done: ${item.done}`,
+          )
+          .join('');
+  return `---\nacceptance:${list}\n---\n\n${body}`;
 }

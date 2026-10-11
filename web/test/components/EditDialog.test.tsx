@@ -196,6 +196,23 @@ describe('edit dialog layout', () => {
 });
 
 describe('saving', () => {
+  it('saves the body and the conditions in one request, and the done flag is kept', async () => {
+    const card = makeCard({
+      id: 16,
+      description: '## Goal\n\nBody.',
+      acceptance: [{ id: 'AC-1', text: 'Works', done: false }],
+    });
+    const onSubmit = vi.fn(async (_data: Data) => undefined);
+    const { dialog } = await openEdit(onSubmit, card);
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Done: AC-1' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      body: '## Goal\n\nBody.',
+      acceptance: [{ id: 'AC-1', text: 'Works', done: true }],
+    });
+  });
+
   it('keeps Save disabled until something changes', async () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog } = await openEdit(onSubmit);
@@ -221,7 +238,10 @@ describe('saving', () => {
     setTitle('  Renamed  ', dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(onSubmit.mock.calls).toEqual([[{ description: '## New body' }], [{ title: 'Renamed' }]]);
+    expect(onSubmit.mock.calls).toEqual([
+      [{ body: '## New body', acceptance: [] }],
+      [{ title: 'Renamed' }],
+    ]);
     // Saving never changes the draft state of the card.
     expect(onSubmit.mock.calls.some(([data]) => 'finalize' in data)).toBe(false);
   });
@@ -252,7 +272,7 @@ describe('saving', () => {
       attachments: [],
       removedAttachmentIds: ['a'.repeat(32)],
     });
-    expect(onSubmit.mock.calls[1]?.[0]).toEqual({ description: '## Goal\n\nChanged.' });
+    expect(onSubmit.mock.calls[1]?.[0]).toEqual({ body: '## Goal\n\nChanged.', acceptance: [] });
   });
 
   it('normalizes CRLF line endings of the stored text', async () => {
@@ -329,8 +349,8 @@ describe('save failures', () => {
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
     expect(onSubmit.mock.calls.map(([data]) => Object.keys(data))).toEqual([
       ['requestId', 'attachments', 'removedAttachmentIds'],
-      ['description'],
-      ['description'],
+      ['body', 'acceptance'],
+      ['body', 'acceptance'],
       ['title'],
     ]);
   });
@@ -481,7 +501,7 @@ describe('with the real API client', () => {
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(url).toBe(`/api/projects/${PROJECT}/cards/14`);
     expect(init?.method).toBe('PATCH');
-    expect(JSON.parse(String(init?.body))).toEqual({ description: '## Body' });
+    expect(JSON.parse(String(init?.body))).toEqual({ body: '## Body', acceptance: [] });
   });
 
   it('shows the design sentence for a 422 from the server, not its reason, and keeps the dialog', async () => {

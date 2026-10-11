@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextId, progressOf } from '../src/lib/acceptance';
+import { acceptanceProblem, composeNewText, nextId, progressOf } from '../src/lib/acceptance';
 
 const item = (id: string, done: boolean) => ({ id, text: `text ${id}`, done });
 
@@ -27,5 +27,26 @@ describe('nextId', () => {
 
   it('ignores IDs that are not of the form AC-n', () => {
     expect(nextId(['AC-2', 'x', 'AC-x', 'ac-9'])).toBe('AC-3');
+  });
+});
+
+describe('composeNewText', () => {
+  it('writes the frontmatter of a new file from the body and the conditions', () => {
+    const text = composeNewText('Body.\n', [{ id: 'AC-1', text: 'Works: "yes"', done: false }]);
+    expect(text).toBe(
+      '---\nacceptance:\n  - id: "AC-1"\n    text: "Works: \\"yes\\""\n    done: false\n---\n\nBody.\n',
+    );
+  });
+
+  it('writes an empty list when there are no conditions', () => {
+    expect(composeNewText('', [])).toBe('---\nacceptance: []\n---\n\n');
+  });
+});
+
+describe('acceptanceProblem', () => {
+  it('names the first condition whose text is blank or too long', () => {
+    expect(acceptanceProblem([{ id: 'AC-1', text: 'ok', done: false }])).toBeNull();
+    expect(acceptanceProblem([{ id: 'AC-1', text: ' ', done: false }])).not.toBeNull();
+    expect(acceptanceProblem([{ id: 'AC-1', text: 'x'.repeat(2001), done: false }])).not.toBeNull();
   });
 });

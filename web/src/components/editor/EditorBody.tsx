@@ -34,6 +34,8 @@ export interface EditorBodyProps {
   extraField?: ReactNode;
   /** Shown under the outline in the left column (the task list of an epic). */
   sidebar?: ReactNode;
+  /** Shown first in the outline: the link to the completion conditions. */
+  outlineTop?: ReactNode;
   attachments?: readonly EditorAttachment[];
   /** Why the last picture was refused; the side panel shows it. */
   attachmentNotice?: AttachmentNotice | null;
@@ -76,6 +78,7 @@ export function EditorBody({
   asideTop,
   extraField,
   sidebar,
+  outlineTop,
   attachments = [],
   attachmentNotice = null,
   onFiles,
@@ -131,6 +134,7 @@ export function EditorBody({
       <div className="editor__side">
         <nav className="editor__outline" aria-label={t('editor.outlineName')}>
           <p className="editor__outline-label">{t('editor.outlineLabel')}</p>
+          {outlineTop}
           {outline.length === 0 ? (
             <p className="editor__outline-empty">{t('editor.outlineEmpty')}</p>
           ) : (

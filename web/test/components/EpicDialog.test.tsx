@@ -19,7 +19,7 @@ const EPIC: Epic = {
   color: '#7C3AED',
   isDraft: false,
   plan: PLAN,
-  body: '',
+  body: PLAN,
   acceptance: [],
   acceptanceError: false,
   attachments: [
@@ -333,7 +333,7 @@ describe('saving', () => {
       'saveDetails',
       'setMembership:29:FILE-SHARE',
     ]);
-    expect(api.savePlan).toHaveBeenCalledWith('## Goal\n\nChanged.');
+    expect(api.savePlan).toHaveBeenCalledWith({ body: '## Goal\n\nChanged.', acceptance: [] });
     expect(api.saveDetails).toHaveBeenCalledWith({
       name: 'Renamed epic',
       color: '#00FF00',

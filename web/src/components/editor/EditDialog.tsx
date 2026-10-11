@@ -1,9 +1,12 @@
 import { Button } from '@/components/ui/button';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionDialogData } from '../ActionDialog';
 import { epicInk } from '../../lib/epic';
-import type { Card } from '../../types';
+import type { AcceptanceItem, Card } from '../../types';
+import { acceptanceProblem } from '../../lib/acceptance';
+import { AcceptanceEditor } from '../acceptance/AcceptanceEditor';
+import { ConditionsLink } from '../acceptance/ConditionsLink';
 import { EditorBody, useOverLimit } from './EditorBody';
 import { EditorShell } from './EditorShell';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines, titleProblem } from './limits';
@@ -33,13 +36,18 @@ export function EditDialog({
 }) {
   const { t } = useTranslation();
   const editor = useRef<RichMarkdownEditorHandle>(null);
+  // A card whose frontmatter cannot be read is edited as its whole text, as it was before.
+  const whole = card.acceptanceError;
   // What the server has: the baseline the unsaved-change check compares with.
   const [saved, setSaved] = useState(() => ({
     title: card.title,
-    description: normalizeNewlines(card.description),
+    description: normalizeNewlines(whole ? card.description : card.body),
+    acceptance: card.acceptance,
   }));
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(saved.description);
+  const [conditions, setConditions] = useState<AcceptanceItem[]>(card.acceptance);
+  const conditionsId = useId();
   const [removed, setRemoved] = useState<string[]>([]);
   const attachmentState = useAttachmentState({
     initial: card.attachments ?? [],
@@ -54,9 +62,15 @@ export function EditDialog({
   const localAdded = attachmentState.attachments.filter((a) => a.source === 'local');
   const imagesChanged = localAdded.length > 0 || removed.length > 0;
   const titleChanged = title.trim() !== saved.title;
-  const dirty = titleChanged || description !== saved.description || imagesChanged;
+  const conditionsChanged =
+    !whole && JSON.stringify(conditions) !== JSON.stringify(saved.acceptance);
+  const dirty =
+    titleChanged || description !== saved.description || conditionsChanged || imagesChanged;
   const overLimit = useOverLimit(description);
-  const valid = titleProblem(title) === null && countChars(description) <= DESCRIPTION_LIMIT;
+  const valid =
+    titleProblem(title) === null &&
+    countChars(description) <= DESCRIPTION_LIMIT &&
+    (whole || acceptanceProblem(conditions) === null);
 
   const save = () => {
     if (!valid || flow.busy.current) return;
@@ -84,10 +98,11 @@ export function EditDialog({
         attachmentState.reset(remaining);
       }
       // 2. The body, as the editor holds it now (the reader's changes arrive without delay here).
+      // The body and the conditions go in one request, so the server writes them as one file.
       const text = normalizeNewlines(editor.current?.markdown() ?? description);
-      if (text !== saved.description) {
-        await onSubmit({ description: text });
-        setSaved((current) => ({ ...current, description: text }));
+      if (whole ? text !== saved.description : text !== saved.description || conditionsChanged) {
+        await onSubmit(whole ? { description: text } : { body: text, acceptance: conditions });
+        setSaved((current) => ({ ...current, description: text, acceptance: conditions }));
       }
       // 3. The title. The draft state is not changed here; finalizing is done in the detail panel.
       const nextTitle = title.trim();
@@ -125,6 +140,17 @@ export function EditDialog({
         onDescriptionChange={setDescription}
         editorRef={editor}
         disabled={flow.saving}
+        extraField={
+          whole ? undefined : (
+            <AcceptanceEditor
+              id={conditionsId}
+              items={conditions}
+              onChange={setConditions}
+              disabled={flow.saving}
+            />
+          )
+        }
+        outlineTop={whole ? undefined : <ConditionsLink id={conditionsId} items={conditions} />}
         asideTop={
           card.epic ? (
             <div className="editor__epic-row">

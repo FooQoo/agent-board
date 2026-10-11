@@ -371,6 +371,8 @@ export function App({ initial }: AppProps) {
                 await editCard(projectId, dialog.card.id, {
                   title: data.title,
                   description: data.description,
+                  body: data.body,
+                  acceptance: data.acceptance,
                   finalize: data.finalize,
                 });
             refreshProject(projectId);

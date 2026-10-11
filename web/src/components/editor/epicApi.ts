@@ -13,7 +13,7 @@ export function epicApi(projectId: string, epicId: string, changed: () => void):
   return {
     addImages: (files, requestId) => done(addEpicAttachments(projectId, epicId, files, requestId)),
     removeImage: (attachmentId) => done(deleteEpicAttachment(projectId, epicId, attachmentId)),
-    savePlan: (plan) => done(updateEpic(projectId, epicId, { plan })),
+    savePlan: (plan) => done(updateEpic(projectId, epicId, plan)),
     saveDetails: (details) => done(updateEpic(projectId, epicId, details)),
     setMembership: (cardId, membership) => done(setCardEpic(projectId, cardId, membership)),
   };

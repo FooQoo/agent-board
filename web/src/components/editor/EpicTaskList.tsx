@@ -1,3 +1,4 @@
+import { AcceptanceProgress } from '../acceptance/AcceptanceProgress';
 import { ListFilterIcon } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -146,6 +147,7 @@ export function EpicTaskList({
                 <div className="epic-tasks__meta">
                   <span className="epic-tasks__id">#{card.id}</span>
                   <span className="epic-tasks__state">{stateOf(card)}</span>
+                  <AcceptanceProgress card={card} />
                 </div>
                 <button
                   type="button"
