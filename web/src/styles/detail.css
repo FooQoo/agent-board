@@ -477,22 +477,17 @@
   background: transparent;
 }
 
-/* A narrow detail column keeps the text button: its label wraps to two lines, and the tabs are a
-   little tighter, so the tab row and the toolbar still share one row. */
-@container (max-width: 360px) {
+/* Tighten the tabs and action padding in a narrow column while keeping labels on one line. */
+@container (max-width: 400px) {
   .detail__tab {
-    padding-right: 6px;
-    padding-left: 6px;
+    gap: 4px;
+    padding-right: 2px;
+    padding-left: 2px;
   }
 
   .detail__tool--text {
-    height: auto;
-    min-height: 27px;
-    max-width: 74px;
-    padding: 2px 8px;
-    line-height: 13px;
-    white-space: normal;
-    text-align: center;
+    flex: none;
+    padding: 0 6px;
   }
 }
 
