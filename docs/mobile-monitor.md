@@ -67,7 +67,3 @@ tailscale funnel status
 Use the exact HTTPS origin shown by `tailscale serve status` as `--remote-origin` before starting Agent Board. Confirm Serve is active only within your tailnet and Funnel is not exposing the service publicly. Do not add a custom proxy that rewrites Host or Origin. Tailscale access rules apply to Serve, and Agent Board still checks the remote PC write token and same-origin request headers.
 
 Stop Agent Board with Ctrl+C. To remove only this Serve route, use `tailscale serve --bg http://127.0.0.1:8040 off`; inspect `tailscale serve status` before changing an existing shared Serve configuration. The background Serve setting can resume after a reboot, but the board itself remains unavailable while the computer sleeps or its server is stopped.
-
-## Verify the proxy setup
-
-The local proxy test uses a real Caddy process, the real Agent Board server, and a temporary CA. Run `python3 scripts/test-monitor-proxy.py` after installing Caddy 2.8+ and the Rust, Node.js, and pnpm build tools. It uses temporary data/config/certificate directories, fake Basic-auth credentials, HTTPS ports 8030–8039, and Agent Board remote ports 8040–8049. `python3 scripts/test-monitor-proxy.py --static-only` checks the Caddyfile without starting services. This local test does not verify a real LAN, phone certificate trust, or a Tailscale tailnet.
