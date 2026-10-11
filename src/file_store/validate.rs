@@ -167,15 +167,31 @@ fn defect(field: &str, reason: &str) -> Defect {
     }
 }
 
+/// A required heading or label: its English name, which new files use, and
+/// the Japanese name that earlier files use. Either is accepted.
+type Name = (&'static str, &'static str);
+
 /// Headings every TASK.md must contain, in template order.
-const REQUIRED_HEADINGS: [&str; 3] = ["作業内容", "完了条件と確認結果", "実行記録"];
-const CONDITION_SECTION: &str = "完了条件と確認結果";
+const REQUIRED_HEADINGS: [Name; 3] = [
+    ("Work", "作業内容"),
+    ("Completion conditions", "完了条件と確認結果"),
+    ("Execution log", "実行記録"),
+];
+const CONDITION_SECTION: Name = ("Completion conditions", "完了条件と確認結果");
 /// Lines every completion condition must carry, in the order of the template.
-const CONDITION_LINES: [&str; 3] = ["確認結果:", "根拠:", "調整役の確認:"];
+const CONDITION_LINES: [Name; 3] = [
+    ("Result:", "確認結果:"),
+    ("Evidence:", "根拠:"),
+    ("Coordinator check:", "調整役の確認:"),
+];
+
+fn is_name(text: &str, name: Name) -> bool {
+    text == name.0 || text == name.1
+}
 
 /// The TASK.md written when a card is created without a body.
 pub fn task_template() -> String {
-    "## 作業内容\n\n（作業の目的と内容を書く）\n\n## 完了条件と確認結果\n\n- [ ] AC-1. （完了条件を書く）\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".to_string()
+    "## Work\n\n(Describe the purpose of the work and what to do.)\n\n## Completion conditions\n\n- [ ] AC-1. (Describe a condition that can be verified.)\n  - Result: Not verified\n  - Evidence: Not recorded\n  - Coordinator check: Not checked\n\n## Execution log\n\n".to_string()
 }
 
 /// True for a 32-character lowercase hexadecimal string (history and request IDs).
@@ -225,21 +241,26 @@ fn condition_id(line: &str) -> Option<String> {
     Some(format!("AC-{number}"))
 }
 
-/// The label of a detail line (`  - 根拠: ...`) under a condition, if it has one.
-fn condition_label(line: &str) -> Option<&'static str> {
+/// The label of a detail line (`  - Evidence: ...`) under a condition, if it has one.
+fn condition_label(line: &str) -> Option<Name> {
     let rest = line.trim_start().strip_prefix("- ")?;
     CONDITION_LINES
         .iter()
         .copied()
-        .find(|label| rest.starts_with(label))
+        .find(|label| rest.starts_with(label.0) || rest.starts_with(label.1))
 }
 
 /// Headings every PLAN.md must contain, in template order.
-const PLAN_HEADINGS: [&str; 4] = ["目的", "対象範囲", "完了条件と確認結果", "進め方"];
+const PLAN_HEADINGS: [Name; 4] = [
+    ("Goal", "目的"),
+    ("Scope", "対象範囲"),
+    ("Completion conditions", "完了条件と確認結果"),
+    ("Approach", "進め方"),
+];
 
 /// The PLAN.md written when an epic is created without a plan.
 pub fn plan_template() -> String {
-    "## 目的\n\n（エピックの目的を書く）\n\n## 対象範囲\n\n（対象とする範囲と対象外を書く）\n\n## 完了条件と確認結果\n\n- [ ] AC-1. （完了条件を書く）\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 進め方\n\n（進め方を書く）\n".to_string()
+    "## Goal\n\n(Describe the purpose of the epic.)\n\n## Scope\n\n(Describe what is in and out of scope.)\n\n## Completion conditions\n\n- [ ] AC-1. (Describe a condition that can be verified.)\n  - Result: Not verified\n  - Evidence: Not recorded\n  - Coordinator check: Not checked\n\n## Approach\n\n(Describe how the work proceeds.)\n".to_string()
 }
 
 /// Check a TASK.md text: the required headings and the completion conditions.
@@ -255,7 +276,7 @@ pub fn check_plan_body(text: &str) -> Vec<Defect> {
     check_markdown(text, &PLAN_HEADINGS)
 }
 
-fn check_markdown(text: &str, required: &[&str]) -> Vec<Defect> {
+fn check_markdown(text: &str, required: &[Name]) -> Vec<Defect> {
     let lines: Vec<&str> = text
         .split('\n')
         .map(|line| line.strip_suffix('\r').unwrap_or(line))
@@ -285,9 +306,9 @@ fn check_markdown(text: &str, required: &[&str]) -> Vec<Defect> {
 
     let mut out = Vec::new();
     for &name in required {
-        if !headings.iter().any(|(_, heading)| heading == name) {
+        if !headings.iter().any(|(_, heading)| is_name(heading, name)) {
             out.push(defect(
-                &format!("## {name}"),
+                &format!("## {}", name.0),
                 "The required heading is missing.",
             ));
         }
@@ -295,18 +316,18 @@ fn check_markdown(text: &str, required: &[&str]) -> Vec<Defect> {
 
     let Some(position) = headings
         .iter()
-        .position(|(_, heading)| heading == CONDITION_SECTION)
+        .position(|(_, heading)| is_name(heading, CONDITION_SECTION))
     else {
         return out;
     };
-    let section_field = format!("## {CONDITION_SECTION}");
+    let section_field = format!("## {}", headings[position].1);
     let start = headings[position].0 + 1;
     let end = headings
         .get(position + 1)
         .map_or(lines.len(), |(index, _)| *index);
 
     // Each condition with the detail labels found below it.
-    let mut blocks: Vec<(String, Vec<&'static str>)> = Vec::new();
+    let mut blocks: Vec<(String, Vec<Name>)> = Vec::new();
     let mut current: Option<usize> = None;
     for i in start..end {
         if !outside[i] {
@@ -338,7 +359,10 @@ fn check_markdown(text: &str, required: &[&str]) -> Vec<Defect> {
             if !found.contains(&label) {
                 out.push(defect(
                     &id,
-                    &format!("A line starting with \"- {label}\" is missing below the condition."),
+                    &format!(
+                        "A line starting with \"- {}\" (or \"- {}\") is missing below the condition.",
+                        label.0, label.1
+                    ),
                 ));
             }
         }

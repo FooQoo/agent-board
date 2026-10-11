@@ -153,24 +153,24 @@ export function nextCardId(project: string, home: string = mainHome()): number {
 }
 
 /**
- * Wrap plain text in the required TASK.md body: the text goes under `## 作業内容`, and the other two required
+ * Wrap plain text in the required TASK.md body: the text goes under `## Work`, and the other two required
  * headings are added with the completion-condition template. Use it wherever a spec writes a card body
  * through the CLI, because the CLI checks the required headings.
  */
 export function taskBody(text: string): string {
   return [
-    '## 作業内容',
+    '## Work',
     '',
-    text.trim() === '' ? '（作業の目的と内容を書く）' : text.trim(),
+    text.trim() === '' ? '(Describe the purpose of the work and what to do.)' : text.trim(),
     '',
-    '## 完了条件と確認結果',
+    '## Completion conditions',
     '',
-    '- [ ] AC-1. （完了条件を書く）',
-    '  - 確認結果: 未確認',
-    '  - 根拠: 未記入',
-    '  - 調整役の確認: 未確認',
+    '- [ ] AC-1. (Describe a condition that can be verified.)',
+    '  - Result: Not verified',
+    '  - Evidence: Not recorded',
+    '  - Coordinator check: Not checked',
     '',
-    '## 実行記録',
+    '## Execution log',
     '',
     '',
   ].join('\n');
@@ -365,9 +365,14 @@ export function resetAlphaBeta(home: string): void {
   restoreProject('Beta', betaFixture, home);
 }
 
-/** True when a body already has the three headings the CLI requires. */
+/** True when a body already has the three headings the CLI requires, in English or in the earlier Japanese form. */
 export function hasRequiredHeadings(text: string): boolean {
-  return ['## 作業内容', '## 完了条件と確認結果', '## 実行記録'].every((heading) => text.split('\n').some((line) => line.trim() === heading));
+  const lines = text.split('\n').map((line) => line.trim());
+  return [
+    ['## Work', '## 作業内容'],
+    ['## Completion conditions', '## 完了条件と確認結果'],
+    ['## Execution log', '## 実行記録'],
+  ].every((names) => names.some((heading) => lines.includes(heading)));
 }
 
 /**

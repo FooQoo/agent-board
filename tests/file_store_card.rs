@@ -106,9 +106,9 @@ fn a_card_without_a_body_gets_the_template_headings_and_a_created_event() {
     assert_eq!(fx.next_card_id(), 2);
 
     let body = String::from_utf8(fx.body_bytes(1)).unwrap();
-    assert!(body.contains("## 作業内容"));
-    assert!(body.contains("## 完了条件と確認結果"));
-    assert!(body.contains("## 実行記録"));
+    assert!(body.contains("## Work"));
+    assert!(body.contains("## Completion conditions"));
+    assert!(body.contains("## Execution log"));
     assert_eq!(card.description, body);
 }
 
@@ -151,7 +151,7 @@ fn a_body_without_the_required_headings_is_refused_and_creates_nothing() {
         .unwrap_err();
     match err {
         AgboardError::FileInvalid { file, field, .. } => {
-            assert_eq!(field, "## 作業内容");
+            assert_eq!(field, "## Work");
             assert!(file.ends_with("tasks/1/TASK.md"), "{file}");
         }
         other => panic!("unexpected error: {other:?}"),
@@ -463,7 +463,7 @@ fn a_body_defect_returns_the_text_and_is_reported_without_rewriting_it() {
     fx.create("one");
     let broken = fs::read_to_string(fx.card_dir(1).join("TASK.md"))
         .unwrap()
-        .replace("## 実行記録", "## 記録");
+        .replace("## Execution log", "## Log");
     fs::write(fx.card_dir(1).join("TASK.md"), &broken).unwrap();
 
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
@@ -471,7 +471,7 @@ fn a_body_defect_returns_the_text_and_is_reported_without_rewriting_it() {
     assert_eq!(snapshot.cards[0].description, broken);
     assert!(snapshot.problems.iter().any(|p| p.file
         == format!("projects/{}/tasks/1/TASK.md", fx.project)
-        && p.field == "## 実行記録"));
+        && p.field == "## Execution log"));
     assert_eq!(
         fs::read_to_string(fx.card_dir(1).join("TASK.md")).unwrap(),
         broken

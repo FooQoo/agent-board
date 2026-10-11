@@ -13,6 +13,11 @@ fn fields(text: &str) -> Vec<String> {
 }
 
 fn valid_body() -> String {
+    "## Work\n\nDo the work.\n\n## Completion conditions\n\n- [ ] AC-1. The thing works.\n  - Result: Not verified\n  - Evidence: Steps\n  - Coordinator check: Not checked\n\n## Execution log\n\n".to_string()
+}
+
+/// The same body with the Japanese headings and labels of earlier files.
+fn japanese_body() -> String {
     "## 作業内容\n\nDo the work.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. The thing works.\n  - 確認結果: 未確認\n  - 根拠: 手順\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".to_string()
 }
 
@@ -26,28 +31,39 @@ fn choice(id: &str, label: &str) -> Choice {
 #[test]
 fn the_template_has_the_three_required_headings_and_no_defect() {
     let template = task_template();
-    assert!(template.contains("## 作業内容"));
-    assert!(template.contains("## 完了条件と確認結果"));
-    assert!(template.contains("## 実行記録"));
+    assert!(template.contains("## Work"));
+    assert!(template.contains("## Completion conditions"));
+    assert!(template.contains("## Execution log"));
     assert!(check_task_body(&template).is_empty(), "{template}");
 }
 
 #[test]
+fn the_japanese_headings_and_labels_of_earlier_files_are_accepted() {
+    assert!(check_task_body(&japanese_body()).is_empty());
+    let mixed = valid_body()
+        .replace("## Work", "## 作業内容")
+        .replace("  - Evidence: Steps", "  - 根拠: 手順");
+    assert!(check_task_body(&mixed).is_empty(), "{mixed}");
+    let missing = japanese_body().replace("  - 根拠: 手順\n", "");
+    assert_eq!(fields(&missing), vec!["AC-1"]);
+}
+
+#[test]
 fn a_missing_required_heading_is_reported_by_its_name() {
-    let body = valid_body().replace("## 実行記録", "## 記録");
-    assert_eq!(fields(&body), vec!["## 実行記録"]);
+    let body = valid_body().replace("## Execution log", "## Log");
+    assert_eq!(fields(&body), vec!["## Execution log"]);
 }
 
 #[test]
 fn a_heading_inside_a_code_block_does_not_count() {
-    let body = valid_body().replace("Do the work.", "```\n## 作業内容\n```");
-    let body = body.replacen("## 作業内容", "## 別名", 1);
-    assert_eq!(fields(&body), vec!["## 作業内容"]);
+    let body = valid_body().replace("Do the work.", "```\n## Work\n```");
+    let body = body.replacen("## Work", "## Other", 1);
+    assert_eq!(fields(&body), vec!["## Work"]);
 }
 
 #[test]
 fn a_completion_condition_needs_all_three_lines_under_it() {
-    let body = valid_body().replace("  - 根拠: 手順\n", "");
+    let body = valid_body().replace("  - Evidence: Steps\n", "");
     assert_eq!(fields(&body), vec!["AC-1"]);
 }
 
@@ -67,12 +83,12 @@ fn crlf_line_endings_are_judged_like_lf() {
 
 #[test]
 fn ensure_task_body_names_the_file_and_the_item() {
-    let body = valid_body().replace("## 実行記録", "## 記録");
+    let body = valid_body().replace("## Execution log", "## Log");
     let err = ensure_task_body(&body, "projects/p/tasks/1/TASK.md").unwrap_err();
     match err {
         AgboardError::FileInvalid { file, field, .. } => {
             assert_eq!(file, "projects/p/tasks/1/TASK.md");
-            assert_eq!(field, "## 実行記録");
+            assert_eq!(field, "## Execution log");
         }
         other => panic!("unexpected error: {other:?}"),
     }

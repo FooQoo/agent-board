@@ -18,22 +18,22 @@ function cardOf(id: number): CardJson & { epicId: string | null } {
 
 /** The plan with the four headings the plan format requires, and one completion condition. */
 const PLAN = [
-  '## 目的',
+  '## Goal',
   '',
   'Share files between the tasks of one epic.',
   '',
-  '## 対象範囲',
+  '## Scope',
   '',
   'The shared folder only.',
   '',
-  '## 完了条件と確認結果',
+  '## Completion conditions',
   '',
   '- [ ] AC-1. The plan is saved with the tasks.',
-  '  - 確認結果: 未確認',
-  '  - 根拠: 未記入',
-  '  - 調整役の確認: 未確認',
+  '  - Result: Not verified',
+  '  - Evidence: Not recorded',
+  '  - Coordinator check: Not checked',
   '',
-  '## 進め方',
+  '## Approach',
   '',
   'Write the plan first, then the tasks.',
   '',
@@ -72,7 +72,7 @@ test('the epic dialog saves its name, colour, plan, and tasks together, and its 
   // The CLI reads the same epic: the name, the colour, the plan, and both tasks.
   const stored = epicOf('FILE-SHARE');
   expect(stored).toMatchObject({ name: 'File sharing', color: '#2563EB' });
-  expect(stored.plan).toContain('## 進め方');
+  expect(stored.plan).toContain('## Approach');
   expect(stored.plan).toContain('- [ ] AC-1. The plan is saved with the tasks.');
   expect(cardOf(16).epicId).toBe('FILE-SHARE');
   expect(cardOf(14).epicId).toBe('FILE-SHARE');
@@ -114,12 +114,12 @@ test('the plan without its required headings is refused with the reason, and the
   await plan.click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.press('Delete');
-  await pasteMarkdown(plan, '## 目的\n\nOnly the purpose.\n');
+  await pasteMarkdown(plan, '## Goal\n\nOnly the purpose.\n');
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   // The screen names the step that failed and keeps what was typed.
   await expect(dialog.getByRole('alert')).toContainText('Could not save the plan');
   // Nothing changed on disk; the typed plan is kept on the screen.
-  expect(epicOf('FILE-SHARE').plan).toContain('## 進め方');
+  expect(epicOf('FILE-SHARE').plan).toContain('## Approach');
   await expect(plan).toContainText('Only the purpose.');
 
   // Fixing the plan and saving again works.

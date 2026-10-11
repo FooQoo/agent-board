@@ -67,7 +67,7 @@ test('a task body shows its sections, consecutive captures side by side, and a M
   const second = JSON.parse(agboardOk(mainProject, ['attachment', 'add', '13', '--file', two, '--actor', 'ai', '--json']).stdout);
   const ids = [first, second].map((item) => (item.attachment?.id ?? item.id) as string);
   const markdown = [
-    '## 作業内容',
+    '## Work',
     '',
     `![one](attachment:${ids[0]})`,
     `![two](attachment:${ids[1]})`,
@@ -83,8 +83,8 @@ test('a task body shows its sections, consecutive captures side by side, and a M
   await card(page, 13).click();
   const panel = details(page);
   // The body is written as numbered chapters; the captures sit in one group, side by side.
-  await expect(panel.locator('.md-chapter__title', { hasText: /^作業内容$/ }).first()).toBeVisible();
-  await expect(panel.locator('.md-chapter__title', { hasText: /^完了条件と確認結果$/ }).first()).toBeVisible();
+  await expect(panel.locator('.md-chapter__title', { hasText: /^Work$/ }).first()).toBeVisible();
+  await expect(panel.locator('.md-chapter__title', { hasText: /^Completion conditions$/ }).first()).toBeVisible();
   const group = panel.locator('.md-captures').first();
   await expect(group.locator('.md__image-open')).toHaveCount(2);
   const boxes = await group.locator('.md__image-open').evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
@@ -199,7 +199,7 @@ test('the edit dialog writes nothing when it is opened and closed unchanged, and
   writeFileSync(picture, png);
   const added = JSON.parse(agboardOk(mainProject, ['attachment', 'add', '15', '--file', picture, '--actor', 'ai', '--json']).stdout);
   const pictureId = (added.attachment?.id ?? added.id) as string;
-  agboardOk(mainProject, ['edit', '15', '--desc-file', writeBody(`## 作業内容\n\nIntro text.\n\n![kept](attachment:${pictureId})\n`)]);
+  agboardOk(mainProject, ['edit', '15', '--desc-file', writeBody(`## Work\n\nIntro text.\n\n![kept](attachment:${pictureId})\n`)]);
 
   const file = path.join(workspace(mainProject).folder, 'tasks', '15', 'TASK.md');
   const before = readFileSync(file, 'utf8');

@@ -62,9 +62,9 @@ test('a card is added with a title, the AI as the default owner, and a Markdown 
     taskBody(`Ship it.\n\n![found](${images.origin}/ok.png)\n\n![lost](${images.origin}/missing.png)`),
   );
   await expect(dialog.getByRole('navigation', { name: 'Outline' }).getByRole('button')).toHaveText([
-    '01作業内容',
-    '02完了条件と確認結果',
-    '03実行記録',
+    '01Work',
+    '02Completion conditions',
+    '03Execution log',
   ]);
   await expect(dialog.getByText(/^\d+ \/ 50,000$/)).not.toHaveText('0 / 50,000');
   await expect(add).toBeEnabled();
@@ -103,9 +103,9 @@ test('a card for the user is added without a body; closing without typing asks n
   await expect(dialog).toHaveCount(0);
   // No body given: the CLI writes the TASK.md template, so the description is the template, not empty.
   expect(show(id)).toMatchObject({ title: 'Check the invoice', assignee: 'human', isDraft: false, agentStatus: 'idle' });
-  expect(show(id).description).toContain('（作業の目的と内容を書く）');
+  expect(show(id).description).toContain('(Describe the purpose of the work and what to do.)');
   await card(page, id).click();
-  await expect(details(page).getByRole('tabpanel')).toContainText('（作業の目的と内容を書く）');
+  await expect(details(page).getByRole('tabpanel')).toContainText('(Describe the purpose of the work and what to do.)');
 
   await page.getByRole('button', { name: 'Add card' }).click();
   await dialog.getByRole('button', { name: 'Cancel' }).click();

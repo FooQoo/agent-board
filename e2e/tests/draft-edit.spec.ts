@@ -77,7 +77,7 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
   const { dialog, editor } = await openEditor(page);
   await expect(dialog).toContainText('Edit card');
   // The dialog opens with the current text, nothing changed yet, and Save disabled.
-  expect(await editorValue(editor)).toContain('## 作業内容\n\nOld text.');
+  expect(await editorValue(editor)).toContain('## Work\n\nOld text.');
   await expect(dialog.getByText('You have unsaved changes.')).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
   await expect(dialog.getByText(`${SEED.length} / 50,000`)).toBeVisible();
@@ -89,8 +89,8 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
 
   // The outline lists the three required headings, and an entry takes the caret to its heading.
   const outline = dialog.getByRole('navigation', { name: 'Outline' });
-  await expect(outline.getByRole('button')).toHaveText(['01作業内容', '02完了条件と確認結果', '03実行記録']);
-  await outline.getByRole('button', { name: /完了条件と確認結果$/ }).click();
+  await expect(outline.getByRole('button')).toHaveText(['01Work', '02Completion conditions', '03Execution log']);
+  await outline.getByRole('button', { name: /Completion conditions$/ }).click();
   await expect(editor).toBeFocused();
   await expect
     .poll(() =>
@@ -100,7 +100,7 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
         return element?.closest('h2')?.textContent ?? null;
       }),
     )
-    .toBe('完了条件と確認結果');
+    .toBe('Completion conditions');
 
   // Nothing is stored until it is saved.
   expect(show(id).description).toBe(SEED);
@@ -111,7 +111,7 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => show(id).description).toContain('Plan line.');
   expect(show(id)).toMatchObject({ title: 'Draft me, rewritten', isDraft: true, cardStatus: 'todo', agentStatus: 'idle' });
-  expect(show(id).description).toContain('## 実行記録');
+  expect(show(id).description).toContain('## Execution log');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 
   // Finalize from the banner: the page shows the card without the banner.

@@ -1634,7 +1634,8 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
         .join(project.as_str())
         .join("tasks/1/TASK.md");
     let label = format!("projects/{project}/tasks/1/TASK.md");
-    // The 実行記録 heading is missing: the file is still being written, or was edited by hand.
+    // The execution log heading is missing from a file in the earlier Japanese format: it is
+    // still being written, or was edited by hand. The problem names the heading in English.
     let defective = "## 作業内容\n\nWork.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n";
     std::fs::write(&md, defective).unwrap();
 
@@ -1642,7 +1643,7 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
     let problems = board["problems"].as_array().unwrap();
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert_eq!(problems[0]["file"], label);
-    assert_eq!(problems[0]["field"], "## 実行記録");
+    assert_eq!(problems[0]["field"], "## Execution log");
     assert!(!problems[0]["reason"].as_str().unwrap().is_empty());
     // The card still shows the text as it was saved; the product does not rewrite it.
     let card = board["cards"]

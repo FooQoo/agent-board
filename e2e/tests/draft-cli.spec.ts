@@ -61,7 +61,7 @@ async function makeDraft(page: Page): Promise<void> {
 /** A body of exactly `count` characters as the CLI counts them: the required headings, ending at the last one. */
 function bodyOfLength(count: number): string {
   const frame = (text: string) => taskBody(text).replace(/\n+$/, '');
-  const placeholder = '（作業の目的と内容を書く）';
+  const placeholder = '(Describe the purpose of the work and what to do.)';
   const base = [...frame('')].length - [...placeholder].length;
   return frame('あ'.repeat(count - base));
 }

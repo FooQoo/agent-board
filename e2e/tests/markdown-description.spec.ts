@@ -144,7 +144,7 @@ test('a body without H2 headings is shown whole, and an empty body says so', asy
   // A card without a description.
   await card(page, 12).click();
   // An empty body is written as the TASK.md template, so its placeholder shows where the text goes.
-  await expect(body(page)).toContainText('（作業の目的と内容を書く）');
+  await expect(body(page)).toContainText('(Describe the purpose of the work and what to do.)');
 });
 
 test('links open in a new tab without handing over the page, and other schemes stay text', async ({ page }) => {

@@ -73,7 +73,7 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
 
   // An epic with a plan template and a colour; a card in it.
   agboardOk(name, ['epic', 'add', 'FILE-SHARE', '--name', 'File share', '--color', '#7C3AED', '--actor', 'human']);
-  expect(readFileSync(path.join(folder, 'epics', 'FILE-SHARE', 'PLAN.md'), 'utf8')).toContain('## 完了条件と確認結果');
+  expect(readFileSync(path.join(folder, 'epics', 'FILE-SHARE', 'PLAN.md'), 'utf8')).toContain('## Completion conditions');
   const cardId = JSON.parse(agboardOk(name, ['add', 'Upload a picture', '--epic', 'FILE-SHARE', '--json']).stdout).card.id as number;
   expect(JSON.parse(agboardOk(name, ['ls', '--json']).stdout).cards.find((c: { id: number }) => c.id === cardId)).toMatchObject({
     epic: { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' },
@@ -154,19 +154,19 @@ test('a body with a missing heading is shown as a problem, and the page recovers
   await card(page, 13).click();
   await expect(details(page).getByRole('alert')).toHaveCount(0);
 
-  // Half a save: the 実行記録 heading is gone. The page says which file and which heading, and the CLI reports it too.
+  // Half a save: the execution log heading is gone. The page says which file and which heading, and the CLI reports it too.
   const file = path.join(folder, 'tasks', '13', 'TASK.md');
   const whole = readFileSync(file, 'utf8');
-  writeFileSync(file, whole.replace('## 実行記録', '実行記録'));
+  writeFileSync(file, whole.replace('## Execution log', 'Execution log'));
   const alert = details(page).getByRole('alert');
   await expect(alert).toContainText('tasks/13/TASK.md');
-  await expect(alert).toContainText('実行記録');
+  await expect(alert).toContainText('Execution log');
   const snapshot = JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout);
   expect(snapshot.problems).toEqual(
     expect.arrayContaining([expect.objectContaining({ file: expect.stringContaining('tasks/13/TASK.md') })]),
   );
   // The body is not rewritten by the product while it is wrong.
-  expect(readFileSync(file, 'utf8')).toBe(whole.replace('## 実行記録', '実行記録'));
+  expect(readFileSync(file, 'utf8')).toBe(whole.replace('## Execution log', 'Execution log'));
 
   // The file is written whole again: the notice goes away by itself.
   replaceFileAtomically(file, whole);

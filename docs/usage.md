@@ -241,21 +241,37 @@ The result contains `folder` (the project's absolute path), `projectId`, `readme
 
 Agents may edit a non-draft card's `TASK.md` and an epic's `PLAN.md` as that README allows. For direct edits, write a temporary file in the same folder and rename it over the original. The board follows file changes automatically. Use the CLI for metadata and status changes; never edit `task.json`, `epic.json`, `project.json`, or `.internal/` lock files directly, or delete card or epic folders directly. Keep personal absolute paths out of shared files.
 
-The Markdown format uses fixed Japanese headings even when the UI and surrounding text are English:
+The Markdown format requires these headings:
 
 | File | Required headings |
 | --- | --- |
-| `TASK.md` | `## 作業内容`, `## 完了条件と確認結果`, `## 実行記録` |
-| `PLAN.md` | `## 目的`, `## 対象範囲`, `## 完了条件と確認結果`, `## 進め方` |
+| `TASK.md` | `## Work`, `## Completion conditions`, `## Execution log` |
+| `PLAN.md` | `## Goal`, `## Scope`, `## Completion conditions`, `## Approach` |
 
 Each completion condition has a unique positive `AC` number and three indented result lines. For example:
 
 ```markdown
 - [ ] AC-1. The setup guide covers the supported installation steps.
-  - 確認結果: Not yet verified
-  - 根拠: Not yet recorded
-  - 調整役の確認: Awaiting review
+  - Result: Not verified
+  - Evidence: Not recorded
+  - Coordinator check: Not checked
 ```
+
+Files created before the English names may use the earlier Japanese headings and labels. Both forms are accepted, and each heading or label may use either form:
+
+| English | Earlier Japanese form |
+| --- | --- |
+| `## Work` | `## 作業内容` |
+| `## Completion conditions` | `## 完了条件と確認結果` |
+| `## Execution log` | `## 実行記録` |
+| `## Goal` | `## 目的` |
+| `## Scope` | `## 対象範囲` |
+| `## Approach` | `## 進め方` |
+| `- Result:` | `- 確認結果:` |
+| `- Evidence:` | `- 根拠:` |
+| `- Coordinator check:` | `- 調整役の確認:` |
+
+New cards and epics get the English template. Existing files are not rewritten.
 
 Record the verification result, supporting evidence, and coordinator confirmation before marking a condition complete. Preserve the required headings and result labels when editing in a text editor or the browser.
 

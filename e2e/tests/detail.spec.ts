@@ -49,7 +49,7 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   const request = panel.getByRole('region', { name: 'The agent is waiting for your answer' });
   await expect(request).toContainText('Waiting for confirmation on how to replace a board.');
   // An empty body is written as the TASK.md template, so the placeholder shows where the text goes.
-  await expect(panel.getByRole('tabpanel')).toContainText('（作業の目的と内容を書く）');
+  await expect(panel.getByRole('tabpanel')).toContainText('(Describe the purpose of the work and what to do.)');
   // The answer is typed in place, with no dialog: the text area is open at once, and Cancel clears what was typed.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await request.getByRole('textbox', { name: 'Your answer' }).fill('Typed in place');
@@ -57,7 +57,7 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(request.getByRole('textbox', { name: 'Your answer' })).toHaveValue('');
   await expect(request.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
   // An empty body is written as the TASK.md template, so the placeholder shows where the text goes.
-  await expect(panel.getByRole('tabpanel')).toContainText('（作業の目的と内容を書く）');
+  await expect(panel.getByRole('tabpanel')).toContainText('(Describe the purpose of the work and what to do.)');
 
   await card(page, 11).click();
   await expect(panel).toContainText('Running');

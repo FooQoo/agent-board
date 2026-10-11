@@ -107,10 +107,10 @@ fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_plan() {
 
     let plan = fs::read_to_string(dir.join("PLAN.md")).unwrap();
     for heading in [
-        "## 目的",
-        "## 対象範囲",
-        "## 完了条件と確認結果",
-        "## 進め方",
+        "## Goal",
+        "## Scope",
+        "## Completion conditions",
+        "## Approach",
     ] {
         assert!(plan.contains(heading), "missing {heading}");
     }

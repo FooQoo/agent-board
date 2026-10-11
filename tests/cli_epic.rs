@@ -54,10 +54,10 @@ fn epic_add_writes_the_epic_and_a_template_plan() {
     assert_eq!(shown["epic"]["isDraft"], false);
     let plan = shown["epic"]["plan"].as_str().unwrap();
     for heading in [
-        "## 目的",
-        "## 対象範囲",
-        "## 完了条件と確認結果",
-        "## 進め方",
+        "## Goal",
+        "## Scope",
+        "## Completion conditions",
+        "## Approach",
     ] {
         assert!(plan.contains(heading), "plan lacks {heading}: {plan}");
     }
