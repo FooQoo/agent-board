@@ -28,30 +28,27 @@ body {
   background: var(--r-bg);
   overflow: hidden;
 }
-.monitor-header {
-  display: flex;
+.monitor-shell > .header {
   flex: none;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
+  height: auto;
+  min-height: 44px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
 }
-.monitor-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 600;
-}
-.monitor-brand img {
+.monitor-shell > .header .header__logo {
   width: 24px;
   height: 24px;
-  object-fit: contain;
   border-radius: 6px;
-  background: var(--r-accent);
 }
-.monitor-settings,
+.monitor-shell > .header .header__app {
+  gap: 8px;
+  font-size: 14px;
+}
+.monitor-shell > .header .header__settings {
+  width: 44px;
+  height: 44px;
+}
 .monitor-refresh {
   flex: none;
   width: 44px;
@@ -198,30 +195,11 @@ body {
   font-size: 10px;
   color: var(--r-muted);
 }
-.monitor-card__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.monitor-card .status-label {
   margin-left: auto;
-  padding: 2px 6px;
-  border: 1px solid var(--r-border);
-  border-radius: 12px;
-  color: var(--r-text2);
-  background: var(--r-bg);
+  height: 20px;
+  padding-inline: 6px;
   font-size: 10px;
-  line-height: 13px;
-  white-space: nowrap;
-}
-.monitor-card__badge svg {
-  width: 11px;
-  height: 11px;
-}
-.monitor-card__badge--pending {
-  color: var(--r-pend-tx);
-  border-color: var(--r-pend-bd);
-}
-.monitor-card__badge--done svg {
-  color: var(--r-done);
 }
 .monitor-card__title {
   display: -webkit-box;

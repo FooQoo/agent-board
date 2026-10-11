@@ -1,6 +1,7 @@
-import { CheckIcon, LoaderIcon, PauseIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatShort } from '../../lib/format';
+import { CardContent } from '../../components/Card';
+import { StatusLabel } from '../../components/StatusLabel';
 import type { MonitorCard as MonitorCardModel } from '../contracts';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { completedAt } from '../model/sort';
@@ -25,21 +26,17 @@ export function MonitorCard({
     >
       <span className="monitor-card__top">
         <span className="monitor-card__id">#{card.id}</span>
-        <span className={`monitor-card__badge monitor-card__badge--${section}`}>
-          {section === 'pending' ? (
-            <PauseIcon aria-hidden="true" />
-          ) : section === 'running' ? (
-            <LoaderIcon aria-hidden="true" />
-          ) : (
-            <CheckIcon aria-hidden="true" />
-          )}
-          {t(`monitor.status.${section}`)}
-        </span>
+        <StatusLabel
+          kind={section === 'done' ? 'card' : 'agent'}
+          status={section === 'done' ? card.cardStatus : card.agentStatus}
+          monitor
+        />
       </span>
-      <span className="monitor-card__title">{card.title}</span>
-      {section === 'pending' && card.pendingReason && (
-        <span className="monitor-card__reason">{card.pendingReason}</span>
-      )}
+      <CardContent
+        card={card}
+        titleClassName="monitor-card__title"
+        reasonClassName="monitor-card__reason"
+      />
       <span className="monitor-card__meta">
         <span>{item.projectName}</span>
         <span>

@@ -1,8 +1,7 @@
-import { useId, useRef, useState } from 'react';
-import { SettingsIcon } from 'lucide-react';
+import { useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { SettingsDialog } from '../components/SettingsDialog';
+import { Header } from '../components/Header';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
 import type { MonitorViewProps } from './contracts';
 import { CardList } from './components/CardList';
@@ -12,8 +11,6 @@ import { sortDone, sortPending, sortRunning } from './model/sort';
 
 export function MonitorView(props: MonitorViewProps) {
   const { t } = useTranslation();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const settingsRef = useRef<HTMLButtonElement>(null);
   const listId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const { projects, scope, summary, pending, running, done, freshness, onScopeChange } = props;
@@ -37,23 +34,7 @@ export function MonitorView(props: MonitorViewProps) {
   };
   return (
     <main className="monitor-shell">
-      <header className="monitor-header">
-        <h1 className="monitor-brand">
-          <img src="/logo-white.png" alt="" />
-          <span>Agent Board</span>
-        </h1>
-        <Button
-          ref={settingsRef}
-          type="button"
-          variant="outline"
-          size="icon"
-          className="monitor-settings"
-          aria-label={t('settings.title')}
-          onClick={() => setSettingsOpen(true)}
-        >
-          <SettingsIcon aria-hidden="true" />
-        </Button>
-      </header>
+      <Header />
       <div className="monitor-controls">
         <ProjectSwitcher
           projects={projects}
@@ -111,11 +92,6 @@ export function MonitorView(props: MonitorViewProps) {
         compact
       />
       <ReadOnlyDetail {...props} />
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        restoreFocusRef={settingsRef}
-      />
     </main>
   );
 }

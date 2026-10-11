@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import type { ReactNode } from 'react';
 import { formatShort, stateLabel } from '../lib/format';
 import { epicInk } from '../lib/epic';
 import type { Card as CardModel } from '../types';
@@ -13,6 +14,30 @@ export interface CardProps {
   onSelect: (id: number) => void;
   /** The EPIC-ID label was pressed. The epic editor is connected here; without it nothing opens. */
   onOpenEpic?: (epicId: string) => void;
+}
+
+export function CardContent({
+  card,
+  titleClassName = 'card__title',
+  reasonClassName = 'card__reason',
+  showPendingReason = card.agentStatus === 'pending',
+  children,
+}: {
+  card: CardModel;
+  titleClassName?: string;
+  reasonClassName?: string;
+  showPendingReason?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <>
+      <span className={titleClassName}>{card.title}</span>
+      {children}
+      {showPendingReason && card.pendingReason && (
+        <span className={reasonClassName}>{card.pendingReason}</span>
+      )}
+    </>
+  );
 }
 
 const noop = () => {};
@@ -56,24 +81,24 @@ export function Card({ card, selected, onSelect, onOpenEpic = noop }: CardProps)
         <span className="card__spacer" />
         {showsState && <StatusLabel kind="agent" status={card.agentStatus} />}
       </span>
-      <span className="card__title">{card.title}</span>
-      {epic && (
-        <button
-          type="button"
-          className="card__epic"
-          data-epic-label={epic.id}
-          style={{ background: epic.color, color: epicInk(epic.color) }}
-          title={epic.name}
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenEpic(epic.id);
-          }}
-        >
-          <LayersIcon aria-hidden="true" focusable="false" />
-          <span>{epic.id}</span>
-        </button>
-      )}
-      {pending && card.pendingReason && <span className="card__reason">{card.pendingReason}</span>}
+      <CardContent card={card} showPendingReason={pending}>
+        {epic && (
+          <button
+            type="button"
+            className="card__epic"
+            data-epic-label={epic.id}
+            style={{ background: epic.color, color: epicInk(epic.color) }}
+            title={epic.name}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenEpic(epic.id);
+            }}
+          >
+            <LayersIcon aria-hidden="true" focusable="false" />
+            <span>{epic.id}</span>
+          </button>
+        )}
+      </CardContent>
       <span className="card__updated">
         {t('card.updated', { date: formatShort(card.updatedAt) })}
       </span>
