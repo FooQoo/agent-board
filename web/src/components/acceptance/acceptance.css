@@ -5,6 +5,9 @@
   align-items: center;
   gap: 4px;
   flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 16px;
@@ -19,6 +22,7 @@
 
 .acceptance-chip[data-complete="true"] {
   color: var(--r-accent);
+  border-color: var(--r-accent);
 }
 
 .acceptance-chip--error {

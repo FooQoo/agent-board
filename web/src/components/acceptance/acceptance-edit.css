@@ -98,6 +98,10 @@
 }
 
 /* The add button is the shared outline button; only its icon is sized here. */
+.acceptance-edit__add {
+  align-self: flex-start;
+}
+
 .acceptance-edit__add svg {
   width: 14px;
   height: 14px;
