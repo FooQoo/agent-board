@@ -61,6 +61,9 @@
 /* The task list under the outline. */
 .epic-tasks {
   display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
   flex-direction: column;
   gap: 10px;
   margin-top: 16px;
@@ -70,6 +73,7 @@
 
 .epic-tasks__head {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 6px;
 }
@@ -118,6 +122,10 @@
 
 .epic-tasks__list {
   display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   flex-direction: column;
   margin: 0;
   padding: 0;
@@ -126,6 +134,7 @@
 
 .epic-tasks__row {
   display: flex;
+  flex: none;
   align-items: flex-start;
   gap: 10px;
   padding: 10px 0;

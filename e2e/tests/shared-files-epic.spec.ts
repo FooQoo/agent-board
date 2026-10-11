@@ -188,3 +188,35 @@ for (const locale of ['en', 'ja'] as const) {
     });
   }
 }
+
+for (const [mode, width, height] of [['light', 1280, 800], ['dark', 960, 640]] as const) {
+  test(`epic task and image lists scroll independently with fixed controls in ${mode}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height });
+    await page.addInitScript((mode) => localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' })), mode);
+    await page.goto(`/?project=${projectId(mainProject)}`);
+    await waitForSync(page);
+    const dialog = await openEpic(page, 'FILE-SHARE');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+    await dialog.locator('input[type="file"]').setInputFiles(Array.from({ length: 6 }, (_, i) => ({ name: `image-${i}.png`, mimeType: 'image/png', buffer: png })));
+    const tasks = dialog.locator('.epic-tasks__list');
+    const images = dialog.locator('.editor-attachments__list');
+    const outline = dialog.getByRole('navigation', { name: 'Outline' });
+    const taskHead = dialog.locator('.epic-tasks__head');
+    const imageHead = dialog.locator('.editor-attachments__header');
+    const imageAdd = dialog.getByRole('button', { name: 'Add image attachment', exact: true });
+    const drop = dialog.locator('.editor-attachments__drop');
+    await expect.poll(() => dialog.evaluate((node) => node.getAnimations().every((animation) => animation.playState !== 'running'))).toBe(true);
+    const positions = await Promise.all([outline, taskHead, imageHead, imageAdd, drop].map((node) => node.boundingBox()));
+    for (const list of [tasks, images]) {
+      expect(await list.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+      await list.hover();
+      await page.mouse.wheel(0, 800);
+      await expect.poll(() => list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+    }
+    const after = await Promise.all([outline, taskHead, imageHead, imageAdd, drop].map((node) => node.boundingBox()));
+    expect(after).toEqual(positions);
+    expect(await dialog.locator('.editor__side').evaluate((node) => node.scrollTop)).toBe(0);
+    expect(await dialog.locator('.editor-attachments__dropzone').evaluate((node) => node.scrollTop)).toBe(0);
+    await dialog.screenshot({ path: testInfo.outputPath('independent-scroll.png') });
+  });
+}

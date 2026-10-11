@@ -132,15 +132,16 @@
 }
 
 /* Outline. */
-/* The left column: the outline, and under it the tasks of an epic. It scrolls as a whole. */
+/* The outline stays fixed; only the task list below it scrolls. */
 .editor__side {
   display: flex;
   flex: none;
   flex-direction: column;
   gap: 4px;
   width: 220px;
+  min-height: 0;
   padding: 24px 16px;
-  overflow-y: auto;
+  overflow: hidden;
   border-right: 1px solid var(--r-border);
   background: var(--r-surface);
 }
@@ -211,6 +212,7 @@
 }
 .editor-attachments__header {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 6px;
 }
@@ -274,7 +276,7 @@
   flex-direction: column;
   gap: 14px;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .editor-attachments__dropzone--active {
   outline: 2px dashed var(--r-accent);
@@ -299,11 +301,16 @@
 }
 .editor-attachments__list {
   display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   flex-direction: column;
   gap: 18px;
 }
 .editor-attachments__tile {
   position: relative;
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 7px;
