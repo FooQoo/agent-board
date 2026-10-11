@@ -7,6 +7,7 @@ import { findCardButton } from '../DialogFrame';
 import { DiscardConfirm } from './DiscardConfirm';
 import '../../styles/editor.css';
 import '../../styles/editor-epic.css';
+import '../../styles/rich-table.css';
 import '../../styles/rich-body.css';
 
 export interface EditorShellProps {

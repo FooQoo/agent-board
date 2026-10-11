@@ -331,4 +331,11 @@
 .rich-markdown .milkdown-code-block .cm-gutters {
   border-right: 0;
   background: transparent;
+  color: var(--r-text2);
+}
+
+/* CodeMirror's light-blue current-line wash lowers the text contrast on a dark page. */
+.rich-markdown .milkdown-code-block .cm-activeLine,
+.rich-markdown .milkdown-code-block .cm-activeLineGutter {
+  background: transparent;
 }

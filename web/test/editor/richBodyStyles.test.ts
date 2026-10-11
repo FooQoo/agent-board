@@ -70,3 +70,30 @@ describe('focus frames and code block headers', () => {
     expect(css).toMatch(/\.tools-button-group button \{[^}]*opacity: 1/);
   });
 });
+
+describe('table block controls', () => {
+  const css = readFileSync(join(SRC, 'styles/rich-table.css'), 'utf8');
+
+  it('keeps the handles out of the flow and hidden until the table is used', () => {
+    for (const selector of [
+      '.rich-markdown .milkdown-table-block .handle',
+      '.rich-markdown .milkdown-table-block .handle[data-show="false"]',
+      '.rich-markdown .milkdown-table-block .cell-handle .button-group',
+      '.rich-markdown .milkdown-table-block .cell-handle .button-group[data-show="false"]',
+      '.rich-markdown .milkdown-table-block .drag-preview[data-show="false"]',
+    ]) {
+      expect(css, selector).toContain(selector);
+    }
+    const start = css.indexOf('.rich-markdown .milkdown-table-block .handle {');
+    expect(css.slice(start, css.indexOf('}', start))).toContain('position: absolute');
+  });
+});
+
+describe('code block current line', () => {
+  it('shows no wash that would lower the text contrast', () => {
+    const css = readFileSync(join(SRC, 'styles/rich-body.css'), 'utf8');
+    const start = css.indexOf('.rich-markdown .milkdown-code-block .cm-activeLine,');
+    expect(start).toBeGreaterThan(-1);
+    expect(css.slice(start, css.indexOf('}', start))).toContain('background: transparent');
+  });
+});

@@ -127,5 +127,9 @@
 }
 
 .rich-markdown .milkdown-table-block {
+  position: relative;
+}
+
+.rich-markdown .milkdown-table-block .table-wrapper {
   overflow-x: auto;
 }

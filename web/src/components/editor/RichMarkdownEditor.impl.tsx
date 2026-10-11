@@ -34,6 +34,7 @@ import {
   type MermaidTheme,
   type RenderResult,
 } from '../../lib/mermaid';
+import { codeHighlight } from './codeHighlight';
 import { outlineOf } from './outline';
 import { richImageFeature, richLinkGuard, secondLevelHeadings } from './richMarkdownNodes';
 import type { RichMarkdownEditorHandle, RichMarkdownEditorProps } from './RichMarkdownEditor';
@@ -212,6 +213,8 @@ function EditorSession(props: SessionProps) {
       })
       .addFeature(codeMirror, {
         languages: CODE_LANGUAGES,
+        // Replaces CodeMirror's light-page default colors (see codeHighlight.ts).
+        theme: codeHighlight,
         renderPreview: (language, content, apply) => previews.render(language, content, apply),
         previewOnlyByDefault: true,
       })
