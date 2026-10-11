@@ -273,7 +273,9 @@ test('a body of exactly 50,000 characters saves, and one more cannot be saved', 
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   const stored = show(id);
-  expect([...stored.description].length).toBeLessThanOrEqual(50_000);
+  // The limit counts the body; the frontmatter the product writes around it is not counted.
+  const storedBody = stored.description.replace(/^---\n[\s\S]*?\n---\n\n/, '');
+  expect([...storedBody].length).toBeLessThanOrEqual(50_000);
   expect(stored.description).toContain('あ'.repeat(40_000));
   expect(stored.isDraft).toBe(true);
 });
