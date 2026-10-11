@@ -107,6 +107,77 @@ test('a lost event stream keeps the latest snapshot, manual refresh works, and v
   await expect(page.getByText('Connected · Current')).toBeVisible();
 });
 
+test('a missing event-stream heartbeat marks the snapshot stale and retries the stream', async ({ page }) => {
+  await page.clock.install();
+  await page.addInitScript(() => {
+    type FakeSource = { emit(type: string): void; close(): void; closed: boolean };
+    const host = window as unknown as { __monitorEventSources: FakeSource[]; EventSource: typeof EventSource };
+    host.__monitorEventSources = [];
+    host.EventSource = class {
+      constructor() {
+        const listeners = new Map<string, Set<EventListener>>();
+        const source: FakeSource = {
+          closed: false,
+          addEventListener(type: string, listener: EventListener) {
+            const group = listeners.get(type) ?? new Set<EventListener>();
+            group.add(listener);
+            listeners.set(type, group);
+          },
+          emit(type: string) {
+            for (const listener of listeners.get(type) ?? []) listener(new Event(type));
+          },
+          close() {
+            source.closed = true;
+          },
+        } as FakeSource;
+        host.__monitorEventSources.push(source);
+        return source;
+      }
+    } as unknown as typeof EventSource;
+  });
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.goto('/monitor/');
+  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __monitorEventSources: unknown[] }).__monitorEventSources.length)).toBe(1);
+  await page.evaluate(() => (window as unknown as { __monitorEventSources: Array<{ emit(type: string): void }> }).__monitorEventSources[0]?.emit('ready'));
+  await expect(page.getByRole('status')).toContainText('Connected · Current');
+
+  await page.clock.fastForward(45_000);
+  await expect(page.getByRole('status')).toContainText('Updated · Automatic updates stopped');
+  expect(await page.evaluate(() => (window as unknown as { __monitorEventSources: Array<{ closed: boolean }> }).__monitorEventSources[0]?.closed)).toBe(true);
+  expect(await page.evaluate(() => (window as unknown as { __monitorEventSources: unknown[] }).__monitorEventSources.length)).toBe(1);
+
+  await page.clock.fastForward(1_000);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __monitorEventSources: unknown[] }).__monitorEventSources.length)).toBe(2);
+});
+
+test('a timed-out catalog read keeps the last snapshot instead of showing zero work', async ({ page }) => {
+  await page.clock.install();
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.goto('/monitor/');
+  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+
+  let markRequestStarted!: () => void;
+  const requestStarted = new Promise<void>((resolve) => { markRequestStarted = resolve; });
+  let releaseRequest: (() => void) | undefined;
+  await page.route('**/monitor/api/projects', (route) => {
+    markRequestStarted();
+    return new Promise<void>((resolve) => {
+      releaseRequest = () => { void route.abort().catch(() => undefined).finally(resolve); };
+    });
+  });
+  await page.getByRole('button', { name: 'Refresh' }).click();
+  await requestStarted;
+  await page.clock.fastForward(10_000);
+  await expect(page.getByRole('status')).toContainText('Updated · Automatic updates stopped');
+  await expect(monitorCard(page, 1, 'Alpha pending review')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '3 Running' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Pending' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '9 Done' })).toBeVisible();
+  releaseRequest?.();
+  await page.unroute('**/monitor/api/projects');
+});
+
 const monitorCard = (page: Page, id: number, title: string) =>
   page.getByRole('button', { name: new RegExp(`^#${id}.*${title}`) });
 
@@ -177,6 +248,16 @@ test('monitor renders both projects and same-number cards, preserves direct rout
   await expect.poll(() => detail.locator('.md__image-picture').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
   await expect.poll(() => detail.locator('figure svg').count()).toBeGreaterThan(0);
   await expect(detail.locator('figure svg')).toBeVisible();
+  await detail.getByRole('button', { name: 'Enlarge monitor.png' }).click();
+  const imageLightbox = page.getByRole('dialog', { name: 'monitor.png' });
+  await expect(imageLightbox).toBeVisible();
+  await imageLightbox.getByRole('button', { name: 'Close' }).click();
+  await expect(imageLightbox).toHaveCount(0);
+  await detail.getByRole('button', { name: 'Enlarge diagram' }).click();
+  const diagramLightbox = page.getByRole('dialog', { name: 'Enlarge diagram' });
+  await expect(diagramLightbox.locator('svg.flowchart')).toBeVisible();
+  await diagramLightbox.getByRole('button', { name: 'Close' }).click();
+  await expect(diagramLightbox).toHaveCount(0);
   await page.getByRole('button', { name: 'Close details' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page).not.toHaveURL(/cardProject=/);
