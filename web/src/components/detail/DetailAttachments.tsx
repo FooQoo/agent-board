@@ -9,14 +9,18 @@ export function DetailAttachments({
   projectId,
   cardId,
   attachments,
+  attachmentUrl,
 }: {
   projectId: ProjectId;
   cardId: number;
   attachments: readonly Attachment[];
+  attachmentUrl?: (id: string) => string;
 }) {
   const { t } = useTranslation();
   const [zoom, setZoom] = useState<Attachment | null>(null);
-  const imageUrl = (id: string) => `/api/projects/${projectId}/cards/${cardId}/attachments/${id}`;
+  const imageUrl =
+    attachmentUrl ??
+    ((id: string) => `/api/projects/${projectId}/cards/${cardId}/attachments/${id}`);
   if (attachments.length === 0) return null;
   return (
     <section className="detail-attachments" aria-label={t('editor.attachmentsLabel')}>

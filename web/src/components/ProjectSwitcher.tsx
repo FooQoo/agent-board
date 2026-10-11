@@ -18,6 +18,9 @@ export interface ProjectSwitcherProps {
   disabled?: boolean;
   /** Called with the ID of the chosen project. */
   onSelect: (projectId: ProjectId) => void;
+  /** Include an all-projects choice for read-only monitor scopes. */
+  allProjects?: boolean;
+  allProjectsLabel?: string;
 }
 
 /**
@@ -30,11 +33,18 @@ export function ProjectSwitcher({
   activeProjectId,
   disabled = false,
   onSelect,
+  allProjects = false,
+  allProjectsLabel = 'All Projects',
 }: ProjectSwitcherProps) {
   const { t } = useTranslation();
+  const all = allProjects && activeProjectId === 'all';
   const active = projects.find((project) => project.id === activeProjectId) ?? null;
   const empty = projects.length === 0;
-  const label = empty ? t('project.none') : (active?.name ?? t('project.choose'));
+  const label = all
+    ? allProjectsLabel
+    : empty
+      ? t('project.none')
+      : (active?.name ?? t('project.choose'));
 
   return (
     <DropdownMenu>
@@ -48,7 +58,10 @@ export function ProjectSwitcher({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel>{t('project.menuLabel')}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={active?.id ?? ''} onValueChange={onSelect}>
+        <DropdownMenuRadioGroup value={all ? 'all' : (active?.id ?? '')} onValueChange={onSelect}>
+          {allProjects && (
+            <DropdownMenuRadioItem value="all">{allProjectsLabel}</DropdownMenuRadioItem>
+          )}
           {projects.map((project) => (
             <DropdownMenuRadioItem key={project.id} value={project.id} title={project.name}>
               <span className="menu__name">{project.name}</span>

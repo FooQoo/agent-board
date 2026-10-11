@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { App } from './monitor/App';
 import { initializeTheme } from './theme';
 import './styles/tokens.css';
+import './styles/app.css';
+import './styles/ui.css';
+import './styles/modal.css';
 import './styles/theme.css';
 import './monitor/monitor.css';
 

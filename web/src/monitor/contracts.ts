@@ -47,6 +47,8 @@ export interface MonitorViewProps {
   running: MonitorCard[];
   done: MonitorCard[];
   selectedCard: MonitorCard | null;
+  /** Active controlled detail tab, supplied by URL state when present. */
+  tab?: 'body' | 'history';
   body: string | null;
   history: Card['history'] | null;
   freshness: MonitorFreshness;

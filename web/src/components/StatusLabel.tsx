@@ -9,12 +9,23 @@ type Variant = 'default' | 'secondary' | 'outline' | 'muted' | 'pending';
 export function StatusLabel({
   kind,
   status,
+  monitor = false,
 }: {
   kind: 'card' | 'agent';
   status: ColumnName | RunState;
+  monitor?: boolean;
 }) {
   const { t } = useTranslation();
-  const text = kind === 'card' ? t(`column.${status}`) : t(`runState.${status}`);
+  const monitorState = kind === 'agent' && (status === 'pending' || status === 'running');
+  const monitorLane = kind === 'card' && status === 'done';
+  const text =
+    monitor && monitorState
+      ? t(`monitor.status.${status}`)
+      : monitor && monitorLane
+        ? t('monitor.status.done')
+        : kind === 'card'
+          ? t(`column.${status}`)
+          : t(`runState.${status}`);
   let variant: Variant;
   let icon = null;
   if (kind === 'card') {

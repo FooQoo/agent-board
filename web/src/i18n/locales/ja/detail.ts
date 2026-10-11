@@ -36,6 +36,7 @@ export const detailJa = {
     retry: '再試行',
     cancel: 'キャンセル',
     changed: '判断依頼が変わりました。最新のボードを確認してください。',
+    readOnlyGuide: '回答はPCのAgent Boardで行えます。',
   },
   delete: {
     buttonLabel: 'カードを削除',
