@@ -82,11 +82,22 @@ function card(id: number, status: 'pending' | 'running' | 'done', long: boolean)
 export function createMonitorFixtureProps(): MonitorViewProps {
   const params = new URLSearchParams(window.location.search);
   const long = params.has('long');
-  const count = Math.min(100, Math.max(1, Number(params.get('count')) || 6));
+  const ac1Fixture = params.get('fixture') === 'ac1';
+  const count = ac1Fixture ? 11 : Math.min(100, Math.max(1, Number(params.get('count')) || 6));
   const scope = params.get('scope') ?? 'all';
   const items: MonitorCard[] = Array.from({ length: count }, (_, index) => {
     const id = index + 1;
-    const status = id === 3 || id % 7 === 0 ? 'done' : id % 3 === 0 ? 'running' : 'pending';
+    const status = ac1Fixture
+      ? id === 1
+        ? 'pending'
+        : id === 2 || id === 3
+          ? 'running'
+          : 'done'
+      : id === 3 || id % 7 === 0
+        ? 'done'
+        : id % 3 === 0
+          ? 'running'
+          : 'pending';
     return {
       projectId: project.id,
       projectName: long
