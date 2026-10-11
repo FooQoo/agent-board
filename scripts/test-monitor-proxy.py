@@ -157,6 +157,117 @@ def assert_port_released(port: int) -> None:
             raise CheckFailure(f"A listener remained on port {port} after cleanup.")
 
 
+def run_browser_test(*, origin: str, username: str, password: str, project_id: str, env: dict[str, str]) -> None:
+    """Exercise the authenticated HTTPS entry, monitor, and PC write path in Chromium."""
+    browser_test = r'''
+import { chromium, expect } from '@playwright/test';
+
+const { CADDY_BROWSER_ORIGIN: origin, BASIC_AUTH_USER: username, BASIC_AUTH_PASSWORD: password, BROWSER_PROJECT_ID: projectId } = process.env;
+const browser = await chromium.launch();
+const apiResponses = [];
+try {
+  const context = await browser.newContext({
+    httpCredentials: { username, password },
+    // The companion Python checks explicitly trust this temporary CA and reject it when untrusted.
+    ignoreHTTPSErrors: true,
+    viewport: { width: 375, height: 640 },
+  });
+  const monitor = await context.newPage();
+  await monitor.goto(`${origin}/`);
+  await expect(monitor).toHaveURL(/\/monitor\/$/);
+  await expect(monitor.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(monitor.getByText('Proxy fixture')).toBeVisible();
+  await expect(monitor.getByRole('button', { name: 'Add card', exact: true })).toHaveCount(0);
+  await monitor.getByRole('button', { name: /Proxy fixture/ }).click();
+  const monitorDescription = await monitor.getByRole('tabpanel', { name: 'Description' }).innerText();
+  await monitor.getByRole('button', { name: 'Close details' }).click();
+
+  const desktop = await context.newPage();
+  desktop.on('response', async (response) => {
+    if (response.url().includes('/api/') && response.request().method() !== 'GET') {
+      apiResponses.push({ method: response.request().method(), url: response.url(), status: response.status(), body: await response.text().catch(() => '') });
+    }
+  });
+  await desktop.setViewportSize({ width: 1280, height: 900 });
+  await desktop.goto(`${origin}/`);
+  await expect(desktop).toHaveURL(/\/board\/$/);
+  await desktop.getByRole('region', { name: 'Doing' }).getByRole('button', { name: /Proxy fixture/ }).click();
+  await expect(desktop.getByRole('complementary', { name: 'Card details' })).toContainText('Proxy fixture');
+  expect(await desktop.getByRole('tabpanel', { name: 'Description' }).innerText()).toBe(monitorDescription);
+  await expect(desktop.getByRole('button', { name: 'Add card', exact: true })).toBeVisible();
+  const createdResponsePromise = desktop.waitForResponse((response) => response.url().endsWith('/cards') && response.request().method() === 'POST');
+  await desktop.getByRole('button', { name: 'Add card', exact: true }).click();
+  const dialog = desktop.getByRole('dialog', { name: 'Add card' });
+  await dialog.getByRole('textbox', { name: 'Title' }).fill('Created from HTTPS browser');
+  const description = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
+  await description.click();
+  await description.evaluate((element, markdown) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', markdown);
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, '## 作業内容\n\nHTTPS browser write.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Browser write\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n');
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
+  const createdResponse = await createdResponsePromise;
+  expect(createdResponse.status()).toBe(201);
+  const createdCardId = (await createdResponse.json()).card.id;
+  const added = desktop.getByRole('region', { name: 'Todo' }).getByRole('button', { name: /Created from HTTPS browser/ });
+  await expect(added).toBeVisible();
+  const source = await added.boundingBox();
+  const target = await desktop.getByRole('region', { name: 'Doing' }).boundingBox();
+  if (!source || !target) throw new Error('Could not measure the browser move source and destination.');
+  await desktop.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+  await desktop.mouse.down();
+  await desktop.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
+  await desktop.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
+  await desktop.mouse.up();
+  const move = desktop.getByRole('dialog');
+  await expect(move).toContainText('Todo');
+  await expect(move).toContainText('Doing');
+  await move.getByLabel('Reason').fill('Move through the HTTPS browser test.');
+  await move.getByRole('button', { name: 'Move', exact: true }).click();
+  await expect(desktop.getByRole('region', { name: 'Doing' }).getByRole('button', { name: /Created from HTTPS browser/ })).toBeVisible();
+  const stateStatus = await desktop.evaluate(async ({ projectId, cardId }) => {
+    const token = document.querySelector('meta[name="agboard-token"]')?.getAttribute('content');
+    const response = await fetch(`/api/projects/${projectId}/cards/${cardId}/agent-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': token ?? '' },
+      body: JSON.stringify({ agentStatus: 'running', reason: 'Show the browser task in the HTTPS monitor.' }),
+    });
+    return response.status;
+  }, { projectId, cardId: createdCardId });
+  expect(stateStatus).toBe(200);
+  await expect(monitor.getByRole('button', { name: /Created from HTTPS browser/ })).toBeVisible();
+  console.log('Chromium HTTPS checks passed: mobile entry, read-only monitor, desktop entry, guarded PC write, and monitor SSE update.');
+} catch (error) {
+  console.log(`Chromium API response diagnostics: ${JSON.stringify(apiResponses)}`);
+  throw error;
+} finally {
+  await browser.close();
+}
+'''
+    browser_env = env | {
+        "CADDY_BROWSER_ORIGIN": origin,
+        "BASIC_AUTH_USER": username,
+        "BASIC_AUTH_PASSWORD": password,
+        "BROWSER_PROJECT_ID": project_id,
+    }
+    result = subprocess.run(
+        ["node", "--input-type=module", "-e", browser_test],
+        cwd=ROOT / "e2e",
+        env=browser_env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode:
+        detail = "\n".join(part for part in (result.stdout.strip(), result.stderr.strip()) if part) or f"exit {result.returncode}"
+        for secret in (username, password):
+            detail = detail.replace(secret, "<redacted>")
+        raise CheckFailure(f"Chromium HTTPS check failed: {detail}")
+    print(result.stdout.strip())
+
+
 def run_proxy_test(caddy: str) -> None:
     with tempfile.TemporaryDirectory(prefix="agboard-monitor-proxy-") as temporary:
         temp = Path(temporary)
@@ -243,6 +354,8 @@ def run_proxy_test(caddy: str) -> None:
             )
         )
         card_id = card_result["card"]["id"]
+        cli("--project", project_name, "mv", str(card_id), "doing", "--actor", "ai", "--reason", "Seed monitor browser fixture")
+        cli("--project", project_name, "state", str(card_id), "running", "--actor", "ai", "--reason", "Seed monitor browser fixture")
         image_path = temp / "fixture.png"
         image_path.write_bytes(PNG)
         attachment_result = json.loads(
@@ -489,6 +602,8 @@ def run_proxy_test(caddy: str) -> None:
             check(accepted_board != initial_board, "The allowed PC write was not visible in the monitor snapshot.")
             check(final_board == accepted_board, "A rejected guard test changed the monitor snapshot.")
             check(b"Created through HTTPS proxy" in final_board, "The monitor snapshot missed the accepted write.")
+
+            run_browser_test(origin=origin, username=username, password=password, project_id=project_id, env=build_env)
 
         finally:
             stop_process(caddy_process)
