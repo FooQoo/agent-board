@@ -28,7 +28,7 @@ export const editJa = {
     assigneeLabel: '担当',
     assigneeAi: 'AI',
     assigneeUser: 'ユーザ',
-    outlineLabel: 'CONTENTS / 目次',
+    outlineLabel: '目次',
     outlineName: '目次',
     outlineEmpty: '見出し(## )を書くと、ここに目次が出ます。',
     counter: '{{count}} / {{max}}',

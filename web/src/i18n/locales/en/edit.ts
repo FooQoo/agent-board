@@ -28,7 +28,7 @@ export const editEn = {
     assigneeLabel: 'Assignee',
     assigneeAi: 'AI',
     assigneeUser: 'User',
-    outlineLabel: 'CONTENTS / 目次',
+    outlineLabel: 'CONTENTS',
     outlineName: 'Outline',
     outlineEmpty: 'Add a heading (## ) and the outline appears here.',
     counter: '{{count}} / {{max}}',
