@@ -310,6 +310,21 @@ describe('task membership', () => {
 });
 
 describe('saving', () => {
+  it('saves the plan body and its conditions together, and a new condition gets the next number', async () => {
+    const { api } = fakeApi();
+    const { dialog, onClosed } = await openEpic(api);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add condition' }));
+    fireEvent.change(within(dialog).getByLabelText('Condition AC-1'), {
+      target: { value: 'The plan is saved' },
+    });
+    await userEvent.click(button(dialog, 'Save'));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(api.savePlan).toHaveBeenCalledWith({
+      body: PLAN,
+      acceptance: [{ id: 'AC-1', text: 'The plan is saved', done: false }],
+    });
+  });
+
   it('saves images, then the plan, then the name, color and draft, then the tasks', async () => {
     const { api, calls } = fakeApi();
     const { dialog, onClosed } = await openEpic(api);
