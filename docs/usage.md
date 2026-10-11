@@ -68,7 +68,7 @@ The examples below use `My project`; substitute your actual project name and the
 
 1. Select a project in the header and choose **Add card**.
 2. Enter the title, choose AI or User as the owner, and write the work and completion conditions in the Markdown editor. You can also assign an epic.
-3. Select a card to view its text, status, and history in the detail panel. Edit it there, or move it to another column with a reason.
+3. Select a card to view its text, status, and history in the detail panel. To edit its text, choose **Make draft**, then open the editor. To move it to another column, drag it to that column and confirm the reason.
 
 A card's owner is fixed after creation. The columns describe work progress:
 
@@ -84,7 +84,7 @@ AI-owned cards in Doing show **Idle**, **Running**, or **Pending**. Running mean
 
 Select a Pending card to read the question and its history. Choose one of the offered options, write a note, or do both, then submit the answer. The answer is recorded and the agent state becomes Idle; the agent reads the response before deciding how to resume.
 
-Use the **Draft** checkbox while writing a card that agents should leave alone. Save your edits, then clear Draft when it is ready for an agent. Draft cards are read-only for agents, including their `TASK.md` files.
+Use the **Draft** checkbox when creating a card that agents should leave alone. For an existing card, choose **Make draft** in the detail panel, edit and save its text, then choose **Finalize** when it is ready for an agent. Saving in the card editor keeps its draft state; the editor has no Draft checkbox. Draft cards are read-only for agents, including their `TASK.md` files.
 
 ### Plans, editing, and archive
 
