@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use axum::Router;
 use axum::body::to_bytes;
-use axum::extract::{DefaultBodyLimit, FromRequest, Multipart, Path, Request, State};
+use axum::extract::{DefaultBodyLimit, Extension, FromRequest, Multipart, Path, Request, State};
 use axum::http::{HeaderMap, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -34,17 +34,55 @@ const MAX_MULTIPART_BODY: usize = 52 * 1024 * 1024;
 /// elements at run time.
 const CONTENT_SECURITY_POLICY: &str = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
+#[derive(Clone)]
+pub(crate) struct RemoteGuard {
+    pub port: u16,
+    pub origins: Arc<std::collections::HashSet<String>>,
+    pub authorities: Arc<std::collections::HashSet<String>>,
+    pub token: String,
+}
+
+#[derive(Clone)]
+struct RemotePageToken(String);
+
+#[derive(Clone)]
+struct GuardContext {
+    port: u16,
+    token: String,
+    remote: Option<RemoteGuard>,
+}
+
 pub(crate) fn router(state: Arc<AppState>) -> Router {
-    Router::new()
-        .route("/", get(index))
+    routes(state, None)
+}
+
+pub(crate) fn remote_router(state: Arc<AppState>, guard: RemoteGuard) -> Router {
+    routes(state, Some(guard))
+}
+
+fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
+    let guard_context = GuardContext {
+        port: remote.as_ref().map_or(state.port, |g| g.port),
+        token: state.token.clone(),
+        remote: remote.clone(),
+    };
+    let mut router = Router::new();
+    if remote.is_none() {
+        router = router.route("/", get(index));
+    } else {
+        router = router
+            .route("/", get(access_index))
+            .route("/board", get(board_redirect))
+            .route("/board/", get(index))
+            .route("/assets/access/entry.js", get(access_js));
+    }
+    router = router
         .route("/assets/app.js", get(app_js))
         .route("/assets/app.css", get(app_css))
         .route("/assets/{name}", get(chunk))
         .route("/logo.png", get(logo_png))
         .route("/logo-white.png", get(logo_white_png))
         .route("/api/events", get(events::events))
-        .route("/api/notify", post(notify))
-        .route("/api/health", get(health))
         .route("/api/projects", get(projects))
         .route("/api/projects/{project_id}/board", get(board))
         .route("/api/projects/{project_id}/archive", get(archive))
@@ -126,10 +164,19 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route(
             "/api/projects/{project_id}/cards/{id}/answer",
             post(answer_request),
-        )
+        );
+    if remote.is_none() {
+        router = router
+            .route("/api/notify", post(notify))
+            .route("/api/health", get(health));
+    }
+    router
         .layer(DefaultBodyLimit::max(MAX_MULTIPART_BODY))
-        .layer(middleware::from_fn_with_state(state.clone(), write_guard))
-        .layer(middleware::from_fn_with_state(state.clone(), host_guard))
+        .layer(middleware::from_fn_with_state(
+            guard_context.clone(),
+            write_guard,
+        ))
+        .layer(middleware::from_fn_with_state(guard_context, host_guard))
         .layer(middleware::from_fn(no_referrer))
         .with_state(state)
 }
@@ -164,7 +211,7 @@ fn error_response(
     json_response(status, &body)
 }
 
-fn agboard_error_response(error: &AgboardError) -> Response {
+pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
     let status = match error {
         AgboardError::CardNotFound { .. }
         | AgboardError::ProjectNotFound { .. }
@@ -204,7 +251,7 @@ fn forbidden(reason: &str) -> Response {
     )
 }
 
-fn json_response<T: Serialize>(status: StatusCode, body: &T) -> Response {
+pub(crate) fn json_response<T: Serialize>(status: StatusCode, body: &T) -> Response {
     match serde_json::to_vec(body) {
         Ok(bytes) => (
             status,
@@ -234,17 +281,38 @@ fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
 
 /// Every response tells the browser not to send a `Referer`.
 async fn no_referrer(request: Request, next: Next) -> Response {
+    let private_api = request.uri().path().starts_with("/api/");
     let mut response = next.run(request).await;
     response.headers_mut().insert(
         header::REFERRER_POLICY,
         header::HeaderValue::from_static("no-referrer"),
     );
+    if private_api {
+        response.headers_mut().insert(
+            header::CACHE_CONTROL,
+            header::HeaderValue::from_static("no-store"),
+        );
+    }
     response
 }
 
 /// Every request, whatever the path, needs an accepted `Host`.
-async fn host_guard(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {
-    if guard::host_allowed(header_text(request.headers(), "host"), state.port) {
+async fn host_guard(State(context): State<GuardContext>, request: Request, next: Next) -> Response {
+    let host = header_text(request.headers(), "host");
+    let allowed = match &context.remote {
+        Some(remote) => host.is_some_and(|h| {
+            remote.authorities.contains(&h.to_ascii_lowercase())
+                || h.eq_ignore_ascii_case(&format!("127.0.0.1:{}", remote.port))
+        }),
+        None => guard::host_allowed(host, context.port),
+    };
+    if allowed {
+        let mut request = request;
+        if let Some(remote) = &context.remote {
+            request
+                .extensions_mut()
+                .insert(RemotePageToken(remote.token.clone()));
+        }
         next.run(request).await
     } else {
         forbidden("Open the board at http://127.0.0.1:<port>/ as printed by agboard serve.")
@@ -255,12 +323,24 @@ async fn host_guard(State(state): State<Arc<AppState>>, request: Request, next: 
 /// token. This runs before the path, the body or the shared files are looked at, so
 /// a refusal never tells whether a project or card exists. `POST /api/notify`
 /// changes nothing and is open.
-async fn write_guard(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {
+async fn write_guard(
+    State(context): State<GuardContext>,
+    request: Request,
+    next: Next,
+) -> Response {
     let reads = matches!(
         *request.method(),
         Method::GET | Method::HEAD | Method::OPTIONS
     );
-    if reads || request.uri().path() == "/api/notify" || write_allowed(request.headers(), &state) {
+    let protected_path = context.remote.is_none()
+        || request.uri().path() == "/api/projects"
+        || request.uri().path().starts_with("/api/projects/");
+    let allowed = match &context.remote {
+        Some(remote) if protected_path => remote_write_allowed(request.headers(), remote),
+        Some(_) => true,
+        None => write_allowed(request.headers(), &context),
+    };
+    if reads || (context.remote.is_none() && request.uri().path() == "/api/notify") || allowed {
         next.run(request).await
     } else {
         forbidden("Changes can only be made from the board page.")
@@ -414,16 +494,52 @@ fn text_response(content_type: &'static str, body: String) -> Response {
         .into_response()
 }
 
-async fn index(State(state): State<Arc<AppState>>) -> Response {
+async fn index(
+    State(state): State<Arc<AppState>>,
+    remote_token: Option<Extension<RemotePageToken>>,
+) -> Response {
     let mut response = text_response(
         "text/html; charset=utf-8",
-        assets::render_index(assets::INDEX_HTML, &state.token),
+        assets::render_index(
+            assets::INDEX_HTML,
+            remote_token
+                .as_ref()
+                .map_or(state.token.as_str(), |token| token.0.0.as_str()),
+        ),
     );
+    add_html_security_headers(&mut response);
+    response
+}
+
+fn add_html_security_headers(response: &mut Response) {
     response.headers_mut().insert(
         header::CONTENT_SECURITY_POLICY,
         header::HeaderValue::from_static(CONTENT_SECURITY_POLICY),
     );
+}
+
+async fn access_index() -> Response {
+    let mut response = text_response(
+        "text/html; charset=utf-8",
+        super::monitor::assets::ACCESS_HTML.to_string(),
+    );
+    add_html_security_headers(&mut response);
     response
+}
+
+async fn access_js() -> Response {
+    text_response(
+        "text/javascript; charset=utf-8",
+        String::from_utf8_lossy(super::monitor::assets::ACCESS_JS).into_owned(),
+    )
+}
+
+async fn board_redirect() -> Response {
+    (
+        StatusCode::PERMANENT_REDIRECT,
+        [(header::LOCATION, "/board/")],
+    )
+        .into_response()
 }
 
 async fn app_js() -> Response {
@@ -477,7 +593,7 @@ async fn logo_white_png() -> Response {
 
 /// The project named in the URL. The URL is a name for a project, never a
 /// credential: an ID that is not well formed is `invalid_value`.
-fn parse_project_id(raw: &str) -> Result<ProjectId, AgboardError> {
+pub(crate) fn parse_project_id(raw: &str) -> Result<ProjectId, AgboardError> {
     raw.parse()
 }
 
@@ -491,17 +607,25 @@ async fn projects(State(state): State<Arc<AppState>>) -> Response {
 
 /// The project's index entry as its last good read, or the error of a defective
 /// project. A project that is not in the index is `project_not_found`.
-fn indexed_view(
+pub(crate) fn indexed_view(
     state: &AppState,
     id: &ProjectId,
 ) -> Result<Arc<crate::file_store::reader::ProjectSnapshot>, AgboardError> {
+    indexed_view_in(&state.shared, &state.index, id)
+}
+
+pub(crate) fn indexed_view_in(
+    shared: &std::path::Path,
+    index: &std::sync::RwLock<crate::file_store::index::ProjectIndex>,
+    id: &ProjectId,
+) -> Result<Arc<crate::file_store::reader::ProjectSnapshot>, AgboardError> {
     // A folder that is gone is a deleted project, even before the watcher reloads.
-    if !crate::file_store::layout::project_dir(&state.shared, id).is_dir() {
+    if !crate::file_store::layout::project_dir(shared, id).is_dir() {
         return Err(AgboardError::ProjectNotFound {
             project: id.to_string(),
         });
     }
-    let index = state.index.read().unwrap_or_else(|e| e.into_inner());
+    let index = index.read().unwrap_or_else(|e| e.into_inner());
     match index.entry(id) {
         None => Err(AgboardError::ProjectNotFound {
             project: id.to_string(),
@@ -708,14 +832,71 @@ async fn archive_done(
     }
 }
 
-fn write_allowed(headers: &HeaderMap, state: &AppState) -> bool {
+fn write_allowed(headers: &HeaderMap, context: &GuardContext) -> bool {
     let request = DeleteRequest {
         host: header_text(headers, "host"),
         origin: header_text(headers, "origin"),
         sec_fetch_site: header_text(headers, "sec-fetch-site"),
         token: header_text(headers, "x-agboard-token"),
     };
-    guard::check_delete(&request, state.port, &state.token).is_ok()
+    guard::check_delete(&request, context.port, &context.token).is_ok()
+}
+
+fn remote_write_allowed(headers: &HeaderMap, remote: &RemoteGuard) -> bool {
+    if [
+        "forwarded",
+        "x-forwarded-host",
+        "x-original-host",
+        "x-http-method-override",
+        "x-method-override",
+    ]
+    .iter()
+    .any(|name| headers.contains_key(*name))
+    {
+        return false;
+    }
+    let host = header_text(headers, "host");
+    let origin = header_text(headers, "origin");
+    let site = header_text(headers, "sec-fetch-site");
+    let token = header_text(headers, "x-agboard-token");
+    let Some(origin) = origin.and_then(canonical_https_origin) else {
+        return false;
+    };
+    remote.origins.contains(&origin.0)
+        && host
+            .and_then(canonical_https_authority)
+            .is_some_and(|host| host == origin.1)
+        && site == Some("same-origin")
+        && guard::token_matches(token, &remote.token)
+}
+
+pub(crate) fn canonical_https_origin(origin: &str) -> Option<(String, String)> {
+    let (scheme, authority) = origin.split_once("://")?;
+    if !scheme.eq_ignore_ascii_case("https")
+        || authority.is_empty()
+        || authority.contains(['/', '?', '#', '@'])
+    {
+        return None;
+    }
+    let authority = canonical_https_authority(authority)?;
+    Some((format!("https://{authority}"), authority))
+}
+
+fn canonical_https_authority(raw: &str) -> Option<String> {
+    let authority = raw.parse::<axum::http::uri::Authority>().ok()?;
+    if authority.as_str().contains('@') {
+        return None;
+    }
+    let host = authority.host();
+    if host.is_empty() {
+        return None;
+    }
+    let port = authority.port_u16().unwrap_or(443);
+    Some(if port == 443 {
+        host.to_ascii_lowercase()
+    } else {
+        format!("{}:{port}", host.to_ascii_lowercase())
+    })
 }
 
 #[derive(Deserialize)]
@@ -1351,7 +1532,7 @@ async fn set_draft(
 // ---------------------------------------------------------------- images and evidence
 
 /// A stored file's bytes with the headers that stop a browser from sniffing them.
-fn file_response(content_type: &str, bytes: Vec<u8>) -> Response {
+pub(crate) fn file_response(content_type: &str, bytes: Vec<u8>) -> Response {
     (
         [
             (header::CONTENT_TYPE, content_type.to_string()),
@@ -1364,7 +1545,10 @@ fn file_response(content_type: &str, bytes: Vec<u8>) -> Response {
 }
 
 /// The bytes of a file the store has already checked the path of.
-fn read_checked(store: &FileStore, path: &std::path::Path) -> Result<Vec<u8>, AgboardError> {
+pub(crate) fn read_checked(
+    store: &FileStore,
+    path: &std::path::Path,
+) -> Result<Vec<u8>, AgboardError> {
     let label = crate::file_store::layout::shared_label(store.shared_dir(), path);
     crate::file_store::io::read_bytes(path, &label)
 }

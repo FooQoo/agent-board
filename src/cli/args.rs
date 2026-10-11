@@ -707,6 +707,12 @@ pub struct ServeArgs {
     /// Port to listen on (127.0.0.1 only)
     #[arg(long, value_name = "PORT", default_value_t = 7420)]
     pub port: u16,
+    /// Port for the opt-in HTTPS reverse-proxy entry (127.0.0.1 only)
+    #[arg(long, value_name = "PORT")]
+    pub remote_port: Option<u16>,
+    /// Public HTTPS origin accepted by the remote listener; repeat for each origin
+    #[arg(long = "remote-origin", value_name = "HTTPS_ORIGIN", action = clap::ArgAction::Append)]
+    pub remote_origins: Vec<String>,
 }
 
 /// What parsing the command line produced.
@@ -891,9 +897,46 @@ impl Cli {
                 message: "--output PATH is required.".into(),
                 command: Some("attachment get".into()),
             }),
+            Command::Serve(args) => validate_remote_args(args),
             _ => Ok(()),
         }
     }
+}
+
+fn validate_remote_args(args: &ServeArgs) -> Result<(), AgboardError> {
+    let invalid = |message: String| AgboardError::InvalidArgument {
+        message,
+        command: Some("serve".into()),
+    };
+    match (args.remote_port, args.remote_origins.is_empty()) {
+        (None, false) | (Some(_), true) => {
+            return Err(invalid(
+                "--remote-port and at least one --remote-origin must be given together.".into(),
+            ));
+        }
+        (Some(port), false) if port == args.port => {
+            return Err(invalid("--remote-port must differ from --port.".into()));
+        }
+        _ => {}
+    }
+    for origin in &args.remote_origins {
+        let parsed = origin
+            .parse::<axum::http::Uri>()
+            .map_err(|_| invalid(format!("Invalid HTTPS origin: {origin}")))?;
+        let authority = parsed.authority().map(|a| a.as_str()).unwrap_or_default();
+        if parsed.scheme_str() != Some("https")
+            || authority.is_empty()
+            || (!parsed.path().is_empty() && parsed.path() != "/")
+            || parsed.query().is_some()
+            || authority.contains('@')
+            || origin != &format!("https://{authority}")
+        {
+            return Err(invalid(format!(
+                "Remote origin must be an HTTPS origin without a path: {origin}"
+            )));
+        }
+    }
+    Ok(())
 }
 
 impl Cli {

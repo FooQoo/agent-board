@@ -32,6 +32,12 @@ pub struct ServeConfig {
     pub port: u16,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteServeConfig {
+    pub port: u16,
+    pub origins: Vec<String>,
+}
+
 /// State shared by all request handlers.
 pub(crate) struct AppState {
     /// The port the server is really bound to (not the requested one).
@@ -64,6 +70,17 @@ pub fn run_until<F: Future<Output = ()>>(
     shutdown: F,
     on_ready: impl FnOnce(SocketAddr),
 ) -> Result<(), AgboardError> {
+    run_until_with_remote(config, None, shutdown, |addr, _| on_ready(addr))
+}
+
+/// Start the local board and, when configured, the dedicated reverse-proxy
+/// listener. Both sockets are bound before the watcher or serve.json is started.
+pub fn run_until_with_remote<F: Future<Output = ()>>(
+    config: ServeConfig,
+    remote: Option<RemoteServeConfig>,
+    shutdown: F,
+    on_ready: impl FnOnce(SocketAddr, Option<SocketAddr>),
+) -> Result<(), AgboardError> {
     let serve_path = paths::serve_info_path();
     if let Some(info) = paths::read_serve_info()
         && instance::is_serving(&info)
@@ -77,6 +94,13 @@ pub fn run_until<F: Future<Output = ()>>(
     let addr = listener
         .local_addr()
         .map_err(|_| port_in_use(config.port))?;
+    let remote_listener = remote
+        .as_ref()
+        .map(|config| bind(config.port))
+        .transpose()?;
+    let remote_addr = remote_listener
+        .as_ref()
+        .and_then(|listener| listener.local_addr().ok());
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -87,6 +111,15 @@ pub fn run_until<F: Future<Output = ()>>(
             .set_nonblocking(true)
             .and_then(|()| tokio::net::TcpListener::from_std(listener))
             .map_err(|e| internal(format!("Cannot listen on {addr}: {e}")))?;
+        let remote_listener = remote_listener
+            .map(|listener| {
+                listener.set_nonblocking(true).map_err(|e| {
+                    internal(format!("Cannot listen on remote {remote_addr:?}: {e}"))
+                })?;
+                tokio::net::TcpListener::from_std(listener)
+                    .map_err(|e| internal(format!("Cannot listen on remote {remote_addr:?}: {e}")))
+            })
+            .transpose()?;
 
         // The watch exists before the first read, so a change made during the
         // read is queued and read again.
@@ -101,7 +134,21 @@ pub fn run_until<F: Future<Output = ()>>(
             reloader,
             changed,
         });
-        let app = api::router(state);
+        let app = api::router(state.clone());
+        let remote_app = match (&remote, remote_listener.as_ref(), remote_addr) {
+            (Some(config), Some(_), Some(remote_addr)) => Some(remote::router(
+                state.clone(),
+                remote_addr.port(),
+                &config.origins,
+                assets::new_token()?,
+            )?),
+            (None, None, None) => None,
+            _ => {
+                return Err(internal(
+                    "The remote listener address is unavailable.".into(),
+                ));
+            }
+        };
 
         let pid = std::process::id();
         paths::write_serve_info(&ServeInfo {
@@ -109,11 +156,19 @@ pub fn run_until<F: Future<Output = ()>>(
             port: addr.port(),
             started_at: format_utc(chrono::Utc::now()),
         });
-        on_ready(addr);
+        on_ready(addr, remote_addr);
         let result = tokio::select! {
             served = async { axum::serve(listener, app).await } => {
                 served.map_err(|e| internal(format!("The server stopped: {e}")))
             }
+            served = async {
+                match (remote_listener, remote_app) {
+                    (Some(listener), Some(app)) => axum::serve(listener, app).await
+                        .map_err(|e| internal(format!("The remote server stopped: {e}"))),
+                    (None, None) => std::future::pending::<Result<(), AgboardError>>().await,
+                    _ => Err(internal("The remote listener is incomplete.".into())),
+                }
+            } => served,
             () = shutdown => Ok(()),
         };
         instance::remove_serve_info_of(&serve_path, pid);

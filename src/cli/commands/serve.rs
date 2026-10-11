@@ -14,19 +14,35 @@ use crate::server::{self, ServeConfig};
 /// afterwards. The command works on the whole data area, never on one project
 /// or card, and changes nothing that needs a notification.
 pub fn run(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
-    server::run_until(ServeConfig { port: args.port }, shutdown_signal(), |addr| {
-        announce(addr, json)
-    })
+    let remote = args.remote_port.map(|port| server::RemoteServeConfig {
+        port,
+        origins: args.remote_origins.clone(),
+    });
+    server::run_until_with_remote(
+        ServeConfig { port: args.port },
+        remote,
+        shutdown_signal(),
+        |addr, remote_addr| announce(addr, remote_addr, json),
+    )
 }
 
 /// Write the startup line (or, with `--json`, the URL object) and flush, so a
 /// reader on a pipe sees it before the server starts waiting.
-fn announce(addr: SocketAddr, json: bool) {
+fn announce(addr: SocketAddr, remote_addr: Option<SocketAddr>, json: bool) {
     let url = format!("http://127.0.0.1:{}/", addr.port());
+    let remote_url = remote_addr.map(|addr| format!("http://127.0.0.1:{}/", addr.port()));
     let line = if json {
-        json!({ "url": url }).to_string()
+        match remote_url {
+            Some(remote_url) => json!({ "url": url, "remoteUrl": remote_url }).to_string(),
+            None => json!({ "url": url }).to_string(),
+        }
     } else {
-        format!("Serving at {url} (press Ctrl+C to stop)")
+        match remote_url {
+            Some(remote_url) => format!(
+                "Serving at {url}; remote proxy entry at {remote_url} (press Ctrl+C to stop)"
+            ),
+            None => format!("Serving at {url} (press Ctrl+C to stop)"),
+        }
     };
     let mut stdout = std::io::stdout().lock();
     let _ = writeln!(stdout, "{line}");
