@@ -14,19 +14,14 @@
 .acceptance-chip svg {
   width: 12px;
   height: 12px;
-  color: var(--r-text2);
+  color: inherit;
 }
 
-.acceptance-chip[data-complete="true"],
-.acceptance-chip[data-complete="true"] svg {
+.acceptance-chip[data-complete="true"] {
   color: var(--r-accent);
 }
 
 .acceptance-chip--error {
-  color: var(--r-danger);
-}
-
-.acceptance-chip--error svg {
   color: var(--r-danger);
 }
 
