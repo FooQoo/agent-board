@@ -1,5 +1,6 @@
 /* The completion conditions in an edit dialog: one row per condition, with its controls and text. */
 .acceptance-edit {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -121,4 +122,16 @@
 
 .acceptance-outline-link:hover {
   background: var(--r-accent-soft);
+}
+
+/* A narrow dialog: the controls and the remove button share the first row, the text takes the second. */
+@container (max-width: 400px) {
+  .acceptance-edit__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .acceptance-edit__text {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }

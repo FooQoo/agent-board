@@ -108,6 +108,12 @@ export function CardDetailView({
             problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
           )}
         />
+        {card.acceptanceError && (
+          <div className="acceptance-unreadable" role="status">
+            <p className="acceptance-unreadable__title">{t('acceptance.unreadableTitle')}</p>
+            <p className="acceptance-unreadable__note">{t('acceptance.unreadableNote')}</p>
+          </div>
+        )}
         <AcceptanceView items={card.acceptanceError ? [] : card.acceptance} />
         <MarkdownSections
           source={card.body}

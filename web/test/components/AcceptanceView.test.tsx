@@ -37,6 +37,30 @@ describe('AcceptanceView', () => {
   });
 });
 
+describe('unreadable conditions in the detail body', () => {
+  it('says that the conditions cannot be read and that the body is shown', () => {
+    const card = makeCard({
+      id: 12,
+      title: 'Card',
+      description: '---\nacceptance:\n  - id: AC-1\n    text: \n---\n\nBody below\n',
+      body: '---\nacceptance:\n  - id: AC-1\n    text: \n---\n\nBody below\n',
+      acceptanceError: true,
+    });
+    render(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={card}
+        problems={[]}
+        onClose={() => {}}
+        onRemove={async () => true}
+      />,
+    );
+    expect(screen.getByText('Acceptance conditions cannot be read')).toBeTruthy();
+    expect(screen.getByText(/Body below/)).toBeTruthy();
+    expect(screen.queryByText('0 / 1')).toBeNull();
+  });
+});
+
 describe('DetailPanel body', () => {
   it('shows the body without the frontmatter and the conditions above it', () => {
     const card = makeCard({

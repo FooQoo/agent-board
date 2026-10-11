@@ -29,7 +29,7 @@ export function AcceptanceProgress({ card }: { card: Card }) {
       ) : (
         <ListChecksIcon aria-hidden="true" focusable="false" />
       )}
-      <span>{progress}</span>
+      <span>{t('acceptance.chip', { done, total })}</span>
     </span>
   );
 }

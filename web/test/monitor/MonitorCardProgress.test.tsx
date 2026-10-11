@@ -23,7 +23,7 @@ describe('monitor card completion conditions', () => {
       ],
     });
     render(<MonitorCard item={item(card)} section="doing" />);
-    expect(screen.getByText('1 / 2')).toBeTruthy();
+    expect(screen.getByText('1/2')).toBeTruthy();
   });
 
   it('says that the conditions cannot be read', () => {

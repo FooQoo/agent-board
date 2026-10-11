@@ -69,8 +69,11 @@ export const detailJa = {
   acceptance: {
     title: '受け入れ条件',
     progress: '{{done}} / {{total}}',
+    chip: '{{done}}/{{total}}',
     complete: '全件達成',
     unreadable: '読めません',
+    unreadableTitle: '受け入れ条件を読めません',
+    unreadableNote: '直すまで進捗は表示しません。本文は下に表示を続けます。',
     savedIn:
       'ファイルの frontmatter に保存されます。エージェントが検証してチェックします。変更は編集ダイアログから行います。',
     showAll: 'すべて表示（{{count}}件）',

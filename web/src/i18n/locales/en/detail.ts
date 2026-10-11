@@ -69,8 +69,11 @@ export const detailEn = {
   acceptance: {
     title: 'Acceptance conditions',
     progress: '{{done}} / {{total}}',
+    chip: '{{done}}/{{total}}',
     complete: 'All done',
     unreadable: 'Unreadable',
+    unreadableTitle: 'Acceptance conditions cannot be read',
+    unreadableNote: 'Progress is not shown until the file is fixed. The body is shown below.',
     savedIn:
       'Saved in the frontmatter of the file. Agents check them; they change only through the edit dialog.',
     showAll: 'Show all ({{count}})',

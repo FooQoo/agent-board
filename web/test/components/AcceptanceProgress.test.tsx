@@ -23,7 +23,7 @@ describe('AcceptanceProgress', () => {
         })}
       />,
     );
-    expect(screen.getByText('2 / 3')).toBeTruthy();
+    expect(screen.getByText('2/3')).toBeTruthy();
     expect(screen.getByTitle('Acceptance conditions 2 / 3')).toBeTruthy();
   });
 
