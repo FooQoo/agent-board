@@ -24,8 +24,15 @@ function card(id: number, status: ColumnName, long: boolean): Card {
         ? 'A monitor card title long enough to exercise the two line clamp at narrow widths'
         : `${status[0]?.toUpperCase()}${status.slice(1)} work item ${id}`,
     body: '',
-    acceptance: [],
-    acceptanceError: false,
+    acceptance:
+      id === 2
+        ? [
+            { id: 'AC-1', text: 'Shared display matches', done: true },
+            { id: 'AC-2', text: 'Read-only in the monitor', done: false },
+            { id: 'AC-3', text: 'Keeps the layout', done: false },
+          ]
+        : [],
+    acceptanceError: id === 5,
     description:
       long && id === 1
         ? longText
