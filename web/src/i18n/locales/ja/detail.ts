@@ -66,4 +66,14 @@ export const detailJa = {
     title: '履歴',
     created: '作成',
   },
+  acceptance: {
+    title: '受け入れ条件',
+    progress: '{{done}} / {{total}}',
+    complete: '全件達成',
+    unreadable: '読めません',
+    savedIn:
+      'ファイルの frontmatter に保存されます。エージェントが検証してチェックします。変更は編集ダイアログから行います。',
+    showAll: 'すべて表示（{{count}}件）',
+    showFewer: '閉じる',
+  },
 } as const;

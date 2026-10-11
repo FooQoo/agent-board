@@ -2,6 +2,7 @@ import type {
   ApiError,
   Assignee,
   Board,
+  AcceptanceItem,
   Card,
   ColumnName,
   Epic,
@@ -220,9 +221,20 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
   return body as T;
 }
 
+/**
+ * A new card. Give either `description` (the whole TASK.md text) or `body` with `acceptance`; the server
+ * writes the frontmatter from the parts.
+ */
 export async function createCard(
   projectId: ProjectId,
-  input: { title: string; description: string; assignee: Assignee; isDraft?: boolean },
+  input: {
+    title: string;
+    description?: string;
+    body?: string;
+    acceptance?: AcceptanceItem[];
+    assignee: Assignee;
+    isDraft?: boolean;
+  },
 ) {
   return postCard<{ card: Card }>(`${projectPath(projectId)}/cards`, {
     ...input,
@@ -374,7 +386,13 @@ async function sendCard(
 export async function editCard(
   projectId: ProjectId,
   id: number,
-  input: { title?: string; description?: string; finalize?: boolean },
+  input: {
+    title?: string;
+    description?: string;
+    body?: string;
+    acceptance?: AcceptanceItem[];
+    finalize?: boolean;
+  },
 ) {
   return sendCard('PATCH', `${projectPath(projectId)}/cards/${id}`, input);
 }
@@ -438,7 +456,14 @@ async function sendEpic(
 export function updateEpic(
   projectId: ProjectId,
   epicId: string,
-  input: { name?: string; color?: string; isDraft?: boolean; plan?: string },
+  input: {
+    name?: string;
+    color?: string;
+    isDraft?: boolean;
+    plan?: string;
+    body?: string;
+    acceptance?: AcceptanceItem[];
+  },
 ) {
   return sendEpic('PATCH', `${projectPath(projectId)}/epics/${encodeURIComponent(epicId)}`, input);
 }

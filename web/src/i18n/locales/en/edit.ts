@@ -91,4 +91,17 @@ export const editEn = {
     saveFailedAt: 'Could not save {{step}}. Earlier changes were saved. Your input is kept.',
     saveFailedFirst: 'Could not save {{step}}. Your input is kept.',
   },
+  acceptance: {
+    title: 'Acceptance conditions',
+    progress: '{{done}} of {{total}} done',
+    savedIn: 'Saved in the frontmatter of the file',
+    add: 'Add condition',
+    remove: 'Remove {{id}}',
+    reorder: 'Move {{id}}',
+    text: 'Condition {{id}}',
+    emptyText: 'Enter the condition text',
+    placeholder: 'Describe a condition that can be verified',
+    numberNote: 'Numbers are not reused after a removal. Dragging changes only the order shown.',
+    sectionLink: 'Acceptance conditions {{done}} / {{total}}',
+  },
 } as const;

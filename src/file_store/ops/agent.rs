@@ -7,6 +7,8 @@
 use chrono::{DateTime, Utc};
 
 use super::super::FileStore;
+use super::super::frontmatter;
+use super::super::layout;
 use super::super::model::{CardView, Choice, HistoryKind};
 use super::super::reader;
 use super::{Transition, lane_end, lock_project, new_id, save_task, stamp, transition_event};
@@ -15,6 +17,36 @@ use crate::domain::{
     validate_work_reason,
 };
 use crate::error::AgboardError;
+
+/// An agent may move a card to Done only when its frontmatter reads and every
+/// condition is done. A person's move is never checked here.
+fn ensure_acceptance_met(
+    shared: &std::path::Path,
+    project: &ProjectId,
+    id: i64,
+) -> Result<(), AgboardError> {
+    let text = reader::read_body(shared, project, id)?;
+    let parsed = frontmatter::parse(&text);
+    if let Some(defect) = parsed.defects.into_iter().next() {
+        let path = layout::task_md(&layout::task_dir(&layout::project_dir(shared, project), id));
+        return Err(AgboardError::FileInvalid {
+            file: layout::shared_label(shared, &path),
+            field: defect.field,
+            reason: defect.reason,
+        });
+    }
+    let unmet: Vec<String> = parsed
+        .acceptance
+        .iter()
+        .filter(|item| !item.done)
+        .map(|item| item.id.clone())
+        .collect();
+    if unmet.is_empty() {
+        Ok(())
+    } else {
+        Err(AgboardError::AcceptanceUnmet { id, unmet })
+    }
+}
 
 impl FileStore {
     /// Move a card to the end of a lane. A draft is refused for agents.
@@ -59,6 +91,9 @@ impl FileStore {
         }
         if block_drafts && task.is_draft {
             return Err(AgboardError::CardIsDraft { id });
+        }
+        if ctx.actor == Actor::Ai && to == Column::Done && task.card_status != Column::Done {
+            ensure_acceptance_met(shared, project, id)?;
         }
         if task.card_status == to {
             return Ok(Changed {

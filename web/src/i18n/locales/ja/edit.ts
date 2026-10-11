@@ -92,4 +92,17 @@ export const editJa = {
     saveFailedAt: '{{step}}を保存できませんでした。先に保存した変更は残り、入力も残っています。',
     saveFailedFirst: '{{step}}を保存できませんでした。入力は残っています。',
   },
+  acceptance: {
+    title: '受け入れ条件',
+    progress: '{{total}}件中{{done}}件を達成',
+    savedIn: 'ファイルの frontmatter に保存',
+    add: '条件を追加',
+    remove: '{{id}}を削除',
+    reorder: '{{id}}を移動',
+    text: '条件 {{id}}',
+    emptyText: '条件の文章を入力してください',
+    placeholder: '達成を確かめられる条件を入力',
+    numberNote: '番号は削除しても振り直しません。並べ替えはドラッグで、表示順だけが変わります。',
+    sectionLink: '受け入れ条件 {{done}} / {{total}}',
+  },
 } as const;

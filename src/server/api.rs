@@ -18,9 +18,10 @@ use crate::domain::{
     validate_attachment,
 };
 use crate::error::AgboardError;
+use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::index::ProjectEntry;
 use crate::file_store::model::{AttachmentOwner, CardView, EpicUpdate, NewEpic};
-use crate::file_store::validate::EpicId;
+use crate::file_store::validate::{self, EpicId};
 use crate::file_store::{Answer, FileStore};
 
 /// The largest request body any route reads. A description of 50,000
@@ -903,7 +904,14 @@ fn canonical_https_authority(raw: &str) -> Option<String> {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct CreateCardInput {
     title: String,
-    description: String,
+    /// The whole TASK.md text, frontmatter included. Not combined with `body` or `acceptance`.
+    #[serde(default)]
+    description: Option<String>,
+    /// The body without its frontmatter, and the conditions the server writes into it.
+    #[serde(default)]
+    body: Option<String>,
+    #[serde(default)]
+    acceptance: Option<Vec<AcceptanceItem>>,
     assignee: Assignee,
     #[serde(default)]
     is_draft: bool,
@@ -923,6 +931,10 @@ struct MoveInput {
 struct EditCardInput {
     title: Option<String>,
     description: Option<String>,
+    #[serde(default)]
+    body: Option<String>,
+    #[serde(default)]
+    acceptance: Option<Vec<AcceptanceItem>>,
     #[serde(default)]
     finalize: bool,
 }
@@ -1105,12 +1117,21 @@ async fn create_card(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
+    let description = match whole_text(
+        input.description,
+        input.body,
+        input.acceptance,
+        validate::task_template,
+    ) {
+        Ok(description) => description.unwrap_or_default(),
+        Err(error) => return agboard_error_response(&error),
+    };
     match with_files(&state, move |store| {
         store.create_card(
             &project_id,
             NewCard {
                 title: input.title,
-                description: input.description,
+                description,
                 assignee: input.assignee,
                 actor: Actor::Human,
                 is_draft: input.is_draft,
@@ -1302,18 +1323,37 @@ async fn edit_card(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    if input.title.is_none() && input.description.is_none() && !input.finalize {
+    if input.title.is_none()
+        && input.description.is_none()
+        && input.body.is_none()
+        && input.acceptance.is_none()
+        && !input.finalize
+    {
         return agboard_error_response(&AgboardError::InvalidArgument {
             message: "Nothing to change.".to_string(),
             command: None,
         });
     }
     let result = with_files(&state, move |store| {
+        let description = if input.body.is_some() || input.acceptance.is_some() {
+            if input.description.is_some() {
+                return Err(whole_or_parts());
+            }
+            let current = store.card(&project_id, id)?;
+            Some(compose_text(
+                &current.description,
+                &current.body,
+                input.body,
+                input.acceptance,
+            )?)
+        } else {
+            input.description
+        };
         store.edit_draft_card(
             &project_id,
             id,
             input.title.as_deref(),
-            input.description.as_deref(),
+            description.as_deref(),
             input.finalize,
             chrono::Utc::now(),
         )
@@ -1884,8 +1924,13 @@ struct CreateEpicInput {
     color: Option<String>,
     #[serde(default)]
     is_draft: bool,
+    /// The whole PLAN.md text, frontmatter included. Not combined with `body` or `acceptance`.
     #[serde(default)]
     plan: Option<String>,
+    #[serde(default)]
+    body: Option<String>,
+    #[serde(default)]
+    acceptance: Option<Vec<AcceptanceItem>>,
 }
 
 #[derive(Deserialize)]
@@ -1899,6 +1944,52 @@ struct EpicPatchInput {
     is_draft: Option<bool>,
     #[serde(default)]
     plan: Option<String>,
+    #[serde(default)]
+    body: Option<String>,
+    #[serde(default)]
+    acceptance: Option<Vec<AcceptanceItem>>,
+}
+
+/// The error for giving a whole file and its parts in one request.
+fn whole_or_parts() -> AgboardError {
+    AgboardError::InvalidValue {
+        field: "body".into(),
+        reason: "Give either the whole text or body and acceptance, not both.".into(),
+    }
+}
+
+/// The text of a file written from a body and conditions. A part that is not
+/// given keeps what the file has now; the frontmatter's other keys stay.
+fn compose_text(
+    original: &str,
+    current_body: &str,
+    body: Option<String>,
+    acceptance: Option<Vec<AcceptanceItem>>,
+) -> Result<String, AgboardError> {
+    let body = body.unwrap_or_else(|| current_body.to_string());
+    frontmatter::compose(original, &body, acceptance.as_deref()).map_err(|defect| {
+        AgboardError::InvalidValue {
+            field: defect.field,
+            reason: defect.reason,
+        }
+    })
+}
+
+/// The whole text for a new file: the given text, or one written from parts
+/// over the template. `None` means the store writes its template.
+fn whole_text(
+    given: Option<String>,
+    body: Option<String>,
+    acceptance: Option<Vec<AcceptanceItem>>,
+    template: impl FnOnce() -> String,
+) -> Result<Option<String>, AgboardError> {
+    if body.is_none() && acceptance.is_none() {
+        return Ok(given);
+    }
+    if given.is_some() {
+        return Err(whole_or_parts());
+    }
+    compose_text(&template(), "", body, acceptance).map(Some)
 }
 
 fn parse_epic_id(raw: &str) -> Result<EpicId, AgboardError> {
@@ -1946,12 +2037,21 @@ async fn create_epic(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
+    let plan = match whole_text(
+        input.plan,
+        input.body,
+        input.acceptance,
+        validate::plan_template,
+    ) {
+        Ok(plan) => plan,
+        Err(error) => return agboard_error_response(&error),
+    };
     let new = NewEpic {
         id: input.id,
         name: input.name,
         color: input.color,
         is_draft: input.is_draft,
-        plan: input.plan,
+        plan,
     };
     match with_files(&state, move |store| {
         store.create_epic(&project_id, new, chrono::Utc::now())
@@ -1979,13 +2079,27 @@ async fn update_epic(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let update = EpicUpdate {
-        name: input.name,
-        color: input.color,
-        is_draft: input.is_draft,
-        plan: input.plan,
-    };
     match with_files(&state, move |store| {
+        let plan = if input.body.is_some() || input.acceptance.is_some() {
+            if input.plan.is_some() {
+                return Err(whole_or_parts());
+            }
+            let current = store.epic(&project_id, &epic_id)?;
+            Some(compose_text(
+                &current.plan,
+                &current.body,
+                input.body,
+                input.acceptance,
+            )?)
+        } else {
+            input.plan
+        };
+        let update = EpicUpdate {
+            name: input.name,
+            color: input.color,
+            is_draft: input.is_draft,
+            plan,
+        };
         store.update_epic(&project_id, &epic_id, update, chrono::Utc::now())
     })
     .await

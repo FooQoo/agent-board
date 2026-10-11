@@ -23,6 +23,9 @@ function card(id: number, status: ColumnName, long: boolean): Card {
       long && id === 1
         ? 'A monitor card title long enough to exercise the two line clamp at narrow widths'
         : `${status[0]?.toUpperCase()}${status.slice(1)} work item ${id}`,
+    body: '',
+    acceptance: [],
+    acceptanceError: false,
     description:
       long && id === 1
         ? longText

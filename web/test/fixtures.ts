@@ -39,6 +39,9 @@ export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
   return {
     title: `Card ${overrides.id}`,
     description: '',
+    body: '',
+    acceptance: [],
+    acceptanceError: false,
     assignee: 'ai',
     cardStatus: 'todo',
     position: 1,

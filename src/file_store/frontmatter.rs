@@ -16,7 +16,7 @@ pub const MAX_ACCEPTANCE_TEXT_CHARS: usize = 2_000;
 
 /// One completion condition: `id` is `AC-<n>`, `done` is whether it is met.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AcceptanceItem {
     pub id: String,
     pub text: String,

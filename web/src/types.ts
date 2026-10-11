@@ -64,7 +64,12 @@ export interface EpicRef {
 
 export interface Epic extends EpicRef {
   isDraft: boolean;
+  /** The whole PLAN.md text, frontmatter included. */
   plan: string;
+  /** PLAN.md without its frontmatter. The whole file when the frontmatter has a defect. */
+  body: string;
+  acceptance: AcceptanceItem[];
+  acceptanceError: boolean;
   attachments: Attachment[];
   createdAt: string;
   updatedAt: string;
@@ -86,10 +91,22 @@ export interface Problem {
   reason: string;
 }
 
+/** One completion condition, read from the frontmatter of a TASK.md or PLAN.md. */
+export interface AcceptanceItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface Card {
   id: number;
   title: string;
+  /** The whole TASK.md text, frontmatter included. */
   description: string;
+  /** TASK.md without its frontmatter. The whole file when the frontmatter has a defect. */
+  body: string;
+  acceptance: AcceptanceItem[];
+  acceptanceError: boolean;
   assignee: Assignee;
   cardStatus: ColumnName;
   position: number;

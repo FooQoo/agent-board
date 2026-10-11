@@ -280,10 +280,10 @@ impl RunStateArg {
 #[derive(Args, Debug, Clone, Default)]
 #[group(id = "description_source", multiple = false)]
 pub struct DescriptionArgs {
-    /// Description in Markdown, up to 50,000 characters; use "-" to read it from standard input
+    /// Whole TASK.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub desc: Option<String>,
-    /// Read the Markdown description (up to 50,000 characters) from a file
+    /// Read the whole TASK.md text, frontmatter included (up to 50,000 characters), from a file
     #[arg(long, value_name = "PATH")]
     pub desc_file: Option<PathBuf>,
 }
@@ -533,10 +533,10 @@ pub struct EpicEditArgs {
 #[derive(Args, Debug, Clone, Default)]
 #[group(id = "plan_source", multiple = false)]
 pub struct PlanArgs {
-    /// Plan in Markdown, up to 50,000 characters; use "-" to read it from standard input
+    /// Whole PLAN.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub plan: Option<String>,
-    /// Read the Markdown plan (up to 50,000 characters) from a file
+    /// Read the whole PLAN.md text, frontmatter included (up to 50,000 characters), from a file
     #[arg(long, value_name = "PATH")]
     pub plan_file: Option<PathBuf>,
 }

@@ -66,4 +66,14 @@ export const detailEn = {
     title: 'History',
     created: 'Created',
   },
+  acceptance: {
+    title: 'Acceptance conditions',
+    progress: '{{done}} / {{total}}',
+    complete: 'All done',
+    unreadable: 'Unreadable',
+    savedIn:
+      'Saved in the frontmatter of the file. Agents check them; they change only through the edit dialog.',
+    showAll: 'Show all ({{count}})',
+    showFewer: 'Show fewer',
+  },
 } as const;

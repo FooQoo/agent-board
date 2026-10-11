@@ -19,6 +19,9 @@ const EPIC: Epic = {
   color: '#7C3AED',
   isDraft: false,
   plan: PLAN,
+  body: '',
+  acceptance: [],
+  acceptanceError: false,
   attachments: [
     {
       id: IMAGE,
