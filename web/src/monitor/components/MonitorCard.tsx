@@ -9,20 +9,17 @@ import { completedAt } from '../model/sort';
 export function MonitorCard({
   item,
   section,
-  onSelect,
 }: {
   item: MonitorCardModel;
   section: MonitorSection;
-  onSelect(projectId: string, cardId: number): void;
 }) {
   const { t } = useTranslation();
   const card = item.card;
   const when = section === 'done' ? completedAt(item) : card.agentStatusChangedAt;
   return (
-    <button
-      type="button"
+    <article
       className={`monitor-card monitor-card--${section}`}
-      onClick={() => onSelect(item.projectId, card.id)}
+      aria-label={`#${card.id} ${t(`monitor.status.${section}`)} ${card.title} ${card.pendingReason ?? ''}`}
     >
       <span className="monitor-card__top">
         <span className="monitor-card__id">#{card.id}</span>
@@ -47,6 +44,6 @@ export function MonitorCard({
               : formatShort(card.agentStatusChangedAt)}
         </span>
       </span>
-    </button>
+    </article>
   );
 }

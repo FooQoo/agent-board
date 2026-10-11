@@ -114,8 +114,7 @@ body {
   font-size: 10px;
   line-height: 14px;
 }
-.monitor-summary button:focus-visible,
-.monitor-card:focus-visible {
+.monitor-summary button:focus-visible {
   outline: 2px solid var(--r-accent);
   outline-offset: 1px;
 }
@@ -177,7 +176,7 @@ body {
   border-radius: 7px;
   background: var(--r-surface);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 .monitor-card--pending {
   border-color: var(--r-pend-bd);
@@ -277,65 +276,6 @@ body {
 .monitor-freshness--compact .monitor-freshness__time {
   display: none;
 }
-.monitor-detail-dialog[data-slot="dialog-content"] {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: 100vw;
-  height: 100dvh;
-  max-width: none;
-  max-height: 100dvh;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: var(--r-surface);
-  overflow: hidden;
-}
-.monitor-detail-dialog > .detail {
-  flex: 1 1 auto;
-  width: 100%;
-  padding: 8px 13px 6px;
-  gap: 10px;
-  border: 0;
-  overflow: hidden;
-}
-.monitor-detail-dialog .detail__top {
-  min-height: 44px;
-}
-.monitor-detail-dialog .detail__id {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.monitor-detail-dialog .detail__close {
-  width: 44px;
-  height: 44px;
-  margin-right: -10px;
-}
-.monitor-detail-dialog .detail__title {
-  font-size: 18px;
-  line-height: 22px;
-  max-height: 44px;
-  overflow: hidden;
-}
-.monitor-detail-dialog .detail__meta {
-  gap: 6px;
-}
-.monitor-detail-dialog .detail__request,
-.monitor-detail-dialog .detail__draft {
-  padding: 8px;
-  gap: 5px;
-}
-.monitor-detail-dialog .detail__reason {
-  font-size: 12px;
-}
-.monitor-detail-dialog .detail__read-choices {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
 .detail__read-choice {
   padding: 4px 0;
   border-bottom: 1px solid var(--r-pend-bd);
@@ -380,51 +320,6 @@ body {
   color: var(--r-accent);
   text-decoration: underline;
 }
-.monitor-detail-dialog .detail__tabs {
-  height: 44px;
-}
-.monitor-detail-dialog .detail__tablist,
-.monitor-detail-dialog .detail__tab {
-  height: 44px;
-}
-.monitor-detail-dialog .detail__tab {
-  min-width: 100px;
-  justify-content: center;
-  padding: 10px 12px 8px;
-}
-.monitor-detail-dialog .detail__viewport {
-  min-height: 0;
-}
-.monitor-detail-footer {
-  display: flex;
-  flex: none;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 6px 12px max(6px, env(safe-area-inset-bottom));
-  color: var(--r-muted);
-  background: var(--r-lane);
-  font-size: 10px;
-  line-height: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.monitor-epic-link {
-  flex: none;
-  max-width: 100%;
-  min-height: 38px;
-  justify-content: flex-start;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.monitor-epic-dialog {
-  max-height: 88dvh;
-  overflow: auto;
-}
-.monitor-epic-dialog .md {
-  margin-top: 12px;
-}
 @media (max-width: 350px) {
   .monitor-shell {
     gap: 6px;
@@ -437,11 +332,6 @@ body {
   }
   .monitor-card {
     padding: 7px;
-  }
-  .monitor-detail-dialog > .detail {
-    padding-right: 9px;
-    padding-left: 9px;
-    gap: 8px;
   }
 }
 .monitor-section-header[data-section="running"] svg {

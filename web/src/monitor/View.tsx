@@ -6,7 +6,6 @@ import { ProjectSwitcher } from '../components/ProjectSwitcher';
 import type { MonitorViewProps } from './contracts';
 import { CardList } from './components/CardList';
 import { Freshness } from './components/Freshness';
-import { ReadOnlyDetail } from './views/ReadOnlyDetail';
 import { sortDone, sortPending, sortRunning } from './model/sort';
 
 export function MonitorView(props: MonitorViewProps) {
@@ -79,7 +78,6 @@ export function MonitorView(props: MonitorViewProps) {
         pending={ordered.pending}
         running={ordered.running}
         done={ordered.done}
-        onSelect={props.onCardSelect}
         scopeName={scopeName}
         freshness={freshness}
       />
@@ -91,7 +89,6 @@ export function MonitorView(props: MonitorViewProps) {
         onRefresh={props.onRefresh}
         compact
       />
-      <ReadOnlyDetail {...props} />
     </main>
   );
 }

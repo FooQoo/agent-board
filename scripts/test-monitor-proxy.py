@@ -178,9 +178,10 @@ try {
   await expect(monitor.getByRole('region', { name: 'Cards' })).toBeVisible();
   await expect(monitor.getByText('Proxy fixture')).toBeVisible();
   await expect(monitor.getByRole('button', { name: 'Add card', exact: true })).toHaveCount(0);
-  await monitor.getByRole('button', { name: /Proxy fixture/ }).click();
-  const monitorDescription = await monitor.getByRole('tabpanel', { name: 'Description' }).innerText();
-  await monitor.getByRole('button', { name: 'Close details' }).click();
+  const monitorUrl = monitor.url();
+  await monitor.getByRole('article', { name: /Proxy fixture/ }).click();
+  await expect(monitor.getByRole('dialog')).toHaveCount(0);
+  await expect(monitor).toHaveURL(monitorUrl);
 
   const desktop = await context.newPage();
   desktop.on('response', async (response) => {
@@ -193,7 +194,7 @@ try {
   await expect(desktop).toHaveURL(/\/board\/$/);
   await desktop.getByRole('region', { name: 'Doing' }).getByRole('button', { name: /Proxy fixture/ }).click();
   await expect(desktop.getByRole('complementary', { name: 'Card details' })).toContainText('Proxy fixture');
-  expect(await desktop.getByRole('tabpanel', { name: 'Description' }).innerText()).toBe(monitorDescription);
+  await expect(desktop.getByRole('tabpanel', { name: 'Description' })).toBeVisible();
   await expect(desktop.getByRole('button', { name: 'Add card', exact: true })).toBeVisible();
   const createdResponsePromise = desktop.waitForResponse((response) => response.url().endsWith('/cards') && response.request().method() === 'POST');
   await desktop.getByRole('button', { name: 'Add card', exact: true }).click();
@@ -236,7 +237,7 @@ try {
     return response.status;
   }, { projectId, cardId: createdCardId });
   expect(stateStatus).toBe(200);
-  await expect(monitor.getByRole('button', { name: /Created from HTTPS browser/ })).toBeVisible();
+  await expect(monitor.getByRole('article', { name: /Created from HTTPS browser/ })).toBeVisible();
   console.log('Chromium HTTPS checks passed: mobile entry, read-only monitor, desktop entry, guarded PC write, and monitor SSE update.');
 } catch (error) {
   console.log(`Chromium API response diagnostics: ${JSON.stringify(apiResponses)}`);

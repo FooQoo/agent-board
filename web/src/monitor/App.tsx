@@ -5,7 +5,6 @@ import { createMonitorFixtureProps } from './mock';
 import { monitorFreshnessForStream, useMonitor } from './hooks/useMonitor';
 import { useMonitorEvents } from './hooks/useMonitorEvents';
 import { useMonitorUrl } from './hooks/useMonitorUrl';
-import { monitorReadResolvers } from './client';
 import { selectMonitorCards } from './model/select';
 
 export function App() {
@@ -23,12 +22,7 @@ function MonitorConnectedApp() {
     onRefresh: refresh,
     onVisibility: monitor.onVisibility,
   });
-  const route = useMonitorUrl(
-    monitor.projects,
-    monitor.catalogReady,
-    monitor.cards,
-    monitor.freshness.failedProjectIds,
-  );
+  const route = useMonitorUrl(monitor.projects, monitor.catalogReady);
   const grouped = selectMonitorCards(monitor.cards, route.scope);
   const hasPartial =
     monitor.freshness.failedProjectIds.length > 0 || monitor.freshness.snapshotProblems.length > 0;
@@ -45,17 +39,9 @@ function MonitorConnectedApp() {
             done: grouped.done.length,
           },
     ...grouped,
-    selectedCard: route.selected,
-    tab: route.tab,
-    body: route.selected?.card.description ?? null,
-    history: route.selected?.card.history ?? null,
     freshness,
     routeNotice: route.notice,
-    readResolvers: monitorReadResolvers,
     onScopeChange: route.onScopeChange,
-    onCardSelect: route.onCardSelect,
-    onCloseCard: route.onCloseCard,
-    onTabChange: route.onTabChange,
     onRefresh: refresh,
   };
   return <MonitorView {...props} />;

@@ -11,15 +11,8 @@ const props: MonitorViewProps = {
   pending: [],
   running: [],
   done: [],
-  selectedCard: null,
-  body: null,
-  history: null,
   freshness: { state: 'loading', lastFetchedAt: null, failedProjectIds: [], snapshotProblems: [] },
-  readResolvers: unconnectedMonitorReadResolvers,
   onScopeChange: vi.fn(),
-  onCardSelect: vi.fn(),
-  onCloseCard: vi.fn(),
-  onTabChange: vi.fn(),
   onRefresh: vi.fn(),
 };
 

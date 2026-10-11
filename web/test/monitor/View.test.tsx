@@ -2,7 +2,6 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { MonitorView } from '../../src/monitor/View';
-import { unconnectedMonitorReadResolvers } from '../../src/monitor/contracts';
 import type { MonitorViewProps } from '../../src/monitor/contracts';
 import { makeCard, PROJECT_A, PROJECTS } from '../fixtures';
 
@@ -32,35 +31,27 @@ function props(): MonitorViewProps {
         card: makeCard({ id: 3, cardStatus: 'done' }),
       },
     ],
-    selectedCard: null,
-    body: null,
-    history: null,
-    tab: 'body',
     freshness: {
       state: 'fresh',
       lastFetchedAt: '2026-10-11T00:00:00Z',
       failedProjectIds: [],
       snapshotProblems: [],
     },
-    readResolvers: unconnectedMonitorReadResolvers,
     onScopeChange: vi.fn(),
-    onCardSelect: vi.fn(),
-    onCloseCard: vi.fn(),
-    onTabChange: vi.fn(),
     onRefresh: vi.fn(),
   };
 }
 
 describe('MonitorView', () => {
   beforeEach(() => selectLocale('en'));
-  it('renders the designed sections, counts and card selection without write actions', () => {
+  it('renders overview cards without opening details or exposing write actions', () => {
     const model = props();
     const { container } = render(<MonitorView {...model} />);
     expect(container.querySelector('header.header')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Pending 1' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Running 1' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Done 1' })).toBeTruthy();
-    const pendingCard = screen.getByRole('button', { name: /Waiting for decision/ });
+    const pendingCard = screen.getByRole('article', { name: /Card 1/ });
     expect(within(pendingCard).getByText('Card 1').classList.contains('monitor-card__title')).toBe(
       true,
     );
@@ -71,7 +62,8 @@ describe('MonitorView', () => {
       container.querySelectorAll('.monitor-card [data-slot="badge"].status-label'),
     ).toHaveLength(3);
     fireEvent.click(pendingCard);
-    expect(model.onCardSelect).toHaveBeenCalledWith(PROJECT_A.id, 1);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(pendingCard.hasAttribute('tabindex')).toBe(false);
     expect(screen.queryByRole('button', { name: /Archive|Delete|Edit|Answer/ })).toBeNull();
   });
 

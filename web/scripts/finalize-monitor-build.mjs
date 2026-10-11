@@ -1,4 +1,5 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
@@ -7,13 +8,22 @@ const monitorDir = new URL('../dist/monitor/', import.meta.url);
 
 async function finalizeHtml(dir, sourceName, targetName, requiredScript, requiredCss) {
   const source = new URL(sourceName, dir);
-  const html = await readFile(source, 'utf8');
+  let html = await readFile(source, 'utf8');
   if (!html.includes(requiredScript))
     throw new Error(`${source.pathname} must reference ${requiredScript}`);
   if (requiredCss && !html.includes(requiredCss))
     throw new Error(`${source.pathname} must reference ${requiredCss}`);
   if (/agboard-token|\/assets\/app\.js/.test(html))
     throw new Error(`${source.pathname} contains a forbidden token or PC asset reference`);
+  for (const assetPath of [requiredScript, requiredCss].filter(Boolean)) {
+    const assetName = assetPath.split('/').at(-1);
+    const version = createHash('sha256')
+      .update(await readFile(new URL(assetName, dir)))
+      .digest('hex')
+      .slice(0, 16);
+    html = html.replaceAll(assetPath, `${assetPath}?v=${version}`);
+  }
+  await writeFile(source, html);
   await rename(source, new URL(targetName, dir));
 }
 

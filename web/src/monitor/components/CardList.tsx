@@ -10,11 +10,10 @@ export const CardList = forwardRef<
   HTMLDivElement,
   Lists & {
     id: string;
-    onSelect(projectId: string, cardId: number): void;
     scopeName: string;
     freshness: MonitorFreshness;
   }
->(function CardList({ id, pending, running, done, onSelect, freshness }, ref) {
+>(function CardList({ id, pending, running, done, freshness }, ref) {
   const { t } = useTranslation();
   const sections: Array<[MonitorSection, MonitorCard[]]> = [
     ['pending', pending],
@@ -42,12 +41,7 @@ export const CardList = forwardRef<
           ) : (
             <div className="monitor-list__cards">
               {items.map((item) => (
-                <CardRow
-                  key={`${item.projectId}:${item.card.id}`}
-                  item={item}
-                  section={section}
-                  onSelect={onSelect}
-                />
+                <CardRow key={`${item.projectId}:${item.card.id}`} item={item} section={section} />
               ))}
             </div>
           )}

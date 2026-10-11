@@ -46,17 +46,8 @@ export interface MonitorViewProps {
   pending: MonitorCard[];
   running: MonitorCard[];
   done: MonitorCard[];
-  selectedCard: MonitorCard | null;
-  /** Active controlled detail tab, supplied by URL state when present. */
-  tab?: 'body' | 'history';
-  body: string | null;
-  history: Card['history'] | null;
   freshness: MonitorFreshness;
-  readResolvers: MonitorReadResolvers;
   onScopeChange(scope: MonitorScope): void;
-  onCardSelect(projectId: ProjectId, cardId: number): void;
-  onCloseCard(): void;
-  onTabChange(tab: 'body' | 'history'): void;
   onRefresh(): void;
   routeNotice?: boolean;
 }

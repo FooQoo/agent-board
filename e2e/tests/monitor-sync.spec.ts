@@ -45,7 +45,7 @@ function run(project: string, args: string[]): void {
   if (result.status !== 0) throw new Error(`agboard ${args.join(' ')} failed: ${result.stderr}`);
 }
 
-test('project scope, same IDs, detail history and live updates follow the shared file store', async ({ page }) => {
+test('project scope, same IDs and live updates follow the shared file store', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
   await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
@@ -53,17 +53,16 @@ test('project scope, same IDs, detail history and live updates follow the shared
   await page.getByRole('button', { name: 'All Projects' }).click();
   await page.getByRole('menuitemradio', { name: 'Beta', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`project=${beta}`));
-  await expect(page.getByRole('button', { name: /Beta pending review/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toHaveCount(0);
+  await expect(page.getByRole('article', { name: /Beta pending review/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /Alpha pending review/ })).toHaveCount(0);
 
-  await page.getByRole('button', { name: /Beta pending review/ }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByRole('dialog')).toContainText('Beta · #1');
-  await expect(page.getByRole('tabpanel')).toContainText('Same-number project card.');
-  await page.goBack();
+  await page.getByRole('article', { name: /Beta pending review/ }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`project=${beta}$`));
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'All Projects' })).toBeVisible();
   await page.goForward();
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Beta', exact: true })).toBeVisible();
 
   await page.goto('/monitor/');
   await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
@@ -71,10 +70,10 @@ test('project scope, same IDs, detail history and live updates follow the shared
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Running' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '10 Done' })).toBeVisible();
 
-  const markdown = pathFor('Alpha', 2, 'TASK.md');
-  replaceFileAtomically(markdown, '## 作業内容\n\nChanged directly in shared files.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Check refresh\n  - 確認結果: done\n  - 根拠: shared file edit\n  - 調整役の確認: yes\n\n## 実行記録\n\n');
-  await page.getByRole('button', { name: /Alpha running one/ }).click();
-  await expect(page.getByText('Changed directly in shared files.')).toBeVisible();
+  const taskFile = pathFor('Alpha', 2, 'task.json');
+  const task = JSON.parse(readFileSync(taskFile, 'utf8'));
+  replaceFileAtomically(taskFile, JSON.stringify({ ...task, title: 'Changed directly in shared files' }));
+  await expect(page.getByRole('article', { name: /Changed directly in shared files/ })).toHaveCount(1);
 });
 
 function pathFor(project: string, id: number, name: string): string {
@@ -96,16 +95,15 @@ test('partial shared-file damage is reported without inventing zero counts, then
   replaceFileAtomically(taskFile, original);
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Pending' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
 });
 
-test('monitor details expose no write controls and all write methods fail without changing data', async ({ page }) => {
+test('monitor overview exposes no detail or write controls and all write methods fail without changing data', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
-  await page.getByRole('button', { name: /Alpha pending review/ }).click();
-  const detail = page.getByRole('complementary', { name: 'Card details' });
-  await expect(detail).toBeVisible();
-  await expect(detail.getByRole('button', { name: /edit|archive|delete|restore|answer|add card/i })).toHaveCount(0);
+  await page.getByRole('article', { name: /Alpha pending review/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /edit|archive|delete|restore|answer|add card/i })).toHaveCount(0);
   const before = await page.request.get(`/monitor/api/projects/${alpha}/board`).then((response) => response.text());
   for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
     const response = await page.request.fetch(`/monitor/api/projects/${alpha}/cards/1`, { method });

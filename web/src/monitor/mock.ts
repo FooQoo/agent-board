@@ -1,6 +1,5 @@
 import type { Card, Project } from '../types';
 import type { MonitorCard, MonitorViewProps } from './contracts';
-import { unconnectedMonitorReadResolvers } from './contracts';
 
 const project: Project = {
   id: 'a'.repeat(32),
@@ -106,13 +105,9 @@ export function createMonitorFixtureProps(): MonitorViewProps {
       card: card(id, status, long),
     };
   });
-  const selectedCard = params.has('card')
-    ? (items.find((item) => item.card.id === Number(params.get('card'))) ?? null)
-    : null;
   const pending = items.filter((item) => item.card.agentStatus === 'pending');
   const running = items.filter((item) => item.card.agentStatus === 'running');
   const done = items.filter((item) => item.card.cardStatus === 'done');
-  const selectedTab = params.get('tab') === 'history' ? 'history' : 'body';
   return {
     projects: [project],
     scope: scope === 'all' ? 'all' : project.id,
@@ -120,31 +115,13 @@ export function createMonitorFixtureProps(): MonitorViewProps {
     pending,
     running,
     done,
-    selectedCard,
-    body: selectedCard?.card.description ?? null,
-    history: selectedCard?.card.history ?? null,
-    tab: selectedTab,
     freshness: {
       state: 'fresh',
       lastFetchedAt: '2026-10-11T01:00:00Z',
       failedProjectIds: [],
       snapshotProblems: [],
     },
-    readResolvers: unconnectedMonitorReadResolvers,
     onScopeChange: () => undefined,
-    onCardSelect: (projectId, cardId) => {
-      window.history.pushState(null, '', `?scope=${projectId}&card=${cardId}&tab=body`);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    },
-    onCloseCard: () => {
-      window.history.pushState(null, '', `?scope=${scope}`);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    },
-    onTabChange: (tab) => {
-      const next = new URL(window.location.href);
-      next.searchParams.set('tab', tab);
-      window.history.replaceState(null, '', next);
-    },
     onRefresh: () => undefined,
   };
 }

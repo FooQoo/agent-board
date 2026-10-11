@@ -44,7 +44,7 @@ test('loading is distinct from an empty project', async ({ page }) => {
   await expect(page.getByRole('region', { name: 'Cards' })).toContainText('Loading monitor…');
   await expect(page.getByRole('status')).toContainText('Loading monitor…');
   await expect(page.getByText('No pending decisions.')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
   expect(catalogReads).toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'All Projects' }).click();
@@ -93,13 +93,12 @@ test('a lost event stream keeps the latest snapshot, manual refresh works, and v
   await page.route('**/monitor/api/events', (route) => route.abort());
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
-  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
-  const lastFetched = await page.locator('.monitor-freshness__time').innerText();
+  await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
   await expect(page.getByText('Updated · Automatic updates stopped')).toBeVisible();
   const readsBeforeManualRefresh = catalogReads;
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect.poll(() => catalogReads).toBeGreaterThan(readsBeforeManualRefresh);
-  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
 
   await page.evaluate(() => (window as unknown as { setMonitorVisibility: (next: DocumentVisibilityState) => void }).setMonitorVisibility('hidden'));
   await expect(page.getByText('Updated · Automatic updates stopped')).toBeVisible();
@@ -110,6 +109,10 @@ test('a lost event stream keeps the latest snapshot, manual refresh works, and v
 
 test('a missing event-stream heartbeat marks the snapshot stale and retries the stream', async ({ page }) => {
   await page.clock.install();
+  let catalogResponses = 0;
+  page.on('response', (response) => {
+    if (new URL(response.url()).pathname === '/monitor/api/projects') catalogResponses++;
+  });
   await page.addInitScript(() => {
     type FakeSource = { emit(type: string): void; close(): void; closed: boolean };
     const host = window as unknown as { __monitorEventSources: FakeSource[]; EventSource: typeof EventSource };
@@ -138,10 +141,15 @@ test('a missing event-stream heartbeat marks the snapshot stale and retries the 
   });
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
-  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __monitorEventSources: unknown[] }).__monitorEventSources.length)).toBe(1);
   await page.evaluate(() => (window as unknown as { __monitorEventSources: Array<{ emit(type: string): void }> }).__monitorEventSources[0]?.emit('ready'));
+  await expect.poll(() => catalogResponses).toBe(4);
   await expect(page.getByRole('status')).toContainText('Connected · Current');
+
+  const lastFetched = await page.locator('.monitor-freshness__time').innerText();
+  // A disconnect triggers a snapshot read; fail it to check that the last successful time survives.
+  await page.route('**/monitor/api/projects', (route) => route.abort());
 
   await page.clock.fastForward(45_000);
   await expect(page.getByRole('status')).toContainText('Updated · Automatic updates stopped');
@@ -157,7 +165,8 @@ test('a timed-out catalog read keeps the last snapshot instead of showing zero w
   await page.clock.install();
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
-  await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('Connected · Current');
 
   let markRequestStarted!: () => void;
   const requestStarted = new Promise<void>((resolve) => { markRequestStarted = resolve; });
@@ -181,7 +190,7 @@ test('a timed-out catalog read keeps the last snapshot instead of showing zero w
 });
 
 const monitorCard = (page: Page, id: number, title: string) =>
-  page.getByRole('button', { name: new RegExp(`^#${id}.*${title}`) });
+  page.getByRole('article', { name: new RegExp(`^#${id}.*${title}`) });
 
 test('the shared entry chooses once at the initial width, preserving query and fragment', async ({ page }) => {
   for (const width of [375, 767]) {
@@ -200,7 +209,7 @@ test('the shared entry chooses once at the initial width, preserving query and f
   }
 
   await page.setViewportSize({ width: 375, height: 640 });
-  await page.route('**/assets/access/entry.js', (route) => route.abort());
+  await page.route('**/assets/access/entry.js*', (route) => route.abort());
   await page.goto('/');
   await expect(page.getByRole('link', { name: 'Open read-only monitor' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open board' })).toBeVisible();
@@ -237,32 +246,15 @@ test('monitor renders both projects and same-number cards, preserves direct rout
     expect(response.status(), `${method} must be rejected`).toBe(405);
   }
 
-  await page.getByRole('button', { name: /^#4(?!\d)/ }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByRole('tabpanel')).toContainText('A shared read-only detail with an owned image and Mermaid diagram.');
-  await expect(page).toHaveURL(new RegExp(`cardProject=${alpha}.*card=4`));
-  await page.getByRole('tab', { name: /History/ }).click();
-  await expect(page.getByRole('tabpanel')).toContainText('Complete work');
-  await expect(page).toHaveURL(/tab=history/);
-  await page.getByRole('tab', { name: 'Description' }).click();
-  const detail = page.getByRole('complementary', { name: 'Card details' });
-  await expect(detail.getByRole('region', { name: 'Evidence' })).toContainText('run.log');
-  await expect.poll(() => detail.locator('.md__image-picture').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
-  await expect.poll(() => detail.locator('figure svg').count()).toBeGreaterThan(0);
-  await expect(detail.locator('figure svg')).toBeVisible();
-  await detail.getByRole('button', { name: 'Enlarge monitor.png' }).click();
-  const imageLightbox = page.getByRole('dialog', { name: 'monitor.png' });
-  await expect(imageLightbox).toBeVisible();
-  await imageLightbox.getByRole('button', { name: 'Close' }).click();
-  await expect(imageLightbox).toHaveCount(0);
-  await detail.getByRole('button', { name: 'Enlarge diagram' }).click();
-  const diagramLightbox = page.getByRole('dialog', { name: 'Enlarge diagram' });
-  await expect(diagramLightbox.locator('svg.flowchart')).toBeVisible();
-  await diagramLightbox.getByRole('button', { name: 'Close' }).click();
-  await expect(diagramLightbox).toHaveCount(0);
-  await page.getByRole('button', { name: 'Close details' }).click();
+  const originalUrl = page.url();
+  await page.getByRole('article', { name: /^#4(?!\d)/ }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page).not.toHaveURL(/cardProject=/);
+  await expect(page.getByRole('complementary', { name: 'Card details' })).toHaveCount(0);
+  await expect(page).toHaveURL(originalUrl);
+  await expect(page.locator('.monitor-card button, .monitor-card a, .monitor-card[tabindex]')).toHaveCount(0);
+  await page.goto(`/monitor/?project=${alpha}&cardProject=${alpha}&card=4&tab=history`);
+  await expect(page).toHaveURL(`${monitorOrigin}/monitor/?project=${alpha}`);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await page.setViewportSize({ width: 320, height: 568 });
   await page.reload();
@@ -291,7 +283,7 @@ test('direct monitor and board URLs stay on their chosen view across reload and 
   await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
 });
 
-test('100 cards, 100-character titles and a 50,000-character detail remain reachable on a narrow screen', async ({ page }) => {
+test('100 cards and 100-character titles remain reachable without opening details on a narrow screen', async ({ page }) => {
   test.setTimeout(120_000);
   await stopMonitorServe(serve);
   const longProject = addDenseMonitorFixture(home);
@@ -303,18 +295,15 @@ test('100 cards, 100-character titles and a 50,000-character detail remain reach
   await page.getByRole('menuitemradio', { name: 'Alpha', exact: true }).click();
   await page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '96 Done' }).click();
   const list = page.getByRole('region', { name: 'Cards' });
-  await expect(list.getByRole('button', { name: /#100 Done/ })).toBeVisible();
+  await expect(list.getByRole('article', { name: /#100 Done/ })).toBeVisible();
   expect(await list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
-  await list.getByRole('button', { name: /#100 Done/ }).click();
-  const detail = page.getByRole('complementary', { name: 'Card details' });
-  await expect(detail).toContainText('Card 100');
-  await expect(detail.getByText('Long body tail marker.')).toBeVisible();
+  await list.getByRole('article', { name: /#100 Done/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Close details' }).click();
   await page.getByRole('button', { name: 'Alpha', exact: true }).click();
   await page.getByRole('menuitemradio', { name: longProject, exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`project=${monitorProjectId(home, longProject)}`));
-  await expect(page.getByRole('button', { name: /T{100}/ })).toBeVisible();
+  await expect(page.getByRole('article', { name: /T{100}/ })).toBeVisible();
   const width = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
   expect(width.scroll).toBeLessThanOrEqual(width.client);
 });

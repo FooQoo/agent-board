@@ -12,6 +12,9 @@ describe('isolated monitor build', () => {
     expect(access).toContain('/assets/access/entry.js');
     expect(monitor).toContain('/assets/monitor/monitor.js');
     expect(monitor).toContain('/assets/monitor/monitor.css');
+    expect(access).toMatch(/\/assets\/access\/entry\.js\?v=[a-f0-9]{16}/);
+    expect(monitor).toMatch(/\/assets\/monitor\/monitor\.js\?v=[a-f0-9]{16}/);
+    expect(monitor).toMatch(/\/assets\/monitor\/monitor\.css\?v=[a-f0-9]{16}/);
     expect(`${access}\n${monitor}`).not.toContain('agboard-token');
     expect(`${access}\n${monitor}`).not.toContain('/assets/app.js');
   });
@@ -48,5 +51,6 @@ describe('isolated monitor build', () => {
     const graph = read('monitor/dependency-graph.json');
     expect(graph).not.toMatch(/src\/App|components\/editor|src\/api\//);
     expect(graph).toContain('src/monitor-main.tsx');
+    expect(graph).not.toMatch(/ReadOnlyDetail|ReadOnlyEpic|CardDetailView|MarkdownSections/);
   });
 });
