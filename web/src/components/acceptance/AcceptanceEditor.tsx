@@ -1,6 +1,9 @@
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { acceptanceProblem, nextId } from '../../lib/acceptance';
 import type { AcceptanceItem } from '../../types';
 import './acceptance-edit.css';
@@ -68,34 +71,37 @@ export function AcceptanceEditor({
         {items.map((item, index) => (
           <li key={item.id} className="acceptance-edit__row">
             <span className="acceptance-edit__controls">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 className="acceptance-edit__icon"
                 aria-label={t('acceptanceEdit.moveUp', { id: item.id })}
                 disabled={disabled || index === 0}
                 onClick={() => move(index, index - 1)}
               >
                 <ArrowUpIcon aria-hidden="true" focusable="false" />
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 className="acceptance-edit__icon"
                 aria-label={t('acceptanceEdit.moveDown', { id: item.id })}
                 disabled={disabled || index === items.length - 1}
                 onClick={() => move(index, index + 1)}
               >
                 <ArrowDownIcon aria-hidden="true" focusable="false" />
-              </button>
-              <input
-                type="checkbox"
+              </Button>
+              <Checkbox
                 checked={item.done}
                 disabled={disabled}
                 aria-label={t('acceptanceEdit.done', { id: item.id })}
-                onChange={(event) => update(index, { done: event.target.checked })}
+                onCheckedChange={(checked) => update(index, { done: checked === true })}
               />
               <span className="acceptance-edit__id">{item.id}</span>
             </span>
-            <input
+            <Input
               ref={(element) => {
                 if (element) inputs.current.set(item.id, element);
                 else inputs.current.delete(item.id);
@@ -109,15 +115,17 @@ export function AcceptanceEditor({
               aria-invalid={invalid === index ? 'true' : undefined}
               onChange={(event) => update(index, { text: event.target.value })}
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               className="acceptance-edit__icon"
               aria-label={t('acceptanceEdit.remove', { id: item.id })}
               disabled={disabled}
               onClick={() => remove(index)}
             >
               <XIcon aria-hidden="true" focusable="false" />
-            </button>
+            </Button>
             {invalid === index && (
               <span className="acceptance-edit__error" role="alert">
                 {t('acceptanceEdit.emptyText')}
@@ -126,10 +134,17 @@ export function AcceptanceEditor({
           </li>
         ))}
       </ol>
-      <button type="button" className="acceptance-edit__add" disabled={disabled} onClick={add}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="acceptance-edit__add"
+        disabled={disabled}
+        onClick={add}
+      >
         <PlusIcon aria-hidden="true" focusable="false" />
         <span>{t('acceptanceEdit.add')}</span>
-      </button>
+      </Button>
       <p className="acceptance-edit__note">{t('acceptanceEdit.numberNote')}</p>
     </div>
   );

@@ -84,27 +84,10 @@
   border-color: var(--r-danger);
 }
 
+/* The icon buttons are the shared ghost buttons, sized to the row. */
 .acceptance-edit__icon {
-  display: inline-grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: none;
-  color: var(--r-text2);
-  cursor: pointer;
-}
-
-.acceptance-edit__icon:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.acceptance-edit__icon svg {
-  width: 14px;
-  height: 14px;
+  width: 28px;
+  height: 28px;
 }
 
 .acceptance-edit__error {
@@ -113,21 +96,7 @@
   color: var(--r-danger);
 }
 
-.acceptance-edit__add {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-  padding: 6px 10px;
-  border: 1px solid var(--r-border);
-  border-radius: 6px;
-  background: var(--r-surface);
-  color: var(--r-text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
+/* The add button is the shared outline button; only its icon is sized here. */
 .acceptance-edit__add svg {
   width: 14px;
   height: 14px;
