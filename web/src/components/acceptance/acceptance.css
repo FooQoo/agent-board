@@ -8,7 +8,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 16px;
-  color: var(--r-muted);
+  color: var(--r-text2);
 }
 
 .acceptance-chip svg {
