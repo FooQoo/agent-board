@@ -192,15 +192,22 @@
 .editor__body {
   position: relative;
 }
-.editor-attachments {
+/* The right column: an optional row (the epic of a card) above the images panel. */
+.editor__aside {
   display: flex;
   flex: 0 0 220px;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+.editor-attachments {
+  display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
   padding: 16px;
-  border-left: 1px solid var(--r-border);
-  background: var(--r-surface);
 }
 .editor-attachments__header {
   display: flex;
@@ -396,7 +403,7 @@
 /* The right column is always open; below 1100px both side columns narrow to 200px. */
 @media (max-width: 1100px) {
   .editor__side,
-  .editor-attachments {
+  .editor__aside {
     width: 200px;
     flex-basis: 200px;
   }

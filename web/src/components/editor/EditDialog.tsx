@@ -125,7 +125,7 @@ export function EditDialog({
         onDescriptionChange={setDescription}
         editorRef={editor}
         disabled={flow.saving}
-        beforeTitle={
+        asideTop={
           card.epic ? (
             <div className="editor__epic-row">
               <span className="editor__epic-caption">{t('editor.epic')}</span>

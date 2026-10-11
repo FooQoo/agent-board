@@ -28,6 +28,8 @@ export interface EditorBodyProps {
   disabled: boolean;
   /** Shown above the title (the EPIC-ID label of a card, the label row of an epic). */
   beforeTitle?: ReactNode;
+  /** Shown at the top of the right column, above the images panel (the epic row of a card). */
+  asideTop?: ReactNode;
   /** A field placed between the title and the body (the assignee of a new card). */
   extraField?: ReactNode;
   /** Shown under the outline in the left column (the task list of an epic). */
@@ -71,6 +73,7 @@ export function EditorBody({
   editorRef,
   disabled,
   beforeTitle,
+  asideTop,
   extraField,
   sidebar,
   attachments = [],
@@ -193,14 +196,17 @@ export function EditorBody({
         </div>
       </div>
       {onFiles && onRemoveAttachment && (
-        <AttachmentPanel
-          attachments={attachments}
-          onFiles={onFiles}
-          onRemove={onRemoveAttachment}
-          onInsert={insertImage}
-          notice={attachmentNotice}
-          disabled={disabled}
-        />
+        <div className="editor__aside">
+          {asideTop}
+          <AttachmentPanel
+            attachments={attachments}
+            onFiles={onFiles}
+            onRemove={onRemoveAttachment}
+            onInsert={insertImage}
+            notice={attachmentNotice}
+            disabled={disabled}
+          />
+        </div>
       )}
     </div>
   );

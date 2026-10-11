@@ -20,6 +20,11 @@
   gap: 8px;
 }
 
+.editor__aside > .editor__epic-row {
+  flex: none;
+  padding: 16px 16px 0;
+}
+
 .editor__epic-caption,
 .epic-label-row__caption {
   color: var(--r-muted);

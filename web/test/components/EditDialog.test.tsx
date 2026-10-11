@@ -64,6 +64,33 @@ async function openEdit(
   };
 }
 
+describe('epic row', () => {
+  it('sits in the right column above the images panel, not above the title', async () => {
+    const card = makeCard({
+      id: 15,
+      title: 'Labeled draft',
+      isDraft: true,
+      epic: { id: 'SHARED-FILES', name: 'Shared files', color: '#7C3AED' },
+    });
+    const { dialog } = await openEdit(async () => undefined, card);
+    const chip = within(dialog).getByText('SHARED-FILES');
+    const row = chip.closest('.editor__epic-row') as HTMLElement;
+    expect(row).not.toBeNull();
+    const aside = row.parentElement as HTMLElement;
+    expect(aside.classList.contains('editor__aside')).toBe(true);
+    const panel = within(aside).getByRole('region', { name: /Image attachments|添付画像/ });
+    expect(row.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(dialog.querySelector('.editor__main')?.contains(row)).toBe(false);
+    const main = dialog.querySelector('.editor__main') as HTMLElement;
+    expect((main.firstElementChild as HTMLElement).querySelector('input')).not.toBeNull();
+  });
+
+  it('is absent for a card without an epic', async () => {
+    const { dialog } = await openEdit();
+    expect(dialog.querySelector('.editor__epic-row')).toBeNull();
+  });
+});
+
 const button = (root: HTMLElement, name: string) =>
   within(root).getByRole('button', { name }) as HTMLButtonElement;
 
