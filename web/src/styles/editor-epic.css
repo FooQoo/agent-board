@@ -20,7 +20,8 @@
   gap: 8px;
 }
 
-.editor__aside > .editor__epic-row {
+.editor__aside > .editor__epic-row,
+.editor__aside > .epic-label-row {
   flex: none;
   padding: 16px 16px 0;
 }
@@ -59,7 +60,7 @@
 }
 
 .epic-label-row__hex {
-  width: 104px;
+  width: 88px;
   height: 30px;
   font-family: var(--font-mono);
   font-size: 12px;

@@ -149,6 +149,33 @@ afterEach(() => {
 });
 
 describe('epic dialog layout', () => {
+  it('puts the label row in the right column above the images panel, and the name first in the centre', async () => {
+    const { api } = fakeApi();
+    const { dialog } = await openEpic(api);
+    const row = dialog.querySelector('.epic-label-row') as HTMLElement;
+    const aside = row.parentElement as HTMLElement;
+    expect(aside.classList.contains('editor__aside')).toBe(true);
+    const panel = within(aside).getByRole('region', { name: 'Image attachments' });
+    expect(row.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(row).getByLabelText('HEX')).toBeTruthy();
+    expect(within(row).getByLabelText('Choose a label color')).toBeTruthy();
+    const main = dialog.querySelector('.editor__main') as HTMLElement;
+    expect(main.contains(row)).toBe(false);
+    expect(
+      within(main.firstElementChild as HTMLElement).getByLabelText('Formal name'),
+    ).toBeTruthy();
+  });
+
+  it('shows the invalid HEX error in the label row', async () => {
+    const { api } = fakeApi();
+    const { dialog } = await openEpic(api);
+    setColor('#12', dialog);
+    const row = dialog.querySelector('.epic-label-row') as HTMLElement;
+    expect(
+      within(row).getByText(/valid|HEX|#/i, { selector: '.epic-label-row__error' }),
+    ).toBeTruthy();
+  });
+
   it('shows the epic ID, the title, the outline, the task list, the name, color, plan and images', async () => {
     const { api } = fakeApi();
     const { dialog } = await openEpic(api);

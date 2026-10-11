@@ -245,7 +245,7 @@ export function EpicDialog({
         bodyLabel={t('epic.planLabel')}
         editorRef={editor}
         disabled={saving}
-        beforeTitle={
+        asideTop={
           <div className="epic-label-row">
             <span className="editor__epic-caption">{t('epic.label')}</span>
             <span
