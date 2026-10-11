@@ -51,7 +51,6 @@ export function MonitorCard({
       />
       <span className="monitor-card__meta">
         <span>{item.projectName}</span>
-        <AcceptanceProgress card={card} />
         <span>
           {when
             ? formatShort(when)
@@ -59,6 +58,7 @@ export function MonitorCard({
               ? t('monitor.completedUnknown')
               : formatShort(card.agentStatusChangedAt)}
         </span>
+        <AcceptanceProgress card={card} />
       </span>
     </article>
   );

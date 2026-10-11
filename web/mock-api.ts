@@ -125,7 +125,17 @@ function loadFixtures(): Record<string, MockBoard> {
   const withEpic = (cards: Card[]): Card[] =>
     cards.map((card) => {
       const conditions = SAMPLE_CONDITIONS[card.id];
-      const withConditions = conditions ? { ...card, acceptance: conditions } : card;
+      // Card 16 has a frontmatter that cannot be read: its body is shown whole, with a notice.
+      const broken =
+        card.id === 16
+          ? {
+              ...card,
+              body: '---\nacceptance:\n  - id: AC-1\n    text: \'\'\n---\n\nThe body stays visible.\n',
+              acceptance: [],
+              acceptanceError: true,
+            }
+          : card;
+      const withConditions = conditions ? { ...broken, acceptance: conditions } : broken;
       return SAMPLE_EPIC_CARDS.includes(card.id)
         ? {
             ...withConditions,
