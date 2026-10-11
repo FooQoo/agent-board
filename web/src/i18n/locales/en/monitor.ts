@@ -1,0 +1,31 @@
+export const monitorEn = {
+  monitor: {
+    allProjects: 'All Projects',
+    project: 'Project',
+    refresh: 'Refresh',
+    summary: 'Work summary',
+    cards: 'Cards',
+    readOnly: 'Read-only · Latest available snapshot',
+    detailFooter: 'Read-only · Updated {{time}}',
+    epic: 'Epic plan',
+    epicLoading: 'Loading epic…',
+    epicError: 'Could not load this epic.',
+    evidence: 'Evidence',
+    completedUnknown: 'Completion time unknown',
+    lastFetched: 'Last updated {{time}}',
+    status: { pending: 'Pending', running: 'Running', done: 'Done' },
+    empty: {
+      pending: 'No pending decisions.',
+      running: 'No running work.',
+      done: 'No completed work.',
+    },
+    freshness: {
+      loading: 'Loading monitor…',
+      syncing: 'Updating…',
+      fresh: 'Connected · Current',
+      stale: 'Disconnected · Showing last available data',
+      partial: '{{failed}} project fetch failures · {{problems}} data issues',
+      error: 'Could not load monitor data.',
+    },
+  },
+} as const;

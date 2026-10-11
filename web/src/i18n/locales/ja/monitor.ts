@@ -1,0 +1,31 @@
+export const monitorJa = {
+  monitor: {
+    allProjects: 'All Projects',
+    project: 'Project',
+    refresh: '更新',
+    summary: '作業の概要',
+    cards: 'カード',
+    readOnly: '閲覧専用 · 取得した最新の状態',
+    detailFooter: '閲覧専用 · {{time}}に取得',
+    epic: 'エピック計画',
+    epicLoading: 'エピックを読み込んでいます…',
+    epicError: 'エピックを読み込めませんでした。',
+    evidence: '証跡',
+    completedUnknown: '完了日時不明',
+    lastFetched: '最終取得 {{time}}',
+    status: { pending: 'Pending', running: 'Running', done: 'Done' },
+    empty: {
+      pending: '判断待ちはありません。',
+      running: '実行中の作業はありません。',
+      done: '完了した作業はありません。',
+    },
+    freshness: {
+      loading: 'モニターを読み込んでいます…',
+      syncing: '更新中…',
+      fresh: '接続中 · 最新',
+      stale: '切断 · 前回の取得内容を表示',
+      partial: '取得失敗 {{failed}}件 · データ不備 {{problems}}件',
+      error: 'モニターを読み込めませんでした。',
+    },
+  },
+} as const;

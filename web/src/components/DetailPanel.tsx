@@ -1,23 +1,16 @@
-import { ArchiveRestoreIcon, FilePenIcon, PencilIcon as EditIcon, XIcon } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { ArchiveRestoreIcon, FilePenIcon, PencilIcon as EditIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setDraft } from '../api';
-import { stateLabel } from '../lib/format';
-import { historyItems } from '../lib/history';
 import { noOperations, type OperationControls } from '../lib/projectSession';
 import type { Card, Problem, ProjectId } from '../types';
 import { Button } from '@/components/ui/button';
-import { AssigneeLabel } from './AssigneeLabel';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
 import { DecisionRequest } from './detail/DecisionRequest';
-import { DetailAttachments } from './detail/DetailAttachments';
-import { DetailTabs, type DetailTab, panelId, tabId } from './detail/DetailTabs';
+import type { DetailTab } from './detail/DetailTabs';
+import { CardDetailView } from './detail/CardDetailView';
 import { DraftBanner } from './detail/DraftBanner';
-import { ProblemNotice } from './detail/ProblemNotice';
-import { HistoryTimeline } from './HistoryTimeline';
-import { MarkdownSections } from './markdown/MarkdownSections';
-import { StatusLabel } from './StatusLabel';
 import '../styles/detail.css';
 
 export interface DetailPanelProps {
@@ -126,7 +119,6 @@ function DetailBody({
   problems,
 }: DetailBodyProps) {
   const { t } = useTranslation();
-  const idBase = useId();
   const [tab, setTab] = useState<DetailTab>('description');
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
   const [draftSaving, setDraftSaving] = useState(false);
@@ -135,7 +127,6 @@ function DetailBody({
   const draftBusy = useRef(false);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
-  const state = stateLabel(card);
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
   const confirming = confirm !== 'closed';
@@ -175,27 +166,52 @@ function DetailBody({
   const canMakeDraft = !card.isDraft && card.agentStatus !== 'running';
 
   return (
-    <aside className="detail" aria-label={t('detail.title')}>
-      <div className="detail__top">
-        <span className="detail__id">#{card.id}</span>
-        <button
-          type="button"
-          className="detail__close"
-          aria-label={t('detail.close')}
-          onClick={onClose}
-        >
-          <XIcon aria-hidden="true" />
-        </button>
-      </div>
-      <h2 className="detail__title">{card.title}</h2>
-      <div className="detail__meta">
-        <StatusLabel kind="card" status={card.cardStatus} />
-        {state !== null && <StatusLabel kind="agent" status={card.agentStatus} />}
-        <AssigneeLabel assignee={card.assignee} />
-        <span className="detail__assignee" aria-hidden="true">
-          {t(`assignee.${card.assignee}`)}
-        </span>
-      </div>
+    <CardDetailView
+      projectId={projectId}
+      card={card}
+      tab={tab}
+      onTabChange={setTab}
+      onClose={onClose}
+      readOnlyRequest={false}
+      readOnlyDraft={false}
+      toolbar={
+        !archived && (
+          <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
+            {tab === 'description' && card.isDraft && (
+              <button
+                type="button"
+                className="detail__tool"
+                aria-label={t('detail.edit')}
+                title={t('detail.edit')}
+                onClick={() => onEdit?.(card)}
+              >
+                <EditIcon aria-hidden="true" />
+              </button>
+            )}
+            {tab === 'description' && canMakeDraft && (
+              <button
+                type="button"
+                className="detail__tool detail__tool--text"
+                aria-label={t('detail.makeDraft')}
+                title={t('detail.makeDraft')}
+                disabled={draftSaving}
+                onClick={() => void toggleDraft(true)}
+              >
+                <FilePenIcon aria-hidden="true" />
+                {t('detail.makeDraft')}
+              </button>
+            )}
+            <DeleteButton
+              ref={deleteButton}
+              action="archive"
+              disabled={operationSaving}
+              onClick={() => setConfirm('user')}
+            />
+          </div>
+        )
+      }
+      problems={problems}
+    >
       {card.isDraft && !archived && (
         <DraftBanner
           busy={draftSaving}
@@ -259,88 +275,11 @@ function DetailBody({
           onConfirm={() => onRemove(archived ? 'delete' : 'archive', card)}
         />
       )}
-      <DetailTabs
-        idBase={idBase}
-        tab={tab}
-        historyCount={historyItems(card.history).length}
-        onChange={setTab}
-      >
-        {!archived && (
-          <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
-            {tab === 'description' && card.isDraft && (
-              <button
-                type="button"
-                className="detail__tool"
-                aria-label={t('detail.edit')}
-                title={t('detail.edit')}
-                onClick={() => onEdit?.(card)}
-              >
-                <EditIcon aria-hidden="true" />
-              </button>
-            )}
-            {tab === 'description' && canMakeDraft && (
-              <button
-                type="button"
-                className="detail__tool detail__tool--text"
-                aria-label={t('detail.makeDraft')}
-                title={t('detail.makeDraft')}
-                disabled={draftSaving}
-                onClick={() => void toggleDraft(true)}
-              >
-                <FilePenIcon aria-hidden="true" />
-                {t('detail.makeDraft')}
-              </button>
-            )}
-            <DeleteButton
-              ref={deleteButton}
-              action="archive"
-              disabled={operationSaving}
-              onClick={() => setConfirm('user')}
-            />
-          </div>
-        )}
-      </DetailTabs>
       {draftFailed && !card.isDraft && (
         <p className="detail__error" role="alert">
           {t('detail.saveError')}
         </p>
       )}
-      {/* Both panels stay mounted, so the folds of the description survive a look at the history. */}
-      <div
-        className="detail__viewport"
-        role="tabpanel"
-        id={panelId(idBase, 'description')}
-        aria-labelledby={tabId(idBase, 'description')}
-        hidden={tab !== 'description'}
-      >
-        <ProblemNotice
-          problems={problems.filter((problem) =>
-            problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
-          )}
-        />
-        <MarkdownSections
-          source={card.description}
-          resolveAttachment={(id) =>
-            card.attachments?.some((a) => a.id === id)
-              ? `/api/projects/${projectId}/cards/${card.id}/attachments/${id}`
-              : null
-          }
-        />
-        <DetailAttachments
-          projectId={projectId}
-          cardId={card.id}
-          attachments={card.attachments ?? []}
-        />
-      </div>
-      <div
-        className="detail__viewport"
-        role="tabpanel"
-        id={panelId(idBase, 'history')}
-        aria-labelledby={tabId(idBase, 'history')}
-        hidden={tab !== 'history'}
-      >
-        <HistoryTimeline events={card.history} />
-      </div>
-    </aside>
+    </CardDetailView>
   );
 }

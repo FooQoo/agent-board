@@ -23,7 +23,7 @@ const props: MonitorViewProps = {
   onRefresh: vi.fn(),
 };
 
-describe('monitor contracts and placeholder view', () => {
+describe('monitor contracts and view', () => {
   it('builds only read URLs beneath the dedicated API prefix and marks epic loading as unconnected', async () => {
     expect(unconnectedMonitorReadResolvers.attachmentUrl('abc', 7, 'image-id')).toMatch(
       /^\/monitor\/api\//,
@@ -41,9 +41,9 @@ describe('monitor contracts and placeholder view', () => {
 
   it('renders passed view state without write controls', () => {
     render(<MonitorView {...props} />);
-    expect(screen.getByRole('heading', { name: 'Agent Board Monitor' })).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toBe('loading');
-    expect(screen.getByRole('combobox', { name: 'Project' })).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Agent Board' })).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('Loading monitor');
+    expect(screen.getByRole('button', { name: 'All Projects' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Archive|Delete|Edit|Answer/ })).toBeNull();
   });
 });

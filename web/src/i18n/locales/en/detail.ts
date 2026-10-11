@@ -36,6 +36,7 @@ export const detailEn = {
     retry: 'Retry',
     cancel: 'Cancel',
     changed: 'This request has changed. Review the latest board.',
+    readOnlyGuide: 'Answer on Agent Board from a PC.',
   },
   delete: {
     buttonLabel: 'Delete card',
