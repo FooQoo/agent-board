@@ -1,11 +1,11 @@
-import { CheckIcon, LoaderIcon, PauseIcon } from 'lucide-react';
+import { CheckIcon, CircleDashedIcon, CircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 
-export type MonitorSection = 'pending' | 'running' | 'done';
+export type MonitorSection = 'todo' | 'doing' | 'done';
 const icons: Record<MonitorSection, ReactNode> = {
-  pending: <PauseIcon aria-hidden="true" />,
-  running: <LoaderIcon aria-hidden="true" />,
+  todo: <CircleIcon aria-hidden="true" />,
+  doing: <CircleDashedIcon aria-hidden="true" />,
   done: <CheckIcon aria-hidden="true" />,
 };
 

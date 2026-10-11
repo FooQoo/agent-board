@@ -87,6 +87,12 @@ export function createMonitorHome(): string {
   const draft = JSON.parse(readFileSync(draftPath, 'utf8')) as Record<string, unknown>;
   writeJson(draftPath, { ...draft, isDraft: true });
 
+  // Keep both draft and ordinary Todo cards, and an idle card already in Doing,
+  // so the view proves its columns come from cardStatus rather than agentStatus.
+  card(home, 'Alpha', 'Alpha ordinary todo', 'An ordinary card that has not started.');
+  const idleDoing = card(home, 'Alpha', 'Alpha idle doing', 'A doing card with no active agent status.');
+  move(home, 'Alpha', idleDoing, 'doing', 'Put the idle card in Doing');
+
   const betaPending = card(home, 'Beta', 'Beta pending review', 'Same-number project card.');
   move(home, 'Beta', betaPending, 'doing', 'Start review');
   state(home, 'Beta', betaPending, 'pending', 'Waiting for Beta input.');
@@ -198,7 +204,7 @@ export function addDenseMonitorFixture(home: string): string {
   const longProject = 'Project ' + 'P'.repeat(42);
   const tail = '\n\nLong body tail marker.';
   agboardCatalogOk(['project', 'create', longProject], home);
-  for (let id = 13; id <= 100; id++) {
+  for (let id = 15; id <= 100; id++) {
     const prefix = `Card ${id} `;
     const title = prefix + 'L'.repeat(100 - prefix.length);
     const longBodyStart = `Long body start ${id}.\n\n`;

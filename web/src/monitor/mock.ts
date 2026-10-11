@@ -1,4 +1,4 @@
-import type { Card, Project } from '../types';
+import type { Card, ColumnName, Project } from '../types';
 import type { MonitorCard, MonitorViewProps } from './contracts';
 
 const project: Project = {
@@ -11,10 +11,12 @@ const longText =
     500,
   );
 
-function card(id: number, status: 'pending' | 'running' | 'done', long: boolean): Card {
+function card(id: number, status: ColumnName, long: boolean): Card {
   const at = `2026-10-11T00:${String(id % 60).padStart(2, '0')}:00Z`;
   const done = status === 'done';
-  const pending = status === 'pending';
+  const agentStatus =
+    status !== 'doing' ? 'idle' : id % 3 === 0 ? 'pending' : id % 2 === 0 ? 'running' : 'idle';
+  const pending = agentStatus === 'pending';
   return {
     id,
     title:
@@ -26,9 +28,9 @@ function card(id: number, status: 'pending' | 'running' | 'done', long: boolean)
         ? longText
         : '## Work\n\nReview the monitor behavior and confirm the shared display remains read-only.\n\n## Acceptance\n\n- [x] Common detail view\n- [ ] Keep the content readable',
     assignee: 'ai',
-    cardStatus: done ? 'done' : pending ? 'todo' : 'doing',
+    cardStatus: status,
     position: id,
-    agentStatus: pending ? 'pending' : status === 'running' ? 'running' : 'idle',
+    agentStatus,
     pendingReason: pending
       ? 'Waiting for a decision about how the mobile monitor should present the result.'
       : null,
@@ -66,9 +68,9 @@ function card(id: number, status: 'pending' | 'running' | 'done', long: boolean)
             actor: 'ai',
             reason: null,
             fromCardStatus: null,
-            toCardStatus: pending ? 'todo' : 'doing',
+            toCardStatus: status,
             fromAgentStatus: null,
-            toAgentStatus: pending ? 'pending' : 'running',
+            toAgentStatus: agentStatus,
             requestId: null,
             at,
           },
@@ -88,15 +90,15 @@ export function createMonitorFixtureProps(): MonitorViewProps {
     const id = index + 1;
     const status = ac1Fixture
       ? id === 1
-        ? 'pending'
+        ? 'todo'
         : id === 2 || id === 3
-          ? 'running'
+          ? 'doing'
           : 'done'
       : id === 3 || id % 7 === 0
         ? 'done'
         : id % 3 === 0
-          ? 'running'
-          : 'pending';
+          ? 'doing'
+          : 'todo';
     return {
       projectId: project.id,
       projectName: long
@@ -105,15 +107,15 @@ export function createMonitorFixtureProps(): MonitorViewProps {
       card: card(id, status, long),
     };
   });
-  const pending = items.filter((item) => item.card.agentStatus === 'pending');
-  const running = items.filter((item) => item.card.agentStatus === 'running');
+  const todo = items.filter((item) => item.card.cardStatus === 'todo');
+  const doing = items.filter((item) => item.card.cardStatus === 'doing');
   const done = items.filter((item) => item.card.cardStatus === 'done');
   return {
     projects: [project],
     scope: scope === 'all' ? 'all' : project.id,
-    summary: { pending: pending.length, running: running.length, done: done.length },
-    pending,
-    running,
+    summary: { todo: todo.length, doing: doing.length, done: done.length },
+    todo,
+    doing,
     done,
     freshness: {
       state: 'fresh',

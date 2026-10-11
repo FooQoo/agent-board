@@ -7,7 +7,7 @@ export interface MonitorCard {
 }
 
 export type MonitorScope = 'all' | ProjectId;
-export type MonitorSummary = { pending: number; running: number; done: number } | null;
+export type MonitorSummary = { todo: number; doing: number; done: number } | null;
 export type MonitorFreshnessState = 'loading' | 'syncing' | 'fresh' | 'stale' | 'partial' | 'error';
 
 export interface MonitorFreshness {
@@ -43,8 +43,8 @@ export interface MonitorViewProps {
   projects: Project[];
   scope: MonitorScope;
   summary: MonitorSummary;
-  pending: MonitorCard[];
-  running: MonitorCard[];
+  todo: MonitorCard[];
+  doing: MonitorCard[];
   done: MonitorCard[];
   freshness: MonitorFreshness;
   onScopeChange(scope: MonitorScope): void;

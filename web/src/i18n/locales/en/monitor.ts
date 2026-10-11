@@ -14,10 +14,10 @@ export const monitorEn = {
     evidence: 'Evidence',
     completedUnknown: 'Completion time unknown',
     lastFetched: 'Last updated {{time}}',
-    status: { pending: 'Pending', running: 'Running', done: 'Done' },
+    status: { todo: 'Todo', doing: 'Doing', pending: 'Pending', running: 'Running', done: 'Done' },
     empty: {
-      pending: 'No pending decisions.',
-      running: 'No running work.',
+      todo: 'No work to start.',
+      doing: 'No work in progress.',
       done: 'No completed work.',
     },
     freshness: {

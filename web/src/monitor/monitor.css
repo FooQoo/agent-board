@@ -178,7 +178,7 @@ body {
   text-align: left;
   cursor: default;
 }
-.monitor-card--pending {
+.monitor-card--doing[data-agent-status="pending"] {
   border-color: var(--r-pend-bd);
   background: var(--r-pend-bg);
 }
@@ -334,6 +334,6 @@ body {
     padding: 7px;
   }
 }
-.monitor-section-header[data-section="running"] svg {
+.monitor-section-header[data-section="doing"] svg {
   animation: none;
 }

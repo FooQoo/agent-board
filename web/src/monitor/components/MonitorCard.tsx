@@ -15,22 +15,36 @@ export function MonitorCard({
 }) {
   const { t } = useTranslation();
   const card = item.card;
-  const when = section === 'done' ? completedAt(item) : card.agentStatusChangedAt;
+  const when =
+    section === 'done'
+      ? completedAt(item)
+      : section === 'todo'
+        ? card.createdAt
+        : card.agentStatusChangedAt;
+  const showsState = section === 'doing';
+  const pending = showsState && card.agentStatus === 'pending';
+  const label = [
+    `#${card.id}`,
+    t(`monitor.status.${section}`),
+    showsState ? t(`runState.${card.agentStatus}`) : '',
+    card.title,
+    pending ? card.pendingReason : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
     <article
       className={`monitor-card monitor-card--${section}`}
-      aria-label={`#${card.id} ${t(`monitor.status.${section}`)} ${card.title} ${card.pendingReason ?? ''}`}
+      aria-label={label}
+      data-agent-status={showsState ? card.agentStatus : undefined}
     >
       <span className="monitor-card__top">
         <span className="monitor-card__id">#{card.id}</span>
-        <StatusLabel
-          kind={section === 'done' ? 'card' : 'agent'}
-          status={section === 'done' ? card.cardStatus : card.agentStatus}
-          monitor
-        />
+        {showsState && <StatusLabel kind="agent" status={card.agentStatus} />}
       </span>
       <CardContent
         card={card}
+        showPendingReason={pending}
         titleClassName="monitor-card__title"
         reasonClassName="monitor-card__reason"
       />

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeCard, PROJECT_A, PROJECT_B } from '../fixtures';
 import type { MonitorCard } from '../../src/monitor/contracts';
-import { completedAt, sortDone, sortPending, sortRunning } from '../../src/monitor/model/sort';
+import { completedAt, sortDone, sortLane } from '../../src/monitor/model/sort';
 
 const item = (
   projectId: string,
@@ -27,14 +27,15 @@ const lane = (id: string, at: string, toCardStatus: 'todo' | 'done') => ({
 });
 
 describe('monitor ordering', () => {
-  it('orders pending oldest first and running newest first with stable ties', () => {
-    const same = [
-      item(PROJECT_B.id, 4, '2026-10-01T00:00:00Z'),
-      item(PROJECT_A.id, 9, '2026-10-01T00:00:00Z'),
-      item(PROJECT_A.id, 2, '2026-10-02T00:00:00Z'),
-    ];
-    expect(sortPending(same).map(({ card }) => card.id)).toEqual([9, 4, 2]);
-    expect(sortRunning(same).map(({ card }) => card.id)).toEqual([2, 9, 4]);
+  it('preserves manual lane order within stable project groups, independently of run-state times', () => {
+    const beta = item(PROJECT_B.id, 1, '2099-01-01T00:00:00Z');
+    const first = item(PROJECT_A.id, 9, '2026-10-03T00:00:00Z');
+    const second = item(PROJECT_A.id, 2, '2026-10-01T00:00:00Z');
+    first.card.position = 1;
+    second.card.position = 2;
+    expect(sortLane([beta, second, first]).map(({ card }) => card.id)).toEqual([9, 2, 1]);
+    second.card.position = 1;
+    expect(sortLane([beta, first, second]).map(({ card }) => card.id)).toEqual([2, 9, 1]);
   });
 
   it('uses the last transition into Done, handles re-completion and leaves unknown timestamps last', () => {

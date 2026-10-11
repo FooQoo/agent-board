@@ -5,7 +5,7 @@ import type { MonitorFreshness } from '../contracts';
 import { MonitorCard as CardRow } from './MonitorCard';
 import { MonitorSectionHeader, type MonitorSection } from './MonitorSectionHeader';
 
-type Lists = { pending: MonitorCard[]; running: MonitorCard[]; done: MonitorCard[] };
+type Lists = { todo: MonitorCard[]; doing: MonitorCard[]; done: MonitorCard[] };
 export const CardList = forwardRef<
   HTMLDivElement,
   Lists & {
@@ -13,11 +13,11 @@ export const CardList = forwardRef<
     scopeName: string;
     freshness: MonitorFreshness;
   }
->(function CardList({ id, pending, running, done, freshness }, ref) {
+>(function CardList({ id, todo, doing, done, freshness }, ref) {
   const { t } = useTranslation();
   const sections: Array<[MonitorSection, MonitorCard[]]> = [
-    ['pending', pending],
-    ['running', running],
+    ['todo', todo],
+    ['doing', doing],
     ['done', done],
   ];
   return (

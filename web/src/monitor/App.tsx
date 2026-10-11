@@ -34,8 +34,8 @@ function MonitorConnectedApp() {
       hasPartial || !monitor.hasSnapshot
         ? null
         : {
-            pending: grouped.pending.length,
-            running: grouped.running.length,
+            todo: grouped.todo.length,
+            doing: grouped.doing.length,
             done: grouped.done.length,
           },
     ...grouped,

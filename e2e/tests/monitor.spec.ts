@@ -4,7 +4,6 @@ import {
   createMonitorHome,
   addDenseMonitorFixture,
   monitorOrigin,
-  monitorPort,
   monitorProjectId,
   removeMonitorHome,
   startMonitorServe,
@@ -49,10 +48,13 @@ test('loading is distinct from an empty project', async ({ page }) => {
 
   await page.getByRole('button', { name: 'All Projects' }).click();
   await page.getByRole('menuitemradio', { name: 'Empty', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '0 Pending' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Cards' })).toContainText('No pending decisions.');
-  await expect(page.getByRole('region', { name: 'Cards' })).toContainText('No running work.');
-  await expect(page.getByRole('region', { name: 'Cards' })).toContainText('No completed work.');
+  const summary = page.getByRole('region', { name: 'Work summary' });
+  for (const column of ['Todo', 'Doing', 'Done']) {
+    await expect(summary.getByRole('button', { name: `0 ${column}` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: new RegExp(`^${column}\\s+0$`) })).toHaveCount(1);
+  }
+  await expect(summary).not.toContainText('Pending');
+  await expect(summary).not.toContainText('Running');
 });
 
 test('monitor reads the shared language and theme settings', async ({ page }) => {
@@ -70,6 +72,61 @@ test('monitor reads the shared language and theme settings', async ({ page }) =>
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'red');
   await expect(page.getByRole('button', { name: '更新' })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('接続中 · 最新');
+
+  const japaneseColumns = [
+    { count: 2, label: '未着手' },
+    { count: 6, label: '進行中' },
+    { count: 9, label: '完了' },
+  ];
+  const japaneseSummary = page.getByRole('region', { name: '作業の概要' });
+  for (const column of japaneseColumns) {
+    await expect(japaneseSummary.getByRole('button', { name: `${column.count} ${column.label}` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: new RegExp(`^${column.label}\\s+${column.count}$`) })).toHaveCount(1);
+  }
+  const japanesePending = page.getByRole('article', { name: /Alpha pending review/ });
+  const japaneseRunning = page.getByRole('article', { name: /Alpha running one/ });
+  const japaneseIdle = page.getByRole('article', { name: /Alpha idle doing/ });
+  await expect(japanesePending).toHaveAccessibleName(/進行中/);
+  await expect(japanesePending).toHaveAccessibleName(/待機中/);
+  await expect(japaneseRunning).toHaveAccessibleName(/進行中/);
+  await expect(japaneseRunning).toHaveAccessibleName(/稼働中/);
+  await expect(japaneseIdle).toHaveAccessibleName(/進行中/);
+  await expect(japaneseIdle).toHaveAccessibleName(/未稼働/);
+  await expect(japanesePending.locator('.status-label')).toHaveText('待機中');
+  await expect(japaneseRunning.locator('.status-label')).toHaveText('稼働中');
+  await expect(japaneseIdle.locator('.status-label')).toHaveText('未稼働');
+  await expect(page.getByRole('article', { name: /Alpha draft card/ })).toHaveAccessibleName(/未着手/);
+  await expect(page.getByRole('article', { name: /Alpha ordinary todo/ })).toHaveAccessibleName(/未着手/);
+  await expect(page.getByRole('article', { name: /Alpha completed 1/ })).toHaveAccessibleName(/完了/);
+  await expect(page.getByRole('article', { name: /Alpha draft card/ }).locator('.status-label')).toHaveCount(0);
+  await expect(page.getByRole('article', { name: /Alpha ordinary todo/ }).locator('.status-label')).toHaveCount(0);
+  await expect(page.getByRole('article', { name: /Alpha completed 1/ }).locator('.status-label')).toHaveCount(0);
+  await page.getByRole('button', { name: '設定' }).click();
+  await page.getByRole('dialog', { name: '設定' }).getByRole('radio', { name: 'English' }).click();
+  await page.keyboard.press('Escape');
+  const englishSummary = page.getByRole('region', { name: 'Work summary' });
+  for (const [count, label] of [[2, 'Todo'], [6, 'Doing'], [9, 'Done']] as const) {
+    await expect(englishSummary.getByRole('button', { name: `${count} ${label}` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: new RegExp(`^${label}\\s+${count}$`) })).toHaveCount(1);
+  }
+  const englishPending = page.getByRole('article', { name: /Alpha pending review/ });
+  const englishRunning = page.getByRole('article', { name: /Alpha running one/ });
+  const englishIdle = page.getByRole('article', { name: /Alpha idle doing/ });
+  await expect(englishPending).toHaveAccessibleName(/Doing/);
+  await expect(englishPending).toHaveAccessibleName(/Pending/);
+  await expect(englishRunning).toHaveAccessibleName(/Doing/);
+  await expect(englishRunning).toHaveAccessibleName(/Running/);
+  await expect(englishIdle).toHaveAccessibleName(/Doing/);
+  await expect(englishIdle).toHaveAccessibleName(/Idle/);
+  await expect(englishPending.locator('.status-label')).toHaveText('Pending');
+  await expect(englishRunning.locator('.status-label')).toHaveText('Running');
+  await expect(englishIdle.locator('.status-label')).toHaveText('Idle');
+  await expect(page.getByRole('article', { name: /Alpha draft card/ })).toHaveAccessibleName(/Todo/);
+  await expect(page.getByRole('article', { name: /Alpha ordinary todo/ })).toHaveAccessibleName(/Todo/);
+  await expect(page.getByRole('article', { name: /Alpha completed 1/ })).toHaveAccessibleName(/Done/);
+  await expect(page.getByRole('article', { name: /Alpha draft card/ }).locator('.status-label')).toHaveCount(0);
+  await expect(page.getByRole('article', { name: /Alpha ordinary todo/ }).locator('.status-label')).toHaveCount(0);
+  await expect(page.getByRole('article', { name: /Alpha completed 1/ }).locator('.status-label')).toHaveCount(0);
 });
 
 test('a lost event stream keeps the latest snapshot, manual refresh works, and visibility reconnects', async ({ page }) => {
@@ -182,8 +239,8 @@ test('a timed-out catalog read keeps the last snapshot instead of showing zero w
   await page.clock.fastForward(10_000);
   await expect(page.getByRole('status')).toContainText('Updated · Automatic updates stopped');
   await expect(monitorCard(page, 1, 'Alpha pending review')).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '3 Running' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Pending' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '6 Doing' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Todo' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '9 Done' })).toBeVisible();
   releaseRequest?.();
   await page.unroute('**/monitor/api/projects');
@@ -222,8 +279,8 @@ test('monitor renders both projects and same-number cards, preserves direct rout
   await page.goto('/monitor/');
   await expect(page.getByRole('button', { name: 'All Projects' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '3 Running' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Pending' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '6 Doing' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Todo' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '9 Done' })).toBeVisible();
   await expect(monitorCard(page, 1, 'Alpha pending review')).toBeVisible();
   await expect(monitorCard(page, 1, 'Beta pending review')).toBeVisible();
@@ -293,11 +350,11 @@ test('100 cards and 100-character titles remain reachable without opening detail
   await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
   await page.getByRole('button', { name: 'All Projects' }).click();
   await page.getByRole('menuitemradio', { name: 'Alpha', exact: true }).click();
-  await page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '96 Done' }).click();
+  await page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '94 Done' }).click();
   const list = page.getByRole('region', { name: 'Cards' });
-  await expect(list.getByRole('article', { name: /#100 Done/ })).toBeVisible();
+  await expect(list.getByRole('article', { name: /#100.*Done/ })).toBeVisible();
   expect(await list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
-  await list.getByRole('article', { name: /#100 Done/ }).click();
+  await list.getByRole('article', { name: /#100.*Done/ }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Alpha', exact: true }).click();

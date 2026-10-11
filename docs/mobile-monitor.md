@@ -2,7 +2,7 @@
 
 [README](../README.md) · [Usage guide](usage.md)
 
-The monitor shows Pending, Running, and Done work in a read-only overview. Cards do not open details when tapped or clicked. Use the PC board to read card details and update work.
+The monitor groups cards into Todo, Doing, and Done. Doing cards show an Idle, Running, or Pending badge; pending cards also show the waiting reason. Todo and Done cards have no status badge. In Japanese, the groups are 未着手, 進行中, and 完了, and the Doing badges are 未稼働, 稼働中, and 待機中. Cards do not open details when tapped or clicked. Use the PC board to read card details and update work.
 
 Run the commands below from the repository root after [installing Agent Board](usage.md#installation-and-updates).
 

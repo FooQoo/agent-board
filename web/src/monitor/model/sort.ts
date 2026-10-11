@@ -31,12 +31,15 @@ function byTime(getTime: (item: MonitorCard) => string | null, newestFirst: bool
   };
 }
 
-export function sortPending(items: readonly MonitorCard[]): MonitorCard[] {
-  return [...items].sort(byTime((item) => item.card.agentStatusChangedAt, false));
-}
-
-export function sortRunning(items: readonly MonitorCard[]): MonitorCard[] {
-  return [...items].sort(byTime((item) => item.card.agentStatusChangedAt, true));
+/** Keep project groups stable and preserve each board lane's manual card order. */
+export function sortLane(items: readonly MonitorCard[]): MonitorCard[] {
+  return [...items].sort(
+    (a, b) =>
+      a.projectName.localeCompare(b.projectName) ||
+      a.projectId.localeCompare(b.projectId) ||
+      a.card.position - b.card.position ||
+      a.card.id - b.card.id,
+  );
 }
 
 export function sortDone(items: readonly MonitorCard[]): MonitorCard[] {

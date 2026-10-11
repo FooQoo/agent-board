@@ -14,10 +14,10 @@ export const monitorJa = {
     evidence: '証跡',
     completedUnknown: '完了日時不明',
     lastFetched: '最終取得 {{time}}',
-    status: { pending: 'Pending', running: 'Running', done: 'Done' },
+    status: { todo: '未着手', doing: '進行中', pending: '待機中', running: '稼働中', done: '完了' },
     empty: {
-      pending: '判断待ちはありません。',
-      running: '実行中の作業はありません。',
+      todo: '未着手の作業はありません。',
+      doing: '進行中の作業はありません。',
       done: '完了した作業はありません。',
     },
     freshness: {

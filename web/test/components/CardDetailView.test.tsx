@@ -44,7 +44,7 @@ describe('CardDetailView', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('keeps monitor status labels in English when the selected locale is Japanese', () => {
+  it('localizes shared status labels when the selected locale is Japanese', () => {
     selectLocale('ja');
     render(
       <CardDetailView
@@ -56,8 +56,8 @@ describe('CardDetailView', () => {
         statusLabels="monitor"
       />,
     );
-    expect(screen.getByText('Done')).toBeTruthy();
-    expect(screen.queryByText('完了')).toBeNull();
+    expect(screen.getByText('完了')).toBeTruthy();
+    expect(screen.queryByText('Done')).toBeNull();
     selectLocale('en');
   });
 });

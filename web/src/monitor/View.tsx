@@ -6,23 +6,23 @@ import { ProjectSwitcher } from '../components/ProjectSwitcher';
 import type { MonitorViewProps } from './contracts';
 import { CardList } from './components/CardList';
 import { Freshness } from './components/Freshness';
-import { sortDone, sortPending, sortRunning } from './model/sort';
+import { sortDone, sortLane } from './model/sort';
 
 export function MonitorView(props: MonitorViewProps) {
   const { t } = useTranslation();
   const listId = useId();
   const listRef = useRef<HTMLDivElement>(null);
-  const { projects, scope, summary, pending, running, done, freshness, onScopeChange } = props;
+  const { projects, scope, summary, todo, doing, done, freshness, onScopeChange } = props;
   const ordered = {
-    pending: sortPending(pending),
-    running: sortRunning(running),
+    todo: sortLane(todo),
+    doing: sortLane(doing),
     done: sortDone(done),
   };
   const scopeName =
     scope === 'all'
       ? t('monitor.allProjects')
       : (projects.find((project) => project.id === scope)?.name ?? t('monitor.allProjects'));
-  const count = (key: 'pending' | 'running' | 'done', fallback: number) =>
+  const count = (key: 'todo' | 'doing' | 'done', fallback: number) =>
     summary === null ? '—' : (summary[key] ?? fallback);
   const goTo = (section: string) => {
     const target = listRef.current?.querySelector<HTMLElement>(
@@ -59,13 +59,13 @@ export function MonitorView(props: MonitorViewProps) {
         </p>
       )}
       <section className="monitor-summary" aria-label={t('monitor.summary')}>
-        <button type="button" onClick={() => goTo('running')} aria-controls={listId}>
-          <strong>{count('running', ordered.running.length)}</strong>
-          <span>{t('monitor.status.running')}</span>
+        <button type="button" onClick={() => goTo('todo')} aria-controls={listId}>
+          <strong>{count('todo', ordered.todo.length)}</strong>
+          <span>{t('monitor.status.todo')}</span>
         </button>
-        <button type="button" onClick={() => goTo('pending')} aria-controls={listId}>
-          <strong>{count('pending', ordered.pending.length)}</strong>
-          <span>{t('monitor.status.pending')}</span>
+        <button type="button" onClick={() => goTo('doing')} aria-controls={listId}>
+          <strong>{count('doing', ordered.doing.length)}</strong>
+          <span>{t('monitor.status.doing')}</span>
         </button>
         <button type="button" onClick={() => goTo('done')} aria-controls={listId}>
           <strong>{count('done', ordered.done.length)}</strong>
@@ -75,8 +75,8 @@ export function MonitorView(props: MonitorViewProps) {
       <CardList
         ref={listRef}
         id={listId}
-        pending={ordered.pending}
-        running={ordered.running}
+        todo={ordered.todo}
+        doing={ordered.doing}
         done={ordered.done}
         scopeName={scopeName}
         freshness={freshness}
