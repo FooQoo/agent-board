@@ -2,7 +2,7 @@
 
 Agent Board is a local work board shared by users and AI agents. Each project has its own cards, epics, and history. Use the browser for reviewing and editing work, and `agboard` for agent updates and project management.
 
-[README](../README.md) · [Claude Code and Codex integration](../integrations/README.md) · [Contributing](../CONTRIBUTING.md)
+[README](../README.md) · [Mobile monitor](mobile-monitor.md) · [Claude Code and Codex integration](../integrations/README.md) · [Contributing](../CONTRIBUTING.md)
 
 - [Installation and updates](#installation-and-updates)
 - [Start a project](#start-a-project)
