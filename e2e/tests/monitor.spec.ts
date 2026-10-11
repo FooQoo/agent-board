@@ -94,6 +94,7 @@ test('a lost event stream keeps the latest snapshot, manual refresh works, and v
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
   await expect(page.getByRole('button', { name: /Alpha pending review/ })).toBeVisible();
+  const lastFetched = await page.locator('.monitor-freshness__time').innerText();
   await expect(page.getByText('Updated · Automatic updates stopped')).toBeVisible();
   const readsBeforeManualRefresh = catalogReads;
   await page.getByRole('button', { name: 'Refresh' }).click();
@@ -144,6 +145,7 @@ test('a missing event-stream heartbeat marks the snapshot stale and retries the 
 
   await page.clock.fastForward(45_000);
   await expect(page.getByRole('status')).toContainText('Updated · Automatic updates stopped');
+  await expect(page.locator('.monitor-freshness__time')).toHaveText(lastFetched);
   expect(await page.evaluate(() => (window as unknown as { __monitorEventSources: Array<{ closed: boolean }> }).__monitorEventSources[0]?.closed)).toBe(true);
   expect(await page.evaluate(() => (window as unknown as { __monitorEventSources: unknown[] }).__monitorEventSources.length)).toBe(1);
 
