@@ -16,7 +16,7 @@ import {
   nextCardId,
   removeHome,
   resetBoard,
-  taskBody,
+  cardBody,
   workspace,
   type AgboardResult,
   type CardJson,
@@ -58,12 +58,9 @@ async function makeDraft(page: Page): Promise<void> {
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 }
 
-/** A body of exactly `count` characters as the CLI counts them: the required headings, ending at the last one. */
+/** A body of exactly `count` characters as the CLI counts them: the text alone, with no surrounding template. */
 function bodyOfLength(count: number): string {
-  const frame = (text: string) => taskBody(text).replace(/\n+$/, '');
-  const placeholder = '(Describe the purpose of the work and what to do.)';
-  const base = [...frame('')].length - [...placeholder].length;
-  return frame('あ'.repeat(count - base));
+  return cardBody('あ'.repeat(count));
 }
 
 let work: string;
@@ -214,7 +211,7 @@ test('a body of exactly 50,000 characters is accepted for add, edit, and --desc 
 
   // CRLF is stored as LF.
   const crlfFile = path.join(work, 'crlf.md');
-  writeFileSync(crlfFile, taskBody('line one\nline two').replace(/\n/g, '\r\n'));
+  writeFileSync(crlfFile, cardBody('line one\nline two').replace(/\n/g, '\r\n'));
   agboardOk(mainProject, ['edit', String(id), '--desc-file', crlfFile]);
   expect(show(id).description).not.toContain('\r');
   expect(show(id).description).toContain('line one\nline two');
@@ -251,7 +248,7 @@ test('a backup is a copy of the project folder; copying it back brings a draft b
 });
 
 test('the hook hands over the whole body and isDraft; a snapshot over 256 KiB is reported, not cut', async () => {
-  const body = taskBody(`## Section\n${'あいうえお'.repeat(8_000)}`);
+  const body = cardBody(`## Section\n${'あいうえお'.repeat(8_000)}`);
   const bodyFile = path.join(work, 'hook.md');
   writeFileSync(bodyFile, body);
   const id = nextCardId(mainProject);

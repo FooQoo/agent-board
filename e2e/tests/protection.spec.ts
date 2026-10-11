@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { agboardOk, listCards, mainOrigin, mainPort, mainProject, projectId, resetBoard, taskBody, type CardJson } from '../helpers/agboard';
+import { agboardOk, listCards, mainOrigin, mainPort, mainProject, projectId, resetBoard, cardBody, type CardJson } from '../helpers/agboard';
 
 // Writes go to /api/projects/<ProjectId>/cards/<number>; the guard answers before it looks at the project.
 let card15: string;
@@ -152,7 +152,7 @@ test('with the guard, a draft switch and an edit follow the card rules; a bad bo
 
   // A draft takes an edit; CRLF becomes LF; finalize hands it back in the same step.
   expect((await fromPage(page, 'PUT', `${base}/13/draft`, { isDraft: true })).status).toBe(200);
-  const edited = await fromPage(page, 'PATCH', `${base}/13`, { description: taskBody('one\r\ntwo') });
+  const edited = await fromPage(page, 'PATCH', `${base}/13`, { description: cardBody('one\r\ntwo') });
   expect(edited.status).toBe(200);
   expect(shown(13).description).toContain('one\ntwo');
   expect(shown(13).isDraft).toBe(true);

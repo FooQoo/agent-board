@@ -16,7 +16,7 @@ import {
   removeProject,
   replaceFileAtomically,
   resetBoard,
-  taskBody,
+  cardBody,
   workspace,
 } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
@@ -73,7 +73,7 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
 
   // An epic with a plan template and a colour; a card in it.
   agboardOk(name, ['epic', 'add', 'FILE-SHARE', '--name', 'File share', '--color', '#7C3AED', '--actor', 'human']);
-  expect(readFileSync(path.join(folder, 'epics', 'FILE-SHARE', 'PLAN.md'), 'utf8')).toContain('## Completion conditions');
+  expect(readFileSync(path.join(folder, 'epics', 'FILE-SHARE', 'PLAN.md'), 'utf8')).toContain('acceptance: []');
   const cardId = JSON.parse(agboardOk(name, ['add', 'Upload a picture', '--epic', 'FILE-SHARE', '--json']).stdout).card.id as number;
   expect(JSON.parse(agboardOk(name, ['ls', '--json']).stdout).cards.find((c: { id: number }) => c.id === cardId)).toMatchObject({
     epic: { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' },
@@ -148,32 +148,6 @@ test('two working directories read and write one shared TASK.md; the page and wa
   );
 });
 
-test('a body with a missing heading is shown as a problem, and the page recovers once the file is whole again', async ({ page }) => {
-  const folder = folderOf(mainProject);
-  await openBoard(page);
-  await card(page, 13).click();
-  await expect(details(page).getByRole('alert')).toHaveCount(0);
-
-  // Half a save: the execution log heading is gone. The page says which file and which heading, and the CLI reports it too.
-  const file = path.join(folder, 'tasks', '13', 'TASK.md');
-  const whole = readFileSync(file, 'utf8');
-  writeFileSync(file, whole.replace('## Execution log', 'Execution log'));
-  const alert = details(page).getByRole('alert');
-  await expect(alert).toContainText('tasks/13/TASK.md');
-  await expect(alert).toContainText('Execution log');
-  const snapshot = JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout);
-  expect(snapshot.problems).toEqual(
-    expect.arrayContaining([expect.objectContaining({ file: expect.stringContaining('tasks/13/TASK.md') })]),
-  );
-  // The body is not rewritten by the product while it is wrong.
-  expect(readFileSync(file, 'utf8')).toBe(whole.replace('## Execution log', 'Execution log'));
-
-  // The file is written whole again: the notice goes away by itself.
-  replaceFileAtomically(file, whole);
-  await expect(details(page).getByRole('alert')).toHaveCount(0);
-  expect(JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout).problems).toHaveLength(0);
-});
-
 test('an image reference that points at another owner or outside the folder is never shown', async ({ page }) => {
   // Card 14 owns a picture; card 13 refers to it, with a path that is not its own, and to paths outside the folder.
   const owned = path.join(work, 'owned.png');
@@ -181,7 +155,7 @@ test('an image reference that points at another owner or outside the folder is n
   const added = JSON.parse(agboardOk(mainProject, ['attachment', 'add', '14', '--file', owned, '--actor', 'ai', '--json']).stdout);
   const otherId = (added.attachment?.id ?? added.id) as string;
   const folder = folderOf(mainProject);
-  const body = taskBody(
+  const body = cardBody(
     [
       `![other card picture](assets/${otherId}.png)`,
       '',

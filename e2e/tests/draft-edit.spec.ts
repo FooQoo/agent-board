@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard, taskBody, type CardJson } from '../helpers/agboard';
+import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody, type CardJson } from '../helpers/agboard';
 import { editorValue, waitForSync } from '../helpers/ui';
 
 // The whole path of a draft on the real page: make a card a draft, edit its body in the rich editor, save it, and
@@ -26,7 +26,7 @@ function toolbarLabels(page: Page): Promise<string[]> {
 }
 
 /** The body the card starts with: the required headings and one line of text. */
-const SEED = taskBody('Old text.');
+const SEED = cardBody('## Work\n\nOld text.\n\n## Notes\n\nKept.');
 
 let id: number;
 
@@ -89,8 +89,8 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
 
   // The outline lists the three required headings, and an entry takes the caret to its heading.
   const outline = dialog.getByRole('navigation', { name: 'Outline' });
-  await expect(outline.getByRole('button')).toHaveText(['01Work', '02Completion conditions', '03Execution log']);
-  await outline.getByRole('button', { name: /Completion conditions$/ }).click();
+  await expect(outline.getByRole('button')).toHaveText(['01Work', '02Notes']);
+  await outline.getByRole('button', { name: /Notes$/ }).click();
   await expect(editor).toBeFocused();
   await expect
     .poll(() =>
@@ -100,7 +100,7 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
         return element?.closest('h2')?.textContent ?? null;
       }),
     )
-    .toBe('Completion conditions');
+    .toBe('Notes');
 
   // Nothing is stored until it is saved.
   expect(show(id).description).toBe(SEED);
@@ -111,7 +111,7 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => show(id).description).toContain('Plan line.');
   expect(show(id)).toMatchObject({ title: 'Draft me, rewritten', isDraft: true, cardStatus: 'todo', agentStatus: 'idle' });
-  expect(show(id).description).toContain('## Execution log');
+  expect(show(id).description).toContain('## Notes');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 
   // Finalize from the banner: the page shows the card without the banner.

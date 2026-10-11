@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard, taskBody, type CardJson } from '../helpers/agboard';
+import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody, type CardJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { pasteMarkdown, waitForSync } from '../helpers/ui';
 
@@ -56,16 +56,12 @@ test('a card is added with a title, the AI as the default owner, and a Markdown 
 
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Plan the release');
   await expect(add).toBeEnabled();
-  // The body has the three required headings (the CLI checks them); the pictures are typed as Markdown.
+  // The body is plain Markdown with no headings, so the outline is empty; the pictures are typed as Markdown.
   await pasteMarkdown(
     editor,
-    taskBody(`Ship it.\n\n![found](${images.origin}/ok.png)\n\n![lost](${images.origin}/missing.png)`),
+    cardBody(`Ship it.\n\n![found](${images.origin}/ok.png)\n\n![lost](${images.origin}/missing.png)`),
   );
-  await expect(dialog.getByRole('navigation', { name: 'Outline' }).getByRole('button')).toHaveText([
-    '01Work',
-    '02Completion conditions',
-    '03Execution log',
-  ]);
+  await expect(dialog.getByRole('navigation', { name: 'Outline' }).getByRole('button')).toHaveCount(0);
   await expect(dialog.getByText(/^\d+ \/ 50,000$/)).not.toHaveText('0 / 50,000');
   await expect(add).toBeEnabled();
 
@@ -101,11 +97,10 @@ test('a card for the user is added without a body; closing without typing asks n
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Check the invoice');
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  // No body given: the CLI writes the TASK.md template, so the description is the template, not empty.
+  // No body given: the CLI writes the frontmatter with no conditions and an empty body.
   expect(show(id)).toMatchObject({ title: 'Check the invoice', assignee: 'human', isDraft: false, agentStatus: 'idle' });
-  expect(show(id).description).toContain('(Describe the purpose of the work and what to do.)');
+  expect(show(id).description).toBe('---\nacceptance: []\n---\n\n');
   await card(page, id).click();
-  await expect(details(page).getByRole('tabpanel')).toContainText('(Describe the purpose of the work and what to do.)');
 
   await page.getByRole('button', { name: 'Add card' }).click();
   await dialog.getByRole('button', { name: 'Cancel' }).click();
