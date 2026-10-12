@@ -125,6 +125,7 @@ export function Card({
           {card.isDraft && <span className="card__draft">{t('draft.label')}</span>}
           <span className="card__spacer" />
           {showsState && <StatusLabel kind="agent" status={card.agentStatus} />}
+          <AcceptanceProgress card={card} />
         </span>
         <CardContent card={card} showPendingReason={pending}>
           {epic && (
@@ -140,7 +141,6 @@ export function Card({
           <span className="card__updated">
             {t('card.updated', { date: formatShort(card.updatedAt) })}
           </span>
-          <AcceptanceProgress card={card} />
         </span>
       </div>
       {projectId && answers && card.cardStatus !== 'done' && card.agentStatus === 'pending' && (

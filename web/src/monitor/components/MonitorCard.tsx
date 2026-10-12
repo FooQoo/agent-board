@@ -54,7 +54,10 @@ export function MonitorCard({
     >
       <span className="monitor-card__top">
         <span className="monitor-card__id">#{card.id}</span>
-        {showsState && <StatusLabel kind="agent" status={card.agentStatus} />}
+        <span className="monitor-card__indicators">
+          {showsState && <StatusLabel kind="agent" status={card.agentStatus} />}
+          <AcceptanceProgress card={card} />
+        </span>
       </span>
       <CardContent
         card={card}
@@ -100,14 +103,13 @@ export function MonitorCard({
       </CardContent>
       <span className="monitor-card__meta">
         <span>{item.projectName}</span>
-        <span>
+        <span className="monitor-card__time">
           {when
             ? formatShort(when)
             : section === 'done'
               ? t('monitor.completedUnknown')
               : formatShort(card.agentStatusChangedAt)}
         </span>
-        <AcceptanceProgress card={card} />
       </span>
     </article>
   );

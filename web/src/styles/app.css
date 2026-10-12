@@ -906,10 +906,10 @@ ol {
   color: var(--r-muted);
 }
 
-/* The footer of a board card: the updated time, and the completion conditions when there are any. */
+/* The updated time sits at the bottom right; completion progress is in the top row. */
 .card__foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
 }

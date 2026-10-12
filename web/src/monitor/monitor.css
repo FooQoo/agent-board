@@ -194,6 +194,13 @@ body {
   font-size: 10px;
   color: var(--r-muted);
 }
+.monitor-card__indicators {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex: none;
+}
 .monitor-card .status-label {
   margin-left: auto;
   height: 20px;
@@ -296,6 +303,10 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.monitor-card__time {
+  flex: none;
+  margin-left: auto;
 }
 
 .monitor-freshness {
