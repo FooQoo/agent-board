@@ -40,41 +40,55 @@ function props(): MonitorViewProps {
 
 describe('MonitorView', () => {
   beforeEach(() => selectLocale('en'));
-  it('renders noninteractive lane groups and shows agent states only on Doing cards', () => {
+  it('lists work the agent needs from the person first, then running work, then the lanes', () => {
     const { container } = render(<MonitorView {...props()} />);
     expect(container.querySelector('header.header')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Todo 1' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Doing 3' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Done 1' })).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: /Pending|Running/ })).toBeNull();
+    const headings = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.getAttribute('aria-label'));
+    expect(headings).toEqual([
+      'Awaiting your decision 1',
+      'Running work 1',
+      'Todo 1',
+      'Doing 1',
+      'Done 1',
+    ]);
     const summary = screen.getByRole('region', { name: 'Work summary' });
-    expect(within(summary).queryByRole('button', { name: /Pending|Running|Idle/ })).toBeNull();
+    for (const label of ['1Running', '1Pending', '1Done']) {
+      expect(within(summary).getByRole('button', { name: label })).toBeTruthy();
+    }
+    expect(within(summary).queryByRole('button', { name: /Todo|Doing/ })).toBeNull();
+    // A card is listed once: the pending card is not repeated in its lane.
+    expect(screen.getAllByRole('article', { name: /^#4 / })).toHaveLength(1);
+    const pendingCard = screen.getByRole('article', {
+      name: /^#4 Awaiting your decision Pending /,
+    });
+    expect(pendingCard.querySelector('.status-label')?.textContent).toBe('Pending');
+    expect(within(pendingCard).getByText('Waiting for decision')).toBeTruthy();
+    expect(pendingCard.getAttribute('data-agent-status')).toBe('pending');
     for (const id of [1, 3]) {
       const card = screen.getByRole('article', { name: new RegExp(`^#${id} `) });
       expect(card.querySelector('.status-label')).toBeNull();
       fireEvent.click(card);
       expect(card.hasAttribute('tabindex')).toBe(false);
     }
-    const pendingCard = screen.getByRole('article', { name: /^#4 Doing Pending / });
-    expect(pendingCard.querySelector('.status-label')?.textContent).toBe('Pending');
-    expect(within(pendingCard).getByText('Waiting for decision')).toBeTruthy();
-    expect(pendingCard.getAttribute('data-agent-status')).toBe('pending');
-    expect(container.querySelectorAll('.monitor-card .status-label')).toHaveLength(3);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: /Archive|Delete|Edit|Answer/ })).toBeNull();
   });
 
-  it('changes lane labels and Doing agent-state badges together when the locale changes', () => {
+  it('changes section and summary labels with the locale', () => {
     render(<MonitorView {...props()} />);
-    const lanes = [
-      { count: 1, en: 'Todo', ja: '未着手' },
-      { count: 3, en: 'Doing', ja: '進行中' },
-      { count: 1, en: 'Done', ja: '完了' },
+    const sections = [
+      { en: 'Awaiting your decision', ja: '判断待ち', count: 1 },
+      { en: 'Running work', ja: 'Running の作業', count: 1 },
+      { en: 'Todo', ja: '未着手', count: 1 },
+      { en: 'Doing', ja: '進行中', count: 1 },
+      { en: 'Done', ja: '完了', count: 1 },
     ];
-    const states = [
-      { id: 2, en: 'Running', ja: '稼働中' },
-      { id: 4, en: 'Pending', ja: '待機中' },
-      { id: 5, en: 'Idle', ja: '未稼働' },
+    const tiles = [
+      { en: 'Running', ja: '稼働中' },
+      { en: 'Pending', ja: '待機中' },
+      { en: 'Done', ja: '完了' },
     ];
     for (const locale of ['en', 'ja', 'en'] as const) {
       act(() => {
@@ -83,25 +97,19 @@ describe('MonitorView', () => {
       const summary = screen.getByRole('region', {
         name: locale === 'ja' ? '作業の概要' : 'Work summary',
       });
-      for (const lane of lanes) {
-        const label = lane[locale];
+      for (const tile of tiles) {
         expect(
-          within(summary).getByRole('button', { name: new RegExp(`^${lane.count}\\s*${label}$`) }),
+          within(summary).getByRole('button', { name: new RegExp(`^1\\s*${tile[locale]}$`) }),
         ).toBeTruthy();
-        expect(screen.getByRole('heading', { name: `${label} ${lane.count}` })).toBeTruthy();
       }
-      for (const state of states) {
-        const label = state[locale];
-        const card = screen.getByRole('article', { name: new RegExp(`^#${state.id} .*${label} `) });
-        expect(card.querySelector('.status-label')?.textContent).toBe(label);
-      }
-      for (const id of [1, 3]) {
+      for (const section of sections) {
         expect(
-          screen
-            .getByRole('article', { name: new RegExp(`^#${id} `) })
-            .querySelector('.status-label'),
-        ).toBeNull();
+          screen.getByRole('heading', { name: `${section[locale]} ${section.count}` }),
+        ).toBeTruthy();
       }
+      const runningLabel = tiles.find((tile) => tile.en === 'Running')?.[locale] ?? '';
+      const running = screen.getByRole('article', { name: new RegExp(`^#2 .*${runningLabel} `) });
+      expect(running.querySelector('.status-label')?.textContent).toBe(runningLabel);
     }
   });
 });

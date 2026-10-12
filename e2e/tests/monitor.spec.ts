@@ -49,12 +49,12 @@ test('loading is distinct from an empty project', async ({ page }) => {
   await page.getByRole('button', { name: 'All Projects' }).click();
   await page.getByRole('menuitemradio', { name: 'Empty', exact: true }).click();
   const summary = page.getByRole('region', { name: 'Work summary' });
-  for (const column of ['Todo', 'Doing', 'Done']) {
-    await expect(summary.getByRole('button', { name: `0 ${column}` })).toBeVisible();
-    await expect(page.getByRole('heading', { name: new RegExp(`^${column}\\s+0$`) })).toHaveCount(1);
+  for (const tile of ['Running', 'Pending', 'Done']) {
+    await expect(summary.getByRole('button', { name: `0 ${tile}` })).toBeVisible();
   }
-  await expect(summary).not.toContainText('Pending');
-  await expect(summary).not.toContainText('Running');
+  for (const section of ['Awaiting your decision', 'Running work', 'Todo', 'Doing', 'Done']) {
+    await expect(page.getByRole('heading', { name: new RegExp(`^${section}\\s+0$`) })).toHaveCount(1);
+  }
 });
 
 test('monitor reads the shared language and theme settings', async ({ page }) => {
@@ -73,22 +73,27 @@ test('monitor reads the shared language and theme settings', async ({ page }) =>
   await expect(page.getByRole('button', { name: '更新' })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('接続中 · 最新');
 
-  const japaneseColumns = [
-    { count: 2, label: '未着手' },
-    { count: 6, label: '進行中' },
+  const japaneseTiles = [
+    { count: 3, label: '稼働中' },
+    { count: 2, label: '待機中' },
     { count: 9, label: '完了' },
   ];
   const japaneseSummary = page.getByRole('region', { name: '作業の概要' });
-  for (const column of japaneseColumns) {
-    await expect(japaneseSummary.getByRole('button', { name: `${column.count} ${column.label}` })).toBeVisible();
-    await expect(page.getByRole('heading', { name: new RegExp(`^${column.label}\\s+${column.count}$`) })).toHaveCount(1);
+  for (const tile of japaneseTiles) {
+    await expect(japaneseSummary.getByRole('button', { name: `${tile.count} ${tile.label}` })).toBeVisible();
+  }
+  for (const section of [
+    { count: 2, label: '判断待ち' },
+    { count: 3, label: 'Running の作業' },
+  ]) {
+    await expect(page.getByRole('heading', { name: new RegExp(`^${section.label}\\s+${section.count}$`) })).toHaveCount(1);
   }
   const japanesePending = page.getByRole('article', { name: /Alpha pending review/ });
   const japaneseRunning = page.getByRole('article', { name: /Alpha running one/ });
   const japaneseIdle = page.getByRole('article', { name: /Alpha idle doing/ });
-  await expect(japanesePending).toHaveAccessibleName(/進行中/);
+  await expect(japanesePending).toHaveAccessibleName(/判断待ち/);
   await expect(japanesePending).toHaveAccessibleName(/待機中/);
-  await expect(japaneseRunning).toHaveAccessibleName(/進行中/);
+  await expect(japaneseRunning).toHaveAccessibleName(/Running の作業/);
   await expect(japaneseRunning).toHaveAccessibleName(/稼働中/);
   await expect(japaneseIdle).toHaveAccessibleName(/進行中/);
   await expect(japaneseIdle).toHaveAccessibleName(/未稼働/);
@@ -105,16 +110,18 @@ test('monitor reads the shared language and theme settings', async ({ page }) =>
   await page.getByRole('dialog', { name: '設定' }).getByRole('radio', { name: 'English' }).click();
   await page.keyboard.press('Escape');
   const englishSummary = page.getByRole('region', { name: 'Work summary' });
-  for (const [count, label] of [[2, 'Todo'], [6, 'Doing'], [9, 'Done']] as const) {
+  for (const [count, label] of [[3, 'Running'], [2, 'Pending'], [9, 'Done']] as const) {
     await expect(englishSummary.getByRole('button', { name: `${count} ${label}` })).toBeVisible();
+  }
+  for (const [count, label] of [[3, 'Running work'], [2, 'Awaiting your decision'], [2, 'Todo'], [1, 'Doing'], [9, 'Done']] as const) {
     await expect(page.getByRole('heading', { name: new RegExp(`^${label}\\s+${count}$`) })).toHaveCount(1);
   }
   const englishPending = page.getByRole('article', { name: /Alpha pending review/ });
   const englishRunning = page.getByRole('article', { name: /Alpha running one/ });
   const englishIdle = page.getByRole('article', { name: /Alpha idle doing/ });
-  await expect(englishPending).toHaveAccessibleName(/Doing/);
+  await expect(englishPending).toHaveAccessibleName(/Awaiting your decision/);
   await expect(englishPending).toHaveAccessibleName(/Pending/);
-  await expect(englishRunning).toHaveAccessibleName(/Doing/);
+  await expect(englishRunning).toHaveAccessibleName(/Running work/);
   await expect(englishRunning).toHaveAccessibleName(/Running/);
   await expect(englishIdle).toHaveAccessibleName(/Doing/);
   await expect(englishIdle).toHaveAccessibleName(/Idle/);
@@ -239,8 +246,8 @@ test('a timed-out catalog read keeps the last snapshot instead of showing zero w
   await page.clock.fastForward(10_000);
   await expect(page.getByRole('status')).toContainText('Updated · Automatic updates stopped');
   await expect(monitorCard(page, 1, 'Alpha pending review')).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '6 Doing' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Todo' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '3 Running' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Pending' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '9 Done' })).toBeVisible();
   releaseRequest?.();
   await page.unroute('**/monitor/api/projects');
@@ -279,8 +286,8 @@ test('monitor renders both projects and same-number cards, preserves direct rout
   await page.goto('/monitor/');
   await expect(page.getByRole('button', { name: 'All Projects' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '6 Doing' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Todo' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '3 Running' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Pending' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '9 Done' })).toBeVisible();
   await expect(monitorCard(page, 1, 'Alpha pending review')).toBeVisible();
   await expect(monitorCard(page, 1, 'Beta pending review')).toBeVisible();

@@ -178,7 +178,7 @@ body {
   text-align: left;
   cursor: default;
 }
-.monitor-card--doing[data-agent-status="pending"] {
+.monitor-card[data-agent-status="pending"] {
   border-color: var(--r-pend-bd);
   background: var(--r-pend-bg);
 }

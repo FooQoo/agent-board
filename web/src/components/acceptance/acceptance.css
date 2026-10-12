@@ -29,6 +29,10 @@
   color: var(--r-danger);
 }
 
+.acceptance-unreadable__problem {
+  overflow-wrap: anywhere;
+}
+
 .acceptance-unreadable {
   display: flex;
   flex-direction: column;

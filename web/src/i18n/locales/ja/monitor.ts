@@ -16,9 +16,15 @@ export const monitorJa = {
     lastFetched: '最終取得 {{time}}',
     status: { todo: '未着手', doing: '進行中', pending: '待機中', running: '稼働中', done: '完了' },
     empty: {
+      pending: '判断を待っている作業はありません。',
+      running: '稼働中の作業はありません。',
       todo: '未着手の作業はありません。',
       doing: '進行中の作業はありません。',
       done: '完了した作業はありません。',
+    },
+    section: {
+      pending: '判断待ち',
+      running: 'Running の作業',
     },
     freshness: {
       loading: 'モニターを読み込んでいます…',

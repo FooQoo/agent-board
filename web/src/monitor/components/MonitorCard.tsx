@@ -22,12 +22,14 @@ export function MonitorCard({
       : section === 'todo'
         ? card.createdAt
         : card.agentStatusChangedAt;
-  // A pending question shows in Todo too; the other run states show in Doing.
-  const showsState = section === 'doing' || (section === 'todo' && card.agentStatus === 'pending');
+  // The run state shows in the sections for work the agent has in hand: awaiting a decision, running, and Doing.
+  const showsState = section === 'pending' || section === 'running' || section === 'doing';
   const pending = showsState && card.agentStatus === 'pending';
   const label = [
     `#${card.id}`,
-    t(`monitor.status.${section}`),
+    section === 'pending' || section === 'running'
+      ? t(`monitor.section.${section}`)
+      : t(`monitor.status.${section}`),
     showsState ? t(`runState.${card.agentStatus}`) : '',
     card.title,
     pending ? card.pendingReason : '',
