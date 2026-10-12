@@ -3,16 +3,27 @@ import { formatShort } from '../../lib/format';
 import { CardContent } from '../../components/Card';
 import { StatusLabel } from '../../components/StatusLabel';
 import { AcceptanceProgress } from '../../components/acceptance/AcceptanceProgress';
-import type { MonitorCard as MonitorCardModel } from '../contracts';
+import { DecisionRequestForm } from '../../components/detail/DecisionRequestForm';
+import { noOperations } from '../../lib/projectSession';
+import type { AnswerWriter } from '../../lib/answer';
+import { epicInk } from '../../lib/epic';
+import { LayersIcon } from 'lucide-react';
+import type { MonitorCard as MonitorCardModel, MonitorViewProps } from '../contracts';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { completedAt } from '../model/sort';
+
+const monitorAnswerNotConnected: AnswerWriter = async () => {
+  throw new Error('Monitor answer integration is not connected yet.');
+};
 
 export function MonitorCard({
   item,
   section,
+  onOpenDetail,
 }: {
   item: MonitorCardModel;
   section: MonitorSection;
+  onOpenDetail?: MonitorViewProps['onOpenDetail'];
 }) {
   const { t } = useTranslation();
   const card = item.card;
@@ -23,13 +34,11 @@ export function MonitorCard({
         ? card.createdAt
         : card.agentStatusChangedAt;
   // The run state shows in the sections for work the agent has in hand: awaiting a decision, running, and Doing.
-  const showsState = section === 'pending' || section === 'running' || section === 'doing';
+  const showsState = section !== 'done' && card.agentStatus !== 'idle';
   const pending = showsState && card.agentStatus === 'pending';
   const label = [
     `#${card.id}`,
-    section === 'pending' || section === 'running'
-      ? t(`monitor.section.${section}`)
-      : t(`monitor.status.${section}`),
+    t(`monitor.status.${section}`),
     showsState ? t(`runState.${card.agentStatus}`) : '',
     card.title,
     pending ? card.pendingReason : '',
@@ -48,10 +57,38 @@ export function MonitorCard({
       </span>
       <CardContent
         card={card}
-        showPendingReason={pending}
+        showPendingReason={pending && card.pendingRequestId === null}
         titleClassName="monitor-card__title"
         reasonClassName="monitor-card__reason"
-      />
+        titleActionDisabled={!onOpenDetail}
+        onTitleClick={() => onOpenDetail?.(item, 'description')}
+      >
+        {card.epic && (
+          <button
+            type="button"
+            className="monitor-card__epic"
+            data-epic-label={card.epic.id}
+            style={{ background: card.epic.color, color: epicInk(card.epic.color) }}
+            title={card.epic.name}
+            disabled={!onOpenDetail}
+            onClick={() => onOpenDetail?.(item, 'epic')}
+          >
+            <LayersIcon aria-hidden="true" focusable="false" />
+            <span>{card.epic.id}</span>
+          </button>
+        )}
+        {pending && card.pendingRequestId !== null && (
+          <div className="monitor-card__request">
+            <DecisionRequestForm
+              projectId={item.projectId}
+              card={card}
+              operations={noOperations}
+              writeAnswer={monitorAnswerNotConnected}
+              disabled
+            />
+          </div>
+        )}
+      </CardContent>
       <span className="monitor-card__meta">
         <span>{item.projectName}</span>
         <span>

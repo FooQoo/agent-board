@@ -8,6 +8,7 @@ export interface MonitorCard {
 
 export type MonitorScope = 'all' | ProjectId;
 export type MonitorSummary = { todo: number; doing: number; done: number } | null;
+export type MonitorDetailTab = 'description' | 'epic';
 export type MonitorFreshnessState = 'loading' | 'syncing' | 'fresh' | 'stale' | 'partial' | 'error';
 
 export interface MonitorFreshness {
@@ -49,5 +50,7 @@ export interface MonitorViewProps {
   freshness: MonitorFreshness;
   onScopeChange(scope: MonitorScope): void;
   onRefresh(): void;
+  /** The monitor drawer is connected by a later UoW; omitted means detail actions are disabled. */
+  onOpenDetail?(target: MonitorCard, tab: MonitorDetailTab): void;
   routeNotice?: boolean;
 }

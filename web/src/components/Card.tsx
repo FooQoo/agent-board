@@ -24,17 +24,33 @@ export function CardContent({
   titleClassName = 'card__title',
   reasonClassName = 'card__reason',
   showPendingReason = card.agentStatus === 'pending',
+  titleActionDisabled,
+  onTitleClick,
   children,
 }: {
   card: CardModel;
   titleClassName?: string;
   reasonClassName?: string;
   showPendingReason?: boolean;
+  /** Optional title action for monitor detail navigation. */
+  titleActionDisabled?: boolean;
+  onTitleClick?: () => void;
   children?: ReactNode;
 }) {
   return (
     <>
-      <span className={titleClassName}>{card.title}</span>
+      {titleActionDisabled !== undefined ? (
+        <button
+          type="button"
+          className={titleClassName}
+          disabled={titleActionDisabled}
+          onClick={onTitleClick}
+        >
+          {card.title}
+        </button>
+      ) : (
+        <span className={titleClassName}>{card.title}</span>
+      )}
       {children}
       {showPendingReason && card.pendingReason && (
         <span className={reasonClassName}>{card.pendingReason}</span>
