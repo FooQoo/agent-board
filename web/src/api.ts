@@ -356,6 +356,14 @@ export async function moveCard(
   });
 }
 
+/** Puts a card just before `beforeId` in its lane, or at the end of the lane when `beforeId` is null. */
+export async function reorderCard(projectId: ProjectId, id: number, beforeId: number | null) {
+  return postCard<{ card: Card; changed: boolean }>(
+    `${projectPath(projectId)}/cards/${id}/reorder`,
+    { beforeId },
+  );
+}
+
 /** An answer to the request `requestId`. Either a choice, a text, or both; a blank answer is refused by the server. */
 export interface AnswerInput {
   requestId: string;

@@ -159,6 +159,10 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
             post(move_card),
         )
         .route(
+            "/api/projects/{project_id}/cards/{id}/reorder",
+            post(reorder_card),
+        )
+        .route(
             "/api/projects/{project_id}/cards/{id}/agent-status",
             post(set_agent_status),
         )
@@ -952,6 +956,12 @@ struct MoveInput {
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ReorderInput {
+    /// The card to put the moved card before; `null` puts it at the end of the lane.
+    before_id: Option<i64>,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct EditCardInput {
     title: Option<String>,
     description: Option<String>,
@@ -1204,6 +1214,41 @@ async fn move_card(
             },
             chrono::Utc::now(),
         )
+    })
+    .await
+    {
+        Ok(result) => {
+            if result.changed {
+                refresh_index(&state);
+            }
+            json_response(
+                StatusCode::OK,
+                &serde_json::json!({"card": result.value, "changed": result.changed}),
+            )
+        }
+        Err(error) => agboard_error_response(&error),
+    }
+}
+
+async fn reorder_card(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+    ApiJson(input): ApiJson<ReorderInput>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return agboard_error_response(&error),
+    };
+    let Ok(id) = raw_id.parse::<i64>() else {
+        return error_response(
+            StatusCode::NOT_FOUND,
+            "card_not_found",
+            "card not found.",
+            "Card ID is invalid.",
+        );
+    };
+    match with_files(&state, move |store| {
+        store.reorder_card(&project_id, id, input.before_id)
     })
     .await
     {

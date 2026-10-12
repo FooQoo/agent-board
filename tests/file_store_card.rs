@@ -552,3 +552,31 @@ fn a_card_read_strictly_matches_its_snapshot_view() {
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
     assert_eq!(snapshot.cards[0], direct);
 }
+
+#[test]
+fn reordering_puts_a_card_before_another_and_renumbers_the_lane() {
+    let fx = fixture();
+    let ids: Vec<i64> = ["a", "b", "c"].iter().map(|t| fx.create(t).id).collect();
+    let order = |fx: &Fixture| -> Vec<i64> {
+        let mut cards = fx.store.snapshot(&fx.project).unwrap().cards;
+        cards.sort_by_key(|c| c.position);
+        cards.iter().map(|c| c.id).collect()
+    };
+
+    let moved = fx
+        .store
+        .reorder_card(&fx.project, ids[2], Some(ids[0]))
+        .unwrap();
+    assert!(moved.changed);
+    assert_eq!(order(&fx), vec![ids[2], ids[0], ids[1]]);
+
+    let same = fx
+        .store
+        .reorder_card(&fx.project, ids[2], Some(ids[0]))
+        .unwrap();
+    assert!(!same.changed);
+
+    fx.store.reorder_card(&fx.project, ids[2], None).unwrap();
+    assert_eq!(order(&fx), vec![ids[0], ids[1], ids[2]]);
+    assert_eq!(moved.value.history.len(), 1);
+}

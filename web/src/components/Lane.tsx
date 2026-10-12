@@ -31,10 +31,11 @@ export function Lane({ column, cards, selectedId, onSelect, onArchive, onOpenEpi
       <LaneHeader column={column} count={cards.length} onArchive={onArchive} />
       <div className="lane__scroll" data-more={more ? 'true' : 'false'}>
         <ul className="lane__cards" ref={listRef}>
-          {cards.map((card) => (
+          {cards.map((card, index) => (
             <li key={card.id}>
               <Card
                 card={card}
+                index={index}
                 selected={card.id === selectedId}
                 onSelect={onSelect}
                 onOpenEpic={onOpenEpic}

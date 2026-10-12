@@ -7,12 +7,14 @@ import type { Card as CardModel } from '../types';
 import { GripVerticalIcon, LayersIcon } from 'lucide-react';
 import { AssigneeLabel } from './AssigneeLabel';
 import { StatusLabel } from './StatusLabel';
-import { useDraggable } from '@dnd-kit/react';
+import { useSortable } from '@dnd-kit/react/sortable';
 
 export interface CardProps {
   card: CardModel;
   selected: boolean;
   onSelect: (id: number) => void;
+  /** The card's place in its lane, in the order the board shows. */
+  index?: number;
   /** The EPIC-ID label was pressed. The epic editor is connected here; without it nothing opens. */
   onOpenEpic?: (epicId: string) => void;
 }
@@ -47,11 +49,16 @@ const noop = () => {};
  * A board card. The card is the draggable, selectable area (the drag library gives it the button role); the
  * EPIC-ID label is a button of its own, so a press on it opens the epic and does not select the card.
  */
-export function Card({ card, selected, onSelect, onOpenEpic = noop }: CardProps) {
+export function Card({ card, selected, index = 0, onSelect, onOpenEpic = noop }: CardProps) {
   const { t } = useTranslation();
   const showsState = stateLabel(card, t) !== null;
   const pending = showsState && card.agentStatus === 'pending';
-  const { ref, isDragging } = useDraggable({ id: `card-${card.id}`, data: { cardId: card.id } });
+  const { ref, isDragging } = useSortable({
+    id: `card-${card.id}`,
+    index,
+    group: card.cardStatus,
+    data: { cardId: card.id, column: card.cardStatus },
+  });
   const epic = card.epic;
   const className = [
     'card',

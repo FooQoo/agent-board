@@ -349,6 +349,71 @@ impl FileStore {
         })
     }
 
+    /// Put a card in a new place in its own lane: just before `before` in the
+    /// order the board shows, or at the end of that order when `before` is
+    /// `None` or is not in the lane. The lane is renumbered 1..n, and only the
+    /// cards whose position changed are rewritten. Reordering is not a work
+    /// change, so it leaves `updatedAt` and the history alone.
+    pub fn reorder_card(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        before: Option<i64>,
+    ) -> Result<Changed<CardView>, AgboardError> {
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_some() {
+            return Err(AgboardError::CardArchived { id });
+        }
+        let lane = task.card_status;
+        let mut cards: Vec<(i64, i64)> = Vec::new();
+        for card_id in reader::card_ids(&project_dir)? {
+            if let Ok(load) = reader::read_card_lenient(shared, project, card_id) {
+                let card = load.view;
+                if card.card_status == lane && card.archived_at.is_none() {
+                    cards.push((card.id, card.position));
+                }
+            }
+        }
+        // The board shows Done newest first, and the other lanes oldest first.
+        cards.sort_by_key(|&(card_id, position)| (position, card_id));
+        let mut order: Vec<i64> = cards.iter().map(|&(card_id, _)| card_id).collect();
+        if lane == Column::Done {
+            order.reverse();
+        }
+        order.retain(|&card_id| card_id != id);
+        let at = before
+            .and_then(|target| order.iter().position(|&card_id| card_id == target))
+            .unwrap_or(order.len());
+        order.insert(at, id);
+        let count = order.len() as i64;
+        let mut changed = false;
+        for (index, &card_id) in order.iter().enumerate() {
+            let index = index as i64;
+            let position = if lane == Column::Done {
+                count - index
+            } else {
+                index + 1
+            };
+            let current = cards
+                .iter()
+                .find(|&&(other, _)| other == card_id)
+                .map(|&(_, current)| current);
+            if current == Some(position) {
+                continue;
+            }
+            let mut card_task = reader::read_task_strict(shared, project, card_id)?;
+            card_task.position = position;
+            save_task(shared, &project_dir, &card_task)?;
+            changed = true;
+        }
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed,
+        })
+    }
+
     /// Delete an archived card's folder. Confirmation is the caller's job.
     pub fn delete_archived_card(&self, project: &ProjectId, id: i64) -> Result<(), AgboardError> {
         let shared = self.shared_dir();

@@ -17,7 +17,14 @@ import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
-import { createNewCard, editCard, editCardMultipart, moveCard, WriteError } from './api';
+import {
+  createNewCard,
+  editCard,
+  editCardMultipart,
+  moveCard,
+  reorderCard,
+  WriteError,
+} from './api';
 import { epicApi } from './components/editor/epicApi';
 import { useBoard } from './hooks/useBoard';
 import { useArchive } from './hooks/useArchive';
@@ -236,6 +243,14 @@ export function App({ initial }: AppProps) {
               if (epic) openDialog({ kind: 'epic', epic });
             }}
             onMove={(card, column) => openDialog({ kind: 'move', card, target: column })}
+            onReorder={(card, beforeId) => {
+              if (!isProjectId(activeId)) return;
+              const projectId = activeId;
+              // The board is read again either way: a refused reorder puts the card back.
+              reorderCard(projectId, card.id, beforeId)
+                .catch(() => {})
+                .finally(() => refreshProject(projectId));
+            }}
             onArchiveDone={() => {
               if (!isProjectId(activeId) || session.operation !== null) return;
               operations.begin('archive-done', activeId);
