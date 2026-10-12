@@ -324,6 +324,42 @@ test('monitor renders both projects and same-number cards, preserves direct rout
   await expect(drawer.getByText('Completed detail 8.')).toBeVisible();
   await page.waitForTimeout(300);
   await page.screenshot({ path: drawerEvidence('drawer-375-en-light.png') });
+  const panels = drawer.locator('.monitor-drawer__panels');
+  const panelsBox = await panels.boundingBox();
+  expect(panelsBox).not.toBeNull();
+  const startX = (panelsBox?.x ?? 0) + (panelsBox?.width ?? 0) * 0.8;
+  const endX = (panelsBox?.x ?? 0) + (panelsBox?.width ?? 0) * 0.2;
+  const y = (panelsBox?.y ?? 0) + 80;
+  const swipePanels = (fromX: number, toX: number) =>
+    page.evaluate(
+      ({ fromX, toX, y }) => {
+        const target = document.querySelector('.monitor-drawer__panels');
+        if (!(target instanceof HTMLElement)) throw new Error('Drawer panels were not found');
+        const makeTouch = (clientX: number) =>
+          new Touch({ identifier: 1, target, clientX, clientY: y });
+        const start = makeTouch(fromX);
+        target.dispatchEvent(
+          new TouchEvent('touchstart', {
+            bubbles: true,
+            touches: [start],
+            changedTouches: [start],
+          }),
+        );
+        const end = makeTouch(toX);
+        target.dispatchEvent(
+          new TouchEvent('touchend', {
+            bubbles: true,
+            touches: [],
+            changedTouches: [end],
+          }),
+        );
+      },
+      { fromX, toX, y },
+    );
+  await swipePanels(startX, endX);
+  await expect(drawer.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+  await swipePanels(endX, startX);
+  await expect(drawer.getByRole('tab', { name: 'Body' })).toHaveAttribute('aria-selected', 'true');
   await drawer.getByRole('tab', { name: 'History' }).click();
   await expect(drawer.getByRole('tabpanel', { name: 'History' })).toBeVisible();
   await drawer.getByRole('button', { name: 'Close details', exact: true }).click();

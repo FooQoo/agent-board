@@ -24,9 +24,12 @@ export function nextTabForSwipe(
 
 export function shouldIgnoreTabSwipe(target: EventTarget | null, panel: HTMLElement): boolean {
   if (!(target instanceof Element)) return false;
+  const targetDialog = target.closest('[role="dialog"]');
+  const panelDialog = panel.closest('[role="dialog"]');
+  if (targetDialog && targetDialog !== panelDialog) return true;
   if (
     target.closest(
-      'button, a, input, textarea, select, [contenteditable="true"], [data-no-tab-swipe], [role="dialog"], table, pre, code, img, picture, figure, .lightbox, .mermaid, .diagram',
+      'button, a, input, textarea, select, [contenteditable="true"], [data-no-tab-swipe], table, pre, code, img, picture, figure, .lightbox, .mermaid, .diagram',
     )
   )
     return true;

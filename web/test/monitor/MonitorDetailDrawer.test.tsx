@@ -261,6 +261,12 @@ describe('monitor detail drawer', () => {
       expect(element, selector).toBeTruthy();
       expect(shouldIgnoreTabSwipe(required(element), panel)).toBe(true);
     }
+    const nestedDialog = document.createElement('div');
+    nestedDialog.setAttribute('role', 'dialog');
+    const nestedContent = document.createElement('span');
+    nestedDialog.append(nestedContent);
+    panel.append(nestedDialog);
+    expect(shouldIgnoreTabSwipe(nestedContent, panel)).toBe(true);
     const formButton = required(document.querySelector('.monitor-card__request button'));
     expect(shouldIgnoreTabSwipe(formButton, panel)).toBe(true);
     expect(bodyTab.getAttribute('aria-selected')).toBe('true');
