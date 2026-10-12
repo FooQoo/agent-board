@@ -659,11 +659,10 @@
 .editor__footer {
   display: flex;
   flex: none;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   height: 67px;
-  /* 16px above the 35px buttons, as in the design; the border sits inside the 67px. */
-  padding: 15px 28px 0;
+  padding: 0 28px;
   border-top: 1px solid var(--r-border);
 }
 

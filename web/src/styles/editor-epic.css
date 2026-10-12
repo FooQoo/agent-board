@@ -243,11 +243,6 @@
   display: none;
 }
 
-/* The footer's draft box and status share the button row. */
-.editor__footer {
-  align-items: center;
-}
-
 /*
  * The rich body in the editor dialog: the Crepe toolbar and link tooltip take the app's tokens, and
  * the text follows the design's sizes (body 17px, H2 31px with a numbered chapter, H3 23px).
