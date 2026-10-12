@@ -46,7 +46,7 @@ function writeJson(file: string, value: unknown): void {
 
 /** Build an isolated two-project file-store fixture using the real CLI and the documented shared files. */
 export function createMonitorHome(): string {
-  const home = mkdtempSync(path.join(os.tmpdir(), 'agent-board-monitor-uow7-'));
+  const home = mkdtempSync(path.join(os.tmpdir(), 'agent-board-monitor-'));
   for (const name of ['Alpha', 'Beta', 'Empty', 'DeleteMe']) agboardCatalogOk(['project', 'create', name], home);
 
   const alphaPending = card(home, 'Alpha', 'Alpha pending review', 'Pending request body.');
