@@ -48,3 +48,13 @@ test('a pending AI card in Todo shows its state and question on the mobile monit
   await expect(card).toContainText('Which order on mobile?');
   await expect(card).toContainText('Pending');
 });
+
+test('the mobile monitor shows how many conditions of a card are done', async ({ page }) => {
+  const description = '---\nacceptance:\n  - id: AC-1\n    text: First\n    done: true\n  - id: AC-2\n    text: Second\n    done: false\n---\n\nBody.\n';
+  cli(['add', 'Conditions on mobile', '--assignee', 'ai', '--actor', 'ai', '--desc', description]);
+
+  await page.goto('/monitor/');
+  const card = page.getByText('Conditions on mobile').locator('xpath=ancestor::*[contains(@class,"monitor-card")][1]');
+  await expect(card).toContainText('1/2');
+  await expect(card.locator('.acceptance-chip')).toHaveAttribute('title', 'Acceptance conditions 1 / 2');
+});
