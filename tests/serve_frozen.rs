@@ -61,3 +61,50 @@ fn a_frozen_server_still_refuses_a_second_serve_and_keeps_its_record() {
         record
     );
 }
+
+#[test]
+fn a_saved_change_says_when_the_recorded_server_is_gone() {
+    let home = tempfile::tempdir().unwrap();
+    assert!(
+        bin(home.path())
+            .args(["project", "create", "Demo"])
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    // A record of a server that is gone: no process has this pid, and nothing listens on port 1.
+    std::fs::write(
+        home.path().join("serve.json"),
+        r#"{"pid":999999,"port":1,"started_at":"2026-10-12T00:00:00Z"}"#,
+    )
+    .unwrap();
+    let added = bin(home.path())
+        .args([
+            "--project",
+            "Demo",
+            "add",
+            "Saved anyway",
+            "--assignee",
+            "ai",
+            "--actor",
+            "ai",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        added.status.success(),
+        "{}",
+        String::from_utf8_lossy(&added.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&added.stderr);
+    assert!(
+        stderr.contains("serve.json") && stderr.contains("agboard serve"),
+        "{stderr}"
+    );
+    let listed = bin(home.path())
+        .args(["--project", "Demo", "ls", "--json"])
+        .output()
+        .unwrap();
+    assert!(String::from_utf8_lossy(&listed.stdout).contains("Saved anyway"));
+}
