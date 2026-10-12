@@ -2,6 +2,7 @@
 //! is resolved to an ID once. These tests run the real binary, a real server
 //! and a temporary data area.
 
+mod common;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::{Child, Command, Output, Stdio};
@@ -258,8 +259,8 @@ fn the_hook_passes_only_the_named_projects_complete_snapshot() {
                 "pending",
                 "--actor",
                 "ai",
-                "--reason",
-                &format!("{project} needs a decision"),
+                "--request-json",
+                &common::decision_json(&format!("{project} needs a decision")),
             ],
         ));
     }

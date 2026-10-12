@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { Label } from '@/components/ui/label';
 import { RadioGroup } from '@/components/ui/radio-group';
-import type { Assignee } from '../types';
+import type { AcceptanceItem, Assignee } from '../types';
+import { AcceptanceEditor } from './acceptance/AcceptanceEditor';
+import { acceptanceProblem, composeNewText } from '../lib/acceptance';
 import { Checkbox } from './ui/checkbox';
 import { EditorBody, useOverLimit } from './editor/EditorBody';
 import { EditorShell } from './editor/EditorShell';
@@ -42,6 +44,7 @@ export function CreateDialog({
   const editor = useRef<RichMarkdownEditorHandle>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [conditions, setConditions] = useState<AcceptanceItem[]>([]);
   const [assignee, setAssignee] = useState<Assignee>('ai');
   const [isDraft, setIsDraft] = useState(false);
   const assigneeId = useId();
@@ -52,12 +55,20 @@ export function CreateDialog({
 
   const body = () => normalizeNewlines(editor.current?.markdown() ?? description);
   // Typed input counts as unsaved: closing asks first, as in the edit dialog.
-  const dirty = title.trim() !== '' || description !== '' || attachmentState.attachments.length > 0;
+  const dirty =
+    title.trim() !== '' ||
+    description !== '' ||
+    conditions.length > 0 ||
+    attachmentState.attachments.length > 0;
   const overLimit = useOverLimit(description);
-  const valid = titleProblem(title) === null && countChars(description) <= DESCRIPTION_LIMIT;
+  const valid =
+    titleProblem(title) === null &&
+    countChars(description) <= DESCRIPTION_LIMIT &&
+    acceptanceProblem(conditions) === null;
   const add = () => {
     if (!valid || flow.busy.current) return;
-    const text = body();
+    // The conditions are written into the frontmatter of the new file, before the body.
+    const text = composeNewText(body(), conditions);
     void flow.run(() =>
       onSubmit({
         ...(attachmentState.attachments.length
@@ -122,35 +133,38 @@ export function CreateDialog({
         onFiles={attachmentState.addFiles}
         onRemoveAttachment={attachmentState.remove}
         extraField={
-          <div className="editor__field">
-            <Label id={assigneeId} className="editor__label">
-              {t('editor.assigneeLabel')}
-            </Label>
-            <RadioGroup
-              className="editor__segments"
-              aria-labelledby={assigneeId}
-              value={assignee}
-              disabled={flow.saving}
-              onValueChange={(value) => setAssignee(value === 'human' ? 'human' : 'ai')}
-            >
-              {(['ai', 'human'] as const).map((value) => (
-                <RadioGroupPrimitive.Item
-                  key={value}
-                  value={value}
-                  className="editor__segment"
-                  aria-label={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
-                  title={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
-                >
-                  {value === 'ai' ? (
-                    <BotIcon aria-hidden="true" />
-                  ) : (
-                    <UserRoundIcon aria-hidden="true" />
-                  )}
-                  <span>{t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}</span>
-                </RadioGroupPrimitive.Item>
-              ))}
-            </RadioGroup>
-          </div>
+          <>
+            <div className="editor__field">
+              <Label id={assigneeId} className="editor__label">
+                {t('editor.assigneeLabel')}
+              </Label>
+              <RadioGroup
+                className="editor__segments"
+                aria-labelledby={assigneeId}
+                value={assignee}
+                disabled={flow.saving}
+                onValueChange={(value) => setAssignee(value === 'human' ? 'human' : 'ai')}
+              >
+                {(['ai', 'human'] as const).map((value) => (
+                  <RadioGroupPrimitive.Item
+                    key={value}
+                    value={value}
+                    className="editor__segment"
+                    aria-label={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
+                    title={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
+                  >
+                    {value === 'ai' ? (
+                      <BotIcon aria-hidden="true" />
+                    ) : (
+                      <UserRoundIcon aria-hidden="true" />
+                    )}
+                    <span>{t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}</span>
+                  </RadioGroupPrimitive.Item>
+                ))}
+              </RadioGroup>
+            </div>
+            <AcceptanceEditor items={conditions} onChange={setConditions} disabled={flow.saving} />
+          </>
         }
       />
     </EditorShell>

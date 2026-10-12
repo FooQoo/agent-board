@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { agboardBinary, agboardCatalogOk, projectId, taskBody, workspace } from './agboard';
+import { agboardBinary, agboardCatalogOk, projectId, cardBody, decisionJson, workspace } from './agboard';
 
 export const monitorPort = 8060;
 export const remotePort = 8061;
@@ -26,7 +26,7 @@ function run(home: string, args: string[]): string {
 
 function card(home: string, project: string, title: string, description: string): number {
   const value = JSON.parse(
-    run(home, ['--project', project, 'add', title, '--desc', taskBody(description), '--assignee', 'ai', '--actor', 'ai', '--json']),
+    run(home, ['--project', project, 'add', title, '--desc', cardBody(description), '--assignee', 'ai', '--actor', 'ai', '--json']),
   ) as { card: { id: number } };
   return value.card.id;
 }
@@ -36,7 +36,8 @@ function move(home: string, project: string, id: number, lane: 'doing' | 'done',
 }
 
 function state(home: string, project: string, id: number, status: 'running' | 'pending', reason: string): void {
-  run(home, ['--project', project, 'state', String(id), status, '--actor', 'ai', '--reason', reason]);
+  const args = status === 'pending' ? ['--request-json', decisionJson(reason)] : ['--reason', reason];
+  run(home, ['--project', project, 'state', String(id), status, '--actor', 'ai', ...args]);
 }
 
 function writeJson(file: string, value: unknown): void {
@@ -45,7 +46,7 @@ function writeJson(file: string, value: unknown): void {
 
 /** Build an isolated two-project file-store fixture using the real CLI and the documented shared files. */
 export function createMonitorHome(): string {
-  const home = mkdtempSync(path.join(os.tmpdir(), 'agent-board-monitor-uow7-'));
+  const home = mkdtempSync(path.join(os.tmpdir(), 'agent-board-monitor-'));
   for (const name of ['Alpha', 'Beta', 'Empty', 'DeleteMe']) agboardCatalogOk(['project', 'create', name], home);
 
   const alphaPending = card(home, 'Alpha', 'Alpha pending review', 'Pending request body.');
@@ -76,7 +77,7 @@ export function createMonitorHome(): string {
     run(home, ['--project', 'Alpha', 'attachment', 'add', '4', '--file', image, '--actor', 'ai', '--json']),
   ) as { attachment: { id: string } };
   run(home, [
-    '--project', 'Alpha', 'edit', '4', '--desc', taskBody(
+    '--project', 'Alpha', 'edit', '4', '--desc', cardBody(
       `A shared read-only detail with an owned image and Mermaid diagram.\n\n![monitor.png](attachment:${attachment.attachment.id})\n\n\`\`\`mermaid\ngraph TD\n  A[Monitor] --> B[Shared files]\n\`\`\``,
     ), '--json',
   ]);
@@ -209,7 +210,7 @@ export function addDenseMonitorFixture(home: string): string {
     const title = prefix + 'L'.repeat(100 - prefix.length);
     const longBodyStart = `Long body start ${id}.\n\n`;
     const bodyText = id === 100
-      ? `${longBodyStart}${'x'.repeat(50_000 - taskBody(`${longBodyStart}${tail}`).length)}${tail}`
+      ? `${longBodyStart}${'x'.repeat(50_000 - cardBody(`${longBodyStart}${tail}`).length)}${tail}`
       : `Dense card ${id}.`;
     const created = card(home, 'Alpha', title, bodyText);
     if (created !== id) throw new Error(`expected dense fixture card ${id}, got ${created}`);
@@ -220,8 +221,8 @@ export function addDenseMonitorFixture(home: string): string {
   const longTitle = 'T'.repeat(100);
   const longFile = path.join(home, 'long-description.md');
   const longBodyStart = 'Long body start\n\n';
-  const longText = `${longBodyStart}${'x'.repeat(50_000 - taskBody(`${longBodyStart}${tail}`).length)}${tail}`;
-  writeFileSync(longFile, taskBody(longText), 'utf8');
+  const longText = `${longBodyStart}${'x'.repeat(50_000 - cardBody(`${longBodyStart}${tail}`).length)}${tail}`;
+  writeFileSync(longFile, cardBody(longText), 'utf8');
   const added = JSON.parse(run(home, [
     '--project', longProject, 'add', longTitle, '--desc-file', longFile, '--assignee', 'ai', '--actor', 'ai', '--json',
   ])) as { card: { id: number } };

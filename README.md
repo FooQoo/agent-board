@@ -25,7 +25,7 @@ When an agent works for a long time, you need to see what is moving, what is wai
 - **Agents register all work.** Cards have a fixed AI or User owner, a board lane, and (for AI work in Doing) an Idle, Running, or Pending state.
 - **Users and agents update the same board.** Every status change has a reason. Users can answer a pending decision in the browser; the next hook or `agboard snapshot` gives the agent the complete history.
 - **Every command names its project.** A board holds separate projects. Commands, hooks, and waits always say which project they act on with `--project NAME`; nothing is guessed from the web view or another agent.
-- **Plans and results live in plain files.** Each card has a `TASK.md` (work, completion conditions with their results, execution log) and each epic has a `PLAN.md`. Agents and people can edit them directly; the board follows file changes without any extra step.
+- **Plans and results live in plain files.** Each card has a `TASK.md` and each epic has a `PLAN.md`. Their completion conditions sit in a YAML frontmatter, and the body is free Markdown. The board shows how many conditions are done and refuses an agent's move to Done while one is open. Agents and people can edit the files directly; the board follows file changes without any extra step.
 - **Nothing leaves your machine.** Cards are plain files in a local shared folder, and the web view listens only on `127.0.0.1`.
 
 ```mermaid
@@ -43,7 +43,7 @@ flowchart LR
 
 **Group work in epics.** An epic holds a plan and a color. A card belongs to at most one epic and shows its epic as a label. Edit an epic's plan, name, and color, and choose its tasks, in one dialog.
 
-**Edit in a rich Markdown editor.** Card and epic text is edited in place, with headings, task lists, tables, code blocks, Mermaid diagrams, and images. Completion conditions are checkboxes you can tick.
+**Edit in a rich Markdown editor.** Card and epic text is edited in place, with headings, task lists, tables, code blocks, Mermaid diagrams, and images. The completion conditions of a card or epic are checkboxes in its editor, and they are saved in the file's frontmatter.
 
 **Archive finished work.** Archive a card, or several Done cards at once, to keep the board focused. Restore cards from Archive when needed; permanent deletion is available there.
 

@@ -66,4 +66,18 @@ export const detailJa = {
     title: '履歴',
     created: '作成',
   },
+  acceptance: {
+    title: '受け入れ条件',
+    progress: '{{done}} / {{total}}',
+    chip: '{{done}}/{{total}}',
+    complete: '全件達成',
+    unreadable: '読めません',
+    unreadableTitle: '受け入れ条件を読めません',
+    unreadableNote: '直すまで進捗は表示しません。本文は下に表示を続けます。',
+    unreadableProblem: '{{file}}（{{field}}）— {{reason}}',
+    savedIn:
+      'TASK.md の先頭(frontmatter)に保存されます。エージェントが検証してチェックし、変更は「編集」から行います。',
+    showAll: 'すべて表示（{{count}}件）',
+    showFewer: '閉じる',
+  },
 } as const;

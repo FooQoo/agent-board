@@ -29,12 +29,32 @@ const SAMPLE_EPIC: Epic = {
   name: 'File share',
   color: '#7C3AED',
   isDraft: false,
-  plan: '## 目的\n\n共有ファイルの画面を整える。\n\n## 対象範囲\n\nボードと詳細。\n\n## 完了条件と確認結果\n\n- [ ] AC-1. 本文が読める\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 進め方\n\n順に進める。\n',
+  plan: '---\nacceptance:\n  - id: AC-1\n    text: 本文が読める\n    done: true\n  - id: AC-2\n    text: 画像が並ぶ\n    done: false\n---\n\n## 目的\n\n共有ファイルの画面を整える。\n\n## 進め方\n\n順に進める。\n',
+  body: '## 目的\n\n共有ファイルの画面を整える。\n\n## 進め方\n\n順に進める。\n',
+  acceptance: [
+    { id: 'AC-1', text: '本文が読める', done: true },
+    { id: 'AC-2', text: '画像が並ぶ', done: false },
+  ],
+  acceptanceError: false,
   attachments: [],
   createdAt: '2026-10-01T07:00:00Z',
   updatedAt: '2026-10-01T07:00:00Z',
 };
 const SAMPLE_EPIC_CARDS = [11, 12, 14];
+
+/** Completion conditions the sample cards show: one part done, and all done. */
+const SAMPLE_CONDITIONS: Record<number, Card['acceptance']> = {
+  11: [
+    { id: 'AC-1', text: 'Cards move between lanes', done: true },
+    { id: 'AC-2', text: 'Each move asks for a reason', done: true },
+    { id: 'AC-3', text: 'The history keeps the reason', done: false },
+    { id: 'AC-4', text: 'A waiting card goes back to idle', done: false },
+  ],
+  12: [
+    { id: 'AC-1', text: 'The board shows the restore', done: true },
+    { id: 'AC-2', text: 'The archive keeps the lane', done: true },
+  ],
+};
 
 const FIXTURE_PATH = resolve(import.meta.dirname, 'test/fixtures/board.json');
 const SLOW_MS = 60 * 60 * 1000;
@@ -103,14 +123,26 @@ const SAMPLE_IMAGE =
 function loadFixtures(): Record<string, MockBoard> {
   const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as Board;
   const withEpic = (cards: Card[]): Card[] =>
-    cards.map((card) =>
-      SAMPLE_EPIC_CARDS.includes(card.id)
+    cards.map((card) => {
+      const conditions = SAMPLE_CONDITIONS[card.id];
+      // Card 16 has a frontmatter that cannot be read: its body is shown whole, with a notice.
+      const broken =
+        card.id === 16
+          ? {
+              ...card,
+              body: "---\nacceptance:\n  - id: AC-1\n    text: ''\n---\n\nThe body stays visible.\n",
+              acceptance: [],
+              acceptanceError: true,
+            }
+          : card;
+      const withConditions = conditions ? { ...broken, acceptance: conditions } : broken;
+      return SAMPLE_EPIC_CARDS.includes(card.id)
         ? {
-            ...card,
+            ...withConditions,
             epic: { id: SAMPLE_EPIC.id, name: SAMPLE_EPIC.name, color: SAMPLE_EPIC.color },
           }
-        : card,
-    );
+        : withConditions;
+    });
   const [first, second, third] = SAMPLE_PROJECTS as [Project, Project, Project];
   return {
     [first.id]: asBoard(first, withEpic([...fixture.cards, longMarkdownCard(fixture.cards)])),
@@ -526,6 +558,9 @@ export function mockApi(): Plugin {
                 id,
                 title,
                 description: String(input.description ?? ''),
+                body: '',
+                acceptance: [],
+                acceptanceError: false,
                 assignee: input.assignee as Assignee,
                 cardStatus: 'todo',
                 position: found.cards.filter((item) => item.cardStatus === 'todo').length + 1,

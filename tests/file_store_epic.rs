@@ -106,14 +106,7 @@ fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_plan() {
     assert_eq!(json["updatedAt"], "2026-10-04T00:00:00Z");
 
     let plan = fs::read_to_string(dir.join("PLAN.md")).unwrap();
-    for heading in [
-        "## Goal",
-        "## Scope",
-        "## Completion conditions",
-        "## Approach",
-    ] {
-        assert!(plan.contains(heading), "missing {heading}");
-    }
+    assert_eq!(plan, "---\nacceptance: []\n---\n\n");
     let leftovers: Vec<String> = fs::read_dir(f.project_dir().join("epics"))
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
@@ -397,7 +390,7 @@ fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
 
     let json_before = bytes_of(f.epic_dir("FILE-SHARE").join("epic.json"));
     let plan_before = bytes_of(f.epic_dir("FILE-SHARE").join("PLAN.md"));
-    let broken = "## 目的\n\n目的だけ\n\n## 対象範囲\n\n範囲\n\n## 完了条件と確認結果\n\n";
+    let broken = "---\nacceptance: nope\n---\n\n目的だけ\n";
     let err = f
         .store
         .update_epic(
@@ -477,7 +470,5 @@ fn an_epic_id_cannot_name_a_path_outside_the_epics_folder() {
 }
 
 fn valid_plan(goal: &str) -> String {
-    format!(
-        "## 目的\n\n{goal}\n\n## 対象範囲\n\n範囲\n\n## 完了条件と確認結果\n\n- [ ] AC-1. 条件\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 進め方\n\n順序\n"
-    )
+    format!("---\nacceptance:\n  - id: AC-1\n    text: 条件\n    done: false\n---\n\n{goal}\n")
 }

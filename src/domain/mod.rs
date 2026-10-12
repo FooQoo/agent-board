@@ -37,13 +37,27 @@ pub fn validate_work_reason(value: &str) -> Result<String, crate::error::Agboard
     Ok(trimmed.to_owned())
 }
 
+/// Which run states a card may take. Idle is always allowed. An AI card may be
+/// pending in Todo (a question before the work starts) or in Doing; it may run
+/// only in Doing. A person's card is only idle. Nothing else may be pending.
 pub fn check_work_state(
     assignee: Assignee,
     column: Column,
     state: RunState,
 ) -> Result<(), crate::error::AgboardError> {
-    if state != RunState::Idle && (assignee != Assignee::Ai || column != Column::Doing) {
-        return Err(crate::error::AgboardError::InvalidStateForAssignee);
+    let allowed = state == RunState::Idle
+        || matches!(
+            (assignee, column, state),
+            (Assignee::Ai, Column::Todo, RunState::Pending)
+                | (
+                    Assignee::Ai,
+                    Column::Doing,
+                    RunState::Pending | RunState::Running
+                )
+        );
+    if allowed {
+        Ok(())
+    } else {
+        Err(crate::error::AgboardError::InvalidStateForAssignee)
     }
-    Ok(())
 }

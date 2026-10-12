@@ -336,3 +336,15 @@ pub fn multipart(
     out.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
     out
 }
+
+/// A decision request as the `state ... pending --request-json` argument: a question and two choices.
+pub fn decision_json(question: &str) -> String {
+    serde_json::json!({
+        "question": question,
+        "choices": [
+            {"id": "a", "label": "Plan A"},
+            {"id": "b", "label": "Plan B"}
+        ]
+    })
+    .to_string()
+}

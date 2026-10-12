@@ -60,7 +60,10 @@
       ],
       "pendingChoices": [],
       "epic": null,
-      "evidence": []
+      "evidence": [],
+      "body": "Create the storage for the board with agboard init.",
+      "acceptance": [],
+      "acceptanceError": false
     },
     {
       "id": 9,
@@ -116,7 +119,10 @@
       ],
       "pendingChoices": [],
       "epic": null,
-      "evidence": []
+      "evidence": [],
+      "body": "Print the cards as JSON so that agents can read them.",
+      "acceptance": [],
+      "acceptanceError": false
     },
     {
       "id": 11,
@@ -172,7 +178,10 @@
       ],
       "pendingChoices": [],
       "epic": null,
-      "evidence": []
+      "evidence": [],
+      "body": "Move a card to another column and record the transition.",
+      "acceptance": [],
+      "acceptanceError": false
     },
     {
       "id": 12,
@@ -237,7 +246,10 @@
         }
       ],
       "epic": null,
-      "evidence": []
+      "evidence": [],
+      "body": "",
+      "acceptance": [],
+      "acceptanceError": false
     },
     {
       "id": 13,
@@ -281,7 +293,10 @@
       ],
       "pendingChoices": [],
       "epic": null,
-      "evidence": []
+      "evidence": [],
+      "body": "Check the layout at 1280, 800, and 480 px.\nLook for horizontal scrolling.",
+      "acceptance": [],
+      "acceptanceError": false
     },
     {
       "id": 14,
@@ -313,7 +328,10 @@
       ],
       "pendingChoices": [],
       "epic": null,
-      "evidence": []
+      "evidence": [],
+      "body": "Build Agent Board for Windows x64.",
+      "acceptance": [],
+      "acceptanceError": false
     },
     {
       "id": 15,
@@ -345,7 +363,10 @@
       ],
       "pendingChoices": [],
       "epic": null,
-      "evidence": []
+      "evidence": [],
+      "body": "",
+      "acceptance": [],
+      "acceptanceError": false
     },
     {
       "id": 16,
@@ -377,7 +398,10 @@
       ],
       "pendingChoices": [],
       "epic": null,
-      "evidence": []
+      "evidence": [],
+      "body": "",
+      "acceptance": [],
+      "acceptanceError": false
     }
   ],
   "version": "fixture-25",

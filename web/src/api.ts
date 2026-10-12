@@ -2,6 +2,7 @@ import type {
   ApiError,
   Assignee,
   Board,
+  AcceptanceItem,
   Card,
   ColumnName,
   Epic,
@@ -125,7 +126,7 @@ async function postEmpty(path: string): Promise<{ card: Card }> {
   });
   const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || !body.card)
-    throw new WriteError(
+    throw writeFailure(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
@@ -185,6 +186,20 @@ export class WriteError extends Error {
   }
 }
 
+/** The event fired when the server refuses a write because this page's token is out of date. */
+export const STALE_PAGE_EVENT = 'agboard:stale-page';
+
+/** The error of a rejected write. A stale page also tells the app, so that it can ask for a reload. */
+export function writeFailure(
+  message: string,
+  status: number,
+  code: string | null,
+  detail: string | null = null,
+): WriteError {
+  if (code === 'page_out_of_date') window.dispatchEvent(new Event(STALE_PAGE_EVENT));
+  return new WriteError(message, status, code, detail);
+}
+
 /**
  * The file, item and reason of a `file_invalid` answer, or null for other errors.
  * The server sends `message` as "<file> is not valid." and `reason` as "<field>: <reason>" (or the reason alone).
@@ -210,7 +225,7 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
     error?: ApiError['error'];
   };
   if (!response.ok) {
-    throw new WriteError(
+    throw writeFailure(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
@@ -220,9 +235,20 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
   return body as T;
 }
 
+/**
+ * A new card. Give either `description` (the whole TASK.md text) or `body` with `acceptance`; the server
+ * writes the frontmatter from the parts.
+ */
 export async function createCard(
   projectId: ProjectId,
-  input: { title: string; description: string; assignee: Assignee; isDraft?: boolean },
+  input: {
+    title: string;
+    description?: string;
+    body?: string;
+    acceptance?: AcceptanceItem[];
+    assignee: Assignee;
+    isDraft?: boolean;
+  },
 ) {
   return postCard<{ card: Card }>(`${projectPath(projectId)}/cards`, {
     ...input,
@@ -255,7 +281,7 @@ async function sendMultipart(path: string, body: FormData, method: 'POST' | 'PAT
   const response = await fetch(path, { method, headers: { 'X-Agboard-Token': readToken() }, body });
   const data = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || !data.card)
-    throw new WriteError(
+    throw writeFailure(
       data.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       data.error?.code ?? null,
@@ -357,7 +383,7 @@ async function sendCard(
   });
   const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || body.card === undefined) {
-    throw new WriteError(
+    throw writeFailure(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
@@ -374,7 +400,13 @@ async function sendCard(
 export async function editCard(
   projectId: ProjectId,
   id: number,
-  input: { title?: string; description?: string; finalize?: boolean },
+  input: {
+    title?: string;
+    description?: string;
+    body?: string;
+    acceptance?: AcceptanceItem[];
+    finalize?: boolean;
+  },
 ) {
   return sendCard('PATCH', `${projectPath(projectId)}/cards/${id}`, input);
 }
@@ -425,7 +457,7 @@ async function sendEpic(
   });
   const data = (await response.json()) as { epic?: Epic; error?: ApiError['error'] };
   if (!response.ok || data.epic === undefined)
-    throw new WriteError(
+    throw writeFailure(
       data.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       data.error?.code ?? null,
@@ -438,7 +470,14 @@ async function sendEpic(
 export function updateEpic(
   projectId: ProjectId,
   epicId: string,
-  input: { name?: string; color?: string; isDraft?: boolean; plan?: string },
+  input: {
+    name?: string;
+    color?: string;
+    isDraft?: boolean;
+    plan?: string;
+    body?: string;
+    acceptance?: AcceptanceItem[];
+  },
 ) {
   return sendEpic('PATCH', `${projectPath(projectId)}/epics/${encodeURIComponent(epicId)}`, input);
 }

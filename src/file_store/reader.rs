@@ -16,6 +16,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use super::FileStore;
+use super::frontmatter;
 use super::index;
 use super::io;
 use super::layout;
@@ -99,12 +100,16 @@ pub(super) fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, V
                     String::new()
                 }
             };
+        let parts = frontmatter::parse(&plan);
         epics.push(EpicView {
             id: file.id,
             name: file.name,
             color: file.color,
             is_draft: file.is_draft,
             plan,
+            body: parts.body,
+            acceptance: parts.acceptance,
+            acceptance_error: !parts.defects.is_empty(),
             attachments: file.attachments,
             created_at: file.created_at,
             updated_at: file.updated_at,
@@ -386,10 +391,14 @@ pub(crate) fn card_view(
         None => (None, Vec::new()),
     };
     let updated_at = body_modified.map_or(task.updated_at, |m| m.max(task.updated_at));
+    let parts = frontmatter::parse(&description);
     CardView {
         id: task.id,
         title: task.title,
         description,
+        body: parts.body,
+        acceptance: parts.acceptance,
+        acceptance_error: !parts.defects.is_empty(),
         assignee: task.assignee,
         epic_id: task.epic_id,
         epic: None,

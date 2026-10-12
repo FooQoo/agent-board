@@ -16,7 +16,7 @@ function cardOf(id: number): CardJson & { epicId: string | null } {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
 }
 
-/** The plan with the four headings the plan format requires, and one completion condition. */
+/** The plan body as a person pastes it into the body editor: free Markdown, no frontmatter. */
 const PLAN = [
   '## Goal',
   '',
@@ -25,13 +25,6 @@ const PLAN = [
   '## Scope',
   '',
   'The shared folder only.',
-  '',
-  '## Completion conditions',
-  '',
-  '- [ ] AC-1. The plan is saved with the tasks.',
-  '  - Result: Not verified',
-  '  - Evidence: Not recorded',
-  '  - Coordinator check: Not checked',
   '',
   '## Approach',
   '',
@@ -73,7 +66,7 @@ test('the epic dialog saves its name, colour, plan, and tasks together, and its 
   const stored = epicOf('FILE-SHARE');
   expect(stored).toMatchObject({ name: 'File sharing', color: '#2563EB' });
   expect(stored.plan).toContain('## Approach');
-  expect(stored.plan).toContain('- [ ] AC-1. The plan is saved with the tasks.');
+  expect(stored.plan).toContain('acceptance: []');
   expect(cardOf(16).epicId).toBe('FILE-SHARE');
   expect(cardOf(14).epicId).toBe('FILE-SHARE');
 
@@ -103,34 +96,6 @@ test('a task opened from the epic asks first when the epic has unsaved changes; 
   await expect(dialog).toHaveCount(0);
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Return the card list as JSON');
   expect(epicOf('FILE-SHARE').name).toBe('File share');
-});
-
-test('the plan without its required headings is refused with the reason, and the next valid save goes through', async ({ page }) => {
-  await page.goto(`/?project=${projectId(mainProject)}`);
-  await waitForSync(page);
-  const dialog = await openEpic(page, 'FILE-SHARE');
-  // The whole plan is replaced: the template is selected and removed before the text is pasted.
-  const plan = dialog.getByRole('textbox', { name: 'Plan (Markdown)' });
-  await plan.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('Delete');
-  await pasteMarkdown(plan, '## Goal\n\nOnly the purpose.\n');
-  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-  // The screen names the step that failed and keeps what was typed.
-  await expect(dialog.getByRole('alert')).toContainText('Could not save the plan');
-  // Nothing changed on disk; the typed plan is kept on the screen.
-  expect(epicOf('FILE-SHARE').plan).toContain('## Approach');
-  await expect(plan).toContainText('Only the purpose.');
-
-  // Fixing the plan and saving again works.
-  await plan.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('Delete');
-  await pasteMarkdown(plan, PLAN);
-  await dialog.getByRole('textbox', { name: 'Formal name' }).fill('File share, planned');
-  await dialog.getByRole('button', { name: /^(Save|Retry and save)$/ }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(epicOf('FILE-SHARE')).toMatchObject({ name: 'File share, planned' });
 });
 
 for (const locale of ['en', 'ja'] as const) {

@@ -1,0 +1,163 @@
+/* Completion conditions on cards, in the detail body, and on the monitor. Colors are the theme tokens. */
+
+.acceptance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--r-border);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--r-text2);
+}
+
+.acceptance-chip svg {
+  width: 12px;
+  height: 12px;
+  color: inherit;
+}
+
+.acceptance-chip[data-complete="true"] {
+  color: var(--r-accent);
+  border-color: var(--r-accent);
+}
+
+.acceptance-chip--error {
+  color: var(--r-danger);
+}
+
+.acceptance-unreadable__problem {
+  overflow-wrap: anywhere;
+}
+
+.acceptance-unreadable {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-danger);
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--r-text);
+}
+
+.acceptance-unreadable__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.acceptance-unreadable__note {
+  margin: 0;
+  color: var(--r-text2);
+}
+
+.acceptance-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-bg);
+  color: var(--r-text);
+  font-family: var(--font-sans);
+}
+
+.acceptance-view__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.acceptance-view__head svg {
+  width: 14px;
+  height: 14px;
+  color: var(--r-text2);
+}
+
+.acceptance-view__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.acceptance-view__count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--r-text2);
+}
+
+.acceptance-view__meter {
+  display: flex;
+  gap: 4px;
+}
+
+.acceptance-view__segment {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--r-border);
+}
+
+.acceptance-view__segment.is-done {
+  background: var(--r-accent);
+}
+
+.acceptance-view__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.acceptance-view__item {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.acceptance-view__item input[type="checkbox"] {
+  margin-top: 3px;
+  accent-color: var(--r-accent);
+}
+
+.acceptance-view__id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--r-muted);
+}
+
+.acceptance-view__item.is-done .acceptance-view__text {
+  color: var(--r-text2);
+}
+
+.acceptance-view__toggle {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--r-accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.acceptance-view__note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--r-muted);
+}

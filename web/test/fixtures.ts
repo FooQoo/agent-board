@@ -36,9 +36,14 @@ export function fixtureCard(id: number): Card {
 
 export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
   const at = '2026-10-02T00:00:00Z';
+  const description = overrides.description ?? '';
   return {
     title: `Card ${overrides.id}`,
-    description: '',
+    description,
+    // Without frontmatter the body is the whole text.
+    body: description,
+    acceptance: [],
+    acceptanceError: false,
     assignee: 'ai',
     cardStatus: 'todo',
     position: 1,

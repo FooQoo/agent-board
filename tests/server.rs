@@ -137,7 +137,8 @@ fn store_in(home: &Path) -> FileStore {
 }
 
 /// A TASK.md body that the file store accepts.
-const BODY: &str = "## 作業内容\n\nSome details\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
+const BODY: &str =
+    "---\nacceptance:\n  - id: AC-1\n    text: Done\n    done: false\n---\n\nSome details\n";
 
 /// The ID of the project named "main" in the data directory `home`.
 fn main_id(home: &Path) -> ProjectId {
@@ -191,12 +192,12 @@ fn board_home() -> tempfile::TempDir {
         )
         .unwrap();
     store
-        .set_agent_status(
+        .request_decision(
             &main,
             third.id,
-            RunState::Pending,
-            context("Waiting for review"),
-            None,
+            agent_board::domain::Actor::Ai,
+            "Waiting for review",
+            two_choices(),
             t(7),
         )
         .unwrap();
@@ -645,10 +646,17 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let pending = server.send_json(
         "POST",
         &server.api("/cards/4/agent-status"),
-        r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction"}"#,
+        r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction","choices":[{"id":"a","label":"Plan A"},{"id":"b","label":"Plan B"}]}"#,
         Some(&token),
     );
     assert_eq!(pending.status, 200, "{}", pending.body);
+    let no_choices = server.send_json(
+        "POST",
+        &server.api("/cards/4/agent-status"),
+        r#"{"agentStatus":"pending","actor":"ai","reason":"A question with no choices"}"#,
+        Some(&token),
+    );
+    assert_eq!(no_choices.status, 422, "{}", no_choices.body);
     let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
     let request_id = request["card"]["pendingRequestId"].as_str().unwrap();
     let body = serde_json::json!({"requestId":request_id,"actor":"human","text":"Proceed with A"})
@@ -1078,7 +1086,14 @@ fn a_delete_missing_any_one_condition_is_403_and_the_card_remains() {
         let reply = server.send("DELETE", &server.api("/cards/1"), &headers);
         assert_eq!(reply.status, 403, "{name}");
         let body: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
-        assert_eq!(body["error"]["code"], "forbidden", "{name}");
+        // A token that is present but wrong comes from an earlier server: the page asks for a reload. Anything
+        // else is simply forbidden. Both are refused, and nothing is deleted.
+        let expected = if name == "wrong token" || name == "short token" {
+            "page_out_of_date"
+        } else {
+            "forbidden"
+        };
+        assert_eq!(body["error"]["code"], expected, "{name}");
         assert_eq!(card_ids(home.path()), vec![1, 2, 3], "{name}");
     }
 }
@@ -1634,16 +1649,15 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
         .join(project.as_str())
         .join("tasks/1/TASK.md");
     let label = format!("projects/{project}/tasks/1/TASK.md");
-    // The execution log heading is missing from a file in the earlier Japanese format: it is
-    // still being written, or was edited by hand. The problem names the heading in English.
-    let defective = "## 作業内容\n\nWork.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n";
+    // A condition has no `done` key: the file is still being written, or was edited by hand.
+    let defective = "---\nacceptance:\n  - id: AC-1\n    text: Done\n---\n\nWork.\n";
     std::fs::write(&md, defective).unwrap();
 
     let board = board_until(&server, |b| !b["problems"].as_array().unwrap().is_empty());
     let problems = board["problems"].as_array().unwrap();
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert_eq!(problems[0]["file"], label);
-    assert_eq!(problems[0]["field"], "## Execution log");
+    assert_eq!(problems[0]["field"], "acceptance[0].done");
     assert!(!problems[0]["reason"].as_str().unwrap().is_empty());
     // The card still shows the text as it was saved; the product does not rewrite it.
     let card = board["cards"]
@@ -1702,7 +1716,10 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
     assert_eq!(
         keys,
         [
+            "acceptance",
+            "acceptanceError",
             "attachments",
+            "body",
             "color",
             "createdAt",
             "id",
@@ -1788,4 +1805,48 @@ fn archive_done_refuses_empty_and_repeated_lists_and_changed_targets_and_resends
     let body: serde_json::Value = serde_json::from_str(&again.body).unwrap();
     assert_eq!(body["archivedCount"], 0);
     assert!(body["cards"][0]["archivedAt"].is_string());
+}
+
+fn two_choices() -> Vec<agent_board::file_store::model::Choice> {
+    vec![
+        agent_board::file_store::model::Choice {
+            id: "a".into(),
+            label: "Plan A".into(),
+        },
+        agent_board::file_store::model::Choice {
+            id: "b".into(),
+            label: "Plan B".into(),
+        },
+    ]
+}
+
+#[test]
+fn a_write_with_a_token_from_an_earlier_server_asks_for_a_reload() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let body = r#"{"title":"Stale","description":"","assignee":"ai","actor":"ai"}"#;
+    let stale = server.send_json(
+        "POST",
+        &server.api("/cards"),
+        body,
+        Some("an-earlier-token"),
+    );
+    assert_eq!(stale.status, 403, "{}", stale.body);
+    assert!(
+        stale.body.contains("\"page_out_of_date\""),
+        "{}",
+        stale.body
+    );
+    let missing = server.send_json("POST", &server.api("/cards"), body, None);
+    assert_eq!(missing.status, 403, "{}", missing.body);
+    assert!(missing.body.contains("\"forbidden\""), "{}", missing.body);
+    let board: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+    assert!(
+        board["cards"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|card| card["title"] != "Stale")
+    );
 }

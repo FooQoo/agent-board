@@ -1,4 +1,4 @@
-//! Shape checks for shared files: the TASK.md headings and completion
+//! Shape checks for shared files: the TASK.md frontmatter and its acceptance
 //! conditions, the answer inputs, and the formatVersion gate.
 
 use agent_board::error::AgboardError;
@@ -13,12 +13,7 @@ fn fields(text: &str) -> Vec<String> {
 }
 
 fn valid_body() -> String {
-    "## Work\n\nDo the work.\n\n## Completion conditions\n\n- [ ] AC-1. The thing works.\n  - Result: Not verified\n  - Evidence: Steps\n  - Coordinator check: Not checked\n\n## Execution log\n\n".to_string()
-}
-
-/// The same body with the Japanese headings and labels of earlier files.
-fn japanese_body() -> String {
-    "## 作業内容\n\nDo the work.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. The thing works.\n  - 確認結果: 未確認\n  - 根拠: 手順\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".to_string()
+    "---\nacceptance:\n  - id: AC-1\n    text: The thing works.\n    done: false\n---\n\nDo the work.\n".to_string()
 }
 
 fn choice(id: &str, label: &str) -> Choice {
@@ -29,50 +24,42 @@ fn choice(id: &str, label: &str) -> Choice {
 }
 
 #[test]
-fn the_template_has_the_three_required_headings_and_no_defect() {
+fn the_template_is_an_empty_acceptance_list_and_no_defect() {
     let template = task_template();
-    assert!(template.contains("## Work"));
-    assert!(template.contains("## Completion conditions"));
-    assert!(template.contains("## Execution log"));
+    assert_eq!(template, "---\nacceptance: []\n---\n\n");
     assert!(check_task_body(&template).is_empty(), "{template}");
 }
 
 #[test]
-fn the_japanese_headings_and_labels_of_earlier_files_are_accepted() {
-    assert!(check_task_body(&japanese_body()).is_empty());
-    let mixed = valid_body()
-        .replace("## Work", "## 作業内容")
-        .replace("  - Evidence: Steps", "  - 根拠: 手順");
-    assert!(check_task_body(&mixed).is_empty(), "{mixed}");
-    let missing = japanese_body().replace("  - 根拠: 手順\n", "");
-    assert_eq!(fields(&missing), vec!["AC-1"]);
+fn the_japanese_headings_of_earlier_files_are_accepted_without_checks() {
+    let body =
+        "## 作業内容\n\n作業。\n\n## 完了条件と確認結果\n\n- [ ] AC-1. 旧形式\n\n## 実行記録\n\n";
+    assert!(check_task_body(body).is_empty());
+    assert!(check_task_body("just text").is_empty());
 }
 
 #[test]
-fn a_missing_required_heading_is_reported_by_its_name() {
-    let body = valid_body().replace("## Execution log", "## Log");
-    assert_eq!(fields(&body), vec!["## Execution log"]);
+fn a_file_with_no_required_headings_is_accepted_when_its_frontmatter_is_valid() {
+    assert!(check_task_body(&valid_body()).is_empty());
+    assert!(check_task_body("---\nacceptance: []\n---\n\n# anything\n").is_empty());
 }
 
 #[test]
-fn a_heading_inside_a_code_block_does_not_count() {
-    let body = valid_body().replace("Do the work.", "```\n## Work\n```");
-    let body = body.replacen("## Work", "## Other", 1);
-    assert_eq!(fields(&body), vec!["## Work"]);
+fn a_frontmatter_defect_is_reported_by_its_field() {
+    let body = valid_body().replace("done: false", "done: \"no\"");
+    assert_eq!(fields(&body), vec!["acceptance[0].done"]);
 }
 
 #[test]
-fn a_completion_condition_needs_all_three_lines_under_it() {
-    let body = valid_body().replace("  - Evidence: Steps\n", "");
-    assert_eq!(fields(&body), vec!["AC-1"]);
+fn a_frontmatter_that_is_not_closed_is_reported_as_frontmatter() {
+    let body = "---\nacceptance: []\n\nDo the work.\n";
+    assert_eq!(fields(body), vec!["frontmatter"]);
 }
 
 #[test]
-fn a_checked_condition_is_accepted_and_a_condition_without_an_id_is_not() {
-    let checked = valid_body().replace("- [ ] AC-1.", "- [x] AC-1.");
-    assert!(check_task_body(&checked).is_empty());
-    let no_id = valid_body().replace("- [ ] AC-1.", "- [ ] The thing works.");
-    assert_eq!(fields(&no_id).len(), 1);
+fn a_condition_id_must_be_ac_and_a_number() {
+    let body = valid_body().replace("id: AC-1", "id: 1");
+    assert_eq!(fields(&body), vec!["acceptance[0].id"]);
 }
 
 #[test]
@@ -83,12 +70,12 @@ fn crlf_line_endings_are_judged_like_lf() {
 
 #[test]
 fn ensure_task_body_names_the_file_and_the_item() {
-    let body = valid_body().replace("## Execution log", "## Log");
+    let body = valid_body().replace("done: false", "done: 1");
     let err = ensure_task_body(&body, "projects/p/tasks/1/TASK.md").unwrap_err();
     match err {
         AgboardError::FileInvalid { file, field, .. } => {
             assert_eq!(file, "projects/p/tasks/1/TASK.md");
-            assert_eq!(field, "## Execution log");
+            assert_eq!(field, "acceptance[0].done");
         }
         other => panic!("unexpected error: {other:?}"),
     }

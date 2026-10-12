@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Utc};
 
 use super::super::FileStore;
+use super::super::frontmatter;
 use super::super::io;
 use super::super::layout;
 use super::super::model::{CardView, EpicFile, EpicUpdate, EpicView, HistoryKind, NewEpic};
@@ -49,12 +50,16 @@ fn read_plan(shared: &Path, dir: &Path) -> Result<String, AgboardError> {
 }
 
 fn view_of(file: EpicFile, plan: String) -> EpicView {
+    let parts = frontmatter::parse(&plan);
     EpicView {
         id: file.id,
         name: file.name,
         color: file.color,
         is_draft: file.is_draft,
         plan,
+        body: parts.body,
+        acceptance: parts.acceptance,
+        acceptance_error: !parts.defects.is_empty(),
         attachments: file.attachments,
         created_at: file.created_at,
         updated_at: file.updated_at,

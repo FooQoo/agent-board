@@ -67,7 +67,6 @@ test('project scope, same IDs and live updates follow the shared file store', as
   await page.goto('/monitor/');
   await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
   run('Alpha', ['mv', '2', 'done', '--actor', 'ai', '--reason', 'Finished during the monitor session']);
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '5 Doing' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '10 Done' })).toBeVisible();
 
   const taskFile = pathFor('Alpha', 2, 'task.json');
@@ -89,12 +88,12 @@ test('partial shared-file damage is reported without inventing zero counts, then
   replaceFileAtomically(taskFile, '{ invalid json');
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect(page.getByRole('region', { name: 'Work summary' })).toContainText('—');
-  await expect(page.getByRole('region', { name: 'Work summary' })).not.toContainText('0 Doing');
+  await expect(page.getByRole('region', { name: 'Work summary' })).not.toContainText('0 Pending');
   await expect(page.getByText(/partial|problem|issue/i).first()).toBeVisible();
 
   replaceFileAtomically(taskFile, original);
   await page.getByRole('button', { name: 'Refresh' }).click();
-  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '5 Doing' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '10 Done' })).toBeVisible();
   await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
 });
 

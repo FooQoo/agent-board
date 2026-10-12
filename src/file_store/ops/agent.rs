@@ -7,14 +7,46 @@
 use chrono::{DateTime, Utc};
 
 use super::super::FileStore;
+use super::super::frontmatter;
+use super::super::layout;
 use super::super::model::{CardView, Choice, HistoryKind};
 use super::super::reader;
 use super::{Transition, lane_end, lock_project, new_id, save_task, stamp, transition_event};
 use crate::domain::{
-    Actor, ChangeContext, Changed, Column, ProjectId, RunState, check_work_state,
+    Actor, ChangeContext, Changed, Column, MAX_CHOICES, ProjectId, RunState, check_work_state,
     validate_work_reason,
 };
 use crate::error::AgboardError;
+
+/// An agent may move a card to Done only when its frontmatter reads and every
+/// condition is done. A person's move is never checked here.
+fn ensure_acceptance_met(
+    shared: &std::path::Path,
+    project: &ProjectId,
+    id: i64,
+) -> Result<(), AgboardError> {
+    let text = reader::read_body(shared, project, id)?;
+    let parsed = frontmatter::parse(&text);
+    if let Some(defect) = parsed.defects.into_iter().next() {
+        let path = layout::task_md(&layout::task_dir(&layout::project_dir(shared, project), id));
+        return Err(AgboardError::FileInvalid {
+            file: layout::shared_label(shared, &path),
+            field: defect.field,
+            reason: defect.reason,
+        });
+    }
+    let unmet: Vec<String> = parsed
+        .acceptance
+        .iter()
+        .filter(|item| !item.done)
+        .map(|item| item.id.clone())
+        .collect();
+    if unmet.is_empty() {
+        Ok(())
+    } else {
+        Err(AgboardError::AcceptanceUnmet { id, unmet })
+    }
+}
 
 impl FileStore {
     /// Move a card to the end of a lane. A draft is refused for agents.
@@ -59,6 +91,9 @@ impl FileStore {
         }
         if block_drafts && task.is_draft {
             return Err(AgboardError::CardIsDraft { id });
+        }
+        if ctx.actor == Actor::Ai && to == Column::Done && task.card_status != Column::Done {
+            ensure_acceptance_met(shared, project, id)?;
         }
         if task.card_status == to {
             return Ok(Changed {
@@ -134,6 +169,12 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<Changed<CardView>, AgboardError> {
         let reason = validate_work_reason(reason)?;
+        if state == RunState::Pending && !(2..=MAX_CHOICES).contains(&choices.len()) {
+            return Err(AgboardError::InvalidValue {
+                field: "choices".into(),
+                reason: "A pending request needs a question and 2 to 10 choices.".into(),
+            });
+        }
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;

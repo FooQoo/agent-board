@@ -112,7 +112,7 @@ describe('create dialog', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0]?.[0]).toEqual({
       title: 'Review notes',
-      description: '## Goal\nLine 1\nLine 2',
+      description: '---\nacceptance: []\n---\n\n## Goal\nLine 1\nLine 2',
       assignee: 'human',
     });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
@@ -125,7 +125,7 @@ describe('create dialog', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
     expect(onSubmit.mock.calls[0]?.[0]).toEqual({
       title: 'Only a title',
-      description: '',
+      description: '---\nacceptance: []\n---\n\n',
       assignee: 'ai',
     });
   });

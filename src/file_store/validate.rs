@@ -1,8 +1,7 @@
 //! Checks that decide whether shared-file content is accepted.
 //!
-//! The JSON checks return every defect of a file. The TASK.md check looks only
-//! at the required headings and the shape of completion conditions, and never
-//! rewrites the text. Errors name the file and item; reasons are in English.
+//! The JSON checks return every defect of a file. The TASK.md and PLAN.md checks
+//! look only at the frontmatter's acceptance conditions, and never rewrite the text. Errors name the file and item; reasons are in English.
 
 use std::collections::HashSet;
 use std::fmt;
@@ -11,6 +10,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
+use super::frontmatter;
 use super::layout::FORMAT_NAME;
 use super::model::{
     Choice, EpicFile, HistoryKind, HistoryRecord, ProjectFile, TaskFile, WorkspaceFile,
@@ -125,11 +125,13 @@ pub fn validate_epic_name(text: &str) -> Result<String, AgboardError> {
     Ok(trimmed.to_string())
 }
 
-/// A plan text with CRLF folded to LF, at most 50,000 characters. The
-/// required headings are checked separately by `check_plan_body`.
+/// A plan text with CRLF folded to LF, and at most 50,000 characters of
+/// Markdown body. The frontmatter is not counted, because the editor counts only
+/// the body.
 pub fn normalize_plan(text: &str) -> Result<String, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
-    let count = normalized.chars().count();
+    let body = super::frontmatter::parse(&normalized).body;
+    let count = body.chars().count();
     if count > 50_000 {
         return Err(AgboardError::InvalidValue {
             field: "plan".into(),
@@ -167,31 +169,9 @@ fn defect(field: &str, reason: &str) -> Defect {
     }
 }
 
-/// A required heading or label: its English name, which new files use, and
-/// the Japanese name that earlier files use. Either is accepted.
-type Name = (&'static str, &'static str);
-
-/// Headings every TASK.md must contain, in template order.
-const REQUIRED_HEADINGS: [Name; 3] = [
-    ("Work", "作業内容"),
-    ("Completion conditions", "完了条件と確認結果"),
-    ("Execution log", "実行記録"),
-];
-const CONDITION_SECTION: Name = ("Completion conditions", "完了条件と確認結果");
-/// Lines every completion condition must carry, in the order of the template.
-const CONDITION_LINES: [Name; 3] = [
-    ("Result:", "確認結果:"),
-    ("Evidence:", "根拠:"),
-    ("Coordinator check:", "調整役の確認:"),
-];
-
-fn is_name(text: &str, name: Name) -> bool {
-    text == name.0 || text == name.1
-}
-
 /// The TASK.md written when a card is created without a body.
 pub fn task_template() -> String {
-    "## Work\n\n(Describe the purpose of the work and what to do.)\n\n## Completion conditions\n\n- [ ] AC-1. (Describe a condition that can be verified.)\n  - Result: Not verified\n  - Evidence: Not recorded\n  - Coordinator check: Not checked\n\n## Execution log\n\n".to_string()
+    "---\nacceptance: []\n---\n\n".to_string()
 }
 
 /// True for a 32-character lowercase hexadecimal string (history and request IDs).
@@ -199,175 +179,19 @@ pub fn is_hex32(text: &str) -> bool {
     text.len() == 32 && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
-/// The heading name of a Markdown ATX heading (`## name`), if `line` is one.
-fn heading_name(line: &str) -> Option<String> {
-    let hashes = line.bytes().take_while(|b| *b == b'#').count();
-    if !(1..=6).contains(&hashes) {
-        return None;
-    }
-    let rest = line[hashes..].strip_prefix(' ')?;
-    let name = rest.trim_end();
-    (!name.is_empty()).then(|| name.to_string())
-}
-
-/// The fence marker (`` ``` `` or `~~~`) that opens or closes a code block.
-fn fence_marker(trimmed: &str) -> Option<&'static str> {
-    if trimmed.starts_with("```") {
-        Some("```")
-    } else if trimmed.starts_with("~~~") {
-        Some("~~~")
-    } else {
-        None
-    }
-}
-
-/// The ID of a completion condition line `- [ ] AC-n. body`. Any checkbox
-/// state is accepted. Returns `None` when the line does not have that form.
-fn condition_id(line: &str) -> Option<String> {
-    let rest = line
-        .strip_prefix("- [ ] ")
-        .or_else(|| line.strip_prefix("- [x] "))
-        .or_else(|| line.strip_prefix("- [X] "))?;
-    let after = rest.strip_prefix("AC-")?;
-    let digits = after.bytes().take_while(|b| b.is_ascii_digit()).count();
-    if digits == 0 {
-        return None;
-    }
-    let (number, tail) = after.split_at(digits);
-    let body = tail.strip_prefix(". ")?;
-    if body.trim().is_empty() {
-        return None;
-    }
-    Some(format!("AC-{number}"))
-}
-
-/// The label of a detail line (`  - Evidence: ...`) under a condition, if it has one.
-fn condition_label(line: &str) -> Option<Name> {
-    let rest = line.trim_start().strip_prefix("- ")?;
-    CONDITION_LINES
-        .iter()
-        .copied()
-        .find(|label| rest.starts_with(label.0) || rest.starts_with(label.1))
-}
-
-/// Headings every PLAN.md must contain, in template order.
-const PLAN_HEADINGS: [Name; 4] = [
-    ("Goal", "目的"),
-    ("Scope", "対象範囲"),
-    ("Completion conditions", "完了条件と確認結果"),
-    ("Approach", "進め方"),
-];
-
 /// The PLAN.md written when an epic is created without a plan.
 pub fn plan_template() -> String {
-    "## Goal\n\n(Describe the purpose of the epic.)\n\n## Scope\n\n(Describe what is in and out of scope.)\n\n## Completion conditions\n\n- [ ] AC-1. (Describe a condition that can be verified.)\n  - Result: Not verified\n  - Evidence: Not recorded\n  - Coordinator check: Not checked\n\n## Approach\n\n(Describe how the work proceeds.)\n".to_string()
+    "---\nacceptance: []\n---\n\n".to_string()
 }
 
-/// Check a TASK.md text: the required headings and the completion conditions.
-/// Headings and conditions inside fenced code blocks do not count. Returns
-/// every defect; an empty list means the text is accepted.
+/// Check a TASK.md text: its frontmatter. The body is not checked.
 pub fn check_task_body(text: &str) -> Vec<Defect> {
-    check_markdown(text, &REQUIRED_HEADINGS)
+    frontmatter::parse(text).defects
 }
 
-/// Check a PLAN.md text: the four required headings and the completion
-/// conditions, under the same rules as TASK.md.
+/// Check a PLAN.md text: its frontmatter, as for TASK.md.
 pub fn check_plan_body(text: &str) -> Vec<Defect> {
-    check_markdown(text, &PLAN_HEADINGS)
-}
-
-fn check_markdown(text: &str, required: &[Name]) -> Vec<Defect> {
-    let lines: Vec<&str> = text
-        .split('\n')
-        .map(|line| line.strip_suffix('\r').unwrap_or(line))
-        .collect();
-
-    let mut fence: Option<&str> = None;
-    let mut outside = vec![false; lines.len()];
-    let mut headings: Vec<(usize, String)> = Vec::new();
-    for (i, line) in lines.iter().enumerate() {
-        let trimmed = line.trim_start();
-        if let Some(marker) = fence_marker(trimmed) {
-            match fence {
-                None => fence = Some(marker),
-                Some(open) if open == marker => fence = None,
-                Some(_) => {}
-            }
-            continue;
-        }
-        if fence.is_some() {
-            continue;
-        }
-        outside[i] = true;
-        if let Some(name) = heading_name(line) {
-            headings.push((i, name));
-        }
-    }
-
-    let mut out = Vec::new();
-    for &name in required {
-        if !headings.iter().any(|(_, heading)| is_name(heading, name)) {
-            out.push(defect(
-                &format!("## {}", name.0),
-                "The required heading is missing.",
-            ));
-        }
-    }
-
-    let Some(position) = headings
-        .iter()
-        .position(|(_, heading)| is_name(heading, CONDITION_SECTION))
-    else {
-        return out;
-    };
-    let section_field = format!("## {}", headings[position].1);
-    let start = headings[position].0 + 1;
-    let end = headings
-        .get(position + 1)
-        .map_or(lines.len(), |(index, _)| *index);
-
-    // Each condition with the detail labels found below it.
-    let mut blocks: Vec<(String, Vec<Name>)> = Vec::new();
-    let mut current: Option<usize> = None;
-    for i in start..end {
-        if !outside[i] {
-            continue;
-        }
-        let line = lines[i];
-        if line.starts_with("- [") {
-            match condition_id(line) {
-                Some(id) => {
-                    blocks.push((id, Vec::new()));
-                    current = Some(blocks.len() - 1);
-                }
-                None => {
-                    out.push(defect(
-                        &section_field,
-                        "A completion condition must start with \"- [ ] AC-n. \" followed by its text.",
-                    ));
-                    current = None;
-                }
-            }
-            continue;
-        }
-        if let (Some(index), Some(label)) = (current, condition_label(line)) {
-            blocks[index].1.push(label);
-        }
-    }
-    for (id, found) in blocks {
-        for label in CONDITION_LINES {
-            if !found.contains(&label) {
-                out.push(defect(
-                    &id,
-                    &format!(
-                        "A line starting with \"- {}\" (or \"- {}\") is missing below the condition.",
-                        label.0, label.1
-                    ),
-                ));
-            }
-        }
-    }
-    out
+    frontmatter::parse(text).defects
 }
 
 /// Turn the first defect of a TASK.md text into a `file_invalid` error.

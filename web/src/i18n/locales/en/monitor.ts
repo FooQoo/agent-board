@@ -16,9 +16,15 @@ export const monitorEn = {
     lastFetched: 'Last updated {{time}}',
     status: { todo: 'Todo', doing: 'Doing', pending: 'Pending', running: 'Running', done: 'Done' },
     empty: {
+      pending: 'No decisions are waiting for you.',
+      running: 'No agent is running.',
       todo: 'No work to start.',
       doing: 'No work in progress.',
       done: 'No completed work.',
+    },
+    section: {
+      pending: 'Awaiting your decision',
+      running: 'Running work',
     },
     freshness: {
       loading: 'Loading monitor…',

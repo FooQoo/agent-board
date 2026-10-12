@@ -53,14 +53,10 @@ fn epic_add_writes_the_epic_and_a_template_plan() {
     assert_eq!(shown["epic"]["color"], "#7C3AED");
     assert_eq!(shown["epic"]["isDraft"], false);
     let plan = shown["epic"]["plan"].as_str().unwrap();
-    for heading in [
-        "## Goal",
-        "## Scope",
-        "## Completion conditions",
-        "## Approach",
-    ] {
-        assert!(plan.contains(heading), "plan lacks {heading}: {plan}");
-    }
+    assert_eq!(
+        plan, "---\nacceptance: []\n---\n\n",
+        "plan lacks the template"
+    );
 }
 
 #[test]
@@ -132,7 +128,7 @@ fn epic_edit_changes_the_name_the_color_and_the_plan_from_a_file() {
     let plan = home.path().join("plan.md");
     std::fs::write(
         &plan,
-        "## 目的\n\nShare files.\n\n## 対象範囲\n\nThe board.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 進め方\n\nStep one.\n",
+        "---\nacceptance:\n  - id: AC-1\n    text: Works\n    done: false\n---\n\nShare files.\n\nThe board.\n\nStep one.\n",
     )
     .unwrap();
     let (code, _, err) = agboard(

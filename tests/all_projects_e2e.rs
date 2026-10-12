@@ -7,6 +7,7 @@
 //! `tests/all_projects_list.rs` covers the store and the argument rules in detail; these stories check the
 //! whole path from the command line to the printed result.
 
+mod common;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::Path;
@@ -178,11 +179,27 @@ fn mv(home: &Path, project: &str, id: &str, column: &str, actor: &str, reason: &
 }
 
 fn state(home: &Path, project: &str, id: &str, run_state: &str, reason: &str) {
-    ok(&agboard(
-        home,
-        project,
-        &["state", id, run_state, "--actor", "ai", "--reason", reason],
-    ));
+    if run_state == "pending" {
+        ok(&agboard(
+            home,
+            project,
+            &[
+                "state",
+                id,
+                run_state,
+                "--actor",
+                "ai",
+                "--request-json",
+                &common::decision_json(reason),
+            ],
+        ));
+    } else {
+        ok(&agboard(
+            home,
+            project,
+            &["state", id, run_state, "--actor", "ai", "--reason", reason],
+        ));
+    }
 }
 
 /// Every file in the data area, with its bytes except for the write-ahead log files that come and go with

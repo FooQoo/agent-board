@@ -6,6 +6,7 @@
 //! the browser specs use (`e2e/fixtures/multi-project-*.json`), which hold a card #1 each with different
 //! content.
 
+mod common;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
@@ -113,11 +114,21 @@ fn import_fixture(home: &Path, project: &str, file: &str) {
         let state = card["agentStatus"].as_str().unwrap();
         if state == "running" || state == "pending" {
             let reason = card["pendingReason"].as_str().unwrap_or("fixture");
-            ok(&agboard(
-                home,
-                project,
-                &["state", &id, state, "--actor", "ai", "--reason", reason],
-            ));
+            let request = common::decision_json(reason);
+            let args: Vec<&str> = if state == "pending" {
+                vec![
+                    "state",
+                    &id,
+                    state,
+                    "--actor",
+                    "ai",
+                    "--request-json",
+                    &request,
+                ]
+            } else {
+                vec!["state", &id, state, "--actor", "ai", "--reason", reason]
+            };
+            ok(&agboard(home, project, &args));
         }
     }
 }
@@ -831,8 +842,8 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
             "pending",
             "--actor",
             "ai",
-            "--reason",
-            "Beta asks as well",
+            "--request-json",
+            &common::decision_json("Beta asks as well"),
         ],
     ));
     assert!(

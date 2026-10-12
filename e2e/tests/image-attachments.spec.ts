@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { agboardOk, mainProject, nextCardId, resetBoard, taskBody } from '../helpers/agboard';
+import { agboardOk, mainProject, nextCardId, resetBoard, cardBody } from '../helpers/agboard';
 import { pasteMarkdown, waitForSync } from '../helpers/ui';
 
 const png = Buffer.from(
@@ -22,7 +22,7 @@ test('side attachments render, persist, retry safely and become No image after d
   const dialog = page.getByRole('dialog', { name: 'Add card' });
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Image round trip');
   // The body starts with the required headings; the picture is inserted into it from the side pane.
-  await pasteMarkdown(body(dialog), taskBody('Pictures follow.'));
+  await pasteMarkdown(body(dialog), cardBody('Pictures follow.'));
   // The caret goes to the end of the text, so the picture is inserted there and not over the selection.
   await body(dialog).getByText('Pictures follow.').click();
   await page.keyboard.press('End');
@@ -127,7 +127,7 @@ test('drop works at narrow widths without shrinking the body and CLI can read sa
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Add card' });
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Dropped image');
-  await pasteMarkdown(body(dialog), taskBody('Dropped below.'));
+  await pasteMarkdown(body(dialog), cardBody('Dropped below.'));
   const widthBefore = (await body(dialog).boundingBox())!.width;
   await body(dialog).evaluate((element, base64) => {
     const data = new DataTransfer();

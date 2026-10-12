@@ -9,7 +9,11 @@ export type { DialogAction };
 export interface ActionDialogData {
   requestId?: string;
   title?: string;
+  /** The whole TASK.md or PLAN.md text, frontmatter included (a file that cannot be read is edited this way). */
   description?: string;
+  /** The body without its frontmatter, saved with `acceptance`. */
+  body?: string;
+  acceptance?: import('../types').AcceptanceItem[];
   assignee?: Assignee;
   reason?: string;
   /** Create: the card is made a draft once it is added. */

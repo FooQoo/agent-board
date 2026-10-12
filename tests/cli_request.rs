@@ -40,8 +40,8 @@ fn ask(home: &Path, value: &Value) -> String {
             "pending",
             "--actor",
             "ai",
-            "--request-file",
-            file.to_str().unwrap(),
+            "--request-json",
+            &std::fs::read_to_string(file).unwrap(),
             "--json",
         ],
     );
@@ -105,7 +105,7 @@ fn answering_with_a_choice_only_returns_the_card_to_idle_and_keeps_the_choice_in
 }
 
 #[test]
-fn answering_with_a_note_only_is_accepted_for_a_request_that_has_no_choices() {
+fn answering_with_a_note_only_is_accepted() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     // A reason-only request, the form that existed before choices.
@@ -119,8 +119,8 @@ fn answering_with_a_note_only_is_accepted_for_a_request_that_has_no_choices() {
             "pending",
             "--actor",
             "ai",
-            "--reason",
-            "Which database?",
+            "--request-json",
+            &common::decision_json("Which database?"),
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -369,8 +369,8 @@ fn a_request_file_is_checked_against_the_limits() {
                 "pending",
                 "--actor",
                 "ai",
-                "--request-file",
-                file.to_str().unwrap(),
+                "--request-json",
+                &std::fs::read_to_string(file).unwrap(),
             ],
         );
         assert_eq!((code, code_name.as_str()), (2, "invalid_value"), "{value}");
@@ -409,8 +409,8 @@ fn a_request_file_is_checked_against_the_limits() {
             "pending",
             "--actor",
             "ai",
-            "--request-file",
-            file.to_str().unwrap(),
+            "--request-json",
+            &std::fs::read_to_string(file).unwrap(),
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -424,56 +424,10 @@ fn a_request_file_is_checked_against_the_limits() {
 }
 
 #[test]
-fn a_request_without_choices_is_a_question_that_takes_a_note() {
+fn a_request_without_choices_is_refused_and_nothing_changes() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    let file = request_file(
-        home.path(),
-        "plain.json",
-        &json!({"question": "Anything else?"}),
-    );
-    let (code, _, err) = agboard(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "state",
-            "1",
-            "pending",
-            "--actor",
-            "ai",
-            "--request-file",
-            file.to_str().unwrap(),
-        ],
-    );
-    assert_eq!(code, 0, "{err}");
-    let shown = card(home.path());
-    assert_eq!(shown["pendingChoices"], json!([]));
-    let request = shown["pendingRequestId"].as_str().unwrap().to_string();
-    let (code, _, err) = agboard(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "state",
-            "1",
-            "idle",
-            "--actor",
-            "human",
-            "--request",
-            &request,
-            "--reason",
-            "No.",
-        ],
-    );
-    assert_eq!(code, 0, "{err}");
-}
-
-#[test]
-fn a_request_file_that_cannot_be_read_changes_nothing() {
-    let home = tempfile::tempdir().unwrap();
-    demo_project(home.path());
-    let missing = home.path().join("missing.json");
+    let value = json!({"question": "Just a question?", "choices": []}).to_string();
     let (code, code_name) = json_error(
         home.path(),
         &[
@@ -484,10 +438,379 @@ fn a_request_file_that_cannot_be_read_changes_nothing() {
             "pending",
             "--actor",
             "ai",
-            "--request-file",
-            missing.to_str().unwrap(),
+            "--request-json",
+            &value,
         ],
     );
-    assert_eq!((code, code_name.as_str()), (1, "file_error"));
+    assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
     assert_eq!(card(home.path())["agentStatus"], "idle");
+}
+
+#[test]
+fn a_request_that_is_not_json_is_refused_and_changes_nothing() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let (code, code_name) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            "not json",
+        ],
+    );
+    assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
+    assert_eq!(card(home.path())["agentStatus"], "idle");
+}
+
+#[test]
+fn a_request_read_from_standard_input_keeps_its_question_and_choices() {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_HOME", home.path())
+        .env("TZ", "UTC")
+        .args([
+            "--project",
+            "Demo",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            "-",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(three_choices().to_string().as_bytes())
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let shown = card(home.path());
+    assert_eq!(shown["pendingReason"], "Which plan should we use?");
+    assert_eq!(shown["pendingChoices"].as_array().unwrap().len(), 3);
+}
+
+fn choices(count: usize) -> Value {
+    let choices: Vec<Value> = (0..count)
+        .map(|i| json!({"id": format!("c{i}"), "label": format!("Option {i}")}))
+        .collect();
+    json!({"question": "How many?", "choices": choices})
+}
+
+#[test]
+fn a_request_with_fewer_than_two_or_more_than_ten_choices_is_refused() {
+    for count in [0, 1, 11] {
+        let home = tempfile::tempdir().unwrap();
+        demo_project(home.path());
+        let value = choices(count).to_string();
+        let (code, code_name) = json_error(
+            home.path(),
+            &[
+                "--project",
+                "Demo",
+                "state",
+                "1",
+                "pending",
+                "--actor",
+                "ai",
+                "--request-json",
+                &value,
+            ],
+        );
+        assert_eq!(
+            (code, code_name.as_str()),
+            (2, "invalid_value"),
+            "{count} choices"
+        );
+        assert_eq!(card(home.path())["agentStatus"], "idle", "{count} choices");
+    }
+}
+
+#[test]
+fn a_reason_only_pending_state_is_refused_and_nothing_changes() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let (code, code_name) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--reason",
+            "Which one?",
+        ],
+    );
+    assert_eq!((code, code_name.as_str()), (2, "invalid_argument"));
+    assert_eq!(card(home.path())["agentStatus"], "idle");
+}
+
+#[test]
+fn request_file_is_gone_and_help_shows_request_json_with_an_example() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--request-file",
+            "q.json",
+        ],
+    );
+    assert_ne!(code, 0, "{err}");
+    assert!(err.contains("--request-file"), "{err}");
+    let (code, out, _) = agboard(home.path(), &["state", "--help"]);
+    assert_eq!(code, 0);
+    assert!(out.contains("--request-json"), "{out}");
+    assert!(out.contains("\"choices\""), "{out}");
+    assert!(!out.contains("--request-file"), "{out}");
+}
+
+/// A new AI card in todo, read back by ID.
+fn todo_card(home: &Path, title: &str) -> String {
+    let created = json_ok(
+        home,
+        &[
+            "--project",
+            "Demo",
+            "add",
+            title,
+            "--assignee",
+            "ai",
+            "--actor",
+            "ai",
+            "--json",
+        ],
+    );
+    created["card"]["id"].as_i64().unwrap().to_string()
+}
+
+/// Put card `id` into a pending request from `value` and return the request ID.
+fn ask_card(home: &Path, id: &str, value: &Value) -> String {
+    let (code, _, err) = agboard(
+        home,
+        &[
+            "--project",
+            "Demo",
+            "state",
+            id,
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            &value.to_string(),
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    card_of(home, id)["pendingRequestId"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+#[test]
+fn a_todo_card_asks_and_the_answer_returns_it_to_todo_idle() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let id = todo_card(home.path(), "Ask in todo");
+    let request = ask_card(home.path(), &id, &three_choices());
+    let shown = card_of(home.path(), &id);
+    assert_eq!(shown["cardStatus"], "todo");
+    assert_eq!(shown["agentStatus"], "pending");
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &id,
+            "idle",
+            "--actor",
+            "human",
+            "--request",
+            &request,
+            "--choice",
+            "proceed",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let shown = card_of(home.path(), &id);
+    assert_eq!(shown["cardStatus"], "todo");
+    assert_eq!(shown["agentStatus"], "idle");
+    assert_eq!(shown["pendingRequestId"], Value::Null);
+}
+
+#[test]
+fn run_states_refused_outside_their_column_or_owner_leave_the_card_unchanged() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    // An AI card in todo may not run.
+    let id = todo_card(home.path(), "Run in todo");
+    let (code, _, _) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &id,
+            "running",
+            "--actor",
+            "ai",
+            "--reason",
+            "Working",
+        ],
+    );
+    assert_ne!(code, 0);
+    assert_eq!(card_of(home.path(), &id)["agentStatus"], "idle");
+    // A person's card may not be pending.
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "add",
+            "Mine",
+            "--assignee",
+            "human",
+            "--actor",
+            "human",
+            "--json",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let mine = json_ok(home.path(), &["--project", "Demo", "snapshot", "--json"])["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["title"] == "Mine")
+        .unwrap()["id"]
+        .as_i64()
+        .unwrap()
+        .to_string();
+    let (code, _, _) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &mine,
+            "pending",
+            "--actor",
+            "human",
+            "--request-json",
+            &three_choices().to_string(),
+        ],
+    );
+    assert_ne!(code, 0);
+    assert_eq!(card_of(home.path(), &mine)["agentStatus"], "idle");
+    // An AI card in done may not be pending.
+    let done = todo_card(home.path(), "Done already");
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "mv",
+            &done,
+            "done",
+            "--actor",
+            "human",
+            "--reason",
+            "Finished.",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let (code, _, _) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &done,
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            &three_choices().to_string(),
+        ],
+    );
+    assert_ne!(code, 0);
+    assert_eq!(card_of(home.path(), &done)["agentStatus"], "idle");
+}
+
+#[test]
+fn moving_a_todo_card_cancels_its_request_and_the_old_answer_is_refused() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let id = todo_card(home.path(), "Move while asking");
+    let request = ask_card(home.path(), &id, &three_choices());
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "mv",
+            &id,
+            "doing",
+            "--actor",
+            "human",
+            "--reason",
+            "Start.",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let shown = card_of(home.path(), &id);
+    assert_eq!(shown["agentStatus"], "idle");
+    assert_eq!(shown["pendingRequestId"], Value::Null);
+    let (code, code_name) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &id,
+            "idle",
+            "--actor",
+            "human",
+            "--request",
+            &request,
+            "--reason",
+            "Too late.",
+        ],
+    );
+    assert_ne!(code, 0);
+    assert_ne!(code_name, "", "{code}");
+}
+
+fn card_of(home: &Path, id: &str) -> Value {
+    json_ok(home, &["--project", "Demo", "show", id, "--json"])["card"].clone()
 }

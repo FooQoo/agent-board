@@ -141,13 +141,7 @@ Add `--json` for machine-readable output. Use `agboard --help` or `agboard <comm
 
 ## Ask and answer decisions
 
-An AI-owned card must be in Doing before its agent state can become Running or Pending. For a question without choices:
-
-```sh
-agboard --project "My project" state 1 pending --actor ai --reason "Which launch approach should we use?"
-```
-
-For a question with choices, create `question.json`:
+An AI-owned card must be in Doing before its agent state can become Running or Pending. A question for the user always has choices: pass the question and two to ten options as JSON with `--request-json`, either inline or from standard input with `-`:
 
 ```json
 {
@@ -159,13 +153,34 @@ For a question with choices, create `question.json`:
 }
 ```
 
-Then send it:
+Send it inline:
 
 ```sh
-agboard --project "My project" state 1 pending --actor ai --request-file question.json
+agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}'
 ```
 
-`choices` is optional and can contain up to 10 options. The request gets an ID; read the current request in `show` or `snapshot`. A user can answer in the browser, or pass that request ID to the CLI:
+Or read it from standard input:
+
+```sh
+cat question.json | agboard --project "My project" state 1 pending --actor ai --request-json -
+```
+
+Add a `wait` object to the JSON to ask and wait for the answer in one command. It needs a running `agboard serve`, and it prints the answer (the choice, the note, and the card) once the request is answered:
+
+```json
+{
+  "question": "Which launch approach should we use?",
+  "choices": [
+    { "id": "preview", "label": "Publish a preview first" },
+    { "id": "public", "label": "Launch publicly" }
+  ],
+  "wait": { "timeoutSeconds": 600 }
+}
+```
+
+`timeoutSeconds` is required, from 1 to 86,400 (a day). Without `wait`, the command asks and returns. A timeout is not an answer: the command exits with `wait_timeout` and the request stays pending. If a move takes the question back, it exits with `request_changed`. Without a running server, or with a `wait` that is not valid, nothing is asked.
+
+`choices` takes 2 to 10 options; a request with fewer or more is refused, and so is a pending state without `--request-json`. The request gets an ID; read the current request in `show` or `snapshot`. A user can answer in the browser, or pass that request ID to the CLI:
 
 ```sh
 agboard --project "My project" state 1 idle --actor human --request "<request-id>" --choice preview --reason "Get feedback before the public launch"
@@ -241,39 +256,31 @@ The result contains `folder` (the project's absolute path), `projectId`, `readme
 
 Agents may edit a non-draft card's `TASK.md` and an epic's `PLAN.md` as that README allows. For direct edits, write a temporary file in the same folder and rename it over the original. The board follows file changes automatically. Use the CLI for metadata and status changes; never edit `task.json`, `epic.json`, `project.json`, or `.internal/` lock files directly, or delete card or epic folders directly. Keep personal absolute paths out of shared files.
 
-The Markdown format requires these headings:
-
-| File | Required headings |
-| --- | --- |
-| `TASK.md` | `## Work`, `## Completion conditions`, `## Execution log` |
-| `PLAN.md` | `## Goal`, `## Scope`, `## Completion conditions`, `## Approach` |
-
-Each completion condition has a unique positive `AC` number and three indented result lines. For example:
+TASK.md and PLAN.md hold their completion conditions in a YAML frontmatter at the top of the file. The body after it is free Markdown; no heading is required:
 
 ```markdown
-- [ ] AC-1. The setup guide covers the supported installation steps.
-  - Result: Not verified
-  - Evidence: Not recorded
-  - Coordinator check: Not checked
+---
+acceptance:
+  - id: AC-1
+    text: The setup guide covers the supported installation steps.
+    done: false
+  - id: AC-2
+    text: Deleting a card asks for confirmation.
+    done: true
+---
+
+## Background
+
+Any headings and text you need.
 ```
 
-Files created before the English names may use the earlier Japanese headings and labels. Both forms are accepted, and each heading or label may use either form:
+Each condition has three keys: `id` (`AC-` followed by a positive number without a leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (`true` or `false`). Other keys in the frontmatter are kept when the board writes the file. A file without a frontmatter has no conditions, and its whole text is the body.
 
-| English | Earlier Japanese form |
-| --- | --- |
-| `## Work` | `## 作業内容` |
-| `## Completion conditions` | `## 完了条件と確認結果` |
-| `## Execution log` | `## 実行記録` |
-| `## Goal` | `## 目的` |
-| `## Scope` | `## 対象範囲` |
-| `## Approach` | `## 進め方` |
-| `- Result:` | `- 確認結果:` |
-| `- Evidence:` | `- 根拠:` |
-| `- Coordinator check:` | `- 調整役の確認:` |
+If the frontmatter cannot be read (invalid YAML, a missing key, a duplicate ID, an empty text), the board reports the file, the item, and the reason as a problem. The card then shows no progress and its body is shown in full. The board never rewrites the file to fix it.
 
-New cards and epics get the English template. Existing files are not rewritten.
+Mark a condition `done: true` only after you have verified it, and record the result and the evidence in the body (for example in an execution log section). An agent can move a card to Done only when every condition is done; the board refuses the move and names the unmet IDs otherwise (`acceptance_unmet`). A person can always move a card.
 
-Record the verification result, supporting evidence, and coordinator confirmation before marking a condition complete. Preserve the required headings and result labels when editing in a text editor or the browser.
+New cards and epics start with an empty `acceptance` list. Files written before this format, with Japanese headings such as `## 作業内容` and `- [ ] AC-1.` lines, are read as bodies with no conditions; they are not converted.
 
 ## Data and backups
 

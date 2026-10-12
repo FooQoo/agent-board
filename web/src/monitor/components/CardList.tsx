@@ -5,17 +5,20 @@ import type { MonitorFreshness } from '../contracts';
 import { MonitorCard as CardRow } from './MonitorCard';
 import { MonitorSectionHeader, type MonitorSection } from './MonitorSectionHeader';
 
-type Lists = { todo: MonitorCard[]; doing: MonitorCard[]; done: MonitorCard[] };
+/** Each card is in exactly one section; the view decides which (see MonitorView). */
+export type Sections = Record<MonitorSection, MonitorCard[]>;
 export const CardList = forwardRef<
   HTMLDivElement,
-  Lists & {
+  Sections & {
     id: string;
     scopeName: string;
     freshness: MonitorFreshness;
   }
->(function CardList({ id, todo, doing, done, freshness }, ref) {
+>(function CardList({ id, pending, running, todo, doing, done, freshness }, ref) {
   const { t } = useTranslation();
   const sections: Array<[MonitorSection, MonitorCard[]]> = [
+    ['pending', pending],
+    ['running', running],
     ['todo', todo],
     ['doing', doing],
     ['done', done],

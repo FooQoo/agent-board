@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { formatShort } from '../../lib/format';
 import { CardContent } from '../../components/Card';
 import { StatusLabel } from '../../components/StatusLabel';
+import { AcceptanceProgress } from '../../components/acceptance/AcceptanceProgress';
 import type { MonitorCard as MonitorCardModel } from '../contracts';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { completedAt } from '../model/sort';
@@ -21,11 +22,14 @@ export function MonitorCard({
       : section === 'todo'
         ? card.createdAt
         : card.agentStatusChangedAt;
-  const showsState = section === 'doing';
+  // The run state shows in the sections for work the agent has in hand: awaiting a decision, running, and Doing.
+  const showsState = section === 'pending' || section === 'running' || section === 'doing';
   const pending = showsState && card.agentStatus === 'pending';
   const label = [
     `#${card.id}`,
-    t(`monitor.status.${section}`),
+    section === 'pending' || section === 'running'
+      ? t(`monitor.section.${section}`)
+      : t(`monitor.status.${section}`),
     showsState ? t(`runState.${card.agentStatus}`) : '',
     card.title,
     pending ? card.pendingReason : '',
@@ -57,6 +61,7 @@ export function MonitorCard({
               ? t('monitor.completedUnknown')
               : formatShort(card.agentStatusChangedAt)}
         </span>
+        <AcceptanceProgress card={card} />
       </span>
     </article>
   );

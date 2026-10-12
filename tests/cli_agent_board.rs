@@ -1,4 +1,6 @@
 use assert_cmd::Command;
+
+mod common;
 use serde_json::Value;
 use tempfile::tempdir;
 
@@ -54,8 +56,8 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
             "pending",
             "--actor",
             "ai",
-            "--reason",
-            "Need input",
+            "--request-json",
+            &common::decision_json("Need input"),
             "--json",
         ],
     )

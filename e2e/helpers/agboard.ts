@@ -153,27 +153,11 @@ export function nextCardId(project: string, home: string = mainHome()): number {
 }
 
 /**
- * Wrap plain text in the required TASK.md body: the text goes under `## Work`, and the other two required
- * headings are added with the completion-condition template. Use it wherever a spec writes a card body
- * through the CLI, because the CLI checks the required headings.
+ * The body a spec writes to a card. The CLI reads any Markdown as the body, so the text is passed as given,
+ * with surrounding blank lines removed.
  */
-export function taskBody(text: string): string {
-  return [
-    '## Work',
-    '',
-    text.trim() === '' ? '(Describe the purpose of the work and what to do.)' : text.trim(),
-    '',
-    '## Completion conditions',
-    '',
-    '- [ ] AC-1. (Describe a condition that can be verified.)',
-    '  - Result: Not verified',
-    '  - Evidence: Not recorded',
-    '  - Coordinator check: Not checked',
-    '',
-    '## Execution log',
-    '',
-    '',
-  ].join('\n');
+export function cardBody(text: string): string {
+  return text.trim();
 }
 
 /** Write a file the way the README asks people to: a temporary file in the same folder, renamed over the target. */
@@ -277,7 +261,7 @@ function taskFilesFor(card: FixtureCard): { task: Record<string, unknown>; markd
     evidence: [],
     history,
   };
-  return { task, markdown: taskBody(card.description) };
+  return { task, markdown: cardBody(card.description) };
 }
 
 /**
@@ -365,44 +349,8 @@ export function resetAlphaBeta(home: string): void {
   restoreProject('Beta', betaFixture, home);
 }
 
-/** True when a body already has the three headings the CLI requires, in English or in the earlier Japanese form. */
-export function hasRequiredHeadings(text: string): boolean {
-  const lines = text.split('\n').map((line) => line.trim());
-  return [
-    ['## Work', '## 作業内容'],
-    ['## Completion conditions', '## 完了条件と確認結果'],
-    ['## Execution log', '## 実行記録'],
-  ].every((names) => names.some((heading) => lines.includes(heading)));
-}
-
-/**
- * Descriptions given to `add` and `edit` in these specs are plain Markdown. The CLI requires the three TASK.md
- * headings, so a body without them is wrapped with `taskBody`; a body that already has them is passed unchanged.
- * The temporary files written for `--desc-file` live in the OS temp directory and are removed by the caller's
- * home cleanup, since they are named with the home's basename.
- */
-function withBodyTemplate(command: string, args: string[]): string[] {
-  if (command !== 'add' && command !== 'edit') return args;
-  const result = [...args];
-  const descIndex = result.indexOf('--desc');
-  if (descIndex >= 0 && result[descIndex + 1] !== undefined && result[descIndex + 1] !== '-') {
-    const text = result[descIndex + 1];
-    if (!hasRequiredHeadings(text)) result[descIndex + 1] = taskBody(text);
-  }
-  const fileIndex = result.indexOf('--desc-file');
-  if (fileIndex >= 0 && result[fileIndex + 1] !== undefined) {
-    const text = readFileSync(result[fileIndex + 1], 'utf8');
-    if (!hasRequiredHeadings(text)) {
-      const wrapped = path.join(os.tmpdir(), `agboard-body-${randomBytes(6).toString('hex')}.md`);
-      writeFileSync(wrapped, taskBody(text), 'utf8');
-      result[fileIndex + 1] = wrapped;
-    }
-  }
-  return result;
-}
-
 function withTestDefaults(project: string, args: string[], home: string): string[] {
-  const result = withBodyTemplate(args[0], [...args]);
+  const result = [...args];
   const command = result[0];
   if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai', '--actor', 'ai');
   if ((command === 'mv' || command === 'state') && !result.includes('--actor')) {
@@ -478,4 +426,15 @@ export async function stopServe(serve: Serve | undefined): Promise<void> {
     child.kill('SIGKILL');
     await exited;
   }
+}
+
+/** A decision request for `state ... pending --request-json`: the question and two choices. */
+export function decisionJson(question: string): string {
+  return JSON.stringify({
+    question,
+    choices: [
+      { id: 'a', label: 'Plan A' },
+      { id: 'b', label: 'Plan B' },
+    ],
+  });
 }

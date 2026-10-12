@@ -32,10 +32,10 @@ This folder is one Agent Board project. Its state is kept in these files.\n\
 - `epics/<epic-id>/PLAN.md`: an epic's plan. Write a temporary file in the same folder and rename it over PLAN.md.\n\
 - `.internal/`: lock files. Do not edit or delete them.\n\
 \n\
-Keep the required headings in TASK.md: `## Work`, `## Completion conditions`, and `## Execution log`.\n\
-Keep the required headings in PLAN.md: `## Goal`, `## Scope`, `## Completion conditions`, and `## Approach`.\n\
-A completion condition is written as `- [ ] AC-n. text`, followed by the lines `- Result:`, `- Evidence:`, and `- Coordinator check:`.\n\
-Files written before these English names may use the earlier Japanese headings and labels; both are accepted.\n\
+Keep the frontmatter of TASK.md and PLAN.md: its `acceptance` list holds the completion conditions.\n\
+Each condition is an item with `id` (AC-n), `text`, and `done` (true or false), for example:\n\
+`---`, `acceptance:`, `  - id: AC-1`, `    text: The list is returned as JSON`, `    done: false`, `---`.\n\
+The body after the frontmatter is free Markdown. Other keys in the frontmatter are kept.\n\
 Do not edit TASK.md of a card that is a draft.\n\
 Do not delete a card folder or an epic folder. Ask a person to delete a card or an epic with the `agboard` CLI.\n"
         .to_string()

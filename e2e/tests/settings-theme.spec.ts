@@ -2,7 +2,7 @@ import { editorValue, pasteMarkdown } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard, taskBody } from '../helpers/agboard';
+import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody, decisionJson } from '../helpers/agboard';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The Rust serve on 7631 is real; only the browser storage and a few request
@@ -586,7 +586,7 @@ test('changing the language does not translate or alter what was entered', async
   await page.getByRole('button', { name: 'Add card' }).click();
   const create = page.getByRole('dialog', { name: 'Add card' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Draft the release note');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Line one\n\nLine two'));
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), cardBody('Line one\n\nLine two'));
   await create.getByRole('radio', { name: 'User' }).click();
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Draft the release note `) })).toBeVisible();
@@ -649,7 +649,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await page.getByRole('button', { name: 'Add card' }).click();
   const create = page.getByRole('dialog', { name: 'Add card' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Review the themes');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Check all 24 themes.'));
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), cardBody('Check all 24 themes.'));
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create).toHaveCount(0);
   const created = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Review the themes Updated \\d\\d\\/\\d\\d \\d\\d:\\d\\d$`) });
@@ -707,7 +707,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Idle Added by the CLI `) })).toBeVisible();
   agboardOk(mainProject, ['state', String(fresh + 1), 'running']);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Running Added by the CLI `) })).toBeVisible();
-  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--reason', 'Waiting for a theme review']);
+  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--actor', 'ai', '--request-json', decisionJson('Waiting for a theme review')]);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Pending Added by the CLI `) })).toContainText(
     'Waiting for a theme review',
   );
@@ -740,7 +740,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   await page.getByRole('button', { name: 'Add card' }).click();
   const create = page.getByRole('dialog', { name: 'Add card' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed title');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Typed description\n\nsecond line'));
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), cardBody('Typed description\n\nsecond line'));
   await create.getByRole('radio', { name: 'User' }).click();
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');

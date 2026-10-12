@@ -36,7 +36,9 @@ describe('tabs', () => {
   });
 
   it('shows the history in the History tab and the description again in the Description tab', async () => {
-    const { container } = renderPanel(makeCard({ ...fixtureCard(8), description: 'Body text' }));
+    const { container } = renderPanel(
+      makeCard({ ...fixtureCard(8), description: 'Body text', body: 'Body text' }),
+    );
     expect(screen.getByRole('tabpanel').textContent).toBe('Body text');
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
     expect(screen.getByRole('tabpanel').querySelectorAll('.history__step')).toHaveLength(3);

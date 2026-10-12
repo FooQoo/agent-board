@@ -694,7 +694,7 @@ describe('switching while a form is open', () => {
     expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards`);
     expect(JSON.parse(String(posts[0]?.[1]?.body))).toEqual({
       title: 'New card',
-      description: '',
+      description: '---\nacceptance: []\n---\n\n',
       assignee: 'ai',
       isDraft: false,
     });

@@ -85,9 +85,9 @@ test('a long Markdown card shows every section open, with counts, tables, checkl
   await expect(panel.locator('blockquote')).toHaveText('A quoted line.');
 
   // A checklist is shown only: the boxes are disabled, and a click changes nothing.
-  // The body's two boxes come first; the template's completion condition has a box too.
+  // The body has two boxes; no template adds a third.
   const boxes = panel.getByRole('checkbox');
-  await expect(boxes).toHaveCount(3);
+  await expect(boxes).toHaveCount(2);
   await expect(boxes.first()).toBeChecked();
   await expect(boxes.first()).toBeDisabled();
   await expect(boxes.nth(1)).not.toBeChecked();
@@ -141,10 +141,9 @@ test('a body without H2 headings is shown whole, and an empty body says so', asy
   await expect(body(page).getByText('Body text.')).toBeVisible();
   await expect(body(page).getByRole('button')).toHaveCount(0);
 
-  // A card without a description.
+  // A card without a description shows no body text.
   await card(page, 12).click();
-  // An empty body is written as the TASK.md template, so its placeholder shows where the text goes.
-  await expect(body(page)).toContainText('(Describe the purpose of the work and what to do.)');
+  await expect(body(page).getByRole('button')).toHaveCount(0);
 });
 
 test('links open in a new tab without handing over the page, and other schemes stay text', async ({ page }) => {

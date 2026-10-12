@@ -24,6 +24,15 @@ use crate::domain::{
 };
 use crate::error::AgboardError;
 
+/// The description as it is stored: CRLF folded to LF, and at most 50,000 characters of Markdown body. The
+/// frontmatter is not counted, because the editor counts only the body.
+fn normalize_description(value: &str) -> Result<String, AgboardError> {
+    let normalized = value.replace("\r\n", "\n");
+    let body = crate::file_store::frontmatter::parse(&normalized).body;
+    normalize_and_validate_description(&body)?;
+    Ok(normalized)
+}
+
 const ARCHIVE_REASON: &str = "Archived by user.";
 const RESTORE_REASON: &str = "Restored by user.";
 
@@ -83,7 +92,7 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<CardView, AgboardError> {
         let title = validate_title(&new.title)?;
-        let description = normalize_and_validate_description(&new.description)?;
+        let description = normalize_description(&new.description)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut file = reader::read_project_file(shared, project)?;
@@ -148,9 +157,7 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<Changed<CardView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
-        let description = description
-            .map(normalize_and_validate_description)
-            .transpose()?;
+        let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -187,9 +194,7 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<Changed<CardView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
-        let description = description
-            .map(normalize_and_validate_description)
-            .transpose()?;
+        let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;

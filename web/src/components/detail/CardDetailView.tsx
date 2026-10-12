@@ -5,6 +5,7 @@ import { historyItems } from '../../lib/history';
 import { stateLabel } from '../../lib/format';
 import type { Card, Problem, ProjectId } from '../../types';
 import { AssigneeLabel } from '../AssigneeLabel';
+import { AcceptanceView } from '../acceptance/AcceptanceView';
 import { HistoryTimeline } from '../HistoryTimeline';
 import { StatusLabel } from '../StatusLabel';
 import { MarkdownSections } from '../markdown/MarkdownSections';
@@ -52,6 +53,9 @@ export function CardDetailView({
 }: CardDetailViewProps) {
   const { t } = useTranslation();
   const idBase = useId();
+  const ownProblems = problems.filter((problem) =>
+    problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
+  );
   return (
     <aside className="detail detail-view" aria-label={t('detail.title')}>
       <div className="detail__top">
@@ -102,13 +106,29 @@ export function CardDetailView({
         aria-labelledby={tabId(idBase, 'description')}
         hidden={tab !== 'description'}
       >
-        <ProblemNotice
-          problems={problems.filter((problem) =>
-            problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
-          )}
-        />
+        {/* An unreadable card names its own problems inside its notice; other problems use the alert. */}
+        <ProblemNotice problems={card.acceptanceError ? [] : ownProblems} />
+        {card.acceptanceError && (
+          <div className="acceptance-unreadable" role="status">
+            <p className="acceptance-unreadable__title">{t('acceptance.unreadableTitle')}</p>
+            {ownProblems.map((problem) => (
+              <p
+                key={`${problem.file}:${problem.field}`}
+                className="acceptance-unreadable__problem"
+              >
+                {t('acceptance.unreadableProblem', {
+                  file: problem.file,
+                  field: problem.field,
+                  reason: problem.reason,
+                })}
+              </p>
+            ))}
+            <p className="acceptance-unreadable__note">{t('acceptance.unreadableNote')}</p>
+          </div>
+        )}
+        <AcceptanceView items={card.acceptanceError ? [] : card.acceptance} />
         <MarkdownSections
-          source={card.description}
+          source={card.body}
           resolveAttachment={(id) =>
             card.attachments.some((attachment) => attachment.id === id) ? attachmentUrl(id) : null
           }

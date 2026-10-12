@@ -220,8 +220,20 @@ fn write_text(out: &mut dyn Write, text: &str) {
 }
 
 /// Called once after a command that changed the board: tells a running
-/// `agboard serve` so open browsers refresh. Best effort; the result is ignored
-/// and the notification never takes longer than its own 300 ms budget.
+/// `agboard serve` so open browsers refresh. Best effort, and the change is
+/// already saved whatever happens here. When the server that `serve.json` names
+/// does not answer, the open board will not refresh, so a warning on stderr says
+/// why and what to do.
 pub fn after_commit(_ctx: &Context, dir: &std::path::Path) {
-    let _ = crate::interact::notify::notify_serve_in(dir);
+    if crate::interact::notify::notify_serve_in(dir) {
+        return;
+    }
+    if let Some(info) = crate::paths::read_serve_info_in(dir)
+        && !crate::server::is_serving(&info)
+    {
+        eprintln!(
+            "Saved. The open board is not updated: serve.json names the server on port {}, which is not running. Run \"agboard serve\" again.",
+            info.port
+        );
+    }
 }

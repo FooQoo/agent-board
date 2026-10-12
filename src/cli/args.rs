@@ -47,11 +47,11 @@ Workflow for agents:
   agboard ls --all-projects --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
-  agboard --project NAME state <id> pending --actor ai --reason \"Need a decision\"
+  agboard --project NAME state <id> pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'
 
 Rules for agents:
-  - Move a card to doing before you report running or pending.
-  - Report pending with --reason when you are waiting for something.
+  - Move a card to doing before you report running. A card in todo can ask a decision with pending.
+  - Ask a decision with --request-json: a question and 2 to 10 choices. pending needs it.
   - Moving a card to todo or done resets it to idle.
   - You cannot delete cards or projects, or replace a board. Ask a human to do it.
   - Get the shared folder from workspace --json; do not assume its location.
@@ -280,10 +280,10 @@ impl RunStateArg {
 #[derive(Args, Debug, Clone, Default)]
 #[group(id = "description_source", multiple = false)]
 pub struct DescriptionArgs {
-    /// Description in Markdown, up to 50,000 characters; use "-" to read it from standard input
+    /// Whole TASK.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub desc: Option<String>,
-    /// Read the Markdown description (up to 50,000 characters) from a file
+    /// Read the whole TASK.md text, frontmatter included (up to 50,000 characters), from a file
     #[arg(long, value_name = "PATH")]
     pub desc_file: Option<PathBuf>,
 }
@@ -347,14 +347,14 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting; say what for with --reason or --request-file\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --reason \"Waiting for review\"\n  agboard --project demo state 12 pending --actor ai --request-file question.json\n  agboard --project demo state 12 idle --actor human --request ID --choice proceed\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
+    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI card in todo or doing): ask with --request-json (a question and 2 to 10 choices)\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{\"timeoutSeconds\":600}}'   # ask, then wait for the answer\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
 )]
 pub struct StateArgs {
     /// ID of the card
     pub id: i64,
     /// Run state to report
     pub state: RunStateArg,
-    /// Required explanation (the question when pending); use - to read UTF-8 from stdin
+    /// Required explanation for running and idle; the question of a pending state goes in --request-json. Use - to read UTF-8 from stdin
     #[arg(
         long,
         value_name = "TEXT",
@@ -374,9 +374,9 @@ pub struct StateArgs {
     /// Choice of the pending request to answer with (its CHOICE_ID)
     #[arg(long, value_name = "CHOICE_ID")]
     pub choice: Option<String>,
-    /// A question and its choices (JSON) for a new pending request
-    #[arg(long, value_name = "PATH")]
-    pub request_file: Option<PathBuf>,
+    /// A pending request as JSON: {"question": "...", "choices": [{"id": "...", "label": "..."}], "wait": {"timeoutSeconds": 600}} with 2 to 10 choices; wait is optional and makes the command wait for the answer (1 to 86400 seconds; needs a running agboard serve); use - to read the JSON from standard input
+    #[arg(long, value_name = "JSON")]
+    pub request_json: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
@@ -533,10 +533,10 @@ pub struct EpicEditArgs {
 #[derive(Args, Debug, Clone, Default)]
 #[group(id = "plan_source", multiple = false)]
 pub struct PlanArgs {
-    /// Plan in Markdown, up to 50,000 characters; use "-" to read it from standard input
+    /// Whole PLAN.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub plan: Option<String>,
-    /// Read the Markdown plan (up to 50,000 characters) from a file
+    /// Read the whole PLAN.md text, frontmatter included (up to 50,000 characters), from a file
     #[arg(long, value_name = "PATH")]
     pub plan_file: Option<PathBuf>,
 }

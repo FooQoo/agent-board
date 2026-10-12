@@ -101,4 +101,9 @@ export const commonEn = {
     noProjects: 'No projects',
     noSelection: 'No project selected',
   },
+  stalePage: {
+    title: 'This page is out of date',
+    body: 'The server was restarted. Reload the page to keep working; anything typed here is lost when you reload.',
+    reload: 'Reload page',
+  },
 } as const;
