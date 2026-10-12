@@ -1,4 +1,5 @@
 import type { Card, DialogAction, ProjectId } from '../types';
+import type { AnswerFormKey } from './answer';
 
 export type OperationKind =
   | 'create'
@@ -26,6 +27,11 @@ export interface PendingTarget {
   projectId: ProjectId | null;
 }
 
+export interface AnswerLease {
+  key: AnswerFormKey;
+  projectId: ProjectId;
+}
+
 export interface SessionState {
   /** The project whose board is shown. The URL holds the requested one. */
   activeProjectId: ProjectId | null;
@@ -36,6 +42,7 @@ export interface SessionState {
   dialog: DialogAction | null;
   operation: Operation | null;
   pendingTarget: PendingTarget | null;
+  answerLeases: AnswerLease[];
 }
 
 export type SessionAction =
@@ -56,7 +63,9 @@ export type SessionAction =
   | { type: 'SAVE_FAILED'; operationId: number }
   | { type: 'OPERATION_FINISHED'; operationId: number }
   | { type: 'OPERATION_CANCELLED'; operationId: number }
-  | { type: 'CARD_REMOVED'; operationId: number; projectId: ProjectId; cardId: number };
+  | { type: 'CARD_REMOVED'; operationId: number; projectId: ProjectId; cardId: number }
+  | { type: 'ANSWER_LEASE_STARTED'; key: AnswerFormKey; projectId: ProjectId }
+  | { type: 'ANSWER_LEASE_ENDED'; key: AnswerFormKey; projectId: ProjectId };
 
 export function initSession(
   activeProjectId: ProjectId | null,
@@ -71,6 +80,7 @@ export function initSession(
     dialog: null,
     operation: null,
     pendingTarget: null,
+    answerLeases: [],
   };
 }
 
@@ -95,13 +105,30 @@ function applyProject(state: SessionState, projectId: ProjectId | null): Session
 /** Ends the operation and applies the latest request that arrived while it was open. */
 function finishOperation(state: SessionState): SessionState {
   const ended: SessionState = { ...state, operation: null, dialog: null };
-  return state.pendingTarget ? applyProject(ended, state.pendingTarget.projectId) : ended;
+  return state.pendingTarget && state.answerLeases.length === 0
+    ? applyProject(ended, state.pendingTarget.projectId)
+    : ended;
+}
+
+function finishAnswerLease(
+  state: SessionState,
+  key: AnswerFormKey,
+  projectId: ProjectId,
+): SessionState {
+  const answerLeases = state.answerLeases.filter(
+    (lease) => lease.key !== key || lease.projectId !== projectId,
+  );
+  const ended = { ...state, answerLeases };
+  return answerLeases.length === 0 && ended.operation === null && ended.pendingTarget
+    ? applyProject(ended, ended.pendingTarget.projectId)
+    : ended;
 }
 
 export function sessionReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
     case 'URL_REQUESTED':
-      if (state.operation === null) return applyProject(state, action.projectId);
+      if (state.operation === null && state.answerLeases.length === 0)
+        return applyProject(state, action.projectId);
       return {
         ...state,
         pendingTarget:
@@ -169,6 +196,19 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         ? finishOperation(archiveCleared)
         : archiveCleared;
     }
+    case 'ANSWER_LEASE_STARTED':
+      if (
+        state.answerLeases.some(
+          (lease) => lease.key === action.key && lease.projectId === action.projectId,
+        )
+      )
+        return state;
+      return {
+        ...state,
+        answerLeases: [...state.answerLeases, { key: action.key, projectId: action.projectId }],
+      };
+    case 'ANSWER_LEASE_ENDED':
+      return finishAnswerLease(state, action.key, action.projectId);
   }
 }
 

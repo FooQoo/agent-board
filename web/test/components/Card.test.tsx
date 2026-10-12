@@ -1,7 +1,8 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Card } from '../../src/components/Card';
+import { useCardAnswers } from '../../src/hooks/useCardAnswers';
 import { i18n } from '../../src/i18n';
 import { fixtureCard, makeCard } from '../fixtures';
 
@@ -68,6 +69,38 @@ describe('Card', () => {
   it('marks pending cards so they can be highlighted', () => {
     const { container } = render(<Card card={fixtureCard(12)} selected={false} onSelect={noop} />);
     expect(container.querySelector('.card--pending')).not.toBeNull();
+  });
+
+  it('shows the pending answer on the card without turning form clicks into card selection', async () => {
+    const onSelect = vi.fn();
+    const { result } = renderHook(() => useCardAnswers(vi.fn(), vi.fn()));
+    const card = makeCard({
+      id: 41,
+      cardStatus: 'todo',
+      agentStatus: 'pending',
+      pendingRequestId: 'request-41',
+      pendingReason: 'Choose a direction',
+    });
+
+    const { container } = render(
+      <Card
+        card={card}
+        selected={false}
+        onSelect={onSelect}
+        projectId="project-1"
+        answers={result.current}
+      />,
+    );
+
+    const answer = screen.getByRole('textbox', { name: 'Your answer' });
+    await userEvent.click(answer);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy();
+
+    const cardButton = container.querySelector('.card');
+    if (!cardButton) throw new Error('card button is missing');
+    await userEvent.click(cardButton);
+    expect(onSelect).toHaveBeenCalledWith(41);
   });
 
   it('renders markup in a title as plain text', () => {

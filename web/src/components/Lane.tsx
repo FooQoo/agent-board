@@ -6,6 +6,8 @@ import type { Card as CardModel, ColumnName } from '../types';
 import { Card } from './Card';
 import { LaneHeader } from './LaneHeader';
 import { useDroppable } from '@dnd-kit/react';
+import type { ProjectId } from '../types';
+import type { CardAnswerController } from '../hooks/useCardAnswers';
 
 export interface LaneProps {
   column: ColumnName;
@@ -14,9 +16,24 @@ export interface LaneProps {
   onSelect: (id: number) => void;
   onArchive?: () => void;
   onOpenEpic?: (epicId: string) => void;
+  projectId?: ProjectId;
+  answers?: CardAnswerController;
+  syncedAt?: Date | null;
+  onAnswerChanged?: () => void;
 }
 
-export function Lane({ column, cards, selectedId, onSelect, onArchive, onOpenEpic }: LaneProps) {
+export function Lane({
+  column,
+  cards,
+  selectedId,
+  onSelect,
+  onArchive,
+  onOpenEpic,
+  projectId,
+  answers,
+  syncedAt,
+  onAnswerChanged,
+}: LaneProps) {
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
   const more = useScrollCue(listRef, cards);
@@ -39,6 +56,10 @@ export function Lane({ column, cards, selectedId, onSelect, onArchive, onOpenEpi
               selected={card.id === selectedId}
               onSelect={onSelect}
               onOpenEpic={onOpenEpic}
+              projectId={projectId}
+              answers={answers}
+              syncedAt={syncedAt}
+              onAnswerChanged={onAnswerChanged}
             />
           ))}
         </div>

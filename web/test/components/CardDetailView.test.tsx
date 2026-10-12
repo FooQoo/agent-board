@@ -35,7 +35,7 @@ describe('CardDetailView', () => {
     expect(screen.getByRole('heading', { name: 'Awaiting API review' })).toBeTruthy();
     expect(screen.getByText('Which API shape should we use?')).toBeTruthy();
     expect(screen.getByText('Keep the current interface')).toBeTruthy();
-    expect(screen.getByText('Answer on Agent Board from a PC.')).toBeTruthy();
+    expect(screen.getByText('Answer on the card.')).toBeTruthy();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('button', { name: /send|edit|archive|delete|answer/i })).toBeNull();

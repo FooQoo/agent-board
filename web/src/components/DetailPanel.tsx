@@ -7,7 +7,7 @@ import type { Card, Problem, ProjectId } from '../types';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
-import { DecisionRequest } from './detail/DecisionRequest';
+import { DecisionRequestContent } from './detail/DecisionRequestContent';
 import type { DetailTab } from './detail/DetailTabs';
 import { CardDetailView } from './detail/CardDetailView';
 import { DraftBanner } from './detail/DraftBanner';
@@ -123,7 +123,6 @@ function DetailBody({
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
   const [draftSaving, setDraftSaving] = useState(false);
   const [draftFailed, setDraftFailed] = useState(false);
-  const [answered, setAnswered] = useState(false);
   const draftBusy = useRef(false);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
@@ -219,20 +218,7 @@ function DetailBody({
           onFinalize={() => void toggleDraft(false)}
         />
       )}
-      {answered && (
-        <p className="detail__notice" role="status">
-          {t('request.resumed')}
-        </p>
-      )}
-      {!archived && card.agentStatus === 'pending' && (
-        <DecisionRequest
-          projectId={projectId}
-          card={card}
-          operations={operations}
-          onChanged={onChanged}
-          onAnswered={() => setAnswered(true)}
-        />
-      )}
+      {!archived && card.agentStatus === 'pending' && <DecisionRequestContent card={card} />}
       {archived && (
         <div className="detail__archive-actions" role="group" aria-label={t('archive.actions')}>
           {onRestore && (

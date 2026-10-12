@@ -37,6 +37,7 @@ import { StalePageNotice } from './components/notice/StalePageNotice';
 import { findCard, groupCards, nextSelection } from './lib/board';
 import { isProjectId } from './lib/projectSession';
 import { useProjectSession } from './hooks/useProjectSession';
+import { useCardAnswers } from './hooks/useCardAnswers';
 import type { Assignee, ColumnName, DialogAction, ProjectId } from './types';
 
 export interface AppProps {
@@ -76,7 +77,11 @@ const STATUS_NOTE: Partial<Record<View, StatusBarProps['note']>> = {
 export function App({ initial }: AppProps) {
   const { t } = useTranslation();
   const [requested, setRequested] = useQueryState('project', parseAsString);
-  const { session, dispatch, operations } = useProjectSession(requested, initial?.select ?? null);
+  const { session, dispatch, operations, answerLeaseControls } = useProjectSession(
+    requested,
+    initial?.select ?? null,
+  );
+  const cardAnswers = useCardAnswers(answerLeaseControls.set);
   const projects = useProjects();
 
   const activeId = session.activeProjectId;
@@ -122,7 +127,12 @@ export function App({ initial }: AppProps) {
   }, [board.error, reloadProjects]);
 
   const boardData = view === 'board' ? board.board : null;
-  const cards = boardData?.cards ?? [];
+  const cards = isProjectId(activeId)
+    ? cardAnswers.withSavedAnswers(activeId, boardData?.cards ?? [], board.lastSyncedAt)
+    : [];
+  useEffect(() => {
+    if (boardData && isProjectId(activeId)) cardAnswers.reconcileCards(activeId, boardData.cards);
+  }, [activeId, boardData, cardAnswers.reconcileCards]);
   const selected = findCard(cards, session.selectedId);
   const archivedSelected =
     archive.data?.cards.find((card) => card.id === session.archiveSelectedId) ?? null;
@@ -201,6 +211,7 @@ export function App({ initial }: AppProps) {
         projects={detailShown ? projects.projects : null}
         activeProjectId={known ? activeId : null}
         switchDisabled={operation !== null}
+        projectSwitchDisabled={operation !== null || session.answerLeases.length > 0}
         onSelectProject={(projectId) => {
           void setRequested(projectId, { history: 'push' });
         }}
@@ -238,6 +249,12 @@ export function App({ initial }: AppProps) {
             onSelect={(id) => dispatch({ type: 'SELECT_CARD', id })}
             onRetry={retry}
             layoutRef={attachLayoutRef}
+            projectId={activeId as ProjectId}
+            answers={cardAnswers}
+            syncedAt={board.lastSyncedAt}
+            onAnswerChanged={() => {
+              if (isProjectId(activeId)) refreshProject(activeId);
+            }}
             onOpenEpic={(epicId) => {
               const epic = boardData?.epics.find((item) => item.id === epicId);
               if (epic) openDialog({ kind: 'epic', epic });
@@ -374,14 +391,15 @@ export function App({ initial }: AppProps) {
                 requestId: data.requestId,
                 attachments: data.attachments,
               });
-            } else if (dialog.kind === 'move')
+            } else if (dialog.kind === 'move') {
               await moveCard(
                 projectId,
                 dialog.card.id,
                 dialog.target as ColumnName,
                 data.reason ?? '',
               );
-            else if (dialog.kind === 'edit')
+              if (dialog.target === 'done') cardAnswers.clearCard(projectId, dialog.card.id);
+            } else if (dialog.kind === 'edit')
               if (data.attachments || data.removedAttachmentIds?.length)
                 await editCardMultipart(projectId, dialog.card.id, {
                   title: data.title,

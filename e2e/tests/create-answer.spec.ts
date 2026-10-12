@@ -3,7 +3,7 @@ import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody, ty
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { pasteMarkdown, waitForSync } from '../helpers/ui';
 
-// Adding a card in the shared dialog, and answering a decision request in place, on the real page.
+// Adding a card in the shared dialog, and answering a decision request on its card, on the real page.
 
 interface ShownCard extends CardJson {
   description: string;
@@ -14,7 +14,8 @@ interface ShownCard extends CardJson {
 const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
 const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
-const request = (page: Page) => details(page).getByRole('region', { name: 'The agent is waiting for your answer' });
+const request = (page: Page, id = 12) =>
+  page.locator(`.card__answer[data-card-id="${id}"]`);
 
 function show(id: number): ShownCard {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
@@ -129,41 +130,55 @@ test('a title or body over the limit cannot be added', async ({ page }) => {
 
 // ------------------------------------------------------------------ Answering in place
 
-test('a waiting card shows its request above the tabs, takes the answer in place, and records it', async ({ page }) => {
+test('a waiting card answers in place while details stay independently available', async ({ page }) => {
   await card(page, 12).click();
   const panel = details(page);
-  const tabs = (await panel.getByRole('tablist').boundingBox())!;
-  const asked = (await request(page).boundingBox())!;
-  // The request is above the tabs, and shows the reason and Answer whichever tab is open.
-  expect(asked.y + asked.height).toBeLessThanOrEqual(tabs.y + 1);
-  await expect(request(page)).toContainText('Waiting for confirmation on how to replace a board.');
+  await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toContainText('Waiting for confirmation on how to replace a board.');
+  await expect(request(page).getByRole('textbox', { name: 'Your answer' })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
-  await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeVisible();
-  await panel.getByRole('tab', { name: 'Description' }).click();
 
-  // No dialog: the answer form is part of the request, open at once, and the rest of the page stays usable.
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // The detail history remains readable while the answer stays on the card.
   const answerBox = request(page).getByRole('textbox', { name: 'Your answer' });
   const send = request(page).getByRole('button', { name: 'Send', exact: true });
   await expect(send).toBeDisabled();
   await answerBox.fill('   ');
   await expect(send).toBeDisabled();
-
-  // The history can be read while typing, and the typed answer waits.
   await answerBox.fill('Keep the current name.\nDo not migrate.');
-  await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('tabpanel').getByRole('listitem').first()).toContainText('Waiting for confirmation');
   await expect(answerBox).toHaveValue('Keep the current name.\nDo not migrate.');
-  await panel.getByRole('tab', { name: 'Description' }).click();
 
-  // Cancel clears the typed text; the request is still waiting and the form stays open.
+  // Dragging the card within its lane is still allowed while its answer is being edited.
+  const source = await page
+    .locator('.card__answer[data-card-id="12"]')
+    .locator('..')
+    .locator('.grip')
+    .boundingBox();
+  const target = await card(page, 13).boundingBox();
+  if (!source || !target) throw new Error('Could not measure the pending card drag.');
+  await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(source.x + source.width / 2 + 20, source.y + source.height / 2 + 8, {
+    steps: 4,
+  });
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await expect(answerBox).toHaveValue('Keep the current name.\nDo not migrate.');
+
+  // Selecting another card opens its details without clearing this draft.
+  await card(page, 13).click();
+  await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Check the board display');
+  await expect(answerBox).toHaveValue('Keep the current name.\nDo not migrate.');
+  await card(page, 12).click();
+  await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Restore a board from JSON');
+
+  // Cancel clears the typed text; the request is still waiting and the form stays on the card.
   await request(page).getByRole('button', { name: 'Cancel' }).click();
   await expect(answerBox).toHaveValue('');
   expect(show(12).agentStatus).toBe('pending');
   await answerBox.fill('Keep the current name.\nDo not migrate.');
   await send.click();
 
-  // The card is Idle, the request is gone, and the answer is in the history with the person's mark.
+  // The card is Idle, the request is gone, and the answer is in the detail history.
   await expect(request(page)).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
@@ -285,18 +300,18 @@ test('a long reason is cut at four lines, and Show more reads all of it', async 
   const lines = Array.from({ length: 14 }, (_, index) => `Line ${index + 1} of a long question about the release plan.`);
   agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--request-json', decisionJson(lines.join('\n'))]);
   await card(page, 13).click();
-  const reason = request(page).locator('p', { hasText: 'Line 1 of a long question' });
+  const reason = request(page, 13).locator('p', { hasText: 'Line 1 of a long question' });
   await expect(reason).toBeVisible();
   const lineHeight = await reason.evaluate((element) => parseFloat(getComputedStyle(element).lineHeight));
   expect((await reason.boundingBox())!.height).toBeLessThanOrEqual(lineHeight * 4 + 2);
-  const more = request(page).getByRole('button', { name: 'Show more' });
+  const more = request(page, 13).getByRole('button', { name: 'Show more' });
   await expect(more).toBeVisible();
   await more.click();
   await expect(more).toHaveCount(0);
   expect((await reason.boundingBox())!.height).toBeGreaterThan(lineHeight * 10);
   await expect(reason).toContainText('Line 14 of a long question about the release plan.');
   // The answer form is still there after reading it all.
-  await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeVisible();
+  await expect(request(page, 13).getByRole('button', { name: 'Send', exact: true })).toBeVisible();
 
   // A short reason has no Show more.
   await card(page, 12).click();

@@ -25,7 +25,7 @@ test('three lanes show their names and card counts', async ({ page }) => {
     const column = lane(page, name);
     await expect(column.getByRole('heading', { level: 2 })).toHaveText(name);
     await expect(column.getByText(count, { exact: true })).toBeVisible();
-    await expect(column.locator('.lane__cards').getByRole('button')).toHaveCount(Number(count));
+    await expect(column.locator('.lane__cards .card')).toHaveCount(Number(count));
   }
   await expect(page.getByRole('region')).toHaveCount(3);
 });
