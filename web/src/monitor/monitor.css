@@ -401,3 +401,26 @@ body {
 .monitor-section-header[data-section="doing"] svg {
   animation: none;
 }
+
+.monitor-stale-drafts {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 1rem 1rem;
+}
+
+.monitor-stale-drafts__item {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--r-warning, #b45309);
+  border-radius: 0.75rem;
+  background: var(--r-surface, #fff);
+  color: var(--r-text, inherit);
+}
+
+.monitor-stale-drafts__item p,
+.monitor-stale-drafts__item pre {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

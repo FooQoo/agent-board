@@ -15,6 +15,8 @@ export const detailEn = {
     problem: 'This file has a problem: {{file}} ({{field}}) — {{reason}}',
     problemNoField: 'This file has a problem: {{file}} — {{reason}}',
     saveError: 'Could not save. Try again.',
+    pageOutOfDate:
+      'This page is out of date. Reload it to get the current answer token, then try again.',
   },
   draft: {
     label: 'Draft',

@@ -15,6 +15,7 @@ export const detailJa = {
     problem: 'ファイルに不備があります: {{file}}（{{field}}） — {{reason}}',
     problemNoField: 'ファイルに不備があります: {{file}} — {{reason}}',
     saveError: '保存できませんでした。もう一度お試しください。',
+    pageOutOfDate: 'ページが古くなっています。再読み込みしてから、もう一度お試しください。',
   },
   draft: {
     label: '下書き',

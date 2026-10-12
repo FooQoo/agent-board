@@ -68,6 +68,7 @@ export function DecisionRequestForm({
   stateStore,
   onChanged,
   onAnswered,
+  onRequestStale,
 }: {
   projectId: ProjectId;
   card: Card;
@@ -77,6 +78,7 @@ export function DecisionRequestForm({
   stateStore?: AnswerFormStateStore;
   onChanged?: () => void;
   onAnswered?: (result: AnswerResult) => void;
+  onRequestStale?: (requestId: string) => void;
 }) {
   const { t } = useTranslation();
   const requestId = card.pendingRequestId;
@@ -196,6 +198,7 @@ export function DecisionRequestForm({
         error instanceof WriteError &&
         (error.code === 'request_changed' || error.status === 404)
       ) {
+        onRequestStale?.(current.baseRequestId);
         update((value) => ({ ...value, phase: 'editing', requestChanged: true }));
         onChanged?.();
         return;
@@ -205,15 +208,17 @@ export function DecisionRequestForm({
         ...value,
         phase: 'failed',
         failure:
-          problem === null
-            ? t('detail.saveError')
-            : problem.field === ''
-              ? t('detail.problemNoField', { file: problem.file, reason: problem.reason })
-              : t('detail.problem', {
-                  file: problem.file,
-                  field: problem.field,
-                  reason: problem.reason,
-                }),
+          error instanceof WriteError && error.code === 'page_out_of_date'
+            ? t('detail.pageOutOfDate')
+            : problem === null
+              ? t('detail.saveError')
+              : problem.field === ''
+                ? t('detail.problemNoField', { file: problem.file, reason: problem.reason })
+                : t('detail.problem', {
+                    file: problem.file,
+                    field: problem.field,
+                    reason: problem.reason,
+                  }),
       }));
     }
   };

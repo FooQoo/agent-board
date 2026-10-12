@@ -12,6 +12,11 @@ export const monitorEn = {
     epicLoading: 'Loading epic…',
     epicError: 'Could not load this epic.',
     evidence: 'Evidence',
+    staleDrafts: 'Unsent answers',
+    staleDraft:
+      'The question on {{project}} #{{id}} is no longer available. This answer was kept and will not be sent.',
+    staleChoice: 'Selected choice: {{choice}}',
+    clearStaleDraft: 'Discard answer draft',
     completedUnknown: 'Completion time unknown',
     lastFetched: 'Last updated {{time}}',
     status: { todo: 'Todo', doing: 'Doing', pending: 'Pending', running: 'Running', done: 'Done' },

@@ -1,22 +1,22 @@
 import { forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MonitorCard } from '../contracts';
-import type { MonitorFreshness } from '../contracts';
+import type { MonitorCard, MonitorFreshness, MonitorViewProps } from '../contracts';
 import { MonitorCard as CardRow } from './MonitorCard';
 import { MonitorSectionHeader, type MonitorSection } from './MonitorSectionHeader';
-import type { MonitorViewProps } from '../contracts';
 
 /** Each card is in exactly one section; the view decides which (see MonitorView). */
 export type Sections = Record<MonitorSection, MonitorCard[]>;
+
 export const CardList = forwardRef<
   HTMLDivElement,
   Pick<Sections, 'todo' | 'doing' | 'done'> & {
     id: string;
     scopeName: string;
     freshness: MonitorFreshness;
-    onOpenDetail: MonitorViewProps['onOpenDetail'];
+    onOpenDetail?: MonitorViewProps['onOpenDetail'];
+    answerController?: MonitorViewProps['answerController'];
   }
->(function CardList({ id, todo, doing, done, freshness, onOpenDetail }, ref) {
+>(function CardList({ id, todo, doing, done, freshness, onOpenDetail, answerController }, ref) {
   const { t } = useTranslation();
   const sections: Array<[MonitorSection, MonitorCard[]]> = [
     ['todo', todo],
@@ -49,6 +49,7 @@ export const CardList = forwardRef<
                   item={item}
                   section={section}
                   onOpenDetail={onOpenDetail}
+                  answerController={answerController}
                 />
               ))}
             </div>

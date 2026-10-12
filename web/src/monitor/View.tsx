@@ -41,6 +41,7 @@ export function MonitorView(props: MonitorViewProps) {
           allProjects
           allProjectsLabel={t('monitor.allProjects')}
           onSelect={onScopeChange}
+          disabled={props.scopeLocked}
         />
         <Button
           type="button"
@@ -72,6 +73,28 @@ export function MonitorView(props: MonitorViewProps) {
           <span>{t('monitor.status.done')}</span>
         </button>
       </section>
+      {props.answerController &&
+        (() => {
+          const drafts = props.answerController.orphanDrafts([...todo, ...doing, ...done]);
+          return drafts.length > 0 ? (
+            <section className="monitor-stale-drafts" aria-label={t('monitor.staleDrafts')}>
+              {drafts.map((draft) => (
+                <article key={draft.key} role="alert" className="monitor-stale-drafts__item">
+                  <p>{t('monitor.staleDraft', { project: draft.projectName, id: draft.cardId })}</p>
+                  {draft.choiceId && <p>{t('monitor.staleChoice', { choice: draft.choiceId })}</p>}
+                  {draft.text && <pre>{draft.text}</pre>}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => props.answerController?.clearOrphanDraft(draft.key)}
+                  >
+                    {t('monitor.clearStaleDraft')}
+                  </Button>
+                </article>
+              ))}
+            </section>
+          ) : null;
+        })()}
       <CardList
         ref={listRef}
         id={listId}
@@ -81,6 +104,7 @@ export function MonitorView(props: MonitorViewProps) {
         scopeName={scopeName}
         freshness={freshness}
         onOpenDetail={props.onOpenDetail}
+        answerController={props.answerController}
       />
       <Freshness
         state={freshness.state}

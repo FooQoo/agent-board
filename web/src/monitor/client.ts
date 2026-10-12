@@ -1,8 +1,11 @@
 import type { MonitorReadResolvers } from './contracts';
-import type { Board, Epic, ProjectId, ProjectList } from '../types';
+import type { Board, Card, Epic, ProjectId, ProjectList } from '../types';
+import type { AnswerInput, AnswerResult } from '../lib/answer';
+import { writeFailure } from '../lib/writeErrors';
 
 export const MONITOR_API_BASE = '/monitor/api/';
 export const MONITOR_REQUEST_TIMEOUT_MS = 10_000;
+const MONITOR_TOKEN_META = 'agboard-monitor-token';
 
 export interface MonitorRequestOptions {
   signal?: AbortSignal;
@@ -112,7 +115,82 @@ async function readJson<T>(path: string, options: MonitorRequestOptions = {}): P
   }
 }
 
+function readMonitorToken(): string {
+  return (
+    document.querySelector<HTMLMetaElement>(`meta[name="${MONITOR_TOKEN_META}"]`)?.content ?? ''
+  );
+}
+
+async function answerRequest(
+  projectId: ProjectId,
+  cardId: number,
+  input: AnswerInput,
+  options: MonitorRequestOptions = {},
+): Promise<AnswerResult> {
+  const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/cards/${cardSegment(cardId)}/answer`;
+  const controller = new AbortController();
+  const externalSignal = options.signal;
+  if (externalSignal?.aborted)
+    throw externalSignal.reason ?? new DOMException('Aborted', 'AbortError');
+  const abortFromCaller = () => controller.abort(externalSignal?.reason);
+  externalSignal?.addEventListener('abort', abortFromCaller, { once: true });
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, options.timeoutMs ?? MONITOR_REQUEST_TIMEOUT_MS);
+
+  try {
+    let response: Response;
+    try {
+      response = await fetch(path, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Agboard-Token': readMonitorToken(),
+        },
+        cache: 'no-store',
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+    } catch (cause) {
+      if (externalSignal?.aborted) throw externalSignal.reason ?? cause;
+      throw writeFailure(
+        timedOut ? 'The monitor answer request timed out.' : 'The monitor answer request failed.',
+        0,
+        timedOut ? 'timeout' : 'network_error',
+      );
+    }
+
+    let body: {
+      card?: Card & { epicId?: string | null };
+      changed?: boolean;
+      error?: ErrorBody['error'];
+    } = {};
+    try {
+      body = (await response.json()) as typeof body;
+    } catch {
+      // Error responses may not contain JSON.
+    }
+    if (!response.ok || body.card === undefined) {
+      throw writeFailure(
+        body.error?.reason ?? `The monitor answer request failed (${response.status}).`,
+        response.status,
+        body.error?.code ?? null,
+        body.error?.message ?? null,
+      );
+    }
+    const { epicId: _epicId, ...card } = body.card;
+    return { card: card as Card, changed: body.changed ?? true };
+  } finally {
+    clearTimeout(timeout);
+    externalSignal?.removeEventListener('abort', abortFromCaller);
+  }
+}
+
 export const monitorClient = {
+  answerRequest,
   fetchCatalog(options?: MonitorRequestOptions): Promise<ProjectList> {
     return readJson(`${MONITOR_API_BASE}projects`, options);
   },

@@ -1,4 +1,5 @@
 import type { Card, Epic, Project, ProjectId } from '../types';
+import type { MonitorAnswerController } from './hooks/useMonitorInteractions';
 
 export interface MonitorCard {
   projectId: ProjectId;
@@ -50,6 +51,8 @@ export interface MonitorViewProps {
   freshness: MonitorFreshness;
   onScopeChange(scope: MonitorScope): void;
   onRefresh(): void;
+  answerController?: MonitorAnswerController;
+  scopeLocked?: boolean;
   /** The monitor drawer is connected by a later UoW; omitted means detail actions are disabled. */
   onOpenDetail?(target: MonitorCard, tab: MonitorDetailTab): void;
   routeNotice?: boolean;

@@ -12,18 +12,20 @@ import type { MonitorCard as MonitorCardModel, MonitorViewProps } from '../contr
 import type { MonitorSection } from './MonitorSectionHeader';
 import { completedAt } from '../model/sort';
 
-const monitorAnswerNotConnected: AnswerWriter = async () => {
-  throw new Error('Monitor answer integration is not connected yet.');
+const unavailableAnswerWriter: AnswerWriter = async () => {
+  throw new Error('Monitor answer integration is not connected.');
 };
 
 export function MonitorCard({
   item,
   section,
   onOpenDetail,
+  answerController,
 }: {
   item: MonitorCardModel;
   section: MonitorSection;
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
+  answerController?: MonitorViewProps['answerController'];
 }) {
   const { t } = useTranslation();
   const card = item.card;
@@ -82,9 +84,23 @@ export function MonitorCard({
             <DecisionRequestForm
               projectId={item.projectId}
               card={card}
-              operations={noOperations}
-              writeAnswer={monitorAnswerNotConnected}
-              disabled
+              operations={
+                answerController?.operationsFor(item.projectId, card.id, card.pendingRequestId) ??
+                noOperations
+              }
+              writeAnswer={answerController?.writeAnswer ?? unavailableAnswerWriter}
+              stateStore={answerController?.stateStore}
+              disabled={
+                !answerController ||
+                answerController.wasAnswered(item.projectId, card.id, card.pendingRequestId)
+              }
+              onRequestStale={(requestId) =>
+                answerController?.markRequestStale(item.projectId, card.id, requestId)
+              }
+              onAnswered={(result) => {
+                if (card.pendingRequestId)
+                  answerController?.onAnswered(item, card.pendingRequestId, result);
+              }}
             />
           </div>
         )}
