@@ -6,6 +6,10 @@ The monitor groups cards into Todo, Doing, and Done. Todo and Doing cards can sh
 
 Run the commands below from the repository root after [installing Agent Board](usage.md#installation-and-updates).
 
+## Final iPhone check
+
+The responsive browser tests cover narrow viewports, but the software keyboard still needs a real-device check before AC-8 is complete. On an iPhone, open the monitor in Safari and find a Todo or Doing card with a Pending question. Open the free-text answer field and confirm that the keyboard does not hide the field or Send button; scroll the list as needed and submit an answer. Also confirm that the drawer tabs remain usable after dismissing the keyboard. Record the result and device/browser version with the release evidence.
+
 ## Remote access
 
 `agboard serve` keeps the ordinary PC listener on loopback. Add a separate remote listener only when you put it behind a trusted HTTPS proxy:
