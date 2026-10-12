@@ -347,7 +347,7 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI card in todo or doing): ask with --request-json (a question and 2 to 10 choices)\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
+    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI card in todo or doing): ask with --request-json (a question and 2 to 10 choices)\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 pending --actor ai --request-json '{...}' --wait --timeout 600   # ask, then wait for the answer\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
 )]
 pub struct StateArgs {
     /// ID of the card
@@ -377,6 +377,12 @@ pub struct StateArgs {
     /// A pending request as JSON: {"question": "...", "choices": [{"id": "...", "label": "..."}]} with 2 to 10 choices; use - to read it from standard input
     #[arg(long, value_name = "JSON")]
     pub request_json: Option<String>,
+    /// With --request-json: after asking, wait until the request is answered or cancelled. Needs a running agboard serve.
+    #[arg(long)]
+    pub wait: bool,
+    /// With --wait: seconds to wait for the answer (default 600)
+    #[arg(long, value_name = "SECONDS", requires = "wait")]
+    pub timeout: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]

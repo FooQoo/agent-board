@@ -2,6 +2,7 @@
 //! `--request-json`, and the plain run-state changes.
 
 use std::io::Read;
+use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 use serde_json::json;
@@ -11,7 +12,7 @@ use crate::cli::{Context, Outcome};
 use crate::domain::{ChangeContext, RunState, validate_work_reason};
 use crate::error::{AgboardError, FileAction};
 use crate::file_store::Answer;
-use crate::file_store::model::Choice;
+use crate::file_store::model::{CardView, Choice, HistoryKind};
 
 /// The JSON of `--request-json`: a question and two to ten choices.
 #[derive(Debug, Deserialize)]
@@ -20,6 +21,70 @@ struct RequestFile {
     question: String,
     #[serde(default)]
     choices: Vec<Choice>,
+}
+
+/// How long `--wait` waits for an answer unless `--timeout` says otherwise.
+const DEFAULT_WAIT_SECS: u64 = 600;
+
+/// Wait until request `request` of card `id` is answered or cancelled, and return the card then. A
+/// timeout is `wait_timeout`; a request that a move took back is `request_changed`. It uses the same
+/// event stream as `agboard wait`, so it needs a running `agboard serve`.
+fn wait_for_resolution(
+    ctx: &Context,
+    id: i64,
+    request: &str,
+    timeout_secs: u64,
+) -> Result<CardView, AgboardError> {
+    let project = ctx.project()?;
+    let (name, project_id) = (project.name.clone(), project.id.clone());
+    let shared = ctx.files.shared_dir().to_path_buf();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| AgboardError::BoardUnavailable {
+            reason: error.to_string(),
+        })?;
+    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+    loop {
+        let snapshot = ctx.files.board(&project_id)?;
+        let card = ctx.files.card(&project_id, id)?;
+        if card.pending_request_id.as_deref() != Some(request) {
+            let answered = card
+                .history
+                .iter()
+                .any(|h| h.kind == HistoryKind::Answer && h.request_id.as_deref() == Some(request));
+            return if answered {
+                Ok(card)
+            } else {
+                Err(AgboardError::RequestChanged)
+            };
+        }
+        let remaining = deadline.saturating_duration_since(Instant::now()).as_secs();
+        if remaining == 0 {
+            return Err(AgboardError::WaitTimeout);
+        }
+        runtime.block_on(crate::agent::wait::wait_for_change(
+            &shared,
+            &name,
+            snapshot.cursor.clone(),
+            Some(remaining),
+        ))?;
+    }
+}
+
+/// The answer to `request`, as the card's history records it.
+fn answer_of(card: &CardView, request: &str) -> Option<serde_json::Value> {
+    let record = card
+        .history
+        .iter()
+        .rev()
+        .find(|h| h.kind == HistoryKind::Answer && h.request_id.as_deref() == Some(request))?;
+    Some(json!({
+        "actor": record.actor,
+        "choiceId": record.choice_id,
+        "choiceLabel": record.choice_label,
+        "text": record.reason,
+    }))
 }
 
 fn invalid(message: &str) -> AgboardError {
@@ -77,6 +142,25 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             "A pending state needs --request-json with a question and 2 to 10 choices.",
         ));
     }
+    if args.wait && args.request_json.is_none() {
+        return Err(invalid("--wait is only valid with --request-json."));
+    }
+    if args.wait {
+        // Nothing is saved when the wait cannot work: it needs the server's event stream.
+        let dir = ctx
+            .files
+            .shared_dir()
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .to_path_buf();
+        let running = crate::paths::read_serve_info_in(&dir)
+            .is_some_and(|info| crate::server::is_serving(&info));
+        if !running {
+            return Err(AgboardError::BoardUnavailable {
+                reason: "--wait needs a running server. Run \"agboard serve\" first.".into(),
+            });
+        }
+    }
     if args.request_json.is_some() {
         if state != RunState::Pending {
             return Err(invalid(
@@ -128,6 +212,36 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         )?;
         (result.value, result.changed)
     };
+    if args.wait {
+        let request = card
+            .pending_request_id
+            .clone()
+            .ok_or_else(|| invalid("The request is not pending."))?;
+        // The page learns of the question now, not after the answer.
+        let dir = ctx
+            .files
+            .shared_dir()
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .to_path_buf();
+        crate::cli::run::after_commit(ctx, &dir);
+        let timeout = args.timeout.unwrap_or(DEFAULT_WAIT_SECS);
+        let resolved = wait_for_resolution(ctx, args.id, &request, timeout)?;
+        let answer = answer_of(&resolved, &request);
+        let note = answer
+            .as_ref()
+            .and_then(|a| a["choiceLabel"].as_str().map(str::to_string))
+            .unwrap_or_default();
+        let text = answer
+            .as_ref()
+            .and_then(|a| a["text"].as_str().map(str::to_string))
+            .unwrap_or_default();
+        return Ok(Outcome {
+            changed: true,
+            human: format!("#{} answered: {} {}\n", args.id, note, text).replace("  ", " "),
+            json: json!({"card": resolved, "answer": answer}),
+        });
+    }
     let human = if changed {
         format!("#{} agent status is now {}.\n", args.id, state.as_str())
     } else {

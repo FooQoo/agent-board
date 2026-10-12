@@ -157,6 +157,7 @@ cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-
 ```
 
 - `question`: 1 to 2,000 characters. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
+- Add `--wait [--timeout <seconds>]` to ask and wait for the answer in one command (it needs `agboard serve`). It prints the answer when the user answers. `wait_timeout` means no answer yet, not a decision; `request_changed` means a move took the question back.
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
 - The card must be an AI card in `doing`.
 
