@@ -169,10 +169,18 @@ pub async fn wait_for_change(
         Err(error) if error.is_timeout() && expired(began, timeout) => {
             return reader.last_look(after);
         }
-        Err(error) => return Err(unavailable(error.to_string())),
+        Err(error) => {
+            return Err(unavailable(format!(
+                "serve.json names the server on port {}, which does not answer ({error}). The server may have stopped; run \"agboard serve\" again.",
+                info.port
+            )));
+        }
     };
     if !health.ok || health.pid != info.pid {
-        return Err(unavailable("The server process does not match serve.json."));
+        return Err(unavailable(format!(
+            "serve.json names process {} on port {}, but that port is answered by another process. Run \"agboard serve\" again.",
+            info.pid, info.port
+        )));
     }
 
     // Bound only the connection; the event stream itself stays open while we wait.

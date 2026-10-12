@@ -285,3 +285,30 @@ fn a_cursor_from_another_project_or_a_bare_number_is_refused() {
     );
     assert_eq!(output.status.code(), Some(2));
 }
+
+#[test]
+fn wait_names_serve_json_when_the_recorded_server_does_not_answer() {
+    let home = tempdir().unwrap();
+    assert!(agboard(home.path(), &["init"]).status.success());
+    let snapshot = agboard(home.path(), &["snapshot", "--json"]);
+    let cursor = serde_json::from_slice::<Value>(&snapshot.stdout).unwrap()["cursor"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // A record of a server that is gone: no process has this pid, and nothing listens on port 1.
+    std::fs::write(
+        home.path().join("serve.json"),
+        r#"{"pid":999999,"port":1,"started_at":"2026-10-12T00:00:00Z"}"#,
+    )
+    .unwrap();
+    let waited = agboard(
+        home.path(),
+        &["--json", "wait", "--after", &cursor, "--timeout", "3"],
+    );
+    assert!(!waited.status.success());
+    let error: Value = serde_json::from_slice(&waited.stderr).unwrap();
+    assert_eq!(error["error"]["code"], "board_unavailable");
+    let reason = error["error"]["reason"].as_str().unwrap();
+    assert!(reason.contains("serve.json"), "{reason}");
+    assert!(reason.contains("agboard serve"), "{reason}");
+}
