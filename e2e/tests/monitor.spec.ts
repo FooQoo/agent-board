@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { removeProject } from '../helpers/agboard';
 import {
   createMonitorHome,
@@ -257,6 +259,9 @@ test('a timed-out catalog read keeps the last snapshot instead of showing zero w
 const monitorCard = (page: Page, id: number, title: string) =>
   page.getByRole('article', { name: new RegExp(`^#${id}.*${title}`) });
 
+const drawerEvidence = (name: string) =>
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../evidence/uow6', name);
+
 test('the shared entry chooses once at the initial width, preserving query and fragment', async ({ page }) => {
   for (const width of [375, 767]) {
     await page.setViewportSize({ width, height: 640 });
@@ -312,11 +317,49 @@ test('monitor renders both projects and same-number cards, preserves direct rout
   }
 
   const originalUrl = page.url();
-  await page.getByRole('article', { name: /^#4(?!\d)/ }).click();
+  await page.getByRole('button', { name: 'Alpha completed 8' }).click();
+  const drawer = page.getByRole('dialog');
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole('tab', { name: 'Body' })).toHaveAttribute('aria-selected', 'true');
+  await expect(drawer.getByText('Completed detail 8.')).toBeVisible();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: drawerEvidence('drawer-375-en-light.png') });
+  await drawer.getByRole('tab', { name: 'History' }).click();
+  await expect(drawer.getByRole('tabpanel', { name: 'History' })).toBeVisible();
+  await drawer.getByRole('button', { name: 'Close details', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('complementary', { name: 'Card details' })).toHaveCount(0);
   await expect(page).toHaveURL(originalUrl);
-  await expect(page.locator('.monitor-card__title:not(:disabled), .monitor-card__epic:not(:disabled)')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Alpha completed 8' })).toBeEnabled();
+
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByRole('radio', { name: '日本語' }).click();
+  await page.getByRole('dialog', { name: '設定' }).getByRole('radio', { name: 'ダーク・レッド' }).click();
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.getByRole('button', { name: 'Alpha completed 8' }).click();
+  await expect(page.getByRole('dialog').getByRole('tab', { name: 'エピック' })).toBeVisible();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: drawerEvidence('drawer-320-ja-dark.png') });
+  const narrowDrawer = await page.getByRole('dialog').boundingBox();
+  expect(narrowDrawer?.x).toBeGreaterThanOrEqual(0);
+  expect((narrowDrawer?.x ?? 0) + (narrowDrawer?.width ?? 0)).toBeLessThanOrEqual(320);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await page.getByRole('button', { name: '設定' }).click();
+  const japaneseSettings = page.getByRole('dialog', { name: '設定' });
+  await japaneseSettings.getByRole('radio', { name: 'English' }).click();
+  await page.getByRole('dialog', { name: 'Settings' }).getByRole('radio', { name: 'Light Blue' }).click();
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 430, height: 800 });
+  await page.getByRole('button', { name: 'Alpha completed 8' }).click();
+  await expect(page.getByRole('dialog').getByRole('tab', { name: 'Epic' })).toBeVisible();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: drawerEvidence('drawer-430-en-light.png') });
+  await expect(page.getByRole('dialog').getByRole('tab', { name: 'Body' })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('tab', { name: 'History' })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('tab', { name: 'Epic' })).toBeVisible();
   await page.goto(`/monitor/?project=${alpha}&cardProject=${alpha}&card=4&tab=history`);
   await expect(page).toHaveURL(`${monitorOrigin}/monitor/?project=${alpha}`);
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -348,7 +391,7 @@ test('direct monitor and board URLs stay on their chosen view across reload and 
   await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
 });
 
-test('100 cards and 100-character titles remain reachable without opening details on a narrow screen', async ({ page }) => {
+test('100 cards and 100-character titles remain reachable and open details on a narrow screen', async ({ page }) => {
   test.setTimeout(120_000);
   await stopMonitorServe(serve);
   const longProject = addDenseMonitorFixture(home);
@@ -363,7 +406,11 @@ test('100 cards and 100-character titles remain reachable without opening detail
   await expect(list.getByRole('article', { name: /#100.*Done/ })).toBeVisible();
   expect(await list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
   await list.getByRole('article', { name: /#100.*Done/ }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const drawer = page.getByRole('dialog');
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole('heading', { name: /^Card 100 L+/ })).toBeVisible();
+  await drawer.getByRole('button', { name: 'Close details', exact: true }).click();
+  await expect(drawer).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Alpha', exact: true }).click();
   await page.getByRole('menuitemradio', { name: longProject, exact: true }).click();

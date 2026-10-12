@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { monitorReadResolvers } from './client';
 import type { MonitorViewProps } from './contracts';
 import { MonitorView } from './View';
 import { createMonitorFixtureProps } from './mock';
@@ -58,6 +59,7 @@ function MonitorConnectedApp() {
         monitor.refresh();
       },
     },
+    readResolvers: monitorReadResolvers,
     freshness,
     routeNotice: route.notice,
     onScopeChange: route.onScopeChange,

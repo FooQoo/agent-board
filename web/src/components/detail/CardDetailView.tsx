@@ -5,16 +5,12 @@ import { historyItems } from '../../lib/history';
 import { stateLabel } from '../../lib/format';
 import type { Card, Problem, ProjectId } from '../../types';
 import { AssigneeLabel } from '../AssigneeLabel';
-import { AcceptanceView } from '../acceptance/AcceptanceView';
 import { HistoryTimeline } from '../HistoryTimeline';
 import { StatusLabel } from '../StatusLabel';
-import { MarkdownSections } from '../markdown/MarkdownSections';
+import { BodyDocumentView } from './BodyDocumentView';
 import { DecisionRequestContent } from './DecisionRequestContent';
-import { DetailAttachments } from './DetailAttachments';
-import { DetailEvidence } from './DetailEvidence';
 import { type DetailTab, DetailTabs, panelId, tabId } from './DetailTabs';
 import { DraftStatus } from './DraftStatus';
-import { ProblemNotice } from './ProblemNotice';
 import '../../styles/detail.css';
 
 export interface CardDetailViewProps {
@@ -106,40 +102,18 @@ export function CardDetailView({
         aria-labelledby={tabId(idBase, 'description')}
         hidden={tab !== 'description'}
       >
-        {/* An unreadable card names its own problems inside its notice; other problems use the alert. */}
-        <ProblemNotice problems={card.acceptanceError ? [] : ownProblems} />
-        {card.acceptanceError && (
-          <div className="acceptance-unreadable" role="status">
-            <p className="acceptance-unreadable__title">{t('acceptance.unreadableTitle')}</p>
-            {ownProblems.map((problem) => (
-              <p
-                key={`${problem.file}:${problem.field}`}
-                className="acceptance-unreadable__problem"
-              >
-                {t('acceptance.unreadableProblem', {
-                  file: problem.file,
-                  field: problem.field,
-                  reason: problem.reason,
-                })}
-              </p>
-            ))}
-            <p className="acceptance-unreadable__note">{t('acceptance.unreadableNote')}</p>
-          </div>
-        )}
-        <AcceptanceView items={card.acceptanceError ? [] : card.acceptance} />
-        <MarkdownSections
-          source={card.body}
-          resolveAttachment={(id) =>
-            card.attachments.some((attachment) => attachment.id === id) ? attachmentUrl(id) : null
-          }
-        />
-        <DetailAttachments
+        <BodyDocumentView
+          body={card.body}
+          acceptance={card.acceptance}
+          acceptanceError={card.acceptanceError}
+          problems={ownProblems}
+          attachments={card.attachments ?? []}
+          evidence={card.evidence ?? []}
           projectId={projectId}
           cardId={card.id}
-          attachments={card.attachments ?? []}
           attachmentUrl={attachmentUrl}
+          evidenceUrl={evidenceUrl}
         />
-        <DetailEvidence evidence={card.evidence ?? []} evidenceUrl={evidenceUrl} />
       </div>
       <div
         className="detail__viewport"

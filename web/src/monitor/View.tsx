@@ -7,6 +7,9 @@ import type { MonitorViewProps } from './contracts';
 import { CardList } from './components/CardList';
 import { Freshness } from './components/Freshness';
 import { sortDone, sortLane } from './model/sort';
+import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
+import { unconnectedMonitorReadResolvers } from './contracts';
+import { MonitorDetailDrawer } from './components/MonitorDetailDrawer';
 
 export function MonitorView(props: MonitorViewProps) {
   const { t } = useTranslation();
@@ -18,6 +21,11 @@ export function MonitorView(props: MonitorViewProps) {
     doing: sortLane(doing),
     done: sortDone(done),
   };
+  const cards = [...ordered.todo, ...ordered.doing, ...ordered.done];
+  const detail = useMonitorDetailDrawer(
+    cards,
+    props.readResolvers ?? unconnectedMonitorReadResolvers,
+  );
   const scopeName =
     scope === 'all'
       ? t('monitor.allProjects')
@@ -103,8 +111,22 @@ export function MonitorView(props: MonitorViewProps) {
         done={ordered.done}
         scopeName={scopeName}
         freshness={freshness}
-        onOpenDetail={props.onOpenDetail}
+        onOpenDetail={(item, tab) => {
+          detail.show(item, tab);
+          props.onOpenDetail?.(item, tab);
+        }}
         answerController={props.answerController}
+      />
+      <MonitorDetailDrawer
+        item={detail.target}
+        open={detail.open}
+        tab={detail.tab}
+        epicRead={detail.epicRead}
+        onOpenChange={detail.close}
+        onTabChange={detail.setTab}
+        onRetryEpic={detail.retryEpic}
+        resolvers={props.readResolvers ?? unconnectedMonitorReadResolvers}
+        problems={freshness.snapshotProblems}
       />
       <Freshness
         state={freshness.state}
