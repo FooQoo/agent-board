@@ -2,9 +2,9 @@ import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { formatShort, stateLabel } from '../lib/format';
 import { AcceptanceProgress } from './acceptance/AcceptanceProgress';
-import { epicInk } from '../lib/epic';
 import type { Card as CardModel } from '../types';
-import { GripVerticalIcon, LayersIcon } from 'lucide-react';
+import { GripVerticalIcon } from 'lucide-react';
+import { EpicLabel } from './EpicLabel';
 import { AssigneeLabel } from './AssigneeLabel';
 import { StatusLabel } from './StatusLabel';
 import { useSortable } from '@dnd-kit/react/sortable';
@@ -108,20 +108,12 @@ export function Card({ card, selected, index = 0, onSelect, onOpenEpic = noop }:
       </span>
       <CardContent card={card} showPendingReason={pending}>
         {epic && (
-          <button
-            type="button"
+          <EpicLabel
+            epic={epic}
             className="card__epic"
-            data-epic-label={epic.id}
-            style={{ background: epic.color, color: epicInk(epic.color) }}
-            title={epic.name}
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenEpic(epic.id);
-            }}
-          >
-            <LayersIcon aria-hidden="true" focusable="false" />
-            <span>{epic.id}</span>
-          </button>
+            stopPropagation
+            onClick={() => onOpenEpic(epic.id)}
+          />
         )}
       </CardContent>
       <span className="card__foot">

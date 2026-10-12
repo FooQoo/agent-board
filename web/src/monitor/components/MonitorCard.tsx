@@ -6,8 +6,7 @@ import { AcceptanceProgress } from '../../components/acceptance/AcceptanceProgre
 import { DecisionRequestForm } from '../../components/detail/DecisionRequestForm';
 import { noOperations } from '../../lib/projectSession';
 import type { AnswerWriter } from '../../lib/answer';
-import { epicInk } from '../../lib/epic';
-import { LayersIcon } from 'lucide-react';
+import { EpicLabel } from '../../components/EpicLabel';
 import type { MonitorCard as MonitorCardModel, MonitorViewProps } from '../contracts';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { completedAt } from '../model/sort';
@@ -66,18 +65,12 @@ export function MonitorCard({
         onTitleClick={() => onOpenDetail?.(item, 'description')}
       >
         {card.epic && (
-          <button
-            type="button"
+          <EpicLabel
+            epic={card.epic}
             className="monitor-card__epic"
-            data-epic-label={card.epic.id}
-            style={{ background: card.epic.color, color: epicInk(card.epic.color) }}
-            title={card.epic.name}
             disabled={!onOpenDetail}
             onClick={() => onOpenDetail?.(item, 'epic')}
-          >
-            <LayersIcon aria-hidden="true" focusable="false" />
-            <span>{card.epic.id}</span>
-          </button>
+          />
         )}
         {pending && card.pendingRequestId !== null && (
           <div className="monitor-card__request">

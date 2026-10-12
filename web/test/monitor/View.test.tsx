@@ -71,7 +71,7 @@ describe('MonitorView', () => {
             name: `Card ${id}`,
           }) as HTMLButtonElement
         ).disabled,
-      ).toBe(true);
+      ).toBe(false);
     }
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: /Archive|Delete|Edit/ })).toBeNull();

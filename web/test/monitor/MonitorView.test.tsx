@@ -86,11 +86,11 @@ describe('mobile monitor lanes and card actions', () => {
     expect(screen.getByText('Running')).toBeTruthy();
   });
 
-  it('renders a disabled shared answer form for a Todo decision without opening a detail action', async () => {
+  it('renders the shared answer form and opens the body drawer without disturbing the card', async () => {
     render(<MonitorView {...props()} />);
 
     const title = screen.getByRole('button', { name: 'Todo decision' }) as HTMLButtonElement;
-    expect(title.disabled).toBe(true);
+    expect(title.disabled).toBe(false);
     expect(screen.getByText('Should the draft include both approaches?')).toBeTruthy();
     expect(screen.getAllByRole('textbox')).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(2);
@@ -102,8 +102,15 @@ describe('mobile monitor lanes and card actions', () => {
         .getAllByRole('button', { name: 'Send' })
         .every((button) => (button as HTMLButtonElement).disabled),
     ).toBe(true);
+    expect(
+      within(screen.getByRole('article', { name: /Todo decision/ })).getByRole('textbox'),
+    ).toBeTruthy();
     await userEvent.click(title);
-    expect(screen.getByRole('button', { name: 'Todo decision' })).toBeTruthy();
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'Todo decision' })).toBeTruthy();
+    expect(within(dialog).getByRole('tab', { name: 'Body' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
   });
 
   it('reports title and epic-label actions as distinct drawer tabs', async () => {
@@ -120,9 +127,17 @@ describe('mobile monitor lanes and card actions', () => {
 
     await user.click(screen.getByRole('button', { name: 'Linked card' }));
     expect(onOpenDetail).toHaveBeenLastCalledWith(target, 'description');
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Close details' }),
+    );
     await user.click(screen.getByRole('button', { name: 'MOB-1' }));
     expect(onOpenDetail).toHaveBeenLastCalledWith(target, 'epic');
     expect(onOpenDetail).toHaveBeenCalledTimes(2);
+    expect(
+      within(screen.getByRole('dialog'))
+        .getByRole('tab', { name: 'Epic' })
+        .getAttribute('aria-selected'),
+    ).toBe('true');
   });
 });
 
