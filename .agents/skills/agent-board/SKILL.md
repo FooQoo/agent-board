@@ -106,6 +106,14 @@ Lanes are `todo`, `doing`, and `done`. An AI card in `doing` also has a run stat
 
 Record first, then change the status. Before every lane or run-state change, update `TASK.md`, read it back from a fresh snapshot, and confirm the card and the saved text. If the write or read-back fails, leave the status unchanged.
 
+To append to the execution log, follow these steps:
+
+1. Read the current body: `agboard --project "<name>" show <id> --json`, and take `card.description`.
+2. Make sure the body ends with a newline. The board removes trailing newlines when it saves, so add one before the new entry: `text = description.rstrip("\n") + "\n\n- <YYYY-MM-DD HH:MM> <entry>\n"`.
+3. Save the whole body: `agboard --project "<name>" edit <id> --desc-file <path>`.
+4. Read it back from a fresh snapshot. Compare the saved text with what you sent, ignoring trailing whitespace on both sides. If they differ, stop, find out why, and leave the status unchanged.
+5. Only then change the lane or run state.
+
 1. **Choose.** From the snapshot, pick a ready AI card in `todo`, or plan new work (section 4).
 2. **Start.** Append a start entry to the execution log, then:
 
@@ -131,7 +139,7 @@ Keep the status reason short. Keep detail in `TASK.md`.
 
 ## 7. Ask the user a decision
 
-Before asking, record the facts, the impact, the options, and your recommendation in the execution log. Then set the card to `pending`. Offer choices whenever the answer is one of a known set. Write a request file:
+Before asking, record the facts, the impact, the options, and your recommendation in the execution log. Then set the card to `pending`. Offer choices whenever the answer is one of a known set. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
 
 ```json
 {
