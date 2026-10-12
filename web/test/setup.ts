@@ -1,6 +1,19 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
+if (typeof window.matchMedia === 'undefined') {
+  window.matchMedia = (media) => ({
+    media,
+    matches: false,
+    onchange: null,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent: () => false,
+  });
+}
+
 if (typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = class ResizeObserver {
     observe() {}

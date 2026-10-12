@@ -6,10 +6,7 @@ import { MonitorView } from '../../src/monitor/View';
 import { MonitorClientError } from '../../src/monitor/client';
 import type { MonitorReadResolvers, MonitorViewProps } from '../../src/monitor/contracts';
 import { makeCard, PROJECT_A } from '../fixtures';
-import {
-  nextTabForSwipe,
-  shouldIgnoreTabSwipe,
-} from '../../src/monitor/components/MonitorDetailDrawer';
+import { shouldIgnoreTabSwipe } from '../../src/monitor/components/MonitorDetailDrawer';
 import type { Epic } from '../../src/types';
 
 beforeEach(() => selectLocale('en'));
@@ -103,6 +100,7 @@ describe('monitor detail drawer', () => {
     const title = screen.getByRole('button', { name: 'Read this card' });
     await user.click(title);
     const dialog = screen.getByRole('dialog');
+    expect(dialog.querySelector('.detail__viewport')).toBeNull();
     expect(dialog.getAttribute('data-swipe-direction')).toBe('down');
     const bodyTab = within(dialog).getByRole('tab', { name: 'Body' });
     const historyTab = within(dialog).getByRole('tab', { name: /History/ });
@@ -116,12 +114,14 @@ describe('monitor detail drawer', () => {
     historyPanel.scrollTop = 73;
     await user.click(historyTab);
     expect(within(historyPanel).getByText('Keep both options')).toBeTruthy();
-    expect(historyPanel.getAttribute('hidden')).toBeNull();
+    expect(historyPanel.getAttribute('aria-hidden')).toBe('false');
     await user.click(bodyTab);
     expect(historyPanel.scrollTop).toBe(73);
 
     await user.click(epicTab);
     expect(await within(dialog).findByText('Epic body text')).toBeTruthy();
+    expect(dialog.querySelector('.monitor-document')).toBeTruthy();
+    expect(dialog.querySelector('.md-sections')).toBeNull();
     expect(props.readResolvers?.getEpic).toHaveBeenCalledWith(
       PROJECT_A.id,
       'MOB-1',
@@ -264,12 +264,6 @@ describe('monitor detail drawer', () => {
     const formButton = required(document.querySelector('.monitor-card__request button'));
     expect(shouldIgnoreTabSwipe(formButton, panel)).toBe(true);
     expect(bodyTab.getAttribute('aria-selected')).toBe('true');
-    expect(nextTabForSwipe('description', -80, 5)).toBe('history');
-    expect(nextTabForSwipe('epic', 80, 5)).toBe('history');
-    expect(nextTabForSwipe('description', 80, 5)).toBeNull();
-    expect(nextTabForSwipe('epic', -80, 5)).toBeNull();
-    expect(nextTabForSwipe('description', -30, 5)).toBeNull();
-    expect(nextTabForSwipe('description', -80, 80)).toBeNull();
     expect(historyTab.getAttribute('aria-selected')).toBe('false');
   });
 

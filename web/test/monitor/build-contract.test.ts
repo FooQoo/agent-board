@@ -55,6 +55,9 @@ describe('isolated monitor build', () => {
     expect(graph).not.toMatch(/src\/App|components\/editor|src\/api\//);
     expect(graph).toContain('src/monitor-main.tsx');
     expect(graph).not.toMatch(/ReadOnlyDetail|ReadOnlyEpic|CardDetailView|src\/components\/editor/);
-    expect(graph).toContain('BodyDocumentView');
+    expect(graph).toContain('MonitorDocument');
+    expect(graph).not.toMatch(
+      /BodyDocumentView|AcceptanceView|MarkdownSections|styles\/detail\.css/,
+    );
   });
 });

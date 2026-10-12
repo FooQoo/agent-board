@@ -1,25 +1,15 @@
-import { useId, useRef, type TouchEvent } from 'react';
+import { useEffect, useId, useRef } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
 import { useTranslation } from 'react-i18next';
 import { Drawer } from '../../components/ui/drawer';
 import { DetailTabList, detailPanelId, detailTabId } from '../../components/ui/detail-tabs';
 import { HistoryTimeline } from '../../components/HistoryTimeline';
-import { BodyDocumentView } from '../../components/detail/BodyDocumentView';
+import { MonitorDocument } from './MonitorDocument';
 import type { Epic, Problem } from '../../types';
 import type { MonitorCard, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
 import type { EpicReadState } from '../hooks/useMonitorDetailDrawer';
 
 const TAB_ORDER: MonitorDetailTab[] = ['description', 'history', 'epic'];
-
-export function nextTabForSwipe(
-  tab: MonitorDetailTab,
-  dx: number,
-  dy: number,
-): MonitorDetailTab | null {
-  if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.5) return null;
-  const current = TAB_ORDER.indexOf(tab);
-  const next = dx < 0 ? current + 1 : current - 1;
-  return next >= 0 && next < TAB_ORDER.length ? (TAB_ORDER[next] ?? null) : null;
-}
 
 export function shouldIgnoreTabSwipe(target: EventTarget | null, panel: HTMLElement): boolean {
   if (!(target instanceof Element)) return false;
@@ -114,7 +104,7 @@ function EpicDocument({
           {t('acceptance.unreadableTitle')}
         </p>
       )}
-      <BodyDocumentView
+      <MonitorDocument
         body={epic.body}
         acceptance={epic.acceptance ?? []}
         acceptanceError={epic.acceptanceError}
@@ -149,29 +139,39 @@ export function MonitorDetailDrawer({
 }) {
   const { t } = useTranslation();
   const idBase = useId();
-  const touchStart = useRef<{ x: number; y: number; eligible: boolean } | null>(null);
-  if (!item) return null;
+  const [carouselRef, carousel] = useEmblaCarousel({
+    loop: false,
+    watchFocus: false,
+    watchDrag: (api, event) =>
+      !window.getSelection()?.toString() && !shouldIgnoreTabSwipe(event.target, api.rootNode()),
+  });
+  const initializedCarousel = useRef<typeof carousel>(undefined);
+  useEffect(() => {
+    if (!carousel) return;
+    carousel.scrollTo(TAB_ORDER.indexOf(tab), initializedCarousel.current !== carousel);
+    initializedCarousel.current = carousel;
+  }, [carousel, tab]);
+  useEffect(() => {
+    if (!carousel) return;
+    const onSettled = () => {
+      const next = TAB_ORDER[carousel.selectedScrollSnap()];
+      if (next && next !== tab) onTabChange(next);
+    };
+    carousel.on('settle', onSettled);
+    return () => {
+      carousel.off('settle', onSettled);
+    };
+  }, [carousel, tab, onTabChange]);
+  if (!item) {
+    // Mount the root closed so the first interaction also runs the enter transition.
+    return (
+      <Drawer open={false} onOpenChange={onOpenChange} identity="" title="">
+        {null}
+      </Drawer>
+    );
+  }
   const card = item.card;
   const filtered = card.history;
-  const onTouchStart = (event: TouchEvent<HTMLDivElement>) => {
-    const point = event.touches[0];
-    if (!point) return;
-    touchStart.current = {
-      x: point.clientX,
-      y: point.clientY,
-      eligible: !shouldIgnoreTabSwipe(event.target, event.currentTarget),
-    };
-  };
-  const onTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
-    const point = event.changedTouches[0];
-    const start = touchStart.current;
-    touchStart.current = null;
-    if (!start?.eligible || !point || window.getSelection()?.toString()) return;
-    const dx = point.clientX - start.x;
-    const dy = point.clientY - start.y;
-    const next = nextTabForSwipe(tab, dx, dy);
-    if (next) onTabChange(next);
-  };
 
   const tabs = [
     {
@@ -207,72 +207,68 @@ export function MonitorDetailDrawer({
           selected={tab}
           onChange={onTabChange}
           wrap={false}
-          className="detail__tablist monitor-drawer__tablist"
+          className="monitor-drawer__tablist"
         />
       </div>
-      <div
-        className="monitor-drawer__panels"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={() => {
-          touchStart.current = null;
-        }}
-      >
-        <div
-          role="tabpanel"
-          id={detailPanelId(idBase, 'description')}
-          aria-labelledby={detailTabId(idBase, 'description')}
-          hidden={tab !== 'description'}
-          className="detail__viewport monitor-drawer__panel"
-        >
-          <BodyDocumentView
-            body={card.body}
-            acceptance={card.acceptance}
-            acceptanceError={card.acceptanceError}
-            problems={problems.filter(
-              (problem) =>
-                problem.projectId === item.projectId &&
-                problem.file.startsWith(`projects/${item.projectId}/tasks/${card.id}/`),
+      <div className="monitor-drawer__panels" ref={carouselRef}>
+        <div className="monitor-drawer__track">
+          <div
+            role="tabpanel"
+            id={detailPanelId(idBase, 'description')}
+            aria-labelledby={detailTabId(idBase, 'description')}
+            aria-hidden={tab !== 'description'}
+            inert={tab !== 'description'}
+            className="monitor-drawer__panel"
+          >
+            <MonitorDocument
+              body={card.body}
+              acceptance={card.acceptance}
+              acceptanceError={card.acceptanceError}
+              problems={problems.filter(
+                (problem) =>
+                  problem.projectId === item.projectId &&
+                  problem.file.startsWith(`projects/${item.projectId}/tasks/${card.id}/`),
+              )}
+              attachments={card.attachments ?? []}
+              evidence={card.evidence ?? []}
+              attachmentUrl={(id) => resolvers.attachmentUrl(item.projectId, card.id, id)}
+              evidenceUrl={(id) => resolvers.evidenceUrl(item.projectId, card.id, id)}
+            />
+          </div>
+          <div
+            role="tabpanel"
+            id={detailPanelId(idBase, 'history')}
+            aria-labelledby={detailTabId(idBase, 'history')}
+            aria-hidden={tab !== 'history'}
+            inert={tab !== 'history'}
+            className="monitor-drawer__panel"
+          >
+            <HistoryTimeline events={filtered} />
+          </div>
+          <div
+            role="tabpanel"
+            id={detailPanelId(idBase, 'epic')}
+            aria-labelledby={detailTabId(idBase, 'epic')}
+            aria-hidden={tab !== 'epic'}
+            inert={tab !== 'epic'}
+            className="monitor-drawer__panel"
+          >
+            {card.epic ? (
+              <EpicContent
+                state={epicRead.status === 'idle' ? { status: 'loading' } : epicRead}
+                retry={onRetryEpic}
+                projectId={item.projectId}
+                resolvers={resolvers}
+              />
+            ) : (
+              <EpicContent
+                state={{ status: 'idle' }}
+                retry={onRetryEpic}
+                projectId={item.projectId}
+                resolvers={resolvers}
+              />
             )}
-            attachments={card.attachments ?? []}
-            evidence={card.evidence ?? []}
-            projectId={item.projectId}
-            cardId={card.id}
-            attachmentUrl={(id) => resolvers.attachmentUrl(item.projectId, card.id, id)}
-            evidenceUrl={(id) => resolvers.evidenceUrl(item.projectId, card.id, id)}
-          />
-        </div>
-        <div
-          role="tabpanel"
-          id={detailPanelId(idBase, 'history')}
-          aria-labelledby={detailTabId(idBase, 'history')}
-          hidden={tab !== 'history'}
-          className="detail__viewport monitor-drawer__panel"
-        >
-          <HistoryTimeline events={filtered} />
-        </div>
-        <div
-          role="tabpanel"
-          id={detailPanelId(idBase, 'epic')}
-          aria-labelledby={detailTabId(idBase, 'epic')}
-          hidden={tab !== 'epic'}
-          className="detail__viewport monitor-drawer__panel"
-        >
-          {card.epic ? (
-            <EpicContent
-              state={epicRead}
-              retry={onRetryEpic}
-              projectId={item.projectId}
-              resolvers={resolvers}
-            />
-          ) : (
-            <EpicContent
-              state={{ status: 'idle' }}
-              retry={onRetryEpic}
-              projectId={item.projectId}
-              resolvers={resolvers}
-            />
-          )}
+          </div>
         </div>
       </div>
     </Drawer>

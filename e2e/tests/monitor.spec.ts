@@ -277,6 +277,10 @@ test('the bottom drawer follows a downward handle drag and dismisses', async ({ 
     await expect(drawer).toBeVisible();
     await expect(drawer).toHaveAttribute('data-swipe-direction', 'down');
     await expect(drawer).toHaveCSS('transition-property', 'translate');
+    expect(await drawer.evaluate((element) => element.getAnimations().length)).toBeGreaterThan(0);
+    await drawer.evaluate(async (element) => {
+      await Promise.all(element.getAnimations().map((animation) => animation.finished));
+    });
 
     const popupBox = await drawer.boundingBox();
     const handleBox = await drawer.locator('.mobile-drawer__handle').boundingBox();
@@ -383,32 +387,17 @@ test('monitor renders both projects and same-number cards, preserves direct rout
   const startX = (panelsBox?.x ?? 0) + (panelsBox?.width ?? 0) * 0.8;
   const endX = (panelsBox?.x ?? 0) + (panelsBox?.width ?? 0) * 0.2;
   const y = (panelsBox?.y ?? 0) + 80;
-  const swipePanels = (fromX: number, toX: number) =>
-    page.evaluate(
-      ({ fromX, toX, y }) => {
-        const target = document.querySelector('.monitor-drawer__panels');
-        if (!(target instanceof HTMLElement)) throw new Error('Drawer panels were not found');
-        const makeTouch = (clientX: number) =>
-          new Touch({ identifier: 1, target, clientX, clientY: y });
-        const start = makeTouch(fromX);
-        target.dispatchEvent(
-          new TouchEvent('touchstart', {
-            bubbles: true,
-            touches: [start],
-            changedTouches: [start],
-          }),
-        );
-        const end = makeTouch(toX);
-        target.dispatchEvent(
-          new TouchEvent('touchend', {
-            bubbles: true,
-            touches: [],
-            changedTouches: [end],
-          }),
-        );
-      },
-      { fromX, toX, y },
-    );
+  const swipePanels = async (fromX: number, toX: number) => {
+    const track = drawer.locator('.monitor-drawer__track');
+    const before = await track.boundingBox();
+    await page.mouse.move(fromX, y);
+    await page.mouse.down();
+    await page.mouse.move((fromX + toX) / 2, y, { steps: 8 });
+    const during = await track.boundingBox();
+    expect(Math.abs((during?.x ?? 0) - (before?.x ?? 0))).toBeGreaterThan(30);
+    await page.mouse.move(toX, y, { steps: 8 });
+    await page.mouse.up();
+  };
   await swipePanels(startX, endX);
   await expect(drawer.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
   await swipePanels(endX, startX);
