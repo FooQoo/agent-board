@@ -36,6 +36,10 @@ const STATE_LABELS = {
 
 /** The run state is only shown for cards in Doing. */
 export function stateLabel(card: Card, t?: TFunction): string | null {
-  if (card.assignee !== 'ai' || card.cardStatus !== 'doing') return null;
+  // An AI card shows its run state in Doing, and a pending question in Todo (before the work starts).
+  const shows =
+    card.assignee === 'ai' &&
+    (card.cardStatus === 'doing' || (card.cardStatus === 'todo' && card.agentStatus === 'pending'));
+  if (!shows) return null;
   return t ? t(`runState.${card.agentStatus}`) : STATE_LABELS[card.agentStatus];
 }

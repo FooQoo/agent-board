@@ -112,7 +112,10 @@ export function CardDetailView({
           <div className="acceptance-unreadable" role="status">
             <p className="acceptance-unreadable__title">{t('acceptance.unreadableTitle')}</p>
             {ownProblems.map((problem) => (
-              <p key={`${problem.file}:${problem.field}`} className="acceptance-unreadable__problem">
+              <p
+                key={`${problem.file}:${problem.field}`}
+                className="acceptance-unreadable__problem"
+              >
                 {t('acceptance.unreadableProblem', {
                   file: problem.file,
                   field: problem.field,

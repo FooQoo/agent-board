@@ -22,7 +22,8 @@ export function MonitorCard({
       : section === 'todo'
         ? card.createdAt
         : card.agentStatusChangedAt;
-  const showsState = section === 'doing';
+  // A pending question shows in Todo too; the other run states show in Doing.
+  const showsState = section === 'doing' || (section === 'todo' && card.agentStatus === 'pending');
   const pending = showsState && card.agentStatus === 'pending';
   const label = [
     `#${card.id}`,

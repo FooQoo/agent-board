@@ -77,7 +77,7 @@ impl FileStore {
             return Err(AgboardError::CardArchived { id });
         }
         if task.assignee != Assignee::Ai
-            || task.card_status != Column::Doing
+            || !matches!(task.card_status, Column::Todo | Column::Doing)
             || task.agent_status != RunState::Pending
             || task.pending_request_id.as_deref() != Some(request_id)
         {
@@ -108,8 +108,8 @@ impl FileStore {
             kind: HistoryKind::Answer,
             actor: answer.actor,
             reason: text.as_deref(),
-            from_card: Some(Column::Doing),
-            to_card: Column::Doing,
+            from_card: Some(task.card_status),
+            to_card: task.card_status,
             from_agent: Some(RunState::Pending),
             to_agent: RunState::Idle,
             request_id: Some(request_id),

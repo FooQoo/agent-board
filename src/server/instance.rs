@@ -97,9 +97,8 @@ mod tests {
     #[test]
     fn a_port_with_nothing_listening_does_not_accept() {
         let listener = std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
-        let port = listener.local_addr().unwrap().port();
-        assert!(port_accepts(port));
-        drop(listener);
-        assert!(!port_accepts(port));
+        assert!(port_accepts(listener.local_addr().unwrap().port()));
+        // Port 1 is not served on a development machine; a freed ephemeral port could be taken by another test.
+        assert!(!port_accepts(1));
     }
 }

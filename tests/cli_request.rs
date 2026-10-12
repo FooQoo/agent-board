@@ -594,3 +594,223 @@ fn request_file_is_gone_and_help_shows_request_json_with_an_example() {
     assert!(out.contains("\"choices\""), "{out}");
     assert!(!out.contains("--request-file"), "{out}");
 }
+
+/// A new AI card in todo, read back by ID.
+fn todo_card(home: &Path, title: &str) -> String {
+    let created = json_ok(
+        home,
+        &[
+            "--project",
+            "Demo",
+            "add",
+            title,
+            "--assignee",
+            "ai",
+            "--actor",
+            "ai",
+            "--json",
+        ],
+    );
+    created["card"]["id"].as_i64().unwrap().to_string()
+}
+
+/// Put card `id` into a pending request from `value` and return the request ID.
+fn ask_card(home: &Path, id: &str, value: &Value) -> String {
+    let (code, _, err) = agboard(
+        home,
+        &[
+            "--project",
+            "Demo",
+            "state",
+            id,
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            &value.to_string(),
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    card_of(home, id)["pendingRequestId"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+#[test]
+fn a_todo_card_asks_and_the_answer_returns_it_to_todo_idle() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let id = todo_card(home.path(), "Ask in todo");
+    let request = ask_card(home.path(), &id, &three_choices());
+    let shown = card_of(home.path(), &id);
+    assert_eq!(shown["cardStatus"], "todo");
+    assert_eq!(shown["agentStatus"], "pending");
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &id,
+            "idle",
+            "--actor",
+            "human",
+            "--request",
+            &request,
+            "--choice",
+            "proceed",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let shown = card_of(home.path(), &id);
+    assert_eq!(shown["cardStatus"], "todo");
+    assert_eq!(shown["agentStatus"], "idle");
+    assert_eq!(shown["pendingRequestId"], Value::Null);
+}
+
+#[test]
+fn run_states_refused_outside_their_column_or_owner_leave_the_card_unchanged() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    // An AI card in todo may not run.
+    let id = todo_card(home.path(), "Run in todo");
+    let (code, _, _) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &id,
+            "running",
+            "--actor",
+            "ai",
+            "--reason",
+            "Working",
+        ],
+    );
+    assert_ne!(code, 0);
+    assert_eq!(card_of(home.path(), &id)["agentStatus"], "idle");
+    // A person's card may not be pending.
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "add",
+            "Mine",
+            "--assignee",
+            "human",
+            "--actor",
+            "human",
+            "--json",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let mine = json_ok(home.path(), &["--project", "Demo", "snapshot", "--json"])["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["title"] == "Mine")
+        .unwrap()["id"]
+        .as_i64()
+        .unwrap()
+        .to_string();
+    let (code, _, _) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &mine,
+            "pending",
+            "--actor",
+            "human",
+            "--request-json",
+            &three_choices().to_string(),
+        ],
+    );
+    assert_ne!(code, 0);
+    assert_eq!(card_of(home.path(), &mine)["agentStatus"], "idle");
+    // An AI card in done may not be pending.
+    let done = todo_card(home.path(), "Done already");
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "mv",
+            &done,
+            "done",
+            "--actor",
+            "human",
+            "--reason",
+            "Finished.",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let (code, _, _) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &done,
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            &three_choices().to_string(),
+        ],
+    );
+    assert_ne!(code, 0);
+    assert_eq!(card_of(home.path(), &done)["agentStatus"], "idle");
+}
+
+#[test]
+fn moving_a_todo_card_cancels_its_request_and_the_old_answer_is_refused() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let id = todo_card(home.path(), "Move while asking");
+    let request = ask_card(home.path(), &id, &three_choices());
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "mv",
+            &id,
+            "doing",
+            "--actor",
+            "human",
+            "--reason",
+            "Start.",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let shown = card_of(home.path(), &id);
+    assert_eq!(shown["agentStatus"], "idle");
+    assert_eq!(shown["pendingRequestId"], Value::Null);
+    let (code, code_name) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &id,
+            "idle",
+            "--actor",
+            "human",
+            "--request",
+            &request,
+            "--reason",
+            "Too late.",
+        ],
+    );
+    assert_ne!(code, 0);
+    assert_ne!(code_name, "", "{code}");
+}
+
+fn card_of(home: &Path, id: &str) -> Value {
+    json_ok(home, &["--project", "Demo", "show", id, "--json"])["card"].clone()
+}
