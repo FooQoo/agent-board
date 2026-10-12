@@ -25,6 +25,7 @@ export function MonitorView(props: MonitorViewProps) {
   const detail = useMonitorDetailDrawer(
     cards,
     props.readResolvers ?? unconnectedMonitorReadResolvers,
+    projects,
   );
   const scopeName =
     scope === 'all'

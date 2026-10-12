@@ -27,9 +27,7 @@ describe('monitor contracts and view', () => {
     expect(unconnectedMonitorReadResolvers.epicAttachmentUrl('abc', 'epic-id', 'image-id')).toMatch(
       /^\/monitor\/api\//,
     );
-    await expect(unconnectedMonitorReadResolvers.getEpic('abc', 'epic-id')).rejects.toThrow(
-      'not connected',
-    );
+    await expect(unconnectedMonitorReadResolvers.getEpics('abc')).rejects.toThrow('not connected');
   });
 
   it('renders passed view state without write controls', () => {

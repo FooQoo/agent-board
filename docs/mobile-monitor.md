@@ -4,6 +4,8 @@
 
 The monitor groups cards into Todo, Doing, and Done. Todo and Doing cards show their agent state inline as Idle, Running, or Pending; Pending cards in either lane also show the question and an answer form. Tapping a card opens a bottom drawer with Body, History, and Epic tabs. The drawer slides up from the bottom, follows a downward drag, and closes when dismissed; its content scrolls independently. The monitor can answer a pending question, but its only write operation is that answer.
 
+Horizontal swipes move the tab content and underline together. Gestures inside the tab content stay within that area; drag the top handle to dismiss the drawer. Each project's complete epic list is loaded when the monitor initializes and retained for the page session. Switching tabs performs no epic request. Reload the page to refresh the epic lists, or use the retry button after a failed initial request.
+
 Run the commands below from the repository root after [installing Agent Board](usage.md#installation-and-updates).
 
 ## Final iPhone check

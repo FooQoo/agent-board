@@ -65,6 +65,10 @@ pub(crate) fn router(state: Arc<MonitorState>) -> Router {
             get(card_evidence).head(card_evidence),
         )
         .route(
+            "/monitor/api/projects/{project_id}/epics",
+            get(epics).head(epics),
+        )
+        .route(
             "/monitor/api/projects/{project_id}/epics/{epic_id}",
             get(epic).head(epic),
         )
@@ -264,6 +268,20 @@ async fn card_evidence(
         Err(error) => api::agboard_error_response(&AgboardError::DatabaseError {
             reason: error.to_string(),
         }),
+    }
+}
+
+async fn epics(
+    State(state): State<Arc<MonitorState>>,
+    Path(raw_project): Path<String>,
+) -> Response {
+    let project_id = match api::parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return api::agboard_error_response(&error),
+    };
+    match api::indexed_view_in(&state.shared, &state.index, &project_id) {
+        Ok(view) => api::json_response(StatusCode::OK, &serde_json::json!({"epics": view.epics})),
+        Err(error) => api::agboard_error_response(&error),
     }
 }
 

@@ -199,9 +199,9 @@ export const monitorClient = {
     return readJson(`${MONITOR_API_BASE}projects/${projectSegment(projectId)}/board`, options);
   },
 
-  fetchEpic(projectId: ProjectId, epicId: string, options?: MonitorRequestOptions): Promise<Epic> {
-    const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/epics/${epicSegment(epicId)}`;
-    return readJson<{ epic: Epic }>(path, options).then(({ epic }) => epic);
+  fetchEpics(projectId: ProjectId, options?: MonitorRequestOptions): Promise<Epic[]> {
+    const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/epics`;
+    return readJson<{ epics: Epic[] }>(path, options).then(({ epics }) => epics);
   },
 };
 
@@ -212,5 +212,5 @@ export const monitorReadResolvers: MonitorReadResolvers = {
     `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/cards/${cardSegment(cardId)}/evidence/${evidenceSegment(evidenceId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
     `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/epics/${epicSegment(epicId)}/attachments/${attachmentSegment(attachmentId)}`,
-  getEpic: (projectId, epicId, signal) => monitorClient.fetchEpic(projectId, epicId, { signal }),
+  getEpics: (projectId, signal) => monitorClient.fetchEpics(projectId, { signal }),
 };

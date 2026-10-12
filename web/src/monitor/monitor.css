@@ -601,6 +601,20 @@ body {
   width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+.monitor-drawer__tabs {
+  position: relative;
+}
+.monitor-drawer__tabs::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(100% / 3);
+  height: 2px;
+  background: var(--r-accent);
+  transform: translateX(calc(var(--tab-progress, 0) * 200%));
+  pointer-events: none;
+}
 .monitor-drawer__tablist .detail__tab {
   display: flex;
   align-items: center;
@@ -646,7 +660,6 @@ body {
   touch-action: pan-y;
 }
 .monitor-drawer__tablist .detail__tab[aria-selected="true"] {
-  border-bottom-color: var(--r-accent);
   color: var(--r-accent);
 }
 .monitor-drawer__tablist .detail__tab:focus-visible {
@@ -738,12 +751,6 @@ body {
 .monitor-drawer__epic-heading h3 {
   font-size: 15px;
   line-height: 1.4;
-}
-.monitor-drawer__epic-id {
-  flex: none;
-  color: var(--r-muted);
-  font-family: var(--font-mono);
-  font-size: 12px;
 }
 .monitor-empty {
   padding: 8px 4px;

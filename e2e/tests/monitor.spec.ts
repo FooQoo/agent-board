@@ -271,7 +271,30 @@ test('the bottom drawer follows a downward handle drag and dismisses', async ({ 
   });
   try {
     const touchPage = await context.newPage();
+    await touchPage.route('**/monitor/api/projects/*/board', async (route) => {
+      const response = await route.fetch();
+      const board = await response.json();
+      for (const card of board.cards) {
+        if (card.title === 'Alpha completed 8') {
+          card.epic = { id: 'SWIPE', name: 'Loaded swipe epic', color: '#4466aa' };
+        }
+      }
+      await route.fulfill({ response, json: board });
+    });
+    let epicReads = 0;
+    await touchPage.route('**/monitor/api/projects/*/epics', async (route) => {
+      epicReads++;
+      await route.fulfill({ json: { epics: [{
+        id: 'SWIPE', name: 'Loaded swipe epic', color: '#4466aa', isDraft: false,
+        body: 'Fresh epic content', plan: 'Fresh epic content', acceptance: [],
+        acceptanceError: false, attachments: [],
+        createdAt: '2026-10-12T00:00:00Z', updatedAt: '2026-10-12T00:00:00Z',
+      }] } });
+    });
     await touchPage.goto('/monitor/');
+    await touchPage.getByRole('button', { name: 'Alpha completed 8' }).waitFor();
+    await expect.poll(() => epicReads).toBe(4);
+    const boardText = await touchPage.locator('.monitor-list').textContent();
     await touchPage.getByRole('button', { name: 'Alpha completed 8' }).click();
     const drawer = touchPage.getByRole('dialog');
     await expect(drawer).toBeVisible();
@@ -282,13 +305,48 @@ test('the bottom drawer follows a downward handle drag and dismisses', async ({ 
       await Promise.all(element.getAnimations().map((animation) => animation.finished));
     });
 
+    const cdp = await context.newCDPSession(touchPage);
+    const panelBox = await drawer.locator('.monitor-drawer__panels').boundingBox();
+    if (!panelBox) throw new Error('Missing swipe viewport');
+    const y = panelBox.y + 100;
+    for (const [fromX, toX, selected] of [
+      [310, 70, 'History'], [310, 70, 'Epic'], [70, 310, 'History'], [70, 310, 'Body'],
+    ] as const) {
+      const previousProgress = await drawer.locator('.monitor-drawer__tabs').evaluate(
+        (element) => Number((element as HTMLElement).style.getPropertyValue('--tab-progress')),
+      );
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart', touchPoints: [{ x: fromX, y, id: 1 }],
+      });
+      for (let step = 1; step <= 12; step++) {
+        await cdp.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x: fromX + (toX - fromX) * step / 12, y: y + step / 2, id: 1 }],
+        });
+      }
+      await expect.poll(() => drawer.locator('.monitor-drawer__tabs').evaluate(
+        (element) => Number((element as HTMLElement).style.getPropertyValue('--tab-progress')),
+      )).not.toBe(previousProgress);
+      await expect(drawer).not.toHaveAttribute('data-swiping', '');
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(drawer.getByRole('tab', { name: selected, exact: true })).toHaveAttribute('aria-selected', 'true');
+      await expect.poll(() => drawer.locator('.monitor-drawer__track').evaluate(
+        (element) => element.getAnimations().length,
+      )).toBe(0);
+      await touchPage.waitForTimeout(600);
+      if (selected === 'Epic') {
+        await expect(drawer.getByText('Fresh epic content')).toBeVisible();
+        expect(await touchPage.locator('.monitor-list').textContent()).toBe(boardText);
+      }
+    }
+
+    expect(epicReads).toBe(4);
     const popupBox = await drawer.boundingBox();
     const handleBox = await drawer.locator('.mobile-drawer__handle').boundingBox();
     expect(popupBox).not.toBeNull();
     expect(handleBox).not.toBeNull();
     const startX = (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2;
     const startY = (handleBox?.y ?? 0) + (handleBox?.height ?? 0) / 2;
-    const cdp = await context.newCDPSession(touchPage);
     await cdp.send('Input.dispatchTouchEvent', {
       type: 'touchStart',
       touchPoints: [{ x: startX, y: startY, id: 1 }],

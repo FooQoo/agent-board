@@ -8,7 +8,7 @@ describe('monitor read client', () => {
   it('uses only fixed /monitor/api/ GET routes for catalog, board, epic and assets', async () => {
     const fetchMock = vi.fn(
       async (_input: RequestInfo | URL, _init?: RequestInit) =>
-        new Response(JSON.stringify({ projects: [], catalogVersion: 'v1', epic: {} }), {
+        new Response(JSON.stringify({ projects: [], catalogVersion: 'v1', epics: [] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -18,7 +18,7 @@ describe('monitor read client', () => {
 
     await monitorClient.fetchCatalog();
     await monitorClient.fetchBoard(PROJECT_ID);
-    await monitorReadResolvers.getEpic(PROJECT_ID, 'ABC-1');
+    await monitorReadResolvers.getEpics(PROJECT_ID);
     expect(monitorReadResolvers.attachmentUrl(PROJECT_ID, 4, 'b'.repeat(32))).toBe(
       `/monitor/api/projects/${PROJECT_ID}/cards/4/attachments/${'b'.repeat(32)}`,
     );

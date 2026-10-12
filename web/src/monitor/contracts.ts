@@ -23,7 +23,7 @@ export interface MonitorReadResolvers {
   attachmentUrl(projectId: ProjectId, cardId: number, attachmentId: string): string;
   evidenceUrl(projectId: ProjectId, cardId: number, evidenceId: string): string;
   epicAttachmentUrl(projectId: ProjectId, epicId: string, attachmentId: string): string;
-  getEpic(projectId: ProjectId, epicId: string, signal?: AbortSignal): Promise<Epic>;
+  getEpics(projectId: ProjectId, signal?: AbortSignal): Promise<Epic[]>;
 }
 
 /** Explicitly unconnected U1 resolvers. U4 supplies the live read-only API adapter. */
@@ -34,7 +34,7 @@ export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
     `/monitor/api/projects/${encodeURIComponent(projectId)}/cards/${cardId}/evidence/${encodeURIComponent(evidenceId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
     `/monitor/api/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/attachments/${encodeURIComponent(attachmentId)}`,
-  getEpic: async () => {
+  getEpics: async () => {
     throw new Error('Monitor epic resolver is not connected.');
   },
 };

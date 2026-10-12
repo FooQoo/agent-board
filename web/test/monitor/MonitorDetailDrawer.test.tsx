@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { MonitorView } from '../../src/monitor/View';
-import { MonitorClientError } from '../../src/monitor/client';
 import type { MonitorReadResolvers, MonitorViewProps } from '../../src/monitor/contracts';
 import { makeCard, PROJECT_A } from '../fixtures';
 import { shouldIgnoreTabSwipe } from '../../src/monitor/components/MonitorDetailDrawer';
@@ -39,10 +38,10 @@ const epic: Epic = {
 
 function setup({
   epicId = 'MOB-1',
-  getEpic = vi.fn(async () => epic),
+  getEpics = vi.fn(async () => [epic]),
 }: {
   epicId?: string | null;
-  getEpic?: MonitorReadResolvers['getEpic'];
+  getEpics?: MonitorReadResolvers['getEpics'];
 } = {}) {
   const card = makeCard({
     id: 7,
@@ -74,7 +73,7 @@ function setup({
     attachmentUrl: (_project, _card, id) => `/owned/card/${id}`,
     evidenceUrl: (_project, _card, id) => `/owned/evidence/${id}`,
     epicAttachmentUrl: (_project, _epic, id) => `/owned/epic/${id}`,
-    getEpic,
+    getEpics,
   };
   const props: MonitorViewProps = {
     projects: [PROJECT_A],
@@ -88,7 +87,7 @@ function setup({
     onRefresh: vi.fn(),
     readResolvers,
   };
-  return { item, getEpic, props };
+  return { item, getEpics, props };
 }
 
 describe('monitor detail drawer', () => {
@@ -97,6 +96,7 @@ describe('monitor detail drawer', () => {
     const { props } = setup();
     render(<MonitorView {...props} />);
 
+    await waitFor(() => expect(props.readResolvers?.getEpics).toHaveBeenCalledTimes(1));
     const title = screen.getByRole('button', { name: 'Read this card' });
     await user.click(title);
     const dialog = screen.getByRole('dialog');
@@ -122,9 +122,8 @@ describe('monitor detail drawer', () => {
     expect(await within(dialog).findByText('Epic body text')).toBeTruthy();
     expect(dialog.querySelector('.monitor-document')).toBeTruthy();
     expect(dialog.querySelector('.md-sections')).toBeNull();
-    expect(props.readResolvers?.getEpic).toHaveBeenCalledWith(
+    expect(props.readResolvers?.getEpics).toHaveBeenCalledWith(
       PROJECT_A.id,
-      'MOB-1',
       expect.any(AbortSignal),
     );
 
@@ -134,6 +133,7 @@ describe('monitor detail drawer', () => {
     expect(epicTab.getAttribute('aria-selected')).toBe('true');
     await user.keyboard('{Home}');
     expect(bodyTab.getAttribute('aria-selected')).toBe('true');
+    expect(props.readResolvers?.getEpics).toHaveBeenCalledTimes(1);
   });
 
   it('opens the epic tab from the epic label and shows an explicit unassigned state', async () => {
@@ -159,24 +159,24 @@ describe('monitor detail drawer', () => {
   });
 
   it('isolates old epic responses and supports retry and not-found states', async () => {
-    const finishOld: { current: (value: Epic) => void } = { current: () => {} };
-    const oldRequest = new Promise<Epic>((resolve) => {
+    const finishOld: { current: (value: Epic[]) => void } = { current: () => {} };
+    const oldRequest = new Promise<Epic[]>((resolve) => {
       finishOld.current = resolve;
     });
-    const getEpic = vi
-      .fn<MonitorReadResolvers['getEpic']>()
+    const getEpics = vi
+      .fn<MonitorReadResolvers['getEpics']>()
       .mockReturnValueOnce(oldRequest)
-      .mockResolvedValueOnce({ ...epic, id: 'MOB-2', name: 'Other', body: 'Fresh epic text' })
+      .mockResolvedValueOnce([{ ...epic, id: 'MOB-2', name: 'Other', body: 'Fresh epic text' }])
       .mockRejectedValueOnce(new Error('offline'))
-      .mockResolvedValueOnce(epic);
-    const first = setup({ getEpic });
+      .mockResolvedValueOnce([{ ...epic, id: 'MOB-2' }]);
+    const first = setup({ getEpics });
     const user = userEvent.setup();
     const { rerender } = render(<MonitorView {...first.props} />);
     await user.click(screen.getByRole('button', { name: 'MOB-1' }));
     const dialog = screen.getByRole('dialog');
 
     const nextEpic = { ...epic, id: 'MOB-2', name: 'Other' };
-    const second = setup({ getEpic: vi.fn().mockResolvedValue(nextEpic) });
+    const second = setup({ getEpics: vi.fn().mockResolvedValue([nextEpic]) });
     const secondItem = required(second.props.todo[0]);
     const secondResolvers = required(second.props.readResolvers);
     const newItemProps = {
@@ -187,15 +187,17 @@ describe('monitor detail drawer', () => {
           card: { ...secondItem.card, epic: { id: 'MOB-2', name: 'Other', color: '#4466aa' } },
         },
       ],
-      readResolvers: { ...secondResolvers, getEpic },
+      readResolvers: { ...secondResolvers, getEpics },
     };
     rerender(<MonitorView {...newItemProps} />);
     await waitFor(() => expect(within(dialog).getByText('Fresh epic text')).toBeTruthy());
-    finishOld.current({ ...epic, body: 'Stale epic text' });
+    finishOld.current([{ ...epic, body: 'Stale epic text' }]);
     expect(within(dialog).queryByText('Stale epic text')).toBeNull();
 
     await user.click(within(dialog).getByRole('tab', { name: 'Body' }));
     await user.click(within(dialog).getByRole('tab', { name: 'Epic' }));
+    expect(getEpics).toHaveBeenCalledTimes(2);
+    rerender(<MonitorView {...newItemProps} readResolvers={{ ...newItemProps.readResolvers }} />);
     await waitFor(() => expect(within(dialog).getByText('Could not load this epic.')).toBeTruthy());
     await user.click(within(dialog).getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(within(dialog).getByText('Epic body text')).toBeTruthy());
@@ -269,8 +271,8 @@ describe('monitor detail drawer', () => {
 
   it('distinguishes a deleted epic from a retriable read error', async () => {
     const user = userEvent.setup();
-    const getEpic = vi.fn().mockRejectedValue(new MonitorClientError('missing', 404, 'not_found'));
-    render(<MonitorView {...setup({ getEpic }).props} />);
+    const getEpics = vi.fn().mockResolvedValue([]);
+    render(<MonitorView {...setup({ getEpics }).props} />);
     await user.click(screen.getByRole('button', { name: 'MOB-1' }));
     const dialog = screen.getByRole('dialog');
     expect(await within(dialog).findByText('This epic is no longer available.')).toBeTruthy();

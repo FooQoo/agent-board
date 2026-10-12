@@ -96,7 +96,6 @@ function EpicDocument({
   return (
     <>
       <div className="monitor-drawer__epic-heading">
-        <span className="monitor-drawer__epic-id">{epic.id}</span>
         <h3>{epic.name}</h3>
       </div>
       {epic.acceptanceError && (
@@ -139,6 +138,7 @@ export function MonitorDetailDrawer({
 }) {
   const { t } = useTranslation();
   const idBase = useId();
+  const tabsRef = useRef<HTMLDivElement>(null);
   const [carouselRef, carousel] = useEmblaCarousel({
     loop: false,
     watchFocus: false,
@@ -148,18 +148,30 @@ export function MonitorDetailDrawer({
   const initializedCarousel = useRef<typeof carousel>(undefined);
   useEffect(() => {
     if (!carousel) return;
-    carousel.scrollTo(TAB_ORDER.indexOf(tab), initializedCarousel.current !== carousel);
+    const index = TAB_ORDER.indexOf(tab);
+    if (initializedCarousel.current !== carousel || carousel.selectedScrollSnap() !== index) {
+      carousel.scrollTo(index, initializedCarousel.current !== carousel);
+    }
     initializedCarousel.current = carousel;
   }, [carousel, tab]);
   useEffect(() => {
     if (!carousel) return;
-    const onSettled = () => {
+    const onSelected = () => {
       const next = TAB_ORDER[carousel.selectedScrollSnap()];
       if (next && next !== tab) onTabChange(next);
     };
-    carousel.on('settle', onSettled);
+    const updateIndicator = () => {
+      const progress = Math.max(0, Math.min(1, carousel.scrollProgress()));
+      tabsRef.current?.style.setProperty('--tab-progress', String(progress));
+    };
+    updateIndicator();
+    carousel.on('select', onSelected);
+    carousel.on('scroll', updateIndicator);
+    carousel.on('reInit', updateIndicator);
     return () => {
-      carousel.off('settle', onSettled);
+      carousel.off('select', onSelected);
+      carousel.off('scroll', updateIndicator);
+      carousel.off('reInit', updateIndicator);
     };
   }, [carousel, tab, onTabChange]);
   if (!item) {
@@ -200,7 +212,7 @@ export function MonitorDetailDrawer({
         ) : null
       }
     >
-      <div className="monitor-drawer__tabs">
+      <div className="monitor-drawer__tabs" ref={tabsRef}>
         <DetailTabList
           idBase={idBase}
           tabs={tabs}
@@ -210,7 +222,19 @@ export function MonitorDetailDrawer({
           className="monitor-drawer__tablist"
         />
       </div>
-      <div className="monitor-drawer__panels" ref={carouselRef}>
+      <div
+        className="monitor-drawer__panels"
+        ref={carouselRef}
+        data-base-ui-swipe-ignore=""
+        onPointerDown={(event) => event.stopPropagation()}
+        onPointerMove={(event) => event.stopPropagation()}
+        onPointerUp={(event) => event.stopPropagation()}
+        onPointerCancel={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+        onTouchMove={(event) => event.stopPropagation()}
+        onTouchEnd={(event) => event.stopPropagation()}
+        onTouchCancel={(event) => event.stopPropagation()}
+      >
         <div className="monitor-drawer__track">
           <div
             role="tabpanel"

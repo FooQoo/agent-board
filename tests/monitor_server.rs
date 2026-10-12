@@ -17,10 +17,22 @@ fn monitor_api_is_read_only_allowlisted_and_uses_the_shared_snapshot() {
     let board = server.request("GET", &format!("{base}/board"), &host, "");
     assert_eq!(board.status, 200, "{}", board.body);
     assert!(board.body.contains("Sample"));
+    let epics = server.request("GET", &format!("{base}/epics"), &host, "");
+    assert_eq!(epics.status, 200, "{}", epics.body);
+    assert_eq!(epics.header("cache-control"), Some("no-store"));
+    let board_json: serde_json::Value = serde_json::from_str(&board.body).unwrap();
+    let epics_json: serde_json::Value = serde_json::from_str(&epics.body).unwrap();
+    assert_eq!(epics_json["epics"], board_json["epics"]);
 
     for method in ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"] {
         let result = server.request(method, &format!("{base}/board"), &host, "{}");
         assert_eq!(result.status, 405, "{method}: {}", result.body);
+        assert_eq!(
+            server
+                .request(method, &format!("{base}/epics"), &host, "{}")
+                .status,
+            405
+        );
         let unknown = server.request(method, "/monitor/api/unknown", &host, "");
         assert_eq!(unknown.status, 405, "{method}: {}", unknown.body);
     }
