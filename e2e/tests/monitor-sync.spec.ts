@@ -88,7 +88,7 @@ test('partial shared-file damage is reported without inventing zero counts, then
   replaceFileAtomically(taskFile, '{ invalid json');
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect(page.getByRole('region', { name: 'Work summary' })).toContainText('—');
-  await expect(page.getByRole('region', { name: 'Work summary' })).not.toContainText('0 Pending');
+  await expect(page.getByRole('region', { name: 'Work summary' })).not.toContainText('0 Doing');
   await expect(page.getByText(/partial|problem|issue/i).first()).toBeVisible();
 
   replaceFileAtomically(taskFile, original);
