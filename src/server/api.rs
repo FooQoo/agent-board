@@ -20,7 +20,7 @@ use crate::domain::{
 use crate::error::AgboardError;
 use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::index::ProjectEntry;
-use crate::file_store::model::{AttachmentOwner, CardView, EpicUpdate, NewEpic};
+use crate::file_store::model::{AttachmentOwner, CardView, Choice, EpicUpdate, NewEpic};
 use crate::file_store::validate::{self, EpicId};
 use crate::file_store::{Answer, FileStore};
 
@@ -951,6 +951,9 @@ struct AgentStateInput {
     _actor: Option<serde_json::Value>,
     reason: String,
     request_id: Option<String>,
+    /// The choices of a pending request; `reason` is its question.
+    #[serde(default)]
+    choices: Vec<Choice>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1211,6 +1214,16 @@ async fn set_agent_status(
         );
     };
     match with_files(&state, move |store| {
+        if input.agent_status == RunState::Pending {
+            return store.request_decision(
+                &project_id,
+                id,
+                Actor::Human,
+                &input.reason,
+                input.choices,
+                chrono::Utc::now(),
+            );
+        }
         store.set_agent_status(
             &project_id,
             id,

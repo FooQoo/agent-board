@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { agboardOk, mainProject, projectId, resetBoard, cardBody, workspace, type CardJson } from '../helpers/agboard';
+import { agboardOk, mainProject, projectId, resetBoard, cardBody, workspace, type CardJson, decisionJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
@@ -34,12 +34,12 @@ function askWithChoices(id: number, question: string, choices: { id: string; lab
   agboardOk(mainProject, ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Working.']);
   const file = path.join(work, `request-${id}-${Date.now()}.json`);
   writeFileSync(file, JSON.stringify({ question, choices }));
-  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-file', file]);
+  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', readFileSync(file, 'utf8')]);
 }
 
 function askText(id: number, question: string): void {
   agboardOk(mainProject, ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Working.']);
-  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--reason', question]);
+  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', decisionJson(question)]);
 }
 
 let work: string;
@@ -149,7 +149,7 @@ test('a decision request is answered with a choice only, with text only, or with
 });
 
 test('an answer with nothing chosen and nothing typed cannot be sent', async ({ page }) => {
-  askWithChoices(15, 'Ready?', [{ id: 'yes', label: 'Yes' }]);
+  askWithChoices(15, 'Ready?', [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }]);
   await openBoard(page);
   await card(page, 15).click();
   const send = request(page).getByRole('button', { name: 'Send', exact: true });

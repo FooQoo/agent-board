@@ -211,7 +211,7 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
     let request_file = home.path().join("request.json");
     std::fs::write(
         &request_file,
-        json!({"question": "Which plan?", "choices": [{"id": "proceed", "label": "Proceed"}]})
+        json!({"question": "Which plan?", "choices": [{"id": "proceed", "label": "Proceed"}, {"id": "revise", "label": "Revise"}]})
             .to_string(),
     )
     .unwrap();
@@ -225,8 +225,8 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
             "pending",
             "--actor",
             "ai",
-            "--request-file",
-            request_file.to_str().unwrap(),
+            "--request-json",
+            &std::fs::read_to_string(request_file).unwrap(),
         ],
     );
     assert_eq!(code, 0, "{err}");

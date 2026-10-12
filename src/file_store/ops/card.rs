@@ -157,9 +157,7 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<Changed<CardView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
-        let description = description
-            .map(normalize_description)
-            .transpose()?;
+        let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -196,9 +194,7 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<Changed<CardView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
-        let description = description
-            .map(normalize_description)
-            .transpose()?;
+        let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;

@@ -13,7 +13,7 @@ use super::super::model::{CardView, Choice, HistoryKind};
 use super::super::reader;
 use super::{Transition, lane_end, lock_project, new_id, save_task, stamp, transition_event};
 use crate::domain::{
-    Actor, ChangeContext, Changed, Column, ProjectId, RunState, check_work_state,
+    Actor, ChangeContext, Changed, Column, MAX_CHOICES, ProjectId, RunState, check_work_state,
     validate_work_reason,
 };
 use crate::error::AgboardError;
@@ -169,6 +169,12 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<Changed<CardView>, AgboardError> {
         let reason = validate_work_reason(reason)?;
+        if state == RunState::Pending && !(2..=MAX_CHOICES).contains(&choices.len()) {
+            return Err(AgboardError::InvalidValue {
+                field: "choices".into(),
+                reason: "A pending request needs a question and 2 to 10 choices.".into(),
+            });
+        }
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;

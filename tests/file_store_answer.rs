@@ -103,6 +103,31 @@ impl Fixture {
             .join("task.json")
     }
 
+    /// A pending request with no choices, as the earlier form stored a reason-only request. The store no
+    /// longer creates one, so the choices are removed from the stored file after a valid request is made.
+    fn legacy_reason_only(&self, id: i64, question: &str) -> String {
+        let asked = self
+            .store
+            .request_decision(
+                &self.project,
+                id,
+                Actor::Ai,
+                question,
+                vec![choice("a", "Plan A"), choice("b", "Plan B")],
+                later(),
+            )
+            .unwrap();
+        let request = asked.value.pending_request_id.unwrap();
+        let path = self.task_path(id);
+        let mut task: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        if let Some(event) = task["history"].as_array_mut().and_then(|h| h.last_mut()) {
+            event["choices"] = serde_json::json!([]);
+        }
+        fs::write(&path, serde_json::to_string_pretty(&task).unwrap()).unwrap();
+        request
+    }
+
     fn raw(&self, id: i64) -> serde_json::Value {
         serde_json::from_str(&fs::read_to_string(self.task_path(id)).unwrap()).unwrap()
     }
@@ -199,23 +224,10 @@ fn a_choice_only_answer_returns_the_card_to_idle_and_records_the_choice() {
 fn a_text_answer_works_for_a_reason_only_request() {
     let fx = fixture();
     let id = fx.working_card();
-    let asked = fx
-        .store
-        .set_agent_status(
-            &fx.project,
-            id,
-            RunState::Pending,
-            ChangeContext {
-                actor: Actor::Ai,
-                reason: "Which way?".into(),
-            },
-            None,
-            later(),
-        )
-        .unwrap();
-    assert_eq!(asked.value.pending_reason.as_deref(), Some("Which way?"));
-    assert!(asked.value.pending_choices.is_empty());
-    let request = asked.value.pending_request_id.unwrap();
+    let request = fx.legacy_reason_only(id, "Which way?");
+    let asked = fx.store.card(&fx.project, id).unwrap();
+    assert_eq!(asked.pending_reason.as_deref(), Some("Which way?"));
+    assert!(asked.pending_choices.is_empty());
 
     let card = fx
         .store
@@ -352,21 +364,7 @@ fn an_unknown_choice_is_refused_and_changes_nothing() {
 fn a_choice_is_unknown_for_a_reason_only_request() {
     let fx = fixture();
     let id = fx.working_card();
-    let asked = fx
-        .store
-        .set_agent_status(
-            &fx.project,
-            id,
-            RunState::Pending,
-            ChangeContext {
-                actor: Actor::Ai,
-                reason: "Which way?".into(),
-            },
-            None,
-            later(),
-        )
-        .unwrap();
-    let request = asked.value.pending_request_id.unwrap();
+    let request = fx.legacy_reason_only(id, "Which way?");
     let err = fx
         .store
         .answer_request(

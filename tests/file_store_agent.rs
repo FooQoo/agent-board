@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
+use agent_board::file_store::model::Choice;
 use chrono::{TimeZone, Utc};
 
 fn now() -> chrono::DateTime<Utc> {
@@ -224,12 +225,12 @@ fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
         .unwrap();
     let pending = fx
         .store
-        .set_agent_status(
+        .request_decision(
             &fx.project,
             id,
-            RunState::Pending,
-            ctx(Actor::Ai, "Which way?"),
-            None,
+            Actor::Ai,
+            "Which way?",
+            vec![choice("a", "Plan A"), choice("b", "Plan B")],
             later(),
         )
         .unwrap();
@@ -338,12 +339,12 @@ fn a_stale_or_missing_request_id_is_refused_when_leaving_pending() {
         .unwrap();
     let pending = fx
         .store
-        .set_agent_status(
+        .request_decision(
             &fx.project,
             id,
-            RunState::Pending,
-            ctx(Actor::Ai, "Question"),
-            None,
+            Actor::Ai,
+            "Question",
+            vec![choice("a", "Plan A"), choice("b", "Plan B")],
             later(),
         )
         .unwrap();
@@ -515,4 +516,11 @@ fn running_on_a_done_card_is_refused_by_the_state_table() {
         matches!(err, AgboardError::InvalidStateForAssignee),
         "{err:?}"
     );
+}
+
+fn choice(id: &str, label: &str) -> Choice {
+    Choice {
+        id: id.into(),
+        label: label.into(),
+    }
 }

@@ -1,7 +1,7 @@
 //! `state`: a card's run state. Answering a pending request, asking one with
-//! `--request-file`, and the plain run-state changes.
+//! `--request-json`, and the plain run-state changes.
 
-use std::path::Path;
+use std::io::Read;
 
 use serde::Deserialize;
 use serde_json::json;
@@ -13,7 +13,7 @@ use crate::error::{AgboardError, FileAction};
 use crate::file_store::Answer;
 use crate::file_store::model::Choice;
 
-/// The JSON of `--request-file`: a question and up to ten choices.
+/// The JSON of `--request-json`: a question and two to ten choices.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RequestFile {
@@ -29,17 +29,26 @@ fn invalid(message: &str) -> AgboardError {
     }
 }
 
-/// The request in `--request-file`. A file that cannot be read is `file_error`;
-/// one that is not the expected JSON is `invalid_value`.
-fn read_request_file(path: &Path) -> Result<RequestFile, AgboardError> {
-    let text = std::fs::read_to_string(path).map_err(|e| AgboardError::FileError {
-        action: FileAction::Read,
-        file: path.display().to_string(),
-        reason: e.to_string(),
-    })?;
+/// The request in `--request-json`, or on standard input when the value is `-`.
+/// Standard input that cannot be read is `file_error`; JSON that is not the
+/// expected shape is `invalid_value`.
+fn read_request_json(value: &str) -> Result<RequestFile, AgboardError> {
+    let text = if value == "-" {
+        let mut text = String::new();
+        std::io::stdin()
+            .read_to_string(&mut text)
+            .map_err(|e| AgboardError::FileError {
+                action: FileAction::Read,
+                file: "standard input".into(),
+                reason: e.to_string(),
+            })?;
+        text
+    } else {
+        value.to_string()
+    };
     serde_json::from_str(&text).map_err(|e| AgboardError::InvalidValue {
-        field: "request-file".into(),
-        reason: format!("The request file must be JSON with a question and choices: {e}."),
+        field: "request-json".into(),
+        reason: format!("The request must be JSON with a question and 2 to 10 choices: {e}."),
     })
 }
 
@@ -63,15 +72,20 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             "--choice is only valid when answering a pending request.",
         ));
     }
-    if args.request_file.is_some() {
+    if state == RunState::Pending && !answering && args.request_json.is_none() {
+        return Err(invalid(
+            "A pending state needs --request-json with a question and 2 to 10 choices.",
+        ));
+    }
+    if args.request_json.is_some() {
         if state != RunState::Pending {
             return Err(invalid(
-                "--request-file is only valid with the pending state.",
+                "--request-json is only valid with the pending state.",
             ));
         }
         if reason.is_some() {
             return Err(invalid(
-                "--request-file holds the question; give no --reason with it.",
+                "--request-json holds the question; give no --reason with it.",
             ));
         }
     }
@@ -90,8 +104,8 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             ctx.files
                 .answer_request(project_id, args.id, request, answer, ctx.clock.now())?;
         (card, true)
-    } else if let Some(path) = &args.request_file {
-        let file = read_request_file(path)?;
+    } else if let Some(value) = &args.request_json {
+        let file = read_request_json(value)?;
         let result = ctx.files.request_decision(
             project_id,
             args.id,

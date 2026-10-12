@@ -2,7 +2,7 @@ import { editorValue, pasteMarkdown } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody } from '../helpers/agboard';
+import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody, decisionJson } from '../helpers/agboard';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The Rust serve on 7631 is real; only the browser storage and a few request
@@ -707,7 +707,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Idle Added by the CLI `) })).toBeVisible();
   agboardOk(mainProject, ['state', String(fresh + 1), 'running']);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Running Added by the CLI `) })).toBeVisible();
-  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--reason', 'Waiting for a theme review']);
+  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--actor', 'ai', '--request-json', decisionJson('Waiting for a theme review')]);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Pending Added by the CLI `) })).toContainText(
     'Waiting for a theme review',
   );

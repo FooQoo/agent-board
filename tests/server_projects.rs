@@ -572,7 +572,14 @@ fn pending_request(home: &Path, id: &ProjectId) -> String {
     s.move_work_card(id, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
     let result = s
-        .set_agent_status(id, 2, RunState::Pending, ctx("Need direction"), None, t(5))
+        .request_decision(
+            id,
+            2,
+            agent_board::domain::Actor::Ai,
+            "Need direction",
+            two_choices(),
+            t(5),
+        )
         .unwrap();
     result.value.pending_request_id.unwrap()
 }
@@ -1304,8 +1311,15 @@ fn put_draft_refuses_running_but_allows_pending_cards() {
     assert_eq!(reply.status, 409, "{}", reply.body);
     assert_eq!(reply.code(), "invalid_state_for_draft");
 
-    s.set_agent_status(&a, 2, RunState::Pending, ctx("Ask"), None, t(5))
-        .unwrap();
+    s.request_decision(
+        &a,
+        2,
+        agent_board::domain::Actor::Ai,
+        "Ask",
+        two_choices(),
+        t(5),
+    )
+    .unwrap();
     let before_pending = snapshot_json(home.path(), &a);
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
@@ -1410,4 +1424,17 @@ fn the_page_carries_a_content_security_policy_and_no_referrer() {
             "{path}"
         );
     }
+}
+
+fn two_choices() -> Vec<agent_board::file_store::model::Choice> {
+    vec![
+        agent_board::file_store::model::Choice {
+            id: "a".into(),
+            label: "Plan A".into(),
+        },
+        agent_board::file_store::model::Choice {
+            id: "b".into(),
+            label: "Plan B".into(),
+        },
+    ]
 }

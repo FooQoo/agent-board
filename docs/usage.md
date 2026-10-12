@@ -141,13 +141,7 @@ Add `--json` for machine-readable output. Use `agboard --help` or `agboard <comm
 
 ## Ask and answer decisions
 
-An AI-owned card must be in Doing before its agent state can become Running or Pending. For a question without choices:
-
-```sh
-agboard --project "My project" state 1 pending --actor ai --reason "Which launch approach should we use?"
-```
-
-For a question with choices, create `question.json`:
+An AI-owned card must be in Doing before its agent state can become Running or Pending. A question for the user always has choices: pass the question and two to ten options as JSON with `--request-json`, either inline or from standard input with `-`:
 
 ```json
 {
@@ -159,13 +153,19 @@ For a question with choices, create `question.json`:
 }
 ```
 
-Then send it:
+Send it inline:
 
 ```sh
-agboard --project "My project" state 1 pending --actor ai --request-file question.json
+agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}'
 ```
 
-`choices` is optional and can contain up to 10 options. The request gets an ID; read the current request in `show` or `snapshot`. A user can answer in the browser, or pass that request ID to the CLI:
+Or read it from standard input:
+
+```sh
+cat question.json | agboard --project "My project" state 1 pending --actor ai --request-json -
+```
+
+`choices` takes 2 to 10 options; a request with fewer or more is refused, and so is a pending state without `--request-json`. The request gets an ID; read the current request in `show` or `snapshot`. A user can answer in the browser, or pass that request ID to the CLI:
 
 ```sh
 agboard --project "My project" state 1 idle --actor human --request "<request-id>" --choice preview --reason "Get feedback before the public launch"

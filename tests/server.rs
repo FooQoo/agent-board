@@ -192,12 +192,12 @@ fn board_home() -> tempfile::TempDir {
         )
         .unwrap();
     store
-        .set_agent_status(
+        .request_decision(
             &main,
             third.id,
-            RunState::Pending,
-            context("Waiting for review"),
-            None,
+            agent_board::domain::Actor::Ai,
+            "Waiting for review",
+            two_choices(),
             t(7),
         )
         .unwrap();
@@ -646,10 +646,17 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let pending = server.send_json(
         "POST",
         &server.api("/cards/4/agent-status"),
-        r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction"}"#,
+        r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction","choices":[{"id":"a","label":"Plan A"},{"id":"b","label":"Plan B"}]}"#,
         Some(&token),
     );
     assert_eq!(pending.status, 200, "{}", pending.body);
+    let no_choices = server.send_json(
+        "POST",
+        &server.api("/cards/4/agent-status"),
+        r#"{"agentStatus":"pending","actor":"ai","reason":"A question with no choices"}"#,
+        Some(&token),
+    );
+    assert_eq!(no_choices.status, 422, "{}", no_choices.body);
     let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
     let request_id = request["card"]["pendingRequestId"].as_str().unwrap();
     let body = serde_json::json!({"requestId":request_id,"actor":"human","text":"Proceed with A"})
@@ -1791,4 +1798,17 @@ fn archive_done_refuses_empty_and_repeated_lists_and_changed_targets_and_resends
     let body: serde_json::Value = serde_json::from_str(&again.body).unwrap();
     assert_eq!(body["archivedCount"], 0);
     assert!(body["cards"][0]["archivedAt"].is_string());
+}
+
+fn two_choices() -> Vec<agent_board::file_store::model::Choice> {
+    vec![
+        agent_board::file_store::model::Choice {
+            id: "a".into(),
+            label: "Plan A".into(),
+        },
+        agent_board::file_store::model::Choice {
+            id: "b".into(),
+            label: "Plan B".into(),
+        },
+    ]
 }

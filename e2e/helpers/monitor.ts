@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { agboardBinary, agboardCatalogOk, projectId, cardBody, workspace } from './agboard';
+import { agboardBinary, agboardCatalogOk, projectId, cardBody, decisionJson, workspace } from './agboard';
 
 export const monitorPort = 8060;
 export const remotePort = 8061;
@@ -36,7 +36,8 @@ function move(home: string, project: string, id: number, lane: 'doing' | 'done',
 }
 
 function state(home: string, project: string, id: number, status: 'running' | 'pending', reason: string): void {
-  run(home, ['--project', project, 'state', String(id), status, '--actor', 'ai', '--reason', reason]);
+  const args = status === 'pending' ? ['--request-json', decisionJson(reason)] : ['--reason', reason];
+  run(home, ['--project', project, 'state', String(id), status, '--actor', 'ai', ...args]);
 }
 
 function writeJson(file: string, value: unknown): void {

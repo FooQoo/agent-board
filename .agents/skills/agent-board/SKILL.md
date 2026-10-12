@@ -144,11 +144,12 @@ Before asking, record the facts, the impact, the options, and your recommendatio
 ```
 
 ```sh
-agboard --project "<name>" state <id> pending --actor ai --request-file <path>
+agboard --project "<name>" state <id> pending --actor ai --request-json '<json>'
+cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-json -
 ```
 
-- `question`: 1 to 2,000 characters. `choices`: 0 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
-- For an open question without choices, use `--reason "<question>"` instead of a request file.
+- `question`: 1 to 2,000 characters. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
+- Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
 - The card must be an AI card in `doing`.
 
 The user answers in the browser with a choice, a note, or both. The answer returns the card to `idle` and appears in the history with the request ID, the chosen choice, and the note.

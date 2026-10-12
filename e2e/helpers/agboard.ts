@@ -427,3 +427,14 @@ export async function stopServe(serve: Serve | undefined): Promise<void> {
     await exited;
   }
 }
+
+/** A decision request for `state ... pending --request-json`: the question and two choices. */
+export function decisionJson(question: string): string {
+  return JSON.stringify({
+    question,
+    choices: [
+      { id: 'a', label: 'Plan A' },
+      { id: 'b', label: 'Plan B' },
+    ],
+  });
+}

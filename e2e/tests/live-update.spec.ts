@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { agboardOk, mainProject, nextCardId, resetBoard, cardBody } from '../helpers/agboard';
+import { agboardOk, mainProject, nextCardId, resetBoard, cardBody, decisionJson } from '../helpers/agboard';
 import { pasteMarkdown } from '../helpers/ui';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
@@ -87,7 +87,7 @@ test('agboard state updates the run state and reason without reloading', async (
   agboardOk(mainProject, ['state', '13', 'running']);
   await expect(doing.getByRole('button', { name: /^#13 AI Running Check the board display / })).toBeVisible();
 
-  agboardOk(mainProject, ['state', '13', 'pending', '--reason', 'Waiting for a review']);
+  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--request-json', decisionJson('Waiting for a review')]);
   const pending = doing.getByRole('button', { name: /^#13 AI Pending Check the board display / });
   await expect(pending).toBeVisible();
   await expect(pending).toContainText('Waiting for a review');

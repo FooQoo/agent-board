@@ -1,4 +1,6 @@
 use std::io::{BufRead, BufReader};
+
+mod common;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -79,8 +81,8 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
             "pending",
             "--actor",
             "ai",
-            "--reason",
-            "Need the user's direction",
+            "--request-json",
+            &common::decision_json("Need the user's direction"),
             "--json",
         ],
     );
