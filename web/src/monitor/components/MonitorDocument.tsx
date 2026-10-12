@@ -39,14 +39,16 @@ export function MonitorDocument({
         </p>
       ))}
       {!acceptanceError && acceptance.length > 0 && (
-        <section className="monitor-document__acceptance" aria-label={t('acceptance.title')}>
-          <h3>{t('acceptance.title')}</h3>
-          <p>
-            {t('acceptance.progress', {
-              done: acceptance.filter((item) => item.done).length,
-              total: acceptance.length,
-            })}
-          </p>
+        <details className="monitor-document__acceptance">
+          <summary>
+            <span>{t('acceptance.title')}</span>
+            <span>
+              {t('acceptance.progress', {
+                done: acceptance.filter((item) => item.done).length,
+                total: acceptance.length,
+              })}
+            </span>
+          </summary>
           <ul>
             {acceptance.map((item) => (
               <li key={item.id}>
@@ -62,7 +64,7 @@ export function MonitorDocument({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       )}
       {body.trim() ? (
         <MarkdownView
