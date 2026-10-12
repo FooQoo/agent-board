@@ -8,7 +8,8 @@ import { waitForSync } from '../helpers/ui';
 const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
 const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
-const request = (page: Page) => details(page).getByRole('region', { name: 'The agent is waiting for your answer' });
+const request = (page: Page, id: number) =>
+  page.locator(`.card__answer[data-card-id="${id}"]`).getByRole('region', { name: 'The agent is waiting for your answer' });
 
 function show(id: number): CardJson & { cardStatus: string; agentStatus: string; pendingRequestId: string | null } {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
@@ -32,11 +33,11 @@ test('an AI card in Todo asks, shows as pending there, and the answer returns it
   await expect(lane(page, 'Todo')).toContainText('Which plan before we start?');
 
   await card(page, id).click();
-  await expect(request(page)).toContainText('Which plan before we start?');
-  const answer = request(page).getByRole('textbox', { name: 'Your answer' });
+  await expect(request(page, id)).toContainText('Which plan before we start?');
+  const answer = request(page, id).getByRole('textbox', { name: 'Your answer' });
   await answer.fill('Plan A, then review');
-  await request(page).getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(request(page)).toHaveCount(0);
+  await request(page, id).getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(request(page, id)).toHaveCount(0);
 
   // The card is still in Todo, and idle again.
   expect(show(id)).toMatchObject({ cardStatus: 'todo', agentStatus: 'idle', pendingRequestId: null });

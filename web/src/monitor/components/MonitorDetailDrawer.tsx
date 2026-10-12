@@ -1,4 +1,3 @@
-import { FileTextIcon, HistoryIcon, LayersIcon } from 'lucide-react';
 import { useId, useRef, type TouchEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Drawer } from '../../components/ui/drawer';
@@ -178,18 +177,29 @@ export function MonitorDetailDrawer({
     {
       id: 'description' as const,
       label: t('monitor.body'),
-      icon: <FileTextIcon aria-hidden="true" />,
+      icon: null,
     },
     {
       id: 'history' as const,
       label: t('detail.tabHistory'),
-      icon: <HistoryIcon aria-hidden="true" />,
-      count: filtered.length,
+      icon: null,
     },
-    { id: 'epic' as const, label: t('monitor.epic'), icon: <LayersIcon aria-hidden="true" /> },
+    { id: 'epic' as const, label: t('monitor.epic'), icon: null },
   ];
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} title={card.title}>
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      identity={t('monitor.drawerIdentity', { id: card.id })}
+      title={card.title}
+      label={
+        card.epic ? (
+          <span className="mobile-drawer__epic-label" title={card.epic.name}>
+            {card.epic.id}
+          </span>
+        ) : null
+      }
+    >
       <div className="monitor-drawer__tabs">
         <DetailTabList
           idBase={idBase}

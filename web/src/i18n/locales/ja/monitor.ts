@@ -8,6 +8,7 @@ export const monitorJa = {
     cards: 'カード',
     readOnly: '閲覧専用 · 取得した最新の状態',
     detailFooter: '閲覧専用 · {{time}}に取得',
+    drawerIdentity: 'Agent Board · #{{id}}',
     body: '本文',
     epic: 'エピック',
     epicLoading: 'エピックを読み込んでいます…',

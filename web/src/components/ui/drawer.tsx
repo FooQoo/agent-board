@@ -7,12 +7,16 @@ import { Dialog, DialogContent, DialogTitle } from './dialog';
 export function Drawer({
   open,
   onOpenChange,
+  identity,
   title,
+  label,
   children,
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
+  identity: string;
   title: string;
+  label?: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -64,7 +68,11 @@ export function Drawer({
           <span className="mobile-drawer__handle-indicator" aria-hidden="true" />
         </button>
         <header className="mobile-drawer__header">
-          <DialogTitle className="mobile-drawer__title">{title}</DialogTitle>
+          <div className="mobile-drawer__heading">
+            <p className="mobile-drawer__identity">{identity}</p>
+            <DialogTitle className="mobile-drawer__title">{title}</DialogTitle>
+            {label}
+          </div>
           <button
             type="button"
             className="mobile-drawer__close"

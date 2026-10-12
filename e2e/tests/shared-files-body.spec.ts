@@ -17,7 +17,8 @@ interface ShownCard extends CardJson {
 const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
 const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const body = (dialog: Locator) => dialog.getByRole('textbox', { name: 'Description (Markdown)' });
-const request = (page: Page) => details(page).getByRole('region', { name: 'The agent is waiting for your answer' });
+const request = (page: Page, id: number) =>
+  page.locator(`.card__answer[data-card-id="${id}"]`).getByRole('region', { name: 'The agent is waiting for your answer' });
 
 function show(id: number): ShownCard {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
@@ -118,33 +119,33 @@ test('a decision request is answered with a choice only, with text only, or with
   // A choice alone.
   askWithChoices(16, 'Which way?', choices);
   await card(page, 16).click();
-  const answer = request(page);
+  const answer = request(page, 16);
   await expect(answer.getByRole('radiogroup', { name: 'Choices' })).toBeVisible();
   const send = answer.getByRole('button', { name: 'Send', exact: true });
   await expect(send).toBeDisabled();
   await answer.getByRole('radio', { name: 'Proceed' }).check();
   await expect(send).toBeEnabled();
   await send.click();
-  await expect(request(page)).toHaveCount(0);
+  await expect(request(page, 16)).toHaveCount(0);
   expect(show(16)).toMatchObject({ agentStatus: 'idle' });
   expect(show(16).history.at(-1)).toMatchObject({ choiceId: 'proceed', choiceLabel: 'Proceed' });
 
   // Text alone, with no choice.
   askText(16, 'What name?');
-  await expect(request(page)).toContainText('What name?');
-  await request(page).getByRole('textbox', { name: 'Your answer' }).fill('Keep the old name.');
-  await request(page).getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(request(page)).toHaveCount(0);
+  await expect(request(page, 16)).toContainText('What name?');
+  await request(page, 16).getByRole('textbox', { name: 'Your answer' }).fill('Keep the old name.');
+  await request(page, 16).getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(request(page, 16)).toHaveCount(0);
   expect(show(16).history.at(-1)).toMatchObject({ reason: 'Keep the old name.' });
   expect(show(16).history.at(-1)?.choiceId ?? null).toBeNull();
 
   // A choice and a note together.
   askWithChoices(16, 'Which way now?', choices);
-  await expect(request(page).getByRole('radio', { name: 'Stop' })).toBeVisible();
-  await request(page).getByRole('radio', { name: 'Stop' }).check();
-  await request(page).getByRole('textbox', { name: 'Your answer' }).fill('Stop after the backup.');
-  await request(page).getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(request(page)).toHaveCount(0);
+  await expect(request(page, 16).getByRole('radio', { name: 'Stop' })).toBeVisible();
+  await request(page, 16).getByRole('radio', { name: 'Stop' }).check();
+  await request(page, 16).getByRole('textbox', { name: 'Your answer' }).fill('Stop after the backup.');
+  await request(page, 16).getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(request(page, 16)).toHaveCount(0);
   expect(show(16).history.at(-1)).toMatchObject({ choiceId: 'stop', reason: 'Stop after the backup.' });
 });
 
@@ -152,11 +153,11 @@ test('an answer with nothing chosen and nothing typed cannot be sent', async ({ 
   askWithChoices(15, 'Ready?', [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }]);
   await openBoard(page);
   await card(page, 15).click();
-  const send = request(page).getByRole('button', { name: 'Send', exact: true });
+  const send = request(page, 15).getByRole('button', { name: 'Send', exact: true });
   await expect(send).toBeDisabled();
-  await request(page).getByRole('textbox', { name: 'Your answer' }).fill('   ');
+  await request(page, 15).getByRole('textbox', { name: 'Your answer' }).fill('   ');
   await expect(send).toBeDisabled();
-  await request(page).getByRole('radio', { name: 'Yes' }).check();
+  await request(page, 15).getByRole('radio', { name: 'Yes' }).check();
   await expect(send).toBeEnabled();
 });
 

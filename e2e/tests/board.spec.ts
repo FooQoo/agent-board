@@ -27,7 +27,7 @@ test('three lanes show their names and card counts', async ({ page }) => {
     await expect(column.getByText(count, { exact: true })).toBeVisible();
     await expect(column.locator('.lane__cards .card')).toHaveCount(Number(count));
   }
-  await expect(page.getByRole('region')).toHaveCount(3);
+  await expect(page.getByRole('region', { name: /^(Todo|Doing|Done)$/ })).toHaveCount(3);
 });
 
 test('a card shows its ID, title, and update time', async ({ page }) => {

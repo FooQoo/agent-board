@@ -1,15 +1,22 @@
 .card__answer {
   width: 100%;
   cursor: auto;
+  margin: 0 15px;
+  width: calc(100% - 30px);
+  padding: 10px 0;
+  border-top: 1px solid var(--r-pend-bd);
 }
 
 .card__answer .detail__request {
-  padding: 8px;
+  padding: 0;
   gap: 7px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .card__answer .detail__answer-input.detail__answer-input {
-  min-height: 88px;
+  min-height: 60px;
   padding: 8px;
 }
 

@@ -29,8 +29,8 @@ const synced = (page: Page) => page.getByRole('contentinfo').getByRole('status')
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
 const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-/** The request of a pending card, above the tabs, where the answer is typed in place. */
-const request = (page: Page) => details(page).getByRole('region', { name: 'The agent is waiting for your answer' });
+/** The inline answer form for a pending card; its accessible labels follow the selected language. */
+const request = (page: Page, id: number) => page.locator(`.card__answer[data-card-id="${id}"]`);
 /**
  * The project switcher, the first button in the header. An open menu or dialog hides the page behind it
  * from the accessibility tree, so it is found by CSS, which works in every state.
@@ -196,7 +196,7 @@ test.describe('two projects with the same card numbers', () => {
     const fresh = nextCardId('Alpha', home);
 
     // Answer the pending request in Alpha with the board's own dialog.
-    const answer = request(page);
+    const answer = request(page, 2);
     await answer.getByRole('textbox', { name: 'Your answer' }).fill('Use the MIT license.');
     await answer.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(answer).toHaveCount(0);
@@ -242,7 +242,7 @@ test.describe('two projects with the same card numbers', () => {
 
     // And acting in Beta leaves Alpha as it was.
     const alphaBefore = snapshotOf('Alpha', home);
-    const betaAnswer = request(page);
+    const betaAnswer = request(page, 2);
     await betaAnswer.getByRole('textbox', { name: 'Your answer' }).fill('Use plain files.');
     await betaAnswer.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(betaAnswer).toHaveCount(0);
@@ -386,7 +386,7 @@ test.describe('two projects with the same card numbers', () => {
         };
       } else if (kind === 'answer') {
         await card(page, 2).click();
-        const dialog = request(page);
+        const dialog = request(page, 2);
         // Typed text holds the project in place; Cancel clears it and frees the menu.
         await dialog.getByRole('textbox', { name: 'Your answer' }).fill('Typed in the form.');
         close = async () => {
@@ -498,13 +498,21 @@ test.describe('two projects with the same card numbers', () => {
     await page.goForward();
     await expect(switcher(page)).toHaveText('Beta');
     await card(page, 2).click();
-    const answer = request(page);
+    const answer = request(page, 2);
     await answer.getByRole('textbox', { name: 'Your answer' }).fill('Beta answer.');
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
+    await expect(switcher(page)).toHaveText('Beta');
+    await expect(answer.getByRole('textbox', { name: 'Your answer' })).toHaveValue('Beta answer.');
+    await expect(answer.getByRole('button', { name: 'Send', exact: true })).toBeEnabled();
+    const answerResponse = page.waitForResponse((response) =>
+      response.url().includes(`/api/projects/${beta}/cards/2/answer`),
+    );
     await answer.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(answer).toHaveCount(0);
+    expect((await answerResponse).status()).toBe(200);
     await expect(switcher(page)).toHaveText('Alpha');
+    // Alpha has its own pending #2, so an ID-only locator now resolves to Alpha's answer form.
+    await expect(request(page, 2)).toBeVisible();
     expect(listCards('Beta', home).find(({ id }) => id === 2)?.agentStatus).toBe('idle');
     expect(listCards('Alpha', home).find(({ id }) => id === 2)?.agentStatus).toBe('pending');
     expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
@@ -635,7 +643,7 @@ test.describe('two projects with the same card numbers', () => {
       // The person answers the request of Alpha's card #2 on the page.
       await open(page, alpha);
       await card(page, 2).click();
-      const answer = request(page);
+      const answer = request(page, 2);
       await answer.getByRole('textbox', { name: 'Your answer' }).fill('Use the MIT license, please.');
       await answer.getByRole('button', { name: 'Send', exact: true }).click();
       await expect(answer).toHaveCount(0);
@@ -852,10 +860,11 @@ test.describe('two projects with the same card numbers', () => {
     const japanesePanel = page.getByRole('complementary', { name: 'カードの詳細' });
     // The answer form is part of the request, open at once; no dialog opens.
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(japanesePanel.getByRole('textbox', { name: '回答' })).toBeVisible();
-    await japanesePanel.getByRole('textbox', { name: '回答' }).fill('Typed then cleared.');
-    await japanesePanel.getByRole('button', { name: 'キャンセル', exact: true }).click();
-    await expect(japanesePanel.getByRole('textbox', { name: '回答' })).toHaveValue('');
+    const japaneseAnswer = request(page, 2);
+    await expect(japaneseAnswer.getByRole('textbox', { name: '回答' })).toBeVisible();
+    await japaneseAnswer.getByRole('textbox', { name: '回答' }).fill('Typed then cleared.');
+    await japaneseAnswer.getByRole('button', { name: 'キャンセル', exact: true }).click();
+    await expect(japaneseAnswer.getByRole('textbox', { name: '回答' })).toHaveValue('');
 
     // The detail width a person chose belongs to the screen, not to the project.
     const panel = page.getByRole('complementary', { name: 'カードの詳細' });

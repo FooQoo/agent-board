@@ -8,6 +8,7 @@ export const monitorEn = {
     cards: 'Cards',
     readOnly: 'Read-only · Latest available snapshot',
     detailFooter: 'Read-only · Updated {{time}}',
+    drawerIdentity: 'Agent Board · #{{id}}',
     body: 'Body',
     epic: 'Epic',
     epicLoading: 'Loading epic…',

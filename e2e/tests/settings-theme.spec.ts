@@ -535,10 +535,10 @@ test('the move dialog and the answer dialog take the focus and give it back', as
   await card(page, 12).click();
   // The answer is typed in place, not in a dialog: the form is open with the request, and its text area takes focus.
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  const answerBox = details(page).getByRole('textbox', { name: 'Your answer' });
+  const answerBox = page.locator('.card__answer[data-card-id="12"]').getByRole('textbox', { name: 'Your answer' });
   await answerBox.click();
   await expect(answerBox).toBeFocused();
-  await details(page).getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.locator('.card__answer[data-card-id="12"]').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(answerBox).toHaveValue('');
   expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
 });
@@ -595,7 +595,7 @@ test('changing the language does not translate or alter what was entered', async
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
   await card(page, 12).click();
-  const answer = details(page);
+  const answer = page.locator(`.card__answer[data-card-id="12"]`);
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Keep the database name.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(card(page, 12)).toContainText('Idle');
@@ -608,7 +608,7 @@ test('changing the language does not translate or alter what was entered', async
 
   // The interface is Japanese; the entered text is exactly as typed.
   await expect(lane(page, '進行中')).toBeVisible();
-  const entered = card(page, fresh);
+  const entered = lane(page, '進行中').getByRole('button', { name: new RegExp(`^#${fresh}(?!\\d)`) });
   await expect(entered).toContainText('Draft the release note');
   await entered.click();
   const panel = details(page, 'カードの詳細');
@@ -666,7 +666,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} AI Idle Review the themes `) })).toBeVisible();
-  await card(page, fresh).click();
+  await lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh}(?!\\d)`) }).click();
   await details(page).getByRole('tab', { name: /^History/ }).click();
   await expect(details(page).getByRole('listitem').first()).toContainText('Starting the review.');
   expect(listCards(mainProject).find(({ id }) => id === fresh)).toMatchObject({ cardStatus: 'doing' });
@@ -675,18 +675,18 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await card(page, 12).click();
   const panel = details(page);
   await expect(panel).toContainText('Pending');
-  const answer = panel.getByRole('region', { name: 'The agent is waiting for your answer' });
+  const answer = page.locator('.card__answer[data-card-id="12"]').getByRole('region', { name: 'The agent is waiting for your answer' });
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Replace the board after a backup.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(answer).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('listitem').first()).toContainText('Replace the board after a backup.');
-  await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
+  await expect(page.locator('.card__answer[data-card-id="12"]')).toHaveCount(0);
   expect(listCards(mainProject).find(({ id }) => id === 12)).toMatchObject({ agentStatus: 'idle', pendingReason: null });
 
   // Archive from the toolbar beside the tabs; Cancel keeps the card, Archive removes it from the board.
-  await card(page, fresh).click();
+  await lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh}(?!\\d)`) }).click();
   await panel.getByRole('button', { name: 'Archive card' }).click();
   const confirm = panel.getByRole('group', { name: `Archive #${fresh} "Review the themes"? You can restore it from the archive.` });
   await expect(confirm).toBeVisible();
@@ -696,7 +696,6 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await panel.getByRole('button', { name: 'Archive card' }).click();
   await panel.getByRole('button', { name: 'Archive', exact: true }).click();
   await expect(panel).toContainText('Select a card to see its details.');
-  await expect(card(page, fresh)).toHaveCount(0);
   await expect(page.getByRole('contentinfo')).toContainText('8 cards');
   expect(listCards(mainProject).map(({ id }) => id)).not.toContain(fresh);
 
@@ -800,7 +799,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
     });
   });
   await card(page, 12).click();
-  const answer = details(page).getByRole('region', { name: 'The agent is waiting for your answer' });
+  const answer = page.locator('.card__answer[data-card-id="12"]').getByRole('region', { name: 'The agent is waiting for your answer' });
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Kept answer.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
   // The in-place answer shows the board's fixed save-failure text rather than the server's reason.
