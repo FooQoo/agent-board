@@ -67,5 +67,9 @@ await writeFile(
 
 const accessHtml = await readFile(join(fileURLToPath(accessDir), 'index.html'), 'utf8');
 const monitorHtml = await readFile(join(fileURLToPath(monitorDir), 'index.html'), 'utf8');
-if (accessHtml.includes('agboard-token') || monitorHtml.includes('agboard-token'))
-  throw new Error('Public entry pages must not contain the session token meta.');
+if (accessHtml.includes('agboard-token'))
+  throw new Error('The public access entry must not contain a session token meta.');
+if (!monitorHtml.includes('name="agboard-monitor-token" content="{{AGBOARD_MONITOR_TOKEN}}"'))
+  throw new Error('The monitor entry must contain only its runtime token placeholder.');
+if (monitorHtml.includes('name="agboard-token"'))
+  throw new Error('The monitor entry must not contain the PC session token meta.');

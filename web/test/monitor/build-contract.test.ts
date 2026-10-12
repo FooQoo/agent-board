@@ -6,7 +6,7 @@ const dist = resolve('dist');
 const read = (relative: string) => readFileSync(join(dist, relative), 'utf8');
 
 describe('isolated monitor build', () => {
-  it('emits fixed access and monitor entries without a token or PC entry', () => {
+  it('emits an access entry without a token and a monitor entry with only its runtime placeholder', () => {
     const access = read('access/index.html');
     const monitor = read('monitor/index.html');
     expect(access).toContain('/assets/access/entry.js');
@@ -15,7 +15,10 @@ describe('isolated monitor build', () => {
     expect(access).toMatch(/\/assets\/access\/entry\.js\?v=[a-f0-9]{16}/);
     expect(monitor).toMatch(/\/assets\/monitor\/monitor\.js\?v=[a-f0-9]{16}/);
     expect(monitor).toMatch(/\/assets\/monitor\/monitor\.css\?v=[a-f0-9]{16}/);
-    expect(`${access}\n${monitor}`).not.toContain('agboard-token');
+    expect(access).not.toContain('agboard-token');
+    expect(monitor).toContain('name="agboard-monitor-token" content="{{AGBOARD_MONITOR_TOKEN}}"');
+    expect(monitor).not.toContain('name="agboard-token"');
+    expect(monitor).not.toMatch(/name="agboard-monitor-token" content="[a-f0-9]{64}"/);
     expect(`${access}\n${monitor}`).not.toContain('/assets/app.js');
   });
 

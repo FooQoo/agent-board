@@ -23,12 +23,14 @@ fn monitor_assets_are_embedded_and_have_their_own_lookup_boundary() {
 }
 
 #[test]
-fn access_and_monitor_html_are_public_and_token_free() {
-    for html in [monitor::assets::ACCESS_HTML, monitor::assets::MONITOR_HTML] {
-        assert!(!html.contains("agboard-token"));
-        assert!(!html.contains("{{AGBOARD_TOKEN}}"));
-        assert!(!html.contains("/assets/app.js"));
-    }
+fn access_is_token_free_and_monitor_html_contains_only_a_runtime_placeholder() {
+    assert!(!monitor::assets::ACCESS_HTML.contains("agboard-token"));
+    assert!(
+        monitor::assets::MONITOR_HTML
+            .contains("name=\"agboard-monitor-token\" content=\"{{AGBOARD_MONITOR_TOKEN}}\"")
+    );
+    assert!(!monitor::assets::MONITOR_HTML.contains("name=\"agboard-token\""));
+    assert!(!monitor::assets::MONITOR_HTML.contains("/assets/app.js"));
     assert!(monitor::assets::ACCESS_HTML.contains("/assets/access/entry.js"));
     assert!(monitor::assets::MONITOR_HTML.contains("/assets/monitor/monitor.js"));
 }

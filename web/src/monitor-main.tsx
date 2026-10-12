@@ -9,6 +9,7 @@ import './styles/app.css';
 import './styles/ui.css';
 import './styles/modal.css';
 import './styles/theme.css';
+import './styles/decision-request.css';
 import './monitor/monitor.css';
 
 initializeTheme();

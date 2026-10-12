@@ -49,8 +49,6 @@ impl MonitorState {
 
 pub(crate) fn router(state: Arc<MonitorState>) -> Router {
     Router::new()
-        .route("/monitor", get(redirect_monitor))
-        .route("/monitor/", get(index))
         .route("/assets/monitor/{name}", get(asset))
         .route("/monitor/api/projects", get(projects).head(projects))
         .route(
@@ -82,7 +80,12 @@ pub(crate) fn router(state: Arc<MonitorState>) -> Router {
 }
 
 async fn method_guard(request: Request, next: Next) -> Response {
-    if !request.uri().path().starts_with("/monitor/api/")
+    let path = request.uri().path();
+    let monitor_answer = path.starts_with("/monitor/api/projects/")
+        && path.ends_with("/answer")
+        && matches!(*request.method(), Method::POST);
+    if !path.starts_with("/monitor/api/")
+        || monitor_answer
         || matches!(*request.method(), Method::GET | Method::HEAD)
     {
         next.run(request).await
@@ -148,25 +151,6 @@ async fn security_headers(request: Request, next: Next) -> Response {
 
 async fn not_found() -> Response {
     StatusCode::NOT_FOUND.into_response()
-}
-
-async fn redirect_monitor() -> Response {
-    (
-        StatusCode::PERMANENT_REDIRECT,
-        [(header::LOCATION, "/monitor/")],
-    )
-        .into_response()
-}
-
-async fn index() -> Response {
-    (
-        [
-            (header::CONTENT_TYPE, "text/html; charset=utf-8"),
-            (header::CACHE_CONTROL, "no-store"),
-        ],
-        super::assets::MONITOR_HTML,
-    )
-        .into_response()
 }
 
 async fn asset(Path(name): Path<String>) -> Response {

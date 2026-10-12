@@ -1,4 +1,4 @@
-//! Assets and request support for the remote read-only surface.
+//! Assets and request support for the remote board and monitor surfaces.
 
 pub mod assets;
 
@@ -38,13 +38,23 @@ pub(crate) fn router(
         authorities: authorities.clone(),
         token: remote_token,
     };
+    let monitor_token = crate::server::assets::new_token()?;
     let monitor = Arc::new(MonitorState::new(
         app.shared.clone(),
         app.index.clone(),
         app.changed.clone(),
         authorities.as_ref().clone(),
     ));
-    Ok(super::api::remote_router(app, guard).merge(monitor_router(monitor)))
+    let monitor_write_guard = super::api::RemoteGuard {
+        token: monitor_token,
+        ..guard.clone()
+    };
+    Ok(super::api::remote_router(app.clone(), guard)
+        .merge(monitor_router(monitor))
+        .merge(crate::server::monitor::write_router(
+            app,
+            monitor_write_guard,
+        )))
 }
 
 fn invalid_origin(origin: &str) -> AgboardError {
