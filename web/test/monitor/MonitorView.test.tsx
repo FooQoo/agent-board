@@ -1,10 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { MonitorView } from '../../src/monitor/View';
 import type { MonitorCard, MonitorFreshness, MonitorViewProps } from '../../src/monitor/contracts';
 import { PROJECT_A, makeCard } from '../fixtures';
+import { useMonitorInteractions } from '../../src/monitor/hooks/useMonitorInteractions';
 
 beforeEach(() => selectLocale('en'));
 
@@ -122,5 +123,92 @@ describe('mobile monitor lanes and card actions', () => {
     await user.click(screen.getByRole('button', { name: 'MOB-1' }));
     expect(onOpenDetail).toHaveBeenLastCalledWith(target, 'epic');
     expect(onOpenDetail).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('monitor answer interactions', () => {
+  it('answers Todo and Doing cards through the shared form and prevents resubmission from the old snapshot', async () => {
+    const writeAnswer = vi.fn(async (_projectId, cardId: number) => ({
+      card: makeCard({
+        id: cardId,
+        cardStatus: cardId === 1 ? 'todo' : 'doing',
+        agentStatus: 'idle',
+        pendingRequestId: null,
+      }),
+      changed: true,
+    }));
+    function Connected() {
+      const answerController = useMonitorInteractions({ writeAnswer });
+      return (
+        <MonitorView
+          {...props()}
+          answerController={answerController}
+          scopeLocked={answerController.locked}
+        />
+      );
+    }
+    const user = userEvent.setup();
+    render(<Connected />);
+    const todo = screen.getByRole('article', { name: /Todo decision/ });
+    const doing = screen.getByRole('article', { name: /Doing decision/ });
+
+    await user.type(within(todo).getByRole('textbox'), 'Keep both approaches');
+    expect(
+      (screen.getByRole('button', { name: 'All Projects' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await user.click(within(todo).getByRole('button', { name: 'Send' }));
+    await user.type(within(doing).getByRole('textbox'), 'Use the shared implementation');
+    await user.click(within(doing).getByRole('button', { name: 'Send' }));
+
+    expect(writeAnswer).toHaveBeenNthCalledWith(1, PROJECT_A.id, 1, {
+      requestId: 'request-1',
+      text: 'Keep both approaches',
+    });
+    expect(writeAnswer).toHaveBeenNthCalledWith(2, PROJECT_A.id, 4, {
+      requestId: 'request-4',
+      text: 'Use the shared implementation',
+    });
+    expect((within(todo).getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect(
+      (within(doing).getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+});
+
+describe('monitor answer retry and retained drafts', () => {
+  it('keeps the text after a failed save and sends it again when Retry is chosen', async () => {
+    const writeAnswer = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        card: makeCard({ id: 1, cardStatus: 'todo', agentStatus: 'idle', pendingRequestId: null }),
+        changed: true,
+      });
+    function Connected() {
+      const answerController = useMonitorInteractions({ writeAnswer });
+      return (
+        <MonitorView
+          {...props()}
+          answerController={answerController}
+          scopeLocked={answerController.locked}
+        />
+      );
+    }
+    const user = userEvent.setup();
+    render(<Connected />);
+    const todo = screen.getByRole('article', { name: /Todo decision/ });
+    const textarea = within(todo).getByRole('textbox') as HTMLTextAreaElement;
+    await user.type(textarea, 'Keep my response');
+    await user.click(within(todo).getByRole('button', { name: 'Send' }));
+    expect(textarea.value).toBe('Keep my response');
+    expect(within(todo).getByRole('button', { name: 'Retry' })).toBeTruthy();
+    await user.click(within(todo).getByRole('button', { name: 'Retry' }));
+    expect(writeAnswer).toHaveBeenCalledTimes(2);
+    expect(writeAnswer).toHaveBeenLastCalledWith(PROJECT_A.id, 1, {
+      requestId: 'request-1',
+      text: 'Keep my response',
+    });
   });
 });

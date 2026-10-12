@@ -92,3 +92,48 @@ describe('monitor read client', () => {
     vi.useRealTimers();
   });
 });
+
+describe('monitor answer client', () => {
+  it('uses the monitor token and only the fixed answer POST route', async () => {
+    document.head.innerHTML = '<meta name="agboard-monitor-token" content="monitor-secret">';
+    const card = { id: 7, title: 'Decision', pendingRequestId: null };
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ card, changed: true }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { monitorClient } = await import('../../src/monitor/client');
+
+    await expect(
+      monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', choiceId: 'yes' }),
+    ).resolves.toEqual({ card, changed: true });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/monitor/api/projects/${PROJECT_ID}/cards/7/answer`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Agboard-Token': 'monitor-secret',
+        },
+        body: JSON.stringify({ requestId: 'request-7', choiceId: 'yes' }),
+      }),
+    );
+  });
+
+  it('preserves write codes and status for changed requests and stale page tokens', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { code: 'page_out_of_date', reason: 'reload', message: 'stale' },
+          }),
+          { status: 403 },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { monitorClient } = await import('../../src/monitor/client');
+    await expect(
+      monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', text: 'answer' }),
+    ).rejects.toMatchObject({ status: 403, code: 'page_out_of_date' });
+  });
+});
