@@ -11,7 +11,7 @@ function run(command: string, args: string[]): void {
 
 export default async function globalSetup(): Promise<void> {
   // The binary embeds web/dist, so the screen is built first.
-  run('pnpm', ['--dir', 'web', 'build']);
+  run('corepack', ['pnpm', '--dir', 'web', 'build']);
   run('cargo', ['build']);
 
   const home = makeHome('main');

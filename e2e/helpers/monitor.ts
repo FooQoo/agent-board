@@ -5,8 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { agboardBinary, agboardCatalogOk, projectId, cardBody, decisionJson, workspace } from './agboard';
 
-export const monitorPort = 8060;
-export const remotePort = 8061;
+export const monitorPort = Number(process.env.AGBOARD_MONITOR_PORT ?? 8060);
+export const remotePort = Number(process.env.AGBOARD_REMOTE_PORT ?? 8061);
 export const monitorOrigin = `http://127.0.0.1:${remotePort}`;
 export const remoteOrigin = `http://127.0.0.1:${remotePort}`;
 
