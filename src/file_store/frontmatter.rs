@@ -24,7 +24,7 @@ pub struct AcceptanceItem {
 }
 
 /// What a text holds: the body after the frontmatter and the conditions in it.
-/// A text with a defect has no conditions, and its body is the whole text.
+/// A text with a defect has no conditions; its body is the text after the closing line (the whole text when there is no closing line).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Parsed {
     pub body: String,
@@ -98,18 +98,20 @@ pub fn parse(text: &str) -> Parsed {
         }
         Split::Found { yaml, body } => (yaml, body),
     };
+    // A broken frontmatter is a defect, but the body after its closing line is still shown.
+    let found_body = body.to_string();
     let value = match read_yaml(yaml) {
         Ok(value) => value,
-        Err(defect) => return with_defect(&text, defect),
+        Err(defect) => return with_defect(&found_body, defect),
     };
     let (indexed, mut defects) = match read_items(&value) {
         Ok(read) => read,
-        Err(defect) => return with_defect(&text, defect),
+        Err(defect) => return with_defect(&found_body, defect),
     };
     defects.extend(check_items(&indexed));
     if !defects.is_empty() {
         return Parsed {
-            body: text.clone(),
+            body: found_body,
             acceptance: Vec::new(),
             defects,
         };
@@ -121,9 +123,9 @@ pub fn parse(text: &str) -> Parsed {
     }
 }
 
-fn with_defect(text: &str, defect: Defect) -> Parsed {
+fn with_defect(body: &str, defect: Defect) -> Parsed {
     Parsed {
-        body: text.to_string(),
+        body: body.to_string(),
         acceptance: Vec::new(),
         defects: vec![defect],
     }

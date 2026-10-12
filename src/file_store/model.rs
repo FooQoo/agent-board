@@ -155,7 +155,7 @@ pub struct CardView {
     pub id: i64,
     pub title: String,
     pub description: String,
-    /// TASK.md without its frontmatter. The whole file when the frontmatter has a defect.
+    /// TASK.md without its frontmatter: the text after the closing line, or the whole file when there is no closing line.
     pub body: String,
     pub acceptance: Vec<AcceptanceItem>,
     pub acceptance_error: bool,
@@ -207,7 +207,7 @@ pub struct EpicView {
     pub color: String,
     pub is_draft: bool,
     pub plan: String,
-    /// PLAN.md without its frontmatter. The whole file when the frontmatter has a defect.
+    /// PLAN.md without its frontmatter: the text after the closing line, or the whole file when there is no closing line.
     pub body: String,
     pub acceptance: Vec<AcceptanceItem>,
     pub acceptance_error: bool,

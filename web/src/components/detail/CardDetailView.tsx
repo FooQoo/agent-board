@@ -53,6 +53,9 @@ export function CardDetailView({
 }: CardDetailViewProps) {
   const { t } = useTranslation();
   const idBase = useId();
+  const ownProblems = problems.filter((problem) =>
+    problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
+  );
   return (
     <aside className="detail detail-view" aria-label={t('detail.title')}>
       <div className="detail__top">
@@ -103,14 +106,20 @@ export function CardDetailView({
         aria-labelledby={tabId(idBase, 'description')}
         hidden={tab !== 'description'}
       >
-        <ProblemNotice
-          problems={problems.filter((problem) =>
-            problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
-          )}
-        />
+        {/* An unreadable card names its own problems inside its notice; other problems use the alert. */}
+        <ProblemNotice problems={card.acceptanceError ? [] : ownProblems} />
         {card.acceptanceError && (
           <div className="acceptance-unreadable" role="status">
             <p className="acceptance-unreadable__title">{t('acceptance.unreadableTitle')}</p>
+            {ownProblems.map((problem) => (
+              <p key={`${problem.file}:${problem.field}`} className="acceptance-unreadable__problem">
+                {t('acceptance.unreadableProblem', {
+                  file: problem.file,
+                  field: problem.field,
+                  reason: problem.reason,
+                })}
+              </p>
+            ))}
             <p className="acceptance-unreadable__note">{t('acceptance.unreadableNote')}</p>
           </div>
         )}

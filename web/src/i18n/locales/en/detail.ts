@@ -74,6 +74,7 @@ export const detailEn = {
     unreadable: 'Unreadable',
     unreadableTitle: 'Acceptance conditions cannot be read',
     unreadableNote: 'Progress is not shown until the file is fixed. The body is shown below.',
+    unreadableProblem: '{{file}} ({{field}}) — {{reason}}',
     savedIn:
       'Saved in the frontmatter of the file. Agents check them; they change only through the edit dialog.',
     showAll: 'Show all ({{count}})',

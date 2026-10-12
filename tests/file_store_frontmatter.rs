@@ -137,12 +137,12 @@ fn done_must_be_a_boolean() {
 }
 
 #[test]
-fn a_defect_leaves_no_conditions_and_returns_the_whole_file_as_the_body() {
+fn a_defect_leaves_no_conditions_and_returns_the_body_after_the_frontmatter() {
     let text = "---\nacceptance:\n  - id: AC-1\n    text: 条件\n    done: false\n  - id: AC-1\n    text: 重複\n    done: false\n---\n\nbody\n";
     let parsed = parse(text);
     assert!(!parsed.defects.is_empty());
     assert!(parsed.acceptance.is_empty());
-    assert_eq!(parsed.body, text);
+    assert_eq!(parsed.body, "body\n");
 }
 
 #[test]

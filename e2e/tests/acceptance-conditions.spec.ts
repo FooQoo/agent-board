@@ -203,7 +203,7 @@ test('a frontmatter that cannot be read is shown as a problem, the body stays vi
 
   await card(page, id).click();
   await expect(details(page).getByText('Body stays visible.')).toBeVisible();
-  await expect(details(page).getByRole('alert')).toContainText('tasks/' + id + '/TASK.md');
+  await expect(details(page).locator('.acceptance-unreadable')).toContainText('tasks/' + id + '/TASK.md');
   await expect(card(page, id).locator('.acceptance-chip--error')).toHaveText('Unreadable');
 
   // The product does not rewrite the file; the CLI reports the same problem.
