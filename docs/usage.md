@@ -165,13 +165,20 @@ Or read it from standard input:
 cat question.json | agboard --project "My project" state 1 pending --actor ai --request-json -
 ```
 
-Add `--wait` to ask and wait for the answer in one command. It needs a running `agboard serve`, and it prints the answer (the choice, the note, and the card) once the request is answered:
+Add a `wait` object to the JSON to ask and wait for the answer in one command. It needs a running `agboard serve`, and it prints the answer (the choice, the note, and the card) once the request is answered:
 
-```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{...}' --wait --timeout 600
+```json
+{
+  "question": "Which launch approach should we use?",
+  "choices": [
+    { "id": "preview", "label": "Publish a preview first" },
+    { "id": "public", "label": "Launch publicly" }
+  ],
+  "wait": { "timeoutSeconds": 600 }
+}
 ```
 
-`--timeout` is in seconds (default 600). A timeout is not an answer: the command exits with `wait_timeout` and the request stays pending. If a move takes the question back, it exits with `request_changed`. Without a running server, nothing is asked.
+`timeoutSeconds` is required, from 1 to 86,400 (a day). Without `wait`, the command asks and returns. A timeout is not an answer: the command exits with `wait_timeout` and the request stays pending. If a move takes the question back, it exits with `request_changed`. Without a running server, or with a `wait` that is not valid, nothing is asked.
 
 `choices` takes 2 to 10 options; a request with fewer or more is refused, and so is a pending state without `--request-json`. The request gets an ID; read the current request in `show` or `snapshot`. A user can answer in the browser, or pass that request ID to the CLI:
 

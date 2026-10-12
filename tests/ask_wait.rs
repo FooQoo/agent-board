@@ -1,4 +1,5 @@
-//! `state ... pending --request-json ... --wait`: ask a decision and wait for its answer in one command.
+//! `state ... pending --request-json '{..., "wait": {"timeoutSeconds": N}}'`: ask a decision and wait for its
+//! answer in one command.
 
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -8,7 +9,13 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 use tempfile::tempdir;
 
-const QUESTION: &str = r#"{"question":"Which plan?","choices":[{"id":"a","label":"Plan A"},{"id":"b","label":"Plan B"}]}"#;
+/// A question with two choices and the given `wait` value (`None` leaves the key out).
+fn question(wait: Option<&str>) -> String {
+    let wait = wait.map(|w| format!(r#","wait":{w}"#)).unwrap_or_default();
+    format!(
+        r#"{{"question":"Which plan?","choices":[{{"id":"a","label":"Plan A"}},{{"id":"b","label":"Plan B"}}]{wait}}}"#
+    )
+}
 
 fn command(home: &Path, args: &[&str]) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_agboard"));
@@ -67,7 +74,8 @@ fn wait_for_request(home: &Path) -> String {
     }
 }
 
-fn ask_and_wait(home: &Path, timeout: &str) -> Child {
+fn ask_and_wait(home: &Path, timeout_seconds: u64) -> Child {
+    let wait = format!(r#"{{"timeoutSeconds":{timeout_seconds}}}"#);
     command(
         home,
         &[
@@ -78,10 +86,7 @@ fn ask_and_wait(home: &Path, timeout: &str) -> Child {
             "--actor",
             "ai",
             "--request-json",
-            QUESTION,
-            "--wait",
-            "--timeout",
-            timeout,
+            &question(Some(&wait)),
         ],
     )
     .stdout(Stdio::piped())
@@ -100,7 +105,7 @@ fn the_answer_comes_back_when_the_request_is_answered() {
     let home = tempdir().unwrap();
     board(home.path());
     let server = start_server(home.path());
-    let waiter = ask_and_wait(home.path(), "30");
+    let waiter = ask_and_wait(home.path(), 30);
     let request = wait_for_request(home.path());
     let answered = agboard(
         home.path(),
@@ -139,7 +144,7 @@ fn a_timeout_is_not_an_answer_and_the_request_stays() {
     let home = tempdir().unwrap();
     board(home.path());
     let server = start_server(home.path());
-    let output = ask_and_wait(home.path(), "1").wait_with_output().unwrap();
+    let output = ask_and_wait(home.path(), 1).wait_with_output().unwrap();
     stop(server);
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
@@ -152,7 +157,7 @@ fn a_move_cancels_the_request_and_the_wait_says_so() {
     let home = tempdir().unwrap();
     board(home.path());
     let server = start_server(home.path());
-    let waiter = ask_and_wait(home.path(), "30");
+    let waiter = ask_and_wait(home.path(), 30);
     wait_for_request(home.path());
     let moved = agboard(
         home.path(),
@@ -170,7 +175,7 @@ fn a_move_cancels_the_request_and_the_wait_says_so() {
 fn without_a_server_nothing_is_asked() {
     let home = tempdir().unwrap();
     board(home.path());
-    let output = ask_and_wait(home.path(), "5").wait_with_output().unwrap();
+    let output = ask_and_wait(home.path(), 5).wait_with_output().unwrap();
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "board_unavailable");
@@ -178,19 +183,51 @@ fn without_a_server_nothing_is_asked() {
 }
 
 #[test]
-fn wait_needs_a_request() {
+fn a_wait_without_its_time_or_out_of_range_is_refused_and_nothing_is_asked() {
+    let home = tempdir().unwrap();
+    board(home.path());
+    for wait in [
+        r#"{}"#,
+        r#"{"timeoutSeconds":0}"#,
+        r#"{"timeoutSeconds":86401}"#,
+        "true",
+    ] {
+        let output = agboard(
+            home.path(),
+            &[
+                "--json",
+                "state",
+                "1",
+                "pending",
+                "--actor",
+                "ai",
+                "--request-json",
+                &question(Some(wait)),
+            ],
+        );
+        assert!(!output.status.success(), "{wait}");
+        let error: Value = serde_json::from_slice(&output.stderr).unwrap();
+        assert_eq!(error["error"]["code"], "invalid_value", "{wait}");
+        assert_eq!(card(home.path())["agentStatus"], "idle", "{wait}");
+    }
+}
+
+#[test]
+fn without_a_wait_the_question_is_sent_and_the_command_returns() {
     let home = tempdir().unwrap();
     board(home.path());
     let output = agboard(
         home.path(),
         &[
-            "state", "1", "idle", "--actor", "ai", "--reason", "x", "--wait",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            &question(None),
         ],
     );
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("--request-json"),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success());
+    assert_eq!(card(home.path())["agentStatus"], "pending");
 }

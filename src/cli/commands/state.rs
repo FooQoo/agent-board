@@ -21,10 +21,20 @@ struct RequestFile {
     question: String,
     #[serde(default)]
     choices: Vec<Choice>,
+    /// Present when the command should wait for the answer after asking.
+    #[serde(default)]
+    wait: Option<WaitSpec>,
 }
 
-/// How long `--wait` waits for an answer unless `--timeout` says otherwise.
-const DEFAULT_WAIT_SECS: u64 = 600;
+/// How the command waits for the answer. The time is required: a wait always has an end.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct WaitSpec {
+    timeout_seconds: u64,
+}
+
+/// The longest wait, in seconds: a day.
+const MAX_WAIT_SECS: u64 = 86_400;
 
 /// Wait until request `request` of card `id` is answered or cancelled, and return the card then. A
 /// timeout is `wait_timeout`; a request that a move took back is `request_changed`. It uses the same
@@ -111,10 +121,20 @@ fn read_request_json(value: &str) -> Result<RequestFile, AgboardError> {
     } else {
         value.to_string()
     };
-    serde_json::from_str(&text).map_err(|e| AgboardError::InvalidValue {
-        field: "request-json".into(),
-        reason: format!("The request must be JSON with a question and 2 to 10 choices: {e}."),
-    })
+    let request: RequestFile =
+        serde_json::from_str(&text).map_err(|e| AgboardError::InvalidValue {
+            field: "request-json".into(),
+            reason: format!("The request must be JSON with a question and 2 to 10 choices: {e}."),
+        })?;
+    if let Some(wait) = &request.wait
+        && !(1..=MAX_WAIT_SECS).contains(&wait.timeout_seconds)
+    {
+        return Err(AgboardError::InvalidValue {
+            field: "request-json".into(),
+            reason: format!("wait.timeoutSeconds must be from 1 to {MAX_WAIT_SECS}."),
+        });
+    }
+    Ok(request)
 }
 
 pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError> {
@@ -142,25 +162,6 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             "A pending state needs --request-json with a question and 2 to 10 choices.",
         ));
     }
-    if args.wait && args.request_json.is_none() {
-        return Err(invalid("--wait is only valid with --request-json."));
-    }
-    if args.wait {
-        // Nothing is saved when the wait cannot work: it needs the server's event stream.
-        let dir = ctx
-            .files
-            .shared_dir()
-            .parent()
-            .unwrap_or_else(|| std::path::Path::new("."))
-            .to_path_buf();
-        let running = crate::paths::read_serve_info_in(&dir)
-            .is_some_and(|info| crate::server::is_serving(&info));
-        if !running {
-            return Err(AgboardError::BoardUnavailable {
-                reason: "--wait needs a running server. Run \"agboard serve\" first.".into(),
-            });
-        }
-    }
     if args.request_json.is_some() {
         if state != RunState::Pending {
             return Err(invalid(
@@ -171,6 +172,33 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             return Err(invalid(
                 "--request-json holds the question; give no --reason with it.",
             ));
+        }
+    }
+
+    // The request is read once, before anything is saved; a wait that cannot work saves nothing.
+    let request = args
+        .request_json
+        .as_deref()
+        .map(read_request_json)
+        .transpose()?;
+    let wait_secs = request
+        .as_ref()
+        .and_then(|r| r.wait.as_ref())
+        .map(|w| w.timeout_seconds);
+    if wait_secs.is_some() {
+        // The wait needs the server's event stream.
+        let dir = ctx
+            .files
+            .shared_dir()
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .to_path_buf();
+        let running = crate::paths::read_serve_info_in(&dir)
+            .is_some_and(|info| crate::server::is_serving(&info));
+        if !running {
+            return Err(AgboardError::BoardUnavailable {
+                reason: "A wait needs a running server. Run \"agboard serve\" first.".into(),
+            });
         }
     }
 
@@ -188,8 +216,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             ctx.files
                 .answer_request(project_id, args.id, request, answer, ctx.clock.now())?;
         (card, true)
-    } else if let Some(value) = &args.request_json {
-        let file = read_request_json(value)?;
+    } else if let Some(file) = request {
         let result = ctx.files.request_decision(
             project_id,
             args.id,
@@ -212,7 +239,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         )?;
         (result.value, result.changed)
     };
-    if args.wait {
+    if let Some(timeout) = wait_secs {
         let request = card
             .pending_request_id
             .clone()
@@ -225,7 +252,6 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             .unwrap_or_else(|| std::path::Path::new("."))
             .to_path_buf();
         crate::cli::run::after_commit(ctx, &dir);
-        let timeout = args.timeout.unwrap_or(DEFAULT_WAIT_SECS);
         let resolved = wait_for_resolution(ctx, args.id, &request, timeout)?;
         let answer = answer_of(&resolved, &request);
         let note = answer
