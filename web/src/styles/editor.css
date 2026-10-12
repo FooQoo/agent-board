@@ -416,6 +416,28 @@
   }
 }
 
+/* On a phone the three columns stack into one scrolling column: the outline, the form, then the images. A
+   narrow form lets the acceptance editor lay its rows out in two lines. */
+@media (max-width: 640px) {
+  .editor__body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .editor__side,
+  .editor__aside {
+    width: 100%;
+    flex: none;
+    border: 0;
+    border-bottom: 1px solid var(--r-border);
+    overflow: visible;
+  }
+  .editor__main {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+}
+
 .editor__outline-item[aria-current="location"] {
   background: var(--r-accent-soft);
   color: var(--r-accent);
