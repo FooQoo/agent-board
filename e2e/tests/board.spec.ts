@@ -25,7 +25,7 @@ test('three lanes show their names and card counts', async ({ page }) => {
     const column = lane(page, name);
     await expect(column.getByRole('heading', { level: 2 })).toHaveText(name);
     await expect(column.getByText(count, { exact: true })).toBeVisible();
-    await expect(column.getByRole('list').getByRole('button')).toHaveCount(Number(count));
+    await expect(column.locator('.lane__cards').getByRole('button')).toHaveCount(Number(count));
   }
   await expect(page.getByRole('region')).toHaveCount(3);
 });
@@ -77,7 +77,7 @@ test('Doing cards show Idle, Running, or Pending, and a pending card shows its r
 });
 
 test('Done lists the newest card first', async ({ page }) => {
-  await expect(lane(page, 'Done').getByRole('list').getByRole('button')).toHaveText([/^#9(?!\d)/, /^#8(?!\d)/]);
+  await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button')).toHaveText([/^#9(?!\d)/, /^#8(?!\d)/]);
 });
 
 test('the footer shows the card count and the sync time', async ({ page }) => {

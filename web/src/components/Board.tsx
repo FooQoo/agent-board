@@ -47,9 +47,10 @@ export function Board({
   return (
     <DragDropProvider
       onDragOver={(event) => {
-        // The sorting would move the card's element inside the list the page renders, which React does not
-        // know about. The card stays where it is until the new order is saved and the board is read again.
-        event.preventDefault();
+        // Cards sort only inside their own lane. Another lane is a move, which waits for its reason, so
+        // the card must not be shown there before it is confirmed.
+        const { source, target } = event.operation;
+        if (source && target && source.data.column !== target.data.column) event.preventDefault();
       }}
       onDragEnd={(event) => {
         if (event.canceled) return;
@@ -59,15 +60,16 @@ export function Board({
         const card = cards.find((item) => item.id === cardId);
         if (!card || !(column === 'todo' || column === 'doing' || column === 'done')) return;
         if (card.cardStatus !== column) {
+          // The drag drops the focus from the card. Give it back first, so the dialog returns to the card.
+          if (source?.element instanceof HTMLElement) source.element.focus();
           onMove(card, column);
           return;
         }
-        const target = event.operation.target;
-        if (!onReorder || !source || !target || target.id === source.id) return;
-        // Dropped on a card of the lane: the card takes that card's place. Dropped on the lane itself: the end.
-        const targetIndex = isSortable(target) ? target.sortable.index : groups[column].length;
+        if (!onReorder || !source || !isSortable(source)) return;
+        const { initialIndex, index } = source.sortable;
+        if (initialIndex === index) return;
         const others = groups[column].filter((item) => item.id !== card.id);
-        onReorder(card, others[targetIndex]?.id ?? null);
+        onReorder(card, others[index]?.id ?? null);
       }}
     >
       <main className="board">

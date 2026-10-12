@@ -43,8 +43,8 @@ test('agboard mv moves a card without reloading', async ({ page }) => {
 
   // A card finished just now goes to the top of Done.
   agboardOk(mainProject, ['mv', '16', 'done']);
-  await expect(lane(page, 'Done').getByRole('list').getByRole('button').first()).toHaveText(/^#16(?!\d)/);
-  await expect(lane(page, 'Done').getByRole('list').getByRole('button')).toHaveCount(3);
+  await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#16(?!\d)/);
+  await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button')).toHaveCount(3);
   await notReloaded(page);
 });
 
@@ -105,7 +105,7 @@ test('the selection stays on a card that moves to another lane', async ({ page }
   await expect(panel).toContainText('Doing');
 
   agboardOk(mainProject, ['mv', '11', 'done']);
-  await expect(lane(page, 'Done').getByRole('list').getByRole('button').first()).toHaveText(/^#11(?!\d)/);
+  await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#11(?!\d)/);
   await expect(card(page, 11)).toHaveAttribute('aria-current', 'true');
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Implement card moves');
   await expect(panel).toContainText('Done');

@@ -46,7 +46,8 @@ export function CardContent({
 const noop = () => {};
 
 /**
- * A board card. The card is the draggable, selectable area (the drag library gives it the button role); the
+ * A board card. It is a direct child of its lane's card container, so the sorting moves it among its
+ * siblings and the lane keeps its gaps. The card is the draggable, selectable area (the drag library gives it the button role); the
  * EPIC-ID label is a button of its own, so a press on it opens the epic and does not select the card.
  */
 export function Card({ card, selected, index = 0, onSelect, onOpenEpic = noop }: CardProps) {
