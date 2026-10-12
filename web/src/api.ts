@@ -126,7 +126,7 @@ async function postEmpty(path: string): Promise<{ card: Card }> {
   });
   const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || !body.card)
-    throw new WriteError(
+    throw writeFailure(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
@@ -186,6 +186,20 @@ export class WriteError extends Error {
   }
 }
 
+/** The event fired when the server refuses a write because this page's token is out of date. */
+export const STALE_PAGE_EVENT = 'agboard:stale-page';
+
+/** The error of a rejected write. A stale page also tells the app, so that it can ask for a reload. */
+export function writeFailure(
+  message: string,
+  status: number,
+  code: string | null,
+  detail: string | null = null,
+): WriteError {
+  if (code === 'page_out_of_date') window.dispatchEvent(new Event(STALE_PAGE_EVENT));
+  return new WriteError(message, status, code, detail);
+}
+
 /**
  * The file, item and reason of a `file_invalid` answer, or null for other errors.
  * The server sends `message` as "<file> is not valid." and `reason` as "<field>: <reason>" (or the reason alone).
@@ -211,7 +225,7 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
     error?: ApiError['error'];
   };
   if (!response.ok) {
-    throw new WriteError(
+    throw writeFailure(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
@@ -267,7 +281,7 @@ async function sendMultipart(path: string, body: FormData, method: 'POST' | 'PAT
   const response = await fetch(path, { method, headers: { 'X-Agboard-Token': readToken() }, body });
   const data = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || !data.card)
-    throw new WriteError(
+    throw writeFailure(
       data.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       data.error?.code ?? null,
@@ -369,7 +383,7 @@ async function sendCard(
   });
   const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
   if (!response.ok || body.card === undefined) {
-    throw new WriteError(
+    throw writeFailure(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
@@ -443,7 +457,7 @@ async function sendEpic(
   });
   const data = (await response.json()) as { epic?: Epic; error?: ApiError['error'] };
   if (!response.ok || data.epic === undefined)
-    throw new WriteError(
+    throw writeFailure(
       data.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       data.error?.code ?? null,

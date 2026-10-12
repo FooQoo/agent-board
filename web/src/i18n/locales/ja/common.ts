@@ -100,4 +100,9 @@ export const commonJa = {
     noProjects: 'プロジェクトなし',
     noSelection: '未選択',
   },
+  stalePage: {
+    title: 'このページは古くなっています',
+    body: 'サーバーが再起動されました。ページを再読み込みしてください。入力中の内容は再読み込みで消えます。',
+    reload: 'ページを再読み込み',
+  },
 } as const;

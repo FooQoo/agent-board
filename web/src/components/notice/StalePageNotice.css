@@ -1,0 +1,32 @@
+.stale-page {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  right: 0;
+  left: 0;
+  z-index: 1000;
+  /* An open dialog sets pointer-events: none on the body; the banner must still take the click. */
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--r-danger);
+  background: var(--r-surface);
+  color: var(--r-text);
+  font-size: 14px;
+}
+
+.stale-page__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stale-page__text strong {
+  color: var(--r-danger);
+  font-weight: 600;
+}

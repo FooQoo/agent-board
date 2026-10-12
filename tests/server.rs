@@ -1086,7 +1086,14 @@ fn a_delete_missing_any_one_condition_is_403_and_the_card_remains() {
         let reply = server.send("DELETE", &server.api("/cards/1"), &headers);
         assert_eq!(reply.status, 403, "{name}");
         let body: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
-        assert_eq!(body["error"]["code"], "forbidden", "{name}");
+        // A token that is present but wrong comes from an earlier server: the page asks for a reload. Anything
+        // else is simply forbidden. Both are refused, and nothing is deleted.
+        let expected = if name == "wrong token" || name == "short token" {
+            "page_out_of_date"
+        } else {
+            "forbidden"
+        };
+        assert_eq!(body["error"]["code"], expected, "{name}");
         assert_eq!(card_ids(home.path()), vec![1, 2, 3], "{name}");
     }
 }
@@ -1811,4 +1818,35 @@ fn two_choices() -> Vec<agent_board::file_store::model::Choice> {
             label: "Plan B".into(),
         },
     ]
+}
+
+#[test]
+fn a_write_with_a_token_from_an_earlier_server_asks_for_a_reload() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let body = r#"{"title":"Stale","description":"","assignee":"ai","actor":"ai"}"#;
+    let stale = server.send_json(
+        "POST",
+        &server.api("/cards"),
+        body,
+        Some("an-earlier-token"),
+    );
+    assert_eq!(stale.status, 403, "{}", stale.body);
+    assert!(
+        stale.body.contains("\"page_out_of_date\""),
+        "{}",
+        stale.body
+    );
+    let missing = server.send_json("POST", &server.api("/cards"), body, None);
+    assert_eq!(missing.status, 403, "{}", missing.body);
+    assert!(missing.body.contains("\"forbidden\""), "{}", missing.body);
+    let board: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+    assert!(
+        board["cards"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|card| card["title"] != "Stale")
+    );
 }

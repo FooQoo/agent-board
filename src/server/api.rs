@@ -343,6 +343,14 @@ async fn write_guard(
     };
     if reads || (context.remote.is_none() && request.uri().path() == "/api/notify") || allowed {
         next.run(request).await
+    } else if context.remote.is_none()
+        && request.headers().contains_key("x-agboard-token")
+        && matches!(
+            write_refusal(request.headers(), &context),
+            Some(guard::Denial::Token)
+        )
+    {
+        page_out_of_date()
     } else {
         forbidden("Changes can only be made from the board page.")
     }
@@ -834,13 +842,29 @@ async fn archive_done(
 }
 
 fn write_allowed(headers: &HeaderMap, context: &GuardContext) -> bool {
+    write_refusal(headers, context).is_none()
+}
+
+/// Why a local write is refused, if it is. The checks run in the order of `check_delete`.
+fn write_refusal(headers: &HeaderMap, context: &GuardContext) -> Option<guard::Denial> {
     let request = DeleteRequest {
         host: header_text(headers, "host"),
         origin: header_text(headers, "origin"),
         sec_fetch_site: header_text(headers, "sec-fetch-site"),
         token: header_text(headers, "x-agboard-token"),
     };
-    guard::check_delete(&request, context.port, &context.token).is_ok()
+    guard::check_delete(&request, context.port, &context.token).err()
+}
+
+/// The page holds a token from an earlier server (the server was restarted). Its writes are refused with a
+/// code of their own, so the page can ask the person to reload instead of retrying.
+fn page_out_of_date() -> Response {
+    error_response(
+        StatusCode::FORBIDDEN,
+        "page_out_of_date",
+        "The server was restarted, so this page is out of date.",
+        "Reload the page to load the current token. Changes made on this page are not saved.",
+    )
 }
 
 fn remote_write_allowed(headers: &HeaderMap, remote: &RemoteGuard) -> bool {

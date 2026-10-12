@@ -25,6 +25,8 @@ import { useCardLifecycle } from './hooks/useCardLifecycle';
 import { useBoardEvents } from './hooks/useBoardEvents';
 import { useDetailWidth } from './hooks/useDetailWidth';
 import { useProjects } from './hooks/useProjects';
+import { STALE_PAGE_EVENT } from './api';
+import { StalePageNotice } from './components/notice/StalePageNotice';
 import { findCard, groupCards, nextSelection } from './lib/board';
 import { isProjectId } from './lib/projectSession';
 import { useProjectSession } from './hooks/useProjectSession';
@@ -83,6 +85,12 @@ export function App({ initial }: AppProps) {
 
   // The first visit without a project in the URL shows the first project, replacing the history entry.
   const firstProject = projects.status === 'ready' ? (projects.projects[0] ?? null) : null;
+  const [stalePage, setStalePage] = useState(false);
+  useEffect(() => {
+    const onStale = () => setStalePage(true);
+    window.addEventListener(STALE_PAGE_EVENT, onStale);
+    return () => window.removeEventListener(STALE_PAGE_EVENT, onStale);
+  }, []);
   useEffect(() => {
     if (requested === null && firstProject !== null && session.operation === null) {
       void setRequested(firstProject.id, { history: 'replace' });
@@ -181,6 +189,7 @@ export function App({ initial }: AppProps) {
 
   return (
     <div className="app">
+      {stalePage ? <StalePageNotice /> : null}
       <Header
         projects={detailShown ? projects.projects : null}
         activeProjectId={known ? activeId : null}
