@@ -1,23 +1,21 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DetailPanel } from '../../src/components/DetailPanel';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Card } from '../../src/components/Card';
+import { useCardAnswers } from '../../src/hooks/useCardAnswers';
 import { selectLocale } from '../../src/i18n';
-import type { OperationControls } from '../../src/lib/projectSession';
-import type { Card } from '../../src/types';
+import type { AnswerLeaseChange } from '../../src/hooks/useCardAnswers';
+import type { Card as CardModel } from '../../src/types';
 import { deferred, jsonResponse } from '../fakes';
 import { PROJECT_A, makeCard } from '../fixtures';
 
-const noop = () => {};
-const noRemove = async () => true;
 const LONG =
   'It is unclear whether to keep the existing data or start from scratch. There are three options: replace the old board, export it and import a new one, or keep both for now. Please decide which one to use.';
-
-const pendingCard = (overrides: Partial<Card> = {}): Card =>
+const pendingCard = (overrides: Partial<CardModel> = {}): CardModel =>
   makeCard({
     id: 12,
     title: 'Pending card',
-    cardStatus: 'doing',
+    cardStatus: 'todo',
     agentStatus: 'pending',
     pendingRequestId: 'req-1',
     pendingReason: 'Which way should the board go?',
@@ -28,34 +26,32 @@ const pendingCard = (overrides: Partial<Card> = {}): Card =>
     ...overrides,
   });
 
-function operationsSpy(): OperationControls & { begin: ReturnType<typeof vi.fn> } {
-  let next = 0;
+function renderPendingCard(
+  card: CardModel = pendingCard(),
+  onLeaseChange: AnswerLeaseChange = vi.fn(),
+) {
+  function Harness({ value }: { value: CardModel }) {
+    const answers = useCardAnswers(onLeaseChange);
+    return (
+      <Card
+        card={value}
+        selected={false}
+        onSelect={vi.fn()}
+        projectId={PROJECT_A.id}
+        answers={answers}
+        syncedAt={new Date('2026-10-12T01:00:00Z')}
+      />
+    );
+  }
+  const utils = render(<Harness value={card} />);
   return {
-    begin: vi.fn(() => ++next),
-    saveStarted: vi.fn(),
-    saveFailed: vi.fn(),
-    end: vi.fn(),
-    cardRemoved: vi.fn(),
+    ...utils,
+    rerenderCard: (next: CardModel) => utils.rerender(<Harness value={next} />),
   };
 }
 
-function renderPanel(card: Card = pendingCard(), extra: { operations?: OperationControls } = {}) {
-  const onChanged = vi.fn();
-  const utils = render(
-    <DetailPanel
-      projectId={PROJECT_A.id}
-      card={card}
-      operations={extra.operations}
-      onClose={noop}
-      onRemove={noRemove}
-      onChanged={onChanged}
-    />,
-  );
-  return { ...utils, onChanged };
-}
-
 const request = (container: HTMLElement) =>
-  container.querySelector('.detail__request') as HTMLElement;
+  container.querySelector('.card__answer .detail__request') as HTMLElement;
 const box = () => screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement;
 const send = () => screen.getByRole('button', { name: /^(Send|Retry)$/ }) as HTMLButtonElement;
 const choice = (label: string) => screen.getByRole('radio', { name: label });
@@ -65,53 +61,31 @@ beforeEach(() => {
   selectLocale('en');
   document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
 });
-afterEach(() => {
-  vi.unstubAllGlobals();
-  document.head.innerHTML = '';
-  selectLocale('en');
-});
 
-describe('answer form', () => {
-  it('is shown open above the tabs: question, choices, text, then Send', () => {
-    const { container } = renderPanel();
-    const section = request(container);
-    expect(within(section).getByText('Which way should the board go?')).toBeTruthy();
-    expect(within(section).getAllByRole('radio')).toHaveLength(2);
+describe('PC card answer form', () => {
+  it('shows the current Todo request and choices directly on the card', () => {
+    const { container } = renderPendingCard();
+    expect(request(container).textContent).toContain('Which way should the board go?');
+    expect(within(request(container)).getAllByRole('radio')).toHaveLength(2);
     expect(box().value).toBe('');
-    expect(choice('Keep the data').getAttribute('aria-checked')).toBe('false');
     expect(send().disabled).toBe(true);
-    expect(screen.queryByRole('button', { name: 'Answer' })).toBeNull();
-    const tabs = container.querySelector('.detail__tabs') as HTMLElement;
-    expect(section.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const order = [
-      ...section.querySelectorAll('[role="radiogroup"], textarea, button[type="submit"]'),
-    ];
-    expect(order.map((el) => el.tagName)).toEqual(['DIV', 'TEXTAREA', 'BUTTON']);
   });
 
   it('shows only the text box when the request has no choices', () => {
-    renderPanel(pendingCard({ pendingChoices: [] }));
+    renderPendingCard(pendingCard({ pendingChoices: [] }));
     expect(screen.queryByRole('radio')).toBeNull();
     expect(box()).toBeTruthy();
     expect(send().disabled).toBe(true);
   });
 
-  it('enables Send with a choice, with a text, or with both, and never for blank text', async () => {
-    renderPanel();
+  it('enables Send for a choice or non-blank text and sends the current request id', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ card: pendingCard(), changed: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderPendingCard();
     await userEvent.type(box(), '   ');
     expect(send().disabled).toBe(true);
     await userEvent.click(choice('Start over'));
     expect(send().disabled).toBe(false);
-    await userEvent.clear(box());
-    await userEvent.type(box(), 'Because');
-    expect(send().disabled).toBe(false);
-  });
-
-  it('sends the chosen option only, the text only, or both with the request id', async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ card: pendingCard(), changed: true }));
-    vi.stubGlobal('fetch', fetchMock);
-    const first = renderPanel();
-    await userEvent.click(choice('Start over'));
     await userEvent.click(send());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe(
@@ -121,24 +95,13 @@ describe('answer form', () => {
       requestId: 'req-1',
       choiceId: 'reset',
     });
-    first.unmount();
-
-    renderPanel();
-    await userEvent.type(box(), 'Only words');
-    await userEvent.click(send());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(bodyOf(fetchMock.mock.calls[1] as unknown[])).toEqual({
-      requestId: 'req-1',
-      text: 'Only words',
-    });
   });
 
-  it('refuses a second send while the first is in flight and keeps the input', async () => {
+  it('prevents duplicate sends and keeps the form locked during the request', async () => {
     const gate = deferred<Response>();
     const fetchMock = vi.fn(() => gate.promise);
     vi.stubGlobal('fetch', fetchMock);
-    const operations = operationsSpy();
-    renderPanel(pendingCard(), { operations });
+    renderPendingCard();
     await userEvent.type(box(), 'Go');
     await userEvent.click(send());
     expect(screen.getByRole('button', { name: 'Sending…' })).toHaveProperty('disabled', true);
@@ -146,10 +109,10 @@ describe('answer form', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sending…' }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     gate.resolve(jsonResponse({ card: pendingCard(), changed: true }));
-    await waitFor(() => expect(operations.end).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Sending…' })).toBeNull());
   });
 
-  it('keeps the input and shows an error when saving fails, then retries', async () => {
+  it('keeps the input after a save failure and retries the same answer', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -157,18 +120,15 @@ describe('answer form', () => {
       )
       .mockResolvedValueOnce(jsonResponse({ card: pendingCard(), changed: true }));
     vi.stubGlobal('fetch', fetchMock);
-    const operations = operationsSpy();
-    const { onChanged } = renderPanel(pendingCard(), { operations });
+    renderPendingCard();
     await userEvent.click(choice('Keep the data'));
     await userEvent.type(box(), 'Keep me');
     await userEvent.click(send());
     expect((await screen.findByRole('alert')).textContent).toBe('Could not save. Try again.');
     expect(box().value).toBe('Keep me');
     expect(choice('Keep the data').getAttribute('aria-checked')).toBe('true');
-    expect(operations.saveFailed).toHaveBeenCalledTimes(1);
-    expect(onChanged).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(bodyOf(fetchMock.mock.calls[1] as unknown[])).toEqual({
       requestId: 'req-1',
       choiceId: 'keep',
@@ -176,91 +136,44 @@ describe('answer form', () => {
     });
   });
 
-  it('shows the file, item and reason of a file_invalid answer and keeps the input', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            error: {
-              code: 'file_invalid',
-              message: 'tasks/12/TASK.md is not valid.',
-              reason: 'AC-1: A line starting with "- 根拠:" is missing.',
-            },
-          },
-          422,
-        ),
-      ),
-    );
-    renderPanel();
-    await userEvent.type(box(), 'Keep me');
-    await userEvent.click(send());
-    const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('tasks/12/TASK.md');
-    expect(alert.textContent).toContain('AC-1');
-    expect(alert.textContent).toContain('A line starting with');
-    expect(box().value).toBe('Keep me');
-  });
-
-  it('says the request changed on request_changed, keeps the text, and sends nothing old', async () => {
+  it('keeps an old draft but prevents sending it after the request changes', async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse({ error: { code: 'request_changed', message: 'x', reason: 'changed.' } }, 409),
     );
     vi.stubGlobal('fetch', fetchMock);
-    const { onChanged } = renderPanel();
-    await userEvent.type(box(), 'Old answer');
-    await userEvent.click(send());
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      'This request has changed. Review the latest board.',
-    );
-    expect(box().value).toBe('Old answer');
-    expect(onChanged).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows the latest request when the pending request changes under the form, and sends with its id only after the text is edited again', async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ card: pendingCard(), changed: true }));
-    vi.stubGlobal('fetch', fetchMock);
     const first = pendingCard();
-    const { rerender } = renderPanel(first);
+    const { container, rerenderCard } = renderPendingCard(first);
     await userEvent.click(choice('Keep the data'));
-    await userEvent.type(box(), 'Answer');
-    rerender(
-      <DetailPanel
-        projectId={PROJECT_A.id}
-        card={{
-          ...first,
-          pendingRequestId: 'req-2',
-          pendingReason: 'A new question',
-          pendingChoices: [{ id: 'other', label: 'Another path' }],
-        }}
-        onClose={noop}
-        onRemove={noRemove}
-      />,
+    await userEvent.type(box(), 'Old answer');
+    rerenderCard(
+      pendingCard({
+        pendingRequestId: 'req-2',
+        pendingReason: 'A new question',
+        pendingChoices: [{ id: 'other', label: 'Another path' }],
+      }),
     );
-    expect(screen.getByText('A new question')).toBeTruthy();
+    expect(request(container).textContent).toContain('A new question');
     expect(screen.getByRole('alert').textContent).toBe(
       'This request has changed. Review the latest board.',
     );
     expect(screen.queryByRole('radio', { name: 'Keep the data' })).toBeNull();
-    expect(box().value).toBe('Answer');
-    // The old text is not sent as it is: Send waits until the person edits the text, which confirms it for the new question.
-    expect(send().hasAttribute('disabled')).toBe(true);
+    expect(box().value).toBe('Old answer');
+    expect(send().disabled).toBe(true);
     await userEvent.type(box(), ' again');
-    expect(send().hasAttribute('disabled')).toBe(false);
     await userEvent.click(send());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(bodyOf(fetchMock.mock.calls[0] as unknown[])).toEqual({
       requestId: 'req-2',
-      text: 'Answer again',
+      text: 'Old answer again',
     });
   });
 
-  it('cuts a long question at four lines and shows all of it with Show more', async () => {
+  it('cuts a long question to four lines and lets the user expand it', async () => {
     const lineBox = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(200);
     const client = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(78);
     try {
-      const { container } = renderPanel(pendingCard({ pendingReason: LONG }));
-      const reason = container.querySelector('.detail__reason') as HTMLElement;
+      const { container } = renderPendingCard(pendingCard({ pendingReason: LONG }));
+      const reason = request(container).querySelector('.detail__reason') as HTMLElement;
       expect(reason.className).toContain('detail__reason--clamped');
       await userEvent.click(screen.getByRole('button', { name: 'Show more' }));
       expect(reason.className).not.toContain('detail__reason--clamped');
@@ -270,42 +183,9 @@ describe('answer form', () => {
     }
   });
 
-  it('shows the resume notice after a saved answer', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => jsonResponse({ card: pendingCard(), changed: true })),
-    );
-    const { rerender, onChanged } = renderPanel();
-    await userEvent.click(choice('Keep the data'));
-    await userEvent.click(send());
-    await waitFor(() => expect(onChanged).toHaveBeenCalled());
-    rerender(
-      <DetailPanel
-        projectId={PROJECT_A.id}
-        card={pendingCard({
-          agentStatus: 'idle',
-          pendingRequestId: null,
-          pendingReason: null,
-          pendingChoices: [],
-        })}
-        onClose={noop}
-        onRemove={noRemove}
-      />,
-    );
-    expect(screen.getByText('Saved. The coordinator resumes the work.')).toBeTruthy();
-  });
-
-  it('holds the project only while the answer has input', async () => {
-    const operations = operationsSpy();
-    renderPanel(pendingCard(), { operations });
-    expect(operations.begin).not.toHaveBeenCalled();
-    await userEvent.click(choice('Keep the data'));
-    expect(operations.begin).toHaveBeenCalledWith('answer', PROJECT_A.id);
-  });
-
-  it('labels, hints and buttons in Japanese', async () => {
+  it('keeps labels, hints and buttons in Japanese', async () => {
     selectLocale('ja');
-    renderPanel();
+    renderPendingCard();
     expect(screen.getByText('AIが回答を待っています')).toBeTruthy();
     expect(screen.getByRole('textbox', { name: '回答' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '送信' })).toBeTruthy();

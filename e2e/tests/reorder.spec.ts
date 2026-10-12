@@ -39,7 +39,7 @@ test('dragging a card above another in its lane reorders it and keeps the order 
 }) => {
   const before = await ids(page, 'Todo');
   expect(before.length).toBeGreaterThan(1);
-  const cards = lane(page, 'Todo').locator('.card');
+  const cards = lane(page, 'Todo').locator('.card__item');
   await dragOnto(page, cards.last(), cards.first(), false);
   const expected = [before[before.length - 1], ...before.slice(0, -1)];
   await expect.poll(() => ids(page, 'Todo')).toEqual(expected);
@@ -60,7 +60,7 @@ test('dragging a card above another in its lane reorders it and keeps the order 
 
 test('dragging a card to the bottom of its lane reorders it', async ({ page }) => {
   const before = await ids(page, 'Todo');
-  const cards = lane(page, 'Todo').locator('.card');
+  const cards = lane(page, 'Todo').locator('.card__item');
   await dragOnto(page, cards.first(), cards.last(), true);
   const expected = [...before.slice(1), before[0]];
   await expect.poll(() => ids(page, 'Todo')).toEqual(expected);
@@ -68,7 +68,7 @@ test('dragging a card to the bottom of its lane reorders it', async ({ page }) =
 
 test('the Done lane reorders in the order it shows', async ({ page }) => {
   const before = await ids(page, 'Done');
-  const cards = lane(page, 'Done').locator('.card');
+  const cards = lane(page, 'Done').locator('.card__item');
   await dragOnto(page, cards.last(), cards.first(), false);
   const expected = [before[before.length - 1], ...before.slice(0, -1)];
   await expect.poll(() => ids(page, 'Done')).toEqual(expected);

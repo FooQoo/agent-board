@@ -38,13 +38,13 @@ test('agboard add shows a new card without reloading', async ({ page }) => {
 test('agboard mv moves a card without reloading', async ({ page }) => {
   agboardOk(mainProject, ['mv', '16', 'doing']);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
-  await expect(lane(page, 'Todo').getByRole('button')).toHaveCount(2);
-  await expect(lane(page, 'Doing').getByRole('button')).toHaveCount(4);
+  await expect(lane(page, 'Todo').locator('.lane__cards .card')).toHaveCount(2);
+  await expect(lane(page, 'Doing').locator('.lane__cards .card')).toHaveCount(4);
 
   // A card finished just now goes to the top of Done.
   agboardOk(mainProject, ['mv', '16', 'done']);
   await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#16(?!\d)/);
-  await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button')).toHaveCount(3);
+  await expect(lane(page, 'Done').locator('.lane__cards .card')).toHaveCount(3);
   await notReloaded(page);
 });
 
@@ -162,11 +162,12 @@ test('a user answer returns a pending card to idle and records the full answer i
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-column', 'doing');
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'pending');
   await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(217, 101, 11)');
-  // The request above the tabs takes the answer in place, with no dialog, while the history stays readable.
+  // The request stays read-only in details; the response is entered on the card with no dialog.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
-  await panel.getByRole('textbox', { name: 'Your answer' }).fill(fullAnswer);
-  await panel.getByRole('button', { name: 'Send', exact: true }).click();
+  const answer = card(page, 12).locator('..').locator('.card__answer');
+  await answer.getByRole('textbox', { name: 'Your answer' }).fill(fullAnswer);
+  await answer.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();

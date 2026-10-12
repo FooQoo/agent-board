@@ -5,6 +5,7 @@ import {
   type SessionAction,
   type SessionState,
 } from '../src/lib/projectSession';
+import type { AnswerFormKey } from '../src/lib/answer';
 import { makeCard } from './fixtures';
 
 const A = 'a'.repeat(32);
@@ -120,9 +121,30 @@ describe('sessionReducer: operations hold the switch', () => {
         dialog: null,
         operation: null,
         pendingTarget: null,
+        answerLeases: [],
       });
     },
   );
+
+  it('holds a URL switch until every answer draft lease and modal operation has ended', () => {
+    const keyA = `${A}:12:req-a` as AnswerFormKey;
+    const keyB = `${A}:13:req-b` as AnswerFormKey;
+    const held = run(
+      initSession(A, 12),
+      { type: 'ANSWER_LEASE_STARTED', key: keyA, projectId: A },
+      { type: 'ANSWER_LEASE_STARTED', key: keyB, projectId: A },
+      { type: 'URL_REQUESTED', projectId: B },
+      open(1, A, 'move'),
+      { type: 'OPERATION_FINISHED', operationId: 1 },
+    );
+    expect(held.activeProjectId).toBe(A);
+    expect(held.pendingTarget).toEqual({ projectId: B });
+    const oneDraftLeft = run(held, { type: 'ANSWER_LEASE_ENDED', key: keyA, projectId: A });
+    expect(oneDraftLeft.activeProjectId).toBe(A);
+    const switched = run(oneDraftLeft, { type: 'ANSWER_LEASE_ENDED', key: keyB, projectId: A });
+    expect(switched.activeProjectId).toBe(B);
+    expect(switched.answerLeases).toEqual([]);
+  });
 
   it('keeps the selection when an operation ends without a pending request', () => {
     const state = run(initSession(A, 8), open(1), { type: 'OPERATION_CANCELLED', operationId: 1 });

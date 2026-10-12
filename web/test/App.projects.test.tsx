@@ -922,7 +922,11 @@ describe('switching while a form is open', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(cardButton('Prepare the Windows build'));
     await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    const cancelButton = document.querySelector<HTMLButtonElement>(
+      '.delete-confirm button:last-child',
+    );
+    if (!cancelButton) throw new Error('archive confirmation cancel button is missing');
+    await userEvent.click(cancelButton);
     expect(
       (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
     ).toBe(false);

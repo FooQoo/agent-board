@@ -12,6 +12,7 @@ export interface HeaderProps {
   activeProjectId?: ProjectId | null;
   /** A card form or confirmation is open, so the project cannot change. */
   switchDisabled?: boolean;
+  projectSwitchDisabled?: boolean;
   onSelectProject?: (projectId: ProjectId) => void;
   /** Add card is offered only once the board of the project has loaded. */
   canAdd?: boolean;
@@ -25,6 +26,7 @@ export function Header({
   projects = null,
   activeProjectId = null,
   switchDisabled = false,
+  projectSwitchDisabled = switchDisabled,
   onSelectProject = () => {},
   canAdd = false,
   onAdd = () => {},
@@ -53,7 +55,7 @@ export function Header({
             <ProjectSwitcher
               projects={projects}
               activeProjectId={activeProjectId}
-              disabled={switchDisabled}
+              disabled={projectSwitchDisabled}
               onSelect={onSelectProject}
             />
           </div>

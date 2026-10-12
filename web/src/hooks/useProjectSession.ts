@@ -6,6 +6,7 @@ import {
   type OperationKind,
 } from '../lib/projectSession';
 import type { DialogAction, ProjectId } from '../types';
+import type { AnswerFormKey } from '../lib/answer';
 
 /** Owns project-bound view state and operation controls shared by the board and archive views. */
 export function useProjectSession(
@@ -52,5 +53,17 @@ export function useProjectSession(
     [],
   );
 
-  return { session, dispatch, operations };
+  const answerLeaseControls = useMemo(
+    () => ({
+      set: (key: AnswerFormKey, projectId: ProjectId, active: boolean) =>
+        dispatch({
+          type: active ? 'ANSWER_LEASE_STARTED' : 'ANSWER_LEASE_ENDED',
+          key,
+          projectId,
+        }),
+    }),
+    [],
+  );
+
+  return { session, dispatch, operations, answerLeaseControls };
 }

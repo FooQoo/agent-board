@@ -4,6 +4,8 @@ import { BoardMessage, type BoardMessageKind } from './BoardMessage';
 import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
 import { isSortable } from '@dnd-kit/react/sortable';
+import type { ProjectId } from '../types';
+import type { CardAnswerController } from '../hooks/useCardAnswers';
 
 const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
 
@@ -20,6 +22,10 @@ export interface BoardProps {
   onArchiveDone?: () => void;
   /** The EPIC-ID label of a card was pressed. */
   onOpenEpic?: (epicId: string) => void;
+  projectId?: ProjectId;
+  answers?: CardAnswerController;
+  syncedAt?: Date | null;
+  onAnswerChanged?: () => void;
   layoutRef?: (node: HTMLDivElement | null) => void;
 }
 
@@ -33,6 +39,10 @@ export function Board({
   onReorder,
   onArchiveDone,
   onOpenEpic,
+  projectId,
+  answers,
+  syncedAt,
+  onAnswerChanged,
   layoutRef,
 }: BoardProps) {
   if (message !== null) {
@@ -83,6 +93,10 @@ export function Board({
               onSelect={onSelect}
               onArchive={column === 'done' ? onArchiveDone : undefined}
               onOpenEpic={onOpenEpic}
+              projectId={projectId}
+              answers={answers}
+              syncedAt={syncedAt}
+              onAnswerChanged={onAnswerChanged}
             />
           ))}
         </div>
