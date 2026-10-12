@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
@@ -103,6 +103,7 @@ describe('monitor detail drawer', () => {
     const title = screen.getByRole('button', { name: 'Read this card' });
     await user.click(title);
     const dialog = screen.getByRole('dialog');
+    expect(dialog.getAttribute('data-swipe-direction')).toBe('down');
     const bodyTab = within(dialog).getByRole('tab', { name: 'Body' });
     const historyTab = within(dialog).getByRole('tab', { name: /History/ });
     const epicTab = within(dialog).getByRole('tab', { name: 'Epic' });
@@ -200,7 +201,7 @@ describe('monitor detail drawer', () => {
     await waitFor(() => expect(within(dialog).getByText('Epic body text')).toBeTruthy());
   });
 
-  it('closes from the handle, close button, Escape, and backdrop and restores focus to the title', async () => {
+  it('closes from the close button, Escape, and backdrop and restores focus to the title', async () => {
     const user = userEvent.setup();
     render(<MonitorView {...setup().props} />);
     const title = screen.getByRole('button', { name: 'Read this card' });
@@ -215,14 +216,7 @@ describe('monitor detail drawer', () => {
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await user.click(title);
-    const handle = within(screen.getByRole('dialog')).getByRole('button', {
-      name: 'Swipe down to close details',
-    });
-    fireEvent.pointerDown(handle, { pointerId: 1, pointerType: 'touch', clientY: 100 });
-    fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'touch', clientY: 180 });
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    await user.click(title);
-    const overlay = required(document.querySelector('[data-slot="dialog-overlay"]'));
+    const overlay = required(document.querySelector('[data-slot="drawer-backdrop"]'));
     await user.click(overlay);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });

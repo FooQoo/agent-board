@@ -2,7 +2,7 @@
 
 [README](../README.md) · [Usage guide](usage.md)
 
-The monitor groups cards into Todo, Doing, and Done. Todo and Doing cards can show their agent state inline; Pending cards in either lane also show the question and an answer form. Tapping a card opens a bottom drawer with Body, History, and Epic tabs. Tap the tabs or swipe horizontally to switch; the drawer content scrolls independently. The monitor can answer a pending question, but its only write operation is that answer.
+The monitor groups cards into Todo, Doing, and Done. Todo and Doing cards show their agent state inline as Idle, Running, or Pending; Pending cards in either lane also show the question and an answer form. Tapping a card opens a bottom drawer with Body, History, and Epic tabs. The drawer slides up from the bottom, follows a downward drag, and closes when dismissed; its content scrolls independently. The monitor can answer a pending question, but its only write operation is that answer.
 
 Run the commands below from the repository root after [installing Agent Board](usage.md#installation-and-updates).
 

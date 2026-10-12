@@ -62,17 +62,22 @@ describe('MonitorView', () => {
       (within(pendingCard).getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled,
     ).toBe(true);
     expect(pendingCard.getAttribute('data-agent-status')).toBe('pending');
-    for (const id of [1, 3]) {
-      const card = screen.getByRole('article', { name: new RegExp(`^#${id} `) });
-      expect(card.querySelector('.status-label')).toBeNull();
-      expect(
-        (
-          within(card).getByRole('button', {
-            name: `Card ${id}`,
-          }) as HTMLButtonElement
-        ).disabled,
-      ).toBe(false);
-    }
+    const idleTodo = screen.getByRole('article', { name: /^#1 Todo Idle / });
+    expect(idleTodo.getAttribute('data-agent-status')).toBe('idle');
+    expect(idleTodo.querySelector('.status-label')?.textContent).toBe('Idle');
+    const idleDoing = screen.getByRole('article', { name: /^#5 Doing Idle / });
+    expect(idleDoing.getAttribute('data-agent-status')).toBe('idle');
+    expect(idleDoing.querySelector('.status-label')?.textContent).toBe('Idle');
+
+    const doneCard = screen.getByRole('article', { name: /^#3 Done / });
+    expect(doneCard.querySelector('.status-label')).toBeNull();
+    expect(
+      (
+        within(doneCard).getByRole('button', {
+          name: 'Card 3',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: /Archive|Delete|Edit/ })).toBeNull();
   });

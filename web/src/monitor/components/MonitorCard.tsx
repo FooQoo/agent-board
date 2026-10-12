@@ -34,8 +34,8 @@ export function MonitorCard({
       : section === 'todo'
         ? card.createdAt
         : card.agentStatusChangedAt;
-  // The run state shows in the sections for work the agent has in hand: awaiting a decision, running, and Doing.
-  const showsState = section !== 'done' && card.agentStatus !== 'idle';
+  // Keep the AI run state visible within active lanes; lane position and run state answer different questions.
+  const showsState = section !== 'done' && card.assignee === 'ai';
   const pending = showsState && card.agentStatus === 'pending';
   const label = [
     `#${card.id}`,

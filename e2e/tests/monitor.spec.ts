@@ -259,6 +259,59 @@ test('a timed-out catalog read keeps the last snapshot instead of showing zero w
 const monitorCard = (page: Page, id: number, title: string) =>
   page.getByRole('article', { name: new RegExp(`^#${id}.*${title}`) });
 
+test('the bottom drawer follows a downward handle drag and dismisses', async ({ page }) => {
+  const browser = page.context().browser();
+  if (!browser) throw new Error('The test browser was not available');
+  const context = await browser.newContext({
+    baseURL: `${monitorOrigin}/`,
+    viewport: { width: 375, height: 640 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const touchPage = await context.newPage();
+    await touchPage.goto('/monitor/');
+    await touchPage.getByRole('button', { name: 'Alpha completed 8' }).click();
+    const drawer = touchPage.getByRole('dialog');
+    await expect(drawer).toBeVisible();
+    await expect(drawer).toHaveAttribute('data-swipe-direction', 'down');
+    await expect(drawer).toHaveCSS('transition-property', 'translate');
+
+    const popupBox = await drawer.boundingBox();
+    const handleBox = await drawer.locator('.mobile-drawer__handle').boundingBox();
+    expect(popupBox).not.toBeNull();
+    expect(handleBox).not.toBeNull();
+    const startX = (handleBox?.x ?? 0) + (handleBox?.width ?? 0) / 2;
+    const startY = (handleBox?.y ?? 0) + (handleBox?.height ?? 0) / 2;
+    const cdp = await context.newCDPSession(touchPage);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: startX, y: startY, id: 1 }],
+    });
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: startX, y: startY + 40, id: 1 }],
+    });
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: startX, y: startY + 80, id: 1 }],
+    });
+    await expect(drawer).toHaveAttribute('data-swiping', '');
+    const movedBox = await drawer.boundingBox();
+    expect(movedBox?.y).toBeGreaterThan(popupBox?.y ?? 0);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: startX, y: startY + 180, id: 1 }],
+    });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(drawer).toHaveCount(0);
+    await cdp.detach();
+  } finally {
+    await context.close();
+  }
+});
+
 const drawerEvidence = (name: string) =>
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../evidence/uow6', name);
 
