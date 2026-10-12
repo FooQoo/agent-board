@@ -302,3 +302,60 @@ test('the epic dialog shows the number of its plan conditions done', async ({ pa
   await expect(dialog.getByText('1 of 2 done')).toBeVisible();
   expect(await editorValue(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }))).toContain('## Goal');
 });
+
+for (const kind of ['task', 'epic'] as const) {
+  test(`${kind} conditions and a long body share one scroll area`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    const conditions = Array.from({ length: 40 }, (_, index) => ({
+      id: `AC-${index + 1}`,
+      text: `Condition number ${index + 1}`,
+      done: false,
+    }));
+    const body = `## Body starts here\n\n${Array.from({ length: 30 }, (_, index) => `Paragraph ${index + 1}.`).join('\n\n')}\n\nBody ends here.`;
+    const id = addCard('Many conditions', frontmatter(conditions, body));
+    if (kind === 'epic') {
+      const plan = path.join(os.tmpdir(), `scroll-plan-${Date.now()}.md`);
+      agboardOk(mainProject, ['epic', 'add', 'SCROLL', '--name', 'Long plan', '--color', '#7C3AED', '--actor', 'human']);
+      replaceFileAtomically(plan, frontmatter(conditions, body));
+      agboardOk(mainProject, ['epic', 'edit', 'SCROLL', '--plan-file', plan]);
+      agboardOk(mainProject, ['edit', String(id), '--epic', 'SCROLL']);
+    }
+    await page.reload();
+    await waitForSync(page);
+
+    let dialog: Locator;
+    if (kind === 'task') {
+      await makeDraft(page, id);
+      ({ dialog } = await openEdit(page, id));
+    } else {
+      await page.locator('[data-epic-label="SCROLL"]').first().click();
+      dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('checkbox', { name: 'Draft', exact: true })).toHaveCount(0);
+      await expect(dialog.getByRole('textbox', { name: 'Plan (Markdown)' })).toBeVisible();
+    }
+
+    const scroll = dialog.locator('.editor__document');
+    const title = dialog.getByRole('textbox', { name: kind === 'task' ? 'Title' : 'Formal name', exact: true });
+    const titleBox = await title.boundingBox();
+    await expect(scroll.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toBeVisible();
+    await scroll.hover();
+    await page.mouse.wheel(0, 700);
+    await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    expect((await title.boundingBox())?.y).toBe(titleBox?.y);
+
+    const end = scroll.getByText('Body ends here.', { exact: true });
+    await end.scrollIntoViewIfNeeded();
+    await expect(end).toBeInViewport();
+    await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeInViewport();
+    const editor = scroll.locator('.rich-markdown');
+    expect(await editor.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+    await dialog.getByRole('link', { name: 'Acceptance conditions 0 / 40' }).click();
+    await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeLessThanOrEqual(1);
+
+    await page.setViewportSize({ width: 400, height: 800 });
+    await end.scrollIntoViewIfNeeded();
+    await expect(end).toBeInViewport();
+    await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeInViewport();
+  });
+}

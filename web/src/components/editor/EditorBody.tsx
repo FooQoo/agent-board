@@ -30,7 +30,7 @@ export interface EditorBodyProps {
   beforeTitle?: ReactNode;
   /** Shown at the top of the right column, above the images panel (the epic row of a card). */
   asideTop?: ReactNode;
-  /** A field placed between the title and the body (the assignee of a new card). */
+  /** Fields that scroll with the body, such as acceptance conditions. */
   extraField?: ReactNode;
   /** Shown under the outline in the left column (the task list of an epic). */
   sidebar?: ReactNode;
@@ -175,28 +175,30 @@ export function EditorBody({
             onChange={(event) => onTitleChange(event.target.value)}
           />
         </div>
-        {extraField}
-        <div className="editor__label-row">
-          <span className="editor__label">{body}</span>
-          <span className="editor__counter" data-over={overLimit ? 'true' : undefined}>
-            {t('editor.counter', {
-              count: count.toLocaleString('en-US'),
-              max: DESCRIPTION_LIMIT.toLocaleString('en-US'),
-            })}
-          </span>
-        </div>
-        <div className="editor__box" data-over={overLimit ? 'true' : undefined}>
-          <RichMarkdownEditor
-            ref={editorRef}
-            value={description}
-            onChange={onDescriptionChange}
-            onCursorChange={setCursor}
-            aria-label={body}
-            disabled={disabled}
-            resolveAttachment={(id) =>
-              attachments.find((attachment) => attachment.id === id)?.url ?? null
-            }
-          />
+        <div className="editor__document">
+          {extraField}
+          <div className="editor__label-row">
+            <span className="editor__label">{body}</span>
+            <span className="editor__counter" data-over={overLimit ? 'true' : undefined}>
+              {t('editor.counter', {
+                count: count.toLocaleString('en-US'),
+                max: DESCRIPTION_LIMIT.toLocaleString('en-US'),
+              })}
+            </span>
+          </div>
+          <div className="editor__box" data-over={overLimit ? 'true' : undefined}>
+            <RichMarkdownEditor
+              ref={editorRef}
+              value={description}
+              onChange={onDescriptionChange}
+              onCursorChange={setCursor}
+              aria-label={body}
+              disabled={disabled}
+              resolveAttachment={(id) =>
+                attachments.find((attachment) => attachment.id === id)?.url ?? null
+              }
+            />
+          </div>
         </div>
       </div>
       {onFiles && onRemoveAttachment && (

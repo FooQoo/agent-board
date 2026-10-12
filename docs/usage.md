@@ -90,7 +90,9 @@ Use the **Draft** checkbox when creating a card that agents should leave alone. 
 
 ### Plans, editing, and archive
 
-Open an epic from its label to review its plan. The epic dialog lets you edit the name, color, plan, and task membership together. Each card belongs to at most one epic.
+Open an epic from its label to review its plan. The epic dialog lets you edit the name, color, plan, and task membership together. It has no Draft checkbox, and saving preserves the epic's existing draft state. Each card belongs to at most one epic.
+
+In the card and epic editors, acceptance conditions and the Markdown body share one scroll area. The title and save controls stay available on desktop, even with many conditions. Use the outline to jump to the conditions or a body heading.
 
 The Markdown editor supports headings, task lists, tables, code blocks, Mermaid diagrams, and images. Save or cancel the dialog's changes together. Keep the required [shared Markdown format](#edit-shared-markdown-files), and record verification before checking off a completion condition. Click an image or Mermaid diagram to enlarge it.
 

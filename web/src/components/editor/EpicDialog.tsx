@@ -3,8 +3,6 @@ import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { epicInk } from '../../lib/epic';
 import type { AcceptanceItem, Card, Epic } from '../../types';
-import { Checkbox } from '../ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { DiscardConfirm } from './DiscardConfirm';
 import { EditorBody, useOverLimit } from './EditorBody';
 import { AcceptanceEditor } from '../acceptance/AcceptanceEditor';
@@ -42,8 +40,8 @@ function nameIsValid(name: string): boolean {
 }
 
 /**
- * The dialog that edits an epic: the formal name, the color, the draft box, the plan, the images and
- * which tasks are in it. One Save applies all of it, in the order images, plan, name/color/draft and
+ * The dialog that edits an epic: the formal name, the color, the plan, the images and
+ * which tasks are in it. One Save applies all of it, in the order images, plan, name/color and
  * the tasks. A step that finished stays saved; when a later step fails, the input stays and only the
  * rest is sent again.
  */
@@ -67,7 +65,6 @@ export function EpicDialog({
   onSavingChange?: (saving: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const idPrefix = useId();
   const editor = useRef<RichMarkdownEditorHandle>(null);
   const requestId = useMultipartRequest();
   // The tasks in this epic when it was opened. Their order and the filter use this set.
@@ -86,7 +83,6 @@ export function EpicDialog({
   // What the person has now.
   const [name, setName] = useState(epic.name);
   const [color, setColor] = useState(epic.color.toUpperCase());
-  const [isDraft, setIsDraft] = useState(epic.isDraft);
   // A plan whose frontmatter cannot be read is edited as its whole text, as it was before.
   const whole = epic.acceptanceError;
   const [plan, setPlan] = useState(saved.plan);
@@ -114,8 +110,7 @@ export function EpicDialog({
   const conditionsChanged =
     !whole && JSON.stringify(conditions) !== JSON.stringify(saved.acceptance);
   const planChanged = plan !== saved.plan || conditionsChanged;
-  const detailsChanged =
-    name.trim() !== saved.name || color.toUpperCase() !== saved.color || isDraft !== saved.isDraft;
+  const detailsChanged = name.trim() !== saved.name || color.toUpperCase() !== saved.color;
   const changedTasks = [...new Set([...savedMembers, ...members])]
     .filter((id) => savedMembers.has(id) !== members.has(id))
     .sort((a, b) => a - b);
@@ -158,12 +153,12 @@ export function EpicDialog({
         somethingSaved.current = true;
         setSaved((current) => ({ ...current, plan: text, acceptance: conditions }));
       }
-      // 3. The name, the color and the draft flag.
+      // 3. The name and color, preserving the existing draft state.
       step = 'details';
       const details = {
         name: name.trim(),
         color: color.toUpperCase(),
-        isDraft,
+        isDraft: saved.isDraft,
       };
       if (
         details.name !== saved.name ||
@@ -220,7 +215,7 @@ export function EpicDialog({
       idLabel={epic.id}
       returnFocusSelector={`[data-epic-label="${epic.id}"]`}
       title={t('epic.editTitle')}
-      badge={t('editor.draft')}
+      badge=""
       variant="edit"
       dirty={dirty}
       saving={saving}
@@ -229,18 +224,6 @@ export function EpicDialog({
       overLimit={overLimit}
       onClose={onClose}
       status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
-      footerStart={
-        <div className="editor__draft">
-          <Checkbox
-            id={`${idPrefix}-draft`}
-            checked={isDraft}
-            aria-label={t('editor.draft')}
-            disabled={saving}
-            onCheckedChange={(checked) => setIsDraft(checked === true)}
-          />
-          <Label htmlFor={`${idPrefix}-draft`}>{t('editor.draft')}</Label>
-        </div>
-      }
       actions={
         <Button type="button" disabled={saving || !valid || !dirty} onClick={() => void run()}>
           {saving ? t('dialog.saving') : t('editor.save')}

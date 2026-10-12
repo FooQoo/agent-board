@@ -17,7 +17,7 @@ import { useMultipartRequest } from './useMultipartRequest';
 import type { StoredAttachment } from './attachmentTypes';
 
 /**
- * The dialog that edits a draft card: title, body, images and the draft box, saved with one Save.
+ * The dialog that edits a draft card: title, body and images, saved with one Save.
  * The save runs in order: images, then the body, then the title and the draft. A step that finished
  * stays saved; when a later step fails, the input stays and only the rest is sent again.
  */

@@ -459,7 +459,24 @@
   flex-direction: column;
   gap: 14px;
   min-width: 0;
+  min-height: 0;
   padding: 24px;
+}
+
+/* Acceptance conditions and the Markdown body share one scroll position. */
+.editor__document {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.editor__document > * {
+  flex-shrink: 0;
 }
 
 .editor__field {

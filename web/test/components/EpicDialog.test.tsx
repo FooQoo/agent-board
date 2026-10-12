@@ -190,7 +190,7 @@ describe('epic dialog layout', () => {
     const { dialog } = await openEpic(api);
     expect(within(dialog).getAllByText('FILE-SHARE').length).toBeGreaterThan(0);
     expect(within(dialog).getByText('Edit epic')).toBeTruthy();
-    expect(within(dialog).getByText('Draft', { selector: '.editor__badge' })).toBeTruthy();
+    expect(within(dialog).queryByText('Draft', { selector: '.editor__badge' })).toBeNull();
     expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).value).toBe(
       'File share',
     );
@@ -223,13 +223,24 @@ describe('epic dialog layout', () => {
     expect(within(dialog).queryByText('所属')).toBeNull();
   });
 
-  it('shows the draft badge and draft box for a draft epic', async () => {
+  it.each([false, true])('does not offer draft controls when isDraft is %s', async (isDraft) => {
     const { api } = fakeApi();
-    const { dialog } = await openEpic(api, { epic: { ...EPIC, isDraft: true } });
-    expect(within(dialog).getByText('Draft', { selector: '.editor__badge' })).toBeTruthy();
-    expect(within(dialog).getByRole('checkbox', { name: 'Draft' }).getAttribute('data-state')).toBe(
-      'checked',
-    );
+    const { dialog } = await openEpic(api, { epic: { ...EPIC, isDraft } });
+    expect(within(dialog).queryByText('Draft', { selector: '.editor__badge' })).toBeNull();
+    expect(within(dialog).queryByRole('checkbox', { name: 'Draft' })).toBeNull();
+  });
+
+  it('preserves a draft epic when saving its name', async () => {
+    const { api } = fakeApi();
+    const { dialog, onClosed } = await openEpic(api, { epic: { ...EPIC, isDraft: true } });
+    setName('Renamed draft', dialog);
+    await userEvent.click(button(dialog, 'Save'));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(api.saveDetails).toHaveBeenCalledWith({
+      name: 'Renamed draft',
+      color: EPIC.color.toUpperCase(),
+      isDraft: true,
+    });
   });
 });
 
@@ -325,7 +336,7 @@ describe('saving', () => {
     });
   });
 
-  it('saves images, then the plan, then the name, color and draft, then the tasks', async () => {
+  it('saves images, then the plan, then the name and color, then the tasks', async () => {
     const { api, calls } = fakeApi();
     const { dialog, onClosed } = await openEpic(api);
     const file = new File(['x'], 'new.png', { type: 'image/png' });
@@ -337,7 +348,6 @@ describe('saving', () => {
     setPlan('## Goal\n\nChanged.', dialog);
     setName('Renamed epic', dialog);
     setColor('#00ff00', dialog);
-    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Draft' }));
     await userEvent.click(include(dialog, 29));
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
@@ -352,7 +362,7 @@ describe('saving', () => {
     expect(api.saveDetails).toHaveBeenCalledWith({
       name: 'Renamed epic',
       color: '#00FF00',
-      isDraft: true,
+      isDraft: EPIC.isDraft,
     });
   });
 

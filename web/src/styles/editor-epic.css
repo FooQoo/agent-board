@@ -275,18 +275,31 @@
   --crepe-base-font-size: 14px;
 }
 
-/* The body scrolls inside its box; the header and the footer stay in place. */
+/* The surrounding document scrolls; the Markdown editor grows with its content. */
 .editor__box {
+  flex: 1 0 auto;
+  min-height: 240px;
   border: 0;
   border-radius: 0;
 }
 
 .editor__box > .rich-markdown {
-  flex: 1 1 0;
+  flex: 1 0 auto;
   min-height: 0;
   max-width: none;
   margin: 0;
-  overflow-y: auto;
+  overflow: visible;
+}
+
+@media (max-width: 640px) {
+  .editor__main {
+    flex: none;
+    min-height: auto;
+  }
+  .editor__document {
+    flex: none;
+    overflow: visible;
+  }
 }
 
 .editor__box .rich-markdown .ProseMirror {
