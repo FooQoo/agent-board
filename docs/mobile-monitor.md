@@ -2,7 +2,7 @@
 
 [README](../README.md) · [Usage guide](usage.md)
 
-The monitor groups cards into Todo, Doing, and Done. Doing cards show an Idle, Running, or Pending badge; pending cards also show the waiting reason. Todo and Done cards have no status badge. Cards do not open details when tapped or clicked. Use the PC board to read card details and update work.
+The monitor groups cards into Todo, Doing, and Done. Todo and Doing cards can show their agent state inline; Pending cards in either lane also show the question and an answer form. Tapping a card opens a bottom drawer with Body, History, and Epic tabs. Tap the tabs or swipe horizontally to switch; the drawer content scrolls independently. The monitor can answer a pending question, but its only write operation is that answer.
 
 Run the commands below from the repository root after [installing Agent Board](usage.md#installation-and-updates).
 
@@ -16,7 +16,7 @@ agboard serve --port 7420 --remote-port 8040 \
   --remote-origin https://my-mac.example-tailnet.ts.net
 ```
 
-Use only the origins you will actually publish. The remote port is a second loopback listener for the proxy; never proxy the local PC port. Opening the common URL selects the monitor below 768 CSS pixels and the PC board at wider sizes. Direct `/monitor/` and `/board/` URLs remain available regardless of width. The PC board retains its remote write guard, while the monitor API is read-only.
+Use only the origins you will actually publish. The remote port is a second loopback listener for the proxy; never proxy the local PC port. Opening the common URL selects the monitor below 768 CSS pixels and the PC board at wider sizes. Direct `/monitor/` and `/board/` URLs remain available regardless of width. The PC board retains its remote write guard. The monitor API allows only its dedicated answer request and token; other write routes remain unavailable.
 
 ## LAN with Caddy
 

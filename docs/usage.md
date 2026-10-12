@@ -82,7 +82,9 @@ AI-owned cards in Doing show **Idle**, **Running**, or **Pending**. Running mean
 
 ### Decisions and drafts
 
-Select a Pending card to read the question and its history. Choose one of the offered options, write a note, or do both, then submit the answer. The answer is recorded and the agent state becomes Idle; the agent reads the response before deciding how to resume.
+Todo and Doing cards with a current Pending request show the question and answer form on the card. Choose one of the offered options, write a note, or do both, then submit the answer. On the PC board, the card heading still opens its details while the answer form is in use. On the mobile monitor, tap the card to open its Body, History, and Epic drawer; swipe horizontally to switch tabs. The answer is recorded and the agent state becomes Idle; the agent reads the response before deciding how to resume.
+
+A Pending question has no expiry. It remains available until it is answered or the request is withdrawn or changed. The CLI `wait.timeoutSeconds` option limits that wait command only; it does not expire the question.
 
 Use the **Draft** checkbox when creating a card that agents should leave alone. For an existing card, choose **Make draft** in the detail panel, edit and save its text, then choose **Finalize** when it is ready for an agent. Saving in the card editor keeps its draft state; the editor has no Draft checkbox. Draft cards are read-only for agents, including their `TASK.md` files.
 
