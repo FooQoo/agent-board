@@ -155,3 +155,10 @@ pub fn token(html: &str) -> String {
     let start = html.find(marker).expect("remote PC token meta") + marker.len();
     html[start..start + 64].to_string()
 }
+
+pub fn monitor_token(html: &str) -> String {
+    let marker = "name=\"agboard-monitor-token\" content=\"";
+    let start = html.find(marker).expect("monitor answer token meta") + marker.len();
+    let end = html[start..].find('"').unwrap() + start;
+    html[start..end].to_string()
+}

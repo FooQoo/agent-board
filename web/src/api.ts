@@ -12,6 +12,10 @@ import type {
   ProjectList,
 } from './types';
 import type { EditorAttachment } from './components/editor/attachmentTypes';
+import type { AnswerInput } from './lib/answer';
+import { writeFailure } from './lib/writeErrors';
+
+export { problemOf, STALE_PAGE_EVENT, WriteError, writeFailure } from './lib/writeErrors';
 
 const TOKEN_META = 'agboard-token';
 
@@ -171,48 +175,6 @@ export async function deleteCard(projectId: ProjectId, id: number): Promise<Dele
   }
 }
 
-/**
- * A rejected write. `code` is the API error code (for example `request_changed`), when the body has one.
- * `detail` is the English message of the body (for `file_invalid`, it names the file).
- */
-export class WriteError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code: string | null,
-    readonly detail: string | null = null,
-  ) {
-    super(message);
-  }
-}
-
-/** The event fired when the server refuses a write because this page's token is out of date. */
-export const STALE_PAGE_EVENT = 'agboard:stale-page';
-
-/** The error of a rejected write. A stale page also tells the app, so that it can ask for a reload. */
-export function writeFailure(
-  message: string,
-  status: number,
-  code: string | null,
-  detail: string | null = null,
-): WriteError {
-  if (code === 'page_out_of_date') window.dispatchEvent(new Event(STALE_PAGE_EVENT));
-  return new WriteError(message, status, code, detail);
-}
-
-/**
- * The file, item and reason of a `file_invalid` answer, or null for other errors.
- * The server sends `message` as "<file> is not valid." and `reason` as "<field>: <reason>" (or the reason alone).
- */
-export function problemOf(error: unknown): Problem | null {
-  if (!(error instanceof WriteError) || error.code !== 'file_invalid') return null;
-  const file = (error.detail ?? '').replace(/ is not valid\.$/, '');
-  const reason = error.message;
-  const separator = reason.indexOf(': ');
-  if (separator === -1) return { file, field: '', reason };
-  return { file, field: reason.slice(0, separator), reason: reason.slice(separator + 2) };
-}
-
 async function postCard<T>(path: string, value: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'POST',
@@ -362,13 +324,6 @@ export async function reorderCard(projectId: ProjectId, id: number, beforeId: nu
     `${projectPath(projectId)}/cards/${id}/reorder`,
     { beforeId },
   );
-}
-
-/** An answer to the request `requestId`. Either a choice, a text, or both; a blank answer is refused by the server. */
-export interface AnswerInput {
-  requestId: string;
-  choiceId?: string;
-  text?: string;
 }
 
 export async function answerRequest(projectId: ProjectId, id: number, input: AnswerInput) {

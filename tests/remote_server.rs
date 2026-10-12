@@ -1,7 +1,7 @@
 #[path = "support/mobile_monitor.rs"]
 mod support;
 
-use support::{ORIGIN, ORIGIN2, Running, home, token};
+use support::{ORIGIN, ORIGIN2, Running, home, monitor_token, token};
 
 #[test]
 fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
@@ -30,6 +30,10 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
     let monitor = server.request("GET", "/monitor/", &[("Host", "monitor.example")], "");
     assert_eq!(monitor.status, 200);
     assert!(!monitor.body.contains("agboard-token"));
+    let monitor_token = monitor_token(&monitor.body);
+    assert_eq!(monitor_token.len(), 64);
+    assert_ne!(monitor_token, local_token);
+    assert!(monitor.body.contains(&monitor_token));
 
     let board = server.request("GET", "/board/", &[("Host", "monitor.example")], "");
     assert_eq!(board.status, 200);

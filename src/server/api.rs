@@ -247,7 +247,7 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
     error_response(status, error.code(), error.message(), error.reason())
 }
 
-fn forbidden(reason: &str) -> Response {
+pub(crate) fn forbidden(reason: &str) -> Response {
     error_response(
         StatusCode::FORBIDDEN,
         "forbidden",
@@ -363,7 +363,7 @@ async fn write_guard(
 /// A JSON body whose failures use the API's error body: 400 for broken JSON,
 /// 413 for a body over the limit, 415 for another content type, and 422 for
 /// JSON that is well formed but not what the route takes.
-struct ApiJson<T>(T);
+pub(crate) struct ApiJson<T>(pub(crate) T);
 
 impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for ApiJson<T> {
     type Rejection = Response;
@@ -862,7 +862,7 @@ fn write_refusal(headers: &HeaderMap, context: &GuardContext) -> Option<guard::D
 
 /// The page holds a token from an earlier server (the server was restarted). Its writes are refused with a
 /// code of their own, so the page can ask the person to reload instead of retrying.
-fn page_out_of_date() -> Response {
+pub(crate) fn page_out_of_date() -> Response {
     error_response(
         StatusCode::FORBIDDEN,
         "page_out_of_date",
@@ -871,7 +871,7 @@ fn page_out_of_date() -> Response {
     )
 }
 
-fn remote_write_allowed(headers: &HeaderMap, remote: &RemoteGuard) -> bool {
+pub(crate) fn remote_write_allowed(headers: &HeaderMap, remote: &RemoteGuard) -> bool {
     if [
         "forwarded",
         "x-forwarded-host",
@@ -911,7 +911,7 @@ pub(crate) fn canonical_https_origin(origin: &str) -> Option<(String, String)> {
     Some((format!("https://{authority}"), authority))
 }
 
-fn canonical_https_authority(raw: &str) -> Option<String> {
+pub(crate) fn canonical_https_authority(raw: &str) -> Option<String> {
     let authority = raw.parse::<axum::http::uri::Authority>().ok()?;
     if authority.as_str().contains('@') {
         return None;
@@ -991,16 +991,16 @@ struct AgentStateInput {
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct AnswerInput {
-    request_id: String,
+pub(crate) struct AnswerInput {
+    pub(crate) request_id: String,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
     /// The choice of the request to answer with. Absent for a note only.
     #[serde(default)]
-    choice_id: Option<String>,
+    pub(crate) choice_id: Option<String>,
     /// The free-text note.
     #[serde(default)]
-    text: Option<String>,
+    pub(crate) text: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1324,6 +1324,17 @@ async fn answer_request(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     ApiJson(input): ApiJson<AnswerInput>,
+) -> Response {
+    answer_project_card(state, raw_project, raw_id, input).await
+}
+
+/// Save one human answer through the shared FileStore path used by the local
+/// board and the isolated monitor endpoint.
+pub(crate) async fn answer_project_card(
+    state: Arc<AppState>,
+    raw_project: String,
+    raw_id: String,
+    input: AnswerInput,
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,

@@ -2,5 +2,7 @@
 
 pub mod assets;
 mod router;
+mod write;
 
 pub(crate) use router::{MonitorState, router};
+pub(crate) use write::router as write_router;
