@@ -22,6 +22,8 @@ const EPIC: Epic = {
   body: PLAN,
   acceptance: [],
   acceptanceError: false,
+  priority: [],
+  priorityError: false,
   attachments: [
     {
       id: IMAGE,
@@ -67,8 +69,8 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
     saveDetails: vi.fn(async () => {
       calls.push('saveDetails');
     }),
-    setMembership: vi.fn(async (cardId: number, epicId: string | null) => {
-      calls.push(`setMembership:${cardId}:${epicId}`);
+    savePriority: vi.fn(async (priority: number[]) => {
+      calls.push(`savePriority:${priority.join(',')}`);
     }),
     ...overrides,
   };
@@ -134,15 +136,24 @@ function setColor(text: string, root: HTMLElement) {
 }
 
 /** The checkbox of the task with this ID in the task list. */
-function include(root: HTMLElement, id: number) {
-  const list = within(root).getByRole('list', { name: 'Tasks' });
-  const row = within(list).getByText(`#${id}`).closest('li');
+function rowName(root: HTMLElement, id: number): HTMLButtonElement {
+  const row = root.querySelector<HTMLElement>(`[data-task-id="${id}"]`);
   if (!row) throw new Error(`no row for #${id}`);
-  return within(row).getByRole('checkbox') as HTMLButtonElement;
+  return within(row).getByRole('button') as HTMLButtonElement;
+}
+
+/** The images panel folds by default; a test opens it before it reads or removes an image. */
+async function openImages(root: HTMLElement) {
+  await userEvent.click(within(root).getByRole('button', { name: /^Images/ }));
+}
+
+/** The conditions fold to a line at the bottom; a test opens them before it edits a condition. */
+async function openConditions(root: HTMLElement) {
+  await userEvent.click(within(root).getByRole('button', { name: /^Acceptance conditions/ }));
 }
 
 function rowIds(root: HTMLElement): string[] {
-  const list = within(root).getByRole('list', { name: 'Tasks' });
+  const list = within(root).getByRole('list', { name: 'Progress' });
   return within(list)
     .getAllByRole('listitem')
     .map((item) => item.getAttribute('data-task-id') ?? '');
@@ -161,6 +172,7 @@ describe('epic dialog layout', () => {
     const row = dialog.querySelector('.epic-label-row') as HTMLElement;
     const aside = row.parentElement as HTMLElement;
     expect(aside.classList.contains('editor__aside')).toBe(true);
+    await openImages(aside);
     const panel = within(aside).getByRole('region', { name: 'Image attachments' });
     expect(row.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(row).queryByLabelText('HEX')).toBeNull();
@@ -202,32 +214,12 @@ describe('epic dialog layout', () => {
         .getAllByRole('button')
         .map((item) => item.textContent),
     ).toEqual(['01Goal', '02Steps']);
-    expect(within(dialog).getByRole('heading', { name: 'Tasks' })).toBeTruthy();
-    expect(rowIds(dialog)).toEqual(['24', '25', '27', '28', '29']);
-    expect(include(dialog, 24).getAttribute('aria-checked')).toBe('true');
-    expect(include(dialog, 27).getAttribute('aria-checked')).toBe('false');
+    expect(rowIds(dialog)).toEqual(['24', '25']);
+    await openImages(dialog);
     expect(within(dialog).getByRole('region', { name: 'Image attachments' })).toBeTruthy();
     expect(within(dialog).getByText('shot.png')).toBeTruthy();
     expect(within(dialog).getByText('No changes')).toBeTruthy();
     expect(button(dialog, 'Save').disabled).toBe(true);
-  });
-
-  it('shows the count of member tasks and the Japanese wording', async () => {
-    selectLocale('ja');
-    const { api } = fakeApi();
-    const { dialog } = await openEpic(api);
-    expect(within(dialog).getByText('エピックを編集')).toBeTruthy();
-    expect(within(dialog).getByRole('heading', { name: 'タスク' })).toBeTruthy();
-    expect(within(dialog).getByText('2')).toBeTruthy();
-    expect(within(dialog).getByText('変更はありません')).toBeTruthy();
-    expect(within(dialog).queryByText('所属')).toBeNull();
-  });
-
-  it.each([false, true])('does not offer draft controls when isDraft is %s', async (isDraft) => {
-    const { api } = fakeApi();
-    const { dialog } = await openEpic(api, { epic: { ...EPIC, isDraft } });
-    expect(within(dialog).queryByText('Draft', { selector: '.editor__badge' })).toBeNull();
-    expect(within(dialog).queryByRole('checkbox', { name: 'Draft' })).toBeNull();
   });
 
   it('preserves a draft epic when saving its name', async () => {
@@ -244,79 +236,21 @@ describe('epic dialog layout', () => {
   });
 });
 
-describe('task filter', () => {
-  it('cancels the tentative filter and restores the applied choices when reopened', async () => {
+describe('progress table', () => {
+  it('lists the tasks of the epic in the saved order, the unlisted ones after them by ID', async () => {
     const { api } = fakeApi();
-    const { dialog } = await openEpic(api);
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Filter tasks' }));
-    const menu = await screen.findByRole('dialog', { name: 'Tasks to show' });
-    await userEvent.click(within(menu).getByRole('checkbox', { name: 'Other' }));
-    await userEvent.click(within(menu).getByRole('button', { name: 'Cancel' }));
-    expect(rowIds(dialog)).toEqual(['24', '25', '27', '28', '29']);
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Filter tasks' }));
-    const reopened = await screen.findByRole('dialog', { name: 'Tasks to show' });
-    expect(
-      within(reopened).getByRole('checkbox', { name: 'Other' }).getAttribute('aria-checked'),
-    ).toBe('true');
-    expect(api.setMembership).not.toHaveBeenCalled();
+    const epic = { ...EPIC, priority: [25, 24] };
+    await openEpic(api, { epic });
+    const dialog = await screen.findByRole('dialog');
+    expect(rowIds(dialog)).toEqual(['25', '24']);
   });
 
-  it('shows only the chosen tasks after Apply, and changes nothing that is saved', async () => {
+  it('shows no membership checks and no task filter', async () => {
     const { api } = fakeApi();
-    const { dialog } = await openEpic(api);
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Filter tasks' }));
-    const menu = await screen.findByRole('dialog', { name: 'Tasks to show' });
-    await userEvent.click(within(menu).getByRole('checkbox', { name: 'Other' }));
-    expect(rowIds(dialog)).toEqual(['24', '25', '27', '28', '29']);
-    await userEvent.click(within(menu).getByRole('button', { name: 'Apply' }));
-    await waitFor(() => expect(rowIds(dialog)).toEqual(['24', '25']));
-    expect(api.saveDetails).not.toHaveBeenCalled();
-    expect(api.setMembership).not.toHaveBeenCalled();
-  });
-
-  it('keeps the shown tasks when the menu is closed without Apply', async () => {
-    const { api } = fakeApi();
-    const { dialog } = await openEpic(api);
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Filter tasks' }));
-    const menu = await screen.findByRole('dialog', { name: 'Tasks to show' });
-    await userEvent.click(within(menu).getByRole('checkbox', { name: 'All' }));
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Tasks to show' })).toBeNull());
-    expect(rowIds(dialog)).toEqual(['24', '25', '27', '28', '29']);
-  });
-});
-
-describe('task membership', () => {
-  it('toggles membership without moving the rows and saves only the changed tasks', async () => {
-    const { api, calls } = fakeApi();
-    const { dialog, onClosed } = await openEpic(api);
-    const before = rowIds(dialog);
-    await userEvent.click(include(dialog, 24));
-    await userEvent.click(include(dialog, 27));
-    expect(rowIds(dialog)).toEqual(before);
-    expect(within(dialog).getByText('2')).toBeTruthy();
-    expect(within(dialog).queryByText('No changes')).toBeNull();
-    await userEvent.click(button(dialog, 'Save'));
-    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(calls).toEqual(['setMembership:24:null', 'setMembership:27:FILE-SHARE']);
-  });
-
-  it('keeps the membership changes when the filter changes', async () => {
-    const { api } = fakeApi();
-    const { dialog } = await openEpic(api);
-    await userEvent.click(include(dialog, 24));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Filter tasks' }));
-    const menu = await screen.findByRole('dialog', { name: 'Tasks to show' });
-    await userEvent.click(within(menu).getByRole('checkbox', { name: 'Other' }));
-    await userEvent.click(within(menu).getByRole('button', { name: 'Apply' }));
-    await waitFor(() => expect(rowIds(dialog)).toEqual(['24', '25']));
-    expect(include(dialog, 24).getAttribute('aria-checked')).toBe('false');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Filter tasks' }));
-    const again = await screen.findByRole('dialog', { name: 'Tasks to show' });
-    await userEvent.click(within(again).getByRole('checkbox', { name: 'Other' }));
-    await userEvent.click(within(again).getByRole('button', { name: 'Apply' }));
-    await waitFor(() => expect(rowIds(dialog)).toEqual(['24', '25', '27', '28', '29']));
-    expect(include(dialog, 24).getAttribute('aria-checked')).toBe('false');
+    await openEpic(api);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('button', { name: 'Filter tasks' })).toBeNull();
+    expect(within(dialog).queryByRole('checkbox', { name: /Include in this epic/ })).toBeNull();
   });
 });
 
@@ -324,6 +258,7 @@ describe('saving', () => {
   it('saves the plan body and its conditions together, and a new condition gets the next number', async () => {
     const { api } = fakeApi();
     const { dialog, onClosed } = await openEpic(api);
+    await openConditions(dialog);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add condition' }));
     fireEvent.change(within(dialog).getByLabelText('Condition AC-1'), {
       target: { value: 'The plan is saved' },
@@ -336,9 +271,10 @@ describe('saving', () => {
     });
   });
 
-  it('saves images, then the plan, then the name and color, then the tasks', async () => {
+  it('saves images, then the plan, then the name and color', async () => {
     const { api, calls } = fakeApi();
     const { dialog, onClosed } = await openEpic(api);
+    await openImages(dialog);
     const file = new File(['x'], 'new.png', { type: 'image/png' });
     const input = within(dialog)
       .getByRole('region', { name: 'Image attachments' })
@@ -348,7 +284,6 @@ describe('saving', () => {
     setPlan('## Goal\n\nChanged.', dialog);
     setName('Renamed epic', dialog);
     setColor('#00ff00', dialog);
-    await userEvent.click(include(dialog, 29));
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
     expect(calls).toEqual([
@@ -356,7 +291,6 @@ describe('saving', () => {
       'addImages',
       'savePlan',
       'saveDetails',
-      'setMembership:29:FILE-SHARE',
     ]);
     expect(api.savePlan).toHaveBeenCalledWith({ body: '## Goal\n\nChanged.', acceptance: [] });
     expect(api.saveDetails).toHaveBeenCalledWith({
@@ -366,13 +300,11 @@ describe('saving', () => {
     });
   });
 
-  it('does not send the plan or the details when they did not change', async () => {
+  it('does not send anything and keeps Save disabled when nothing changed', async () => {
     const { api, calls } = fakeApi();
-    const { dialog, onClosed } = await openEpic(api);
-    await userEvent.click(include(dialog, 27));
-    await userEvent.click(button(dialog, 'Save'));
-    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(calls).toEqual(['setMembership:27:FILE-SHARE']);
+    const { dialog } = await openEpic(api);
+    expect(button(dialog, 'Save').disabled).toBe(true);
+    expect(calls).toEqual([]);
   });
 
   it('keeps Save disabled for an empty name', async () => {
@@ -395,7 +327,7 @@ describe('saving', () => {
     expect(button(dialog, 'Cancel').disabled).toBe(true);
     expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).disabled).toBe(true);
     expect(bodyOf(dialog).disabled).toBe(true);
-    expect(include(dialog, 24).disabled).toBe(true);
+    expect(rowName(dialog, 24).disabled).toBe(true);
     await userEvent.keyboard('{Escape}');
     expect(onClosed).not.toHaveBeenCalled();
     await act(async () => finish());
@@ -407,32 +339,30 @@ describe('save failures', () => {
   it('shows the step that failed, keeps the input, and retries only what is left', async () => {
     const { api, calls } = fakeApi();
     let failFirst = true;
-    api.setMembership = vi.fn(async (cardId: number, epicId: string | null) => {
-      calls.push(`setMembership:${cardId}:${epicId}`);
+    api.saveDetails = vi.fn(async () => {
+      calls.push('saveDetails');
       if (failFirst) {
         failFirst = false;
-        throw new WriteError('Card is archived.', 409, 'card_archived');
+        throw new WriteError('Epic is busy.', 409, 'epic_busy');
       }
     });
     const { dialog, onClosed } = await openEpic(api);
     setPlan('kept plan', dialog);
-    await userEvent.click(include(dialog, 27));
+    setName('Renamed epic', dialog);
     await userEvent.click(button(dialog, 'Save'));
 
     const alert = await within(dialog).findByRole('alert');
-    expect(alert.textContent).toContain('Could not save the tasks.');
+    expect(alert.textContent).toContain('Could not save the name, color or draft.');
     expect(alert.textContent).toContain('Earlier changes were saved');
     expect(onClosed).not.toHaveBeenCalled();
     expect(bodyOf(dialog).value).toBe('kept plan');
-    expect(include(dialog, 27).getAttribute('aria-checked')).toBe('true');
+    expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).value).toBe(
+      'Renamed epic',
+    );
 
-    await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+    await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(calls).toEqual([
-      'savePlan',
-      'setMembership:27:FILE-SHARE',
-      'setMembership:27:FILE-SHARE',
-    ]);
+    expect(calls).toEqual(['savePlan', 'saveDetails', 'saveDetails']);
   });
 
   it('stops at the image step and does not save the plan', async () => {
@@ -443,6 +373,7 @@ describe('save failures', () => {
     });
     const { dialog } = await openEpic(api);
     setPlan('kept', dialog);
+    await openImages(dialog);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove shot.png' }));
     await userEvent.click(button(dialog, 'Save'));
     expect((await within(dialog).findByRole('alert')).textContent).toContain('the images');

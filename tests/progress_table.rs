@@ -414,11 +414,31 @@ fn an_archived_card_is_never_listed() {
     let home = demo();
     let card = add(home.path(), "to archive", Some("ALPHA"));
     let kept = add(home.path(), "still open", Some("ALPHA"));
-    ok(agboard(home.path(), &["--project", "Demo", "mv", &card.to_string(), "done", "--actor", "human", "--reason", "done"]));
+    ok(agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "mv",
+            &card.to_string(),
+            "done",
+            "--actor",
+            "human",
+            "--reason",
+            "done",
+        ],
+    ));
 
     let store = FileStore::open(&home.path().join("shared"));
-    let project = store.projects().unwrap().into_iter().find(|p| p.name == "Demo").unwrap();
-    store.archive_card(&project.id, card, chrono::Utc::now()).unwrap();
+    let project = store
+        .projects()
+        .unwrap()
+        .into_iter()
+        .find(|p| p.name == "Demo")
+        .unwrap();
+    store
+        .archive_card(&project.id, card, chrono::Utc::now())
+        .unwrap();
 
     assert_eq!(epic_card_ids(&progress(home.path()), "ALPHA"), vec![kept]);
 }

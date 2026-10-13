@@ -36,6 +36,8 @@ const SAMPLE_EPIC: Epic = {
     { id: 'AC-2', text: '画像が並ぶ', done: false },
   ],
   acceptanceError: false,
+  priority: [],
+  priorityError: false,
   attachments: [],
   createdAt: '2026-10-01T07:00:00Z',
   updatedAt: '2026-10-01T07:00:00Z',

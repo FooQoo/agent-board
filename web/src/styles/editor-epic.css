@@ -58,186 +58,6 @@
   opacity: 0.5;
 }
 
-/* The task list under the outline. */
-.epic-tasks {
-  display: flex;
-  flex: 1 1 0;
-  min-height: 0;
-  overflow: hidden;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--r-border);
-}
-
-.epic-tasks__head {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-}
-
-.epic-tasks__title-text {
-  margin: 0;
-  color: var(--r-text);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 19px;
-}
-
-.epic-tasks__dot,
-.epic-tasks__count {
-  color: var(--r-muted);
-  font-size: 12px;
-  line-height: 17px;
-}
-
-.epic-tasks__filter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-left: auto;
-  padding: 0;
-  border: 1px solid var(--r-border);
-  border-radius: 6px;
-  background: var(--r-surface);
-  color: var(--r-text2);
-  cursor: pointer;
-}
-
-.epic-tasks__filter svg {
-  width: 15px;
-  height: 15px;
-}
-
-.epic-tasks__empty {
-  margin: 0;
-  color: var(--r-muted);
-  font-size: 12px;
-  line-height: 17px;
-}
-
-.epic-tasks__list {
-  display: flex;
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.epic-tasks__row {
-  display: flex;
-  flex: none;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--r-border);
-}
-
-.epic-tasks__check {
-  margin-top: 2px;
-}
-
-.epic-tasks__body {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.epic-tasks__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--r-muted);
-  font-size: 12px;
-  line-height: 17px;
-}
-
-.epic-tasks__id {
-  font-family: var(--font-mono);
-}
-
-.epic-tasks__name {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--r-text);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-  text-align: left;
-  overflow-wrap: anywhere;
-  cursor: pointer;
-}
-
-.epic-tasks__name:hover:not(:disabled) {
-  color: var(--r-accent);
-  text-decoration: underline;
-}
-
-.epic-tasks__name:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-/* The filter menu. */
-.epic-filter {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 248px;
-  padding: 16px;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: var(--r-surface);
-  color: var(--r-text);
-  box-shadow: 0 4px 16px rgb(15 23 42 / 13%);
-}
-
-.epic-filter__title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 19px;
-}
-
-.epic-filter__choice {
-  display: flex;
-  align-items: center;
-  min-height: 28px;
-  gap: 10px;
-  font-size: 13px;
-  line-height: 19px;
-}
-
-.epic-filter__separator {
-  height: 1px;
-  background: var(--r-border);
-}
-
-.epic-filter__check {
-  width: 18px;
-  height: 18px;
-}
-
-.epic-filter__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--r-border);
-}
-
 /* The header badge is shown only when there is a badge text. */
 .editor__badge:empty {
   display: none;
@@ -410,23 +230,6 @@
   opacity: 0.45;
 }
 
-/* The filter menu uses the dark ink of the design, not the accent: its checks and its Apply button. */
-.epic-filter .epic-filter__check[data-state="checked"] {
-  border-color: var(--r-text);
-  background: var(--r-text);
-  color: var(--r-surface);
-}
-
-.epic-filter .epic-filter__apply {
-  background: var(--r-text);
-  color: var(--r-surface);
-}
-
-.epic-filter .epic-filter__apply:hover:not(:disabled) {
-  background: var(--r-text);
-  opacity: 0.9;
-}
-
 /* The over-limit band above the footer: the message at the left, the count at the right. */
 .editor__limit {
   display: flex;
@@ -567,12 +370,178 @@
   line-height: 16px;
 }
 
-.epic-filter__actions button {
-  height: 32px;
-  padding: 0 12px;
+/* The right column folds: a header that always shows, and a body that is hidden while folded. */
+.collapsible {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  border-bottom: 1px solid var(--r-border);
 }
 
-.epic-filter__choice label {
+.collapsible__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--r-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.collapsible__chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease;
+}
+
+.collapsible[data-open="true"] .collapsible__chevron {
+  transform: rotate(180deg);
+}
+
+.collapsible__count {
+  margin-left: auto;
+  color: var(--r-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.collapsible__body[hidden] {
+  display: none;
+}
+
+/* The progress table: one row per task, dragged by its grip, its progress at the bottom right. */
+.epic-progress__empty {
+  margin: 0;
+  padding: 10px 14px;
+  color: var(--r-muted);
   font-size: 13px;
-  font-weight: 400;
+}
+
+.epic-progress__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.epic-progress__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+.epic-progress__row.is-dragging {
+  opacity: 0.6;
+}
+
+.epic-progress__grip {
+  display: inline-flex;
+  margin-top: 2px;
+  color: var(--r-muted);
+  cursor: grab;
+}
+
+.epic-progress__grip svg {
+  width: 14px;
+  height: 14px;
+}
+
+.epic-progress__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.epic-progress__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.epic-progress__id {
+  font-family: var(--font-mono);
+}
+
+.epic-progress__name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--r-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.epic-progress__name:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.epic-progress__foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* The conditions at the bottom of a dialog, outside the scrolling body: folded to one line by default. */
+.editor__dock {
+  flex: none;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+  padding-bottom: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.conditions-dock__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: var(--r-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.conditions-dock__chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease;
+}
+
+.conditions-dock[data-open="true"] .conditions-dock__chevron {
+  transform: rotate(180deg);
+}
+
+.conditions-dock__count {
+  margin-left: auto;
+  color: var(--r-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.conditions-dock__body[hidden] {
+  display: none;
 }

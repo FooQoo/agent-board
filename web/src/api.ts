@@ -440,6 +440,8 @@ export function updateEpic(
     plan?: string;
     body?: string;
     acceptance?: AcceptanceItem[];
+    /** The card order of the epic: card IDs, first is first. */
+    priority?: number[];
   },
 ) {
   return sendEpic('PATCH', `${projectPath(projectId)}/epics/${encodeURIComponent(epicId)}`, input);

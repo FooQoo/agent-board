@@ -1,6 +1,7 @@
 import { useDeferredValue, useId, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AttachmentPanel } from './AttachmentPanel';
+import { CollapsibleSection } from './CollapsibleSection';
 import type { AttachmentNotice } from './useAttachmentState';
 import type { EditorAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, TITLE_LIMIT, countChars } from './limits';
@@ -32,8 +33,13 @@ export interface EditorBodyProps {
   asideTop?: ReactNode;
   /** Fields that scroll with the body, such as acceptance conditions. */
   extraField?: ReactNode;
-  /** Shown under the outline in the left column (the task list of an epic). */
+  /** Shown in the right column above the images (the progress table of an epic). */
   sidebar?: ReactNode;
+  /** Shown under the body, outside its scroll: the completion conditions. */
+  dock?: ReactNode;
+  /** When set, the images panel folds; the dialog says whether it is open. */
+  attachmentsOpen?: boolean;
+  onAttachmentsOpenChange?: (open: boolean) => void;
   /** Shown first in the outline: the link to the completion conditions. */
   outlineTop?: ReactNode;
   attachments?: readonly EditorAttachment[];
@@ -78,6 +84,9 @@ export function EditorBody({
   asideTop,
   extraField,
   sidebar,
+  dock,
+  attachmentsOpen,
+  onAttachmentsOpenChange,
   outlineTop,
   attachments = [],
   attachmentNotice = null,
@@ -156,7 +165,6 @@ export function EditorBody({
             ))
           )}
         </nav>
-        {sidebar}
       </div>
       <div className="editor__main">
         {beforeTitle}
@@ -200,18 +208,38 @@ export function EditorBody({
             />
           </div>
         </div>
+        {dock && <div className="editor__dock">{dock}</div>}
       </div>
       {onFiles && onRemoveAttachment && (
         <div className="editor__aside">
           {asideTop}
-          <AttachmentPanel
-            attachments={attachments}
-            onFiles={onFiles}
-            onRemove={onRemoveAttachment}
-            onInsert={insertImage}
-            notice={attachmentNotice}
-            disabled={disabled}
-          />
+          {sidebar}
+          {onAttachmentsOpenChange ? (
+            <CollapsibleSection
+              title={t('epic.images')}
+              count={attachments.length}
+              open={attachmentsOpen === true}
+              onToggle={() => onAttachmentsOpenChange(attachmentsOpen !== true)}
+            >
+              <AttachmentPanel
+                attachments={attachments}
+                onFiles={onFiles}
+                onRemove={onRemoveAttachment}
+                onInsert={insertImage}
+                notice={attachmentNotice}
+                disabled={disabled}
+              />
+            </CollapsibleSection>
+          ) : (
+            <AttachmentPanel
+              attachments={attachments}
+              onFiles={onFiles}
+              onRemove={onRemoveAttachment}
+              onInsert={insertImage}
+              notice={attachmentNotice}
+              disabled={disabled}
+            />
+          )}
         </div>
       )}
     </div>

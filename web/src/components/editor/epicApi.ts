@@ -1,4 +1,4 @@
-import { addEpicAttachments, deleteEpicAttachment, setCardEpic, updateEpic } from '../../api';
+import { addEpicAttachments, deleteEpicAttachment, updateEpic } from '../../api';
 import type { EpicApi } from './EpicDialog';
 
 /**
@@ -15,6 +15,6 @@ export function epicApi(projectId: string, epicId: string, changed: () => void):
     removeImage: (attachmentId) => done(deleteEpicAttachment(projectId, epicId, attachmentId)),
     savePlan: (plan) => done(updateEpic(projectId, epicId, plan)),
     saveDetails: (details) => done(updateEpic(projectId, epicId, details)),
-    setMembership: (cardId, membership) => done(setCardEpic(projectId, cardId, membership)),
+    savePriority: (priority) => done(updateEpic(projectId, epicId, { priority })),
   };
 }

@@ -1,8 +1,6 @@
-import { ArrowDownIcon, ArrowUpIcon, GripVerticalIcon, PlusIcon, XIcon } from 'lucide-react';
+import { PlusIcon, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DragDropProvider } from '@dnd-kit/react';
-import { isSortable, useSortable } from '@dnd-kit/react/sortable';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -12,7 +10,7 @@ import './acceptance-edit.css';
 
 /**
  * The completion conditions of a card or epic, edited in its dialog. A new condition takes the next
- * number after every number shown, so a removed number is not reused. Moving changes only the order.
+ * number after every number shown, so a removed number is not reused. The order is kept as it is.
  */
 export function AcceptanceEditor({
   id,
@@ -43,12 +41,6 @@ export function AcceptanceEditor({
   const invalid = acceptanceProblem(items);
   const update = (index: number, change: Partial<AcceptanceItem>) =>
     onChange(items.map((item, i) => (i === index ? { ...item, ...change } : item)));
-  const move = (index: number, to: number) => {
-    const next = [...items];
-    const [moved] = next.splice(index, 1);
-    if (moved) next.splice(to, 0, moved);
-    onChange(next);
-  };
   const remove = (index: number) => onChange(items.filter((_, i) => i !== index));
   const add = () => {
     const id = nextId(everShown.current);
@@ -69,37 +61,23 @@ export function AcceptanceEditor({
         </span>
         <span className="acceptance-edit__saved">{t('acceptanceEdit.savedIn')}</span>
       </div>
-      <DragDropProvider
-        onDragEnd={(event) => {
-          if (event.canceled) return;
-          const source = event.operation.source;
-          if (!source || !isSortable(source)) return;
-          const from = source.sortable.initialIndex;
-          const to = source.sortable.index;
-          if (from !== to) move(from, to);
-        }}
-      >
-        <ol className="acceptance-edit__list">
-          {items.map((item, index) => (
-            <ConditionRow
-              key={item.id}
-              id={item.id}
-              index={index}
-              disabled={disabled}
-              invalid={invalid === index}
-              last={index === items.length - 1}
-              item={item}
-              setInput={(element) => {
-                if (element) inputs.current.set(item.id, element);
-                else inputs.current.delete(item.id);
-              }}
-              onUpdate={(change) => update(index, change)}
-              onMove={(to) => move(index, to)}
-              onRemove={() => remove(index)}
-            />
-          ))}
-        </ol>
-      </DragDropProvider>
+      <ol className="acceptance-edit__list">
+        {items.map((item, index) => (
+          <ConditionRow
+            key={item.id}
+            id={item.id}
+            disabled={disabled}
+            invalid={invalid === index}
+            item={item}
+            setInput={(element) => {
+              if (element) inputs.current.set(item.id, element);
+              else inputs.current.delete(item.id);
+            }}
+            onUpdate={(change) => update(index, change)}
+            onRemove={() => remove(index)}
+          />
+        ))}
+      </ol>
       <Button
         type="button"
         variant="outline"
@@ -116,64 +94,28 @@ export function AcceptanceEditor({
   );
 }
 
-/** One condition: its grip (drag to reorder), its controls, its text, and its remove button. */
+/** One condition: its check, its number, its text, and its remove button. */
 function ConditionRow({
   id,
-  index,
   item,
   disabled,
   invalid,
-  last,
   setInput,
   onUpdate,
-  onMove,
   onRemove,
 }: {
   id: string;
-  index: number;
   item: AcceptanceItem;
   disabled: boolean;
   invalid: boolean;
-  last: boolean;
   setInput: (element: HTMLInputElement | null) => void;
   onUpdate: (change: Partial<AcceptanceItem>) => void;
-  onMove: (to: number) => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
-  const { ref, handleRef, isDragging } = useSortable({ id, index, disabled });
   return (
-    <li
-      ref={ref}
-      className={isDragging ? 'acceptance-edit__row is-dragging' : 'acceptance-edit__row'}
-      data-id={id}
-    >
+    <li className="acceptance-edit__row" data-id={id}>
       <span className="acceptance-edit__controls">
-        <span ref={handleRef} className="acceptance-edit__grip" aria-hidden="true">
-          <GripVerticalIcon focusable="false" />
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="acceptance-edit__icon"
-          aria-label={t('acceptanceEdit.moveUp', { id })}
-          disabled={disabled || index === 0}
-          onClick={() => onMove(index - 1)}
-        >
-          <ArrowUpIcon aria-hidden="true" focusable="false" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="acceptance-edit__icon"
-          aria-label={t('acceptanceEdit.moveDown', { id })}
-          disabled={disabled || last}
-          onClick={() => onMove(index + 1)}
-        >
-          <ArrowDownIcon aria-hidden="true" focusable="false" />
-        </Button>
         <Checkbox
           checked={item.done}
           disabled={disabled}

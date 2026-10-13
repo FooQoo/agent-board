@@ -70,6 +70,10 @@ export interface Epic extends EpicRef {
   body: string;
   acceptance: AcceptanceItem[];
   acceptanceError: boolean;
+  /** The card order of the epic (PLAN.md `priority`); empty when none is stored. */
+  priority: number[];
+  /** The stored order cannot be read; it is then ignored. */
+  priorityError: boolean;
   attachments: Attachment[];
   createdAt: string;
   updatedAt: string;

@@ -62,12 +62,11 @@ describe('AcceptanceEditor', () => {
     expect(latest()).toEqual([{ id: 'AC-1', text: 'New text', done: true }]);
   });
 
-  it('moves a condition up and down without changing its ID', () => {
+  it('has no way to reorder conditions: the order and the IDs stay as they are', () => {
     const latest = setup([item('AC-1'), item('AC-2'), item('AC-3')]);
-    fireEvent.click(screen.getByRole('button', { name: 'Move AC-3 up' }));
-    expect(latest().map((i) => i.id)).toEqual(['AC-1', 'AC-3', 'AC-2']);
-    fireEvent.click(screen.getByRole('button', { name: 'Move AC-3 up' }));
-    expect(latest().map((i) => i.id)).toEqual(['AC-3', 'AC-1', 'AC-2']);
+    expect(screen.queryByRole('button', { name: /Move AC-\d+ (up|down)/ })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Condition AC-2'), { target: { value: 'Changed' } });
+    expect(latest().map((i) => i.id)).toEqual(['AC-1', 'AC-2', 'AC-3']);
   });
 
   it('marks an empty text as invalid', () => {

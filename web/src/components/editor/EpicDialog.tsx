@@ -5,14 +5,15 @@ import { epicInk } from '../../lib/epic';
 import type { AcceptanceItem, Card, Epic } from '../../types';
 import { DiscardConfirm } from './DiscardConfirm';
 import { EditorBody, useOverLimit } from './EditorBody';
-import { AcceptanceEditor } from '../acceptance/AcceptanceEditor';
+import { ConditionsDock } from '../acceptance/ConditionsDock';
 import { ConditionsLink } from '../acceptance/ConditionsLink';
 import { acceptanceProblem } from '../../lib/acceptance';
 import { EditorShell } from './EditorShell';
 import type { EditorAttachment, StoredAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines } from './limits';
 import type { RichMarkdownEditorHandle } from './RichMarkdownEditor';
-import { EpicTaskList } from './EpicTaskList';
+import { CollapsibleSection } from './CollapsibleSection';
+import { EpicProgressList } from './EpicProgressList';
 import { EpicColorPicker } from './EpicColorPicker';
 import { useAttachmentState } from './useAttachmentState';
 import { useMultipartRequest } from './useMultipartRequest';
@@ -25,11 +26,14 @@ export interface EpicApi {
   /** The whole plan text, or the body with the conditions, saved in one request. */
   savePlan(input: { plan: string } | { body: string; acceptance: AcceptanceItem[] }): Promise<void>;
   saveDetails(details: { name: string; color: string; isDraft: boolean }): Promise<void>;
-  /** Puts a task into this epic (`epicId`) or takes it out (`null`). */
-  setMembership(cardId: number, epicId: string | null): Promise<void>;
+  /** Saves the card order of the epic: the IDs of its tasks, first is first. */
+  savePriority(priority: number[]): Promise<void>;
 }
 
-type Step = 'images' | 'plan' | 'details' | 'tasks';
+type Step = 'images' | 'plan' | 'details' | 'order';
+
+/** Which panel of the right column is open. Opening one folds the other. */
+type Panel = 'progress' | 'images';
 
 const NAME_LIMIT = 100;
 
@@ -40,10 +44,24 @@ function nameIsValid(name: string): boolean {
 }
 
 /**
- * The dialog that edits an epic: the formal name, the color, the plan, the images and
- * which tasks are in it. One Save applies all of it, in the order images, plan, name/color and
- * the tasks. A step that finished stays saved; when a later step fails, the input stays and only the
- * rest is sent again.
+ * The order of the tasks of an epic: the saved order first, then the tasks it does not list, by ID.
+ * Only tasks in `members` are kept.
+ */
+function orderOf(priority: readonly number[], members: readonly Card[]): number[] {
+  const ids = new Set(members.map((card) => card.id));
+  const listed = priority.filter((id) => ids.has(id));
+  const rest = members
+    .map((card) => card.id)
+    .filter((id) => !listed.includes(id))
+    .sort((a, b) => a - b);
+  return [...listed, ...rest];
+}
+
+/**
+ * The dialog that edits an epic: the formal name, the color, the plan, the images, and the order
+ * of its tasks in the progress table. One Save applies all of it, in the order images, plan,
+ * name/color and the order. A step that finished stays saved; when a later step fails, the input stays
+ * and only the rest is sent again.
  */
 export function EpicDialog({
   epic,
@@ -67,10 +85,8 @@ export function EpicDialog({
   const { t } = useTranslation();
   const editor = useRef<RichMarkdownEditorHandle>(null);
   const requestId = useMultipartRequest();
-  // The tasks in this epic when it was opened. Their order and the filter use this set.
-  const [initialMembers] = useState(
-    () => new Set(cards.filter((card) => card.epic?.id === epic.id).map((card) => card.id)),
-  );
+  // The tasks of this epic, as the board has them now.
+  const members = cards.filter((card) => card.epic?.id === epic.id);
   // What the server has.
   const [saved, setSaved] = useState(() => ({
     name: epic.name,
@@ -78,9 +94,11 @@ export function EpicDialog({
     isDraft: epic.isDraft,
     plan: normalizeNewlines(epic.acceptanceError ? epic.plan : epic.body),
     acceptance: epic.acceptance,
+    order: orderOf(epic.priority, members),
   }));
-  const [savedMembers, setSavedMembers] = useState(() => new Set(initialMembers));
-  // What the person has now.
+  // What the person has now: the order of the tasks as the saved order plus the changes.
+  const [order, setOrder] = useState<number[]>(() => saved.order);
+  const [panel, setPanel] = useState<Panel>('progress');
   const [name, setName] = useState(epic.name);
   const [color, setColor] = useState(epic.color.toUpperCase());
   // A plan whose frontmatter cannot be read is edited as its whole text, as it was before.
@@ -88,7 +106,6 @@ export function EpicDialog({
   const [plan, setPlan] = useState(saved.plan);
   const [conditions, setConditions] = useState<AcceptanceItem[]>(epic.acceptance);
   const conditionsId = useId();
-  const [members, setMembers] = useState(() => new Set(initialMembers));
   const [removed, setRemoved] = useState<string[]>([]);
   const [pendingTask, setPendingTask] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -111,10 +128,13 @@ export function EpicDialog({
     !whole && JSON.stringify(conditions) !== JSON.stringify(saved.acceptance);
   const planChanged = plan !== saved.plan || conditionsChanged;
   const detailsChanged = name.trim() !== saved.name || color.toUpperCase() !== saved.color;
-  const changedTasks = [...new Set([...savedMembers, ...members])]
-    .filter((id) => savedMembers.has(id) !== members.has(id))
-    .sort((a, b) => a - b);
-  const dirty = imagesChanged || planChanged || detailsChanged || changedTasks.length > 0;
+  // The rows shown: the order the person has, with the tasks it does not list at the end.
+  const rowIds = orderOf(order, members);
+  const rows = rowIds
+    .map((id) => members.find((card) => card.id === id))
+    .filter((card): card is Card => card !== undefined);
+  const orderChanged = JSON.stringify(order) !== JSON.stringify(saved.order);
+  const dirty = imagesChanged || planChanged || detailsChanged || orderChanged;
   const overLimit = useOverLimit(plan);
   const valid =
     nameIsValid(name) &&
@@ -169,17 +189,13 @@ export function EpicDialog({
         somethingSaved.current = true;
         setSaved((current) => ({ ...current, ...details }));
       }
-      // 4. The tasks, one write per task.
-      step = 'tasks';
-      for (const cardId of changedTasks) {
-        await api.setMembership(cardId, members.has(cardId) ? epic.id : null);
+      // 4. The order of the tasks in the progress table.
+      step = 'order';
+      if (orderChanged) {
+        await api.savePriority(rowIds);
         somethingSaved.current = true;
-        setSavedMembers((current) => {
-          const next = new Set(current);
-          if (members.has(cardId)) next.add(cardId);
-          else next.delete(cardId);
-          return next;
-        });
+        setSaved((current) => ({ ...current, order: rowIds }));
+        setOrder(rowIds);
       }
       busy.current = false;
       setSaving(false);
@@ -203,7 +219,15 @@ export function EpicDialog({
         ? t('epic.stepPlan')
         : step === 'details'
           ? t('epic.stepDetails')
-          : t('epic.stepTasks');
+          : t('epic.stepOrder');
+
+  const move = (from: number, to: number) =>
+    setOrder(() => {
+      const next = [...rowIds];
+      const [moved] = next.splice(from, 1);
+      if (moved !== undefined) next.splice(to, 0, moved);
+      return next;
+    });
 
   const requestOpenTask = (cardId: number) => {
     if (dirty) setPendingTask(cardId);
@@ -240,9 +264,9 @@ export function EpicDialog({
         bodyLabel={t('epic.planLabel')}
         editorRef={editor}
         disabled={saving}
-        extraField={
+        dock={
           whole ? undefined : (
-            <AcceptanceEditor
+            <ConditionsDock
               id={conditionsId}
               items={conditions}
               onChange={setConditions}
@@ -268,22 +292,22 @@ export function EpicDialog({
           </div>
         }
         sidebar={
-          <EpicTaskList
-            cards={cards}
-            initialMembers={initialMembers}
-            members={members}
-            disabled={saving}
-            onToggle={(cardId, included) =>
-              setMembers((current) => {
-                const next = new Set(current);
-                if (included) next.add(cardId);
-                else next.delete(cardId);
-                return next;
-              })
-            }
-            onOpenTask={requestOpenTask}
-          />
+          <CollapsibleSection
+            title={t('epic.progressTitle')}
+            count={rows.length}
+            open={panel === 'progress'}
+            onToggle={() => setPanel(panel === 'progress' ? 'images' : 'progress')}
+          >
+            <EpicProgressList
+              cards={rows}
+              disabled={saving}
+              onMove={move}
+              onOpenTask={requestOpenTask}
+            />
+          </CollapsibleSection>
         }
+        attachmentsOpen={panel === 'images'}
+        onAttachmentsOpenChange={(open) => setPanel(open ? 'images' : 'progress')}
         attachmentNotice={attachmentState.error}
         attachments={attachmentState.attachments}
         onFiles={attachmentState.addFiles}
