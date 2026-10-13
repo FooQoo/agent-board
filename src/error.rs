@@ -21,6 +21,18 @@ pub enum AgboardError {
     ProjectNameExists {
         name: String,
     },
+    /// The folder already belongs to another project.
+    FolderBoundElsewhere {
+        folder: String,
+    },
+    /// No bound folder contains the folder the command starts from.
+    FolderUnbound {
+        folder: String,
+    },
+    /// The folder's bound project was deleted; nothing is guessed.
+    BoundProjectMissing {
+        folder: String,
+    },
     CardNotFound {
         id: i64,
     },
@@ -142,6 +154,9 @@ impl AgboardError {
         match self {
             AgboardError::ProjectNotFound { .. } => "project_not_found",
             AgboardError::ProjectNameExists { .. } => "project_name_exists",
+            AgboardError::FolderBoundElsewhere { .. } => "folder_bound_elsewhere",
+            AgboardError::FolderUnbound { .. } => "folder_unbound",
+            AgboardError::BoundProjectMissing { .. } => "bound_project_missing",
             AgboardError::CardNotFound { .. } => "card_not_found",
             AgboardError::CardArchived { .. } => "card_archived",
             AgboardError::CardNotArchived { .. } => "card_not_archived",
@@ -183,6 +198,8 @@ impl AgboardError {
         match self {
             AgboardError::ProjectNotFound { .. } => 4,
             AgboardError::ProjectNameExists { .. } => 2,
+            AgboardError::FolderBoundElsewhere { .. } => 2,
+            AgboardError::FolderUnbound { .. } | AgboardError::BoundProjectMissing { .. } => 4,
             AgboardError::CardNotFound { .. } => 3,
             AgboardError::InvalidArgument { .. } | AgboardError::InvalidValue { .. } => 2,
             AgboardError::InvalidStateForAssignee => 2,
@@ -196,6 +213,15 @@ impl AgboardError {
     pub fn message(&self) -> String {
         match self {
             AgboardError::ProjectNotFound { .. } => "project not found.".to_string(),
+            AgboardError::FolderBoundElsewhere { .. } => {
+                "this folder already belongs to another project.".to_string()
+            }
+            AgboardError::FolderUnbound { .. } => {
+                "this folder is not bound to a project.".to_string()
+            }
+            AgboardError::BoundProjectMissing { .. } => {
+                "the project bound to this folder no longer exists.".to_string()
+            }
             AgboardError::ProjectNameExists { name } => {
                 format!("project \"{name}\" already exists.")
             }
@@ -263,6 +289,15 @@ impl AgboardError {
             ),
             AgboardError::ProjectNameExists { .. } => {
                 "Project names must be unique. Choose another name.".to_string()
+            }
+            AgboardError::FolderBoundElsewhere { .. } => {
+                "A folder belongs to one project. Choose another folder.".to_string()
+            }
+            AgboardError::FolderUnbound { .. } => {
+                "Create a project here with \"agboard project create NAME\", or bind this folder with \"agboard project bind NAME\".".to_string()
+            }
+            AgboardError::BoundProjectMissing { .. } => {
+                "Bind this folder to a project with \"agboard project bind NAME\".".to_string()
             }
             AgboardError::CardNotFound { id } => {
                 format!("No card has ID {id}. Run \"agboard ls\" to see the cards.")

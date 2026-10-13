@@ -5,6 +5,7 @@
 //! are kept apart. JSON writes take the project's write lock, read the latest
 //! file, change only the required items, and replace the file atomically.
 
+pub mod bindings;
 pub mod frontmatter;
 pub mod index;
 pub mod io;

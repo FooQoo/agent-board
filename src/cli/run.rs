@@ -129,7 +129,7 @@ fn access(command: &Command) -> Access {
         },
         Command::Project(args) => match args.command {
             ProjectCommand::Ls => Access::ReadCatalog,
-            ProjectCommand::Create(_) => Access::Catalog,
+            ProjectCommand::Create(_) | ProjectCommand::Bind(_) => Access::Catalog,
             ProjectCommand::Rename(_) | ProjectCommand::Rm => Access::ChangeProject,
         },
         Command::Init(_) => Access::ChangeOrCreateProject,

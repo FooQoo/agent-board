@@ -189,6 +189,11 @@ pub enum ProjectCommand {
     /// List the projects (no --project needed)
     #[command(after_help = "Examples:\n  agboard project ls\n  agboard project ls --json")]
     Ls,
+    /// Bind an existing project to a folder (no --project needed)
+    #[command(
+        after_help = "Examples:\n  agboard project bind \"My project\"\n  agboard project bind \"My project\" --folder ../other"
+    )]
+    Bind(ProjectBindArgs),
     /// Rename the project named with --project
     #[command(
         after_help = "Examples:\n  agboard --project \"My project\" project rename \"Renamed project\"\n\nHook commands name the project; update them after a rename."
@@ -203,6 +208,18 @@ pub enum ProjectCommand {
 pub struct ProjectCreateArgs {
     /// Name of the new project (1 to 50 characters, one line)
     pub name: String,
+    /// Folder to bind the project to (default: the current folder)
+    #[arg(long, value_name = "DIR")]
+    pub folder: Option<PathBuf>,
+}
+
+#[derive(Args, Debug)]
+pub struct ProjectBindArgs {
+    /// Name of the existing project (1 to 50 characters, one line)
+    pub name: String,
+    /// Folder to bind (default: the current folder)
+    #[arg(long, value_name = "DIR")]
+    pub folder: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
@@ -835,7 +852,8 @@ impl Cli {
             // Creating and listing projects name no project either.
             (
                 Command::Project(ProjectArgs {
-                    command: ProjectCommand::Create(_) | ProjectCommand::Ls,
+                    command:
+                        ProjectCommand::Create(_) | ProjectCommand::Bind(_) | ProjectCommand::Ls,
                 }),
                 Some(_),
             ) => {
@@ -849,7 +867,8 @@ impl Cli {
             }
             (
                 Command::Project(ProjectArgs {
-                    command: ProjectCommand::Create(_) | ProjectCommand::Ls,
+                    command:
+                        ProjectCommand::Create(_) | ProjectCommand::Bind(_) | ProjectCommand::Ls,
                 }),
                 None,
             ) => {}
@@ -950,6 +969,7 @@ impl Cli {
         match &self.command {
             Command::Project(ProjectArgs { command }) => match command {
                 ProjectCommand::Create(_) => "create",
+                ProjectCommand::Bind(_) => "bind",
                 ProjectCommand::Ls => "ls",
                 ProjectCommand::Rename(_) => "rename",
                 ProjectCommand::Rm => "rm",

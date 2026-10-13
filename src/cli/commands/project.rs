@@ -9,28 +9,85 @@ use std::io::{BufRead, Write};
 
 use serde_json::json;
 
-use crate::cli::args::{ProjectArgs, ProjectCommand, ProjectCreateArgs, ProjectRenameArgs};
+use std::path::{Path, PathBuf};
+
+use crate::cli::args::{
+    ProjectArgs, ProjectBindArgs, ProjectCommand, ProjectCreateArgs, ProjectRenameArgs,
+};
 use crate::cli::{Context, Outcome};
+use crate::domain::validate_project_name;
 use crate::error::AgboardError;
+use crate::file_store::bindings::canonical_folder;
 use crate::interact::confirm;
 
 pub fn run(ctx: &mut Context, args: &ProjectArgs) -> Result<Outcome, AgboardError> {
     match &args.command {
         ProjectCommand::Create(args) => create(ctx, args),
+        ProjectCommand::Bind(args) => bind(ctx, args),
         ProjectCommand::Ls => ls(ctx),
         ProjectCommand::Rename(args) => rename(ctx, args),
         ProjectCommand::Rm => rm(ctx),
     }
 }
 
-/// Create an empty project. A name already in use is `project_name_exists`.
+/// Create an empty project bound to a folder: `--folder`, or the current
+/// folder. A name already in use is `project_name_exists`; a folder that
+/// belongs to another project is refused before anything is created. If the
+/// binding still fails, the new project is removed again.
 pub fn create(ctx: &Context, args: &ProjectCreateArgs) -> Result<Outcome, AgboardError> {
+    let folder = folder_or_current(args.folder.as_deref())?;
+    if ctx.files.live_binding_for_folder(&folder)?.is_some() {
+        return Err(AgboardError::FolderBoundElsewhere {
+            folder: folder.display().to_string(),
+        });
+    }
     let project = ctx.files.create_project(&args.name, ctx.clock.now())?;
+    if let Err(error) = ctx.files.bind_folder(&project.id, &folder) {
+        let _ = ctx.files.delete_project(&project.id);
+        return Err(error);
+    }
     Ok(Outcome {
         changed: true,
-        human: format!("Created project \"{}\".\n", project.name),
+        human: format!(
+            "Created project \"{}\" and bound it to this folder.\n",
+            project.name
+        ),
         json: json!({"project": project}),
     })
+}
+
+/// Bind an existing project to a folder: `--folder`, or the current folder.
+/// Binding a folder to its own project again changes nothing.
+pub fn bind(ctx: &Context, args: &ProjectBindArgs) -> Result<Outcome, AgboardError> {
+    let name = validate_project_name(&args.name)?;
+    let project = ctx.files.project_by_name(&name)?;
+    let folder = folder_or_current(args.folder.as_deref())?;
+    let bound = ctx.files.bind_folder(&project.id, &folder)?;
+    let human = if bound.changed {
+        format!("Bound project \"{}\" to this folder.\n", project.name)
+    } else {
+        format!(
+            "Project \"{}\" is already bound to this folder. Nothing was changed.\n",
+            project.name
+        )
+    };
+    Ok(Outcome {
+        changed: bound.changed,
+        human,
+        json: json!({"project": project, "bound": bound.changed}),
+    })
+}
+
+/// The given folder, or the current one, checked and made canonical.
+fn folder_or_current(folder: Option<&Path>) -> Result<PathBuf, AgboardError> {
+    let path = match folder {
+        Some(path) => path.to_path_buf(),
+        None => std::env::current_dir().map_err(|_| AgboardError::InvalidValue {
+            field: "--folder".to_string(),
+            reason: "Use an existing folder.".to_string(),
+        })?,
+    };
+    canonical_folder(&path)
 }
 
 /// The projects by name, with the catalog revision.

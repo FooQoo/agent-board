@@ -29,7 +29,7 @@ fn run(home: &Path, args: &[&str]) -> Output {
     bin()
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
-        .args(args)
+        .args(folder_args(home, args))
         .stdin(Stdio::null())
         .output()
         .unwrap()
@@ -899,4 +899,27 @@ fn the_text_listing_shows_each_project_under_its_name_with_the_columns_of_ls() {
     assert!(help.contains("agboard ls --all-projects"), "{help}");
     let top = stdout_text(&run(home.path(), &["--help"]));
     assert!(top.contains("agboard ls --all-projects --json"), "{top}");
+}
+
+/// `project create` binds the folder it runs in, and one folder belongs to one
+/// project. Every create in a test therefore gets a folder of its own under
+/// the test's data area, unless the arguments name one.
+fn folder_args(home: &std::path::Path, args: &[&str]) -> Vec<String> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    let mut out: Vec<String> = args.iter().map(|a| a.to_string()).collect();
+    if let Some(at) = args.windows(2).position(|w| w == ["project", "create"]) {
+        let name = at + 2;
+        if args.get(name).is_some_and(|n| !n.starts_with('-')) && !args.contains(&"--folder") {
+            let dir = home
+                .join("folders")
+                .join(NEXT.fetch_add(1, Ordering::Relaxed).to_string());
+            std::fs::create_dir_all(&dir).unwrap();
+            out.splice(
+                name + 1..name + 1,
+                ["--folder".to_string(), dir.display().to_string()],
+            );
+        }
+    }
+    out
 }

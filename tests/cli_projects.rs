@@ -24,7 +24,7 @@ fn agboard(home: &Path, args: &[&str]) -> assert_cmd::assert::Assert {
         .unwrap()
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
-        .args(args)
+        .args(folder_args(home, args))
         .assert()
 }
 
@@ -596,7 +596,7 @@ impl NotifySpy {
 /// Run the CLI in this process with a spy instead of a server notification.
 fn in_process(home: &Path, args: &[&str]) -> (i32, String, String, usize, Vec<PathBuf>) {
     let args: Vec<OsString> = std::iter::once("agboard")
-        .chain(args.iter().copied())
+        .chain(folder_args(home, args).iter().map(String::as_str))
         .map(OsString::from)
         .collect();
     let (mut out, mut err) = (Vec::new(), Vec::new());
@@ -991,4 +991,27 @@ fn help_lists_project_commands_and_every_example_names_its_project() {
             );
         }
     }
+}
+
+/// `project create` binds the folder it runs in, and one folder belongs to one
+/// project. Every create in a test therefore gets a folder of its own under
+/// the test's data area, unless the arguments name one.
+fn folder_args(home: &std::path::Path, args: &[&str]) -> Vec<String> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    let mut out: Vec<String> = args.iter().map(|a| a.to_string()).collect();
+    if let Some(at) = args.windows(2).position(|w| w == ["project", "create"]) {
+        let name = at + 2;
+        if args.get(name).is_some_and(|n| !n.starts_with('-')) && !args.contains(&"--folder") {
+            let dir = home
+                .join("folders")
+                .join(NEXT.fetch_add(1, Ordering::Relaxed).to_string());
+            std::fs::create_dir_all(&dir).unwrap();
+            out.splice(
+                name + 1..name + 1,
+                ["--folder".to_string(), dir.display().to_string()],
+            );
+        }
+    }
+    out
 }
