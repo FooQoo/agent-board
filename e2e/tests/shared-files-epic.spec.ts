@@ -45,44 +45,42 @@ test.beforeEach(() => {
   agboardOk(mainProject, ['edit', '14', '--epic', 'FILE-SHARE']);
 });
 
-test('the epic dialog saves its name, colour, plan, and tasks together, and its contents are read back by the CLI', async ({ page }) => {
+test('the epic dialog saves its name, colour, and plan together, and its contents are read back by the CLI', async ({ page }) => {
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   const dialog = await openEpic(page, 'FILE-SHARE');
 
-  // Name, colour, plan, and one more task in the epic; nothing is stored until Save.
+  // Name, colour, and plan; nothing is stored until Save.
   await dialog.getByRole('textbox', { name: 'Formal name' }).fill('File sharing');
   await dialog.getByRole('button', { name: 'Choose a label color' }).click();
   await page.getByLabel('HEX', { exact: true }).fill('#2563eb');
   await page.getByLabel('HEX', { exact: true }).press('Escape');
   await pasteMarkdown(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }), PLAN);
-  await dialog.getByRole('checkbox', { name: 'Include in this epic: Refine the empty board' }).check();
   expect(epicOf('FILE-SHARE').name).toBe('File share');
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
 
-  // The CLI reads the same epic: the name, the colour, the plan, and both tasks.
+  // The CLI reads the same epic: the name, the colour, and the plan.
   const stored = epicOf('FILE-SHARE');
   expect(stored).toMatchObject({ name: 'File sharing', color: '#2563EB' });
   expect(stored.plan).toContain('## Approach');
   expect(stored.plan).toContain('acceptance: []');
-  expect(cardOf(16).epicId).toBe('FILE-SHARE');
   expect(cardOf(14).epicId).toBe('FILE-SHARE');
 
   // The label and the card frame show the new name and colour.
   await expect(page.locator('[data-epic-label="FILE-SHARE"]').first()).toHaveCSS('background-color', 'rgb(37, 99, 235)');
-  await expect(card(page, 16).locator('[data-epic-label="FILE-SHARE"]')).toHaveCount(1);
+  await expect(card(page, 14).locator('[data-epic-label="FILE-SHARE"]')).toHaveCount(1);
 });
 
-test('a task opened from the epic asks first when the epic has unsaved changes; going back keeps the edit, and moving discards it', async ({ page }) => {
+test('a task opened from the progress table asks first when the epic has unsaved changes; going back keeps the edit, and moving discards it', async ({ page }) => {
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   const dialog = await openEpic(page, 'FILE-SHARE');
   await dialog.getByRole('textbox', { name: 'Formal name' }).fill('Unsaved name');
 
   // The task name in the list asks before the dialog closes.
-  await dialog.locator('.epic-tasks__name', { hasText: 'Return the card list as JSON' }).click();
+  await dialog.locator('.epic-progress__name', { hasText: 'Prepare the Windows build' }).click();
   const ask = page.getByRole('dialog', { name: /Discard changes\?/ });
   await expect(ask.getByText('You have unsaved changes. If you close now, what you entered will be lost.')).toBeVisible();
   // Back returns to the epic with the text kept.
@@ -91,16 +89,16 @@ test('a task opened from the epic asks first when the epic has unsaved changes; 
   await expect(dialog.getByRole('textbox', { name: 'Formal name' })).toHaveValue('Unsaved name');
 
   // Moving discards the epic's change and shows the task.
-  await dialog.locator('.epic-tasks__name', { hasText: 'Return the card list as JSON' }).click();
+  await dialog.locator('.epic-progress__name', { hasText: 'Prepare the Windows build' }).click();
   await page.getByRole('dialog', { name: /Discard changes\?/ }).getByRole('button', { name: 'Discard and move', exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Return the card list as JSON');
+  await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Prepare the Windows build');
   expect(epicOf('FILE-SHARE').name).toBe('File share');
 });
 
 for (const locale of ['en', 'ja'] as const) {
   for (const mode of ['light', 'dark'] as const) {
-    test(`epic palette and task filter match the design in ${locale}, ${mode}`, async ({ page }, testInfo) => {
+    test(`epic palette matches the design in ${locale}, ${mode}`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width: locale === 'ja' ? 960 : 1280, height: 900 });
       await page.addInitScript(({ locale, mode }) => {
         localStorage.setItem('agboard.locale', locale);
@@ -133,19 +131,6 @@ for (const locale of ['en', 'ja'] as const) {
       await palette.getByLabel('HEX', { exact: true }).press('Escape');
       await expect(dialog).toBeVisible();
 
-      const initialCount = await dialog.locator('.epic-tasks__row').count();
-      await dialog.getByRole('button', { name: locale === 'en' ? 'Filter tasks' : 'タスクを絞り込む' }).click();
-      const filter = page.locator('.epic-filter');
-      await expect(filter).toHaveCSS('width', '248px');
-      await filter.screenshot({ path: testInfo.outputPath('filter.png') });
-      await filter.getByRole('checkbox', { name: locale === 'en' ? 'Other' : 'その他', exact: true }).uncheck();
-      await filter.getByRole('button', { name: locale === 'en' ? 'Cancel' : 'キャンセル', exact: true }).click();
-      await expect(dialog.locator('.epic-tasks__row')).toHaveCount(initialCount);
-      await dialog.getByRole('button', { name: locale === 'en' ? 'Filter tasks' : 'タスクを絞り込む' }).click();
-      await expect(filter.getByRole('checkbox', { name: locale === 'en' ? 'Other' : 'その他', exact: true })).toBeChecked();
-      await filter.getByRole('checkbox', { name: locale === 'en' ? 'Other' : 'その他', exact: true }).uncheck();
-      await filter.getByRole('button', { name: locale === 'en' ? 'Apply' : '適用', exact: true }).click();
-      await expect(dialog.locator('.epic-tasks__row')).toHaveCount(1);
       expect(cardOf(14).epicId).toBe('FILE-SHARE');
       await dialog.getByRole('button', { name: locale === 'en' ? 'Save' : '保存', exact: true }).click();
       await expect(dialog).toHaveCount(0);
@@ -155,30 +140,27 @@ for (const locale of ['en', 'ja'] as const) {
 }
 
 for (const [mode, width, height] of [['light', 1280, 800], ['dark', 960, 640]] as const) {
-  test(`epic task and image lists scroll independently with fixed controls in ${mode}`, async ({ page }, testInfo) => {
+  test(`epic image list scrolls independently with fixed controls in ${mode}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height });
     await page.addInitScript((mode) => localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' })), mode);
     await page.goto(`/?project=${projectId(mainProject)}`);
     await waitForSync(page);
     const dialog = await openEpic(page, 'FILE-SHARE');
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+    await dialog.getByRole('button', { name: /^Images/ }).click();
     await dialog.locator('input[type="file"]').setInputFiles(Array.from({ length: 6 }, (_, i) => ({ name: `image-${i}.png`, mimeType: 'image/png', buffer: png })));
-    const tasks = dialog.locator('.epic-tasks__list');
     const images = dialog.locator('.editor-attachments__list');
     const outline = dialog.getByRole('navigation', { name: 'Outline' });
-    const taskHead = dialog.locator('.epic-tasks__head');
     const imageHead = dialog.locator('.editor-attachments__header');
     const imageAdd = dialog.getByRole('button', { name: 'Add image attachment', exact: true });
     const drop = dialog.locator('.editor-attachments__drop');
     await expect.poll(() => dialog.evaluate((node) => node.getAnimations().every((animation) => animation.playState !== 'running'))).toBe(true);
-    const positions = await Promise.all([outline, taskHead, imageHead, imageAdd, drop].map((node) => node.boundingBox()));
-    for (const list of [tasks, images]) {
-      expect(await list.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
-      await list.hover();
-      await page.mouse.wheel(0, 800);
-      await expect.poll(() => list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
-    }
-    const after = await Promise.all([outline, taskHead, imageHead, imageAdd, drop].map((node) => node.boundingBox()));
+    const positions = await Promise.all([outline, imageHead, imageAdd, drop].map((node) => node.boundingBox()));
+    expect(await images.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+    await images.hover();
+    await page.mouse.wheel(0, 800);
+    await expect.poll(() => images.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+    const after = await Promise.all([outline, imageHead, imageAdd, drop].map((node) => node.boundingBox()));
     expect(after).toEqual(positions);
     expect(await dialog.locator('.editor__side').evaluate((node) => node.scrollTop)).toBe(0);
     expect(await dialog.locator('.editor-attachments__dropzone').evaluate((node) => node.scrollTop)).toBe(0);

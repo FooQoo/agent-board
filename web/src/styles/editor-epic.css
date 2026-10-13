@@ -375,7 +375,13 @@
   display: flex;
   flex: none;
   flex-direction: column;
+  min-height: 0;
   border-bottom: 1px solid var(--r-border);
+}
+
+/* An open panel takes the height the right column has left, so a long list inside it scrolls. */
+.collapsible[data-open="true"] {
+  flex: 1 1 0;
 }
 
 .collapsible__head {
@@ -408,6 +414,13 @@
   color: var(--r-muted);
   font-size: 12px;
   font-weight: 500;
+}
+
+.collapsible__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .collapsible__body[hidden] {

@@ -115,12 +115,13 @@ test('the board and the details show the number of conditions done, and nothing 
   await expect(partialChip).not.toHaveAttribute('data-complete', 'true');
   await expect(card(page, complete).locator('.acceptance-chip')).toHaveAttribute('data-complete', 'true');
 
-  // The details show the same count, with each condition and its state.
+  // The details show the same count in a folded dock at the bottom; opened, it lists each condition.
   await card(page, partial).click();
-  const section = details(page).getByRole('region', { name: 'Acceptance conditions' });
-  await expect(section).toContainText('1 / 2');
-  await expect(section.getByRole('checkbox', { name: 'First' })).toBeChecked();
-  await expect(section.getByRole('checkbox', { name: 'Second' })).not.toBeChecked();
+  const dock = details(page).getByRole('button', { name: /^Acceptance conditions/ });
+  await expect(dock).toContainText('1 of 2 done');
+  await dock.click();
+  await expect(details(page).getByText('First', { exact: true })).toBeVisible();
+  await expect(details(page).getByText('Second', { exact: true })).toBeVisible();
 });
 
 test('a person adds conditions when creating a card, and the CLI reads them back with the same ids and text', async ({ page }) => {
@@ -128,6 +129,7 @@ test('a person adds conditions when creating a card, and the CLI reads them back
   await page.getByRole('button', { name: 'Add card' }).click();
   const dialog = page.getByRole('dialog', { name: 'Add card' });
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Plan the list endpoint');
+  await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   for (const [index, condition] of THREE.entries()) {
     await dialog.getByRole('button', { name: 'Add condition' }).click();
     await dialog.getByRole('textbox', { name: `Condition AC-${index + 1}` }).fill(condition.text);
@@ -138,17 +140,17 @@ test('a person adds conditions when creating a card, and the CLI reads them back
   expect(show(id).acceptance).toEqual(THREE);
 });
 
-test('a person edits the conditions of a draft: removes, adds without reusing a number, reorders, checks, and saves them together with the body', async ({ page }) => {
+test('a person edits the conditions of a draft: removes, adds without reusing a number, checks, and saves them together with the body', async ({ page }) => {
   const id = addCard('Edit me', frontmatter(THREE, 'Old text.'));
   await page.reload();
   await waitForSync(page);
   await makeDraft(page, id);
 
   const { dialog } = await openEdit(page, id);
+  await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   await dialog.getByRole('button', { name: 'Remove AC-2' }).click();
   await dialog.getByRole('button', { name: 'Add condition' }).click();
   await dialog.getByRole('textbox', { name: 'Condition AC-4' }).fill('The fourth condition');
-  await dialog.getByRole('button', { name: 'Move AC-4 up' }).click();
   await dialog.getByRole('checkbox', { name: 'Done: AC-1' }).check();
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
@@ -156,8 +158,8 @@ test('a person edits the conditions of a draft: removes, adds without reusing a 
   // Nothing of the edit is read by the CLI until Save; after Save the conditions are in the order shown.
   expect(show(id).acceptance).toEqual([
     { id: 'AC-1', text: THREE[0].text, done: true },
-    { id: 'AC-4', text: 'The fourth condition', done: false },
     { id: 'AC-3', text: THREE[2].text, done: false },
+    { id: 'AC-4', text: 'The fourth condition', done: false },
   ]);
   expect(show(id).description).toContain('Old text.');
 });
@@ -169,6 +171,7 @@ test('cancelling the edit dialog discards the changes to the conditions', async 
   await makeDraft(page, id);
 
   const { dialog } = await openEdit(page, id);
+  await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   await dialog.getByRole('button', { name: 'Remove AC-1' }).click();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(dialog).toHaveCount(0);
@@ -270,6 +273,7 @@ test('the edit dialog wraps each condition onto two rows in a narrow width and k
 
   // The dialog is open at the desktop width; the gap is measured between the first condition's checkbox and text.
   const { dialog } = await openEdit(page, id);
+  await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   const rowGap = async () => {
     const done = await dialog.getByRole('checkbox', { name: 'Done: AC-1' }).boundingBox();
     const text = await dialog.getByRole('textbox', { name: 'Condition AC-1' }).boundingBox();
@@ -299,12 +303,12 @@ test('the epic dialog shows the number of its plan conditions done', async ({ pa
   await page.locator('[data-epic-label="PLAN-CHK"]').first().click();
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('1 of 2 done')).toBeVisible();
+  await expect(dialog.locator('.conditions-dock__count')).toHaveText('1 of 2 done');
   expect(await editorValue(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }))).toContain('## Goal');
 });
 
 for (const kind of ['task', 'epic'] as const) {
-  test(`${kind} conditions and a long body share one scroll area`, async ({ page }) => {
+  test(`${kind} conditions fold in their own dock and a long body scrolls alone`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 800 });
     const conditions = Array.from({ length: 40 }, (_, index) => ({
       id: `AC-${index + 1}`,
@@ -335,27 +339,27 @@ for (const kind of ['task', 'epic'] as const) {
       await expect(dialog.getByRole('textbox', { name: 'Plan (Markdown)' })).toBeVisible();
     }
 
+    // The conditions are not in the body: they fold in the dock at the bottom of the dialog.
     const scroll = dialog.locator('.editor__document');
+    const dock = dialog.locator('.editor__dock');
+    const dockHead = dock.getByRole('button', { name: /^Acceptance conditions/ });
+    await expect(dockHead).toBeVisible();
+    await expect(scroll.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toHaveCount(0);
     const title = dialog.getByRole('textbox', { name: kind === 'task' ? 'Title' : 'Formal name', exact: true });
     const titleBox = await title.boundingBox();
-    await expect(scroll.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toBeVisible();
     await scroll.hover();
     await page.mouse.wheel(0, 700);
     await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
     expect((await title.boundingBox())?.y).toBe(titleBox?.y);
 
-    const end = scroll.getByText('Body ends here.', { exact: true });
-    await end.scrollIntoViewIfNeeded();
-    await expect(end).toBeInViewport();
-    await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeInViewport();
-    const editor = scroll.locator('.rich-markdown');
-    expect(await editor.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
-    await dialog.getByRole('link', { name: 'Acceptance conditions 0 / 40' }).click();
-    await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeLessThanOrEqual(1);
-
-    await page.setViewportSize({ width: 400, height: 800 });
-    await end.scrollIntoViewIfNeeded();
-    await expect(end).toBeInViewport();
+    // Opened, the conditions scroll inside the dock, and the body keeps its own position.
+    const before = await scroll.evaluate((element) => element.scrollTop);
+    await dockHead.click();
+    await expect(dock.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toBeVisible();
+    await dock.hover();
+    await page.mouse.wheel(0, 400);
+    await expect.poll(() => dock.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    expect(await scroll.evaluate((element) => element.scrollTop)).toBe(before);
     await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeInViewport();
   });
 }
