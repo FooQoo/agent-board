@@ -26,24 +26,25 @@ struct RequestFile {
     wait: Option<WaitSpec>,
 }
 
-/// How the command waits for the answer. The time is required: a wait always has an end.
+/// How the command waits for the answer. A missing time means wait indefinitely.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct WaitSpec {
-    timeout_seconds: u64,
+    timeout_seconds: Option<u64>,
 }
 
 /// The longest wait, in seconds: a day.
 const MAX_WAIT_SECS: u64 = 86_400;
 
-/// Wait until request `request` of card `id` is answered or cancelled, and return the card then. A
-/// timeout is `wait_timeout`; a request that a move took back is `request_changed`. It uses the same
-/// event stream as `agboard wait`, so it needs a running `agboard serve`.
+/// Wait until request `request` of card `id` is answered or withdrawn, and return the card then. A
+/// wait-command timeout is `wait_timeout`; a request that a move took back is `request_changed`.
+/// Neither ending expires or otherwise changes the question. This uses the same event stream as
+/// `agboard wait`, so it needs a running `agboard serve`.
 fn wait_for_resolution(
     ctx: &Context,
     id: i64,
     request: &str,
-    timeout_secs: u64,
+    timeout_secs: Option<u64>,
 ) -> Result<CardView, AgboardError> {
     let project = ctx.project()?;
     let (name, project_id) = (project.name.clone(), project.id.clone());
@@ -54,7 +55,7 @@ fn wait_for_resolution(
         .map_err(|error| AgboardError::BoardUnavailable {
             reason: error.to_string(),
         })?;
-    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+    let deadline = timeout_secs.map(|seconds| Instant::now() + Duration::from_secs(seconds));
     loop {
         let snapshot = ctx.files.board(&project_id)?;
         let card = ctx.files.card(&project_id, id)?;
@@ -69,15 +70,15 @@ fn wait_for_resolution(
                 Err(AgboardError::RequestChanged)
             };
         }
-        let remaining = deadline.saturating_duration_since(Instant::now()).as_secs();
-        if remaining == 0 {
+        let remaining = deadline.map(|deadline| deadline.saturating_duration_since(Instant::now()));
+        if remaining.is_some_and(|remaining| remaining.is_zero()) {
             return Err(AgboardError::WaitTimeout);
         }
         runtime.block_on(crate::agent::wait::wait_for_change(
             &shared,
             &name,
             snapshot.cursor.clone(),
-            Some(remaining),
+            remaining.map(|remaining| remaining.as_secs().max(1)),
         ))?;
     }
 }
@@ -126,8 +127,8 @@ fn read_request_json(value: &str) -> Result<RequestFile, AgboardError> {
             field: "request-json".into(),
             reason: format!("The request must be JSON with a question and 2 to 10 choices: {e}."),
         })?;
-    if let Some(wait) = &request.wait
-        && !(1..=MAX_WAIT_SECS).contains(&wait.timeout_seconds)
+    if let Some(timeout) = request.wait.as_ref().and_then(|wait| wait.timeout_seconds)
+        && !(1..=MAX_WAIT_SECS).contains(&timeout)
     {
         return Err(AgboardError::InvalidValue {
             field: "request-json".into(),
@@ -181,11 +182,14 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         .as_deref()
         .map(read_request_json)
         .transpose()?;
+    let wait_requested = request
+        .as_ref()
+        .is_some_and(|request| request.wait.is_some());
     let wait_secs = request
         .as_ref()
-        .and_then(|r| r.wait.as_ref())
-        .map(|w| w.timeout_seconds);
-    if wait_secs.is_some() {
+        .and_then(|request| request.wait.as_ref())
+        .and_then(|wait| wait.timeout_seconds);
+    if wait_requested {
         // The wait needs the server's event stream.
         let dir = ctx
             .files
@@ -239,7 +243,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         )?;
         (result.value, result.changed)
     };
-    if let Some(timeout) = wait_secs {
+    if wait_requested {
         let request = card
             .pending_request_id
             .clone()
@@ -252,7 +256,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             .unwrap_or_else(|| std::path::Path::new("."))
             .to_path_buf();
         crate::cli::run::after_commit(ctx, &dir);
-        let resolved = wait_for_resolution(ctx, args.id, &request, timeout)?;
+        let resolved = wait_for_resolution(ctx, args.id, &request, wait_secs)?;
         let answer = answer_of(&resolved, &request);
         let note = answer
             .as_ref()

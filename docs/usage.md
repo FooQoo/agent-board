@@ -56,9 +56,9 @@ agboard project ls --json
 agboard --project "My project" project rename "Website launch"
 ```
 
-A rename preserves the project's ID and cards. Update its name in hook commands and agent instructions afterward. `project rm` deletes the named project and its cards, asks for human confirmation, and is unavailable to agents.
+A rename preserves the project's ID, folder bindings, and cards. Update the name in commands that pass `--project` explicitly; folder-based progress and hooks continue to resolve the same project. `project rm` deletes the named project and its cards, asks for human confirmation, and is unavailable to agents.
 
-Every command requires `--project NAME` except `project create`, `project ls`, `serve`, and the read-only `ls --all-projects`. Nothing is selected implicitly from the browser, working directory, or another agent.
+Most commands take an explicit `--project NAME`. `agboard progress` and hooks resolve the nearest registered project folder; an explicit `--project` overrides that binding. Other commands do not infer a project from the browser or another agent.
 
 The examples below use `My project`; substitute your actual project name and the IDs returned by the CLI.
 
@@ -169,7 +169,7 @@ Or read it from standard input:
 cat question.json | agboard --project "My project" state 1 pending --actor ai --request-json -
 ```
 
-Add a `wait` object to the JSON to ask and wait for the answer in one command. It needs a running `agboard serve`, and it prints the answer (the choice, the note, and the card) once the request is answered:
+Add a `wait` object to the JSON to ask and wait for the answer in one command. It needs a running `agboard serve`. An empty object waits indefinitely and prints the answer (the choice, the note, and the card) once the request is answered:
 
 ```json
 {
@@ -178,11 +178,11 @@ Add a `wait` object to the JSON to ask and wait for the answer in one command. I
     { "id": "preview", "label": "Publish a preview first" },
     { "id": "public", "label": "Launch publicly" }
   ],
-  "wait": { "timeoutSeconds": 600 }
+  "wait": {}
 }
 ```
 
-`timeoutSeconds` is required, from 1 to 86,400 (a day). Without `wait`, the command asks and returns. A timeout is not an answer: the command exits with `wait_timeout` and the request stays pending. If a move takes the question back, it exits with `request_changed`. Without a running server, or with a `wait` that is not valid, nothing is asked.
+You may add `"timeoutSeconds": 600` to limit this wait command; the value must be from 1 to 86,400 (a day). Without `wait`, the command asks and returns. A timeout or Ctrl+C stops waiting but leaves the request Pending. A lost server connection returns `board_unavailable`, a technical error that also leaves the request Pending. If a card move withdraws the question, the command exits with `request_changed`. Without a running server, nothing is asked.
 
 `choices` takes 2 to 10 options; a request with fewer or more is refused, and so is a pending state without `--request-json`. The request gets an ID; read the current request in `show` or `snapshot`. A user can answer in the browser, or pass that request ID to the CLI:
 
@@ -231,12 +231,12 @@ agboard --project "My project" evidence show 1 "<evidence-id>"
 
 ## Workflow for agents
 
-Configure hooks using the [Claude Code and Codex integration guide](../integrations/README.md). Each hook names one project and supplies its complete snapshot after tools run.
+Configure hooks using the [Claude Code and Codex integration guide](../integrations/README.md). Hooks resolve the nearest registered project folder and supply the same concise progress table as `agboard progress`; use `show` to read a task or history when needed.
 
-1. Use the project the user specified. Check its ID and name in the snapshot and read every card and its history before choosing work.
-2. Move an AI-owned card to Doing with a reason, then report Running. Review user-owned cards to understand the overall plan.
+1. Read `agboard progress --json` and select a ready AI-owned card by epic and task priority. Read only the selected epic's `PLAN.md` and task's `TASK.md`; use `show` when its history or an active question is needed.
+2. Move an AI-owned card to Doing with a reason, then report Running. Review a user-owned card only when it affects the work.
 3. Record execution, verification results, and evidence in the shared files. Ask a question through Pending when a decision is needed.
-4. After an answer, read the complete snapshot and history, reconsider the plan, and resume with a reason. Move completed work to Done after the required verification and acceptance.
+4. After an answer, read the card and history, reconsider the plan, and resume with a reason. Mark acceptance conditions done only after verification; eligible AI cards move to Done automatically when all conditions are complete.
 5. If no work can proceed, wait for a change using the cursor from the same project's snapshot:
 
 ```sh
@@ -246,7 +246,7 @@ agboard --project "My project" wait --after "<cursor>" --json
 
 A cursor has the format `f1:<project-id>:<version>`. Treat it as the value returned by `snapshot`; do not construct one. `wait` requires a running `agboard serve` in the same data area and listens for changes without polling. It follows the same project ID through a rename; update the name in future commands and hooks.
 
-A draft (`isDraft: true`) is read-only for agents: `edit`, `mv`, and `state` fail with `card_is_draft`. Work on other cards until the user finalizes it. Hooks include complete descriptions and history only when the snapshot fits within 256 KiB. On `AGBOARD_ERROR`, a missing project, a timeout, or an unreadable board, report the problem and stop board-dependent changes until a complete snapshot is available.
+A draft (`isDraft: true`) is read-only for agents: `edit`, `mv`, and `state` fail with `card_is_draft`. Work on other cards until the user finalizes it. On `AGBOARD_ERROR`, a missing project, a technical connection failure, or an unreadable board, report the problem and stop board-dependent changes until a valid progress table is available. A timeout or interruption of a wait does not answer or expire a question.
 
 ## Edit shared Markdown files
 
@@ -282,7 +282,7 @@ Each condition has three keys: `id` (`AC-` followed by a positive number without
 
 If the frontmatter cannot be read (invalid YAML, a missing key, a duplicate ID, an empty text), the board reports the file, the item, and the reason as a problem. The card then shows no progress and its body is shown in full. The board never rewrites the file to fix it.
 
-Mark a condition `done: true` only after you have verified it, and record the result and the evidence in the body (for example in an execution log section). An agent can move a card to Done only when every condition is done; the board refuses the move and names the unmet IDs otherwise (`acceptance_unmet`). A person can always move a card.
+Mark a condition `done: true` only after you have verified it, and record the result and the evidence in the body (for example in an execution log section). An eligible AI-owned Todo or Doing card with at least one condition moves to Done automatically once all conditions are done. Pending cards remain pending until answered, and human-owned cards are not auto-completed.
 
 New cards and epics start with an empty `acceptance` list. Files written before this format, with Japanese headings such as `## 作業内容` and `- [ ] AC-1.` lines, are read as bodies with no conditions; they are not converted.
 

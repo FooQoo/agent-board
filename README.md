@@ -23,9 +23,9 @@ AI agents register work for themselves and users. Users update cards and answer 
 When an agent works for a long time, you need to see what is moving, what is waiting, and what response will unblock it. Agent Board gives users and agents one shared, history-backed board.
 
 - **Agents register all work.** Cards have a fixed AI or User owner, a board lane, and (for AI work in Doing) an Idle, Running, or Pending state.
-- **Users and agents update the same board.** Every status change has a reason. Users can answer a pending decision in the browser; the next hook or `agboard snapshot` gives the agent the complete history.
-- **Every command names its project.** A board holds separate projects. Commands, hooks, and waits always say which project they act on with `--project NAME`; nothing is guessed from the web view or another agent.
-- **Plans and results live in plain files.** Each card has a `TASK.md` and each epic has a `PLAN.md`. Their completion conditions sit in a YAML frontmatter, and the body is free Markdown. The board shows how many conditions are done and refuses an agent's move to Done while one is open. Agents and people can edit the files directly; the board follows file changes without any extra step.
+- **Users and agents update the same board.** Every status change has a reason. Users can answer a pending decision in the browser; hooks pass the current progress table, and agents read card history when they need it.
+- **Projects follow their folders.** `agboard progress` and hooks use the nearest registered project folder; `--project NAME` overrides it. Other project commands name their project explicitly.
+- **Plans and results live in plain files.** Each card has a `TASK.md` and each epic has a `PLAN.md`. Their completion conditions sit in YAML frontmatter, and the body is free Markdown. When an eligible AI card has all acceptance conditions verified, the board moves it to Done automatically. Agents and people can edit the files directly; the board follows file changes without any extra step.
 - **Nothing leaves your machine.** Cards are plain files in a local shared folder, and the web view listens only on `127.0.0.1`.
 
 ```mermaid
@@ -39,7 +39,7 @@ flowchart LR
 
 **See what needs attention.** Cards show their owner and lane. AI-owned cards in Doing show Idle, Running, or Pending. A pending card shows its question and history.
 
-**Keep decisions in context.** Users can move any card with a reason and answer a pending request. An agent can offer up to 10 choices; the user picks one, writes a note, or both. That response is recorded before the agent resumes.
+**Keep decisions in context.** Users can move any card with a reason and answer a pending request. An agent can offer up to 10 choices; the user picks one, writes a note, or both. A question remains pending until answered or explicitly withdrawn. An agent may wait indefinitely with `"wait": {}`; stopping that wait does not expire the question.
 
 **Group work in epics.** An epic holds a plan and a color. A card belongs to at most one epic and shows its epic as a label. Edit an epic's plan, name, and color, and choose its tasks, in one dialog.
 
@@ -74,7 +74,7 @@ agboard project create "My project"
 agboard serve --port 7420
 ```
 
-Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/), select your project, and add a card. Board commands use `--project NAME` to select their project.
+Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/), select your project, and add a card. Most board commands use `--project NAME`; `agboard progress` and hooks resolve the project from the current folder unless explicitly overridden.
 
 ## Documentation
 

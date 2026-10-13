@@ -95,6 +95,26 @@ fn ask_and_wait(home: &Path, timeout_seconds: u64) -> Child {
     .unwrap()
 }
 
+fn ask_and_wait_forever(home: &Path) -> Child {
+    command(
+        home,
+        &[
+            "--json",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            &question(Some("{}")),
+        ],
+    )
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .unwrap()
+}
+
 fn stop(mut server: Child) {
     let _ = server.kill();
     let _ = server.wait();
@@ -153,6 +173,42 @@ fn a_timeout_is_not_an_answer_and_the_request_stays() {
 }
 
 #[test]
+fn wait_without_a_timeout_returns_the_answer_and_leaves_no_expiry() {
+    let home = tempdir().unwrap();
+    board(home.path());
+    let server = start_server(home.path());
+    let waiter = ask_and_wait_forever(home.path());
+    let request = wait_for_request(home.path());
+
+    let answered = agboard(
+        home.path(),
+        &[
+            "state",
+            "1",
+            "idle",
+            "--actor",
+            "human",
+            "--request",
+            &request,
+            "--choice",
+            "a",
+        ],
+    );
+    assert!(answered.status.success());
+    let output = waiter.wait_with_output().unwrap();
+    stop(server);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let reply: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(reply["answer"]["choiceId"], "a");
+    assert_eq!(reply["answer"]["choiceLabel"], "Plan A");
+    assert_eq!(reply["card"]["agentStatus"], "idle");
+}
+
+#[test]
 fn a_move_cancels_the_request_and_the_wait_says_so() {
     let home = tempdir().unwrap();
     board(home.path());
@@ -169,6 +225,48 @@ fn a_move_cancels_the_request_and_the_wait_says_so() {
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "request_changed");
+    // An explicit card move withdraws the question; ending the waiter does not
+    // restore or otherwise rewrite the card's new state.
+    assert_eq!(card(home.path())["agentStatus"], "idle");
+}
+
+#[test]
+fn an_indefinite_wait_reports_connection_loss_without_expiring_the_question() {
+    let home = tempdir().unwrap();
+    board(home.path());
+    let server = start_server(home.path());
+    let waiter = ask_and_wait_forever(home.path());
+    wait_for_request(home.path());
+
+    stop(server);
+    let output = waiter.wait_with_output().unwrap();
+    assert!(!output.status.success());
+    let error: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(error["error"]["code"], "board_unavailable");
+    assert_eq!(card(home.path())["agentStatus"], "pending");
+    assert!(card(home.path())["pendingRequestId"].is_string());
+}
+
+#[cfg(unix)]
+#[test]
+fn interrupting_the_indefinite_wait_preserves_the_pending_question() {
+    let home = tempdir().unwrap();
+    board(home.path());
+    let server = start_server(home.path());
+    let waiter = ask_and_wait_forever(home.path());
+    wait_for_request(home.path());
+    assert_eq!(card(home.path())["agentStatus"], "pending");
+
+    let status = Command::new("kill")
+        .args(["-INT", &waiter.id().to_string()])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let output = waiter.wait_with_output().unwrap();
+    assert!(!output.status.success());
+    assert_eq!(card(home.path())["agentStatus"], "pending");
+    assert!(card(home.path())["pendingRequestId"].is_string());
+    stop(server);
 }
 
 #[test]
@@ -187,7 +285,6 @@ fn a_wait_without_its_time_or_out_of_range_is_refused_and_nothing_is_asked() {
     let home = tempdir().unwrap();
     board(home.path());
     for wait in [
-        r#"{}"#,
         r#"{"timeoutSeconds":0}"#,
         r#"{"timeoutSeconds":86401}"#,
         "true",

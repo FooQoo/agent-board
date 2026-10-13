@@ -151,7 +151,7 @@ cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-
 ```
 
 - `question`: 1 to 2,000 characters. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
-- Add `"wait": {"timeoutSeconds": <1 to 86400>}` to the request JSON to ask and wait for the answer in one command (it needs `agboard serve`; the time is required). It prints the answer when the user answers. `wait_timeout` means no answer yet, not a decision; `request_changed` means a move took the question back.
+- Add `"wait": {}` to the request JSON to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a card move withdrew the question.
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
 - The card must be an AI card in `doing`.
 
@@ -159,13 +159,13 @@ The user answers in the browser with a choice, a note, or both. The answer retur
 
 ## 8. Wait and resume
 
-When no work can proceed, wait for a change using the `cursor` of the latest snapshot of the same project:
+When no work can proceed, wait for a change using the `cursor` of the latest snapshot of the same project. This wait can continue indefinitely; optionally set `--timeout` to limit the wait command, or press Ctrl+C to stop it. Neither action changes cards or questions:
 
 ```sh
 agboard --project "<name>" wait --after "<cursor>" --json
 ```
 
-Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout`, `board_unavailable`, `cursor_invalid`, and `project_not_found` are errors, not answers: report them and make no board-dependent changes.
+Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A Pending question remains until answered or withdrawn by an explicit card change. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
 
 After `wait` returns, read the complete snapshot and history, including the user's reason. Reconsider the plan in light of the answer. Record the answer and the updated plan in the execution log, read it back, then resume:
 
