@@ -9,6 +9,7 @@ pub mod evidence;
 pub mod init;
 pub mod ls;
 pub mod mv;
+pub mod progress;
 pub mod project;
 pub mod rm;
 pub mod serve;

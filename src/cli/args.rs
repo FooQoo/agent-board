@@ -128,6 +128,11 @@ pub enum Command {
     Serve(ServeArgs),
     /// Show the project's shared folder and where its files are
     Workspace(WorkspaceArgs),
+    /// Show the cards an agent can pick up, by epic in priority order
+    #[command(
+        after_help = "Examples:\n  agboard --project \"My project\" progress\n  agboard --project \"My project\" progress --json"
+    )]
+    Progress,
 }
 
 impl Command {
@@ -151,6 +156,7 @@ impl Command {
             Command::Wait(_) => "wait",
             Command::Serve(_) => "serve",
             Command::Workspace(_) => "workspace",
+            Command::Progress => "progress",
         }
     }
 }
@@ -542,6 +548,9 @@ pub struct EpicEditArgs {
     /// New color as #RRGGBB
     #[arg(long, value_name = "#RRGGBB")]
     pub color: Option<String>,
+    /// Card order of the epic as comma-separated card IDs (for example 24,26,25); empty clears it
+    #[arg(long, value_name = "IDS", allow_hyphen_values = true)]
+    pub priority: Option<String>,
     #[command(flatten)]
     pub plan: PlanArgs,
 }
@@ -898,11 +907,12 @@ impl Cli {
                 command: EpicCommand::Edit(args),
             }) if args.name.is_none()
                 && args.color.is_none()
+                && args.priority.is_none()
                 && args.plan.plan.is_none()
                 && args.plan.plan_file.is_none() =>
             {
                 Err(AgboardError::InvalidArgument {
-                    message: "nothing to change; give --name, --color, --plan, or --plan-file.".to_string(),
+                    message: "nothing to change; give --name, --color, --priority, --plan, or --plan-file.".to_string(),
                     command: Some("epic edit".to_string()),
                 })
             }

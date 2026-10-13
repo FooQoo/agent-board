@@ -139,6 +139,7 @@ fn access(command: &Command) -> Access {
         | Command::Mv(_)
         | Command::State(_)
         | Command::Rm(_) => Access::ChangeProject,
+        Command::Progress => Access::ReadProject,
         Command::Serve(_) | Command::Hook(_) | Command::Wait(_) => Access::Catalog,
     }
 }
@@ -194,6 +195,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Show(args) => commands::show::run(ctx, args),
         Command::Snapshot(_) => commands::snapshot::run(ctx),
         Command::Workspace(_) => commands::workspace::run(ctx),
+        Command::Progress => commands::progress::run(ctx),
         Command::Hook(_) | Command::Wait(_) | Command::Serve(_) => {
             unreachable!("serve and the agent commands are handled before store setup")
         }

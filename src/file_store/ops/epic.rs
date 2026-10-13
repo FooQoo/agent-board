@@ -243,6 +243,59 @@ impl FileStore {
         })
     }
 
+    /// Replace an epic's card order, the `priority` list of its PLAN.md. The
+    /// list is checked first (positive IDs, no repeats). IDs that no card of
+    /// the epic holds any more are dropped, so the stored order is the order of
+    /// the cards that exist. Other frontmatter keys and the body stay. A list
+    /// that does not change writes nothing.
+    pub fn set_epic_priority(
+        &self,
+        project: &ProjectId,
+        id: &EpicId,
+        priority: &[i64],
+        now: DateTime<Utc>,
+    ) -> Result<Changed<EpicView>, AgboardError> {
+        frontmatter::validate_priority(priority).map_err(|d| AgboardError::InvalidValue {
+            field: d.field,
+            reason: d.reason,
+        })?;
+        let shared = self.shared_dir();
+        let (_project_dir, _lock) = lock_project(shared, project)?;
+        let (dir, mut file) = read_epic_file(shared, project, id)?;
+        let members: Vec<i64> = reader::read_snapshot(shared, project)?
+            .cards
+            .iter()
+            .filter(|card| card.epic_id.as_deref() == Some(id.as_str()))
+            .map(|card| card.id)
+            .collect();
+        let kept: Vec<i64> = priority
+            .iter()
+            .copied()
+            .filter(|card| members.contains(card))
+            .collect();
+
+        let current_plan = read_plan(shared, &dir)?;
+        let plan_label = layout::shared_label(shared, &layout::epic_plan(&dir));
+        let next_plan = frontmatter::compose_priority(&current_plan, &kept).map_err(|d| {
+            AgboardError::FileInvalid {
+                file: plan_label.clone(),
+                field: d.field,
+                reason: d.reason,
+            }
+        })?;
+        let changed = next_plan != current_plan;
+        if changed {
+            validate::ensure_plan_body(&next_plan, &plan_label)?;
+            save_plan(shared, &dir, &next_plan)?;
+            file.updated_at = stamp(now);
+            save_epic(shared, &dir, &file)?;
+        }
+        Ok(Changed {
+            value: view_of(file, next_plan),
+            changed,
+        })
+    }
+
     /// Delete an epic folder. Refused with `epic_in_use` while any card, archived
     /// ones included, names the epic. The folder is renamed out of the way first,
     /// then removed. A folder whose `epic.json` is broken can still be deleted.

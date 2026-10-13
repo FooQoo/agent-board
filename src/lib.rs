@@ -7,4 +7,5 @@ pub mod file_store;
 pub mod interact;
 pub mod lifecycle;
 pub mod paths;
+pub mod progress;
 pub mod server;

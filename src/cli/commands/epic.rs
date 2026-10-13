@@ -132,27 +132,64 @@ fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError>
     let id = EpicId::normalize(&args.id)?;
     let mut stdin = std::io::stdin();
     let plan = args.plan.resolve(&mut stdin)?;
-    let result = ctx.files.update_epic(
-        ctx.project_id()?,
-        &id,
-        EpicUpdate {
-            name: args.name.clone(),
-            color: args.color.clone(),
-            is_draft: None,
-            plan,
-        },
-        ctx.clock.now(),
-    )?;
-    let human = if result.changed {
+    let project = ctx.project_id()?;
+    let mut changed = false;
+    let mut epic = None;
+    if args.name.is_some() || args.color.is_some() || plan.is_some() {
+        let result = ctx.files.update_epic(
+            project,
+            &id,
+            EpicUpdate {
+                name: args.name.clone(),
+                color: args.color.clone(),
+                is_draft: None,
+                plan,
+            },
+            ctx.clock.now(),
+        )?;
+        changed |= result.changed;
+        epic = Some(result.value);
+    }
+    if let Some(text) = &args.priority {
+        let priority = parse_priority(text)?;
+        let result = ctx
+            .files
+            .set_epic_priority(project, &id, &priority, ctx.clock.now())?;
+        changed |= result.changed;
+        epic = Some(result.value);
+    }
+    let epic = match epic {
+        Some(epic) => epic,
+        None => ctx.files.epic(project, &id)?,
+    };
+    let human = if changed {
         format!("Updated epic {id}.\n")
     } else {
         format!("Epic {id} is unchanged.\n")
     };
     Ok(Outcome {
-        changed: result.changed,
+        changed,
         human,
-        json: json!({"epic": result.value}),
+        json: json!({"epic": epic}),
     })
+}
+
+/// The `--priority` list: card IDs separated by commas. Empty clears the order.
+fn parse_priority(text: &str) -> Result<Vec<i64>, AgboardError> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Ok(Vec::new());
+    }
+    text.split(',')
+        .map(|part| {
+            part.trim()
+                .parse::<i64>()
+                .map_err(|_| AgboardError::InvalidValue {
+                    field: "priority".to_string(),
+                    reason: "Use card IDs separated by commas, for example 24,26,25.".to_string(),
+                })
+        })
+        .collect()
 }
 
 /// Delete an epic after a person confirms it at a terminal. The epic must
