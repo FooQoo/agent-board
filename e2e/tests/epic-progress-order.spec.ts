@@ -48,3 +48,63 @@ test('a task moved in the progress table by keyboard is saved with the epic and 
 
   expect(progressOrder()).toEqual([third, first, second]);
 });
+
+test('cancelling after a move in the progress table discards the new order', async ({ page }) => {
+  const before = progressOrder();
+  await page.goto(`/?project=${projectId(mainProject)}`);
+  await waitForSync(page);
+  await page.locator('[data-epic-label="ORDER"]').first().click();
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
+  await expect(dialog).toBeVisible();
+
+  const grip = card(dialog, 'Third step').locator('.epic-progress__grip');
+  await grip.focus();
+  await page.keyboard.press('Space');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Space');
+  await expect(dialog.locator('.epic-progress__row').first()).toContainText('Third step');
+
+  // Cancel asks first, because the order has changed; discarding closes the dialog and keeps the saved order.
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('dialog', { name: /Discard changes\?/ }).getByRole('button', { name: 'Discard and close', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(progressOrder()).toEqual(before);
+});
+
+test('a failed save keeps the new order in the progress table, and trying again saves it', async ({ page }) => {
+  const before = progressOrder();
+  const [first, second, third] = before as [number, number, number];
+  await page.goto(`/?project=${projectId(mainProject)}`);
+  await waitForSync(page);
+  await page.locator('[data-epic-label="ORDER"]').first().click();
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
+  await expect(dialog).toBeVisible();
+
+  const grip = card(dialog, 'Third step').locator('.epic-progress__grip');
+  await grip.focus();
+  await page.keyboard.press('Space');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Space');
+
+  // The first save is refused by the server; the dialog stays with the new order.
+  let refuse = true;
+  await page.route(`**/api/projects/${projectId(mainProject)}/epics/ORDER`, async (route) => {
+    if (refuse && route.request().method() === 'PATCH') {
+      refuse = false;
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"database_error","message":"refused"}}' });
+    } else {
+      await route.continue();
+    }
+  });
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  await expect(dialog.locator('.epic-progress__row').first()).toContainText('Third step');
+  expect(progressOrder()).toEqual(before);
+
+  // Trying again saves the same order.
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(progressOrder()).toEqual([third, first, second]);
+});
