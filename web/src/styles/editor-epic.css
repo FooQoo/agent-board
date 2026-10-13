@@ -514,7 +514,7 @@
   opacity: 0.6;
 }
 
-.epic-progress__foot {
+.epic-progress__row .epic-progress__foot {
   justify-content: space-between;
 }
 

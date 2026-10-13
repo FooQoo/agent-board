@@ -33,6 +33,10 @@ for (const mode of ['light', 'dark'] as const) {
       await expect(row.locator('.card__title')).toHaveCSS('font-size', '14px');
       await expect(row.locator('.card__title')).toHaveCSS('font-weight', '400');
       await expect(row.locator('.card__foot .acceptance-chip')).toHaveText('1/2');
+      await expect.poll(() => row.locator('.card__foot').evaluate((foot) => {
+        const updated = foot.querySelector('.card__updated')!;
+        return updated.getBoundingClientRect().x - foot.getBoundingClientRect().x;
+      })).toBeLessThan(1);
       const footer = await dialog.locator('.editor__footer').boundingBox();
       const listBox = await list.boundingBox();
       expect(listBox!.y + listBox!.height).toBeLessThan(footer!.y);
