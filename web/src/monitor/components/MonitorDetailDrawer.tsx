@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Drawer } from '../../components/ui/drawer';
 import { DetailTabList, detailPanelId, detailTabId } from '../../components/ui/detail-tabs';
 import { HistoryTimeline } from '../../components/HistoryTimeline';
+import { MonitorConditionsDock } from './MonitorConditionsDock';
 import { MonitorDocument } from './MonitorDocument';
 import type { Epic, Problem } from '../../types';
 import type { MonitorCard, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
@@ -102,7 +103,6 @@ function EpicDocument({
       )}
       <MonitorDocument
         body={epic.body}
-        acceptance={epic.acceptance ?? []}
         acceptanceError={epic.acceptanceError}
         attachments={epic.attachments ?? []}
         evidence={[]}
@@ -243,7 +243,6 @@ export function MonitorDetailDrawer({
           >
             <MonitorDocument
               body={card.body}
-              acceptance={card.acceptance}
               acceptanceError={card.acceptanceError}
               problems={problems.filter(
                 (problem) =>
@@ -292,6 +291,12 @@ export function MonitorDetailDrawer({
           </div>
         </div>
       </div>
+      {tab === 'description' && (
+        <MonitorConditionsDock acceptance={card.acceptanceError ? [] : card.acceptance} />
+      )}
+      {tab === 'epic' && (epicRead.status === 'loaded' || epicRead.status === 'partial') && (
+        <MonitorConditionsDock acceptance={epicRead.epic.acceptance ?? []} />
+      )}
     </Drawer>
   );
 }

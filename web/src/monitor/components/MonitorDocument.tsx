@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownView } from '../../components/markdown/MarkdownView';
 import { Lightbox } from '../../components/Lightbox';
-import type { AcceptanceItem, Attachment, EvidenceRecord, Problem } from '../../types';
+import type { Attachment, EvidenceRecord, Problem } from '../../types';
 
 /** Mobile reading content, independent of the desktop detail layout. */
 export function MonitorDocument({
   body,
-  acceptance,
   acceptanceError,
   attachments,
   evidence,
@@ -16,7 +15,6 @@ export function MonitorDocument({
   problems = [],
 }: {
   body: string;
-  acceptance: readonly AcceptanceItem[];
   acceptanceError: boolean;
   attachments: readonly Attachment[];
   evidence: readonly EvidenceRecord[];
@@ -38,34 +36,6 @@ export function MonitorDocument({
           })}
         </p>
       ))}
-      {!acceptanceError && acceptance.length > 0 && (
-        <details className="monitor-document__acceptance">
-          <summary>
-            <span>{t('acceptance.title')}</span>
-            <span>
-              {t('acceptance.progress', {
-                done: acceptance.filter((item) => item.done).length,
-                total: acceptance.length,
-              })}
-            </span>
-          </summary>
-          <ul>
-            {acceptance.map((item) => (
-              <li key={item.id}>
-                <input
-                  type="checkbox"
-                  checked={item.done}
-                  disabled
-                  readOnly
-                  aria-label={item.text}
-                />
-                <span>{item.id}</span>
-                <span>{item.text}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
       {body.trim() ? (
         <MarkdownView
           source={body}
