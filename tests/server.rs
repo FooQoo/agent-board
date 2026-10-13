@@ -1726,6 +1726,8 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
             "isDraft",
             "name",
             "plan",
+            "priority",
+            "priorityError",
             "updatedAt"
         ]
     );
