@@ -5,7 +5,7 @@ import type { ActionDialogData } from '../ActionDialog';
 import { epicInk } from '../../lib/epic';
 import type { AcceptanceItem, Card } from '../../types';
 import { acceptanceProblem } from '../../lib/acceptance';
-import { AcceptanceEditor } from '../acceptance/AcceptanceEditor';
+import { ConditionsDock } from '../acceptance/ConditionsDock';
 import { ConditionsLink } from '../acceptance/ConditionsLink';
 import { EditorBody, useOverLimit } from './EditorBody';
 import { EditorShell } from './EditorShell';
@@ -140,9 +140,9 @@ export function EditDialog({
         onDescriptionChange={setDescription}
         editorRef={editor}
         disabled={flow.saving}
-        extraField={
+        dock={
           whole ? undefined : (
-            <AcceptanceEditor
+            <ConditionsDock
               id={conditionsId}
               items={conditions}
               onChange={setConditions}

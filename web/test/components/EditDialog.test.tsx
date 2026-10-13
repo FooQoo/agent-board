@@ -204,6 +204,8 @@ describe('saving', () => {
     });
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog } = await openEdit(onSubmit, card);
+    // The conditions fold at the bottom of the dialog; open them to check the condition.
+    await userEvent.click(within(dialog).getByRole('button', { name: /^Acceptance conditions/ }));
     await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Done: AC-1' }));
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));

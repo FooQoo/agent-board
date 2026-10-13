@@ -7,7 +7,7 @@ import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { Label } from '@/components/ui/label';
 import { RadioGroup } from '@/components/ui/radio-group';
 import type { AcceptanceItem, Assignee } from '../types';
-import { AcceptanceEditor } from './acceptance/AcceptanceEditor';
+import { ConditionsDock } from './acceptance/ConditionsDock';
 import { acceptanceProblem, composeNewText } from '../lib/acceptance';
 import { Checkbox } from './ui/checkbox';
 import { EditorBody, useOverLimit } from './editor/EditorBody';
@@ -133,39 +133,37 @@ export function CreateDialog({
         onFiles={attachmentState.addFiles}
         onRemoveAttachment={attachmentState.remove}
         extraField={
-          <>
-            <div className="editor__field">
-              <Label id={assigneeId} className="editor__label">
-                {t('editor.assigneeLabel')}
-              </Label>
-              <RadioGroup
-                className="editor__segments"
-                aria-labelledby={assigneeId}
-                value={assignee}
-                disabled={flow.saving}
-                onValueChange={(value) => setAssignee(value === 'human' ? 'human' : 'ai')}
-              >
-                {(['ai', 'human'] as const).map((value) => (
-                  <RadioGroupPrimitive.Item
-                    key={value}
-                    value={value}
-                    className="editor__segment"
-                    aria-label={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
-                    title={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
-                  >
-                    {value === 'ai' ? (
-                      <BotIcon aria-hidden="true" />
-                    ) : (
-                      <UserRoundIcon aria-hidden="true" />
-                    )}
-                    <span>{t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}</span>
-                  </RadioGroupPrimitive.Item>
-                ))}
-              </RadioGroup>
-            </div>
-            <AcceptanceEditor items={conditions} onChange={setConditions} disabled={flow.saving} />
-          </>
+          <div className="editor__field">
+            <Label id={assigneeId} className="editor__label">
+              {t('editor.assigneeLabel')}
+            </Label>
+            <RadioGroup
+              className="editor__segments"
+              aria-labelledby={assigneeId}
+              value={assignee}
+              disabled={flow.saving}
+              onValueChange={(value) => setAssignee(value === 'human' ? 'human' : 'ai')}
+            >
+              {(['ai', 'human'] as const).map((value) => (
+                <RadioGroupPrimitive.Item
+                  key={value}
+                  value={value}
+                  className="editor__segment"
+                  aria-label={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
+                  title={t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}
+                >
+                  {value === 'ai' ? (
+                    <BotIcon aria-hidden="true" />
+                  ) : (
+                    <UserRoundIcon aria-hidden="true" />
+                  )}
+                  <span>{t(value === 'ai' ? 'editor.assigneeAi' : 'editor.assigneeUser')}</span>
+                </RadioGroupPrimitive.Item>
+              ))}
+            </RadioGroup>
+          </div>
         }
+        dock={<ConditionsDock items={conditions} onChange={setConditions} disabled={flow.saving} />}
       />
     </EditorShell>
   );
