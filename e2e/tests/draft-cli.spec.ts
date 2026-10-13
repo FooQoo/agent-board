@@ -247,7 +247,7 @@ test('a backup is a copy of the project folder; copying it back brings a draft b
   }
 });
 
-test('the hook hands over the whole body and isDraft; a snapshot over 256 KiB is reported, not cut', async () => {
+test('the hook hands over active progress metadata without task bodies, even when bodies are large', async () => {
   const body = cardBody(`## Section\n${'あいうえお'.repeat(8_000)}`);
   const bodyFile = path.join(work, 'hook.md');
   writeFileSync(bodyFile, body);
@@ -265,15 +265,17 @@ test('the hook hands over the whole body and isDraft; a snapshot over 256 KiB is
   const context = (JSON.parse(first.stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
     .additionalContext;
   expect(Buffer.byteLength(context)).toBeLessThanOrEqual(256 * 1024);
-  expect(context.startsWith('AGBOARD_SNAPSHOT\n')).toBe(true);
-  const snapshot = JSON.parse(context.slice('AGBOARD_SNAPSHOT\n'.length)) as { cards: ShownCard[] };
-  const handed = snapshot.cards.find((c) => c.id === id)!;
-  // The whole body comes back, not a cut: the section text is there and the length is the body's.
-  expect(handed.description).toContain('## Section');
-  expect([...handed.description].length).toBeGreaterThan(40_000);
+  expect(context.startsWith('AGBOARD_PROGRESS\n')).toBe(true);
+  const progress = JSON.parse(context.slice('AGBOARD_PROGRESS\n'.length)) as {
+    epics: { cards: (CardJson & { isDraft: boolean })[] }[];
+    unassigned: (CardJson & { isDraft: boolean })[];
+  };
+  const handed = [...progress.epics.flatMap((epic) => epic.cards), ...progress.unassigned].find((c) => c.id === id)!;
   expect(handed.isDraft).toBe(false);
+  expect(context).not.toContain('## Section');
+  expect(context).not.toContain('あ');
 
-  // Enough big cards to pass the limit: the hook says it could not get the snapshot, with no part of it.
+  // Large task bodies do not inflate the progress context or cause the hook to truncate it.
   const huge = path.join(work, 'huge.md');
   writeFileSync(huge, bodyOfLength(49_000));
   agboardOk(mainProject, ['add', 'Huge one', '--desc-file', huge]);
@@ -282,11 +284,10 @@ test('the hook hands over the whole body and isDraft; a snapshot over 256 KiB is
   expect(over.status).toBe(0);
   const overContext = (JSON.parse(over.stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
     .additionalContext;
-  expect(overContext.startsWith('AGBOARD_ERROR\n')).toBe(true);
-  expect(overContext).toContain('context_too_large');
-  expect(overContext).not.toContain('AGBOARD_SNAPSHOT');
+  expect(overContext.startsWith('AGBOARD_PROGRESS\n')).toBe(true);
+  expect(overContext).not.toContain('AGBOARD_ERROR');
   expect(overContext).not.toContain('あ');
-  expect(Buffer.byteLength(overContext)).toBeLessThan(2_000);
+  expect(Buffer.byteLength(overContext)).toBeLessThanOrEqual(256 * 1024);
 });
 
 test('the help explains Markdown descriptions and what a refused write to a draft means', async () => {

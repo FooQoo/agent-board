@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { agboardOk, mainProject, projectId, resetBoard, cardBody, workspace, type CardJson, decisionJson } from '../helpers/agboard';
+import { agboard, agboardOk, mainProject, projectId, resetBoard, cardBody, workspace, type CardJson, decisionJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
@@ -161,7 +161,7 @@ test('an answer with nothing chosen and nothing typed cannot be sent', async ({ 
   await expect(send).toBeEnabled();
 });
 
-test('a card that is Done keeps its place until moved, and its body can still be edited and shown', async ({ page }) => {
+test('a Done card rejects agent edits while a person can still edit and show its body', async ({ page }) => {
   await openBoard(page);
   // The agent reports the work: the card stays in Doing, idle.
   agboardOk(mainProject, ['state', '13', 'running', '--actor', 'ai', '--reason', 'Working.']);
@@ -173,19 +173,21 @@ test('a card that is Done keeps its place until moved, and its body can still be
   agboardOk(mainProject, ['mv', '13', 'done', '--actor', 'human', '--reason', 'Accepted.']);
   await expect(page.getByRole('region', { name: 'Done' }).getByRole('button', { name: /^#13(?!\d)/ })).toBeVisible();
 
-  // Done is not a lock: the body is edited and read back, and the state stays Done.
-  agboardOk(mainProject, ['edit', '13', '--desc-file', writeBody(cardBody('Corrected after Done.'))]);
+  // Done is read-only for agents. A human can still edit it in the page below.
+  const refused = agboard(mainProject, ['edit', '13', '--desc-file', writeBody(cardBody('Corrected after Done.'))]);
+  expect(refused.code).not.toBe(0);
+  expect(refused.stderr).toContain('card #13 is done and read-only for agents');
   expect(show(13)).toMatchObject({ cardStatus: 'done', agentStatus: 'idle' });
   await card(page, 13).click();
-  await expect(details(page)).toContainText('Corrected after Done.');
+  await expect(details(page)).toContainText('Check the layout at 1280, 800, and 480 px.');
   await expect(details(page)).toContainText('Done');
 
-  // The page edits it too: a draft is made, the body saved, and the card is still Done.
+  // Human editing in the page remains available: make a draft, edit the body, and save it while Done.
   await details(page).getByRole('button', { name: 'Make draft' }).click();
   await details(page).getByRole('button', { name: 'Edit card' }).click();
   const dialog = page.getByRole('dialog', { name: /^#13 / });
-  await expect(body(dialog).getByText('Corrected after Done.')).toBeVisible();
-  await body(dialog).getByText('Corrected after Done.').click();
+  await expect(body(dialog).getByText('Check the layout at 1280, 800, and 480 px.')).toBeVisible();
+  await body(dialog).getByText('Check the layout at 1280, 800, and 480 px.').click();
   await page.keyboard.press('End');
   await page.keyboard.type(' Second line after Done.');
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();

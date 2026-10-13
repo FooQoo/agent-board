@@ -617,7 +617,7 @@ test.describe('two projects with the same card numbers', () => {
     await expect.poll(() => projectParam(page)).toBe(beta);
   });
 
-  test('a person answers on the page; the waiting agent of that project gets the answer, and its hook shows the whole history', async ({
+  test('a person answers on the page; the waiting agent gets the answer, and its hook shows only that project progress', async ({
     page,
   }) => {
     const env = { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' };
@@ -662,7 +662,7 @@ test.describe('two projects with the same card numbers', () => {
       waiter.kill();
     }
 
-    // The agent resumes, and the next hook hands over all of Alpha with the answer, and nothing of Beta.
+    // The agent resumes; the hook hands over active progress for Alpha only, while answer history stays with wait.
     agboardOk('Alpha', ['state', '2', 'running', '--actor', 'ai', '--reason', 'Resuming with the MIT license.'], home);
     const hook = spawnSync(agboardBinary(), ['--project', 'Alpha', 'hook', '--agent', 'claude'], {
       env,
@@ -672,11 +672,11 @@ test.describe('two projects with the same card numbers', () => {
     expect(hook.status).toBe(0);
     const context = (JSON.parse(hook.stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
       .additionalContext;
-    expect(context.startsWith('AGBOARD_SNAPSHOT\n')).toBe(true);
-    expect(context).toContain('Use the MIT license, please.');
-    expect(context).toContain('Resuming with the MIT license.');
-    expect(context).toContain('Alpha: set up the repository');
+    expect(context.startsWith('AGBOARD_PROGRESS\n')).toBe(true);
+    expect(context).toContain('Alpha: choose the license');
     expect(context).not.toContain('Beta');
+    expect(context).not.toContain('Use the MIT license, please.');
+    expect(context).not.toContain('Resuming with the MIT license.');
     await expect(card(page, 2)).toContainText('Running');
   });
 
