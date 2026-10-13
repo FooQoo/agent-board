@@ -211,6 +211,10 @@ pub struct EpicView {
     pub body: String,
     pub acceptance: Vec<AcceptanceItem>,
     pub acceptance_error: bool,
+    /// The card order of the epic (PLAN.md `priority`); empty when none is stored.
+    pub priority: Vec<i64>,
+    /// The stored `priority` cannot be read; the order is then ignored.
+    pub priority_error: bool,
     pub attachments: Vec<Attachment>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,

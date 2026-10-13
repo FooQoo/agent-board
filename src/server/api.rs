@@ -2041,6 +2041,9 @@ struct EpicPatchInput {
     body: Option<String>,
     #[serde(default)]
     acceptance: Option<Vec<AcceptanceItem>>,
+    /// The card order of the epic. Replaces the stored order.
+    #[serde(default)]
+    priority: Option<Vec<i64>>,
 }
 
 /// The error for giving a whole file and its parts in one request.
@@ -2173,6 +2176,7 @@ async fn update_epic(
         Err(error) => return agboard_error_response(&error),
     };
     match with_files(&state, move |store| {
+        let priority = input.priority.clone();
         let plan = if input.body.is_some() || input.acceptance.is_some() {
             if input.plan.is_some() {
                 return Err(whole_or_parts());
@@ -2193,7 +2197,16 @@ async fn update_epic(
             is_draft: input.is_draft,
             plan,
         };
-        store.update_epic(&project_id, &epic_id, update, chrono::Utc::now())
+        let now = chrono::Utc::now();
+        let mut result = store.update_epic(&project_id, &epic_id, update, now)?;
+        if let Some(order) = priority {
+            let ordered = store.set_epic_priority(&project_id, &epic_id, &order, now)?;
+            result = Changed {
+                value: ordered.value,
+                changed: result.changed || ordered.changed,
+            };
+        }
+        Ok(result)
     })
     .await
     {
