@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -20,6 +21,20 @@ describe('isolated monitor build', () => {
     expect(monitor).not.toContain('name="agboard-token"');
     expect(monitor).not.toMatch(/name="agboard-monitor-token" content="[a-f0-9]{64}"/);
     expect(`${access}\n${monitor}`).not.toContain('/assets/app.js');
+  });
+
+  it('bypasses entry URLs saved under the previous long-lived cache policy', () => {
+    for (const [folder, name] of [
+      ['access', 'entry.js'],
+      ['monitor', 'monitor.js'],
+      ['monitor', 'monitor.css'],
+    ]) {
+      const previousVersion = createHash('sha256')
+        .update(read(`${folder}/${name}`))
+        .digest('hex')
+        .slice(0, 16);
+      expect(read(`${folder}/index.html`)).not.toContain(`${name}?v=${previousVersion}`);
+    }
   });
 
   it('keeps dedicated asset manifests and only single-level viewer chunks', () => {

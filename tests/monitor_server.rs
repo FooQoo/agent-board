@@ -53,6 +53,27 @@ fn monitor_api_is_read_only_allowlisted_and_uses_the_shared_snapshot() {
 }
 
 #[test]
+fn monitor_assets_are_not_cached_including_viewer_chunks_and_missing_files() {
+    let home = home();
+    let server = Running::start(home.path());
+    let host = server.monitor_headers();
+    let manifest: serde_json::Value =
+        serde_json::from_str(include_str!("../web/dist/monitor/manifest.json")).unwrap();
+    for asset in manifest["assets"].as_array().unwrap() {
+        let name = asset["name"].as_str().unwrap();
+        let path = format!("/assets/monitor/{name}?v=test");
+        for method in ["GET", "HEAD"] {
+            let response = server.request(method, &path, &host, "");
+            assert_eq!(response.status, 200, "{method} {path}");
+            assert_eq!(response.header("cache-control"), Some("no-store"), "{path}");
+        }
+    }
+    let missing = server.request("GET", "/assets/monitor/missing.js", &host, "");
+    assert_eq!(missing.status, 404);
+    assert_eq!(missing.header("cache-control"), Some("no-store"));
+}
+
+#[test]
 fn monitor_events_emit_ready_and_react_to_the_shared_change_broadcast() {
     let home = home();
     let server = Running::start(home.path());

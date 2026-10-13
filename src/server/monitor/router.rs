@@ -144,7 +144,7 @@ async fn security_headers(request: Request, next: Next) -> Response {
         headers.insert(header::CONTENT_SECURITY_POLICY, header::HeaderValue::from_static(
             "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
         ));
-    } else if path.starts_with("/monitor/api/") {
+    } else if path.starts_with("/monitor/api/") || path.starts_with("/assets/monitor/") {
         headers.insert(
             header::CACHE_CONTROL,
             header::HeaderValue::from_static("no-store"),
@@ -162,7 +162,7 @@ async fn asset(Path(name): Path<String>) -> Response {
         Some((bytes, mime)) => (
             [
                 (header::CONTENT_TYPE, mime),
-                (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
+                (header::CACHE_CONTROL, "no-store"),
             ],
             bytes,
         )

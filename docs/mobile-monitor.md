@@ -6,6 +6,8 @@ The monitor groups cards into Todo, Doing, and Done. Todo and Doing cards show t
 
 Horizontal swipes move the tab content and underline together. Gestures inside the tab content stay within that area; drag the top handle to dismiss the drawer. Each project's complete epic list is loaded when the monitor initializes and retained for the page session. Switching tabs performs no epic request. Reload the page to refresh the epic lists, or use the retry button after a failed initial request.
 
+The monitor HTML, JavaScript, CSS, viewer chunks, and API responses use `Cache-Control: no-store`. Page reloads fetch the current UI without retaining browser asset caches. Entry asset versions also bypass files saved under the previous caching policy.
+
 Run the commands below from the repository root after [installing Agent Board](usage.md#installation-and-updates).
 
 ## Final iPhone check

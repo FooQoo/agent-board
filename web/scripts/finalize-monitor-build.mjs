@@ -17,7 +17,9 @@ async function finalizeHtml(dir, sourceName, targetName, requiredScript, require
     throw new Error(`${source.pathname} contains a forbidden token or PC asset reference`);
   for (const assetPath of [requiredScript, requiredCss].filter(Boolean)) {
     const assetName = assetPath.split('/').at(-1);
+    // Change entry URLs so browsers bypass assets retained under the former cache policy.
     const version = createHash('sha256')
+      .update('agboard-remote-assets:no-store\0')
       .update(await readFile(new URL(assetName, dir)))
       .digest('hex')
       .slice(0, 16);
