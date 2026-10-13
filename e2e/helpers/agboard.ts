@@ -67,7 +67,19 @@ export function agboard(project: string, args: string[], home: string = mainHome
 
 /** Run a whole-catalog command such as `project create NAME` or `project ls`, which takes no `--project`. */
 export function agboardCatalog(args: string[], home: string = mainHome()): AgboardResult {
-  return run(args, home);
+  return run(withOwnFolder(args, home), home);
+}
+
+/**
+ * `project create` binds the folder it runs in, and one folder belongs to one project. A helper that
+ * creates several projects in one data area gives each its own folder inside that area.
+ */
+function withOwnFolder(args: string[], home: string): string[] {
+  const at = args.findIndex((arg, index) => arg === 'project' && args[index + 1] === 'create');
+  const name = args[at + 2];
+  if (at < 0 || name === undefined || name.startsWith('-') || args.includes('--folder')) return args;
+  const folder = mkdtempSync(path.join(home, 'folder-'));
+  return [...args.slice(0, at + 3), '--folder', folder, ...args.slice(at + 3)];
 }
 
 function run(args: string[], home: string): AgboardResult {

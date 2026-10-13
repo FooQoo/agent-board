@@ -87,7 +87,8 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   const archiveBox = (await toolbarButtons.last().boundingBox())!;
   const makeDraftBox = (await toolbarButtons.first().boundingBox())!;
   expect(archiveBox.x).toBeGreaterThan(makeDraftBox.x + makeDraftBox.width - 1);
-  expect(Math.abs(archiveBox.y - tabsBox.y)).toBeLessThan(tabsBox.height);
+  // The actions sit in the panel header, above the tabs.
+  expect(archiveBox.y).toBeLessThan(tabsBox.y);
   await expect(panel.getByText(/^(Idle|Running|Pending)$/)).toHaveCount(0);
 });
 
@@ -184,16 +185,18 @@ test('the card grips never take keyboard focus', async ({ page }) => {
     'DIV #8',
   ]);
 
-  // The detail panel exposes close, the selected tab, and the toolbar actions; the grip itself never receives focus.
+  // The detail panel exposes its header actions, close, and the selected tab; the grip itself never receives focus.
   await card(page, 8).click();
+  const headerActions = details(page).getByRole('toolbar', { name: 'Card actions' }).getByRole('button');
+  const actionCount = await headerActions.count();
+  for (let index = 0; index < actionCount; index += 1) {
+    await page.keyboard.press('Tab');
+    await expect(headerActions.nth(index)).toBeFocused();
+  }
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('button', { name: 'Close details' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(details(page).getByRole('tab', { name: 'Description' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(details(page).getByRole('button', { name: 'Archive card' })).toBeFocused();
 
   // Interactive controls can be focused, while icon grips are never independent tab stops.
   const focusable = await page.evaluate(() =>
@@ -201,7 +204,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions, eight cards, the Pending form, then four detail controls.
-  expect(focusable).toHaveLength(1 + 1 + 1 + 1 + 1 + 8 + 2 + 4);
+  // Header actions, eight cards, the Pending form, four detail controls, then the conditions dock.
+  expect(focusable).toHaveLength(1 + 1 + 1 + 1 + 1 + 8 + 2 + 4 + 1);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

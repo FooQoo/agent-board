@@ -1,5 +1,4 @@
 import { FileTextIcon, HistoryIcon, LayersIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailTabList, detailPanelId, detailTabId } from '../ui/detail-tabs';
 
@@ -14,20 +13,17 @@ export function panelId(base: string, tab: DetailTab): string {
   return detailPanelId(base, tab);
 }
 
-/** The two tabs of the detail column, with the toolbar to their right. */
+/** The three tabs of the detail column. The card's actions sit in the panel header, not beside the tabs. */
 export function DetailTabs({
   idBase,
   tab,
   historyCount,
   onChange,
-  children,
 }: {
   idBase: string;
   tab: DetailTab;
   historyCount: number;
   onChange: (tab: DetailTab) => void;
-  /** The toolbar. */
-  children: ReactNode;
 }) {
   const { t } = useTranslation();
 
@@ -56,7 +52,6 @@ export function DetailTabs({
           },
         ]}
       />
-      {children}
     </div>
   );
 }

@@ -80,8 +80,11 @@ for (const locale of ['en', 'ja']) {
       const row = await box(detail.locator('.detail__tabs'));
       const tabs = await box(detail.getByRole('tablist'));
       const toolbar = await box(detail.getByRole('toolbar'));
-      expect(tabs.x + tabs.width).toBeLessThanOrEqual(toolbar.x + 1);
-      expect(toolbar.x + toolbar.width).toBeLessThanOrEqual(row.x + row.width + 1);
+      const header = await box(detail.locator('.detail__top'));
+      // The tabs keep their row; the card's actions sit in the header, inside the column.
+      expect(tabs.x + tabs.width).toBeLessThanOrEqual(row.x + row.width + 1);
+      expect(toolbar.x + toolbar.width).toBeLessThanOrEqual(header.x + header.width + 1);
+      expect(toolbar.y).toBeLessThan(tabs.y);
       for (const tab of await detail.getByRole('tab').all()) {
         const wrapped = await tab.evaluate((element) => {
           const lineHeight = parseFloat(getComputedStyle(element).lineHeight);

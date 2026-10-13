@@ -77,6 +77,7 @@ export function CardDetailView({
         <span className="detail__id">
           {ownerName && <span className="detail__owner">{ownerName} · </span>}#{card.id}
         </span>
+        {toolbar}
         <button
           type="button"
           className="detail__close"
@@ -111,9 +112,7 @@ export function CardDetailView({
         tab={tab}
         historyCount={historyItems(card.history).length}
         onChange={onTabChange}
-      >
-        {toolbar}
-      </DetailTabs>
+      />
       <div
         className="detail__viewport"
         role="tabpanel"

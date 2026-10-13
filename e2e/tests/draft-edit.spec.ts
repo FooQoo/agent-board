@@ -303,11 +303,12 @@ test('the toolbar puts archive at the right end; its confirmation sits above the
   const editBox = (await edit.boundingBox())!;
   const archiveBox = (await archive.boundingBox())!;
   expect(archiveBox.x).toBeGreaterThan(editBox.x + editBox.width - 1);
-  // The right end of the toolbar is the right end of the tab row.
-  const tabs = (await details(page).getByRole('tablist').boundingBox())!;
+  // The right end of the actions is the right end of the panel header, above the tabs.
+  const header = (await details(page).locator('.detail__top').boundingBox())!;
   const panel = (await details(page).boundingBox())!;
   expect(archiveBox.x + archiveBox.width).toBeLessThanOrEqual(panel.x + panel.width);
-  expect(Math.abs(archiveBox.y + archiveBox.height / 2 - (tabs.y + tabs.height / 2))).toBeLessThan(tabs.height);
+  expect(Math.abs(archiveBox.y + archiveBox.height / 2 - (header.y + header.height / 2))).toBeLessThan(header.height);
+  const tabs = (await details(page).getByRole('tablist').boundingBox())!;
 
   await archive.click();
   const ask = `Archive #${id} "Draft me"? You can restore it from the archive.`;

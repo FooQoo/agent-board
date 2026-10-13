@@ -380,3 +380,14 @@
   outline: 2px solid var(--r-accent);
   outline-offset: 2px;
 }
+
+/* In a narrow detail column the three tabs keep their labels but drop their icons and take less side
+   room, so the toolbar stays beside them instead of running past the column. */
+@container (max-width: 340px) {
+  .detail__tab {
+    padding-inline: 8px;
+  }
+  .detail__tab svg {
+    display: none;
+  }
+}
