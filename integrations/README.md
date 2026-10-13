@@ -2,15 +2,15 @@
 
 For browser operations, CLI examples, and shared-file editing, see the [usage guide](../docs/usage.md).
 
-Agent Board hooks read one project's complete, read-only snapshot after tools run and pass it to the agent as `additionalContext`. The `agent-board` skill describes how to choose work, add reasons, request a decision, wait for changes, and resume from the user's answer.
+Agent Board hooks read the same read-only progress table as `agboard progress --json` after tools run and pass it to the agent as `additionalContext`. The `agent-board` skill describes how to choose work from that table, read only the needed plan and task files, record work, and verify acceptance conditions.
 
-## One project per hook
+## Resolve the project from the working folder
 
-Every hook command names its project with `--project`. The name is fixed in the command: the hook never takes the project from the working directory, the environment, the tool input, the web view, or another agent. A hook without `--project`, or with a name that does not exist, reports `AGBOARD_ERROR` instead of a snapshot.
+Hook templates use a fixed command such as `agboard hook --agent claude`; they contain no project name, session ID, shell variables, or substitutions. The hook reads `cwd` from its JSON input and resolves the nearest registered ancestor folder. If `cwd` is absent, it uses the hook process's current folder. An explicit `--project NAME` overrides folder bindings. No binding, a malformed binding, or a deleted bound project produces `AGBOARD_ERROR`; the hook never guesses another project.
 
-The payload contains the fetch time, the `project` (ID and name), the `version`, the `cursor`, and every card of that project with its whole history and its full description (Markdown, up to 50,000 characters). A card with `"isDraft": true` is a draft the user is still writing; agents cannot change it (`edit`, `mv`, and `state` fail with `card_is_draft`) and should work on other cards until the user finalizes it. Nothing from another project is included. If the complete snapshot would exceed 256 KiB, or cannot be read, the agent gets `AGBOARD_ERROR` (`context_too_large`, `project_not_found`, `board_unavailable`, ...) and must not make board-dependent changes until a complete snapshot is available. A truncated snapshot is never presented as complete, and the original tool result is never blocked or changed.
+The `AGBOARD_PROGRESS` payload contains project metadata, versions, paths to each epic `PLAN.md` and task `TASK.md`, and each eligible card's ID, title, owner, status, and acceptance count. It excludes Done, archived, and Pending cards, and omits bodies, history, and image data. Human-owned and draft cards remain visible; do not take work assigned to a person or a draft. Read only the plan and task files needed for the selected work. If the complete progress table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes. The hook never truncates the table and never blocks or changes the original tool result.
 
-Image attachments follow the same project and card boundaries. Use `agboard --project NAME attachment add <card-id> --file PATH --actor ai|human` to add an image, `agboard --project NAME attachment ls <card-id>` to read metadata, and `agboard --project NAME attachment get <card-id> <attachment-id> --output PATH` to retrieve bytes. Snapshot, hook, and wait payloads contain attachment metadata only; image bytes are returned only by `get`. Draft cards, invalid or oversized image files, and cards outside the named project are rejected. Retrieval never overwrites an existing output file.
+Image attachments follow the same project and card boundaries. Use `agboard --project NAME attachment add <card-id> --file PATH --actor ai|human` to add an image, `agboard --project NAME attachment ls <card-id>` to read metadata, and `agboard --project NAME attachment get <card-id> <attachment-id> --output PATH` to retrieve bytes. Snapshot and wait payloads contain attachment metadata only; progress and hook payloads omit attachments. Image bytes are returned only by `get`. Draft cards, invalid or oversized image files, and cards outside the named project are rejected. Retrieval never overwrites an existing output file.
 
 ## Before you start
 
@@ -27,48 +27,27 @@ The project folder holds plain files that the CLI and the browser read. Agents m
 
 Never edit `task.json`, `epic.json`, or `project.json` directly; use the `agboard` CLI for every change to a card, an epic, or a project. Never delete a card folder or an epic folder: ask a person to delete a card or an epic with the CLI. Do not put a machine-specific absolute path into a shared file.
 
-## Set the project name in the template
-
-Both templates contain the placeholder `PROJECT_NAME` inside single quotes:
-
-```text
-agboard --project 'PROJECT_NAME' hook --agent claude
-```
-
-Replace the placeholder with your project's exact name. Keep the single quotes; they make the shell pass the name as one fixed word. When the name contains characters with a special meaning, escape them as follows, then paste the result between the single quotes:
-
-- Replace each single quote `'` in the name with `'\''`.
-- The command is stored in a JSON string, so write each backslash as `\\` and each double quote as `\"` there.
-
-For the name `Alice's "plan"` the JSON value is:
-
-```text
-"command": "agboard --project 'Alice'\\''s \"plan\"' hook --agent claude"
-```
-
-Do not build the command from card text, tool input, or other variable data, and do not use shell substitutions (`$(...)`, backticks, `$VAR`) in it. The commands are fixed.
-
 Keep your own settings. Review the template and merge its hook entries into your project's existing configuration; do not replace a settings file that already contains other hooks. Nothing here writes to your user-level or global agent settings. If `agboard` is not on the agent's `PATH`, fix your `PATH`; do not copy a machine-specific absolute path into a shared file.
 
 ## Claude Code
 
 Merge `integrations/claude-code/settings.json` into the project's `.claude/settings.json`. It registers the fixed command for:
 
-- `SessionStart` (startup, resume, clear, compact): the first snapshot and the snapshot after compaction.
-- `PostToolUse`: a fresh snapshot after each tool.
-- `PostToolUseFailure`: a fresh snapshot after a failed tool.
+- `SessionStart` (startup, resume, clear, compact): the first progress table and the table after compaction.
+- `PostToolUse`: a fresh progress table after each tool.
+- `PostToolUseFailure`: a fresh progress table after a failed tool.
 
-Inspect `/hooks` and confirm the command shows your project name before trusting it. The generic `agent-board` skill does not register hooks itself; name the project each time you use it.
+Inspect `/hooks` and review the fixed command before trusting it. The generic `agent-board` skill does not register hooks itself.
 
 ## Codex CLI and Codex App
 
 1. Merge `integrations/codex/hooks.json` into the project's `.codex/hooks.json`; preserve existing hooks.
 2. Start Codex in the project and review/trust the hook definitions in `/hooks`.
-3. The templates set `additionalContextLimit` to `0` so that the 256 KiB check done by `agboard` is the only limit. SessionStart refreshes the snapshot after startup, resume, clear, or compact; PostToolUse refreshes it after tools.
+3. The templates set `additionalContextLimit` to `0` so that the 256 KiB check done by `agboard` is the only limit. SessionStart refreshes progress after startup, resume, clear, or compact; PostToolUse refreshes it after tools.
 
 ## After renaming a project
 
-A rename keeps the project's ID, but the hook commands still contain the old name. Update the name in every hook command (and in your agent's instructions) after you rename a project. Until you do, the hook reports `project_not_found`. A project created later with the old name is a different project with different cards, so check the `project.id` in the payload when in doubt.
+A rename keeps the project's ID and its folder bindings. If you explicitly pass `--project`, use the new name. A project created later with the former name is a different project.
 
 ## Waiting for a user response
 

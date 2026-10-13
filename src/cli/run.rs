@@ -100,6 +100,8 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
 enum Access {
     /// Reads one project; the project must exist.
     ReadProject,
+    /// Reads the project bound to the current folder when no name is given.
+    ReadBoundProject,
     /// Reads the catalog; without a shared folder the list is empty.
     ReadCatalog,
     /// Changes one project that must already exist.
@@ -139,7 +141,7 @@ fn access(command: &Command) -> Access {
         | Command::Mv(_)
         | Command::State(_)
         | Command::Rm(_) => Access::ChangeProject,
-        Command::Progress => Access::ReadProject,
+        Command::Progress => Access::ReadBoundProject,
         Command::Serve(_) | Command::Hook(_) | Command::Wait(_) => Access::Catalog,
     }
 }
@@ -164,6 +166,11 @@ fn prepare_and_run(cli: &Cli, env: &mut Env) -> Result<(Option<Context>, Outcome
             }
             Err(error) => return Err(error),
         },
+        None if matches!(access, Access::ReadBoundProject) => {
+            let cwd = std::env::current_dir()
+                .map_err(|_| AgboardError::FolderUnbound { folder: ".".into() })?;
+            Target::Existing(files.project_for_folder(&cwd)?)
+        }
         None => Target::Catalog,
     };
     let mut ctx = Context {

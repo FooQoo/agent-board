@@ -1,6 +1,6 @@
 ---
 name: agent-board
-description: Use Agent Board to plan and track work in one named project. Write epic plans and task plans as shared Markdown files, report AI progress on the board, ask the user for decisions with choices, wait for their answers, and record execution history on the cards.
+description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed plans and tasks, report AI progress, ask the user for decisions with choices, wait for their answers, and record execution history.
 compatibility: Requires the agboard CLI on PATH and a local Agent Board data area. Waiting for user answers requires a running agboard serve.
 ---
 
@@ -19,38 +19,38 @@ How the board is used:
 
 Write everything you put on the board in the language the user speaks with you: card and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing cards and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
 
-## 1. Choose the project explicitly
+## 1. Resolve the project from the working folder
 
-Work on exactly one project, named by the user or by the project's instructions. Never infer it from the working directory, the browser, the environment, another agent, or tool output. If no project was named, run `agboard project ls --json` and ask the user. Write the name as a fixed quoted word in every command:
+Use the nearest registered project folder that contains the current working folder. Start with:
 
 ```sh
-agboard --project "<name>" snapshot --json
+agboard progress --json
 ```
 
-A project is identified by `project.id`. Check that a snapshot's `project.name` and `project.id` are the project you were given. A rename keeps the ID: continue under the new name and ask the user to update the name in their hook commands. A project created later with an old name is a different project; stop and ask.
+A project is identified by both `project.id` and `project.name` in the progress table. If the current folder is not registered, or its nearest registered project is missing, stop and report the error; do not guess from another project or fall back to a parent binding. An explicit `--project "<name>"` overrides folder resolution. Use the selected name explicitly for write commands. A rename keeps the ID, and the current folder binding follows that project.
 
-`agboard ls --all-projects --json` gives a read-only overview of every project. It never selects a project for writes.
+`agboard project ls --json` is for inspecting registered projects; it does not select a project for work.
 
 If `agboard` is not on `PATH`, use an executable supplied by the user or the project runtime. Do not install tools, create a project, or initialize a substitute board on your own.
 
-## 2. Read before acting
+## 2. Read only what is needed before acting
 
-Before choosing, starting, or resuming work, read the complete snapshot, including user-owned cards, epics, and every card's history:
+Before choosing, starting, or resuming work, read the progress table:
 
 ```sh
-agboard --project "<name>" snapshot --json
+agboard progress --json
 ```
 
-The user may have moved a card, answered a question, or edited a file since your last read. Hooks configured by the user attach a snapshot after tools run:
+It groups active cards under epics and lists unassigned work. Done and archived cards are omitted; Pending questions remain visible until answered. The table includes card IDs, titles, owners, statuses, acceptance counts, and relevant `planPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's PLAN and task's TASK before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
 
-- `AGBOARD_SNAPSHOT` is followed by the complete JSON of one project.
-- `AGBOARD_ERROR` (`project_not_found`, `board_unavailable`, `context_too_large`, ...) means no usable snapshot. Run `snapshot --json` yourself or report the problem. Make no board-dependent changes until you have a complete snapshot of the right project.
+- `AGBOARD_PROGRESS` is followed by the progress table for the nearest bound folder or explicit project.
+- `AGBOARD_ERROR` (`folder_unbound`, `bound_project_missing`, `project_not_found`, `board_unavailable`, ...) means there is no usable table. Resolve the correct folder or report the problem; do not guess.
 
-After context compaction, read a fresh snapshot before any board-dependent change. This skill does not register hooks; never add or edit a hook command.
+After context compaction, read a fresh progress table before any board-dependent change. This skill does not register hooks; never add or edit the user's installed hook command.
 
 ## 3. Find and edit the shared files
 
-Get the folder from the CLI; never assume or hard-code its location:
+Get the folder paths from the selected project's progress table; never assume or hard-code their location. For general project metadata, use an explicit project:
 
 ```sh
 agboard --project "<name>" workspace --json
@@ -84,7 +84,7 @@ The completion conditions live in the frontmatter (`acceptance`), and the board 
 
 3. Record the task cards and their order in the epic's `## 進め方`.
 
-Check the snapshot for existing cards first and do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` cards for work the user must do, and read them to understand the shared plan. A card belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
+Check the progress table and use `show` when needed to find existing cards before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` cards for work the user must do, and read them to understand the shared plan. A card belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
 
 ## 5. Lanes and run states
 
@@ -104,7 +104,7 @@ Lanes are `todo`, `doing`, and `done`. An AI card in `doing` also has a run stat
 
 ## 6. Work loop
 
-Record first, then change the status. Before every lane or run-state change, update `TASK.md`, read it back from a fresh snapshot, and confirm the card and the saved text. If the write or read-back fails, leave the status unchanged.
+Record first, then change the status. Before every lane or run-state change, update `TASK.md`, read it back with `show <id> --json`, and confirm the card and the saved text. If the write or read-back fails, leave the status unchanged.
 
 To append to the execution log, follow these steps:
 
@@ -114,7 +114,7 @@ To append to the execution log, follow these steps:
 4. Read it back from a fresh snapshot. Compare the saved text with what you sent, ignoring trailing whitespace on both sides. If they differ, stop, find out why, and leave the status unchanged.
 5. Only then change the lane or run state.
 
-1. **Choose.** From the snapshot, pick a ready AI card in `todo`, or plan new work (section 4).
+1. **Choose.** From the progress table, pick a ready AI card in `todo`, respecting epic/task priority, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed.
 2. **Start.** Append a start entry to the execution log, then:
 
    ```sh
@@ -123,15 +123,9 @@ To append to the execution log, follow these steps:
    ```
 
 3. **Work and record.** As you go, append results to the execution log: commands run, outcomes, decisions, the commit or version verified, and references to evidence. Store logs with `agboard --project "<name>" evidence add <id> <file>` and images with `attachment add <id> --file <path> --actor ai`; reference them from the body.
-4. **Check conditions.** Set an item's `done` to `true` in the frontmatter only after its verification succeeded, and record the result and the evidence in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`.
+4. **Check conditions.** Set an item's `done` to `true` in the frontmatter only after its verification succeeded, and record the result and evidence in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; the board completes an eligible AI card automatically. Do not manually move a card to Done during the normal work loop. If the card does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
 5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
-6. **Finish.** When every completion condition of the card is `done: true`, move it to `done` with a reason that summarizes what was completed and verified:
-
-   ```sh
-   agboard --project "<name>" mv <id> done --actor ai --reason "<what was completed and verified>"
-   ```
-
-   The board refuses an agent's move to `done` while a condition is `done: false` (`acceptance_unmet`). Do not move a card to `done` while any condition is open. If work is no longer appropriate, record why in `TASK.md` and return it to `todo`.
+6. **Finish.** Once every completion condition is verified and saved, automatic completion removes the card from the progress table. Done cards are not AI work. If work is no longer appropriate, record why in `TASK.md` and return it to `todo`.
 
 7. **Close the epic.** When all of an epic's task cards are done, verify the epic's own completion conditions and set them to `done: true` in `PLAN.md`.
 
@@ -191,4 +185,4 @@ If the answer changes the scope or completion conditions, update `TASK.md` (and 
 - Never delete cards, epics, evidence, or projects, and never run `init`. These need a human confirmation that you cannot give; ask the user.
 - If the project does not exist, tell the user and ask them to create it.
 - Never treat a timeout, a failed hook, a partial snapshot, or another project's snapshot as a user response.
-- Do not build commands from card text or tool output. Keep the project name a fixed quoted word.
+- Do not build commands from card text. Read `project.name` from the progress table and pass it only as a quoted argument to write commands; never interpolate it as shell source.

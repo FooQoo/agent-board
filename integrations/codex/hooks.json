@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "agboard --project 'PROJECT_NAME' hook --agent codex",
+            "command": "agboard hook --agent codex",
             "timeout": 10,
             "additionalContextLimit": 0
           }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "agboard --project 'PROJECT_NAME' hook --agent codex",
+            "command": "agboard hook --agent codex",
             "timeout": 10,
             "additionalContextLimit": 0
           }

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "agboard --project 'PROJECT_NAME' hook --agent claude",
+            "command": "agboard hook --agent claude",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "agboard --project 'PROJECT_NAME' hook --agent claude",
+            "command": "agboard hook --agent claude",
             "timeout": 10
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "agboard --project 'PROJECT_NAME' hook --agent claude",
+            "command": "agboard hook --agent claude",
             "timeout": 10
           }
         ]

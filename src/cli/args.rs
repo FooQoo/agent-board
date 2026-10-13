@@ -13,12 +13,12 @@ use crate::error::{AgboardError, FileAction};
 const TOP_HELP: &str = "\
 agboard - a shared local work board for users and agents
 
-Usage: agboard --project NAME [--json] <COMMAND>
+Usage: agboard [--project NAME] [--json] <COMMAND>
 
-Every board command names one project with --project NAME. The read-only
-`serve` command operates on the whole data area.
-Nothing is chosen for you: leave it out and the command fails. The one
-exception is the read-only `ls --all-projects`, which lists every project.
+Most board commands name a project with --project NAME. `progress` and `hook`
+resolve the nearest registered folder binding when omitted; an explicit name
+overrides that binding. The read-only `serve` command operates on the whole
+data area.
 
 Commands:
   project Create, list, rename, or delete projects
@@ -34,7 +34,8 @@ Commands:
   evidence Add, show, or delete a card's text evidence
   attachment Add, list, or read image attachments
   snapshot Fetch the complete board and history
-  hook    Add the latest board snapshot to an agent hook
+  progress Show active work in epic priority order
+  hook    Add the current progress table to an agent hook
   wait    Wait for a board change and fetch its history
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser
@@ -42,7 +43,8 @@ Commands:
 Workflow for agents:
   agboard project ls --json
   agboard --project NAME workspace --json
-  agboard --project NAME snapshot --json
+  agboard progress --json
+  agboard --project NAME progress --json
   agboard --project NAME ls --json
   agboard ls --all-projects --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
@@ -58,15 +60,15 @@ Rules for agents:
   - Do not edit TASK.md of a draft card, and do not edit task.json, epic.json,
     or project.json directly.
   - Do not delete card or epic folders; ask a human to do it.
-  - After renaming a project, update the project name in your hook commands.
+  - Progress and hooks resolve the nearest registered project folder; --project overrides it.
   - Add --json to any command for machine-readable output.
 
 Descriptions and drafts:
   - A description is Markdown, up to 50,000 characters. Give a long one with
     --desc-file PATH (or --desc - on standard input), not --desc TEXT.
-  - Snapshots, `show`, `wait`, and the hook return every description in full.
-    If the hook's snapshot would exceed 256 KiB, it reports AGBOARD_ERROR
-    (context_too_large) instead; use `snapshot --json` to read the board.
+  - Snapshots, `show`, and `wait` return descriptions in full. Progress and hooks
+    return metadata only. If the hook's progress table exceeds 256 KiB, it reports AGBOARD_ERROR
+    (context_too_large) instead; read only the needed PLAN.md and TASK.md files.
   - A card with \"isDraft\": true is a draft the user is still writing. It is
     read-only for you: `edit`, `mv`, and `state` fail with card_is_draft
     (exit code 1) and change nothing. Do not retry. Wait for the user to
@@ -81,8 +83,8 @@ Descriptions and drafts:
     override_help = TOP_HELP
 )]
 pub struct Cli {
-    /// The project to work on. Required by every command except project
-    /// create, project ls and serve. Give it once.
+    /// The project to work on. Progress and hooks resolve the nearest folder
+    /// binding when omitted; most other commands require this value.
     #[arg(long, global = true, value_name = "NAME")]
     project: Option<String>,
     /// Print machine-readable JSON instead of text.
@@ -120,7 +122,7 @@ pub enum Command {
     Evidence(EvidenceArgs),
     /// Fetch the complete board and history without modifying it
     Snapshot(SnapshotArgs),
-    /// Add the latest board snapshot to an agent hook
+    /// Add the current progress table to an agent hook
     Hook(HookArgs),
     /// Wait for a board change and fetch its history
     Wait(WaitArgs),
@@ -130,7 +132,7 @@ pub enum Command {
     Workspace(WorkspaceArgs),
     /// Show the cards an agent can pick up, by epic in priority order
     #[command(
-        after_help = "Examples:\n  agboard --project \"My project\" progress\n  agboard --project \"My project\" progress --json"
+        after_help = "Examples:\n  agboard progress\n  agboard progress --json\n  agboard --project \"My project\" progress --json"
     )]
     Progress,
 }
@@ -161,7 +163,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 17] = [
+pub const SUBCOMMAND_NAMES: [&str; 18] = [
     "project",
     "init",
     "add",
@@ -179,6 +181,7 @@ pub const SUBCOMMAND_NAMES: [&str; 17] = [
     "hook",
     "wait",
     "workspace",
+    "progress",
 ];
 
 #[derive(Args, Debug)]
@@ -242,7 +245,7 @@ pub enum AgentArg {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo hook --agent claude\n  agboard --project demo hook --agent codex"
+    after_help = "Examples:\n  agboard hook --agent claude\n  agboard hook --agent codex\n  agboard --project demo hook --agent claude"
 )]
 pub struct HookArgs {
     #[arg(long, value_enum)]
@@ -881,7 +884,7 @@ impl Cli {
                 }),
                 None,
             ) => {}
-            (Command::Serve(_) | Command::Hook(_), None) => {}
+            (Command::Serve(_) | Command::Hook(_) | Command::Progress, None) => {}
             (_, None) => {
                 return Err(AgboardError::InvalidArgument {
                     message: "--project NAME is required.".to_string(),

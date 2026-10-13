@@ -956,6 +956,7 @@ fn help_lists_project_commands_and_every_example_names_its_project() {
         "ls",
         "show",
         "snapshot",
+        "progress",
         "hook",
         "wait",
         "workspace",
@@ -978,16 +979,26 @@ fn help_lists_project_commands_and_every_example_names_its_project() {
             .filter(|line| line.trim_start().starts_with("agboard "))
             .collect();
         assert!(!examples.is_empty(), "{command:?} has no example:\n{help}");
-        for example in examples {
+        for example in &examples {
             // `ls --all-projects` reads every project and names none.
+            let folder_resolved = matches!(command.as_slice(), ["progress"] | ["hook"]);
             let global = matches!(
                 command.as_slice(),
                 ["serve"] | ["project", "create"] | ["project", "ls"]
             ) || example.contains("--all-projects");
-            assert_eq!(
-                example.contains("--project"),
-                !global,
-                "{command:?}: {example}"
+            if !folder_resolved {
+                assert_eq!(
+                    example.contains("--project"),
+                    !global,
+                    "{command:?}: {example}"
+                );
+            }
+        }
+        if matches!(command.as_slice(), ["progress"] | ["hook"]) {
+            assert!(
+                examples
+                    .iter()
+                    .any(|example| !example.contains("--project"))
             );
         }
     }

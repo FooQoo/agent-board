@@ -5,7 +5,7 @@ use serde_json::Value;
 use tempfile::tempdir;
 
 #[test]
-fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() {
+fn hook_adds_the_progress_table_for_supported_events_without_mutating_data() {
     let home = tempdir().unwrap();
     for project in ["Agent Board", "Other"] {
         let init = Command::new(env!("CARGO_BIN_EXE_agboard"))
@@ -50,17 +50,15 @@ fn hook_adds_the_complete_snapshot_for_supported_events_without_mutating_data() 
     let context = parsed["hookSpecificOutput"]["additionalContext"]
         .as_str()
         .unwrap();
-    assert!(context.starts_with("AGBOARD_SNAPSHOT\n"));
+    assert!(context.starts_with("AGBOARD_PROGRESS\n"));
     let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
     assert_eq!(snapshot["project"]["name"], "Agent Board");
-    assert!(snapshot["cursor"].as_str().unwrap().starts_with(&format!(
-        "f1:{}:",
-        snapshot["project"]["id"].as_str().unwrap()
-    )));
-    // Only the named project's cards are passed on.
-    assert_eq!(snapshot["cards"].as_array().unwrap().len(), 1);
-    assert_eq!(snapshot["cards"][0]["title"], "Question");
-    assert_eq!(snapshot["cards"][0]["history"].as_array().unwrap().len(), 1);
+    // Work metadata is included, while details/history are not sent to the hook.
+    assert_eq!(snapshot["unassigned"].as_array().unwrap().len(), 1);
+    assert_eq!(snapshot["unassigned"][0]["title"], "Question");
+    assert!(snapshot.get("cards").is_none());
+    assert!(snapshot.get("sessionId").is_none());
+    assert_eq!(snapshot["epics"].as_array().unwrap().len(), 0);
     assert_eq!(before, tree_of(&db_path));
     assert!(
         agent_board::agent::hook::run(
@@ -83,11 +81,11 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
             .unwrap();
     assert!(output.contains("AGBOARD_ERROR"));
     assert!(!db_path.exists());
-    // A hook without a project is an error report, not a guess.
+    // An unbound hook folder is an error report, not a guess.
     let output =
         agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path, None).unwrap();
     assert!(output.contains("AGBOARD_ERROR"));
-    assert!(output.contains("--project NAME is required."));
+    assert!(output.contains("folder_unbound"));
     assert!(!db_path.exists());
     let oversized = vec![b'x'; 65_537];
     let output = agent_board::agent::hook::run(
@@ -172,7 +170,7 @@ fn hook_context(agent: &str, event: &str, db_path: &std::path::Path) -> String {
 }
 
 #[test]
-fn hook_passes_long_descriptions_whole_within_256_kib() {
+fn hook_omits_long_descriptions_from_the_progress_table() {
     let ten_kb = "a".repeat(10 * 1024);
     let forty_kb = format!("{}\r\nend", "b".repeat(40 * 1024));
     let (_home, db_path) =
@@ -184,30 +182,24 @@ fn hook_passes_long_descriptions_whole_within_256_kib() {
         ("codex", "SessionStart"),
     ] {
         let context = hook_context(agent, event, &db_path);
-        assert!(context.starts_with("AGBOARD_SNAPSHOT\n"), "{agent} {event}");
-        assert!(context.len() > 50 * 1024 && context.len() <= 256 * 1024);
+        assert!(context.starts_with("AGBOARD_PROGRESS\n"), "{agent} {event}");
+        assert!(context.len() < 10 * 1024);
         let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
-        assert!(
-            snapshot["cards"][0]["description"]
-                .as_str()
-                .unwrap()
-                .contains(ten_kb.as_str())
-        );
-        assert!(snapshot["cards"][1]["description"].as_str().unwrap().len() > 40 * 1024);
-        assert_eq!(snapshot["cards"][1]["isDraft"], false);
+        assert!(snapshot.get("cards").is_none());
+        assert!(!context.contains(&ten_kb));
+        assert!(!context.contains("end"));
     }
 }
 
 #[test]
-fn hook_never_reports_an_oversized_board_as_a_complete_snapshot() {
-    // Two 150,000-byte descriptions are over 256 KiB together.
+fn hook_progress_size_depends_on_work_metadata_not_markdown_bodies() {
+    // Large markdown bodies do not make the compact progress table oversized.
     let (_home, db_path) = board_with_descriptions(&["あ".repeat(50_000), "あ".repeat(50_000)]);
     for (agent, event) in [("claude", "PostToolUse"), ("codex", "SessionStart")] {
         let context = hook_context(agent, event, &db_path);
-        assert!(context.starts_with("AGBOARD_ERROR\n"));
-        assert!(context.contains("context_too_large"));
-        assert!(context.contains("256 KiB"));
-        assert!(!context.contains("AGBOARD_SNAPSHOT"));
+        assert!(context.starts_with("AGBOARD_PROGRESS\n"));
+        assert!(context.len() < 10 * 1024);
+        assert!(!context.contains("あ"));
     }
 }
 
@@ -225,7 +217,7 @@ fn hook_input_limit_stays_at_64_kib() {
         Some("Agent Board"),
     )
     .unwrap();
-    assert!(ok.contains("AGBOARD_SNAPSHOT"));
+    assert!(ok.contains("AGBOARD_PROGRESS"));
     at_limit.push(b' ');
     let over = agent_board::agent::hook::run(
         "claude",
@@ -265,6 +257,6 @@ fn installed_binary_handles_hook_json_on_stdin() {
     assert!(
         String::from_utf8(result.stdout)
             .unwrap()
-            .contains("AGBOARD_SNAPSHOT")
+            .contains("AGBOARD_PROGRESS")
     );
 }

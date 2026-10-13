@@ -808,20 +808,25 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     let server = serve(home.path());
     let alpha_id = project_id(home.path(), "Alpha");
 
-    // The hook hands over all of Alpha and nothing of Beta, for both agents.
+    // The hook hands over only Alpha's active progress metadata, for both agents.
     for agent in ["claude", "codex"] {
         let context = hook(home.path(), "Alpha", agent);
-        assert!(context.starts_with("AGBOARD_SNAPSHOT\n"), "{agent}");
-        assert!(context.contains("Alpha: choose the license"), "{agent}");
-        assert!(context.contains("Alpha: set up the repository"), "{agent}");
+        assert!(context.starts_with("AGBOARD_PROGRESS\n"), "{agent}");
         assert!(
-            context.contains("Which license should Alpha use?"),
+            context.contains("Alpha: draft the release notes"),
+            "{agent}"
+        );
+        assert!(!context.contains("Alpha: choose the license"), "{agent}");
+        assert!(!context.contains("Alpha: set up the repository"), "{agent}");
+        assert!(
+            !context.contains("Which license should Alpha use?"),
             "{agent}"
         );
         assert!(!context.contains("Beta"), "{agent}: {context}");
-        let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
-        assert_eq!(snapshot["project"]["id"], alpha_id.as_str());
-        assert_eq!(snapshot["cards"].as_array().unwrap().len(), 3);
+        let progress: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
+        assert_eq!(progress["project"]["id"], alpha_id.as_str());
+        assert_eq!(progress["unassigned"].as_array().unwrap().len(), 1);
+        assert!(progress.get("cards").is_none());
     }
     assert!(!hook(home.path(), "Beta", "claude").contains("Alpha"));
 
@@ -870,7 +875,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     assert_eq!(history.last().unwrap()["actor"], "human");
     assert!(!String::from_utf8_lossy(&output.stdout).contains("Beta"));
 
-    // The agent resumes from the answer it was given, and the next hook shows the whole new history.
+    // The agent resumes from the answer it was given, and the next hook shows active metadata only.
     ok(&agboard(
         home.path(),
         "Alpha",
@@ -885,8 +890,16 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
         ],
     ));
     let context = hook(home.path(), "Alpha", "claude");
-    assert!(context.contains("Use the MIT license."));
-    assert!(context.contains("Resuming with the MIT license."));
+    assert!(context.starts_with("AGBOARD_PROGRESS\n"));
+    let progress: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
+    let resumed = progress["unassigned"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|card| card["id"] == 2)
+        .unwrap();
+    assert_eq!(resumed["agentStatus"], "running");
+    assert!(resumed.get("description").is_none());
     assert!(!context.contains("Beta"));
 
     // A rename while waiting keeps the same project and returns its latest snapshot.

@@ -25,6 +25,16 @@ fn agboard(home: &Path, project: &str, args: &[&str]) -> Output {
         .unwrap()
 }
 
+fn agboard_in(home: &Path, cwd: &Path, args: &[&str]) -> Output {
+    bin()
+        .env("AGBOARD_HOME", home)
+        .env("TZ", "UTC")
+        .current_dir(cwd)
+        .args(args)
+        .output()
+        .unwrap()
+}
+
 fn ok(output: &Output) {
     assert!(
         output.status.success(),
@@ -77,8 +87,22 @@ fn content(mut snapshot: Value) -> Value {
 
 /// Runs `agboard [--project NAME] hook --agent AGENT` with `input` on stdin.
 fn hook(home: &Path, project: Option<&str>, agent: &str, input: &str) -> Output {
+    hook_in(home, project, agent, input, None)
+}
+
+fn hook_in(
+    home: &Path,
+    project: Option<&str>,
+    agent: &str,
+    input: &str,
+    cwd: Option<&Path>,
+) -> Output {
     let mut command = bin();
     command.env("AGBOARD_HOME", home);
+    command.env("TZ", "UTC");
+    if let Some(cwd) = cwd {
+        command.current_dir(cwd);
+    }
     if let Some(project) = project {
         command.args(["--project", project]);
     }
@@ -230,7 +254,7 @@ fn two_projects(home: &Path) {
 // --- hook ---
 
 #[test]
-fn the_hook_passes_only_the_named_projects_complete_snapshot() {
+fn the_hook_passes_only_the_named_projects_progress_table() {
     let home = tempdir().unwrap();
     // Both projects have a card #1, so a mix-up would be visible.
     ok(&agboard(home.path(), "Alpha", &["init"]));
@@ -269,17 +293,13 @@ fn the_hook_passes_only_the_named_projects_complete_snapshot() {
         let output = hook(home.path(), Some(project), agent, SESSION_START);
         assert!(output.stderr.is_empty());
         let context = context(&output);
-        let body = context.strip_prefix("AGBOARD_SNAPSHOT\n").unwrap();
+        let body = context.strip_prefix("AGBOARD_PROGRESS\n").unwrap();
         let passed: Value = serde_json::from_str(body).unwrap();
-        let expected = snapshot(home.path(), project);
-        assert_eq!(passed["project"], expected["project"]);
-        assert_eq!(passed["cursor"], expected["cursor"]);
-        assert_eq!(passed["cards"], expected["cards"]);
-        assert_eq!(passed["cards"].as_array().unwrap().len(), 1);
-        // The whole history of the card, and nothing from the other project.
-        assert_eq!(passed["cards"][0]["history"].as_array().unwrap().len(), 3);
-        assert!(context.contains(&format!("{project} needs a decision")));
-        assert!(context.contains(&format!("{project} started")));
+        assert_eq!(passed["project"]["name"], project);
+        assert!(passed["unassigned"].as_array().unwrap().is_empty());
+        assert!(passed.get("cards").is_none());
+        assert!(!context.contains("needs a decision"));
+        assert!(!context.contains("started"));
         assert!(!context.contains(other), "{other} leaked into {project}");
     }
     assert_eq!(before, tree_of(&home.path().join("shared")));
@@ -292,9 +312,9 @@ fn a_hook_without_a_usable_target_reports_agboard_error_and_changes_nothing() {
     let shared = home.path().join("shared");
     let before = tree_of(&shared);
 
-    // No target at all: an error report, not a guess and not the only project.
+    // No binding in the process cwd: an error report, not a guess or the only project.
     let output = hook(home.path(), None, "claude", SESSION_START);
-    assert_eq!(error_code(&context(&output)), "invalid_argument");
+    assert_eq!(error_code(&context(&output)), "folder_unbound");
     // An unknown name.
     let output = hook(home.path(), Some("Nowhere"), "claude", SESSION_START);
     assert_eq!(error_code(&context(&output)), "project_not_found");
@@ -303,7 +323,7 @@ fn a_hook_without_a_usable_target_reports_agboard_error_and_changes_nothing() {
     assert_eq!(error_code(&context(&output)), "invalid_value");
     // The error is data for the agent, never a snapshot.
     assert!(
-        !context(&hook(home.path(), None, "codex", SESSION_START)).contains("AGBOARD_SNAPSHOT")
+        !context(&hook(home.path(), None, "codex", SESSION_START)).contains("AGBOARD_PROGRESS")
     );
     assert_eq!(before, tree_of(&shared));
 
@@ -341,7 +361,7 @@ fn a_renamed_project_needs_its_new_name_and_a_recreated_one_is_a_new_project() {
     assert_eq!(error_code(&context(&output)), "project_not_found");
     let body = context(&hook(home.path(), Some("Gamma"), "claude", SESSION_START));
     let renamed: Value =
-        serde_json::from_str(body.strip_prefix("AGBOARD_SNAPSHOT\n").unwrap()).unwrap();
+        serde_json::from_str(body.strip_prefix("AGBOARD_PROGRESS\n").unwrap()).unwrap();
     assert_eq!(renamed["project"]["id"], original["project"]["id"]);
     assert_eq!(renamed["project"]["name"], "Gamma");
 
@@ -349,9 +369,229 @@ fn a_renamed_project_needs_its_new_name_and_a_recreated_one_is_a_new_project() {
     ok(&agboard(home.path(), "Alpha", &["init"]));
     let again = context(&hook(home.path(), Some("Alpha"), "claude", SESSION_START));
     let again: Value =
-        serde_json::from_str(again.strip_prefix("AGBOARD_SNAPSHOT\n").unwrap()).unwrap();
+        serde_json::from_str(again.strip_prefix("AGBOARD_PROGRESS\n").unwrap()).unwrap();
     assert_ne!(again["project"]["id"], original["project"]["id"]);
-    assert_eq!(again["cards"].as_array().unwrap().len(), 0);
+    assert_eq!(again["unassigned"].as_array().unwrap().len(), 0);
+}
+
+#[test]
+fn progress_uses_the_nearest_bound_ancestor_and_explicit_project_overrides_it() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = folders.path().join("root");
+    let nested = root.join("nested");
+    let deeper = nested.join("deeper");
+    std::fs::create_dir_all(&deeper).unwrap();
+
+    ok(&agboard_in(
+        home.path(),
+        &root,
+        &["project", "create", "Alpha"],
+    ));
+    ok(&agboard_in(
+        home.path(),
+        &nested,
+        &["project", "create", "Beta"],
+    ));
+    add_card(home.path(), "Alpha", "Root card");
+    add_card(home.path(), "Beta", "Nested card");
+
+    let nearest = agboard_in(home.path(), &deeper, &["progress", "--json"]);
+    ok(&nearest);
+    let nearest: Value = serde_json::from_slice(&nearest.stdout).unwrap();
+    assert_eq!(nearest["project"]["name"], "Beta");
+    assert_eq!(nearest["unassigned"][0]["title"], "Nested card");
+
+    let explicit = agboard_in(
+        home.path(),
+        &deeper,
+        &["--project", "Alpha", "progress", "--json"],
+    );
+    ok(&explicit);
+    let explicit: Value = serde_json::from_slice(&explicit.stdout).unwrap();
+    assert_eq!(explicit["project"]["name"], "Alpha");
+    assert_eq!(explicit["unassigned"][0]["title"], "Root card");
+}
+
+#[test]
+fn progress_does_not_guess_from_an_unbound_folder_or_fall_through_a_stale_nearest_binding() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = folders.path().join("root");
+    let nested = root.join("nested");
+    std::fs::create_dir_all(&nested).unwrap();
+    ok(&agboard_in(
+        home.path(),
+        &root,
+        &["project", "create", "Alpha"],
+    ));
+
+    let unbound = agboard_in(home.path(), folders.path(), &["progress"]);
+    assert!(!unbound.status.success());
+    assert!(String::from_utf8_lossy(&unbound.stderr).contains("this folder is not bound"));
+
+    // Existing read commands still require an explicit project.
+    let still_explicit = agboard_in(home.path(), &root, &["show", "1", "--json"]);
+    assert!(!still_explicit.status.success());
+    assert!(String::from_utf8_lossy(&still_explicit.stderr).contains("--project NAME is required"));
+
+    ok(&agboard_in(
+        home.path(),
+        &nested,
+        &["project", "create", "Beta"],
+    ));
+    let projects = agboard_in(home.path(), &root, &["project", "ls", "--json"]);
+    ok(&projects);
+    let projects: Value = serde_json::from_slice(&projects.stdout).unwrap();
+    let beta_id = projects["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|project| project["name"] == "Beta")
+        .unwrap()["id"]
+        .as_str()
+        .unwrap();
+    std::fs::remove_dir_all(home.path().join("shared/projects").join(beta_id)).unwrap();
+
+    let stale = agboard_in(home.path(), &nested, &["progress"]);
+    assert!(!stale.status.success());
+    assert!(
+        String::from_utf8_lossy(&stale.stderr)
+            .contains("project bound to this folder no longer exists"),
+        "{}",
+        String::from_utf8_lossy(&stale.stderr)
+    );
+
+    let input = format!(
+        r#"{{"hook_event_name":"SessionStart","cwd":{}}}"#,
+        serde_json::to_string(nested.to_str().unwrap()).unwrap()
+    );
+    let stale_hook = hook_in(home.path(), None, "codex", &input, Some(&root));
+    assert_eq!(
+        error_code(&context(&stale_hook)),
+        "bound_project_missing",
+        "a missing nearest binding must not fall through to Alpha"
+    );
+}
+
+#[test]
+fn hook_uses_cwd_binding_and_emits_the_same_read_only_progress_snapshot() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = folders.path().join("root");
+    let nested = root.join("nested");
+    let deeper = nested.join("deeper");
+    std::fs::create_dir_all(&deeper).unwrap();
+    ok(&agboard_in(
+        home.path(),
+        &root,
+        &["project", "create", "Alpha"],
+    ));
+    ok(&agboard_in(
+        home.path(),
+        &nested,
+        &["project", "create", "Beta"],
+    ));
+    add_card(home.path(), "Alpha", "Root card");
+    add_card(home.path(), "Beta", "Nested card");
+
+    let before = tree_of(home.path());
+    let input = format!(
+        r#"{{"hook_event_name":"SessionStart","cwd":{}}}"#,
+        serde_json::to_string(deeper.to_str().unwrap()).unwrap()
+    );
+    let output = hook_in(home.path(), None, "codex", &input, Some(folders.path()));
+    let passed_context = context(&output);
+    let hook =
+        serde_json::from_str::<Value>(passed_context.strip_prefix("AGBOARD_PROGRESS\n").unwrap())
+            .unwrap();
+    assert_eq!(hook["project"]["name"], "Beta");
+    assert_eq!(hook["unassigned"][0]["title"], "Nested card");
+    assert!(hook.get("sessionId").is_none());
+
+    // When a client omits cwd, the process cwd is used.
+    let fallback = hook_in(home.path(), None, "codex", SESSION_START, Some(&deeper));
+    let fallback = context(&fallback);
+    let fallback: Value =
+        serde_json::from_str(fallback.strip_prefix("AGBOARD_PROGRESS\n").unwrap()).unwrap();
+    assert_eq!(fallback["project"]["name"], "Beta");
+
+    let progress = agboard_in(home.path(), &deeper, &["progress", "--json"]);
+    ok(&progress);
+    let mut progress: Value = serde_json::from_slice(&progress.stdout).unwrap();
+    progress.as_object_mut().unwrap().remove("fetchedAt");
+    let mut hook_without_time = hook;
+    hook_without_time
+        .as_object_mut()
+        .unwrap()
+        .remove("fetchedAt");
+    assert_eq!(hook_without_time, progress);
+    assert_eq!(before, tree_of(home.path()));
+}
+
+#[test]
+fn hook_explicit_project_overrides_cwd_binding_and_missing_binding_is_an_error() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = folders.path().join("root");
+    let unbound = folders.path().join("unbound");
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::create_dir_all(&unbound).unwrap();
+    ok(&agboard_in(
+        home.path(),
+        &root,
+        &["project", "create", "Alpha"],
+    ));
+    add_card(home.path(), "Alpha", "Bound card");
+    ok(&agboard(home.path(), "Beta", &["init"]));
+    // The unbound directory stays unregistered; Beta is used only as the
+    // explicit override in the first request below.
+    add_card(home.path(), "Beta", "Explicit card");
+
+    // An explicit project has precedence over both cwd and an input cwd.
+    let input = format!(
+        r#"{{"hook_event_name":"SessionStart","cwd":{}}}"#,
+        serde_json::to_string(root.to_str().unwrap()).unwrap()
+    );
+    let body = context(&hook_in(
+        home.path(),
+        Some("Beta"),
+        "claude",
+        &input,
+        Some(&unbound),
+    ));
+    let progress: Value =
+        serde_json::from_str(body.strip_prefix("AGBOARD_PROGRESS\n").unwrap()).unwrap();
+    assert_eq!(progress["project"]["name"], "Beta");
+    assert_eq!(progress["unassigned"][0]["title"], "Explicit card");
+
+    let output = hook_in(home.path(), None, "claude", SESSION_START, Some(&unbound));
+    assert_eq!(error_code(&context(&output)), "folder_unbound");
+}
+
+#[test]
+fn hook_treats_cwd_as_a_path_and_never_interpolates_it_as_shell_text() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let marker = folders.path().join("injected");
+    let hostile = folders.path().join("repo-$(touch injected)");
+    std::fs::create_dir_all(&hostile).unwrap();
+    ok(&agboard_in(
+        home.path(),
+        &hostile,
+        &["project", "create", "Literal path"],
+    ));
+
+    let input = format!(
+        r#"{{"hook_event_name":"SessionStart","cwd":{}}}"#,
+        serde_json::to_string(hostile.to_str().unwrap()).unwrap()
+    );
+    let output = hook_in(home.path(), None, "codex", &input, Some(folders.path()));
+    let body = context(&output);
+    let progress: Value =
+        serde_json::from_str(body.strip_prefix("AGBOARD_PROGRESS\n").unwrap()).unwrap();
+    assert_eq!(progress["project"]["name"], "Literal path");
+    assert!(!marker.exists());
 }
 
 // --- wait ---

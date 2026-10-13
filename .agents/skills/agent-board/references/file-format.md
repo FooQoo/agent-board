@@ -28,7 +28,7 @@ If the frontmatter cannot be read, the board reports the file, the item, and the
 
 - Set `done: true` only after the verification succeeded. Record the result and the evidence in the body, for example in the execution log.
 - Add a condition with the next free number. Do not renumber the items.
-- An agent can move a card to Done only when every condition is `done: true`. The board refuses the move and names the unmet IDs (`acceptance_unmet`). A person can always move a card.
+- When every condition is `done: true`, the board automatically moves an eligible AI-owned, non-draft Todo/Doing card to Done. Pending questions remain open until answered. Do not manually move an AI card to Done in the normal work loop; people can still move cards themselves.
 - Keep results and notes in the body, not in the frontmatter.
 
 ## Earlier files
