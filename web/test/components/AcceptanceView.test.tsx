@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AcceptanceView } from '../../src/components/acceptance/AcceptanceView';
 import { DetailPanel } from '../../src/components/DetailPanel';
@@ -55,7 +55,9 @@ describe('unreadable conditions in the detail body', () => {
         onRemove={async () => true}
       />,
     );
-    expect(screen.getByText('Acceptance conditions cannot be read')).toBeTruthy();
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Acceptance conditions cannot be read'),
+    ).toBeTruthy();
     expect(screen.getByText(/Body below/)).toBeTruthy();
     expect(screen.queryByText('0 / 1')).toBeNull();
   });
@@ -82,6 +84,8 @@ describe('DetailPanel body', () => {
     );
     expect(screen.getByText('Body only')).toBeTruthy();
     expect(screen.queryByText(/acceptance:/)).toBeNull();
-    expect(screen.getByText('Condition 1')).toBeTruthy();
+    expect(within(screen.getByRole('tabpanel')).queryByText('Condition 1')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Conditions' }));
+    expect(within(screen.getByRole('tabpanel')).getByText('Condition 1')).toBeTruthy();
   });
 });

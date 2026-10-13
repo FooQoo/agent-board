@@ -14,15 +14,6 @@
   white-space: nowrap;
 }
 
-.detail__dock {
-  display: flex;
-  flex: 0 1 auto;
-  flex-direction: column;
-  min-height: 0;
-  max-height: 40%;
-  padding-bottom: 8px;
-}
-
 /* Shared banners and answer form styles are in decision-request.css. */
 
 /* ---- Tabs and toolbar ---- */
@@ -38,12 +29,15 @@
 
 .detail__tablist {
   display: flex;
-  flex: none;
+  flex: 1 1 auto;
   align-self: stretch;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .detail__tab {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 6px;
   height: 35px;
@@ -390,13 +384,20 @@
   outline-offset: 2px;
 }
 
-/* In a narrow detail column the three tabs keep their labels but drop their icons and take less side
-   room, so the toolbar stays beside them instead of running past the column. */
-@container (max-width: 340px) {
+/* Four labels stay reachable in narrow detail columns; actions remain in the header. */
+@container (max-width: 420px) {
   .detail__tab {
-    padding-inline: 8px;
+    padding-inline: 6px;
+    font-size: 12px;
   }
   .detail__tab svg {
     display: none;
+  }
+}
+
+@container (max-width: 260px) {
+  .detail__tab {
+    padding-inline: 4px;
+    font-size: 11px;
   }
 }

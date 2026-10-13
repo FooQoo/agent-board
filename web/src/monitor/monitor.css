@@ -599,7 +599,7 @@ body {
   display: grid;
   height: 44px;
   width: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .monitor-drawer__tabs {
   position: relative;
@@ -609,10 +609,10 @@ body {
   position: absolute;
   bottom: 0;
   left: 0;
-  width: calc(100% / 3);
+  width: calc(100% / 4);
   height: 2px;
   background: var(--r-accent);
-  transform: translateX(calc(var(--tab-progress, 0) * 200%));
+  transform: translateX(calc(var(--tab-progress, 0) * 300%));
   pointer-events: none;
 }
 .monitor-drawer__tablist .detail__tab {
@@ -652,7 +652,7 @@ body {
   min-height: 0;
   width: 100%;
   margin: 0;
-  padding: 14px 16px 20px;
+  padding: 14px 16px calc(20px + env(safe-area-inset-bottom, 0px));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -675,88 +675,6 @@ body {
 .monitor-document h3 {
   margin: 0 0 8px;
   font-size: 14px;
-}
-.monitor-document__acceptance {
-  padding: 12px;
-  border: 1px solid var(--r-border);
-  border-radius: 12px;
-}
-.monitor-document__acceptance summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 24px;
-  list-style: none;
-  color: var(--r-text);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.monitor-document__acceptance summary::-webkit-details-marker {
-  display: none;
-}
-.monitor-document__acceptance summary::after {
-  width: 8px;
-  height: 8px;
-  margin-left: auto;
-  border-right: 2px solid var(--r-text2);
-  border-bottom: 2px solid var(--r-text2);
-  content: "";
-  transform: rotate(45deg) translateY(-2px);
-  transition: transform 160ms ease;
-}
-.monitor-document__acceptance[open] summary::after {
-  transform: rotate(225deg) translate(-2px, -1px);
-}
-.monitor-document__acceptance summary:focus-visible {
-  outline: 2px solid var(--r-accent);
-  outline-offset: 3px;
-  border-radius: 3px;
-}
-.monitor-document__acceptance summary > span:last-of-type {
-  color: var(--r-text2);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-}
-.monitor-document__acceptance ul {
-  display: grid;
-  gap: 12px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.monitor-document__acceptance li {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 13px;
-}
-.monitor-document__acceptance[open] ul {
-  margin-top: 12px;
-}
-.monitor-document__acceptance input {
-  flex: none;
-  accent-color: var(--r-accent);
-}
-.monitor-document__images {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-.monitor-document__images button {
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: var(--r-surface);
-  color: var(--r-text);
-  overflow-wrap: anywhere;
-}
-.monitor-document__images img {
-  width: 100%;
-  height: 100px;
-  object-fit: contain;
 }
 .monitor-drawer__notice {
   padding: 18px 2px;
@@ -788,15 +706,4 @@ body {
   color: var(--r-muted);
   font-size: 11px;
   line-height: 15px;
-}
-
-/* The conditions at the bottom of the drawer, outside its tab panels. The bottom keeps 8px and the
-   phone's safe area clear of the edge. */
-.monitor-conditions-dock {
-  flex: none;
-  max-height: 40%;
-  overflow-y: auto;
-  padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--r-border);
-  background: var(--r-surface);
 }

@@ -115,11 +115,10 @@ test('the board and the details show the number of conditions done, and nothing 
   await expect(partialChip).not.toHaveAttribute('data-complete', 'true');
   await expect(card(page, complete).locator('.acceptance-chip')).toHaveAttribute('data-complete', 'true');
 
-  // The details show the same count in a folded dock at the bottom; opened, it lists each condition.
+  // Conditions have their own tab; neither document holds a bottom dock.
   await card(page, partial).click();
-  const dock = details(page).getByRole('button', { name: /^Acceptance conditions/ });
-  await expect(dock).toContainText('1 of 2 done');
-  await dock.click();
+  await details(page).getByRole('tab', { name: 'Conditions', exact: true }).click();
+  await expect(details(page).getByRole('tabpanel')).toContainText('1 / 2');
   await expect(details(page).getByText('First', { exact: true })).toBeVisible();
   await expect(details(page).getByText('Second', { exact: true })).toBeVisible();
 });

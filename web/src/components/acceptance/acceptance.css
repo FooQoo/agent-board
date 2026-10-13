@@ -1,5 +1,11 @@
 /* Completion conditions on cards, in the detail body, and on the monitor. Colors are the theme tokens. */
 
+.acceptance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .acceptance-chip {
   display: inline-flex;
   align-items: center;

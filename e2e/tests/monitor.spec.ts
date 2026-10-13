@@ -310,7 +310,8 @@ test('the bottom drawer follows a downward handle drag and dismisses', async ({ 
     if (!panelBox) throw new Error('Missing swipe viewport');
     const y = panelBox.y + 100;
     for (const [fromX, toX, selected] of [
-      [310, 70, 'History'], [310, 70, 'Epic'], [70, 310, 'History'], [70, 310, 'Body'],
+      [310, 70, 'Conditions'], [310, 70, 'History'], [310, 70, 'Epic'],
+      [70, 310, 'History'], [70, 310, 'Conditions'], [70, 310, 'Body'],
     ] as const) {
       const previousProgress = await drawer.locator('.monitor-drawer__tabs').evaluate(
         (element) => Number((element as HTMLElement).style.getPropertyValue('--tab-progress')),
@@ -457,7 +458,7 @@ test('monitor renders both projects and same-number cards, preserves direct rout
     await page.mouse.up();
   };
   await swipePanels(startX, endX);
-  await expect(drawer.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+  await expect(drawer.getByRole('tab', { name: 'Conditions' })).toHaveAttribute('aria-selected', 'true');
   await swipePanels(endX, startX);
   await expect(drawer.getByRole('tab', { name: 'Body' })).toHaveAttribute('aria-selected', 'true');
   await drawer.getByRole('tab', { name: 'History' }).click();

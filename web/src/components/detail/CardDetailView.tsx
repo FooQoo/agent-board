@@ -12,7 +12,7 @@ import { DecisionRequestContent } from './DecisionRequestContent';
 import { type DetailTab, DetailTabs, panelId, tabId } from './DetailTabs';
 import { DraftStatus } from './DraftStatus';
 import { EpicTabView, type EpicTabStatus } from './EpicTabView';
-import { ConditionsDock } from '../acceptance/ConditionsDock';
+import { AcceptanceTabView } from './AcceptanceTabView';
 import '../../styles/detail.css';
 
 export interface CardDetailViewProps {
@@ -150,16 +150,20 @@ export function CardDetailView({
       >
         <HistoryTimeline events={card.history} />
       </div>
-      {(tab === 'description'
-        ? !card.acceptanceError
-        : tab === 'epic' && epicStatus === 'ready') && (
-        <div className="detail__dock">
-          <ConditionsDock
-            items={tab === 'epic' ? (epic?.acceptance ?? []) : card.acceptance}
-            readOnly
-          />
-        </div>
-      )}
+      <div
+        className="detail__viewport"
+        role="tabpanel"
+        id={panelId(idBase, 'acceptance')}
+        aria-labelledby={tabId(idBase, 'acceptance')}
+        hidden={tab !== 'acceptance'}
+      >
+        <AcceptanceTabView
+          card={card}
+          epic={epic}
+          epicStatus={epicStatus}
+          onRetryEpic={onRetryEpics}
+        />
+      </div>
     </aside>
   );
 }

@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { Drawer } from '../../components/ui/drawer';
 import { DetailTabList, detailPanelId, detailTabId } from '../../components/ui/detail-tabs';
 import { HistoryTimeline } from '../../components/HistoryTimeline';
-import { MonitorConditionsDock } from './MonitorConditionsDock';
+import { AcceptanceTabView } from '../../components/detail/AcceptanceTabView';
 import { MonitorDocument } from './MonitorDocument';
 import type { Epic, Problem } from '../../types';
 import type { MonitorCard, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
 import type { EpicReadState } from '../hooks/useMonitorDetailDrawer';
 
-const TAB_ORDER: MonitorDetailTab[] = ['description', 'history', 'epic'];
+const TAB_ORDER: MonitorDetailTab[] = ['description', 'acceptance', 'history', 'epic'];
 
 export function shouldIgnoreTabSwipe(target: EventTarget | null, panel: HTMLElement): boolean {
   if (!(target instanceof Element)) return false;
@@ -189,6 +189,11 @@ export function MonitorDetailDrawer({
       icon: null,
     },
     {
+      id: 'acceptance' as const,
+      label: t('detail.tabAcceptance'),
+      icon: null,
+    },
+    {
       id: 'history' as const,
       label: t('detail.tabHistory'),
       icon: null,
@@ -257,6 +262,31 @@ export function MonitorDetailDrawer({
           </div>
           <div
             role="tabpanel"
+            id={detailPanelId(idBase, 'acceptance')}
+            aria-labelledby={detailTabId(idBase, 'acceptance')}
+            aria-hidden={tab !== 'acceptance'}
+            inert={tab !== 'acceptance'}
+            className="monitor-drawer__panel"
+          >
+            <AcceptanceTabView
+              card={card}
+              epic={
+                epicRead.status === 'loaded' || epicRead.status === 'partial' ? epicRead.epic : null
+              }
+              epicStatus={
+                !card.epic
+                  ? 'none'
+                  : epicRead.status === 'loaded' || epicRead.status === 'partial'
+                    ? 'ready'
+                    : epicRead.status === 'error' || epicRead.status === 'not-found'
+                      ? 'failed'
+                      : 'loading'
+              }
+              onRetryEpic={onRetryEpic}
+            />
+          </div>
+          <div
+            role="tabpanel"
             id={detailPanelId(idBase, 'history')}
             aria-labelledby={detailTabId(idBase, 'history')}
             aria-hidden={tab !== 'history'}
@@ -291,12 +321,6 @@ export function MonitorDetailDrawer({
           </div>
         </div>
       </div>
-      {tab === 'description' && (
-        <MonitorConditionsDock acceptance={card.acceptanceError ? [] : card.acceptance} />
-      )}
-      {tab === 'epic' && (epicRead.status === 'loaded' || epicRead.status === 'partial') && (
-        <MonitorConditionsDock acceptance={epicRead.epic.acceptance ?? []} />
-      )}
     </Drawer>
   );
 }

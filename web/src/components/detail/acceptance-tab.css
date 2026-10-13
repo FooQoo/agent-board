@@ -1,0 +1,42 @@
+.acceptance-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--r-text2);
+}
+
+.acceptance-tab__section {
+  min-width: 0;
+}
+
+.acceptance-tab__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.acceptance-tab__header > span {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.acceptance-tab__header > svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.acceptance-tab__title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.acceptance-tab__section > p {
+  margin: 8px 0;
+}

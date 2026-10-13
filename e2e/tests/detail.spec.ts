@@ -204,7 +204,7 @@ test('the card grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions, eight cards, the Pending form, four detail controls, then the conditions dock.
-  expect(focusable).toHaveLength(1 + 1 + 1 + 1 + 1 + 8 + 2 + 4 + 1);
+  // Header actions, eight cards, the Pending form, four detail controls.
+  expect(focusable).toHaveLength(1 + 1 + 1 + 1 + 1 + 8 + 2 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

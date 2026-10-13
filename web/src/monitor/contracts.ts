@@ -9,7 +9,7 @@ export interface MonitorCard {
 
 export type MonitorScope = 'all' | ProjectId;
 export type MonitorSummary = { todo: number; doing: number; done: number } | null;
-export type MonitorDetailTab = 'description' | 'history' | 'epic';
+export type MonitorDetailTab = 'description' | 'acceptance' | 'history' | 'epic';
 export type MonitorFreshnessState = 'loading' | 'syncing' | 'fresh' | 'stale' | 'partial' | 'error';
 
 export interface MonitorFreshness {

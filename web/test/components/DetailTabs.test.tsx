@@ -29,7 +29,12 @@ describe('tabs', () => {
   it('has a Description tab and a History tab with the number of history entries', () => {
     renderPanel(fixtureCard(8));
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['Description', 'History 3', 'Epic']);
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      'Description',
+      'Conditions',
+      'History 3',
+      'Epic',
+    ]);
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tabpanel')).toBeTruthy();
     expect(screen.queryByRole('list', { name: /history/i })).toBeNull();
@@ -52,10 +57,10 @@ describe('tabs', () => {
     renderPanel(fixtureCard(8));
     screen.getByRole('tab', { name: 'Description' }).focus();
     await userEvent.keyboard('{ArrowRight}');
-    expect(screen.getByRole('tab', { name: /^History/ }).getAttribute('aria-selected')).toBe(
+    expect(screen.getByRole('tab', { name: 'Conditions' }).getAttribute('aria-selected')).toBe(
       'true',
     );
-    expect(document.activeElement).toBe(screen.getByRole('tab', { name: /^History/ }));
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Conditions' }));
     await userEvent.keyboard('{ArrowLeft}');
     expect(screen.getByRole('tab', { name: 'Description' }).getAttribute('aria-selected')).toBe(
       'true',
@@ -81,7 +86,7 @@ describe('tabs', () => {
       'detail__viewport',
       'detail__viewport',
       'detail__viewport',
-      'detail__dock',
+      'detail__viewport',
     ]);
   });
 });
@@ -197,7 +202,7 @@ describe('toolbar', () => {
       'detail__viewport',
       'detail__viewport',
       'detail__viewport',
-      'detail__dock',
+      'detail__viewport',
     ]);
     expect(screen.getByRole('button', { name: 'Restore' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete card' }).textContent).toContain('Delete');
@@ -284,21 +289,18 @@ describe('epic tab', () => {
     expect(screen.getByText('Epic plan text.')).toBeTruthy();
   });
 
-  it('shows the epic conditions in the dock at the bottom, folded until opened', async () => {
+  it('shows the epic conditions in the dedicated conditions tab', async () => {
     const { container } = renderPanel(linked(62), { epics: [EPIC_LINKED] });
-    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
-    const dock = container.querySelector('.detail__dock') as HTMLElement;
-    const head = within(dock).getByRole('button', { name: /^Acceptance conditions/ });
-    expect(head.getAttribute('aria-expanded')).toBe('false');
-    await userEvent.click(head);
-    expect(within(dock).getByText('Epic condition')).toBeTruthy();
+    await userEvent.click(screen.getByRole('tab', { name: 'Conditions' }));
+    expect(container.querySelector('.detail__dock')).toBeNull();
+    expect(within(screen.getByRole('tabpanel')).getByText('Epic condition')).toBeTruthy();
   });
 
   it('shows that the epic is still loading, and offers to try again when it cannot be read', async () => {
     const onRetryEpics = vi.fn();
     const { rerender } = renderPanel(linked(63), { epics: undefined });
     await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
-    expect(screen.getByText('Loading the epic…')).toBeTruthy();
+    expect(within(screen.getByRole('tabpanel')).getByText('Loading the epic…')).toBeTruthy();
 
     rerender(
       <DetailPanel
