@@ -14,7 +14,9 @@ use super::super::layout;
 use super::super::model::{CardView, EpicFile, EpicUpdate, EpicView, HistoryKind, NewEpic};
 use super::super::reader;
 use super::super::validate::{self, EpicId};
-use super::{Transition, lock_project, save_task, stamp, transition_event};
+use super::{
+    Transition, ensure_ai_card_not_done, lock_project, save_task, stamp, transition_event,
+};
 use crate::domain::{Actor, Changed, ProjectId};
 use crate::error::AgboardError;
 
@@ -351,6 +353,7 @@ impl FileStore {
                 return Err(AgboardError::CardIsDraft { id: card_id });
             }
         }
+        ensure_ai_card_not_done(&task, actor)?;
         if let Some(id) = epic {
             read_epic_file(shared, project, id)?;
         }

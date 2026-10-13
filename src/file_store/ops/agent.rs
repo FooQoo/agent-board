@@ -11,7 +11,10 @@ use super::super::frontmatter;
 use super::super::layout;
 use super::super::model::{CardView, Choice, HistoryKind};
 use super::super::reader;
-use super::{Transition, lane_end, lock_project, new_id, save_task, stamp, transition_event};
+use super::{
+    Transition, ensure_ai_card_not_done, lane_end, lock_project, new_id, save_task, stamp,
+    transition_event,
+};
 use crate::domain::{
     Actor, ChangeContext, Changed, Column, MAX_CHOICES, ProjectId, RunState, check_work_state,
     validate_work_reason,
@@ -89,6 +92,7 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(AgboardError::CardArchived { id });
         }
+        ensure_ai_card_not_done(&task, ctx.actor)?;
         if block_drafts && task.is_draft {
             return Err(AgboardError::CardIsDraft { id });
         }
@@ -181,6 +185,7 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(AgboardError::CardArchived { id });
         }
+        ensure_ai_card_not_done(&task, actor)?;
         if task.is_draft {
             return Err(AgboardError::CardIsDraft { id });
         }

@@ -15,8 +15,8 @@ use super::super::model::{CardView, HistoryKind, HistoryRecord, TaskFile};
 use super::super::reader;
 use super::super::validate;
 use super::{
-    Transition, lane_end, lock_project, save_project, save_task, stamp, transition_event,
-    write_text,
+    Transition, ensure_ai_card_not_done, lane_end, lock_project, save_project, save_task, stamp,
+    transition_event, write_text,
 };
 use crate::domain::{
     Actor, Changed, Column, NewCard, ProjectId, RunState, normalize_and_validate_description,
@@ -167,6 +167,7 @@ impl FileStore {
         if task.is_draft {
             return Err(AgboardError::CardIsDraft { id });
         }
+        ensure_ai_card_not_done(&task, Actor::Ai)?;
         let changed = write_text(shared, project, &project_dir, &mut task, title, description)?;
         if !changed {
             return Ok(Changed {

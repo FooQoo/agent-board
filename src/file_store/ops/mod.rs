@@ -10,6 +10,7 @@ mod agent;
 mod answer;
 mod attachment;
 mod card;
+mod completion;
 mod epic;
 mod evidence;
 
@@ -27,6 +28,16 @@ use super::reader;
 use crate::clock::{format_utc, parse_utc};
 use crate::domain::{Actor, Column, ProjectId, RunState};
 use crate::error::AgboardError;
+
+/// A Done card is immutable to agent-facing FileStore operations. User
+/// operations keep their existing reopen/edit paths.
+pub(super) fn ensure_ai_card_not_done(task: &TaskFile, actor: Actor) -> Result<(), AgboardError> {
+    if actor == Actor::Ai && task.card_status == Column::Done {
+        Err(AgboardError::CardIsDone { id: task.id })
+    } else {
+        Ok(())
+    }
+}
 
 /// A timestamp as it is stored: UTC, second precision.
 pub(super) fn stamp(now: DateTime<Utc>) -> DateTime<Utc> {

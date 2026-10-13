@@ -225,6 +225,7 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::EpicNotFound { .. } => StatusCode::NOT_FOUND,
         AgboardError::RequestChanged
         | AgboardError::CardIsDraft { .. }
+        | AgboardError::CardIsDone { .. }
         | AgboardError::CardNotDraft { .. }
         | AgboardError::InvalidStateForDraft { .. }
         | AgboardError::ProjectNameExists { .. }

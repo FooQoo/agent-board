@@ -17,7 +17,7 @@ use super::super::layout;
 use super::super::model::{AttachmentOwner, EpicFile, StoredAttachment, TaskFile};
 use super::super::reader;
 use super::epic::read_epic_file;
-use super::{lock_project, save_task, stamp};
+use super::{ensure_ai_card_not_done, lock_project, save_task, stamp};
 use crate::domain::{
     Attachment, AttachmentInput, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS, ProjectId,
     validate_attachment,
@@ -59,6 +59,14 @@ impl Loaded {
         match self {
             Loaded::Task(task) if task.archived_at.is_some() => {
                 Err(AgboardError::CardArchived { id: task.id })
+            }
+            Loaded::Task(task) if block_drafts => {
+                ensure_ai_card_not_done(task, crate::domain::Actor::Ai)?;
+                if task.is_draft {
+                    Err(AgboardError::CardIsDraft { id: task.id })
+                } else {
+                    Ok(())
+                }
             }
             Loaded::Task(task) if block_drafts && task.is_draft => {
                 Err(AgboardError::CardIsDraft { id: task.id })

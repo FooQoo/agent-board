@@ -4,7 +4,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use agent_board::domain::{Actor, Assignee, AttachmentInput, NewCard, ProjectId};
+use agent_board::domain::{
+    Actor, Assignee, AttachmentInput, ChangeContext, Column, NewCard, ProjectId,
+};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::layout;
@@ -62,6 +64,46 @@ fn input(id: &str, name: &str, bytes: Vec<u8>) -> AttachmentInput {
 
 fn id(n: u32) -> String {
     format!("{n:032x}")
+}
+
+#[test]
+fn agents_cannot_add_or_delete_card_images_after_a_card_is_done() {
+    let f = fixture();
+    let card = f.card();
+    let owner = AttachmentOwner::Card(card);
+    let saved = f
+        .store
+        .add_attachment(
+            &f.project,
+            &owner,
+            input(&id(1), "before.png", png()),
+            at(5),
+        )
+        .unwrap();
+    f.store
+        .move_work_card_for_user(
+            &f.project,
+            card,
+            Column::Done,
+            ChangeContext {
+                actor: Actor::Human,
+                reason: "Verified".into(),
+            },
+            at(6),
+        )
+        .unwrap();
+
+    assert!(
+        matches!(f.store.add_attachment(&f.project, &owner, input(&id(2), "after.png", png()), at(7)), Err(AgboardError::CardIsDone { id }) if id == card)
+    );
+    assert!(
+        matches!(f.store.delete_attachment(&f.project, &owner, &saved.id, at(7)), Err(AgboardError::CardIsDone { id }) if id == card)
+    );
+    assert!(
+        f.store
+            .attachment_path(&f.project, &owner, &saved.id)
+            .is_ok()
+    );
 }
 
 struct Fixture {

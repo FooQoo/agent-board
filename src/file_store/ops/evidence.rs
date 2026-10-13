@@ -12,7 +12,7 @@ use super::super::layout;
 use super::super::model::{EvidenceData, EvidenceRecord};
 use super::super::reader;
 use super::attachment::last_part;
-use super::{lock_project, new_id, save_task, stamp};
+use super::{ensure_ai_card_not_done, lock_project, new_id, save_task, stamp};
 use crate::domain::{
     MAX_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS, ProjectId,
 };
@@ -92,6 +92,9 @@ impl FileStore {
         }
         if block_drafts && task.is_draft {
             return Err(AgboardError::CardIsDraft { id: card_id });
+        }
+        if block_drafts {
+            ensure_ai_card_not_done(&task, crate::domain::Actor::Ai)?;
         }
         let total: usize = task
             .evidence
@@ -206,6 +209,9 @@ impl FileStore {
         }
         if block_drafts && task.is_draft {
             return Err(AgboardError::CardIsDraft { id: card_id });
+        }
+        if block_drafts {
+            ensure_ai_card_not_done(&task, crate::domain::Actor::Ai)?;
         }
         let index = task
             .evidence

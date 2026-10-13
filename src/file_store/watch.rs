@@ -19,6 +19,7 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::Instant;
 
+use super::FileStore;
 use super::index::ProjectIndex;
 use crate::domain::ProjectId;
 use crate::error::{AgboardError, FileAction};
@@ -117,6 +118,9 @@ impl Watch {
             .watch(&root, RecursiveMode::Recursive)
             .map_err(|e| watch_error(shared, e))?;
 
+        // Reconcile completed AI work before the first snapshot is published.
+        FileStore::open(&root).auto_complete_all(chrono::Utc::now())?;
+
         {
             let mut guard = index.write().unwrap_or_else(|e| e.into_inner());
             guard.reload_all(&root)?;
@@ -184,6 +188,23 @@ fn apply(
     changed: &broadcast::Sender<()>,
     ready: &[Target],
 ) {
+    // A canonical file save (including a direct TASK.md edit) may complete a
+    // card. Reconcile before loading the version that clients will observe.
+    let store = FileStore::open(root);
+    if ready.contains(&Target::All) {
+        if let Ok(projects) = store.projects() {
+            for project in projects {
+                let _ = store.auto_complete_project(&project.id, chrono::Utc::now());
+            }
+        }
+    } else {
+        for target in ready {
+            if let Target::Project(id) = target {
+                let _ = store.auto_complete_project(id, chrono::Utc::now());
+            }
+        }
+    }
+
     let mut guard = index.write().unwrap_or_else(|e| e.into_inner());
     let mut changed_now = false;
     if ready.contains(&Target::All) {

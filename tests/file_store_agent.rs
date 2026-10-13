@@ -452,7 +452,7 @@ fn a_blank_reason_is_refused_and_changes_nothing() {
 }
 
 #[test]
-fn a_done_card_text_stays_editable_and_its_state_does_not_change() {
+fn done_cards_reject_agent_edits_but_a_person_can_reopen_them() {
     let fx = fixture();
     let id = fx.ai_card("work");
     fx.store
@@ -474,17 +474,32 @@ fn a_done_card_text_stays_editable_and_its_state_does_not_change() {
         )
         .unwrap();
 
-    let edited = fx
+    let before = fx.bytes(id);
+    let err = fx
         .store
         .edit_card(&fx.project, id, Some("Renamed"), Some(VALID_BODY), later())
+        .unwrap_err();
+    assert!(
+        matches!(err, AgboardError::CardIsDone { id: done } if done == id),
+        "{err:?}"
+    );
+    assert_eq!(fx.bytes(id), before);
+
+    let reopened = fx
+        .store
+        .move_work_card_for_user(
+            &fx.project,
+            id,
+            Column::Todo,
+            ctx(Actor::Human, "Reopen for follow-up"),
+            later(),
+        )
         .unwrap();
-    assert!(edited.changed);
-    assert_eq!(edited.value.card_status, Column::Done);
-    assert_eq!(edited.value.agent_status, RunState::Idle);
-    assert_eq!(edited.value.title, "Renamed");
-    assert_eq!(edited.value.description, VALID_BODY);
+    assert!(reopened.changed);
+    assert_eq!(reopened.value.card_status, Column::Todo);
+    assert_eq!(reopened.value.agent_status, RunState::Idle);
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    assert_eq!(snapshot.cards[0].card_status, Column::Done);
+    assert_eq!(snapshot.cards[0].card_status, Column::Todo);
     assert!(snapshot.problems.is_empty(), "{:?}", snapshot.problems);
 }
 
@@ -513,7 +528,7 @@ fn running_on_a_done_card_is_refused_by_the_state_table() {
         )
         .unwrap_err();
     assert!(
-        matches!(err, AgboardError::InvalidStateForAssignee),
+        matches!(err, AgboardError::CardIsDone { id: done } if done == id),
         "{err:?}"
     );
 }

@@ -17,6 +17,7 @@ use std::time::{Duration, Instant};
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
+use agent_board::file_store::model::Choice;
 use agent_board::server::{ServeConfig, run_until};
 use chrono::{DateTime, TimeZone, Utc};
 use serde_json::{Value, json};
@@ -350,6 +351,121 @@ fn snapshot_json(home: &Path, id: &ProjectId) -> Value {
         "version": snapshot.version,
         "cards": serde_json::to_value(&snapshot.cards).unwrap(),
     })
+}
+
+#[test]
+fn serve_reconciles_existing_completed_cards_and_rechecks_external_task_edits() {
+    let home = tempfile::tempdir().unwrap();
+    let store = store(home.path());
+    let project = store.create_project("auto-done", t(0)).unwrap().id;
+    let create = |title: &str| {
+        store.create_card(
+            &project,
+            NewCard {
+                title: title.into(),
+                description: "---\nacceptance:\n  - id: AC-1\n    text: Works\n    done: false\n---\n\nWork.\n".into(),
+                assignee: Assignee::Ai,
+                actor: Actor::Ai,
+                is_draft: false,
+            },
+            t(1),
+        ).unwrap()
+    };
+    let existing = create("Already complete");
+    let edited = create("Edited while serving");
+    let pending_card = create("Answered while serving");
+    store
+        .move_work_card(&project, pending_card.id, Column::Doing, ctx("Start"), t(2))
+        .unwrap();
+    let request = store
+        .request_decision(
+            &project,
+            pending_card.id,
+            Actor::Ai,
+            "Choose",
+            vec![
+                Choice {
+                    id: "a".into(),
+                    label: "A".into(),
+                },
+                Choice {
+                    id: "b".into(),
+                    label: "B".into(),
+                },
+            ],
+            t(3),
+        )
+        .unwrap()
+        .value
+        .pending_request_id
+        .unwrap();
+    let task_path = |id: i64| {
+        home.path()
+            .join("shared")
+            .join("projects")
+            .join(project.as_str())
+            .join("tasks")
+            .join(id.to_string())
+            .join("TASK.md")
+    };
+    let complete =
+        "---\nacceptance:\n  - id: AC-1\n    text: Works\n    done: true\n---\n\nWork.\n";
+    std::fs::write(task_path(existing.id), complete).unwrap();
+
+    let server = Running::start(home.path());
+    let board_path = format!("/api/projects/{project}/board");
+    let board = server.get(&board_path).json();
+    assert_eq!(board["cards"][0]["cardStatus"], "done");
+    assert_eq!(board["cards"][0]["history"].as_array().unwrap().len(), 2);
+
+    std::fs::write(task_path(edited.id), complete).unwrap();
+    let notified = server.request("POST", "/api/notify", None, &[], None);
+    assert_eq!(notified.status, 204, "{}", notified.body);
+    let board = read_until(&server, &board_path, |board| {
+        board["cards"].as_array().is_some_and(|cards| {
+            cards
+                .iter()
+                .any(|card| card["id"] == edited.id && card["cardStatus"] == "done")
+        })
+    });
+    let edited_json = board["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|card| card["id"] == edited.id)
+        .unwrap();
+    assert_eq!(edited_json["cardStatus"], "done");
+    assert_eq!(edited_json["history"].as_array().unwrap().len(), 2);
+
+    std::fs::write(task_path(pending_card.id), complete).unwrap();
+    let answer = server.write(
+        "POST",
+        &format!("/api/projects/{project}/cards/{}/answer", pending_card.id),
+        Some(
+            &json!({
+                "requestId": request,
+                "choiceId": "a"
+            })
+            .to_string(),
+        ),
+    );
+    assert_eq!(answer.status, 200, "{}", answer.body);
+    let board = read_until(&server, &board_path, |board| {
+        board["cards"].as_array().is_some_and(|cards| {
+            cards
+                .iter()
+                .any(|card| card["id"] == pending_card.id && card["cardStatus"] == "done")
+        })
+    });
+    assert_eq!(
+        board["cards"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|card| card["id"] == pending_card.id)
+            .unwrap()["cardStatus"],
+        "done"
+    );
 }
 
 // ---------------------------------------------------------------- project list

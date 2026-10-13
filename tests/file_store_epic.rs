@@ -472,3 +472,34 @@ fn an_epic_id_cannot_name_a_path_outside_the_epics_folder() {
 fn valid_plan(goal: &str) -> String {
     format!("---\nacceptance:\n  - id: AC-1\n    text: 条件\n    done: false\n---\n\n{goal}\n")
 }
+
+#[test]
+fn an_ai_cannot_change_epic_membership_after_a_card_is_done() {
+    let f = fixture();
+    f.new_epic("FILE-SHARE").unwrap();
+    let card = f.card("Completed card");
+    f.store
+        .move_work_card(
+            &f.project,
+            card.id,
+            agent_board::domain::Column::Done,
+            agent_board::domain::ChangeContext {
+                actor: Actor::Ai,
+                reason: "Finished".into(),
+            },
+            at(5),
+        )
+        .unwrap();
+
+    let err = f
+        .store
+        .set_card_epic(
+            &f.project,
+            card.id,
+            Some(&epic_id("FILE-SHARE")),
+            Actor::Ai,
+            at(6),
+        )
+        .unwrap_err();
+    assert!(matches!(err, AgboardError::CardIsDone { id } if id == card.id));
+}

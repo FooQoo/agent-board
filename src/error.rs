@@ -81,6 +81,10 @@ pub enum AgboardError {
     CardIsDraft {
         id: i64,
     },
+    /// An agent tried to change a completed card.
+    CardIsDone {
+        id: i64,
+    },
     /// An agent tried to move a card to Done while these conditions are unmet.
     AcceptanceUnmet {
         id: i64,
@@ -173,6 +177,7 @@ impl AgboardError {
             AgboardError::InvalidStateForColumn { .. } => "invalid_state_for_column",
             AgboardError::InvalidStateForAssignee => "invalid_state_for_assignee",
             AgboardError::CardIsDraft { .. } => "card_is_draft",
+            AgboardError::CardIsDone { .. } => "card_is_done",
             AgboardError::AcceptanceUnmet { .. } => "acceptance_unmet",
             AgboardError::CardNotDraft { .. } => "card_not_draft",
             AgboardError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
@@ -246,6 +251,9 @@ impl AgboardError {
             AgboardError::InvalidStateForAssignee => "state is invalid for this assignee.".into(),
             AgboardError::CardIsDraft { id } => {
                 format!("card #{id} is a draft and read-only for agents.")
+            }
+            AgboardError::CardIsDone { id } => {
+                format!("card #{id} is done and read-only for agents.")
             }
             AgboardError::AcceptanceUnmet { id, unmet } => format!(
                 "card #{id} has unmet acceptance conditions: {}.",
@@ -327,6 +335,9 @@ impl AgboardError {
             AgboardError::CardIsDraft { .. } => {
                 "Wait for the user to finalize it, then try again.".into()
             }
+            AgboardError::CardIsDone { .. } => {
+                "A person must move the card out of Done before you can change it.".into()
+            }
             AgboardError::AcceptanceUnmet { .. } => {
                 "Mark each condition done once it is verified, or ask a person to move the card.".into()
             }
@@ -402,6 +413,7 @@ mod tests {
             },
             AgboardError::InvalidStateForAssignee,
             AgboardError::CardIsDraft { id: 5 },
+            AgboardError::CardIsDone { id: 5 },
             AgboardError::AcceptanceUnmet {
                 id: 5,
                 unmet: vec!["AC-2".into()],
@@ -470,6 +482,7 @@ mod tests {
                 ("invalid_state_for_column", 1),
                 ("invalid_state_for_assignee", 2),
                 ("card_is_draft", 1),
+                ("card_is_done", 1),
                 ("acceptance_unmet", 2),
                 ("card_not_draft", 1),
                 ("invalid_state_for_draft", 1),
@@ -526,6 +539,10 @@ mod tests {
             (
                 "card #5 is a draft and read-only for agents.",
                 "Wait for the user to finalize it, then try again.",
+            ),
+            (
+                "card #5 is done and read-only for agents.",
+                "A person must move the card out of Done before you can change it.",
             ),
             (
                 "card #5 has unmet acceptance conditions: AC-2.",
