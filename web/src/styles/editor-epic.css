@@ -121,7 +121,7 @@
   min-height: 100%;
   max-width: none;
   margin: 0;
-  padding: 24px 0;
+  padding: 0;
   outline: none;
 }
 
@@ -370,86 +370,116 @@
   line-height: 16px;
 }
 
-/* The right column folds: a header that always shows, and a body that is hidden while folded. */
-.collapsible {
+/* The epic's right column uses the approved 300px card list. */
+.editor__aside--progress {
+  flex-basis: 300px;
+  gap: 14px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.editor__aside--progress > .epic-label-row {
+  padding: 0;
+}
+
+.editor__aside--progress .collapsible {
   display: flex;
   flex: none;
   flex-direction: column;
   min-height: 0;
-  border-bottom: 1px solid var(--r-border);
+  overflow: hidden;
 }
 
-/* An open panel takes the height the right column has left, so a long list inside it scrolls. */
-.collapsible[data-open="true"] {
+.editor__aside--progress .collapsible[data-open="true"] {
   flex: 1 1 0;
 }
 
 .collapsible__head {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 10px 14px;
+  min-height: 28px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--r-text);
-  font: inherit;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
   text-align: left;
   cursor: pointer;
 }
 
+.collapsible__icon,
 .collapsible__chevron {
-  width: 14px;
-  height: 14px;
-  transition: transform 0.15s ease;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--r-text2);
 }
 
-.collapsible[data-open="true"] .collapsible__chevron {
+.collapsible__chevron {
+  margin-left: auto;
   transform: rotate(180deg);
 }
 
+.collapsible[data-open="true"] .collapsible__chevron {
+  transform: none;
+}
+
 .collapsible__count {
-  margin-left: auto;
   color: var(--r-muted);
   font-size: 12px;
-  font-weight: 500;
+}
+
+.collapsible__count::before {
+  content: "· ";
 }
 
 .collapsible__body {
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
+  gap: 10px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .collapsible__body[hidden] {
   display: none;
 }
 
-/* The progress table: one row per task, dragged by its grip, its progress at the bottom right. */
-.epic-progress__empty {
+.epic-progress__empty,
+.epic-progress__hint {
+  flex: none;
   margin: 0;
-  padding: 10px 14px;
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.epic-progress__hint:last-child {
   color: var(--r-muted);
-  font-size: 13px;
 }
 
 .epic-progress__list {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .epic-progress__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px solid var(--r-border);
-  background: var(--r-surface);
+  flex: none;
+  cursor: default;
 }
 
 .epic-progress__row.is-dragging {
@@ -458,7 +488,7 @@
 
 .epic-progress__grip {
   display: inline-flex;
-  margin-top: 2px;
+  flex: none;
   color: var(--r-muted);
   cursor: grab;
 }
@@ -468,38 +498,15 @@
   height: 14px;
 }
 
-.epic-progress__body {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.epic-progress__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--r-muted);
-}
-
-.epic-progress__id {
-  font-family: var(--font-mono);
-}
-
 .epic-progress__name {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--r-text);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  color: inherit;
+  font-family: inherit;
+  font-weight: 400;
   text-align: left;
   cursor: pointer;
-  overflow-wrap: anywhere;
 }
 
 .epic-progress__name:disabled {
@@ -508,53 +515,18 @@
 }
 
 .epic-progress__foot {
-  display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
 }
 
-/* The conditions at the bottom of a dialog, outside the scrolling body: folded to one line by default. */
+/* The dock ends 8px above the footer; its header remains visible while only its list scrolls. */
 .editor__dock {
-  flex: none;
-  border-top: 1px solid var(--r-border);
-  background: var(--r-surface);
-  padding-bottom: 8px;
-  max-height: 40vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.conditions-dock__head {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 10px 0;
-  border: 0;
-  background: transparent;
-  color: var(--r-text);
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 40%;
 }
 
-.conditions-dock__chevron {
-  width: 14px;
-  height: 14px;
-  transition: transform 0.15s ease;
-}
-
-.conditions-dock[data-open="true"] .conditions-dock__chevron {
-  transform: rotate(180deg);
-}
-
-.conditions-dock__count {
-  margin-left: auto;
-  color: var(--r-muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.conditions-dock__body[hidden] {
-  display: none;
+.editor__box .ProseMirror > :first-child {
+  margin-top: 0;
 }

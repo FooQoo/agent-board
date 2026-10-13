@@ -5,6 +5,17 @@
  * tokens: the same colors and sizes as the reading view (markdown.css).
  */
 
+/* Crepe's cursor decoration must stay out of the document flow. */
+.rich-markdown .ProseMirror {
+  position: relative;
+}
+
+.rich-markdown .prosemirror-virtual-cursor {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Selection format bar. Crepe positions it; these rules only give it the app's look. */
 .rich-markdown .milkdown-toolbar {
   z-index: 10;

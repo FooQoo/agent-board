@@ -356,9 +356,10 @@ for (const kind of ['task', 'epic'] as const) {
     const before = await scroll.evaluate((element) => element.scrollTop);
     await dockHead.click();
     await expect(dock.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toBeVisible();
-    await dock.hover();
+    const conditionList = dock.locator('.conditions-dock__body');
+    await conditionList.hover();
     await page.mouse.wheel(0, 400);
-    await expect.poll(() => dock.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await expect.poll(() => conditionList.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
     expect(await scroll.evaluate((element) => element.scrollTop)).toBe(before);
     await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeInViewport();
   });

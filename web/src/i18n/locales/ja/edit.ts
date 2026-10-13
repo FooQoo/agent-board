@@ -63,6 +63,8 @@ export const editJa = {
   },
   epic: {
     progressTitle: '進行表',
+    progressReorder: 'ドラッグして進行順を変更',
+    progressSaveOrder: '「保存」で並び順を反映',
     progressEmpty: 'このエピックにはまだタスクがありません。',
     images: '画像',
     stepOrder: '進行順',
@@ -95,7 +97,7 @@ export const editJa = {
     text: '条件 {{id}}',
     emptyText: '条件の文章を入力してください',
     placeholder: '達成を確かめられる条件を入力',
-    numberNote: '番号は削除しても振り直しません。並べ替えはドラッグで、表示順だけが変わります。',
+    numberNote: '番号は削除しても振り直しません。',
     sectionLink: '受け入れ条件 {{done}} / {{total}}',
   },
 } as const;

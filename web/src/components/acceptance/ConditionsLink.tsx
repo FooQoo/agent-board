@@ -13,7 +13,9 @@ export function ConditionsLink({ id, items }: { id: string; items: readonly Acce
   const { done, total } = progressOf(items);
   const open = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    document.getElementById(id)?.scrollIntoView({ block: 'start' });
+    const dock = document.getElementById(id);
+    dock?.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')?.click();
+    dock?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
   };
   return (
     <a className="acceptance-outline-link" href={`#${id}`} onClick={open}>

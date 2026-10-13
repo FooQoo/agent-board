@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, ListChecksIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { progressOf } from '../../lib/acceptance';
@@ -6,6 +6,7 @@ import type { AcceptanceItem } from '../../types';
 import { AcceptanceEditor } from './AcceptanceEditor';
 import { AcceptanceView } from './AcceptanceView';
 import './acceptance-edit.css';
+import './conditions-dock.css';
 
 /**
  * The completion conditions of a card or epic, held at the bottom of its dialog outside the scrolling
@@ -31,7 +32,12 @@ export function ConditionsDock({
   const bodyId = useId();
   const { done, total } = progressOf(items);
   return (
-    <section className="conditions-dock" data-open={open ? 'true' : undefined}>
+    <section
+      id={id}
+      className="conditions-dock"
+      data-open={open ? 'true' : undefined}
+      data-read-only={readOnly ? 'true' : undefined}
+    >
       <button
         type="button"
         className="conditions-dock__head"
@@ -39,21 +45,22 @@ export function ConditionsDock({
         aria-controls={bodyId}
         onClick={() => setOpen((current) => !current)}
       >
+        <ListChecksIcon aria-hidden="true" focusable="false" className="conditions-dock__icon" />
+        <span className="conditions-dock__title">{t('acceptanceEdit.title')}</span>
+        <span className="conditions-dock__count">
+          {t('acceptanceEdit.progress', { done, total })}
+        </span>
         <ChevronDownIcon
           aria-hidden="true"
           focusable="false"
           className="conditions-dock__chevron"
         />
-        <span className="conditions-dock__title">{t('acceptanceEdit.title')}</span>
-        <span className="conditions-dock__count">
-          {t('acceptanceEdit.progress', { done, total })}
-        </span>
       </button>
       <div id={bodyId} className="conditions-dock__body" hidden={!open}>
         {readOnly || onChange === undefined ? (
-          <AcceptanceView items={items} />
+          <AcceptanceView items={items} embedded />
         ) : (
-          <AcceptanceEditor id={id} items={items} onChange={onChange} disabled={disabled} />
+          <AcceptanceEditor items={items} onChange={onChange} disabled={disabled} embedded />
         )}
       </div>
     </section>

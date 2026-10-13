@@ -460,10 +460,10 @@
   gap: 14px;
   min-width: 0;
   min-height: 0;
-  padding: 24px;
+  padding: 24px 24px 8px;
 }
 
-/* Acceptance conditions and the Markdown body share one scroll position. */
+/* The body scrolls independently of the conditions dock. */
 .editor__document {
   display: flex;
   flex: 1 1 0;

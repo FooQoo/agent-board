@@ -12,20 +12,34 @@ const SHOWN_FIRST = 5;
  * The completion conditions of a card or epic, at the top of its body. Read-only: a person changes them in
  * the edit dialog, and agents check them after verifying.
  */
-export function AcceptanceView({ items }: { items: readonly AcceptanceItem[] }) {
+export function AcceptanceView({
+  items,
+  embedded = false,
+}: {
+  items: readonly AcceptanceItem[];
+  embedded?: boolean;
+}) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   if (items.length === 0) return null;
   const { done, total } = progressOf(items);
-  const folded = items.length > SHOWN_FIRST && !expanded;
+  const folded = !embedded && items.length > SHOWN_FIRST && !expanded;
   const shown = folded ? items.slice(0, SHOWN_FIRST) : items;
   return (
-    <section className="acceptance-view" aria-label={t('acceptance.title')}>
-      <header className="acceptance-view__head">
-        <ListChecksIcon aria-hidden="true" focusable="false" />
-        <h3 className="acceptance-view__title">{t('acceptance.title')}</h3>
-        <span className="acceptance-view__count">{t('acceptance.progress', { done, total })}</span>
-      </header>
+    <section
+      className="acceptance-view"
+      data-embedded={embedded ? 'true' : undefined}
+      aria-label={t('acceptance.title')}
+    >
+      {!embedded && (
+        <header className="acceptance-view__head">
+          <ListChecksIcon aria-hidden="true" focusable="false" />
+          <h3 className="acceptance-view__title">{t('acceptance.title')}</h3>
+          <span className="acceptance-view__count">
+            {t('acceptance.progress', { done, total })}
+          </span>
+        </header>
+      )}
       <div className="acceptance-view__meter" aria-hidden="true">
         {items.map((item) => (
           <span
@@ -46,7 +60,7 @@ export function AcceptanceView({ items }: { items: readonly AcceptanceItem[] }) 
           </li>
         ))}
       </ul>
-      {items.length > SHOWN_FIRST && (
+      {!embedded && items.length > SHOWN_FIRST && (
         <button
           type="button"
           className="acceptance-view__toggle"

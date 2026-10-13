@@ -62,6 +62,8 @@ export const editEn = {
   },
   epic: {
     progressTitle: 'Progress',
+    progressReorder: 'Drag to change the work order',
+    progressSaveOrder: 'Save to apply the order',
     progressEmpty: 'No tasks in this epic yet.',
     images: 'Images',
     stepOrder: 'the progress order',
@@ -94,7 +96,7 @@ export const editEn = {
     text: 'Condition {{id}}',
     emptyText: 'Enter the condition text',
     placeholder: 'Describe a condition that can be verified',
-    numberNote: 'Numbers are not reused after a removal. Dragging changes only the order shown.',
+    numberNote: 'Numbers are not reused after a removal.',
     sectionLink: 'Acceptance conditions {{done}} / {{total}}',
   },
 } as const;

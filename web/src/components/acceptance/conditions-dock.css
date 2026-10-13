@@ -1,0 +1,109 @@
+/* Shared by creation, editing, details and monitor drawers. Only the condition list scrolls. */
+.conditions-dock {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 40dvh;
+  overflow: hidden;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-bg);
+  color: var(--r-text);
+  font-family: var(--font-sans);
+}
+
+.conditions-dock__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.conditions-dock__head:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -2px;
+}
+
+.conditions-dock__icon,
+.conditions-dock__chevron {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--r-text2);
+}
+
+.conditions-dock__title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.conditions-dock__count {
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.conditions-dock__chevron {
+  margin-left: auto;
+  transform: rotate(180deg);
+}
+
+.conditions-dock[data-open="true"] .conditions-dock__chevron {
+  transform: none;
+}
+
+.conditions-dock__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 12px;
+}
+
+.conditions-dock__body[hidden] {
+  display: none;
+}
+
+.conditions-dock .acceptance-edit[data-embedded],
+.conditions-dock .acceptance-view[data-embedded] {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.conditions-dock[data-read-only] .conditions-dock__head {
+  padding-inline: 12px;
+  gap: 6px;
+}
+
+.conditions-dock[data-read-only] .conditions-dock__title {
+  font-size: 13px;
+}
+
+.conditions-dock[data-read-only] .conditions-dock__count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+}
+
+.conditions-dock[data-read-only] .conditions-dock__chevron {
+  margin-left: 0;
+}
+
+@media (max-width: 640px) {
+  .conditions-dock__head {
+    flex-wrap: wrap;
+    padding-inline: 12px;
+  }
+}

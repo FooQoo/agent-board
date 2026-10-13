@@ -12,12 +12,14 @@ export function CollapsibleSection({
   open,
   onToggle,
   children,
+  icon,
 }: {
   title: string;
   count?: number;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  icon?: ReactNode;
 }) {
   const bodyId = useId();
   return (
@@ -29,9 +31,10 @@ export function CollapsibleSection({
         aria-controls={bodyId}
         onClick={onToggle}
       >
-        <ChevronDownIcon aria-hidden="true" focusable="false" className="collapsible__chevron" />
+        {icon}
         <span className="collapsible__title">{title}</span>
         {count !== undefined && <span className="collapsible__count">{count}</span>}
+        <ChevronDownIcon aria-hidden="true" focusable="false" className="collapsible__chevron" />
       </button>
       <div id={bodyId} className="collapsible__body" hidden={!open}>
         {children}

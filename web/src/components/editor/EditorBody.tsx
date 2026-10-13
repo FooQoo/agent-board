@@ -8,6 +8,7 @@ import { DESCRIPTION_LIMIT, TITLE_LIMIT, countChars } from './limits';
 import { activeOutlineIndex, outlineOf } from './outline';
 import { RichMarkdownEditor, type RichMarkdownEditorHandle } from './RichMarkdownEditor';
 import { Input } from '@/components/ui/input';
+import { PaperclipIcon } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import '../../styles/editor.css';
 
@@ -211,12 +212,15 @@ export function EditorBody({
         {dock && <div className="editor__dock">{dock}</div>}
       </div>
       {onFiles && onRemoveAttachment && (
-        <div className="editor__aside">
+        <div className={sidebar ? 'editor__aside editor__aside--progress' : 'editor__aside'}>
           {asideTop}
           {sidebar}
           {onAttachmentsOpenChange ? (
             <CollapsibleSection
               title={t('epic.images')}
+              icon={
+                <PaperclipIcon aria-hidden="true" focusable="false" className="collapsible__icon" />
+              }
               count={attachments.length}
               open={attachmentsOpen === true}
               onToggle={() => onAttachmentsOpenChange(attachmentsOpen !== true)}

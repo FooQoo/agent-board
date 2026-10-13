@@ -17,12 +17,14 @@ export function AcceptanceEditor({
   items,
   onChange,
   disabled = false,
+  embedded = false,
 }: {
   /** Where the outline's link goes. */
   id?: string;
   items: readonly AcceptanceItem[];
   onChange: (items: AcceptanceItem[]) => void;
   disabled?: boolean;
+  embedded?: boolean;
 }) {
   const { t } = useTranslation();
   // Every ID this editor has shown, removed ones included.
@@ -50,17 +52,19 @@ export function AcceptanceEditor({
   };
 
   return (
-    <div className="acceptance-edit" id={id}>
-      <div className="acceptance-edit__head">
-        <span className="acceptance-edit__title">{t('acceptanceEdit.title')}</span>
-        <span className="acceptance-edit__count">
-          {t('acceptanceEdit.progress', {
-            done: items.filter((item) => item.done).length,
-            total: items.length,
-          })}
-        </span>
-        <span className="acceptance-edit__saved">{t('acceptanceEdit.savedIn')}</span>
-      </div>
+    <div className="acceptance-edit" id={id} data-embedded={embedded ? 'true' : undefined}>
+      {!embedded && (
+        <div className="acceptance-edit__head">
+          <span className="acceptance-edit__title">{t('acceptanceEdit.title')}</span>
+          <span className="acceptance-edit__count">
+            {t('acceptanceEdit.progress', {
+              done: items.filter((item) => item.done).length,
+              total: items.length,
+            })}
+          </span>
+          <span className="acceptance-edit__saved">{t('acceptanceEdit.savedIn')}</span>
+        </div>
+      )}
       <ol className="acceptance-edit__list">
         {items.map((item, index) => (
           <ConditionRow

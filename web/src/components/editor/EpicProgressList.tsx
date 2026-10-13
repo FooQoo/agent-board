@@ -5,6 +5,8 @@ import { isSortable, useSortable } from '@dnd-kit/react/sortable';
 import { AcceptanceProgress } from '../acceptance/AcceptanceProgress';
 import { AssigneeLabel } from '../AssigneeLabel';
 import { StatusLabel } from '../StatusLabel';
+import { CardContent } from '../Card';
+import { formatShort } from '../../lib/format';
 import type { Card } from '../../types';
 
 /**
@@ -39,17 +41,21 @@ export function EpicProgressList({
       {cards.length === 0 ? (
         <p className="epic-progress__empty">{t('epic.progressEmpty')}</p>
       ) : (
-        <ol className="epic-progress__list" aria-label={t('epic.progressTitle')}>
-          {cards.map((card, index) => (
-            <ProgressRow
-              key={card.id}
-              card={card}
-              index={index}
-              disabled={disabled}
-              onOpenTask={onOpenTask}
-            />
-          ))}
-        </ol>
+        <>
+          <p className="epic-progress__hint">{t('epic.progressReorder')}</p>
+          <ol className="epic-progress__list" aria-label={t('epic.progressTitle')}>
+            {cards.map((card, index) => (
+              <ProgressRow
+                key={card.id}
+                card={card}
+                index={index}
+                disabled={disabled}
+                onOpenTask={onOpenTask}
+              />
+            ))}
+          </ol>
+          <p className="epic-progress__hint">{t('epic.progressSaveOrder')}</p>
+        </>
       )}
     </DragDropProvider>
   );
@@ -66,33 +72,46 @@ function ProgressRow({
   disabled: boolean;
   onOpenTask: (cardId: number) => void;
 }) {
+  const { t } = useTranslation();
   const { ref, handleRef, isDragging } = useSortable({ id: card.id, index, disabled });
   return (
     <li
       ref={ref}
-      className={isDragging ? 'epic-progress__row is-dragging' : 'epic-progress__row'}
+      className={[
+        'epic-progress__row',
+        'card',
+        card.agentStatus === 'pending' && card.cardStatus !== 'done' ? 'card--pending' : '',
+        isDragging ? 'is-dragging' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       data-task-id={card.id}
     >
-      <span ref={handleRef} className="epic-progress__grip" aria-hidden="true">
-        <GripVerticalIcon focusable="false" />
-      </span>
-      <div className="epic-progress__body">
-        <div className="epic-progress__meta">
-          <span className="epic-progress__id">#{card.id}</span>
-          <AssigneeLabel assignee={card.assignee} />
-          <StatusLabel kind="card" status={card.cardStatus} />
-        </div>
-        <button
-          type="button"
-          className="epic-progress__name"
-          disabled={disabled}
-          onClick={() => onOpenTask(card.id)}
-        >
-          {card.title}
-        </button>
-        <div className="epic-progress__foot">
-          <AcceptanceProgress card={card} />
-        </div>
+      <div className="card__top">
+        <span ref={handleRef} className="epic-progress__grip" aria-hidden="true">
+          <GripVerticalIcon focusable="false" />
+        </span>
+        <span className="card__id">#{card.id}</span>
+        <AssigneeLabel assignee={card.assignee} />
+        {card.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+        <span className="card__spacer" />
+        <StatusLabel
+          kind={card.cardStatus === 'done' ? 'card' : 'agent'}
+          status={card.cardStatus === 'done' ? 'done' : card.agentStatus}
+        />
+      </div>
+      <CardContent
+        card={card}
+        titleClassName="card__title epic-progress__name"
+        titleActionDisabled={disabled}
+        onTitleClick={() => onOpenTask(card.id)}
+        showPendingReason={false}
+      />
+      <div className="card__foot epic-progress__foot">
+        <span className="card__updated">
+          {t('card.updated', { date: formatShort(card.updatedAt) })}
+        </span>
+        <AcceptanceProgress card={card} />
       </div>
     </li>
   );
