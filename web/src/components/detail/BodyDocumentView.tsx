@@ -1,15 +1,13 @@
-import { AcceptanceView } from '../acceptance/AcceptanceView';
 import { DetailAttachments } from './DetailAttachments';
 import { DetailEvidence } from './DetailEvidence';
 import { MarkdownSections } from '../markdown/MarkdownSections';
 import { ProblemNotice } from './ProblemNotice';
 import { useTranslation } from 'react-i18next';
-import type { AcceptanceItem, Attachment, EvidenceRecord, Problem, ProjectId } from '../../types';
+import type { Attachment, EvidenceRecord, Problem, ProjectId } from '../../types';
 import '../../styles/detail.css';
 
 export function BodyDocumentView({
   body,
-  acceptance,
   acceptanceError,
   problems = [],
   attachments,
@@ -20,7 +18,6 @@ export function BodyDocumentView({
   cardId,
 }: {
   body: string;
-  acceptance: readonly AcceptanceItem[];
   acceptanceError: boolean;
   problems?: readonly Problem[];
   attachments: readonly Attachment[];
@@ -49,7 +46,6 @@ export function BodyDocumentView({
           <p className="acceptance-unreadable__note">{t('acceptance.unreadableNote')}</p>
         </div>
       )}
-      <AcceptanceView items={acceptanceError ? [] : acceptance} />
       <MarkdownSections
         source={body}
         resolveAttachment={(id) =>

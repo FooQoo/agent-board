@@ -1,9 +1,10 @@
-import { FileTextIcon, HistoryIcon } from 'lucide-react';
+import { FileTextIcon, HistoryIcon, LayersIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailTabList, detailPanelId, detailTabId } from '../ui/detail-tabs';
 
-export type DetailTab = 'description' | 'history';
+/** The three tabs of a card: its description, its history, and the epic it belongs to. */
+export type DetailTab = 'description' | 'history' | 'epic';
 
 export function tabId(base: string, tab: DetailTab): string {
   return detailTabId(base, tab);
@@ -47,6 +48,11 @@ export function DetailTabs({
             label: t('detail.tabHistory'),
             icon: <HistoryIcon aria-hidden="true" />,
             count: historyCount,
+          },
+          {
+            id: 'epic',
+            label: t('detail.tabEpic'),
+            icon: <LayersIcon aria-hidden="true" />,
           },
         ]}
       />

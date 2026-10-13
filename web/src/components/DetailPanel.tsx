@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setDraft } from '../api';
 import { noOperations, type OperationControls } from '../lib/projectSession';
-import type { Card, Problem, ProjectId } from '../types';
+import type { Card, Epic, Problem, ProjectId } from '../types';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
@@ -36,6 +36,10 @@ export interface DetailPanelProps {
   archived?: boolean;
   /** The board's format defects. The ones of this card's files are shown above its body. */
   problems?: readonly Problem[];
+  /** The project's epics, for the epic tab. Undefined while the board is loading. */
+  epics?: readonly Epic[];
+  epicsFailed?: boolean;
+  onRetryEpics?: () => void;
   onRestore?: () => void;
   operationSaving?: boolean;
   restoreFailed?: boolean;
@@ -57,6 +61,9 @@ export function DetailPanel({
   operationSaving = false,
   restoreFailed = false,
   problems = [],
+  epics,
+  epicsFailed = false,
+  onRetryEpics,
 }: DetailPanelProps) {
   const { t } = useTranslation();
   if (card === null || projectId === null) {
@@ -88,6 +95,9 @@ export function DetailPanel({
       operationSaving={operationSaving}
       restoreFailed={restoreFailed}
       problems={problems}
+      epics={epics}
+      epicsFailed={epicsFailed}
+      onRetryEpics={onRetryEpics}
     />
   );
 }
@@ -117,6 +127,9 @@ function DetailBody({
   operationSaving,
   restoreFailed,
   problems,
+  epics,
+  epicsFailed,
+  onRetryEpics,
 }: DetailBodyProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<DetailTab>('description');
@@ -171,6 +184,9 @@ function DetailBody({
       tab={tab}
       onTabChange={setTab}
       onClose={onClose}
+      epics={epics}
+      epicsFailed={epicsFailed}
+      onRetryEpics={onRetryEpics}
       readOnlyRequest={false}
       readOnlyDraft={false}
       toolbar={

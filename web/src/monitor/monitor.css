@@ -783,16 +783,6 @@ body {
   font-size: 12px;
   line-height: 1.5;
 }
-.monitor-drawer__epic-heading {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.monitor-drawer__epic-heading h3 {
-  font-size: 15px;
-  line-height: 1.4;
-}
 .monitor-empty {
   padding: 8px 4px;
   color: var(--r-muted);

@@ -95,9 +95,6 @@ function EpicDocument({
   const { t } = useTranslation();
   return (
     <>
-      <div className="monitor-drawer__epic-heading">
-        <h3>{epic.name}</h3>
-      </div>
       {epic.acceptanceError && (
         <p className="monitor-drawer__partial" role="status">
           {t('acceptance.unreadableTitle')}

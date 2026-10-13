@@ -29,7 +29,7 @@ describe('tabs', () => {
   it('has a Description tab and a History tab with the number of history entries', () => {
     renderPanel(fixtureCard(8));
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['Description', 'History 3']);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['Description', 'History 3', 'Epic']);
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tabpanel')).toBeTruthy();
     expect(screen.queryByRole('list', { name: /history/i })).toBeNull();
@@ -80,6 +80,8 @@ describe('tabs', () => {
       'detail__tabs',
       'detail__viewport',
       'detail__viewport',
+      'detail__viewport',
+      'detail__dock',
     ]);
   });
 });
@@ -93,7 +95,8 @@ describe('chapters of the description', () => {
     expect(screen.getByText('first')).toBeTruthy();
     expect(screen.getByText('Intro')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Goal/ })).toBeNull();
-    expect(container.querySelector('[aria-expanded]')).toBeNull();
+    // The chapters have no fold control; the conditions dock below the panel is the only one.
+    expect(container.querySelector('.detail__viewport [aria-expanded]')).toBeNull();
   });
 
   it('keeps every chapter visible when the History tab is looked at and back', async () => {
@@ -193,6 +196,8 @@ describe('toolbar', () => {
       'detail__tabs',
       'detail__viewport',
       'detail__viewport',
+      'detail__viewport',
+      'detail__dock',
     ]);
     expect(screen.getByRole('button', { name: 'Restore' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Delete card' }).textContent).toContain('Delete');
@@ -245,5 +250,69 @@ describe('toolbar', () => {
     renderPanel(fixtureCard(8), { archived: true, onRestore: vi.fn() });
     const deleteButton = screen.getByRole('button', { name: 'カードを削除' });
     expect(deleteButton.textContent).toContain('削除');
+  });
+});
+
+describe('epic tab', () => {
+  const EPIC_LINKED = {
+    id: 'FILE-SHARE',
+    name: 'File share',
+    color: '#7C3AED',
+    isDraft: false,
+    plan: '## Plan\n\nEpic plan text.',
+    body: '## Plan\n\nEpic plan text.',
+    acceptance: [{ id: 'AC-1', text: 'Epic condition', done: true }],
+    acceptanceError: false,
+    priority: [],
+    priorityError: false,
+    attachments: [],
+    createdAt: '2026-10-02T00:00:00Z',
+    updatedAt: '2026-10-02T00:00:00Z',
+  };
+  const linked = (id: number) =>
+    makeCard({ id, epic: { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' } });
+
+  it('says that a card without an epic belongs to none', async () => {
+    renderPanel(makeCard({ id: 60, epic: null }), { epics: [] });
+    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
+    expect(screen.getByText('This card belongs to no epic.')).toBeTruthy();
+  });
+
+  it('shows the epic plan of the card in the epic tab', async () => {
+    renderPanel(linked(61), { epics: [EPIC_LINKED] });
+    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
+    expect(screen.getByText('Epic plan text.')).toBeTruthy();
+  });
+
+  it('shows the epic conditions in the dock at the bottom, folded until opened', async () => {
+    const { container } = renderPanel(linked(62), { epics: [EPIC_LINKED] });
+    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
+    const dock = container.querySelector('.detail__dock') as HTMLElement;
+    const head = within(dock).getByRole('button', { name: /^Acceptance conditions/ });
+    expect(head.getAttribute('aria-expanded')).toBe('false');
+    await userEvent.click(head);
+    expect(within(dock).getByText('Epic condition')).toBeTruthy();
+  });
+
+  it('shows that the epic is still loading, and offers to try again when it cannot be read', async () => {
+    const onRetryEpics = vi.fn();
+    const { rerender } = renderPanel(linked(63), { epics: undefined });
+    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
+    expect(screen.getByText('Loading the epic…')).toBeTruthy();
+
+    rerender(
+      <DetailPanel
+        projectId={PROJECT_A.id}
+        card={linked(63)}
+        onClose={noop}
+        onRemove={noRemove}
+        epics={[]}
+        epicsFailed
+        onRetryEpics={onRetryEpics}
+      />,
+    );
+    expect(screen.getByRole('alert').textContent).toContain('The epic could not be read.');
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetryEpics).toHaveBeenCalledTimes(1);
   });
 });

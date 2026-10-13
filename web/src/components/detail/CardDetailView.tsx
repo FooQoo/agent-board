@@ -3,7 +3,7 @@ import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { historyItems } from '../../lib/history';
 import { stateLabel } from '../../lib/format';
-import type { Card, Problem, ProjectId } from '../../types';
+import type { Card, Epic, Problem, ProjectId } from '../../types';
 import { AssigneeLabel } from '../AssigneeLabel';
 import { HistoryTimeline } from '../HistoryTimeline';
 import { StatusLabel } from '../StatusLabel';
@@ -11,6 +11,8 @@ import { BodyDocumentView } from './BodyDocumentView';
 import { DecisionRequestContent } from './DecisionRequestContent';
 import { type DetailTab, DetailTabs, panelId, tabId } from './DetailTabs';
 import { DraftStatus } from './DraftStatus';
+import { EpicTabView, type EpicTabStatus } from './EpicTabView';
+import { ConditionsDock } from '../acceptance/ConditionsDock';
 import '../../styles/detail.css';
 
 export interface CardDetailViewProps {
@@ -22,6 +24,11 @@ export interface CardDetailViewProps {
   attachmentUrl?: (id: string) => string;
   evidenceUrl?: (id: string) => string;
   problems?: readonly Problem[];
+  /** The epics of the project, when they are read. Undefined while they load. */
+  epics?: readonly Epic[];
+  /** The epics could not be read: the epic tab offers to try again. */
+  epicsFailed?: boolean;
+  onRetryEpics?: () => void;
   statusLabels?: 'pc' | 'monitor';
   ownerName?: string;
   readOnlyRequest?: boolean;
@@ -40,6 +47,9 @@ export function CardDetailView({
   attachmentUrl = (id) => `/api/projects/${projectId}/cards/${card.id}/attachments/${id}`,
   evidenceUrl,
   problems = [],
+  epics,
+  epicsFailed = false,
+  onRetryEpics,
   statusLabels = 'pc',
   ownerName,
   readOnlyRequest = true,
@@ -52,6 +62,15 @@ export function CardDetailView({
   const ownProblems = problems.filter((problem) =>
     problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
   );
+  // The card's epic is looked up in the project's epics; a card without one has no epic tab content.
+  const epic = card.epic ? (epics?.find((item) => item.id === card.epic?.id) ?? null) : null;
+  const epicStatus: EpicTabStatus = !card.epic
+    ? 'none'
+    : epic
+      ? 'ready'
+      : epics === undefined && !epicsFailed
+        ? 'loading'
+        : 'failed';
   return (
     <aside className="detail detail-view" aria-label={t('detail.title')}>
       <div className="detail__top">
@@ -104,7 +123,6 @@ export function CardDetailView({
       >
         <BodyDocumentView
           body={card.body}
-          acceptance={card.acceptance}
           acceptanceError={card.acceptanceError}
           problems={ownProblems}
           attachments={card.attachments ?? []}
@@ -118,12 +136,31 @@ export function CardDetailView({
       <div
         className="detail__viewport"
         role="tabpanel"
+        id={panelId(idBase, 'epic')}
+        aria-labelledby={tabId(idBase, 'epic')}
+        hidden={tab !== 'epic'}
+      >
+        <EpicTabView projectId={projectId} epic={epic} status={epicStatus} onRetry={onRetryEpics} />
+      </div>
+      <div
+        className="detail__viewport"
+        role="tabpanel"
         id={panelId(idBase, 'history')}
         aria-labelledby={tabId(idBase, 'history')}
         hidden={tab !== 'history'}
       >
         <HistoryTimeline events={card.history} />
       </div>
+      {(tab === 'description'
+        ? !card.acceptanceError
+        : tab === 'epic' && epicStatus === 'ready') && (
+        <div className="detail__dock">
+          <ConditionsDock
+            items={tab === 'epic' ? (epic?.acceptance ?? []) : card.acceptance}
+            readOnly
+          />
+        </div>
+      )}
     </aside>
   );
 }

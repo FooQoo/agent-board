@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { progressOf } from '../../lib/acceptance';
 import type { AcceptanceItem } from '../../types';
 import { AcceptanceEditor } from './AcceptanceEditor';
+import { AcceptanceView } from './AcceptanceView';
 import './acceptance-edit.css';
 
 /**
@@ -15,12 +16,15 @@ export function ConditionsDock({
   items,
   onChange,
   disabled = false,
+  readOnly = false,
 }: {
   /** Where the outline's link goes. */
   id?: string;
   items: readonly AcceptanceItem[];
-  onChange: (items: AcceptanceItem[]) => void;
+  onChange?: (items: AcceptanceItem[]) => void;
   disabled?: boolean;
+  /** The detail panel shows the conditions and does not edit them. */
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -46,7 +50,11 @@ export function ConditionsDock({
         </span>
       </button>
       <div id={bodyId} className="conditions-dock__body" hidden={!open}>
-        <AcceptanceEditor id={id} items={items} onChange={onChange} disabled={disabled} />
+        {readOnly || onChange === undefined ? (
+          <AcceptanceView items={items} />
+        ) : (
+          <AcceptanceEditor id={id} items={items} onChange={onChange} disabled={disabled} />
+        )}
       </div>
     </section>
   );

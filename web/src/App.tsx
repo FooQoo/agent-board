@@ -296,6 +296,11 @@ export function App({ initial }: AppProps) {
               }
               operations={operations}
               problems={archiveVisible ? [] : (boardData?.problems ?? [])}
+              epics={boardData?.epics}
+              epicsFailed={boardData === null && isProjectId(activeId)}
+              onRetryEpics={() => {
+                if (isProjectId(activeId)) refreshProject(activeId);
+              }}
               onEdit={() => {
                 if (selected?.isDraft) openDialog({ kind: 'edit', card: selected });
               }}
