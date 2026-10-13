@@ -44,7 +44,7 @@ for (const locale of ['en', 'ja'] as const) {
       expect(await editorValue(content)).toBe('First\n\nSecond');
       await expect(content.locator('.crepe-placeholder')).toHaveCount(0);
       await page.keyboard.press('ArrowUp');
-      await page.keyboard.press('Home');
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowLeft' : 'Home');
       await page.keyboard.type('Start ');
       expect(await editorValue(content)).toBe('Start First\n\nSecond');
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
