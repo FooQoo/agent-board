@@ -4,7 +4,7 @@ import { agboardOk, mainProject, nextCardId, projectId, replaceFileAtomically, r
 import { waitForSync } from '../helpers/ui';
 
 const conditions = Array.from({ length: 40 }, (_, i) => `  - id: AC-${i + 1}\n    text: Condition ${i + 1}\n    done: false`).join('\n');
-const body = `---\nacceptance:\n${conditions}\n---\n\n## First heading\n\nBody starts here.\n\n${'More body text.\n\n'.repeat(60)}`;
+const body = `---\nacceptance:\n${conditions}\n---\n\n# 進行表と自動完了によるAIの操作削減\n\n## 目的・背景\n\nAIがプロジェクト全体の進行表から作業を選び、必要なエピック計画と作業記録だけを読んで進める。完了更新とプロジェクト指定の操作を減らす。\n\n## スコープ\n\n進行表、プロジェクトとフォルダの登録、エピックの進行順、Hook、自動Doneを扱う。\n\n### プロジェクトの識別\n\nフォルダの登録では \`agboard project bind NAME\` を使い、最も近い祖先の登録を参照する。\n\n${'More body text.\n\n'.repeat(60)}`;
 
 for (const mode of ['light', 'dark'] as const) {
   for (const locale of ['en', 'ja'] as const) {
@@ -44,7 +44,7 @@ for (const mode of ['light', 'dark'] as const) {
       await page.mouse.wheel(0, 3000);
       await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
       await expect(list.getByText('Work item 16', { exact: true })).toBeInViewport();
-      const imageHead = dialog.getByRole('button', { name: locale === 'ja' ? /^画像/ : /^Images/ });
+      const imageHead = dialog.getByRole('button', { name: locale === 'ja' ? /^添付画像/ : /^Attachments/ });
       await expect(imageHead.locator('.collapsible__icon')).toBeVisible();
       await expect(imageHead).toBeInViewport();
       const dock = dialog.locator('.conditions-dock');

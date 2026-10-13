@@ -77,6 +77,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--r-text);
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 600;
   line-height: 26px;
@@ -489,7 +490,7 @@
 .editor__label {
   color: var(--r-muted);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 17px;
 }
 
@@ -500,7 +501,9 @@
   border-radius: 6px;
   background: var(--r-surface);
   color: var(--r-text);
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
   line-height: 20px;
 }
 

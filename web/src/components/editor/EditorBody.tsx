@@ -195,13 +195,27 @@ export function EditorBody({
               })}
             </span>
           </div>
-          <div className="editor__box" data-over={overLimit ? 'true' : undefined}>
+          <div
+            className="editor__box"
+            data-over={overLimit ? 'true' : undefined}
+            onPointerDown={(event) => {
+              const target = event.target;
+              if (!(target instanceof Element)) return;
+              if (
+                target.closest('.ProseMirror, button, input, select, textarea, a, [role="button"]')
+              ) {
+                return;
+              }
+              editorRef.current?.focus();
+            }}
+          >
             <RichMarkdownEditor
               ref={editorRef}
               value={description}
               onChange={onDescriptionChange}
               onCursorChange={setCursor}
               aria-label={body}
+              placeholder={t('editor.descriptionPlaceholder')}
               disabled={disabled}
               resolveAttachment={(id) =>
                 attachments.find((attachment) => attachment.id === id)?.url ?? null

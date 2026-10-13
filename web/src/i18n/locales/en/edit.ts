@@ -25,6 +25,7 @@ export const editEn = {
     titleLabel: 'Title',
     titlePlaceholder: 'Title (up to 100 characters)',
     descriptionLabel: 'Description (Markdown)',
+    descriptionPlaceholder: 'Write a description',
     assigneeLabel: 'Assignee',
     assigneeAi: 'AI',
     assigneeUser: 'User',

@@ -4,11 +4,14 @@
  */
 
 .md {
-  --md-size: 13px;
-  --md-leading: 1.6;
-  --md-gap: 8px;
+  --md-size: 14px;
+  --md-leading: 1.75;
+  --md-gap: 12px;
+  --md-section-gap: 24px;
   min-width: 0;
+  font-family: var(--font-sans);
   font-size: var(--md-size);
+  font-weight: 400;
   line-height: var(--md-leading);
   color: var(--r-text2);
   overflow-wrap: anywhere;
@@ -16,11 +19,13 @@
 
 .md--wide {
   --md-size: 14px;
-  --md-leading: 1.65;
-  --md-gap: 10px;
+  --md-leading: 1.8;
+  --md-gap: 14px;
+  --md-section-gap: 28px;
 }
 
-.md > * + * {
+.md > * + *,
+.md :where(.ProseMirror) > * + * {
   margin-top: var(--md-gap);
 }
 
@@ -36,41 +41,56 @@
 }
 
 .md h1 {
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .md h2 {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .md h3,
 .md h4,
 .md h5,
 .md h6 {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .md--wide h1 {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .md--wide h2 {
-  font-size: 16px;
+  font-size: 18px;
 }
 
-.md--wide > * + h2,
-.md--wide > * + h1 {
+.md > * + :is(h1, h2, h3, h4, h5, h6),
+.md :where(.ProseMirror) > * + :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: var(--md-section-gap);
+}
+
+.md > :is(h1, h2, h3, h4, h5, h6) + *,
+.md :where(.ProseMirror) > :is(h1, h2, h3, h4, h5, h6) + * {
+  margin-top: 10px;
+}
+
+.md > :is(h1, h2, h3, h4, h5, h6) + :is(h1, h2, h3, h4, h5, h6),
+.md :where(.ProseMirror) > :is(h1, h2, h3, h4, h5, h6) + :is(h1, h2, h3, h4, h5, h6) {
   margin-top: 18px;
 }
 
+/* The cursor decoration is outside the text flow and must not add a first-block gap. */
+.md :where(.ProseMirror) > :nth-child(1 of :not(.prosemirror-virtual-cursor)) {
+  margin-top: 0;
+}
+
 .md--wide h3 {
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .md--wide h4,
 .md--wide h5,
 .md--wide h6 {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .md strong {
@@ -110,11 +130,7 @@
 }
 
 .md li {
-  line-height: 1.5;
-}
-
-.md--wide li {
-  line-height: 1.65;
+  line-height: var(--md-leading);
 }
 
 .md--wide li + li {
@@ -324,9 +340,9 @@
 .md-chapter {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
-  padding: 10px 0;
+  padding: 18px 0;
   border-bottom: 1px solid var(--r-border);
 }
 
@@ -339,11 +355,19 @@
   min-width: 0;
   margin: 0;
   flex: 1 1 auto;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
-  line-height: 19px;
+  line-height: 1.4;
   color: var(--r-text);
   overflow-wrap: anywhere;
+}
+
+.md-chapter:first-child {
+  padding-top: 0;
+}
+
+.md-sections--wide .md-chapter__title {
+  font-size: 18px;
 }
 
 /* A completion condition: the checkbox shows the state only; its detail lines sit under it. */

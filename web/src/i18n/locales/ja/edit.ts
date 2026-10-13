@@ -25,6 +25,7 @@ export const editJa = {
     titleLabel: 'タイトル',
     titlePlaceholder: 'タイトル(100文字まで)',
     descriptionLabel: '説明(Markdown)',
+    descriptionPlaceholder: '本文を入力',
     assigneeLabel: '担当',
     assigneeAi: 'AI',
     assigneeUser: 'ユーザ',

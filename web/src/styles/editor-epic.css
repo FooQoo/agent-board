@@ -65,7 +65,7 @@
 
 /*
  * The rich body in the editor dialog: the Crepe toolbar and link tooltip take the app's tokens, and
- * the text follows the design's sizes (body 17px, H2 31px with a numbered chapter, H3 23px).
+ * the body and heading hierarchy follow the shared Markdown typography.
  */
 .rich-markdown {
   --crepe-color-background: var(--r-surface);
