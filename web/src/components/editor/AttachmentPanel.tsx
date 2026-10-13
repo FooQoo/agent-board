@@ -20,6 +20,7 @@ export interface AttachmentPanelProps {
   notice?: AttachmentNotice | null;
   disabled?: boolean;
   className?: string;
+  showHeader?: boolean;
 }
 
 function noticeText(notice: AttachmentNotice, t: TFunction): string {
@@ -46,6 +47,7 @@ export function AttachmentPanel({
   notice = null,
   disabled = false,
   className = '',
+  showHeader = true,
 }: AttachmentPanelProps) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
@@ -78,25 +80,27 @@ export function AttachmentPanel({
       aria-label={t('editor.attachmentsLabel')}
       onPaste={onPaste}
     >
-      <div className="editor-attachments__header">
-        <span className="editor-attachments__title">
-          <PaperclipIcon aria-hidden="true" />
-          {t('editor.attachments')}
-        </span>
-        <span className="editor-attachments__count">{attachments.length}</span>
-        {onClose && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="editor-attachments__close"
-            aria-label={t('editor.closeAttachments')}
-            onClick={onClose}
-          >
-            <XIcon aria-hidden="true" />
-          </Button>
-        )}
-      </div>
+      {showHeader && (
+        <div className="editor-attachments__header">
+          <span className="editor-attachments__title">
+            <PaperclipIcon aria-hidden="true" />
+            {t('editor.attachments')}
+          </span>
+          <span className="editor-attachments__count">{attachments.length}</span>
+          {onClose && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="editor-attachments__close"
+              aria-label={t('editor.closeAttachments')}
+              onClick={onClose}
+            >
+              <XIcon aria-hidden="true" />
+            </Button>
+          )}
+        </div>
+      )}
       <Button
         type="button"
         variant="outline"

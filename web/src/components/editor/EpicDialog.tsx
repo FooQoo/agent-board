@@ -17,6 +17,7 @@ import { EpicProgressList } from './EpicProgressList';
 import { EpicColorPicker } from './EpicColorPicker';
 import { useAttachmentState } from './useAttachmentState';
 import { useMultipartRequest } from './useMultipartRequest';
+import { ListOrderedIcon } from 'lucide-react';
 
 /** The writes an epic dialog makes, one at a time and in this order by the dialog. */
 export interface EpicApi {
@@ -297,6 +298,9 @@ export function EpicDialog({
             count={rows.length}
             open={panel === 'progress'}
             onToggle={() => setPanel(panel === 'progress' ? 'images' : 'progress')}
+            icon={
+              <ListOrderedIcon aria-hidden="true" focusable="false" className="collapsible__icon" />
+            }
           >
             <EpicProgressList
               cards={rows}

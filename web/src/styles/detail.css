@@ -28,17 +28,20 @@
 }
 
 .detail__tablist {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   flex: 1 1 auto;
   align-self: stretch;
   min-width: 0;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .detail__tab {
-  display: inline-flex;
+  display: flex;
   flex: none;
   align-items: center;
+  justify-content: center;
+  min-width: 0;
   gap: 6px;
   height: 35px;
   padding: 8px 14px 6px;
@@ -387,7 +390,7 @@
 /* Four labels stay reachable in narrow detail columns; actions remain in the header. */
 @container (max-width: 420px) {
   .detail__tab {
-    padding-inline: 6px;
+    padding-inline: 4px;
     font-size: 12px;
   }
   .detail__tab svg {
@@ -397,7 +400,7 @@
 
 @container (max-width: 260px) {
   .detail__tab {
-    padding-inline: 4px;
+    padding-inline: 2px;
     font-size: 11px;
   }
 }

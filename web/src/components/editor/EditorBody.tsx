@@ -217,7 +217,7 @@ export function EditorBody({
           {sidebar}
           {onAttachmentsOpenChange ? (
             <CollapsibleSection
-              title={t('epic.images')}
+              title={t('editor.attachments')}
               icon={
                 <PaperclipIcon aria-hidden="true" focusable="false" className="collapsible__icon" />
               }
@@ -232,6 +232,7 @@ export function EditorBody({
                 onInsert={insertImage}
                 notice={attachmentNotice}
                 disabled={disabled}
+                showHeader={false}
               />
             </CollapsibleSection>
           ) : (
