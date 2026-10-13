@@ -60,11 +60,8 @@ export function createMonitorHome(): string {
     move(home, 'Alpha', id, 'doing', 'Start work');
     state(home, 'Alpha', id, 'running', 'Working now');
   }
-  for (let index = 0; index < 8; index++) {
-    const id = card(home, 'Alpha', `Alpha completed ${index + 1}`, `Completed detail ${index + 1}.`);
-    move(home, 'Alpha', id, 'doing', 'Start work');
-    move(home, 'Alpha', id, 'done', 'Complete work');
-  }
+  const firstCompleted = card(home, 'Alpha', 'Alpha completed 1', 'Completed detail 1.');
+  move(home, 'Alpha', firstCompleted, 'doing', 'Start work');
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
     'base64',
@@ -82,6 +79,12 @@ export function createMonitorHome(): string {
     ), '--json',
   ]);
   run(home, ['--project', 'Alpha', 'evidence', 'add', '4', evidenceFile, '--name', 'run.log', '--json']);
+  move(home, 'Alpha', firstCompleted, 'done', 'Complete work');
+  for (let index = 1; index < 8; index++) {
+    const id = card(home, 'Alpha', `Alpha completed ${index + 1}`, `Completed detail ${index + 1}.`);
+    move(home, 'Alpha', id, 'doing', 'Start work');
+    move(home, 'Alpha', id, 'done', 'Complete work');
+  }
   const draftId = card(home, 'Alpha', 'Alpha draft card', 'Draft content that must remain visible.');
   const alphaFolder = workspace('Alpha', home).folder;
   const draftPath = path.join(alphaFolder, 'tasks', String(draftId), 'task.json');
