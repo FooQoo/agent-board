@@ -8,7 +8,7 @@
 
 AI agents register work for themselves and users. Users update cards and answer decisions.
 
-[日本語](README.ja.md) · [Usage guide](docs/usage.md) · [Contributing](CONTRIBUTING.md) · [GitHub repository](https://github.com/FooQoo/agent-board)
+[日本語](README.ja.md) · [Usage guide](https://fooqoo.github.io/agent-board/guide/) · [Contributing](CONTRIBUTING.md) · [GitHub repository](https://github.com/FooQoo/agent-board)
 
 ![Local only](https://img.shields.io/badge/data-local%20only-1f6feb)
 ![Plain files](https://img.shields.io/badge/storage-plain%20files-1f6feb)
@@ -37,7 +37,7 @@ flowchart LR
 
 **3. Local Markdown for plans, results, and evidence.** Keep epic plans in `PLAN.md`, tasks in `TASK.md`, and images and evidence alongside them. Edit the files directly or use the rich Markdown editor; the board follows file changes. Everything stays in your local data area, with no account or hosted service required.
 
-See the [usage guide](docs/usage.md) for editing, attachments, archiving, and settings.
+See the [usage guide](https://fooqoo.github.io/agent-board/guide/) for editing, attachments, archiving, and settings.
 
 <details>
 <summary>Epic progress and mobile drawer screenshots</summary>
@@ -60,7 +60,7 @@ pnpm --dir web build
 cargo install --path . --locked --force
 ```
 
-Keep `~/.cargo/bin` (or `$CARGO_HOME/bin`) on your `PATH`. Build the web UI before installing: `agboard` embeds it. See the [usage guide](docs/usage.md#installation-and-updates) for updates and installation checks.
+Keep `~/.cargo/bin` (or `$CARGO_HOME/bin`) on your `PATH`. Build the web UI before installing: `agboard` embeds it. See the [usage guide](https://fooqoo.github.io/agent-board/guide/getting-started) for updates and installation checks.
 
 ## Get started
 
@@ -73,7 +73,7 @@ Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/), select your project, and 
 
 ## Documentation
 
-- [Usage guide](docs/usage.md) — browser operations, CLI examples, agent workflow, shared files, and backups.
-- [Mobile monitor](docs/mobile-monitor.md) — LAN and Tailscale access, HTTPS, and phone certificate setup.
+- [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
+- [Mobile monitor](https://fooqoo.github.io/agent-board/guide/mobile-monitor) — LAN and Tailscale access, HTTPS, and phone certificate setup.
 - [Claude Code and Codex integration](integrations/README.md) — hooks and agent setup.
 - [Contributing](CONTRIBUTING.md) — development and verification.

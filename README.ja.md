@@ -8,7 +8,7 @@
 
 AIが作業を登録し、ユーザーも状態の更新や判断への回答を行います。
 
-[English](README.md) · [使い方（英語）](docs/usage.md) · [開発に参加する](CONTRIBUTING.ja.md) · [GitHubリポジトリ](https://github.com/FooQoo/agent-board)
+[English](README.md) · [使い方](https://fooqoo.github.io/agent-board/ja/guide/) · [開発に参加する](CONTRIBUTING.ja.md) · [GitHubリポジトリ](https://github.com/FooQoo/agent-board)
 
 ![ローカル完結](https://img.shields.io/badge/data-local%20only-1f6feb)
 ![プレーンファイル](https://img.shields.io/badge/storage-plain%20files-1f6feb)
@@ -37,7 +37,7 @@ flowchart LR
 
 **3. 計画・結果・証跡をローカルのMarkdownで管理する。** エピックの計画は`PLAN.md`、タスクは`TASK.md`に保存し、画像や証跡も隣に置きます。ファイルの直接編集とMarkdownエディターの両方に対応し、変更はボードに反映されます。データはローカルに保存され、アカウントやクラウドサービスは不要です。
 
-編集・画像添付・アーカイブ・設定の詳細は[使い方ガイド（英語）](docs/usage.md)を参照してください。
+編集・画像添付・アーカイブ・設定の詳細は[使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/)を参照してください。
 
 <details>
 <summary>エピックの進行表とモバイルの画面を見る</summary>
@@ -60,7 +60,7 @@ pnpm --dir web build
 cargo install --path . --locked --force
 ```
 
-`~/.cargo/bin`（または`$CARGO_HOME/bin`）を`PATH`に追加してください。`agboard`はWeb画面を含むため、先にWeb画面をビルドします。更新や導入確認は[使い方ガイド（英語）](docs/usage.md#installation-and-updates)を参照してください。
+`~/.cargo/bin`（または`$CARGO_HOME/bin`）を`PATH`に追加してください。`agboard`はWeb画面を含むため、先にWeb画面をビルドします。更新や導入確認は[使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/getting-started)を参照してください。
 
 ## はじめかた
 
@@ -73,7 +73,7 @@ agboard serve --port 7420
 
 ## ドキュメント
 
-- [使い方ガイド（英語）](docs/usage.md) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
-- [モバイルモニター（英語）](docs/mobile-monitor.md) — LAN・Tailscale接続、HTTPS、スマホの証明書設定。
+- [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
+- [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/mobile-monitor) — LAN・Tailscale接続、HTTPS、スマホの証明書設定。
 - [Claude Code・Codexとの連携（英語）](integrations/README.md) — Hookとエージェントの設定。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

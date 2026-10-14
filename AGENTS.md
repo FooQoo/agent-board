@@ -2,7 +2,7 @@
 
 ## Repository conventions
 
-- Keep source code, code comments, repository instructions, and the English README (`README.md`) in English. Localized UI resources and `README.ja.md` may use their target language; all other documentation remains in English.
+- Keep source code, code comments, repository instructions, and the English README (`README.md`) in English. Localized UI resources, `README.ja.md`, `CONTRIBUTING.ja.md`, and the Japanese documentation site pages under `docs/ja/**` may use their target language; English is the source, so update the Japanese translation in the same change. All other documentation remains in English.
 - Keep implementation and tests in this repository.
 
 ## UI consistency
@@ -30,6 +30,8 @@ pnpm --dir web typecheck
 pnpm --dir web check
 TZ=UTC pnpm --dir web test
 ```
+
+When you change the documentation site (`docs/`), also run `pnpm --dir docs install` and `pnpm --dir docs build`; the build fails on dead links. Preview it with `pnpm --dir docs dev --port <port>` on a port from your assigned range. Regenerate the guide screenshots with `node e2e/scripts/docs-screenshots.mjs` and the demo videos with `node e2e/scripts/demo-video.mjs` after building the web UI and CLI; see `CONTRIBUTING.md` for details.
 
 - Set `TZ=UTC` for tests so displayed times are fixed.
 - Tests must never touch the real data area (`~/Library/Application Support/agboard/` on macOS). Point `AGBOARD_HOME` at a temporary directory, for example `AGBOARD_HOME=$(mktemp -d)`.
