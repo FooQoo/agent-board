@@ -36,7 +36,7 @@ export const allPages: { lang: Lang; file: PageFile; path: string }[] = (['en', 
 );
 
 // Pages that must render a Mermaid diagram.
-export const mermaidFiles: PageFile[] = ['home', 'index', 'decisions', 'agents'];
+export const mermaidFiles: PageFile[] = ['index', 'decisions', 'agents'];
 
 // The six new guide screenshots (docs/images/guide, twelve files with the Japanese set)
 // and the guide page that shows each one.
