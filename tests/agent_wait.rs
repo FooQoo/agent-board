@@ -142,9 +142,11 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     assert_eq!(snapshot["cards"][0]["title"], "Answer the user");
     assert_eq!(snapshot["cards"][0]["agentStatus"], "idle");
     assert_eq!(snapshot["cards"][0]["history"].as_array().unwrap().len(), 4);
-    assert_eq!(
-        snapshot["cards"][0]["history"][3]["reason"],
-        "Keep the current behavior and explain the tradeoff."
+    assert!(
+        snapshot["cards"][0]["history"][3]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("Answer: Keep the current behavior and explain the tradeoff.")
     );
     let resume = agboard(
         home.path(),

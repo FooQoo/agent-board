@@ -11,11 +11,12 @@ use super::super::FileStore;
 use super::super::frontmatter;
 use super::super::io;
 use super::super::layout;
-use super::super::model::{CardView, EpicFile, EpicUpdate, EpicView, HistoryKind, NewEpic};
+use super::super::model::{CardView, EpicFile, EpicUpdate, EpicView, NewEpic};
 use super::super::reader;
 use super::super::validate::{self, EpicId};
 use super::{
-    Transition, ensure_ai_card_not_done, lock_project, save_task, stamp, transition_event,
+    HistoryKind, Transition, ensure_ai_card_not_done, lock_project, save_task, stamp,
+    transition_event,
 };
 use crate::domain::{Actor, Changed, ProjectId};
 use crate::error::AgboardError;
@@ -363,19 +364,20 @@ impl FileStore {
             });
         }
         let at = stamp(now);
-        let mut event = transition_event(Transition {
+        let reason = format!(
+            "Changed epic from {} to {}.",
+            task.epic_id.as_deref().unwrap_or("none"),
+            next.as_deref().unwrap_or("none")
+        );
+        let event = transition_event(Transition {
             kind: HistoryKind::Epic,
-            actor,
-            reason: None,
+            reason: Some(&reason),
             from_card: Some(task.card_status),
             to_card: task.card_status,
             from_agent: Some(task.agent_status),
             to_agent: task.agent_status,
-            request_id: None,
             at,
         })?;
-        event.from_epic_id = task.epic_id.clone();
-        event.to_epic_id = next.clone();
         task.history.push(event);
         task.epic_id = next;
         task.updated_at = at;

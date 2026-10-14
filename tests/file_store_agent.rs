@@ -198,14 +198,7 @@ fn a_running_and_idle_card_in_doing_keeps_its_lane_and_records_each_reason() {
     assert_eq!(reported.value.card_status, Column::Doing);
     assert_eq!(reported.value.agent_status, RunState::Idle);
 
-    let kinds: Vec<String> = fx
-        .history(id)
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|e| e["kind"].as_str().unwrap().to_string())
-        .collect();
-    assert_eq!(kinds, vec!["created", "lane", "agent", "agent"]);
+    assert_eq!(fx.history(id).as_array().unwrap().len(), 4);
     let reasons: Vec<String> = fx
         .history(id)
         .as_array()
@@ -241,7 +234,7 @@ fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
             later(),
         )
         .unwrap();
-    let request = pending.value.pending_request_id.clone().unwrap();
+    assert!(pending.value.pending_request_id.is_some());
     assert_eq!(pending.value.pending_reason.as_deref(), Some("Which way?"));
 
     let done = fx
@@ -258,10 +251,8 @@ fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
     assert_eq!(done.value.agent_status, RunState::Idle);
     assert!(done.value.pending_request_id.is_none());
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
-    assert_eq!(last["kind"], "lane");
-    assert_eq!(last["requestId"], request);
-    assert_eq!(last["fromAgentStatus"], "pending");
-    assert_eq!(last["toAgentStatus"], "idle");
+    assert_eq!(last["reason"], "Verified");
+    assert_eq!(last.as_object().unwrap().len(), 2);
 }
 
 #[test]
@@ -425,7 +416,7 @@ fn a_repeated_state_is_not_a_change_even_with_another_reason() {
 }
 
 #[test]
-fn a_blank_reason_is_refused_and_changes_nothing() {
+fn a_blank_reason_generates_a_state_aware_default() {
     let fx = fixture();
     let id = fx.ai_card("work");
     fx.store
@@ -437,8 +428,7 @@ fn a_blank_reason_is_refused_and_changes_nothing() {
             later(),
         )
         .unwrap();
-    let before = fx.bytes(id);
-    let err = fx
+    let changed = fx
         .store
         .set_agent_status(
             &fx.project,
@@ -448,9 +438,12 @@ fn a_blank_reason_is_refused_and_changes_nothing() {
             None,
             later(),
         )
-        .unwrap_err();
-    assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
-    assert_eq!(fx.bytes(id), before);
+        .unwrap();
+    assert!(changed.changed);
+    assert_eq!(
+        changed.value.history.last().unwrap().reason,
+        "Changed agent from idle to running in Doing."
+    );
 }
 
 #[test]

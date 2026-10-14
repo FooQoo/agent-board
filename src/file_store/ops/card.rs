@@ -11,13 +11,13 @@ use serde::Serialize;
 use super::super::history::{ParseMode, compose_task, parse_task};
 use super::super::io;
 use super::super::layout;
-use super::super::model::{CardView, HistoryKind, HistoryRecord, TaskFile, TaskMetadata};
+use super::super::model::{CardView, HistoryRecord, TaskFile, TaskMetadata};
 use super::super::reader;
 use super::super::validate;
 use super::super::{FileStore, TaskTextParts};
 use super::{
-    Transition, ensure_ai_card_not_done, lane_end, lock_project, save_project, save_task,
-    save_task_with_markdown, stamp, transition_event, write_parts, write_text,
+    HistoryKind, Transition, ensure_ai_card_not_done, lane_end, lock_project, save_project,
+    save_task, save_task_with_markdown, stamp, transition_event, write_parts, write_text,
 };
 use crate::domain::{
     Actor, Changed, Column, NewCard, ProjectId, RunState, normalize_and_validate_description,
@@ -97,6 +97,39 @@ fn view(shared: &Path, project: &ProjectId, id: i64) -> Result<CardView, Agboard
 }
 
 impl FileStore {
+    /// Append an AI work note using the same immutable/draft/archive guards as editing.
+    pub fn add_history(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        reason: Option<&str>,
+        now: DateTime<Utc>,
+    ) -> Result<CardView, AgboardError> {
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_some() {
+            return Err(AgboardError::CardArchived { id });
+        }
+        ensure_ai_card_not_done(&task, Actor::Ai)?;
+        if task.is_draft {
+            return Err(AgboardError::CardIsDraft { id });
+        }
+        let reason = super::reason_or_default(
+            reason,
+            format!(
+                "Progress note in {}; agent is {}.",
+                task.card_status.label(),
+                task.agent_status.as_str()
+            ),
+        )?;
+        let at = stamp(now);
+        task.history.push(HistoryRecord { at, reason });
+        task.updated_at = at;
+        save_task(shared, &project_dir, &task)?;
+        view(shared, project, id)
+    }
+
     /// Create a card in the To Do lane at the end. The number is reserved in
     /// `project.json` before the card folder is written, so a failed write
     /// leaves a gap in the numbers and never reuses one. A body that is not
@@ -126,7 +159,7 @@ impl FileStore {
         let position = lane_end(shared, project, Column::Todo)?;
         let at = stamp(now);
         let task = TaskFile {
-            format_version: 2,
+            format_version: 3,
             id,
             title,
             assignee: new.assignee,
@@ -137,20 +170,21 @@ impl FileStore {
             is_draft: new.is_draft,
             archived_at: None,
             pending_request_id: None,
+            pending_request: None,
+            request_answers: Vec::new(),
             created_at: at,
             updated_at: at,
             agent_status_changed_at: at,
+            card_status_changed_at: at,
             attachments: Vec::new(),
             evidence: Vec::new(),
             history: vec![transition_event(Transition {
                 kind: HistoryKind::Created,
-                actor: new.actor,
                 reason: None,
                 from_card: None,
                 to_card: Column::Todo,
                 from_agent: None,
                 to_agent: RunState::Idle,
-                request_id: None,
                 at,
             })?],
         };
@@ -398,21 +432,19 @@ impl FileStore {
         }
         let at = stamp(now);
         let old_agent = task.agent_status;
-        let old_request = task.pending_request_id.clone();
         let event = transition_event(Transition {
             kind: HistoryKind::Archive,
-            actor: Actor::Human,
             reason: Some(ARCHIVE_REASON),
             from_card: Some(task.card_status),
             to_card: task.card_status,
             from_agent: Some(old_agent),
             to_agent: RunState::Idle,
-            request_id: old_request.as_deref(),
             at,
         })?;
         task.archived_at = Some(at);
         task.agent_status = RunState::Idle;
         task.pending_request_id = None;
+        task.pending_request = None;
         task.updated_at = at;
         if old_agent != RunState::Idle {
             task.agent_status_changed_at = at;
@@ -445,13 +477,11 @@ impl FileStore {
         let position = lane_end(shared, project, task.card_status)?;
         let event = transition_event(Transition {
             kind: HistoryKind::Restore,
-            actor: Actor::Human,
             reason: Some(RESTORE_REASON),
             from_card: Some(task.card_status),
             to_card: task.card_status,
             from_agent: Some(RunState::Idle),
             to_agent: RunState::Idle,
-            request_id: None,
             at,
         })?;
         task.archived_at = None;
@@ -550,18 +580,19 @@ fn draft_event(
     is_draft: bool,
     at: DateTime<Utc>,
 ) -> Result<HistoryRecord, AgboardError> {
-    let mut event = transition_event(Transition {
+    let event = transition_event(Transition {
         kind: HistoryKind::Draft,
-        actor: Actor::Human,
-        reason: None,
+        reason: Some(if is_draft {
+            "Marked card as draft."
+        } else {
+            "Finalized card draft."
+        }),
         from_card: Some(task.card_status),
         to_card: task.card_status,
         from_agent: Some(task.agent_status),
         to_agent: task.agent_status,
-        request_id: None,
         at,
     })?;
-    event.is_draft = Some(is_draft);
     Ok(event)
 }
 
@@ -637,21 +668,19 @@ impl FileStore {
                 continue;
             }
             let old_agent = task.agent_status;
-            let old_request = task.pending_request_id.clone();
             let event = transition_event(Transition {
                 kind: HistoryKind::Archive,
-                actor: Actor::Human,
                 reason: Some(ARCHIVE_REASON),
                 from_card: Some(task.card_status),
                 to_card: task.card_status,
                 from_agent: Some(old_agent),
                 to_agent: RunState::Idle,
-                request_id: old_request.as_deref(),
                 at,
             })?;
             task.archived_at = Some(at);
             task.agent_status = RunState::Idle;
             task.pending_request_id = None;
+            task.pending_request = None;
             task.updated_at = at;
             if old_agent != RunState::Idle {
                 task.agent_status_changed_at = at;

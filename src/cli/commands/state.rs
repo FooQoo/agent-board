@@ -12,7 +12,7 @@ use crate::cli::{Context, Outcome};
 use crate::domain::{ChangeContext, RunState, validate_work_reason};
 use crate::error::{AgboardError, FileAction};
 use crate::file_store::Answer;
-use crate::file_store::model::{CardView, Choice, HistoryKind};
+use crate::file_store::model::{CardView, Choice};
 
 /// The JSON of `--request-json`: a question and zero to ten choices.
 #[derive(Debug, Deserialize)]
@@ -60,10 +60,10 @@ fn wait_for_resolution(
         let snapshot = ctx.files.board(&project_id)?;
         let card = ctx.files.card(&project_id, id)?;
         if card.pending_request_id.as_deref() != Some(request) {
-            let answered = card
-                .history
-                .iter()
-                .any(|h| h.kind == HistoryKind::Answer && h.request_id.as_deref() == Some(request));
+            let answered = ctx
+                .files
+                .request_answer(&project_id, id, request)?
+                .is_some();
             return if answered {
                 Ok(card)
             } else {
@@ -83,19 +83,23 @@ fn wait_for_resolution(
     }
 }
 
-/// The answer to `request`, as the card's history records it.
-fn answer_of(card: &CardView, request: &str) -> Option<serde_json::Value> {
-    let record = card
-        .history
-        .iter()
-        .rev()
-        .find(|h| h.kind == HistoryKind::Answer && h.request_id.as_deref() == Some(request))?;
-    Some(json!({
-        "actor": record.actor,
-        "choiceId": record.choice_id,
-        "choiceLabel": record.choice_label,
-        "text": record.reason,
-    }))
+/// The workflow response retained for this request ID.
+fn answer_of(
+    ctx: &Context,
+    id: i64,
+    request: &str,
+) -> Result<Option<serde_json::Value>, AgboardError> {
+    Ok(ctx
+        .files
+        .request_answer(ctx.project_id()?, id, request)?
+        .map(|record| {
+            json!({
+                "actor": record.actor,
+                "choiceId": record.choice_id,
+                "choiceLabel": record.choice_label,
+                "text": record.text,
+            })
+        }))
 }
 
 fn invalid(message: &str) -> AgboardError {
@@ -142,7 +146,11 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
     let state = args.state.run_state();
     let actor = args.actor.actor();
     let reason = read_reason(args.reason.as_deref(), args.reason_file.as_deref())?
-        .map(|raw| validate_work_reason(&raw))
+        .filter(|raw| !raw.trim().is_empty())
+        .map(|raw| {
+            validate_work_reason(&raw)?;
+            Ok::<_, AgboardError>(raw)
+        })
         .transpose()?;
     let project_id = ctx.project_id()?;
     let current = ctx.files.card(project_id, args.id)?;
@@ -231,8 +239,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         )?;
         (result.value, result.changed)
     } else {
-        let reason = reason
-            .ok_or_else(|| invalid("--reason or --reason-file is required for this run state."))?;
+        let reason = reason.unwrap_or_default();
         let result = ctx.files.set_agent_status(
             project_id,
             args.id,
@@ -257,7 +264,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             .to_path_buf();
         crate::cli::run::after_commit(ctx, &dir);
         let resolved = wait_for_resolution(ctx, args.id, &request, wait_secs)?;
-        let answer = answer_of(&resolved, &request);
+        let answer = answer_of(ctx, args.id, &request)?;
         let note = answer
             .as_ref()
             .and_then(|a| a["choiceLabel"].as_str().map(str::to_string))

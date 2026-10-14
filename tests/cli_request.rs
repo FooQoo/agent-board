@@ -95,8 +95,8 @@ fn a_reason_only_request_with_zero_choices_is_saved_in_task_history() {
     assert_eq!(asked["card"]["pendingReason"], "Which database?");
     assert_eq!(asked["card"]["pendingChoices"], json!([]));
     let agent_event = asked["card"]["history"].as_array().unwrap().last().unwrap();
-    assert_eq!(agent_event["question"], "Which database?");
-    assert_eq!(agent_event["choices"], json!([]));
+    assert_eq!(agent_event["reason"], "Requested decision: Which database?");
+    assert_eq!(agent_event.as_object().unwrap().len(), 2);
 }
 
 #[test]
@@ -126,11 +126,13 @@ fn answering_with_a_choice_only_returns_the_card_to_idle_and_keeps_the_choice_in
     assert_eq!(shown["agentStatus"], "idle");
     assert_eq!(shown["pendingRequestId"], Value::Null);
     let answer = shown["history"].as_array().unwrap().last().unwrap().clone();
-    assert_eq!(answer["kind"], "answer");
-    assert_eq!(answer["requestId"], request.as_str());
-    assert_eq!(answer["choiceId"], "revise");
-    assert_eq!(answer["choiceLabel"], "Revise the plan");
-    assert_eq!(answer["reason"], Value::Null);
+    assert_eq!(answer.as_object().unwrap().len(), 2);
+    assert!(
+        answer["reason"]
+            .as_str()
+            .unwrap()
+            .contains("Selected: Revise the plan.")
+    );
 }
 
 #[test]
@@ -178,7 +180,12 @@ fn answering_with_a_note_only_is_accepted() {
     let shown = card(home.path());
     assert_eq!(shown["agentStatus"], "idle");
     let answer = shown["history"].as_array().unwrap().last().unwrap().clone();
-    assert_eq!(answer["reason"], "Use plain files.");
+    assert!(
+        answer["reason"]
+            .as_str()
+            .unwrap()
+            .contains("Answer: Use plain files.")
+    );
     assert_eq!(answer["choiceId"], Value::Null);
 }
 
@@ -212,8 +219,18 @@ fn answering_with_a_choice_and_a_note_keeps_both() {
         .last()
         .unwrap()
         .clone();
-    assert_eq!(answer["choiceId"], "proceed");
-    assert_eq!(answer["reason"], "Keep the schedule.");
+    assert!(
+        answer["reason"]
+            .as_str()
+            .unwrap()
+            .contains("Selected: Proceed as planned.")
+    );
+    assert!(
+        answer["reason"]
+            .as_str()
+            .unwrap()
+            .contains("Answer: Keep the schedule.")
+    );
 }
 
 #[test]
@@ -366,7 +383,7 @@ fn the_request_flags_are_checked_against_the_state_they_belong_to() {
         ],
     );
     assert_eq!(code, 2);
-    // A running or pending state must still say what it is for.
+    // Running accepts an automatic reason but still refuses a stale pending request.
     let (code, _, _) = agboard(
         home.path(),
         &[
@@ -379,7 +396,7 @@ fn the_request_flags_are_checked_against_the_state_they_belong_to() {
             "ai",
         ],
     );
-    assert_eq!(code, 2);
+    assert_eq!(code, 1);
 }
 
 #[test]

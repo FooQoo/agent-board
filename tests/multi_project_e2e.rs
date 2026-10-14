@@ -743,8 +743,8 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
             .as_array()
             .unwrap()
             .last()
-            .unwrap()["actor"],
-        "human"
+            .unwrap()["reason"],
+        "Starting the notes."
     );
 
     // A renamed project keeps its ID, so a page that holds the ID keeps working.
@@ -871,8 +871,13 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     assert_eq!(received["project"]["name"], "Alpha");
     assert_eq!(card(&received, 2)["agentStatus"], "idle");
     let history = card(&received, 2)["history"].as_array().unwrap().clone();
-    assert_eq!(history.last().unwrap()["reason"], "Use the MIT license.");
-    assert_eq!(history.last().unwrap()["actor"], "human");
+    assert!(
+        history.last().unwrap()["reason"]
+            .as_str()
+            .unwrap()
+            .contains("Answer: Use the MIT license.")
+    );
+    assert_eq!(history.last().unwrap().as_object().unwrap().len(), 2);
     assert!(!String::from_utf8_lossy(&output.stdout).contains("Beta"));
 
     // The agent resumes from the answer it was given, and the next hook shows active metadata only.

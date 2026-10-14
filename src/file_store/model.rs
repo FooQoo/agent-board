@@ -41,48 +41,32 @@ pub struct Choice {
     pub label: String,
 }
 
-/// The kinds of history events. Epic events are written by the epic operations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum HistoryKind {
-    Created,
-    Lane,
-    Agent,
-    Answer,
-    Draft,
-    Epic,
-    Archive,
-    Restore,
+/// One human-readable history entry, stored only in TASK.md.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HistoryRecord {
+    #[serde(with = "crate::clock::serde_utc")]
+    pub at: DateTime<Utc>,
+    pub reason: String,
 }
 
-/// One history event of a card. Fields that only some kinds use are optional
-/// and are left out of the JSON when they are empty.
+/// The current decision request, independent of the history log.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PendingRequest {
+    pub question: String,
+    pub choices: Vec<Choice>,
+}
+
+/// A workflow response retained for request-ID lookup after restart.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct HistoryRecord {
-    pub id: String,
-    pub kind: HistoryKind,
+pub struct RequestAnswer {
+    pub request_id: String,
     pub actor: Actor,
-    pub reason: Option<String>,
-    pub from_card_status: Option<Column>,
-    pub to_card_status: Column,
-    pub from_agent_status: Option<RunState>,
-    pub to_agent_status: RunState,
-    pub request_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub question: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub choices: Option<Vec<Choice>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub choice_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub choice_label: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub is_draft: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub from_epic_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub to_epic_id: Option<String>,
+    pub text: Option<String>,
     #[serde(with = "crate::clock::serde_utc")]
     pub at: DateTime<Utc>,
 }
@@ -114,18 +98,22 @@ pub struct TaskFile {
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub archived_at: Option<DateTime<Utc>>,
     pub pending_request_id: Option<String>,
+    pub pending_request: Option<PendingRequest>,
+    pub request_answers: Vec<RequestAnswer>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
     pub updated_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub card_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
     pub evidence: Vec<EvidenceRecord>,
     pub history: Vec<HistoryRecord>,
 }
 
-/// Version 2 `task.json`: operational metadata. History is stored only in TASK.md.
+/// Version 3 `task.json`: operational metadata. History is stored only in TASK.md.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct TaskMetadata {
@@ -141,12 +129,16 @@ pub struct TaskMetadata {
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub archived_at: Option<DateTime<Utc>>,
     pub pending_request_id: Option<String>,
+    pub pending_request: Option<PendingRequest>,
+    pub request_answers: Vec<RequestAnswer>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
     pub updated_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub card_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
     pub evidence: Vec<EvidenceRecord>,
 }
@@ -154,7 +146,7 @@ pub struct TaskMetadata {
 impl From<&TaskFile> for TaskMetadata {
     fn from(task: &TaskFile) -> Self {
         Self {
-            format_version: 2,
+            format_version: 3,
             id: task.id,
             title: task.title.clone(),
             assignee: task.assignee,
@@ -165,9 +157,12 @@ impl From<&TaskFile> for TaskMetadata {
             is_draft: task.is_draft,
             archived_at: task.archived_at,
             pending_request_id: task.pending_request_id.clone(),
+            pending_request: task.pending_request.clone(),
+            request_answers: task.request_answers.clone(),
             created_at: task.created_at,
             updated_at: task.updated_at,
             agent_status_changed_at: task.agent_status_changed_at,
+            card_status_changed_at: task.card_status_changed_at,
             attachments: task.attachments.clone(),
             evidence: task.evidence.clone(),
         }
@@ -189,9 +184,12 @@ impl TaskMetadata {
             is_draft: self.is_draft,
             archived_at: self.archived_at,
             pending_request_id: self.pending_request_id,
+            pending_request: self.pending_request,
+            request_answers: self.request_answers,
             created_at: self.created_at,
             updated_at: self.updated_at,
             agent_status_changed_at: self.agent_status_changed_at,
+            card_status_changed_at: self.card_status_changed_at,
             attachments: self.attachments,
             evidence: self.evidence,
             history,
@@ -199,16 +197,10 @@ impl TaskMetadata {
     }
 }
 
-/// The decision request that a card is waiting on: the history event of the
-/// pending request whose request ID the card names. The question and the
-/// choices are kept only there.
-pub fn current_request(task: &TaskFile) -> Option<&HistoryRecord> {
-    let id = task.pending_request_id.as_deref()?;
-    task.history.iter().rev().find(|event| {
-        event.kind == HistoryKind::Agent
-            && event.to_agent_status == RunState::Pending
-            && event.request_id.as_deref() == Some(id)
-    })
+/// The request currently awaiting an answer.
+pub fn current_request(task: &TaskFile) -> Option<&PendingRequest> {
+    task.pending_request_id.as_ref()?;
+    task.pending_request.as_ref()
 }
 
 /// The epic a card belongs to, resolved from the epic's own file. Renaming or
@@ -222,7 +214,7 @@ pub struct CardEpic {
 }
 
 /// A card as callers receive it: `task.json` plus `TASK.md`, with the pending
-/// question and choices resolved from history, and the epic resolved from its file.
+/// question and choices resolved from workflow metadata, and the epic resolved from its file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CardView {
@@ -253,6 +245,8 @@ pub struct CardView {
     pub updated_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub card_status_changed_at: DateTime<Utc>,
     pub history: Vec<HistoryRecord>,
 }
 

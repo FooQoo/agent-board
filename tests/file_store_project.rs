@@ -51,8 +51,8 @@ fn an_empty_data_area_gets_workspace_project_and_readme() {
         "a card's body, acceptance conditions, and operation history.",
         "TASK.md history is the source of truth for card operation history.",
         "The body after the frontmatter is free Markdown.",
-        "`formatVersion: 2`",
-        "Version 1 task files are not migrated or read by this version.",
+        "`formatVersion: 3`",
+        "Version 1 and version 2 task files are not migrated or read by this version.",
         "Agent Board never deletes old data automatically.",
     ] {
         assert!(readme.contains(rule), "README lacks {rule:?}");

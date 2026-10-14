@@ -276,17 +276,10 @@ fn setting_and_clearing_an_epic_records_history_only_for_real_changes() {
         .unwrap();
     assert!(set.changed);
     assert_eq!(set.value.epic_id.as_deref(), Some("ALPHA"));
-    let epic_events: Vec<_> = set
-        .value
-        .history
-        .iter()
-        .filter(|e| e.from_epic_id.is_some() || e.to_epic_id.is_some())
-        .collect();
-    assert_eq!(epic_events.len(), 1);
-    assert_eq!(epic_events[0].from_epic_id, None);
-    assert_eq!(epic_events[0].to_epic_id.as_deref(), Some("ALPHA"));
-    assert_eq!(epic_events[0].actor, Actor::Ai);
-
+    assert_eq!(
+        set.value.history.last().unwrap().reason,
+        "Changed epic from none to ALPHA."
+    );
     let task_before = bytes_of(f.card_dir(card.id).join("task.json"));
     let same = f
         .store
@@ -313,7 +306,10 @@ fn setting_and_clearing_an_epic_records_history_only_for_real_changes() {
     assert!(cleared.changed);
     assert_eq!(cleared.value.epic_id, None);
     assert_eq!(cleared.value.history.len(), 4);
-    assert_eq!(cleared.value.history.last().unwrap().to_epic_id, None);
+    assert_eq!(
+        cleared.value.history.last().unwrap().reason,
+        "Changed epic from BETA to none."
+    );
 }
 
 #[test]

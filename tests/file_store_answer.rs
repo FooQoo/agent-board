@@ -131,7 +131,7 @@ fn is_hex32(text: &str) -> bool {
 }
 
 #[test]
-fn a_request_with_choices_is_saved_in_history_and_shown_on_the_card() {
+fn a_request_with_choices_is_saved_in_metadata_and_shown_on_the_card() {
     let fx = fixture();
     let id = fx.working_card();
     let asked = fx
@@ -152,11 +152,15 @@ fn a_request_with_choices_is_saved_in_history_and_shown_on_the_card() {
     assert_eq!(asked.value.pending_choices, proceed_choices());
 
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
-    assert_eq!(last["kind"], "agent");
-    assert_eq!(last["toAgentStatus"], "pending");
-    assert_eq!(last["question"], "Proceed?");
-    assert_eq!(last["choices"][0]["id"], "proceed");
-    assert_eq!(last["choices"][1]["label"], "Revise the plan");
+    assert_eq!(last.as_object().unwrap().len(), 2);
+    assert!(last["reason"].as_str().unwrap().contains("Proceed?"));
+    let metadata: serde_json::Value = serde_json::from_slice(&fx.bytes(id)).unwrap();
+    assert_eq!(metadata["pendingRequest"]["question"], "Proceed?");
+    assert_eq!(metadata["pendingRequest"]["choices"][0]["id"], "proceed");
+    assert_eq!(
+        metadata["pendingRequest"]["choices"][1]["label"],
+        "Revise the plan"
+    );
 }
 
 #[test]
@@ -192,11 +196,21 @@ fn a_choice_only_answer_returns_the_card_to_idle_and_records_the_choice() {
     assert!(card.pending_choices.is_empty());
 
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
-    assert_eq!(last["kind"], "answer");
-    assert_eq!(last["requestId"], request);
-    assert_eq!(last["choiceId"], "proceed");
-    assert_eq!(last["choiceLabel"], "Proceed as planned");
-    assert!(last["reason"].is_null(), "a choice-only answer has no text");
+    assert_eq!(last.as_object().unwrap().len(), 2);
+    assert!(
+        last["reason"]
+            .as_str()
+            .unwrap()
+            .contains("Proceed as planned")
+    );
+    let response = fx
+        .store
+        .request_answer(&fx.project, id, &request)
+        .unwrap()
+        .unwrap();
+    assert_eq!(response.choice_id.as_deref(), Some("proceed"));
+    assert_eq!(response.choice_label.as_deref(), Some("Proceed as planned"));
+    assert_eq!(response.text, None);
 }
 
 #[test]
@@ -220,8 +234,16 @@ fn a_text_answer_works_for_a_reason_only_request() {
         .unwrap();
     assert_eq!(card.agent_status, RunState::Idle);
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
-    assert_eq!(last["kind"], "answer");
-    assert_eq!(last["reason"], "Use option B");
+    assert!(last["reason"].as_str().unwrap().contains("Use option B"));
+    assert_eq!(
+        fx.store
+            .request_answer(&fx.project, id, &request)
+            .unwrap()
+            .unwrap()
+            .text
+            .as_deref(),
+        Some("Use option B")
+    );
     assert!(last.get("choiceId").is_none() || last["choiceId"].is_null());
 }
 
@@ -252,9 +274,16 @@ fn an_answer_with_a_choice_and_a_note_stores_both() {
         )
         .unwrap();
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
-    assert_eq!(last["choiceId"], "revise");
-    assert_eq!(last["choiceLabel"], "Revise the plan");
-    assert_eq!(last["reason"], "Keep the tests");
+    assert!(last["reason"].as_str().unwrap().contains("Revise the plan"));
+    assert!(last["reason"].as_str().unwrap().contains("Keep the tests"));
+    let response = fx
+        .store
+        .request_answer(&fx.project, id, &request)
+        .unwrap()
+        .unwrap();
+    assert_eq!(response.choice_id.as_deref(), Some("revise"));
+    assert_eq!(response.choice_label.as_deref(), Some("Revise the plan"));
+    assert_eq!(response.text.as_deref(), Some("Keep the tests"));
 }
 
 #[test]

@@ -128,11 +128,19 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_cards() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|event| event["kind"] == "answer")
+        .find(|event| {
+            event["reason"]
+                .as_str()
+                .is_some_and(|reason| reason.contains("Answer: Keep it"))
+        })
         .unwrap();
-    assert_eq!(todo_answer["actor"], "human");
-    assert_eq!(todo_answer["choiceId"], "keep");
-    assert_eq!(todo_answer["reason"], "Keep it");
+    assert_eq!(todo_answer.as_object().unwrap().len(), 2);
+    assert!(
+        todo_answer["reason"]
+            .as_str()
+            .unwrap()
+            .contains("Answer: Keep it")
+    );
 
     let board = server.request(
         "GET",
@@ -170,7 +178,9 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_cards() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|event| event["kind"] == "answer" && event["actor"] == "human")
+            .any(|event| event["reason"]
+                .as_str()
+                .is_some_and(|reason| reason.contains("Answer: Continue")))
     );
 }
 

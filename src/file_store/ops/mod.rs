@@ -25,7 +25,7 @@ use super::history::{ParseMode, compose_task, parse_task};
 use super::io;
 use super::layout;
 use super::lock::WriteLock;
-use super::model::{HistoryKind, HistoryRecord, ProjectFile, TaskFile};
+use super::model::{HistoryRecord, ProjectFile, TaskFile};
 use super::reader;
 use super::transaction;
 use crate::clock::{format_utc, parse_utc};
@@ -47,7 +47,7 @@ pub(super) fn stamp(now: DateTime<Utc>) -> DateTime<Utc> {
     parse_utc(&format_utc(now)).unwrap_or(now)
 }
 
-/// A new 32-character lowercase hexadecimal identifier (history and request IDs).
+/// A new 32-character lowercase hexadecimal identifier (request IDs).
 pub(super) fn new_id() -> Result<String, AgboardError> {
     io::random_hex(16).map_err(|e| io::write_error("task.json", e))
 }
@@ -159,39 +159,65 @@ pub(super) fn save_task_with_markdown(
     )
 }
 
-/// The fields of one history event that depend on what happened.
+/// Context used to generate an informative default reason.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum HistoryKind {
+    Created,
+    Lane,
+    Agent,
+    Draft,
+    Epic,
+    Archive,
+    Restore,
+}
+
 pub(super) struct Transition<'a> {
     pub kind: HistoryKind,
-    pub actor: Actor,
     pub reason: Option<&'a str>,
     pub from_card: Option<Column>,
     pub to_card: Column,
     pub from_agent: Option<RunState>,
     pub to_agent: RunState,
-    pub request_id: Option<&'a str>,
     pub at: DateTime<Utc>,
 }
 
 pub(super) fn transition_event(t: Transition<'_>) -> Result<HistoryRecord, AgboardError> {
-    Ok(HistoryRecord {
-        id: new_id()?,
-        kind: t.kind,
-        actor: t.actor,
-        reason: t.reason.map(str::to_owned),
-        from_card_status: t.from_card,
-        to_card_status: t.to_card,
-        from_agent_status: t.from_agent,
-        to_agent_status: t.to_agent,
-        request_id: t.request_id.map(str::to_owned),
-        question: None,
-        choices: None,
-        choice_id: None,
-        choice_label: None,
-        is_draft: None,
-        from_epic_id: None,
-        to_epic_id: None,
-        at: t.at,
-    })
+    let fallback = match t.kind {
+        HistoryKind::Created => format!(
+            "Created card in {} with agent {}.",
+            t.to_card.label(),
+            t.to_agent.as_str()
+        ),
+        HistoryKind::Lane => format!(
+            "Moved card from {} to {}; agent is {}.",
+            t.from_card.unwrap_or(t.to_card).label(),
+            t.to_card.label(),
+            t.to_agent.as_str()
+        ),
+        HistoryKind::Agent => format!(
+            "Changed agent from {} to {} in {}.",
+            t.from_agent.unwrap_or(t.to_agent).as_str(),
+            t.to_agent.as_str(),
+            t.to_card.label()
+        ),
+        HistoryKind::Draft => "Changed card draft status.".into(),
+        HistoryKind::Epic => "Changed card epic.".into(),
+        HistoryKind::Archive => format!("Archived card in {}; agent is idle.", t.to_card.label()),
+        HistoryKind::Restore => format!("Restored card in {}.", t.to_card.label()),
+    };
+    let reason = reason_or_default(t.reason, fallback)?;
+    Ok(HistoryRecord { at: t.at, reason })
+}
+
+pub(super) fn reason_or_default(
+    reason: Option<&str>,
+    fallback: String,
+) -> Result<String, AgboardError> {
+    let reason = reason
+        .filter(|reason| !reason.trim().is_empty())
+        .unwrap_or(&fallback);
+    crate::domain::validate_work_reason(reason)?;
+    Ok(reason.to_owned())
 }
 
 /// The position after the last unarchived card of a lane, read from the files.

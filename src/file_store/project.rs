@@ -32,11 +32,11 @@ This folder is one Agent Board project. Its state is kept in these files.\n\
 - `epics/<epic-id>/PLAN.md`: an epic's plan. Write a temporary file in the same folder and rename it over PLAN.md.\n\
 - `.internal/`: lock files. Do not edit or delete them.\n\
 \n\
-TASK.md frontmatter holds its `acceptance` completion conditions and `history` operation events; new cards accept an empty list and Agent Board adds the `created` event.\n\
+TASK.md frontmatter holds its `acceptance` completion conditions and `history` entries containing only `at` and a nonempty `reason`; new cards accept an empty list and Agent Board adds a creation note.\n\
 Each condition is an item with `id` (AC-n), `text`, and `done` (true or false), for example:\n\
 `---`, `acceptance:`, `  - id: AC-1`, `    text: The list is returned as JSON`, `    done: false`, `---`.\n\
 The body after the frontmatter is free Markdown. PLAN.md uses only `priority` for managed metadata; write epic reference conditions directly in its body. Other keys in the frontmatter are kept. For cards, the `history` list is written by Agent Board when operations occur; ordinary body and acceptance edits preserve it.\n\
-New cards use `formatVersion: 2`. Version 1 task files are not migrated or read by this version. Before using a new version with an old board, the user must remove the old data and start with new cards; Agent Board never deletes old data automatically.\n\
+New cards use `formatVersion: 3`. Version 1 and version 2 task files are not migrated or read by this version. Before using a new version with an old board, the user must remove the old data and start with new cards; Agent Board never deletes old data automatically.\n\
 Do not edit TASK.md of a card that is a draft.\n\
 Do not delete a card folder or an epic folder. Ask a person to delete a card or an epic with the `agboard` CLI.\n"
         .to_string()

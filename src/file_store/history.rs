@@ -9,7 +9,7 @@ use super::validate::{self, Defect};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseMode {
-    /// Saved TASK.md must contain a nonempty history with a created event.
+    /// Saved TASK.md must contain a valid history list, which may be empty.
     Stored,
     /// Creation accepts absent or empty history; the product creates its events.
     NewInput,
@@ -162,62 +162,16 @@ pub fn parse_task(text: &str, mode: ParseMode) -> ParsedTask {
 }
 
 fn invalid_field(value: &Value) -> Option<String> {
-    use super::model::{Choice, HistoryKind};
-    use crate::domain::{Actor, Column, RunState};
-    use serde::de::DeserializeOwned;
-
     let Value::Mapping(map) = value else {
         return None;
     };
-    fn invalid<T: DeserializeOwned>(map: &Mapping, key: &str) -> bool {
-        map.get(key)
-            .is_some_and(|value| serde_yaml_ng::from_value::<T>(value.clone()).is_err())
-    }
-    for key in ["id", "at"] {
-        if invalid::<String>(map, key) {
+    for key in ["at", "reason"] {
+        if map
+            .get(key)
+            .is_some_and(|value| !matches!(value, Value::String(_)))
+        {
             return Some(key.into());
         }
-    }
-    for key in [
-        "reason",
-        "requestId",
-        "question",
-        "choiceId",
-        "choiceLabel",
-        "fromEpicId",
-        "toEpicId",
-    ] {
-        if invalid::<Option<String>>(map, key) {
-            return Some(key.into());
-        }
-    }
-    for key in ["fromCardStatus"] {
-        if invalid::<Option<Column>>(map, key) {
-            return Some(key.into());
-        }
-    }
-    for key in ["fromAgentStatus"] {
-        if invalid::<Option<RunState>>(map, key) {
-            return Some(key.into());
-        }
-    }
-    if invalid::<Column>(map, "toCardStatus") {
-        return Some("toCardStatus".into());
-    }
-    if invalid::<RunState>(map, "toAgentStatus") {
-        return Some("toAgentStatus".into());
-    }
-    if invalid::<Actor>(map, "actor") {
-        return Some("actor".into());
-    }
-    if invalid::<HistoryKind>(map, "kind") {
-        return Some("kind".into());
-    }
-    if invalid::<Option<Vec<Choice>>>(map, "choices") {
-        return Some("choices".into());
-    }
-    if invalid::<Option<bool>>(map, "isDraft") {
-        return Some("isDraft".into());
     }
     if map
         .get("at")

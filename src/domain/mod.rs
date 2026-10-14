@@ -17,21 +17,20 @@ pub use limits::{
 pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use work::{
     Actor, Assignee, Attachment, AttachmentData, AttachmentInput, BulkArchiveResult, Card,
-    ChangeContext, Changed, HistoryEvent, HistoryKind, NewCard, ValidatedAttachment,
-    ValidatedBoard,
+    ChangeContext, Changed, HistoryEvent, NewCard, ValidatedAttachment, ValidatedBoard,
 };
 
-const WORK_REASON_MAX: usize = 2_000;
+const WORK_REASON_MAX: usize = 10_000;
 
 /// Normalize line endings, trim the outer boundary, and validate a work-history reason.
 pub fn validate_work_reason(value: &str) -> Result<String, crate::error::AgboardError> {
     let normalized = value.replace("\r\n", "\n").replace('\r', "\n");
     let trimmed = normalized.trim();
-    let count = trimmed.chars().count();
-    if count == 0 || count > WORK_REASON_MAX {
+    let count = value.chars().count();
+    if trimmed.is_empty() || count > WORK_REASON_MAX {
         return Err(crate::error::AgboardError::InvalidValue {
             field: "reason".into(),
-            reason: "Reasons must be 1 to 2000 characters.".into(),
+            reason: "Reasons must be 1 to 10000 characters.".into(),
         });
     }
     Ok(trimmed.to_owned())

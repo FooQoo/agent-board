@@ -17,31 +17,7 @@ pub enum Actor {
     Human,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum HistoryKind {
-    Created,
-    Lane,
-    Agent,
-    Archive,
-    Restore,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoryEvent {
-    pub id: i64,
-    pub kind: HistoryKind,
-    pub actor: Actor,
-    pub reason: Option<String>,
-    pub from_card_status: Option<Column>,
-    pub to_card_status: Column,
-    pub from_agent_status: Option<RunState>,
-    pub to_agent_status: RunState,
-    pub request_id: Option<String>,
-    #[serde(with = "crate::clock::serde_utc")]
-    pub at: DateTime<Utc>,
-}
+pub type HistoryEvent = crate::file_store::model::HistoryRecord;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChangeContext {

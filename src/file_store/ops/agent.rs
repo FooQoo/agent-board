@@ -9,15 +9,14 @@ use chrono::{DateTime, Utc};
 use super::super::FileStore;
 use super::super::frontmatter;
 use super::super::layout;
-use super::super::model::{CardView, Choice, HistoryKind};
+use super::super::model::{CardView, Choice, PendingRequest};
 use super::super::reader;
 use super::{
-    Transition, ensure_ai_card_not_done, lane_end, lock_project, new_id, save_task, stamp,
-    transition_event,
+    HistoryKind, Transition, ensure_ai_card_not_done, lane_end, lock_project, new_id, save_task,
+    stamp, transition_event,
 };
 use crate::domain::{
     Actor, ChangeContext, Changed, Column, MAX_CHOICES, ProjectId, RunState, check_work_state,
-    validate_work_reason,
 };
 use crate::error::AgboardError;
 
@@ -85,7 +84,6 @@ impl FileStore {
         now: DateTime<Utc>,
         block_drafts: bool,
     ) -> Result<Changed<CardView>, AgboardError> {
-        let reason = validate_work_reason(&ctx.reason)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -109,22 +107,22 @@ impl FileStore {
         let position = lane_end(shared, project, to)?;
         let event = transition_event(Transition {
             kind: HistoryKind::Lane,
-            actor: ctx.actor,
-            reason: Some(&reason),
+            reason: Some(&ctx.reason),
             from_card: Some(task.card_status),
             to_card: to,
             from_agent: Some(task.agent_status),
             to_agent: RunState::Idle,
-            request_id: task.pending_request_id.as_deref(),
             at,
         })?;
         if task.agent_status != RunState::Idle {
             task.agent_status_changed_at = at;
         }
         task.card_status = to;
+        task.card_status_changed_at = at;
         task.position = position;
         task.agent_status = RunState::Idle;
         task.pending_request_id = None;
+        task.pending_request = None;
         task.updated_at = at;
         task.history.push(event);
         save_task(shared, &project_dir, &task)?;
@@ -172,7 +170,6 @@ impl FileStore {
         choices: Vec<Choice>,
         now: DateTime<Utc>,
     ) -> Result<Changed<CardView>, AgboardError> {
-        let reason = validate_work_reason(reason)?;
         if state == RunState::Pending && choices.len() > MAX_CHOICES {
             return Err(AgboardError::InvalidValue {
                 field: "choices".into(),
@@ -201,27 +198,47 @@ impl FileStore {
         {
             return Err(AgboardError::RequestChanged);
         }
+        let reason = if state == RunState::Pending {
+            super::super::validate::normalize_question(reason)?
+        } else {
+            reason.to_owned()
+        };
         let at = stamp(now);
         let request_id = if state == RunState::Pending {
             Some(new_id()?)
         } else {
             None
         };
-        let mut event = transition_event(Transition {
+        let event_reason = if state == RunState::Pending {
+            let options = choices
+                .iter()
+                .map(|choice| format!("{}: {}", choice.id, choice.label))
+                .collect::<Vec<_>>()
+                .join("; ");
+            format!(
+                "Requested decision: {reason}{}",
+                if options.is_empty() {
+                    String::new()
+                } else {
+                    format!(" Options: {options}")
+                }
+            )
+        } else {
+            reason.to_owned()
+        };
+        let event = transition_event(Transition {
             kind: HistoryKind::Agent,
-            actor,
-            reason: Some(&reason),
+            reason: Some(&event_reason),
             from_card: Some(task.card_status),
             to_card: task.card_status,
             from_agent: Some(task.agent_status),
             to_agent: state,
-            request_id: request_id.as_deref(),
             at,
         })?;
-        if state == RunState::Pending {
-            event.question = Some(reason.clone());
-            event.choices = Some(choices);
-        }
+        task.pending_request = (state == RunState::Pending).then(|| PendingRequest {
+            question: reason.to_owned(),
+            choices,
+        });
         task.agent_status = state;
         task.pending_request_id = request_id;
         task.agent_status_changed_at = at;

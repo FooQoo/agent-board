@@ -17,3 +17,5 @@ pub mod show;
 pub mod snapshot;
 pub mod state;
 pub mod workspace;
+
+pub mod history;

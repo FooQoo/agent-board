@@ -12,10 +12,7 @@ use serde_json::Value;
 
 use super::frontmatter;
 use super::layout::FORMAT_NAME;
-use super::model::{
-    Choice, EpicFile, HistoryKind, HistoryRecord, ProjectFile, TaskFile, WorkspaceFile,
-    current_request,
-};
+use super::model::{Choice, EpicFile, HistoryRecord, ProjectFile, TaskFile, WorkspaceFile};
 use crate::domain::{
     MAX_ANSWER_TEXT_CHARS, MAX_CHOICE_ID_CHARS, MAX_CHOICE_LABEL_CHARS, MAX_CHOICES,
     MAX_QUESTION_CHARS, RunState, check_work_state, validate_project_name, validate_title,
@@ -162,10 +159,10 @@ pub struct Defect {
     pub reason: String,
 }
 
-fn defect(field: &str, reason: &str) -> Defect {
+fn defect(field: impl Into<String>, reason: impl Into<String>) -> Defect {
     Defect {
-        field: field.to_string(),
-        reason: reason.to_string(),
+        field: field.into(),
+        reason: reason.into(),
     }
 }
 
@@ -174,7 +171,7 @@ pub fn task_template() -> String {
     "---\nacceptance: []\n---\n\n".to_string()
 }
 
-/// True for a 32-character lowercase hexadecimal string (history and request IDs).
+/// True for a 32-character lowercase hexadecimal string (request IDs).
 pub fn is_hex32(text: &str) -> bool {
     text.len() == 32 && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
@@ -237,7 +234,7 @@ pub fn check_epic(file: &EpicFile, folder_id: &str) -> Vec<Defect> {
     for (i, attachment) in file.attachments.iter().enumerate() {
         if !is_hex32(&attachment.id) {
             out.push(defect(
-                &format!("attachments[{i}].id"),
+                format!("attachments[{i}].id"),
                 "Attachment IDs are 32 lowercase hexadecimal characters.",
             ));
         }
@@ -386,15 +383,6 @@ pub fn check_project(file: &ProjectFile, folder_id: &str) -> Vec<Defect> {
 /// Defects of `task.json`. `folder_id` is the card ID of the folder.
 pub fn check_task(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
     let mut out = check_task_metadata(task, folder_id);
-    if task.agent_status == RunState::Pending
-        && task.pending_request_id.as_deref().is_some_and(is_hex32)
-        && current_request(task).is_none()
-    {
-        out.push(defect(
-            "pendingRequestId",
-            "No history event holds the pending request.",
-        ));
-    }
     out.extend(check_history(&task.history));
     out
 }
@@ -445,6 +433,71 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
         )),
         (_, None) => {}
     }
+    match (&task.pending_request, task.agent_status) {
+        (Some(request), RunState::Pending) => {
+            if normalize_question(&request.question).ok().as_deref()
+                != Some(request.question.as_str())
+            {
+                out.push(defect(
+                    "pendingRequest.question",
+                    "A pending request needs a valid question.",
+                ));
+            }
+            if let Some(d) = choice_defect(&request.choices) {
+                out.push(defect(format!("pendingRequest.{}", d.field), d.reason));
+            }
+        }
+        (None, RunState::Pending) => out.push(defect(
+            "pendingRequest",
+            "A pending card needs its question and choices.",
+        )),
+        (Some(_), _) => out.push(defect(
+            "pendingRequest",
+            "Only a pending card has a request.",
+        )),
+        (None, _) => {}
+    }
+    let mut answer_ids = HashSet::new();
+    for (index, answer) in task.request_answers.iter().enumerate() {
+        let field = |name: &str| format!("requestAnswers[{index}].{name}");
+        if !is_hex32(&answer.request_id)
+            || !answer_ids.insert(&answer.request_id)
+            || task.pending_request_id.as_deref() == Some(&answer.request_id)
+        {
+            out.push(defect(
+                field("requestId"),
+                "Answer request IDs must be valid, unique, and already resolved.",
+            ));
+        }
+        if answer.choice_id.is_some() != answer.choice_label.is_some() {
+            out.push(defect(
+                field("choiceLabel"),
+                "A selected choice needs its ID and label.",
+            ));
+        }
+        if let (Some(id), Some(label)) = (&answer.choice_id, &answer.choice_label)
+            && let Some(d) = choice_defect(&[Choice {
+                id: id.clone(),
+                label: label.clone(),
+            }])
+        {
+            out.push(defect(field(&d.field), d.reason));
+        }
+
+        if answer
+            .text
+            .as_deref()
+            .is_some_and(|text| normalize_answer_text(text).ok().flatten().as_deref() != Some(text))
+        {
+            out.push(defect(
+                field("text"),
+                "Answer text must be nonblank and within its limit.",
+            ));
+        }
+        if answer.choice_id.is_none() && answer.text.is_none() {
+            out.push(defect(field("text"), "An answer needs a choice or text."));
+        }
+    }
     if task.archived_at.is_some()
         && (task.agent_status != RunState::Idle || task.pending_request_id.is_some())
     {
@@ -457,108 +510,13 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
 }
 
 pub fn check_history(events: &[HistoryRecord]) -> Vec<Defect> {
-    let mut out = Vec::new();
-    if !events.iter().any(|e| e.kind == HistoryKind::Created) {
-        out.push(defect(
-            "history",
-            "The history must contain a created event.",
-        ));
-    }
-
-    let mut ids = HashSet::new();
-    for (i, event) in events.iter().enumerate() {
-        let field = |name: &str| format!("history[{i}].{name}");
-        if !is_hex32(&event.id) {
-            out.push(Defect {
-                field: field("id"),
-                reason: "History IDs are 32 lowercase hexadecimal characters.".into(),
-            });
-        } else if !ids.insert(event.id.as_str()) {
-            out.push(Defect {
-                field: field("id"),
-                reason: "History IDs must be unique.".into(),
-            });
-        }
-        if let Some(request) = event.request_id.as_deref()
-            && !is_hex32(request)
-        {
-            out.push(Defect {
-                field: field("requestId"),
-                reason: "Request IDs are 32 lowercase hexadecimal characters.".into(),
-            });
-        }
-        let has_reason = event
-            .reason
-            .as_deref()
-            .is_some_and(|r| !r.trim().is_empty());
-        match event.kind {
-            HistoryKind::Lane
-            | HistoryKind::Agent
-            | HistoryKind::Archive
-            | HistoryKind::Restore => {
-                if !has_reason {
-                    out.push(Defect {
-                        field: field("reason"),
-                        reason: "A state change needs a reason.".into(),
-                    });
-                }
-            }
-            HistoryKind::Answer => {
-                if event.request_id.is_none() {
-                    out.push(Defect {
-                        field: field("requestId"),
-                        reason: "An answer names the request it answers.".into(),
-                    });
-                }
-                if event.choice_id.is_some() && event.choice_label.is_none() {
-                    out.push(Defect {
-                        field: field("choiceLabel"),
-                        reason: "An answer with a choice needs its label.".into(),
-                    });
-                }
-                if event.choice_id.is_none() && !has_reason {
-                    out.push(Defect {
-                        field: field("reason"),
-                        reason: "An answer needs a choice, text, or both.".into(),
-                    });
-                }
-            }
-            HistoryKind::Draft => {
-                if event.is_draft.is_none() {
-                    out.push(Defect {
-                        field: field("isDraft"),
-                        reason: "A draft event records the new draft flag.".into(),
-                    });
-                }
-            }
-            HistoryKind::Created | HistoryKind::Epic => {}
-        }
-        if event.kind == HistoryKind::Agent && event.to_agent_status == RunState::Pending {
-            if event
-                .question
-                .as_deref()
-                .is_none_or(|q| q.trim().is_empty())
-            {
-                out.push(Defect {
-                    field: field("question"),
-                    reason: "A pending request needs a question.".into(),
-                });
-            }
-            match &event.choices {
-                None => out.push(Defect {
-                    field: field("choices"),
-                    reason: "A pending request needs its choices (may be empty).".into(),
-                }),
-                Some(choices) => {
-                    if let Some(d) = choice_defect(choices) {
-                        out.push(Defect {
-                            field: format!("history[{i}].{}", d.field),
-                            reason: d.reason,
-                        });
-                    }
-                }
-            }
-        }
-    }
-    out
+    events
+        .iter()
+        .enumerate()
+        .filter_map(|(index, event)| {
+            crate::domain::validate_work_reason(&event.reason)
+                .err()
+                .map(|error| defect(format!("history[{index}].reason"), error.reason()))
+        })
+        .collect()
 }

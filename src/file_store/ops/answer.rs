@@ -1,17 +1,16 @@
 //! Decision requests and their answers.
 //!
-//! A request is saved as a history event of the card, with its question and
-//! choices. The card names the request only by its ID. An answer must name
-//! the current request ID; it returns the card to idle and records the answer
-//! in history.
+//! The question and choices are current workflow metadata. Responses are kept
+//! by request ID independently of human-readable history. An answer must name
+//! the current request; it returns the card to idle and appends a readable note.
 
 use chrono::{DateTime, Utc};
 
 use super::super::FileStore;
-use super::super::model::{CardView, Choice, HistoryKind, current_request};
+use super::super::model::{CardView, Choice, HistoryRecord, RequestAnswer, current_request};
 use super::super::reader;
 use super::super::validate;
-use super::{Transition, lock_project, save_task, stamp, transition_event};
+use super::{lock_project, save_task, stamp};
 use crate::domain::{Actor, Assignee, Changed, Column, ProjectId, RunState};
 use crate::error::AgboardError;
 
@@ -24,6 +23,20 @@ pub struct Answer {
 }
 
 impl FileStore {
+    /// Retrieve a response by request ID, even after later requests or a restart.
+    pub fn request_answer(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        request_id: &str,
+    ) -> Result<Option<RequestAnswer>, AgboardError> {
+        let task = reader::read_task_metadata_strict(self.shared_dir(), project, id)?;
+        Ok(task
+            .request_answers
+            .into_iter()
+            .find(|answer| answer.request_id == request_id))
+    }
+
     /// Ask a question of the user. The card goes to pending with a new request
     /// ID. An empty choice list makes a reason-only request. A card that is
     /// already pending is not changed.
@@ -86,8 +99,7 @@ impl FileStore {
         let choices = current_request(&task)
             .ok_or(AgboardError::RequestChanged)?
             .choices
-            .clone()
-            .unwrap_or_default();
+            .clone();
         let choice_label = match &choice_id {
             None => None,
             Some(choice) => Some(
@@ -104,21 +116,32 @@ impl FileStore {
         };
 
         let at = stamp(now);
-        let mut event = transition_event(Transition {
-            kind: HistoryKind::Answer,
+        let question = current_request(&task)
+            .ok_or(AgboardError::RequestChanged)?
+            .question
+            .clone();
+        let reason = format!(
+            "Answered decision: {question}.{}{}",
+            choice_label
+                .as_ref()
+                .map(|label| format!(" Selected: {label}."))
+                .unwrap_or_default(),
+            text.as_ref()
+                .map(|text| format!(" Answer: {text}"))
+                .unwrap_or_default()
+        );
+        let event = HistoryRecord { at, reason };
+        task.request_answers.push(RequestAnswer {
+            request_id: request_id.to_owned(),
             actor: answer.actor,
-            reason: text.as_deref(),
-            from_card: Some(task.card_status),
-            to_card: task.card_status,
-            from_agent: Some(RunState::Pending),
-            to_agent: RunState::Idle,
-            request_id: Some(request_id),
+            choice_id,
+            choice_label,
+            text,
             at,
-        })?;
-        event.choice_id = choice_id;
-        event.choice_label = choice_label;
+        });
         task.agent_status = RunState::Idle;
         task.pending_request_id = None;
+        task.pending_request = None;
         task.agent_status_changed_at = at;
         task.updated_at = at;
         task.history.push(event);

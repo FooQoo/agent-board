@@ -26,6 +26,7 @@ Commands:
   add     Add a card to Todo
   edit    Change a card's title or description
   mv      Move a card to todo, doing, or done
+  history Append a work note
   state   Report a card's run state: idle, running, or pending
   rm      Delete a card (humans only; asks for confirmation)
   ls      List cards
@@ -108,6 +109,8 @@ pub enum Command {
     Mv(MvArgs),
     /// Report a card's run state: idle, running, or pending
     State(StateArgs),
+    /// Append a work note to a card history
+    History(HistoryArgs),
     /// Delete a card (humans only; asks for confirmation)
     Rm(RmArgs),
     /// List cards
@@ -147,6 +150,7 @@ impl Command {
             Command::Edit(_) => "edit",
             Command::Mv(_) => "mv",
             Command::State(_) => "state",
+            Command::History(_) => "history",
             Command::Rm(_) => "rm",
             Command::Ls(_) => "ls",
             Command::Show(_) => "show",
@@ -163,13 +167,14 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 18] = [
+pub const SUBCOMMAND_NAMES: [&str; 19] = [
     "project",
     "init",
     "add",
     "edit",
     "mv",
     "state",
+    "history",
     "rm",
     "ls",
     "show",
@@ -381,7 +386,7 @@ pub struct StateArgs {
     pub id: i64,
     /// Run state to report
     pub state: RunStateArg,
-    /// Required explanation for running and idle; the question of a pending state goes in --request-json. Use - to read UTF-8 from stdin
+    /// Optional explanation for running and idle; the question of a pending state goes in --request-json. Use - to read UTF-8 from stdin
     #[arg(
         long,
         value_name = "TEXT",
@@ -434,23 +439,44 @@ impl AssigneeArg {
 }
 
 #[derive(Args, Debug)]
-pub struct ChangeArgs {
-    /// Required explanation; use - to read UTF-8 from stdin
+pub struct HistoryArgs {
+    #[command(subcommand)]
+    pub command: HistoryCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum HistoryCommand {
+    /// Append an AI work note, with an automatic UTC timestamp
+    Add(HistoryAddArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct HistoryAddArgs {
+    pub id: i64,
+    /// Work note; omitted or blank generates a current-state description
     #[arg(
         long,
         value_name = "TEXT",
         allow_hyphen_values = true,
-        group = "reason_source",
-        required_unless_present = "reason_file"
+        group = "reason_source"
+    )]
+    pub reason: Option<String>,
+    #[arg(long, value_name = "PATH", group = "reason_source")]
+    pub reason_file: Option<PathBuf>,
+}
+
+#[derive(Args, Debug)]
+pub struct ChangeArgs {
+    /// Optional explanation; use - to read UTF-8 from stdin
+    #[arg(
+        long,
+        value_name = "TEXT",
+        allow_hyphen_values = true,
+        group = "reason_source"
     )]
     pub reason: Option<String>,
     /// Read the explanation from a UTF-8 file
-    #[arg(
-        long,
-        value_name = "PATH",
-        group = "reason_source",
-        required_unless_present = "reason"
-    )]
+    #[arg(long, value_name = "PATH", group = "reason_source")]
     pub reason_file: Option<PathBuf>,
     /// Who is making this change
     #[arg(long, value_enum, required = true)]
@@ -460,8 +486,11 @@ pub struct ChangeArgs {
 impl ChangeArgs {
     pub fn resolve_reason(&self) -> Result<String, AgboardError> {
         match read_reason(self.reason.as_deref(), self.reason_file.as_deref())? {
-            Some(raw) => crate::domain::validate_work_reason(&raw),
-            None => crate::domain::validate_work_reason(""),
+            Some(raw) if !raw.trim().is_empty() => {
+                crate::domain::validate_work_reason(&raw)?;
+                Ok(raw)
+            }
+            _ => Ok(String::new()),
         }
     }
 }

@@ -655,7 +655,7 @@ fn creating_a_card_in_one_project_leaves_the_other_untouched_and_is_a_human_acti
     assert_eq!(created["card"]["id"], 3);
     assert_eq!(created["card"]["cardStatus"], "todo");
     assert_eq!(created["card"]["agentStatus"], "idle");
-    assert_eq!(created["card"]["history"][0]["actor"], "human");
+    assert_eq!(created["card"]["history"][0].as_object().unwrap().len(), 2);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 }
 
@@ -666,10 +666,16 @@ fn an_actor_sent_by_the_page_is_never_trusted() {
     let created = server.write(
         "POST",
         &format!("/api/projects/{a}/cards"),
-        Some(r#"{"title":"Sneaky","description":"","assignee":"ai","actor":"ai"}"#),
+        Some(r#"{"title":"Sneaky","body":"Work","acceptance":[{"id":"AC-1","text":"Still incomplete","done":false}],"assignee":"ai","actor":"ai"}"#),
     );
     assert_eq!(created.status, 201, "{}", created.body);
-    assert_eq!(created.json()["card"]["history"][0]["actor"], "human");
+    assert_eq!(
+        created.json()["card"]["history"][0]
+            .as_object()
+            .unwrap()
+            .len(),
+        2
+    );
     let moved = server.write(
         "POST",
         &format!("/api/projects/{a}/cards/3/move"),
@@ -678,12 +684,14 @@ fn an_actor_sent_by_the_page_is_never_trusted() {
     assert_eq!(moved.status, 200, "{}", moved.body);
     let history = moved.json()["card"]["history"].clone();
     let last = history.as_array().unwrap().last().unwrap().clone();
-    assert_eq!(last["actor"], "human");
-    // A body that omits the actor is the normal form.
+    assert_eq!(last["reason"], "Start");
+    assert_eq!(last.as_object().unwrap().len(), 2);
+    // A page action remains human-authorized even with a supplied AI actor,
+    // so unmet acceptance does not trigger the agent-only Done guard.
     let moved = server.write(
         "POST",
         &format!("/api/projects/{a}/cards/3/move"),
-        Some(r#"{"cardStatus":"done","reason":"Finish"}"#),
+        Some(r#"{"cardStatus":"done","actor":"ai","reason":"Finish"}"#),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
 }
@@ -1436,7 +1444,7 @@ fn put_draft_toggles_idle_cards_and_records_history_with_markdown_time() {
     // A real draft change rewrites TASK.md and appends a history event.
     let added = after["history"].as_array().unwrap();
     assert_eq!(added.len(), before["history"].as_array().unwrap().len() + 1);
-    assert_eq!(added.last().unwrap()["kind"], "draft");
+    assert_eq!(added.last().unwrap()["reason"], "Marked card as draft.");
     // The flag is part of task.json, so the content version moves.
     assert_ne!(
         snapshot_json(home.path(), &a)["version"]

@@ -4,10 +4,10 @@ use chrono::{DateTime, Utc};
 
 use super::super::FileStore;
 use super::super::frontmatter;
-use super::super::model::HistoryKind;
 use super::super::reader;
+use super::HistoryKind;
 use super::{Transition, lane_end, lock_project, save_task, stamp, transition_event};
-use crate::domain::{Actor, Column, ProjectId, RunState};
+use crate::domain::{Column, ProjectId, RunState};
 use crate::error::AgboardError;
 
 const AUTO_DONE_REASON: &str = "All acceptance conditions are complete.";
@@ -77,21 +77,21 @@ impl FileStore {
             let position = lane_end(shared, project, Column::Done)?;
             let event = transition_event(Transition {
                 kind: HistoryKind::Lane,
-                actor: Actor::Ai,
                 reason: Some(AUTO_DONE_REASON),
                 from_card: Some(task.card_status),
                 to_card: Column::Done,
                 from_agent: Some(task.agent_status),
                 to_agent: RunState::Idle,
-                request_id: task.pending_request_id.as_deref(),
                 at,
             })?;
             if task.agent_status != RunState::Idle {
                 task.agent_status_changed_at = at;
             }
             task.card_status = Column::Done;
+            task.card_status_changed_at = at;
             task.agent_status = RunState::Idle;
             task.pending_request_id = None;
+            task.pending_request = None;
             task.position = position;
             task.updated_at = at;
             task.history.push(event);
@@ -109,7 +109,7 @@ mod tests {
     use chrono::{TimeZone, Utc};
 
     use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
-    use crate::file_store::{FileStore, model::HistoryKind};
+    use crate::file_store::FileStore;
 
     fn at(day: u32) -> chrono::DateTime<Utc> {
         Utc.with_ymd_and_hms(2026, 10, day, 0, 0, 0).unwrap()
@@ -199,16 +199,10 @@ mod tests {
         let completed: Vec<_> = card
             .history
             .iter()
-            .filter(|e| e.kind == HistoryKind::Lane && e.to_card_status == Column::Done)
+            .filter(|e| e.reason == super::AUTO_DONE_REASON)
             .collect();
         assert_eq!(completed.len(), 1);
-        assert_eq!(completed[0].actor, Actor::Ai);
-        assert!(
-            completed[0]
-                .reason
-                .as_deref()
-                .is_some_and(|reason| !reason.is_empty())
-        );
+        assert!(!completed[0].reason.is_empty());
     }
 
     #[test]

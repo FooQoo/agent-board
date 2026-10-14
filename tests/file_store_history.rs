@@ -1,11 +1,10 @@
-use agent_board::domain::{Actor, Column, RunState};
 use agent_board::file_store::{
     history::{ParseMode, compose_task, parse_task},
     model::{HistoryRecord, TaskFile, TaskMetadata},
 };
 
 fn created() -> HistoryRecord {
-    serde_json::from_value(serde_json::json!({"id":"11111111111111111111111111111111","kind":"created","actor":"ai","reason":null,"fromCardStatus":null,"toCardStatus":"todo","fromAgentStatus":null,"toAgentStatus":"idle","requestId":null,"at":"2026-10-14T00:00:00Z"})).unwrap()
+    serde_json::from_value(serde_json::json!({"at":"2026-10-14T00:00:00Z","reason":"Created card in Todo with agent idle."})).unwrap()
 }
 
 #[test]
@@ -52,36 +51,28 @@ fn invalid_acceptance_keeps_valid_history() {
 }
 
 #[test]
-fn stored_history_requires_created_unique_ids_and_typed_fields() {
+fn stored_history_requires_only_valid_at_and_nonblank_reason() {
     assert_eq!(
         parse_task("Body", ParseMode::Stored).history_defects[0].field,
         "history"
     );
     assert!(
-        !parse_task("---\nhistory: []\n---", ParseMode::Stored)
+        parse_task("---\nhistory: []\n---", ParseMode::Stored)
             .history_defects
             .is_empty()
     );
-    assert!(
-        compose_task("", "", None, &[created(), created()])
-            .unwrap_err()
-            .field
-            .ends_with(".id")
-    );
+    assert!(compose_task("", "", None, &[created(), created()]).is_ok());
     let mut event = created();
-    event.kind = agent_board::file_store::model::HistoryKind::Lane;
-    event.actor = Actor::Human;
-    event.from_card_status = Some(Column::Todo);
-    event.to_card_status = Column::Doing;
-    event.from_agent_status = Some(RunState::Idle);
-    event.reason = Some("Start".into());
+    event.reason = "  ".into();
     assert!(compose_task("", "", None, &[event]).is_err());
     let text = compose_task("", "", None, &[created()])
         .unwrap()
-        .replace("actor: ai", "actor: []");
-    assert_eq!(
-        parse_task(&text, ParseMode::Stored).history_defects[0].field,
-        "history[0].actor"
+        .replace("reason:", "actor: ai\n  reason:");
+    assert!(
+        parse_task(&text, ParseMode::Stored)
+            .history_defects
+            .iter()
+            .any(|d| d.field == "history[0].actor")
     );
 }
 
@@ -115,13 +106,13 @@ fn malformed_yaml_and_unclosed_frontmatter_keep_body_and_never_compose() {
 
 #[test]
 fn metadata_serialization_does_not_contain_history_and_join_is_lossless() {
-    let task: TaskFile = serde_json::from_value(serde_json::json!({"formatVersion":2,"id":1,"title":"Test","assignee":"ai","epicId":null,"cardStatus":"todo","agentStatus":"idle","position":1,"isDraft":false,"archivedAt":null,"pendingRequestId":null,"createdAt":"2026-10-14T00:00:00Z","updatedAt":"2026-10-14T00:00:00Z","agentStatusChangedAt":"2026-10-14T00:00:00Z","attachments":[],"evidence":[],"history":[created()]})).unwrap();
+    let task: TaskFile = serde_json::from_value(serde_json::json!({"formatVersion":3,"id":1,"title":"Test","assignee":"ai","epicId":null,"cardStatus":"todo","agentStatus":"idle","position":1,"isDraft":false,"archivedAt":null,"pendingRequestId":null,"pendingRequest":null,"requestAnswers":[],"createdAt":"2026-10-14T00:00:00Z","updatedAt":"2026-10-14T00:00:00Z","agentStatusChangedAt":"2026-10-14T00:00:00Z","cardStatusChangedAt":"2026-10-14T00:00:00Z","attachments":[],"evidence":[],"history":[created()]})).unwrap();
     let metadata = TaskMetadata::from(&task);
     let value = serde_json::to_value(&metadata).unwrap();
-    assert_eq!(value["formatVersion"], 2);
+    assert_eq!(value["formatVersion"], 3);
     assert!(value.get("history").is_none());
     let mut expected = task.clone();
-    expected.format_version = 2;
+    expected.format_version = 3;
     assert_eq!(metadata.with_history(task.history), expected);
 }
 
@@ -129,18 +120,16 @@ fn metadata_serialization_does_not_contain_history_and_join_is_lossless() {
 fn invalid_history_field_types_and_timestamps_have_precise_paths() {
     let original = compose_task("", "Body", None, &[created()]).unwrap();
     for (before, after, field) in [
-        ("kind: created", "kind: unknown", "kind"),
         (
-            "toCardStatus: todo",
-            "toCardStatus: unknown",
-            "toCardStatus",
+            "reason: Created card in Todo with agent idle.",
+            "reason: []",
+            "reason",
         ),
         (
             "at: 2026-10-14T00:00:00Z",
             "at: 2026-10-14T00:00:00+00:00",
             "at",
         ),
-        ("reason: null", "reason: []", "reason"),
     ] {
         let text = original.replace(before, after);
         assert_ne!(text, original, "{before}");
@@ -163,8 +152,16 @@ fn defects_keep_original_indices_after_an_unreadable_event() {
     invalid
         .as_mapping_mut()
         .unwrap()
-        .insert("actor".into(), serde_yaml_ng::Value::Sequence(vec![]));
-    let history = serde_yaml_ng::to_string(&vec![invalid, event.clone(), event]).unwrap();
+        .insert("reason".into(), serde_yaml_ng::Value::Sequence(vec![]));
+    let history = serde_yaml_ng::to_string(&vec![invalid, event.clone(), {
+        let mut blank = event;
+        blank
+            .as_mapping_mut()
+            .unwrap()
+            .insert("reason".into(), " ".into());
+        blank
+    }])
+    .unwrap();
     let text = format!(
         "---\nhistory:\n{}---\n\nBody",
         history
@@ -177,12 +174,12 @@ fn defects_keep_original_indices_after_an_unreadable_event() {
         parsed
             .history_defects
             .iter()
-            .any(|d| d.field == "history[0].actor")
+            .any(|d| d.field == "history[0].reason")
     );
     assert!(
         parsed
             .history_defects
             .iter()
-            .any(|d| d.field == "history[2].id")
+            .any(|d| d.field == "history[2].reason")
     );
 }

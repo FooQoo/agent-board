@@ -183,7 +183,7 @@ fn parse_task_metadata(bytes: &[u8], label: &str) -> Result<TaskMetadata, Agboar
         field: String::new(),
         reason: format!("The JSON is malformed: {e}."),
     })?;
-    validate::check_format_version_expected(&value, label, 2)?;
+    validate::check_format_version_expected(&value, label, 3)?;
     serde_json::from_value(value).map_err(|e| {
         let message = e.to_string();
         AgboardError::FileInvalid {
@@ -385,47 +385,30 @@ pub(crate) fn read_card_lenient(
     }
     let md_path = layout::task_md(&dir);
     let md_label = layout::shared_label(shared, &md_path);
-    let (description, mut problems, history, history_valid) =
-        match io::read_text(&md_path, &md_label) {
-            Ok(text) => {
-                let parsed = parse_task(&text, ParseMode::Stored);
-                let mut problems = parsed
-                    .frontmatter_defects
-                    .iter()
-                    .chain(&parsed.acceptance_defects)
-                    .map(|d| Problem {
-                        file: md_label.clone(),
-                        field: d.field.clone(),
-                        reason: d.reason.clone(),
-                    })
-                    .collect::<Vec<_>>();
-                problems.extend(parsed.history_defects.iter().map(|d| Problem {
+    let (description, problems, history) = match io::read_text(&md_path, &md_label) {
+        Ok(text) => {
+            let parsed = parse_task(&text, ParseMode::Stored);
+            let mut problems = parsed
+                .frontmatter_defects
+                .iter()
+                .chain(&parsed.acceptance_defects)
+                .map(|d| Problem {
                     file: md_label.clone(),
                     field: d.field.clone(),
                     reason: d.reason.clone(),
-                }));
-                (
-                    text,
-                    problems,
-                    parsed.history,
-                    parsed.history_defects.is_empty(),
-                )
-            }
-            Err(error) => (String::new(), vec![problem_of(error)], Vec::new(), false),
-        };
+                })
+                .collect::<Vec<_>>();
+            problems.extend(parsed.history_defects.iter().map(|d| Problem {
+                file: md_label.clone(),
+                field: d.field.clone(),
+                reason: d.reason.clone(),
+            }));
+            (text, problems, parsed.history)
+        }
+        Err(error) => (String::new(), vec![problem_of(error)], Vec::new()),
+    };
     let mut joined = task;
     joined.history = history;
-    if history_valid
-        && joined.agent_status == crate::domain::RunState::Pending
-        && current_request(&joined).is_none()
-    {
-        problems.push(Problem {
-            file: md_label.clone(),
-            field: "pendingRequestId".into(),
-            reason: "No history event holds the pending request.".into(),
-        });
-        joined.history.clear();
-    }
     Ok(CardLoad {
         view: card_view(joined, description, file_time(&md_path)),
         problems,
@@ -440,10 +423,7 @@ pub(crate) fn card_view(
     body_modified: Option<DateTime<Utc>>,
 ) -> CardView {
     let (pending_reason, pending_choices) = match current_request(&task) {
-        Some(event) => (
-            event.question.clone(),
-            event.choices.clone().unwrap_or_default(),
-        ),
+        Some(event) => (Some(event.question.clone()), event.choices.clone()),
         None => (None, Vec::new()),
     };
     let updated_at = body_modified.map_or(task.updated_at, |m| m.max(task.updated_at));
@@ -471,6 +451,7 @@ pub(crate) fn card_view(
         created_at: task.created_at,
         updated_at,
         agent_status_changed_at: task.agent_status_changed_at,
+        card_status_changed_at: task.card_status_changed_at,
         history: task.history,
     }
 }
@@ -491,7 +472,8 @@ pub(crate) fn attach_epic(view: &mut CardView, epics: &[EpicView]) {
 
 /// Read and check `task.json` of one card. A missing card is `card_not_found`;
 /// a defect in the file is `file_invalid` with the shared-relative path.
-pub(crate) fn read_task_strict(
+/// This reads workflow metadata independently of TASK.md history.
+pub(crate) fn read_task_metadata_strict(
     shared: &Path,
     project_id: &ProjectId,
     card_id: i64,
@@ -516,6 +498,17 @@ pub(crate) fn read_task_strict(
             reason: d.reason,
         });
     }
+    Ok(task)
+}
+
+/// Join validated task metadata with the canonical TASK.md history.
+pub(crate) fn read_task_strict(
+    shared: &Path,
+    project_id: &ProjectId,
+    card_id: i64,
+) -> Result<TaskFile, AgboardError> {
+    let task = read_task_metadata_strict(shared, project_id, card_id)?;
+    let dir = layout::task_dir(&layout::project_dir(shared, project_id), card_id);
     let md_path = layout::task_md(&dir);
     let md_label = layout::shared_label(shared, &md_path);
     let text = io::read_text(&md_path, &md_label)?;
@@ -529,14 +522,6 @@ pub(crate) fn read_task_strict(
     }
     let mut joined = task;
     joined.history = parsed.history;
-    if joined.agent_status == crate::domain::RunState::Pending && current_request(&joined).is_none()
-    {
-        return Err(AgboardError::FileInvalid {
-            file: md_label,
-            field: "pendingRequestId".into(),
-            reason: "No history event holds the pending request.".into(),
-        });
-    }
     Ok(joined)
 }
 

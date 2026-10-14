@@ -1,6 +1,6 @@
 //! Small renderers shared by CLI commands.
 use crate::domain::{Column, RunState};
-use crate::file_store::model::{CardView, HistoryKind};
+use crate::file_store::model::CardView;
 use serde_json::Value;
 
 /// The order of keys in JSON output. Keys not listed come last.
@@ -47,27 +47,16 @@ const KEY_ORDER: [&str; 35] = [
 ];
 
 /// The order of keys in one history event, which reuses the key `reason`.
-const EVENT_KEY_ORDER: [&str; 10] = [
-    "id",
-    "kind",
-    "actor",
-    "reason",
-    "fromCardStatus",
-    "toCardStatus",
-    "fromAgentStatus",
-    "toAgentStatus",
-    "requestId",
-    "at",
-];
-
+const EVENT_KEY_ORDER: [&str; 2] = ["at", "reason"];
 pub fn render_json(value: &Value) -> String {
     match value {
         Value::Object(map) => {
-            let order: &[&str] = if map.contains_key("kind") && map.contains_key("toCardStatus") {
-                &EVENT_KEY_ORDER
-            } else {
-                &KEY_ORDER
-            };
+            let order: &[&str] =
+                if map.len() == 2 && map.contains_key("at") && map.contains_key("reason") {
+                    &EVENT_KEY_ORDER
+                } else {
+                    &KEY_ORDER
+                };
             let mut entries: Vec<_> = map.iter().collect();
             entries.sort_by_key(|(key, _)| {
                 order
@@ -166,22 +155,10 @@ pub fn show_text(card: &CardView) -> String {
     }
     out.push_str("History:\n");
     for event in card.history.iter().rev() {
-        let status = match event.kind {
-            HistoryKind::Created | HistoryKind::Lane => event.to_card_status.label(),
-            HistoryKind::Agent | HistoryKind::Answer => event.to_agent_status.label(),
-            HistoryKind::Archive => "Archive",
-            HistoryKind::Restore => "Restore",
-            HistoryKind::Draft => "Draft",
-            HistoryKind::Epic => "Epic",
-        };
         out.push_str(&format!(
-            "  {} {}: {}\n",
-            status,
-            match event.actor {
-                crate::domain::Actor::Ai => "AI",
-                crate::domain::Actor::Human => "User",
-            },
-            event.reason.as_deref().unwrap_or("")
+            "  {}: {}\n",
+            crate::clock::format_utc(event.at),
+            event.reason
         ));
     }
     out

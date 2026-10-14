@@ -149,8 +149,11 @@ fn cli_edit_refuses_invalid_history_without_rewriting_task_markdown() {
     let shared = json_ok(home.path(), &["--project", "Demo", "workspace", "--json"]);
     let md = std::path::Path::new(shared["tasks"].as_str().unwrap()).join("1/TASK.md");
     let original = std::fs::read_to_string(&md).unwrap();
-    let invalid = original.replace("kind: created", "kind: unknown");
-    assert_ne!(invalid, original, "fixture must contain a created event");
+    let invalid = original.replace(
+        "reason: Created card in Todo with agent idle.",
+        "reason: []",
+    );
+    assert_ne!(invalid, original, "fixture must contain a creation reason");
     std::fs::write(&md, &invalid).unwrap();
     let (code, _, err) = agboard(
         home.path(),

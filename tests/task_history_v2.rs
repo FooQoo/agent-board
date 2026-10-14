@@ -88,37 +88,39 @@ fn task_json_is_metadata_only_and_task_md_is_the_history_source() {
         serde_json::from_slice(&fs::read(fx.task_dir(id).join("task.json")).unwrap()).unwrap();
     let markdown = fs::read_to_string(fx.task_dir(id).join("TASK.md")).unwrap();
 
-    assert_eq!(json["formatVersion"], 2);
+    assert_eq!(json["formatVersion"], 3);
     assert!(json.get("history").is_none());
     assert!(markdown.contains("history:"));
     assert_eq!(fx.store.card(&fx.project, id).unwrap().history.len(), 1);
 }
 
 #[test]
-fn task_format_version_one_is_reported_and_left_byte_for_byte_unchanged() {
+fn task_format_versions_one_and_two_are_reported_and_left_byte_for_byte_unchanged() {
     let fx = fixture();
     let id = fx.create("");
     let json_path = fx.task_dir(id).join("task.json");
     let mut json: serde_json::Value =
         serde_json::from_slice(&fs::read(&json_path).unwrap()).unwrap();
-    json["formatVersion"] = 1.into();
-    let bytes = serde_json::to_vec_pretty(&json).unwrap();
-    fs::write(&json_path, &bytes).unwrap();
-    let files_before = file_tree(&fx.task_dir(id));
+    for version in [1, 2] {
+        json["formatVersion"] = version.into();
+        let bytes = serde_json::to_vec_pretty(&json).unwrap();
+        fs::write(&json_path, &bytes).unwrap();
+        let files_before = file_tree(&fx.task_dir(id));
 
-    let snapshot = fx.store.board(&fx.project).unwrap();
-    assert!(snapshot.cards.is_empty());
-    assert!(snapshot.problems.iter().any(|problem| {
-        problem.file.ends_with("task.json")
-            && problem.field == "formatVersion"
-            && problem.reason.contains("Only formatVersion 2")
-    }));
-    assert!(matches!(
-        fx.store.card(&fx.project, id),
-        Err(AgboardError::FormatUnsupported { .. })
-    ));
-    assert_eq!(fs::read(&json_path).unwrap(), bytes);
-    assert_eq!(file_tree(&fx.task_dir(id)), files_before);
+        let snapshot = fx.store.board(&fx.project).unwrap();
+        assert!(snapshot.cards.is_empty());
+        assert!(snapshot.problems.iter().any(|problem| {
+            problem.file.ends_with("task.json")
+                && problem.field == "formatVersion"
+                && problem.reason.contains("Only formatVersion 3")
+        }));
+        assert!(matches!(
+            fx.store.card(&fx.project, id),
+            Err(AgboardError::FormatUnsupported { .. })
+        ));
+        assert_eq!(fs::read(&json_path).unwrap(), bytes);
+        assert_eq!(file_tree(&fx.task_dir(id)), files_before);
+    }
 }
 
 #[test]
@@ -230,16 +232,9 @@ fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
         &fs::read_to_string(fx.task_dir(id).join("TASK.md")).unwrap(),
         agent_board::file_store::history::ParseMode::Stored,
     );
-    let kinds: Vec<_> = history.history.iter().map(|event| event.kind).collect();
-    assert_eq!(kinds.len(), 4);
-    assert_eq!(
-        kinds[0],
-        agent_board::file_store::model::HistoryKind::Created
-    );
-    assert_eq!(kinds[1], agent_board::file_store::model::HistoryKind::Lane);
-    assert_eq!(kinds[2], agent_board::file_store::model::HistoryKind::Agent);
-    assert_eq!(
-        kinds[3],
-        agent_board::file_store::model::HistoryKind::Answer
-    );
+    assert_eq!(history.history.len(), 4);
+    assert_eq!(history.history[1].reason, "Start");
+    assert!(history.history[2].reason.contains("Continue?"));
+    assert!(history.history[3].reason.contains("Proceed"));
+    assert_eq!(json["requestAnswers"][0]["text"], "Proceed");
 }

@@ -107,14 +107,13 @@ fn a_card_without_a_body_gets_the_template_headings_and_a_created_event() {
     assert_eq!(serde_json::to_value(card.agent_status).unwrap(), "idle");
     assert_eq!(card.history.len(), 1);
     assert_eq!(
-        card.history[0].kind,
-        agent_board::file_store::model::HistoryKind::Created
+        card.history[0].reason,
+        "Created card in Todo with agent idle."
     );
     let metadata: serde_json::Value = serde_json::from_slice(&fx.task_bytes(1)).unwrap();
-    assert_eq!(metadata["formatVersion"], 2);
+    assert_eq!(metadata["formatVersion"], 3);
     assert!(metadata.get("history").is_none());
-    assert_eq!(fx.history(1)[0]["kind"], "created");
-    assert_eq!(fx.history(1)[0]["actor"], "ai");
+    assert_eq!(fx.history(1)[0].as_object().unwrap().len(), 2);
     assert_eq!(fx.next_card_id(), 2);
 
     let body = String::from_utf8(fx.body_bytes(1)).unwrap();
@@ -304,8 +303,7 @@ fn setting_the_draft_flag_adds_a_draft_event_and_keeps_the_update_time() {
     let raw = fx.raw_task(1);
     assert_eq!(raw["isDraft"], true);
     assert_eq!(raw["updatedAt"], updated);
-    assert_eq!(fx.history(1)[1]["kind"], "draft");
-    assert_eq!(fx.history(1)[1]["isDraft"], true);
+    assert_eq!(fx.history(1)[1]["reason"], "Marked card as draft.");
 
     let same = fx.store.set_draft(&fx.project, 1, true, later()).unwrap();
     assert!(!same.changed);
@@ -329,8 +327,8 @@ fn finalizing_a_draft_saves_its_body_and_clears_the_flag() {
     let raw = fx.raw_task(1);
     assert_eq!(raw["isDraft"], false);
     assert_eq!(
-        fx.history(1).as_array().unwrap().last().unwrap()["kind"],
-        "draft"
+        fx.history(1).as_array().unwrap().last().unwrap()["reason"],
+        "Finalized card draft."
     );
 }
 
@@ -359,8 +357,15 @@ fn archiving_keeps_the_lane_and_position_and_restoring_puts_the_card_at_the_lane
     assert!(archived.value.archived_at.is_some());
     assert_eq!(archived.value.position, 1);
     assert_eq!(
-        fx.history(1).as_array().unwrap().last().unwrap()["kind"],
-        "archive"
+        fx.history(1)
+            .as_array()
+            .unwrap()
+            .last()
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .len(),
+        2
     );
     assert_eq!(
         fx.history(1).as_array().unwrap().last().unwrap()["reason"],

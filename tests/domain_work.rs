@@ -36,11 +36,11 @@ fn reason_normalizes_line_endings_and_counts_unicode_scalars() {
     );
     assert!(validate_work_reason(" \r\n ").is_err());
     assert_eq!(
-        validate_work_reason(&"界".repeat(2_000))
+        validate_work_reason(&"界".repeat(10_000))
             .unwrap()
             .chars()
             .count(),
-        2_000
+        10_000
     );
-    assert!(validate_work_reason(&"界".repeat(2_001)).is_err());
+    assert!(validate_work_reason(&"界".repeat(10_001)).is_err());
 }

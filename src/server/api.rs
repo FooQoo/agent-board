@@ -953,6 +953,7 @@ struct MoveInput {
     card_status: Column,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
+    #[serde(default)]
     reason: String,
 }
 #[derive(Deserialize)]
@@ -984,6 +985,7 @@ struct AgentStateInput {
     agent_status: RunState,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
+    #[serde(default)]
     reason: String,
     request_id: Option<String>,
     /// The choices of a pending request; `reason` is its question.
