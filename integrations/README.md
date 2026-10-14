@@ -1,6 +1,6 @@
 # Claude Code and Codex integration
 
-For browser operations, CLI examples, and shared-file editing, see the [usage guide](../docs/usage.md).
+For browser operations, CLI examples, and shared-file editing, see the [usage guide](https://fooqoo.github.io/agent-board/guide/), in particular [CLI reference](https://fooqoo.github.io/agent-board/guide/cli) and [Editing and evidence](https://fooqoo.github.io/agent-board/guide/editing).
 
 Agent Board hooks read the same read-only progress table as `agboard progress --json` after tools run and pass it to the agent as `additionalContext`. The `agent-board` skill describes how to choose work from that table, read only the needed plan and task files, record work, and verify acceptance conditions.
 

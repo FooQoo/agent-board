@@ -39,8 +39,6 @@ export default withMermaid(
     base: '/agent-board/',
     cleanUrls: true,
     lastUpdated: true,
-    // The pre-site pages stay in the repository until the guide pages replace them.
-    srcExclude: ['usage.md', 'mobile-monitor.md'],
     vite: {
       optimizeDeps: {
         // Pre-bundle mermaid and its CommonJS dependencies in dev; pnpm does not hoist them.
