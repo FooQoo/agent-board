@@ -73,3 +73,16 @@ video.demo-video {
 .vp-doc .mermaid {
   overflow-x: auto;
 }
+
+/* Mermaid's default edge-label background is a light grey box; in dark mode use the page
+   background so the light label text sits on a dark ground like the rest of the page. */
+.dark .vp-doc .mermaid .edgeLabel,
+.dark .vp-doc .mermaid .edgeLabel p,
+.dark .vp-doc .mermaid .edgeLabel span,
+.dark .vp-doc .mermaid .labelBkg {
+  background-color: var(--vp-c-bg) !important;
+}
+.dark .vp-doc .mermaid .edgeLabel rect {
+  fill: var(--vp-c-bg) !important;
+  opacity: 1;
+}
