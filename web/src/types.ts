@@ -125,6 +125,7 @@ export interface Card {
   /** A draft is read-only for agents until a person finalizes it. */
   isDraft: boolean;
   archivedAt?: string | null;
+  /** TASK.md frontmatter history, read from the canonical Markdown file. */
   history: HistoryEvent[];
   attachments: Attachment[];
   evidence: EvidenceRecord[];

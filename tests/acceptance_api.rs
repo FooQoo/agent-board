@@ -155,6 +155,50 @@ fn a_refused_conditions_list_saves_nothing() {
 }
 
 #[test]
+fn editing_a_draft_body_keeps_the_current_markdown_history() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let pid = project_id(home.path());
+    let server = Running::start(home.path());
+    let created = server.write(
+        "POST",
+        &format!("/api/projects/{pid}/cards"),
+        Some(
+            &json!({
+                "title": "Draft body edit",
+                "assignee": "ai",
+                "body": "Before edit.\n",
+                "acceptance": [{"id": "AC-1", "text": "Keep this condition", "done": false}],
+                "isDraft": true,
+            })
+            .to_string(),
+        ),
+    );
+    assert_eq!(created.status, 201, "{}", created.body);
+    let id = created.json()["card"]["id"].as_i64().unwrap();
+    let moved = server.write(
+        "POST",
+        &format!("/api/projects/{pid}/cards/{id}/move"),
+        Some(r#"{"cardStatus":"doing","reason":"Reprioritized"}"#),
+    );
+    assert_eq!(moved.status, 200, "{}", moved.body);
+    let latest_history = moved.json()["card"]["history"].clone();
+
+    let edited = server.write(
+        "PATCH",
+        &format!("/api/projects/{pid}/cards/{id}"),
+        Some(r#"{"body":"After edit.\n"}"#),
+    );
+    assert_eq!(edited.status, 200, "{}", edited.body);
+    let card = &edited.json()["card"];
+    assert_eq!(card["body"], "After edit.\n");
+    assert_eq!(card["acceptance"][0]["text"], "Keep this condition");
+    assert_eq!(card["history"], latest_history);
+    assert!(card["description"].as_str().unwrap().contains("history:"));
+    server.stop();
+}
+
+#[test]
 fn an_epic_is_created_and_saved_from_a_body_and_conditions() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());

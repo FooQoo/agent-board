@@ -28,6 +28,13 @@ use model::CardView;
 pub use ops::Answer;
 use reader::ProjectSnapshot;
 
+/// Optional TASK.md fields applied together to the latest stored Markdown.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TaskTextParts<'a> {
+    pub body: Option<&'a str>,
+    pub acceptance: Option<&'a [frontmatter::AcceptanceItem]>,
+}
+
 /// The file-based store of one shared directory. Opening it reads nothing and
 /// creates nothing; the first project creation writes `workspace.json`.
 #[derive(Debug, Clone)]
