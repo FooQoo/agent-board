@@ -1402,8 +1402,38 @@ fn put_draft_toggles_idle_cards_and_records_history_with_markdown_time() {
     assert_eq!(reply.json()["card"]["isDraft"], true);
     assert!(events.changed());
     let after = card_json(home.path(), &a, 1);
-    assert_ne!(after["updatedAt"], before["updatedAt"]);
-    // A real draft change rewrites TASK.md to append history, so its mtime is reflected.
+    let task_dir = home
+        .path()
+        .join("shared/projects")
+        .join(a.as_str())
+        .join("tasks/1");
+    let markdown_modified = DateTime::<Utc>::from(
+        std::fs::metadata(task_dir.join("TASK.md"))
+            .unwrap()
+            .modified()
+            .unwrap(),
+    );
+    let markdown_modified = DateTime::from_timestamp(markdown_modified.timestamp(), 0).unwrap();
+    let metadata: Value =
+        serde_json::from_slice(&std::fs::read(task_dir.join("task.json")).unwrap()).unwrap();
+    let metadata_updated_at = DateTime::parse_from_rfc3339(metadata["updatedAt"].as_str().unwrap())
+        .unwrap()
+        .with_timezone(&Utc);
+    let reported_updated_at = DateTime::parse_from_rfc3339(after["updatedAt"].as_str().unwrap())
+        .unwrap()
+        .with_timezone(&Utc);
+    assert_eq!(
+        reported_updated_at,
+        metadata_updated_at.max(markdown_modified),
+        "updatedAt is the newer of task.json and TASK.md timestamps"
+    );
+    assert!(
+        reported_updated_at
+            >= DateTime::parse_from_rfc3339(before["updatedAt"].as_str().unwrap())
+                .unwrap()
+                .with_timezone(&Utc)
+    );
+    // A real draft change rewrites TASK.md and appends a history event.
     let added = after["history"].as_array().unwrap();
     assert_eq!(added.len(), before["history"].as_array().unwrap().len() + 1);
     assert_eq!(added.last().unwrap()["kind"], "draft");
