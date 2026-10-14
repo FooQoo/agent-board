@@ -1,0 +1,4 @@
+# pnpm 12 fails the install on unreviewed build scripts. esbuild only needs its
+# prebuilt platform binary, so its install script is not required.
+allowBuilds:
+  esbuild: false
