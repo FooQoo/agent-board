@@ -80,7 +80,10 @@ try {
       await expect(card(3)).toBeVisible();
       const answer = page.locator('.card__answer').filter({ has: page.getByText(text.question, { exact: true }) });
       await expect(answer).toBeVisible();
+      // A tall viewport keeps the lane from clipping the card (answer buttons included).
+      await page.setViewportSize({ width: 1440, height: 1600 });
       await shot('question', page.locator('.card__item').filter({ has: answer }), page);
+      await page.setViewportSize({ width: 1440, height: 900 });
 
       // card-detail: the Conditions tab of the selected card.
       await card(3).click();
