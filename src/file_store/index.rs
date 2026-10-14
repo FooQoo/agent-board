@@ -101,21 +101,26 @@ impl ProjectIndex {
             self.entries.remove(id);
             return;
         }
-        let version = project_version(&dir);
         let previous = self.entries.get(id);
-        if previous.is_some_and(|entry| entry.version() == version) {
-            return;
-        }
         let last_good = previous.and_then(|entry| entry.last_good().cloned());
+        // Snapshot takes index→project lock order and recovers any pending pair
+        // before computing the version. Hashing first could mistake an
+        // interrupted journal for an unchanged project and skip recovery.
         let entry = match reader::read_snapshot(shared, id) {
-            Ok(snapshot) => ProjectEntry::Ready {
-                view: Arc::new(snapshot),
-                version,
-            },
+            Ok(snapshot) => {
+                let version = snapshot.version.clone();
+                if previous.is_some_and(|entry| entry.version() == version) {
+                    return;
+                }
+                ProjectEntry::Ready {
+                    view: Arc::new(snapshot),
+                    version,
+                }
+            }
             Err(error) => ProjectEntry::Invalid {
                 error,
                 last_good,
-                version,
+                version: project_version(&dir),
             },
         };
         self.entries.insert(id.clone(), entry);

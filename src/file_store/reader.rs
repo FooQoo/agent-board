@@ -17,13 +17,16 @@ use serde_json::Value;
 
 use super::FileStore;
 use super::frontmatter;
+use super::history::{ParseMode, parse_task};
 use super::index;
 use super::io;
 use super::layout;
+use super::lock::WriteLock;
 use super::model::{
-    CardEpic, CardView, EpicFile, EpicView, Problem, ProjectFile, TaskFile, WorkspaceFile,
-    current_request,
+    CardEpic, CardView, EpicFile, EpicView, Problem, ProjectFile, TaskFile, TaskMetadata,
+    WorkspaceFile, current_request,
 };
+use super::transaction;
 use super::validate;
 use crate::domain::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 use crate::error::AgboardError;
@@ -176,6 +179,23 @@ pub(crate) fn parse_file<T: DeserializeOwned>(
     })
 }
 
+fn parse_task_metadata(bytes: &[u8], label: &str) -> Result<TaskMetadata, AgboardError> {
+    let value: Value = serde_json::from_slice(bytes).map_err(|e| AgboardError::FileInvalid {
+        file: label.to_string(),
+        field: String::new(),
+        reason: format!("The JSON is malformed: {e}."),
+    })?;
+    validate::check_format_version_expected(&value, label, 2)?;
+    serde_json::from_value(value).map_err(|e| {
+        let message = e.to_string();
+        AgboardError::FileInvalid {
+            file: label.to_string(),
+            field: message.split('`').nth(1).unwrap_or("").to_string(),
+            reason: message,
+        }
+    })
+}
+
 /// The problem a tolerated read error stands for, with the file label kept.
 pub(crate) fn problem_of(error: AgboardError) -> Problem {
     match error {
@@ -188,10 +208,14 @@ pub(crate) fn problem_of(error: AgboardError) -> Problem {
             field,
             reason,
         },
-        AgboardError::FormatUnsupported { file, version } => Problem {
+        AgboardError::FormatUnsupported {
+            file,
+            version,
+            expected,
+        } => Problem {
             file,
             field: "formatVersion".into(),
-            reason: format!("Only formatVersion 1 is supported, found {version}."),
+            reason: format!("Only formatVersion {expected} is supported, found {version}."),
         },
         AgboardError::FileUnreadable { file, reason } => Problem {
             file,
@@ -343,13 +367,14 @@ pub(crate) fn read_card_lenient(
     let dir = layout::task_dir(&project_dir, card_id);
     let json_path = layout::task_json(&dir);
     let json_label = layout::shared_label(shared, &json_path);
-    let task: TaskFile = match io::read_bytes(&json_path, &json_label)
-        .and_then(|bytes| parse_file::<TaskFile>(&bytes, &json_label))
+    let metadata: TaskMetadata = match io::read_bytes(&json_path, &json_label)
+        .and_then(|bytes| parse_task_metadata(&bytes, &json_label))
     {
-        Ok(task) => task,
+        Ok(metadata) => metadata,
         Err(error) => return Err(vec![problem_of(error)]),
     };
-    let defects = validate::check_task(&task, card_id);
+    let task = metadata.with_history(Vec::new());
+    let defects = validate::check_task_metadata(&task, card_id);
     if !defects.is_empty() {
         return Err(defects
             .into_iter()
@@ -362,22 +387,49 @@ pub(crate) fn read_card_lenient(
     }
     let md_path = layout::task_md(&dir);
     let md_label = layout::shared_label(shared, &md_path);
-    let (description, problems) = match io::read_text(&md_path, &md_label) {
-        Ok(text) => {
-            let problems = validate::check_task_body(&text)
-                .into_iter()
-                .map(|d| Problem {
+    let (description, mut problems, history, history_valid) =
+        match io::read_text(&md_path, &md_label) {
+            Ok(text) => {
+                let parsed = parse_task(&text, ParseMode::Stored);
+                let mut problems = parsed
+                    .frontmatter_defects
+                    .iter()
+                    .chain(&parsed.acceptance_defects)
+                    .map(|d| Problem {
+                        file: md_label.clone(),
+                        field: d.field.clone(),
+                        reason: d.reason.clone(),
+                    })
+                    .collect::<Vec<_>>();
+                problems.extend(parsed.history_defects.iter().map(|d| Problem {
                     file: md_label.clone(),
-                    field: d.field,
-                    reason: d.reason,
-                })
-                .collect();
-            (text, problems)
-        }
-        Err(error) => (String::new(), vec![problem_of(error)]),
-    };
+                    field: d.field.clone(),
+                    reason: d.reason.clone(),
+                }));
+                (
+                    text,
+                    problems,
+                    parsed.history,
+                    parsed.history_defects.is_empty(),
+                )
+            }
+            Err(error) => (String::new(), vec![problem_of(error)], Vec::new(), false),
+        };
+    let mut joined = task;
+    joined.history = history;
+    if history_valid
+        && joined.agent_status == crate::domain::RunState::Pending
+        && current_request(&joined).is_none()
+    {
+        problems.push(Problem {
+            file: md_label.clone(),
+            field: "pendingRequestId".into(),
+            reason: "No history event holds the pending request.".into(),
+        });
+        joined.history.clear();
+    }
     Ok(CardLoad {
-        view: card_view(task, description, file_time(&md_path)),
+        view: card_view(joined, description, file_time(&md_path)),
         problems,
     })
 }
@@ -454,15 +506,40 @@ pub(crate) fn read_task_strict(
     let path = layout::task_json(&dir);
     let label = layout::shared_label(shared, &path);
     let bytes = io::read_bytes(&path, &label)?;
-    let task: TaskFile = parse_file(&bytes, &label)?;
-    match validate::check_task(&task, card_id).into_iter().next() {
-        None => Ok(task),
-        Some(d) => Err(AgboardError::FileInvalid {
+    let metadata: TaskMetadata = parse_task_metadata(&bytes, &label)?;
+    let task = metadata.with_history(Vec::new());
+    if let Some(d) = validate::check_task_metadata(&task, card_id)
+        .into_iter()
+        .next()
+    {
+        return Err(AgboardError::FileInvalid {
             file: label,
             field: d.field,
             reason: d.reason,
-        }),
+        });
     }
+    let md_path = layout::task_md(&dir);
+    let md_label = layout::shared_label(shared, &md_path);
+    let text = io::read_text(&md_path, &md_label)?;
+    let parsed = parse_task(&text, ParseMode::Stored);
+    if let Some(defect) = parsed.history_defects.first() {
+        return Err(AgboardError::FileInvalid {
+            file: md_label,
+            field: defect.field.clone(),
+            reason: defect.reason.clone(),
+        });
+    }
+    let mut joined = task;
+    joined.history = parsed.history;
+    if joined.agent_status == crate::domain::RunState::Pending && current_request(&joined).is_none()
+    {
+        return Err(AgboardError::FileInvalid {
+            file: md_label,
+            field: "pendingRequestId".into(),
+            reason: "No history event holds the pending request.".into(),
+        });
+    }
+    Ok(joined)
 }
 
 /// The text of a card's TASK.md.
@@ -482,6 +559,18 @@ pub fn read_card(
     project_id: &ProjectId,
     card_id: i64,
 ) -> Result<CardView, AgboardError> {
+    let project_dir = project_dir_checked(shared, project_id)?;
+    let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
+    transaction::recover_locked(&project_dir)?;
+    read_card_locked(shared, project_id, card_id)
+}
+
+/// Read one card while the caller already holds its project lock.
+pub(crate) fn read_card_locked(
+    shared: &Path,
+    project_id: &ProjectId,
+    card_id: i64,
+) -> Result<CardView, AgboardError> {
     let task = read_task_strict(shared, project_id, card_id)?;
     let body = read_body(shared, project_id, card_id)?;
     let project_dir = layout::project_dir(shared, project_id);
@@ -494,6 +583,17 @@ pub fn read_card(
 /// The snapshot of one project: its project file (strict), and every card
 /// with the defects that were tolerated.
 pub fn read_snapshot(
+    shared: &Path,
+    project_id: &ProjectId,
+) -> Result<ProjectSnapshot, AgboardError> {
+    let project_dir = project_dir_checked(shared, project_id)?;
+    let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
+    transaction::recover_locked(&project_dir)?;
+    read_snapshot_locked(shared, project_id)
+}
+
+/// Read a project snapshot while its project lock is already held.
+pub(crate) fn read_snapshot_locked(
     shared: &Path,
     project_id: &ProjectId,
 ) -> Result<ProjectSnapshot, AgboardError> {

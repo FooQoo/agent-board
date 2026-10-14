@@ -198,7 +198,8 @@ test('a save of the body keeps the other frontmatter keys, which the page does n
 
 test('a frontmatter that cannot be read is shown as a problem, the body stays visible, and the card reads unreadable until the file is fixed', async ({ page }) => {
   const id = addCard('Broken', frontmatter(THREE, 'Body stays visible.'));
-  const broken = readFileSync(taskFile(id), 'utf8').replace('done: false', 'done: maybe');
+  const original = readFileSync(taskFile(id), 'utf8');
+  const broken = original.replace('done: false', 'done: maybe');
   writeFileSync(taskFile(id), broken, 'utf8');
   await page.reload();
   await waitForSync(page);
@@ -216,7 +217,7 @@ test('a frontmatter that cannot be read is shown as a problem, the body stays vi
   );
 
   // Fixing the file brings the progress back.
-  replaceFileAtomically(taskFile(id), frontmatter(THREE, 'Body stays visible.'));
+  replaceFileAtomically(taskFile(id), original);
   await page.reload();
   await waitForSync(page);
   await expect(card(page, id).locator('.acceptance-chip')).toHaveAttribute('title', 'Acceptance conditions 0 / 3');

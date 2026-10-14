@@ -15,6 +15,7 @@ import {
   projectId,
   removeProject,
   replaceFileAtomically,
+  replaceTaskBodyPreservingFrontmatter,
   resetBoard,
   cardBody,
   workspace,
@@ -166,7 +167,7 @@ test('an image reference that points at another owner or outside the folder is n
       '![file url](file:///etc/hosts.png)',
     ].join('\n'),
   );
-  replaceFileAtomically(path.join(folder, 'tasks', '13', 'TASK.md'), body);
+  replaceTaskBodyPreservingFrontmatter(path.join(folder, 'tasks', '13', 'TASK.md'), body);
 
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));

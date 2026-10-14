@@ -66,10 +66,26 @@ pub fn parse_task(text: &str, mode: ParseMode) -> ParsedTask {
     let normalized = text.replace("\r\n", "\n");
     let map = match frontmatter::split(&normalized) {
         Split::None => Mapping::new(),
-        Split::Unclosed => return parsed,
+        Split::Unclosed => {
+            if mode == ParseMode::Stored {
+                parsed.history_defects.push(defect(
+                    "history",
+                    "Saved TASK.md must contain valid frontmatter history.",
+                ));
+            }
+            return parsed;
+        }
         Split::Found { yaml, .. } => match frontmatter::read_yaml(yaml) {
             Ok(Value::Mapping(map)) => map,
-            _ => return parsed,
+            _ => {
+                if mode == ParseMode::Stored {
+                    parsed.history_defects.push(defect(
+                        "history",
+                        "Saved TASK.md history cannot be read from invalid frontmatter.",
+                    ));
+                }
+                return parsed;
+            }
         },
     };
     let list = match map.get("history") {

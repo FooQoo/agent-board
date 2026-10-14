@@ -181,7 +181,10 @@ fn an_agent_is_refused_when_the_frontmatter_has_a_defect() {
         .join("shared/projects")
         .join(project)
         .join("tasks/2/TASK.md");
-    std::fs::write(&file, DEFECT).unwrap();
+    let valid = std::fs::read_to_string(&file).unwrap();
+    let (_, history) = valid.split_once("history:").unwrap();
+    let defective = DEFECT.replace("---\n\nBody.\n", &format!("history:{history}"));
+    std::fs::write(&file, defective).unwrap();
     let (code, error) = json_error(
         home.path(),
         &[

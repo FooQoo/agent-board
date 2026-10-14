@@ -101,7 +101,7 @@ impl FileStore {
         }
         if task.card_status == to {
             return Ok(Changed {
-                value: reader::read_card(shared, project, id)?,
+                value: reader::read_card_locked(shared, project, id)?,
                 changed: false,
             });
         }
@@ -129,7 +129,7 @@ impl FileStore {
         task.history.push(event);
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
-            value: reader::read_card(shared, project, id)?,
+            value: reader::read_card_locked(shared, project, id)?,
             changed: true,
         })
     }
@@ -173,10 +173,10 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<Changed<CardView>, AgboardError> {
         let reason = validate_work_reason(reason)?;
-        if state == RunState::Pending && !(2..=MAX_CHOICES).contains(&choices.len()) {
+        if state == RunState::Pending && choices.len() > MAX_CHOICES {
             return Err(AgboardError::InvalidValue {
                 field: "choices".into(),
-                reason: "A pending request needs a question and 2 to 10 choices.".into(),
+                reason: "A pending request needs a question and up to 10 choices.".into(),
             });
         }
         let shared = self.shared_dir();
@@ -192,7 +192,7 @@ impl FileStore {
         check_work_state(task.assignee, task.card_status, state)?;
         if task.agent_status == state {
             return Ok(Changed {
-                value: reader::read_card(shared, project, id)?,
+                value: reader::read_card_locked(shared, project, id)?,
                 changed: false,
             });
         }
@@ -229,7 +229,7 @@ impl FileStore {
         task.history.push(event);
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
-            value: reader::read_card(shared, project, id)?,
+            value: reader::read_card_locked(shared, project, id)?,
             changed: true,
         })
     }

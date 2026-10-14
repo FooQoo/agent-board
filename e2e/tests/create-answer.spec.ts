@@ -7,6 +7,7 @@ import { pasteMarkdown, waitForSync } from '../helpers/ui';
 
 interface ShownCard extends CardJson {
   description: string;
+  body: string;
   isDraft: boolean;
   history: { kind: string; actor: string; reason: string | null }[];
 }
@@ -100,7 +101,9 @@ test('a card for the user is added without a body; closing without typing asks n
   await expect(dialog).toHaveCount(0);
   // No body given: the CLI writes the frontmatter with no conditions and an empty body.
   expect(show(id)).toMatchObject({ title: 'Check the invoice', assignee: 'human', isDraft: false, agentStatus: 'idle' });
-  expect(show(id).description).toBe('---\nacceptance: []\n---\n\n');
+  expect(show(id).body).toBe('');
+  expect(show(id).description).toContain('acceptance: []\nhistory:\n- id:');
+  expect(show(id).history).toHaveLength(1);
   await card(page, id).click();
 
   await page.getByRole('button', { name: 'Add card' }).click();

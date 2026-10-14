@@ -71,6 +71,35 @@ fn a_request_file_keeps_the_question_and_its_choices() {
 }
 
 #[test]
+fn a_reason_only_request_with_zero_choices_is_saved_in_task_history() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let request = json!({"question": "Which database?", "choices": []}).to_string();
+
+    let asked = json_ok(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            &request,
+            "--json",
+        ],
+    );
+    assert_eq!(asked["card"]["agentStatus"], "pending");
+    assert_eq!(asked["card"]["pendingReason"], "Which database?");
+    assert_eq!(asked["card"]["pendingChoices"], json!([]));
+    let agent_event = asked["card"]["history"].as_array().unwrap().last().unwrap();
+    assert_eq!(agent_event["question"], "Which database?");
+    assert_eq!(agent_event["choices"], json!([]));
+}
+
+#[test]
 fn answering_with_a_choice_only_returns_the_card_to_idle_and_keeps_the_choice_in_history() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
@@ -424,11 +453,11 @@ fn a_request_file_is_checked_against_the_limits() {
 }
 
 #[test]
-fn a_request_without_choices_is_refused_and_nothing_changes() {
+fn a_request_without_choices_is_saved_as_a_reason_only_request() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let value = json!({"question": "Just a question?", "choices": []}).to_string();
-    let (code, code_name) = json_error(
+    let (code, _, err) = agboard(
         home.path(),
         &[
             "--project",
@@ -442,8 +471,9 @@ fn a_request_without_choices_is_refused_and_nothing_changes() {
             &value,
         ],
     );
-    assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
-    assert_eq!(card(home.path())["agentStatus"], "idle");
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(card(home.path())["agentStatus"], "pending");
+    assert_eq!(card(home.path())["pendingChoices"], json!([]));
 }
 
 #[test]
@@ -518,32 +548,27 @@ fn choices(count: usize) -> Value {
 }
 
 #[test]
-fn a_request_with_fewer_than_two_or_more_than_ten_choices_is_refused() {
-    for count in [0, 1, 11] {
-        let home = tempfile::tempdir().unwrap();
-        demo_project(home.path());
-        let value = choices(count).to_string();
-        let (code, code_name) = json_error(
-            home.path(),
-            &[
-                "--project",
-                "Demo",
-                "state",
-                "1",
-                "pending",
-                "--actor",
-                "ai",
-                "--request-json",
-                &value,
-            ],
-        );
-        assert_eq!(
-            (code, code_name.as_str()),
-            (2, "invalid_value"),
-            "{count} choices"
-        );
-        assert_eq!(card(home.path())["agentStatus"], "idle", "{count} choices");
-    }
+fn a_request_with_more_than_ten_choices_is_refused() {
+    let count = 11;
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let value = choices(count).to_string();
+    let (code, code_name) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            &value,
+        ],
+    );
+    assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
+    assert_eq!(card(home.path())["agentStatus"], "idle");
 }
 
 #[test]

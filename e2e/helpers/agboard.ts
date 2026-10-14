@@ -179,8 +179,58 @@ export function replaceFileAtomically(file: string, content: string): void {
   renameSync(temp, file);
 }
 
+/** Replace only the Markdown body of a task, keeping its TASK.md frontmatter (including history). */
+export function replaceTaskBodyPreservingFrontmatter(file: string, body: string): void {
+  const current = readFileSync(file, 'utf8');
+  const match = current.match(/^---\n([\s\S]*?)\n---\n(?:\n)?[\s\S]*$/);
+  if (!match) throw new Error(`${file} has no valid frontmatter to preserve`);
+  replaceFileAtomically(file, `---\n${match[1]}\n---\n\n${cardBody(body)}\n`);
+}
+
 function writeJson(file: string, value: unknown): void {
   replaceFileAtomically(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function yamlScalar(value: unknown): string {
+  if (value === null) return 'null';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  throw new Error(`Unsupported history value: ${JSON.stringify(value)}`);
+}
+
+function historyFrontmatter(events: Record<string, unknown>[]): string {
+  const lines = ['history:'];
+  for (const event of events) {
+    let first = true;
+    for (const [key, value] of Object.entries(event)) {
+      if (key === 'choices' && Array.isArray(value)) {
+        if (value.length === 0) {
+          lines.push(`${first ? '  - ' : '    '}choices: []`);
+        } else {
+          lines.push(`${first ? '  - ' : '    '}choices:`);
+          for (const choice of value) {
+            const item = choice as Record<string, unknown>;
+            lines.push(`      - id: ${yamlScalar(item.id)}`);
+            lines.push(`        label: ${yamlScalar(item.label)}`);
+          }
+        }
+      } else {
+        lines.push(`${first ? '  - ' : '    '}${key}: ${yamlScalar(value)}`);
+      }
+      first = false;
+    }
+  }
+  return lines.join('\n');
+}
+
+function taskMarkdown(description: string, events: Record<string, unknown>[]): string {
+  const text = cardBody(description);
+  const frontmatter = historyFrontmatter(events);
+  const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!match) return `---\n${frontmatter}\n---\n\n${text}`;
+  const yaml = match[1].trimEnd();
+  const body = match[2].replace(/^\n/, '');
+  return `---\n${yaml}\n${frontmatter}\n---\n\n${body}`;
 }
 
 interface FixtureEvent {
@@ -255,7 +305,7 @@ function taskFilesFor(card: FixtureCard): { task: Record<string, unknown>; markd
     });
   }
   const task = {
-    formatVersion: 1,
+    formatVersion: 2,
     id: card.id,
     title: card.title,
     assignee: card.assignee,
@@ -271,9 +321,8 @@ function taskFilesFor(card: FixtureCard): { task: Record<string, unknown>; markd
     agentStatusChangedAt: card.agentStatusChangedAt,
     attachments: [],
     evidence: [],
-    history,
   };
-  return { task, markdown: cardBody(card.description) };
+  return { task, markdown: taskMarkdown(card.description, history) };
 }
 
 /**

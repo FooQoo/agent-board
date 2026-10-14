@@ -92,6 +92,7 @@ impl FileStore {
             return Err(AgboardError::FormatUnsupported {
                 file: BINDINGS_FILE.to_string(),
                 version: file.format_version.to_string(),
+                expected: FORMAT_VERSION,
             });
         }
         file.bindings

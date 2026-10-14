@@ -162,6 +162,27 @@ mod tests {
                 .join(id.to_string())
                 .join("TASK.md")
         }
+
+        fn replace_description(&self, id: i64, description: &str) {
+            let path = self.path(id);
+            let current = std::fs::read_to_string(&path).unwrap();
+            let stored = super::super::super::history::parse_task(
+                &current,
+                super::super::super::history::ParseMode::Stored,
+            );
+            let input = super::super::super::history::parse_task(
+                description,
+                super::super::super::history::ParseMode::NewInput,
+            );
+            let next = super::super::super::history::compose_task(
+                description,
+                &input.body,
+                Some(&input.acceptance),
+                &stored.history,
+            )
+            .unwrap();
+            std::fs::write(path, next).unwrap();
+        }
     }
 
     #[test]
@@ -203,7 +224,13 @@ mod tests {
             false,
         );
         let invalid = f.card("Invalid", Assignee::Ai, OPEN, false);
-        std::fs::write(f.path(invalid), "---\nacceptance: nope\n---\n\nWork.\n").unwrap();
+        let valid = std::fs::read_to_string(f.path(invalid)).unwrap();
+        let (_, history) = valid.split_once("history:").unwrap();
+        std::fs::write(
+            f.path(invalid),
+            format!("---\nacceptance: nope\nhistory:{history}"),
+        )
+        .unwrap();
 
         f.store.auto_complete_all(at(2)).unwrap();
 
@@ -282,10 +309,10 @@ mod tests {
     fn direct_task_file_updates_are_rechecked_and_existing_done_is_not_reopened() {
         let f = Fixture::new();
         let id = f.card("Edited externally", Assignee::Ai, OPEN, false);
-        std::fs::write(f.path(id), COMPLETE).unwrap();
+        f.replace_description(id, COMPLETE);
         assert!(f.store.auto_complete_all(at(2)).unwrap());
 
-        std::fs::write(f.path(id), OPEN).unwrap();
+        f.replace_description(id, OPEN);
         assert!(!f.store.auto_complete_all(at(3)).unwrap());
         assert_eq!(
             f.store.card(&f.project, id).unwrap().card_status,

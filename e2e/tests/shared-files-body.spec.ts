@@ -204,12 +204,13 @@ test('the edit dialog writes nothing when it is opened and closed unchanged, and
   agboardOk(mainProject, ['edit', '15', '--desc-file', writeBody(`## Work\n\nIntro text.\n\n![kept](attachment:${pictureId})\n`)]);
 
   const file = path.join(workspace(mainProject).folder, 'tasks', '15', 'TASK.md');
-  const before = readFileSync(file, 'utf8');
-  const beforeTime = statSync(file).mtimeMs;
 
   await openBoard(page);
   await card(page, 15).click();
   await details(page).getByRole('button', { name: 'Make draft' }).click();
+  await expect.poll(() => readFileSync(file, 'utf8')).toContain('kind: draft');
+  const before = readFileSync(file, 'utf8');
+  const beforeTime = statSync(file).mtimeMs;
   await details(page).getByRole('button', { name: 'Edit card' }).click();
   const dialog = page.getByRole('dialog', { name: /^#15 / });
   await expect(body(dialog).getByText('Intro text.')).toBeVisible();

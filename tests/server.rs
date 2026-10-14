@@ -656,7 +656,11 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
         r#"{"agentStatus":"pending","actor":"ai","reason":"A question with no choices"}"#,
         Some(&token),
     );
-    assert_eq!(no_choices.status, 422, "{}", no_choices.body);
+    assert_eq!(no_choices.status, 200, "{}", no_choices.body);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&no_choices.body).unwrap()["changed"],
+        false
+    );
     let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
     let request_id = request["card"]["pendingRequestId"].as_str().unwrap();
     let body = serde_json::json!({"requestId":request_id,"actor":"human","text":"Proceed with A"})
@@ -1650,8 +1654,10 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
         .join("tasks/1/TASK.md");
     let label = format!("projects/{project}/tasks/1/TASK.md");
     // A condition has no `done` key: the file is still being written, or was edited by hand.
-    let defective = "---\nacceptance:\n  - id: AC-1\n    text: Done\n---\n\nWork.\n";
-    std::fs::write(&md, defective).unwrap();
+    let original = std::fs::read_to_string(&md).unwrap();
+    let (_, history) = original.split_once("history:").unwrap();
+    let defective = format!("---\nacceptance:\n  - id: AC-1\n    text: Done\nhistory:{history}");
+    std::fs::write(&md, &defective).unwrap();
 
     let board = board_until(&server, |b| !b["problems"].as_array().unwrap().is_empty());
     let problems = board["problems"].as_array().unwrap();
@@ -1668,7 +1674,22 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
         .unwrap();
     assert_eq!(card["description"], defective);
 
-    std::fs::write(&md, BODY).unwrap();
+    let parsed = agent_board::file_store::history::parse_task(
+        &original,
+        agent_board::file_store::history::ParseMode::Stored,
+    );
+    let input = agent_board::file_store::history::parse_task(
+        BODY,
+        agent_board::file_store::history::ParseMode::NewInput,
+    );
+    let fixed = agent_board::file_store::history::compose_task(
+        BODY,
+        &input.body,
+        Some(&input.acceptance),
+        &parsed.history,
+    )
+    .unwrap();
+    std::fs::write(&md, fixed).unwrap();
     let board = board_until(&server, |b| b["problems"].as_array().unwrap().is_empty());
     assert!(board["problems"].as_array().unwrap().is_empty(), "{board}");
 }

@@ -9,9 +9,10 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use super::super::FileStore;
+use super::super::history::{ParseMode, compose_task, parse_task};
 use super::super::io;
 use super::super::layout;
-use super::super::model::{CardView, HistoryKind, HistoryRecord, TaskFile};
+use super::super::model::{CardView, HistoryKind, HistoryRecord, TaskFile, TaskMetadata};
 use super::super::reader;
 use super::super::validate;
 use super::{
@@ -56,9 +57,24 @@ fn write_new_card(
     ));
     fs::create_dir(&temp).map_err(|e| io::write_error(&label, e))?;
     let result = (|| -> Result<(), AgboardError> {
+        let parsed = parse_task(body, ParseMode::NewInput);
+        if let Some(defect) = parsed.history_defects.first() {
+            return Err(AgboardError::FileInvalid {
+                file: format!("{label}/TASK.md"),
+                field: defect.field.clone(),
+                reason: defect.reason.clone(),
+            });
+        }
+        let body = compose_task(body, &parsed.body, None, &task.history).map_err(|defect| {
+            AgboardError::FileInvalid {
+                file: format!("{label}/TASK.md"),
+                field: defect.field,
+                reason: defect.reason,
+            }
+        })?;
         io::write_json(
             &layout::task_json(&temp),
-            task,
+            &TaskMetadata::from(task),
             &format!("{label}/task.json"),
         )?;
         io::write_atomic(
@@ -77,7 +93,7 @@ fn write_new_card(
 
 /// The card's view after a change, read back from the files.
 fn view(shared: &Path, project: &ProjectId, id: i64) -> Result<CardView, AgboardError> {
-    reader::read_card(shared, project, id)
+    reader::read_card_locked(shared, project, id)
 }
 
 impl FileStore {
@@ -110,7 +126,7 @@ impl FileStore {
         let position = lane_end(shared, project, Column::Todo)?;
         let at = stamp(now);
         let task = TaskFile {
-            format_version: layout::FORMAT_VERSION,
+            format_version: 2,
             id,
             title,
             assignee: new.assignee,

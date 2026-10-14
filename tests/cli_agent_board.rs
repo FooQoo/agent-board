@@ -353,12 +353,14 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
         ],
     ));
     assert_eq!(
+        added["card"]["body"].as_str().unwrap().chars().count(),
+        50_000
+    );
+    assert!(
         added["card"]["description"]
             .as_str()
             .unwrap()
-            .chars()
-            .count(),
-        50_000
+            .contains("history:")
     );
     let file = home.path().join("desc.md");
     std::fs::write(&file, format!("{}\n", body_of(50_000, 'い'))).unwrap();
@@ -366,7 +368,13 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
         home.path(),
         &["edit", "1", "--desc-file", file.to_str().unwrap(), "--json"],
     ));
-    assert_eq!(edited["card"]["description"], body_of(50000, 'い').as_str());
+    assert_eq!(edited["card"]["body"], body_of(50000, 'い').as_str());
+    assert!(
+        edited["card"]["description"]
+            .as_str()
+            .unwrap()
+            .contains("history:")
+    );
     let piped = Command::cargo_bin("agboard")
         .unwrap()
         .env("AGBOARD_HOME", home.path())
@@ -383,15 +391,12 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
         .assert();
     // The description is stored trimmed of its outer whitespace (as before the switch).
     assert_eq!(
-        json_of(piped)["card"]["description"]
-            .as_str()
-            .unwrap()
-            .trim(),
+        json_of(piped)["card"]["body"].as_str().unwrap().trim(),
         body_of(50000, 'う').trim()
     );
     let shown = json_of(invoke(home.path(), &["show", "1", "--json"]));
     assert_eq!(
-        shown["card"]["description"]
+        shown["card"]["body"]
             .as_str()
             .unwrap()
             .trim()

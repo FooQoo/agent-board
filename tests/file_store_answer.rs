@@ -103,33 +103,22 @@ impl Fixture {
             .join("task.json")
     }
 
-    /// A pending request with no choices, as the earlier form stored a reason-only request. The store no
-    /// longer creates one, so the choices are removed from the stored file after a valid request is made.
+    /// A pending request with no choices.
     fn legacy_reason_only(&self, id: i64, question: &str) -> String {
         let asked = self
             .store
-            .request_decision(
-                &self.project,
-                id,
-                Actor::Ai,
-                question,
-                vec![choice("a", "Plan A"), choice("b", "Plan B")],
-                later(),
-            )
+            .request_decision(&self.project, id, Actor::Ai, question, vec![], later())
             .unwrap();
-        let request = asked.value.pending_request_id.unwrap();
-        let path = self.task_path(id);
-        let mut task: serde_json::Value =
-            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
-        if let Some(event) = task["history"].as_array_mut().and_then(|h| h.last_mut()) {
-            event["choices"] = serde_json::json!([]);
-        }
-        fs::write(&path, serde_json::to_string_pretty(&task).unwrap()).unwrap();
-        request
+        asked.value.pending_request_id.unwrap()
     }
 
-    fn raw(&self, id: i64) -> serde_json::Value {
-        serde_json::from_str(&fs::read_to_string(self.task_path(id)).unwrap()).unwrap()
+    fn history(&self, id: i64) -> serde_json::Value {
+        let markdown = fs::read_to_string(self.task_path(id).with_file_name("TASK.md")).unwrap();
+        let parsed = agent_board::file_store::history::parse_task(
+            &markdown,
+            agent_board::file_store::history::ParseMode::Stored,
+        );
+        serde_json::to_value(parsed.history).unwrap()
     }
 
     fn bytes(&self, id: i64) -> Vec<u8> {
@@ -162,12 +151,7 @@ fn a_request_with_choices_is_saved_in_history_and_shown_on_the_card() {
     assert_eq!(asked.value.pending_reason.as_deref(), Some("Proceed?"));
     assert_eq!(asked.value.pending_choices, proceed_choices());
 
-    let last = fx.raw(id)["history"]
-        .as_array()
-        .unwrap()
-        .last()
-        .unwrap()
-        .clone();
+    let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
     assert_eq!(last["kind"], "agent");
     assert_eq!(last["toAgentStatus"], "pending");
     assert_eq!(last["question"], "Proceed?");
@@ -207,12 +191,7 @@ fn a_choice_only_answer_returns_the_card_to_idle_and_records_the_choice() {
     assert!(card.pending_reason.is_none());
     assert!(card.pending_choices.is_empty());
 
-    let last = fx.raw(id)["history"]
-        .as_array()
-        .unwrap()
-        .last()
-        .unwrap()
-        .clone();
+    let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
     assert_eq!(last["kind"], "answer");
     assert_eq!(last["requestId"], request);
     assert_eq!(last["choiceId"], "proceed");
@@ -240,12 +219,7 @@ fn a_text_answer_works_for_a_reason_only_request() {
         )
         .unwrap();
     assert_eq!(card.agent_status, RunState::Idle);
-    let last = fx.raw(id)["history"]
-        .as_array()
-        .unwrap()
-        .last()
-        .unwrap()
-        .clone();
+    let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
     assert_eq!(last["kind"], "answer");
     assert_eq!(last["reason"], "Use option B");
     assert!(last.get("choiceId").is_none() || last["choiceId"].is_null());
@@ -277,12 +251,7 @@ fn an_answer_with_a_choice_and_a_note_stores_both() {
             later(),
         )
         .unwrap();
-    let last = fx.raw(id)["history"]
-        .as_array()
-        .unwrap()
-        .last()
-        .unwrap()
-        .clone();
+    let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
     assert_eq!(last["choiceId"], "revise");
     assert_eq!(last["choiceLabel"], "Revise the plan");
     assert_eq!(last["reason"], "Keep the tests");
