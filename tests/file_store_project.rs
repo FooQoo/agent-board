@@ -47,6 +47,13 @@ fn an_empty_data_area_gets_workspace_project_and_readme() {
         "Do not edit TASK.md of a card that is a draft.",
         "Do not edit it; use the `agboard` CLI.",
         "Do not delete a card folder or an epic folder.",
+        "a card's metadata such as its current status and assignee.",
+        "a card's body, acceptance conditions, and operation history.",
+        "TASK.md history is the source of truth for card operation history.",
+        "The body after the frontmatter is free Markdown.",
+        "`formatVersion: 2`",
+        "Version 1 task files are not migrated or read by this version.",
+        "Agent Board never deletes old data automatically.",
     ] {
         assert!(readme.contains(rule), "README lacks {rule:?}");
     }

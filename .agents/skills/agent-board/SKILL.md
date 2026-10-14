@@ -13,11 +13,11 @@ How the board is used:
 - An **epic** is a plan. Its `PLAN.md` states the goal, the scope, the completion conditions, and how the work proceeds.
 - A **task** (a card) is the plan for one piece of work. Its `TASK.md` states what to do, its completion conditions, and the execution record.
 - The **shared folder** of the project is the source of truth for both. Do not keep a separate plan document elsewhere and copy it onto the board.
-- **Execution history** accumulates on the board: card history (lane moves, run states, questions, and answers, each with a reason) and the execution log section of each `TASK.md` (a convention in the template, not a required heading).
+- **Operation history** is stored in the top-level `history` frontmatter of each `TASK.md`. The board appends card changes such as lane and run-state changes, questions, and answers, with reasons where applicable. The detailed execution log and evidence references stay in the free-Markdown body; it is not the operation history.
 
 ## Language of board content
 
-Write everything you put on the board in the language the user speaks with you: card and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing cards and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
+Write everything you put on the board in the language the user speaks with you: card and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing cards and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
 
 ## 1. Resolve the project from the working folder
 

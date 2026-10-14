@@ -69,6 +69,10 @@ The exported `AGBOARD_HOME` is shared by commands in this shell session. Set it 
 
 The data area holds `shared/` (the project folders as plain files), `serve.json` while a server runs, and the `lifecycle.lock` file. Nothing is stored in a database.
 
+Each task's `task.json` contains metadata such as its current lane and owner, and uses format version 2. `TASK.md` is the source of truth for its body, acceptance conditions, and operation history. Status changes made through the UI or CLI append history to `TASK.md`; editing the body or acceptance conditions preserves the latest history. Epic plans keep their existing `PLAN.md` format.
+
+This version does not read or migrate version 1 task files. When adopting it for an existing board, the user must remove the old data and start with new cards. Agent Board does not delete or reset existing data automatically.
+
 To work on the web UI alone with sample data:
 
 ```sh

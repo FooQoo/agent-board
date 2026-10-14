@@ -49,9 +49,11 @@ The result contains `folder` (the project's absolute path), `projectId`, `readme
 
 Agents may edit a non-draft card's `TASK.md` and an epic's `PLAN.md` as that README allows. For direct edits, write a temporary file in the same folder and rename it over the original. The board follows file changes automatically. Use the CLI for metadata and status changes; never edit `task.json`, `epic.json`, `project.json`, or `.internal/` lock files directly, or delete card or epic folders directly. Keep personal absolute paths out of shared files.
 
-### Acceptance frontmatter
+### TASK history and acceptance frontmatter
 
-TASK.md and PLAN.md hold their completion conditions in a YAML frontmatter at the top of the file. The body after it is free Markdown; no heading is required:
+`task.json` contains card metadata such as its current lane and owner and uses format version 2. It does not contain history. `TASK.md` is the source of truth for the card's body, acceptance conditions, and operation history. `PLAN.md` retains its existing format; operation history is only stored for cards.
+
+TASK.md and PLAN.md hold their completion conditions in YAML frontmatter at the top of the file. The body after it is free Markdown; no heading is required. New card input may omit `history` or use an empty list; Agent Board adds the initial `created` event when it creates the card:
 
 ```markdown
 ---
@@ -62,6 +64,7 @@ acceptance:
   - id: AC-2
     text: Deleting a card asks for confirmation.
     done: true
+history: []
 ---
 
 ## Background
@@ -69,7 +72,9 @@ acceptance:
 Any headings and text you need.
 ```
 
-Each condition has three keys: `id` (`AC-` followed by a positive number without a leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (`true` or `false`). Other keys in the frontmatter are kept when the board writes the file. A file without a frontmatter has no conditions, and its whole text is the body.
+Each condition has three keys: `id` (`AC-` followed by a positive number without a leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (`true` or `false`). Other keys in the frontmatter are kept when the board writes the file. A `PLAN.md` without frontmatter has no conditions, and its whole text is the body. A format version 2 `TASK.md` must have a valid top-level `history` list, even when its `acceptance` list is empty.
+
+Agent Board appends operation history to TASK.md when card operations occur, including lane and agent-state changes, questions and answers, and archive or restore actions. UI status changes are written to the same Markdown history shown in the card's History tab. Ordinary body and acceptance edits preserve the latest history; history is not an input to those edits. Use the history shown by the board or returned by `show`/`snapshot` for operation history. Keep detailed work notes and evidence references in the free-Markdown body.
 
 If the frontmatter cannot be read (invalid YAML, a missing key, a duplicate ID, an empty text), the board reports the file, the item, and the reason as a problem. The card then shows no progress and its body is shown in full. The board never rewrites the file to fix it.
 
@@ -85,4 +90,4 @@ An epic's frontmatter can also contain a `priority` list of distinct positive ca
 priority: [3, 1, 2]
 ```
 
-New cards and epics start with an empty `acceptance` list. Files written before this format, with Japanese headings such as `## 作業内容` and `- [ ] AC-1.` lines, are read as bodies with no conditions; they are not converted.
+New cards and epics start with an empty `acceptance` list. New cards use task format version 2. This version does not read or migrate version 1 task files; it reports them as unsupported and leaves them unchanged. When adopting this version for an existing board, the user must remove the old data before starting with new cards. Agent Board never deletes or resets old data automatically. A task file paired with version 1 metadata is unsupported regardless of whether it uses older headings such as `## Work` or `## 作業内容`; it is not converted. Epic plans keep their existing behavior.
