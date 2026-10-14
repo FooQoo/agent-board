@@ -1,0 +1,141 @@
+import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { chromium, expect } from '@playwright/test';
+import { cli, copy, markdown, project, repo, seed, settle, startServer, stop } from './lib/sample-board.mjs';
+
+// Captures the screenshots used by the guide pages into docs/images/guide.
+// Build web/ and the CLI first. Only disposable sample data and free loopback ports are used.
+const output = path.join(repo, 'docs/images/guide');
+mkdirSync(output, { recursive: true });
+
+// Texts that only the guide screenshots need, in both languages. UI labels come from the app itself.
+const extra = {
+  en: {
+    editorCard: 3, // The card whose edit dialog is captured (index into copy.titles).
+    editorBody: '## Goal\n\nWrite a setup guide that a new teammate can follow without help.\n\n## Flow\n\n```mermaid\nflowchart LR\n  Outline --> Write --> Try --> Publish\n```\n\n## Tasks\n\n- [x] Outline the steps\n- [ ] Write each step with an example\n- [ ] Ask a teammate to try the guide\n',
+    editorChecks: ['The steps are complete', 'A teammate followed the guide', 'The guide is published'],
+    archived: ['Set up the repository', 'Choose the color palette', 'Write the first draft'],
+    archive: { trigger: 'Archive completed cards', submit: /^Archive \d+ cards$/, open: 'Archive', doneLane: 'Done' },
+    makeDraft: 'Make draft', edit: 'Edit card', settings: 'Settings', cancel: 'Cancel',
+  },
+  ja: {
+    editorCard: 3,
+    editorBody: '## 目的\n\n新しいメンバーが一人で進められるセットアップガイドを書く。\n\n## 流れ\n\n```mermaid\nflowchart LR\n  構成 --> 執筆 --> 確認 --> 公開\n```\n\n## 作業\n\n- [x] 手順の構成を決める\n- [ ] 各手順に例を添えて書く\n- [ ] チームメンバーに試してもらう\n',
+    editorChecks: ['手順がそろっている', 'メンバーがガイドどおりに進められた', 'ガイドを公開している'],
+    archived: ['リポジトリを準備する', '配色を決める', '最初の下書きを書く'],
+    archive: { trigger: '完了カードをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
+    makeDraft: '下書きにする', edit: 'カードを編集', settings: '設定', cancel: 'キャンセル',
+  },
+};
+
+function addSamples(home, id, text, more) {
+  const run = (...args) => cli(home, ['--project', project, ...args]);
+  run('edit', String(more.editorCard + 1), '--desc',
+    markdown(more.editorBody, more.editorChecks, 1));
+  for (const title of more.archived) {
+    const added = run('add', title, '--assignee', 'human', '--actor', 'human', '--epic', 'DESIGN');
+    run('mv', String((added.card ?? added).id), 'done', '--actor', 'human', '--reason', 'Sample work completed');
+  }
+  return id;
+}
+
+const browser = await chromium.launch();
+try {
+  for (const locale of ['en', 'ja']) {
+    const home = mkdtempSync(path.join(os.tmpdir(), 'agboard-docs-'));
+    let server;
+    const contexts = [];
+    try {
+      const text = copy[locale];
+      const more = extra[locale];
+      const id = addSamples(home, seed(home, text), text, more);
+      const started = await startServer(home);
+      server = started.server;
+      const { origin } = started;
+      const open = async (mode) => {
+        const ctx = await browser.newContext({
+          viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, timezoneId: 'UTC',
+        });
+        contexts.push(ctx);
+        await ctx.addInitScript(([lang, value]) => {
+          localStorage.setItem('agboard.locale', lang);
+          localStorage.setItem('agboard.theme', JSON.stringify({ mode: value, accent: 'blue' }));
+        }, [locale, mode]);
+        const tab = await ctx.newPage();
+        tab.on('pageerror', (error) => errors.push(error.message));
+        await tab.goto(`${origin}/?project=${id}`);
+        return tab;
+      };
+      const errors = [];
+      const suffix = locale === 'ja' ? '.ja' : '';
+      const shot = async (name, target, tab) => {
+        await settle(tab);
+        await target.screenshot({ path: path.join(output, `${name}${suffix}.png`) });
+      };
+      const page = await open('light');
+      const card = (n) => page.getByRole('button', { name: new RegExp(`^#${n}(?!\\d)`) });
+
+      // question: the Pending card with its answer field.
+      await expect(card(3)).toBeVisible();
+      const answer = page.locator('.card__answer').filter({ has: page.getByText(text.question, { exact: true }) });
+      await expect(answer).toBeVisible();
+      await shot('question', page.locator('.card__item').filter({ has: answer }), page);
+
+      // card-detail: the Conditions tab of the selected card.
+      await card(3).click();
+      await page.getByRole('tab', { name: text.tab, exact: true }).click();
+      await expect(page.getByRole('tabpanel', { name: text.tab, exact: true })).toBeVisible();
+      await expect(page.getByRole('tab', { name: text.tab, exact: true })).toHaveAttribute('aria-selected', 'true');
+      await shot('card-detail', page, page);
+
+      // board-dark: the whole board in the dark theme, in its own browser context.
+      const dark = await open('dark');
+      await expect(dark.getByRole('button', { name: /^#3(?!\d)/ })).toBeVisible();
+      await expect(dark.locator('html')).toHaveAttribute('data-mode', 'dark');
+      await shot('board-dark', dark, dark);
+
+      // settings: the language and theme choices.
+      await page.getByRole('button', { name: more.settings, exact: true }).click();
+      const settings = page.getByRole('dialog', { name: more.settings });
+      await expect(settings).toBeVisible();
+      await expect(settings.getByRole('radio').first()).toBeVisible();
+      await shot('settings', page, page);
+      await page.keyboard.press('Escape');
+      await expect(settings).toHaveCount(0);
+
+      // editor: a draft card with a task list and a Mermaid diagram, conditions panel expanded.
+      await card(4).click();
+      await page.getByRole('button', { name: more.makeDraft, exact: true }).click();
+      await page.getByRole('button', { name: more.edit, exact: true }).click();
+      const editor = page.locator('.editor-dialog');
+      await expect(editor.locator('.ProseMirror')).toBeVisible();
+      await editor.locator('.conditions-dock__head').click();
+      await expect(editor.locator('.conditions-dock__head')).toHaveAttribute('aria-expanded', 'true');
+      await expect(editor.locator('.ProseMirror h2').first()).toBeVisible();
+      await expect(editor.locator('.rich-mermaid svg').first()).toBeVisible();
+      await shot('editor', page, page);
+      await editor.getByRole('button', { name: more.cancel, exact: true }).click();
+      await expect(editor).toHaveCount(0);
+
+      // archive: archive the completed cards, then open the archive list.
+      await page.locator('.lane-header__archive').click();
+      const confirm = page.getByRole('dialog');
+      await expect(confirm).toBeVisible();
+      await confirm.getByRole('button', { name: more.archive.submit }).click();
+      await expect(confirm).toHaveCount(0);
+      await page.locator('.header__archive').click();
+      await expect(page.locator('.archive-row > button')).toHaveCount(2 + more.archived.length);
+      await shot('archive', page, page);
+
+      expect(errors).toEqual([]);
+      console.log(`${locale}: captured 6 guide screenshots; no browser errors.`);
+    } finally {
+      await Promise.all(contexts.map((ctx) => ctx.close()));
+      await stop(server);
+      rmSync(home, { recursive: true, force: true });
+    }
+  }
+} finally {
+  await browser.close();
+}
