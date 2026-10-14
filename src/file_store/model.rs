@@ -98,7 +98,7 @@ pub struct EvidenceRecord {
     pub created_at: DateTime<Utc>,
 }
 
-/// `task.json`: one card's operational state and history. Its text is in TASK.md.
+/// In-memory card aggregate. Metadata is in `task.json`; text and history are in TASK.md.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct TaskFile {
