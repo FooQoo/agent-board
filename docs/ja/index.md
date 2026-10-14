@@ -69,11 +69,35 @@ import { withBase } from 'vitepress'
 
 ![本文・受け入れ条件・履歴・エピックの4タブを持つモバイルの下部ドロワー](../images/mobile.ja.png){.screenshot .screenshot--narrow}
 
-## 全体の構成
+## はじめる
 
-```mermaid
-flowchart LR
-    A["AIエージェント"] -- "agboard CLI・Hook" --> D[("ローカルの共有フォルダ")]
-    U["ユーザー"] -- "Agent Board UI" --> D
-    D -- "ローカルサーバー" --> B["ブラウザ"]
+Agent Boardは手元のマシンで動き、アカウントもホスティングも要りません。インストールしてボードを起動し、エージェントを招き入れましょう。
+
+<div class="home-steps">
+
+1. **ボードを起動する**
+
+   プロジェクトを作成して`agboard serve`を実行し、ブラウザでボードを開きます。[インストールと開始](./guide/getting-started)
+
+2. **エージェントに作業を登録させる**
+
+   Claude CodeやCodexをHookで連携します。エージェントは進行表を読み、カードを追加します。[エージェントとの連携](./guide/agents)
+
+3. **カードの上で回答する**
+
+   エージェントが質問したら、PCでもスマホでも、カード上で選択肢を選んで回答します。[判断依頼](./guide/decisions)
+
+</div>
+
+```sh
+git clone https://github.com/FooQoo/agent-board.git
+cd agent-board
+pnpm --dir web install
+pnpm --dir web build
+cargo install --path . --locked --force
 ```
+
+<div class="home-cta">
+  <a class="home-cta__button home-cta__button--brand" :href="withBase('/ja/guide/getting-started')">はじめる</a>
+  <a class="home-cta__button" href="https://github.com/FooQoo/agent-board">GitHub</a>
+</div>
