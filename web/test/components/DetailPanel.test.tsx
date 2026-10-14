@@ -174,7 +174,7 @@ describe('DetailPanel', () => {
     expect(container.querySelectorAll('.history__step')).toHaveLength(4);
   });
 
-  it('shows the run state for a card in Doing and the reason for a pending card', () => {
+  it('shows Running and Pending states without duplicating the answer prompt', () => {
     const { rerender } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
@@ -197,9 +197,7 @@ describe('DetailPanel', () => {
     expect(document.querySelector('.detail__meta .status-label--pending')?.textContent).toBe(
       'Pending',
     );
-    expect(document.querySelector('.detail__reason')?.textContent).toBe(
-      'Waiting for confirmation on how to replace a board.',
-    );
+    expect(document.querySelector('.detail__request')).toBeNull();
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}

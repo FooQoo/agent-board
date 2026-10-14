@@ -7,7 +7,7 @@ import { PROJECT_A, makeCard } from '../fixtures';
 
 describe('CardDetailView', () => {
   beforeEach(() => selectLocale('en'));
-  it('renders the shared card body and decision choices as read-only content', async () => {
+  it('renders the shared card body without duplicating the card answer prompt', async () => {
     const onClose = vi.fn();
     const card = makeCard({
       id: 72,
@@ -33,9 +33,9 @@ describe('CardDetailView', () => {
       />,
     );
     expect(screen.getByRole('heading', { name: 'Awaiting API review' })).toBeTruthy();
-    expect(screen.getByText('Which API shape should we use?')).toBeTruthy();
-    expect(screen.getByText('Keep the current interface')).toBeTruthy();
-    expect(screen.getByText('Answer on the card.')).toBeTruthy();
+    expect(screen.getByText('Review the routes.')).toBeTruthy();
+    expect(screen.queryByText('Which API shape should we use?')).toBeNull();
+    expect(container.querySelector('.detail__request')).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('button', { name: /send|edit|archive|delete|answer/i })).toBeNull();

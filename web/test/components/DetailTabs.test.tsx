@@ -72,7 +72,7 @@ describe('tabs', () => {
     expect(screen.getByRole('tabpanel').textContent).toBe('No description.');
   });
 
-  it('puts the tabs below the header and the request area', () => {
+  it('puts the tabs directly below the card metadata', () => {
     const { container } = renderPanel(fixtureCard(12));
     const order = Array.from(container.querySelector('.detail')?.children ?? []).map(
       (el) => el.className.split(' ')[0],
@@ -81,7 +81,6 @@ describe('tabs', () => {
       'detail__top',
       'detail__title',
       'detail__meta',
-      'detail__request',
       'detail__tabs',
       'detail__viewport',
       'detail__viewport',

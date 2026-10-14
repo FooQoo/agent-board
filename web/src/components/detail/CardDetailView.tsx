@@ -8,7 +8,6 @@ import { AssigneeLabel } from '../AssigneeLabel';
 import { HistoryTimeline } from '../HistoryTimeline';
 import { StatusLabel } from '../StatusLabel';
 import { BodyDocumentView } from './BodyDocumentView';
-import { DecisionRequestContent } from './DecisionRequestContent';
 import { type DetailTab, DetailTabs, panelId, tabId } from './DetailTabs';
 import { DraftStatus } from './DraftStatus';
 import { EpicTabView, type EpicTabStatus } from './EpicTabView';
@@ -31,7 +30,6 @@ export interface CardDetailViewProps {
   onRetryEpics?: () => void;
   statusLabels?: 'pc' | 'monitor';
   ownerName?: string;
-  readOnlyRequest?: boolean;
   readOnlyDraft?: boolean;
   toolbar?: ReactNode;
   children?: ReactNode;
@@ -52,7 +50,6 @@ export function CardDetailView({
   onRetryEpics,
   statusLabels = 'pc',
   ownerName,
-  readOnlyRequest = true,
   readOnlyDraft = true,
   toolbar,
   children,
@@ -105,7 +102,6 @@ export function CardDetailView({
         </span>
       </div>
       {readOnlyDraft && card.isDraft && <DraftStatus />}
-      {readOnlyRequest && <DecisionRequestContent card={card} />}
       {children}
       <DetailTabs
         idBase={idBase}

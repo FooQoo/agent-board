@@ -21,7 +21,7 @@ const copy = {
       'Verify the contact form', 'Check the mobile layout'],
     question: 'How should we launch the new website?',
     choices: ['Share a preview first', 'Publish when checks pass'],
-    body: '## Goal\n\nChoose a launch approach that gives the team useful feedback.\n\n## Next step\n\nAnswer the question on the card. The agent will read the decision and prepare the release.',
+    body: '## Goal\n\nChoose a launch approach that gives the team useful feedback.\n\n## Next step\n\nRecord the agreed launch approach and prepare a release checklist.',
     checks: ['The goal is clear', 'The work has been verified', 'The result is recorded'],
     plan: '# Website launch\n\n## Goal\n\nPublish a clear, useful website and collect feedback from its first readers.\n\n## Work order\n\nChoose the launch approach, write the setup guide, verify the contact form, then prepare release notes.\n\n## Verification\n\nReview the desktop and mobile layouts. Check the contact flow and record the results before completing each task.',
     epicChecks: ['The launch approach is agreed', 'Desktop and mobile checks pass', 'The release is ready'],
@@ -34,7 +34,7 @@ const copy = {
       'お問い合わせフォームを確認する', 'モバイルのレイアウトを確認する'],
     question: 'Webサイトをどのように公開しますか？',
     choices: ['先にプレビューを共有する', '確認が終わったら一般公開する'],
-    body: '## 目的\n\n最初の利用者から意見を集められる公開方法を決める。\n\n## 次の作業\n\nカード上の質問に回答してください。AIが判断を読み、公開準備を進めます。',
+    body: '## 目的\n\n最初の利用者から意見を集められる公開方法を決める。\n\n## 次の作業\n\n合意した公開方法を記録し、公開前のチェックリストを準備する。',
     checks: ['目的が明確になっている', '動作を確認している', '結果を記録している'],
     plan: '# Webサイトの公開\n\n## 目的\n\n分かりやすく役に立つWebサイトを公開し、最初の利用者から意見を集める。\n\n## 進め方\n\n公開方法を決め、セットアップガイドを書き、お問い合わせフォームを確認してからリリースノートを準備する。\n\n## 確認方法\n\nPCとモバイルのレイアウトを確認する。各タスクの完了前にフォームの動作と確認結果を記録する。',
     epicChecks: ['公開方法が決まっている', 'PCとモバイルの確認が終わっている', '公開準備が整っている'],
@@ -147,6 +147,7 @@ try {
       await card.click();
       await expect(page.getByRole('tab')).toHaveCount(4);
       await expect(page.locator('.card__answer').getByText(text.question, { exact: true })).toBeVisible();
+      await expect(page.locator('.detail-view .detail__request')).toHaveCount(0);
       await settle(page);
       await page.screenshot({ path: path.join(output, `board${suffix}.png`) });
 

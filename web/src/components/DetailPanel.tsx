@@ -7,7 +7,6 @@ import type { Card, Epic, Problem, ProjectId } from '../types';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
-import { DecisionRequestContent } from './detail/DecisionRequestContent';
 import type { DetailTab } from './detail/DetailTabs';
 import { CardDetailView } from './detail/CardDetailView';
 import { DraftBanner } from './detail/DraftBanner';
@@ -187,7 +186,6 @@ function DetailBody({
       epics={epics}
       epicsFailed={epicsFailed}
       onRetryEpics={onRetryEpics}
-      readOnlyRequest={false}
       readOnlyDraft={false}
       toolbar={
         !archived && (
@@ -234,7 +232,6 @@ function DetailBody({
           onFinalize={() => void toggleDraft(false)}
         />
       )}
-      {!archived && card.agentStatus === 'pending' && <DecisionRequestContent card={card} />}
       {archived && (
         <div className="detail__archive-actions" role="group" aria-label={t('archive.actions')}>
           {onRestore && (
