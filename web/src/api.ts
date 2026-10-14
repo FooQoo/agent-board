@@ -357,8 +357,9 @@ async function sendCard(
 }
 
 /**
- * Saves the title and/or description of a draft. `finalize` also hands the card back to the agents
- * in the same step. The server refuses a card that is not a draft.
+ * Saves the title and/or description of a draft. Body and acceptance are partial inputs applied to
+ * the latest TASK.md under the server's write lock; history is never sent by this editor. `finalize`
+ * also hands the card back to the agents in the same step.
  */
 export async function editCard(
   projectId: ProjectId,

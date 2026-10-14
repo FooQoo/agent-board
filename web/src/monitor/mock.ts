@@ -11,12 +11,57 @@ const longText =
     500,
   );
 
+function taskMarkdown(body: string, acceptance: Card['acceptance'], history: Card['history']) {
+  return `---\nacceptance: ${JSON.stringify(acceptance)}\nhistory: ${JSON.stringify(history)}\n---\n\n${body}`;
+}
+
 function card(id: number, status: ColumnName, long: boolean): Card {
   const at = `2026-10-11T00:${String(id % 60).padStart(2, '0')}:00Z`;
   const done = status === 'done';
   const agentStatus =
     status !== 'doing' ? 'idle' : id % 3 === 0 ? 'pending' : id % 2 === 0 ? 'running' : 'idle';
   const pending = agentStatus === 'pending';
+  const body =
+    long && id === 1
+      ? longText
+      : '## Work\n\nReview the monitor behavior and confirm the shared display remains read-only.\n\n## Acceptance\n\n- [x] Common detail view\n- [ ] Keep the content readable';
+  const acceptance: Card['acceptance'] =
+    id === 2
+      ? [
+          { id: 'AC-1', text: 'Shared display matches', done: true },
+          { id: 'AC-2', text: 'Read-only in the monitor', done: false },
+          { id: 'AC-3', text: 'Keeps the layout', done: false },
+        ]
+      : [];
+  const history: Card['history'] = done
+    ? [
+        {
+          id: `done-${id}`,
+          kind: 'lane',
+          actor: 'ai',
+          reason: 'Verified on the fixture',
+          fromCardStatus: 'doing',
+          toCardStatus: 'done',
+          fromAgentStatus: null,
+          toAgentStatus: 'idle',
+          requestId: null,
+          at,
+        },
+      ]
+    : [
+        {
+          id: `create-${id}`,
+          kind: 'created',
+          actor: 'ai',
+          reason: null,
+          fromCardStatus: null,
+          toCardStatus: status,
+          fromAgentStatus: null,
+          toAgentStatus: agentStatus,
+          requestId: null,
+          at,
+        },
+      ];
   return {
     id,
     title:
@@ -24,19 +69,9 @@ function card(id: number, status: ColumnName, long: boolean): Card {
         ? 'A monitor card title long enough to exercise the two line clamp at narrow widths'
         : `${status[0]?.toUpperCase()}${status.slice(1)} work item ${id}`,
     body: '',
-    acceptance:
-      id === 2
-        ? [
-            { id: 'AC-1', text: 'Shared display matches', done: true },
-            { id: 'AC-2', text: 'Read-only in the monitor', done: false },
-            { id: 'AC-3', text: 'Keeps the layout', done: false },
-          ]
-        : [],
+    acceptance,
     acceptanceError: id === 5,
-    description:
-      long && id === 1
-        ? longText
-        : '## Work\n\nReview the monitor behavior and confirm the shared display remains read-only.\n\n## Acceptance\n\n- [x] Common detail view\n- [ ] Keep the content readable',
+    description: taskMarkdown(body, acceptance, history),
     assignee: 'ai',
     cardStatus: status,
     position: id,
@@ -56,35 +91,7 @@ function card(id: number, status: ColumnName, long: boolean): Card {
     updatedAt: at,
     agentStatusChangedAt: at,
     isDraft: pending,
-    history: done
-      ? [
-          {
-            id: `done-${id}`,
-            kind: 'lane',
-            actor: 'ai',
-            reason: 'Verified on the fixture',
-            fromCardStatus: 'doing',
-            toCardStatus: 'done',
-            fromAgentStatus: null,
-            toAgentStatus: 'idle',
-            requestId: null,
-            at,
-          },
-        ]
-      : [
-          {
-            id: `create-${id}`,
-            kind: 'created',
-            actor: 'ai',
-            reason: null,
-            fromCardStatus: null,
-            toCardStatus: status,
-            fromAgentStatus: null,
-            toAgentStatus: agentStatus,
-            requestId: null,
-            at,
-          },
-        ],
+    history,
     attachments: [],
     evidence: [],
   };

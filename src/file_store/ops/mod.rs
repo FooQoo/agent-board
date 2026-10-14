@@ -20,7 +20,8 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 
-use super::history::compose_task;
+use super::frontmatter::{self, AcceptanceItem};
+use super::history::{ParseMode, compose_task, parse_task};
 use super::io;
 use super::layout;
 use super::lock::WriteLock;
@@ -77,6 +78,15 @@ pub(super) fn save_task(
     project_dir: &Path,
     task: &TaskFile,
 ) -> Result<(), AgboardError> {
+    save_task_with_markdown(shared, project_dir, task, None)
+}
+
+pub(super) fn save_task_with_markdown(
+    shared: &Path,
+    project_dir: &Path,
+    task: &TaskFile,
+    replacement: Option<&str>,
+) -> Result<(), AgboardError> {
     use super::history::{ParseMode, compose_task, parse_task};
     use super::model::TaskMetadata;
     use super::transaction::{PairBytes, PairTargets, save_pair_locked};
@@ -112,7 +122,16 @@ pub(super) fn save_task(
             "The task history changed before the operation could be saved.",
         ));
     }
-    let markdown = if task.history == parsed.history {
+    let markdown = if let Some(replacement) = replacement {
+        let parts = frontmatter::parse(replacement);
+        compose_task(replacement, &parts.body, None, &task.history)
+            .map_err(|defect| AgboardError::FileInvalid {
+                file: md_label.clone(),
+                field: defect.field,
+                reason: defect.reason,
+            })?
+            .into_bytes()
+    } else if task.history == parsed.history {
         old.markdown.clone()
     } else {
         compose_task(text, &parsed.body, None, &task.history)
@@ -138,16 +157,6 @@ pub(super) fn save_task(
             markdown,
         },
     )
-}
-
-pub(super) fn save_body(
-    shared: &Path,
-    project_dir: &Path,
-    card_id: i64,
-    text: &str,
-) -> Result<(), AgboardError> {
-    let path = layout::task_md(&layout::task_dir(project_dir, card_id));
-    io::write_atomic(&path, text.as_bytes(), &layout::shared_label(shared, &path))
 }
 
 /// The fields of one history event that depend on what happened.
@@ -216,15 +225,16 @@ pub(super) fn write_text(
     task: &mut TaskFile,
     title: Option<String>,
     description: Option<String>,
-) -> Result<bool, AgboardError> {
+) -> Result<(bool, Option<String>), AgboardError> {
     let current_body = reader::read_body(shared, project, task.id)?;
     let next_title = title.unwrap_or_else(|| task.title.clone());
     let next_body = description.unwrap_or_else(|| current_body.clone());
     let title_changed = next_title != task.title;
     let body_changed = next_body != current_body;
     if !title_changed && !body_changed {
-        return Ok(false);
+        return Ok((false, None));
     }
+    let mut replacement = None;
     if body_changed {
         let label = layout::shared_label(
             shared,
@@ -243,8 +253,42 @@ pub(super) fn write_text(
             field: defect.field,
             reason: defect.reason,
         })?;
-        save_body(shared, project_dir, task.id, &composed)?;
+        replacement = Some(composed);
     }
     task.title = next_title;
-    Ok(true)
+    Ok((true, replacement))
+}
+
+pub(super) fn write_parts(
+    shared: &Path,
+    project_dir: &Path,
+    task: &mut TaskFile,
+    body: Option<&str>,
+    acceptance: Option<&[AcceptanceItem]>,
+) -> Result<Option<String>, AgboardError> {
+    if body.is_none() && acceptance.is_none() {
+        return Ok(None);
+    }
+    let md_path = layout::task_md(&layout::task_dir(project_dir, task.id));
+    let label = layout::shared_label(shared, &md_path);
+    let original = io::read_text(&md_path, &label)?;
+    let parsed = parse_task(&original, ParseMode::Stored);
+    if let Some(defect) = parsed.history_defects.first() {
+        return Err(AgboardError::FileInvalid {
+            file: label,
+            field: defect.field.clone(),
+            reason: defect.reason.clone(),
+        });
+    }
+    let next_body = body.unwrap_or(&parsed.body).replace("\r\n", "\n");
+    crate::domain::normalize_and_validate_description(&next_body)?;
+    let composed =
+        compose_task(&original, &next_body, acceptance, &task.history).map_err(|defect| {
+            AgboardError::FileInvalid {
+                file: label.clone(),
+                field: defect.field,
+                reason: defect.reason,
+            }
+        })?;
+    Ok((composed != original).then_some(composed))
 }

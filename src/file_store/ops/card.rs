@@ -8,16 +8,16 @@ use std::path::Path;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use super::super::FileStore;
 use super::super::history::{ParseMode, compose_task, parse_task};
 use super::super::io;
 use super::super::layout;
 use super::super::model::{CardView, HistoryKind, HistoryRecord, TaskFile, TaskMetadata};
 use super::super::reader;
 use super::super::validate;
+use super::super::{FileStore, TaskTextParts};
 use super::{
-    Transition, ensure_ai_card_not_done, lane_end, lock_project, save_project, save_task, stamp,
-    transition_event, write_text,
+    Transition, ensure_ai_card_not_done, lane_end, lock_project, save_project, save_task,
+    save_task_with_markdown, stamp, transition_event, write_parts, write_text,
 };
 use crate::domain::{
     Actor, Changed, Column, NewCard, ProjectId, RunState, normalize_and_validate_description,
@@ -184,7 +184,8 @@ impl FileStore {
             return Err(AgboardError::CardIsDraft { id });
         }
         ensure_ai_card_not_done(&task, Actor::Ai)?;
-        let changed = write_text(shared, project, &project_dir, &mut task, title, description)?;
+        let (changed, markdown) =
+            write_text(shared, project, &project_dir, &mut task, title, description)?;
         if !changed {
             return Ok(Changed {
                 value: view(shared, project, id)?,
@@ -192,7 +193,52 @@ impl FileStore {
             });
         }
         task.updated_at = stamp(now);
-        save_task(shared, &project_dir, &task)?;
+        save_task_with_markdown(shared, &project_dir, &task, markdown.as_deref())?;
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed: true,
+        })
+    }
+
+    /// Edit body fields against the latest TASK.md read under the project lock.
+    pub fn edit_card_parts(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        title: Option<&str>,
+        parts: TaskTextParts<'_>,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<CardView>, AgboardError> {
+        let title = title.map(validate_title).transpose()?;
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_some() {
+            return Err(AgboardError::CardArchived { id });
+        }
+        if task.is_draft {
+            return Err(AgboardError::CardIsDraft { id });
+        }
+        ensure_ai_card_not_done(&task, Actor::Ai)?;
+        let title_changed = title.as_ref().is_some_and(|value| *value != task.title);
+        let markdown = write_parts(
+            shared,
+            &project_dir,
+            &mut task,
+            parts.body,
+            parts.acceptance,
+        )?;
+        if !title_changed && markdown.is_none() {
+            return Ok(Changed {
+                value: view(shared, project, id)?,
+                changed: false,
+            });
+        }
+        if let Some(title) = title {
+            task.title = title;
+        }
+        task.updated_at = stamp(now);
+        save_task_with_markdown(shared, &project_dir, &task, markdown.as_deref())?;
         Ok(Changed {
             value: view(shared, project, id)?,
             changed: true,
@@ -221,7 +267,7 @@ impl FileStore {
         if !task.is_draft {
             return Err(AgboardError::CardNotDraft { id });
         }
-        let text_changed =
+        let (text_changed, markdown) =
             write_text(shared, project, &project_dir, &mut task, title, description)?;
         if !text_changed && !finalize {
             return Ok(Changed {
@@ -237,7 +283,60 @@ impl FileStore {
             task.is_draft = false;
             task.history.push(draft_event(&task, false, at)?);
         }
-        save_task(shared, &project_dir, &task)?;
+        save_task_with_markdown(shared, &project_dir, &task, markdown.as_deref())?;
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed: true,
+        })
+    }
+
+    /// Edit a draft against the latest TASK.md and finalize in one pair save.
+    pub fn edit_draft_card_parts(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        title: Option<&str>,
+        parts: TaskTextParts<'_>,
+        finalize: bool,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<CardView>, AgboardError> {
+        let title = title.map(validate_title).transpose()?;
+        let shared = self.shared_dir();
+        let (project_dir, _lock) = lock_project(shared, project)?;
+        let mut task = reader::read_task_strict(shared, project, id)?;
+        if task.archived_at.is_some() {
+            return Err(AgboardError::CardArchived { id });
+        }
+        if !task.is_draft {
+            return Err(AgboardError::CardNotDraft { id });
+        }
+        let title_changed = title.as_ref().is_some_and(|value| *value != task.title);
+        let markdown = write_parts(
+            shared,
+            &project_dir,
+            &mut task,
+            parts.body,
+            parts.acceptance,
+        )?;
+        let text_changed = title_changed || markdown.is_some();
+        if !text_changed && !finalize {
+            return Ok(Changed {
+                value: view(shared, project, id)?,
+                changed: false,
+            });
+        }
+        let at = stamp(now);
+        if text_changed {
+            task.updated_at = at;
+        }
+        if let Some(title) = title {
+            task.title = title;
+        }
+        if finalize {
+            task.is_draft = false;
+            task.history.push(draft_event(&task, false, at)?);
+        }
+        save_task_with_markdown(shared, &project_dir, &task, markdown.as_deref())?;
         Ok(Changed {
             value: view(shared, project, id)?,
             changed: true,

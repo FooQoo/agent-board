@@ -302,14 +302,15 @@ impl RunStateArg {
     }
 }
 
-/// The three mutually exclusive ways to give a description.
+/// The three mutually exclusive ways to give a description. On edit, the
+/// current TASK.md history is retained regardless of history in this input.
 #[derive(Args, Debug, Clone, Default)]
 #[group(id = "description_source", multiple = false)]
 pub struct DescriptionArgs {
-    /// Whole TASK.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
+    /// Whole TASK.md text in Markdown, frontmatter included, up to 50,000 body characters; on edit, latest history is retained; use "-" for standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub desc: Option<String>,
-    /// Read the whole TASK.md text, frontmatter included (up to 50,000 characters), from a file
+    /// Read the whole TASK.md text, frontmatter included (up to 50,000 body characters), from a file; on edit, latest history is retained
     #[arg(long, value_name = "PATH")]
     pub desc_file: Option<PathBuf>,
 }

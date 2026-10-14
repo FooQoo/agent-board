@@ -22,7 +22,7 @@ use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::index::ProjectEntry;
 use crate::file_store::model::{AttachmentOwner, CardView, Choice, EpicUpdate, NewEpic};
 use crate::file_store::validate::{self, EpicId};
-use crate::file_store::{Answer, FileStore};
+use crate::file_store::{Answer, FileStore, TaskTextParts};
 
 /// The largest request body any route reads. A description of 50,000
 /// characters can be about 150 KB of JSON, so this leaves room for that.
@@ -1429,28 +1429,31 @@ async fn edit_card(
         });
     }
     let result = with_files(&state, move |store| {
-        let description = if input.body.is_some() || input.acceptance.is_some() {
+        if input.body.is_some() || input.acceptance.is_some() {
             if input.description.is_some() {
                 return Err(whole_or_parts());
             }
-            let current = store.card(&project_id, id)?;
-            Some(compose_text(
-                &current.description,
-                &current.body,
-                input.body,
-                input.acceptance,
-            )?)
+            store.edit_draft_card_parts(
+                &project_id,
+                id,
+                input.title.as_deref(),
+                TaskTextParts {
+                    body: input.body.as_deref(),
+                    acceptance: input.acceptance.as_deref(),
+                },
+                input.finalize,
+                chrono::Utc::now(),
+            )
         } else {
-            input.description
-        };
-        store.edit_draft_card(
-            &project_id,
-            id,
-            input.title.as_deref(),
-            description.as_deref(),
-            input.finalize,
-            chrono::Utc::now(),
-        )
+            store.edit_draft_card(
+                &project_id,
+                id,
+                input.title.as_deref(),
+                input.description.as_deref(),
+                input.finalize,
+                chrono::Utc::now(),
+            )
+        }
     })
     .await;
     changed_card_response(&state, result)

@@ -215,6 +215,8 @@ export function mockApi(): Plugin {
       Math.max(0, ...board.cards.flatMap((card) => card.history.map((item) => Number(item.id)))) +
         1,
     );
+  const taskMarkdown = (body: string, acceptance: Card['acceptance'], history: Card['history']) =>
+    `---\nacceptance: ${JSON.stringify(acceptance)}\nhistory: ${JSON.stringify(history)}\n---\n\n${body}`;
 
   return {
     name: 'agboard-mock-api',
@@ -311,10 +313,42 @@ export function mockApi(): Plugin {
             for await (const _ of req) void _;
           } else {
             const body = input ?? {};
+            const history =
+              body.finalize === true && card.isDraft
+                ? [
+                    ...card.history,
+                    {
+                      id: nextEventId(target),
+                      kind: 'draft' as const,
+                      actor: 'human' as const,
+                      reason: null,
+                      fromCardStatus: card.cardStatus,
+                      toCardStatus: card.cardStatus,
+                      fromAgentStatus: card.agentStatus,
+                      toAgentStatus: card.agentStatus,
+                      requestId: null,
+                      isDraft: false,
+                      at: new Date().toISOString(),
+                    },
+                  ]
+                : card.history;
+            const editedBody = typeof body.body === 'string' ? body.body : card.body;
+            const editedAcceptance = Array.isArray(body.acceptance)
+              ? (body.acceptance as Card['acceptance'])
+              : card.acceptance;
             next = {
               ...card,
               ...(typeof body.title === 'string' ? { title: body.title } : {}),
-              ...(typeof body.description === 'string' ? { description: body.description } : {}),
+              ...(typeof body.description === 'string' ||
+              typeof body.body === 'string' ||
+              Array.isArray(body.acceptance)
+                ? {
+                    body: editedBody,
+                    acceptance: editedAcceptance,
+                    description: taskMarkdown(editedBody, editedAcceptance, history),
+                  }
+                : {}),
+              history,
               ...(body.finalize === true ? { isDraft: false } : {}),
             };
           }
