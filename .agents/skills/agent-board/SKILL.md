@@ -101,7 +101,7 @@ Lanes are `todo`, `doing`, and `done`. AI cards may be Pending in Todo or Doing;
 - A real lane move resets the run state to `idle` and withdraws any open question. Withdrawal is not an answer.
 - `running` is self-reported and is not reset automatically. Do not change a state just because a session started or paused; change it when the work changes.
 - Never report `running` or `pending` on a `human` card.
-- Every `mv` and `state` needs `--actor`, which controls permission. `--reason` is optional for lane and non-Pending state changes (up to 2,000 characters); missing or blank reasons are generated from the current state. Never use `--actor human` unless the user explicitly gave that direction.
+- Every `mv` and `state` needs `--actor`, which controls permission. `--reason` is optional for lane and non-Pending state changes (up to 10,000 characters); missing or blank reasons are generated from the current state. Never use `--actor human` unless the user explicitly gave that direction.
 
 ## 6. Work loop
 
@@ -151,12 +151,12 @@ agboard --project "<name>" state <id> pending --actor ai --request-json '<json>'
 cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-json -
 ```
 
-- `question`: 1 to 2,000 characters. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
+- `question`: 1 to 2,000 characters. `choices`: 2 to 10 items under this skill's policy (the CLI accepts 0 to 10); each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
 - Add `"wait": {}` to the request JSON to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a card move withdrew the question.
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
 - The card must be an AI card in `todo` or `doing`. Only `doing` may become `running`.
 
-The user answers in the browser with a choice, a note, or both. The answer returns the card to `idle` and appends a concise history reason. Read the current question and answered request data from `show` or `snapshot`; request lookup metadata is separate from the two-field history entries.
+The user answers in the browser with a choice, a note, or both. The answer returns the card to `idle` and appends a concise history reason. Read the current question from `show` or `snapshot` and the answer from its history reason. A request command that waits also returns the resolved answer separately as `answer`; request lookup metadata is separate from the two-field history entries.
 
 ## 8. Wait and resume
 
@@ -168,7 +168,7 @@ agboard --project "<name>" wait --after "<cursor>" --json
 
 Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A Pending question remains until answered or withdrawn by an explicit card change. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
 
-After `wait` returns, read the complete snapshot, question/answer data, and history, including the user's reason. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
+After `wait` returns, read the complete snapshot and history, including the user's reason and any separate `answer` returned by a waiting request command. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
 
 ```sh
 agboard --project "<name>" state <id> running --actor ai --reason "<how the answer changes the work>"

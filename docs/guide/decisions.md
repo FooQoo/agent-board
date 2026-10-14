@@ -35,7 +35,7 @@ sequenceDiagram
     A->>B: state running with a reason
 ```
 
-An AI-owned card must be in Doing to become Running. It can ask a Pending question in either Todo or Doing. A question for the user always has choices: pass the question and two to ten options as JSON with `--request-json`, either inline or from standard input with `-`:
+An AI-owned card must be in Doing to become Running. It can ask a Pending question in either Todo or Doing. The agent skill asks users with two to ten choices. The CLI accepts a question and zero to ten options as JSON with `--request-json`, either inline or from standard input with `-`:
 
 ```json
 {
@@ -74,7 +74,7 @@ Add a `wait` object to the JSON to ask and wait for the answer in one command. I
 
 You may add `"timeoutSeconds": 600` to limit this wait command; the value must be from 1 to 86,400 (a day). Without `wait`, the command asks and returns. A timeout or Ctrl+C stops waiting but leaves the request Pending. A lost server connection returns `board_unavailable`, a technical error that also leaves the request Pending. If a card move withdraws the question, the command exits with `request_changed`. Without a running server, nothing is asked.
 
-`choices` takes 2 to 10 options; a request with fewer or more is refused, and so is a pending state without `--request-json`. The request gets an ID; read the current request in `show` or `snapshot`. A user can answer in the browser, or pass that request ID to the CLI:
+`choices` takes 0 to 10 options; more than 10 is refused, and so is a pending state without `--request-json`. The request gets an ID; read the current request in `show` or `snapshot`. A user can answer in the browser, or pass that request ID to the CLI:
 
 ```sh
 agboard --project "My project" state 1 idle --actor human --request "<request-id>" --choice preview --reason "Get feedback before the public launch"

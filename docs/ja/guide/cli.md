@@ -28,7 +28,7 @@ agboard --project "My project" mv 1 doing --actor ai --reason "Start implementat
 agboard --project "My project" state 1 running --actor ai --reason "Writing and checking the guide"
 ```
 
-列の移動と待機中以外への状態変更では`--reason`は任意です。省略または空白の場合は現在の状態に応じて理由を生成します。これらの操作は履歴を自動追記するため、同じ変更を別途記録しないでください。
+列の移動と待機中以外への状態変更では`--reason`は任意で、Unicode文字数で10,000文字までです。質問と回答文の上限は別に2,000文字のままです。省略または空白の場合は現在の状態に応じて理由を生成します。これらの操作は履歴を自動追記するため、同じ変更を別途記録しないでください。
 
 列や状態を変えずに意味のある進捗を記録するには、次を使います。
 

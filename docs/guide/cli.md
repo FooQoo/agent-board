@@ -28,7 +28,7 @@ agboard --project "My project" mv 1 doing --actor ai --reason "Start implementat
 agboard --project "My project" state 1 running --actor ai --reason "Writing and checking the guide"
 ```
 
-Lane and non-Pending state changes accept an optional `--reason`. Missing or blank reasons are generated from the current state. These operations append history automatically; do not add a second entry for the same change.
+Lane and non-Pending state changes accept an optional `--reason` of up to 10,000 Unicode characters. Questions and answer text retain their separate 2,000-character limits. Missing or blank reasons are generated from the current state. These operations append history automatically; do not add a second entry for the same change.
 
 Record meaningful progress that does not change the lane or state:
 

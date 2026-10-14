@@ -38,7 +38,7 @@ history:
     reason: "Verified the setup guide links and saved the build output as evidence."
 ```
 
-`at` is an RFC3339 timestamp; the example uses UTC. `reason` is concise content (up to 2,000 characters). Entries have no ID, kind, actor, or transition fields. API and CLI responses return history in this same two-field shape. Question and answer lookup data is separate from history.
+`at` is an RFC3339 timestamp; the example uses UTC. `reason` is concise content (up to 10,000 Unicode characters, including surrounding whitespace). A supplied nonblank reason is preserved verbatim; questions and answer text retain their separate 2,000-character limits. Entries have no ID, kind, actor, or transition fields. API and CLI responses return history in this same two-field shape. Question and answer lookup data is separate from history.
 
 Agent Board appends history automatically for card operations, including UI or CLI lane and state changes, questions and answers, and archive or restore actions. Missing or blank reasons generate wording from the current state. The browser's reason field is optional.
 
