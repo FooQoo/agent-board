@@ -1,0 +1,75 @@
+/*
+ * Brand colors follow the app's default theme (light mode, blue accent):
+ * web/src/styles/theme.css --r-accent #2563eb (light) and #6b9aff (dark).
+ */
+:root {
+  --vp-c-brand-1: #2563eb;
+  --vp-c-brand-2: #1d4ed8;
+  --vp-c-brand-3: #2563eb;
+  --vp-c-brand-soft: rgba(37, 99, 235, 0.14);
+  --vp-home-hero-name-color: var(--vp-c-brand-1);
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    rgba(37, 99, 235, 0.35) 50%,
+    rgba(107, 154, 255, 0.35) 50%
+  );
+  --vp-home-hero-image-filter: blur(44px);
+  --screenshot-shadow: 0 6px 24px rgba(27, 36, 48, 0.1);
+}
+
+.dark {
+  --vp-c-brand-1: #6b9aff;
+  --vp-c-brand-2: #5589f5;
+  --vp-c-brand-3: #3b6fe0;
+  --vp-c-brand-soft: rgba(107, 154, 255, 0.16);
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    rgba(59, 111, 224, 0.45) 50%,
+    rgba(107, 154, 255, 0.3) 50%
+  );
+  --screenshot-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* The hero logo is a square mark, so show it at a moderate size. */
+.VPHero .VPImage.image-src {
+  max-width: 180px;
+  max-height: 180px;
+}
+
+/* Framed screenshots: ![alt](path){.screenshot} */
+.vp-doc img.screenshot,
+img.screenshot {
+  display: block;
+  box-sizing: border-box;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  box-shadow: var(--screenshot-shadow);
+}
+
+/* Phone screenshots are narrow and centered. */
+.vp-doc img.screenshot--narrow,
+img.screenshot--narrow {
+  width: 100%;
+  max-width: 360px;
+  margin-inline: auto;
+}
+
+/* Demo video: same frame as a screenshot. Autoplays muted, so no controls. */
+.vp-doc video.demo-video,
+video.demo-video {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  box-shadow: var(--screenshot-shadow);
+}
+
+/* Wide Mermaid diagrams scroll inside their own box instead of the page. */
+.vp-doc .mermaid {
+  overflow-x: auto;
+}
