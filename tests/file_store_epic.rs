@@ -88,6 +88,34 @@ fn bytes_of(path: PathBuf) -> Vec<u8> {
 }
 
 #[test]
+fn epic_conditions_are_body_text_and_not_managed_frontmatter() {
+    let f = fixture();
+    let plan = "---\npriority: []\nacceptance: no-longer-managed\n---\n\n## Completion conditions\n\n- [ ] Reference condition.\n";
+    let epic = f
+        .store
+        .create_epic(
+            &f.project,
+            NewEpic {
+                id: "PLAIN".into(),
+                name: "Plain plan".into(),
+                color: None,
+                is_draft: false,
+                plan: Some(plan.into()),
+            },
+            at(4),
+        )
+        .unwrap();
+    assert_eq!(epic.plan, plan);
+    assert!(epic.body.contains("- [ ] Reference condition."));
+    let view = serde_json::to_value(&epic).unwrap();
+    assert!(view.get("acceptance").is_none());
+    assert!(view.get("acceptanceError").is_none());
+    assert!(f.store.snapshot(&f.project).unwrap().problems.is_empty());
+    let default = f.new_epic("DEFAULT").unwrap();
+    assert!(!default.plan.contains("acceptance:"));
+}
+
+#[test]
 fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_plan() {
     let f = fixture();
     let view = f.new_epic("file-share").unwrap();
@@ -106,7 +134,7 @@ fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_plan() {
     assert_eq!(json["updatedAt"], "2026-10-04T00:00:00Z");
 
     let plan = fs::read_to_string(dir.join("PLAN.md")).unwrap();
-    assert_eq!(plan, "---\nacceptance: []\n---\n\n");
+    assert_eq!(plan, "");
     let leftovers: Vec<String> = fs::read_dir(f.project_dir().join("epics"))
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
@@ -390,7 +418,7 @@ fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
 
     let json_before = bytes_of(f.epic_dir("FILE-SHARE").join("epic.json"));
     let plan_before = bytes_of(f.epic_dir("FILE-SHARE").join("PLAN.md"));
-    let broken = "---\nacceptance: nope\n---\n\n目的だけ\n";
+    let broken = "---\npriority: [\n---\n\n目的だけ\n";
     let err = f
         .store
         .update_epic(

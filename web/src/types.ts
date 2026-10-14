@@ -68,8 +68,6 @@ export interface Epic extends EpicRef {
   plan: string;
   /** PLAN.md without its frontmatter. The whole file when the frontmatter has a defect. */
   body: string;
-  acceptance: AcceptanceItem[];
-  acceptanceError: boolean;
   /** The card order of the epic (PLAN.md `priority`); empty when none is stored. */
   priority: number[];
   /** The stored order cannot be read; it is then ignored. */
@@ -95,7 +93,7 @@ export interface Problem {
   reason: string;
 }
 
-/** One completion condition, read from the frontmatter of a TASK.md or PLAN.md. */
+/** One completion condition, read from the frontmatter of a TASK.md. */
 export interface AcceptanceItem {
   id: string;
   text: string;

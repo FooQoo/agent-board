@@ -65,7 +65,7 @@ test('the epic dialog saves its name, colour, and plan together, and its content
   const stored = epicOf('FILE-SHARE');
   expect(stored).toMatchObject({ name: 'File sharing', color: '#2563EB' });
   expect(stored.plan).toContain('## Approach');
-  expect(stored.plan).toContain('acceptance: []');
+  expect(stored.plan).not.toContain('acceptance:');
   expect(cardOf(14).epicId).toBe('FILE-SHARE');
 
   // The label and the card frame show the new name and colour.

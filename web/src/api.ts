@@ -440,7 +440,6 @@ export function updateEpic(
     isDraft?: boolean;
     plan?: string;
     body?: string;
-    acceptance?: AcceptanceItem[];
     /** The card order of the epic: card IDs, first is first. */
     priority?: number[];
   },

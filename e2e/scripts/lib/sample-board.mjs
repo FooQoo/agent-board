@@ -34,7 +34,7 @@ export const copy = {
     checks: ['目的が明確になっている', '動作を確認している', '結果を記録している'],
     plan: '# Webサイトの公開\n\n## 目的\n\n分かりやすく役に立つWebサイトを公開し、最初の利用者から意見を集める。\n\n## 進め方\n\n公開方法を決め、セットアップガイドを書き、お問い合わせフォームを確認してからリリースノートを準備する。\n\n## 確認方法\n\nPCとモバイルのレイアウトを確認する。各タスクの完了前にフォームの動作と確認結果を記録する。',
     epicChecks: ['公開方法が決まっている', 'PCとモバイルの確認が終わっている', '公開準備が整っている'],
-    tab: '受け入れ条件', ready: '接続中 · 最新',
+    tab: '受入条件', ready: '接続中 · 最新',
   },
 };
 
@@ -71,8 +71,9 @@ export function seed(home, text) {
   }));
   // This is a disposable human-owned sample; AI card #6 completes automatically at server startup.
   run('mv', '8', 'done', '--actor', 'human', '--reason', 'Sample mobile review completed');
-  run('epic', 'edit', 'LAUNCH', '--plan', markdown(text.plan, text.epicChecks, 1, [3, 4, 7, 5, 6]));
-  run('epic', 'edit', 'DESIGN', '--plan', markdown(text.plan, text.epicChecks, 1, [1, 2, 8]));
+  const plan = (priority) => `---\npriority: ${JSON.stringify(priority)}\n---\n\n${text.plan}\n\n## ${text === copy.ja ? '参考条件' : 'Reference conditions'}\n\n${text.epicChecks.map((check, i) => `- [${i === 0 ? 'x' : ' '}] ${check}`).join('\n')}\n`;
+  run('epic', 'edit', 'LAUNCH', '--plan', plan([3, 4, 7, 5, 6]));
+  run('epic', 'edit', 'DESIGN', '--plan', plan([1, 2, 8]));
   return meta.id;
 }
 

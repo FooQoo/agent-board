@@ -44,8 +44,6 @@ pub struct ProgressEpic {
     pub id: String,
     pub name: String,
     pub plan_path: PathBuf,
-    pub acceptance: Count,
-    pub acceptance_error: bool,
     /// The `priority` list of PLAN.md cannot be read; the cards keep ID order.
     pub priority_error: bool,
     pub cards: Vec<ProgressCard>,
@@ -101,8 +99,6 @@ pub fn build(
             id: epic.id.as_str().to_string(),
             name: epic.name.clone(),
             plan_path: layout::epic_plan(&epic_dir),
-            acceptance: count(&epic.acceptance),
-            acceptance_error: epic.acceptance_error,
             priority_error,
             cards: cards
                 .into_iter()

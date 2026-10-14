@@ -42,7 +42,7 @@ See the [usage guide](https://fooqoo.github.io/agent-board/guide/) for editing, 
 <details>
 <summary>Epic progress and mobile drawer screenshots</summary>
 
-<img src="docs/images/epic.png" alt="Epic editor with a scrollable task progress panel and folded acceptance conditions" width="860">
+<img src="docs/images/epic.png" alt="Epic editor with a scrollable task progress panel and a full-height Markdown plan" width="860">
 
 <img src="docs/images/mobile.png" alt="Mobile bottom drawer with Body, Conditions, History, and Epic tabs" width="300">
 

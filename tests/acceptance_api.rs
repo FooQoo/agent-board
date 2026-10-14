@@ -1,4 +1,4 @@
-//! The acceptance conditions over HTTP: a card and an epic are saved as a body
+//! The acceptance conditions over HTTP: card conditions are saved as a body
 //! and a list of conditions, the frontmatter is written by the server, and
 //! other frontmatter keys are kept.
 
@@ -199,38 +199,38 @@ fn editing_a_draft_body_keeps_the_current_markdown_history() {
 }
 
 #[test]
-fn an_epic_is_created_and_saved_from_a_body_and_conditions() {
+fn an_epic_is_saved_as_plain_markdown_without_condition_input() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
     let epics = format!("/api/projects/{pid}/epics");
+    let body = "## Goal\n\nGoal.\n\n## Reference conditions\n\n- [x] Planned\n";
     let created = server.write(
         "POST",
         &epics,
         Some(
             &json!({
-                "id": "plan-1",
-                "name": "Plan",
-                "body": "Goal.\n",
-                "acceptance": [{"id": "AC-1", "text": "Planned", "done": true}],
+                "id": "plan-1", "name": "Plan", "body": body,
             })
             .to_string(),
         ),
     );
     assert_eq!(created.status, 201, "{}", created.body);
     let epic = &created.json()["epic"];
-    assert_eq!(epic["body"], "Goal.\n");
-    assert_eq!(epic["acceptance"][0]["done"], true);
-
+    assert_eq!(epic["body"], body);
+    assert!(epic.get("acceptance").is_none());
+    assert!(!epic["plan"].as_str().unwrap().contains("acceptance:"));
     let patched = server.write(
         "PATCH",
         &format!("{epics}/PLAN-1"),
         Some(&json!({"acceptance": []}).to_string()),
     );
-    assert_eq!(patched.status, 200, "{}", patched.body);
-    assert_eq!(patched.json()["epic"]["acceptance"], json!([]));
-    assert_eq!(patched.json()["epic"]["body"], "Goal.\n");
+    assert_eq!(patched.status, 400, "{}", patched.body);
+    assert_eq!(
+        server.get(&format!("{epics}/PLAN-1")).json()["epic"]["body"],
+        body
+    );
     server.stop();
 }
 

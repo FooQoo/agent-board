@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { resetBoard, agboardOk, mainProject } from '../helpers/agboard';
+import { resetBoard, agboardOk, mainProject, projectId } from '../helpers/agboard';
 
 // Headless Chromium hides scrollbars by default; the scroll cue needs the real ones.
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
@@ -12,7 +12,7 @@ test.beforeEach(() => {
 
 async function open(page: Page, width: number, height = 900): Promise<void> {
   await page.setViewportSize({ width, height });
-  await page.goto('/');
+  await page.goto(`/?project=${projectId(mainProject)}`);
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
 }
 
@@ -74,7 +74,7 @@ for (const locale of ['en', 'ja']) {
         localStorage.setItem('agboard.detailWidth', String(detailWidth));
       }, { locale, detailWidth });
       await page.setViewportSize({ width: 1920, height: 900 });
-      await page.goto('/');
+      await page.goto(`/?project=${projectId(mainProject)}`);
       await card(page, 8).click();
       const detail = page.locator('.detail');
       const row = await box(detail.locator('.detail__tabs'));

@@ -8,11 +8,11 @@ title: The board
 
 1. Select a project in the header and choose **Add card**.
 2. Enter the title, choose AI or User as the owner, and write the body. Expand the acceptance panel at the bottom to add completion conditions.
-3. Select a card for its **Description**, **Conditions**, **History**, and **Epic** tabs. The Conditions tab includes the card's conditions and its epic's conditions. To edit the card or assign an epic, choose **Make draft**, then open the editor. To move it to another column, drag it there and confirm the reason.
+3. Select a card for its **Description**, **Conditions**, **History**, and **Epic** tabs. The Conditions tab shows only the card's own conditions. To edit the card or assign an epic, choose **Make draft**, then open the editor. To move it to another column, drag it there and confirm the reason.
 
-![Card details panel with the Conditions tab showing the card's and its epic's acceptance conditions](../images/guide/card-detail.png){.screenshot}
+![Card details panel with the Conditions tab showing the card's acceptance conditions](../images/guide/card-detail.png){.screenshot}
 
-The panel on the right shows the selected card. The Conditions tab lists the card's own acceptance conditions and, below them, those of its epic, each with a progress bar.
+The panel on the right shows the selected card. The Conditions tab lists the card's own acceptance conditions with its progress bar. Epic reference conditions remain in the epic's Markdown plan.
 
 A card's owner is fixed after creation. The columns describe work progress:
 

@@ -61,7 +61,7 @@ When an agent works for a long time, you need to see what is moving, what is wai
 
 Epics order the tasks, and the progress table shows which work can advance next.
 
-![Epic editor with a scrollable task progress panel and folded acceptance conditions](./images/epic.png){.screenshot}
+![Epic editor with a scrollable task progress panel and a full-height Markdown plan](./images/epic.png){.screenshot}
 
 ## On your phone
 

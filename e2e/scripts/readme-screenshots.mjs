@@ -47,7 +47,7 @@ try {
       const epic = page.locator('.editor-dialog');
       await expect(epic.locator('.ProseMirror')).toBeVisible();
       await expect(epic.locator('.epic-progress__row')).toHaveCount(5);
-      await expect(epic.locator('.conditions-dock__head')).toHaveAttribute('aria-expanded', 'false');
+      await expect(epic.locator('.conditions-dock')).toHaveCount(0);
       await settle(page);
       await page.screenshot({ path: path.join(output, `epic${suffix}.png`) });
 

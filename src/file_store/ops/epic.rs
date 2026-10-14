@@ -52,7 +52,7 @@ fn read_plan(shared: &Path, dir: &Path) -> Result<String, AgboardError> {
 }
 
 fn view_of(file: EpicFile, plan: String) -> EpicView {
-    let parts = frontmatter::parse(&plan);
+    let parts = frontmatter::parse_plan(&plan);
     let (priority, priority_error) = match frontmatter::priority_of(&plan) {
         Ok(order) => (order, false),
         Err(_) => (Vec::new(), true),
@@ -64,8 +64,6 @@ fn view_of(file: EpicFile, plan: String) -> EpicView {
         is_draft: file.is_draft,
         plan,
         body: parts.body,
-        acceptance: parts.acceptance,
-        acceptance_error: !parts.defects.is_empty(),
         priority,
         priority_error,
         attachments: file.attachments,

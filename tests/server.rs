@@ -1737,8 +1737,6 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
     assert_eq!(
         keys,
         [
-            "acceptance",
-            "acceptanceError",
             "attachments",
             "body",
             "color",

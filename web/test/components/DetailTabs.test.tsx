@@ -288,11 +288,12 @@ describe('epic tab', () => {
     expect(screen.getByText('Epic plan text.')).toBeTruthy();
   });
 
-  it('shows the epic conditions in the dedicated conditions tab', async () => {
+  it('shows only card conditions in the dedicated conditions tab', async () => {
     const { container } = renderPanel(linked(62), { epics: [EPIC_LINKED] });
     await userEvent.click(screen.getByRole('tab', { name: 'Conditions' }));
     expect(container.querySelector('.detail__dock')).toBeNull();
-    expect(within(screen.getByRole('tabpanel')).getByText('Epic condition')).toBeTruthy();
+    expect(within(screen.getByRole('tabpanel')).queryByText('Epic condition')).toBeNull();
+    expect(within(screen.getByRole('tabpanel')).queryByRole('region', { name: 'Epic' })).toBeNull();
   });
 
   it('shows that the epic is still loading, and offers to try again when it cannot be read', async () => {

@@ -93,22 +93,14 @@ function EpicDocument({
   projectId: string;
   resolvers: MonitorReadResolvers;
 }) {
-  const { t } = useTranslation();
   return (
-    <>
-      {epic.acceptanceError && (
-        <p className="monitor-drawer__partial" role="status">
-          {t('acceptance.unreadableTitle')}
-        </p>
-      )}
-      <MonitorDocument
-        body={epic.body}
-        acceptanceError={epic.acceptanceError}
-        attachments={epic.attachments ?? []}
-        evidence={[]}
-        attachmentUrl={(id) => resolvers.epicAttachmentUrl(projectId, epic.id, id)}
-      />
-    </>
+    <MonitorDocument
+      body={epic.body}
+      acceptanceError={false}
+      attachments={epic.attachments ?? []}
+      evidence={[]}
+      attachmentUrl={(id) => resolvers.epicAttachmentUrl(projectId, epic.id, id)}
+    />
   );
 }
 
@@ -268,22 +260,7 @@ export function MonitorDetailDrawer({
             inert={tab !== 'acceptance'}
             className="monitor-drawer__panel"
           >
-            <AcceptanceTabView
-              card={card}
-              epic={
-                epicRead.status === 'loaded' || epicRead.status === 'partial' ? epicRead.epic : null
-              }
-              epicStatus={
-                !card.epic
-                  ? 'none'
-                  : epicRead.status === 'loaded' || epicRead.status === 'partial'
-                    ? 'ready'
-                    : epicRead.status === 'error' || epicRead.status === 'not-found'
-                      ? 'failed'
-                      : 'loading'
-              }
-              onRetryEpic={onRetryEpic}
-            />
+            <AcceptanceTabView card={card} />
           </div>
           <div
             role="tabpanel"

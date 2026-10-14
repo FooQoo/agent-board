@@ -29,8 +29,6 @@ const epic: Epic = {
   isDraft: false,
   plan: '---\nname: Mobile work\n---\nEpic body text',
   body: 'Epic body text',
-  acceptance: [],
-  acceptanceError: false,
   priority: [],
   priorityError: false,
   attachments: [],

@@ -81,6 +81,12 @@ fn an_epic_is_created_listed_read_and_changed_over_http() {
     let server = Running::start(home.path());
     let epics = format!("/api/projects/{pid}/epics");
 
+    let rejected = server.write(
+        "POST",
+        &epics,
+        Some(r#"{"id":"NO-CONDITIONS","name":"No conditions","acceptance":[]}"#),
+    );
+    assert_eq!(rejected.status, 422, "{}", rejected.body);
     let created = server.write(
         "POST",
         &epics,
@@ -95,7 +101,8 @@ fn an_epic_is_created_listed_read_and_changed_over_http() {
         color.starts_with('#') && color.len() == 7,
         "a color is chosen when none is given: {color}"
     );
-    assert!(epic["plan"].as_str().unwrap().contains("acceptance: []"));
+    assert_eq!(epic["plan"], "");
+    assert!(epic.get("acceptance").is_none());
 
     let listed = server.get(&epics);
     assert_eq!(listed.json()["epics"][0]["id"], "FILE-SHARE");

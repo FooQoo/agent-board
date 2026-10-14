@@ -24,18 +24,26 @@ interface MockBoard {
 }
 
 /** An epic the sample board shows: its label and frame on a few cards. */
+const SAMPLE_PLAN = `## 目的
+
+共有ファイルの画面を整える。
+
+## 進め方
+
+順に進める。
+
+## 参考条件
+
+- [x] 本文が読める
+- [ ] 画像が並ぶ
+`;
 const SAMPLE_EPIC: Epic = {
   id: 'FILE-SHARE',
   name: 'File share',
   color: '#7C3AED',
   isDraft: false,
-  plan: '---\nacceptance:\n  - id: AC-1\n    text: 本文が読める\n    done: true\n  - id: AC-2\n    text: 画像が並ぶ\n    done: false\n---\n\n## 目的\n\n共有ファイルの画面を整える。\n\n## 進め方\n\n順に進める。\n',
-  body: '## 目的\n\n共有ファイルの画面を整える。\n\n## 進め方\n\n順に進める。\n',
-  acceptance: [
-    { id: 'AC-1', text: '本文が読める', done: true },
-    { id: 'AC-2', text: '画像が並ぶ', done: false },
-  ],
-  acceptanceError: false,
+  plan: SAMPLE_PLAN,
+  body: SAMPLE_PLAN,
   priority: [],
   priorityError: false,
   attachments: [],

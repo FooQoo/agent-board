@@ -288,79 +288,62 @@ test('the edit dialog wraps each condition onto two rows in a narrow width and k
   await expect.poll(rowGap).toBeGreaterThan(20);
 });
 
-test('the epic dialog shows the number of its plan conditions done', async ({ page }) => {
+test('epic reference conditions stay in the Markdown body without a conditions dock', async ({ page }) => {
   const plan = path.join(os.tmpdir(), `epic-plan-${Date.now()}.md`);
   agboardOk(mainProject, ['epic', 'add', 'PLAN-CHK', '--name', 'Checked plan', '--color', '#7C3AED', '--actor', 'human']);
-  replaceFileAtomically(plan, frontmatter([{ id: 'AC-1', text: 'Planned', done: true }, { id: 'AC-2', text: 'Open', done: false }], '## Goal\n\nGoal.\n'));
+  const text = '## Goal\n\nGoal.\n\n## Reference conditions\n\n- [x] Planned\n- [ ] Open\n';
+  replaceFileAtomically(plan, text);
   agboardOk(mainProject, ['epic', 'edit', 'PLAN-CHK', '--plan-file', plan]);
-  expect(JSON.parse(agboardOk(mainProject, ['epic', 'show', 'PLAN-CHK', '--json']).stdout).epic.acceptance).toHaveLength(2);
-  // The epic's label shows on the board only for a card in it.
+  const stored = JSON.parse(agboardOk(mainProject, ['epic', 'show', 'PLAN-CHK', '--json']).stdout).epic;
+  expect(stored).not.toHaveProperty('acceptance');
+  expect(stored.body).toBe(text.trimEnd());
   const inPlan = addCard('In the checked plan', frontmatter([], 'Work for the plan.'));
   agboardOk(mainProject, ['edit', String(inPlan), '--epic', 'PLAN-CHK']);
-
   await page.reload();
   await waitForSync(page);
   await page.locator('[data-epic-label="PLAN-CHK"]').first().click();
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.conditions-dock__count')).toHaveText('1 of 2 done');
-  expect(await editorValue(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }))).toContain('## Goal');
+  await expect(dialog.locator('.conditions-dock')).toHaveCount(0);
+  expect(await editorValue(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }))).toContain('Planned');
 });
 
-for (const kind of ['task', 'epic'] as const) {
-  test(`${kind} conditions fold in their own dock and a long body scrolls alone`, async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 800 });
-    const conditions = Array.from({ length: 40 }, (_, index) => ({
-      id: `AC-${index + 1}`,
-      text: `Condition number ${index + 1}`,
-      done: false,
-    }));
-    const body = `## Body starts here\n\n${Array.from({ length: 30 }, (_, index) => `Paragraph ${index + 1}.`).join('\n\n')}\n\nBody ends here.`;
-    const id = addCard('Many conditions', frontmatter(conditions, body));
-    if (kind === 'epic') {
-      const plan = path.join(os.tmpdir(), `scroll-plan-${Date.now()}.md`);
-      agboardOk(mainProject, ['epic', 'add', 'SCROLL', '--name', 'Long plan', '--color', '#7C3AED', '--actor', 'human']);
-      replaceFileAtomically(plan, frontmatter(conditions, body));
-      agboardOk(mainProject, ['epic', 'edit', 'SCROLL', '--plan-file', plan]);
-      agboardOk(mainProject, ['edit', String(id), '--epic', 'SCROLL']);
-    }
-    await page.reload();
-    await waitForSync(page);
+test('task conditions fold in their own dock and a long body scrolls alone', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 800 });
+  const conditions = Array.from({ length: 40 }, (_, index) => ({
+    id: `AC-${index + 1}`,
+    text: `Condition number ${index + 1}`,
+    done: false,
+  }));
+  const body = `## Body starts here\n\n${Array.from({ length: 30 }, (_, index) => `Paragraph ${index + 1}.`).join('\n\n')}\n\nBody ends here.`;
+  const id = addCard('Many conditions', frontmatter(conditions, body));
+  await page.reload();
+  await waitForSync(page);
 
-    let dialog: Locator;
-    if (kind === 'task') {
-      await makeDraft(page, id);
-      ({ dialog } = await openEdit(page, id));
-    } else {
-      await page.locator('[data-epic-label="SCROLL"]').first().click();
-      dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('checkbox', { name: 'Draft', exact: true })).toHaveCount(0);
-      await expect(dialog.getByRole('textbox', { name: 'Plan (Markdown)' })).toBeVisible();
-    }
+  await makeDraft(page, id);
+  const { dialog } = await openEdit(page, id);
 
-    // The conditions are not in the body: they fold in the dock at the bottom of the dialog.
-    const scroll = dialog.locator('.editor__document');
-    const dock = dialog.locator('.editor__dock');
-    const dockHead = dock.getByRole('button', { name: /^Acceptance conditions/ });
-    await expect(dockHead).toBeVisible();
-    await expect(scroll.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toHaveCount(0);
-    const title = dialog.getByRole('textbox', { name: kind === 'task' ? 'Title' : 'Formal name', exact: true });
-    const titleBox = await title.boundingBox();
-    await scroll.hover();
-    await page.mouse.wheel(0, 700);
-    await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    expect((await title.boundingBox())?.y).toBe(titleBox?.y);
+  // The conditions are not in the body: they fold in the dock at the bottom of the dialog.
+  const scroll = dialog.locator('.editor__document');
+  const dock = dialog.locator('.editor__dock');
+  const dockHead = dock.getByRole('button', { name: /^Acceptance conditions/ });
+  await expect(dockHead).toBeVisible();
+  await expect(scroll.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toHaveCount(0);
+  const title = dialog.getByRole('textbox', { name: 'Title', exact: true });
+  const titleBox = await title.boundingBox();
+  await scroll.hover();
+  await page.mouse.wheel(0, 700);
+  await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect((await title.boundingBox())?.y).toBe(titleBox?.y);
 
-    // Opened, the conditions scroll inside the dock, and the body keeps its own position.
-    const before = await scroll.evaluate((element) => element.scrollTop);
-    await dockHead.click();
-    await expect(dock.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toBeVisible();
-    const conditionList = dock.locator('.conditions-dock__body');
-    await conditionList.hover();
-    await page.mouse.wheel(0, 400);
-    await expect.poll(() => conditionList.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    expect(await scroll.evaluate((element) => element.scrollTop)).toBe(before);
-    await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeInViewport();
+  // Opened, the conditions scroll inside the dock, and the body keeps its own position.
+  const before = await scroll.evaluate((element) => element.scrollTop);
+  await dockHead.click();
+  await expect(dock.getByRole('textbox', { name: 'Condition AC-1', exact: true })).toBeVisible();
+  const conditionList = dock.locator('.conditions-dock__body');
+  await conditionList.hover();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => conditionList.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBe(before);
+  await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeInViewport();
   });
-}

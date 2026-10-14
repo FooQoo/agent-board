@@ -42,9 +42,9 @@ flowchart LR
 <details>
 <summary>エピックの進行表とモバイルの画面を見る</summary>
 
-<img src="docs/images/epic.ja.png" alt="タスクの進行表と、下部に畳まれた受け入れ条件を持つエピック編集画面" width="860">
+<img src="docs/images/epic.ja.png" alt="タスクの進行表とMarkdown本文を持つエピック編集画面" width="860">
 
-<img src="docs/images/mobile.ja.png" alt="本文・受け入れ条件・履歴・エピックの4タブを持つモバイルの下部ドロワー" width="300">
+<img src="docs/images/mobile.ja.png" alt="本文・受入条件・履歴・エピックの4タブを持つモバイルの下部ドロワー" width="300">
 
 </details>
 

@@ -1,10 +1,3 @@
----
-acceptance:
-  - id: AC-1
-    text: (Describe an epic-level condition that can be verified.)
-    done: false
----
-
 ## Goal
 
 (Why this work exists and the outcome it should produce.)
@@ -20,6 +13,10 @@ acceptance:
 | Order | Card | Task | Owner | Depends on |
 | --- | --- | --- | --- | --- |
 | 1 | #<id> | (title) | ai | - |
+
+## Reference completion conditions
+
+- [ ] (Describe an epic-level outcome and record verification in this body.)
 
 ## Decisions
 

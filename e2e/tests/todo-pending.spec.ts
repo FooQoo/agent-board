@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { agboardOk, decisionJson, mainProject, nextCardId, resetBoard, type CardJson } from '../helpers/agboard';
+import { agboardOk, decisionJson, mainProject, projectId, nextCardId, resetBoard, type CardJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 // An AI card in Todo can ask a decision before the work starts. It shows as pending in Todo, answers there, and
@@ -17,7 +17,7 @@ function show(id: number): CardJson & { cardStatus: string; agentStatus: string;
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
-  await page.goto('/');
+  await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
 });
 

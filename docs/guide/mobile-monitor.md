@@ -8,7 +8,7 @@ The mobile monitor is a phone-sized view of the board for checking progress and 
 
 ## What the monitor shows
 
-The monitor groups cards into Todo, Doing, and Done. AI-owned cards show their agent state inline; Pending questions in Todo or Doing show an answer form on the card. Tapping a card opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top handle, and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows the card's and epic's conditions. The Epic tab shows the plan without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, but its only write operation is that answer.
+The monitor groups cards into Todo, Doing, and Done. AI-owned cards show their agent state inline; Pending questions in Todo or Doing show an answer form on the card. Tapping a card opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top handle, and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the card's own conditions; epic reference conditions remain in the plan body. The Epic tab shows the plan without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, but its only write operation is that answer.
 
 ![Mobile monitor with a card drawer open on the Body tab, showing the four tabs](../images/mobile.png){.screenshot--narrow}
 

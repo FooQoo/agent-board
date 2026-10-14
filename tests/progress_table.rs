@@ -402,7 +402,8 @@ fn the_human_table_lists_each_epic_and_the_unassigned_cards() {
     add(home.path(), "inside", Some("ALPHA"));
     add(home.path(), "outside", None);
     let text = ok(agboard(home.path(), &["--project", "Demo", "progress"]));
-    assert!(text.contains("ALPHA Alpha epic (acceptance 0/0)"));
+    assert!(text.contains("ALPHA Alpha epic"));
+    assert!(!text.contains("epic (acceptance"));
     assert!(text.contains("#1 inside [ai, todo, idle] acceptance 0/0"));
     assert!(text.contains("Unassigned"));
     assert!(text.contains("#2 outside"));

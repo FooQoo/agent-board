@@ -61,13 +61,13 @@ import { withBase } from 'vitepress'
 
 エピックでタスクの順序を決め、進行表で次に進められる作業を確認します。
 
-![タスクの進行表と、下部に畳まれた受け入れ条件を持つエピック編集画面](../images/epic.ja.png){.screenshot}
+![タスクの進行表とMarkdown本文を持つエピック編集画面](../images/epic.ja.png){.screenshot}
 
 ## スマホで使う
 
-下部ドロワーの本文・受け入れ条件・履歴・エピックの4タブで、判断への回答や状態の確認ができます。
+下部ドロワーの本文・受入条件・履歴・エピックの4タブで、判断への回答や状態の確認ができます。
 
-![本文・受け入れ条件・履歴・エピックの4タブを持つモバイルの下部ドロワー](../images/mobile.ja.png){.screenshot .screenshot--narrow}
+![本文・受入条件・履歴・エピックの4タブを持つモバイルの下部ドロワー](../images/mobile.ja.png){.screenshot .screenshot--narrow}
 
 ## はじめる
 

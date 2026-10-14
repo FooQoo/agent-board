@@ -153,12 +153,7 @@ export function CardDetailView({
         aria-labelledby={tabId(idBase, 'acceptance')}
         hidden={tab !== 'acceptance'}
       >
-        <AcceptanceTabView
-          card={card}
-          epic={epic}
-          epicStatus={epicStatus}
-          onRetryEpic={onRetryEpics}
-        />
+        <AcceptanceTabView card={card} />
       </div>
     </aside>
   );

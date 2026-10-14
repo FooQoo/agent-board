@@ -53,10 +53,7 @@ fn epic_add_writes_the_epic_and_a_template_plan() {
     assert_eq!(shown["epic"]["color"], "#7C3AED");
     assert_eq!(shown["epic"]["isDraft"], false);
     let plan = shown["epic"]["plan"].as_str().unwrap();
-    assert_eq!(
-        plan, "---\nacceptance: []\n---\n\n",
-        "plan lacks the template"
-    );
+    assert_eq!(plan, "", "plan lacks the template");
 }
 
 #[test]

@@ -283,8 +283,6 @@ pub struct EpicView {
     pub plan: String,
     /// PLAN.md without its frontmatter: the text after the closing line, or the whole file when there is no closing line.
     pub body: String,
-    pub acceptance: Vec<AcceptanceItem>,
-    pub acceptance_error: bool,
     /// The card order of the epic (PLAN.md `priority`); empty when none is stored.
     pub priority: Vec<i64>,
     /// The stored `priority` cannot be read; the order is then ignored.

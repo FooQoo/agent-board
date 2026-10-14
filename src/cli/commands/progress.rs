@@ -24,11 +24,7 @@ pub fn run(ctx: &Context) -> Result<Outcome, AgboardError> {
 pub fn render(table: &Progress) -> String {
     let mut out = String::new();
     for epic in &table.epics {
-        let _ = writeln!(
-            out,
-            "{} {} (acceptance {}/{})",
-            epic.id, epic.name, epic.acceptance.done, epic.acceptance.total
-        );
+        let _ = writeln!(out, "{} {}", epic.id, epic.name);
         for card in &epic.cards {
             write_card(&mut out, card);
         }

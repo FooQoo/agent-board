@@ -10,7 +10,7 @@ export const detailJa = {
     tabDescription: '本文',
     tabHistory: '履歴',
     tabEpic: 'エピック',
-    tabAcceptance: '受け入れ条件',
+    tabAcceptance: '受入条件',
     conditionsCard: 'カード',
     conditionsEpic: 'エピック',
     conditionsEmpty: '受け入れ条件はありません。',

@@ -130,7 +130,7 @@ pub fn validate_epic_name(text: &str) -> Result<String, AgboardError> {
 /// the body.
 pub fn normalize_plan(text: &str) -> Result<String, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
-    let body = super::frontmatter::parse(&normalized).body;
+    let body = super::frontmatter::parse_plan(&normalized).body;
     let count = body.chars().count();
     if count > 50_000 {
         return Err(AgboardError::InvalidValue {
@@ -181,7 +181,7 @@ pub fn is_hex32(text: &str) -> bool {
 
 /// The PLAN.md written when an epic is created without a plan.
 pub fn plan_template() -> String {
-    "---\nacceptance: []\n---\n\n".to_string()
+    String::new()
 }
 
 /// Check a TASK.md text: its frontmatter. The body is not checked.
@@ -189,9 +189,9 @@ pub fn check_task_body(text: &str) -> Vec<Defect> {
     frontmatter::parse(text).defects
 }
 
-/// Check a PLAN.md text: its frontmatter, as for TASK.md.
+/// Check a PLAN.md text's metadata syntax, without interpreting conditions.
 pub fn check_plan_body(text: &str) -> Vec<Defect> {
-    frontmatter::parse(text).defects
+    frontmatter::parse_plan(text).defects
 }
 
 /// Turn the first defect of a TASK.md text into a `file_invalid` error.

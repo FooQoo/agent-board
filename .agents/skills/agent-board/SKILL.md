@@ -65,7 +65,7 @@ Read the `README.md` in the returned `folder` before editing. Then:
 
 `edit --desc-file` and `epic edit --plan-file` are equivalent ways to replace a whole body through the CLI. Bodies are limited to 50,000 characters; if a plan would exceed that, split it into more tasks after asking the user.
 
-The completion conditions live in the frontmatter (`acceptance`), and the board reads them. The body is free Markdown. Start from [assets/PLAN.md](assets/PLAN.md) and [assets/TASK.md](assets/TASK.md), and read [references/file-format.md](references/file-format.md) before writing either file.
+A task's completion conditions live in its frontmatter (`acceptance`), and the board reads them. Epic reference conditions belong in the free Markdown body of PLAN.md and are not managed by the app. Start from [assets/PLAN.md](assets/PLAN.md) and [assets/TASK.md](assets/TASK.md), and read [references/file-format.md](references/file-format.md) before writing either file.
 
 ## 4. Plan with epics and tasks
 
@@ -128,7 +128,7 @@ To append to the execution log, follow these steps:
 5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
 6. **Finish.** Once every completion condition is verified and saved, automatic completion removes the card from the progress table. Done cards are read-only for agents: do not edit their task files or add evidence or attachments, and do not change their lane or run state. A user can reopen them when needed. Before completion, if work is no longer appropriate, record why in `TASK.md` and return it to `todo`.
 
-7. **Close the epic.** When all of an epic's task cards are done, verify the epic's own completion conditions and set them to `done: true` in `PLAN.md`.
+7. **Close the epic.** When all of an epic's task cards are done, verify the epic's reference conditions written in the PLAN.md body and record the outcome there. The app does not manage epic acceptance frontmatter.
 
 Keep the status reason short. Keep detail in `TASK.md`.
 

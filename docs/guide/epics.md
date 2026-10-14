@@ -16,7 +16,7 @@ agboard --project "My project" add "Prepare the preview" --assignee ai --actor a
 agboard --project "My project" edit 1 --clear-epic
 ```
 
-Epic IDs use letters, digits, and hyphens; lowercase input is normalized to uppercase. The plan is free Markdown with optional acceptance and priority frontmatter; no heading is required. Use `--name` or `--color '#7C3AED'` with `epic edit` to change the name or color. A card belongs to at most one epic.
+Epic IDs use letters, digits, and hyphens; lowercase input is normalized to uppercase. The plan is free Markdown with optional priority frontmatter. Write reference completion conditions directly in the plan body; no heading is required. Use `--name` or `--color '#7C3AED'` with `epic edit` to change the name or color. A card belongs to at most one epic.
 
 Save an epic's task order from the CLI:
 
@@ -28,11 +28,11 @@ This writes `priority: [3, 1, 2]` in `PLAN.md`. Entries must be distinct positiv
 
 ## Edit an epic in the browser
 
-Open an epic from its label to edit its name, color, plan, acceptance conditions, and task order. The right column starts with progress expanded and attachments folded. Opening either panel folds the other. The progress list scrolls independently, so long lists stay inside the dialog. Drag a task by its handle, or use the handle's keyboard controls, then Save to apply the order. Selecting a task opens its details. Change membership in the card editor or CLI, rather than through membership checkboxes in the epic dialog. Each card belongs to at most one epic. The epic dialog has no Draft checkbox and preserves the epic's existing draft state.
+Open an epic from its label to edit its name, color, plan and task order. The right column starts with progress expanded and attachments folded. Opening either panel folds the other. The progress list scrolls independently, so long lists stay inside the dialog. Drag a task by its handle, or use the handle's keyboard controls, then Save to apply the order. Selecting a task opens its details. Change membership in the card editor or CLI, rather than through membership checkboxes in the epic dialog. Each card belongs to at most one epic. The epic dialog has no Draft checkbox and preserves the epic's existing draft state.
 
-![Epic editor with a scrollable task progress panel and folded acceptance conditions](../images/epic.png){.screenshot}
+![Epic editor with a scrollable task progress panel and a full-height Markdown plan](../images/epic.png){.screenshot}
 
-The epic editor shows the outline on the left, the name and plan in the middle, and the label, task progress list, and attachments on the right. Acceptance conditions stay folded at the bottom until you expand them.
+The epic editor shows the outline on the left, the name and plan in the middle, and the label, task progress list, and attachments on the right. Reference completion conditions are written directly in the plan body; there is no separate conditions panel.
 
 ## Read the progress table
 

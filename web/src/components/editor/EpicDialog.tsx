@@ -1,13 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { useId, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { epicInk } from '../../lib/epic';
-import type { AcceptanceItem, Card, Epic } from '../../types';
+import type { Card, Epic } from '../../types';
 import { DiscardConfirm } from './DiscardConfirm';
 import { EditorBody, useOverLimit } from './EditorBody';
-import { ConditionsDock } from '../acceptance/ConditionsDock';
-import { ConditionsLink } from '../acceptance/ConditionsLink';
-import { acceptanceProblem } from '../../lib/acceptance';
 import { EditorShell } from './EditorShell';
 import type { EditorAttachment, StoredAttachment } from './attachmentTypes';
 import { DESCRIPTION_LIMIT, countChars, normalizeNewlines } from './limits';
@@ -24,8 +21,8 @@ export interface EpicApi {
   /** Adds the new images to the epic; `requestId` makes a retry the same write. */
   addImages(files: EditorAttachment[], requestId: string): Promise<void>;
   removeImage(attachmentId: string): Promise<void>;
-  /** The whole plan text, or the body with the conditions, saved in one request. */
-  savePlan(input: { plan: string } | { body: string; acceptance: AcceptanceItem[] }): Promise<void>;
+  /** The whole plan text, or its Markdown body, saved in one request. */
+  savePlan(input: { plan: string } | { body: string }): Promise<void>;
   saveDetails(details: { name: string; color: string; isDraft: boolean }): Promise<void>;
   /** Saves the card order of the epic: the IDs of its tasks, first is first. */
   savePriority(priority: number[]): Promise<void>;
@@ -93,8 +90,7 @@ export function EpicDialog({
     name: epic.name,
     color: epic.color.toUpperCase(),
     isDraft: epic.isDraft,
-    plan: normalizeNewlines(epic.acceptanceError ? epic.plan : epic.body),
-    acceptance: epic.acceptance,
+    plan: normalizeNewlines(epic.priorityError ? epic.plan : epic.body),
     order: orderOf(epic.priority, members),
   }));
   // What the person has now: the order of the tasks as the saved order plus the changes.
@@ -103,10 +99,8 @@ export function EpicDialog({
   const [name, setName] = useState(epic.name);
   const [color, setColor] = useState(epic.color.toUpperCase());
   // A plan whose frontmatter cannot be read is edited as its whole text, as it was before.
-  const whole = epic.acceptanceError;
+  const whole = epic.priorityError;
   const [plan, setPlan] = useState(saved.plan);
-  const [conditions, setConditions] = useState<AcceptanceItem[]>(epic.acceptance);
-  const conditionsId = useId();
   const [removed, setRemoved] = useState<string[]>([]);
   const [pendingTask, setPendingTask] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -125,9 +119,7 @@ export function EpicDialog({
 
   const localAdded = attachmentState.attachments.filter((a) => a.source === 'local');
   const imagesChanged = localAdded.length > 0 || removed.length > 0;
-  const conditionsChanged =
-    !whole && JSON.stringify(conditions) !== JSON.stringify(saved.acceptance);
-  const planChanged = plan !== saved.plan || conditionsChanged;
+  const planChanged = plan !== saved.plan;
   const detailsChanged = name.trim() !== saved.name || color.toUpperCase() !== saved.color;
   // The rows shown: the order the person has, with the tasks it does not list at the end.
   const rowIds = orderOf(order, members);
@@ -137,10 +129,7 @@ export function EpicDialog({
   const orderChanged = JSON.stringify(order) !== JSON.stringify(saved.order);
   const dirty = imagesChanged || planChanged || detailsChanged || orderChanged;
   const overLimit = useOverLimit(plan);
-  const valid =
-    nameIsValid(name) &&
-    countChars(plan) <= DESCRIPTION_LIMIT &&
-    (whole || acceptanceProblem(conditions) === null);
+  const valid = nameIsValid(name) && countChars(plan) <= DESCRIPTION_LIMIT;
 
   const currentPlan = () => normalizeNewlines(editor.current?.markdown() ?? plan);
 
@@ -169,10 +158,10 @@ export function EpicDialog({
       // 2. The plan, as the editor holds it now.
       step = 'plan';
       const text = currentPlan();
-      if (whole ? text !== saved.plan : text !== saved.plan || conditionsChanged) {
-        await api.savePlan(whole ? { plan: text } : { body: text, acceptance: conditions });
+      if (text !== saved.plan) {
+        await api.savePlan(whole ? { plan: text } : { body: text });
         somethingSaved.current = true;
-        setSaved((current) => ({ ...current, plan: text, acceptance: conditions }));
+        setSaved((current) => ({ ...current, plan: text }));
       }
       // 3. The name and color, preserving the existing draft state.
       step = 'details';
@@ -265,17 +254,6 @@ export function EpicDialog({
         bodyLabel={t('epic.planLabel')}
         editorRef={editor}
         disabled={saving}
-        dock={
-          whole ? undefined : (
-            <ConditionsDock
-              id={conditionsId}
-              items={conditions}
-              onChange={setConditions}
-              disabled={saving}
-            />
-          )
-        }
-        outlineTop={whole ? undefined : <ConditionsLink id={conditionsId} items={conditions} />}
         asideTop={
           <div className="epic-label-row">
             <span className="editor__epic-caption">{t('epic.label')}</span>

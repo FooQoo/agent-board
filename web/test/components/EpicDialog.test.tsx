@@ -20,8 +20,6 @@ const EPIC: Epic = {
   isDraft: false,
   plan: PLAN,
   body: PLAN,
-  acceptance: [],
-  acceptanceError: false,
   priority: [],
   priorityError: false,
   attachments: [
@@ -147,11 +145,6 @@ async function openImages(root: HTMLElement) {
   await userEvent.click(within(root).getByRole('button', { name: /^Attachments/ }));
 }
 
-/** The conditions fold to a line at the bottom; a test opens them before it edits a condition. */
-async function openConditions(root: HTMLElement) {
-  await userEvent.click(within(root).getByRole('button', { name: /^Acceptance conditions/ }));
-}
-
 function rowIds(root: HTMLElement): string[] {
   const list = within(root).getByRole('list', { name: 'Progress' });
   return within(list)
@@ -255,20 +248,15 @@ describe('progress table', () => {
 });
 
 describe('saving', () => {
-  it('saves the plan body and its conditions together, and a new condition gets the next number', async () => {
+  it('saves reference conditions as plain Markdown without a separate conditions editor', async () => {
     const { api } = fakeApi();
     const { dialog, onClosed } = await openEpic(api);
-    await openConditions(dialog);
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Add condition' }));
-    fireEvent.change(within(dialog).getByLabelText('Condition AC-1'), {
-      target: { value: 'The plan is saved' },
-    });
+    expect(within(dialog).queryByRole('button', { name: /^Acceptance conditions/ })).toBeNull();
+    const text = `${PLAN}\n\n## Completion conditions\n\n- [ ] The plan is saved.`;
+    setPlan(text, dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(api.savePlan).toHaveBeenCalledWith({
-      body: PLAN,
-      acceptance: [{ id: 'AC-1', text: 'The plan is saved', done: false }],
-    });
+    expect(api.savePlan).toHaveBeenCalledWith({ body: text });
   });
 
   it('saves images, then the plan, then the name and color', async () => {
@@ -292,7 +280,7 @@ describe('saving', () => {
       'savePlan',
       'saveDetails',
     ]);
-    expect(api.savePlan).toHaveBeenCalledWith({ body: '## Goal\n\nChanged.', acceptance: [] });
+    expect(api.savePlan).toHaveBeenCalledWith({ body: '## Goal\n\nChanged.' });
     expect(api.saveDetails).toHaveBeenCalledWith({
       name: 'Renamed epic',
       color: '#00FF00',

@@ -1,6 +1,6 @@
 # TASK.md and PLAN.md format
 
-The completion conditions of a card (TASK.md) or an epic (PLAN.md) are in a YAML frontmatter at the top of the file. The board reads them. The body after the frontmatter is free Markdown, and no heading is required. Only TASK.md has an operation-history field; PLAN.md keeps its existing format.
+The completion conditions of a card (TASK.md) are in YAML frontmatter. The board reads them. Epic reference conditions are ordinary Markdown in the PLAN.md body, without acceptance frontmatter or a separate conditions editor. The body after the frontmatter is free Markdown, and no heading is required. Only TASK.md has an operation-history field. PLAN.md may use priority frontmatter for task order.
 
 Start from [assets/TASK.md](../assets/TASK.md) or [assets/PLAN.md](../assets/PLAN.md).
 
@@ -19,9 +19,9 @@ acceptance:
   - `id`: `AC-` followed by a positive number without a leading zero. Unique in the file.
   - `text`: one to 2,000 characters after trimming. Write it so that it can be verified.
   - `done`: `true` or `false`.
-- An epic may also have `priority: [3, 1, 2]`: distinct positive card IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing PLAN.md. This is independent of lane order.
+- A PLAN.md may have `priority: [3, 1, 2]`: distinct positive card IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing PLAN.md. This is independent of lane order.
 - Other keys in the frontmatter are kept when the board writes the file.
-- A `PLAN.md` without frontmatter has no conditions. A format version 2 `TASK.md` must have a valid top-level `history` list, even when its `acceptance` list is empty.
+- A `PLAN.md` without frontmatter is entirely body text. Its reference conditions are not parsed by the app. A format version 2 `TASK.md` must have a valid top-level `history` list, even when its `acceptance` list is empty.
 
 ## TASK operation history
 
@@ -42,4 +42,4 @@ If the frontmatter cannot be read, the board reports the file, the item, and the
 
 ## Earlier files
 
-Task files paired with `task.json` format version 1 are unsupported by this version, regardless of their Markdown shape. They are reported as unsupported and are not converted. Do not describe them as readable body-only cards. `PLAN.md` keeps its existing behavior and is outside the TASK operation-history format change.
+Task files paired with `task.json` format version 1 are unsupported by this version, regardless of their Markdown shape. They are reported as unsupported and are not converted. Do not describe them as readable body-only cards. PLAN.md interprets only priority metadata; legacy acceptance keys are kept as opaque metadata, without conversion or managed condition behavior.

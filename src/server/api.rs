@@ -2021,13 +2021,11 @@ struct CreateEpicInput {
     color: Option<String>,
     #[serde(default)]
     is_draft: bool,
-    /// The whole PLAN.md text, frontmatter included. Not combined with `body` or `acceptance`.
+    /// The whole PLAN.md text, frontmatter included. Not combined with `body`.
     #[serde(default)]
     plan: Option<String>,
     #[serde(default)]
     body: Option<String>,
-    #[serde(default)]
-    acceptance: Option<Vec<AcceptanceItem>>,
 }
 
 #[derive(Deserialize)]
@@ -2043,8 +2041,6 @@ struct EpicPatchInput {
     plan: Option<String>,
     #[serde(default)]
     body: Option<String>,
-    #[serde(default)]
-    acceptance: Option<Vec<AcceptanceItem>>,
     /// The card order of the epic. Replaces the stored order.
     #[serde(default)]
     priority: Option<Vec<i64>>,
@@ -2054,7 +2050,7 @@ struct EpicPatchInput {
 fn whole_or_parts() -> AgboardError {
     AgboardError::InvalidValue {
         field: "body".into(),
-        reason: "Give either the whole text or body and acceptance, not both.".into(),
+        reason: "Give either the whole text or body fields, not both.".into(),
     }
 }
 
@@ -2137,12 +2133,7 @@ async fn create_epic(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let plan = match whole_text(
-        input.plan,
-        input.body,
-        input.acceptance,
-        validate::plan_template,
-    ) {
+    let plan = match whole_text(input.plan, input.body, None, validate::plan_template) {
         Ok(plan) => plan,
         Err(error) => return agboard_error_response(&error),
     };
@@ -2181,7 +2172,7 @@ async fn update_epic(
     };
     match with_files(&state, move |store| {
         let priority = input.priority.clone();
-        let plan = if input.body.is_some() || input.acceptance.is_some() {
+        let plan = if input.body.is_some() {
             if input.plan.is_some() {
                 return Err(whole_or_parts());
             }
@@ -2190,7 +2181,7 @@ async fn update_epic(
                 &current.plan,
                 &current.body,
                 input.body,
-                input.acceptance,
+                None,
             )?)
         } else {
             input.plan

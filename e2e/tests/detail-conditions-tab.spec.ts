@@ -11,7 +11,7 @@ function markdown(source: string, count: number) {
 function seed(project: string, home?: string) {
   agboardOk(project, ['epic', 'add', 'CONDITION-TABS', '--name', 'Conditions epic', '--color', '#7C3AED', '--actor', 'human'], home);
   const folder = workspace(project, home).folder;
-  replaceFileAtomically(path.join(folder, 'epics', 'CONDITION-TABS', 'PLAN.md'), markdown('Epic', 4));
+  replaceFileAtomically(path.join(folder, 'epics', 'CONDITION-TABS', 'PLAN.md'), 'Epic body.\n\n## Reference conditions\n\n- [ ] Epic reference check.\n');
   return JSON.parse(agboardOk(project, ['add', 'Conditions detail', '--desc', markdown('Card', 24), '--assignee', 'human', '--actor', 'human', '--epic', 'CONDITION-TABS', '--json'], home).stdout).card.id as number;
 }
 
@@ -34,16 +34,17 @@ test.describe('PC condition tab', () => {
         await expect(detail.getByRole('tab')).toHaveCount(4);
         await expect(detail.locator('.detail__dock')).toHaveCount(0);
         await expect(detail.getByRole('tabpanel').getByText('Card check 1', { exact: true })).toHaveCount(0);
-        const conditionTab = detail.getByRole('tab', { name: locale === 'ja' ? '受け入れ条件' : 'Conditions', exact: true });
+        const conditionTab = detail.getByRole('tab', { name: locale === 'ja' ? '受入条件' : 'Conditions', exact: true });
         await conditionTab.click();
         const panel = detail.getByRole('tabpanel');
-        await expect(panel.getByRole('checkbox')).toHaveCount(28);
+        await expect(panel.getByRole('checkbox')).toHaveCount(24);
         await expect(panel.getByRole('checkbox').first()).toBeDisabled();
         await expect(detail.getByRole('tablist')).toBeInViewport();
         expect(await detail.getByRole('tablist').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
         await panel.hover();
         await page.mouse.wheel(0, 2500);
-        await expect(panel.getByText('Epic check 4', { exact: true })).toBeInViewport();
+        await expect(panel.getByText('Card check 24', { exact: true })).toBeInViewport();
+        await expect(panel.getByText('Epic reference check.', { exact: true })).toHaveCount(0);
         const scroll = await panel.evaluate((el) => el.scrollTop);
         await detail.getByRole('tab', { name: locale === 'ja' ? '本文' : 'Description', exact: true }).click();
         await conditionTab.click();
@@ -69,7 +70,7 @@ test.describe('mobile condition tab', () => {
     removeMonitorHome(home);
   });
   for (const width of [320, 375, 430]) {
-    test(`${width}px: swipe follows all four tabs and conditions read the existing epic cache`, async ({ page }, testInfo) => {
+    test(`${width}px: swipe follows all four tabs and the epic tab uses the existing cache`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 812 });
       await page.addInitScript(() => {
         localStorage.setItem('agboard.locale', 'ja');
@@ -90,16 +91,17 @@ test.describe('mobile condition tab', () => {
       await page.mouse.down();
       await page.mouse.move(bounds.x + bounds.width * 0.15, bounds.y + 80, { steps: 16 });
       await page.mouse.up();
-      await expect(drawer.getByRole('tab', { name: '受け入れ条件', exact: true })).toHaveAttribute('aria-selected', 'true');
-      const panel = drawer.getByRole('tabpanel', { name: '受け入れ条件', exact: true });
-      await expect(panel.getByRole('checkbox')).toHaveCount(28);
+      await expect(drawer.getByRole('tab', { name: '受入条件', exact: true })).toHaveAttribute('aria-selected', 'true');
+      const panel = drawer.getByRole('tabpanel', { name: '受入条件', exact: true });
+      await expect(panel.getByRole('checkbox')).toHaveCount(24);
       const reads = epicReads;
       await panel.hover();
       await page.mouse.wheel(0, 2500);
-      await expect(panel.getByText('Epic check 4', { exact: true })).toBeInViewport();
+      await expect(panel.getByText('Card check 24', { exact: true })).toBeInViewport();
+      await expect(panel.getByText('Epic reference check.', { exact: true })).toHaveCount(0);
       await drawer.getByRole('tab', { name: 'エピック', exact: true }).click();
       await expect(drawer.getByRole('tabpanel', { name: 'エピック', exact: true }).getByText('Epic body.')).toBeVisible();
-      await drawer.getByRole('tab', { name: '受け入れ条件', exact: true }).click();
+      await drawer.getByRole('tab', { name: '受入条件', exact: true }).click();
       expect(epicReads).toBe(reads);
       const tabBounds = (await drawer.getByRole('tablist').boundingBox())!;
       const indicator = await drawer.locator('.monitor-drawer__tabs').evaluate((el) => {

@@ -32,7 +32,7 @@ shared/
       assets/
 ```
 
-`task.json` contains card metadata such as its current lane and owner and uses format version 2. The card's body, acceptance conditions, and operation history are stored in `TASK.md`; the UI reads its History tab from that Markdown history. UI and CLI status changes append to the same history. Epic plans keep their existing `PLAN.md` format.
+`task.json` contains card metadata such as its current lane and owner and uses format version 2. The card's body, acceptance conditions, and operation history are stored in `TASK.md`; the UI reads its History tab from that Markdown history. UI and CLI status changes append to the same history. Epic plans are stored in `PLAN.md`, with optional priority metadata for task order; reference conditions belong in the Markdown body.
 
 This version does not read or migrate version 1 task files, and does not fall back to their old format. If you are starting with this version from an existing board, remove the old data yourself and create new cards. Agent Board never deletes or resets old data automatically.
 

@@ -3,8 +3,8 @@ import path from 'node:path';
 import { agboardOk, mainProject, nextCardId, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
-const conditions = Array.from({ length: 40 }, (_, i) => `  - id: AC-${i + 1}\n    text: Condition ${i + 1}\n    done: false`).join('\n');
-const body = `---\nacceptance:\n${conditions}\n---\n\n# 進行表と自動完了によるAIの操作削減\n\n## 目的・背景\n\nAIがプロジェクト全体の進行表から作業を選び、必要なエピック計画と作業記録だけを読んで進める。完了更新とプロジェクト指定の操作を減らす。\n\n## スコープ\n\n進行表、プロジェクトとフォルダの登録、エピックの進行順、Hook、自動Doneを扱う。\n\n### プロジェクトの識別\n\nフォルダの登録では \`agboard project bind NAME\` を使い、最も近い祖先の登録を参照する。\n\n${'More body text.\n\n'.repeat(60)}`;
+const conditions = Array.from({ length: 40 }, (_, i) => `- [ ] Condition ${i + 1}`).join('\n');
+const body = `# 進行表と自動完了によるAIの操作削減\n\n## 目的・背景\n\nAIがプロジェクト全体の進行表から作業を選び、必要なエピック計画と作業記録だけを読んで進める。完了更新とプロジェクト指定の操作を減らす。\n\n## スコープ\n\n進行表、プロジェクトとフォルダの登録、エピックの進行順、Hook、自動Doneを扱う。\n\n### プロジェクトの識別\n\nフォルダの登録では \`agboard project bind NAME\` を使い、最も近い祖先の登録を参照する。\n\n${'More body text.\n\n'.repeat(60)}\n\n## Reference conditions\n\n${conditions}`;
 
 for (const mode of ['light', 'dark'] as const) {
   for (const locale of ['en', 'ja'] as const) {
@@ -47,20 +47,12 @@ for (const mode of ['light', 'dark'] as const) {
       const imageHead = dialog.getByRole('button', { name: locale === 'ja' ? /^添付画像/ : /^Attachments/ });
       await expect(imageHead.locator('.collapsible__icon')).toBeVisible();
       await expect(imageHead).toBeInViewport();
-      const dock = dialog.locator('.conditions-dock');
-      await dock.locator('.conditions-dock__head').click();
-      await expect(dock.locator('.acceptance-edit__head')).toHaveCount(0);
-      await expect(dock.locator('.conditions-dock__title')).toHaveCSS('font-size', '14px');
-      const conditionList = dock.locator('.conditions-dock__body');
-      await conditionList.hover();
-      await page.mouse.wheel(0, 3000);
-      await expect.poll(() => conditionList.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-      await expect(dock.locator('input').last()).toBeInViewport();
-      await expect(dock.locator('.conditions-dock__head')).toBeInViewport();
+      await expect(dialog.locator('.conditions-dock')).toHaveCount(0);
       await expect(dialog.locator('.editor__document')).toBeInViewport();
-      const dockBox = await dialog.locator('.editor__dock').boundingBox();
+      await expect(dialog.locator('.editor__dock')).toHaveCount(0);
+      const documentBox = await dialog.locator('.editor__document').boundingBox();
       const currentFooter = await dialog.locator('.editor__footer').boundingBox();
-      expect(Math.round(currentFooter!.y - dockBox!.y - dockBox!.height)).toBe(8);
+      expect(documentBox!.y + documentBox!.height).toBeLessThanOrEqual(currentFooter!.y);
       await page.screenshot({ path: testInfo.outputPath('epic-panels.png') });
     });
   }

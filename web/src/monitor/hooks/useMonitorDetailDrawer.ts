@@ -85,10 +85,7 @@ export function useMonitorDetailDrawer(
       const epic = cached.epics.find((item) => item.id === epicId);
       if (!epic) epicRead = { status: 'not-found' };
       else {
-        const partial =
-          typeof epic.body !== 'string' ||
-          !Array.isArray(epic.acceptance) ||
-          !Array.isArray(epic.attachments);
+        const partial = typeof epic.body !== 'string' || !Array.isArray(epic.attachments);
         epicRead = partial ? { status: 'partial', epic } : { status: 'loaded', epic };
       }
     }
