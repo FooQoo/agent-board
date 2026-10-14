@@ -3,27 +3,7 @@ acceptance:
   - id: AC-1
     text: (Describe a condition that can be verified.)
     done: false
+history: []
 ---
 
-## Work
-
-(Describe the purpose of the work and what to do.)
-
-## Details
-
-(Specification, expected behavior, and constraints.)
-
-## Changes
-
-(Files, components, or documents to change, as repository-relative paths.)
-
-## Verification plan
-
-(How each condition will be verified: commands, checks, and expected results.)
-
-## Execution log
-
-(Append entries in time order; never rewrite earlier ones.)
-- YYYY-MM-DD HH:mm Started: ...
-- YYYY-MM-DD HH:mm Ran `command`: result (evidence: <evidence-id>)
-- YYYY-MM-DD HH:mm Completed: summary, verified version or commit
+(Write the task in free Markdown. There are no required headings. Keep the detailed execution log and evidence references in the body; Agent Board records card operation history in the `history` frontmatter.)

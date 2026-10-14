@@ -1,6 +1,6 @@
 # TASK.md and PLAN.md format
 
-The completion conditions of a card (TASK.md) or an epic (PLAN.md) are in a YAML frontmatter at the top of the file. The board reads them. The body after the frontmatter is free Markdown, and no heading is required.
+The completion conditions of a card (TASK.md) or an epic (PLAN.md) are in a YAML frontmatter at the top of the file. The board reads them. The body after the frontmatter is free Markdown, and no heading is required. Only TASK.md has an operation-history field; PLAN.md keeps its existing format.
 
 Start from [assets/TASK.md](../assets/TASK.md) or [assets/PLAN.md](../assets/PLAN.md).
 
@@ -21,7 +21,15 @@ acceptance:
   - `done`: `true` or `false`.
 - An epic may also have `priority: [3, 1, 2]`: distinct positive card IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing PLAN.md. This is independent of lane order.
 - Other keys in the frontmatter are kept when the board writes the file.
-- A file without a frontmatter has no conditions.
+- A `PLAN.md` without frontmatter has no conditions. A format version 2 `TASK.md` must have a valid top-level `history` list, even when its `acceptance` list is empty.
+
+## TASK operation history
+
+New cards use `task.json` format version 2. It stores card metadata such as the current lane and owner, but no history array. TASK.md stores the body, acceptance conditions, and the complete operation history in its top-level `history` list. New-card input may omit `history` or set it to an empty list; Agent Board creates the initial `created` event. Do not copy history into the body or send it as part of ordinary edits.
+
+Agent Board appends operation events to TASK.md when card operations occur, including status changes made in the UI or CLI. Ordinary body and acceptance edits preserve the latest history. Read the history in the board or with `show`/`snapshot`; use the detailed execution-log section of the body for work notes and evidence references.
+
+This version reads only task format version 2. It does not migrate or fall back to version 1. Agent Board never deletes old data automatically. When starting with this version from an existing board, the user must remove the old data and begin with new cards.
 
 If the frontmatter cannot be read, the board reports the file, the item, and the reason as a problem. The card then shows no progress and its whole text is the body. Fix the file by hand; the board does not rewrite it.
 
@@ -34,4 +42,4 @@ If the frontmatter cannot be read, the board reports the file, the item, and the
 
 ## Earlier files
 
-A file written in the earlier form, with Japanese headings (`## 作業内容`, `## 完了条件と確認結果`) and `- [ ] AC-n.` lines, has no frontmatter. The board reads it as a body with no conditions. Do not convert it unless the user asks.
+Task files paired with `task.json` format version 1 are unsupported by this version, regardless of their Markdown shape. They are reported as unsupported and are not converted. Do not describe them as readable body-only cards. `PLAN.md` keeps its existing behavior and is outside the TASK operation-history format change.

@@ -12,7 +12,7 @@ title: エージェントとの連携
 
 - **フォルダからの解決。** フックのテンプレートは、プロジェクト名もセッションIDも含まない固定のコマンド`agboard hook --agent claude`を使います。フックは入力の`cwd`を読み、登録済みの最も近い親フォルダに解決します。`--project NAME`を明示するとフォルダの登録より優先されます。登録がない、または壊れているときは`AGBOARD_ERROR`を返し、別のプロジェクトを推測することはありません。フォルダは`agboard project create`または`agboard project bind`で登録します。
 - **進行表。** フックは`agboard progress`と同じ簡潔な表を渡します。完了、アーカイブ済み、待機中のカードは含まれません。表が256 KiBを超える、または読み取れないときは、エージェントに`AGBOARD_ERROR`が渡され、ボードに依存する変更をしてはいけません。
-- **共有ファイル。** エージェントが編集できるのは、プロジェクトの`README.md`が許す範囲で、下書きではないカードの`TASK.md`とエピックの`PLAN.md`だけです。`task.json`、`epic.json`、`project.json`は編集せず、カードやエピックのフォルダも削除せず、マシン固有の絶対パスを共有ファイルに書きません。[編集と証跡](./editing#共有markdownファイルを編集する)を参照してください。
+- **共有ファイル。** エージェントが編集できるのは、プロジェクトの`README.md`が許す範囲で、下書きではないカードの`TASK.md`とエピックの`PLAN.md`だけです。`task.json`にはメタデータを保存し、変更にはCLIを使います。`TASK.md`には本文・受け入れ条件・操作履歴を保存します。カード操作での`history`更新はAgent Boardに任せ、通常編集では保持してください。エージェントは`epic.json`や`project.json`を編集せず、カードやエピックのフォルダも削除せず、マシン固有の絶対パスを共有ファイルに書きません。[編集と証跡](./editing#共有markdownファイルを編集する)を参照してください。
 - **Claude Code。** `integrations/claude-code/settings.json`をプロジェクトの`.claude/settings.json`へマージし、`/hooks`で確認します。
 - **Codex CLIとCodex App。** `integrations/codex/hooks.json`をプロジェクトの`.codex/hooks.json`へマージし、`/hooks`で確認します。
 - **回答の待機。** 進められる作業がないとき、エージェントは`snapshot`と`wait`で待ちます(下の作業ループを参照)。

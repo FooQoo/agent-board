@@ -35,7 +35,7 @@ flowchart LR
 
 **2. A progress table that keeps agents moving.** Order tasks within an epic and let `agboard progress` return the work that can advance, together with the paths to its plans and tasks. Folder-based project selection and hooks give agents the right context. When every acceptance condition is verified, eligible AI cards move to Done automatically; completed work stays read-only for agents.
 
-**3. Local Markdown for plans, results, and evidence.** Keep epic plans in `PLAN.md`, tasks in `TASK.md`, and images and evidence alongside them. Edit the files directly or use the rich Markdown editor; the board follows file changes. Everything stays in your local data area, with no account or hosted service required.
+**3. Local Markdown for plans, results, and evidence.** Keep epic plans in `PLAN.md`, tasks in `TASK.md`, and images and evidence alongside them. A task's body, acceptance conditions, and operation history live in `TASK.md`; card metadata such as its current status lives in `task.json`. Status changes from the UI or CLI are recorded in `TASK.md` and shown in the history. Everything stays in your local data area, with no account or hosted service required.
 
 See the [usage guide](https://fooqoo.github.io/agent-board/guide/) for editing, attachments, archiving, and settings.
 

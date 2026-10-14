@@ -42,6 +42,8 @@ agboard --project "My project" edit 1 --desc-file task.md
 
 Descriptions and epic plans allow up to 50,000 characters. The file must follow the required [Markdown format](./editing#edit-shared-markdown-files). Use `--desc -` to read a description from standard input.
 
+For cards, ordinary `edit --desc-file` replacements update the body and acceptance conditions while preserving the latest operation history from `TASK.md`. They do not accept history changes from the input file. Card operations made through the CLI or UI append history to `TASK.md`; `show`, `snapshot`, and the UI read that same history.
+
 ## Filter and list
 
 Filter cards or inspect every project:
