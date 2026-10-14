@@ -2,17 +2,19 @@
 
 [README](../README.md) · [Usage guide](usage.md)
 
-The monitor groups cards into Todo, Doing, and Done. Todo and Doing cards show their agent state inline as Idle, Running, or Pending; Pending cards in either lane also show the question and an answer form. Tapping a card opens a bottom drawer with Body, History, and Epic tabs. The drawer slides up from the bottom, follows a downward drag, and closes when dismissed; its content scrolls independently. The monitor can answer a pending question, but its only write operation is that answer.
+The monitor groups cards into Todo, Doing, and Done. AI-owned cards show their agent state inline; Pending questions in Todo or Doing show an answer form on the card. Tapping a card opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top handle, and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows the card's and epic's conditions. The Epic tab shows the plan without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, but its only write operation is that answer.
+
+![Mobile drawer with four tabs](images/mobile.png)
 
 Horizontal swipes move the tab content and underline together. Gestures inside the tab content stay within that area; drag the top handle to dismiss the drawer. Each project's complete epic list is loaded when the monitor initializes and retained for the page session. Switching tabs performs no epic request. Reload the page to refresh the epic lists, or use the retry button after a failed initial request.
 
-The monitor HTML, JavaScript, CSS, viewer chunks, and API responses use `Cache-Control: no-store`. Page reloads fetch the current UI without retaining browser asset caches. Entry asset versions also bypass files saved under the previous caching policy.
+The monitor HTML, JavaScript, CSS, viewer chunks, and API responses use `Cache-Control: no-store`. The monitor has no offline snapshot cache or service worker. Reloading fetches the current UI and data; when disconnected, the page reports the connection state.
 
 Run the commands below from the repository root after [installing Agent Board](usage.md#installation-and-updates).
 
-## Final iPhone check
+## Check on a phone
 
-The responsive browser tests cover narrow viewports, but the software keyboard still needs a real-device check before AC-8 is complete. On an iPhone, open the monitor in Safari and find a Todo or Doing card with a Pending question. Open the free-text answer field and confirm that the keyboard does not hide the field or Send button; scroll the list as needed and submit an answer. Also confirm that the drawer tabs remain usable after dismissing the keyboard. Record the result and device/browser version with the release evidence.
+Responsive browser tests cover narrow viewports; the software keyboard needs a real-device check. Open the monitor in the phone's browser and find a Todo or Doing card with a Pending question. Confirm that the keyboard leaves the answer field and Send button reachable, then submit an answer. Also check scrolling in long Body, Conditions, and Epic tabs, horizontal tab swipes, and downward dismissal using the handle. Browser emulation alone does not verify Safari's keyboard behavior.
 
 ## Remote access
 

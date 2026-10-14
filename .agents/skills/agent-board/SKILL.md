@@ -41,7 +41,7 @@ Before choosing, starting, or resuming work, read the progress table:
 agboard progress --json
 ```
 
-It groups active cards under epics and lists unassigned work. Done and archived cards are omitted; Pending questions remain visible until answered. The table includes card IDs, titles, owners, statuses, acceptance counts, and relevant `planPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's PLAN and task's TASK before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
+It groups active cards under epics and lists unassigned work. Done, archived, and Pending cards are omitted. Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes card IDs, titles, owners, statuses, acceptance counts, and relevant `planPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's PLAN and task's TASK before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
 
 - `AGBOARD_PROGRESS` is followed by the progress table for the nearest bound folder or explicit project.
 - `AGBOARD_ERROR` (`folder_unbound`, `bound_project_missing`, `project_not_found`, `board_unavailable`, ...) means there is no usable table. Resolve the correct folder or report the problem; do not guess.
@@ -88,12 +88,13 @@ Check the progress table and use `show` when needed to find existing cards befor
 
 ## 5. Lanes and run states
 
-Lanes are `todo`, `doing`, and `done`. An AI card in `doing` also has a run state:
+Lanes are `todo`, `doing`, and `done`. AI cards may be Pending in Todo or Doing; only Doing supports Running:
 
 | Owner | Lane | Allowed run state |
 | --- | --- | --- |
 | `ai` | `doing` | `idle`, `running`, `pending` |
-| `ai` | `todo`, `done` | `idle` only |
+| `ai` | `todo` | `idle`, `pending` |
+| `ai` | `done` | `idle` only |
 | `human` | any | `idle` only |
 
 - `running` means you are working on it. `pending` means you need the user's decision.
@@ -114,7 +115,7 @@ To append to the execution log, follow these steps:
 4. Read it back from a fresh snapshot. Compare the saved text with what you sent, ignoring trailing whitespace on both sides. If they differ, stop, find out why, and leave the status unchanged.
 5. Only then change the lane or run state.
 
-1. **Choose.** From the progress table, pick a ready AI card in `todo`, respecting epic/task priority, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed.
+1. **Choose.** From the progress table, pick a ready AI card in `todo`, respecting the epic's task order, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed.
 2. **Start.** Append a start entry to the execution log, then:
 
    ```sh
@@ -123,9 +124,9 @@ To append to the execution log, follow these steps:
    ```
 
 3. **Work and record.** As you go, append results to the execution log: commands run, outcomes, decisions, the commit or version verified, and references to evidence. Store logs with `agboard --project "<name>" evidence add <id> <file>` and images with `attachment add <id> --file <path> --actor ai`; reference them from the body.
-4. **Check conditions.** Set an item's `done` to `true` in the frontmatter only after its verification succeeded, and record the result and evidence in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; the board completes an eligible AI card automatically. Do not manually move a card to Done during the normal work loop. If the card does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
+4. **Check conditions.** Set an item's `done` to `true` in the frontmatter only after its verification succeeded, and record the result and evidence in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI card automatically. Do not manually move a card to Done during the normal work loop. If the card does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
 5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
-6. **Finish.** Once every completion condition is verified and saved, automatic completion removes the card from the progress table. Done cards are not AI work. If work is no longer appropriate, record why in `TASK.md` and return it to `todo`.
+6. **Finish.** Once every completion condition is verified and saved, automatic completion removes the card from the progress table. Done cards are read-only for agents: do not edit their task files or add evidence or attachments, and do not change their lane or run state. A user can reopen them when needed. Before completion, if work is no longer appropriate, record why in `TASK.md` and return it to `todo`.
 
 7. **Close the epic.** When all of an epic's task cards are done, verify the epic's own completion conditions and set them to `done: true` in `PLAN.md`.
 
@@ -153,7 +154,7 @@ cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-
 - `question`: 1 to 2,000 characters. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
 - Add `"wait": {}` to the request JSON to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a card move withdrew the question.
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
-- The card must be an AI card in `doing`.
+- The card must be an AI card in `todo` or `doing`. Only `doing` may become `running`.
 
 The user answers in the browser with a choice, a note, or both. The answer returns the card to `idle` and appears in the history with the request ID, the chosen choice, and the note.
 

@@ -19,6 +19,7 @@ acceptance:
   - `id`: `AC-` followed by a positive number without a leading zero. Unique in the file.
   - `text`: one to 2,000 characters after trimming. Write it so that it can be verified.
   - `done`: `true` or `false`.
+- An epic may also have `priority: [3, 1, 2]`: distinct positive card IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing PLAN.md. This is independent of lane order.
 - Other keys in the frontmatter are kept when the board writes the file.
 - A file without a frontmatter has no conditions.
 

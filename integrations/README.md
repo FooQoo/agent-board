@@ -15,8 +15,8 @@ Image attachments follow the same project and card boundaries. Use `agboard --pr
 ## Before you start
 
 1. Install `agboard` onto your `PATH` (see [Install](../README.md#install)). Hook commands run `agboard` from `PATH`, so they use the installed version, not a development build. Check with `command -v agboard`.
-2. Create the project, or use an existing one: `agboard project create "My project"`.
-3. Find the project's folder with `agboard --project "My project" workspace --json`. Its `folder` field is the absolute path, and its `README.md` is the entry point for the files in it.
+2. From the working repository, create and bind a project with `agboard project create "My project"`, or register an existing project with `agboard project bind "My project"`. Both default to the current folder; `--folder DIR` uses another existing folder. A browser selection does not register a folder for hooks.
+3. Run `agboard progress --json` from that folder or a subfolder to confirm it resolves to the intended project. Find the shared files with `agboard --project "My project" workspace --json`; its `folder` is the shared data folder, which is separate from the registered working folder.
 
 ## Rules for agents on the shared files
 
@@ -28,6 +28,8 @@ The project folder holds plain files that the CLI and the browser read. Agents m
 Never edit `task.json`, `epic.json`, or `project.json` directly; use the `agboard` CLI for every change to a card, an epic, or a project. Never delete a card folder or an epic folder: ask a person to delete a card or an epic with the CLI. Do not put a machine-specific absolute path into a shared file.
 
 Keep your own settings. Review the template and merge its hook entries into your project's existing configuration; do not replace a settings file that already contains other hooks. Nothing here writes to your user-level or global agent settings. If `agboard` is not on the agent's `PATH`, fix your `PATH`; do not copy a machine-specific absolute path into a shared file.
+
+Done cards are read-only for agents and do not return to progress unless a user reopens them. Pending cards also stay out of the progress table until answered; their questions are kept on the board. Use `show <id> --json` for a known waiting card or `snapshot --json` to inspect all current questions, then `wait` when no work can proceed. Do not infer that a question expired because it is absent from progress.
 
 ## Claude Code
 

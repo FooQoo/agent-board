@@ -144,7 +144,7 @@ function rowName(root: HTMLElement, id: number): HTMLButtonElement {
 
 /** The images panel folds by default; a test opens it before it reads or removes an image. */
 async function openImages(root: HTMLElement) {
-  await userEvent.click(within(root).getByRole('button', { name: /^Images/ }));
+  await userEvent.click(within(root).getByRole('button', { name: /^Attachments/ }));
 }
 
 /** The conditions fold to a line at the bottom; a test opens them before it edits a condition. */

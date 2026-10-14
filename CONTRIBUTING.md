@@ -92,3 +92,17 @@ TZ=UTC pnpm --dir web test
 Run `pnpm --dir web format` to apply the web formatter.
 
 Tests set `TZ=UTC` so displayed times are fixed. Tests never use the default data area: each one sets `AGBOARD_HOME` to a temporary directory. Do not use port 7420 in tests; it is kept free for normal use. In tests, connect to `http://127.0.0.1:<port>/` rather than `localhost`.
+
+## README screenshots
+
+After [building the web UI and CLI](#build), install the browser tooling and regenerate the images:
+
+```sh
+pnpm --dir e2e install --frozen-lockfile
+pnpm --dir e2e exec playwright install chromium
+node e2e/scripts/readme-screenshots.mjs
+```
+
+The script creates disposable projects in temporary `AGBOARD_HOME` directories, starts its own servers on available loopback ports, and captures the current desktop board, epic progress panel, and mobile drawer in English and Japanese. It never uses your saved board or port 7420. The browser renders the built UI against the real API; images are not mockups. It checks the four detail tabs, the folded conditions panel, and browser errors, and removes its temporary data after stopping its servers.
+
+Review all six images in `docs/images/` before committing them. Keep the sample text free of personal data. README screenshot generation does not replace the regression suite or phone keyboard checks.
