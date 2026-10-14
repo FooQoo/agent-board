@@ -10,7 +10,7 @@ Todo and Doing cards with a current Pending request show the question and answer
 
 ![A Pending card with its question, two options, and a free-text answer field](../images/guide/question.png){.screenshot}
 
-The card shows the question, the options, and a text field for a note. Your answer is saved to the history.
+The card shows the question, the options, and a text field for a note. Your answer remains available to the agent, and a concise reason is saved to history.
 
 A Pending question has no expiry. It remains available until it is answered or the request is withdrawn or changed. The CLI `wait.timeoutSeconds` option limits that wait command only; it does not expire the question.
 

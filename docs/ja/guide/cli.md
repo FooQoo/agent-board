@@ -17,7 +17,7 @@ agboard --project "My project" show 1 --json
 agboard --project "My project" snapshot --json
 ```
 
-`--assignee`は担当を、`--actor`は変更した人を記録します。ユーザーは`human`、エージェントは`ai`を使います。`snapshot`は、エピックやファイルの問題を含む、ボード全体と履歴を返します。
+`--assignee`は担当を、`--actor`は操作する人を指定し、権限を判定します。ユーザーは`human`、エージェントは`ai`を使います。`snapshot`は、エピックやファイルの問題を含む、ボード全体と履歴を返します。
 
 ## 作業を報告する
 
@@ -27,6 +27,17 @@ agboard --project "My project" snapshot --json
 agboard --project "My project" mv 1 doing --actor ai --reason "Start implementation"
 agboard --project "My project" state 1 running --actor ai --reason "Writing and checking the guide"
 ```
+
+列の移動と待機中以外への状態変更では`--reason`は任意です。省略または空白の場合は現在の状態に応じて理由を生成します。これらの操作は履歴を自動追記するため、同じ変更を別途記録しないでください。
+
+列や状態を変えずに意味のある進捗を記録するには、次を使います。
+
+```sh
+agboard --project "My project" history add 1 --reason "Checked the installation links and saved the build output as evidence"
+agboard --project "My project" history add 1 --reason-file progress.txt
+```
+
+CLIが日時を付け、AIの書き込み権限を判定します。actor、イベントID、kind、日時の引数は不要です。AIは実際の作業と検証に基づく簡潔な内容を、意味のある進捗、判断、検証、中断、再開のタイミングで自動記録します。理由の省略や空白は状態に応じた既定文になります。AIは下書き・アーカイブ済み・完了カードへ履歴を追記できません。履歴は`TASK.md`のfrontmatterとAPI・CLI出力で`at`と`reason`だけを持ち、本文や`task.json`には保存しません。
 
 完了させるには、`TASK.md`に検証結果を記録し、検証した受け入れ条件の`done`を`true`にします。サーバーが動いていれば、対象のAIカードは自動で完了へ移るので、`mv ... done --actor ai`は実行しません。形式と対象の条件は[共有Markdownファイル](./editing#共有markdownファイルを編集する)を参照してください。完了のカードはエージェントから読み取り専用です。タスクの編集、レーンや状態の変更、添付ファイルや証跡の追加はできません。作業が増えたときは、ユーザーがカードを再開できます。
 

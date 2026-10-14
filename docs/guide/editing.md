@@ -51,9 +51,9 @@ Agents may edit a non-draft card's `TASK.md` and an epic's `PLAN.md` as that REA
 
 ### TASK history and acceptance frontmatter
 
-`task.json` contains card metadata such as its current lane and owner and uses format version 2. It does not contain history. `TASK.md` is the source of truth for the card's body, acceptance conditions, and operation history. PLAN.md uses priority metadata for task order; epic reference conditions belong directly in its Markdown body.
+`task.json` contains card metadata such as its current lane and owner and uses format version 3. It does not contain history. `TASK.md` is the source of truth for the card's body, acceptance conditions, and operation history. PLAN.md uses priority metadata for task order; epic reference conditions belong directly in its Markdown body.
 
-TASK.md holds its completion conditions in YAML frontmatter at the top of the file. The body after it is free Markdown; no heading is required. New card input may omit `history` or use an empty list; Agent Board adds the initial `created` event when it creates the card:
+TASK.md holds completion conditions and all progress and operation history in YAML frontmatter at the top of the file. Each history entry has exactly `at` (timestamp) and `reason` (content). Its free-Markdown body holds the task plan, acceptance verification results, and artifact or evidence references; no heading is required. Do not put chronological history in the body or an execution-log section. Full logs belong in evidence files. This is new-card input: `history` may be omitted or empty, and Agent Board generates an initial history entry when creating the card:
 
 ```markdown
 ---
@@ -72,15 +72,29 @@ history: []
 Any headings and text you need.
 ```
 
-Each condition has three keys: `id` (`AC-` followed by a positive number without a leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (`true` or `false`). Other keys in the frontmatter are kept when the board writes the file. A PLAN.md without frontmatter is entirely body text. Epic reference conditions are written there as ordinary Markdown and are not parsed as acceptance data. A format version 2 `TASK.md` must have a valid top-level `history` list, even when its `acceptance` list is empty.
+Each condition has three keys: `id` (`AC-` followed by a positive number without a leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (`true` or `false`). Other keys in the frontmatter are kept when the board writes the file. A PLAN.md without frontmatter is entirely body text. Epic reference conditions are written there as ordinary Markdown and are not parsed as acceptance data. A format version 3 `TASK.md` must have a valid top-level `history` list, even when its `acceptance` list is empty.
 
-Agent Board appends operation history to TASK.md when card operations occur, including lane and agent-state changes, questions and answers, and archive or restore actions. UI status changes are written to the same Markdown history shown in the card's History tab. Ordinary body and acceptance edits preserve the latest history; history is not an input to those edits. Use the history shown by the board or returned by `show`/`snapshot` for operation history. Keep detailed work notes and evidence references in the free-Markdown body.
+This illustrative stored entry uses a UTC RFC3339 timestamp. It is an example, not a note to copy into a new task:
+
+```yaml
+history:
+  - at: "2026-10-15T01:30:00Z"
+    reason: "Verified the setup guide links and saved the build output as evidence."
+```
+
+The list may be empty in a stored file. API and CLI history use the same `at`/`reason` shape. Questions and answers remain available to the user and agent.
+
+Agent Board appends history when card operations occur, including lane and agent-state changes, questions and answers, and archive or restore actions. The browser's reason field is optional: missing or blank reasons generate wording from the current state. The History tab, `show`, and `snapshot` read the same history.
+
+Agents automatically add meaningful progress with [`history add`](./cli#report-work), without asking for approval for each record. Lane and state operations already record themselves; do not add duplicate entries. The CLI assigns timestamps, appends atomically, and applies AI write permissions: AI cannot append to drafts, archived cards, or Done cards. Direct Markdown appends may add only `at` and `reason`, preserving the existing history, body, conditions, and unknown metadata. Do not rewrite the entire file just to append history.
+
+Ordinary body and acceptance edits preserve the latest history; `edit --desc-file` does not accept history changes from its input. `PLAN.md` has no history and its reference conditions remain in its body.
 
 If the frontmatter cannot be read (invalid YAML, a missing key, a duplicate ID, an empty text), the board reports the file, the item, and the reason as a problem. The card then shows no progress and its body is shown in full. The board never rewrites the file to fix it.
 
 ### Checking conditions and automatic Done
 
-Mark a condition `done: true` only after you have verified it, and record the result and evidence in the body (for example in an execution log section). While `agboard serve` is running, a non-draft, unarchived AI-owned Todo or Doing card with at least one valid condition moves to Done automatically once all conditions are done. The server also checks existing cards at startup. Pending cards wait until answered; human-owned cards, drafts, invalid acceptance data, and empty condition lists do not auto-complete. Reopening a card without unchecking a condition can cause it to complete again. Epic reference conditions are plain plan text and are not managed by the app.
+Mark a condition `done: true` only after you have verified it. Keep the result and evidence references in the body, and record verification in history before saving the final completed condition. While `agboard serve` is running, a non-draft, unarchived AI-owned Todo or Doing card with at least one valid condition moves to Done automatically once all conditions are done. The server also checks existing cards at startup. Pending cards wait until answered; human-owned cards, drafts, invalid acceptance data, and empty condition lists do not auto-complete. Reopening a card without unchecking a condition can cause it to complete again. Epic reference conditions are plain plan text and are not managed by the app.
 
 ### Epic priority
 
@@ -90,4 +104,4 @@ An epic's frontmatter can contain a `priority` list of distinct positive card ID
 priority: [3, 1, 2]
 ```
 
-New cards start with an empty `acceptance` list; new epics start with an empty Markdown plan. New cards use task format version 2. This version does not read or migrate version 1 task files; it reports them as unsupported and leaves them unchanged. When adopting this version for an existing board, the user must remove the old data before starting with new cards. Agent Board never deletes or resets old data automatically. A task file paired with version 1 metadata is unsupported regardless of whether it uses older headings such as `## Work` or `## 作業内容`; it is not converted. Legacy acceptance keys in PLAN.md remain opaque metadata; no condition conversion is performed.
+New cards start with an empty `acceptance` list; new epics start with an empty Markdown plan. Task format versions 1 and 2 are unsupported: they are reported and left unchanged, with no migration, fallback, deletion, or reset. Other shared JSON files remain format version 1. Legacy acceptance keys in `PLAN.md` remain opaque metadata; no condition conversion is performed.

@@ -17,7 +17,7 @@ agboard --project "My project" show 1 --json
 agboard --project "My project" snapshot --json
 ```
 
-`--assignee` identifies the owner; `--actor` records who makes the change. Use `human` for a user and `ai` for an agent. `snapshot` returns the complete board and history, including epics and any file problems.
+`--assignee` identifies the owner; `--actor` identifies who makes the change and controls permissions. Use `human` for a user and `ai` for an agent. `snapshot` returns the complete board and history, including epics and any file problems.
 
 ## Report work
 
@@ -27,6 +27,17 @@ Report the start of work:
 agboard --project "My project" mv 1 doing --actor ai --reason "Start implementation"
 agboard --project "My project" state 1 running --actor ai --reason "Writing and checking the guide"
 ```
+
+Lane and non-Pending state changes accept an optional `--reason`. Missing or blank reasons are generated from the current state. These operations append history automatically; do not add a second entry for the same change.
+
+Record meaningful progress that does not change the lane or state:
+
+```sh
+agboard --project "My project" history add 1 --reason "Checked the installation links and saved the build output as evidence"
+agboard --project "My project" history add 1 --reason-file progress.txt
+```
+
+The CLI assigns the timestamp and applies AI write permissions. No actor, event ID, kind, or time argument is needed. Agents should write concise reasons based on their actual work and verification, automatically at meaningful progress, decisions, verification, interruption, or resumption. A missing or blank reason produces a state-aware default. History append is forbidden for AI on drafts, archived cards, and Done cards. History entries have exactly `at` and `reason` in `TASK.md` frontmatter and in API/CLI output; they never belong in the body or `task.json`.
 
 To finish, record verification in `TASK.md` and set each verified acceptance item's `done` to `true`. A running server moves eligible AI cards to Done automatically; do not issue `mv ... done --actor ai`. See [shared Markdown files](./editing#edit-shared-markdown-files) for the format and eligibility rules. Done cards are read-only for agents: they cannot edit the task, change its lane or state, or add attachments or evidence. A user can reopen a card when more work is needed.
 

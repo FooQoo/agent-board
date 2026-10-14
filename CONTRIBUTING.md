@@ -69,9 +69,9 @@ The exported `AGBOARD_HOME` is shared by commands in this shell session. Set it 
 
 The data area holds `shared/` (the project folders as plain files), `serve.json` while a server runs, and the `lifecycle.lock` file. Nothing is stored in a database.
 
-Each task's `task.json` contains metadata such as its current lane and owner, and uses format version 2. `TASK.md` is the source of truth for its body, acceptance conditions, and operation history. Status changes made through the UI or CLI append history to `TASK.md`; editing the body or acceptance conditions preserves the latest history. Epic plans are stored in `PLAN.md`, with optional priority metadata for task order; reference conditions belong in the Markdown body.
+Each task's `task.json` contains metadata such as its current lane and owner, and uses format version 3. `TASK.md` is the source of truth for its body, acceptance conditions, and operation history. Status changes made through the UI or CLI append history to `TASK.md`; editing the body or acceptance conditions preserves the latest history. Every history entry in the top-level `history` frontmatter has exactly `at` (timestamp) and `reason` (content); work progress and card operations share this shape in files, the API, and the CLI. Plans, verification results, and evidence references belong in the body; chronological history does not. Epic plans are stored in `PLAN.md`, with optional priority metadata for task order; reference conditions belong in the Markdown body and epics have no history.
 
-This version does not read or migrate version 1 task files. When adopting it for an existing board, the user must remove the old data and start with new cards. Agent Board does not delete or reset existing data automatically.
+Task format versions 1 and 2 are unsupported: the application reports them and leaves their files unchanged. It does not migrate, fall back to, delete, or reset old task data. Other shared JSON files remain format version 1.
 
 To work on the web UI alone with sample data:
 

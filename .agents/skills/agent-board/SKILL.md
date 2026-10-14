@@ -1,6 +1,6 @@
 ---
 name: agent-board
-description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed plans and tasks, report AI progress, ask the user for decisions with choices, wait for their answers, and record execution history.
+description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed plans and tasks, report AI progress, ask the user for decisions with choices, wait for their answers, and automatically record work progress in task history.
 compatibility: Requires the agboard CLI on PATH and a local Agent Board data area. Waiting for user answers requires a running agboard serve.
 ---
 
@@ -11,13 +11,13 @@ Agent Board is a local work board shared by the user and AI agents. Each project
 How the board is used:
 
 - An **epic** is a plan. Its `PLAN.md` states the goal, the scope, the completion conditions, and how the work proceeds.
-- A **task** (a card) is the plan for one piece of work. Its `TASK.md` states what to do, its completion conditions, and the execution record.
+- A **task** (a card) is the plan for one piece of work. Its `TASK.md` states what to do, its completion conditions, and verification results.
 - The **shared folder** of the project is the source of truth for both. Do not keep a separate plan document elsewhere and copy it onto the board.
-- **Operation history** is stored in the top-level `history` frontmatter of each `TASK.md`. The board appends card changes such as lane and run-state changes, questions, and answers, with reasons where applicable. The detailed execution log and evidence references stay in the free-Markdown body; it is not the operation history.
+- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`. Every entry has exactly `at` (timestamp) and `reason` (content). Card operations append automatically; agents also append meaningful work progress automatically. Keep task plans, acceptance verification results, and artifact or evidence references in the body; never keep a chronological execution log there or duplicate history in `task.json`. `PLAN.md` has no history.
 
 ## Language of board content
 
-Write everything you put on the board in the language the user speaks with you: card and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing cards and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
+Write everything you put on the board in the language the user speaks with you: card and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing cards and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `at`, `reason`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
 
 ## 1. Resolve the project from the working folder
 
@@ -59,11 +59,11 @@ agboard --project "<name>" workspace --json
 Read the `README.md` in the returned `folder` before editing. Then:
 
 - Edit only `epics/<EPIC-ID>/PLAN.md` and the `tasks/<card-id>/TASK.md` of cards that are not drafts.
-- Write a temporary file in the same folder and rename it over the original. The board picks up the change automatically.
+- For direct plan, body, or acceptance edits, write a temporary file in the same folder and rename it over the original. Preserve the current history and all unknown frontmatter metadata. The board picks up the change automatically. Use `history add` for progress instead of replacing the file just to append history.
 - Never edit `project.json`, `epic.json`, `task.json`, or `.internal/`. Never delete a card or epic folder.
 - Keep machine-specific absolute paths out of shared files.
 
-`edit --desc-file` and `epic edit --plan-file` are equivalent ways to replace a whole body through the CLI. Bodies are limited to 50,000 characters; if a plan would exceed that, split it into more tasks after asking the user.
+`edit --desc-file` replaces a task body and acceptance conditions while preserving its latest history; it cannot append history. `epic edit --plan-file` replaces an epic plan. Bodies are limited to 50,000 characters; if a plan would exceed that, split it into more tasks after asking the user.
 
 A task's completion conditions live in its frontmatter (`acceptance`), and the board reads them. Epic reference conditions belong in the free Markdown body of PLAN.md and are not managed by the app. Start from [assets/PLAN.md](assets/PLAN.md) and [assets/TASK.md](assets/TASK.md), and read [references/file-format.md](references/file-format.md) before writing either file.
 
@@ -82,7 +82,7 @@ A task's completion conditions live in its frontmatter (`acceptance`), and the b
    agboard --project "<name>" add "<title>" --assignee ai --actor ai --epic <EPIC-ID> --desc-file <path>
    ```
 
-3. Record the task cards and their order in the epic's `## 進め方`.
+3. Record the task cards and their order in the epic's approach section.
 
 Check the progress table and use `show` when needed to find existing cards before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` cards for work the user must do, and read them to understand the shared plan. A card belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
 
@@ -101,40 +101,40 @@ Lanes are `todo`, `doing`, and `done`. AI cards may be Pending in Todo or Doing;
 - A real lane move resets the run state to `idle` and withdraws any open question. Withdrawal is not an answer.
 - `running` is self-reported and is not reset automatically. Do not change a state just because a session started or paused; change it when the work changes.
 - Never report `running` or `pending` on a `human` card.
-- Every `mv` and `state` needs `--actor` and a non-empty `--reason` (up to 2,000 characters). Never use `--actor human` unless the user explicitly gave that direction.
+- Every `mv` and `state` needs `--actor`, which controls permission. `--reason` is optional for lane and non-Pending state changes (up to 2,000 characters); missing or blank reasons are generated from the current state. Never use `--actor human` unless the user explicitly gave that direction.
 
 ## 6. Work loop
 
-Record first, then change the status. Before every lane or run-state change, update `TASK.md`, read it back with `show <id> --json`, and confirm the card and the saved text. If the write or read-back fails, leave the status unchanged.
+Record progress automatically at the start of work, at meaningful progress, decisions, verification, interruptions, and resumptions. Do not ask the user to approve each record. Formulate a concise, meaningful reason from the actual work, current state, and verification; do not invent results. Use:
 
-To append to the execution log, follow these steps:
+```sh
+agboard --project "<name>" history add <id> --reason "<work performed and its outcome>"
+agboard --project "<name>" history add <id> --reason-file <path>
+```
 
-1. Read the current body: `agboard --project "<name>" show <id> --json`, and take `card.description`.
-2. Make sure the body ends with a newline. The board removes trailing newlines when it saves, so add one before the new entry: `text = description.rstrip("\n") + "\n\n- <YYYY-MM-DD HH:MM> <entry>\n"`.
-3. Save the whole body: `agboard --project "<name>" edit <id> --desc-file <path>`.
-4. Read it back from a fresh snapshot. Compare the saved text with what you sent, ignoring trailing whitespace on both sides. If they differ, stop, find out why, and leave the status unchanged.
-5. Only then change the lane or run state.
+The CLI assigns the timestamp and applies AI write permissions; no event ID, kind, actor, or timestamp argument is needed. Omitting the reason or supplying a blank reason generates state-aware wording. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends must add only `at` and `reason`, preserve the existing entries, body, acceptance conditions, and unknown metadata, and respect the same write boundaries. Never rewrite the whole file solely to append history.
+
+Lane and run-state operations already append their own history. Do not add a second entry for the same operation or use `edit --desc-file` to append it. After writing progress, inspect a fresh `show <id> --json` when confirmation is needed.
 
 1. **Choose.** From the progress table, pick a ready AI card in `todo`, respecting the epic's task order, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed.
-2. **Start.** Append a start entry to the execution log, then:
+2. **Start.** Move the card and report the work with concise reasons. These operations record the start automatically:
 
    ```sh
    agboard --project "<name>" mv <id> doing --actor ai --reason "<what you are starting>"
    agboard --project "<name>" state <id> running --actor ai --reason "<what you are doing now>"
    ```
 
-3. **Work and record.** As you go, append results to the execution log: commands run, outcomes, decisions, the commit or version verified, and references to evidence. Store logs with `agboard --project "<name>" evidence add <id> <file>` and images with `attachment add <id> --file <path> --actor ai`; reference them from the body.
-4. **Check conditions.** Set an item's `done` to `true` in the frontmatter only after its verification succeeded, and record the result and evidence in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI card automatically. Do not manually move a card to Done during the normal work loop. If the card does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
+3. **Work and record.** Use `history add` for meaningful work progress that does not change the lane or run state. Keep the current task plan and concise verification results, including the commit or version verified and artifact or evidence references, in the body. Store full logs with `agboard --project "<name>" evidence add <id> <file>` and images with `attachment add <id> --file <path> --actor ai`; reference them from the body.
+4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded. Before saving the last completed condition, record the verification in history and keep its result and evidence reference in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI card automatically. Do not manually move a card to Done during the normal work loop. If the card does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
 5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
-6. **Finish.** Once every completion condition is verified and saved, automatic completion removes the card from the progress table. Done cards are read-only for agents: do not edit their task files or add evidence or attachments, and do not change their lane or run state. A user can reopen them when needed. Before completion, if work is no longer appropriate, record why in `TASK.md` and return it to `todo`.
+6. **Finish or interrupt.** Automatic completion removes the card from progress. Done cards are read-only for agents: do not edit their task files, append history, add evidence or attachments, or change their lane or run state. A user can reopen them when needed. If work stops before completion, record why through the corresponding state or lane operation, or `history add` if the state remains accurate. When work resumes, record the resumed work the same way.
+7. **Close the epic.** When all of an epic's task cards are done, verify the epic's reference conditions written in the PLAN.md body and record the outcome there. The app does not manage epic acceptance frontmatter or epic history.
 
-7. **Close the epic.** When all of an epic's task cards are done, verify the epic's reference conditions written in the PLAN.md body and record the outcome there. The app does not manage epic acceptance frontmatter.
-
-Keep the status reason short. Keep detail in `TASK.md`.
+Keep history reasons concise and useful. Keep detailed logs in evidence files; the TASK body holds the plan, verification results, and references without a chronological execution log.
 
 ## 7. Ask the user a decision
 
-Before asking, record the facts, the impact, the options, and your recommendation in the execution log. Then set the card to `pending`. Offer choices whenever the answer is one of a known set. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
+Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Then set the card to `pending`; the operation records the question in history automatically. Offer choices whenever the answer is one of a known set. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
 
 ```json
 {
@@ -156,7 +156,7 @@ cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
 - The card must be an AI card in `todo` or `doing`. Only `doing` may become `running`.
 
-The user answers in the browser with a choice, a note, or both. The answer returns the card to `idle` and appears in the history with the request ID, the chosen choice, and the note.
+The user answers in the browser with a choice, a note, or both. The answer returns the card to `idle` and appends a concise history reason. Read the current question and answered request data from `show` or `snapshot`; request lookup metadata is separate from the two-field history entries.
 
 ## 8. Wait and resume
 
@@ -168,7 +168,7 @@ agboard --project "<name>" wait --after "<cursor>" --json
 
 Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A Pending question remains until answered or withdrawn by an explicit card change. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
 
-After `wait` returns, read the complete snapshot and history, including the user's reason. Reconsider the plan in light of the answer. Record the answer and the updated plan in the execution log, read it back, then resume:
+After `wait` returns, read the complete snapshot, question/answer data, and history, including the user's reason. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
 
 ```sh
 agboard --project "<name>" state <id> running --actor ai --reason "<how the answer changes the work>"
@@ -178,7 +178,7 @@ If the answer changes the scope or completion conditions, update `TASK.md` (and 
 
 ## 9. Drafts and archived cards
 
-- A card with `"isDraft": true` is being written by the user. `edit`, `mv`, and `state` fail with `card_is_draft`. Do not retry and do not edit its `TASK.md`. Work on other cards and wait for the user to finalize it.
+- A card with `"isDraft": true` is being written by the user. `edit`, `mv`, `state`, and `history add` fail with `card_is_draft`. Do not retry and do not edit its `TASK.md`. Work on other cards and wait for the user to finalize it.
 - Archived cards are not in the normal snapshot. Writes to them fail with `card_archived`.
 
 ## 10. Boundaries
