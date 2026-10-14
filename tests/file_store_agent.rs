@@ -58,8 +58,13 @@ impl Fixture {
             .join("task.json")
     }
 
-    fn raw(&self, id: i64) -> serde_json::Value {
-        serde_json::from_str(&fs::read_to_string(self.task_path(id)).unwrap()).unwrap()
+    fn history(&self, id: i64) -> serde_json::Value {
+        let markdown = fs::read_to_string(self.task_path(id).with_file_name("TASK.md")).unwrap();
+        let parsed = agent_board::file_store::history::parse_task(
+            &markdown,
+            agent_board::file_store::history::ParseMode::Stored,
+        );
+        serde_json::to_value(parsed.history).unwrap()
     }
 
     fn bytes(&self, id: i64) -> Vec<u8> {
@@ -193,14 +198,16 @@ fn a_running_and_idle_card_in_doing_keeps_its_lane_and_records_each_reason() {
     assert_eq!(reported.value.card_status, Column::Doing);
     assert_eq!(reported.value.agent_status, RunState::Idle);
 
-    let kinds: Vec<String> = fx.raw(id)["history"]
+    let kinds: Vec<String> = fx
+        .history(id)
         .as_array()
         .unwrap()
         .iter()
         .map(|e| e["kind"].as_str().unwrap().to_string())
         .collect();
     assert_eq!(kinds, vec!["created", "lane", "agent", "agent"]);
-    let reasons: Vec<String> = fx.raw(id)["history"]
+    let reasons: Vec<String> = fx
+        .history(id)
         .as_array()
         .unwrap()
         .iter()
@@ -250,12 +257,7 @@ fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
     assert_eq!(done.value.card_status, Column::Done);
     assert_eq!(done.value.agent_status, RunState::Idle);
     assert!(done.value.pending_request_id.is_none());
-    let last = fx.raw(id)["history"]
-        .as_array()
-        .unwrap()
-        .last()
-        .unwrap()
-        .clone();
+    let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
     assert_eq!(last["kind"], "lane");
     assert_eq!(last["requestId"], request);
     assert_eq!(last["fromAgentStatus"], "pending");

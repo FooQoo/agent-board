@@ -10,6 +10,7 @@ const card = (page: Page, id: number) => page.getByRole('button', { name: new Re
 
 interface ShownCard extends CardJson {
   description: string;
+  body: string;
   isDraft: boolean;
 }
 
@@ -103,7 +104,7 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
     .toBe('Notes');
 
   // Nothing is stored until it is saved.
-  expect(show(id).description).toBe(SEED);
+  expect(show(id).body).toBe(SEED);
 
   // Saving keeps the card a draft: the dialog has no draft box, and finalizing is done in the details.
   await expect(dialog.getByRole('checkbox')).toHaveCount(0);
@@ -165,7 +166,7 @@ test('a failed save keeps the dialog and the text, and can be retried', async ({
   await expect(dialog).toBeVisible();
   expect(await editorValue(editor)).toContain('Typed and not lost.');
   await expect(dialog.getByText('You have unsaved changes.')).toBeVisible();
-  expect(show(id)).toMatchObject({ description: SEED, isDraft: true });
+  expect(show(id)).toMatchObject({ body: SEED, isDraft: true });
 
   // After a failure the primary button still reads "Save"; the alert's own Retry repeats the save.
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
@@ -234,7 +235,7 @@ test('closing with unsaved changes asks first; closing without changes does not'
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  expect(show(id)).toMatchObject({ description: SEED, isDraft: true });
+  expect(show(id)).toMatchObject({ body: SEED, isDraft: true });
 
   // The next time the dialog opens with the stored text.
   ({ dialog, editor } = await openEditor(page));
@@ -266,7 +267,7 @@ test('a body of exactly 50,000 characters saves, and one more cannot be saved', 
   expect(color).not.toBe(normal);
   await expect(dialog.getByText('Over the 50,000-character limit. Remove 1 character.')).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
-  expect(show(id).description).toBe(SEED);
+  expect(show(id).body).toBe(SEED);
 
   await page.keyboard.press('Backspace');
   await expect(dialog.locator('.editor__counter', { hasText: '50,000 / 50,000' })).toBeVisible();
@@ -275,7 +276,7 @@ test('a body of exactly 50,000 characters saves, and one more cannot be saved', 
   const stored = show(id);
   // The limit counts the body; the frontmatter the product writes around it is not counted.
   const storedBody = stored.description.replace(/^---\n[\s\S]*?\n---\n\n/, '');
-  expect([...storedBody].length).toBeLessThanOrEqual(50_000);
+  expect([...storedBody].length).toBe(50_000);
   expect(stored.description).toContain('あ'.repeat(40_000));
   expect(stored.isDraft).toBe(true);
 });

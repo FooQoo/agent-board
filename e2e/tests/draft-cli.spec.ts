@@ -28,6 +28,7 @@ import { waitForSync } from '../helpers/ui';
 
 interface ShownCard extends CardJson {
   description: string;
+  body: string;
   isDraft: boolean;
   updatedAt: string;
   history: { kind: string; actor: string; at: string }[];
@@ -124,7 +125,7 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
   expect(show(13)).toMatchObject({ title: 'Changed by an agent', cardStatus: 'done' });
 });
 
-test('a draft stays a draft over time, and toggling it wakes wait; the toggle is recorded but the update time is not moved', async ({
+test('a draft stays a draft over time, and toggling it wakes wait; history updates the displayed time', async ({
   page,
 }) => {
   await open(page, 13);
@@ -150,8 +151,8 @@ test('a draft stays a draft over time, and toggling it wakes wait; the toggle is
     waiter.kill();
   }
   const drafted = show(13);
-  // The change is a history event of kind draft; the update time stays as it was.
-  expect(drafted.updatedAt).toBe(first.updatedAt);
+  // The change is a history event of kind draft; TASK.md's new mtime advances displayed updatedAt.
+  expect(Date.parse(drafted.updatedAt)).toBeGreaterThan(Date.parse(first.updatedAt));
   expect(drafted.history).toHaveLength(first.history.length + 1);
   expect(drafted.history.at(-1)).toMatchObject({ kind: 'draft', actor: 'human' });
 
@@ -159,13 +160,14 @@ test('a draft stays a draft over time, and toggling it wakes wait; the toggle is
   await new Promise((resolve) => setTimeout(resolve, 3000));
   expect(show(13).isDraft).toBe(true);
 
-  // Finalizing is a change too: wait wakes, and it adds one more history event with the same update time.
+  // Finalizing is a change too: wait wakes, and it adds one more history event and advances the display time.
   const cursor2 = JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout).cursor as string;
   const second = spawnSyncWait(cursor2);
   await details(page).getByRole('button', { name: 'Finalize' }).click();
   expect((await second).code).toBe(0);
   const finalized = show(13);
-  expect(finalized).toMatchObject({ isDraft: false, updatedAt: first.updatedAt });
+  expect(finalized.isDraft).toBe(false);
+  expect(Date.parse(finalized.updatedAt)).toBeGreaterThan(Date.parse(drafted.updatedAt));
   expect(finalized.history).toHaveLength(drafted.history.length + 1);
   expect(finalized.history.at(-1)).toMatchObject({ kind: 'draft', actor: 'human' });
 });
@@ -188,14 +190,14 @@ test('a body of exactly 50,000 characters is accepted for add, edit, and --desc 
 
   const id = nextCardId(mainProject);
   agboardOk(mainProject, ['add', 'Exact limit', '--desc-file', exactFile]);
-  expect([...show(id).description].length).toBe(50_000);
+  expect([...show(id).body].length).toBe(50_000);
   const stdin = spawnSync(agboardBinary(), ['--project', mainProject, 'add', 'From stdin', '--desc', '-', '--assignee', 'ai', '--actor', 'ai'], {
     env: { ...process.env, AGBOARD_HOME: mainHome(), TZ: 'UTC' },
     input: exact,
     encoding: 'utf8',
   });
   expect(stdin.status).toBe(0);
-  expect(show(id + 1).description).toBe(exact);
+  expect(show(id + 1).body).toBe(exact);
 
   // One more is refused with the count and the limit, and nothing is stored.
   const before = board();

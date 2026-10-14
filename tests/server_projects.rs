@@ -62,6 +62,26 @@ fn body_of(count: usize) -> String {
     format!("{HEAD}{}{TAIL}", "あ".repeat(count - fixed))
 }
 
+fn replace_task_body_preserving_history(path: &Path, description: &str) {
+    let current = std::fs::read_to_string(path).unwrap();
+    let stored = agent_board::file_store::history::parse_task(
+        &current,
+        agent_board::file_store::history::ParseMode::Stored,
+    );
+    let input = agent_board::file_store::history::parse_task(
+        description,
+        agent_board::file_store::history::ParseMode::NewInput,
+    );
+    let next = agent_board::file_store::history::compose_task(
+        description,
+        &input.body,
+        Some(&input.acceptance),
+        &stored.history,
+    )
+    .unwrap();
+    std::fs::write(path, next).unwrap();
+}
+
 /// Read `path` until `done` holds or three seconds pass. A save made outside
 /// the server reaches the reads after the watcher's short quiet period (AC-3).
 fn read_until(server: &Running, path: &str, done: impl Fn(&Value) -> bool) -> Value {
@@ -410,7 +430,7 @@ fn serve_reconciles_existing_completed_cards_and_rechecks_external_task_edits() 
     };
     let complete =
         "---\nacceptance:\n  - id: AC-1\n    text: Works\n    done: true\n---\n\nWork.\n";
-    std::fs::write(task_path(existing.id), complete).unwrap();
+    replace_task_body_preserving_history(&task_path(existing.id), complete);
 
     let server = Running::start(home.path());
     let board_path = format!("/api/projects/{project}/board");
@@ -418,7 +438,7 @@ fn serve_reconciles_existing_completed_cards_and_rechecks_external_task_edits() 
     assert_eq!(board["cards"][0]["cardStatus"], "done");
     assert_eq!(board["cards"][0]["history"].as_array().unwrap().len(), 2);
 
-    std::fs::write(task_path(edited.id), complete).unwrap();
+    replace_task_body_preserving_history(&task_path(edited.id), complete);
     let notified = server.request("POST", "/api/notify", None, &[], None);
     assert_eq!(notified.status, 204, "{}", notified.body);
     let board = read_until(&server, &board_path, |board| {
@@ -437,7 +457,7 @@ fn serve_reconciles_existing_completed_cards_and_rechecks_external_task_edits() 
     assert_eq!(edited_json["cardStatus"], "done");
     assert_eq!(edited_json["history"].as_array().unwrap().len(), 2);
 
-    std::fs::write(task_path(pending_card.id), complete).unwrap();
+    replace_task_body_preserving_history(&task_path(pending_card.id), complete);
     let answer = server.write(
         "POST",
         &format!("/api/projects/{project}/cards/{}/answer", pending_card.id),
@@ -1214,8 +1234,14 @@ fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(
-        reply.json()["card"]["description"],
+        reply.json()["card"]["body"],
         format!("{head}Line1\nLine2{tail}")
+    );
+    assert!(
+        reply.json()["card"]["description"]
+            .as_str()
+            .unwrap()
+            .contains("history:")
     );
 
     // Nothing differs: 200, no change, no notification.
@@ -1249,7 +1275,8 @@ fn patch_with_finalize_saves_and_confirms_in_one_operation() {
     let stored = card_json(home.path(), &a, 1);
     assert_eq!(stored["isDraft"], false);
     assert_eq!(stored["title"], "Final");
-    assert_eq!(stored["description"], body_with("Body"));
+    assert_eq!(stored["body"], body_with("Body"));
+    assert!(stored["description"].as_str().unwrap().contains("history:"));
     // A confirmed card is no longer editable.
     let reply = server.write("PATCH", &path, Some(r#"{"title":"Again"}"#));
     assert_eq!(reply.status, 409, "{}", reply.body);
@@ -1297,7 +1324,7 @@ fn patch_description_limit_is_50000_characters_and_the_body_limit_1_mib() {
     assert_eq!(reply.status, 422);
     assert_eq!(reply.code(), "invalid_value");
     assert_eq!(
-        card_json(home.path(), &a, 1)["description"]
+        card_json(home.path(), &a, 1)["body"]
             .as_str()
             .unwrap()
             .chars()
@@ -1359,7 +1386,7 @@ fn patch_rejects_bad_bodies_without_changing_anything() {
 }
 
 #[test]
-fn put_draft_toggles_idle_cards_without_history_or_update_time() {
+fn put_draft_toggles_idle_cards_and_records_history_with_markdown_time() {
     let (home, a, _) = two_projects();
     let server = Running::start(home.path());
     let mut events = server.events();
@@ -1375,8 +1402,8 @@ fn put_draft_toggles_idle_cards_without_history_or_update_time() {
     assert_eq!(reply.json()["card"]["isDraft"], true);
     assert!(events.changed());
     let after = card_json(home.path(), &a, 1);
-    assert_eq!(after["updatedAt"], before["updatedAt"]);
-    // A real change adds one draft event and keeps the update time (MODEL.md, 下書き).
+    assert_ne!(after["updatedAt"], before["updatedAt"]);
+    // A real draft change rewrites TASK.md to append history, so its mtime is reflected.
     let added = after["history"].as_array().unwrap();
     assert_eq!(added.len(), before["history"].as_array().unwrap().len() + 1);
     assert_eq!(added.last().unwrap()["kind"], "draft");

@@ -53,7 +53,7 @@ Workflow for agents:
 
 Rules for agents:
   - Move a card to doing before you report running. A card in todo can ask a decision with pending.
-  - Ask a decision with --request-json: a question and 2 to 10 choices. pending needs it.
+  - Ask a decision with --request-json: a question and 0 to 10 choices. pending needs it.
   - Moving a card to todo or done resets it to idle.
   - You cannot delete cards or projects, or replace a board. Ask a human to do it.
   - Get the shared folder from workspace --json; do not assume its location.
@@ -373,7 +373,7 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI card in todo or doing): ask with --request-json (a question and 2 to 10 choices)\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{}}'   # ask, then wait indefinitely\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{\"timeoutSeconds\":600}}'   # wait up to 10 minutes\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
+    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI card in todo or doing): ask with --request-json (a question and 0 to 10 choices)\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{}}'   # ask, then wait indefinitely\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{\"timeoutSeconds\":600}}'   # wait up to 10 minutes\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
 )]
 pub struct StateArgs {
     /// ID of the card
@@ -400,7 +400,7 @@ pub struct StateArgs {
     /// Choice of the pending request to answer with (its CHOICE_ID)
     #[arg(long, value_name = "CHOICE_ID")]
     pub choice: Option<String>,
-    /// A pending request as JSON: {"question": "...", "choices": [{"id": "...", "label": "..."}], "wait": {}} with 2 to 10 choices; wait is optional and waits for the answer (optionally limited to 1 to 86400 seconds; needs a running agboard serve); use - to read the JSON from standard input
+    /// A pending request as JSON: {"question": "...", "choices": [{"id": "...", "label": "..."}], "wait": {}} with 0 to 10 choices; wait is optional and waits for the answer (optionally limited to 1 to 86400 seconds; needs a running agboard serve); use - to read the JSON from standard input
     #[arg(long, value_name = "JSON")]
     pub request_json: Option<String>,
 }

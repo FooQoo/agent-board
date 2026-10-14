@@ -270,7 +270,7 @@ impl FileStore {
         let shared = self.shared_dir();
         let (_project_dir, _lock) = lock_project(shared, project)?;
         let (dir, mut file) = read_epic_file(shared, project, id)?;
-        let members: Vec<i64> = reader::read_snapshot(shared, project)?
+        let members: Vec<i64> = reader::read_snapshot_locked(shared, project)?
             .cards
             .iter()
             .filter(|card| card.epic_id.as_deref() == Some(id.as_str()))
@@ -360,7 +360,7 @@ impl FileStore {
         let next = epic.map(|id| id.to_string());
         if task.epic_id == next {
             return Ok(Changed {
-                value: reader::read_card(shared, project, card_id)?,
+                value: reader::read_card_locked(shared, project, card_id)?,
                 changed: false,
             });
         }
@@ -383,7 +383,7 @@ impl FileStore {
         task.updated_at = at;
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
-            value: reader::read_card(shared, project, card_id)?,
+            value: reader::read_card_locked(shared, project, card_id)?,
             changed: true,
         })
     }

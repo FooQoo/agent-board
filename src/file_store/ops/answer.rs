@@ -123,6 +123,6 @@ impl FileStore {
         task.updated_at = at;
         task.history.push(event);
         save_task(shared, &project_dir, &task)?;
-        reader::read_card(shared, project, id)
+        reader::read_card_locked(shared, project, id)
     }
 }

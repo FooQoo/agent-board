@@ -14,7 +14,7 @@ use crate::error::{AgboardError, FileAction};
 use crate::file_store::Answer;
 use crate::file_store::model::{CardView, Choice, HistoryKind};
 
-/// The JSON of `--request-json`: a question and two to ten choices.
+/// The JSON of `--request-json`: a question and zero to ten choices.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RequestFile {
@@ -125,7 +125,7 @@ fn read_request_json(value: &str) -> Result<RequestFile, AgboardError> {
     let request: RequestFile =
         serde_json::from_str(&text).map_err(|e| AgboardError::InvalidValue {
             field: "request-json".into(),
-            reason: format!("The request must be JSON with a question and 2 to 10 choices: {e}."),
+            reason: format!("The request must be JSON with a question and 0 to 10 choices: {e}."),
         })?;
     if let Some(timeout) = request.wait.as_ref().and_then(|wait| wait.timeout_seconds)
         && !(1..=MAX_WAIT_SECS).contains(&timeout)
@@ -160,7 +160,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
     }
     if state == RunState::Pending && !answering && args.request_json.is_none() {
         return Err(invalid(
-            "A pending state needs --request-json with a question and 2 to 10 choices.",
+            "A pending state needs --request-json with a question and 0 to 10 choices.",
         ));
     }
     if args.request_json.is_some() {

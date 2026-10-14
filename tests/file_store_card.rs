@@ -63,6 +63,15 @@ impl Fixture {
         serde_json::from_str(&text).unwrap()
     }
 
+    fn history(&self, id: i64) -> serde_json::Value {
+        let markdown = fs::read_to_string(self.card_dir(id).join("TASK.md")).unwrap();
+        let parsed = agent_board::file_store::history::parse_task(
+            &markdown,
+            agent_board::file_store::history::ParseMode::Stored,
+        );
+        serde_json::to_value(parsed.history).unwrap()
+    }
+
     fn task_bytes(&self, id: i64) -> Vec<u8> {
         fs::read(self.card_dir(id).join("task.json")).unwrap()
     }
@@ -101,12 +110,19 @@ fn a_card_without_a_body_gets_the_template_headings_and_a_created_event() {
         card.history[0].kind,
         agent_board::file_store::model::HistoryKind::Created
     );
-    assert_eq!(fx.raw_task(1)["history"][0]["kind"], "created");
-    assert_eq!(fx.raw_task(1)["history"][0]["actor"], "ai");
+    let metadata: serde_json::Value = serde_json::from_slice(&fx.task_bytes(1)).unwrap();
+    assert_eq!(metadata["formatVersion"], 2);
+    assert!(metadata.get("history").is_none());
+    assert_eq!(fx.history(1)[0]["kind"], "created");
+    assert_eq!(fx.history(1)[0]["actor"], "ai");
     assert_eq!(fx.next_card_id(), 2);
 
     let body = String::from_utf8(fx.body_bytes(1)).unwrap();
-    assert_eq!(body, "---\nacceptance: []\n---\n\n");
+    assert!(
+        body.starts_with("---\nacceptance: []\nhistory:\n"),
+        "{body}"
+    );
+    assert!(body.ends_with("---\n\n"), "{body}");
     assert_eq!(card.description, body);
     assert_eq!(card.body, "");
     assert!(card.acceptance.is_empty());
@@ -197,7 +213,9 @@ fn a_card_view_carries_the_body_and_the_acceptance_conditions_of_its_frontmatter
     assert_eq!(card.acceptance[0].text, "The thing works.");
     assert!(!card.acceptance[0].done);
     assert!(!card.acceptance_error);
-    assert_eq!(card.description, VALID_BODY);
+    assert!(card.description.starts_with("---\nacceptance:\n"));
+    assert!(card.description.contains("history:\n"));
+    assert!(card.description.ends_with("---\n\nDo the work.\n"));
 }
 
 #[test]
@@ -208,8 +226,12 @@ fn a_valid_body_is_saved_as_given_with_crlf_turned_into_lf() {
         .store
         .create_card(&fx.project, new_card("T", &body), now())
         .unwrap();
-    assert_eq!(fx.body_bytes(1), VALID_BODY.as_bytes());
-    assert_eq!(card.description, VALID_BODY);
+    let saved = String::from_utf8(fx.body_bytes(1)).unwrap();
+    assert!(saved.starts_with("---\nacceptance:\n"));
+    assert!(saved.contains("history:\n"));
+    assert!(saved.ends_with("---\n\nDo the work.\n"));
+    assert_eq!(card.body, "Do the work.\n");
+    assert!(!card.acceptance_error);
 }
 
 #[test]
@@ -217,6 +239,7 @@ fn editing_the_title_and_body_changes_them_and_moves_the_update_time() {
     let fx = fixture();
     fx.create("Old");
     let before = fx.raw_task(1);
+    let before_history = fx.history(1);
 
     let Changed { value, changed } = fx
         .store
@@ -224,15 +247,14 @@ fn editing_the_title_and_body_changes_them_and_moves_the_update_time() {
         .unwrap();
     assert!(changed);
     assert_eq!(value.title, "New");
-    assert_eq!(value.description, VALID_BODY);
+    assert!(value.description.starts_with("---\nacceptance:\n"));
+    assert!(value.description.contains("history:\n"));
+    assert!(value.description.ends_with("---\n\nDo the work.\n"));
     let after = fx.raw_task(1);
     assert_eq!(after["updatedAt"], "2026-10-05T00:00:00Z");
     assert_eq!(after["agentStatus"], before["agentStatus"]);
     assert_eq!(after["cardStatus"], before["cardStatus"]);
-    assert_eq!(
-        after["history"], before["history"],
-        "editing adds no history"
-    );
+    assert_eq!(fx.history(1), before_history, "editing adds no history");
 }
 
 #[test]
@@ -282,8 +304,8 @@ fn setting_the_draft_flag_adds_a_draft_event_and_keeps_the_update_time() {
     let raw = fx.raw_task(1);
     assert_eq!(raw["isDraft"], true);
     assert_eq!(raw["updatedAt"], updated);
-    assert_eq!(raw["history"][1]["kind"], "draft");
-    assert_eq!(raw["history"][1]["isDraft"], true);
+    assert_eq!(fx.history(1)[1]["kind"], "draft");
+    assert_eq!(fx.history(1)[1]["isDraft"], true);
 
     let same = fx.store.set_draft(&fx.project, 1, true, later()).unwrap();
     assert!(!same.changed);
@@ -301,11 +323,13 @@ fn finalizing_a_draft_saves_its_body_and_clears_the_flag() {
         .unwrap();
     assert!(changed);
     assert!(!value.is_draft);
-    assert_eq!(fx.body_bytes(1), VALID_BODY.as_bytes());
+    let body = String::from_utf8(fx.body_bytes(1)).unwrap();
+    assert!(body.contains("history:\n"));
+    assert!(body.ends_with("---\n\nDo the work.\n"));
     let raw = fx.raw_task(1);
     assert_eq!(raw["isDraft"], false);
     assert_eq!(
-        raw["history"].as_array().unwrap().last().unwrap()["kind"],
+        fx.history(1).as_array().unwrap().last().unwrap()["kind"],
         "draft"
     );
 }
@@ -334,13 +358,12 @@ fn archiving_keeps_the_lane_and_position_and_restoring_puts_the_card_at_the_lane
     assert!(archived.changed);
     assert!(archived.value.archived_at.is_some());
     assert_eq!(archived.value.position, 1);
-    let raw = fx.raw_task(1);
     assert_eq!(
-        raw["history"].as_array().unwrap().last().unwrap()["kind"],
+        fx.history(1).as_array().unwrap().last().unwrap()["kind"],
         "archive"
     );
     assert_eq!(
-        raw["history"].as_array().unwrap().last().unwrap()["reason"],
+        fx.history(1).as_array().unwrap().last().unwrap()["reason"],
         "Archived by user."
     );
 
@@ -450,7 +473,8 @@ fn a_task_file_of_another_format_version_is_left_out_and_not_converted() {
     fx.create("one");
     let path = fx.card_dir(1).join("task.json");
     let mut json = fx.raw_task(1);
-    json["formatVersion"] = serde_json::json!(2);
+    json["formatVersion"] = serde_json::json!(1);
+    json["history"] = fx.history(1);
     let text = serde_json::to_string_pretty(&json).unwrap();
     fs::write(&path, &text).unwrap();
 
@@ -503,6 +527,11 @@ fn a_body_defect_returns_the_text_and_is_reported_without_rewriting_it() {
 fn a_half_written_body_reads_as_a_problem_and_recovers_when_it_is_finished() {
     let fx = fixture();
     fx.create("one");
+    let markdown = fs::read_to_string(fx.card_dir(1).join("TASK.md")).unwrap();
+    let created = agent_board::file_store::history::parse_task(
+        &markdown,
+        agent_board::file_store::history::ParseMode::Stored,
+    );
     // What a reader sees while an agent is still writing the file.
     fs::write(
         fx.card_dir(1).join("TASK.md"),
@@ -512,8 +541,18 @@ fn a_half_written_body_reads_as_a_problem_and_recovers_when_it_is_finished() {
     let during = fx.store.snapshot(&fx.project).unwrap();
     assert_eq!(during.cards.len(), 1);
     assert!(!during.problems.is_empty());
-
-    fs::write(fx.card_dir(1).join("TASK.md"), VALID_BODY).unwrap();
+    let input = agent_board::file_store::history::parse_task(
+        VALID_BODY,
+        agent_board::file_store::history::ParseMode::NewInput,
+    );
+    let finished = agent_board::file_store::history::compose_task(
+        VALID_BODY,
+        &input.body,
+        Some(&input.acceptance),
+        &created.history,
+    )
+    .unwrap();
+    fs::write(fx.card_dir(1).join("TASK.md"), finished).unwrap();
     let after = fx.store.snapshot(&fx.project).unwrap();
     assert!(after.problems.is_empty(), "{:?}", after.problems);
 }

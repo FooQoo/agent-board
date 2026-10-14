@@ -1,5 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import {
@@ -96,8 +96,11 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     expect(unregistered.stderr).toContain('folder_unbound');
 
     const taskFile = path.join(workspace(project, home).folder, 'tasks', String(publish), 'TASK.md');
-    replaceFileAtomically(taskFile,
-      '---\nacceptance:\n  - id: AC-1\n    text: Release plan confirmed\n    done: false\n---\n\nPublish the approved release.\n');
+    const taskBeforeAcceptance = readFileSync(taskFile, 'utf8');
+    const taskWithAcceptance = taskBeforeAcceptance
+      .replace(/^---\n/, '---\nacceptance:\n  - id: AC-1\n    text: Release plan confirmed\n    done: false\n')
+      .replace('Private task body for progress omission check.', 'Publish the approved release.');
+    replaceFileAtomically(taskFile, taskWithAcceptance);
     agboardOk(project, ['mv', String(publish), 'doing', '--actor', 'ai', '--reason', 'Preparing release'], home);
     serve = await startServe(8362, home);
     waiter = startWaiter(home, work, project, publish);
@@ -111,8 +114,11 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     }).toBe('pending');
 
     // Completing the condition cannot auto-Done a card while it is waiting for a human answer.
-    replaceFileAtomically(taskFile,
-      '---\nacceptance:\n  - id: AC-1\n    text: Release plan confirmed\n    done: true\n---\n\nPublish the approved release.\n');
+    const taskWhilePending = readFileSync(taskFile, 'utf8');
+    replaceFileAtomically(taskFile, taskWhilePending.replace('done: false', 'done: true'));
+    expect((await page.request.post(new URL('/api/notify', serve.url).toString())).status()).toBe(204);
+    expect(JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).card.acceptance)
+      .toEqual([{ id: 'AC-1', text: 'Release plan confirmed', done: true }]);
     expect(JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).card)
       .toMatchObject({ cardStatus: 'doing', agentStatus: 'pending' });
 

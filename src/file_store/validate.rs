@@ -331,19 +331,28 @@ pub fn normalize_answer_text(text: &str) -> Result<Option<String>, AgboardError>
     Ok(Some(trimmed.to_string()))
 }
 
-/// Accept only `formatVersion: 1`. A missing version is `file_invalid`; any
-/// other version is `format_unsupported`. Nothing is converted.
+/// Accept the requested format version. A missing version is `file_invalid`;
+/// any other version is `format_unsupported`. Nothing is converted.
 pub fn check_format_version(value: &Value, file: &str) -> Result<(), AgboardError> {
+    check_format_version_expected(value, file, 1)
+}
+
+pub fn check_format_version_expected(
+    value: &Value,
+    file: &str,
+    expected: u32,
+) -> Result<(), AgboardError> {
     match value.get("formatVersion") {
         None => Err(AgboardError::FileInvalid {
             file: file.to_string(),
             field: "formatVersion".into(),
             reason: "formatVersion is required.".into(),
         }),
-        Some(version) if version.as_u64() == Some(1) => Ok(()),
+        Some(version) if version.as_u64() == Some(u64::from(expected)) => Ok(()),
         Some(version) => Err(AgboardError::FormatUnsupported {
             file: file.to_string(),
             version: version.to_string(),
+            expected,
         }),
     }
 }
@@ -376,6 +385,22 @@ pub fn check_project(file: &ProjectFile, folder_id: &str) -> Vec<Defect> {
 
 /// Defects of `task.json`. `folder_id` is the card ID of the folder.
 pub fn check_task(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
+    let mut out = check_task_metadata(task, folder_id);
+    if task.agent_status == RunState::Pending
+        && task.pending_request_id.as_deref().is_some_and(is_hex32)
+        && current_request(task).is_none()
+    {
+        out.push(defect(
+            "pendingRequestId",
+            "No history event holds the pending request.",
+        ));
+    }
+    out.extend(check_history(&task.history));
+    out
+}
+
+/// Defects of the task metadata independent of TASK.md history validity.
+pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
     let mut out = Vec::new();
     if task.id != folder_id {
         out.push(defect("id", "The ID does not match the folder name."));
@@ -412,11 +437,6 @@ pub fn check_task(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
                     "pendingRequestId",
                     "Request IDs are 32 lowercase hexadecimal characters.",
                 ));
-            } else if current_request(task).is_none() {
-                out.push(defect(
-                    "pendingRequestId",
-                    "No history event holds the pending request.",
-                ));
             }
         }
         (_, Some(_)) => out.push(defect(
@@ -433,7 +453,6 @@ pub fn check_task(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
             "An archived card is idle and has no request.",
         ));
     }
-    out.extend(check_history(&task.history));
     out
 }
 

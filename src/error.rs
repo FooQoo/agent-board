@@ -124,6 +124,7 @@ pub enum AgboardError {
     FormatUnsupported {
         file: String,
         version: String,
+        expected: u32,
     },
     /// The answer names a choice that is not part of the pending request.
     RequestChoiceUnknown {
@@ -363,8 +364,10 @@ impl AgboardError {
                 }
             }
             AgboardError::FileUnreadable { reason, .. } => reason.clone(),
-            AgboardError::FormatUnsupported { version, .. } => format!(
-                "Only formatVersion 1 is supported, found {version}. The file is not converted."
+            AgboardError::FormatUnsupported {
+                version, expected, ..
+            } => format!(
+                "Only formatVersion {expected} is supported, found {version}. The file is not converted."
             ),
             AgboardError::RequestChoiceUnknown { .. } => {
                 "Choose one of the choices in the pending request.".into()
@@ -444,6 +447,7 @@ mod tests {
             AgboardError::FormatUnsupported {
                 file: "workspace.json".into(),
                 version: "2".into(),
+                expected: 1,
             },
             AgboardError::RequestChoiceUnknown {
                 request_id: "a".into(),
