@@ -74,7 +74,7 @@ Any headings and text you need.
 
 Each condition has three keys: `id` (`AC-` followed by a positive number without a leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (`true` or `false`). Other keys in the frontmatter are kept when the board writes the file. A PLAN.md without frontmatter is entirely body text. Epic reference conditions are written there as ordinary Markdown and are not parsed as acceptance data. A format version 3 `TASK.md` must have a valid top-level `history` list, even when its `acceptance` list is empty.
 
-This illustrative stored entry uses a UTC RFC3339 timestamp. It is an example, not a note to copy into a new task:
+`at` must be a UTC string in the exact `YYYY-MM-DDTHH:MM:SSZ` format, with whole seconds and uppercase `Z`. Timezone offsets (including `+00:00`) and fractional seconds are rejected. This stored entry is an example, not a note to copy into a new task:
 
 ```yaml
 history:

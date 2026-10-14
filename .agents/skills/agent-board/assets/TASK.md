@@ -4,7 +4,8 @@ acceptance:
     text: (Describe a condition that can be verified.)
     done: false
 # Creation input: Agent Board generates the initial history entry.
-# Stored entries have exactly at (RFC3339 timestamp) and reason (content).
+# Stored entries have exactly at (UTC YYYY-MM-DDTHH:MM:SSZ) and reason (content).
+# at uses whole seconds only; timezone offsets and fractional seconds are rejected.
 history: []
 ---
 
