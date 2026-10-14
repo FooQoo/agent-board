@@ -147,11 +147,12 @@ for (const [mode, width, height] of [['light', 1280, 800], ['dark', 960, 640]] a
     await waitForSync(page);
     const dialog = await openEpic(page, 'FILE-SHARE');
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
-    await dialog.getByRole('button', { name: /^Images/ }).click();
+    await dialog.getByRole('button', { name: /^Attachments/ }).click();
     await dialog.locator('input[type="file"]').setInputFiles(Array.from({ length: 6 }, (_, i) => ({ name: `image-${i}.png`, mimeType: 'image/png', buffer: png })));
     const images = dialog.locator('.editor-attachments__list');
     const outline = dialog.getByRole('navigation', { name: 'Outline' });
-    const imageHead = dialog.locator('.editor-attachments__header');
+    // The epic dialog shows the section's own toggle as the fixed heading (its inner header is hidden).
+    const imageHead = dialog.getByRole('button', { name: /^Attachments/ });
     const imageAdd = dialog.getByRole('button', { name: 'Add image attachment', exact: true });
     const drop = dialog.locator('.editor-attachments__drop');
     await expect.poll(() => dialog.evaluate((node) => node.getAnimations().every((animation) => animation.playState !== 'running'))).toBe(true);

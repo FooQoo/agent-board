@@ -45,10 +45,8 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   // The pause icon shows on the card and in the detail alike.
   await expect(card(page, 12).locator('.status-label svg')).toHaveCount(1);
   await expect(panel.locator('.detail__meta .status-label--pending svg')).toHaveCount(1);
-  // The details show the request read-only; the editable response stays on the card.
-  const request = panel.getByRole('region', { name: 'The agent is waiting for your answer' });
-  await expect(request).toContainText('Waiting for confirmation on how to replace a board.');
-  await expect(request.getByText('Answer on the card.')).toBeVisible();
+  // The request is answered on the card, so the details do not repeat it.
+  await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
   const answer = card(page, 12).locator('..').locator('.card__answer');
   // The answer is typed on the card, with no dialog; Cancel clears the draft.
   await expect(page.getByRole('dialog')).toHaveCount(0);

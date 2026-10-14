@@ -133,7 +133,8 @@ test('a title or body over the limit cannot be added', async ({ page }) => {
 test('a waiting card answers in place while details stay independently available', async ({ page }) => {
   await card(page, 12).click();
   const panel = details(page);
-  await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toContainText('Waiting for confirmation on how to replace a board.');
+  // The answer is shown and typed on the card only; the details do not repeat the request.
+  await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
   await expect(request(page).getByRole('textbox', { name: 'Your answer' })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
 
