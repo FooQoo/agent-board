@@ -9,7 +9,7 @@ interface ShownCard extends CardJson {
   description: string;
   body: string;
   isDraft: boolean;
-  history: { kind: string; actor: string; reason: string | null }[];
+  history: { at: string; reason: string }[];
 }
 
 const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
@@ -188,10 +188,10 @@ test('a waiting card answers in place while details stay independently available
   await panel.getByRole('tab', { name: /^History/ }).click();
   const newest = panel.getByRole('tabpanel').getByRole('listitem').first();
   await expect(newest).toContainText('Do not migrate.');
-  await expect(newest.getByRole('img', { name: 'User', exact: true })).toBeVisible();
+  await expect(newest.getByRole('img')).toHaveCount(0);
   const stored = show(12);
   expect(stored).toMatchObject({ agentStatus: 'idle', pendingReason: null, pendingRequestId: null });
-  expect(stored.history.at(-1)).toMatchObject({ actor: 'human', reason: 'Keep the current name.\nDo not migrate.' });
+  expect(stored.history.at(-1)).toMatchObject({ reason: 'Keep the current name.\nDo not migrate.' });
 });
 
 test('while it is sent the form cannot be sent twice or cancelled; a failure keeps the answer and can be retried', async ({
@@ -266,13 +266,13 @@ test('when the agent asks something else while an answer is typed, the page says
   await expect(request(page).getByRole('alert')).toHaveText('This request has changed. Review the latest board.');
   await expect(box).toHaveValue('An answer to the old question.');
   await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
-  expect(show(12).history.filter((event) => event.actor === 'human' && event.reason === 'An answer to the old question.')).toHaveLength(0);
+  expect(show(12).history.filter((event) => event.reason === 'An answer to the old question.')).toHaveLength(0);
 
   // Editing the text again confirms it is meant for the new question; then it is sent.
   await box.fill('An answer to the new question.');
   await request(page).getByRole('button', { name: 'Send', exact: true }).click();
   await expect(request(page)).toHaveCount(0);
-  expect(show(12).history.at(-1)).toMatchObject({ actor: 'human', reason: 'An answer to the new question.' });
+  expect(show(12).history.at(-1)).toMatchObject({ reason: 'An answer to the new question.' });
 });
 
 test('an answer sent from a page that missed the new request is refused by the server and not saved', async ({ page }) => {
@@ -291,7 +291,7 @@ test('an answer sent from a page that missed the new request is refused by the s
   await expect(box).toHaveValue('An answer to the old question.');
   // Nothing was saved: still waiting, now with the new question.
   expect(show(12)).toMatchObject({ agentStatus: 'pending', pendingReason: 'A different question now.' });
-  expect(show(12).history.filter((event) => event.actor === 'human' && event.reason === 'An answer to the old question.')).toHaveLength(0);
+  expect(show(12).history.filter((event) => event.reason === 'An answer to the old question.')).toHaveLength(0);
 
   // Once the board can be read, the new question appears.
   await page.unroute('**/api/projects/*/board');

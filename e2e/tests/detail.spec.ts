@@ -90,26 +90,26 @@ test('the panel shows the run state and the reason for Doing cards, and an empty
   await expect(panel.getByText(/^(Idle|Running|Pending)$/)).toHaveCount(0);
 });
 
-test('History shows the newest status change first with its actor and reason', async ({
+test('History shows datetime and recorded reasons newest first', async ({
   page,
 }) => {
   await card(page, 8).click();
   await details(page).getByRole('tab', { name: /^History/ }).click();
   const history = details(page).getByRole('tabpanel').getByRole('list');
   await expect(history.getByRole('listitem')).toHaveText([
-    /^10\/02 09:48DoneMoved card$/,
-    /^10\/01 16:30DoingMoved card$/,
-    /^Created · 10\/01 16:00Todo$/,
+    /^10\/02 09:48Moved card from Doing to Done.$/,
+    /^10\/01 16:30Moved card from Todo to Doing.$/,
+    /^10\/01 16:00Created card in Todo.$/,
   ]);
-  await expect(history.getByRole('img', { name: 'AI', exact: true })).toHaveCount(3);
-  await expect(history.getByText('Created')).toHaveCount(1);
+  await expect(history.getByRole('img')).toHaveCount(0);
+  await expect(history.getByText('Created card in Todo.', { exact: true })).toHaveCount(1);
   await expect(details(page).getByRole('tab', { name: 'History 3' })).toHaveAttribute('aria-selected', 'true');
 
   // Another card opens on the description again.
   await card(page, 14).click();
   await expect(details(page).getByRole('tab', { name: 'Description' })).toHaveAttribute('aria-selected', 'true');
   await details(page).getByRole('tab', { name: /^History/ }).click();
-  await expect(history.getByRole('listitem')).toHaveText([/^Created · 10\/02 03:00Todo$/]);
+  await expect(history.getByRole('listitem')).toHaveText([/^10\/02 03:00Created card in Todo.$/]);
 });
 
 test('selecting another card switches the panel, and Close details clears it', async ({ page }) => {

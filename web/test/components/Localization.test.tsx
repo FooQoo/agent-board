@@ -48,43 +48,17 @@ describe('localized board content', () => {
     expect(screen.getByText('「カード追加」から登録できます。')).toBeTruthy();
   });
 
-  it('localizes only the creation marker in history and preserves order, columns, and timestamps', async () => {
+  it('keeps recorded reasons and datetime unchanged when the UI language changes', async () => {
     await i18n.changeLanguage('ja');
     const events: HistoryEvent[] = [
-      {
-        id: '1',
-        kind: 'created',
-        actor: 'ai',
-        reason: null,
-        fromCardStatus: null,
-        toCardStatus: 'todo',
-        fromAgentStatus: null,
-        toAgentStatus: 'idle',
-        requestId: null,
-        at: '2026-10-01T16:00:00Z',
-      },
-      {
-        id: '2',
-        kind: 'lane',
-        actor: 'human',
-        reason: '着手',
-        fromCardStatus: 'todo',
-        toCardStatus: 'doing',
-        fromAgentStatus: 'idle',
-        toAgentStatus: 'idle',
-        requestId: null,
-        at: '2026-10-01T16:30:00Z',
-      },
+      { at: '2026-10-01T16:00:00Z', reason: 'Created card in Todo.' },
+      { at: '2026-10-01T16:30:00Z', reason: '着手' },
     ];
     const { container } = render(<HistoryTimeline events={events} />);
-    expect(screen.getByText('未着手')).toBeTruthy();
-    expect(screen.getByText('作成 · 10/01 16:00')).toBeTruthy();
-    expect(screen.getByText('進行中')).toBeTruthy();
-    expect(screen.getByText('10/01 16:30')).toBeTruthy();
     expect(
-      [...container.querySelectorAll('.history__step')].map((step) =>
-        step.getAttribute('data-column'),
-      ),
-    ).toEqual(['doing', 'todo']);
+      [...container.querySelectorAll('.history__step')].map((step) => step.textContent),
+    ).toEqual(['10/01 16:30着手', '10/01 16:00Created card in Todo.']);
+    expect(container.querySelector('.status-label')).toBeNull();
+    expect(container.querySelector('.assignee-label')).toBeNull();
   });
 });

@@ -6,14 +6,9 @@ function time(value: string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
-/** Last transition into Done, including a later re-completion after reopening. */
+/** A lane timestamp stays stable when a later work note or body edit is saved. */
 export function completedAt(item: MonitorCard): string | null {
-  const completed = item.card.history.filter(
-    (event) => event.kind === 'lane' && event.toCardStatus === 'done',
-  );
-  const valid = completed.filter((event) => time(event.at) !== Number.NEGATIVE_INFINITY);
-  valid.sort((a, b) => time(b.at) - time(a.at));
-  return valid[0]?.at ?? null;
+  return item.card.cardStatus === 'done' ? item.card.cardStatusChangedAt : null;
 }
 
 function stableTie(a: MonitorCard, b: MonitorCard): number {

@@ -21,14 +21,7 @@ export function MoveDialog({
   onSubmit: (data: { reason: string }) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  // A default for the field only: whatever is in it when the dialog is submitted is the reason.
-  const [reason, setReason] = useState(() =>
-    t('dialog.moveReasonDefault', {
-      who: t('assignee.human'),
-      from: t(`column.${card.cardStatus}`),
-      to: t(`column.${target}`),
-    }),
-  );
+  const [reason, setReason] = useState('');
   const reasonId = useId();
 
   return (
@@ -38,12 +31,18 @@ export function MoveDialog({
       cardId={card.id}
       onClose={onClose}
       onSavingChange={onSavingChange}
-      validate={() =>
-        [...reason.trim()].length === 0 || [...reason].length > 2000
-          ? t('dialog.reasonRequired')
-          : null
+      validate={() => ([...reason].length > 2000 ? t('dialog.reasonRequired') : null)}
+      save={() =>
+        onSubmit({
+          reason: reason.trim()
+            ? reason
+            : t('dialog.moveReasonDefault', {
+                who: t('assignee.human'),
+                from: t(`column.${card.cardStatus}`),
+                to: t(`column.${target}`),
+              }),
+        })
       }
-      save={() => onSubmit({ reason })}
     >
       <p className="modal__card">
         #{card.id} {card.title}

@@ -1,11 +1,11 @@
 // The progress table of an epic: a task is moved with the keyboard, the order is saved with the epic, and the CLI
 // reads the same order from the progress table.
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page, type Locator } from '@playwright/test';
 import { agboardOk, mainProject, projectId, resetBoard } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
-const card = (page: import('@playwright/test').Page, title: string) => page.locator('.epic-progress__row', { hasText: title });
+const card = (page: Page | Locator, title: string) => page.locator('.epic-progress__row', { hasText: title });
 
 function progressOrder(): number[] {
   const table = JSON.parse(agboardOk(mainProject, ['progress', '--json']).stdout);

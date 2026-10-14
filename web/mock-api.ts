@@ -3,7 +3,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import type {
-  Actor,
   Assignee,
   Board,
   Card,
@@ -56,7 +55,7 @@ const SAMPLE_EPIC_CARDS = [11, 12, 14];
 const SAMPLE_CONDITIONS: Record<number, Card['acceptance']> = {
   11: [
     { id: 'AC-1', text: 'Cards move between lanes', done: true },
-    { id: 'AC-2', text: 'Each move asks for a reason', done: true },
+    { id: 'AC-2', text: 'Each move confirms the status change', done: true },
     { id: 'AC-3', text: 'The history keeps the reason', done: false },
     { id: 'AC-4', text: 'A waiting card goes back to idle', done: false },
   ],
@@ -218,11 +217,6 @@ export function mockApi(): Plugin {
     };
     broadcastChanged();
   };
-  const nextEventId = (board: MockBoard) =>
-    String(
-      Math.max(0, ...board.cards.flatMap((card) => card.history.map((item) => Number(item.id)))) +
-        1,
-    );
   const taskMarkdown = (body: string, acceptance: Card['acceptance'], history: Card['history']) =>
     `---\nacceptance: ${JSON.stringify(acceptance)}\nhistory: ${JSON.stringify(history)}\n---\n\n${body}`;
 
@@ -325,19 +319,7 @@ export function mockApi(): Plugin {
               body.finalize === true && card.isDraft
                 ? [
                     ...card.history,
-                    {
-                      id: nextEventId(target),
-                      kind: 'draft' as const,
-                      actor: 'human' as const,
-                      reason: null,
-                      fromCardStatus: card.cardStatus,
-                      toCardStatus: card.cardStatus,
-                      fromAgentStatus: card.agentStatus,
-                      toAgentStatus: card.agentStatus,
-                      requestId: null,
-                      isDraft: false,
-                      at: new Date().toISOString(),
-                    },
+                    { at: new Date().toISOString(), reason: 'Finalized the draft.' },
                   ]
                 : card.history;
             const editedBody = typeof body.body === 'string' ? body.body : card.body;
@@ -586,18 +568,7 @@ export function mockApi(): Plugin {
                   'A title and assignee are required.',
                 );
               const id = Math.max(0, ...found.cards.map((card) => card.id)) + 1;
-              const event: HistoryEvent = {
-                id: nextEventId(found),
-                kind: 'created',
-                actor: 'human',
-                reason: null,
-                fromCardStatus: null,
-                toCardStatus: 'todo',
-                fromAgentStatus: null,
-                toAgentStatus: 'idle',
-                requestId: null,
-                at: now,
-              };
+              const event: HistoryEvent = { at: now, reason: 'Created card in Todo.' };
               const card: Card = {
                 id,
                 title,
@@ -607,6 +578,7 @@ export function mockApi(): Plugin {
                 acceptanceError: false,
                 assignee: input.assignee as Assignee,
                 cardStatus: 'todo',
+                cardStatusChangedAt: now,
                 position: found.cards.filter((item) => item.cardStatus === 'todo').length + 1,
                 agentStatus: 'idle',
                 pendingReason: null,
@@ -640,14 +612,17 @@ export function mockApi(): Plugin {
                 board.cards.map((item) => (item.id === updated.id ? updated : item)),
               );
             if (cardMatch?.[2] === 'move') {
-              const reason = String(input.reason ?? '').trim();
-              if (!reason || reason.length > 2000)
+              const suppliedReason = String(input.reason ?? '');
+              const reason = suppliedReason.trim()
+                ? suppliedReason
+                : `User changed the status from ${card.cardStatus} to ${String(input.cardStatus)}.`;
+              if (reason.length > 2000)
                 return sendError(
                   res,
                   422,
                   'validation',
                   'invalid reason.',
-                  'A reason up to 2,000 characters is required.',
+                  'Use up to 2,000 characters for the reason.',
                 );
               const target = String(input.cardStatus) as ColumnName;
               if (!['todo', 'doing', 'done'].includes(target) || target === card.cardStatus)
@@ -658,21 +633,11 @@ export function mockApi(): Plugin {
                   'invalid status.',
                   'Choose a different card status.',
                 );
-              const event: HistoryEvent = {
-                id: nextEventId(found),
-                kind: 'lane',
-                actor: 'human' as Actor,
-                reason,
-                fromCardStatus: card.cardStatus,
-                toCardStatus: target,
-                fromAgentStatus: card.agentStatus,
-                toAgentStatus: 'idle',
-                requestId: null,
-                at: now,
-              };
+              const event: HistoryEvent = { at: now, reason };
               const updated = {
                 ...card,
                 cardStatus: target,
+                cardStatusChangedAt: now,
                 agentStatus: 'idle' as const,
                 pendingReason: null,
                 pendingRequestId: null,
@@ -722,20 +687,8 @@ export function mockApi(): Plugin {
                 'Choose one of the options of the request.',
               );
             const event: HistoryEvent = {
-              id: nextEventId(found),
-              kind: 'answer',
-              actor: 'human',
-              reason: text === '' ? null : text,
-              fromCardStatus: card.cardStatus,
-              toCardStatus: card.cardStatus,
-              fromAgentStatus: 'pending',
-              toAgentStatus: 'idle',
-              requestId: card.pendingRequestId,
-              question: card.pendingReason,
-              choices: card.pendingChoices,
-              choiceId: choice?.id ?? null,
-              choiceLabel: choice?.label ?? null,
               at: now,
+              reason: [choice?.label, text].filter(Boolean).join(' — '),
             };
             const updated = {
               ...card,

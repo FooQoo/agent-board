@@ -29,25 +29,13 @@ let home: string;
 let pid: string;
 let serve: MonitorServe | undefined;
 
-interface HistoryEvent {
-	id: string;
-	kind: string;
-	actor: string;
-	reason: string | null;
-	fromCardStatus: string | null;
-	toCardStatus: string;
-	fromAgentStatus: string | null;
-	toAgentStatus: string;
-	requestId: string | null;
-	answer?: string | null;
-	question?: string;
-	choices?: { id: string; label: string }[];
-}
+interface HistoryEvent { at: string; reason: string; }
 
 interface CardView {
 	id: number;
 	title: string;
 	cardStatus: string;
+	cardStatusChangedAt: string;
 	agentStatus: string;
 	isDraft: boolean;
 	pendingRequestId: string | null;
@@ -170,12 +158,13 @@ test('new card history survives restart and appears in PC and mobile details', a
 	const id = addCard('History after restart');
 	cliOk(['mv', String(id), 'doing', '--actor', 'human', '--reason', 'Start the real task']);
 	let card = show(id);
-	expect(card.history.map((event) => event.kind)).toEqual(['created', 'lane']);
+	expect(card.history).toHaveLength(2);
+	for (const event of card.history) expect(Object.keys(event).sort()).toEqual(['at', 'reason']);
 	expect(card.history.at(-1)).toMatchObject({
-		actor: 'human', reason: 'Start the real task', fromCardStatus: 'todo', toCardStatus: 'doing',
+		reason: 'Start the real task',
 	});
 	const metadata = JSON.parse(readFileSync(taskJsonFile(id), 'utf8')) as Record<string, unknown>;
-	expect(metadata).toMatchObject({ formatVersion: 2, cardStatus: 'doing' });
+	expect(metadata).toMatchObject({ formatVersion: 3, cardStatus: 'doing' });
 	expect(metadata).not.toHaveProperty('history');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('history:');
 
@@ -231,9 +220,11 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	expect(waitSnapshot.cursor).not.toBe(pendingCursor);
 	const card = show(id);
 	expect(card.agentStatus).toBe('idle');
-	expect(card.history.at(-1)).toMatchObject({ kind: 'answer', actor: 'human', reason: 'Ship the stable release.' });
-	expect(card.description).toContain('question: Which release should ship?');
-	expect(card.description).toContain('label: Plan B');
+	expect(card.history.at(-1)).toMatchObject({ reason: expect.stringContaining('Ship the stable release.') });
+	const metadata = JSON.parse(readFileSync(taskJsonFile(id), 'utf8'));
+	expect(metadata.pendingRequest).toBeNull();
+	expect(metadata.requestAnswers.at(-1)).toMatchObject({ requestId, actor: 'human', choiceId: 'b', choiceLabel: 'Plan B', text: 'Ship the stable release.' });
+	expect(card.history.at(-1)?.reason).toContain('Plan B');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('Ship the stable release.');
 	const stale = cli(['state', String(id), 'idle', '--actor', 'human', '--request', requestId!, '--reason', 'Late answer', '--json']);
 	expect(stale.code).not.toBe(0);
@@ -271,8 +262,8 @@ test('saving a body edit after a concurrent lane change keeps the newest event a
 	let card = show(id);
 	expect(card.body).toContain('Saved after status update.');
 	expect(card.cardStatus).toBe('doing');
-	expect(card.history.at(-1)).toMatchObject({ kind: 'lane', reason: 'Concurrent lane update' });
-	expect(card.history.filter((event) => event.kind === 'lane')).toHaveLength(1);
+	expect(card.history.at(-1)).toMatchObject({ reason: 'Concurrent lane update' });
+	expect(card.history.filter((event) => event.reason === 'Concurrent lane update')).toHaveLength(1);
 	await panel.getByRole('button', { name: 'Finalize', exact: true }).click();
 
 	const replacement = path.join(home, 'replacement.md');
@@ -281,9 +272,9 @@ test('saving a body edit after a concurrent lane change keeps the newest event a
 	card = show(id);
 	expect(card.body).toContain('CLI replacement without a history field.');
 	expect(card.history).toHaveLength(4);
-	expect(card.history.some((event) => event.kind === 'lane' && event.reason === 'Concurrent lane update')).toBe(true);
-	expect(card.history.at(-1)).toMatchObject({ kind: 'draft' });
-	expect(readFileSync(taskFile(id), 'utf8')).toContain('kind: lane');
+	expect(card.history.some((event) => event.reason === 'Concurrent lane update')).toBe(true);
+	expect(card.history.at(-1)?.reason).toContain('draft');
+	expect(readFileSync(taskFile(id), 'utf8')).toContain('Concurrent lane update');
 });
 
 test('auto-Done is recorded once, and archive/restore retain their history in the archive screen', async ({ page }) => {
@@ -297,7 +288,7 @@ test('auto-Done is recorded once, and archive/restore retain their history in th
 	await expect.poll(() => show(id).cardStatus).toBe('done');
 	let card = show(id);
 	const automaticDone = card.history.filter((event) =>
-		event.kind === 'lane' && event.toCardStatus === 'done' && event.reason === 'All acceptance conditions are complete.');
+		event.reason.includes('All acceptance conditions are complete.'));
 	expect(automaticDone).toHaveLength(1);
 	const afterDone = card.history.length;
 	replaceFileAtomically(file, readFileSync(file, 'utf8'));
@@ -320,9 +311,9 @@ test('auto-Done is recorded once, and archive/restore retain their history in th
 	await panel.getByRole('button', { name: 'Restore', exact: true }).click();
 	await expect.poll(() => show(id).archivedAt).toBeNull();
 	card = show(id);
-	expect(card.history.filter((event) => event.kind === 'archive')).toHaveLength(1);
-	expect(card.history.filter((event) => event.kind === 'restore')).toHaveLength(1);
-	expect(readFileSync(file, 'utf8')).toContain('kind: restore');
+	expect(card.history.filter((event) => event.reason.includes('Archived'))).toHaveLength(1);
+	expect(card.history.filter((event) => event.reason.includes('Restored'))).toHaveLength(1);
+	expect(readFileSync(file, 'utf8')).toContain('Restored');
 });
 
 test('direct TASK.md edits advance watch and wait; invalid history stays visible and rejects writes unchanged', async ({ page }) => {
@@ -361,11 +352,11 @@ function showFromSnapshot(id: number): CardView {
 	return card;
 }
 
-test('version-one task files are refused without changing any bytes', async () => {
+for (const version of [1, 2]) test(`version-${version} task files are refused without changing any bytes`, async () => {
 	const id = addCard('Unsupported old task');
 	const metadataFile = taskJsonFile(id);
 	const metadata = JSON.parse(readFileSync(metadataFile, 'utf8')) as Record<string, unknown>;
-	replaceFileAtomically(metadataFile, `${JSON.stringify({ ...metadata, formatVersion: 1 }, null, 2)}\n`);
+	replaceFileAtomically(metadataFile, `${JSON.stringify({ ...metadata, formatVersion: version }, null, 2)}\n`);
 	const before = [hash(metadataFile), hash(taskFile(id))];
 	const result = snapshot();
 	expect(result.cards.some((card) => card.id === id)).toBe(false);
@@ -373,4 +364,50 @@ test('version-one task files are refused without changing any bytes', async () =
 	const strict = cli(['show', String(id), '--json']);
 	expect(strict.code).not.toBe(0);
 	expect([hash(metadataFile), hash(taskFile(id))]).toEqual(before);
+});
+
+test('history add timestamps free work notes and defaults without changing lane timestamps', async ({ page }) => {
+  const id = addCard('AI work notes');
+  const initial = show(id);
+  const before = Date.now();
+  cliOk(['history', 'add', String(id), '--reason', 'AI checked the implementation.\nAll targeted tests passed.']);
+  const recorded = show(id);
+  expect(recorded.history.at(-1)).toEqual({ at: expect.any(String), reason: 'AI checked the implementation.\nAll targeted tests passed.' });
+  expect(Date.parse(recorded.history.at(-1)!.at)).toBeGreaterThanOrEqual(before - 1000);
+  expect(Date.parse(recorded.history.at(-1)!.at)).toBeLessThanOrEqual(Date.now() + 1000);
+  expect(recorded.cardStatusChangedAt).toBe(initial.cardStatusChangedAt);
+  cliOk(['history', 'add', String(id)]);
+  expect(show(id).history.at(-1)?.reason).toMatch(/todo/i);
+  expect(show(id).history.at(-1)?.reason).toMatch(/idle/i);
+  const reasonFile = path.join(home, 'work-note.txt');
+  replaceFileAtomically(reasonFile, 'Verified persistence after restart.');
+  cliOk(['history', 'add', String(id), '--reason-file', reasonFile]);
+  expect(show(id).history.at(-1)?.reason).toBe('Verified persistence after restart.');
+  await openPc(page);
+  await page.getByRole('button', { name: new RegExp(`^#${id} .*AI work notes`) }).click();
+  await details(page).getByRole('tab', { name: /^History/ }).click();
+  const rows = details(page).getByRole('tabpanel').getByRole('listitem');
+  await expect(rows.first()).toContainText('Verified persistence after restart.');
+  await expect(rows).toHaveCount(4);
+  await expect(details(page).getByRole('tabpanel')).toContainText('All targeted tests passed.');
+  const unchanged = show(id);
+  cliOk(['mv', String(id), 'todo', '--actor', 'human']);
+  cliOk(['state', String(id), 'idle', '--actor', 'ai']);
+  expect(show(id).history).toEqual(unchanged.history);
+  expect(show(id).cardStatusChangedAt).toBe(initial.cardStatusChangedAt);
+});
+
+for (const [name, record] of [
+  ['unknown field', { at: '2026-10-15T00:00:00Z', reason: 'Work note', kind: 'agent' }],
+  ['invalid timestamp', { at: 'not-a-timestamp', reason: 'Work note' }],
+  ['empty reason', { at: '2026-10-15T00:00:00Z', reason: '' }],
+] as const) test(`invalid history ${name} is reported and refuses append without changing TASK.md`, async () => {
+  const id = addCard(`Invalid history: ${name}`);
+  replaceFileAtomically(taskFile(id), `---\nhistory: ${JSON.stringify([record])}\n---\n\nReadable body.`);
+  const before = hash(taskFile(id));
+  expect(snapshot().problems.some((problem) => problem.file.endsWith(`tasks/${id}/TASK.md`) && problem.field.startsWith('history'))).toBe(true);
+  expect(showFromSnapshot(id).body).toBe('Readable body.');
+  expect(showFromSnapshot(id).history).toEqual([]);
+  expect(cli(['history', 'add', String(id), '--reason', 'Must be refused']).code).not.toBe(0);
+  expect(hash(taskFile(id))).toBe(before);
 });

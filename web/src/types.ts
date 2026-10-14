@@ -2,15 +2,6 @@ export type ColumnName = 'todo' | 'doing' | 'done';
 export type RunState = 'idle' | 'running' | 'pending';
 export type Assignee = 'ai' | 'human';
 export type Actor = 'ai' | 'human';
-export type HistoryKind =
-  | 'created'
-  | 'lane'
-  | 'agent'
-  | 'answer'
-  | 'draft'
-  | 'epic'
-  | 'archive'
-  | 'restore';
 
 /** One option of a decision request. */
 export interface Choice {
@@ -19,23 +10,8 @@ export interface Choice {
 }
 
 export interface HistoryEvent {
-  id: string;
-  kind: HistoryKind;
-  actor: Actor;
-  reason: string | null;
-  fromCardStatus: ColumnName | null;
-  toCardStatus: ColumnName;
-  fromAgentStatus: RunState | null;
-  toAgentStatus: RunState;
-  requestId: string | null;
-  question?: string | null;
-  choices?: Choice[];
-  choiceId?: string | null;
-  choiceLabel?: string | null;
-  isDraft?: boolean | null;
-  fromEpicId?: string | null;
-  toEpicId?: string | null;
   at: string;
+  reason: string;
 }
 
 export interface Attachment {
@@ -111,6 +87,8 @@ export interface Card {
   acceptanceError: boolean;
   assignee: Assignee;
   cardStatus: ColumnName;
+  /** Time of the last real lane change; independent of later notes and edits. */
+  cardStatusChangedAt: string;
   position: number;
   agentStatus: RunState;
   pendingReason: string | null;

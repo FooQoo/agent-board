@@ -151,17 +151,17 @@ test('users can add a card, choose its owner, and move it with a reason', async 
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} User Review the release notes `) })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('listitem').first()).toContainText('The user is starting review now.');
-  await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
+  await expect(panel.getByRole('listitem').first().getByRole('img')).toHaveCount(0);
 });
 
 test('a user answer returns a pending card to idle and records the full answer in history', async ({ page }) => {
   await card(page, 12).click();
   const panel = page.getByRole('complementary', { name: 'Card details' });
-  // The newest event put the card to Pending, so its dot has the Pending color.
+  // All recorded reasons use neutral dots without inferred state tags.
   await panel.getByRole('tab', { name: /^History/ }).click();
-  await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-column', 'doing');
-  await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'pending');
-  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(217, 101, 11)');
+  await expect(panel.locator('.history__step .dot').first()).not.toHaveAttribute('data-column');
+  await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'idle');
+  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(74, 100, 168)');
   // The request stays read-only in details; the response is entered on the card with no dialog.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
@@ -170,10 +170,10 @@ test('a user answer returns a pending card to idle and records the full answer i
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
-  await expect(panel.getByRole('listitem').first().getByRole('img', { name: 'User', exact: true })).toBeVisible();
+  await expect(panel.getByRole('listitem').first().getByRole('img')).toHaveCount(0);
   await expect(panel.getByRole('listitem').first()).toContainText('Do not migrate or delete user data.');
   await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
-  // The answer returned the run state to Idle: the new first dot has the Idle color.
+  // The new answer note keeps the same neutral timeline tone.
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'idle');
   await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(74, 100, 168)');
 });

@@ -344,14 +344,14 @@ describe('move dialog', () => {
       onSubmit,
     );
     const reason = within(dialog).getByLabelText(/^変更理由/) as HTMLTextAreaElement;
-    expect(reason.value).toBe('ユーザーが未着手から完了に変更しました。');
+    expect(reason.value).toBe('');
     await userEvent.click(within(dialog).getByRole('button', { name: '移動する' }));
     expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
       reason: 'ユーザーが未着手から完了に変更しました。',
     });
   });
 
-  it('shows the card, the current column to the target column, and requires a reason', async () => {
+  it('shows the transition and submits a localized default when the reason is blank', async () => {
     const card = fixtureCard(14);
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog, onClosed } = await openHost({ kind: 'move', card, target: 'doing' }, onSubmit);
@@ -360,17 +360,69 @@ describe('move dialog', () => {
     expect(transition.textContent).toMatch(/Todo.*Doing/);
 
     const reason = within(dialog).getByLabelText(/^Reason/) as HTMLTextAreaElement;
-    expect(reason.value).toBe('User changed the status from Todo to Doing.');
+    expect(reason.value).toBe('');
     await userEvent.clear(reason);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
-    expect((await within(dialog).findByRole('alert')).textContent).toBe(
-      'Enter a reason up to 2,000 characters.',
-    );
-    expect(onSubmit).not.toHaveBeenCalled();
-
-    await userEvent.type(reason, 'Ready to start');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
-    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ reason: 'Ready to start' });
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      reason: 'User changed the status from Todo to Doing.',
+    });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
   });
+});
+
+it('generates the move reason from the latest card state and language at confirmation', async () => {
+  const onSubmit = vi.fn(async (_data: Data) => undefined);
+  const card = fixtureCard(14);
+  const { rerender } = render(
+    <ActionDialog
+      action={{ kind: 'move', card, target: 'doing' }}
+      onClose={() => undefined}
+      onSubmit={onSubmit}
+    />,
+  );
+  const reason = screen.getByRole('textbox', { name: /^Reason/ });
+  await userEvent.type(reason, '   ');
+  selectLocale('ja');
+  rerender(
+    <ActionDialog
+      action={{ kind: 'move', card: { ...card, cardStatus: 'done' }, target: 'todo' }}
+      onClose={() => undefined}
+      onSubmit={onSubmit}
+    />,
+  );
+  await userEvent.click(screen.getByRole('button', { name: '移動する' }));
+  expect(onSubmit).toHaveBeenCalledWith({ reason: 'ユーザーが完了から未着手に変更しました。' });
+});
+
+it('keeps an explicit move reason exactly as written', async () => {
+  const onSubmit = vi.fn(async (_data: Data) => undefined);
+  const { dialog } = await openHost(
+    { kind: 'move', card: fixtureCard(14), target: 'doing' },
+    onSubmit,
+  );
+  await userEvent.type(
+    within(dialog).getByRole('textbox', { name: /^Reason/ }),
+    '  Ready to start\nAfter review.  ',
+  );
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
+  expect(onSubmit).toHaveBeenCalledWith({ reason: '  Ready to start\nAfter review.  ' });
+});
+
+it('uses the refreshed card lane instead of the snapshot saved when the dialog opened', async () => {
+  const onSubmit = vi.fn(async (_data: Data) => undefined);
+  const card = fixtureCard(14);
+  const action = { kind: 'move' as const, card, target: 'doing' as const };
+  const { rerender } = render(
+    <ActionDialog action={action} onClose={() => undefined} onSubmit={onSubmit} cards={[card]} />,
+  );
+  rerender(
+    <ActionDialog
+      action={action}
+      onClose={() => undefined}
+      onSubmit={onSubmit}
+      cards={[{ ...card, cardStatus: 'done' }]}
+    />,
+  );
+  await userEvent.click(screen.getByRole('button', { name: 'Move' }));
+  expect(onSubmit).toHaveBeenCalledWith({ reason: 'User changed the status from Done to Doing.' });
 });

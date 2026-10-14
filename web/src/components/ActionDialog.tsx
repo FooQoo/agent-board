@@ -42,7 +42,7 @@ export function ActionDialog({
   onSavingChange?: (saving: boolean) => void;
   onSubmit: (data: ActionDialogData) => Promise<void>;
   projectId?: string;
-  /** The tasks of the project, for the epic dialog's task list. */
+  /** Latest tasks of the project, for lane confirmation and the epic task list. */
   cards?: readonly Card[];
   /** The writes of the epic dialog, bound to the project it was opened in. */
   epicApi?: EpicApi;
@@ -62,7 +62,7 @@ export function ActionDialog({
     case 'move':
       return (
         <MoveDialog
-          card={action.card}
+          card={cards.find((card) => card.id === action.card.id) ?? action.card}
           target={action.target}
           onClose={onClose}
           onSavingChange={onSavingChange}

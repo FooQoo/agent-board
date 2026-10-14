@@ -678,27 +678,6 @@ ol {
   color: var(--text-secondary);
 }
 
-.history__heading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 34px;
-}
-
-.history .assignee-label {
-  width: 18px;
-  height: 18px;
-  color: var(--text-secondary);
-}
-
-.history__choice {
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 18px;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
-}
-
 .history__reason {
   font-size: 13px;
   line-height: 20px;

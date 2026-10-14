@@ -31,7 +31,7 @@ interface ShownCard extends CardJson {
   body: string;
   isDraft: boolean;
   updatedAt: string;
-  history: { kind: string; actor: string; at: string }[];
+  history: { at: string; reason: string }[];
 }
 
 const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
@@ -151,10 +151,11 @@ test('a draft stays a draft over time, and toggling it wakes wait; history updat
     waiter.kill();
   }
   const drafted = show(13);
-  // The change is a history event of kind draft; TASK.md's new mtime advances displayed updatedAt.
+  // The draft reason is recorded in TASK.md and its new mtime advances displayed updatedAt.
   expect(Date.parse(drafted.updatedAt)).toBeGreaterThan(Date.parse(first.updatedAt));
   expect(drafted.history).toHaveLength(first.history.length + 1);
-  expect(drafted.history.at(-1)).toMatchObject({ kind: 'draft', actor: 'human' });
+  expect(drafted.history.at(-1)?.reason).toContain('draft');
+  expect(Object.keys(drafted.history.at(-1)!).sort()).toEqual(['at', 'reason']);
 
   // It does not clear by itself.
   await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -169,7 +170,8 @@ test('a draft stays a draft over time, and toggling it wakes wait; history updat
   expect(finalized.isDraft).toBe(false);
   expect(Date.parse(finalized.updatedAt)).toBeGreaterThan(Date.parse(drafted.updatedAt));
   expect(finalized.history).toHaveLength(drafted.history.length + 1);
-  expect(finalized.history.at(-1)).toMatchObject({ kind: 'draft', actor: 'human' });
+  expect(finalized.history.at(-1)?.reason).toContain('draft');
+  expect(Object.keys(finalized.history.at(-1)!).sort()).toEqual(['at', 'reason']);
 });
 
 function spawnSyncWait(cursor: string): Promise<{ code: number | null }> {

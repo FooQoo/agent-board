@@ -90,7 +90,7 @@ describe('DetailPanel', () => {
     expect(screen.getByText('No description.')).toBeTruthy();
   });
 
-  it('draws one history point per event with the changed status and time', async () => {
+  it('draws one history point per event with only the recorded datetime and reason', async () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
@@ -104,12 +104,12 @@ describe('DetailPanel', () => {
     expect(steps).toHaveLength(3);
     const texts = Array.from(steps).map((step) => step.textContent);
     expect(texts).toEqual([
-      '10/02 09:48DoneMoved card',
-      '10/01 16:30DoingMoved card',
-      'Created · 10/01 16:00Todo',
+      '10/02 09:48Moved card from Doing to Done.',
+      '10/01 16:30Moved card from Todo to Doing.',
+      '10/01 16:00Created card in Todo.',
     ]);
-    expect(steps[0]?.getAttribute('data-column')).toBe('done');
-    expect(steps[2]?.getAttribute('data-column')).toBe('todo');
+    expect(steps[0]?.getAttribute('data-column')).toBeNull();
+    expect(steps[2]?.getAttribute('data-column')).toBeNull();
   });
 
   it('adds a point when a card returned to an earlier column', async () => {
@@ -117,54 +117,10 @@ describe('DetailPanel', () => {
       id: 32,
       cardStatus: 'doing',
       history: [
-        {
-          id: '1',
-          kind: 'created',
-          actor: 'ai',
-          reason: null,
-          fromCardStatus: null,
-          toCardStatus: 'todo',
-          fromAgentStatus: null,
-          toAgentStatus: 'idle',
-          requestId: null,
-          at: '2026-10-01T16:00:00Z',
-        },
-        {
-          id: '2',
-          kind: 'lane',
-          actor: 'ai',
-          reason: 'move',
-          fromCardStatus: 'todo',
-          toCardStatus: 'doing',
-          fromAgentStatus: 'idle',
-          toAgentStatus: 'idle',
-          requestId: null,
-          at: '2026-10-01T16:30:00Z',
-        },
-        {
-          id: '3',
-          kind: 'lane',
-          actor: 'human',
-          reason: 'move',
-          fromCardStatus: 'doing',
-          toCardStatus: 'todo',
-          fromAgentStatus: 'idle',
-          toAgentStatus: 'idle',
-          requestId: null,
-          at: '2026-10-01T17:00:00Z',
-        },
-        {
-          id: '4',
-          kind: 'lane',
-          actor: 'ai',
-          reason: 'move',
-          fromCardStatus: 'todo',
-          toCardStatus: 'doing',
-          fromAgentStatus: 'idle',
-          toAgentStatus: 'idle',
-          requestId: null,
-          at: '2026-10-01T18:00:00Z',
-        },
+        { at: '2026-10-01T16:00:00Z', reason: 'Created card in Todo.' },
+        { at: '2026-10-01T16:30:00Z', reason: 'move' },
+        { at: '2026-10-01T17:00:00Z', reason: 'move' },
+        { at: '2026-10-01T18:00:00Z', reason: 'move' },
       ],
     });
     const { container } = render(
@@ -236,7 +192,7 @@ describe('DetailPanel', () => {
     expect(within(region).getByText('#8')).toBeTruthy();
   });
 
-  it('puts the time first, then the changed status with the actor, then the reason', async () => {
+  it('puts the datetime first and the reason next without inferred tags', async () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
@@ -248,9 +204,9 @@ describe('DetailPanel', () => {
     await openHistory();
     const step = container.querySelector('.history__step') as HTMLElement;
     const parts = Array.from(step.querySelectorAll('.history__text > *')).map((el) => el.className);
-    expect(parts).toEqual(['history__at', 'history__heading', 'history__reason']);
-    expect(step.querySelector('.history__heading .status-label')).not.toBeNull();
-    expect(step.querySelector('.history__heading .assignee-label')).not.toBeNull();
+    expect(parts).toEqual(['history__at', 'history__reason']);
+    expect(step.querySelector('.status-label')).toBeNull();
+    expect(step.querySelector('.assignee-label')).toBeNull();
   });
 
   it('shows the status icons in the detail too and spins none of them outside the board', () => {
@@ -300,44 +256,26 @@ describe('DetailPanel', () => {
     );
   });
 
-  it('colors a run state change dot by the new run state and other dots by the card status', async () => {
-    const ev = (
-      id: number,
-      kind: 'created' | 'lane' | 'agent',
-      to: 'todo' | 'doing',
-      agent: 'idle' | 'running' | 'pending',
-    ) => ({
-      id: String(id),
-      kind,
-      actor: 'ai' as const,
-      reason: 'r',
-      fromCardStatus: null,
-      toCardStatus: to,
-      fromAgentStatus: null,
-      toAgentStatus: agent,
-      requestId: null,
-      at: `2026-10-01T1${id}:00:00Z`,
-    });
+  it('uses neutral dots for duplicate notes even when their text mentions statuses or actors', async () => {
+    const at = '2026-10-01T16:00:00Z';
     const card = makeCard({
       id: 33,
-      cardStatus: 'doing',
       history: [
-        ev(0, 'created', 'todo', 'idle'),
-        ev(1, 'lane', 'doing', 'idle'),
-        ev(2, 'agent', 'doing', 'running'),
-        ev(3, 'agent', 'doing', 'pending'),
-        ev(4, 'agent', 'doing', 'idle'),
+        { at, reason: 'AI checked Pending work.' },
+        { at, reason: 'AI checked Pending work.' },
+        { at, reason: 'Work completed after review.' },
       ],
     });
     const { container } = render(
       <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onRemove={noRemove} />,
     );
     await openHistory();
-    const tones = Array.from(container.querySelectorAll('.history__step .dot')).map((dot) =>
-      dot.getAttribute('data-tone'),
-    );
-    // Newest first.
-    expect(tones).toEqual(['idle', 'pending', 'doing', 'doing', 'todo']);
+    expect(
+      [...container.querySelectorAll('.history__step .dot')].map((dot) =>
+        dot.getAttribute('data-tone'),
+      ),
+    ).toEqual(['idle', 'idle', 'idle']);
+    expect(container.querySelectorAll('.history__reason')).toHaveLength(3);
   });
 });
 

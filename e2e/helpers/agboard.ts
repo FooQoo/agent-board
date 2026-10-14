@@ -144,10 +144,12 @@ export interface CardJson {
   id: number;
   title: string;
   cardStatus: 'todo' | 'doing' | 'done';
+  cardStatusChangedAt: string;
   assignee: 'ai' | 'human';
   agentStatus: 'idle' | 'running' | 'pending';
   pendingReason: string | null;
   pendingRequestId: string | null;
+  pendingChoices?: { id: string; label: string }[];
 }
 
 /** The cards of `project` from `agboard ls --json`. */
@@ -233,17 +235,7 @@ function taskMarkdown(description: string, events: Record<string, unknown>[]): s
   return `---\n${yaml}\n${frontmatter}\n---\n\n${body}`;
 }
 
-interface FixtureEvent {
-  kind: string;
-  actor: 'ai' | 'human';
-  reason: string | null;
-  fromCardStatus: string | null;
-  toCardStatus: string;
-  fromAgentStatus: string | null;
-  toAgentStatus: string;
-  requestId: string | null;
-  at: string;
-}
+interface FixtureEvent { at: string; reason: string; }
 
 interface FixtureCard {
   id: number;
@@ -252,9 +244,11 @@ interface FixtureCard {
   position: number;
   assignee: 'ai' | 'human';
   cardStatus: 'todo' | 'doing' | 'done';
+  cardStatusChangedAt: string;
   agentStatus: 'idle' | 'running' | 'pending';
   pendingReason: string | null;
   pendingRequestId: string | null;
+  pendingChoices?: { id: string; label: string }[];
   createdAt: string;
   updatedAt: string;
   agentStatusChangedAt: string;
@@ -268,54 +262,22 @@ interface Fixture {
 
 /** The task.json and TASK.md of one fixture card, in the current file format. */
 function taskFilesFor(card: FixtureCard): { task: Record<string, unknown>; markdown: string } {
-  const history: Record<string, unknown>[] = card.history.map((event) => {
-    const entry: Record<string, unknown> = {
-      id: randomBytes(16).toString('hex'),
-      kind: event.kind,
-      actor: event.actor,
-      reason: event.reason,
-      fromCardStatus: event.fromCardStatus,
-      toCardStatus: event.toCardStatus,
-      fromAgentStatus: event.fromAgentStatus,
-      toAgentStatus: event.toAgentStatus,
-      requestId: event.requestId,
-      at: event.at,
-    };
-    if (event.toAgentStatus === 'pending') {
-      entry.question = event.reason ?? card.pendingReason ?? '';
-      entry.choices = [];
-    }
-    return entry;
-  });
-  // A pending card names its request in history; add the event when the fixture only gives the reason.
-  if (card.agentStatus === 'pending' && card.pendingRequestId && !history.some((event) => event.requestId === card.pendingRequestId)) {
-    history.push({
-      id: randomBytes(16).toString('hex'),
-      kind: 'agent',
-      actor: 'ai',
-      reason: card.pendingReason,
-      fromCardStatus: card.cardStatus,
-      toCardStatus: card.cardStatus,
-      fromAgentStatus: 'running',
-      toAgentStatus: 'pending',
-      requestId: card.pendingRequestId,
-      question: card.pendingReason ?? '',
-      choices: [],
-      at: card.agentStatusChangedAt,
-    });
-  }
+  const history = card.history.map(({ at, reason }) => ({ at, reason }));
   const task = {
-    formatVersion: 2,
+    formatVersion: 3,
     id: card.id,
     title: card.title,
     assignee: card.assignee,
     epicId: null,
     cardStatus: card.cardStatus,
+    cardStatusChangedAt: card.cardStatusChangedAt,
     agentStatus: card.agentStatus,
     position: card.position,
     isDraft: false,
     archivedAt: null,
     pendingRequestId: card.agentStatus === 'pending' ? card.pendingRequestId : null,
+    pendingRequest: card.agentStatus === 'pending' ? { question: card.pendingReason ?? '', choices: card.pendingChoices ?? [] } : null,
+    requestAnswers: [],
     createdAt: card.createdAt,
     updatedAt: card.updatedAt,
     agentStatusChangedAt: card.agentStatusChangedAt,
@@ -416,13 +378,15 @@ function withTestDefaults(project: string, args: string[], home: string): string
   if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai', '--actor', 'ai');
   if ((command === 'mv' || command === 'state') && !result.includes('--actor')) {
     result.push('--actor', 'human');
-    if (!result.includes('--reason') && !result.includes('--reason-file')) result.push('--reason', 'E2E user action');
   }
   if (command === 'state' && result[2] === 'idle' && !result.includes('--request')) {
     const snapshot = spawnSync(agboardBinary(), ['--project', project, 'snapshot', '--json'], { env: agboardEnv(home), encoding: 'utf8' });
     if (snapshot.status === 0) {
       const card = (JSON.parse(snapshot.stdout).cards as CardJson[]).find((item) => item.id === Number(result[1]));
-      if (card?.agentStatus === 'pending' && card.pendingRequestId) result.push('--request', card.pendingRequestId);
+      if (card?.agentStatus === 'pending' && card.pendingRequestId) {
+        result.push('--request', card.pendingRequestId);
+        if (!result.includes('--reason') && !result.includes('--reason-file')) result.push('--reason', 'User confirmed the current request.');
+      }
     }
   }
   return result;

@@ -215,7 +215,7 @@ test.describe('two projects with the same card numbers', () => {
 
     // Move #1 with a reason, then archive #3.
     const move = await dragCardTo(page, 1, 'Doing');
-    await move.getByRole('textbox', { name: 'Reason (required)' }).fill('Starting the notes.');
+    await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the notes.');
     await move.getByRole('button', { name: 'Move', exact: true }).click();
     await expect(move).toHaveCount(0);
     await expect(lane(page, 'Doing').getByRole('button', { name: /^#1 User / })).toBeVisible();
@@ -486,7 +486,7 @@ test.describe('two projects with the same card numbers', () => {
     const move = await dragCardTo(page, 1, 'Doing');
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
-    await move.getByRole('textbox', { name: 'Reason (required)' }).fill('Beta moves its #1.');
+    await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Beta moves its #1.');
     await move.getByRole('button', { name: 'Move', exact: true }).click();
     await expect(move).toHaveCount(0);
     await expect(switcher(page)).toHaveText('Alpha');
@@ -651,12 +651,12 @@ test.describe('two projects with the same card numbers', () => {
       expect(await ended).toBe(0);
       const received = JSON.parse(out) as {
         project: { id: string; name: string };
-        cards: { id: number; agentStatus: string; history: { actor: string; reason: string | null }[] }[];
+        cards: { id: number; agentStatus: string; history: { at: string; reason: string }[] }[];
       };
       expect(received.project).toMatchObject({ id: alpha, name: 'Alpha' });
       const answered = received.cards.find(({ id }) => id === 2)!;
       expect(answered.agentStatus).toBe('idle');
-      expect(answered.history.at(-1)).toMatchObject({ actor: 'human', reason: 'Use the MIT license, please.' });
+      expect(answered.history.at(-1)).toMatchObject({ reason: 'Use the MIT license, please.' });
       expect(out).not.toContain('Beta');
     } finally {
       waiter.kill();

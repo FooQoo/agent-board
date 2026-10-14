@@ -22,18 +22,11 @@
       "agentStatusChangedAt": "2026-10-01T08:30:00Z",
       "history": [
         {
-          "id": 1,
-          "kind": "created",
-          "actor": "ai",
-          "reason": null,
-          "fromCardStatus": null,
-          "toCardStatus": "todo",
-          "fromAgentStatus": null,
-          "toAgentStatus": "idle",
-          "requestId": null,
-          "at": "2026-10-01T08:30:00Z"
+          "at": "2026-10-01T08:30:00Z",
+          "reason": "Created card in Todo."
         }
-      ]
+      ],
+      "cardStatusChangedAt": "2026-10-01T08:30:00Z"
     },
     {
       "id": 2,
@@ -50,42 +43,19 @@
       "agentStatusChangedAt": "2026-10-01T10:15:00Z",
       "history": [
         {
-          "id": 2,
-          "kind": "created",
-          "actor": "ai",
-          "reason": null,
-          "fromCardStatus": null,
-          "toCardStatus": "todo",
-          "fromAgentStatus": null,
-          "toAgentStatus": "idle",
-          "requestId": null,
-          "at": "2026-10-01T09:15:00Z"
+          "at": "2026-10-01T09:15:00Z",
+          "reason": "Created card in Todo."
         },
         {
-          "id": 3,
-          "kind": "lane",
-          "actor": "ai",
-          "reason": "Start work",
-          "fromCardStatus": "todo",
-          "toCardStatus": "doing",
-          "fromAgentStatus": "idle",
-          "toAgentStatus": "idle",
-          "requestId": null,
-          "at": "2026-10-01T09:45:00Z"
+          "at": "2026-10-01T09:45:00Z",
+          "reason": "Start work"
         },
         {
-          "id": 4,
-          "kind": "agent",
-          "actor": "ai",
-          "reason": "Which database should Beta use?",
-          "fromCardStatus": "doing",
-          "toCardStatus": "doing",
-          "fromAgentStatus": "idle",
-          "toAgentStatus": "pending",
-          "requestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-          "at": "2026-10-01T10:15:00Z"
+          "at": "2026-10-01T10:15:00Z",
+          "reason": "Which database should Beta use?"
         }
-      ]
+      ],
+      "cardStatusChangedAt": "2026-10-01T09:45:00Z"
     },
     {
       "id": 3,
@@ -102,42 +72,19 @@
       "agentStatusChangedAt": "2026-10-01T10:50:00Z",
       "history": [
         {
-          "id": 5,
-          "kind": "created",
-          "actor": "ai",
-          "reason": null,
-          "fromCardStatus": null,
-          "toCardStatus": "todo",
-          "fromAgentStatus": null,
-          "toAgentStatus": "idle",
-          "requestId": null,
-          "at": "2026-10-01T10:30:00Z"
+          "at": "2026-10-01T10:30:00Z",
+          "reason": "Created card in Todo."
         },
         {
-          "id": 6,
-          "kind": "lane",
-          "actor": "ai",
-          "reason": "Start work",
-          "fromCardStatus": "todo",
-          "toCardStatus": "doing",
-          "fromAgentStatus": "idle",
-          "toAgentStatus": "idle",
-          "requestId": null,
-          "at": "2026-10-01T10:40:00Z"
+          "at": "2026-10-01T10:40:00Z",
+          "reason": "Start work"
         },
         {
-          "id": 7,
-          "kind": "agent",
-          "actor": "ai",
-          "reason": "Working on the parser",
-          "fromCardStatus": "doing",
-          "toCardStatus": "doing",
-          "fromAgentStatus": "idle",
-          "toAgentStatus": "running",
-          "requestId": null,
-          "at": "2026-10-01T10:50:00Z"
+          "at": "2026-10-01T10:50:00Z",
+          "reason": "Working on the parser"
         }
-      ]
+      ],
+      "cardStatusChangedAt": "2026-10-01T10:40:00Z"
     }
   ]
 }

@@ -32,7 +32,7 @@ function show(id: number) {
     cardStatus: string;
     agentStatus: string;
     pendingRequestId: string | null;
-    history: { actor: string; reason: string | null }[];
+    history: { at: string; reason: string }[];
   };
 }
 
@@ -106,6 +106,6 @@ test('answers Todo and Doing requests through the monitor API and records them i
       agentStatus: 'idle',
       pendingRequestId: null,
     });
-    expect(stored.history.at(-1)).toMatchObject({ actor: 'human', reason: item.answer });
+    expect(stored.history.at(-1)).toMatchObject({ reason: item.answer });
   }
 });

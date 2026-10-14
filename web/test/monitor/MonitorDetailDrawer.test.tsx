@@ -49,24 +49,7 @@ function setup({
     description: 'Card description',
     body: 'Card description',
     epic: epicId ? { id: epicId, name: 'Mobile work', color: '#4466aa' } : null,
-    history: [
-      {
-        id: 'answer-1',
-        kind: 'answer',
-        actor: 'human',
-        reason: 'Keep both options',
-        fromCardStatus: 'todo',
-        toCardStatus: 'todo',
-        fromAgentStatus: 'pending',
-        toAgentStatus: 'idle',
-        requestId: 'request-7',
-        question: 'Which direction?',
-        choices: [{ id: 'both', label: 'Keep both' }],
-        choiceId: 'both',
-        choiceLabel: 'Keep both',
-        at: '2026-10-12T08:00:00Z',
-      },
-    ],
+    history: [{ at: '2026-10-12T08:00:00Z', reason: 'Keep both options' }],
   });
   const item = { projectId: PROJECT_A.id, projectName: PROJECT_A.name, card };
   const readResolvers: MonitorReadResolvers = {

@@ -22,6 +22,7 @@ export const copy = {
     plan: '# Website launch\n\n## Goal\n\nPublish a clear, useful website and collect feedback from its first readers.\n\n## Work order\n\nChoose the launch approach, write the setup guide, verify the contact form, then prepare release notes.\n\n## Verification\n\nReview the desktop and mobile layouts. Check the contact flow and record the results before completing each task.',
     epicChecks: ['The launch approach is agreed', 'Desktop and mobile checks pass', 'The release is ready'],
     tab: 'Conditions', ready: 'Connected · Current',
+    workNote: 'Reviewed the launch options and recorded the decision criteria.',
   },
   ja: {
     design: 'デザインと確認', launch: 'Webサイトの公開',
@@ -35,6 +36,7 @@ export const copy = {
     plan: '# Webサイトの公開\n\n## 目的\n\n分かりやすく役に立つWebサイトを公開し、最初の利用者から意見を集める。\n\n## 進め方\n\n公開方法を決め、セットアップガイドを書き、お問い合わせフォームを確認してからリリースノートを準備する。\n\n## 確認方法\n\nPCとモバイルのレイアウトを確認する。各タスクの完了前にフォームの動作と確認結果を記録する。',
     epicChecks: ['公開方法が決まっている', 'PCとモバイルの確認が終わっている', '公開準備が整っている'],
     tab: '受入条件', ready: '接続中 · 最新',
+    workNote: '公開方法を比較し、判断に使う条件を記録しました。',
   },
 };
 
@@ -66,6 +68,7 @@ export function seed(home, text) {
   }
   for (const id of [2, 3, 7]) run('mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start sample work');
   run('state', '2', 'running', '--actor', 'ai', '--reason', 'Build the landing page');
+  run('history', 'add', '3', '--reason', text.workNote);
   run('state', '3', 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
     question: text.question, choices: text.choices.map((label, i) => ({ id: `option-${i + 1}`, label })),
   }));

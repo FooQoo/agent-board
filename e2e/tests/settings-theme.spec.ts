@@ -521,7 +521,7 @@ test('the move dialog and the answer dialog take the focus and give it back', as
   await openFresh(page);
   const move = await dragCardTo(page, 16, 'Doing');
   await expect(move).toContainText('Move card');
-  await expect(move.getByRole('textbox', { name: 'Reason (required)' })).toBeFocused();
+  await expect(move.getByRole('textbox', { name: 'Reason (optional)' })).toBeFocused();
   for (let step = 0; step < 8; step += 1) {
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
@@ -591,7 +591,7 @@ test('changing the language does not translate or alter what was entered', async
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Draft the release note `) })).toBeVisible();
   const move = await dragCardTo(page, fresh, 'Doing');
-  await move.getByRole('textbox', { name: 'Reason (required)' }).fill('Starting the draft today.');
+  await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the draft today.');
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
   await card(page, 12).click();
@@ -662,7 +662,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   const move = await dragCardTo(page, fresh, 'Doing');
   await expect(move.getByRole('group', { name: 'Status change' })).toHaveText(/Todo\s*Doing/);
   expect(listCards(mainProject).find(({ id }) => id === fresh)?.cardStatus).toBe('todo');
-  await move.getByRole('textbox', { name: 'Reason (required)' }).fill('Starting the review.');
+  await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the review.');
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} AI Idle Review the themes `) })).toBeVisible();
@@ -778,10 +778,10 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
     });
   });
   const move = await dragCardTo(page, 16, 'Doing');
-  await move.getByRole('textbox', { name: 'Reason (required)' }).fill('Kept reason.');
+  await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Kept reason.');
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move.getByRole('alert')).toHaveText('The move was refused.');
-  await expect(move.getByRole('textbox', { name: 'Reason (required)' })).toHaveValue('Kept reason.');
+  await expect(move.getByRole('textbox', { name: 'Reason (optional)' })).toHaveValue('Kept reason.');
   expect(listCards(mainProject).find(({ id }) => id === 16)?.cardStatus).toBe('todo');
   moveFails = false;
   await move.getByRole('button', { name: 'Move', exact: true }).click();

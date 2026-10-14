@@ -34,34 +34,8 @@ function card(id: number, status: ColumnName, long: boolean): Card {
         ]
       : [];
   const history: Card['history'] = done
-    ? [
-        {
-          id: `done-${id}`,
-          kind: 'lane',
-          actor: 'ai',
-          reason: 'Verified on the fixture',
-          fromCardStatus: 'doing',
-          toCardStatus: 'done',
-          fromAgentStatus: null,
-          toAgentStatus: 'idle',
-          requestId: null,
-          at,
-        },
-      ]
-    : [
-        {
-          id: `create-${id}`,
-          kind: 'created',
-          actor: 'ai',
-          reason: null,
-          fromCardStatus: null,
-          toCardStatus: status,
-          fromAgentStatus: null,
-          toAgentStatus: agentStatus,
-          requestId: null,
-          at,
-        },
-      ];
+    ? [{ at: at, reason: 'Verified on the fixture' }]
+    : [{ at: at, reason: 'Created card in Todo.' }];
   return {
     id,
     title:
@@ -74,6 +48,7 @@ function card(id: number, status: ColumnName, long: boolean): Card {
     description: taskMarkdown(body, acceptance, history),
     assignee: 'ai',
     cardStatus: status,
+    cardStatusChangedAt: at,
     position: id,
     agentStatus,
     pendingReason: pending

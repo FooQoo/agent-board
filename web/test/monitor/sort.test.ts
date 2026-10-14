@@ -13,19 +13,6 @@ const item = (
   projectName: projectId === PROJECT_A.id ? PROJECT_A.name : PROJECT_B.name,
   card: makeCard({ id, agentStatusChangedAt: changed, updatedAt: '2099-01-01T00:00:00Z', history }),
 });
-const lane = (id: string, at: string, toCardStatus: 'todo' | 'done') => ({
-  id,
-  kind: 'lane' as const,
-  actor: 'ai' as const,
-  reason: null,
-  fromCardStatus: 'todo' as const,
-  toCardStatus,
-  fromAgentStatus: null,
-  toAgentStatus: 'idle' as const,
-  requestId: null,
-  at,
-});
-
 describe('monitor ordering', () => {
   it('preserves manual lane order within stable project groups, independently of run-state times', () => {
     const beta = item(PROJECT_B.id, 1, '2099-01-01T00:00:00Z');
@@ -38,17 +25,19 @@ describe('monitor ordering', () => {
     expect(sortLane([beta, first, second]).map(({ card }) => card.id)).toEqual([2, 9, 1]);
   });
 
-  it('uses the last transition into Done, handles re-completion and leaves unknown timestamps last', () => {
-    const older = item(PROJECT_A.id, 1, '2099-01-01T00:00:00Z', [
-      lane('a', '2026-10-01T00:00:00Z', 'done'),
-    ]);
+  it('uses the lane timestamp for Done ordering despite later notes, edits and archive operations', () => {
+    const older = item(PROJECT_A.id, 1, '2099-01-01T00:00:00Z');
     const reopened = item(PROJECT_A.id, 2, '2099-01-01T00:00:00Z', [
-      lane('b', '2026-10-03T00:00:00Z', 'done'),
-      lane('c', '2026-10-04T00:00:00Z', 'todo'),
-      lane('d', '2026-10-05T00:00:00Z', 'done'),
+      { at: '2099-01-01T00:00:00Z', reason: 'Added a later work note.' },
     ]);
     const unknown = item(PROJECT_A.id, 3, '2099-01-01T00:00:00Z');
+    older.card.cardStatus = reopened.card.cardStatus = unknown.card.cardStatus = 'done';
+    older.card.cardStatusChangedAt = '2026-10-01T00:00:00Z';
+    reopened.card.cardStatusChangedAt = '2026-10-05T00:00:00Z';
+    unknown.card.cardStatusChangedAt = 'invalid';
     expect(completedAt(reopened)).toBe('2026-10-05T00:00:00Z');
     expect(sortDone([unknown, older, reopened]).map(({ card }) => card.id)).toEqual([2, 1, 3]);
+    reopened.card.cardStatus = 'todo';
+    expect(completedAt(reopened)).toBeNull();
   });
 });
