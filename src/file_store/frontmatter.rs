@@ -36,7 +36,7 @@ pub struct Parsed {
 type IndexedItems = Vec<(usize, AcceptanceItem)>;
 
 /// The frontmatter of a text, as far as its lines go.
-enum Split<'a> {
+pub(super) enum Split<'a> {
     /// No opening line: the whole text is the body.
     None,
     /// The opening line has no closing line.
@@ -45,7 +45,7 @@ enum Split<'a> {
     Found { yaml: &'a str, body: &'a str },
 }
 
-fn split(text: &str) -> Split<'_> {
+pub(super) fn split(text: &str) -> Split<'_> {
     if !(text == "---" || text.starts_with("---\n")) {
         return Split::None;
     }
@@ -132,7 +132,7 @@ fn with_defect(body: &str, defect: Defect) -> Parsed {
 }
 
 /// The YAML of a frontmatter. Blank text is an empty mapping.
-fn read_yaml(yaml: &str) -> Result<Value, Defect> {
+pub(super) fn read_yaml(yaml: &str) -> Result<Value, Defect> {
     if yaml.trim().is_empty() {
         return Ok(Value::Mapping(Mapping::new()));
     }
@@ -317,7 +317,7 @@ pub fn compose(
 }
 
 /// Join a frontmatter map and a body. An empty map leaves only the body.
-fn assemble(map: Mapping, body: &str) -> Result<String, Defect> {
+pub(super) fn assemble(map: Mapping, body: &str) -> Result<String, Defect> {
     if map.is_empty() {
         return Ok(body.to_string());
     }

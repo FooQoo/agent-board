@@ -125,6 +125,80 @@ pub struct TaskFile {
     pub history: Vec<HistoryRecord>,
 }
 
+/// Version 2 `task.json`: operational metadata. History is stored only in TASK.md.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct TaskMetadata {
+    pub format_version: u32,
+    pub id: i64,
+    pub title: String,
+    pub assignee: Assignee,
+    pub epic_id: Option<String>,
+    pub card_status: Column,
+    pub agent_status: RunState,
+    pub position: i64,
+    pub is_draft: bool,
+    #[serde(with = "crate::clock::serde_opt_utc")]
+    pub archived_at: Option<DateTime<Utc>>,
+    pub pending_request_id: Option<String>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub created_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub updated_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub agent_status_changed_at: DateTime<Utc>,
+    pub attachments: Vec<Attachment>,
+    pub evidence: Vec<EvidenceRecord>,
+}
+
+impl From<&TaskFile> for TaskMetadata {
+    fn from(task: &TaskFile) -> Self {
+        Self {
+            format_version: 2,
+            id: task.id,
+            title: task.title.clone(),
+            assignee: task.assignee,
+            epic_id: task.epic_id.clone(),
+            card_status: task.card_status,
+            agent_status: task.agent_status,
+            position: task.position,
+            is_draft: task.is_draft,
+            archived_at: task.archived_at,
+            pending_request_id: task.pending_request_id.clone(),
+            created_at: task.created_at,
+            updated_at: task.updated_at,
+            agent_status_changed_at: task.agent_status_changed_at,
+            attachments: task.attachments.clone(),
+            evidence: task.evidence.clone(),
+        }
+    }
+}
+
+impl TaskMetadata {
+    /// Join persisted metadata with validated TASK.md events for operations.
+    pub fn with_history(self, history: Vec<HistoryRecord>) -> TaskFile {
+        TaskFile {
+            format_version: self.format_version,
+            id: self.id,
+            title: self.title,
+            assignee: self.assignee,
+            epic_id: self.epic_id,
+            card_status: self.card_status,
+            agent_status: self.agent_status,
+            position: self.position,
+            is_draft: self.is_draft,
+            archived_at: self.archived_at,
+            pending_request_id: self.pending_request_id,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            agent_status_changed_at: self.agent_status_changed_at,
+            attachments: self.attachments,
+            evidence: self.evidence,
+            history,
+        }
+    }
+}
+
 /// The decision request that a card is waiting on: the history event of the
 /// pending request whose request ID the card names. The question and the
 /// choices are kept only there.

@@ -7,6 +7,7 @@
 
 pub mod bindings;
 pub mod frontmatter;
+pub mod history;
 pub mod index;
 pub mod io;
 pub mod layout;
@@ -15,6 +16,7 @@ pub mod model;
 mod ops;
 pub mod project;
 pub mod reader;
+pub mod transaction;
 pub mod validate;
 pub mod watch;
 
