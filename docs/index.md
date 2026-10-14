@@ -69,11 +69,35 @@ Answer decisions and check status from a bottom drawer with Body, Conditions, Hi
 
 ![Mobile bottom drawer with Body, Conditions, History, and Epic tabs](./images/mobile.png){.screenshot .screenshot--narrow}
 
-## How it fits together
+## Get started
 
-```mermaid
-flowchart LR
-    A["AI agent"] -- "agboard CLI + hooks" --> D[("Local shared folder")]
-    U["User"] -- "Agent Board UI" --> D
-    D -- "local server" --> B["Browser"]
+Agent Board runs on your machine, with no account or hosted service. Install it, start the board, and bring your agent in.
+
+<div class="home-steps">
+
+1. **Start the board**
+
+   Create a project and run `agboard serve`, then open the board in your browser. [Getting started](./guide/getting-started)
+
+2. **Let your agent register work**
+
+   Connect Claude Code or Codex with a hook. The agent reads the progress table and adds cards. [Working with agents](./guide/agents)
+
+3. **Answer on the card**
+
+   When the agent asks a question, choose an option on the card from your PC or your phone. [Decisions](./guide/decisions)
+
+</div>
+
+```sh
+git clone https://github.com/FooQoo/agent-board.git
+cd agent-board
+pnpm --dir web install
+pnpm --dir web build
+cargo install --path . --locked --force
 ```
+
+<div class="home-cta">
+  <a class="home-cta__button home-cta__button--brand" :href="withBase('/guide/getting-started')">Get started</a>
+  <a class="home-cta__button" href="https://github.com/FooQoo/agent-board">GitHub</a>
+</div>
