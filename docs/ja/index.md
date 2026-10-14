@@ -24,14 +24,14 @@ features:
       width: 28
       height: 28
     title: 人とAIが同じボードで作業を進める
-    details: Todo・Doing・Doneの3列で進捗を管理し、稼働中・待機中の状態でAIの動きを確認できます。PCやスマホのカード上で質問に回答できます。
+    details: 未着手・進行中・完了の3列で進捗を管理し、稼働中・待機中の状態でAIの動きを確認できます。PCやスマホのカード上で質問に回答できます。
   - icon:
       src: /icons/list-ordered.svg
       alt: ''
       width: 28
       height: 28
     title: 進行表と自動完了で、AIの管理操作を減らす
-    details: エピックでタスクの進行順を決め、agboard progressで今進められる作業を取得できます。すべての受け入れ条件を達成した対象のAIカードは自動でDoneになります。
+    details: エピックでタスクの進行順を決め、agboard progressで今進められる作業を取得できます。すべての受け入れ条件を達成した対象のAIカードは自動で完了になります。
   - icon:
       src: /icons/file-text.svg
       alt: ''
@@ -49,7 +49,7 @@ import { withBase } from 'vitepress'
 
 <video class="demo-video" :src="withBase('/videos/demo.ja.mp4')" :poster="withBase('/videos/demo.ja.jpg')" autoplay muted loop playsinline></video>
 
-1枚のカードの流れです。エージェントが着手して質問し、ユーザーがカード上で回答すると、エージェントが作業を再開します。すべての受け入れ条件を達成すると、カードは自動でDoneに移ります。
+1枚のカードの流れです。エージェントが着手して質問し、ユーザーがカード上で回答すると、エージェントが作業を再開します。すべての受け入れ条件を達成すると、カードは自動で完了に移ります。
 
 ## ボード
 
