@@ -433,18 +433,19 @@ pub fn check_task(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
             "An archived card is idle and has no request.",
         ));
     }
-    if !task.history.iter().any(|e| e.kind == HistoryKind::Created) {
+    out.extend(check_history(&task.history));
+    out
+}
+
+pub fn check_history(events: &[HistoryRecord]) -> Vec<Defect> {
+    let mut out = Vec::new();
+    if !events.iter().any(|e| e.kind == HistoryKind::Created) {
         out.push(defect(
             "history",
             "The history must contain a created event.",
         ));
     }
-    out.extend(check_history(&task.history));
-    out
-}
 
-fn check_history(events: &[HistoryRecord]) -> Vec<Defect> {
-    let mut out = Vec::new();
     let mut ids = HashSet::new();
     for (i, event) in events.iter().enumerate() {
         let field = |name: &str| format!("history[{i}].{name}");
