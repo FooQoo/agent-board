@@ -150,14 +150,19 @@ async function waitForListener(port: number, child: ChildProcess): Promise<void>
   throw new Error(`serve listener did not answer on port ${port}`);
 }
 
-export async function startMonitorServe(home: string): Promise<MonitorServe> {
-  for (const port of [monitorPort, remotePort]) {
+export async function startMonitorServe(
+  home: string,
+  ports: { monitorPort?: number; remotePort?: number } = {},
+): Promise<MonitorServe> {
+  const localPort = ports.monitorPort ?? monitorPort;
+  const proxyPort = ports.remotePort ?? remotePort;
+  for (const port of [localPort, proxyPort]) {
     if (!(await portIsFree(port))) throw new Error(`port ${port} is already in use`);
   }
   const child = spawn(
     agboardBinary(),
     [
-      'serve', '--port', String(monitorPort), '--remote-port', String(remotePort),
+      'serve', '--port', String(localPort), '--remote-port', String(proxyPort),
       '--remote-origin', 'https://monitor.e2e.invalid',
     ],
     {
@@ -170,8 +175,8 @@ export async function startMonitorServe(home: string): Promise<MonitorServe> {
   child.stderr?.setEncoding('utf8');
   child.stderr?.on('data', (chunk: string) => { stderr += chunk; });
   try {
-    await waitForListener(monitorPort, child);
-    await waitForMonitor(remotePort, child);
+    await waitForListener(localPort, child);
+    await waitForMonitor(proxyPort, child);
   } catch (error) {
     if (child.exitCode === null && child.signalCode === null) {
       const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
