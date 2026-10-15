@@ -96,6 +96,43 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     }
 }
 
+/// Runs a command line when no data directory can be resolved (no
+/// `AGBOARD_HOME` and no home directory). Help and version still print; every
+/// other command fails with `error`, because nothing can be stored without a
+/// data directory and the working directory is never used instead.
+pub fn execute_without_data_dir(
+    args: &[OsString],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+    error: &AgboardError,
+) -> i32 {
+    let json_requested = args.iter().any(|arg| arg == "--json");
+    match args::parse(args) {
+        Ok(Parsed::Print(text)) => {
+            write_text(stdout, &text);
+            0
+        }
+        Ok(Parsed::Run(_)) => {
+            let text = if json_requested {
+                errors::json(error)
+            } else {
+                errors::human(error)
+            };
+            write_text(stderr, &text);
+            error.exit_code()
+        }
+        Err(parse_error) => {
+            let text = if json_requested {
+                errors::json(&parse_error)
+            } else {
+                errors::human(&parse_error)
+            };
+            write_text(stderr, &text);
+            parse_error.exit_code()
+        }
+    }
+}
+
 /// How a command uses the projects, which decides how its target is resolved.
 enum Access {
     /// Reads one project; the project must exist.

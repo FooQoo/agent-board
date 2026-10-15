@@ -91,10 +91,16 @@ pub fn run() -> i32 {
     let args: Vec<OsString> = std::env::args_os().collect();
     let mut stdout = std::io::stdout().lock();
     let mut stderr = std::io::stderr().lock();
+    let shared_dir = match crate::paths::shared_dir() {
+        Ok(dir) => dir,
+        Err(error) => {
+            return run::execute_without_data_dir(&args, &mut stdout, &mut stderr, &error);
+        }
+    };
     let mut after_commit = |ctx: &Context, dir: &Path| run::after_commit(ctx, dir);
     let mut env = Env {
         clock: Box::new(SystemClock),
-        shared_dir: crate::paths::shared_dir(),
+        shared_dir,
         stdout: &mut stdout,
         stderr: &mut stderr,
         after_commit: &mut after_commit,

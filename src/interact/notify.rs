@@ -16,7 +16,10 @@ const MAX_STATUS_LINE: usize = 256;
 /// answers, the answer is not 204, or everything together takes longer than
 /// [`NOTIFY_TIMEOUT`]. Never panics.
 pub fn notify_serve() -> bool {
-    notify_serve_in(&paths::data_dir())
+    match paths::data_dir() {
+        Ok(dir) => notify_serve_in(&dir),
+        Err(_) => false,
+    }
 }
 
 /// Like [`notify_serve`], but finds `serve.json` in `dir` instead of the

@@ -83,7 +83,7 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
 ) -> Result<(), AgboardError> {
     // Resolve the process environment once. Another embedded caller can change
     // AGBOARD_HOME while startup is awaiting file locks or filesystem watches.
-    let data_dir = paths::data_dir();
+    let data_dir = paths::data_dir()?;
     let serve_path = data_dir.join("serve.json");
     if let Some(info) = paths::read_serve_info_in(&data_dir)
         && instance::is_serving(&info)
