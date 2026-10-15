@@ -33,6 +33,8 @@ A project is identified by both `project.id` and `project.name` in the progress 
 
 If `agboard` is not on `PATH`, use an executable supplied by the user or the project runtime. Do not install tools, create a project, or initialize a substitute board on your own.
 
+Use a CLI that supports task format version 3 and `history add`. If the command is unavailable, report the version mismatch; do not fall back to a body execution log or edit `task.json`. Do not replace the installed executable automatically.
+
 ## 2. Read only what is needed before acting
 
 Before choosing, starting, or resuming work, read the progress table:
