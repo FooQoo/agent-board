@@ -72,6 +72,7 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
   const dragged = page.locator('.card').filter({ hasText: /^#16(?!\d)/ }).first();
   await expect(dragged).not.toHaveClass(/card--dragging/);
   await move.getByLabel('Reason').fill('Move after reviewing the board.');
+  await expect(move.getByLabel('Reason')).toHaveValue('Move after reviewing the board.');
   const moveResponse = page.waitForResponse(
     (response) => response.url().endsWith('/cards/16/move') && response.request().method() === 'POST',
   );
@@ -114,7 +115,7 @@ test('agboard state updates the run state and reason without reloading', async (
   agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--request-json', decisionJson('Waiting for a review')]);
   const pending = doing.getByRole('button', { name: /^#13 AI Pending Check the board display / });
   await expect(pending).toBeVisible();
-  await expect(pending).toContainText('Waiting for a review');
+  await expect(doing.locator('.card__answer[data-card-id="13"]')).toContainText('Waiting for a review');
 
   agboardOk(mainProject, ['state', '13', 'idle']);
   await expect(doing.getByRole('button', { name: /^#13 AI Idle Check the board display / })).toBeVisible();

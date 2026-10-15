@@ -89,6 +89,7 @@ export function Card({
   const { t } = useTranslation();
   const showsState = stateLabel(card, t) !== null;
   const pending = showsState && card.agentStatus === 'pending';
+  const showInlineAnswer = Boolean(projectId && answers && pending);
   const { ref, isDragging } = useSortable({
     id: `card-${card.id}`,
     index,
@@ -127,7 +128,7 @@ export function Card({
           {showsState && <StatusLabel kind="agent" status={card.agentStatus} />}
           <AcceptanceProgress card={card} />
         </span>
-        <CardContent card={card} showPendingReason={pending}>
+        <CardContent card={card} showPendingReason={pending && !showInlineAnswer}>
           {epic && (
             <EpicLabel
               epic={epic}
@@ -143,7 +144,7 @@ export function Card({
           </span>
         </span>
       </div>
-      {projectId && answers && card.cardStatus !== 'done' && card.agentStatus === 'pending' && (
+      {projectId && answers && showInlineAnswer && (
         <div className="card__answer" data-card-id={card.id}>
           <DecisionRequestForm
             projectId={projectId}

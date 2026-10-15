@@ -2,6 +2,13 @@ import { expect, test } from '@playwright/test';
 import { agboardOk, mainProject, nextCardId, projectId, resetBoard } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
+test.afterEach(async ({ page }) => {
+  resetBoard(mainProject);
+  await page.reload();
+  await waitForSync(page);
+  await expect(page.locator('.card__id')).toHaveCount(8);
+});
+
 for (const { locale, theme, height } of [
   { locale: 'ja', theme: 'dark', height: 600 },
   { locale: 'en', theme: 'light', height: 900 },
@@ -30,6 +37,7 @@ for (const { locale, theme, height } of [
     const answer = page.locator(`.card__answer[data-card-id="${id}"]`);
     const item = answer.locator('..');
     await expect(answer).toContainText(question);
+    await expect(item.getByText(question, { exact: true })).toHaveCount(1);
     await item.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath('pending-lane.png') });
 
@@ -47,7 +55,9 @@ for (const { locale, theme, height } of [
     expect(geometry.clipped).toBeLessThanOrEqual(1);
     expect(geometry.childOverflow).toBeLessThanOrEqual(1);
     expect(geometry.laneScrolls).toBe(true);
-    const reason = item.locator('.card__reason');
+    const more = answer.locator('.detail__more');
+    if (await more.isVisible()) await more.click();
+    const reason = answer.locator('.detail__reason');
     await reason.scrollIntoViewIfNeeded();
     await expect(reason).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-question.png') });
