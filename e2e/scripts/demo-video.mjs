@@ -89,9 +89,9 @@ function seed(home, text) {
   return meta.id;
 }
 
-async function freePort() {
+async function freePort(preferred = 0) {
   const server = net.createServer();
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(preferred, '127.0.0.1', resolve); });
   const port = server.address().port;
   await new Promise((resolve) => server.close(resolve));
   return port;
@@ -163,8 +163,8 @@ async function record(browser, locale, tmp) {
   let context;
   try {
     const projectId = seed(home, text);
-    const port = await freePort();
-    const remotePort = await freePort();
+    const port = await freePort(Number(process.env.AGBOARD_MEDIA_PORT ?? 0));
+    const remotePort = await freePort(Number(process.env.AGBOARD_MEDIA_REMOTE_PORT ?? 0));
     const origin = `http://127.0.0.1:${port}`;
     let stderr = '';
     server = spawn(binary, ['serve', '--port', String(port), '--remote-port', String(remotePort),

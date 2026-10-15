@@ -19,6 +19,19 @@ test.beforeEach(async ({ page }) => {
 const lane = (page: Page, name: 'Todo' | 'Doing' | 'Done') => page.getByRole('region', { name });
 const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
+async function dragToLane(page: Page, id: number, targetLane: 'Todo' | 'Doing' | 'Done'): Promise<void> {
+  const sourceCard = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+  await expect(sourceCard).toBeVisible();
+  const source = await sourceCard.boundingBox();
+  const target = await lane(page, targetLane).boundingBox();
+  if (!source || !target) throw new Error('Could not measure the drag source and target.');
+  await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
+  await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
+  await page.mouse.up();
+}
+
 async function notReloaded(page: Page): Promise<void> {
   expect(
     await page.evaluate(() => (window as unknown as { __opened?: boolean }).__opened),
@@ -49,14 +62,7 @@ test('agboard mv moves a card without reloading', async ({ page }) => {
 });
 
 test('dragging a card opens the reason dialog before moving it', async ({ page }) => {
-  const source = await card(page, 16).boundingBox();
-  const target = await lane(page, 'Doing').boundingBox();
-  if (!source || !target) throw new Error('Could not measure the drag source and target.');
-  await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
-  await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
-  await page.mouse.up();
+  await dragToLane(page, 16, 'Doing');
   const move = page.getByRole('dialog');
   await expect(move).toContainText('Todo');
   await expect(move).toContainText('Doing');
@@ -79,6 +85,24 @@ test('dragging a card opens the reason dialog before moving it', async ({ page }
   const detail = page.getByRole('complementary', { name: 'Card details' });
   await detail.getByRole('tab', { name: /^History/ }).click();
   await expect(detail.getByRole('listitem').first()).toContainText('Move after reviewing the board.');
+  await notReloaded(page);
+});
+
+test('confirming a move after an external lane change keeps exactly one card and records the current transition', async ({ page }) => {
+  await dragToLane(page, 16, 'Doing');
+  const move = page.getByRole('dialog');
+  const reason = move.getByRole('textbox', { name: 'Reason (optional)' });
+  await expect(reason).toHaveValue('');
+  await expect(page.locator('.card--dragging')).toHaveCount(0);
+  agboardOk(mainProject, ['mv', '16', 'done', '--actor', 'human']);
+  await expect(move.getByRole('group', { name: 'Status change' })).toContainText('Done');
+  await expect(move.getByRole('button', { name: 'Move', exact: true })).toBeEnabled();
+  await move.getByRole('button', { name: 'Move', exact: true }).click();
+  await expect(move).toHaveCount(0);
+  await expect(card(page, 16)).toHaveCount(1);
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
+  const stored = JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).card;
+  expect(stored.history.at(-1)).toEqual({ at: expect.any(String), reason: 'User changed the status from Done to Doing.' });
   await notReloaded(page);
 });
 
@@ -112,7 +136,7 @@ test('the selection stays on a card that moves to another lane', async ({ page }
   // It left Doing, so the current status row no longer shows its fixed Idle state.
   await expect(panel.locator('.detail__meta .status-label--agent')).toHaveCount(0);
   await panel.getByRole('tab', { name: /^History/ }).click();
-  await expect(panel.getByRole('listitem').first()).toContainText('E2E user action');
+  await expect(panel.getByRole('listitem').first()).toContainText('Moved card from Doing to Done; agent is idle.');
   await notReloaded(page);
 });
 
@@ -161,7 +185,10 @@ test('a user answer returns a pending card to idle and records the full answer i
   await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.locator('.history__step .dot').first()).not.toHaveAttribute('data-column');
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'idle');
-  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(74, 100, 168)');
+  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(133, 144, 161)');
+  await expect(panel.locator('.history__reason').first()).toHaveCSS('color', 'rgb(27, 36, 48)');
+  await expect(panel.locator('.history__at').first()).toHaveCSS('color', 'rgb(86, 98, 116)');
+  expect(await panel.locator('.history__step').first().evaluate((step) => getComputedStyle(step, '::before').backgroundColor)).toBe('rgb(225, 229, 235)');
   // The request stays read-only in details; the response is entered on the card with no dialog.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
@@ -175,5 +202,5 @@ test('a user answer returns a pending card to idle and records the full answer i
   await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
   // The new answer note keeps the same neutral timeline tone.
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'idle');
-  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(74, 100, 168)');
+  await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(133, 144, 161)');
 });

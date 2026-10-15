@@ -23,8 +23,8 @@ test.describe.configure({ mode: 'serial' });
 test.use({ viewport: { width: 1280, height: 900 }, timezoneId: 'UTC', locale: 'en-US' });
 
 const project = 'History Frontmatter E2E';
-const localPort = 8550;
-const remotePort = 8551;
+const localPort = Number(process.env.AGBOARD_E2E_HISTORY_LOCAL_PORT ?? 8550);
+const remotePort = Number(process.env.AGBOARD_E2E_HISTORY_REMOTE_PORT ?? 8551);
 let home: string;
 let pid: string;
 let serve: MonitorServe | undefined;

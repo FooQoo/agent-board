@@ -22,6 +22,7 @@ export interface ImageServer {
  * page the links point to; any other path is a 404 (a broken image).
  */
 export async function startImageServer(port: number): Promise<ImageServer> {
+  port = Number(process.env.AGBOARD_E2E_IMAGE_PORT ?? port);
   const referers: (string | null)[] = [];
   const paths: string[] = [];
   const server = http.createServer((request, response) => {

@@ -102,7 +102,7 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
       .replace('Private task body for progress omission check.', 'Publish the approved release.');
     replaceFileAtomically(taskFile, taskWithAcceptance);
     agboardOk(project, ['mv', String(publish), 'doing', '--actor', 'ai', '--reason', 'Preparing release'], home);
-    serve = await startServe(8362, home);
+    serve = await startServe(Number(process.env.AGBOARD_E2E_PROGRESS_PORT ?? 8362), home);
     waiter = startWaiter(home, work, project, publish);
     const waitResult = waiterResult(waiter);
     await expect.poll(async () => {

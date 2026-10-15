@@ -628,7 +628,7 @@ ol {
   bottom: -67px;
   left: 6.25px;
   width: 1.5px;
-  background: var(--divider);
+  background: var(--r-border);
 }
 
 .dot {
@@ -658,7 +658,8 @@ ol {
   background: var(--pending-text);
 }
 
-.dot--history {
+.history .dot--history {
+  background: var(--r-muted);
   position: relative;
   margin-top: 36px;
 }
@@ -675,13 +676,13 @@ ol {
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 18px;
-  color: var(--text-secondary);
+  color: var(--r-text2);
 }
 
 .history__reason {
   font-size: 13px;
   line-height: 20px;
-  color: var(--text-primary);
+  color: var(--r-text);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

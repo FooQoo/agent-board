@@ -1,3 +1,4 @@
+import { expectHistoryNote } from '../helpers/history';
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
 import {
   agboardCatalogOk,
@@ -656,7 +657,7 @@ test.describe('two projects with the same card numbers', () => {
       expect(received.project).toMatchObject({ id: alpha, name: 'Alpha' });
       const answered = received.cards.find(({ id }) => id === 2)!;
       expect(answered.agentStatus).toBe('idle');
-      expect(answered.history.at(-1)).toMatchObject({ reason: 'Use the MIT license, please.' });
+      expectHistoryNote(answered.history.at(-1), ['Which license should Alpha use?', 'Use the MIT license, please.']);
       expect(out).not.toContain('Beta');
     } finally {
       waiter.kill();

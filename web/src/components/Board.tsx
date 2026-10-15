@@ -54,8 +54,15 @@ export function Board({
   }
 
   const groups = groupCards(cards);
+  // Reset the drag controller when cards change lanes so its retained source element cannot
+  // remain beside the newly rendered card. Edits and same-lane reordering keep the controller.
+  const laneMembership = cards
+    .map((card) => `${card.id}:${card.cardStatus}`)
+    .sort()
+    .join('|');
   return (
     <DragDropProvider
+      key={laneMembership}
       onDragOver={(event) => {
         // Cards sort only inside their own lane. Another lane is a move, which waits for its reason, so
         // the card must not be shown there before it is confirmed.

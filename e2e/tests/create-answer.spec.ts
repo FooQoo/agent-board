@@ -1,3 +1,4 @@
+import { expectHistoryNote } from '../helpers/history';
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody, type CardJson, decisionJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
@@ -102,8 +103,9 @@ test('a card for the user is added without a body; closing without typing asks n
   // No body given: the CLI writes the frontmatter with no conditions and an empty body.
   expect(show(id)).toMatchObject({ title: 'Check the invoice', assignee: 'human', isDraft: false, agentStatus: 'idle' });
   expect(show(id).body).toBe('');
-  expect(show(id).description).toContain('acceptance: []\nhistory:\n- id:');
+  expect(show(id).description).toContain('acceptance: []\nhistory:\n- at:');
   expect(show(id).history).toHaveLength(1);
+  expectHistoryNote(show(id).history[0], ['Created card in Todo', 'agent idle']);
   await card(page, id).click();
 
   await page.getByRole('button', { name: 'Add card' }).click();
@@ -191,7 +193,7 @@ test('a waiting card answers in place while details stay independently available
   await expect(newest.getByRole('img')).toHaveCount(0);
   const stored = show(12);
   expect(stored).toMatchObject({ agentStatus: 'idle', pendingReason: null, pendingRequestId: null });
-  expect(stored.history.at(-1)).toMatchObject({ reason: 'Keep the current name.\nDo not migrate.' });
+  expectHistoryNote(stored.history.at(-1), ['Waiting for confirmation on how to replace a board.', 'Keep the current name.\nDo not migrate.']);
 });
 
 test('while it is sent the form cannot be sent twice or cancelled; a failure keeps the answer and can be retried', async ({
@@ -234,7 +236,7 @@ test('while it is sent the form cannot be sent twice or cancelled; a failure kee
   await expect(request(page)).toHaveCount(0);
   expect(posts).toBe(2);
   expect(show(12)).toMatchObject({ agentStatus: 'idle' });
-  expect(show(12).history.at(-1)?.reason).toBe('My answer.');
+  expectHistoryNote(show(12).history.at(-1), ['Waiting for confirmation on how to replace a board.', 'My answer.']);
 });
 
 /** A person's move drops the old request; the agent then runs again and asks something else. */
@@ -266,13 +268,13 @@ test('when the agent asks something else while an answer is typed, the page says
   await expect(request(page).getByRole('alert')).toHaveText('This request has changed. Review the latest board.');
   await expect(box).toHaveValue('An answer to the old question.');
   await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
-  expect(show(12).history.filter((event) => event.reason === 'An answer to the old question.')).toHaveLength(0);
+  expect(show(12).history.filter((event) => event.reason.includes('An answer to the old question.'))).toHaveLength(0);
 
   // Editing the text again confirms it is meant for the new question; then it is sent.
   await box.fill('An answer to the new question.');
   await request(page).getByRole('button', { name: 'Send', exact: true }).click();
   await expect(request(page)).toHaveCount(0);
-  expect(show(12).history.at(-1)).toMatchObject({ reason: 'An answer to the new question.' });
+  expectHistoryNote(show(12).history.at(-1), ['A different question now.', 'An answer to the new question.']);
 });
 
 test('an answer sent from a page that missed the new request is refused by the server and not saved', async ({ page }) => {
@@ -291,7 +293,7 @@ test('an answer sent from a page that missed the new request is refused by the s
   await expect(box).toHaveValue('An answer to the old question.');
   // Nothing was saved: still waiting, now with the new question.
   expect(show(12)).toMatchObject({ agentStatus: 'pending', pendingReason: 'A different question now.' });
-  expect(show(12).history.filter((event) => event.reason === 'An answer to the old question.')).toHaveLength(0);
+  expect(show(12).history.filter((event) => event.reason.includes('An answer to the old question.'))).toHaveLength(0);
 
   // Once the board can be read, the new question appears.
   await page.unroute('**/api/projects/*/board');

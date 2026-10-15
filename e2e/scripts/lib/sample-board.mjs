@@ -80,9 +80,9 @@ export function seed(home, text) {
   return meta.id;
 }
 
-export async function freePort() {
+export async function freePort(preferred = 0) {
   const server = net.createServer();
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(preferred, '127.0.0.1', resolve); });
   const port = server.address().port;
   await new Promise((resolve) => server.close(resolve));
   return port;
@@ -105,10 +105,10 @@ export async function settle(page) {
   await page.mouse.move(0, 0);
 }
 
-/** Starts `agboard serve` on free loopback ports and waits until it is healthy. */
+/** Starts `agboard serve` on available loopback ports and waits until it is healthy. */
 export async function startServer(home) {
-  const localPort = await freePort();
-  const remotePort = await freePort();
+  const localPort = await freePort(Number(process.env.AGBOARD_MEDIA_PORT ?? 0));
+  const remotePort = await freePort(Number(process.env.AGBOARD_MEDIA_REMOTE_PORT ?? 0));
   const origin = `http://127.0.0.1:${localPort}`;
   const remote = `http://127.0.0.1:${remotePort}`;
   let stderr = '';

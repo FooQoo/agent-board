@@ -63,7 +63,12 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(panel).toContainText('Waiting for confirmation on how to replace a board.');
   await expect(panel.getByRole('tab', { name: '本文' })).toHaveAttribute('aria-selected', 'true');
   await panel.getByRole('tab', { name: '履歴 3' }).click();
-  await expect(panel.getByRole('tabpanel').getByRole('list')).toContainText('作成');
+  await expect(panel.getByRole('tabpanel').getByRole('listitem')).toHaveText([
+    '10/02 10:36Waiting for confirmation on how to replace a board.',
+    '10/02 01:10Moved card from Todo to Doing.',
+    '10/02 00:20Created card in Todo.',
+  ]);
+  await expect(panel.getByRole('tabpanel').getByRole('img')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('02-japanese-board-detail.png') });
 
   const storedCard = listCards(mainProject).find(({ id }) => id === 12);

@@ -1,3 +1,4 @@
+import { expectHistoryNote } from '../helpers/history';
 import { spawnSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 import { agboardBinary, decisionJson } from '../helpers/agboard';
@@ -84,8 +85,8 @@ test('answers Todo and Doing requests through the monitor API and records them i
 
   await page.goto('/monitor/');
   const cards = [
-    { id: 1, title: 'Alpha pending review', answer: 'Reviewed in Doing.' },
-    { id: todoCard.id, title: 'Todo answer on mobile', answer: 'Reviewed in Todo.' },
+    { id: 1, title: 'Alpha pending review', question: 'Waiting for the user review.', answer: 'Reviewed in Doing.' },
+    { id: todoCard.id, title: 'Todo answer on mobile', question: 'Choose before work starts.', answer: 'Reviewed in Todo.' },
   ];
   for (const item of cards) {
     const card = page.getByRole('article', { name: new RegExp(item.title) });
@@ -106,6 +107,6 @@ test('answers Todo and Doing requests through the monitor API and records them i
       agentStatus: 'idle',
       pendingRequestId: null,
     });
-    expect(stored.history.at(-1)).toMatchObject({ reason: item.answer });
+    expectHistoryNote(stored.history.at(-1), [item.question, item.answer]);
   }
 });
