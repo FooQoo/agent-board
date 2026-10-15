@@ -42,12 +42,14 @@ pub struct Running {
 impl Running {
     pub fn start(home: &Path) -> Self {
         let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let home = home.to_path_buf();
+        let previous = std::env::var_os("AGBOARD_HOME");
+        // SAFETY: startup and environment restoration hold ENV_LOCK. Server
+        // shutdown never mutates the process environment.
+        unsafe { std::env::set_var("AGBOARD_HOME", home) };
         let (ready_tx, ready_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
         let handle = std::thread::spawn(move || {
-            unsafe { std::env::set_var("AGBOARD_HOME", &home) };
-            let result = run_until_with_remote(
+            run_until_with_remote(
                 ServeConfig { port: 0 },
                 Some(RemoteServeConfig {
                     port: 0,
@@ -57,19 +59,28 @@ impl Running {
                     let _ = stop_rx.await;
                 },
                 move |local, remote| {
-                    unsafe { std::env::remove_var("AGBOARD_HOME") };
                     let _ = ready_tx.send((local, remote.unwrap()));
                 },
-            );
-            unsafe { std::env::remove_var("AGBOARD_HOME") };
-            result
+            )
         });
-        let (local, remote) = match ready_rx.recv_timeout(Duration::from_secs(10)) {
+        let ready = ready_rx.recv_timeout(Duration::from_secs(10));
+        // SAFETY: the same startup lock still protects restoration, including
+        // the error path. Every server path has already been captured.
+        unsafe {
+            match previous {
+                Some(value) => std::env::set_var("AGBOARD_HOME", value),
+                None => std::env::remove_var("AGBOARD_HOME"),
+            }
+        }
+        let (local, remote) = match ready {
             Ok(addresses) => addresses,
-            Err(error) => panic!(
-                "server did not become ready: {error}; result: {:?}",
-                handle.join()
-            ),
+            Err(error) => {
+                let _ = stop_tx.send(());
+                panic!(
+                    "server did not become ready: {error}; result: {:?}",
+                    handle.join()
+                );
+            }
         };
         Self {
             local,

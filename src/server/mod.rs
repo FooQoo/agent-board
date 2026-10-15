@@ -81,14 +81,17 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
     shutdown: F,
     on_ready: impl FnOnce(SocketAddr, Option<SocketAddr>),
 ) -> Result<(), AgboardError> {
-    let serve_path = paths::serve_info_path();
-    if let Some(info) = paths::read_serve_info()
+    // Resolve the process environment once. Another embedded caller can change
+    // AGBOARD_HOME while startup is awaiting file locks or filesystem watches.
+    let data_dir = paths::data_dir();
+    let serve_path = data_dir.join("serve.json");
+    if let Some(info) = paths::read_serve_info_in(&data_dir)
         && instance::is_serving(&info)
     {
         return Err(AgboardError::AlreadyServing { port: info.port });
     }
-    let _lifecycle = crate::lifecycle::LifecycleGuard::acquire(&paths::data_dir())?;
-    let shared = paths::shared_dir();
+    let _lifecycle = crate::lifecycle::LifecycleGuard::acquire(&data_dir)?;
+    let shared = data_dir.join("shared");
     crate::file_store::io::remove_stale_temporaries(&shared, STALE_TEMPORARY_AGE);
     let listener = bind(config.port)?;
     let addr = listener
@@ -151,11 +154,14 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
         };
 
         let pid = std::process::id();
-        paths::write_serve_info(&ServeInfo {
-            pid,
-            port: addr.port(),
-            started_at: format_utc(chrono::Utc::now()),
-        });
+        paths::write_serve_info_in(
+            &data_dir,
+            &ServeInfo {
+                pid,
+                port: addr.port(),
+                started_at: format_utc(chrono::Utc::now()),
+            },
+        );
         on_ready(addr, remote_addr);
         let result = tokio::select! {
             served = async { axum::serve(listener, app).await } => {

@@ -45,7 +45,12 @@ pub fn read_serve_info_in(dir: &std::path::Path) -> Option<ServeInfo> {
 /// Write `serve.json`, creating the data directory if needed. Best effort:
 /// failures are ignored because update notification is optional.
 pub fn write_serve_info(info: &ServeInfo) {
-    let path = serve_info_path();
+    write_serve_info_in(&data_dir(), info);
+}
+
+/// Write the registration to the data directory captured by the caller.
+pub fn write_serve_info_in(dir: &std::path::Path, info: &ServeInfo) {
+    let path = dir.join("serve.json");
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
