@@ -9,3 +9,4 @@ pub mod lifecycle;
 pub mod paths;
 pub mod progress;
 pub mod server;
+pub mod setup;

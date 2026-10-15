@@ -40,6 +40,7 @@ Commands:
   wait    Wait for a board change and fetch its history
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser
+  setup   Add the shared folder to Codex and Claude Code settings
 
 Workflow for agents:
   agboard project ls --json
@@ -131,6 +132,8 @@ pub enum Command {
     Wait(WaitArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
+    /// Create the data folder and add it to Codex and Claude Code settings
+    Setup(SetupArgs),
     /// Show the project's shared folder and where its files are
     Workspace(WorkspaceArgs),
     /// Show the cards an agent can pick up, by epic in priority order
@@ -161,13 +164,14 @@ impl Command {
             Command::Hook(_) => "hook",
             Command::Wait(_) => "wait",
             Command::Serve(_) => "serve",
+            Command::Setup(_) => "setup",
             Command::Workspace(_) => "workspace",
             Command::Progress => "progress",
         }
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 19] = [
+pub const SUBCOMMAND_NAMES: [&str; 20] = [
     "project",
     "init",
     "add",
@@ -187,6 +191,7 @@ pub const SUBCOMMAND_NAMES: [&str; 19] = [
     "wait",
     "workspace",
     "progress",
+    "setup",
 ];
 
 #[derive(Args, Debug)]
@@ -760,6 +765,26 @@ pub struct SnapshotArgs {}
 #[command(after_help = "Examples:\n  agboard --project demo workspace --json")]
 pub struct WorkspaceArgs {}
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum SetupAgentArg {
+    Codex,
+    Claude,
+    All,
+}
+
+#[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  agboard setup\n  agboard setup --agent codex --dry-run\n  agboard setup --agent claude --json"
+)]
+pub struct SetupArgs {
+    /// Agent whose user settings are updated
+    #[arg(long, value_enum, default_value = "all")]
+    pub agent: SetupAgentArg,
+    /// Show the planned changes; create and change nothing
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
 #[derive(Args, Debug)]
 #[command(after_help = "Examples:\n  agboard serve\n  agboard serve --port 7500")]
 pub struct ServeArgs {
@@ -883,9 +908,9 @@ impl Cli {
             }
             (Command::Ls(args), None) if args.all_projects => {}
             // `serve` shows every project, so naming one is a mistake.
-            (Command::Serve(_), Some(_)) => {
+            (Command::Serve(_) | Command::Setup(_), Some(_)) => {
                 return Err(AgboardError::InvalidArgument {
-                    message: "serve does not take --project.".to_string(),
+                    message: format!("{command} does not take --project."),
                     command: Some(command.to_string()),
                 });
             }
@@ -914,7 +939,10 @@ impl Cli {
                 }),
                 None,
             ) => {}
-            (Command::Serve(_) | Command::Hook(_) | Command::Progress, None) => {}
+            (
+                Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Progress,
+                None,
+            ) => {}
             (_, None) => {
                 return Err(AgboardError::InvalidArgument {
                     message: "--project NAME is required.".to_string(),

@@ -3,12 +3,52 @@
 use std::ffi::OsString;
 use std::io::Write;
 
-use crate::cli::args::{self, Cli, Command, EpicCommand, EvidenceCommand, Parsed, ProjectCommand};
+use crate::cli::args::{
+    self, Cli, Command, EpicCommand, EvidenceCommand, Parsed, ProjectCommand, SetupAgentArg,
+};
 use crate::cli::{Context, Env, Outcome, Target, commands, errors, output};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
+use crate::setup::{self, Agent, SetupEnv, SetupOptions};
+
+/// Runs a command line when no data directory can be resolved (no
+/// `AGBOARD_HOME` and no home directory). Help and version still print; every
+/// other command fails with `error`, because nothing can be stored without a
+/// data directory and the working directory is never used instead.
+pub fn execute_without_data_dir(
+    args: &[OsString],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+    error: &AgboardError,
+) -> i32 {
+    let json_requested = args.iter().any(|arg| arg == "--json");
+    match args::parse(args) {
+        Ok(Parsed::Print(text)) => {
+            write_text(stdout, &text);
+            0
+        }
+        Ok(Parsed::Run(_)) => {
+            let text = if json_requested {
+                errors::json(error)
+            } else {
+                errors::human(error)
+            };
+            write_text(stderr, &text);
+            error.exit_code()
+        }
+        Err(parse_error) => {
+            let text = if json_requested {
+                errors::json(&parse_error)
+            } else {
+                errors::human(&parse_error)
+            };
+            write_text(stderr, &text);
+            parse_error.exit_code()
+        }
+    }
+}
 
 /// Runs `args` (the first item is the program name) and returns the process
 /// exit code.
@@ -25,6 +65,31 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     };
     if let Err(error) = cli.validate() {
         return fail(env, &error, cli.json);
+    }
+    // `setup` needs no project and no store: it resolves the data directory
+    // itself and runs before any board files are opened.
+    if let Command::Setup(args) = &cli.command {
+        let agents = match args.agent {
+            SetupAgentArg::Codex => vec![Agent::Codex],
+            SetupAgentArg::Claude => vec![Agent::Claude],
+            SetupAgentArg::All => vec![Agent::Codex, Agent::Claude],
+        };
+        let options = SetupOptions {
+            agents,
+            dry_run: args.dry_run,
+        };
+        return match setup::run(&SetupEnv::from_process(), &options) {
+            Ok(report) => {
+                let text = if cli.json {
+                    format!("{}\n", output::render_json(&report.to_json()))
+                } else {
+                    report.to_human()
+                };
+                write_text(env.stdout, &text);
+                0
+            }
+            Err(error) => fail(env, &error, cli.json),
+        };
     }
     if let Command::Hook(args) = &cli.command {
         let agent = match args.agent {
@@ -96,43 +161,6 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     }
 }
 
-/// Runs a command line when no data directory can be resolved (no
-/// `AGBOARD_HOME` and no home directory). Help and version still print; every
-/// other command fails with `error`, because nothing can be stored without a
-/// data directory and the working directory is never used instead.
-pub fn execute_without_data_dir(
-    args: &[OsString],
-    stdout: &mut dyn Write,
-    stderr: &mut dyn Write,
-    error: &AgboardError,
-) -> i32 {
-    let json_requested = args.iter().any(|arg| arg == "--json");
-    match args::parse(args) {
-        Ok(Parsed::Print(text)) => {
-            write_text(stdout, &text);
-            0
-        }
-        Ok(Parsed::Run(_)) => {
-            let text = if json_requested {
-                errors::json(error)
-            } else {
-                errors::human(error)
-            };
-            write_text(stderr, &text);
-            error.exit_code()
-        }
-        Err(parse_error) => {
-            let text = if json_requested {
-                errors::json(&parse_error)
-            } else {
-                errors::human(&parse_error)
-            };
-            write_text(stderr, &text);
-            parse_error.exit_code()
-        }
-    }
-}
-
 /// How a command uses the projects, which decides how its target is resolved.
 enum Access {
     /// Reads one project; the project must exist.
@@ -180,7 +208,9 @@ fn access(command: &Command) -> Access {
         | Command::History(_)
         | Command::Rm(_) => Access::ChangeProject,
         Command::Progress => Access::ReadBoundProject,
-        Command::Serve(_) | Command::Hook(_) | Command::Wait(_) => Access::Catalog,
+        Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Wait(_) => {
+            Access::Catalog
+        }
     }
 }
 
@@ -242,8 +272,8 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Snapshot(_) => commands::snapshot::run(ctx),
         Command::Workspace(_) => commands::workspace::run(ctx),
         Command::Progress => commands::progress::run(ctx),
-        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) => {
-            unreachable!("serve and the agent commands are handled before store setup")
+        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) | Command::Setup(_) => {
+            unreachable!("serve, setup, and the agent commands are handled before store setup")
         }
     }
 }
