@@ -186,7 +186,7 @@ test.describe('two projects with the same card numbers', () => {
     await expect(page).toHaveTitle('Alpha - Agent Board');
     await expect(card(page, 1)).toHaveText(/Alpha: draft the release notes/);
     await expect(card(page, 2)).toHaveText(/Alpha: choose the license/);
-    await expect(card(page, 2)).toContainText('Which license should Alpha use?');
+    await expect(card(page, 2).locator('..')).toContainText('Which license should Alpha use?');
     await expect(page.getByRole('contentinfo')).toContainText('3 cards');
     await card(page, 2).click();
     await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Alpha: choose the license');
@@ -232,7 +232,7 @@ test.describe('two projects with the same card numbers', () => {
     await choose(page, 'Beta');
     await expect(switcher(page)).toHaveText('Beta');
     await expect(card(page, 1)).toHaveText(/Beta: benchmark the importer/);
-    await expect(card(page, 2)).toContainText('Which database should Beta use?');
+    await expect(card(page, 2).locator('..')).toContainText('Which database should Beta use?');
     await expect(card(page, 3)).toContainText('Beta: refactor the parser');
     await expect(page.getByRole('contentinfo')).toContainText('3 cards');
     await expect(page.getByText('Alpha:')).toHaveCount(0);

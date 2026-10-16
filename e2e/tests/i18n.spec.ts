@@ -50,7 +50,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(card(page, 11)).toContainText('稼働中');
   await expect(card(page, 12)).toContainText('待機中');
   await expect(card(page, 13)).toContainText('未稼働');
-  await expect(card(page, 12)).toContainText('Waiting for confirmation on how to replace a board.');
+  await expect(card(page, 12).locator('..')).toContainText('Waiting for confirmation on how to replace a board.');
   await expect(card(page, 12)).toContainText('更新 10/02 10:36');
   await expect(page.getByRole('contentinfo')).toContainText('8件');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^同期済み \d{2}:\d{2}$/);

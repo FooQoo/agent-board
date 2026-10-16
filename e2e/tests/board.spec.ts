@@ -67,7 +67,8 @@ test('Doing cards show Idle, Running, or Pending, and a pending card shows its r
   ).toBeVisible();
   const pending = doing.getByRole('button', { name: /^#12 AI Pending Restore a board from JSON / });
   await expect(pending).toBeVisible();
-  await expect(pending).toContainText('Waiting for confirmation on how to replace a board.');
+  // A pending question is shown in the answer form beside the card, so check the card's container.
+  await expect(pending.locator('..')).toContainText('Waiting for confirmation on how to replace a board.');
 
   // Only Doing cards carry a run state.
   for (const name of ['Todo', 'Done'] as const) {
