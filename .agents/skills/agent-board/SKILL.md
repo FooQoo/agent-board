@@ -64,6 +64,7 @@ Read the `README.md` in the returned `folder` before editing. Then:
 - For direct plan, body, or acceptance edits, write a temporary file in the same folder and rename it over the original. Preserve the current history and all unknown frontmatter metadata. The board picks up the change automatically. Use `history add` for progress instead of replacing the file just to append history.
 - Never edit `project.json`, `epic.json`, `task.json`, or `.internal/`. Never delete a card or epic folder.
 - Keep machine-specific absolute paths out of shared files.
+- The user prepares agent access to the data folder once with `agboard setup`. If a write to the shared folder is refused by the sandbox or by permissions, report it to the user. Do not run `agboard setup` or edit Codex or Claude Code settings yourself.
 
 `edit --desc-file` replaces a task body and acceptance conditions while preserving its latest history; it cannot append history. `epic edit --plan-file` replaces an epic plan. Bodies are limited to 50,000 characters; if a plan would exceed that, split it into more tasks after asking the user.
 

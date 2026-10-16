@@ -56,7 +56,7 @@ just serve        # 保存済みボードを表示（ポート7420、Vite HMRと
 
 ポートを変える場合は`just dev 5174`、または`just serve 7500 7501`（Web、Rust APIの順）のように指定します。
 
-CLIを手動で試したりテストしたりするときは、実際のボードに触れないよう`AGBOARD_HOME`を一時ディレクトリに設定してください。macOSの既定のデータ保存先は`~/Library/Application Support/agboard/`、Windowsでは`%APPDATA%\agboard\`です。
+CLIを手動で試したりテストしたりするときは、実際のボードに触れないよう`AGBOARD_HOME`を一時ディレクトリに設定してください。既定のデータ保存先は、macOSでは`~/.agent-board/`、Windowsでは`%USERPROFILE%\.agent-board\`です。
 
 ```sh
 export AGBOARD_HOME="$(mktemp -d)"

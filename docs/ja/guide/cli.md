@@ -67,6 +67,17 @@ agboard ls --all-projects --json
 
 `ls --all-projects`は、全プロジェクトをプロジェクト名順に一貫して読み取り、カードの説明全文と履歴を含めます。`--column`と`--state`の絞り込みは全プロジェクトに適用されます。`--project`とは併用しないでください。
 
+## 共有フォルダをセットアップする
+
+`agboard setup`は、データフォルダと`shared/`フォルダを作成し、CodexとClaude Codeのユーザー設定にデータフォルダを追加して、エージェントがそこへ書き込めるようにします。プロジェクトは不要で、実行するのはあなたです。フックやエージェントのスキルは登録しません。
+
+```sh
+agboard setup --dry-run
+agboard setup --agent claude --json
+```
+
+`--agent codex|claude|all`で更新する設定を選びます(既定は`all`)。`--dry-run`は何も変更せず、`--json`は機械で読める出力を表示します。`sandbox_mode = "workspace-write"`でないCodexの設定は拒否され、拒否したときは何も変更しません。変更内容、バックアップ、既存のボードの移行については、[データとバックアップ](./data#共有フォルダをセットアップする)を参照してください。
+
 ## 出力と確認
 
 機械で読む出力には`--json`を付けます。コマンドのオプションの全体は`agboard --help`または`agboard <command> --help`で確認できます。helpの文章、エラー、JSONの値は、ブラウザの表示言語にかかわらず常に英語です。

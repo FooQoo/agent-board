@@ -67,6 +67,17 @@ agboard ls --all-projects --json
 
 `ls --all-projects` reads all projects consistently in project-name order, with complete card descriptions and history. Its `--column` and `--state` filters apply to every project; do not combine it with `--project`.
 
+## Set up the shared folder
+
+`agboard setup` creates the data folder and its `shared/` folder, then adds the data folder to the Codex and Claude Code user settings so that the agents can write there. It needs no project, and you run it yourself; it does not install hooks or the agent skill.
+
+```sh
+agboard setup --dry-run
+agboard setup --agent claude --json
+```
+
+`--agent codex|claude|all` chooses the settings to update (default `all`). `--dry-run` changes nothing, and `--json` prints machine-readable output. The command refuses a Codex configuration that is not `sandbox_mode = "workspace-write"` and changes nothing when it refuses. See [Data and backups](./data#set-up-the-shared-folder) for what it changes, backups, and adopting an existing board.
+
 ## Output and confirmation
 
 Add `--json` for machine-readable output. Use `agboard --help` or `agboard <command> --help` for the full command options. The help text, errors, and JSON values are always in English, whatever language the browser uses.

@@ -56,7 +56,7 @@ just serve        # saved board with Vite HMR and Rust watch (port 7420)
 
 Pass different ports as arguments, for example `just dev 5174` or `just serve 7500 7501` (web port, then Rust API port).
 
-For manual CLI experiments and tests, point `AGBOARD_HOME` at a temporary directory so your saved board is not touched. The default data area is `~/Library/Application Support/agboard/` on macOS and `%APPDATA%\agboard\` on Windows.
+For manual CLI experiments and tests, point `AGBOARD_HOME` at a temporary directory so your saved board is not touched. The default data area is `~/.agent-board/` on macOS and `%USERPROFILE%\.agent-board\` on Windows.
 
 ```sh
 export AGBOARD_HOME="$(mktemp -d)"
