@@ -139,6 +139,27 @@ test('a person adds conditions when creating a card, and the CLI reads them back
   expect(show(id).acceptance).toEqual(THREE);
 });
 
+test('the focus ring of the first condition is not cut off by the scrolling list', async ({ page }) => {
+  await page.getByRole('button', { name: 'Add card' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add card' });
+  await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
+  await dialog.getByRole('button', { name: 'Add condition' }).click();
+  const first = dialog.getByRole('textbox', { name: 'Condition AC-1' });
+  await first.focus();
+  // The list scrolls and clips what is outside its box, so the ring (outline width plus offset) must fit above the row.
+  const { room, ring } = await first.evaluate((input) => {
+    const list = input.closest('.conditions-dock__body');
+    if (!list) throw new Error('the condition is not inside the scrolling list');
+    const style = getComputedStyle(input);
+    return {
+      room: input.getBoundingClientRect().top - list.getBoundingClientRect().top,
+      ring: parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset),
+    };
+  });
+  expect(ring).toBeGreaterThan(0);
+  expect(room).toBeGreaterThanOrEqual(ring);
+});
+
 test('a person edits the conditions of a draft: removes, adds without reusing a number, checks, and saves them together with the body', async ({ page }) => {
   const id = addCard('Edit me', frontmatter(THREE, 'Old text.'));
   await page.reload();

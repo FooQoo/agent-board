@@ -70,6 +70,16 @@ test('starts in English in a Japanese browser, switches and persists without tra
   ]);
   await expect(panel.getByRole('tabpanel').getByRole('img')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('02-japanese-board-detail.png') });
+  // The conditions are called 受入条件 on every screen, in the details and in the add dialog.
+  await panel.getByRole('tab', { name: /^受入条件/ }).click();
+  await expect(panel.getByRole('tabpanel')).toContainText('受入条件');
+  await expect(panel).not.toContainText('受け入れ');
+  await page.getByRole('button', { name: 'カード追加' }).click();
+  const createDialog = page.getByRole('dialog', { name: 'カードを追加' });
+  await expect(createDialog.getByRole('button', { name: /^受入条件/ })).toBeVisible();
+  await expect(createDialog).not.toContainText('受け入れ');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   const storedCard = listCards(mainProject).find(({ id }) => id === 12);
   expect(storedCard).toMatchObject({

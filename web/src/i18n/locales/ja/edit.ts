@@ -87,7 +87,7 @@ export const editJa = {
     saveFailedFirst: '{{step}}を保存できませんでした。入力は残っています。',
   },
   acceptanceEdit: {
-    title: '受け入れ条件',
+    title: '受入条件',
     progress: '{{total}}件中{{done}}件を達成',
     savedIn: 'ファイルの frontmatter に保存',
     add: '条件を追加',
@@ -99,6 +99,6 @@ export const editJa = {
     emptyText: '条件の文章を入力してください',
     placeholder: '達成を確かめられる条件を入力',
     numberNote: '番号は削除しても振り直しません。',
-    sectionLink: '受け入れ条件 {{done}} / {{total}}',
+    sectionLink: '受入条件 {{done}} / {{total}}',
   },
 } as const;

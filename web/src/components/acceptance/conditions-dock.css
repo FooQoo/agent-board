@@ -67,7 +67,9 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 0 16px 12px;
+  /* The scroller clips the focus ring (2px outline + 2px offset) of the first row, so it gets 4px of room; the negative margin keeps the spacing below the header as it was. */
+  margin-top: -4px;
+  padding: 4px 16px 12px;
 }
 
 .conditions-dock__body[hidden] {
