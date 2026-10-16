@@ -31,7 +31,7 @@ features:
       width: 28
       height: 28
     title: 進行表と自動完了で、AIの管理操作を減らす
-    details: エピックでタスクの進行順を決め、agboard progressで今進められる作業を取得できます。すべての受け入れ条件を達成した対象のAIカードは自動で完了になります。
+    details: エピックでタスクの進行順を決め、agboard progressで今進められる作業を取得できます。すべての受入条件を達成した対象のAIカードは自動で完了になります。
   - icon:
       src: /icons/file-text.svg
       alt: ''
@@ -49,13 +49,13 @@ import { withBase } from 'vitepress'
 
 <video class="demo-video" :src="withBase('/videos/demo.ja.mp4')" :poster="withBase('/videos/demo.ja.jpg')" autoplay muted loop playsinline></video>
 
-1枚のカードの流れです。エージェントが着手して質問し、ユーザーがカード上で回答すると、エージェントが作業を再開します。すべての受け入れ条件を達成すると、カードは自動で完了に移ります。
+1枚のカードの流れです。エージェントが着手して質問し、ユーザーがカード上で回答すると、エージェントが作業を再開します。すべての受入条件を達成すると、カードは自動で完了に移ります。
 
 ## ボード
 
 エージェントに長い作業を任せると、どの作業が進み、何を待ち、何の返事が必要なのか分かりにくくなります。Agent Boardはユーザーとエージェントが同じ履歴つきボードを見て、作業の往復を続けられるようにします。
 
-![カード内の回答欄、受け入れ条件の達成数、詳細の4タブを表示したPCボード](../images/board.ja.png){.screenshot}
+![カード内の回答欄、受入条件の達成数、詳細の4タブを表示したPCボード](../images/board.ja.png){.screenshot}
 
 ## エピックと進行表
 
