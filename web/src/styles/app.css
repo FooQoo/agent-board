@@ -610,9 +610,12 @@ ol {
 /* ---- History timeline ---- */
 
 .history {
+  /* The dots sit on the middle of the first line of each reason: the time line (18px), the gap (8px), and half of the reason line (10px). */
+  --history-gap: 24px;
+  --history-dot-center: 36px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--history-gap);
 }
 
 .history__step {
@@ -626,8 +629,8 @@ ol {
 .history__step:not(:last-child)::before {
   content: "";
   position: absolute;
-  top: 43px;
-  bottom: -67px;
+  top: var(--history-dot-center);
+  bottom: calc(-1 * (var(--history-gap) + var(--history-dot-center)));
   left: 6.25px;
   width: 1.5px;
   background: var(--r-border);
@@ -663,7 +666,7 @@ ol {
 .history .dot--history {
   background: var(--r-muted);
   position: relative;
-  margin-top: 36px;
+  margin-top: calc(var(--history-dot-center) - 7px);
 }
 
 .history__text {

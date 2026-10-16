@@ -190,6 +190,14 @@ test('a user answer returns a pending card to idle and records the full answer i
   await expect(panel.locator('.history__reason').first()).toHaveCSS('color', 'rgb(27, 36, 48)');
   await expect(panel.locator('.history__at').first()).toHaveCSS('color', 'rgb(86, 98, 116)');
   expect(await panel.locator('.history__step').first().evaluate((step) => getComputedStyle(step, '::before').backgroundColor)).toBe('rgb(225, 229, 235)');
+  // Each dot is centered on the first line of its reason, not on the time above it or below the text.
+  for (const step of await panel.locator('.history__step').all()) {
+    const dot = await step.locator('.dot').boundingBox();
+    const reasonBox = await step.locator('.history__reason').boundingBox();
+    const lineHeight = await step.locator('.history__reason').evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+    if (!dot || !reasonBox) throw new Error('history step has no box');
+    expect(Math.abs(dot.y + dot.height / 2 - (reasonBox.y + lineHeight / 2))).toBeLessThan(1);
+  }
   // The request stays read-only in details; the response is entered on the card with no dialog.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
