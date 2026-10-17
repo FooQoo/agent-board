@@ -12,6 +12,8 @@ import { ActionDialog } from './components/ActionDialog';
 import { Board } from './components/Board';
 import { BulkArchiveDialog } from './components/archive/BulkArchiveDialog';
 import { ArchiveList } from './components/archive/ArchiveList';
+import { EpicList } from './components/epics/EpicList';
+import { EpicDetailPanel } from './components/epics/EpicDetailPanel';
 import type { BoardMessageKind } from './components/BoardMessage';
 import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
@@ -119,6 +121,7 @@ export function App({ initial }: AppProps) {
   else view = board.status === 'error' ? 'board-error' : 'board-loading';
 
   const archiveVisible = session.viewMode === 'archive' && known && view !== 'not-found';
+  const epicsVisible = session.viewMode === 'epics' && known && view !== 'not-found';
 
   // A deleted project shows up in the list on the next refresh; ask for it right away.
   const reloadProjects = projects.reload;
@@ -143,6 +146,12 @@ export function App({ initial }: AppProps) {
       if (next !== session.selectedId) dispatch({ type: 'SELECT_CARD', id: next });
     }
   }, [boardData, session.selectedId, dispatch]);
+  // The epic list reads the board's epics; a selected epic that is gone is deselected.
+  const selectedEpic = boardData?.epics.find((epic) => epic.id === session.epicSelectedId) ?? null;
+  useEffect(() => {
+    if (boardData && session.epicSelectedId !== null && selectedEpic === null)
+      dispatch({ type: 'SELECT_EPIC', id: null });
+  }, [boardData, session.epicSelectedId, selectedEpic, dispatch]);
   useEffect(() => {
     if (
       archive.status === 'ready' &&
@@ -224,14 +233,28 @@ export function App({ initial }: AppProps) {
         onArchive={() => {
           dispatch({ type: 'SET_VIEW_MODE', mode: 'archive' });
         }}
+        onEpics={() => {
+          dispatch({ type: 'SET_VIEW_MODE', mode: 'epics' });
+        }}
       />
       <div
         className="app__body"
-        data-detail={detailShown ? 'shown' : 'hidden'}
+        data-detail={detailShown && !(epicsVisible && selectedEpic === null) ? 'shown' : 'hidden'}
         ref={bodyRef}
         style={{ '--detail-width': `${width}px` } as CSSProperties}
       >
-        {archiveVisible ? (
+        {epicsVisible ? (
+          <EpicList
+            epics={boardData?.epics}
+            counts={boardData?.epicTaskCounts ?? {}}
+            status={board.status}
+            fetchFailed={board.fetchFailed}
+            selectedId={session.epicSelectedId}
+            onSelect={(id) => dispatch({ type: 'SELECT_EPIC', id })}
+            onRetry={board.reload}
+            layoutRef={attachLayoutRef}
+          />
+        ) : archiveVisible ? (
           <ArchiveList
             data={archive.data}
             status={archive.status}
@@ -279,7 +302,18 @@ export function App({ initial }: AppProps) {
             }}
           />
         )}
-        {detailShown && (
+        {epicsVisible && selectedEpic !== null && isProjectId(activeId) && (
+          <>
+            <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
+            <EpicDetailPanel
+              projectId={activeId}
+              epic={selectedEpic}
+              onEdit={() => openDialog({ kind: 'epic', epic: selectedEpic })}
+              onClose={() => dispatch({ type: 'SELECT_EPIC', id: null })}
+            />
+          </>
+        )}
+        {!epicsVisible && detailShown && (
           <>
             <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
             <DetailPanel
@@ -360,10 +394,22 @@ export function App({ initial }: AppProps) {
         )}
       </div>
       <StatusBar
-        status={archiveVisible ? archive.status : barStatus}
-        taskCount={archiveVisible ? (archive.data?.tasks.length ?? 0) : tasks.length}
-        countKind={archiveVisible ? 'archive' : 'board'}
-        connected={archiveVisible ? !streamDown && !archive.fetchFailed : connected}
+        status={archiveVisible ? archive.status : epicsVisible ? board.status : barStatus}
+        taskCount={
+          archiveVisible
+            ? (archive.data?.tasks.length ?? 0)
+            : epicsVisible
+              ? (boardData?.epics.length ?? 0)
+              : tasks.length
+        }
+        countKind={archiveVisible ? 'archive' : epicsVisible ? 'epics' : 'board'}
+        connected={
+          archiveVisible
+            ? !streamDown && !archive.fetchFailed
+            : epicsVisible
+              ? !streamDown && !board.fetchFailed
+              : connected
+        }
         lastSyncedAt={archiveVisible ? archive.lastSyncedAt : board.lastSyncedAt}
         note={archiveVisible ? undefined : STATUS_NOTE[view]}
       />
@@ -387,6 +433,7 @@ export function App({ initial }: AppProps) {
           onOpenTask={(taskId) => {
             // The epic dialog closes and the board shows the task in the detail panel.
             operations.end(operation.id);
+            dispatch({ type: 'SET_VIEW_MODE', mode: 'board' });
             dispatch({ type: 'SELECT_CARD', id: taskId });
           }}
           onSubmit={async (data) => {

@@ -678,9 +678,13 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
                 version: &'a str,
                 cursor: &'a crate::domain::ChangeCursor,
                 epics: &'a [crate::file_store::model::EpicView],
+                epic_task_counts:
+                    &'a std::collections::BTreeMap<String, super::epic_counts::EpicTaskCounts>,
                 tasks: Vec<&'a TaskView>,
                 problems: &'a [crate::file_store::model::Problem],
             }
+            let epic_task_counts =
+                super::epic_counts::task_counts_by_epic(&view.epics, &view.tasks);
             let tasks = view
                 .tasks
                 .iter()
@@ -693,6 +697,7 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
                     version: &view.version,
                     cursor: &view.cursor,
                     epics: &view.epics,
+                    epic_task_counts: &epic_task_counts,
                     tasks,
                     problems: &view.problems,
                 },

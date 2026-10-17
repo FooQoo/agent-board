@@ -33,6 +33,7 @@ describe('toBoard', () => {
       project: { id: 'a'.repeat(32), name: 'p', createdAt: '2026-10-01T00:00:00Z' },
       version: 'f1-version',
       cursor: 'f1:x:y',
+      epicTaskCounts: {},
       epics: [
         {
           id: 'FILE-SHARE',
@@ -62,6 +63,7 @@ describe('toBoard', () => {
       project: { id: 'a'.repeat(32), name: 'p', createdAt: '2026-10-01T00:00:00Z' },
       version: 'v',
       cursor: 'c',
+      epicTaskCounts: {},
       epics: [
         {
           id: 'FILE-SHARE',

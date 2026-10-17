@@ -8,7 +8,7 @@ The HTTP API of `agboard serve`. How a request is handled, including the write g
 | --- | --- |
 | `GET /` | HTML with the write token in `meta[name=agboard-token]`. |
 | `GET /api/projects` | `projects` (id, name, createdAt) and `catalogVersion`, without tasks. 200 even when empty. |
-| `GET /api/projects/{projectId}/board` | project, version, cursor, epics, unarchived tasks with bodies and full history, problems. No `nextTaskId`. |
+| `GET /api/projects/{projectId}/board` | project, version, cursor, epics, `epicTaskCounts` (per epic: todo, doing, done, archived, total; archived counts only as archived; all from the same snapshot), unarchived tasks with bodies and full history, problems. No `nextTaskId`. |
 | `POST /api/projects/{projectId}/tasks` | Creates a Todo/Idle task from title, body, acceptance, assignee, isDraft. The server composes and validates the frontmatter. 201. |
 | `PATCH /api/projects/{projectId}/tasks/{id}` | Updates title, body, acceptance, and optional `finalize: true` on a **draft** task. Body alone keeps the frontmatter; acceptance alone keeps the body; `description` with `body` is 422 `invalid_value`. Last write wins. Non-draft is 409 `task_not_draft`. |
 | `PUT /api/projects/{projectId}/tasks/{id}/draft` | Sets `isDraft`. A running task is 409 `invalid_state_for_draft`. |

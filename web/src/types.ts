@@ -114,11 +114,22 @@ export interface ProjectList {
 }
 
 /** A board snapshot: `GET /api/projects/{projectId}/board`. */
+/** How many of an epic's tasks are in each group. `total` is the sum of the four. */
+export interface EpicTaskCounts {
+  todo: number;
+  doing: number;
+  done: number;
+  archived: number;
+  total: number;
+}
+
 export interface Board {
   project: Project;
   version: string;
   cursor: string;
   epics: Epic[];
+  /** The counts of every epic, keyed by epic ID, from the same snapshot as `epics`. */
+  epicTaskCounts: Record<string, EpicTaskCounts>;
   tasks: Task[];
   problems: Problem[];
 }

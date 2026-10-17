@@ -6,6 +6,7 @@
 mod api;
 pub mod assets;
 pub mod dist;
+mod epic_counts;
 mod events;
 pub mod guard;
 mod instance;

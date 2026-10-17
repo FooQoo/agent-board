@@ -8,7 +8,7 @@
 | --- | --- |
 | `GET /` | 書き込み用トークンを`meta[name=agboard-token]`に埋め込んだHTML。 |
 | `GET /api/projects` | `projects`（id・name・createdAt）と`catalogVersion`。タスクは含まない。0件でも200。 |
-| `GET /api/projects/{projectId}/board` | project・version・cursor・epics、本文と全履歴を持つ未アーカイブのtasks、problems。`nextTaskId`はない。 |
+| `GET /api/projects/{projectId}/board` | project・version・cursor・epics・`epicTaskCounts`（エピックごとにtodo・doing・done・archived・total。アーカイブ済みはarchivedだけに数え、同じスナップショットから集計する）、本文と全履歴を持つ未アーカイブのtasks、problems。`nextTaskId`はない。 |
 | `POST /api/projects/{projectId}/tasks` | title・body・acceptance・assignee・isDraftからTodo・Idleのタスクを作る。サーバーがfrontmatterを組み立てて検証する。201。 |
 | `PATCH /api/projects/{projectId}/tasks/{id}` | **下書き**のタスクのtitle・body・acceptanceと任意の`finalize: true`を更新する。bodyだけならfrontmatterを、acceptanceだけなら本文を保つ。`description`と`body`の同時指定は422 `invalid_value`。後から保存した内容が優先される。下書きでなければ409 `task_not_draft`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/draft` | `isDraft`を設定する。Runningのタスクは409 `invalid_state_for_draft`。 |

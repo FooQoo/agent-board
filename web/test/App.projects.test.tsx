@@ -437,7 +437,7 @@ describe('which project is shown', () => {
     act(() => FakeEventSource.latest.emit('changed'));
 
     expect(await screen.findByText('Project not found')).toBeTruthy();
-    expect(document.querySelector('.archive-list-pane')).toBeNull();
+    expect(document.querySelector('.list-pane')).toBeNull();
     expect(screen.queryByText('Archived from deleted project')).toBeNull();
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     expect(switcher('Choose a project')).toBeTruthy();

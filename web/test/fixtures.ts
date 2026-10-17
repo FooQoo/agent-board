@@ -23,6 +23,7 @@ export function boardOf(project: Project, tasks: Task[], revision = 1): Board {
     version: `v${revision}`,
     cursor: `f1:${project.id}:v${revision}`,
     epics: [],
+    epicTaskCounts: {},
     tasks,
     problems: [],
   };

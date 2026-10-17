@@ -1,0 +1,126 @@
+/* The epic list rows, the task counts, and the epic label on the detail panel. */
+
+.epic-row {
+  min-width: 0;
+}
+
+.epic-row > button {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--r-border);
+  border-radius: 9px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.epic-row > button:hover,
+.epic-row > button[aria-pressed="true"] {
+  border-color: var(--r-accent);
+  background: var(--r-accent-soft);
+}
+
+.epic-row__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.epic-row__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.epic-row__badge svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+.epic-row__total {
+  flex: none;
+  color: var(--r-muted);
+  font-size: 12px;
+}
+
+.epic-row__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+.epic-row__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.epic-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.epic-counts__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--r-border);
+  border-radius: 999px;
+  color: var(--r-muted);
+  white-space: nowrap;
+}
+
+.epic-counts__value {
+  color: var(--r-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.epic-counts--missing {
+  color: var(--r-muted);
+}
+
+.epic-detail__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.epic-detail__badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+@media (max-width: 760px) {
+  .epic-row > button {
+    padding: 10px 12px;
+  }
+}

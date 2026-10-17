@@ -56,8 +56,8 @@ for (const mode of ["light", "dark"] as const) {
 				await page.goto("/");
 				await expect(page.locator(".lane-header__archive")).toBeEnabled();
 				await page.locator(".header__archive").click();
-				const archive = page.locator(".archive-list-pane");
-				const list = page.locator(".archive-list");
+				const archive = page.locator(".list-pane");
+				const list = page.locator(".list-pane__rows");
 				const row = page.locator(".archive-row > button").first();
 				await expect(row).toBeVisible();
 				const bodyBounds = (await page.locator(".app__body").boundingBox())!;
@@ -75,8 +75,8 @@ for (const mode of ["light", "dark"] as const) {
 				);
 				for (const selector of [
 					".app__body",
-					".archive-list-pane",
-					".archive-list",
+					".list-pane",
+					".list-pane__rows",
 					".archive-row",
 					".archive-row > button",
 					".detail",
@@ -403,9 +403,9 @@ test("archive empty state matches the Pen guidance and shared detail placeholder
 	await page.goto("/");
 	await expect(page.getByRole("region", { name: "未着手" })).toBeVisible();
 	await page.locator(".header__archive").click();
-	await expect(page.locator(".archive-list-pane__count")).toHaveText("0件");
-	await expect(page.locator(".archive-list")).toHaveCount(0);
-	await expect(page.locator(".archive-list-pane__empty svg")).toBeVisible();
+	await expect(page.locator(".list-pane__count")).toHaveText("0件");
+	await expect(page.locator(".list-pane__rows")).toHaveCount(0);
+	await expect(page.locator(".list-pane__empty svg")).toBeVisible();
 	await expect(
 		page.getByText("アーカイブされたタスクはありません"),
 	).toBeVisible();

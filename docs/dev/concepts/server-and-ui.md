@@ -38,6 +38,8 @@ JSON and HTML responses are `no-store`. HTML responses carry `Referrer-Policy: n
 
 **Themes.** `web/src/theme/index.ts` owns theme types, the list, validation, DOM attributes, and storage. A theme is a mode (light or dark) and one of 12 accents. It is applied before React renders by syncing `data-mode`, `data-accent`, the `dark` class, and `color-scheme`, and saved as `agboard.theme` in `localStorage`. Theme changes never reach the API or task history.
 
+The epic list reads `epics` and `epicTaskCounts` from the board response. The server computes the counts from the same snapshot as the epics, so the list never mixes two reads. The mobile monitor carries the same counts in its board response, but it has no epic list screen. The list shares its frame with the archive through `ListPane`, and each state (loading, load failure, refresh failure, empty) comes from the project resource, so a failed refresh keeps the last good rows.
+
 ## Behavior on failure in the UI
 
 **Saving and answering**

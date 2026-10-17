@@ -1,0 +1,105 @@
+/* The shared frame of a list pane: heading, count, states, and the scrolling column. */
+.list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px 24px 24px;
+}
+
+.list-pane__header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: none;
+}
+
+.list-pane__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.list-pane__heading > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--r-muted);
+}
+
+.list-pane__heading h2 {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.list-pane__count {
+  flex: none;
+  color: var(--r-muted);
+  font-size: 13px;
+}
+
+.list-pane__header p {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.list-pane__state,
+.list-pane__empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 160px;
+  color: var(--r-muted);
+  text-align: center;
+}
+
+.list-pane__state p,
+.list-pane__empty p {
+  margin: 0;
+}
+
+.list-pane__empty > svg {
+  width: 24px;
+  height: 24px;
+  color: var(--r-muted);
+}
+
+.list-pane__empty p:first-of-type {
+  color: var(--r-text);
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.list-pane__error {
+  margin: 0;
+  color: var(--r-danger);
+  font-size: 12px;
+}
+
+.list-pane__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .archive-list-pane {
+    padding: 16px;
+  }
+
+  .archive-list-pane__heading h2 {
+    font-size: 18px;
+  }
+}

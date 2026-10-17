@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArchiveIcon, PlusIcon, SettingsIcon } from 'lucide-react';
+import { ArchiveIcon, LayersIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Project, ProjectId } from '../types';
+import type { ViewMode } from '../lib/projectSession';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { SettingsDialog } from './SettingsDialog';
 
@@ -18,7 +19,8 @@ export interface HeaderProps {
   canAdd?: boolean;
   onAdd?: () => void;
   onArchive?: () => void;
-  viewMode?: 'board' | 'archive';
+  onEpics?: () => void;
+  viewMode?: ViewMode;
   onBack?: () => void;
 }
 
@@ -31,6 +33,7 @@ export function Header({
   canAdd = false,
   onAdd = () => {},
   onArchive = () => {},
+  onEpics = () => {},
   viewMode = 'board',
   onBack = () => {},
 }: HeaderProps) {
@@ -68,7 +71,7 @@ export function Header({
           {t('dialog.addCard')}
         </Button>
       )}
-      {viewMode === 'archive' ? (
+      {viewMode === 'archive' || viewMode === 'epics' ? (
         <Button
           type="button"
           variant="outline"
@@ -76,19 +79,31 @@ export function Header({
           disabled={switchDisabled}
           onClick={onBack}
         >
-          {t('archive.back')}
+          {viewMode === 'epics' ? t('epics.back') : t('archive.back')}
         </Button>
       ) : canAdd ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="header__archive"
-          disabled={switchDisabled}
-          onClick={onArchive}
-        >
-          <ArchiveIcon aria-hidden="true" />
-          {t('archive.title')}
-        </Button>
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="header__epics"
+            disabled={switchDisabled}
+            onClick={onEpics}
+          >
+            <LayersIcon aria-hidden="true" />
+            {t('epics.title')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="header__archive"
+            disabled={switchDisabled}
+            onClick={onArchive}
+          >
+            <ArchiveIcon aria-hidden="true" />
+            {t('archive.title')}
+          </Button>
+        </>
       ) : null}
       <Button
         ref={settingsButtonRef}

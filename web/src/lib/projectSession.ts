@@ -11,7 +11,7 @@ export type OperationKind =
   | 'archive'
   | 'restore'
   | 'archive-done';
-export type ViewMode = 'board' | 'archive';
+export type ViewMode = 'board' | 'archive' | 'epics';
 
 /** A form or confirmation that must finish or be cancelled before the project can change. */
 export interface Operation {
@@ -38,6 +38,8 @@ export interface SessionState {
   selectedId: number | null;
   viewMode: ViewMode;
   archiveSelectedId: number | null;
+  /** The epic whose details the epic list shows, by epic ID. */
+  epicSelectedId: string | null;
   bulkArchive: { projectId: ProjectId; targets: Task[] } | null;
   dialog: DialogAction | null;
   operation: Operation | null;
@@ -50,6 +52,7 @@ export type SessionAction =
   | { type: 'SELECT_CARD'; id: number | null }
   | { type: 'SET_VIEW_MODE'; mode: ViewMode }
   | { type: 'SELECT_ARCHIVE_CARD'; id: number | null }
+  | { type: 'SELECT_EPIC'; id: string | null }
   | { type: 'OPEN_BULK_ARCHIVE'; projectId: ProjectId; targets: Task[] }
   | { type: 'CLOSE_BULK_ARCHIVE' }
   | {
@@ -76,6 +79,7 @@ export function initSession(
     selectedId,
     viewMode: 'board',
     archiveSelectedId: null,
+    epicSelectedId: null,
     bulkArchive: null,
     dialog: null,
     operation: null,
@@ -96,6 +100,7 @@ function applyProject(state: SessionState, projectId: ProjectId | null): Session
     selectedId: state.activeProjectId === null ? state.selectedId : null,
     viewMode: 'board',
     archiveSelectedId: null,
+    epicSelectedId: null,
     bulkArchive: null,
     dialog: null,
     pendingTarget: null,
@@ -141,13 +146,17 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
       return {
         ...state,
         viewMode: action.mode,
-        selectedId: action.mode === 'archive' ? null : state.selectedId,
-        archiveSelectedId: action.mode === 'board' ? null : state.archiveSelectedId,
-        bulkArchive: action.mode === 'board' ? null : state.bulkArchive,
+        selectedId: action.mode === 'board' ? state.selectedId : null,
+        archiveSelectedId: action.mode === 'archive' ? state.archiveSelectedId : null,
+        epicSelectedId: action.mode === 'epics' ? state.epicSelectedId : null,
+        bulkArchive: action.mode === 'archive' ? state.bulkArchive : null,
       };
     case 'SELECT_ARCHIVE_CARD':
       if (state.operation !== null) return state;
       return { ...state, archiveSelectedId: action.id };
+    case 'SELECT_EPIC':
+      if (state.operation !== null) return state;
+      return { ...state, epicSelectedId: action.id };
     case 'OPEN_BULK_ARCHIVE':
       if (
         state.operation?.kind !== 'archive-done' ||

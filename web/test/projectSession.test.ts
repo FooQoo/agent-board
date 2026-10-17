@@ -117,6 +117,7 @@ describe('sessionReducer: operations hold the switch', () => {
         selectedId: null,
         viewMode: 'board',
         archiveSelectedId: null,
+        epicSelectedId: null,
         bulkArchive: null,
         dialog: null,
         operation: null,
@@ -255,5 +256,56 @@ describe('sessionReducer: archive view state', () => {
     targets.push(makeTask({ id: 9 }));
     expect(state.bulkArchive?.projectId).toBe(A);
     expect(state.bulkArchive?.targets.map((task) => task.id)).toEqual([8]);
+  });
+});
+
+describe('sessionReducer: epic view state', () => {
+  it('opens the epic view with no epic selected and keeps the card selection out of it', () => {
+    const state = run(initSession(A, 8), { type: 'SET_VIEW_MODE', mode: 'epics' });
+    expect(state.viewMode).toBe('epics');
+    expect(state.selectedId).toBeNull();
+    expect(state.epicSelectedId).toBeNull();
+  });
+
+  it('selects one epic and clears it when the same epic is selected again', () => {
+    let state = run(initSession(A), { type: 'SET_VIEW_MODE', mode: 'epics' });
+    state = run(state, { type: 'SELECT_EPIC', id: 'BUG' });
+    expect(state.epicSelectedId).toBe('BUG');
+    state = run(state, { type: 'SELECT_EPIC', id: null });
+    expect(state.epicSelectedId).toBeNull();
+  });
+
+  it('clears the epic selection when leaving the epic view or switching project', () => {
+    let state = run(
+      initSession(A),
+      { type: 'SET_VIEW_MODE', mode: 'epics' },
+      { type: 'SELECT_EPIC', id: 'BUG' },
+    );
+    state = run(state, { type: 'SET_VIEW_MODE', mode: 'board' });
+    expect(state.epicSelectedId).toBeNull();
+
+    state = run(
+      state,
+      { type: 'SET_VIEW_MODE', mode: 'epics' },
+      { type: 'SELECT_EPIC', id: 'BUG' },
+    );
+    state = run(state, { type: 'URL_REQUESTED', projectId: B });
+    expect(state.epicSelectedId).toBeNull();
+    expect(state.viewMode).toBe('board');
+  });
+
+  it('keeps the archive selection and the epic selection apart', () => {
+    let state = run(
+      initSession(A),
+      { type: 'SET_VIEW_MODE', mode: 'archive' },
+      { type: 'SELECT_ARCHIVE_CARD', id: 2 },
+    );
+    state = run(
+      state,
+      { type: 'SET_VIEW_MODE', mode: 'epics' },
+      { type: 'SELECT_EPIC', id: 'BUG' },
+    );
+    expect(state.archiveSelectedId).toBeNull();
+    expect(state.epicSelectedId).toBe('BUG');
   });
 });

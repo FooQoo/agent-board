@@ -195,6 +195,10 @@ async fn board(
                 version: &'a str,
                 cursor: &'a crate::domain::ChangeCursor,
                 epics: &'a [crate::file_store::model::EpicView],
+                epic_task_counts: &'a std::collections::BTreeMap<
+                    String,
+                    crate::server::epic_counts::EpicTaskCounts,
+                >,
                 tasks: Vec<&'a crate::file_store::model::TaskView>,
                 problems: &'a [crate::file_store::model::Problem],
             }
@@ -203,6 +207,8 @@ async fn board(
                 .iter()
                 .filter(|task| task.archived_at.is_none())
                 .collect();
+            let epic_task_counts =
+                crate::server::epic_counts::task_counts_by_epic(&view.epics, &view.tasks);
             api::json_response(
                 StatusCode::OK,
                 &Board {
@@ -210,6 +216,7 @@ async fn board(
                     version: &view.version,
                     cursor: &view.cursor,
                     epics: &view.epics,
+                    epic_task_counts: &epic_task_counts,
                     tasks,
                     problems: &view.problems,
                 },

@@ -71,6 +71,7 @@ interface WireBoard {
   version: string;
   cursor: string;
   epics: Epic[];
+  epicTaskCounts: Board['epicTaskCounts'];
   tasks: WireTask[];
   problems: Problem[];
 }
@@ -91,6 +92,7 @@ export function toBoard(wire: WireBoard): Board {
     version: wire.version,
     cursor: wire.cursor,
     epics: wire.epics,
+    epicTaskCounts: wire.epicTaskCounts,
     tasks: wire.tasks.map((task) => toTask(task, wire.epics)),
     problems: wire.problems,
   };

@@ -1,11 +1,11 @@
 import { ArchiveIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
 import type { ArchiveResponse } from '../../api';
 import type { ProjectResourceResult } from '../../hooks/useProjectResource';
 import type { Task } from '../../types';
 import { AssigneeLabel } from '../AssigneeLabel';
 import { EpicBadge } from '../EpicBadge';
+import { ListPane } from '../ListPane';
 import '../../styles/archive.css';
 
 export interface ArchiveListProps {
@@ -32,80 +32,49 @@ export function ArchiveList({
   const tasks: Task[] = data?.tasks ?? [];
 
   return (
-    <main className="archive-list-pane" ref={layoutRef}>
-      <header className="archive-list-pane__header">
-        <div className="archive-list-pane__heading">
-          <h2>{t('archive.title')}</h2>
-          {status === 'ready' && (
-            <span className="archive-list-pane__count">
-              {t('archive.count', { count: tasks.length })}
+    <ListPane
+      title={t('archive.title')}
+      countText={t('archive.count', { count: tasks.length })}
+      description={t('archive.description')}
+      status={status}
+      fetchFailed={fetchFailed}
+      onRetry={onRetry}
+      layoutRef={layoutRef}
+      empty={{
+        icon: <ArchiveIcon aria-hidden="true" />,
+        title: t('archive.empty'),
+        hint: t('archive.emptyHint'),
+      }}
+      hasRows={tasks.length > 0}
+      listLabel={t('archive.heading')}
+      loadError={t('archive.loadError')}
+      refreshError={t('archive.refreshError')}
+    >
+      {tasks.map((task) => (
+        <div className="archive-row" role="listitem" key={task.id}>
+          <button
+            type="button"
+            aria-pressed={selectedId === task.id}
+            onClick={() => onSelect(selectedId === task.id ? null : task.id)}
+          >
+            <span className="archive-row__id">#{task.id}</span>
+            <span className="archive-row__title" title={task.title}>
+              {task.title}
             </span>
-          )}
-        </div>
-        {tasks.length > 0 && <p>{t('archive.description')}</p>}
-      </header>
-
-      {status === 'loading' && (
-        <div className="archive-list-pane__state" role="status">
-          {t('board.loading')}
-        </div>
-      )}
-
-      {status === 'error' && (
-        <div className="archive-list-pane__state" role="alert">
-          <p>{t('archive.loadError')}</p>
-          <Button type="button" variant="outline" onClick={onRetry}>
-            {t('board.retry')}
-          </Button>
-        </div>
-      )}
-
-      {status === 'ready' && fetchFailed && (
-        <p className="archive-list-pane__error" role="alert">
-          {t('archive.refreshError')}{' '}
-          <Button type="button" variant="ghost" onClick={onRetry}>
-            {t('board.retry')}
-          </Button>
-        </p>
-      )}
-
-      {status === 'ready' && tasks.length === 0 && (
-        <div className="archive-list-pane__empty">
-          <ArchiveIcon aria-hidden="true" />
-          <p>{t('archive.empty')}</p>
-          <p>{t('archive.emptyHint')}</p>
-        </div>
-      )}
-
-      {status === 'ready' && tasks.length > 0 && (
-        <div className="archive-list" role="list" aria-label={t('archive.heading')}>
-          {tasks.map((task) => (
-            <div className="archive-row" role="listitem" key={task.id}>
-              <button
-                type="button"
-                aria-pressed={selectedId === task.id}
-                onClick={() => onSelect(selectedId === task.id ? null : task.id)}
+            <AssigneeLabel assignee={task.assignee} />
+            <span className="archive-row__meta">
+              {task.epic && <EpicBadge epic={task.epic} className="archive-row__epic" />}
+              <time
+                className="archive-row__date"
+                dateTime={task.archivedAt ?? undefined}
+                title={task.archivedAt ?? undefined}
               >
-                <span className="archive-row__id">#{task.id}</span>
-                <span className="archive-row__title" title={task.title}>
-                  {task.title}
-                </span>
-                <AssigneeLabel assignee={task.assignee} />
-                <span className="archive-row__meta">
-                  <time
-                    className="archive-row__date"
-                    dateTime={task.archivedAt ?? undefined}
-                    title={task.archivedAt ?? undefined}
-                  >
-                    {task.archivedAt?.slice(0, 10) ?? '—'}
-                  </time>
-                  {task.epic && <EpicBadge epic={task.epic} className="archive-row__epic" />}
-                </span>
-              </button>
-            </div>
-          ))}
+                {task.archivedAt?.slice(0, 10) ?? '—'}
+              </time>
+            </span>
+          </button>
         </div>
-      )}
-    </main>
+      ))}
+    </ListPane>
   );
 }

@@ -38,6 +38,8 @@ JSONとHTMLの応答は`no-store`です。HTMLの応答には`Referrer-Policy: n
 
 **テーマ。** `web/src/theme/index.ts`が、テーマの型・一覧・検証・DOMの属性・保存を受け持ちます。テーマはモード（lightかdark）と12色のアクセントの一つです。Reactの描画前に`data-mode`・`data-accent`・`dark`クラス・`color-scheme`を同期して適用し、`localStorage`の`agboard.theme`に保存します。テーマの変更はAPIにもタスクの履歴にも届きません。
 
+エピック一覧は、ボードの応答の`epics`と`epicTaskCounts`を読みます。件数はサーバーが`epics`と同じスナップショットから集計するので、一覧が二つの読み込みを混ぜることはありません。モバイルモニターも同じ件数を応答に含みますが、エピック一覧の画面はありません。一覧はアーカイブと`ListPane`で外枠を共有し、読み込み中・読み込み失敗・再取得失敗・空の各状態はプロジェクトのresourceから決まります。再取得に失敗しても直前に読めた行を残します。
+
 ## 画面での失敗時の振る舞い
 
 **保存と回答**

@@ -573,6 +573,7 @@ fn board_matches_the_stores_snapshot_in_the_model_shape() {
         "version": snapshot.version,
         "cursor": snapshot.cursor.to_string(),
         "epics": [],
+        "epicTaskCounts": {},
         "tasks": serde_json::to_value(&snapshot.tasks).unwrap(),
         "problems": [],
     });
@@ -1947,5 +1948,60 @@ fn a_write_with_a_token_from_an_earlier_server_asks_for_a_reload() {
             .unwrap()
             .iter()
             .all(|task| task["title"] != "Stale")
+    );
+}
+
+#[test]
+fn the_board_counts_each_epic_tasks_by_lane_with_archived_counted_once() {
+    use agent_board::file_store::model::NewEpic;
+    use agent_board::file_store::validate::EpicId;
+    let home = board_home();
+    let project = main_id(home.path());
+    let store = store_in(home.path());
+    for (id, name, minute) in [("epic-1", "Alpha", 12), ("epic-2", "Empty", 13)] {
+        store
+            .create_epic(
+                &project,
+                NewEpic {
+                    id: id.into(),
+                    name: name.into(),
+                    color: Some("#3366cc".into()),
+                    is_draft: false,
+                    plan: None,
+                },
+                t(minute),
+            )
+            .unwrap();
+    }
+    let alpha = EpicId::normalize("EPIC-1").unwrap();
+    // Task 2 is Doing; task 3 is Doing too and is then archived, so it counts as archived only.
+    store
+        .set_task_epic(&project, 2, Some(&alpha), Actor::Ai, t(14))
+        .unwrap();
+    store
+        .set_task_epic(&project, 3, Some(&alpha), Actor::Ai, t(15))
+        .unwrap();
+    store.archive_task(&project, 3, t(16)).unwrap();
+    let server = Running::start(home.path(), 0).unwrap();
+
+    let board: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+    assert_eq!(
+        board["epicTaskCounts"]["EPIC-1"],
+        serde_json::json!({"todo": 0, "doing": 1, "done": 0, "archived": 1, "total": 2}),
+        "{board}"
+    );
+    assert_eq!(
+        board["epicTaskCounts"]["EPIC-2"],
+        serde_json::json!({"todo": 0, "doing": 0, "done": 0, "archived": 0, "total": 0}),
+        "an epic with no tasks still has zeros"
+    );
+    // The board's own task list keeps leaving archived tasks out.
+    assert!(
+        board["tasks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|task| task["id"] != 3)
     );
 }
