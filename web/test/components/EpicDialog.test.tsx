@@ -70,6 +70,9 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
     savePriority: vi.fn(async (priority: number[]) => {
       calls.push(`savePriority:${priority.join(',')}`);
     }),
+    remove: vi.fn(async () => {
+      calls.push('remove');
+    }),
     ...overrides,
   };
   return { api, calls };
@@ -367,6 +370,54 @@ describe('save failures', () => {
     expect((await within(dialog).findByRole('alert')).textContent).toContain('the images');
     expect(calls).toEqual([]);
     expect(bodyOf(dialog).value).toBe('kept');
+  });
+});
+
+describe('deleting the epic', () => {
+  it('asks first, Cancel keeps the epic, and Delete removes it and closes the dialog', async () => {
+    const { api, calls } = fakeApi();
+    const { dialog, onClosed } = await openEpic(api);
+    await userEvent.click(button(dialog, 'Delete epic'));
+
+    const confirm = await screen.findByRole('dialog', { name: 'Delete this epic?' });
+    expect(within(confirm).getByText(/The plan and images of FILE-SHARE/)).toBeTruthy();
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Delete this epic?' })).toBeNull(),
+    );
+    expect(calls).toEqual([]);
+    expect(onClosed).not.toHaveBeenCalled();
+
+    await userEvent.click(button(dialog, 'Delete epic'));
+    const again = await screen.findByRole('dialog', { name: 'Delete this epic?' });
+    await userEvent.click(within(again).getByRole('button', { name: 'Delete epic' }));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(calls).toEqual(['remove']);
+  });
+
+  it('keeps the dialog open and says why when a task still uses the epic', async () => {
+    const { api } = fakeApi({
+      remove: vi.fn(async () => {
+        throw new WriteError('epic FILE-SHARE is used by tasks.', 409, 'epic_in_use');
+      }),
+    });
+    const { dialog, onClosed } = await openEpic(api);
+    await userEvent.click(button(dialog, 'Delete epic'));
+    const confirm = await screen.findByRole('dialog', { name: 'Delete this epic?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Delete epic' }));
+
+    const alert = await within(confirm).findByRole('alert');
+    expect(alert.textContent).toContain('A task still uses this epic.');
+    expect(onClosed).not.toHaveBeenCalled();
+  });
+
+  it('warns that unsaved changes are discarded too', async () => {
+    const { api } = fakeApi();
+    const { dialog } = await openEpic(api);
+    setName('Renamed epic', dialog);
+    await userEvent.click(button(dialog, 'Delete epic'));
+    const confirm = await screen.findByRole('dialog', { name: 'Delete this epic?' });
+    expect(within(confirm).getByText(/Changes you have not saved in this dialog/)).toBeTruthy();
   });
 });
 

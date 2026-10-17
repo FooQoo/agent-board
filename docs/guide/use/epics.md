@@ -23,6 +23,10 @@ agboard --project "My project" edit 1 --clear-epic
 - Use `--name` or `--color '#7C3AED'` with `epic edit` to change the name or color.
 - A task belongs to at most one epic.
 
+## Default epics
+
+Every project starts with two epics, `BUG` (named Bug) and `ENHANCEMENT` (named Enhancement), so that bug reports and improvements have a place to go. A project that already exists gets them the next time `agboard serve` starts. They behave like any other epic: you can rename, recolor, and delete them. A deleted default epic is not created again.
+
 ## Order the work
 
 Save an epic's task order from the command line:
@@ -44,6 +48,7 @@ The epic editor shows the outline on the left, the name and plan in the middle, 
 - The right column starts with progress expanded and attachments folded. Opening either panel folds the other.
 - The progress list scrolls on its own, so a long list stays inside the dialog and includes finished tasks for review.
 - Drag a task by its handle (or use the handle's keyboard controls), then **Save** to apply the order.
+- **Delete epic** removes the epic with its plan and images after you confirm. Nothing is deleted while a task still belongs to the epic, archived tasks included; the dialog says so, and you move or clear those tasks first. Unsaved changes in the dialog are discarded with the epic.
 - Selecting a task opens its details. Change membership in the task editor or on the command line, not in the epic dialog. The epic dialog has no Draft checkbox and keeps the epic's existing draft state.
 
 ## Read the progress table

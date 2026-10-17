@@ -31,6 +31,10 @@ pub struct ProjectFile {
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
     pub next_task_id: i64,
+    /// The default epics were offered to this project. Set once, so a default
+    /// epic that was deleted is not created again. Absent in older files.
+    #[serde(default)]
+    pub default_epics_seeded: bool,
 }
 
 /// One option of a decision request.
