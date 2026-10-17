@@ -173,6 +173,7 @@ pub(super) enum HistoryKind {
 
 pub(super) struct Transition<'a> {
     pub kind: HistoryKind,
+    pub language: super::history_language::HistoryLanguage,
     pub reason: Option<&'a str>,
     pub from_task: Option<Column>,
     pub to_task: Column,
@@ -205,7 +206,34 @@ pub(super) fn transition_event(t: Transition<'_>) -> Result<HistoryRecord, Agboa
         HistoryKind::Archive => format!("Archived task in {}; agent is idle.", t.to_task.label()),
         HistoryKind::Restore => format!("Restored task in {}.", t.to_task.label()),
     };
-    let reason = reason_or_default(t.reason, fallback)?;
+    let japanese = match t.kind {
+        HistoryKind::Created => format!(
+            "タスクを{}に作成しました。エージェントは{}です。",
+            t.to_task.label(),
+            t.to_agent.as_str()
+        ),
+        HistoryKind::Lane => format!(
+            "タスクを{}から{}に移動しました。エージェントは{}です。",
+            t.from_task.unwrap_or(t.to_task).label(),
+            t.to_task.label(),
+            t.to_agent.as_str()
+        ),
+        HistoryKind::Agent => format!(
+            "{}でエージェントを{}から{}に変更しました。",
+            t.to_task.label(),
+            t.from_agent.unwrap_or(t.to_agent).as_str(),
+            t.to_agent.as_str()
+        ),
+        HistoryKind::Draft => "タスクの下書き状態を変更しました。".into(),
+        HistoryKind::Epic => "所属エピックを変更しました。".into(),
+        HistoryKind::Archive => format!(
+            "{}のタスクをアーカイブしました。エージェントはidleです。",
+            t.to_task.label()
+        ),
+        HistoryKind::Restore => format!("タスクを{}に復元しました。", t.to_task.label()),
+    };
+    let reason = reason_or_default(t.reason, t.language.text(&fallback, &japanese).to_owned())?;
+
     Ok(HistoryRecord { at: t.at, reason })
 }
 

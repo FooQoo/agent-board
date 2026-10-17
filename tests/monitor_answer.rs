@@ -131,16 +131,11 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
         .find(|event| {
             event["reason"]
                 .as_str()
-                .is_some_and(|reason| reason.contains("Answer: Keep it"))
+                .is_some_and(|reason| reason.contains("Keep it"))
         })
         .unwrap();
     assert_eq!(todo_answer.as_object().unwrap().len(), 2);
-    assert!(
-        todo_answer["reason"]
-            .as_str()
-            .unwrap()
-            .contains("Answer: Keep it")
-    );
+    assert!(todo_answer["reason"].as_str().unwrap().contains("Keep it"));
 
     let board = server.request(
         "GET",
@@ -180,7 +175,7 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
             .iter()
             .any(|event| event["reason"]
                 .as_str()
-                .is_some_and(|reason| reason.contains("Answer: Continue")))
+                .is_some_and(|reason| reason.contains("Continue")))
     );
 }
 

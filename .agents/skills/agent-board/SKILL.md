@@ -19,6 +19,8 @@ How the board is used:
 
 Write everything you put on the board in the language the user speaks with you: task and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing tasks and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `at`, `reason`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
 
+For every history reason you author, read the task body first and use the same language as that body, including lane/state reasons, progress, verification, and resumption notes. This takes precedence over the conversation language and the language of repository code or comments. If the body has no usable prose, follow the task title and existing project content. Always supply a nonblank `--reason` (or `--reason-file`) for these notes rather than relying on a generated default. Keep command names and other technical identifiers unchanged.
+
 ## 1. Resolve the project from the working folder
 
 Use the nearest registered project folder that contains the current working folder. Start with:
@@ -137,10 +139,13 @@ Keep history reasons concise and useful. Keep detailed logs in evidence files; t
 
 ## 7. Ask the user a decision
 
+Ask every task-related question only through an Agent Board decision request on the relevant task. This includes clarification, preferences, scope, and approval. Do not ask in chat, a final response, or an agent-native question tool. Chat may tell the user that a question is waiting on the board, without repeating it as a second question. If the board is unavailable, report the connection problem and leave dependent work blocked; do not fall back to another question channel.
+
 Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Then set the task to `pending`; the operation records the question in history automatically. Offer choices whenever the answer is one of a known set. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
 
 ```json
 {
+  "wait": {},
   "question": "Should existing records be deleted or kept?",
   "choices": [
     { "id": "delete", "label": "Delete them and start clean" },
@@ -155,7 +160,7 @@ cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-
 ```
 
 - `question`: 1 to 2,000 characters. `choices`: 2 to 10 items under this skill's policy (the CLI accepts 0 to 10); each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
-- Add `"wait": {}` to the request JSON to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a task move withdrew the question.
+- Include `"wait": {}` in every decision request by default, to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). Omit it only when the user explicitly asks for a non-blocking request. Continue independent work while the command waits; dependent work must wait for the actual answer. You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a task move withdrew the question.
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
 - The task must be an AI task in `todo` or `doing`. Only `doing` may become `running`.
 

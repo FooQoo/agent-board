@@ -115,14 +115,19 @@ impl FileStore {
         if task.is_draft {
             return Err(AgboardError::TaskIsDraft { id });
         }
-        let reason = super::reason_or_default(
-            reason,
-            format!(
-                "Progress note in {}; agent is {}.",
-                task.task_status.label(),
-                task.agent_status.as_str()
-            ),
-        )?;
+        let language = self.history_language(project, &task)?;
+        let fallback = format!(
+            "Progress note in {}; agent is {}.",
+            task.task_status.label(),
+            task.agent_status.as_str()
+        );
+        let japanese = format!(
+            "{}での進捗を記録しました。エージェントは{}です。",
+            task.task_status.label(),
+            task.agent_status.as_str()
+        );
+        let reason =
+            super::reason_or_default(reason, language.text(&fallback, &japanese).to_owned())?;
         let at = stamp(now);
         task.history.push(HistoryRecord { at, reason });
         task.updated_at = at;
@@ -158,6 +163,9 @@ impl FileStore {
         validate::ensure_task_body(&body, &label)?;
         let position = lane_end(shared, project, Column::Todo)?;
         let at = stamp(now);
+        let language = self.history_language.unwrap_or_else(|| {
+            super::super::history_language::HistoryLanguage::infer(&body, &title)
+        });
         let task = TaskFile {
             format_version: layout::FORMAT_VERSION,
             id,
@@ -179,6 +187,7 @@ impl FileStore {
             attachments: Vec::new(),
             evidence: Vec::new(),
             history: vec![transition_event(Transition {
+                language,
                 kind: HistoryKind::Created,
                 reason: None,
                 from_task: None,
@@ -315,7 +324,17 @@ impl FileStore {
         }
         if finalize {
             task.is_draft = false;
-            task.history.push(draft_event(&task, false, at)?);
+            task.history.push(draft_event(
+                &task,
+                false,
+                at,
+                match markdown.as_deref() {
+                    Some(text) => self.history_language.unwrap_or_else(|| {
+                        super::super::history_language::HistoryLanguage::infer(text, &task.title)
+                    }),
+                    None => self.history_language(project, &task)?,
+                },
+            )?);
         }
         save_task_with_markdown(shared, &project_dir, &task, markdown.as_deref())?;
         Ok(Changed {
@@ -368,7 +387,17 @@ impl FileStore {
         }
         if finalize {
             task.is_draft = false;
-            task.history.push(draft_event(&task, false, at)?);
+            task.history.push(draft_event(
+                &task,
+                false,
+                at,
+                match markdown.as_deref() {
+                    Some(text) => self.history_language.unwrap_or_else(|| {
+                        super::super::history_language::HistoryLanguage::infer(text, &task.title)
+                    }),
+                    None => self.history_language(project, &task)?,
+                },
+            )?);
         }
         save_task_with_markdown(shared, &project_dir, &task, markdown.as_deref())?;
         Ok(Changed {
@@ -405,7 +434,12 @@ impl FileStore {
             });
         }
         task.is_draft = is_draft;
-        task.history.push(draft_event(&task, is_draft, stamp(now))?);
+        task.history.push(draft_event(
+            &task,
+            is_draft,
+            stamp(now),
+            self.history_language(project, &task)?,
+        )?);
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
             value: view(shared, project, id)?,
@@ -433,8 +467,12 @@ impl FileStore {
         let at = stamp(now);
         let old_agent = task.agent_status;
         let event = transition_event(Transition {
+            language: self.history_language(project, &task)?,
             kind: HistoryKind::Archive,
-            reason: Some(ARCHIVE_REASON),
+            reason: Some(
+                self.history_language(project, &task)?
+                    .text(ARCHIVE_REASON, "ユーザーがアーカイブしました。"),
+            ),
             from_task: Some(task.task_status),
             to_task: task.task_status,
             from_agent: Some(old_agent),
@@ -476,8 +514,12 @@ impl FileStore {
         let at = stamp(now);
         let position = lane_end(shared, project, task.task_status)?;
         let event = transition_event(Transition {
+            language: self.history_language(project, &task)?,
             kind: HistoryKind::Restore,
-            reason: Some(RESTORE_REASON),
+            reason: Some(
+                self.history_language(project, &task)?
+                    .text(RESTORE_REASON, "ユーザーが復元しました。"),
+            ),
             from_task: Some(task.task_status),
             to_task: task.task_status,
             from_agent: Some(RunState::Idle),
@@ -579,13 +621,15 @@ fn draft_event(
     task: &TaskFile,
     is_draft: bool,
     at: DateTime<Utc>,
+    language: super::super::history_language::HistoryLanguage,
 ) -> Result<HistoryRecord, AgboardError> {
     let event = transition_event(Transition {
+        language,
         kind: HistoryKind::Draft,
         reason: Some(if is_draft {
-            "Marked task as draft."
+            language.text("Marked task as draft.", "タスクを下書きにしました。")
         } else {
-            "Finalized task draft."
+            language.text("Finalized task draft.", "下書きを確定しました。")
         }),
         from_task: Some(task.task_status),
         to_task: task.task_status,
@@ -669,8 +713,12 @@ impl FileStore {
             }
             let old_agent = task.agent_status;
             let event = transition_event(Transition {
+                language: self.history_language(project, &task)?,
                 kind: HistoryKind::Archive,
-                reason: Some(ARCHIVE_REASON),
+                reason: Some(
+                    self.history_language(project, &task)?
+                        .text(ARCHIVE_REASON, "ユーザーがアーカイブしました。"),
+                ),
                 from_task: Some(task.task_status),
                 to_task: task.task_status,
                 from_agent: Some(old_agent),

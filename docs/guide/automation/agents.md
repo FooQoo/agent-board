@@ -37,6 +37,8 @@ Hooks and the agent skill run `agboard` from your `PATH`, so they use the instal
 
 The format is in [Markdown file format](./file-format).
 
+Agents write history in the same language as the task body. Generated notes from browser operations use your selected screen language. CLI operations and automatic completion use Japanese when the body contains Japanese characters, otherwise English; empty bodies and the default template use the title. Existing history and reasons you entered stay unchanged.
+
 ## The work loop
 
 ```mermaid
@@ -64,6 +66,8 @@ flowchart TD
 7. **Wait.** If no work can proceed, wait for a change (see below).
 
 For the progress table, see [Epics and progress](../use/epics).
+
+Agents ask task-related questions only on the board, including clarification and approval. Each request includes choices and waits for your answer by default (`"wait": {}`). Chat may point you to the pending request. If the board is unavailable, the agent reports the problem and waits to ask there.
 
 ## Wait for changes
 

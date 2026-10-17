@@ -1,3 +1,4 @@
+import { i18n } from './i18n';
 import type {
   ApiError,
   Assignee,
@@ -126,7 +127,10 @@ export async function fetchArchive(projectId: ProjectId): Promise<ArchiveRespons
 async function postEmpty(path: string): Promise<{ task: Task }> {
   const response = await fetch(path, {
     method: 'POST',
-    headers: { 'X-Agboard-Token': readToken() },
+    headers: {
+      'X-Agboard-Token': readToken(),
+      'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
+    },
   });
   const body = (await response.json()) as { task?: Task; error?: ApiError['error'] };
   if (!response.ok || !body.task)
@@ -165,7 +169,10 @@ export async function deleteTask(projectId: ProjectId, id: number): Promise<Dele
   try {
     const response = await fetch(`${projectPath(projectId)}/tasks/${id}`, {
       method: 'DELETE',
-      headers: { 'X-Agboard-Token': readToken() },
+      headers: {
+        'X-Agboard-Token': readToken(),
+        'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
+      },
     });
     if (response.status === 204) return 'deleted';
     if (response.status === 404) return 'not_found';
@@ -178,7 +185,11 @@ export async function deleteTask(projectId: ProjectId, id: number): Promise<Dele
 async function postTask<T>(path: string, value: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': readToken() },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Agboard-Token': readToken(),
+      'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
+    },
     body: JSON.stringify(value),
   });
   const body = (await response.json()) as {
@@ -240,7 +251,14 @@ function multipartBody(
 }
 
 async function sendMultipart(path: string, body: FormData, method: 'POST' | 'PATCH') {
-  const response = await fetch(path, { method, headers: { 'X-Agboard-Token': readToken() }, body });
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'X-Agboard-Token': readToken(),
+      'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
+    },
+    body,
+  });
   const data = (await response.json()) as { task?: Task; error?: ApiError['error'] };
   if (!response.ok || !data.task)
     throw writeFailure(
@@ -341,7 +359,11 @@ async function sendTask(
 ): Promise<{ task: Task }> {
   const response = await fetch(path, {
     method,
-    headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': readToken() },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Agboard-Token': readToken(),
+      'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
+    },
     body: JSON.stringify(value),
   });
   const body = (await response.json()) as { task?: Task; error?: ApiError['error'] };
@@ -416,6 +438,7 @@ async function sendEpic(
     headers: {
       ...(isForm || body === undefined ? {} : { 'Content-Type': 'application/json' }),
       'X-Agboard-Token': readToken(),
+      'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
     },
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   });

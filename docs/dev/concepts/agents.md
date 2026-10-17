@@ -28,6 +28,8 @@ The hook identifies the project from the nearest bound ancestor of the input `cw
 
 Agents make no board-dependent changes until the table can be read, and they read a fresh table after context compaction.
 
+The skill requires all task-related questions to use board decision requests, with choices and `"wait": {}` by default. It forbids substituting chat or native agent question tools, including when the board is unavailable. The CLI still supports non-waiting requests; only an explicit user instruction opts out of waiting in the skill workflow.
+
 ## Waiting for changes
 
 `agboard wait --after <cursor>` blocks until the project changes:

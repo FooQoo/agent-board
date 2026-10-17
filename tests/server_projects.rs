@@ -1444,7 +1444,10 @@ fn put_draft_toggles_idle_tasks_and_records_history_with_markdown_time() {
     // A real draft change rewrites TASK.md and appends a history event.
     let added = after["history"].as_array().unwrap();
     assert_eq!(added.len(), before["history"].as_array().unwrap().len() + 1);
-    assert_eq!(added.last().unwrap()["reason"], "Marked task as draft.");
+    assert_eq!(
+        added.last().unwrap()["reason"],
+        "タスクを下書きにしました。"
+    );
     // The flag is part of task.json, so the content version moves.
     assert_ne!(
         snapshot_json(home.path(), &a)["version"]

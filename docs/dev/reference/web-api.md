@@ -2,6 +2,8 @@
 
 The HTTP API of `agboard serve`. How a request is handled, including the write guard, is described in [Server and web UI](../concepts/server-and-ui.md).
 
+Task writes accept optional `X-Agboard-Language: en` or `ja` for generated history. The board and monitor send their current UI language. Missing, repeated, or unsupported values fall back to the task body’s language. This affects only generated text for that request; explicit reasons and stored history stay unchanged. See [History](../concepts/history-and-decisions.md#history).
+
 ## Endpoints
 
 | API | Contract |

@@ -114,6 +114,7 @@ describe('monitor answer client', () => {
           Accept: 'application/json',
           'Content-Type': 'application/json',
           'X-Agboard-Token': 'monitor-secret',
+          'X-Agboard-Language': 'en',
         },
         body: JSON.stringify({ requestId: 'request-7', choiceId: 'yes' }),
       }),

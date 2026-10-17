@@ -8,6 +8,7 @@
 pub mod bindings;
 pub mod frontmatter;
 pub mod history;
+pub mod history_language;
 pub mod index;
 pub mod io;
 pub mod layout;
@@ -40,13 +41,36 @@ pub struct TaskTextParts<'a> {
 #[derive(Debug, Clone)]
 pub struct FileStore {
     shared: PathBuf,
+    history_language: Option<history_language::HistoryLanguage>,
 }
 
 impl FileStore {
     pub fn open(shared_dir: &Path) -> FileStore {
         FileStore {
             shared: shared_dir.to_path_buf(),
+            history_language: None,
         }
+    }
+
+    /// Apply a browser's explicit language to this request's generated history only.
+    pub fn with_history_language(
+        mut self,
+        language: Option<history_language::HistoryLanguage>,
+    ) -> Self {
+        self.history_language = language;
+        self
+    }
+
+    pub(crate) fn history_language(
+        &self,
+        project: &ProjectId,
+        task: &model::TaskFile,
+    ) -> Result<history_language::HistoryLanguage, AgboardError> {
+        if let Some(language) = self.history_language {
+            return Ok(language);
+        }
+        let body = reader::read_body(self.shared_dir(), project, task.id)?;
+        Ok(history_language::HistoryLanguage::infer(&body, &task.title))
     }
 
     pub fn shared_dir(&self) -> &Path {

@@ -875,7 +875,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
         history.last().unwrap()["reason"]
             .as_str()
             .unwrap()
-            .contains("Answer: Use the MIT license.")
+            .contains("Use the MIT license.")
     );
     assert_eq!(history.last().unwrap().as_object().unwrap().len(), 2);
     assert!(!String::from_utf8_lossy(&output.stdout).contains("Beta"));
