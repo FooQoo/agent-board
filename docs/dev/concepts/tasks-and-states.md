@@ -54,7 +54,8 @@ An epic is a plan (`PLAN.md`) that groups tasks. A task belongs to at most one e
 | `priority`, `priorityError` | Member task IDs in work order, and whether reading them failed. |
 
 - Tasks store only `epicId`; the label color and name are resolved when read.
-- An epic referenced by any task, archived ones included, cannot be deleted (`epic_in_use`).
+- An epic referenced by any task, archived ones included, cannot be deleted (`epic_in_use`). The web UI deletes an epic from the epic editor through `DELETE .../epics/{epicId}`; the CLI uses `epic rm`.
+- A new project starts with the default epics `BUG` and `ENHANCEMENT`. They are ordinary epics: they can be edited and deleted. `defaultEpicsSeeded` in `project.json` is set once the project has been offered them, so a deleted default epic is not created again. `serve` offers them once to a project that does not have the flag yet.
 - Epics have no managed acceptance conditions. Reference conditions are ordinary Markdown in the body; the API rejects `acceptance` input for epics.
 - `priority` is a list of task IDs in the `PLAN.md` frontmatter, for example `priority: [24, 26, 25]`. Duplicates or invalid types are save errors. IDs that are no longer members are hidden and dropped on the next save; unlisted members follow in creation order. Changing priority does not count as editing a Done task. Lane positions never carry priority.
 
