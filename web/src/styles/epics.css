@@ -167,6 +167,11 @@
   height: 16px;
 }
 
+/* The edit and close icons sit in one toolbar, 8px apart, as in the design. */
+.epic-detail .epic-detail__toolbar {
+  gap: 8px;
+}
+
 @media (max-width: 760px) {
   .epic-row > button {
     padding: 12px;

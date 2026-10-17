@@ -13,7 +13,7 @@ import { Board } from './components/Board';
 import { BulkArchiveDialog } from './components/archive/BulkArchiveDialog';
 import { ArchiveList } from './components/archive/ArchiveList';
 import { EpicList } from './components/epics/EpicList';
-import { EpicDetailPanel } from './components/epics/EpicDetailPanel';
+import { EpicDetailPanel, EpicDetailPlaceholder } from './components/epics/EpicDetailPanel';
 import type { BoardMessageKind } from './components/BoardMessage';
 import { DetailPanel } from './components/DetailPanel';
 import { Header } from './components/Header';
@@ -240,7 +240,7 @@ export function App({ initial }: AppProps) {
       />
       <div
         className="app__body"
-        data-detail={detailShown && !(epicsVisible && selectedEpic === null) ? 'shown' : 'hidden'}
+        data-detail={detailShown ? 'shown' : 'hidden'}
         ref={bodyRef}
         style={{ '--detail-width': `${width}px` } as CSSProperties}
       >
@@ -303,15 +303,19 @@ export function App({ initial }: AppProps) {
             }}
           />
         )}
-        {epicsVisible && selectedEpic !== null && isProjectId(activeId) && (
+        {epicsVisible && isProjectId(activeId) && (
           <>
             <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
-            <EpicDetailPanel
-              projectId={activeId}
-              epic={selectedEpic}
-              onEdit={() => openDialog({ kind: 'epic', epic: selectedEpic })}
-              onClose={() => dispatch({ type: 'SELECT_EPIC', id: null })}
-            />
+            {selectedEpic === null ? (
+              <EpicDetailPlaceholder />
+            ) : (
+              <EpicDetailPanel
+                projectId={activeId}
+                epic={selectedEpic}
+                onEdit={() => openDialog({ kind: 'epic', epic: selectedEpic })}
+                onClose={() => dispatch({ type: 'SELECT_EPIC', id: null })}
+              />
+            )}
           </>
         )}
         {!epicsVisible && detailShown && (

@@ -27,7 +27,7 @@ agboard --project "My project" edit 1 --clear-epic
 
 Open **Epics** in the header to see every epic in the project, in ID order, including epics with no tasks and epics whose tasks are all done. Each row shows the number of tasks in each state: Todo, Doing, Done, and Archived. Archived tasks count only as archived, so the four numbers add up to the total at the top right of the row.
 
-Select an epic to read its name, plan, and images beside the list. The pencil button in the detail header (**Edit epic**) opens the same editor as the epic label. Select the row again, or close the details, to return the list to full width. **Back to board** returns to the board.
+Select an epic to read its name, plan, and images in the details column beside the list. The column stays in place, as it does in the archive, and reads "Select an epic to see its details." until you select one. The pencil button in the detail header (**Edit epic**) opens the same editor as the epic label. Close the details or select the row again to return to the prompt. **Back to board** returns to the board.
 
 ## Order the work
 

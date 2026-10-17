@@ -89,8 +89,9 @@ describe('the epic list in the app shell', () => {
     expect(within(rows[1] as HTMLElement).getByText('Total 0 tasks')).toBeTruthy();
     expect(within(screen.getByRole('main')).getByText('2 epics')).toBeTruthy();
     expect(screen.getByText('2 epics', { selector: '.status-bar__count' })).toBeTruthy();
-    // With nothing selected the list takes the full width and no detail column is shown.
-    expect(screen.queryByRole('separator', { name: 'Resize task details' })).toBeNull();
+    // Like the archive, the detail column stays in place; with nothing selected it shows a prompt.
+    expect(screen.getByRole('separator', { name: 'Resize task details' })).toBeTruthy();
+    expect(screen.getByText('Select an epic to see its details.')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 2, name: 'Alpha epic' })).toBeNull();
 
     await userEvent.click(within(list).getByRole('button', { name: /Alpha epic/ }));
@@ -106,6 +107,7 @@ describe('the epic list in the app shell', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
     expect(screen.queryByRole('heading', { level: 2, name: 'Alpha epic' })).toBeNull();
+    expect(screen.getByText('Select an epic to see its details.')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Back to board' }));
     await screen.findByRole('region', { name: 'Todo' });
   });

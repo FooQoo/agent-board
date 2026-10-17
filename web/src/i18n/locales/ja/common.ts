@@ -79,6 +79,8 @@ export const commonJa = {
     refreshError: 'エピックを再読み込みできませんでした。',
     noPlan: '計画はまだありません',
     detailTitle: 'エピックの詳細',
+    actions: 'エピックの操作',
+    detailPrompt: 'エピックを選ぶと詳細が表示されます。',
     edit: 'エピックを編集',
     countsLabel: '状態別のタスク',
     counts: {

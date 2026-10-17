@@ -79,6 +79,8 @@ export const commonEn = {
     refreshError: 'Could not refresh the epics.',
     noPlan: 'No plan yet',
     detailTitle: 'Epic details',
+    actions: 'Epic actions',
+    detailPrompt: 'Select an epic to see its details.',
     edit: 'Edit epic',
     countsLabel: 'Tasks by state',
     counts: {

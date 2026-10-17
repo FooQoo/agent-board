@@ -137,6 +137,10 @@ describe('EpicDetailPanel', () => {
     expect(onEdit).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+    // Edit and close sit in one toolbar, as the design has them, so they share one gap.
+    const toolbar = screen.getByRole('toolbar', { name: 'Epic actions' });
+    expect(within(toolbar).getByRole('button', { name: 'Close details' })).toBeTruthy();
+    expect(within(toolbar).getByRole('button', { name: 'Edit epic' })).toBeTruthy();
   });
 
   it('says there is no plan yet when the body is empty', () => {
@@ -149,5 +153,7 @@ describe('EpicDetailPanel', () => {
       />,
     );
     expect(screen.getByText('No plan yet')).toBeTruthy();
+    // The plan is the only placeholder: the Markdown view's own "No description." is not shown too.
+    expect(screen.queryByText('No description.')).toBeNull();
   });
 });
