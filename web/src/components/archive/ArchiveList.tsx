@@ -5,6 +5,7 @@ import type { ArchiveResponse } from '../../api';
 import type { ProjectResourceResult } from '../../hooks/useProjectResource';
 import type { Task } from '../../types';
 import { AssigneeLabel } from '../AssigneeLabel';
+import { EpicBadge } from '../EpicBadge';
 import '../../styles/archive.css';
 
 export interface ArchiveListProps {
@@ -90,13 +91,16 @@ export function ArchiveList({
                   {task.title}
                 </span>
                 <AssigneeLabel assignee={task.assignee} />
-                <time
-                  className="archive-row__date"
-                  dateTime={task.archivedAt ?? undefined}
-                  title={task.archivedAt ?? undefined}
-                >
-                  {task.archivedAt?.slice(0, 10) ?? '—'}
-                </time>
+                <span className="archive-row__meta">
+                  {task.epic && <EpicBadge epic={task.epic} className="archive-row__epic" />}
+                  <time
+                    className="archive-row__date"
+                    dateTime={task.archivedAt ?? undefined}
+                    title={task.archivedAt ?? undefined}
+                  >
+                    {task.archivedAt?.slice(0, 10) ?? '—'}
+                  </time>
+                </span>
               </button>
             </div>
           ))}

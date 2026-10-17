@@ -112,15 +112,17 @@ export interface ArchiveResponse {
   project: Board['project'];
   version: string;
   cursor: string;
-  /** The archive response has no epic table, so an archived card carries no epic label. */
+  /** The archived cards. Each card's epic is resolved against `epics` from the same response. */
   tasks: Task[];
+  /** The project's epics, read from the same snapshot as `tasks`. */
+  epics: Epic[];
 }
 
 export async function fetchArchive(projectId: ProjectId): Promise<ArchiveResponse> {
   const wire = await getJson<Omit<ArchiveResponse, 'tasks'> & { tasks: WireTask[] }>(
     `${projectPath(projectId)}/archive`,
   );
-  return { ...wire, tasks: wire.tasks.map((task) => toTask(task, [])) };
+  return { ...wire, tasks: wire.tasks.map((task) => toTask(task, wire.epics)) };
 }
 
 async function postEmpty(path: string): Promise<{ task: Task }> {

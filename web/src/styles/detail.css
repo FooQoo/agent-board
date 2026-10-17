@@ -82,14 +82,6 @@
   margin-left: auto;
 }
 
-.detail__archive-actions {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-}
-
 .detail__tool {
   display: inline-flex;
   align-items: center;
@@ -131,17 +123,6 @@
 
 .detail__tool--delete {
   color: var(--r-danger);
-}
-
-.detail__archive-actions .detail__tool--delete {
-  margin-left: auto;
-  width: auto;
-  height: 34px;
-  padding: 0 10px;
-  gap: 5px;
-  border: 1px solid var(--r-danger);
-  font-size: 12px;
-  line-height: 17px;
 }
 
 .detail__tab:focus-visible,

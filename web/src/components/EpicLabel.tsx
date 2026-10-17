@@ -1,7 +1,6 @@
-import { LayersIcon } from 'lucide-react';
 import type { MouseEvent } from 'react';
-import { epicInk } from '../lib/epic';
 import type { EpicRef } from '../types';
+import { EpicBadgeContent, epicBadgeStyle } from './EpicBadge';
 
 export function EpicLabel({
   epic,
@@ -21,7 +20,7 @@ export function EpicLabel({
       type="button"
       className={className}
       data-epic-label={epic.id}
-      style={{ background: epic.color, color: epicInk(epic.color) }}
+      style={epicBadgeStyle(epic)}
       title={epic.name}
       disabled={disabled}
       onClick={(event: MouseEvent<HTMLButtonElement>) => {
@@ -29,8 +28,7 @@ export function EpicLabel({
         onClick();
       }}
     >
-      <LayersIcon aria-hidden="true" focusable="false" />
-      <span>{epic.id}</span>
+      <EpicBadgeContent epic={epic} />
     </button>
   );
 }

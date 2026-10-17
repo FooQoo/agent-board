@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { setDraft } from '../api';
 import { noOperations, type OperationControls } from '../lib/projectSession';
 import type { Task, Epic, Problem, ProjectId } from '../types';
-import { Button } from '@/components/ui/button';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
 import type { DetailTab } from './detail/DetailTabs';
@@ -188,7 +187,27 @@ function DetailBody({
       onRetryEpics={onRetryEpics}
       readOnlyDraft={false}
       toolbar={
-        !archived && (
+        archived ? (
+          <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
+            {onRestore && (
+              <button
+                type="button"
+                className="detail__tool detail__tool--text detail__restore"
+                disabled={operationSaving}
+                onClick={onRestore}
+              >
+                <ArchiveRestoreIcon aria-hidden="true" />
+                {t('archive.restore')}
+              </button>
+            )}
+            <DeleteButton
+              ref={deleteButton}
+              action="delete"
+              disabled={operationSaving}
+              onClick={() => setConfirm('user')}
+            />
+          </div>
+        ) : (
           <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
             {tab === 'description' && task.isDraft && (
               <button
@@ -231,29 +250,6 @@ function DetailBody({
           failed={draftFailed}
           onFinalize={() => void toggleDraft(false)}
         />
-      )}
-      {archived && (
-        <div className="detail__archive-actions" role="group" aria-label={t('archive.actions')}>
-          {onRestore && (
-            <Button
-              type="button"
-              variant="default"
-              className="detail-btn detail__restore"
-              disabled={operationSaving}
-              onClick={onRestore}
-            >
-              <ArchiveRestoreIcon aria-hidden="true" />
-              {t('archive.restore')}
-            </Button>
-          )}
-          <DeleteButton
-            ref={deleteButton}
-            action="delete"
-            disabled={operationSaving}
-            showLabel
-            onClick={() => setConfirm('user')}
-          />
-        </div>
       )}
       {archived && restoreFailed && (
         <p className="detail__error" role="alert">

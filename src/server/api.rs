@@ -715,6 +715,7 @@ async fn archive(State(state): State<Arc<AppState>>, Path(raw_project): Path<Str
                 "version": view.version,
                 "cursor": view.cursor,
                 "tasks": view.tasks.iter().filter(|c| c.archived_at.is_some()).collect::<Vec<_>>(),
+                "epics": &view.epics,
             }),
         ),
         Err(error) => agboard_error_response(&error),

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Board, Task, Project, ProjectId } from '../src/types';
+import type { Board, Epic, Task, Project, ProjectId } from '../src/types';
 
 type Listener = (event: Event) => void;
 
@@ -57,6 +57,8 @@ export interface FakeBackend {
   projects: FakeAnswer<Project[]>;
   boards: Record<ProjectId, FakeAnswer<Board>>;
   archives?: Record<ProjectId, FakeAnswer<Task[]>>;
+  /** The epics the archive response carries with its tasks. Defaults to none. */
+  archiveEpics?: Record<ProjectId, Epic[]>;
   /** Awaited before a read is answered, so a test can answer requests in any order. */
   gate?: (url: string) => Promise<void> | undefined;
   /** Answers writes (POST/DELETE). Defaults to 204 for DELETE and `{card, changed}` for POST. */
@@ -109,6 +111,7 @@ export function stubBackend(backend: FakeBackend) {
         revision: 1,
         cursor: `${projectId}:1`,
         tasks,
+        epics: backend.archiveEpics?.[projectId] ?? [],
       }));
     }
     return errorResponse(404, 'not_found');

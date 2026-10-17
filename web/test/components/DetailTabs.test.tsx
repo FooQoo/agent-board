@@ -186,7 +186,7 @@ describe('toolbar', () => {
     expect(screen.getByRole('tab', { name: 'Description' })).toBeTruthy();
   });
 
-  it('places restore and delete above the content tabs and removes the normal toolbar', async () => {
+  it('places restore and delete in the top toolbar and removes the normal toolbar actions', async () => {
     const onRestore = vi.fn();
     const onRemove = vi.fn(async () => true);
     const { container } = renderPanel(fixtureTask(8), { archived: true, onRestore, onRemove });
@@ -196,16 +196,18 @@ describe('toolbar', () => {
       'detail__top',
       'detail__title',
       'detail__meta',
-      'detail__archive-actions',
       'detail__tabs',
       'detail__viewport',
       'detail__viewport',
       'detail__viewport',
       'detail__viewport',
     ]);
-    expect(screen.getByRole('button', { name: 'Restore' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Delete task' }).textContent).toContain('Delete');
-    expect(screen.queryByRole('toolbar')).toBeNull();
+    const top = container.querySelector('.detail__top') as HTMLElement;
+    const toolbar = within(top).getByRole('toolbar');
+    expect(within(toolbar).getByRole('button', { name: 'Restore' })).toBeTruthy();
+    expect(within(toolbar).getByRole('button', { name: 'Delete task' })).toBeTruthy();
+    expect(within(toolbar).queryByRole('button', { name: 'Make draft' })).toBeNull();
+    expect(detail.querySelector('.detail__archive-actions')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
     expect(onRestore).toHaveBeenCalledTimes(1);
   });
@@ -249,11 +251,12 @@ describe('toolbar', () => {
     expect(names()).toEqual(['タスクを編集', 'タスクをアーカイブ']);
   });
 
-  it('shows the archived delete label in Japanese', () => {
+  it('names the archived delete icon in Japanese inside the top toolbar', () => {
     selectLocale('ja');
     renderPanel(fixtureTask(8), { archived: true, onRestore: vi.fn() });
     const deleteButton = screen.getByRole('button', { name: 'タスクを削除' });
-    expect(deleteButton.textContent).toContain('削除');
+    expect(deleteButton.closest('.detail__top')).not.toBeNull();
+    expect(screen.getByRole('button', { name: '復元' })).toBeTruthy();
   });
 });
 

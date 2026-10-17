@@ -231,11 +231,10 @@ describe('which project is shown', () => {
     expect(within(detail).getByRole('button', { name: 'Restore' })).toBeTruthy();
     expect(within(detail).getByRole('button', { name: 'Delete task' })).toBeTruthy();
     const detailChildren = Array.from(detail.children).map((el) => el.className.split(' ')[0]);
-    expect(detailChildren.slice(0, 5)).toEqual([
+    expect(detailChildren.slice(0, 4)).toEqual([
       'detail__top',
       'detail__title',
       'detail__meta',
-      'detail__archive-actions',
       'detail__tabs',
     ]);
 

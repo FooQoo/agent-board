@@ -732,6 +732,84 @@ fn archive_api_has_separate_reads_bulk_operation_restore_and_delete_guard() {
     assert!(archive["tasks"].as_array().unwrap().is_empty());
 }
 
+#[test]
+fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
+    use agent_board::file_store::model::NewEpic;
+    use agent_board::file_store::validate::EpicId;
+    let home = board_home();
+    let project = main_id(home.path());
+    let store = store_in(home.path());
+    store
+        .create_epic(
+            &project,
+            NewEpic {
+                id: "epic-1".into(),
+                name: "Archived epic".into(),
+                color: Some("#3366cc".into()),
+                is_draft: false,
+                plan: None,
+            },
+            t(12),
+        )
+        .unwrap();
+    store
+        .create_epic(
+            &project,
+            NewEpic {
+                id: "epic-2".into(),
+                name: "Live epic".into(),
+                color: Some("#cc3366".into()),
+                is_draft: false,
+                plan: None,
+            },
+            t(13),
+        )
+        .unwrap();
+    let epic = EpicId::normalize("EPIC-1").unwrap();
+    store
+        .set_task_epic(&project, 1, Some(&epic), Actor::Ai, t(14))
+        .unwrap();
+    store
+        .set_task_epic(
+            &project,
+            2,
+            Some(&EpicId::normalize("EPIC-2").unwrap()),
+            Actor::Ai,
+            t(15),
+        )
+        .unwrap();
+    let server = Running::start(home.path(), 0).unwrap();
+    let token = server.token();
+
+    // Task 2 stays in the board, so its epic must not appear in the archive.
+    let archived = server.send_json("POST", &server.api("/tasks/1/archive"), "", Some(&token));
+    assert_eq!(archived.status, 200, "{}", archived.body);
+
+    let archive: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
+    let tasks = archive["tasks"].as_array().unwrap();
+    assert_eq!(tasks.len(), 1, "{archive}");
+    assert_eq!(tasks[0]["id"], 1);
+    assert_eq!(tasks[0]["epicId"], "EPIC-1");
+    let epics = archive["epics"].as_array().expect("archive lists epics");
+    assert_eq!(epics.len(), 2, "{archive}");
+    let names: Vec<&str> = epics.iter().map(|e| e["name"].as_str().unwrap()).collect();
+    assert!(names.contains(&"Archived epic"), "{archive}");
+    assert!(names.contains(&"Live epic"), "{archive}");
+}
+
+#[test]
+fn archive_api_answers_an_empty_epic_list_when_no_epics_exist() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let token = server.token();
+    let archived = server.send_json("POST", &server.api("/tasks/1/archive"), "", Some(&token));
+    assert_eq!(archived.status, 200, "{}", archived.body);
+    let archive: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
+    assert_eq!(archive["epics"], serde_json::json!([]), "{archive}");
+}
+
 /// Add a second project "other" that has a task with the same number as the
 /// first task of "main", and return its ID.
 fn add_other_project(home: &Path) -> ProjectId {

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useArchive } from '../../src/hooks/useArchive';
 import { useProjectResource } from '../../src/hooks/useProjectResource';
 import type { ArchiveResponse } from '../../src/api';
+import type { Task } from '../../src/types';
 import { deferred, stubBackend, type FakeBackend } from '../fakes';
 import { PROJECT_A, PROJECT_B, PROJECTS, boardOf, fixtureBoard, makeTask } from '../fixtures';
 
@@ -35,6 +36,42 @@ describe('useArchive', () => {
       `/api/projects/${PROJECT_A.id}/archive`,
       expect.anything(),
     );
+  });
+
+  it('labels each archived card with the epic from the same response and leaves other cards unlabeled', async () => {
+    const backend = fakeBackend();
+    backend.archives = {
+      ...backend.archives,
+      [PROJECT_A.id]: [
+        { ...makeTask({ id: 2, title: 'In epic' }), epicId: 'EPIC-1' } as unknown as Task,
+        makeTask({ id: 3, title: 'No epic' }),
+      ],
+    };
+    backend.archiveEpics = {
+      [PROJECT_A.id]: [
+        {
+          id: 'EPIC-1',
+          name: 'Archived epic',
+          color: '#3366CC',
+          isDraft: false,
+          plan: '',
+          body: '',
+          priority: [],
+          priorityError: false,
+          attachments: [],
+          createdAt: '2026-10-01T00:00:00Z',
+          updatedAt: '2026-10-01T00:00:00Z',
+        },
+      ],
+    };
+    stubBackend(backend);
+    const { result } = renderHook(() => useArchive(PROJECT_A.id));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const [inEpic, noEpic] = result.current.data?.tasks ?? [];
+    expect(inEpic?.epic).toEqual({ id: 'EPIC-1', name: 'Archived epic', color: '#3366CC' });
+    expect(noEpic?.epic).toBeNull();
+    expect(result.current.data?.epics.map((epic) => epic.id)).toEqual(['EPIC-1']);
   });
 
   it('drops the old archive immediately and ignores a late response after switching projects', async () => {
@@ -80,6 +117,7 @@ describe('useArchive', () => {
       version: 'v1',
       cursor: `f1:${PROJECT_B.id}:v1`,
       tasks: [makeTask({ id: 8, title: 'Wrong project' })],
+      epics: [],
     };
     let requests = 0;
     const { result } = renderHook(() =>

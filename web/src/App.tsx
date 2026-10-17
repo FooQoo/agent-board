@@ -296,10 +296,15 @@ export function App({ initial }: AppProps) {
               }
               operations={operations}
               problems={archiveVisible ? [] : (boardData?.problems ?? [])}
-              epics={boardData?.epics}
-              epicsFailed={boardData === null && isProjectId(activeId)}
+              epics={archiveVisible ? archive.data?.epics : boardData?.epics}
+              epicsFailed={
+                archiveVisible
+                  ? archive.status === 'error'
+                  : boardData === null && isProjectId(activeId)
+              }
               onRetryEpics={() => {
-                if (isProjectId(activeId)) refreshProject(activeId);
+                if (archiveVisible) archive.reload();
+                else if (isProjectId(activeId)) refreshProject(activeId);
               }}
               onEdit={() => {
                 if (selected?.isDraft) openDialog({ kind: 'edit', task: selected });

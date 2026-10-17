@@ -77,7 +77,7 @@ test('real archive detail preserves content, restores the lane, and permanently 
 		};
 		return {
 			viewport: { width: innerWidth, height: innerHeight },
-			actions: rect('.detail__archive-actions'),
+			actions: rect('.detail__top .detail__toolbar'),
 			confirmation: rect('.delete-confirm'),
 			tabs: rect('.detail__tabs'),
 		};
