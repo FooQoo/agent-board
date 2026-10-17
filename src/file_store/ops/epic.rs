@@ -364,14 +364,22 @@ impl FileStore {
             });
         }
         let at = stamp(now);
-        let reason = format!(
+        let language = self.history_language(project, &task)?;
+        let english = format!(
             "Changed epic from {} to {}.",
             task.epic_id.as_deref().unwrap_or("none"),
             next.as_deref().unwrap_or("none")
         );
+        let japanese = format!(
+            "所属エピックを{}から{}に変更しました。",
+            task.epic_id.as_deref().unwrap_or("なし"),
+            next.as_deref().unwrap_or("なし")
+        );
+        let reason = language.text(&english, &japanese);
         let event = transition_event(Transition {
+            language: self.history_language(project, &task)?,
             kind: HistoryKind::Epic,
-            reason: Some(&reason),
+            reason: Some(reason),
             from_task: Some(task.task_status),
             to_task: task.task_status,
             from_agent: Some(task.agent_status),

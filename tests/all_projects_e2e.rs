@@ -519,7 +519,7 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
         history[3]["reason"]
             .as_str()
             .unwrap()
-            .contains("Answer: Apple: use the MIT license.")
+            .contains("Apple: use the MIT license.")
     );
     let mango = task(entry(&list, "Mango"), 1);
     assert_eq!(mango["agentStatus"], "pending");

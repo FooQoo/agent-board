@@ -106,6 +106,7 @@ impl FileStore {
         let at = stamp(now);
         let position = lane_end(shared, project, to)?;
         let event = transition_event(Transition {
+            language: self.history_language(project, &task)?,
             kind: HistoryKind::Lane,
             reason: Some(&ctx.reason),
             from_task: Some(task.task_status),
@@ -209,24 +210,35 @@ impl FileStore {
         } else {
             None
         };
+        let language = self.history_language(project, &task)?;
         let event_reason = if state == RunState::Pending {
             let options = choices
                 .iter()
                 .map(|choice| format!("{}: {}", choice.id, choice.label))
                 .collect::<Vec<_>>()
                 .join("; ");
-            format!(
+            let english = format!(
                 "Requested decision: {reason}{}",
                 if options.is_empty() {
                     String::new()
                 } else {
                     format!(" Options: {options}")
                 }
-            )
+            );
+            let japanese = format!(
+                "判断を依頼しました: {reason}{}",
+                if options.is_empty() {
+                    String::new()
+                } else {
+                    format!(" 選択肢: {options}")
+                }
+            );
+            language.text(&english, &japanese).to_owned()
         } else {
             reason.to_owned()
         };
         let event = transition_event(Transition {
+            language: self.history_language(project, &task)?,
             kind: HistoryKind::Agent,
             reason: Some(&event_reason),
             from_task: Some(task.task_status),

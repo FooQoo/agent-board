@@ -27,6 +27,10 @@ Extra fields such as an ID, kind, actor, transition, or request ID are rejected.
 - Agents record concise entries at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without asking for approval each time, and never duplicate an entry an operation already appended.
 - The UI shows time and content only, newest first. CLI `show` and snapshots return the full history.
 
+Generated history from browser operations uses the UI language (`en` or `ja`) sent with that request. Without a supported setting, including CLI operations and automatic Done, the product infers the language from the latest task body: Japanese characters select Japanese; otherwise it uses English. Empty bodies and the default template use the title. Frontmatter and previous history are excluded from inference. Explicit nonblank reasons are preserved verbatim, and existing history is never translated.
+
+Agents must author history in the task body’s language and supply an explicit reason. The [agent skill](./agents.md) defines this workflow.
+
 ## Acceptance conditions and automatic Done
 
 Only `TASK.md` has managed acceptance conditions. They sit in frontmatter together with history:

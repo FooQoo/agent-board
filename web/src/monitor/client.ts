@@ -1,3 +1,4 @@
+import { i18n } from '../i18n';
 import type { MonitorReadResolvers } from './contracts';
 import type { Board, Task, Epic, ProjectId, ProjectList } from '../types';
 import type { AnswerInput, AnswerResult } from '../lib/answer';
@@ -149,6 +150,7 @@ async function answerRequest(
           Accept: 'application/json',
           'Content-Type': 'application/json',
           'X-Agboard-Token': readMonitorToken(),
+          'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
         },
         cache: 'no-store',
         body: JSON.stringify(input),

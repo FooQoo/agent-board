@@ -485,6 +485,20 @@ async fn with_files<T: Send + 'static>(
         })?
 }
 
+/// Carry a browser's selected language explicitly into one blocking file operation.
+async fn with_request_files<T: Send + 'static>(
+    state: &AppState,
+    headers: &HeaderMap,
+    work: impl FnOnce(FileStore) -> Result<T, AgboardError> + Send + 'static,
+) -> Result<T, AgboardError> {
+    let language = header_text(headers, "x-agboard-language")
+        .and_then(crate::file_store::history_language::HistoryLanguage::from_setting);
+    with_files(state, move |store| {
+        work(store.with_history_language(language))
+    })
+    .await
+}
+
 /// After a save made by this server, read the shared files again before the
 /// answer goes out, so the next read agrees with it. A `changed` is sent only
 /// if the catalog version moved, as for every other reload.
@@ -779,6 +793,7 @@ async fn delete_task(
 }
 
 async fn archive_task(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
 ) -> Response {
@@ -790,7 +805,7 @@ async fn archive_task(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_files(&state, move |store| {
+    let result = with_request_files(&state, &headers, move |store| {
         store.archive_task(&project_id, id, chrono::Utc::now())
     })
     .await;
@@ -798,6 +813,7 @@ async fn archive_task(
 }
 
 async fn restore_task(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
 ) -> Response {
@@ -809,7 +825,7 @@ async fn restore_task(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_files(&state, move |store| {
+    let result = with_request_files(&state, &headers, move |store| {
         store.restore_task(&project_id, id, chrono::Utc::now())
     })
     .await;
@@ -823,6 +839,7 @@ struct ArchiveDoneInput {
 }
 
 async fn archive_done(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path(raw_project): Path<String>,
     StrictJson(input): StrictJson<ArchiveDoneInput>,
@@ -831,7 +848,7 @@ async fn archive_done(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let result = with_files(&state, move |store| {
+    let result = with_request_files(&state, &headers, move |store| {
         store.archive_done(&project_id, &input.ids, chrono::Utc::now())
     })
     .await;
@@ -1155,6 +1172,7 @@ async fn parse_multipart(mut multipart: Multipart) -> Result<MultipartPayload, R
 }
 
 async fn create_task(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path(raw_project): Path<String>,
     ApiJson(input): ApiJson<CreateTaskInput>,
@@ -1172,7 +1190,7 @@ async fn create_task(
         Ok(description) => description.unwrap_or_default(),
         Err(error) => return agboard_error_response(&error),
     };
-    match with_files(&state, move |store| {
+    match with_request_files(&state, &headers, move |store| {
         store.create_task(
             &project_id,
             NewTask {
@@ -1196,6 +1214,7 @@ async fn create_task(
 }
 
 async fn move_task(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     ApiJson(input): ApiJson<MoveInput>,
@@ -1212,7 +1231,7 @@ async fn move_task(
             "Task ID is invalid.",
         );
     };
-    match with_files(&state, move |store| {
+    match with_request_files(&state, &headers, move |store| {
         store.move_work_task_for_user(
             &project_id,
             id,
@@ -1275,6 +1294,7 @@ async fn reorder_task(
 }
 
 async fn set_agent_status(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     ApiJson(input): ApiJson<AgentStateInput>,
@@ -1291,7 +1311,7 @@ async fn set_agent_status(
             "Task ID is invalid.",
         );
     };
-    match with_files(&state, move |store| {
+    match with_request_files(&state, &headers, move |store| {
         if input.agent_status == RunState::Pending {
             return store.request_decision(
                 &project_id,
@@ -1330,16 +1350,18 @@ async fn set_agent_status(
 }
 
 async fn answer_request(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     ApiJson(input): ApiJson<AnswerInput>,
 ) -> Response {
-    answer_project_task(state, raw_project, raw_id, input).await
+    answer_project_task(headers, state, raw_project, raw_id, input).await
 }
 
 /// Save one human answer through the shared FileStore path used by the local
 /// board and the isolated monitor endpoint.
 pub(crate) async fn answer_project_task(
+    headers: HeaderMap,
     state: Arc<AppState>,
     raw_project: String,
     raw_id: String,
@@ -1357,7 +1379,7 @@ pub(crate) async fn answer_project_task(
             "Task ID is invalid.",
         );
     };
-    match with_files(&state, move |store| {
+    match with_request_files(&state, &headers, move |store| {
         store.answer_request(
             &project_id,
             id,
@@ -1413,6 +1435,7 @@ fn changed_task_response(
 
 /// Save the title and description of a draft, and confirm it with `finalize`.
 async fn edit_task(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     StrictJson(input): StrictJson<EditTaskInput>,
@@ -1436,7 +1459,7 @@ async fn edit_task(
             command: None,
         });
     }
-    let result = with_files(&state, move |store| {
+    let result = with_request_files(&state, &headers, move |store| {
         if input.body.is_some() || input.acceptance.is_some() {
             if input.description.is_some() {
                 return Err(whole_or_parts());
@@ -1468,6 +1491,7 @@ async fn edit_task(
 }
 
 async fn edit_task_multipart(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
@@ -1517,7 +1541,7 @@ async fn edit_task_multipart(
     let removed = payload.meta.remove_attachment_ids;
     let additions = payload.additions;
     let attachments_changed = !removed.is_empty() || !additions.is_empty();
-    let result = with_files(&state, move |store| {
+    let result = with_request_files(&state, &headers, move |store| {
         let now = chrono::Utc::now();
         // Images first, then the text and the draft flag.
         let owner = AttachmentOwner::Task(id);
@@ -1553,6 +1577,7 @@ async fn edit_task_multipart(
 }
 
 async fn create_task_multipart(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path(raw_project): Path<String>,
     multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
@@ -1624,7 +1649,7 @@ async fn create_task_multipart(
         }
     }
     let additions = payload.additions;
-    let result = with_files(&state, move |store| {
+    let result = with_request_files(&state, &headers, move |store| {
         let now = chrono::Utc::now();
         let task = store.create_task(
             &project_id,
@@ -1655,6 +1680,7 @@ async fn create_task_multipart(
 
 /// Turn the draft flag of a task on or off.
 async fn set_draft(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     StrictJson(input): StrictJson<DraftInput>,
@@ -1667,7 +1693,7 @@ async fn set_draft(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let result = with_files(&state, move |store| {
+    let result = with_request_files(&state, &headers, move |store| {
         store.set_draft(&project_id, id, input.is_draft, chrono::Utc::now())
     })
     .await;
@@ -1980,6 +2006,7 @@ fn present_or_null<'de, D: Deserializer<'de>>(
 /// Set or clear the epic of a task. A person may do this on any task, including
 /// an archived one or a draft.
 async fn set_task_epic(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     StrictJson(input): StrictJson<SetEpicInput>,
@@ -2007,7 +2034,7 @@ async fn set_task_epic(
             Err(error) => return agboard_error_response(&error),
         },
     };
-    let result = with_files(&state, move |store| {
+    let result = with_request_files(&state, &headers, move |store| {
         store.set_task_epic(
             &project_id,
             id,

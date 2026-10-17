@@ -120,7 +120,7 @@ impl FileStore {
             .ok_or(AgboardError::RequestChanged)?
             .question
             .clone();
-        let reason = format!(
+        let english = format!(
             "Answered decision: {question}.{}{}",
             choice_label
                 .as_ref()
@@ -130,6 +130,20 @@ impl FileStore {
                 .map(|text| format!(" Answer: {text}"))
                 .unwrap_or_default()
         );
+        let japanese = format!(
+            "判断依頼に回答しました: {question}。{}{}",
+            choice_label
+                .as_ref()
+                .map(|label| format!(" 選択: {label}。 "))
+                .unwrap_or_default(),
+            text.as_ref()
+                .map(|text| format!(" 回答: {text}"))
+                .unwrap_or_default()
+        );
+        let reason = self
+            .history_language(project, &task)?
+            .text(&english, &japanese)
+            .to_owned();
         let event = HistoryRecord { at, reason };
         task.request_answers.push(RequestAnswer {
             request_id: request_id.to_owned(),

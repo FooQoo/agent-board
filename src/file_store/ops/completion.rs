@@ -76,8 +76,12 @@ impl FileStore {
             let at = stamp(now);
             let position = lane_end(shared, project, Column::Done)?;
             let event = transition_event(Transition {
+                language: self.history_language(project, &task)?,
                 kind: HistoryKind::Lane,
-                reason: Some(AUTO_DONE_REASON),
+                reason: Some(
+                    self.history_language(project, &task)?
+                        .text(AUTO_DONE_REASON, "すべての受入条件を達成しました。"),
+                ),
                 from_task: Some(task.task_status),
                 to_task: Column::Done,
                 from_agent: Some(task.agent_status),
@@ -183,6 +187,28 @@ mod tests {
             .unwrap();
             std::fs::write(path, next).unwrap();
         }
+    }
+
+    #[test]
+    fn automatic_completion_uses_the_body_language() {
+        let f = Fixture::new();
+        let id = f.task(
+            "Japanese",
+            Assignee::Ai,
+            &format!("{COMPLETE}\n日本語の本文。"),
+            false,
+        );
+        assert!(f.store.auto_complete_all(at(2)).unwrap());
+        assert_eq!(
+            f.store
+                .task(&f.project, id)
+                .unwrap()
+                .history
+                .last()
+                .unwrap()
+                .reason,
+            "すべての受入条件を達成しました。"
+        );
     }
 
     #[test]

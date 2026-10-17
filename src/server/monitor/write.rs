@@ -55,11 +55,12 @@ async fn index(State(state): State<Arc<WriteState>>) -> Response {
 }
 
 async fn answer(
+    headers: HeaderMap,
     State(state): State<Arc<WriteState>>,
     Path((project_id, id)): Path<(String, String)>,
     ApiJson(input): ApiJson<AnswerInput>,
 ) -> Response {
-    api::answer_project_task(state.app.clone(), project_id, id, input).await
+    api::answer_project_task(headers, state.app.clone(), project_id, id, input).await
 }
 
 async fn host_guard(

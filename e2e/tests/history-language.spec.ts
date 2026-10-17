@@ -1,0 +1,37 @@
+import { expect, test } from '@playwright/test';
+import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
+import { pasteMarkdown, waitForSync } from '../helpers/ui';
+
+test('selected UI language is saved in new history and does not rewrite existing entries', async ({ page }) => {
+  resetBoard(mainProject);
+  await page.goto('/');
+  await waitForSync(page);
+  const id = nextTaskId(mainProject);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('radio', { name: '日本語', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'タスク追加', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('textbox', { name: 'タイトル', exact: true }).fill('Language history');
+  await pasteMarkdown(dialog.getByRole('textbox', { name: '説明(Markdown)', exact: true }), 'English task body.');
+  await dialog.getByRole('button', { name: '追加', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const stored = () => JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
+  await expect.poll(() => stored().history[0].reason).toContain('作成しました');
+  const original = stored().history;
+  await page.getByRole('button', { name: '設定', exact: true }).click();
+  await page.getByRole('radio', { name: 'English', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.reload();
+  await waitForSync(page);
+  expect(stored().history).toEqual(original);
+  const next = nextTaskId(mainProject);
+  await page.getByRole('button', { name: 'Add task', exact: true }).click();
+  const englishDialog = page.getByRole('dialog');
+  await englishDialog.getByRole('textbox', { name: 'Title', exact: true }).fill('日本語のタスク');
+  await pasteMarkdown(englishDialog.getByRole('textbox', { name: 'Description (Markdown)', exact: true }), '日本語の本文。');
+  await englishDialog.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(englishDialog).toHaveCount(0);
+  const saved = JSON.parse(agboardOk(mainProject, ['show', String(next), '--json']).stdout).task;
+  expect(saved.history[0].reason).toContain('Created task');
+});
