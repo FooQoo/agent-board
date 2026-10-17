@@ -1,4 +1,4 @@
-//! The progress table: which cards an agent can pick up, in what order, and
+//! The progress table: which tasks an agent can pick up, in what order, and
 //! how an epic's priority list is stored in its PLAN.md. Runs the real CLI on
 //! a temporary data area.
 
@@ -70,7 +70,7 @@ fn add(home: &Path, title: &str, epic: Option<&str>) -> i64 {
     if let Some(epic) = epic {
         args.extend(["--epic", epic]);
     }
-    ok_json(agboard(home, &args))["card"]["id"]
+    ok_json(agboard(home, &args))["task"]["id"]
         .as_i64()
         .unwrap()
 }
@@ -79,14 +79,14 @@ fn progress(home: &Path) -> Value {
     ok_json(agboard(home, &["--project", "Demo", "progress", "--json"]))
 }
 
-fn epic_card_ids(table: &Value, epic: &str) -> Vec<i64> {
+fn epic_task_ids(table: &Value, epic: &str) -> Vec<i64> {
     table["epics"]
         .as_array()
         .unwrap()
         .iter()
         .find(|e| e["id"] == epic)
         .map(|e| {
-            e["cards"]
+            e["tasks"]
                 .as_array()
                 .unwrap()
                 .iter()
@@ -128,7 +128,7 @@ fn a_priority_list_with_repeats_or_bad_entries_is_refused_and_a_stored_bad_one_i
 }
 
 #[test]
-fn the_progress_table_orders_epics_by_id_and_cards_by_priority_then_creation() {
+fn the_progress_table_orders_epics_by_id_and_tasks_by_priority_then_creation() {
     let home = demo();
     let first = add(home.path(), "first", Some("ALPHA"));
     let second = add(home.path(), "second", Some("ALPHA"));
@@ -148,19 +148,19 @@ fn the_progress_table_orders_epics_by_id_and_cards_by_priority_then_creation() {
     ));
 
     let table = progress(home.path());
-    assert_eq!(epic_card_ids(&table, "ALPHA"), vec![third, first, second]);
+    assert_eq!(epic_task_ids(&table, "ALPHA"), vec![third, first, second]);
     assert_eq!(table["unassigned"][0]["id"], loose);
     assert!(
         table["epics"]
             .as_array()
             .unwrap()
             .iter()
-            .all(|e| !e["cards"].as_array().unwrap().is_empty())
+            .all(|e| !e["tasks"].as_array().unwrap().is_empty())
     );
 }
 
 #[test]
-fn epics_without_listed_cards_are_left_out_and_done_and_pending_cards_are_not_listed() {
+fn epics_without_listed_tasks_are_left_out_and_done_and_pending_tasks_are_not_listed() {
     let home = demo();
     ok(agboard(
         home.path(),
@@ -179,7 +179,7 @@ fn epics_without_listed_cards_are_left_out_and_done_and_pending_cards_are_not_li
     let kept = add(home.path(), "kept", Some("ALPHA"));
     let waiting = add(home.path(), "waiting", Some("ALPHA"));
     let finished = add(home.path(), "finished", Some("ALPHA"));
-    let _beta = add(home.path(), "beta card", Some("BETA"));
+    let _beta = add(home.path(), "beta task", Some("BETA"));
 
     ok(agboard(
         home.path(),
@@ -225,7 +225,7 @@ fn epics_without_listed_cards_are_left_out_and_done_and_pending_cards_are_not_li
     ));
 
     let table = progress(home.path());
-    let alpha = epic_card_ids(&table, "ALPHA");
+    let alpha = epic_task_ids(&table, "ALPHA");
     assert_eq!(alpha, vec![kept]);
     let ids: Vec<&str> = table["epics"]
         .as_array()
@@ -238,16 +238,16 @@ fn epics_without_listed_cards_are_left_out_and_done_and_pending_cards_are_not_li
 }
 
 #[test]
-fn a_pending_card_returns_to_the_table_once_it_is_idle_again() {
+fn a_pending_task_returns_to_the_table_once_it_is_idle_again() {
     let home = demo();
-    let card = add(home.path(), "asks", Some("ALPHA"));
+    let task = add(home.path(), "asks", Some("ALPHA"));
     ok(agboard(
         home.path(),
         &[
             "--project",
             "Demo",
             "mv",
-            &card.to_string(),
+            &task.to_string(),
             "doing",
             "--actor",
             "ai",
@@ -261,7 +261,7 @@ fn a_pending_card_returns_to_the_table_once_it_is_idle_again() {
             "--project",
             "Demo",
             "state",
-            &card.to_string(),
+            &task.to_string(),
             "pending",
             "--actor",
             "ai",
@@ -269,12 +269,12 @@ fn a_pending_card_returns_to_the_table_once_it_is_idle_again() {
             r#"{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}"#,
         ],
     ));
-    assert!(epic_card_ids(&progress(home.path()), "ALPHA").is_empty());
+    assert!(epic_task_ids(&progress(home.path()), "ALPHA").is_empty());
     let shown = ok_json(agboard(
         home.path(),
-        &["--project", "Demo", "show", &card.to_string(), "--json"],
+        &["--project", "Demo", "show", &task.to_string(), "--json"],
     ));
-    let request = shown["card"]["pendingRequestId"]
+    let request = shown["task"]["pendingRequestId"]
         .as_str()
         .unwrap()
         .to_string();
@@ -284,7 +284,7 @@ fn a_pending_card_returns_to_the_table_once_it_is_idle_again() {
             "--project",
             "Demo",
             "state",
-            &card.to_string(),
+            &task.to_string(),
             "idle",
             "--actor",
             "human",
@@ -296,13 +296,13 @@ fn a_pending_card_returns_to_the_table_once_it_is_idle_again() {
             "y",
         ],
     ));
-    assert_eq!(epic_card_ids(&progress(home.path()), "ALPHA"), vec![card]);
+    assert_eq!(epic_task_ids(&progress(home.path()), "ALPHA"), vec![task]);
 }
 
 #[test]
 fn the_json_has_paths_and_counts_but_no_body_or_history() {
     let home = demo();
-    let card = add(home.path(), "shape", Some("ALPHA"));
+    let task = add(home.path(), "shape", Some("ALPHA"));
     let table = progress(home.path());
     for key in [
         "project",
@@ -314,11 +314,11 @@ fn the_json_has_paths_and_counts_but_no_body_or_history() {
     ] {
         assert!(table.get(key).is_some(), "missing {key}");
     }
-    let listed = &table["epics"][0]["cards"][0];
-    assert_eq!(listed["id"], card);
+    let listed = &table["epics"][0]["tasks"][0];
+    assert_eq!(listed["id"], task);
     assert_eq!(listed["acceptance"], json!({"done": 0, "total": 0}));
     for forbidden in ["body", "description", "history", "attachments", "evidence"] {
-        assert!(listed.get(forbidden).is_none(), "card carries {forbidden}");
+        assert!(listed.get(forbidden).is_none(), "task carries {forbidden}");
         assert!(
             table["epics"][0].get(forbidden).is_none(),
             "epic carries {forbidden}"
@@ -329,7 +329,7 @@ fn the_json_has_paths_and_counts_but_no_body_or_history() {
 }
 
 #[test]
-fn epic_edit_stores_the_order_without_the_body_drops_cards_that_left_and_refuses_repeats() {
+fn epic_edit_stores_the_order_without_the_body_drops_tasks_that_left_and_refuses_repeats() {
     let home = demo();
     let kept = add(home.path(), "kept", Some("ALPHA"));
     let gone = add(home.path(), "gone", Some("ALPHA"));
@@ -370,10 +370,10 @@ fn epic_edit_stores_the_order_without_the_body_drops_cards_that_left_and_refuses
 
     let stored = fs::read_to_string(plan_path(home.path())).unwrap();
     assert!(stored.contains("Keep this text."));
-    // 99 belongs to no card and is dropped on save. The card that left keeps its place
+    // 99 belongs to no task and is dropped on save. The task that left keeps its place
     // in the stored order, but the table no longer shows it.
     assert_eq!(frontmatter::priority_of(&stored).unwrap(), vec![gone, kept]);
-    assert_eq!(epic_card_ids(&progress(home.path()), "ALPHA"), vec![kept]);
+    assert_eq!(epic_task_ids(&progress(home.path()), "ALPHA"), vec![kept]);
 
     let refused = agboard(
         home.path(),
@@ -397,7 +397,7 @@ fn epic_edit_stores_the_order_without_the_body_drops_cards_that_left_and_refuses
 }
 
 #[test]
-fn the_human_table_lists_each_epic_and_the_unassigned_cards() {
+fn the_human_table_lists_each_epic_and_the_unassigned_tasks() {
     let home = demo();
     add(home.path(), "inside", Some("ALPHA"));
     add(home.path(), "outside", None);
@@ -410,10 +410,10 @@ fn the_human_table_lists_each_epic_and_the_unassigned_cards() {
 }
 
 #[test]
-fn an_archived_card_is_never_listed() {
+fn an_archived_task_is_never_listed() {
     use agent_board::file_store::FileStore;
     let home = demo();
-    let card = add(home.path(), "to archive", Some("ALPHA"));
+    let task = add(home.path(), "to archive", Some("ALPHA"));
     let kept = add(home.path(), "still open", Some("ALPHA"));
     ok(agboard(
         home.path(),
@@ -421,7 +421,7 @@ fn an_archived_card_is_never_listed() {
             "--project",
             "Demo",
             "mv",
-            &card.to_string(),
+            &task.to_string(),
             "done",
             "--actor",
             "human",
@@ -438,8 +438,8 @@ fn an_archived_card_is_never_listed() {
         .find(|p| p.name == "Demo")
         .unwrap();
     store
-        .archive_card(&project.id, card, chrono::Utc::now())
+        .archive_task(&project.id, task, chrono::Utc::now())
         .unwrap();
 
-    assert_eq!(epic_card_ids(&progress(home.path()), "ALPHA"), vec![kept]);
+    assert_eq!(epic_task_ids(&progress(home.path()), "ALPHA"), vec![kept]);
 }

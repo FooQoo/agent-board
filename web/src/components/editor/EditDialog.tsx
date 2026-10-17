@@ -3,7 +3,7 @@ import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionDialogData } from '../ActionDialog';
 import { epicInk } from '../../lib/epic';
-import type { AcceptanceItem, Card } from '../../types';
+import type { AcceptanceItem, Task } from '../../types';
 import { acceptanceProblem } from '../../lib/acceptance';
 import { ConditionsDock } from '../acceptance/ConditionsDock';
 import { ConditionsLink } from '../acceptance/ConditionsLink';
@@ -22,13 +22,13 @@ import type { StoredAttachment } from './attachmentTypes';
  * stays saved; when a later step fails, the input stays and only the rest is sent again.
  */
 export function EditDialog({
-  card,
+  task,
   onClose,
   onSavingChange,
   onSubmit,
   projectId,
 }: {
-  card: Card;
+  task: Task;
   onClose: () => void;
   onSavingChange?: (saving: boolean) => void;
   onSubmit: (data: ActionDialogData) => Promise<void>;
@@ -37,23 +37,23 @@ export function EditDialog({
   const { t } = useTranslation();
   const editor = useRef<RichMarkdownEditorHandle>(null);
   // A card whose frontmatter cannot be read is edited as its whole text, as it was before.
-  const whole = card.acceptanceError;
+  const whole = task.acceptanceError;
   // What the server has: the baseline the unsaved-change check compares with.
   const [saved, setSaved] = useState(() => ({
-    title: card.title,
-    description: normalizeNewlines(whole ? card.description : card.body),
-    acceptance: card.acceptance,
+    title: task.title,
+    description: normalizeNewlines(whole ? task.description : task.body),
+    acceptance: task.acceptance,
   }));
-  const [title, setTitle] = useState(card.title);
+  const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(saved.description);
-  const [conditions, setConditions] = useState<AcceptanceItem[]>(card.acceptance);
+  const [conditions, setConditions] = useState<AcceptanceItem[]>(task.acceptance);
   const conditionsId = useId();
   const [removed, setRemoved] = useState<string[]>([]);
   const attachmentState = useAttachmentState({
-    initial: card.attachments ?? [],
+    initial: task.attachments ?? [],
     resolveStoredUrl: (attachment) =>
       projectId
-        ? `/api/projects/${projectId}/cards/${card.id}/attachments/${encodeURIComponent(attachment.id)}`
+        ? `/api/projects/${projectId}/tasks/${task.id}/attachments/${encodeURIComponent(attachment.id)}`
         : '',
   });
   const flow = useSaveFlow({ onClose, onSavingChange });
@@ -115,7 +115,7 @@ export function EditDialog({
 
   return (
     <EditorShell
-      cardId={card.id}
+      taskId={task.id}
       title={t('editor.editCardTitle')}
       badge=""
       variant="edit"
@@ -152,15 +152,15 @@ export function EditDialog({
         }
         outlineTop={whole ? undefined : <ConditionsLink id={conditionsId} items={conditions} />}
         asideTop={
-          card.epic ? (
+          task.epic ? (
             <div className="editor__epic-row">
               <span className="editor__epic-caption">{t('editor.epic')}</span>
               <span
                 className="editor__epic-chip"
-                style={{ background: card.epic.color, color: epicInk(card.epic.color) }}
-                title={card.epic.name}
+                style={{ background: task.epic.color, color: epicInk(task.epic.color) }}
+                title={task.epic.name}
               >
-                {card.epic.id}
+                {task.epic.id}
               </span>
             </div>
           ) : undefined

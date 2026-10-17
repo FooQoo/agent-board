@@ -1,4 +1,4 @@
-//! Image operations for a card or an epic: registration, deletion, and the
+//! Image operations for a task or an epic: registration, deletion, and the
 //! path of a stored image. An image belongs to one owner. An ID that belongs
 //! to another owner, or to none, is `attachment_not_found`.
 //!
@@ -17,9 +17,9 @@ use super::super::layout;
 use super::super::model::{AttachmentOwner, EpicFile, StoredAttachment, TaskFile};
 use super::super::reader;
 use super::epic::read_epic_file;
-use super::{ensure_ai_card_not_done, lock_project, save_task, stamp};
+use super::{ensure_ai_task_not_done, lock_project, save_task, stamp};
 use crate::domain::{
-    Attachment, AttachmentInput, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS, ProjectId,
+    Attachment, AttachmentInput, MAX_TASK_ATTACHMENT_BYTES, MAX_TASK_ATTACHMENTS, ProjectId,
     validate_attachment,
 };
 use crate::error::AgboardError;
@@ -52,24 +52,24 @@ impl Loaded {
         }
     }
 
-    /// A card that is archived takes no image changes for anyone. A draft
+    /// A task that is archived takes no image changes for anyone. A draft
     /// takes none from the agent side (`block_drafts`); a person may change
     /// it. Epics have neither state.
     fn ensure_writable(&self, block_drafts: bool) -> Result<(), AgboardError> {
         match self {
             Loaded::Task(task) if task.archived_at.is_some() => {
-                Err(AgboardError::CardArchived { id: task.id })
+                Err(AgboardError::TaskArchived { id: task.id })
             }
             Loaded::Task(task) if block_drafts => {
-                ensure_ai_card_not_done(task, crate::domain::Actor::Ai)?;
+                ensure_ai_task_not_done(task, crate::domain::Actor::Ai)?;
                 if task.is_draft {
-                    Err(AgboardError::CardIsDraft { id: task.id })
+                    Err(AgboardError::TaskIsDraft { id: task.id })
                 } else {
                     Ok(())
                 }
             }
             Loaded::Task(task) if block_drafts && task.is_draft => {
-                Err(AgboardError::CardIsDraft { id: task.id })
+                Err(AgboardError::TaskIsDraft { id: task.id })
             }
             _ => Ok(()),
         }
@@ -82,7 +82,7 @@ fn load(
     owner: &AttachmentOwner,
 ) -> Result<Loaded, AgboardError> {
     match owner {
-        AttachmentOwner::Card(id) => Ok(Loaded::Task(reader::read_task_strict(
+        AttachmentOwner::Task(id) => Ok(Loaded::Task(reader::read_task_strict(
             shared, project, *id,
         )?)),
         AttachmentOwner::Epic(id) => {
@@ -111,7 +111,7 @@ fn asset_file(
 ) -> Result<PathBuf, AgboardError> {
     let ext = extension(media_type)?;
     match owner {
-        AttachmentOwner::Card(id) => layout::task_asset_path(project_dir, *id, attachment_id, ext),
+        AttachmentOwner::Task(id) => layout::task_asset_path(project_dir, *id, attachment_id, ext),
         AttachmentOwner::Epic(id) => layout::epic_asset_path(project_dir, id, attachment_id, ext),
     }
 }
@@ -128,8 +128,8 @@ fn check_limits(existing: &[Attachment], added_bytes: usize) -> Result<(), Agboa
         .iter()
         .map(|a| usize::try_from(a.size).unwrap_or(0))
         .sum();
-    if existing.len() + 1 > MAX_CARD_ATTACHMENTS
-        || total.saturating_add(added_bytes) > MAX_CARD_ATTACHMENT_BYTES
+    if existing.len() + 1 > MAX_TASK_ATTACHMENTS
+        || total.saturating_add(added_bytes) > MAX_TASK_ATTACHMENT_BYTES
     {
         return Err(AgboardError::AttachmentLimitExceeded);
     }
@@ -142,8 +142,8 @@ pub(super) fn last_part(name: &str) -> String {
 }
 
 impl FileStore {
-    /// Register an image for a card or an epic, from the agent side (the CLI):
-    /// a draft card refuses it with `card_is_draft`.
+    /// Register an image for a task or an epic, from the agent side (the CLI):
+    /// a draft task refuses it with `task_is_draft`.
     pub fn add_attachment(
         &self,
         project: &ProjectId,
@@ -154,7 +154,7 @@ impl FileStore {
         self.add_attachment_gated(project, owner, input, now, true)
     }
 
-    /// Register an image from a person in the Web UI: a draft card accepts it.
+    /// Register an image from a person in the Web UI: a draft task accepts it.
     pub fn add_attachment_for_user(
         &self,
         project: &ProjectId,
@@ -217,7 +217,7 @@ impl FileStore {
         Ok(metadata)
     }
 
-    /// Remove an image from the agent side (the CLI). A draft card refuses it.
+    /// Remove an image from the agent side (the CLI). A draft task refuses it.
     pub fn delete_attachment(
         &self,
         project: &ProjectId,
@@ -228,7 +228,7 @@ impl FileStore {
         self.delete_attachment_gated(project, owner, attachment_id, now, true)
     }
 
-    /// Remove an image from a person in the Web UI. A draft card accepts it.
+    /// Remove an image from a person in the Web UI. A draft task accepts it.
     pub fn delete_attachment_for_user(
         &self,
         project: &ProjectId,
@@ -279,7 +279,7 @@ impl FileStore {
 
     /// The image's metadata and file path. An image that is not recorded for
     /// this owner, or whose path goes through a symbolic link, is
-    /// `attachment_not_found`. Reads are allowed for archived cards.
+    /// `attachment_not_found`. Reads are allowed for archived tasks.
     pub fn attachment_path(
         &self,
         project: &ProjectId,

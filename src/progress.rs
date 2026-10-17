@@ -1,9 +1,9 @@
-//! The progress table: the cards an agent can pick up, grouped by epic in
+//! The progress table: the tasks an agent can pick up, grouped by epic in
 //! priority order. `agboard progress` and the agent hook print this same table.
 //!
-//! A card is listed when it is in Todo or Doing and its agent status is not
-//! Pending. Done cards and archived cards are never listed. Human-assigned
-//! cards and drafts are listed, so the agent can see them and skip them.
+//! A task is listed when it is in Todo or Doing and its agent status is not
+//! Pending. Done tasks and archived tasks are never listed. Human-assigned
+//! tasks and drafts are listed, so the agent can see them and skip them.
 
 use std::path::PathBuf;
 
@@ -13,7 +13,7 @@ use serde::Serialize;
 use crate::domain::{Assignee, ChangeCursor, Column, ProjectMeta, RunState};
 use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::layout;
-use crate::file_store::model::{CardView, EpicView};
+use crate::file_store::model::{EpicView, TaskView};
 use crate::file_store::reader::ProjectSnapshot;
 
 /// The table as the CLI and the hook give it.
@@ -25,10 +25,10 @@ pub struct Progress {
     pub fetched_at: DateTime<Utc>,
     pub version: String,
     pub cursor: ChangeCursor,
-    /// Epics in ID order. An epic with no listed card is left out.
+    /// Epics in ID order. An epic with no listed task is left out.
     pub epics: Vec<ProgressEpic>,
-    /// Listed cards that belong to no epic, in ID order.
-    pub unassigned: Vec<ProgressCard>,
+    /// Listed tasks that belong to no epic, in ID order.
+    pub unassigned: Vec<ProgressTask>,
 }
 
 /// Conditions met out of conditions.
@@ -44,18 +44,18 @@ pub struct ProgressEpic {
     pub id: String,
     pub name: String,
     pub plan_path: PathBuf,
-    /// The `priority` list of PLAN.md cannot be read; the cards keep ID order.
+    /// The `priority` list of PLAN.md cannot be read; the tasks keep ID order.
     pub priority_error: bool,
-    pub cards: Vec<ProgressCard>,
+    pub tasks: Vec<ProgressTask>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProgressCard {
+pub struct ProgressTask {
     pub id: i64,
     pub title: String,
     pub assignee: Assignee,
-    pub card_status: Column,
+    pub task_status: Column,
     pub agent_status: RunState,
     pub is_draft: bool,
     pub task_path: PathBuf,
@@ -71,10 +71,10 @@ pub fn build(
     fetched_at: DateTime<Utc>,
 ) -> Progress {
     let project_dir = layout::project_dir(shared, &snapshot.project.id);
-    let listed: Vec<&CardView> = snapshot
-        .cards
+    let listed: Vec<&TaskView> = snapshot
+        .tasks
         .iter()
-        .filter(|card| is_listed(card))
+        .filter(|task| is_listed(task))
         .collect();
 
     let mut epics: Vec<&EpicView> = snapshot.epics.iter().collect();
@@ -85,38 +85,38 @@ pub fn build(
             Ok(order) => (order, false),
             Err(_) => (Vec::new(), true),
         };
-        let mut cards: Vec<&CardView> = listed
+        let mut tasks: Vec<&TaskView> = listed
             .iter()
             .copied()
-            .filter(|card| card.epic_id.as_deref() == Some(epic.id.as_str()))
+            .filter(|task| task.epic_id.as_deref() == Some(epic.id.as_str()))
             .collect();
-        if cards.is_empty() {
+        if tasks.is_empty() {
             continue;
         }
-        cards.sort_by_key(|card| (rank(&priority, card.id), card.id));
+        tasks.sort_by_key(|task| (rank(&priority, task.id), task.id));
         let epic_dir = layout::epic_dir(&project_dir, &epic.id);
         groups.push(ProgressEpic {
             id: epic.id.as_str().to_string(),
             name: epic.name.clone(),
             plan_path: layout::epic_plan(&epic_dir),
             priority_error,
-            cards: cards
+            tasks: tasks
                 .into_iter()
-                .map(|card| card_of(card, &project_dir))
+                .map(|task| task_of(task, &project_dir))
                 .collect(),
         });
     }
 
-    let mut unassigned: Vec<&CardView> = listed
+    let mut unassigned: Vec<&TaskView> = listed
         .iter()
         .copied()
-        .filter(|card| {
-            card.epic_id
+        .filter(|task| {
+            task.epic_id
                 .as_deref()
                 .is_none_or(|id| !snapshot.epics.iter().any(|epic| epic.id.as_str() == id))
         })
         .collect();
-    unassigned.sort_by_key(|card| card.id);
+    unassigned.sort_by_key(|task| task.id);
 
     Progress {
         project: snapshot.project.clone(),
@@ -126,18 +126,18 @@ pub fn build(
         epics: groups,
         unassigned: unassigned
             .into_iter()
-            .map(|card| card_of(card, &project_dir))
+            .map(|task| task_of(task, &project_dir))
             .collect(),
     }
 }
 
-fn is_listed(card: &CardView) -> bool {
-    matches!(card.card_status, Column::Todo | Column::Doing)
-        && card.agent_status != RunState::Pending
+fn is_listed(task: &TaskView) -> bool {
+    matches!(task.task_status, Column::Todo | Column::Doing)
+        && task.agent_status != RunState::Pending
 }
 
-/// Position in the priority list; a card that is not listed comes after all
-/// listed cards.
+/// Position in the priority list; a task that is not listed comes after all
+/// listed tasks.
 fn rank(priority: &[i64], id: i64) -> usize {
     priority
         .iter()
@@ -152,16 +152,16 @@ fn count(items: &[AcceptanceItem]) -> Count {
     }
 }
 
-fn card_of(card: &CardView, project_dir: &std::path::Path) -> ProgressCard {
-    ProgressCard {
-        id: card.id,
-        title: card.title.clone(),
-        assignee: card.assignee,
-        card_status: card.card_status,
-        agent_status: card.agent_status,
-        is_draft: card.is_draft,
-        task_path: layout::task_md(&layout::task_dir(project_dir, card.id)),
-        acceptance: count(&card.acceptance),
-        acceptance_error: card.acceptance_error,
+fn task_of(task: &TaskView, project_dir: &std::path::Path) -> ProgressTask {
+    ProgressTask {
+        id: task.id,
+        title: task.title.clone(),
+        assignee: task.assignee,
+        task_status: task.task_status,
+        agent_status: task.agent_status,
+        is_draft: task.is_draft,
+        task_path: layout::task_md(&layout::task_dir(project_dir, task.id)),
+        acceptance: count(&task.acceptance),
+        acceptance_error: task.acceptance_error,
     }
 }

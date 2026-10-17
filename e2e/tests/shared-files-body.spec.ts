@@ -3,26 +3,26 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { agboard, agboardOk, mainProject, projectId, resetBoard, cardBody, workspace, type CardJson, decisionJson } from '../helpers/agboard';
+import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, decisionJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
 // card that is Done and still takes an edit, and the edit dialog that saves once and rewrites nothing unless asked.
 
-interface ShownCard extends CardJson {
+interface ShownTask extends TaskJson {
   description: string;
   isDraft: boolean;
   history: { at: string; reason: string }[];
 }
 
-const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const body = (dialog: Locator) => dialog.getByRole('textbox', { name: 'Description (Markdown)' });
 const request = (page: Page, id: number) =>
-  page.locator(`.card__answer[data-card-id="${id}"]`).getByRole('region', { name: 'The agent is waiting for your answer' });
+  page.locator(`.card__answer[data-task-id="${id}"]`).getByRole('region', { name: 'The agent is waiting for your answer' });
 
-function show(id: number): ShownCard {
-  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
+function show(id: number): ShownTask {
+  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
 async function openBoard(page: Page): Promise<void> {
@@ -32,7 +32,7 @@ async function openBoard(page: Page): Promise<void> {
 
 /** A decision request on card `id`, the card moved to Doing and running first, as an agent does. */
 function askWithChoices(id: number, question: string, choices: { id: string; label: string }[]): void {
-  if (show(id).cardStatus !== 'doing') agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'human', '--reason', 'Doing it.']);
+  if (show(id).taskStatus !== 'doing') agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'human', '--reason', 'Doing it.']);
   agboardOk(mainProject, ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Working.']);
   const file = path.join(work, `request-${id}-${Date.now()}.json`);
   writeFileSync(file, JSON.stringify({ question, choices }));
@@ -82,7 +82,7 @@ test('a task body shows its sections, consecutive captures side by side, and a M
   agboardOk(mainProject, ['edit', '13', '--desc-file', writeBody(markdown)]);
 
   await openBoard(page);
-  await card(page, 13).click();
+  await task(page, 13).click();
   const panel = details(page);
   // The body is written as numbered chapters; the captures sit in one group, side by side.
   await expect(panel.locator('.md-chapter__title', { hasText: /^Work$/ }).first()).toBeVisible();
@@ -119,7 +119,7 @@ test('a decision request is answered with a choice only, with text only, or with
 
   // A choice alone.
   askWithChoices(16, 'Which way?', choices);
-  await card(page, 16).click();
+  await task(page, 16).click();
   const answer = request(page, 16);
   await expect(answer.getByRole('radiogroup', { name: 'Choices' })).toBeVisible();
   const send = answer.getByRole('button', { name: 'Send', exact: true });
@@ -153,7 +153,7 @@ test('a decision request is answered with a choice only, with text only, or with
 test('an answer with nothing chosen and nothing typed cannot be sent', async ({ page }) => {
   askWithChoices(15, 'Ready?', [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }]);
   await openBoard(page);
-  await card(page, 15).click();
+  await task(page, 15).click();
   const send = request(page, 15).getByRole('button', { name: 'Send', exact: true });
   await expect(send).toBeDisabled();
   await request(page, 15).getByRole('textbox', { name: 'Your answer' }).fill('   ');
@@ -162,12 +162,12 @@ test('an answer with nothing chosen and nothing typed cannot be sent', async ({ 
   await expect(send).toBeEnabled();
 });
 
-test('a Done card rejects agent edits while a person can still edit and show its body', async ({ page }) => {
+test('a Done task rejects agent edits while a person can still edit and show its body', async ({ page }) => {
   await openBoard(page);
   // The agent reports the work: the card stays in Doing, idle.
   agboardOk(mainProject, ['state', '13', 'running', '--actor', 'ai', '--reason', 'Working.']);
   agboardOk(mainProject, ['state', '13', 'idle', '--actor', 'ai', '--reason', 'Reported as finished.']);
-  expect(show(13)).toMatchObject({ cardStatus: 'doing', agentStatus: 'idle' });
+  expect(show(13)).toMatchObject({ taskStatus: 'doing', agentStatus: 'idle' });
   await expect(page.getByRole('region', { name: 'Doing' }).getByRole('button', { name: /^#13(?!\d)/ })).toBeVisible();
 
   // The coordinator moves it to Done with a reason.
@@ -175,17 +175,17 @@ test('a Done card rejects agent edits while a person can still edit and show its
   await expect(page.getByRole('region', { name: 'Done' }).getByRole('button', { name: /^#13(?!\d)/ })).toBeVisible();
 
   // Done is read-only for agents. A human can still edit it in the page below.
-  const refused = agboard(mainProject, ['edit', '13', '--desc-file', writeBody(cardBody('Corrected after Done.'))]);
+  const refused = agboard(mainProject, ['edit', '13', '--desc-file', writeBody(taskBody('Corrected after Done.'))]);
   expect(refused.code).not.toBe(0);
-  expect(refused.stderr).toContain('card #13 is done and read-only for agents');
-  expect(show(13)).toMatchObject({ cardStatus: 'done', agentStatus: 'idle' });
-  await card(page, 13).click();
+  expect(refused.stderr).toContain('task #13 is done and read-only for agents');
+  expect(show(13)).toMatchObject({ taskStatus: 'done', agentStatus: 'idle' });
+  await task(page, 13).click();
   await expect(details(page)).toContainText('Check the layout at 1280, 800, and 480 px.');
   await expect(details(page)).toContainText('Done');
 
   // Human editing in the page remains available: make a draft, edit the body, and save it while Done.
   await details(page).getByRole('button', { name: 'Make draft' }).click();
-  await details(page).getByRole('button', { name: 'Edit card' }).click();
+  await details(page).getByRole('button', { name: 'Edit task' }).click();
   const dialog = page.getByRole('dialog', { name: /^#13 / });
   await expect(body(dialog).getByText('Check the layout at 1280, 800, and 480 px.')).toBeVisible();
   await body(dialog).getByText('Check the layout at 1280, 800, and 480 px.').click();
@@ -193,7 +193,7 @@ test('a Done card rejects agent edits while a person can still edit and show its
   await page.keyboard.type(' Second line after Done.');
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  expect(show(13)).toMatchObject({ cardStatus: 'done', isDraft: true });
+  expect(show(13)).toMatchObject({ taskStatus: 'done', isDraft: true });
   expect(show(13).description).toContain('Second line after Done.');
 });
 
@@ -207,14 +207,14 @@ test('the edit dialog writes nothing when it is opened and closed unchanged, and
   const file = path.join(workspace(mainProject).folder, 'tasks', '15', 'TASK.md');
 
   await openBoard(page);
-  await card(page, 15).click();
+  await task(page, 15).click();
   await details(page).getByRole('button', { name: 'Make draft' }).click();
   await expect.poll(() => show(15).isDraft).toBe(true);
-  expectHistoryNote(show(15).history.at(-1), ['Marked card as draft.']);
-  expect(readFileSync(file, 'utf8')).toContain('reason: Marked card as draft.');
+  expectHistoryNote(show(15).history.at(-1), ['Marked task as draft.']);
+  expect(readFileSync(file, 'utf8')).toContain('reason: Marked task as draft.');
   const before = readFileSync(file, 'utf8');
   const beforeTime = statSync(file).mtimeMs;
-  await details(page).getByRole('button', { name: 'Edit card' }).click();
+  await details(page).getByRole('button', { name: 'Edit task' }).click();
   const dialog = page.getByRole('dialog', { name: /^#15 / });
   await expect(body(dialog).getByText('Intro text.')).toBeVisible();
   // Opened and closed with no change: the file is not written, and its time does not move.
@@ -224,7 +224,7 @@ test('the edit dialog writes nothing when it is opened and closed unchanged, and
   expect(statSync(file).mtimeMs).toBe(beforeTime);
 
   // Opened again, changed, and saved: the text is written once, and the picture's reference stays.
-  await details(page).getByRole('button', { name: 'Edit card' }).click();
+  await details(page).getByRole('button', { name: 'Edit task' }).click();
   const again = page.getByRole('dialog', { name: /^#15 / });
   await expect(body(again).getByText('Intro text.')).toBeVisible();
   await body(again).getByText('Intro text.').click();

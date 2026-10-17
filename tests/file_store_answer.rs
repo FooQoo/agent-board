@@ -5,7 +5,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::model::Choice;
 use agent_board::file_store::{Answer, FileStore};
@@ -62,13 +62,13 @@ fn fixture() -> Fixture {
 }
 
 impl Fixture {
-    /// An AI card in Doing, ready to ask a question.
-    fn working_card(&self) -> i64 {
+    /// An AI task in Doing, ready to ask a question.
+    fn working_task(&self) -> i64 {
         let id = self
             .store
-            .create_card(
+            .create_task(
                 &self.project,
-                NewCard {
+                NewTask {
                     title: "work".into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
@@ -80,7 +80,7 @@ impl Fixture {
             .unwrap()
             .id;
         self.store
-            .move_work_card(
+            .move_work_task(
                 &self.project,
                 id,
                 Column::Doing,
@@ -131,9 +131,9 @@ fn is_hex32(text: &str) -> bool {
 }
 
 #[test]
-fn a_request_with_choices_is_saved_in_metadata_and_shown_on_the_card() {
+fn a_request_with_choices_is_saved_in_metadata_and_shown_on_the_task() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let asked = fx
         .store
         .request_decision(
@@ -164,9 +164,9 @@ fn a_request_with_choices_is_saved_in_metadata_and_shown_on_the_card() {
 }
 
 #[test]
-fn a_choice_only_answer_returns_the_card_to_idle_and_records_the_choice() {
+fn a_choice_only_answer_returns_the_task_to_idle_and_records_the_choice() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let asked = fx
         .store
         .request_decision(
@@ -180,7 +180,7 @@ fn a_choice_only_answer_returns_the_card_to_idle_and_records_the_choice() {
         .unwrap();
     let request = asked.value.pending_request_id.clone().unwrap();
 
-    let card = fx
+    let task = fx
         .store
         .answer_request(
             &fx.project,
@@ -190,10 +190,10 @@ fn a_choice_only_answer_returns_the_card_to_idle_and_records_the_choice() {
             later(),
         )
         .unwrap();
-    assert_eq!(card.agent_status, RunState::Idle);
-    assert!(card.pending_request_id.is_none());
-    assert!(card.pending_reason.is_none());
-    assert!(card.pending_choices.is_empty());
+    assert_eq!(task.agent_status, RunState::Idle);
+    assert!(task.pending_request_id.is_none());
+    assert!(task.pending_reason.is_none());
+    assert!(task.pending_choices.is_empty());
 
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
     assert_eq!(last.as_object().unwrap().len(), 2);
@@ -216,13 +216,13 @@ fn a_choice_only_answer_returns_the_card_to_idle_and_records_the_choice() {
 #[test]
 fn a_text_answer_works_for_a_reason_only_request() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let request = fx.legacy_reason_only(id, "Which way?");
-    let asked = fx.store.card(&fx.project, id).unwrap();
+    let asked = fx.store.task(&fx.project, id).unwrap();
     assert_eq!(asked.pending_reason.as_deref(), Some("Which way?"));
     assert!(asked.pending_choices.is_empty());
 
-    let card = fx
+    let task = fx
         .store
         .answer_request(
             &fx.project,
@@ -232,7 +232,7 @@ fn a_text_answer_works_for_a_reason_only_request() {
             later(),
         )
         .unwrap();
-    assert_eq!(card.agent_status, RunState::Idle);
+    assert_eq!(task.agent_status, RunState::Idle);
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
     assert!(last["reason"].as_str().unwrap().contains("Use option B"));
     assert_eq!(
@@ -250,7 +250,7 @@ fn a_text_answer_works_for_a_reason_only_request() {
 #[test]
 fn an_answer_with_a_choice_and_a_note_stores_both() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let asked = fx
         .store
         .request_decision(
@@ -289,7 +289,7 @@ fn an_answer_with_a_choice_and_a_note_stores_both() {
 #[test]
 fn an_empty_answer_is_refused_and_changes_nothing() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let asked = fx
         .store
         .request_decision(
@@ -326,7 +326,7 @@ fn an_empty_answer_is_refused_and_changes_nothing() {
 #[test]
 fn an_unknown_choice_is_refused_and_changes_nothing() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let asked = fx
         .store
         .request_decision(
@@ -361,7 +361,7 @@ fn an_unknown_choice_is_refused_and_changes_nothing() {
 #[test]
 fn a_choice_is_unknown_for_a_reason_only_request() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let request = fx.legacy_reason_only(id, "Which way?");
     let err = fx
         .store
@@ -382,7 +382,7 @@ fn a_choice_is_unknown_for_a_reason_only_request() {
 #[test]
 fn an_answer_to_a_resolved_or_replaced_request_is_refused() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let first = fx
         .store
         .request_decision(
@@ -459,9 +459,9 @@ fn an_answer_to_a_resolved_or_replaced_request_is_refused() {
 }
 
 #[test]
-fn an_answer_to_a_card_that_is_not_pending_is_refused() {
+fn an_answer_to_a_task_that_is_not_pending_is_refused() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let err = fx
         .store
         .answer_request(
@@ -478,7 +478,7 @@ fn an_answer_to_a_card_that_is_not_pending_is_refused() {
 #[test]
 fn the_choices_and_the_question_are_limited() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     let before = fx.bytes(id);
     let eleven: Vec<Choice> = (0..11).map(|i| choice(&format!("c{i}"), "Label")).collect();
     let bad_cases: Vec<(String, Vec<Choice>)> = vec![
@@ -505,7 +505,7 @@ fn the_choices_and_the_question_are_limited() {
 #[test]
 fn a_pending_request_is_read_back_from_the_files_until_it_is_answered() {
     let fx = fixture();
-    let id = fx.working_card();
+    let id = fx.working_task();
     fx.store
         .request_decision(
             &fx.project,
@@ -517,8 +517,8 @@ fn a_pending_request_is_read_back_from_the_files_until_it_is_answered() {
         )
         .unwrap();
     let reopened = FileStore::open(&fx.shared);
-    let card = reopened.card(&fx.project, id).unwrap();
-    assert_eq!(card.agent_status, RunState::Pending);
-    assert_eq!(card.pending_reason.as_deref(), Some("Proceed?"));
-    assert_eq!(card.pending_choices, proceed_choices());
+    let task = reopened.task(&fx.project, id).unwrap();
+    assert_eq!(task.agent_status, RunState::Pending);
+    assert_eq!(task.pending_reason.as_deref(), Some("Proceed?"));
+    assert_eq!(task.pending_choices, proceed_choices());
 }

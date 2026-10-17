@@ -1,13 +1,13 @@
 import { forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MonitorCard, MonitorFreshness, MonitorViewProps } from '../contracts';
-import { MonitorCard as CardRow } from './MonitorCard';
+import type { MonitorTask, MonitorFreshness, MonitorViewProps } from '../contracts';
+import { MonitorTask as TaskRow } from './MonitorTask';
 import { MonitorSectionHeader, type MonitorSection } from './MonitorSectionHeader';
 
 /** Each card is in exactly one section; the view decides which (see MonitorView). */
-export type Sections = Record<MonitorSection, MonitorCard[]>;
+export type Sections = Record<MonitorSection, MonitorTask[]>;
 
-export const CardList = forwardRef<
+export const TaskList = forwardRef<
   HTMLDivElement,
   Pick<Sections, 'todo' | 'doing' | 'done'> & {
     id: string;
@@ -16,9 +16,9 @@ export const CardList = forwardRef<
     onOpenDetail?: MonitorViewProps['onOpenDetail'];
     answerController?: MonitorViewProps['answerController'];
   }
->(function CardList({ id, todo, doing, done, freshness, onOpenDetail, answerController }, ref) {
+>(function TaskList({ id, todo, doing, done, freshness, onOpenDetail, answerController }, ref) {
   const { t } = useTranslation();
-  const sections: Array<[MonitorSection, MonitorCard[]]> = [
+  const sections: Array<[MonitorSection, MonitorTask[]]> = [
     ['todo', todo],
     ['doing', doing],
     ['done', done],
@@ -44,8 +44,8 @@ export const CardList = forwardRef<
           ) : (
             <div className="monitor-list__cards">
               {items.map((item) => (
-                <CardRow
-                  key={`${item.projectId}:${item.card.id}`}
+                <TaskRow
+                  key={`${item.projectId}:${item.task.id}`}
                   item={item}
                   section={section}
                   onOpenDetail={onOpenDetail}

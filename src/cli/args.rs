@@ -23,16 +23,16 @@ data area.
 Commands:
   project Create, list, rename, or delete projects
   init    Create the project's board, or empty an existing one
-  add     Add a card to Todo
-  edit    Change a card's title or description
-  mv      Move a card to todo, doing, or done
+  add     Add a task to Todo
+  edit    Change a task's title or description
+  mv      Move a task to todo, doing, or done
   history Append a work note
-  state   Report a card's run state: idle, running, or pending
-  rm      Delete a card (humans only; asks for confirmation)
-  ls      List cards
-  show    Show a card and its history
+  state   Report a task's run state: idle, running, or pending
+  rm      Delete a task (humans only; asks for confirmation)
+  ls      List tasks
+  show    Show a task and its history
   epic    Create, list, show, edit, or delete epics and their plans
-  evidence Add, show, or delete a card's text evidence
+  evidence Add, show, or delete a task's text evidence
   attachment Add, list, or read image attachments
   snapshot Fetch the complete board and history
   progress Show active work in epic priority order
@@ -54,14 +54,14 @@ Workflow for agents:
   agboard --project NAME state <id> pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'
 
 Rules for agents:
-  - Move a card to doing before you report running. A card in todo can ask a decision with pending.
+  - Move a task to doing before you report running. A task in todo can ask a decision with pending.
   - Ask a decision with --request-json: a question and 0 to 10 choices. pending needs it.
-  - Moving a card to todo or done resets it to idle.
-  - You cannot delete cards or projects, or replace a board. Ask a human to do it.
+  - Moving a task to todo or done resets it to idle.
+  - You cannot delete tasks or projects, or replace a board. Ask a human to do it.
   - Get the shared folder from workspace --json; do not assume its location.
-  - Do not edit TASK.md of a draft card, and do not edit task.json, epic.json,
+  - Do not edit TASK.md of a draft task, and do not edit task.json, epic.json,
     or project.json directly.
-  - Do not delete card or epic folders; ask a human to do it.
+  - Do not delete task or epic folders; ask a human to do it.
   - Progress and hooks resolve the nearest registered project folder; --project overrides it.
   - Add --json to any command for machine-readable output.
 
@@ -71,10 +71,10 @@ Descriptions and drafts:
   - Snapshots, `show`, and `wait` return descriptions in full. Progress and hooks
     return metadata only. If the hook's progress table exceeds 256 KiB, it reports AGBOARD_ERROR
     (context_too_large) instead; read only the needed PLAN.md and TASK.md files.
-  - A card with \"isDraft\": true is a draft the user is still writing. It is
-    read-only for you: `edit`, `mv`, and `state` fail with card_is_draft
+  - A task with \"isDraft\": true is a draft the user is still writing. It is
+    read-only for you: `edit`, `mv`, and `state` fail with task_is_draft
     (exit code 1) and change nothing. Do not retry. Wait for the user to
-    finalize it, and work on other cards meanwhile. `add`, `show`, `ls`,
+    finalize it, and work on other tasks meanwhile. `add`, `show`, `ls`,
     `snapshot`, and `wait` still work.";
 
 #[derive(Parser, Debug)]
@@ -102,27 +102,27 @@ pub enum Command {
     Project(ProjectArgs),
     /// Create the project's board, or empty an existing one
     Init(InitArgs),
-    /// Add a card to Todo
+    /// Add a task to Todo
     Add(AddArgs),
-    /// Change a card's title or description
+    /// Change a task's title or description
     Edit(EditArgs),
-    /// Move a card to todo, doing, or done
+    /// Move a task to todo, doing, or done
     Mv(MvArgs),
-    /// Report a card's run state: idle, running, or pending
+    /// Report a task's run state: idle, running, or pending
     State(StateArgs),
-    /// Append a work note to a card history
+    /// Append a work note to a task history
     History(HistoryArgs),
-    /// Delete a card (humans only; asks for confirmation)
+    /// Delete a task (humans only; asks for confirmation)
     Rm(RmArgs),
-    /// List cards
+    /// List tasks
     Ls(LsArgs),
-    /// Show a card and its history
+    /// Show a task and its history
     Show(ShowArgs),
     /// Add, list, or read image attachments
     Attachment(AttachmentArgs),
     /// Create, list, show, edit, or delete epics
     Epic(EpicArgs),
-    /// Add, show, or delete a card's text evidence
+    /// Add, show, or delete a task's text evidence
     Evidence(EvidenceArgs),
     /// Fetch the complete board and history without modifying it
     Snapshot(SnapshotArgs),
@@ -136,7 +136,7 @@ pub enum Command {
     Setup(SetupArgs),
     /// Show the project's shared folder and where its files are
     Workspace(WorkspaceArgs),
-    /// Show the cards an agent can pick up, by epic in priority order
+    /// Show the tasks an agent can pick up, by epic in priority order
     #[command(
         after_help = "Examples:\n  agboard progress\n  agboard progress --json\n  agboard --project \"My project\" progress --json"
     )]
@@ -218,7 +218,7 @@ pub enum ProjectCommand {
         after_help = "Examples:\n  agboard --project \"My project\" project rename \"Renamed project\"\n\nHook commands name the project; update them after a rename."
     )]
     Rename(ProjectRenameArgs),
-    /// Delete the project named with --project and all its cards (humans only)
+    /// Delete the project named with --project and all its tasks (humans only)
     #[command(after_help = "Examples:\n  agboard --project \"My project\" project rm")]
     Rm,
 }
@@ -334,49 +334,49 @@ pub struct InitArgs {}
     after_help = "Examples:\n  agboard --project demo add \"Write the setup guide\"\n  agboard --project demo add \"Fix the login bug\" --desc \"Users cannot sign in on Safari\"\n  agboard --project demo add \"Plan the release\" --desc-file notes.txt\n  echo \"Details\" | agboard --project demo add \"Write the docs\" --desc -"
 )]
 pub struct AddArgs {
-    /// Title of the card (1 to 100 characters, one line)
+    /// Title of the task (1 to 100 characters, one line)
     pub title: String,
     #[command(flatten)]
     pub description: DescriptionArgs,
-    /// Who owns this card
+    /// Who owns this task
     #[arg(long, value_enum)]
     pub assignee: AssigneeArg,
-    /// Who is creating this card
+    /// Who is creating this task
     #[arg(long, value_enum)]
     pub actor: ActorArg,
-    /// Epic to put the card in (its EPIC-ID)
+    /// Epic to put the task in (its EPIC-ID)
     #[arg(long, value_name = "EPIC-ID")]
     pub epic: Option<String>,
 }
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft card (isDraft) is read-only for agents: edit fails with card_is_draft (exit code 1) and changes nothing. Wait for the user to finalize it, then try again.\n\nExamples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
+    after_help = "A draft task (isDraft) is read-only for agents: edit fails with task_is_draft (exit code 1) and changes nothing. Wait for the user to finalize it, then try again.\n\nExamples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
 )]
 pub struct EditArgs {
-    /// ID of the card
+    /// ID of the task
     pub id: i64,
     /// New title
     #[arg(long, value_name = "TITLE")]
     pub title: Option<String>,
     #[command(flatten)]
     pub description: DescriptionArgs,
-    /// Put the card in this epic (its EPIC-ID)
+    /// Put the task in this epic (its EPIC-ID)
     #[arg(long, value_name = "EPIC-ID", conflicts_with = "clear_epic")]
     pub epic: Option<String>,
-    /// Take the card out of its epic
+    /// Take the task out of its epic
     #[arg(long, conflicts_with = "epic")]
     pub clear_epic: bool,
 }
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft card (isDraft) is read-only for agents: mv fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nExamples:\n  agboard --project demo mv 12 doing\n  agboard --project demo mv 12 done"
+    after_help = "A draft task (isDraft) is read-only for agents: mv fails with task_is_draft (exit code 1). Wait for the user to finalize it.\n\nExamples:\n  agboard --project demo mv 12 doing\n  agboard --project demo mv 12 done"
 )]
 pub struct MvArgs {
-    /// ID of the card
+    /// ID of the task
     pub id: i64,
-    /// Column to move the card to
+    /// Column to move the task to
     pub column: ColumnArg,
     #[command(flatten)]
     pub change: ChangeArgs,
@@ -384,10 +384,10 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft card (isDraft) is read-only for agents: state fails with card_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI card in todo or doing): ask with --request-json (a question and 0 to 10 choices)\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{}}'   # ask, then wait indefinitely\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{\"timeoutSeconds\":600}}'   # wait up to 10 minutes\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
+    after_help = "A draft task (isDraft) is read-only for agents: state fails with task_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI task in todo or doing): ask with --request-json (a question and 0 to 10 choices)\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{}}'   # ask, then wait indefinitely\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{\"timeoutSeconds\":600}}'   # wait up to 10 minutes\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
 )]
 pub struct StateArgs {
-    /// ID of the card
+    /// ID of the task
     pub id: i64,
     /// Run state to report
     pub state: RunStateArg,
@@ -586,7 +586,7 @@ pub struct EpicEditArgs {
     /// New color as #RRGGBB
     #[arg(long, value_name = "#RRGGBB")]
     pub color: Option<String>,
-    /// Card order of the epic as comma-separated card IDs (for example 24,26,25); empty clears it
+    /// Task order of the epic as comma-separated task IDs (for example 24,26,25); empty clears it
     #[arg(long, value_name = "IDS", allow_hyphen_values = true)]
     pub priority: Option<String>,
     #[command(flatten)]
@@ -644,11 +644,11 @@ pub struct EvidenceArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum EvidenceCommand {
-    /// Add a UTF-8 text file to a card as evidence
+    /// Add a UTF-8 text file to a task as evidence
     Add(EvidenceAddArgs),
-    /// Print a card's evidence text
+    /// Print a task's evidence text
     Show(EvidenceIdArgs),
-    /// Delete a card's evidence (humans only; asks for confirmation)
+    /// Delete a task's evidence (humans only; asks for confirmation)
     Rm(EvidenceIdArgs),
 }
 
@@ -657,8 +657,8 @@ pub enum EvidenceCommand {
     after_help = "Examples:\n  agboard --project demo evidence add 12 run.log\n  agboard --project demo evidence show 12 <evidence-id>"
 )]
 pub struct EvidenceAddArgs {
-    /// ID of the card
-    pub card_id: i64,
+    /// ID of the task
+    pub task_id: i64,
     /// UTF-8 text file to add
     pub path: PathBuf,
     /// Name to show for the evidence; the file name when omitted
@@ -668,8 +668,8 @@ pub struct EvidenceAddArgs {
 
 #[derive(Args, Debug)]
 pub struct EvidenceIdArgs {
-    /// ID of the card
-    pub card_id: i64,
+    /// ID of the task
+    pub task_id: i64,
     /// Evidence ID
     pub evidence_id: String,
 }
@@ -677,7 +677,7 @@ pub struct EvidenceIdArgs {
 #[derive(Args, Debug)]
 #[command(after_help = "Examples:\n  agboard --project demo rm 11")]
 pub struct RmArgs {
-    /// ID of the card
+    /// ID of the task
     pub id: i64,
 }
 
@@ -686,16 +686,16 @@ pub struct RmArgs {
     after_help = "Examples:\n  agboard --project demo ls\n  agboard --project demo ls --column doing\n  agboard --project demo ls --state pending --json\n  agboard ls --all-projects\n  agboard ls --all-projects --state pending --json"
 )]
 pub struct LsArgs {
-    /// List the cards of every project, read-only; do not give --project
+    /// List the tasks of every project, read-only; do not give --project
     #[arg(long)]
     pub all_projects: bool,
-    /// Only list cards in this column
+    /// Only list tasks in this column
     #[arg(long, value_name = "COLUMN")]
     pub column: Option<ColumnArg>,
-    /// Only list cards with this run state
+    /// Only list tasks with this run state
     #[arg(long, value_name = "STATE")]
     pub state: Option<RunStateArg>,
-    /// Only list cards in this epic (its EPIC-ID)
+    /// Only list tasks in this epic (its EPIC-ID)
     #[arg(long, value_name = "EPIC-ID")]
     pub epic: Option<String>,
 }
@@ -705,7 +705,7 @@ pub struct LsArgs {
     after_help = "Examples:\n  agboard --project demo show 12\n  agboard --project demo show 12 --json"
 )]
 pub struct ShowArgs {
-    /// ID of the card
+    /// ID of the task
     pub id: i64,
 }
 
@@ -720,9 +720,9 @@ pub struct AttachmentArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum AttachmentCommand {
-    /// List image metadata for a card
+    /// List image metadata for a task
     Ls(AttachmentLsArgs),
-    /// Add an image file to a card
+    /// Add an image file to a task
     Add(AttachmentAddArgs),
     /// Write an image attachment to a new file
     Get(AttachmentGetArgs),
@@ -730,14 +730,14 @@ pub enum AttachmentCommand {
 
 #[derive(Args, Debug)]
 pub struct AttachmentLsArgs {
-    /// ID of the card
-    pub card_id: i64,
+    /// ID of the task
+    pub task_id: i64,
 }
 
 #[derive(Args, Debug)]
 pub struct AttachmentAddArgs {
-    /// ID of the card
-    pub card_id: i64,
+    /// ID of the task
+    pub task_id: i64,
     /// Image file to add
     #[arg(long, value_name = "PATH")]
     pub file: PathBuf,
@@ -748,8 +748,8 @@ pub struct AttachmentAddArgs {
 
 #[derive(Args, Debug)]
 pub struct AttachmentGetArgs {
-    /// ID of the card
-    pub card_id: i64,
+    /// ID of the task
+    pub task_id: i64,
     /// Attachment ID
     pub attachment_id: String,
     /// New output file; an existing file is never overwritten

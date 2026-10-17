@@ -123,7 +123,7 @@ fn project_id(home: &Path, name: &str) -> String {
         .to_string()
 }
 
-/// A rule that says which cards a filter should keep.
+/// A rule that says which tasks a filter should keep.
 type Keep = Box<dyn Fn(&Value) -> bool>;
 
 fn entry<'a>(list: &'a Value, name: &str) -> &'a Value {
@@ -135,13 +135,13 @@ fn entry<'a>(list: &'a Value, name: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("no project {name} in the list"))
 }
 
-fn card(project: &Value, id: i64) -> &Value {
-    project["cards"]
+fn task(project: &Value, id: i64) -> &Value {
+    project["tasks"]
         .as_array()
         .unwrap()
         .iter()
         .find(|c| c["id"] == id)
-        .unwrap_or_else(|| panic!("no card #{id}"))
+        .unwrap_or_else(|| panic!("no task #{id}"))
 }
 
 fn names_of(list: &Value) -> Vec<String> {
@@ -385,9 +385,9 @@ fn on_terminal(home: &Path, project: &str, answer: &str, args: &[&str]) -> i32 {
     }
 }
 
-/// Three projects made in an order unlike their names, each with cards #1 and #2 of its own and a different
-/// history: Mango has an AI card waiting for a decision, Apple's decision was answered in the web, Zebra has
-/// finished work, and Kiwi has no cards at all.
+/// Three projects made in an order unlike their names, each with tasks #1 and #2 of its own and a different
+/// history: Mango has an AI task waiting for a decision, Apple's decision was answered in the web, Zebra has
+/// finished work, and Kiwi has no tasks at all.
 fn build(home: &Path) {
     for name in ["Zebra", "Mango", "Kiwi", "Apple"] {
         ok(&run(home, &["project", "create", name]));
@@ -408,10 +408,10 @@ fn build(home: &Path) {
     // Apple's request is answered by a person in the web.
     let server = serve(home);
     let apple = snapshot_of(home, "Apple");
-    let request = card(&apple, 1)["pendingRequestId"].as_str().unwrap();
+    let request = task(&apple, 1)["pendingRequestId"].as_str().unwrap();
     let (status, body) = server.write(
         &format!(
-            "/api/projects/{}/cards/1/answer",
+            "/api/projects/{}/tasks/1/answer",
             apple["project"]["id"].as_str().unwrap()
         ),
         &json!({ "requestId": request, "text": "Apple: use the MIT license." }),
@@ -450,8 +450,8 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
             "project",
             "version",
             "cursor",
-            "nextCardId",
-            "cards",
+            "nextTaskId",
+            "tasks",
             "problems",
         ] {
             assert!(keys.iter().any(|k| *k == key), "{name} lacks {key}");
@@ -471,13 +471,13 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
         );
     }
 
-    // The same card number in several projects stays apart: each card belongs to its project and carries
+    // The same task number in several projects stays apart: each task belongs to its project and carries
     // only its own history.
     for name in ["Apple", "Mango", "Zebra"] {
         let listed = entry(&list, name);
-        assert_eq!(card(listed, 1)["title"], format!("{name} build").as_str());
-        assert_eq!(card(listed, 2)["title"], format!("{name} review").as_str());
-        for c in listed["cards"].as_array().unwrap() {
+        assert_eq!(task(listed, 1)["title"], format!("{name} build").as_str());
+        assert_eq!(task(listed, 2)["title"], format!("{name} review").as_str());
+        for c in listed["tasks"].as_array().unwrap() {
             for event in c["history"].as_array().unwrap() {
                 if let Some(reason) = event["reason"].as_str() {
                     assert!(
@@ -504,12 +504,12 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
     unique.dedup();
     assert_eq!(unique.len(), ids.len());
     assert_ne!(
-        card(entry(&list, "Mango"), 1)["history"],
-        card(entry(&list, "Apple"), 1)["history"]
+        task(entry(&list, "Mango"), 1)["history"],
+        task(entry(&list, "Apple"), 1)["history"]
     );
 
-    // The histories are whole: the web answer is in Apple's card, the waiting request in Mango's.
-    let apple = card(entry(&list, "Apple"), 1);
+    // The histories are whole: the web answer is in Apple's task, the waiting request in Mango's.
+    let apple = task(entry(&list, "Apple"), 1);
     assert_eq!(apple["agentStatus"], "idle");
     assert!(apple["pendingRequestId"].is_null());
     let history = apple["history"].as_array().unwrap();
@@ -521,13 +521,13 @@ fn every_project_comes_back_by_name_with_the_same_content_as_its_own_snapshot() 
             .unwrap()
             .contains("Answer: Apple: use the MIT license.")
     );
-    let mango = card(entry(&list, "Mango"), 1);
+    let mango = task(entry(&list, "Mango"), 1);
     assert_eq!(mango["agentStatus"], "pending");
     assert_eq!(mango["pendingReason"], "Mango needs a decision");
     assert_eq!(mango["history"].as_array().unwrap().len(), 3);
-    // A project without cards is still there.
-    assert_eq!(entry(&list, "Kiwi")["cards"], json!([]));
-    assert_eq!(entry(&list, "Kiwi")["nextCardId"], 1);
+    // A project without tasks is still there.
+    assert_eq!(entry(&list, "Kiwi")["tasks"], json!([]));
+    assert_eq!(entry(&list, "Kiwi")["nextTaskId"], 1);
 }
 
 #[test]
@@ -539,11 +539,11 @@ fn filters_apply_to_every_project_and_keep_the_projects_with_no_match() {
     let cases: Vec<(Vec<&str>, Keep)> = vec![
         (
             vec!["--column", "done"],
-            Box::new(|c| c["cardStatus"] == "done"),
+            Box::new(|c| c["taskStatus"] == "done"),
         ),
         (
             vec!["--column", "todo"],
-            Box::new(|c| c["cardStatus"] == "todo"),
+            Box::new(|c| c["taskStatus"] == "todo"),
         ),
         (
             vec!["--state", "pending"],
@@ -559,11 +559,11 @@ fn filters_apply_to_every_project_and_keep_the_projects_with_no_match() {
         ),
         (
             vec!["--column", "doing", "--state", "pending"],
-            Box::new(|c| c["cardStatus"] == "doing" && c["agentStatus"] == "pending"),
+            Box::new(|c| c["taskStatus"] == "doing" && c["agentStatus"] == "pending"),
         ),
         (
             vec!["--column", "done", "--state", "pending"],
-            Box::new(|c| c["cardStatus"] == "done" && c["agentStatus"] == "pending"),
+            Box::new(|c| c["taskStatus"] == "done" && c["agentStatus"] == "pending"),
         ),
     ];
     for (args, keep) in cases {
@@ -571,7 +571,7 @@ fn filters_apply_to_every_project_and_keep_the_projects_with_no_match() {
         // Every project stays, in the same order, with its own project facts.
         assert_eq!(names_of(&filtered), names_of(&full), "{args:?}");
         for name in ["Apple", "Kiwi", "Mango", "Zebra"] {
-            let want: Vec<Value> = entry(&full, name)["cards"]
+            let want: Vec<Value> = entry(&full, name)["tasks"]
                 .as_array()
                 .unwrap()
                 .iter()
@@ -579,7 +579,7 @@ fn filters_apply_to_every_project_and_keep_the_projects_with_no_match() {
                 .cloned()
                 .collect();
             let got = entry(&filtered, name);
-            assert_eq!(got["cards"], Value::Array(want), "{name} {args:?}");
+            assert_eq!(got["tasks"], Value::Array(want), "{name} {args:?}");
             for key in ["project", "version", "cursor"] {
                 assert_eq!(got[key], entry(&full, name)[key], "{name} {args:?} {key}");
             }
@@ -587,17 +587,17 @@ fn filters_apply_to_every_project_and_keep_the_projects_with_no_match() {
             let mut own_args = vec!["ls", "--json"];
             own_args.extend(&args);
             let own = stdout_json(&agboard(home.path(), name, &own_args));
-            assert_eq!(got["cards"], own["cards"], "{name} {args:?} own ls");
+            assert_eq!(got["tasks"], own["tasks"], "{name} {args:?} own ls");
         }
     }
 
-    // The numbers behind the cases above: one waiting card (Mango), nothing waiting elsewhere.
+    // The numbers behind the cases above: one waiting task (Mango), nothing waiting elsewhere.
     let pending = all(home.path(), &["--state", "pending"]);
     let counts: Vec<usize> = pending["projects"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|p| p["cards"].as_array().unwrap().len())
+        .map(|p| p["tasks"].as_array().unwrap().len())
         .collect();
     assert_eq!(counts, [0, 0, 1, 0]);
     // A filter nothing matches leaves every project with an empty list.
@@ -608,7 +608,7 @@ fn filters_apply_to_every_project_and_keep_the_projects_with_no_match() {
             .as_array()
             .unwrap()
             .iter()
-            .all(|p| p["cards"] == json!([]))
+            .all(|p| p["tasks"] == json!([]))
     );
     // A bad value is refused as every other `ls` refuses it.
     assert_error(
@@ -647,22 +647,22 @@ fn a_deleted_project_leaves_the_list_and_a_new_one_with_the_same_name_starts_emp
     }
     assert_ne!(after["catalogVersion"], before["catalogVersion"]);
 
-    // Created again under the old name, it is a different project with no cards and its own numbering.
+    // Created again under the old name, it is a different project with no tasks and its own numbering.
     ok(&run(home.path(), &["project", "create", "Mango"]));
     let again = all(home.path(), &[]);
     assert_eq!(names_of(&again), ["Apple", "Kiwi", "Mango", "Zebra"]);
     let mango = entry(&again, "Mango");
     assert_ne!(mango["project"]["id"], old_id.as_str());
-    assert_eq!(mango["cards"], json!([]));
-    assert_eq!(mango["nextCardId"], 1);
+    assert_eq!(mango["tasks"], json!([]));
+    assert_eq!(mango["nextTaskId"], 1);
     assert_eq!(mango, &content(home.path(), "Mango"));
     assert_eq!(entry(&again, "Apple"), entry(&before, "Apple"));
     assert_eq!(entry(&again, "Zebra"), entry(&before, "Zebra"));
 
-    // Emptying one board keeps the project, with no cards, and moves its numbering on.
+    // Emptying one board keeps the project, with no tasks, and moves its numbering on.
     assert_eq!(on_terminal(home.path(), "Zebra", "y", &["init"]), 0);
     let emptied = all(home.path(), &[]);
-    assert_eq!(entry(&emptied, "Zebra")["cards"], json!([]));
+    assert_eq!(entry(&emptied, "Zebra")["tasks"], json!([]));
     assert_eq!(entry(&emptied, "Zebra"), &content(home.path(), "Zebra"));
     assert_eq!(
         entry(&emptied, "Zebra")["project"]["id"],
@@ -714,7 +714,7 @@ fn listing_changes_nothing_and_tells_a_running_server_nothing() {
     add(home.path(), "Kiwi", "Kiwi first", "ai");
     assert!(events.wait_for("event: changed", Duration::from_secs(5)));
     assert_eq!(
-        card(&all(home.path(), &[])["projects"][1], 1)["title"],
+        task(&all(home.path(), &[])["projects"][1], 1)["title"],
         "Kiwi first"
     );
 }
@@ -752,7 +752,7 @@ fn a_listing_is_one_moment_even_while_another_command_keeps_changing_two_project
         let done = done.clone();
         let path = home.path().to_path_buf();
         std::thread::spawn(move || {
-            // One card at a time, North then South: any consistent moment has North equal to South or one
+            // One task at a time, North then South: any consistent moment has North equal to South or one
             // ahead. A reader that took the projects at different moments could see South ahead of North.
             for i in 0..25 {
                 add(&path, "North", &format!("n{i}"), "ai");
@@ -767,15 +767,15 @@ fn a_listing_is_one_moment_even_while_another_command_keeps_changing_two_project
         let north = entry(&list, "North");
         let south = entry(&list, "South");
         let (n, s) = (
-            // The card counts stand in for the revisions: each save adds one card.
-            north["cards"].as_array().unwrap().len() as i64,
-            south["cards"].as_array().unwrap().len() as i64,
+            // The task counts stand in for the revisions: each save adds one task.
+            north["tasks"].as_array().unwrap().len() as i64,
+            south["tasks"].as_array().unwrap().len() as i64,
         );
         assert!(n - s == 0 || n - s == 1, "North {n} and South {s}");
-        assert_eq!(north["cards"].as_array().unwrap().len() as i64, n);
-        assert_eq!(south["cards"].as_array().unwrap().len() as i64, s);
-        // Each project's history: one event per card.
-        for c in north["cards"].as_array().unwrap() {
+        assert_eq!(north["tasks"].as_array().unwrap().len() as i64, n);
+        assert_eq!(south["tasks"].as_array().unwrap().len() as i64, s);
+        // Each project's history: one event per task.
+        for c in north["tasks"].as_array().unwrap() {
             assert_eq!(c["history"].as_array().unwrap().len(), 1);
         }
         reads += 1;
@@ -786,8 +786,8 @@ fn a_listing_is_one_moment_even_while_another_command_keeps_changing_two_project
     writer.join().unwrap();
     assert!(reads >= 5);
     let last = all(home.path(), &[]);
-    assert_eq!(entry(&last, "North")["cards"].as_array().unwrap().len(), 25);
-    assert_eq!(entry(&last, "South")["cards"].as_array().unwrap().len(), 25);
+    assert_eq!(entry(&last, "North")["tasks"].as_array().unwrap().len(), 25);
+    assert_eq!(entry(&last, "South")["tasks"].as_array().unwrap().len(), 25);
 }
 
 #[test]
@@ -854,7 +854,7 @@ fn only_a_list_may_ask_for_every_project_and_never_together_with_a_project() {
     assert_eq!(area(home.path()), before);
     // And the plain way of listing one project still works.
     let own = stdout_json(&agboard(home.path(), "Apple", &["ls", "--json"]));
-    assert_eq!(own["cards"].as_array().unwrap().len(), 2);
+    assert_eq!(own["tasks"].as_array().unwrap().len(), 2);
 }
 
 #[test]
@@ -886,10 +886,10 @@ fn the_text_listing_shows_each_project_under_its_name_with_the_columns_of_ls() {
     assert_eq!(text.trim_end(), expected.join("\n").trim_end());
     assert!(text.contains("#1 Mango build [AI] [pending: Mango needs a decision]"));
     assert!(text.contains("#2 Zebra review [User]"));
-    // A project without cards still shows the three columns.
+    // A project without tasks still shows the three columns.
     assert!(text.contains("Project: Kiwi\nTodo\nDoing\nDone\n"));
 
-    // The filters show the same headings with fewer cards.
+    // The filters show the same headings with fewer tasks.
     let pending = all_text(home.path(), &["--state", "pending"]);
     assert_eq!(pending.matches("Project: ").count(), 4);
     assert_eq!(pending.matches("  #").count(), 1);

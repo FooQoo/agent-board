@@ -1,5 +1,5 @@
-//! Card operations: creation, title and body edits, the draft flag, archive,
-//! restore, and deletion of an archived card.
+//! Task operations: creation, title and body edits, the draft flag, archive,
+//! restore, and deletion of an archived task.
 
 use std::collections::HashSet;
 use std::fs;
@@ -11,16 +11,16 @@ use serde::Serialize;
 use super::super::history::{ParseMode, compose_task, parse_task};
 use super::super::io;
 use super::super::layout;
-use super::super::model::{CardView, HistoryRecord, TaskFile, TaskMetadata};
+use super::super::model::{HistoryRecord, TaskFile, TaskMetadata, TaskView};
 use super::super::reader;
 use super::super::validate;
 use super::super::{FileStore, TaskTextParts};
 use super::{
-    HistoryKind, Transition, ensure_ai_card_not_done, lane_end, lock_project, save_project,
+    HistoryKind, Transition, ensure_ai_task_not_done, lane_end, lock_project, save_project,
     save_task, save_task_with_markdown, stamp, transition_event, write_parts, write_text,
 };
 use crate::domain::{
-    Actor, Changed, Column, NewCard, ProjectId, RunState, normalize_and_validate_description,
+    Actor, Changed, Column, NewTask, ProjectId, RunState, normalize_and_validate_description,
     validate_title,
 };
 use crate::error::AgboardError;
@@ -37,9 +37,9 @@ fn normalize_description(value: &str) -> Result<String, AgboardError> {
 const ARCHIVE_REASON: &str = "Archived by user.";
 const RESTORE_REASON: &str = "Restored by user.";
 
-/// Write a new card folder: `task.json` and `TASK.md` go into a temporary
+/// Write a new task folder: `task.json` and `TASK.md` go into a temporary
 /// folder that is renamed into place. A failure removes the temporary folder.
-fn write_new_card(
+fn write_new_task(
     shared: &Path,
     project_dir: &Path,
     task: &TaskFile,
@@ -49,7 +49,7 @@ fn write_new_card(
     let target = layout::task_dir(project_dir, task.id);
     let label = layout::shared_label(shared, &target);
     if target.exists() {
-        return Err(io::write_error(&label, "the card folder already exists"));
+        return Err(io::write_error(&label, "the task folder already exists"));
     }
     let temp = tasks.join(format!(
         ".new-{}",
@@ -91,9 +91,9 @@ fn write_new_card(
     result
 }
 
-/// The card's view after a change, read back from the files.
-fn view(shared: &Path, project: &ProjectId, id: i64) -> Result<CardView, AgboardError> {
-    reader::read_card_locked(shared, project, id)
+/// The task's view after a change, read back from the files.
+fn view(shared: &Path, project: &ProjectId, id: i64) -> Result<TaskView, AgboardError> {
+    reader::read_task_locked(shared, project, id)
 }
 
 impl FileStore {
@@ -104,22 +104,22 @@ impl FileStore {
         id: i64,
         reason: Option<&str>,
         now: DateTime<Utc>,
-    ) -> Result<CardView, AgboardError> {
+    ) -> Result<TaskView, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
-        ensure_ai_card_not_done(&task, Actor::Ai)?;
+        ensure_ai_task_not_done(&task, Actor::Ai)?;
         if task.is_draft {
-            return Err(AgboardError::CardIsDraft { id });
+            return Err(AgboardError::TaskIsDraft { id });
         }
         let reason = super::reason_or_default(
             reason,
             format!(
                 "Progress note in {}; agent is {}.",
-                task.card_status.label(),
+                task.task_status.label(),
                 task.agent_status.as_str()
             ),
         )?;
@@ -130,22 +130,22 @@ impl FileStore {
         view(shared, project, id)
     }
 
-    /// Create a card in the To Do lane at the end. The number is reserved in
-    /// `project.json` before the card folder is written, so a failed write
+    /// Create a task in the To Do lane at the end. The number is reserved in
+    /// `project.json` before the task folder is written, so a failed write
     /// leaves a gap in the numbers and never reuses one. A body that is not
     /// given (empty or blank) gets the TASK.md template.
-    pub fn create_card(
+    pub fn create_task(
         &self,
         project: &ProjectId,
-        new: NewCard,
+        new: NewTask,
         now: DateTime<Utc>,
-    ) -> Result<CardView, AgboardError> {
+    ) -> Result<TaskView, AgboardError> {
         let title = validate_title(&new.title)?;
         let description = normalize_description(&new.description)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut file = reader::read_project_file(shared, project)?;
-        let id = file.next_card_id;
+        let id = file.next_task_id;
         let body = if description.trim().is_empty() {
             validate::task_template()
         } else {
@@ -159,12 +159,12 @@ impl FileStore {
         let position = lane_end(shared, project, Column::Todo)?;
         let at = stamp(now);
         let task = TaskFile {
-            format_version: 3,
+            format_version: layout::FORMAT_VERSION,
             id,
             title,
             assignee: new.assignee,
             epic_id: None,
-            card_status: Column::Todo,
+            task_status: Column::Todo,
             agent_status: RunState::Idle,
             position,
             is_draft: new.is_draft,
@@ -175,49 +175,49 @@ impl FileStore {
             created_at: at,
             updated_at: at,
             agent_status_changed_at: at,
-            card_status_changed_at: at,
+            task_status_changed_at: at,
             attachments: Vec::new(),
             evidence: Vec::new(),
             history: vec![transition_event(Transition {
                 kind: HistoryKind::Created,
                 reason: None,
-                from_card: None,
-                to_card: Column::Todo,
+                from_task: None,
+                to_task: Column::Todo,
                 from_agent: None,
                 to_agent: RunState::Idle,
                 at,
             })?],
         };
-        file.next_card_id = id
+        file.next_task_id = id
             .checked_add(1)
-            .ok_or_else(|| io::write_error("project.json", "The card number overflowed."))?;
+            .ok_or_else(|| io::write_error("project.json", "The task number overflowed."))?;
         save_project(shared, &project_dir, &file)?;
-        write_new_card(shared, &project_dir, &task, &body)?;
+        write_new_task(shared, &project_dir, &task, &body)?;
         view(shared, project, id)
     }
 
-    /// Change the title and/or the body of a card that is neither archived nor
+    /// Change the title and/or the body of a task that is neither archived nor
     /// a draft. An unchanged value changes nothing and writes nothing.
-    pub fn edit_card(
+    pub fn edit_task(
         &self,
         project: &ProjectId,
         id: i64,
         title: Option<&str>,
         description: Option<&str>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
         if task.is_draft {
-            return Err(AgboardError::CardIsDraft { id });
+            return Err(AgboardError::TaskIsDraft { id });
         }
-        ensure_ai_card_not_done(&task, Actor::Ai)?;
+        ensure_ai_task_not_done(&task, Actor::Ai)?;
         let (changed, markdown) =
             write_text(shared, project, &project_dir, &mut task, title, description)?;
         if !changed {
@@ -235,25 +235,25 @@ impl FileStore {
     }
 
     /// Edit body fields against the latest TASK.md read under the project lock.
-    pub fn edit_card_parts(
+    pub fn edit_task_parts(
         &self,
         project: &ProjectId,
         id: i64,
         title: Option<&str>,
         parts: TaskTextParts<'_>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
         if task.is_draft {
-            return Err(AgboardError::CardIsDraft { id });
+            return Err(AgboardError::TaskIsDraft { id });
         }
-        ensure_ai_card_not_done(&task, Actor::Ai)?;
+        ensure_ai_task_not_done(&task, Actor::Ai)?;
         let title_changed = title.as_ref().is_some_and(|value| *value != task.title);
         let markdown = write_parts(
             shared,
@@ -281,7 +281,7 @@ impl FileStore {
 
     /// Save the title and body of a draft. With `finalize`, the draft flag is
     /// cleared in the same operation. `updatedAt` moves only when a text changes.
-    pub fn edit_draft_card(
+    pub fn edit_draft_task(
         &self,
         project: &ProjectId,
         id: i64,
@@ -289,17 +289,17 @@ impl FileStore {
         description: Option<&str>,
         finalize: bool,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
         if !task.is_draft {
-            return Err(AgboardError::CardNotDraft { id });
+            return Err(AgboardError::TaskNotDraft { id });
         }
         let (text_changed, markdown) =
             write_text(shared, project, &project_dir, &mut task, title, description)?;
@@ -325,7 +325,7 @@ impl FileStore {
     }
 
     /// Edit a draft against the latest TASK.md and finalize in one pair save.
-    pub fn edit_draft_card_parts(
+    pub fn edit_draft_task_parts(
         &self,
         project: &ProjectId,
         id: i64,
@@ -333,16 +333,16 @@ impl FileStore {
         parts: TaskTextParts<'_>,
         finalize: bool,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
         if !task.is_draft {
-            return Err(AgboardError::CardNotDraft { id });
+            return Err(AgboardError::TaskNotDraft { id });
         }
         let title_changed = title.as_ref().is_some_and(|value| *value != task.title);
         let markdown = write_parts(
@@ -377,7 +377,7 @@ impl FileStore {
         })
     }
 
-    /// Turn the draft flag on or off. Only an idle or pending card can become a
+    /// Turn the draft flag on or off. Only an idle or pending task can become a
     /// draft. The update time does not move; the history records the change.
     pub fn set_draft(
         &self,
@@ -385,12 +385,12 @@ impl FileStore {
         id: i64,
         is_draft: bool,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
         if task.is_draft == is_draft {
             return Ok(Changed {
@@ -413,14 +413,14 @@ impl FileStore {
         })
     }
 
-    /// Archive a card. Its lane and position stay as they are, and its agent
+    /// Archive a task. Its lane and position stay as they are, and its agent
     /// state returns to idle with its request released.
-    pub fn archive_card(
+    pub fn archive_task(
         &self,
         project: &ProjectId,
         id: i64,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -435,8 +435,8 @@ impl FileStore {
         let event = transition_event(Transition {
             kind: HistoryKind::Archive,
             reason: Some(ARCHIVE_REASON),
-            from_card: Some(task.card_status),
-            to_card: task.card_status,
+            from_task: Some(task.task_status),
+            to_task: task.task_status,
             from_agent: Some(old_agent),
             to_agent: RunState::Idle,
             at,
@@ -457,13 +457,13 @@ impl FileStore {
         })
     }
 
-    /// Restore an archived card to the end of its lane.
-    pub fn restore_card(
+    /// Restore an archived task to the end of its lane.
+    pub fn restore_task(
         &self,
         project: &ProjectId,
         id: i64,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -474,12 +474,12 @@ impl FileStore {
             });
         }
         let at = stamp(now);
-        let position = lane_end(shared, project, task.card_status)?;
+        let position = lane_end(shared, project, task.task_status)?;
         let event = transition_event(Transition {
             kind: HistoryKind::Restore,
             reason: Some(RESTORE_REASON),
-            from_card: Some(task.card_status),
-            to_card: task.card_status,
+            from_task: Some(task.task_status),
+            to_task: task.task_status,
             from_agent: Some(RunState::Idle),
             to_agent: RunState::Idle,
             at,
@@ -495,63 +495,63 @@ impl FileStore {
         })
     }
 
-    /// Put a card in a new place in its own lane: just before `before` in the
+    /// Put a task in a new place in its own lane: just before `before` in the
     /// order the board shows, or at the end of that order when `before` is
     /// `None` or is not in the lane. The lane is renumbered 1..n, and only the
-    /// cards whose position changed are rewritten. Reordering is not a work
+    /// tasks whose position changed are rewritten. Reordering is not a work
     /// change, so it leaves `updatedAt` and the history alone.
-    pub fn reorder_card(
+    pub fn reorder_task(
         &self,
         project: &ProjectId,
         id: i64,
         before: Option<i64>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
-        let lane = task.card_status;
-        let mut cards: Vec<(i64, i64)> = Vec::new();
-        for card_id in reader::card_ids(&project_dir)? {
-            if let Ok(load) = reader::read_card_lenient(shared, project, card_id) {
-                let card = load.view;
-                if card.card_status == lane && card.archived_at.is_none() {
-                    cards.push((card.id, card.position));
+        let lane = task.task_status;
+        let mut tasks: Vec<(i64, i64)> = Vec::new();
+        for task_id in reader::task_ids(&project_dir)? {
+            if let Ok(load) = reader::read_task_lenient(shared, project, task_id) {
+                let task = load.view;
+                if task.task_status == lane && task.archived_at.is_none() {
+                    tasks.push((task.id, task.position));
                 }
             }
         }
         // The board shows Done newest first, and the other lanes oldest first.
-        cards.sort_by_key(|&(card_id, position)| (position, card_id));
-        let mut order: Vec<i64> = cards.iter().map(|&(card_id, _)| card_id).collect();
+        tasks.sort_by_key(|&(task_id, position)| (position, task_id));
+        let mut order: Vec<i64> = tasks.iter().map(|&(task_id, _)| task_id).collect();
         if lane == Column::Done {
             order.reverse();
         }
-        order.retain(|&card_id| card_id != id);
+        order.retain(|&task_id| task_id != id);
         let at = before
-            .and_then(|target| order.iter().position(|&card_id| card_id == target))
+            .and_then(|target| order.iter().position(|&task_id| task_id == target))
             .unwrap_or(order.len());
         order.insert(at, id);
         let count = order.len() as i64;
         let mut changed = false;
-        for (index, &card_id) in order.iter().enumerate() {
+        for (index, &task_id) in order.iter().enumerate() {
             let index = index as i64;
             let position = if lane == Column::Done {
                 count - index
             } else {
                 index + 1
             };
-            let current = cards
+            let current = tasks
                 .iter()
-                .find(|&&(other, _)| other == card_id)
+                .find(|&&(other, _)| other == task_id)
                 .map(|&(_, current)| current);
             if current == Some(position) {
                 continue;
             }
-            let mut card_task = reader::read_task_strict(shared, project, card_id)?;
-            card_task.position = position;
-            save_task(shared, &project_dir, &card_task)?;
+            let mut task_file = reader::read_task_strict(shared, project, task_id)?;
+            task_file.position = position;
+            save_task(shared, &project_dir, &task_file)?;
             changed = true;
         }
         Ok(Changed {
@@ -560,13 +560,13 @@ impl FileStore {
         })
     }
 
-    /// Delete an archived card's folder. Confirmation is the caller's job.
-    pub fn delete_archived_card(&self, project: &ProjectId, id: i64) -> Result<(), AgboardError> {
+    /// Delete an archived task's folder. Confirmation is the caller's job.
+    pub fn delete_archived_task(&self, project: &ProjectId, id: i64) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_none() {
-            return Err(AgboardError::CardNotArchived { id });
+            return Err(AgboardError::TaskNotArchived { id });
         }
         let folder = layout::task_dir(&project_dir, id);
         fs::remove_dir_all(&folder)
@@ -574,7 +574,7 @@ impl FileStore {
     }
 }
 
-/// A draft history event. The statuses are the card's current ones.
+/// A draft history event. The statuses are the task's current ones.
 fn draft_event(
     task: &TaskFile,
     is_draft: bool,
@@ -583,12 +583,12 @@ fn draft_event(
     let event = transition_event(Transition {
         kind: HistoryKind::Draft,
         reason: Some(if is_draft {
-            "Marked card as draft."
+            "Marked task as draft."
         } else {
-            "Finalized card draft."
+            "Finalized task draft."
         }),
-        from_card: Some(task.card_status),
-        to_card: task.card_status,
+        from_task: Some(task.task_status),
+        to_task: task.task_status,
         from_agent: Some(task.agent_status),
         to_agent: task.agent_status,
         at,
@@ -601,19 +601,19 @@ fn draft_event(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveDoneResult {
-    pub cards: Vec<CardView>,
+    pub tasks: Vec<TaskView>,
     pub archived_count: usize,
 }
 
 impl FileStore {
-    /// Delete any card's folder, archived or not. The CLI `rm` uses this after
-    /// its own confirmation; the Web API deletes only archived cards.
-    pub fn delete_card(&self, project: &ProjectId, id: i64) -> Result<(), AgboardError> {
+    /// Delete any task's folder, archived or not. The CLI `rm` uses this after
+    /// its own confirmation; the Web API deletes only archived tasks.
+    pub fn delete_task(&self, project: &ProjectId, id: i64) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let folder = layout::task_dir(&project_dir, id);
         if !folder.is_dir() {
-            return Err(AgboardError::CardNotFound { id });
+            return Err(AgboardError::TaskNotFound { id });
         }
         let tasks = layout::tasks_dir(&project_dir);
         let label = layout::shared_label(shared, &folder);
@@ -651,12 +651,12 @@ impl FileStore {
         for id in ids {
             let task = match reader::read_task_strict(shared, project, *id) {
                 Ok(task) => task,
-                Err(AgboardError::CardNotFound { .. }) => {
+                Err(AgboardError::TaskNotFound { .. }) => {
                     return Err(AgboardError::ArchiveTargetsChanged);
                 }
                 Err(other) => return Err(other),
             };
-            if task.archived_at.is_none() && task.card_status != Column::Done {
+            if task.archived_at.is_none() && task.task_status != Column::Done {
                 return Err(AgboardError::ArchiveTargetsChanged);
             }
             targets.push(task);
@@ -671,8 +671,8 @@ impl FileStore {
             let event = transition_event(Transition {
                 kind: HistoryKind::Archive,
                 reason: Some(ARCHIVE_REASON),
-                from_card: Some(task.card_status),
-                to_card: task.card_status,
+                from_task: Some(task.task_status),
+                to_task: task.task_status,
                 from_agent: Some(old_agent),
                 to_agent: RunState::Idle,
                 at,
@@ -689,13 +689,13 @@ impl FileStore {
             save_task(shared, &project_dir, &task)?;
             archived_count += 1;
         }
-        let cards = ids
+        let tasks = ids
             .iter()
             .map(|id| view(shared, project, *id))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Changed {
             value: ArchiveDoneResult {
-                cards,
+                tasks,
                 archived_count,
             },
             changed: archived_count > 0,

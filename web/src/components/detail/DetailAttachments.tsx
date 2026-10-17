@@ -7,12 +7,12 @@ import type { Attachment, ProjectId } from '../../types';
 /** A card's complete image list, including images not referenced in its description. */
 export function DetailAttachments({
   projectId,
-  cardId,
+  taskId,
   attachments,
   attachmentUrl,
 }: {
   projectId: ProjectId;
-  cardId: number;
+  taskId: number;
   attachments: readonly Attachment[];
   attachmentUrl?: (id: string) => string;
 }) {
@@ -20,7 +20,7 @@ export function DetailAttachments({
   const [zoom, setZoom] = useState<Attachment | null>(null);
   const imageUrl =
     attachmentUrl ??
-    ((id: string) => `/api/projects/${projectId}/cards/${cardId}/attachments/${id}`);
+    ((id: string) => `/api/projects/${projectId}/tasks/${taskId}/attachments/${id}`);
   if (attachments.length === 0) return null;
   return (
     <section className="detail-attachments" aria-label={t('editor.attachmentsLabel')}>

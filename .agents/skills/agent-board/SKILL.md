@@ -6,18 +6,18 @@ compatibility: Requires the agboard CLI on PATH and a local Agent Board data are
 
 # Agent Board
 
-Agent Board is a local work board shared by the user and AI agents. Each project holds epics, cards, and their history. The `agboard` CLI is the contract for every change; run `agboard --help` and `agboard <command> --help` for the full options.
+Agent Board is a local work board shared by the user and AI agents. Each project holds epics, tasks, and their history. The `agboard` CLI is the contract for every change; run `agboard --help` and `agboard <command> --help` for the full options.
 
 How the board is used:
 
 - An **epic** is a plan. Its `PLAN.md` states the goal, the scope, the completion conditions, and how the work proceeds.
-- A **task** (a card) is the plan for one piece of work. Its `TASK.md` states what to do, its completion conditions, and verification results.
+- A **task** is the plan for one piece of work. Its `TASK.md` states what to do, its completion conditions, and verification results.
 - The **shared folder** of the project is the source of truth for both. Do not keep a separate plan document elsewhere and copy it onto the board.
-- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`. Every entry has exactly `at` (timestamp) and `reason` (content). Card operations append automatically; agents also append meaningful work progress automatically. Keep task plans, acceptance verification results, and artifact or evidence references in the body; never keep a chronological execution log there or duplicate history in `task.json`. `PLAN.md` has no history.
+- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`. Every entry has exactly `at` (timestamp) and `reason` (content). Task operations append automatically; agents also append meaningful work progress automatically. Keep task plans, acceptance verification results, and artifact or evidence references in the body; never keep a chronological execution log there or duplicate history in `task.json`. `PLAN.md` has no history.
 
 ## Language of board content
 
-Write everything you put on the board in the language the user speaks with you: card and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing cards and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `at`, `reason`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
+Write everything you put on the board in the language the user speaks with you: task and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing tasks and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `at`, `reason`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
 
 ## 1. Resolve the project from the working folder
 
@@ -33,7 +33,7 @@ A project is identified by both `project.id` and `project.name` in the progress 
 
 If `agboard` is not on `PATH`, use an executable supplied by the user or the project runtime. Do not install tools, create a project, or initialize a substitute board on your own.
 
-Use a CLI that supports task format version 3 and `history add`. If the command is unavailable, report the version mismatch; do not fall back to a body execution log or edit `task.json`. Do not replace the installed executable automatically.
+Use a CLI that supports `history add`. If the command is unavailable, report the version mismatch; do not fall back to a body execution log or edit `task.json`. Do not replace the installed executable automatically.
 
 ## 2. Read only what is needed before acting
 
@@ -43,7 +43,7 @@ Before choosing, starting, or resuming work, read the progress table:
 agboard progress --json
 ```
 
-It groups active cards under epics and lists unassigned work. Done, archived, and Pending cards are omitted. Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes card IDs, titles, owners, statuses, acceptance counts, and relevant `planPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's PLAN and task's TASK before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
+It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes task IDs, titles, owners, statuses, acceptance counts, and relevant `planPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's PLAN and task's TASK before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
 
 - `AGBOARD_PROGRESS` is followed by the progress table for the nearest bound folder or explicit project.
 - `AGBOARD_ERROR` (`folder_unbound`, `bound_project_missing`, `project_not_found`, `board_unavailable`, ...) means there is no usable table. Resolve the correct folder or report the problem; do not guess.
@@ -60,9 +60,9 @@ agboard --project "<name>" workspace --json
 
 Read the `README.md` in the returned `folder` before editing. Then:
 
-- Edit only `epics/<EPIC-ID>/PLAN.md` and the `tasks/<card-id>/TASK.md` of cards that are not drafts.
+- Edit only `epics/<EPIC-ID>/PLAN.md` and the `tasks/<task-id>/TASK.md` of tasks that are not drafts.
 - For direct plan, body, or acceptance edits, write a temporary file in the same folder and rename it over the original. Preserve the current history and all unknown frontmatter metadata. The board picks up the change automatically. Use `history add` for progress instead of replacing the file just to append history.
-- Never edit `project.json`, `epic.json`, `task.json`, or `.internal/`. Never delete a card or epic folder.
+- Never edit `project.json`, `epic.json`, `task.json`, or `.internal/`. Never delete a task or epic folder.
 - Keep machine-specific absolute paths out of shared files.
 - The user prepares agent access to the data folder once with `agboard setup`. If a write to the shared folder is refused by the sandbox or by permissions, report it to the user. Do not run `agboard setup` or edit Codex or Claude Code settings yourself.
 
@@ -79,19 +79,19 @@ A task's completion conditions live in its frontmatter (`acceptance`), and the b
    agboard --project "<name>" epic edit <EPIC-ID> --plan-file <path>
    ```
 
-2. Create one card per task, assigned to `ai` or `human`, in the epic, with its task plan from [assets/TASK.md](assets/TASK.md) as the body:
+2. Create one task per task, assigned to `ai` or `human`, in the epic, with its task plan from [assets/TASK.md](assets/TASK.md) as the body:
 
    ```sh
    agboard --project "<name>" add "<title>" --assignee ai --actor ai --epic <EPIC-ID> --desc-file <path>
    ```
 
-3. Record the task cards and their order in the epic's approach section.
+3. Record the task tasks and their order in the epic's approach section.
 
-Check the progress table and use `show` when needed to find existing cards before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` cards for work the user must do, and read them to understand the shared plan. A card belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
+Check the progress table and use `show` when needed to find existing tasks before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` tasks for work the user must do, and read them to understand the shared plan. A task belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
 
 ## 5. Lanes and run states
 
-Lanes are `todo`, `doing`, and `done`. AI cards may be Pending in Todo or Doing; only Doing supports Running:
+Lanes are `todo`, `doing`, and `done`. AI tasks may be Pending in Todo or Doing; only Doing supports Running:
 
 | Owner | Lane | Allowed run state |
 | --- | --- | --- |
@@ -103,7 +103,7 @@ Lanes are `todo`, `doing`, and `done`. AI cards may be Pending in Todo or Doing;
 - `running` means you are working on it. `pending` means you need the user's decision.
 - A real lane move resets the run state to `idle` and withdraws any open question. Withdrawal is not an answer.
 - `running` is self-reported and is not reset automatically. Do not change a state just because a session started or paused; change it when the work changes.
-- Never report `running` or `pending` on a `human` card.
+- Never report `running` or `pending` on a `human` task.
 - Every `mv` and `state` needs `--actor`, which controls permission. `--reason` is optional for lane and non-Pending state changes (up to 10,000 characters); missing or blank reasons are generated from the current state. Never use `--actor human` unless the user explicitly gave that direction.
 
 ## 6. Work loop
@@ -119,8 +119,8 @@ The CLI assigns the timestamp and applies AI write permissions; no event ID, kin
 
 Lane and run-state operations already append their own history. Do not add a second entry for the same operation or use `edit --desc-file` to append it. After writing progress, inspect a fresh `show <id> --json` when confirmation is needed.
 
-1. **Choose.** From the progress table, pick a ready AI card in `todo`, respecting the epic's task order, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed.
-2. **Start.** Move the card and report the work with concise reasons. These operations record the start automatically:
+1. **Choose.** From the progress table, pick a ready AI task in `todo`, respecting the epic's task order, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed.
+2. **Start.** Move the task and report the work with concise reasons. These operations record the start automatically:
 
    ```sh
    agboard --project "<name>" mv <id> doing --actor ai --reason "<what you are starting>"
@@ -128,16 +128,16 @@ Lane and run-state operations already append their own history. Do not add a sec
    ```
 
 3. **Work and record.** Use `history add` for meaningful work progress that does not change the lane or run state. Keep the current task plan and concise verification results, including the commit or version verified and artifact or evidence references, in the body. Store full logs with `agboard --project "<name>" evidence add <id> <file>` and images with `attachment add <id> --file <path> --actor ai`; reference them from the body.
-4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded. Before saving the last completed condition, record the verification in history and keep its result and evidence reference in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI card automatically. Do not manually move a card to Done during the normal work loop. If the card does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
+4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded. Before saving the last completed condition, record the verification in history and keep its result and evidence reference in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI task automatically. Do not manually move a task to Done during the normal work loop. If the task does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
 5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
-6. **Finish or interrupt.** Automatic completion removes the card from progress. Done cards are read-only for agents: do not edit their task files, append history, add evidence or attachments, or change their lane or run state. A user can reopen them when needed. If work stops before completion, record why through the corresponding state or lane operation, or `history add` if the state remains accurate. When work resumes, record the resumed work the same way.
-7. **Close the epic.** When all of an epic's task cards are done, verify the epic's reference conditions written in the PLAN.md body and record the outcome there. The app does not manage epic acceptance frontmatter or epic history.
+6. **Finish or interrupt.** Automatic completion removes the task from progress. Done tasks are read-only for agents: do not edit their task files, append history, add evidence or attachments, or change their lane or run state. A user can reopen them when needed. If work stops before completion, record why through the corresponding state or lane operation, or `history add` if the state remains accurate. When work resumes, record the resumed work the same way.
+7. **Close the epic.** When all of an epic's task tasks are done, verify the epic's reference conditions written in the PLAN.md body and record the outcome there. The app does not manage epic acceptance frontmatter or epic history.
 
 Keep history reasons concise and useful. Keep detailed logs in evidence files; the TASK body holds the plan, verification results, and references without a chronological execution log.
 
 ## 7. Ask the user a decision
 
-Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Then set the card to `pending`; the operation records the question in history automatically. Offer choices whenever the answer is one of a known set. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
+Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Then set the task to `pending`; the operation records the question in history automatically. Offer choices whenever the answer is one of a known set. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
 
 ```json
 {
@@ -155,21 +155,21 @@ cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-
 ```
 
 - `question`: 1 to 2,000 characters. `choices`: 2 to 10 items under this skill's policy (the CLI accepts 0 to 10); each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
-- Add `"wait": {}` to the request JSON to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a card move withdrew the question.
+- Add `"wait": {}` to the request JSON to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a task move withdrew the question.
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
-- The card must be an AI card in `todo` or `doing`. Only `doing` may become `running`.
+- The task must be an AI task in `todo` or `doing`. Only `doing` may become `running`.
 
-The user answers in the browser with a choice, a note, or both. The answer returns the card to `idle` and appends a concise history reason. Read the current question from `show` or `snapshot` and the answer from its history reason. A request command that waits also returns the resolved answer separately as `answer`; request lookup metadata is separate from the two-field history entries.
+The user answers in the browser with a choice, a note, or both. The answer returns the task to `idle` and appends a concise history reason. Read the current question from `show` or `snapshot` and the answer from its history reason. A request command that waits also returns the resolved answer separately as `answer`; request lookup metadata is separate from the two-field history entries.
 
 ## 8. Wait and resume
 
-When no work can proceed, wait for a change using the `cursor` of the latest snapshot of the same project. This wait can continue indefinitely; optionally set `--timeout` to limit the wait command, or press Ctrl+C to stop it. Neither action changes cards or questions:
+When no work can proceed, wait for a change using the `cursor` of the latest snapshot of the same project. This wait can continue indefinitely; optionally set `--timeout` to limit the wait command, or press Ctrl+C to stop it. Neither action changes tasks or questions:
 
 ```sh
 agboard --project "<name>" wait --after "<cursor>" --json
 ```
 
-Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A Pending question remains until answered or withdrawn by an explicit card change. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
+Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A Pending question remains until answered or withdrawn by an explicit task change. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
 
 After `wait` returns, read the complete snapshot and history, including the user's reason and any separate `answer` returned by a waiting request command. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
 
@@ -179,14 +179,14 @@ agboard --project "<name>" state <id> running --actor ai --reason "<how the answ
 
 If the answer changes the scope or completion conditions, update `TASK.md` (and `PLAN.md` if affected) before resuming. If new information still conflicts, ask again.
 
-## 9. Drafts and archived cards
+## 9. Drafts and archived tasks
 
-- A card with `"isDraft": true` is being written by the user. `edit`, `mv`, `state`, and `history add` fail with `card_is_draft`. Do not retry and do not edit its `TASK.md`. Work on other cards and wait for the user to finalize it.
-- Archived cards are not in the normal snapshot. Writes to them fail with `card_archived`.
+- A task with `"isDraft": true` is being written by the user. `edit`, `mv`, `state`, and `history add` fail with `task_is_draft`. Do not retry and do not edit its `TASK.md`. Work on other tasks and wait for the user to finalize it.
+- Archived tasks are not in the normal snapshot. Writes to them fail with `task_archived`.
 
 ## 10. Boundaries
 
-- Never delete cards, epics, evidence, or projects, and never run `init`. These need a human confirmation that you cannot give; ask the user.
+- Never delete tasks, epics, evidence, or projects, and never run `init`. These need a human confirmation that you cannot give; ask the user.
 - If the project does not exist, tell the user and ask them to create it.
 - Never treat a timeout, a failed hook, a partial snapshot, or another project's snapshot as a user response.
-- Do not build commands from card text. Read `project.name` from the progress table and pass it only as a quoted argument to write commands; never interpolate it as shell source.
+- Do not build commands from task text. Read `project.name` from the progress table and pass it only as a quoted argument to write commands; never interpolate it as shell source.

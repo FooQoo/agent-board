@@ -1,13 +1,13 @@
-//! Card creation, editing, drafts, archive, and delete on the shared files,
-//! plus the lenient snapshot of broken cards (AC-9 and U1-1 to U1-8).
+//! Task creation, editing, drafts, archive, and delete on the shared files,
+//! plus the lenient snapshot of broken tasks (AC-9 and U1-1 to U1-8).
 
 use std::fs;
 use std::path::PathBuf;
 
-use agent_board::domain::{Actor, Assignee, Changed, NewCard, ProjectId};
+use agent_board::domain::{Actor, Assignee, Changed, NewTask, ProjectId};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
-use agent_board::file_store::model::CardView;
+use agent_board::file_store::model::TaskView;
 use chrono::{TimeZone, Utc};
 
 fn now() -> chrono::DateTime<Utc> {
@@ -18,8 +18,8 @@ fn later() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 5, 0, 0, 0).unwrap()
 }
 
-fn new_card(title: &str, description: &str) -> NewCard {
-    NewCard {
+fn new_task(title: &str, description: &str) -> NewTask {
+    NewTask {
         title: title.into(),
         description: description.into(),
         assignee: Assignee::Ai,
@@ -54,17 +54,17 @@ impl Fixture {
         self.shared.join("projects").join(self.project.as_str())
     }
 
-    fn card_dir(&self, id: i64) -> PathBuf {
+    fn task_dir(&self, id: i64) -> PathBuf {
         self.project_dir().join("tasks").join(id.to_string())
     }
 
     fn raw_task(&self, id: i64) -> serde_json::Value {
-        let text = fs::read_to_string(self.card_dir(id).join("task.json")).unwrap();
+        let text = fs::read_to_string(self.task_dir(id).join("task.json")).unwrap();
         serde_json::from_str(&text).unwrap()
     }
 
     fn history(&self, id: i64) -> serde_json::Value {
-        let markdown = fs::read_to_string(self.card_dir(id).join("TASK.md")).unwrap();
+        let markdown = fs::read_to_string(self.task_dir(id).join("TASK.md")).unwrap();
         let parsed = agent_board::file_store::history::parse_task(
             &markdown,
             agent_board::file_store::history::ParseMode::Stored,
@@ -73,22 +73,22 @@ impl Fixture {
     }
 
     fn task_bytes(&self, id: i64) -> Vec<u8> {
-        fs::read(self.card_dir(id).join("task.json")).unwrap()
+        fs::read(self.task_dir(id).join("task.json")).unwrap()
     }
 
     fn body_bytes(&self, id: i64) -> Vec<u8> {
-        fs::read(self.card_dir(id).join("TASK.md")).unwrap()
+        fs::read(self.task_dir(id).join("TASK.md")).unwrap()
     }
 
-    fn next_card_id(&self) -> i64 {
+    fn next_task_id(&self) -> i64 {
         let text = fs::read_to_string(self.project_dir().join("project.json")).unwrap();
         let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-        json["nextCardId"].as_i64().unwrap()
+        json["nextTaskId"].as_i64().unwrap()
     }
 
-    fn create(&self, title: &str) -> CardView {
+    fn create(&self, title: &str) -> TaskView {
         self.store
-            .create_card(&self.project, new_card(title, ""), now())
+            .create_task(&self.project, new_task(title, ""), now())
             .unwrap()
     }
 }
@@ -96,25 +96,25 @@ impl Fixture {
 const VALID_BODY: &str = "---\nacceptance:\n  - id: AC-1\n    text: The thing works.\n    done: false\n---\n\nDo the work.\n";
 
 #[test]
-fn a_card_without_a_body_gets_the_template_headings_and_a_created_event() {
+fn a_task_without_a_body_gets_the_template_headings_and_a_created_event() {
     let fx = fixture();
-    let card = fx.create("Implement");
+    let task = fx.create("Implement");
 
-    assert_eq!(card.id, 1);
-    assert_eq!(card.position, 1);
-    assert_eq!(card.title, "Implement");
-    assert_eq!(serde_json::to_value(card.card_status).unwrap(), "todo");
-    assert_eq!(serde_json::to_value(card.agent_status).unwrap(), "idle");
-    assert_eq!(card.history.len(), 1);
+    assert_eq!(task.id, 1);
+    assert_eq!(task.position, 1);
+    assert_eq!(task.title, "Implement");
+    assert_eq!(serde_json::to_value(task.task_status).unwrap(), "todo");
+    assert_eq!(serde_json::to_value(task.agent_status).unwrap(), "idle");
+    assert_eq!(task.history.len(), 1);
     assert_eq!(
-        card.history[0].reason,
-        "Created card in Todo with agent idle."
+        task.history[0].reason,
+        "Created task in Todo with agent idle."
     );
     let metadata: serde_json::Value = serde_json::from_slice(&fx.task_bytes(1)).unwrap();
-    assert_eq!(metadata["formatVersion"], 3);
+    assert_eq!(metadata["formatVersion"], 1);
     assert!(metadata.get("history").is_none());
     assert_eq!(fx.history(1)[0].as_object().unwrap().len(), 2);
-    assert_eq!(fx.next_card_id(), 2);
+    assert_eq!(fx.next_task_id(), 2);
 
     let body = String::from_utf8(fx.body_bytes(1)).unwrap();
     assert!(
@@ -122,22 +122,22 @@ fn a_card_without_a_body_gets_the_template_headings_and_a_created_event() {
         "{body}"
     );
     assert!(body.ends_with("---\n\n"), "{body}");
-    assert_eq!(card.description, body);
-    assert_eq!(card.body, "");
-    assert!(card.acceptance.is_empty());
-    assert!(!card.acceptance_error);
+    assert_eq!(task.description, body);
+    assert_eq!(task.body, "");
+    assert!(task.acceptance.is_empty());
+    assert!(!task.acceptance_error);
 }
 
 #[test]
 fn a_failed_save_keeps_the_number_reserved_and_leaves_no_temporary_folder() {
     let fx = fixture();
     fx.create("first");
-    // A file where the second card's folder should go makes the final rename fail.
+    // A file where the second task's folder should go makes the final rename fail.
     fs::write(fx.project_dir().join("tasks").join("2"), "blocker").unwrap();
 
     let err = fx
         .store
-        .create_card(&fx.project, new_card("second", ""), now())
+        .create_task(&fx.project, new_task("second", ""), now())
         .unwrap_err();
     assert!(matches!(err, AgboardError::FileError { .. }), "{err:?}");
 
@@ -148,7 +148,7 @@ fn a_failed_save_keeps_the_number_reserved_and_leaves_no_temporary_folder() {
         .collect();
     assert!(leftovers.is_empty(), "{leftovers:?}");
     assert_eq!(
-        fx.next_card_id(),
+        fx.next_task_id(),
         3,
         "the failed number is reserved, not reused"
     );
@@ -163,9 +163,9 @@ fn a_body_with_a_defective_frontmatter_is_refused_and_creates_nothing() {
     let fx = fixture();
     let err = fx
         .store
-        .create_card(
+        .create_task(
             &fx.project,
-            new_card("T", "---\nacceptance: nope\n---\n\njust some text"),
+            new_task("T", "---\nacceptance: nope\n---\n\njust some text"),
             now(),
         )
         .unwrap_err();
@@ -182,7 +182,7 @@ fn a_body_with_a_defective_frontmatter_is_refused_and_creates_nothing() {
             .count(),
         0
     );
-    assert_eq!(fx.next_card_id(), 1, "a refused body reserves no number");
+    assert_eq!(fx.next_task_id(), 1, "a refused body reserves no number");
 }
 
 #[test]
@@ -191,7 +191,7 @@ fn a_condition_without_done_is_refused() {
     let body = VALID_BODY.replace("    done: false\n", "");
     let err = fx
         .store
-        .create_card(&fx.project, new_card("T", &body), now())
+        .create_task(&fx.project, new_task("T", &body), now())
         .unwrap_err();
     match err {
         AgboardError::FileInvalid { field, .. } => assert_eq!(field, "acceptance[0].done"),
@@ -200,37 +200,37 @@ fn a_condition_without_done_is_refused() {
 }
 
 #[test]
-fn a_card_view_carries_the_body_and_the_acceptance_conditions_of_its_frontmatter() {
+fn a_task_view_carries_the_body_and_the_acceptance_conditions_of_its_frontmatter() {
     let fx = fixture();
-    let card = fx
+    let task = fx
         .store
-        .create_card(&fx.project, new_card("T", VALID_BODY), now())
+        .create_task(&fx.project, new_task("T", VALID_BODY), now())
         .unwrap();
-    assert_eq!(card.body, "Do the work.\n");
-    assert_eq!(card.acceptance.len(), 1);
-    assert_eq!(card.acceptance[0].id, "AC-1");
-    assert_eq!(card.acceptance[0].text, "The thing works.");
-    assert!(!card.acceptance[0].done);
-    assert!(!card.acceptance_error);
-    assert!(card.description.starts_with("---\nacceptance:\n"));
-    assert!(card.description.contains("history:\n"));
-    assert!(card.description.ends_with("---\n\nDo the work.\n"));
+    assert_eq!(task.body, "Do the work.\n");
+    assert_eq!(task.acceptance.len(), 1);
+    assert_eq!(task.acceptance[0].id, "AC-1");
+    assert_eq!(task.acceptance[0].text, "The thing works.");
+    assert!(!task.acceptance[0].done);
+    assert!(!task.acceptance_error);
+    assert!(task.description.starts_with("---\nacceptance:\n"));
+    assert!(task.description.contains("history:\n"));
+    assert!(task.description.ends_with("---\n\nDo the work.\n"));
 }
 
 #[test]
 fn a_valid_body_is_saved_as_given_with_crlf_turned_into_lf() {
     let fx = fixture();
     let body = VALID_BODY.replace('\n', "\r\n");
-    let card = fx
+    let task = fx
         .store
-        .create_card(&fx.project, new_card("T", &body), now())
+        .create_task(&fx.project, new_task("T", &body), now())
         .unwrap();
     let saved = String::from_utf8(fx.body_bytes(1)).unwrap();
     assert!(saved.starts_with("---\nacceptance:\n"));
     assert!(saved.contains("history:\n"));
     assert!(saved.ends_with("---\n\nDo the work.\n"));
-    assert_eq!(card.body, "Do the work.\n");
-    assert!(!card.acceptance_error);
+    assert_eq!(task.body, "Do the work.\n");
+    assert!(!task.acceptance_error);
 }
 
 #[test]
@@ -242,7 +242,7 @@ fn editing_the_title_and_body_changes_them_and_moves_the_update_time() {
 
     let Changed { value, changed } = fx
         .store
-        .edit_card(&fx.project, 1, Some("New"), Some(VALID_BODY), later())
+        .edit_task(&fx.project, 1, Some("New"), Some(VALID_BODY), later())
         .unwrap();
     assert!(changed);
     assert_eq!(value.title, "New");
@@ -252,7 +252,7 @@ fn editing_the_title_and_body_changes_them_and_moves_the_update_time() {
     let after = fx.raw_task(1);
     assert_eq!(after["updatedAt"], "2026-10-05T00:00:00Z");
     assert_eq!(after["agentStatus"], before["agentStatus"]);
-    assert_eq!(after["cardStatus"], before["cardStatus"]);
+    assert_eq!(after["taskStatus"], before["taskStatus"]);
     assert_eq!(fx.history(1), before_history, "editing adds no history");
 }
 
@@ -264,7 +264,7 @@ fn an_edit_that_changes_nothing_writes_nothing() {
     let body = fx.body_bytes(1);
     let result = fx
         .store
-        .edit_card(&fx.project, 1, Some("Same"), None, later())
+        .edit_task(&fx.project, 1, Some("Same"), None, later())
         .unwrap();
     assert!(!result.changed);
     assert_eq!(fx.task_bytes(1), task);
@@ -281,10 +281,10 @@ fn a_draft_refuses_agent_edits_and_its_files_stay_unchanged() {
 
     let err = fx
         .store
-        .edit_card(&fx.project, 1, Some("Changed"), Some(VALID_BODY), later())
+        .edit_task(&fx.project, 1, Some("Changed"), Some(VALID_BODY), later())
         .unwrap_err();
     assert!(
-        matches!(err, AgboardError::CardIsDraft { id: 1 }),
+        matches!(err, AgboardError::TaskIsDraft { id: 1 }),
         "{err:?}"
     );
     assert_eq!(fx.task_bytes(1), task);
@@ -303,7 +303,7 @@ fn setting_the_draft_flag_adds_a_draft_event_and_keeps_the_update_time() {
     let raw = fx.raw_task(1);
     assert_eq!(raw["isDraft"], true);
     assert_eq!(raw["updatedAt"], updated);
-    assert_eq!(fx.history(1)[1]["reason"], "Marked card as draft.");
+    assert_eq!(fx.history(1)[1]["reason"], "Marked task as draft.");
 
     let same = fx.store.set_draft(&fx.project, 1, true, later()).unwrap();
     assert!(!same.changed);
@@ -317,7 +317,7 @@ fn finalizing_a_draft_saves_its_body_and_clears_the_flag() {
 
     let Changed { value, changed } = fx
         .store
-        .edit_draft_card(&fx.project, 1, None, Some(VALID_BODY), true, later())
+        .edit_draft_task(&fx.project, 1, None, Some(VALID_BODY), true, later())
         .unwrap();
     assert!(changed);
     assert!(!value.is_draft);
@@ -328,31 +328,31 @@ fn finalizing_a_draft_saves_its_body_and_clears_the_flag() {
     assert_eq!(raw["isDraft"], false);
     assert_eq!(
         fx.history(1).as_array().unwrap().last().unwrap()["reason"],
-        "Finalized card draft."
+        "Finalized task draft."
     );
 }
 
 #[test]
-fn a_card_that_is_not_a_draft_is_refused_by_the_draft_edit() {
+fn a_task_that_is_not_a_draft_is_refused_by_the_draft_edit() {
     let fx = fixture();
     fx.create("Plain");
     let err = fx
         .store
-        .edit_draft_card(&fx.project, 1, Some("X"), None, false, later())
+        .edit_draft_task(&fx.project, 1, Some("X"), None, false, later())
         .unwrap_err();
     assert!(
-        matches!(err, AgboardError::CardNotDraft { id: 1 }),
+        matches!(err, AgboardError::TaskNotDraft { id: 1 }),
         "{err:?}"
     );
 }
 
 #[test]
-fn archiving_keeps_the_lane_and_position_and_restoring_puts_the_card_at_the_lane_end() {
+fn archiving_keeps_the_lane_and_position_and_restoring_puts_the_task_at_the_lane_end() {
     let fx = fixture();
     fx.create("one");
     fx.create("two");
 
-    let archived = fx.store.archive_card(&fx.project, 1, later()).unwrap();
+    let archived = fx.store.archive_task(&fx.project, 1, later()).unwrap();
     assert!(archived.changed);
     assert!(archived.value.archived_at.is_some());
     assert_eq!(archived.value.position, 1);
@@ -374,46 +374,46 @@ fn archiving_keeps_the_lane_and_position_and_restoring_puts_the_card_at_the_lane
 
     let edit = fx
         .store
-        .edit_card(&fx.project, 1, Some("x"), None, later())
+        .edit_task(&fx.project, 1, Some("x"), None, later())
         .unwrap_err();
     assert!(
-        matches!(edit, AgboardError::CardArchived { id: 1 }),
+        matches!(edit, AgboardError::TaskArchived { id: 1 }),
         "{edit:?}"
     );
 
-    let restored = fx.store.restore_card(&fx.project, 1, later()).unwrap();
+    let restored = fx.store.restore_task(&fx.project, 1, later()).unwrap();
     assert!(restored.changed);
     assert!(restored.value.archived_at.is_none());
-    assert_eq!(restored.value.card_status.as_str(), "todo");
+    assert_eq!(restored.value.task_status.as_str(), "todo");
     assert_eq!(restored.value.position, 3);
 }
 
 #[test]
-fn deleting_needs_an_archived_card_and_then_removes_its_folder() {
+fn deleting_needs_an_archived_task_and_then_removes_its_folder() {
     let fx = fixture();
     fx.create("one");
-    let err = fx.store.delete_archived_card(&fx.project, 1).unwrap_err();
+    let err = fx.store.delete_archived_task(&fx.project, 1).unwrap_err();
     assert!(
-        matches!(err, AgboardError::CardNotArchived { id: 1 }),
+        matches!(err, AgboardError::TaskNotArchived { id: 1 }),
         "{err:?}"
     );
 
-    fx.store.archive_card(&fx.project, 1, later()).unwrap();
-    fx.store.delete_archived_card(&fx.project, 1).unwrap();
-    assert!(!fx.card_dir(1).exists());
+    fx.store.archive_task(&fx.project, 1, later()).unwrap();
+    fx.store.delete_archived_task(&fx.project, 1).unwrap();
+    assert!(!fx.task_dir(1).exists());
     assert!(matches!(
-        fx.store.card(&fx.project, 1),
-        Err(AgboardError::CardNotFound { id: 1 })
+        fx.store.task(&fx.project, 1),
+        Err(AgboardError::TaskNotFound { id: 1 })
     ));
 }
 
 #[test]
-fn card_numbers_are_not_reused_after_a_delete() {
+fn task_numbers_are_not_reused_after_a_delete() {
     let fx = fixture();
     fx.create("one");
     fx.create("two");
-    fx.store.archive_card(&fx.project, 2, later()).unwrap();
-    fx.store.delete_archived_card(&fx.project, 2).unwrap();
+    fx.store.archive_task(&fx.project, 2, later()).unwrap();
+    fx.store.delete_archived_task(&fx.project, 2).unwrap();
     assert_eq!(fx.create("three").id, 3);
 }
 
@@ -430,7 +430,7 @@ fn concurrent_creations_get_unique_numbers_and_positions() {
                 let store = FileStore::open(&shared);
                 for n in 0..20 {
                     store
-                        .create_card(&project, new_card(&format!("w{worker}-{n}"), ""), now())
+                        .create_task(&project, new_task(&format!("w{worker}-{n}"), ""), now())
                         .unwrap();
                 }
             })
@@ -440,28 +440,28 @@ fn concurrent_creations_get_unique_numbers_and_positions() {
         handle.join().unwrap();
     }
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    let mut ids: Vec<i64> = snapshot.cards.iter().map(|c| c.id).collect();
+    let mut ids: Vec<i64> = snapshot.tasks.iter().map(|c| c.id).collect();
     ids.sort_unstable();
     assert_eq!(ids, (1..=40).collect::<Vec<_>>());
-    let mut positions: Vec<i64> = snapshot.cards.iter().map(|c| c.position).collect();
+    let mut positions: Vec<i64> = snapshot.tasks.iter().map(|c| c.position).collect();
     positions.sort_unstable();
     assert_eq!(positions, (1..=40).collect::<Vec<_>>());
-    assert_eq!(snapshot.next_card_id, 41);
+    assert_eq!(snapshot.next_task_id, 41);
     assert!(snapshot.problems.is_empty());
 }
 
 #[test]
-fn a_card_with_a_broken_task_file_is_left_out_and_reported_by_its_relative_path() {
+fn a_task_with_a_broken_task_file_is_left_out_and_reported_by_its_relative_path() {
     let fx = fixture();
     fx.create("one");
     fx.create("two");
-    let path = fx.card_dir(2).join("task.json");
+    let path = fx.task_dir(2).join("task.json");
     let mut json = fx.raw_task(2);
     json["extra"] = serde_json::json!(1);
     fs::write(&path, serde_json::to_string_pretty(&json).unwrap()).unwrap();
 
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    let ids: Vec<i64> = snapshot.cards.iter().map(|c| c.id).collect();
+    let ids: Vec<i64> = snapshot.tasks.iter().map(|c| c.id).collect();
     assert_eq!(ids, vec![1]);
     assert!(
         snapshot.problems.iter().any(|p| p.file
@@ -473,36 +473,60 @@ fn a_card_with_a_broken_task_file_is_left_out_and_reported_by_its_relative_path(
 }
 
 #[test]
+fn a_task_file_with_the_old_task_field_names_is_left_out_and_not_converted() {
+    let fx = fixture();
+    fx.create("one");
+    let path = fx.task_dir(1).join("task.json");
+    let mut json = fx.raw_task(1);
+    let status = json.as_object_mut().unwrap().remove("taskStatus").unwrap();
+    let changed = json
+        .as_object_mut()
+        .unwrap()
+        .remove("taskStatusChangedAt")
+        .unwrap();
+    // The names before the model was renamed from Card to Task.
+    json[format!("{}Status", "ca".to_string() + "rd")] = status;
+    json[format!("{}StatusChangedAt", "ca".to_string() + "rd")] = changed;
+    let text = serde_json::to_string_pretty(&json).unwrap();
+    fs::write(&path, &text).unwrap();
+
+    let snapshot = fx.store.snapshot(&fx.project).unwrap();
+    assert!(snapshot.tasks.is_empty());
+    assert!(!snapshot.problems.is_empty());
+    assert_eq!(fs::read_to_string(&path).unwrap(), text);
+}
+
+#[test]
 fn a_task_file_of_another_format_version_is_left_out_and_not_converted() {
     let fx = fixture();
     fx.create("one");
-    let path = fx.card_dir(1).join("task.json");
+    let path = fx.task_dir(1).join("task.json");
     let mut json = fx.raw_task(1);
-    json["formatVersion"] = serde_json::json!(1);
+    json["formatVersion"] = serde_json::json!(2);
     json["history"] = fx.history(1);
     let text = serde_json::to_string_pretty(&json).unwrap();
     fs::write(&path, &text).unwrap();
 
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    assert!(snapshot.cards.is_empty());
+    assert!(snapshot.tasks.is_empty());
     assert!(snapshot.problems.iter().any(|p| p.field == "formatVersion"));
     assert_eq!(fs::read_to_string(&path).unwrap(), text);
 }
 
 #[test]
-fn writing_to_a_card_with_a_broken_task_file_is_refused() {
+fn writing_to_a_task_with_a_broken_task_file_is_refused() {
     let fx = fixture();
     fx.create("one");
     let mut json = fx.raw_task(1);
     json["extra"] = serde_json::json!(1);
     fs::write(
-        fx.card_dir(1).join("task.json"),
+        fx.task_dir(1).join("task.json"),
         serde_json::to_string_pretty(&json).unwrap(),
     )
     .unwrap();
     let err = fx
         .store
-        .edit_card(&fx.project, 1, Some("x"), None, later())
+        .edit_task(&fx.project, 1, Some("x"), None, later())
         .unwrap_err();
     assert!(matches!(err, AgboardError::FileInvalid { .. }), "{err:?}");
 }
@@ -511,19 +535,19 @@ fn writing_to_a_card_with_a_broken_task_file_is_refused() {
 fn a_body_defect_returns_the_text_and_is_reported_without_rewriting_it() {
     let fx = fixture();
     fx.create("one");
-    let broken = fs::read_to_string(fx.card_dir(1).join("TASK.md"))
+    let broken = fs::read_to_string(fx.task_dir(1).join("TASK.md"))
         .unwrap()
         .replace("acceptance: []", "acceptance: nope");
-    fs::write(fx.card_dir(1).join("TASK.md"), &broken).unwrap();
+    fs::write(fx.task_dir(1).join("TASK.md"), &broken).unwrap();
 
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    assert_eq!(snapshot.cards.len(), 1);
-    assert_eq!(snapshot.cards[0].description, broken);
+    assert_eq!(snapshot.tasks.len(), 1);
+    assert_eq!(snapshot.tasks[0].description, broken);
     assert!(snapshot.problems.iter().any(|p| p.file
         == format!("projects/{}/tasks/1/TASK.md", fx.project)
         && p.field == "acceptance"));
     assert_eq!(
-        fs::read_to_string(fx.card_dir(1).join("TASK.md")).unwrap(),
+        fs::read_to_string(fx.task_dir(1).join("TASK.md")).unwrap(),
         broken
     );
 }
@@ -532,19 +556,19 @@ fn a_body_defect_returns_the_text_and_is_reported_without_rewriting_it() {
 fn a_half_written_body_reads_as_a_problem_and_recovers_when_it_is_finished() {
     let fx = fixture();
     fx.create("one");
-    let markdown = fs::read_to_string(fx.card_dir(1).join("TASK.md")).unwrap();
+    let markdown = fs::read_to_string(fx.task_dir(1).join("TASK.md")).unwrap();
     let created = agent_board::file_store::history::parse_task(
         &markdown,
         agent_board::file_store::history::ParseMode::Stored,
     );
     // What a reader sees while an agent is still writing the file.
     fs::write(
-        fx.card_dir(1).join("TASK.md"),
+        fx.task_dir(1).join("TASK.md"),
         "---\nacceptance:\n  - id: AC-1\n    te",
     )
     .unwrap();
     let during = fx.store.snapshot(&fx.project).unwrap();
-    assert_eq!(during.cards.len(), 1);
+    assert_eq!(during.tasks.len(), 1);
     assert!(!during.problems.is_empty());
     let input = agent_board::file_store::history::parse_task(
         VALID_BODY,
@@ -557,7 +581,7 @@ fn a_half_written_body_reads_as_a_problem_and_recovers_when_it_is_finished() {
         &created.history,
     )
     .unwrap();
-    fs::write(fx.card_dir(1).join("TASK.md"), finished).unwrap();
+    fs::write(fx.task_dir(1).join("TASK.md"), finished).unwrap();
     let after = fx.store.snapshot(&fx.project).unwrap();
     assert!(after.problems.is_empty(), "{:?}", after.problems);
 }
@@ -566,9 +590,9 @@ fn a_half_written_body_reads_as_a_problem_and_recovers_when_it_is_finished() {
 fn a_missing_body_file_is_a_problem_with_an_empty_text() {
     let fx = fixture();
     fx.create("one");
-    fs::remove_file(fx.card_dir(1).join("TASK.md")).unwrap();
+    fs::remove_file(fx.task_dir(1).join("TASK.md")).unwrap();
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    assert_eq!(snapshot.cards[0].description, "");
+    assert_eq!(snapshot.tasks[0].description, "");
     assert!(
         snapshot
             .problems
@@ -578,49 +602,49 @@ fn a_missing_body_file_is_a_problem_with_an_empty_text() {
 }
 
 #[test]
-fn a_card_folder_name_that_is_not_canonical_is_ignored() {
+fn a_task_folder_name_that_is_not_canonical_is_ignored() {
     let fx = fixture();
     fx.create("one");
     fs::create_dir_all(fx.project_dir().join("tasks").join(".new-abc")).unwrap();
     fs::create_dir_all(fx.project_dir().join("tasks").join("07")).unwrap();
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    assert_eq!(snapshot.cards.len(), 1);
+    assert_eq!(snapshot.tasks.len(), 1);
     assert!(snapshot.problems.is_empty(), "{:?}", snapshot.problems);
 }
 
 #[test]
-fn a_card_read_strictly_matches_its_snapshot_view() {
+fn a_task_read_strictly_matches_its_snapshot_view() {
     let fx = fixture();
     fx.create("one");
-    let direct: CardView = fx.store.card(&fx.project, 1).unwrap();
+    let direct: TaskView = fx.store.task(&fx.project, 1).unwrap();
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    assert_eq!(snapshot.cards[0], direct);
+    assert_eq!(snapshot.tasks[0], direct);
 }
 
 #[test]
-fn reordering_puts_a_card_before_another_and_renumbers_the_lane() {
+fn reordering_puts_a_task_before_another_and_renumbers_the_lane() {
     let fx = fixture();
     let ids: Vec<i64> = ["a", "b", "c"].iter().map(|t| fx.create(t).id).collect();
     let order = |fx: &Fixture| -> Vec<i64> {
-        let mut cards = fx.store.snapshot(&fx.project).unwrap().cards;
-        cards.sort_by_key(|c| c.position);
-        cards.iter().map(|c| c.id).collect()
+        let mut tasks = fx.store.snapshot(&fx.project).unwrap().tasks;
+        tasks.sort_by_key(|c| c.position);
+        tasks.iter().map(|c| c.id).collect()
     };
 
     let moved = fx
         .store
-        .reorder_card(&fx.project, ids[2], Some(ids[0]))
+        .reorder_task(&fx.project, ids[2], Some(ids[0]))
         .unwrap();
     assert!(moved.changed);
     assert_eq!(order(&fx), vec![ids[2], ids[0], ids[1]]);
 
     let same = fx
         .store
-        .reorder_card(&fx.project, ids[2], Some(ids[0]))
+        .reorder_task(&fx.project, ids[2], Some(ids[0]))
         .unwrap();
     assert!(!same.changed);
 
-    fx.store.reorder_card(&fx.project, ids[2], None).unwrap();
+    fx.store.reorder_task(&fx.project, ids[2], None).unwrap();
     assert_eq!(order(&fx), vec![ids[0], ids[1], ids[2]]);
     assert_eq!(moved.value.history.len(), 1);
 }

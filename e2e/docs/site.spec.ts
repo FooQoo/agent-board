@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   allPages,
   assetPattern,
+  devFiles,
+  devPagePath,
   guideFiles,
   guideScreenshots,
   mermaidFiles,
@@ -12,6 +14,44 @@ import {
 
 const langs: Lang[] = ['en', 'ja'];
 const repoUrl = 'https://github.com/FooQoo/agent-board';
+
+// Markdown syntax must not leak into rendered prose. Code samples may intentionally contain it.
+async function unparsedStrongMarkers(page: Page): Promise<string[]> {
+  return page.locator('.vp-doc').evaluateAll((roots) => {
+    const markers: string[] = [];
+    for (const root of roots) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (node.parentElement?.closest('pre, code, script, style')) continue;
+        if (node.textContent?.includes('**')) markers.push(node.textContent);
+      }
+    }
+    return markers;
+  });
+}
+
+// A diagram that fits the page can still be unreadable when its labels are scaled down.
+async function expectReadableDiagrams(page: Page) {
+  for (const diagram of await page.locator('.mermaid').all()) {
+    const svg = diagram.locator('svg');
+    await expect(svg).toBeVisible();
+    const readLabels = () => svg.evaluate((element: SVGSVGElement) => {
+      const scale = element.getBoundingClientRect().width / element.viewBox.baseVal.width;
+      return Array.from(element.querySelectorAll('.nodeLabel, .edgeLabel, text'))
+        .filter((label) => label.textContent?.trim())
+        .map((label) => ({
+          text: label.textContent,
+          size: parseFloat(getComputedStyle(label).fontSize) * scale,
+        }));
+    });
+    // Mermaid replaces its initial SVG asynchronously, including during theme changes.
+    await expect.poll(async () => {
+      const labels = await readLabels();
+      return labels.length > 0 && labels.every((label) => Number.isFinite(label.size) && label.size >= 12);
+    }, { message: 'diagram labels render at a readable size' }).toBe(true);
+  }
+}
 
 // Scroll every rendered image into view (so lazy images load) and report the ones that failed
 // to decode. Images that are not rendered (the logo of the other color scheme) are skipped.
@@ -35,7 +75,7 @@ async function brokenImages(page: Page): Promise<string[]> {
 
 // AC-2: hero, feature cards, buttons, board image
 for (const lang of langs) {
-  test(`home page (${lang}) shows the hero, three feature cards, and two buttons`, async ({ page }) => {
+  test(`home page (${lang}) shows the hero, three feature tasks, and two buttons`, async ({ page }) => {
     const response = await page.goto(pagePath(lang, 'home'));
     expect(response?.status()).toBe(200);
 
@@ -84,15 +124,17 @@ for (const lang of langs) {
   });
 }
 
-// AC-1, AC-3: all 20 guide pages open, have an h1, no placeholder, images load, sidebar matches
+// AC-1, AC-3: all guide and developer pages open, have an h1, no placeholder, images load, sidebar matches
 for (const { lang, file, path: urlPath } of allPages.filter((p) => p.file !== 'home')) {
-  test(`guide page ${urlPath} renders content and loads its images`, async ({ page }) => {
+  test(`page ${urlPath} renders content and loads its images`, async ({ page }) => {
     const response = await page.goto(urlPath);
     expect(response?.status()).toBe(200);
     expect(await response?.text()).not.toContain('docs-site:placeholder');
     await expect(page.locator('.vp-doc h1')).toHaveCount(1);
     await expect(page.locator('.vp-doc h1')).not.toBeEmpty();
     expect(await brokenImages(page)).toEqual([]);
+
+    expect(await unparsedStrongMarkers(page)).toEqual([]);
 
     // The current page is highlighted in the sidebar.
     const active = page.locator('.VPSidebarItem.is-active > .item a').first();
@@ -101,10 +143,11 @@ for (const { lang, file, path: urlPath } of allPages.filter((p) => p.file !== 'h
   });
 }
 
-test('the sidebar lists the ten guide pages in the same order in both languages', async ({ page }) => {
+test('the sidebar lists the fourteen guide pages in four groups, in the same order in both languages', async ({ page }) => {
   const hrefs: Record<Lang, string[]> = { en: [], ja: [] };
   for (const lang of langs) {
     await page.goto(pagePath(lang, 'index'));
+    await expect(page.locator('.VPSidebar .VPSidebarItem.level-0')).toHaveCount(4);
     const links = page.locator('.VPSidebar .VPSidebarItem.level-1 > .item a.link');
     await expect(links).toHaveCount(guideFiles.length);
     hrefs[lang] = await links.evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''));
@@ -113,6 +156,20 @@ test('the sidebar lists the ten guide pages in the same order in both languages'
   expect(hrefs.ja).toEqual(guideFiles.map((f) => `/agent-board/${pagePath('ja', f)}`));
   // Same order: stripping the language prefix gives identical lists.
   expect(hrefs.ja.map((h) => h.replace('/agent-board/ja/', '/agent-board/'))).toEqual(hrefs.en);
+});
+
+test('the developer chapter is in the nav and its sidebar lists twenty-one pages in four groups', async ({ page }) => {
+  for (const lang of langs) {
+    await page.goto(pagePath(lang, 'home'));
+    const nav = page.locator('.VPNavBarMenu').getByRole('link', { name: lang === 'en' ? 'Developers' : '開発者向け' });
+    await expect(nav).toHaveAttribute('href', `/agent-board/${devPagePath(lang, 'index')}`);
+    await page.goto(devPagePath(lang, 'index'));
+    await expect(page.locator('.VPSidebar .VPSidebarItem.level-0')).toHaveCount(4);
+    const links = page.locator('.VPSidebar .VPSidebarItem.level-1 > .item a.link');
+    expect(await links.evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''))).toEqual(
+      devFiles.map((f) => `/agent-board/${devPagePath(lang, f)}`),
+    );
+  }
 });
 
 // AC-4: language switch
@@ -172,8 +229,8 @@ test('board, epic, and mobile screenshots appear on the home and feature pages',
       [pagePath(lang, 'home'), 'epic'],
       [pagePath(lang, 'home'), 'mobile'],
       [pagePath(lang, 'index'), 'board'],
-      [pagePath(lang, 'epics'), 'epic'],
-      [pagePath(lang, 'mobile-monitor'), 'mobile'],
+      [pagePath(lang, 'use/epics'), 'epic'],
+      [pagePath(lang, 'operations/mobile-monitor'), 'mobile'],
     ];
     for (const [url, name] of targets) {
       await page.goto(url);
@@ -205,10 +262,10 @@ for (const lang of langs) {
 
 // AC-7: local search
 const searchCases: { lang: Lang; term: string; hrefPart: string }[] = [
-  { lang: 'en', term: 'epic', hrefPart: '/agent-board/guide/epics' },
-  { lang: 'en', term: 'archive', hrefPart: '/agent-board/guide/board' },
-  { lang: 'ja', term: 'エピック', hrefPart: '/agent-board/ja/guide/epics' },
-  { lang: 'ja', term: 'アーカイブ', hrefPart: '/agent-board/ja/guide/board' },
+  { lang: 'en', term: 'epic', hrefPart: '/agent-board/guide/use/epics' },
+  { lang: 'en', term: 'archive', hrefPart: '/agent-board/guide/use/board' },
+  { lang: 'ja', term: 'エピック', hrefPart: '/agent-board/ja/guide/use/epics' },
+  { lang: 'ja', term: 'アーカイブ', hrefPart: '/agent-board/ja/guide/use/board' },
 ];
 for (const { lang, term, hrefPart } of searchCases) {
   test(`search (${lang}) finds "${term}"`, async ({ page }) => {
@@ -244,6 +301,35 @@ test('the appearance switch toggles dark mode and the choice persists', async ({
   await expect(html).toHaveClass(/dark/);
 });
 
+// Long route names must not squeeze the description column into a few characters.
+for (const width of [375, 1440]) {
+  for (const lang of langs) {
+    for (const scheme of ['light', 'dark'] as const) {
+      test(`table columns stay readable and scroll at ${width}px (${lang}, ${scheme})`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.addInitScript((value) => {
+          localStorage.setItem('vitepress-theme-appearance', value);
+        }, scheme);
+        await page.goto(devPagePath(lang, 'reference/remote-routes'));
+        const table = page.locator('.vp-doc table').first();
+        await expect(table).toBeVisible();
+        const dimensions = await table.evaluate((el) => ({
+          viewport: el.clientWidth,
+          content: el.scrollWidth,
+          description: el.querySelector('tbody td:nth-child(2)')!.getBoundingClientRect().width,
+          page: document.documentElement.scrollWidth,
+          window: window.innerWidth,
+        }));
+        expect(dimensions.description).toBeGreaterThanOrEqual(280);
+        expect(dimensions.content).toBeGreaterThan(dimensions.viewport);
+        expect(dimensions.page).toBeLessThanOrEqual(dimensions.window);
+        await table.evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+        expect(await table.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+      });
+    }
+  }
+}
+
 test.describe('375px viewport', () => {
   test.use({ viewport: { width: 375, height: 812 } });
   for (const scheme of ['light', 'dark'] as const) {
@@ -257,6 +343,7 @@ test.describe('375px viewport', () => {
         await expect(page.locator('html')).toHaveClass(scheme === 'dark' ? /dark/ : /^(?!.*dark)/);
         await expect(page.locator('h1').first()).toBeVisible();
         expect(await brokenImages(page)).toEqual([]);
+        await expectReadableDiagrams(page);
         const overflow = await page.evaluate(() => ({
           scroll: document.documentElement.scrollWidth,
           inner: window.innerWidth,
@@ -273,6 +360,7 @@ for (const { path: urlPath } of allPages) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(urlPath);
     await expect(page.locator('h1').first()).toBeVisible();
+    await expectReadableDiagrams(page);
     const overflow = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       inner: window.innerWidth,
@@ -319,5 +407,5 @@ test('the removed usage and mobile-monitor pages return 404', async ({ request }
     expect(response.status(), url).toBe(404);
   }
   // The guide version of the mobile page is the replacement.
-  expect((await request.get('guide/mobile-monitor')).status()).toBe(200);
+  expect((await request.get('guide/operations/mobile-monitor')).status()).toBe(200);
 });

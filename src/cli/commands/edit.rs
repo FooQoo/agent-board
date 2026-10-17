@@ -21,9 +21,9 @@ pub fn run(ctx: &mut Context, args: &EditArgs) -> Result<Outcome, AgboardError> 
         ctx.files.epic(&project, id)?;
     }
     let mut changed = false;
-    let mut card = None;
+    let mut task = None;
     if args.title.is_some() || description.is_some() {
-        let result = ctx.files.edit_card(
+        let result = ctx.files.edit_task(
             &project,
             args.id,
             args.title.as_deref(),
@@ -31,10 +31,10 @@ pub fn run(ctx: &mut Context, args: &EditArgs) -> Result<Outcome, AgboardError> 
             ctx.clock.now(),
         )?;
         changed |= result.changed;
-        card = Some(result.value);
+        task = Some(result.value);
     }
     if let Some(target) = &epic {
-        let result = ctx.files.set_card_epic(
+        let result = ctx.files.set_task_epic(
             &project,
             args.id,
             target.as_ref(),
@@ -42,15 +42,15 @@ pub fn run(ctx: &mut Context, args: &EditArgs) -> Result<Outcome, AgboardError> 
             ctx.clock.now(),
         )?;
         changed |= result.changed;
-        card = Some(result.value);
+        task = Some(result.value);
     }
-    let card = match card {
-        Some(card) => card,
-        None => ctx.files.card(&project, args.id)?,
+    let task = match task {
+        Some(task) => task,
+        None => ctx.files.task(&project, args.id)?,
     };
     Ok(Outcome {
         changed,
         human: format!("Updated #{}.\n", args.id),
-        json: json!({"card": card}),
+        json: json!({"task": task}),
     })
 }

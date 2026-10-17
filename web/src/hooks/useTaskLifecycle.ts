@@ -1,28 +1,28 @@
 import { useCallback, useRef } from 'react';
-import { archiveCard, archiveDone, deleteCard, restoreCard } from '../api';
+import { archiveTask, archiveDone, deleteTask, restoreTask } from '../api';
 import type { OperationControls, OperationKind } from '../lib/projectSession';
 import type { ProjectId } from '../types';
 
-export type CardLifecycleAction = 'archive' | 'restore' | 'delete' | 'archive-done';
-export type CardLifecycleTarget = { cardId: number } | { cardIds: readonly number[] };
-export type CardLifecycleResult = { ok: true } | { ok: false; error: unknown };
+export type TaskLifecycleAction = 'archive' | 'restore' | 'delete' | 'archive-done';
+export type TaskLifecycleTarget = { taskId: number } | { taskIds: readonly number[] };
+export type TaskLifecycleResult = { ok: true } | { ok: false; error: unknown };
 
-function operationKind(action: CardLifecycleAction): OperationKind {
+function operationKind(action: TaskLifecycleAction): OperationKind {
   if (action === 'archive-done') return 'archive-done';
   return action;
 }
 
 /** Executes existing card APIs inside the project session's operation and duplicate-submit guard. */
-export function useCardLifecycle(operations: OperationControls) {
+export function useTaskLifecycle(operations: OperationControls) {
   const inFlight = useRef(false);
 
   const run = useCallback(
     async (
-      action: CardLifecycleAction,
+      action: TaskLifecycleAction,
       projectId: ProjectId,
-      target: CardLifecycleTarget,
+      target: TaskLifecycleTarget,
       options: { keepOperationOnError?: boolean } = {},
-    ): Promise<CardLifecycleResult> => {
+    ): Promise<TaskLifecycleResult> => {
       if (inFlight.current)
         return { ok: false, error: new Error('An operation is already running.') };
       inFlight.current = true;
@@ -34,22 +34,22 @@ export function useCardLifecycle(operations: OperationControls) {
       operations.saveStarted(operationId);
       try {
         if (action === 'archive') {
-          if (!('cardId' in target)) throw new Error('A card ID is required to archive a card.');
-          await archiveCard(projectId, target.cardId);
+          if (!('taskId' in target)) throw new Error('A card ID is required to archive a card.');
+          await archiveTask(projectId, target.taskId);
         } else if (action === 'restore') {
-          if (!('cardId' in target)) throw new Error('A card ID is required to restore a card.');
-          await restoreCard(projectId, target.cardId);
+          if (!('taskId' in target)) throw new Error('A card ID is required to restore a card.');
+          await restoreTask(projectId, target.taskId);
         } else if (action === 'delete') {
-          if (!('cardId' in target)) throw new Error('A card ID is required to delete a card.');
-          const result = await deleteCard(projectId, target.cardId);
+          if (!('taskId' in target)) throw new Error('A card ID is required to delete a card.');
+          const result = await deleteTask(projectId, target.taskId);
           if (result === 'failed') throw new Error('The card could not be deleted.');
         } else {
-          if (!('cardIds' in target)) throw new Error('Card IDs are required for bulk archive.');
-          await archiveDone(projectId, target.cardIds);
+          if (!('taskIds' in target)) throw new Error('Task IDs are required for bulk archive.');
+          await archiveDone(projectId, target.taskIds);
         }
         if (!operations.isCurrent || operations.isCurrent(operationId, projectId)) {
-          if (action !== 'archive-done' && 'cardId' in target && operations.cardRemoved) {
-            operations.cardRemoved(operationId, projectId, target.cardId);
+          if (action !== 'archive-done' && 'taskId' in target && operations.taskRemoved) {
+            operations.taskRemoved(operationId, projectId, target.taskId);
           } else {
             operations.end(operationId);
           }

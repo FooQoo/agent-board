@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Header } from '../components/Header';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
 import type { MonitorViewProps } from './contracts';
-import { CardList } from './components/CardList';
+import { TaskList } from './components/TaskList';
 import { Freshness } from './components/Freshness';
 import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
@@ -21,9 +21,9 @@ export function MonitorView(props: MonitorViewProps) {
     doing: sortLane(doing),
     done: sortDone(done),
   };
-  const cards = [...ordered.todo, ...ordered.doing, ...ordered.done];
+  const tasks = [...ordered.todo, ...ordered.doing, ...ordered.done];
   const detail = useMonitorDetailDrawer(
-    cards,
+    tasks,
     props.readResolvers ?? unconnectedMonitorReadResolvers,
     projects,
   );
@@ -89,7 +89,7 @@ export function MonitorView(props: MonitorViewProps) {
             <section className="monitor-stale-drafts" aria-label={t('monitor.staleDrafts')}>
               {drafts.map((draft) => (
                 <article key={draft.key} role="alert" className="monitor-stale-drafts__item">
-                  <p>{t('monitor.staleDraft', { project: draft.projectName, id: draft.cardId })}</p>
+                  <p>{t('monitor.staleDraft', { project: draft.projectName, id: draft.taskId })}</p>
                   {draft.choiceId && <p>{t('monitor.staleChoice', { choice: draft.choiceId })}</p>}
                   {draft.text && <pre>{draft.text}</pre>}
                   <Button
@@ -104,7 +104,7 @@ export function MonitorView(props: MonitorViewProps) {
             </section>
           ) : null;
         })()}
-      <CardList
+      <TaskList
         ref={listRef}
         id={listId}
         todo={ordered.todo}

@@ -1,43 +1,43 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody, type CardJson } from '../helpers/agboard';
+import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson } from '../helpers/agboard';
 import { editorValue, waitForSync } from '../helpers/ui';
 
 // The whole path of a draft on the real page: make a card a draft, edit its body in the rich editor, save it, and
 // hand it back. The CLI shows what was stored. A body keeps the three required headings; edits add text at its end.
 
-const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
-interface ShownCard extends CardJson {
+interface ShownTask extends TaskJson {
   description: string;
   body: string;
   isDraft: boolean;
 }
 
-function show(id: number): ShownCard {
-  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
+function show(id: number): ShownTask {
+  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
 /** The names of the toolbar buttons beside the tabs, left to right. */
 function toolbarLabels(page: Page): Promise<string[]> {
   return details(page)
-    .getByRole('toolbar', { name: 'Card actions' })
+    .getByRole('toolbar', { name: 'Task actions' })
     .getByRole('button')
     .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label') ?? button.textContent ?? ''));
 }
 
 /** The body the card starts with: the required headings and one line of text. */
-const SEED = cardBody('## Work\n\nOld text.\n\n## Notes\n\nKept.');
+const SEED = taskBody('## Work\n\nOld text.\n\n## Notes\n\nKept.');
 
 let id: number;
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
-  id = nextCardId(mainProject);
+  id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Draft me', '--desc', SEED]);
   await page.goto('/');
   await waitForSync(page);
-  await card(page, id).click();
+  await task(page, id).click();
 });
 
 async function makeDraft(page: Page): Promise<void> {
@@ -47,8 +47,8 @@ async function makeDraft(page: Page): Promise<void> {
 }
 
 async function openEditor(page: Page): Promise<{ dialog: Locator; editor: Locator }> {
-  await details(page).getByRole('button', { name: 'Edit card' }).click();
-  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit card`) });
+  await details(page).getByRole('button', { name: 'Edit task' }).click();
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
   await expect(dialog).toBeVisible();
   const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
   // The rich editor loads its text after the dialog opens; typing before that is lost.
@@ -63,20 +63,20 @@ async function typeAtEnd(page: Page, editor: Locator, text: string): Promise<voi
   await page.keyboard.type(text);
 }
 
-test('a card becomes a draft, is edited and saved, and finalized from the details', async ({ page }) => {
+test('a task becomes a draft, is edited and saved, and finalized from the details', async ({ page }) => {
   // Before: an ordinary card offers Make draft, not Edit.
-  await expect(details(page).getByRole('button', { name: 'Edit card' })).toHaveCount(0);
+  await expect(details(page).getByRole('button', { name: 'Edit task' })).toHaveCount(0);
   await makeDraft(page);
 
   // The draft is marked on the tile and in the details; Edit replaces Make draft, with Archive at the right end.
-  await expect(card(page, id).getByText('Draft', { exact: true })).toHaveCount(1);
+  await expect(task(page, id).getByText('Draft', { exact: true })).toHaveCount(1);
   const banner = details(page).getByRole('region', { name: 'Draft' });
-  await expect(banner).toContainText('Agents can only read this card. Once you finalize it, agents can work on it.');
-  expect(await toolbarLabels(page)).toEqual(['Edit card', 'Archive card']);
+  await expect(banner).toContainText('Agents can only read this task. Once you finalize it, agents can work on it.');
+  expect(await toolbarLabels(page)).toEqual(['Edit task', 'Archive task']);
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toHaveCount(0);
 
   const { dialog, editor } = await openEditor(page);
-  await expect(dialog).toContainText('Edit card');
+  await expect(dialog).toContainText('Edit task');
   // The dialog opens with the current text, nothing changed yet, and Save disabled.
   expect(await editorValue(editor)).toContain('## Work\n\nOld text.');
   await expect(dialog.getByText('You have unsaved changes.')).toHaveCount(0);
@@ -111,7 +111,7 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => show(id).description).toContain('Plan line.');
-  expect(show(id)).toMatchObject({ title: 'Draft me, rewritten', isDraft: true, cardStatus: 'todo', agentStatus: 'idle' });
+  expect(show(id)).toMatchObject({ title: 'Draft me, rewritten', isDraft: true, taskStatus: 'todo', agentStatus: 'idle' });
   expect(show(id).description).toContain('## Notes');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 
@@ -121,10 +121,10 @@ test('a card becomes a draft, is edited and saved, and finalized from the detail
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Draft me, rewritten');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toHaveCount(0);
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeVisible();
-  await expect(card(page, id).getByText('Draft', { exact: true })).toHaveCount(0);
+  await expect(task(page, id).getByText('Draft', { exact: true })).toHaveCount(0);
 });
 
-test('Save keeps the card a draft, and Finalize hands it back', async ({ page }) => {
+test('Save keeps the task a draft, and Finalize hands it back', async ({ page }) => {
   await makeDraft(page);
   const { dialog, editor } = await openEditor(page);
   await typeAtEnd(page, editor, 'Saved but still a draft.');
@@ -146,7 +146,7 @@ test('a failed save keeps the dialog and the text, and can be retried', async ({
   await makeDraft(page);
   let fail = true;
   let patches = 0;
-  await page.route(`**/api/projects/*/cards/${id}`, async (route) => {
+  await page.route(`**/api/projects/*/tasks/${id}`, async (route) => {
     if (route.request().method() !== 'PATCH') return route.fallback();
     patches += 1;
     if (!fail) return route.fallback();
@@ -184,7 +184,7 @@ test('while it saves the dialog cannot be sent twice or closed', async ({ page }
     release = resolve;
   });
   let patches = 0;
-  await page.route(`**/api/projects/*/cards/${id}`, async (route) => {
+  await page.route(`**/api/projects/*/tasks/${id}`, async (route) => {
     if (route.request().method() !== 'PATCH') return route.fallback();
     patches += 1;
     await gate;
@@ -281,15 +281,15 @@ test('a body of exactly 50,000 characters saves, and one more cannot be saved', 
   expect(stored.isDraft).toBe(true);
 });
 
-test('idle and Pending cards can be made drafts, while running cards cannot', async ({ page }) => {
-  await card(page, 11).click();
+test('idle and Pending tasks can be made drafts, while running tasks cannot', async ({ page }) => {
+  await task(page, 11).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toBeVisible();
   await expect(details(page).getByRole('button', { name: 'Make draft' }), 'running').toHaveCount(0);
-  await expect(details(page).getByRole('button', { name: 'Edit card' }), 'running').toHaveCount(0);
-  expect(await toolbarLabels(page)).toEqual(['Archive card']);
+  await expect(details(page).getByRole('button', { name: 'Edit task' }), 'running').toHaveCount(0);
+  expect(await toolbarLabels(page)).toEqual(['Archive task']);
   // An idle Doing card, a Pending card, and a Done card can.
   for (const idle of [13, 12, 8]) {
-    await card(page, idle).click();
+    await task(page, idle).click();
     await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeVisible();
   }
 });
@@ -298,9 +298,9 @@ test('the toolbar puts archive at the right end; its confirmation sits above the
   page,
 }) => {
   await makeDraft(page);
-  const toolbar = details(page).getByRole('toolbar', { name: 'Card actions' });
-  const edit = toolbar.getByRole('button', { name: 'Edit card' });
-  const archive = toolbar.getByRole('button', { name: 'Archive card' });
+  const toolbar = details(page).getByRole('toolbar', { name: 'Task actions' });
+  const edit = toolbar.getByRole('button', { name: 'Edit task' });
+  const archive = toolbar.getByRole('button', { name: 'Archive task' });
   const editBox = (await edit.boundingBox())!;
   const archiveBox = (await archive.boundingBox())!;
   expect(archiveBox.x).toBeGreaterThan(editBox.x + editBox.width - 1);
@@ -322,28 +322,28 @@ test('the toolbar puts archive at the right end; its confirmation sits above the
   expect(tabsNow.y).toBeGreaterThan(tabs.y);
   await confirm.getByRole('button', { name: 'Cancel' }).click();
   await expect(confirm).toHaveCount(0);
-  expect(listCards(mainProject).map((item) => item.id)).toContain(id);
+  expect(listTasks(mainProject).map((item) => item.id)).toContain(id);
 
   // A failed archive keeps the draft and confirmation; retry succeeds.
   let fail = true;
-  await page.route(`**/api/projects/*/cards/${id}/archive`, async (route) => {
+  await page.route(`**/api/projects/*/tasks/${id}/archive`, async (route) => {
     if (route.request().method() !== 'POST' || !fail) return route.fallback();
     return route.fulfill({ status: 500, body: 'no' });
   });
   await archive.click();
   await confirm.getByRole('button', { name: 'Archive', exact: true }).click();
-  await expect(confirm.getByRole('alert').or(details(page).getByRole('alert'))).toHaveText('Could not archive the card. Try again.');
-  expect(listCards(mainProject).map((item) => item.id)).toContain(id);
+  await expect(confirm.getByRole('alert').or(details(page).getByRole('alert'))).toHaveText('Could not archive the task. Try again.');
+  expect(listTasks(mainProject).map((item) => item.id)).toContain(id);
   fail = false;
   await confirm.getByRole('button', { name: 'Archive', exact: true }).click();
-  await expect(card(page, id)).toHaveCount(0);
-  await expect(details(page)).toContainText('Select a card to see its details.');
-  expect(listCards(mainProject).map((item) => item.id)).not.toContain(id);
+  await expect(task(page, id)).toHaveCount(0);
+  await expect(details(page)).toContainText('Select a task to see its details.');
+  expect(listTasks(mainProject).map((item) => item.id)).not.toContain(id);
 });
 
-test('a person can still move a draft card by dragging it', async ({ page }) => {
+test('a person can still move a draft task by dragging it', async ({ page }) => {
   await makeDraft(page);
-  const source = (await card(page, id).boundingBox())!;
+  const source = (await task(page, id).boundingBox())!;
   const target = (await page.getByRole('region', { name: 'Doing' }).boundingBox())!;
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
   await page.mouse.down();
@@ -351,11 +351,11 @@ test('a person can still move a draft card by dragging it', async ({ page }) => 
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
   const move = page.getByRole('dialog');
-  await expect(move).toContainText('Move card');
+  await expect(move).toContainText('Move task');
   await move.getByLabel('Reason').fill('The person moves the draft.');
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Doing' }).getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })).toBeVisible();
-  expect(show(id)).toMatchObject({ cardStatus: 'doing', isDraft: true });
+  expect(show(id)).toMatchObject({ taskStatus: 'doing', isDraft: true });
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 });

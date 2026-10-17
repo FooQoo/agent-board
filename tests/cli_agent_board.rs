@@ -36,8 +36,8 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
     .get_output()
     .stdout
     .clone();
-    let card: Value = serde_json::from_slice(&created).unwrap();
-    assert_eq!(card["card"]["assignee"], "ai");
+    let task: Value = serde_json::from_slice(&created).unwrap();
+    assert_eq!(task["task"]["assignee"], "ai");
     let moved = invoke(
         home.path(),
         &[
@@ -66,8 +66,8 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
     .stdout
     .clone();
     let pending: Value = serde_json::from_slice(&running).unwrap();
-    let request = pending["card"]["pendingRequestId"].as_str().unwrap();
-    assert_eq!(pending["card"]["agentStatus"], "pending");
+    let request = pending["task"]["pendingRequestId"].as_str().unwrap();
+    assert_eq!(pending["task"]["agentStatus"], "pending");
     let request_arg = format!("--request={request}");
     let answered = invoke(
         home.path(),
@@ -88,8 +88,8 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
     .stdout
     .clone();
     let answered: Value = serde_json::from_slice(&answered).unwrap();
-    assert_eq!(answered["card"]["agentStatus"], "idle");
-    assert_eq!(answered["card"]["history"].as_array().unwrap().len(), 4);
+    assert_eq!(answered["task"]["agentStatus"], "idle");
+    assert_eq!(answered["task"]["history"].as_array().unwrap().len(), 4);
     let _ = moved;
 }
 
@@ -128,12 +128,12 @@ fn snapshot_is_read_only_and_returns_full_history() {
             snapshot["project"]["id"].as_str().unwrap()
         )
     );
-    assert_eq!(snapshot["nextCardId"], 1);
-    assert_eq!(snapshot["cards"].as_array().unwrap().len(), 0);
+    assert_eq!(snapshot["nextTaskId"], 1);
+    assert_eq!(snapshot["tasks"].as_array().unwrap().len(), 0);
     assert_eq!(snapshot["problems"].as_array().unwrap().len(), 0);
 }
 
-fn add_card(home: &std::path::Path, project: &str, title: &str) -> Value {
+fn add_task(home: &std::path::Path, project: &str, title: &str) -> Value {
     json_of(invoke_for(
         home,
         project,
@@ -152,12 +152,12 @@ fn stable(mut snapshot: Value) -> Value {
 }
 
 #[test]
-fn two_projects_keep_the_same_card_number_apart() {
+fn two_projects_keep_the_same_task_number_apart() {
     let home = tempdir().unwrap();
     invoke_for(home.path(), "A", &["init"]).success();
     invoke_for(home.path(), "B", &["init"]).success();
-    assert_eq!(add_card(home.path(), "A", "from a")["card"]["id"], 1);
-    assert_eq!(add_card(home.path(), "B", "from b")["card"]["id"], 1);
+    assert_eq!(add_task(home.path(), "A", "from a")["task"]["id"], 1);
+    assert_eq!(add_task(home.path(), "B", "from b")["task"]["id"], 1);
     let before_b = stable(snapshot_of(home.path(), "B"));
 
     invoke_for(
@@ -167,16 +167,16 @@ fn two_projects_keep_the_same_card_number_apart() {
     )
     .success();
     let a = snapshot_of(home.path(), "A");
-    assert_eq!(a["cards"][0]["title"], "from a");
-    assert_eq!(a["cards"][0]["cardStatus"], "doing");
+    assert_eq!(a["tasks"][0]["title"], "from a");
+    assert_eq!(a["tasks"][0]["taskStatus"], "doing");
     assert_eq!(stable(snapshot_of(home.path(), "B")), before_b);
-    assert_eq!(before_b["cards"][0]["cardStatus"], "todo");
+    assert_eq!(before_b["tasks"][0]["taskStatus"], "todo");
     assert_ne!(a["project"]["id"], before_b["project"]["id"]);
 
     let shown = json_of(invoke_for(home.path(), "B", &["show", "1", "--json"]));
-    assert_eq!(shown["card"]["title"], "from b");
+    assert_eq!(shown["task"]["title"], "from b");
     let listed = json_of(invoke_for(home.path(), "A", &["ls", "--json"]));
-    assert_eq!(listed["cards"].as_array().unwrap().len(), 1);
+    assert_eq!(listed["tasks"].as_array().unwrap().len(), 1);
 }
 
 #[test]
@@ -206,7 +206,7 @@ fn a_command_needs_a_project_that_exists_and_never_guesses_one() {
         .code(2);
 }
 
-/// Mark a card as a draft the way the Web does, through the file store.
+/// Mark a task as a draft the way the Web does, through the file store.
 fn make_draft(home: &std::path::Path, project: &str, id: i64) {
     let files = agent_board::file_store::FileStore::open(&home.join("shared"));
     let meta = files.project_by_name(project).unwrap();
@@ -232,8 +232,8 @@ fn stdout_of(assert: assert_cmd::assert::Assert) -> String {
 fn ls_and_show_mark_drafts_and_json_carries_is_draft() {
     let home = tempdir().unwrap();
     assert!(invoke(home.path(), &["init"]).get_output().status.success());
-    add_card(home.path(), "Agent Board", "Plain");
-    add_card(home.path(), "Agent Board", "Sketch");
+    add_task(home.path(), "Agent Board", "Plain");
+    add_task(home.path(), "Agent Board", "Sketch");
     make_draft(home.path(), "Agent Board", 2);
 
     let text = stdout_of(invoke(home.path(), &["ls"]));
@@ -247,13 +247,13 @@ fn ls_and_show_mark_drafts_and_json_carries_is_draft() {
     assert!(!stdout_of(invoke(home.path(), &["ls", "--column", "doing"])).contains("[draft]"));
 
     let listed = json_of(invoke(home.path(), &["ls", "--json"]));
-    assert_eq!(listed["cards"][0]["isDraft"], false);
-    assert_eq!(listed["cards"][1]["isDraft"], true);
+    assert_eq!(listed["tasks"][0]["isDraft"], false);
+    assert_eq!(listed["tasks"][1]["isDraft"], true);
     let all = json_of(invoke_none(
         home.path(),
         &["ls", "--all-projects", "--json"],
     ));
-    assert_eq!(all["projects"][0]["cards"][1]["isDraft"], true);
+    assert_eq!(all["projects"][0]["tasks"][1]["isDraft"], true);
     let all_text = stdout_of(invoke_none(home.path(), &["ls", "--all-projects"]));
     assert!(all_text.contains("#2 Sketch [AI] [draft]"));
 
@@ -261,11 +261,11 @@ fn ls_and_show_mark_drafts_and_json_carries_is_draft() {
     assert!(shown.contains("Draft: yes\n"), "{shown}");
     assert!(!stdout_of(invoke(home.path(), &["show", "1"])).contains("Draft"));
     assert_eq!(
-        json_of(invoke(home.path(), &["show", "2", "--json"]))["card"]["isDraft"],
+        json_of(invoke(home.path(), &["show", "2", "--json"]))["task"]["isDraft"],
         true
     );
     assert_eq!(
-        snapshot_of(home.path(), "Agent Board")["cards"][1]["isDraft"],
+        snapshot_of(home.path(), "Agent Board")["tasks"][1]["isDraft"],
         true
     );
 }
@@ -275,7 +275,7 @@ fn a_draft_refuses_edit_mv_and_state_and_changes_and_announces_nothing() {
     use std::io::ErrorKind;
     let home = tempdir().unwrap();
     assert!(invoke(home.path(), &["init"]).get_output().status.success());
-    add_card(home.path(), "Agent Board", "Sketch");
+    add_task(home.path(), "Agent Board", "Sketch");
     make_draft(home.path(), "Agent Board", 1);
     let before = stable(snapshot_of(home.path(), "Agent Board"));
 
@@ -301,7 +301,7 @@ fn a_draft_refuses_edit_mv_and_state_and_changes_and_announces_nothing() {
     for args in attempts {
         let human = invoke(home.path(), args).failure().code(1);
         let stderr = String::from_utf8(human.get_output().stderr.clone()).unwrap();
-        assert!(stderr.starts_with("Error: card #1 is a draft"), "{stderr}");
+        assert!(stderr.starts_with("Error: task #1 is a draft"), "{stderr}");
         assert!(
             stderr.contains("Wait for the user to finalize it"),
             "{stderr}"
@@ -310,7 +310,7 @@ fn a_draft_refuses_edit_mv_and_state_and_changes_and_announces_nothing() {
         json_args.push("--json");
         let json = invoke(home.path(), &json_args).failure().code(1);
         let value: Value = serde_json::from_slice(&json.get_output().stderr).unwrap();
-        assert_eq!(value["error"]["code"], "card_is_draft");
+        assert_eq!(value["error"]["code"], "task_is_draft");
     }
     assert_eq!(before, stable(snapshot_of(home.path(), "Agent Board")));
     assert_eq!(
@@ -326,9 +326,9 @@ fn a_draft_refuses_edit_mv_and_state_and_changes_and_announces_nothing() {
             .success()
     );
     assert!(invoke(home.path(), &["ls"]).get_output().status.success());
-    add_card(home.path(), "Agent Board", "Another");
+    add_task(home.path(), "Agent Board", "Another");
     assert_eq!(
-        snapshot_of(home.path(), "Agent Board")["cards"][1]["isDraft"],
+        snapshot_of(home.path(), "Agent Board")["tasks"][1]["isDraft"],
         false
     );
 }
@@ -353,11 +353,11 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
         ],
     ));
     assert_eq!(
-        added["card"]["body"].as_str().unwrap().chars().count(),
+        added["task"]["body"].as_str().unwrap().chars().count(),
         50_000
     );
     assert!(
-        added["card"]["description"]
+        added["task"]["description"]
             .as_str()
             .unwrap()
             .contains("history:")
@@ -368,9 +368,9 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
         home.path(),
         &["edit", "1", "--desc-file", file.to_str().unwrap(), "--json"],
     ));
-    assert_eq!(edited["card"]["body"], body_of(50000, 'い').as_str());
+    assert_eq!(edited["task"]["body"], body_of(50000, 'い').as_str());
     assert!(
-        edited["card"]["description"]
+        edited["task"]["description"]
             .as_str()
             .unwrap()
             .contains("history:")
@@ -391,12 +391,12 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
         .assert();
     // The description is stored trimmed of its outer whitespace (as before the switch).
     assert_eq!(
-        json_of(piped)["card"]["body"].as_str().unwrap().trim(),
+        json_of(piped)["task"]["body"].as_str().unwrap().trim(),
         body_of(50000, 'う').trim()
     );
     let shown = json_of(invoke(home.path(), &["show", "1", "--json"]));
     assert_eq!(
-        shown["card"]["body"]
+        shown["task"]["body"]
             .as_str()
             .unwrap()
             .trim()
@@ -426,7 +426,7 @@ fn help_describes_markdown_limits_and_drafts() {
     let top = help(&["--help"]);
     for needle in [
         "isDraft",
-        "card_is_draft",
+        "task_is_draft",
         "read-only",
         "--desc-file",
         "in full",
@@ -438,5 +438,5 @@ fn help_describes_markdown_limits_and_drafts() {
         assert!(text.contains("Markdown"), "{sub}: {text}");
         assert!(text.contains("50,000"), "{sub}: {text}");
     }
-    assert!(help(&["edit", "--help"]).contains("card_is_draft"));
+    assert!(help(&["edit", "--help"]).contains("task_is_draft"));
 }

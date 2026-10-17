@@ -6,12 +6,12 @@ import {
   agboard,
   agboardOk,
   mainProject,
-  nextCardId,
+  nextTaskId,
   projectId,
   replaceFileAtomically,
   resetBoard,
   workspace,
-  type CardJson,
+  type TaskJson,
 } from '../helpers/agboard';
 import { editorValue, waitForSync } from '../helpers/ui';
 
@@ -25,18 +25,18 @@ interface Condition {
   done: boolean;
 }
 
-interface Shown extends CardJson {
+interface Shown extends TaskJson {
   description: string;
   isDraft: boolean;
   acceptance: Condition[];
   acceptanceError: boolean;
 }
 
-const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
 function show(id: number): Shown {
-  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
+  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
 /** The TASK.md file of a card in the shared folder. */
@@ -45,8 +45,8 @@ function taskFile(id: number): string {
 }
 
 /** A card the CLI writes with the given frontmatter and body; returns its ID. */
-function addCard(title: string, description: string): number {
-  const id = nextCardId(mainProject);
+function addTask(title: string, description: string): number {
+  const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', title, '--desc', description]);
   return id;
 }
@@ -67,16 +67,16 @@ const THREE: Condition[] = [
 
 /** Make a card a draft so that a person can edit it on the page. */
 async function makeDraft(page: Page, id: number): Promise<void> {
-  await card(page, id).click();
+  await task(page, id).click();
   await details(page).getByRole('button', { name: 'Make draft' }).click();
   await expect.poll(() => show(id).isDraft).toBe(true);
 }
 
 /** Open the card's edit dialog and wait until its text has loaded. */
 async function openEdit(page: Page, id: number): Promise<{ dialog: Locator; editor: Locator }> {
-  await card(page, id).click();
-  await details(page).getByRole('button', { name: 'Edit card' }).click();
-  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit card`) });
+  await task(page, id).click();
+  await details(page).getByRole('button', { name: 'Edit task' }).click();
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
   await expect(dialog).toBeVisible();
   const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
   await expect(editor.getByText(/./).first()).toBeVisible();
@@ -89,16 +89,16 @@ test.beforeEach(async ({ page }) => {
   await waitForSync(page);
 });
 
-test('the board and the details show the number of conditions done, and nothing for a card without conditions', async ({ page }) => {
-  const none = addCard('No conditions', frontmatter([], 'Only a body.'));
-  const partial = addCard(
+test('the board and the details show the number of conditions done, and nothing for a task without conditions', async ({ page }) => {
+  const none = addTask('No conditions', frontmatter([], 'Only a body.'));
+  const partial = addTask(
     'Partly done',
     frontmatter([
       { id: 'AC-1', text: 'First', done: true },
       { id: 'AC-2', text: 'Second', done: false },
     ]),
   );
-  const complete = addCard(
+  const complete = addTask(
     'All done',
     frontmatter([
       { id: 'AC-1', text: 'First', done: true },
@@ -108,25 +108,25 @@ test('the board and the details show the number of conditions done, and nothing 
   await page.reload();
   await waitForSync(page);
 
-  await expect(card(page, none).locator('.acceptance-chip')).toHaveCount(0);
-  const partialChip = card(page, partial).locator('.acceptance-chip');
+  await expect(task(page, none).locator('.acceptance-chip')).toHaveCount(0);
+  const partialChip = task(page, partial).locator('.acceptance-chip');
   await expect(partialChip).toHaveAttribute('title', 'Acceptance conditions 1 / 2');
   await expect(partialChip).toHaveText('1/2');
   await expect(partialChip).not.toHaveAttribute('data-complete', 'true');
-  await expect(card(page, complete).locator('.acceptance-chip')).toHaveAttribute('data-complete', 'true');
+  await expect(task(page, complete).locator('.acceptance-chip')).toHaveAttribute('data-complete', 'true');
 
   // Conditions have their own tab; neither document holds a bottom dock.
-  await card(page, partial).click();
+  await task(page, partial).click();
   await details(page).getByRole('tab', { name: 'Conditions', exact: true }).click();
   await expect(details(page).getByRole('tabpanel')).toContainText('1 / 2');
   await expect(details(page).getByText('First', { exact: true })).toBeVisible();
   await expect(details(page).getByText('Second', { exact: true })).toBeVisible();
 });
 
-test('a person adds conditions when creating a card, and the CLI reads them back with the same ids and text', async ({ page }) => {
-  const id = nextCardId(mainProject);
-  await page.getByRole('button', { name: 'Add card' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add card' });
+test('a person adds conditions when creating a task, and the CLI reads them back with the same ids and text', async ({ page }) => {
+  const id = nextTaskId(mainProject);
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add task' });
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Plan the list endpoint');
   await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   for (const [index, condition] of THREE.entries()) {
@@ -140,8 +140,8 @@ test('a person adds conditions when creating a card, and the CLI reads them back
 });
 
 test('the focus ring of the first condition is not cut off by the scrolling list', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add card' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add card' });
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add task' });
   await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   await dialog.getByRole('button', { name: 'Add condition' }).click();
   const first = dialog.getByRole('textbox', { name: 'Condition AC-1' });
@@ -161,7 +161,7 @@ test('the focus ring of the first condition is not cut off by the scrolling list
 });
 
 test('a person edits the conditions of a draft: removes, adds without reusing a number, checks, and saves them together with the body', async ({ page }) => {
-  const id = addCard('Edit me', frontmatter(THREE, 'Old text.'));
+  const id = addTask('Edit me', frontmatter(THREE, 'Old text.'));
   await page.reload();
   await waitForSync(page);
   await makeDraft(page, id);
@@ -185,7 +185,7 @@ test('a person edits the conditions of a draft: removes, adds without reusing a 
 });
 
 test('cancelling the edit dialog discards the changes to the conditions', async ({ page }) => {
-  const id = addCard('Cancel me', frontmatter(THREE));
+  const id = addTask('Cancel me', frontmatter(THREE));
   await page.reload();
   await waitForSync(page);
   await makeDraft(page, id);
@@ -199,7 +199,7 @@ test('cancelling the edit dialog discards the changes to the conditions', async 
 });
 
 test('a save of the body keeps the other frontmatter keys, which the page does not show', async ({ page }) => {
-  const id = addCard('Keep my keys', '---\ntags:\n  - plan\nacceptance: []\n---\n\nold\n');
+  const id = addTask('Keep my keys', '---\ntags:\n  - plan\nacceptance: []\n---\n\nold\n');
   await page.reload();
   await waitForSync(page);
   await makeDraft(page, id);
@@ -217,18 +217,18 @@ test('a save of the body keeps the other frontmatter keys, which the page does n
   expect(show(id).acceptance).toEqual([]);
 });
 
-test('a frontmatter that cannot be read is shown as a problem, the body stays visible, and the card reads unreadable until the file is fixed', async ({ page }) => {
-  const id = addCard('Broken', frontmatter(THREE, 'Body stays visible.'));
+test('a frontmatter that cannot be read is shown as a problem, the body stays visible, and the task reads unreadable until the file is fixed', async ({ page }) => {
+  const id = addTask('Broken', frontmatter(THREE, 'Body stays visible.'));
   const original = readFileSync(taskFile(id), 'utf8');
   const broken = original.replace('done: false', 'done: maybe');
   writeFileSync(taskFile(id), broken, 'utf8');
   await page.reload();
   await waitForSync(page);
 
-  await card(page, id).click();
+  await task(page, id).click();
   await expect(details(page).getByText('Body stays visible.')).toBeVisible();
   await expect(details(page).locator('.acceptance-unreadable')).toContainText('tasks/' + id + '/TASK.md');
-  await expect(card(page, id).locator('.acceptance-chip--error')).toHaveText('Unreadable');
+  await expect(task(page, id).locator('.acceptance-chip--error')).toHaveText('Unreadable');
 
   // The product does not rewrite the file; the CLI reports the same problem.
   expect(readFileSync(taskFile(id), 'utf8')).toBe(broken);
@@ -241,15 +241,15 @@ test('a frontmatter that cannot be read is shown as a problem, the body stays vi
   replaceFileAtomically(taskFile(id), original);
   await page.reload();
   await waitForSync(page);
-  await expect(card(page, id).locator('.acceptance-chip')).toHaveAttribute('title', 'Acceptance conditions 0 / 3');
+  await expect(task(page, id).locator('.acceptance-chip')).toHaveAttribute('title', 'Acceptance conditions 0 / 3');
 });
 
-test('an agent cannot move a card to Done while a condition is unmet, and a person can', async ({ page }) => {
-  const id = addCard('Unmet', frontmatter([{ id: 'AC-1', text: 'Still open', done: false }]));
+test('an agent cannot move a task to Done while a condition is unmet, and a person can', async ({ page }) => {
+  const id = addTask('Unmet', frontmatter([{ id: 'AC-1', text: 'Still open', done: false }]));
   const refused = agboard(mainProject, ['mv', String(id), 'done', '--actor', 'ai', '--reason', 'Finished.']);
   expect(refused.code).toBe(2);
   expect(refused.stderr).toContain('unmet acceptance conditions: AC-1');
-  expect(show(id).cardStatus).toBe('todo');
+  expect(show(id).taskStatus).toBe('todo');
 
   // A person moves the card from the page, with the conditions still unmet.
   await page.reload();
@@ -265,29 +265,29 @@ test('an agent cannot move a card to Done while a condition is unmet, and a pers
       });
       return response.status;
     },
-    { url: `/api/projects/${pid}/cards/${id}/move`, body: { cardStatus: 'done', reason: 'Dropped the condition.' } },
+    { url: `/api/projects/${pid}/tasks/${id}/move`, body: { taskStatus: 'done', reason: 'Dropped the condition.' } },
   );
   expect(moved).toBe(200);
-  expect(show(id).cardStatus).toBe('done');
+  expect(show(id).taskStatus).toBe('done');
 });
 
-test('a card written in the earlier Japanese form is read as a body with no conditions and no problem', async ({ page }) => {
-  const id = addCard(
+test('a task written in the earlier Japanese form is read as a body with no conditions and no problem', async ({ page }) => {
+  const id = addTask(
     'Old form',
     '## 作業内容\n\n作業。\n\n## 完了条件と確認結果\n\n- [ ] AC-1. 旧形式\n\n## 実行記録\n\n',
   );
   await page.reload();
   await waitForSync(page);
 
-  await card(page, id).click();
+  await task(page, id).click();
   await expect(details(page).getByText('作業。')).toBeVisible();
-  await expect(card(page, id).locator('.acceptance-chip')).toHaveCount(0);
+  await expect(task(page, id).locator('.acceptance-chip')).toHaveCount(0);
   await expect(details(page).getByRole('alert')).toHaveCount(0);
   expect(show(id)).toMatchObject({ acceptance: [], acceptanceError: false });
 });
 
 test('the edit dialog wraps each condition onto two rows in a narrow width and keeps one row on a desktop width', async ({ page }) => {
-  const id = addCard('Narrow', frontmatter(THREE));
+  const id = addTask('Narrow', frontmatter(THREE));
   await page.reload();
   await waitForSync(page);
   await makeDraft(page, id);
@@ -318,7 +318,7 @@ test('epic reference conditions stay in the Markdown body without a conditions d
   const stored = JSON.parse(agboardOk(mainProject, ['epic', 'show', 'PLAN-CHK', '--json']).stdout).epic;
   expect(stored).not.toHaveProperty('acceptance');
   expect(stored.body).toBe(text.trimEnd());
-  const inPlan = addCard('In the checked plan', frontmatter([], 'Work for the plan.'));
+  const inPlan = addTask('In the checked plan', frontmatter([], 'Work for the plan.'));
   agboardOk(mainProject, ['edit', String(inPlan), '--epic', 'PLAN-CHK']);
   await page.reload();
   await waitForSync(page);
@@ -337,7 +337,7 @@ test('task conditions fold in their own dock and a long body scrolls alone', asy
     done: false,
   }));
   const body = `## Body starts here\n\n${Array.from({ length: 30 }, (_, index) => `Paragraph ${index + 1}.`).join('\n\n')}\n\nBody ends here.`;
-  const id = addCard('Many conditions', frontmatter(conditions, body));
+  const id = addTask('Many conditions', frontmatter(conditions, body));
   await page.reload();
   await waitForSync(page);
 

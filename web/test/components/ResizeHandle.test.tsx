@@ -20,11 +20,11 @@ describe('ResizeHandle', () => {
   it('is a labelled vertical separator in English and Japanese', async () => {
     selectLocale('en');
     setup();
-    const el = screen.getByRole('separator', { name: 'Resize card details' });
+    const el = screen.getByRole('separator', { name: 'Resize task details' });
     expect(el.getAttribute('aria-orientation')).toBe('vertical');
     expect(el.hasAttribute('tabindex')).toBe(false);
     selectLocale('ja');
-    expect(await screen.findByRole('separator', { name: 'カードの詳細の幅を変更' })).toBeTruthy();
+    expect(await screen.findByRole('separator', { name: 'タスクの詳細の幅を変更' })).toBeTruthy();
     selectLocale('en');
   });
 

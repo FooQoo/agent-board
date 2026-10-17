@@ -2,7 +2,7 @@
 //! conditions a browser delete must meet. Pure functions over header values so
 //! they can be tested exhaustively; the HTTP layer only extracts the values.
 
-/// Headers of a `DELETE /api/cards/{id}` request, as the guard sees them.
+/// Headers of a `DELETE /api/tasks/{id}` request, as the guard sees them.
 /// `None` means the header is absent (or not usable text).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct DeleteRequest<'a> {

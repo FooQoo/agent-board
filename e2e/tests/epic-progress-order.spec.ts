@@ -5,11 +5,11 @@ import { expect, test, type Page, type Locator } from '@playwright/test';
 import { agboardOk, mainProject, projectId, resetBoard } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
-const card = (page: Page | Locator, title: string) => page.locator('.epic-progress__row', { hasText: title });
+const task = (page: Page | Locator, title: string) => page.locator('.epic-progress__row', { hasText: title });
 
 function progressOrder(): number[] {
   const table = JSON.parse(agboardOk(mainProject, ['progress', '--json']).stdout);
-  return (table.epics as { cards: { id: number }[] }[])[0]?.cards.map((item) => item.id) ?? [];
+  return (table.epics as { tasks: { id: number }[] }[])[0]?.tasks.map((item) => item.id) ?? [];
 }
 
 test.beforeEach(() => {
@@ -33,7 +33,7 @@ test('a task moved in the progress table by keyboard is saved with the epic and 
   await expect(dialog).toBeVisible();
 
   // Pick the third task up by its grip, move it up twice, and drop it at the top.
-  const grip = card(dialog, 'Third step').locator('.epic-progress__grip');
+  const grip = task(dialog, 'Third step').locator('.epic-progress__grip');
   await grip.focus();
   await page.keyboard.press('Space');
   await page.keyboard.press('ArrowUp');
@@ -57,7 +57,7 @@ test('cancelling after a move in the progress table discards the new order', asy
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
   await expect(dialog).toBeVisible();
 
-  const grip = card(dialog, 'Third step').locator('.epic-progress__grip');
+  const grip = task(dialog, 'Third step').locator('.epic-progress__grip');
   await grip.focus();
   await page.keyboard.press('Space');
   await page.keyboard.press('ArrowUp');
@@ -81,7 +81,7 @@ test('a failed save keeps the new order in the progress table, and trying again 
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
   await expect(dialog).toBeVisible();
 
-  const grip = card(dialog, 'Third step').locator('.epic-progress__grip');
+  const grip = task(dialog, 'Third step').locator('.epic-progress__grip');
   await grip.focus();
   await page.keyboard.press('Space');
   await page.keyboard.press('ArrowUp');

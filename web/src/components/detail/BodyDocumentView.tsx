@@ -15,7 +15,7 @@ export function BodyDocumentView({
   attachmentUrl,
   evidenceUrl,
   projectId,
-  cardId,
+  taskId,
 }: {
   body: string;
   acceptanceError: boolean;
@@ -25,7 +25,7 @@ export function BodyDocumentView({
   attachmentUrl: (id: string) => string;
   evidenceUrl?: (id: string) => string;
   projectId?: ProjectId;
-  cardId?: number;
+  taskId?: number;
 }) {
   const { t } = useTranslation();
   return (
@@ -52,10 +52,10 @@ export function BodyDocumentView({
           attachments.some((item) => item.id === id) ? attachmentUrl(id) : null
         }
       />
-      {projectId !== undefined && cardId !== undefined ? (
+      {projectId !== undefined && taskId !== undefined ? (
         <DetailAttachments
           projectId={projectId}
-          cardId={cardId}
+          taskId={taskId}
           attachments={[...attachments]}
           attachmentUrl={attachmentUrl}
         />

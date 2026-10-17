@@ -25,13 +25,13 @@ for (const mode of ["light", "dark"] as const) {
 				await page.route("**/api/projects/*/board", async (route) => {
 					const response = await route.fetch();
 					const board = await response.json();
-					const card = board.cards.find(
-						(item: { cardStatus: string }) => item.cardStatus === "done",
+					const task = board.tasks.find(
+						(item: { taskStatus: string }) => item.taskStatus === "done",
 					);
-					board.cards = Array.from({ length: 24 }, (_, index) => ({
-						...card,
+					board.tasks = Array.from({ length: 24 }, (_, index) => ({
+						...task,
 						id: index + 1,
-						title: `Archive layout card ${index + 1}: 日本語の長いタイトルと対象カードの確認`,
+						title: `Archive layout task ${index + 1}: 日本語の長いタイトルと対象タスクの確認`,
 						attachments: [],
 					}));
 					await route.fulfill({ json: board });
@@ -45,8 +45,8 @@ for (const mode of ["light", "dark"] as const) {
 					await route.fulfill({
 						json: {
 							...board,
-							cards: board.cards.slice(0, 3).map((card: object) => ({
-								...card,
+							tasks: board.tasks.slice(0, 3).map((task: object) => ({
+								...task,
 								archivedAt: "2026-10-08T00:00:00Z",
 								attachments: [],
 							})),
@@ -173,7 +173,7 @@ for (const mode of ["light", "dark"] as const) {
 					dialog.getByText(
 						locale === "ja"
 							? "本文・画像・履歴は保持され、アーカイブ一覧から復元できます。"
-							: "Descriptions, images, and history are kept. You can restore cards from the archive.",
+							: "Descriptions, images, and history are kept. You can restore tasks from the archive.",
 					),
 				).toBeVisible();
 				await expect(dialog.locator('[data-slot="dialog-close"]')).toHaveCount(
@@ -184,7 +184,7 @@ for (const mode of ["light", "dark"] as const) {
 					exact: true,
 				});
 				const submit = dialog.getByRole("button", {
-					name: /archive 24 cards|24件をアーカイブ/i,
+					name: /archive 24 tasks|24件をアーカイブ/i,
 				});
 				const tableWrap = dialog.locator(".bulk-archive__table-wrap");
 				await expect(cancel).toBeFocused();
@@ -252,16 +252,16 @@ for (const mode of ["light", "dark"] as const) {
 			await page.route("**/api/projects/*/board", async (route) => {
 				const response = await route.fetch();
 				const board = await response.json();
-				const card = board.cards.find(
-					(item: { cardStatus: string }) => item.cardStatus === "done",
+				const task = board.tasks.find(
+					(item: { taskStatus: string }) => item.taskStatus === "done",
 				);
-				board.cards = Array.from({ length: 100 }, (_, index) => ({
-					...card,
+				board.tasks = Array.from({ length: 100 }, (_, index) => ({
+					...task,
 					id: index + 1001,
 					title:
 						locale === "ja"
-							? `検証対象カード${index + 1}：アーカイブ確認用のとても長い日本語タイトルと保持説明`
-							: `Verification card ${index + 1}: a deliberately long English title for archive retention`,
+							? `検証対象タスク${index + 1}：アーカイブ確認用のとても長い日本語タイトルと保持説明`
+							: `Verification task ${index + 1}: a deliberately long English title for archive retention`,
 					assignee: index % 2 === 0 ? "ai" : "human",
 					attachments: [],
 				}));
@@ -278,7 +278,7 @@ for (const mode of ["light", "dark"] as const) {
 				dialog.getByText(
 					locale === "ja"
 						? "本文・画像・履歴は保持され、アーカイブ一覧から復元できます。"
-						: "Descriptions, images, and history are kept. You can restore cards from the archive.",
+						: "Descriptions, images, and history are kept. You can restore tasks from the archive.",
 				),
 			).toBeVisible();
 			await expect(dialog.getByRole("button", { name: /100/ })).toBeVisible();
@@ -327,7 +327,7 @@ for (const mode of ["light", "dark"] as const) {
 				dialog.getByText(
 					locale === "ja"
 						? "本文・画像・履歴は保持され、アーカイブ一覧から復元できます。"
-						: "Descriptions, images, and history are kept. You can restore cards from the archive.",
+						: "Descriptions, images, and history are kept. You can restore tasks from the archive.",
 				),
 			).toBeVisible();
 			await page.keyboard.press("Escape");
@@ -337,7 +337,7 @@ for (const mode of ["light", "dark"] as const) {
 	}
 }
 
-test("bulk archive Pen baseline shows two fixed cards and retention copy", async ({
+test("bulk archive Pen baseline shows two fixed tasks and retention copy", async ({
 	page,
 }, testInfo) => {
 	resetBoard(mainProject);
@@ -358,7 +358,7 @@ test("bulk archive Pen baseline shows two fixed cards and retention copy", async
 	const rows = dialog.getByRole("row");
 	await expect(rows.nth(1).locator("td")).toHaveText([
 		"#9",
-		"Return the card list as JSON",
+		"Return the task list as JSON",
 		"AI",
 	]);
 	await expect(rows.nth(2).locator("td")).toHaveText([
@@ -367,7 +367,7 @@ test("bulk archive Pen baseline shows two fixed cards and retention copy", async
 		"AI",
 	]);
 	await expect(
-		dialog.getByText("agent-board の完了カード2件をアーカイブします。"),
+		dialog.getByText("agent-board の完了タスク2件をアーカイブします。"),
 	).toBeVisible();
 	await expect(
 		dialog.getByText(
@@ -397,7 +397,7 @@ test("archive empty state matches the Pen guidance and shared detail placeholder
 		const response = await route.fetch();
 		await route.fulfill({
 			response,
-			json: { ...(await response.json()), cards: [] },
+			json: { ...(await response.json()), tasks: [] },
 		});
 	});
 	await page.goto("/");
@@ -407,10 +407,10 @@ test("archive empty state matches the Pen guidance and shared detail placeholder
 	await expect(page.locator(".archive-list")).toHaveCount(0);
 	await expect(page.locator(".archive-list-pane__empty svg")).toBeVisible();
 	await expect(
-		page.getByText("アーカイブされたカードはありません"),
+		page.getByText("アーカイブされたタスクはありません"),
 	).toBeVisible();
 	await expect(
-		page.getByText("カードをアーカイブすると、ここに表示されます。"),
+		page.getByText("タスクをアーカイブすると、ここに表示されます。"),
 	).toBeVisible();
 	await expect(page.locator(".detail__empty-message")).toBeVisible();
 	await page.screenshot({ path: testInfo.outputPath("04-archive-empty.png") });

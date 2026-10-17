@@ -363,7 +363,7 @@ pub(super) fn assemble(map: Mapping, body: &str) -> Result<String, Defect> {
     Ok(format!("---\n{yaml}---\n\n{body}"))
 }
 
-/// The `priority` list of a text: the card IDs of an epic, in display order.
+/// The `priority` list of a text: the task IDs of an epic, in display order.
 /// A missing key means no order. Entries must be positive integers, unique.
 pub fn priority_of(text: &str) -> Result<Vec<i64>, Defect> {
     let text = text.replace("\r\n", "\n");
@@ -388,7 +388,7 @@ pub fn priority_of(text: &str) -> Result<Vec<i64>, Defect> {
 
 fn priority_from(value: &Value) -> Result<Vec<i64>, Defect> {
     let Value::Sequence(items) = value else {
-        return Err(priority_defect("The priority must be a list of card IDs."));
+        return Err(priority_defect("The priority must be a list of task IDs."));
     };
     let mut ids = Vec::new();
     for item in items {
@@ -397,10 +397,10 @@ fn priority_from(value: &Value) -> Result<Vec<i64>, Defect> {
             _ => None,
         }
         .filter(|id| *id > 0)
-        .ok_or_else(|| priority_defect("Each priority entry must be a positive card ID."))?;
+        .ok_or_else(|| priority_defect("Each priority entry must be a positive task ID."))?;
         if ids.contains(&id) {
             return Err(priority_defect(
-                "A card ID appears more than once in priority.",
+                "A task ID appears more than once in priority.",
             ));
         }
         ids.push(id);
@@ -416,13 +416,13 @@ fn priority_defect(reason: &str) -> Defect {
 pub fn validate_priority(ids: &[i64]) -> Result<(), Defect> {
     if ids.iter().any(|id| *id <= 0) {
         return Err(priority_defect(
-            "Each priority entry must be a positive card ID.",
+            "Each priority entry must be a positive task ID.",
         ));
     }
     for (index, id) in ids.iter().enumerate() {
         if ids[..index].contains(id) {
             return Err(priority_defect(
-                "A card ID appears more than once in priority.",
+                "A task ID appears more than once in priority.",
             ));
         }
     }

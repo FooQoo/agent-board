@@ -6,7 +6,7 @@ use std::sync::{Mutex, mpsc};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use agent_board::domain::{Actor, Assignee, NewCard};
+use agent_board::domain::{Actor, Assignee, NewTask};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::server::{RemoteServeConfig, ServeConfig, run_until_with_remote};
@@ -22,7 +22,7 @@ pub fn home() -> tempfile::TempDir {
         .create_project("monitor", chrono::Utc::now())
         .unwrap()
         .id;
-    files.create_card(&id, NewCard {
+    files.create_task(&id, NewTask {
         title: "Sample".into(),
         description: "## 作業内容\n\nRead-only fixture\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Verify\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".into(),
         assignee: Assignee::Ai,

@@ -18,26 +18,26 @@ import { Header } from './components/Header';
 import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
 import {
-  createNewCard,
-  editCard,
-  editCardMultipart,
-  moveCard,
-  reorderCard,
+  createNewTask,
+  editTask,
+  editTaskMultipart,
+  moveTask,
+  reorderTask,
   WriteError,
 } from './api';
 import { epicApi } from './components/editor/epicApi';
 import { useBoard } from './hooks/useBoard';
 import { useArchive } from './hooks/useArchive';
-import { useCardLifecycle } from './hooks/useCardLifecycle';
+import { useTaskLifecycle } from './hooks/useTaskLifecycle';
 import { useBoardEvents } from './hooks/useBoardEvents';
 import { useDetailWidth } from './hooks/useDetailWidth';
 import { useProjects } from './hooks/useProjects';
 import { STALE_PAGE_EVENT } from './api';
 import { StalePageNotice } from './components/notice/StalePageNotice';
-import { findCard, groupCards, nextSelection } from './lib/board';
+import { findTask, groupTasks, nextSelection } from './lib/board';
 import { isProjectId } from './lib/projectSession';
 import { useProjectSession } from './hooks/useProjectSession';
-import { useCardAnswers } from './hooks/useCardAnswers';
+import { useTaskAnswers } from './hooks/useTaskAnswers';
 import type { Assignee, ColumnName, DialogAction, ProjectId } from './types';
 
 export interface AppProps {
@@ -81,7 +81,7 @@ export function App({ initial }: AppProps) {
     requested,
     initial?.select ?? null,
   );
-  const cardAnswers = useCardAnswers(answerLeaseControls.set);
+  const taskAnswers = useTaskAnswers(answerLeaseControls.set);
   const projects = useProjects();
 
   const activeId = session.activeProjectId;
@@ -89,10 +89,10 @@ export function App({ initial }: AppProps) {
     isProjectId(activeId) && projects.projects.some((project) => project.id === activeId);
   const board = useBoard(known ? activeId : null);
   const archive = useArchive(session.viewMode === 'archive' && known ? activeId : null);
-  const archiveLifecycle = useCardLifecycle(operations);
+  const archiveLifecycle = useTaskLifecycle(operations);
   const [restoreFailure, setRestoreFailure] = useState<{
     projectId: ProjectId;
-    cardId: number;
+    taskId: number;
   } | null>(null);
 
   // The first visit without a project in the URL shows the first project, replacing the history entry.
@@ -127,19 +127,19 @@ export function App({ initial }: AppProps) {
   }, [board.error, reloadProjects]);
 
   const boardData = view === 'board' ? board.board : null;
-  const cards = isProjectId(activeId)
-    ? cardAnswers.withSavedAnswers(activeId, boardData?.cards ?? [], board.lastSyncedAt)
+  const tasks = isProjectId(activeId)
+    ? taskAnswers.withSavedAnswers(activeId, boardData?.tasks ?? [], board.lastSyncedAt)
     : [];
   useEffect(() => {
-    if (boardData && isProjectId(activeId)) cardAnswers.reconcileCards(activeId, boardData.cards);
-  }, [activeId, boardData, cardAnswers.reconcileCards]);
-  const selected = findCard(cards, session.selectedId);
+    if (boardData && isProjectId(activeId)) taskAnswers.reconcileTasks(activeId, boardData.tasks);
+  }, [activeId, boardData, taskAnswers.reconcileTasks]);
+  const selected = findTask(tasks, session.selectedId);
   const archivedSelected =
-    archive.data?.cards.find((card) => card.id === session.archiveSelectedId) ?? null;
+    archive.data?.tasks.find((task) => task.id === session.archiveSelectedId) ?? null;
   const activeName = projects.projects.find((project) => project.id === activeId)?.name ?? null;
   useEffect(() => {
     if (boardData) {
-      const next = nextSelection(boardData.cards, session.selectedId);
+      const next = nextSelection(boardData.tasks, session.selectedId);
       if (next !== session.selectedId) dispatch({ type: 'SELECT_CARD', id: next });
     }
   }, [boardData, session.selectedId, dispatch]);
@@ -147,7 +147,7 @@ export function App({ initial }: AppProps) {
     if (
       archive.status === 'ready' &&
       session.archiveSelectedId !== null &&
-      !archive.data?.cards.some((card) => card.id === session.archiveSelectedId)
+      !archive.data?.tasks.some((task) => task.id === session.archiveSelectedId)
     )
       dispatch({ type: 'SELECT_ARCHIVE_CARD', id: null });
   }, [archive.data, archive.status, session.archiveSelectedId, dispatch]);
@@ -194,7 +194,7 @@ export function App({ initial }: AppProps) {
     `${detailShown}:${session.viewMode}:${view}:${archive.status}`,
   );
   const [mockInitial] = useState(initial);
-  const isMockCard = selected !== null && selected.id === mockInitial?.select;
+  const isMockTask = selected !== null && selected.id === mockInitial?.select;
 
   const retry = view === 'projects-error' ? projects.reload : board.reload;
   const message = BOARD_MESSAGE[view] ?? null;
@@ -244,13 +244,13 @@ export function App({ initial }: AppProps) {
         ) : (
           <Board
             message={message}
-            cards={cards}
+            tasks={tasks}
             selectedId={selected?.id ?? null}
             onSelect={(id) => dispatch({ type: 'SELECT_CARD', id })}
             onRetry={retry}
             layoutRef={attachLayoutRef}
             projectId={activeId as ProjectId}
-            answers={cardAnswers}
+            answers={taskAnswers}
             syncedAt={board.lastSyncedAt}
             onAnswerChanged={() => {
               if (isProjectId(activeId)) refreshProject(activeId);
@@ -259,12 +259,12 @@ export function App({ initial }: AppProps) {
               const epic = boardData?.epics.find((item) => item.id === epicId);
               if (epic) openDialog({ kind: 'epic', epic });
             }}
-            onMove={(card, column) => openDialog({ kind: 'move', card, target: column })}
-            onReorder={(card, beforeId) => {
+            onMove={(task, column) => openDialog({ kind: 'move', task, target: column })}
+            onReorder={(task, beforeId) => {
               if (!isProjectId(activeId)) return;
               const projectId = activeId;
               // The board is read again either way: a refused reorder puts the card back.
-              reorderCard(projectId, card.id, beforeId)
+              reorderTask(projectId, task.id, beforeId)
                 .catch(() => {})
                 .finally(() => refreshProject(projectId));
             }}
@@ -274,7 +274,7 @@ export function App({ initial }: AppProps) {
               dispatch({
                 type: 'OPEN_BULK_ARCHIVE',
                 projectId: activeId,
-                targets: groupCards(cards).done,
+                targets: groupTasks(tasks).done,
               });
             }}
           />
@@ -284,7 +284,7 @@ export function App({ initial }: AppProps) {
             <ResizeHandle startDrag={startDrag} moveDrag={moveDrag} endDrag={endDrag} />
             <DetailPanel
               projectId={known ? activeId : null}
-              card={archiveVisible ? archivedSelected : selected}
+              task={archiveVisible ? archivedSelected : selected}
               variant={
                 archiveVisible
                   ? archive.status === 'ready'
@@ -302,7 +302,7 @@ export function App({ initial }: AppProps) {
                 if (isProjectId(activeId)) refreshProject(activeId);
               }}
               onEdit={() => {
-                if (selected?.isDraft) openDialog({ kind: 'edit', card: selected });
+                if (selected?.isDraft) openDialog({ kind: 'edit', task: selected });
               }}
               onChanged={() => {
                 if (isProjectId(activeId)) refreshProject(activeId);
@@ -311,15 +311,15 @@ export function App({ initial }: AppProps) {
               operationSaving={session.operation?.saving ?? false}
               restoreFailed={Boolean(
                 restoreFailure?.projectId === activeId &&
-                  restoreFailure.cardId === archivedSelected?.id,
+                  restoreFailure.taskId === archivedSelected?.id,
               )}
-              onRemove={async (action, card) => {
+              onRemove={async (action, task) => {
                 if (!isProjectId(activeId)) return false;
                 const projectId = activeId;
                 const result = await archiveLifecycle.run(
                   action,
                   projectId,
-                  { cardId: card.id },
+                  { taskId: task.id },
                   { keepOperationOnError: true },
                 );
                 if (!result.ok) return false;
@@ -330,11 +330,11 @@ export function App({ initial }: AppProps) {
               onRestore={() => {
                 if (!isProjectId(activeId) || archivedSelected === null) return;
                 const projectId = activeId;
-                const cardId = archivedSelected.id;
+                const taskId = archivedSelected.id;
                 setRestoreFailure(null);
-                void archiveLifecycle.run('restore', projectId, { cardId }).then((result) => {
+                void archiveLifecycle.run('restore', projectId, { taskId }).then((result) => {
                   if (!result.ok) {
-                    setRestoreFailure({ projectId, cardId });
+                    setRestoreFailure({ projectId, taskId });
                     return;
                   }
                   dispatch({ type: 'SELECT_ARCHIVE_CARD', id: null });
@@ -348,15 +348,15 @@ export function App({ initial }: AppProps) {
                   id: null,
                 })
               }
-              initialConfirm={isMockCard ? mockInitial?.confirm : undefined}
-              initialDeleteFailed={isMockCard ? mockInitial?.deleteFail : undefined}
+              initialConfirm={isMockTask ? mockInitial?.confirm : undefined}
+              initialDeleteFailed={isMockTask ? mockInitial?.deleteFail : undefined}
             />
           </>
         )}
       </div>
       <StatusBar
         status={archiveVisible ? archive.status : barStatus}
-        cardCount={archiveVisible ? (archive.data?.cards.length ?? 0) : cards.length}
+        taskCount={archiveVisible ? (archive.data?.tasks.length ?? 0) : tasks.length}
         countKind={archiveVisible ? 'archive' : 'board'}
         connected={archiveVisible ? !streamDown && !archive.fetchFailed : connected}
         lastSyncedAt={archiveVisible ? archive.lastSyncedAt : board.lastSyncedAt}
@@ -371,7 +371,7 @@ export function App({ initial }: AppProps) {
           onSavingChange={(saving) =>
             saving ? operations.saveStarted(operation.id) : operations.saveFailed(operation.id)
           }
-          cards={cards}
+          tasks={tasks}
           epicApi={
             dialog.kind === 'epic'
               ? epicApi(operation.projectId, dialog.epic.id, () =>
@@ -379,16 +379,16 @@ export function App({ initial }: AppProps) {
                 )
               : undefined
           }
-          onOpenTask={(cardId) => {
+          onOpenTask={(taskId) => {
             // The epic dialog closes and the board shows the task in the detail panel.
             operations.end(operation.id);
-            dispatch({ type: 'SELECT_CARD', id: cardId });
+            dispatch({ type: 'SELECT_CARD', id: taskId });
           }}
           onSubmit={async (data) => {
             // Writes go to the project the form was opened in, not to whatever the URL says now.
             const projectId = operation.projectId;
             if (dialog.kind === 'create') {
-              await createNewCard(projectId, {
+              await createNewTask(projectId, {
                 title: data.title ?? '',
                 description: data.description ?? '',
                 assignee: data.assignee as Assignee,
@@ -397,16 +397,16 @@ export function App({ initial }: AppProps) {
                 attachments: data.attachments,
               });
             } else if (dialog.kind === 'move') {
-              await moveCard(
+              await moveTask(
                 projectId,
-                dialog.card.id,
+                dialog.task.id,
                 dialog.target as ColumnName,
                 data.reason ?? '',
               );
-              if (dialog.target === 'done') cardAnswers.clearCard(projectId, dialog.card.id);
+              if (dialog.target === 'done') taskAnswers.clearTask(projectId, dialog.task.id);
             } else if (dialog.kind === 'edit')
               if (data.attachments || data.removedAttachmentIds?.length)
-                await editCardMultipart(projectId, dialog.card.id, {
+                await editTaskMultipart(projectId, dialog.task.id, {
                   title: data.title,
                   description: data.description,
                   finalize: data.finalize,
@@ -415,7 +415,7 @@ export function App({ initial }: AppProps) {
                   removedAttachmentIds: data.removedAttachmentIds,
                 });
               else
-                await editCard(projectId, dialog.card.id, {
+                await editTask(projectId, dialog.task.id, {
                   title: data.title,
                   description: data.description,
                   body: data.body,
@@ -444,7 +444,7 @@ export function App({ initial }: AppProps) {
             const result = await archiveLifecycle.run(
               'archive-done',
               bulkArchive.projectId,
-              { cardIds: bulkArchive.targets.map((card) => card.id) },
+              { taskIds: bulkArchive.targets.map((task) => task.id) },
               { keepOperationOnError: true },
             );
             if (!result.ok) {

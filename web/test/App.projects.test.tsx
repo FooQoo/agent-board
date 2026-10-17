@@ -2,8 +2,8 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../src/i18n';
-import { groupCards } from '../src/lib/board';
-import type { Card } from '../src/types';
+import { groupTasks } from '../src/lib/board';
+import type { Task } from '../src/types';
 import { FakeEventSource, deferred, jsonResponse, stubBackend, type FakeBackend } from './fakes';
 import {
   PROJECTS,
@@ -12,14 +12,14 @@ import {
   PROJECT_C,
   boardOf,
   fixtureBoard,
-  makeCard,
+  makeTask,
 } from './fixtures';
 import { renderApp } from './renderApp';
 
 const missing = 'e'.repeat(32);
-const cardsOfB: Card[] = [
-  makeCard({ id: 8, title: 'Eight in knowledge', cardStatus: 'doing' }),
-  makeCard({ id: 12, title: 'Twelve in knowledge', cardStatus: 'todo' }),
+const tasksOfB: Task[] = [
+  makeTask({ id: 8, title: 'Eight in knowledge', taskStatus: 'doing' }),
+  makeTask({ id: 12, title: 'Twelve in knowledge', taskStatus: 'todo' }),
 ];
 
 let backend: FakeBackend;
@@ -30,7 +30,7 @@ function restart() {
     projects: PROJECTS,
     boards: {
       [PROJECT_A.id]: structuredClone(fixtureBoard),
-      [PROJECT_B.id]: boardOf(PROJECT_B, cardsOfB, 3),
+      [PROJECT_B.id]: boardOf(PROJECT_B, tasksOfB, 3),
       [PROJECT_C.id]: boardOf(PROJECT_C, [], 1),
     },
   };
@@ -55,7 +55,7 @@ afterEach(() => {
 
 const urlOf = (id: string) => `?project=${id}`;
 const switcher = (name: string) => screen.getByRole('button', { name });
-const cardButton = (title: string) => screen.getByRole('button', { name: new RegExp(title) });
+const taskButton = (title: string) => screen.getByRole('button', { name: new RegExp(title) });
 const writes = () =>
   fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST' || init?.method === 'DELETE');
 
@@ -104,7 +104,7 @@ describe('which project is shown', () => {
     expect(update?.searchParams.get('project')).toBe(PROJECT_B.id);
     expect(update?.options.history).toBe('push');
     expect(screen.queryByText('Initialize the board')).toBeNull();
-    expect(screen.getByText('2 cards')).toBeTruthy();
+    expect(screen.getByText('2 tasks')).toBeTruthy();
   });
 
   it('marks the shown project with the check in the menu', async () => {
@@ -119,43 +119,43 @@ describe('which project is shown', () => {
     ).toBe('false');
   });
 
-  it('clears the selected card and does not carry a card number into the other project', async () => {
+  it('clears the selected task and does not carry a task number into the other project', async () => {
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton('Initialize the board'));
+    await userEvent.click(taskButton('Initialize the board'));
     expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
 
     await choose('agent-board', 'knowledge');
 
     await screen.findByText('Eight in knowledge');
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    const details = screen.getByRole('complementary', { name: 'Card details' });
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
+    const details = screen.getByRole('complementary', { name: 'Task details' });
     expect(within(details).queryByRole('heading')).toBeNull();
-    expect(cardButton('Eight in knowledge').getAttribute('aria-current')).toBe('false');
+    expect(taskButton('Eight in knowledge').getAttribute('aria-current')).toBe('false');
 
-    await userEvent.click(cardButton('Eight in knowledge'));
+    await userEvent.click(taskButton('Eight in knowledge'));
     expect(screen.getByRole('heading', { level: 2, name: 'Eight in knowledge' })).toBeTruthy();
   });
 
   it('follows back and forward: the URL change applies the same switching rules', async () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton('Initialize the board'));
+    await userEvent.click(taskButton('Initialize the board'));
 
     app.navigate(urlOf(PROJECT_B.id));
     await screen.findByText('Eight in knowledge');
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
 
     app.navigate(urlOf(PROJECT_A.id));
     await screen.findByText('Initialize the board');
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     expect(app.updates()).toHaveLength(0);
   });
 
   it('keeps showing the same project, by ID, when it is renamed', async () => {
     renderApp(urlOf(PROJECT_B.id));
     await screen.findByText('Eight in knowledge');
-    await userEvent.click(cardButton('Eight in knowledge'));
+    await userEvent.click(taskButton('Eight in knowledge'));
 
     backend.projects = [PROJECT_A, { ...PROJECT_B, name: 'renamed' }, PROJECT_C];
     act(() => FakeEventSource.latest.emit('changed'));
@@ -168,7 +168,7 @@ describe('which project is shown', () => {
   it('keeps the archive list and shared detail column in the app shell', async () => {
     backend.archives = {
       [PROJECT_A.id]: [
-        makeCard({ id: 99, title: 'Archived task', archivedAt: '2026-10-08T12:00:00Z' }),
+        makeTask({ id: 99, title: 'Archived task', archivedAt: '2026-10-08T12:00:00Z' }),
       ],
       [PROJECT_B.id]: [],
       [PROJECT_C.id]: [],
@@ -178,28 +178,28 @@ describe('which project is shown', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Archive' })).toBeTruthy();
-    expect(within(screen.getByRole('main')).getByText('1 archived card')).toBeTruthy();
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(screen.getByRole('separator', { name: 'Resize card details' })).toBeTruthy();
+    expect(within(screen.getByRole('main')).getByText('1 archived task')).toBeTruthy();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
+    expect(screen.getByRole('separator', { name: 'Resize task details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Back to board' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: /Archived task/ }));
     expect(screen.getByRole('heading', { level: 2, name: 'Archived task' })).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(screen.getByRole('separator', { name: 'Resize card details' })).toBeTruthy();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
+    expect(screen.getByRole('separator', { name: 'Resize task details' })).toBeTruthy();
 
     await userEvent.click(screen.getByRole('button', { name: 'Back to board' }));
     await screen.findByRole('region', { name: 'Todo' });
   });
 
-  it('restores the selected card through the lifecycle and returns it to its original lane idle', async () => {
-    const archived = makeCard({
+  it('restores the selected task through the lifecycle and returns it to its original lane idle', async () => {
+    const archived = makeTask({
       id: 710,
-      title: 'Restore a pending card',
-      cardStatus: 'doing',
+      title: 'Restore a pending task',
+      taskStatus: 'doing',
       agentStatus: 'pending',
       pendingReason: 'Waiting for approval',
       pendingRequestId: 'request-710',
@@ -209,7 +209,7 @@ describe('which project is shown', () => {
     const archives = { [PROJECT_A.id]: [archived], [PROJECT_B.id]: [], [PROJECT_C.id]: [] };
     backend.archives = archives;
     backend.write = (url) => {
-      if (url !== `/api/projects/${PROJECT_A.id}/cards/${archived.id}/restore`)
+      if (url !== `/api/projects/${PROJECT_A.id}/tasks/${archived.id}/restore`)
         return jsonResponse({}, 404);
       const restored = {
         ...archived,
@@ -219,17 +219,17 @@ describe('which project is shown', () => {
         pendingRequestId: null,
       };
       archives[PROJECT_A.id] = [];
-      backend.boards[PROJECT_A.id] = boardOf(PROJECT_A, [...fixtureBoard.cards, restored], 12);
-      return jsonResponse({ card: restored });
+      backend.boards[PROJECT_A.id] = boardOf(PROJECT_A, [...fixtureBoard.tasks, restored], 12);
+      return jsonResponse({ task: restored });
     };
 
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
-    await userEvent.click(await screen.findByRole('button', { name: /Restore a pending card/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Restore a pending task/ }));
     const detail = screen.getByRole('complementary');
     expect(within(detail).getByRole('button', { name: 'Restore' })).toBeTruthy();
-    expect(within(detail).getByRole('button', { name: 'Delete card' })).toBeTruthy();
+    expect(within(detail).getByRole('button', { name: 'Delete task' })).toBeTruthy();
     const detailChildren = Array.from(detail.children).map((el) => el.className.split(' ')[0]);
     expect(detailChildren.slice(0, 5)).toEqual([
       'detail__top',
@@ -241,22 +241,22 @@ describe('which project is shown', () => {
 
     await userEvent.click(within(detail).getByRole('button', { name: 'Restore' }));
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: /Restore a pending card/ })).toBeNull(),
+      expect(screen.queryByRole('button', { name: /Restore a pending task/ })).toBeNull(),
     );
     await userEvent.click(screen.getByRole('button', { name: 'Back to board' }));
-    const restoredButton = await screen.findByRole('button', { name: /Restore a pending card/ });
+    const restoredButton = await screen.findByRole('button', { name: /Restore a pending task/ });
     const doing = screen.getByRole('region', { name: 'Doing' });
-    expect(within(doing).getByRole('button', { name: /Restore a pending card/ })).toBe(
+    expect(within(doing).getByRole('button', { name: /Restore a pending task/ })).toBe(
       restoredButton,
     );
     await userEvent.click(restoredButton);
     expect(screen.queryByText('Waiting for approval')).toBeNull();
     expect(within(screen.getByRole('complementary')).getByText('Idle')).toBeTruthy();
-    expect(writes()[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/${archived.id}/restore`);
+    expect(writes()[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/tasks/${archived.id}/restore`);
   });
 
   it('keeps the archived detail after restore failure and allows a retry', async () => {
-    const archived = makeCard({
+    const archived = makeTask({
       id: 711,
       title: 'Retry restore',
       description: 'Keep this content visible',
@@ -266,11 +266,11 @@ describe('which project is shown', () => {
     backend.archives = archives;
     let fail = true;
     backend.write = (url) => {
-      if (url !== `/api/projects/${PROJECT_A.id}/cards/${archived.id}/restore`)
+      if (url !== `/api/projects/${PROJECT_A.id}/tasks/${archived.id}/restore`)
         return jsonResponse({}, 404);
       if (fail) return jsonResponse({ error: { reason: 'conflict' } }, 409);
       archives[PROJECT_A.id] = [];
-      return jsonResponse({ card: { ...archived, archivedAt: null, agentStatus: 'idle' } });
+      return jsonResponse({ task: { ...archived, archivedAt: null, agentStatus: 'idle' } });
     };
 
     renderApp(urlOf(PROJECT_A.id));
@@ -279,7 +279,7 @@ describe('which project is shown', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Retry restore/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
     expect((await screen.findByRole('alert')).textContent).toContain(
-      'Could not restore the card. Try again.',
+      'Could not restore the task. Try again.',
     );
     expect(screen.getByRole('heading', { level: 2, name: 'Retry restore' })).toBeTruthy();
     expect(screen.getByText('Keep this content visible')).toBeTruthy();
@@ -292,17 +292,17 @@ describe('which project is shown', () => {
     expect(writes().filter(([url]) => String(url).endsWith('/restore'))).toHaveLength(2);
   });
 
-  it('physically removes an archived card on DELETE 404 and keeps confirmation after a failed delete', async () => {
-    const archived = makeCard({
+  it('physically removes an archived task on DELETE 404 and keeps confirmation after a failed delete', async () => {
+    const archived = makeTask({
       id: 712,
-      title: 'Permanently remove this card',
+      title: 'Permanently remove this task',
       archivedAt: '2026-10-09T01:00:00Z',
     });
     const archives = { [PROJECT_A.id]: [archived], [PROJECT_B.id]: [], [PROJECT_C.id]: [] };
     backend.archives = archives;
     let failure = true;
     backend.write = (url, init) => {
-      if (url !== `/api/projects/${PROJECT_A.id}/cards/${archived.id}` || init.method !== 'DELETE')
+      if (url !== `/api/projects/${PROJECT_A.id}/tasks/${archived.id}` || init.method !== 'DELETE')
         return jsonResponse({}, 404);
       if (failure) return jsonResponse({ error: { reason: 'failed' } }, 500);
       archives[PROJECT_A.id] = [];
@@ -313,23 +313,23 @@ describe('which project is shown', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
     await userEvent.click(
-      await screen.findByRole('button', { name: /Permanently remove this card/ }),
+      await screen.findByRole('button', { name: /Permanently remove this task/ }),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete task' }));
     expect(screen.getByText(/description, images, and history/)).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect((await screen.findByRole('alert')).textContent).toContain(
-      'Could not delete the card. Try again.',
+      'Could not delete the task. Try again.',
     );
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Permanently remove this card' }),
+      screen.getByRole('heading', { level: 2, name: 'Permanently remove this task' }),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
 
     failure = false;
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: /Permanently remove this card/ })).toBeNull(),
+      expect(screen.queryByRole('button', { name: /Permanently remove this task/ })).toBeNull(),
     );
     expect(writes().filter(([, init]) => init?.method === 'DELETE')).toHaveLength(2);
   });
@@ -345,13 +345,13 @@ describe('which project is shown', () => {
 
     await screen.findByRole('region', { name: 'Todo' });
     expect(screen.queryByRole('heading', { level: 2, name: 'Archive' })).toBeNull();
-    expect(screen.getByText('2 cards')).toBeTruthy();
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByText('2 tasks')).toBeTruthy();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
   });
 
   it('keeps the selected archive detail visible when only the ordinary board refresh fails', async () => {
     backend.archives = {
-      [PROJECT_A.id]: [makeCard({ id: 96, title: 'Archived during board failure' })],
+      [PROJECT_A.id]: [makeTask({ id: 96, title: 'Archived during board failure' })],
     };
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
@@ -378,7 +378,7 @@ describe('which project is shown', () => {
   it('discards a delayed archive response after switching to another project', async () => {
     const gate = deferred();
     backend.archives = {
-      [PROJECT_A.id]: [makeCard({ id: 98, title: 'Stale archived card' })],
+      [PROJECT_A.id]: [makeTask({ id: 98, title: 'Stale archived task' })],
       [PROJECT_B.id]: [],
       [PROJECT_C.id]: [],
     };
@@ -394,13 +394,13 @@ describe('which project is shown', () => {
     gate.resolve();
     await act(async () => {});
 
-    expect(screen.queryByText('Stale archived card')).toBeNull();
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(screen.getByText('2 cards')).toBeTruthy();
+    expect(screen.queryByText('Stale archived task')).toBeNull();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
+    expect(screen.getByText('2 tasks')).toBeTruthy();
   });
 
   it('refreshes the archive count and list when the board event stream changes', async () => {
-    const initialArchive = [makeCard({ id: 97, title: 'First archived task' })];
+    const initialArchive = [makeTask({ id: 97, title: 'First archived task' })];
     backend.archives = {
       [PROJECT_A.id]: initialArchive,
       [PROJECT_B.id]: [],
@@ -410,21 +410,21 @@ describe('which project is shown', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
     await screen.findByRole('button', { name: /First archived task/ });
-    expect(within(screen.getByRole('main')).getByText('1 archived card')).toBeTruthy();
+    expect(within(screen.getByRole('main')).getByText('1 archived task')).toBeTruthy();
 
     backend.archives[PROJECT_A.id] = [
       ...initialArchive,
-      makeCard({ id: 96, title: 'Second archived task' }),
+      makeTask({ id: 96, title: 'Second archived task' }),
     ];
     act(() => FakeEventSource.latest.emit('changed'));
 
     await screen.findByRole('button', { name: /Second archived task/ });
-    expect(within(screen.getByRole('main')).getByText('2 archived cards')).toBeTruthy();
+    expect(within(screen.getByRole('main')).getByText('2 archived tasks')).toBeTruthy();
   });
 
   it('shows the project not-found state when the active project is deleted from archive mode', async () => {
     backend.archives = {
-      [PROJECT_A.id]: [makeCard({ id: 95, title: 'Archived from deleted project' })],
+      [PROJECT_A.id]: [makeTask({ id: 95, title: 'Archived from deleted project' })],
       [PROJECT_B.id]: [],
       [PROJECT_C.id]: [],
     };
@@ -440,14 +440,14 @@ describe('which project is shown', () => {
     expect(await screen.findByText('Project not found')).toBeTruthy();
     expect(document.querySelector('.archive-list-pane')).toBeNull();
     expect(screen.queryByText('Archived from deleted project')).toBeNull();
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     expect(switcher('Choose a project')).toBeTruthy();
 
     await choose('Choose a project', 'knowledge');
     expect(await screen.findByText('Eight in knowledge')).toBeTruthy();
   });
 
-  it('retries an initial archive fetch failure and shows the archived cards after recovery', async () => {
+  it('retries an initial archive fetch failure and shows the archived tasks after recovery', async () => {
     backend.archives = {
       [PROJECT_A.id]: new Error('archive temporarily unavailable'),
       [PROJECT_B.id]: [],
@@ -459,11 +459,11 @@ describe('which project is shown', () => {
 
     expect(await screen.findByText('Could not load the archive.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
-    backend.archives[PROJECT_A.id] = [makeCard({ id: 94, title: 'Recovered archived card' })];
+    backend.archives[PROJECT_A.id] = [makeTask({ id: 94, title: 'Recovered archived task' })];
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
-    expect(await screen.findByRole('button', { name: /Recovered archived card/ })).toBeTruthy();
-    expect(within(screen.getByRole('main')).getByText('1 archived card')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: /Recovered archived task/ })).toBeTruthy();
+    expect(within(screen.getByRole('main')).getByText('1 archived task')).toBeTruthy();
   });
 });
 
@@ -475,8 +475,8 @@ describe('states', () => {
 
     expect(await screen.findByText('Loading board…')).toBeTruthy();
     expect(switcher('knowledge')).toBeTruthy();
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
     expect(screen.getByText('Loading')).toBeTruthy();
 
     gate.resolve();
@@ -489,14 +489,14 @@ describe('states', () => {
     expect(await screen.findByText('Could not load this board.')).toBeTruthy();
     expect(screen.getByText('Not synced')).toBeTruthy();
     expect(screen.getByText('Try again, or switch to another project.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
 
     await choose('knowledge', 'agent-board');
     await screen.findByRole('region', { name: 'Todo' });
     await choose('agent-board', 'knowledge');
     expect(await screen.findByText('Could not load this board.')).toBeTruthy();
 
-    backend.boards[PROJECT_B.id] = boardOf(PROJECT_B, cardsOfB, 4);
+    backend.boards[PROJECT_B.id] = boardOf(PROJECT_B, tasksOfB, 4);
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await screen.findByText('Eight in knowledge');
   });
@@ -522,8 +522,8 @@ describe('states', () => {
     expect(
       (screen.getByRole('button', { name: 'No projects' }) as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
     expect(app.updates()).toHaveLength(0);
   });
 
@@ -532,12 +532,12 @@ describe('states', () => {
     expect(await screen.findByText('Project not found')).toBeTruthy();
     expect(screen.getByText(/Choose another project from the menu/)).toBeTruthy();
     expect(switcher('Choose a project')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
     expect(app.updates()).toHaveLength(0);
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/board'))).toBe(false);
 
     await choose('Choose a project', 'tech-blog');
-    await screen.findByText('No cards yet.');
+    await screen.findByText('No tasks yet.');
     expect(app.updates().at(-1)?.searchParams.get('project')).toBe(PROJECT_C.id);
   });
 
@@ -550,7 +550,7 @@ describe('states', () => {
   it('turns into Project not found when the shown project is deleted, and lists the rest', async () => {
     renderApp(urlOf(PROJECT_B.id));
     await screen.findByText('Eight in knowledge');
-    await userEvent.click(cardButton('Eight in knowledge'));
+    await userEvent.click(taskButton('Eight in knowledge'));
 
     backend.projects = [PROJECT_A, PROJECT_C];
     backend.boards[PROJECT_B.id] = 'not_found';
@@ -558,7 +558,7 @@ describe('states', () => {
 
     expect(await screen.findByText('Project not found')).toBeTruthy();
     expect(screen.queryByText('Eight in knowledge')).toBeNull();
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     await userEvent.click(switcher('Choose a project'));
     expect(screen.getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual([
       'agent-board',
@@ -575,10 +575,10 @@ describe('states', () => {
     expect(await screen.findByText('No projects yet')).toBeTruthy();
   });
 
-  it('shows the empty board of a project with no cards', async () => {
+  it('shows the empty board of a project with no tasks', async () => {
     renderApp(urlOf(PROJECT_C.id));
-    expect(await screen.findByText('No cards yet.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Add card' })).toBeTruthy();
+    expect(await screen.findByText('No tasks yet.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add task' })).toBeTruthy();
   });
 
   it('uses the Japanese state texts', async () => {
@@ -635,12 +635,12 @@ describe('refreshing on events', () => {
 });
 
 async function openCreateForm() {
-  await userEvent.click(screen.getByRole('button', { name: 'Add card' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Add task' }));
   return screen.getByRole('dialog');
 }
 
 describe('switching while a form is open', () => {
-  it('disables the switcher and Add card while the add form is open', async () => {
+  it('disables the switcher and Add task while the add form is open', async () => {
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await openCreateForm();
@@ -683,7 +683,7 @@ describe('switching while a form is open', () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     const dialog = await openCreateForm();
-    await userEvent.type(within(dialog).getByLabelText('Title'), 'New card');
+    await userEvent.type(within(dialog).getByLabelText('Title'), 'New task');
 
     app.navigate(urlOf(PROJECT_B.id));
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add' }));
@@ -691,9 +691,9 @@ describe('switching while a form is open', () => {
     await screen.findByText('Eight in knowledge');
     const posts = writes();
     expect(posts).toHaveLength(1);
-    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards`);
+    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/tasks`);
     expect(JSON.parse(String(posts[0]?.[1]?.body))).toEqual({
-      title: 'New card',
+      title: 'New task',
       description: '---\nacceptance: []\n---\n\n',
       assignee: 'ai',
       isDraft: false,
@@ -727,17 +727,17 @@ describe('switching while a form is open', () => {
     await screen.findByText('Eight in knowledge');
   });
 
-  it('sends an answer to the project where the answer form was opened, with that card number', async () => {
-    const pendingA = fixtureBoard.cards.find((card) => card.agentStatus === 'pending');
+  it('sends an answer to the project where the answer form was opened, with that task number', async () => {
+    const pendingA = fixtureBoard.tasks.find((task) => task.agentStatus === 'pending');
     expect(pendingA).toBeTruthy();
     backend.boards[PROJECT_B.id] = boardOf(
       PROJECT_B,
-      [makeCard({ id: pendingA?.id ?? 12, title: 'Same number elsewhere' })],
+      [makeTask({ id: pendingA?.id ?? 12, title: 'Same number elsewhere' })],
       2,
     );
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton(pendingA?.title ?? ''));
+    await userEvent.click(taskButton(pendingA?.title ?? ''));
     expect(screen.queryByRole('dialog')).toBeNull();
     await userEvent.type(screen.getByRole('textbox', { name: 'Your answer' }), 'Go ahead');
     expect(
@@ -754,7 +754,7 @@ describe('switching while a form is open', () => {
     await screen.findByText('Same number elsewhere');
     const posts = writes();
     expect(posts).toHaveLength(1);
-    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/${pendingA?.id}/answer`);
+    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/tasks/${pendingA?.id}/answer`);
     expect(JSON.parse(String(posts[0]?.[1]?.body))).toMatchObject({
       requestId: pendingA?.pendingRequestId,
       text: 'Go ahead',
@@ -764,12 +764,12 @@ describe('switching while a form is open', () => {
   it('keeps the project and the confirmation open while an archive confirmation is open, and archives in that project', async () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton('Prepare the Windows build'));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+    await userEvent.click(taskButton('Prepare the Windows build'));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive task' }));
     expect(
       (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect((screen.getByRole('button', { name: 'Add card' }) as HTMLButtonElement).disabled).toBe(
+    expect((screen.getByRole('button', { name: 'Add task' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
 
@@ -785,20 +785,20 @@ describe('switching while a form is open', () => {
     await screen.findByText('Eight in knowledge');
     const calls = writes();
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/cards/14/archive`);
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(calls[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/tasks/14/archive`);
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
   });
 
   it('shows the project name and exact reversible-data note in the bulk archive dialog', async () => {
     selectLocale('ja');
     renderApp(urlOf(PROJECT_A.id));
-    await screen.findByRole('button', { name: '完了カードをアーカイブ' });
+    await screen.findByRole('button', { name: '完了タスクをアーカイブ' });
 
-    await userEvent.click(screen.getByRole('button', { name: '完了カードをアーカイブ' }));
+    await userEvent.click(screen.getByRole('button', { name: '完了タスクをアーカイブ' }));
 
     const dialog = screen.getByRole('dialog');
     expect(
-      within(dialog).getByText('agent-board の完了カード2件をアーカイブします。'),
+      within(dialog).getByText('agent-board の完了タスク2件をアーカイブします。'),
     ).toBeTruthy();
     expect(
       within(dialog).getByText('本文・画像・履歴は保持され、アーカイブ一覧から復元できます。'),
@@ -809,11 +809,11 @@ describe('switching while a form is open', () => {
   });
 
   it('keeps the exact target snapshot after a 409 and sends fresh targets only after reopening', async () => {
-    const initialDoneIds = groupCards(fixtureBoard.cards).done.map((card) => card.id);
+    const initialDoneIds = groupTasks(fixtureBoard.tasks).done.map((task) => task.id);
     const submittedIds: number[][] = [];
     let conflict = true;
     backend.write = (url, init) => {
-      if (url !== `/api/projects/${PROJECT_A.id}/cards/archive-done`) return jsonResponse({}, 404);
+      if (url !== `/api/projects/${PROJECT_A.id}/tasks/archive-done`) return jsonResponse({}, 404);
       submittedIds.push(JSON.parse(String(init.body)).ids as number[]);
       if (conflict) {
         conflict = false;
@@ -822,12 +822,12 @@ describe('switching while a form is open', () => {
           409,
         );
       }
-      return jsonResponse({ cards: [], archivedCount: submittedIds.at(-1)?.length ?? 0 });
+      return jsonResponse({ tasks: [], archivedCount: submittedIds.at(-1)?.length ?? 0 });
     };
 
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(screen.getByRole('button', { name: 'Archive completed cards' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive completed tasks' }));
     let dialog = screen.getByRole('dialog');
     const targetRows = within(dialog).getAllByRole('row').slice(1);
     expect(targetRows.map((row) => row.firstElementChild?.textContent)).toEqual(
@@ -837,8 +837,8 @@ describe('switching while a form is open', () => {
     backend.boards[PROJECT_A.id] = boardOf(
       PROJECT_A,
       [
-        ...fixtureBoard.cards.filter((card) => card.id !== initialDoneIds[1]),
-        makeCard({ id: 17, title: 'Added after opening', cardStatus: 'done' }),
+        ...fixtureBoard.tasks.filter((task) => task.id !== initialDoneIds[1]),
+        makeTask({ id: 17, title: 'Added after opening', taskStatus: 'done' }),
       ],
       2,
     );
@@ -857,9 +857,9 @@ describe('switching while a form is open', () => {
         .map((row) => row.firstElementChild?.textContent),
     ).toEqual(initialDoneIds.map((id) => `#${id}`));
 
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Archive 2 cards' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Archive 2 tasks' }));
     expect(
-      await within(dialog).findByText(/Cards changed while this confirmation was open/),
+      await within(dialog).findByText(/Tasks changed while this confirmation was open/),
     ).toBeTruthy();
     expect(
       within(dialog)
@@ -870,14 +870,14 @@ describe('switching while a form is open', () => {
     expect(submittedIds).toEqual([initialDoneIds]);
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive completed cards' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive completed tasks' }));
     dialog = screen.getByRole('dialog');
     const reopenedIds = within(dialog)
       .getAllByRole('row')
       .slice(1)
       .map((row) => Number(row.firstElementChild?.textContent?.slice(1)));
     expect(reopenedIds).toEqual([initialDoneIds[0], 17]);
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Archive 2 cards' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Archive 2 tasks' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(submittedIds).toEqual([initialDoneIds, reopenedIds]);
   });
@@ -886,22 +886,22 @@ describe('switching while a form is open', () => {
     const response = deferred<Response>();
     const started = deferred<void>();
     backend.write = (url) => {
-      if (url !== `/api/projects/${PROJECT_A.id}/cards/archive-done`) return jsonResponse({}, 404);
+      if (url !== `/api/projects/${PROJECT_A.id}/tasks/archive-done`) return jsonResponse({}, 404);
       started.resolve();
       return response.promise;
     };
 
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(screen.getByRole('button', { name: 'Archive completed cards' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive completed tasks' }));
     const dialog = screen.getByRole('dialog');
-    const submit = within(dialog).getByRole('button', { name: 'Archive 2 cards' });
+    const submit = within(dialog).getByRole('button', { name: 'Archive 2 tasks' });
 
     await userEvent.dblClick(submit);
     await started.promise;
     await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(true));
     expect(
-      writes().filter(([url]) => url === `/api/projects/${PROJECT_A.id}/cards/archive-done`),
+      writes().filter(([url]) => url === `/api/projects/${PROJECT_A.id}/tasks/archive-done`),
     ).toHaveLength(1);
 
     await userEvent.keyboard('{Escape}');
@@ -912,7 +912,7 @@ describe('switching while a form is open', () => {
     ).toBe(true);
 
     await act(async () => {
-      response.resolve(jsonResponse({ cards: [], archivedCount: 2 }));
+      response.resolve(jsonResponse({ tasks: [], archivedCount: 2 }));
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
@@ -920,8 +920,8 @@ describe('switching while a form is open', () => {
   it('lets the user switch again after the delete confirmation is cancelled', async () => {
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton('Prepare the Windows build'));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+    await userEvent.click(taskButton('Prepare the Windows build'));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive task' }));
     const cancelButton = document.querySelector<HTMLButtonElement>(
       '.delete-confirm button:last-child',
     );
@@ -950,7 +950,7 @@ describe('switching while a form is open', () => {
 });
 
 describe('Japanese state screens use the approved texts', () => {
-  const hint = 'カードを選択すると詳細が表示されます。';
+  const hint = 'タスクを選択すると詳細が表示されます。';
 
   it('board loading', async () => {
     selectLocale('ja');
@@ -1003,6 +1003,6 @@ describe('Japanese state screens use the approved texts', () => {
     selectLocale('ja');
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: '未着手' });
-    expect(screen.getByText('カードを選択すると詳細を表示します。')).toBeTruthy();
+    expect(screen.getByText('タスクを選択すると詳細を表示します。')).toBeTruthy();
   });
 });

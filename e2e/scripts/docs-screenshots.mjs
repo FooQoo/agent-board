@@ -12,30 +12,30 @@ mkdirSync(output, { recursive: true });
 // Texts that only the guide screenshots need, in both languages. UI labels come from the app itself.
 const extra = {
   en: {
-    editorCard: 3, // The card whose edit dialog is captured (index into copy.titles).
+    editorTask: 3, // The card whose edit dialog is captured (index into copy.titles).
     editorBody: '## Goal\n\nWrite a setup guide that a new teammate can follow without help.\n\n## Flow\n\n```mermaid\nflowchart LR\n  Outline --> Write --> Try --> Publish\n```\n\n## Tasks\n\n- [x] Outline the steps\n- [ ] Write each step with an example\n- [ ] Ask a teammate to try the guide\n',
     editorChecks: ['The steps are complete', 'A teammate followed the guide', 'The guide is published'],
     archived: ['Set up the repository', 'Choose the color palette', 'Write the first draft'],
-    archive: { trigger: 'Archive completed cards', submit: /^Archive \d+ cards$/, open: 'Archive', doneLane: 'Done' },
-    makeDraft: 'Make draft', edit: 'Edit card', settings: 'Settings', cancel: 'Cancel',
+    archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
+    makeDraft: 'Make draft', edit: 'Edit task', settings: 'Settings', cancel: 'Cancel',
   },
   ja: {
-    editorCard: 3,
+    editorTask: 3,
     editorBody: '## 目的\n\n新しいメンバーが一人で進められるセットアップガイドを書く。\n\n## 流れ\n\n```mermaid\nflowchart LR\n  構成 --> 執筆 --> 確認 --> 公開\n```\n\n## 作業\n\n- [x] 手順の構成を決める\n- [ ] 各手順に例を添えて書く\n- [ ] チームメンバーに試してもらう\n',
     editorChecks: ['手順がそろっている', 'メンバーがガイドどおりに進められた', 'ガイドを公開している'],
     archived: ['リポジトリを準備する', '配色を決める', '最初の下書きを書く'],
-    archive: { trigger: '完了カードをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
-    makeDraft: '下書きにする', edit: 'カードを編集', settings: '設定', cancel: 'キャンセル',
+    archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
+    makeDraft: '下書きにする', edit: 'タスクを編集', settings: '設定', cancel: 'キャンセル',
   },
 };
 
 function addSamples(home, id, text, more) {
   const run = (...args) => cli(home, ['--project', project, ...args]);
-  run('edit', String(more.editorCard + 1), '--desc',
+  run('edit', String(more.editorTask + 1), '--desc',
     markdown(more.editorBody, more.editorChecks, 1));
   for (const title of more.archived) {
     const added = run('add', title, '--assignee', 'human', '--actor', 'human', '--epic', 'DESIGN');
-    run('mv', String((added.card ?? added).id), 'done', '--actor', 'human', '--reason', 'Sample work completed');
+    run('mv', String((added.task ?? added).id), 'done', '--actor', 'human', '--reason', 'Sample work completed');
   }
   return id;
 }
@@ -74,10 +74,10 @@ try {
         await target.screenshot({ path: path.join(output, `${name}${suffix}.png`) });
       };
       const page = await open('light');
-      const card = (n) => page.getByRole('button', { name: new RegExp(`^#${n}(?!\\d)`) });
+      const task = (n) => page.getByRole('button', { name: new RegExp(`^#${n}(?!\\d)`) });
 
       // question: the Pending card with its answer field.
-      await expect(card(3)).toBeVisible();
+      await expect(task(3)).toBeVisible();
       const answer = page.locator('.card__answer').filter({ has: page.getByText(text.question, { exact: true }) });
       await expect(answer).toBeVisible();
       // A tall viewport keeps the lane from clipping the card (answer buttons included).
@@ -86,7 +86,7 @@ try {
       await page.setViewportSize({ width: 1440, height: 900 });
 
       // card-detail: the Conditions tab of the selected card.
-      await card(3).click();
+      await task(3).click();
       await page.getByRole('tab', { name: text.tab, exact: true }).click();
       await expect(page.getByRole('tabpanel', { name: text.tab, exact: true })).toBeVisible();
       await expect(page.getByRole('tab', { name: text.tab, exact: true })).toHaveAttribute('aria-selected', 'true');
@@ -108,7 +108,7 @@ try {
       await expect(settings).toHaveCount(0);
 
       // editor: a draft card with a task list and a Mermaid diagram, conditions panel expanded.
-      await card(4).click();
+      await task(4).click();
       await page.getByRole('button', { name: more.makeDraft, exact: true }).click();
       await page.getByRole('button', { name: more.edit, exact: true }).click();
       const editor = page.locator('.editor-dialog');

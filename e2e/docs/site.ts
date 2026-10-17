@@ -6,21 +6,52 @@ export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 
 export type Lang = 'en' | 'ja';
 
-// Sidebar order of the guide, from the site's information architecture.
+// Sidebar order of the guide, from the site's information architecture. The first group
+// sits at the chapter root and the other groups are folders.
 export const guideFiles = [
   'index',
   'getting-started',
-  'board',
-  'decisions',
-  'epics',
-  'editing',
-  'agents',
-  'cli',
-  'mobile-monitor',
-  'data',
+  'quickstart',
+  'concepts',
+  'use/board',
+  'use/decisions',
+  'use/epics',
+  'use/editing',
+  'automation/agents',
+  'automation/cli',
+  'automation/file-format',
+  'operations/mobile-monitor',
+  'operations/data',
+  'operations/troubleshooting',
+] as const;
+
+// Sidebar order of the developer chapter.
+export const devFiles = [
+  'index',
+  'getting-started/setup',
+  'getting-started/first-change',
+  'getting-started/pull-request',
+  'concepts/overview',
+  'concepts/tasks-and-states',
+  'concepts/history-and-decisions',
+  'concepts/saving-and-recovery',
+  'concepts/notifications',
+  'concepts/server-and-ui',
+  'concepts/agents',
+  'concepts/remote-access',
+  'concepts/security',
+  'reference/files',
+  'reference/web-api',
+  'reference/errors',
+  'reference/agent-output',
+  'reference/remote-routes',
+  'reference/code-map',
+  'troubleshooting',
+  'docs-and-images',
 ] as const;
 
 export type GuideFile = (typeof guideFiles)[number];
+export type DevFile = (typeof devFiles)[number];
 export type PageFile = GuideFile | 'home';
 
 export function pagePath(lang: Lang, file: PageFile): string {
@@ -29,24 +60,30 @@ export function pagePath(lang: Lang, file: PageFile): string {
   return file === 'index' ? `${prefix}guide/` : `${prefix}guide/${file}`;
 }
 
-// Every page of the site: both home pages and the ten guide pages in both languages (22).
-export const allPages: { lang: Lang; file: PageFile; path: string }[] = (['en', 'ja'] as Lang[]).flatMap(
-  (lang) =>
-    (['home', ...guideFiles] as PageFile[]).map((file) => ({ lang, file, path: pagePath(lang, file) })),
-);
+export function devPagePath(lang: Lang, file: DevFile): string {
+  const prefix = lang === 'ja' ? 'ja/' : '';
+  return file === 'index' ? `${prefix}dev/` : `${prefix}dev/${file}`;
+}
+
+// Every page of the site in both languages: the home page, the fourteen guide pages, and the twenty-one
+// developer pages (72).
+export const allPages: { lang: Lang; file: string; path: string }[] = (['en', 'ja'] as Lang[]).flatMap((lang) => [
+  ...(['home', ...guideFiles] as PageFile[]).map((file) => ({ lang, file, path: pagePath(lang, file) })),
+  ...devFiles.map((file) => ({ lang, file: `dev/${file}`, path: devPagePath(lang, file) })),
+]);
 
 // Pages that must render a Mermaid diagram.
-export const mermaidFiles: PageFile[] = ['index', 'decisions', 'agents'];
+export const mermaidFiles: PageFile[] = ['index', 'use/decisions', 'automation/agents'];
 
 // The six new guide screenshots (docs/images/guide, twelve files with the Japanese set)
 // and the guide page that shows each one.
 export const guideScreenshots: Record<string, GuideFile> = {
-  'card-detail': 'board',
-  archive: 'board',
-  settings: 'board',
-  'board-dark': 'board',
-  question: 'decisions',
-  editor: 'editing',
+  'card-detail': 'use/board',
+  archive: 'use/board',
+  settings: 'use/board',
+  'board-dark': 'use/board',
+  question: 'use/decisions',
+  editor: 'use/editing',
 };
 
 export function screenshotFile(name: string, lang: Lang): string {

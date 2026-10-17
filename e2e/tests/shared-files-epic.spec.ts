@@ -1,19 +1,19 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { agboardOk, mainProject, projectId, resetBoard, type CardJson } from '../helpers/agboard';
+import { agboardOk, mainProject, projectId, resetBoard, type TaskJson } from '../helpers/agboard';
 import { pasteMarkdown, waitForSync } from '../helpers/ui';
 
 // The epic dialog on the real page: its name, colour, plan, tasks, and images are saved together; a task opened from
 // the list asks first when the epic has unsaved changes.
 
-const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
 function epicOf(id: string): { id: string; name: string; color: string; plan: string } {
   return JSON.parse(agboardOk(mainProject, ['epic', 'show', id, '--json']).stdout).epic;
 }
 
-function cardOf(id: number): CardJson & { epicId: string | null } {
-  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
+function taskOf(id: number): TaskJson & { epicId: string | null } {
+  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
 /** The plan body as a person pastes it into the body editor: free Markdown, no frontmatter. */
@@ -66,11 +66,11 @@ test('the epic dialog saves its name, colour, and plan together, and its content
   expect(stored).toMatchObject({ name: 'File sharing', color: '#2563EB' });
   expect(stored.plan).toContain('## Approach');
   expect(stored.plan).not.toContain('acceptance:');
-  expect(cardOf(14).epicId).toBe('FILE-SHARE');
+  expect(taskOf(14).epicId).toBe('FILE-SHARE');
 
   // The label and the card frame show the new name and colour.
   await expect(page.locator('[data-epic-label="FILE-SHARE"]').first()).toHaveCSS('background-color', 'rgb(37, 99, 235)');
-  await expect(card(page, 14).locator('[data-epic-label="FILE-SHARE"]')).toHaveCount(1);
+  await expect(task(page, 14).locator('[data-epic-label="FILE-SHARE"]')).toHaveCount(1);
 });
 
 test('a task opened from the progress table asks first when the epic has unsaved changes; going back keeps the edit, and moving discards it', async ({ page }) => {
@@ -131,7 +131,7 @@ for (const locale of ['en', 'ja'] as const) {
       await palette.getByLabel('HEX', { exact: true }).press('Escape');
       await expect(dialog).toBeVisible();
 
-      expect(cardOf(14).epicId).toBe('FILE-SHARE');
+      expect(taskOf(14).epicId).toBe('FILE-SHARE');
       await dialog.getByRole('button', { name: locale === 'en' ? 'Save' : '保存', exact: true }).click();
       await expect(dialog).toHaveCount(0);
       expect(epicOf('FILE-SHARE').color).toBe('#00FF00');

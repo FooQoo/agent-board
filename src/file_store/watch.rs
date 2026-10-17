@@ -189,7 +189,7 @@ fn apply(
     ready: &[Target],
 ) {
     // A canonical file save (including a direct TASK.md edit) may complete a
-    // card. Reconcile before loading the version that clients will observe.
+    // task. Reconcile before loading the version that clients will observe.
     let store = FileStore::open(root);
     if ready.contains(&Target::All) {
         if let Ok(projects) = store.projects() {

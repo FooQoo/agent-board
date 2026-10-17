@@ -9,10 +9,10 @@
 mod agent;
 mod answer;
 mod attachment;
-mod card;
 mod completion;
 mod epic;
 mod evidence;
+mod task;
 
 pub use answer::Answer;
 
@@ -32,11 +32,11 @@ use crate::clock::{format_utc, parse_utc};
 use crate::domain::{Actor, Column, ProjectId, RunState};
 use crate::error::AgboardError;
 
-/// A Done card is immutable to agent-facing FileStore operations. User
+/// A Done task is immutable to agent-facing FileStore operations. User
 /// operations keep their existing reopen/edit paths.
-pub(super) fn ensure_ai_card_not_done(task: &TaskFile, actor: Actor) -> Result<(), AgboardError> {
-    if actor == Actor::Ai && task.card_status == Column::Done {
-        Err(AgboardError::CardIsDone { id: task.id })
+pub(super) fn ensure_ai_task_not_done(task: &TaskFile, actor: Actor) -> Result<(), AgboardError> {
+    if actor == Actor::Ai && task.task_status == Column::Done {
+        Err(AgboardError::TaskIsDone { id: task.id })
     } else {
         Ok(())
     }
@@ -174,8 +174,8 @@ pub(super) enum HistoryKind {
 pub(super) struct Transition<'a> {
     pub kind: HistoryKind,
     pub reason: Option<&'a str>,
-    pub from_card: Option<Column>,
-    pub to_card: Column,
+    pub from_task: Option<Column>,
+    pub to_task: Column,
     pub from_agent: Option<RunState>,
     pub to_agent: RunState,
     pub at: DateTime<Utc>,
@@ -184,26 +184,26 @@ pub(super) struct Transition<'a> {
 pub(super) fn transition_event(t: Transition<'_>) -> Result<HistoryRecord, AgboardError> {
     let fallback = match t.kind {
         HistoryKind::Created => format!(
-            "Created card in {} with agent {}.",
-            t.to_card.label(),
+            "Created task in {} with agent {}.",
+            t.to_task.label(),
             t.to_agent.as_str()
         ),
         HistoryKind::Lane => format!(
-            "Moved card from {} to {}; agent is {}.",
-            t.from_card.unwrap_or(t.to_card).label(),
-            t.to_card.label(),
+            "Moved task from {} to {}; agent is {}.",
+            t.from_task.unwrap_or(t.to_task).label(),
+            t.to_task.label(),
             t.to_agent.as_str()
         ),
         HistoryKind::Agent => format!(
             "Changed agent from {} to {} in {}.",
             t.from_agent.unwrap_or(t.to_agent).as_str(),
             t.to_agent.as_str(),
-            t.to_card.label()
+            t.to_task.label()
         ),
-        HistoryKind::Draft => "Changed card draft status.".into(),
-        HistoryKind::Epic => "Changed card epic.".into(),
-        HistoryKind::Archive => format!("Archived card in {}; agent is idle.", t.to_card.label()),
-        HistoryKind::Restore => format!("Restored card in {}.", t.to_card.label()),
+        HistoryKind::Draft => "Changed task draft status.".into(),
+        HistoryKind::Epic => "Changed task epic.".into(),
+        HistoryKind::Archive => format!("Archived task in {}; agent is idle.", t.to_task.label()),
+        HistoryKind::Restore => format!("Restored task in {}.", t.to_task.label()),
     };
     let reason = reason_or_default(t.reason, fallback)?;
     Ok(HistoryRecord { at: t.at, reason })
@@ -220,8 +220,8 @@ pub(super) fn reason_or_default(
     Ok(reason.to_owned())
 }
 
-/// The position after the last unarchived card of a lane, read from the files.
-/// Cards whose `task.json` is broken are not counted.
+/// The position after the last unarchived task of a lane, read from the files.
+/// Tasks whose `task.json` is broken are not counted.
 pub(super) fn lane_end(
     shared: &Path,
     project: &ProjectId,
@@ -229,11 +229,11 @@ pub(super) fn lane_end(
 ) -> Result<i64, AgboardError> {
     let project_dir = layout::project_dir(shared, project);
     let mut last = 0;
-    for card_id in reader::card_ids(&project_dir)? {
-        if let Ok(load) = reader::read_card_lenient(shared, project, card_id) {
-            let card = load.view;
-            if card.card_status == lane && card.archived_at.is_none() {
-                last = last.max(card.position);
+    for task_id in reader::task_ids(&project_dir)? {
+        if let Ok(load) = reader::read_task_lenient(shared, project, task_id) {
+            let task = load.view;
+            if task.task_status == lane && task.archived_at.is_none() {
+                last = last.max(task.position);
             }
         }
     }
@@ -241,7 +241,7 @@ pub(super) fn lane_end(
         .ok_or_else(|| io::write_error("task.json", "The lane position overflowed."))
 }
 
-/// Save the title and/or the body of a card under the lock. The body is
+/// Save the title and/or the body of a task under the lock. The body is
 /// validated before anything is written. Returns whether either text changed.
 /// The caller sets `updatedAt` and saves `task.json`.
 pub(super) fn write_text(

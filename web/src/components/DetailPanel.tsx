@@ -3,30 +3,30 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setDraft } from '../api';
 import { noOperations, type OperationControls } from '../lib/projectSession';
-import type { Card, Epic, Problem, ProjectId } from '../types';
+import type { Task, Epic, Problem, ProjectId } from '../types';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from './DeleteButton';
 import { DeleteConfirm } from './DeleteConfirm';
 import type { DetailTab } from './detail/DetailTabs';
-import { CardDetailView } from './detail/CardDetailView';
+import { TaskDetailView } from './detail/TaskDetailView';
 import { DraftBanner } from './detail/DraftBanner';
 import '../styles/detail.css';
 
 export interface DetailPanelProps {
   /** The project the card belongs to. Part keys and delete requests use it. */
   projectId: ProjectId | null;
-  card: Card | null;
+  task: Task | null;
   /** Used where the panel only holds a project state (switching, failure, none): the hint sits at the top. */
   variant?: 'card' | 'state';
   /** Tells the app about the delete confirmation, so the project cannot change under it. */
   operations?: OperationControls;
   onClose: () => void;
   /** The edit icon (shown for a draft) was pressed. */
-  onEdit?: (card: Card) => void;
+  onEdit?: (task: Task) => void;
   /** A draft toggle or an answer was saved: the board should be fetched again. */
   onChanged?: () => void;
   /** Runs archive/delete through the app's project-bound lifecycle operation. */
-  onRemove: (action: 'archive' | 'delete', card: Card) => Promise<boolean>;
+  onRemove: (action: 'archive' | 'delete', task: Task) => Promise<boolean>;
   /** Mock mode only: open the delete confirmation immediately. */
   initialConfirm?: boolean;
   /** Mock mode only: show the delete failure message immediately. */
@@ -46,7 +46,7 @@ export interface DetailPanelProps {
 
 export function DetailPanel({
   projectId,
-  card,
+  task,
   variant = 'card',
   operations = noOperations,
   onClose,
@@ -65,7 +65,7 @@ export function DetailPanel({
   onRetryEpics,
 }: DetailPanelProps) {
   const { t } = useTranslation();
-  if (card === null || projectId === null) {
+  if (task === null || projectId === null) {
     return (
       <aside
         className={`detail detail--empty${variant === 'state' ? ' detail--state' : ''}`}
@@ -79,10 +79,10 @@ export function DetailPanel({
   }
   return (
     <DetailBody
-      key={`${projectId}:${card.id}`}
+      key={`${projectId}:${task.id}`}
       projectId={projectId}
       operations={operations}
-      card={card}
+      task={task}
       onClose={onClose}
       onEdit={onEdit}
       onChanged={onChanged}
@@ -102,9 +102,9 @@ export function DetailPanel({
 }
 
 interface DetailBodyProps
-  extends Omit<DetailPanelProps, 'card' | 'variant' | 'operations' | 'projectId' | 'problems'> {
+  extends Omit<DetailPanelProps, 'task' | 'variant' | 'operations' | 'projectId' | 'problems'> {
   projectId: ProjectId;
-  card: Card;
+  task: Task;
   operations: OperationControls;
   problems: readonly Problem[];
 }
@@ -113,7 +113,7 @@ type ConfirmState = 'closed' | 'initial' | 'user';
 
 function DetailBody({
   projectId,
-  card,
+  task,
   operations,
   onClose,
   onEdit,
@@ -164,7 +164,7 @@ function DetailBody({
     setDraftSaving(true);
     setDraftFailed(false);
     try {
-      await setDraft(projectId, card.id, isDraft);
+      await setDraft(projectId, task.id, isDraft);
       onChanged?.();
     } catch {
       setDraftFailed(true);
@@ -174,12 +174,12 @@ function DetailBody({
     }
   };
 
-  const canMakeDraft = !card.isDraft && card.agentStatus !== 'running';
+  const canMakeDraft = !task.isDraft && task.agentStatus !== 'running';
 
   return (
-    <CardDetailView
+    <TaskDetailView
       projectId={projectId}
-      card={card}
+      task={task}
       tab={tab}
       onTabChange={setTab}
       onClose={onClose}
@@ -190,13 +190,13 @@ function DetailBody({
       toolbar={
         !archived && (
           <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
-            {tab === 'description' && card.isDraft && (
+            {tab === 'description' && task.isDraft && (
               <button
                 type="button"
                 className="detail__tool"
                 aria-label={t('detail.edit')}
                 title={t('detail.edit')}
-                onClick={() => onEdit?.(card)}
+                onClick={() => onEdit?.(task)}
               >
                 <EditIcon aria-hidden="true" />
               </button>
@@ -225,7 +225,7 @@ function DetailBody({
       }
       problems={problems}
     >
-      {card.isDraft && !archived && (
+      {task.isDraft && !archived && (
         <DraftBanner
           busy={draftSaving}
           failed={draftFailed}
@@ -262,7 +262,7 @@ function DetailBody({
       )}
       {confirming && (
         <DeleteConfirm
-          card={card}
+          task={task}
           action={archived ? 'delete' : 'archive'}
           saving={operationSaving ?? false}
           focusOnMount={confirm === 'user'}
@@ -271,14 +271,14 @@ function DetailBody({
             restoreFocus.current = true;
             setConfirm('closed');
           }}
-          onConfirm={() => onRemove(archived ? 'delete' : 'archive', card)}
+          onConfirm={() => onRemove(archived ? 'delete' : 'archive', task)}
         />
       )}
-      {draftFailed && !card.isDraft && (
+      {draftFailed && !task.isDraft && (
         <p className="detail__error" role="alert">
           {t('detail.saveError')}
         </p>
       )}
-    </CardDetailView>
+    </TaskDetailView>
   );
 }

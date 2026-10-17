@@ -12,7 +12,7 @@ function seed(project: string, home?: string) {
   agboardOk(project, ['epic', 'add', 'CONDITION-TABS', '--name', 'Conditions epic', '--color', '#7C3AED', '--actor', 'human'], home);
   const folder = workspace(project, home).folder;
   replaceFileAtomically(path.join(folder, 'epics', 'CONDITION-TABS', 'PLAN.md'), 'Epic body.\n\n## Reference conditions\n\n- [ ] Epic reference check.\n');
-  return JSON.parse(agboardOk(project, ['add', 'Conditions detail', '--desc', markdown('Card', 24), '--assignee', 'human', '--actor', 'human', '--epic', 'CONDITION-TABS', '--json'], home).stdout).card.id as number;
+  return JSON.parse(agboardOk(project, ['add', 'Conditions detail', '--desc', markdown('Task', 24), '--assignee', 'human', '--actor', 'human', '--epic', 'CONDITION-TABS', '--json'], home).stdout).task.id as number;
 }
 
 test.describe('PC condition tab', () => {
@@ -33,7 +33,7 @@ test.describe('PC condition tab', () => {
         const detail = page.locator('.detail-view');
         await expect(detail.getByRole('tab')).toHaveCount(4);
         await expect(detail.locator('.detail__dock')).toHaveCount(0);
-        await expect(detail.getByRole('tabpanel').getByText('Card check 1', { exact: true })).toHaveCount(0);
+        await expect(detail.getByRole('tabpanel').getByText('Task check 1', { exact: true })).toHaveCount(0);
         const conditionTab = detail.getByRole('tab', { name: locale === 'ja' ? '受入条件' : 'Conditions', exact: true });
         await conditionTab.click();
         const panel = detail.getByRole('tabpanel');
@@ -43,7 +43,7 @@ test.describe('PC condition tab', () => {
         expect(await detail.getByRole('tablist').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
         await panel.hover();
         await page.mouse.wheel(0, 2500);
-        await expect(panel.getByText('Card check 24', { exact: true })).toBeInViewport();
+        await expect(panel.getByText('Task check 24', { exact: true })).toBeInViewport();
         await expect(panel.getByText('Epic reference check.', { exact: true })).toHaveCount(0);
         const scroll = await panel.evaluate((el) => el.scrollTop);
         await detail.getByRole('tab', { name: locale === 'ja' ? '本文' : 'Description', exact: true }).click();
@@ -83,7 +83,7 @@ test.describe('mobile condition tab', () => {
       const drawer = page.getByRole('dialog');
       await expect(drawer.getByRole('tab')).toHaveCount(4);
       await expect.poll(() => drawer.evaluate((el) => el.getAnimations().length)).toBe(0);
-      await expect(drawer.getByText('Card body.')).toBeInViewport();
+      await expect(drawer.getByText('Task body.')).toBeInViewport();
       await expect(drawer.locator('.monitor-conditions-dock')).toHaveCount(0);
       const viewport = drawer.locator('.monitor-drawer__panels');
       const bounds = (await viewport.boundingBox())!;
@@ -97,7 +97,7 @@ test.describe('mobile condition tab', () => {
       const reads = epicReads;
       await panel.hover();
       await page.mouse.wheel(0, 2500);
-      await expect(panel.getByText('Card check 24', { exact: true })).toBeInViewport();
+      await expect(panel.getByText('Task check 24', { exact: true })).toBeInViewport();
       await expect(panel.getByText('Epic reference check.', { exact: true })).toHaveCount(0);
       await drawer.getByRole('tab', { name: 'エピック', exact: true }).click();
       await expect(drawer.getByRole('tabpanel', { name: 'エピック', exact: true }).getByText('Epic body.')).toBeVisible();

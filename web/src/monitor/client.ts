@@ -1,5 +1,5 @@
 import type { MonitorReadResolvers } from './contracts';
-import type { Board, Card, Epic, ProjectId, ProjectList } from '../types';
+import type { Board, Task, Epic, ProjectId, ProjectList } from '../types';
 import type { AnswerInput, AnswerResult } from '../lib/answer';
 import { writeFailure } from '../lib/writeErrors';
 
@@ -43,8 +43,8 @@ function epicSegment(value: string): string {
   return encodeURIComponent(value);
 }
 
-function cardSegment(value: number): string {
-  if (!Number.isSafeInteger(value) || value < 1) throw new TypeError('Invalid monitor card ID.');
+function taskSegment(value: number): string {
+  if (!Number.isSafeInteger(value) || value < 1) throw new TypeError('Invalid monitor task ID.');
   return String(value);
 }
 
@@ -123,11 +123,11 @@ function readMonitorToken(): string {
 
 async function answerRequest(
   projectId: ProjectId,
-  cardId: number,
+  taskId: number,
   input: AnswerInput,
   options: MonitorRequestOptions = {},
 ): Promise<AnswerResult> {
-  const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/cards/${cardSegment(cardId)}/answer`;
+  const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/answer`;
   const controller = new AbortController();
   const externalSignal = options.signal;
   if (externalSignal?.aborted)
@@ -164,7 +164,7 @@ async function answerRequest(
     }
 
     let body: {
-      card?: Card & { epicId?: string | null };
+      task?: Task & { epicId?: string | null };
       changed?: boolean;
       error?: ErrorBody['error'];
     } = {};
@@ -173,7 +173,7 @@ async function answerRequest(
     } catch {
       // Error responses may not contain JSON.
     }
-    if (!response.ok || body.card === undefined) {
+    if (!response.ok || body.task === undefined) {
       throw writeFailure(
         body.error?.reason ?? `The monitor answer request failed (${response.status}).`,
         response.status,
@@ -181,8 +181,8 @@ async function answerRequest(
         body.error?.message ?? null,
       );
     }
-    const { epicId: _epicId, ...card } = body.card;
-    return { card: card as Card, changed: body.changed ?? true };
+    const { epicId: _epicId, ...task } = body.task;
+    return { task: task as Task, changed: body.changed ?? true };
   } finally {
     clearTimeout(timeout);
     externalSignal?.removeEventListener('abort', abortFromCaller);
@@ -206,10 +206,10 @@ export const monitorClient = {
 };
 
 export const monitorReadResolvers: MonitorReadResolvers = {
-  attachmentUrl: (projectId, cardId, attachmentId) =>
-    `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/cards/${cardSegment(cardId)}/attachments/${attachmentSegment(attachmentId)}`,
-  evidenceUrl: (projectId, cardId, evidenceId) =>
-    `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/cards/${cardSegment(cardId)}/evidence/${evidenceSegment(evidenceId)}`,
+  attachmentUrl: (projectId, taskId, attachmentId) =>
+    `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/attachments/${attachmentSegment(attachmentId)}`,
+  evidenceUrl: (projectId, taskId, evidenceId) =>
+    `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/evidence/${evidenceSegment(evidenceId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
     `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/epics/${epicSegment(epicId)}/attachments/${attachmentSegment(attachmentId)}`,
   getEpics: (projectId, signal) => monitorClient.fetchEpics(projectId, { signal }),

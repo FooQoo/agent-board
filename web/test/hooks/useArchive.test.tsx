@@ -4,7 +4,7 @@ import { useArchive } from '../../src/hooks/useArchive';
 import { useProjectResource } from '../../src/hooks/useProjectResource';
 import type { ArchiveResponse } from '../../src/api';
 import { deferred, stubBackend, type FakeBackend } from '../fakes';
-import { PROJECT_A, PROJECT_B, PROJECTS, boardOf, fixtureBoard, makeCard } from '../fixtures';
+import { PROJECT_A, PROJECT_B, PROJECTS, boardOf, fixtureBoard, makeTask } from '../fixtures';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -16,21 +16,21 @@ function fakeBackend(gate?: (url: string) => Promise<void> | undefined): FakeBac
       [PROJECT_B.id]: boardOf(PROJECT_B, []),
     },
     archives: {
-      [PROJECT_A.id]: [makeCard({ id: 2, title: 'Archived A' })],
-      [PROJECT_B.id]: [makeCard({ id: 8, title: 'Archived B' })],
+      [PROJECT_A.id]: [makeTask({ id: 2, title: 'Archived A' })],
+      [PROJECT_B.id]: [makeTask({ id: 8, title: 'Archived B' })],
     },
     gate,
   };
 }
 
 describe('useArchive', () => {
-  it('loads the requested project and exposes its archived cards', async () => {
+  it('loads the requested project and exposes its archived tasks', async () => {
     const fetchMock = stubBackend(fakeBackend());
     const { result } = renderHook(() => useArchive(PROJECT_A.id));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(result.current.data?.project.id).toBe(PROJECT_A.id);
-    expect(result.current.data?.cards.map((card) => card.title)).toEqual(['Archived A']);
+    expect(result.current.data?.tasks.map((task) => task.title)).toEqual(['Archived A']);
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/projects/${PROJECT_A.id}/archive`,
       expect.anything(),
@@ -55,7 +55,7 @@ describe('useArchive', () => {
       lateA.resolve();
       await Promise.resolve();
     });
-    expect(result.current.data?.cards[0]?.title).toBe('Archived B');
+    expect(result.current.data?.tasks[0]?.title).toBe('Archived B');
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/archive'))).toHaveLength(
       2,
     );
@@ -71,7 +71,7 @@ describe('useArchive', () => {
     act(() => result.current.reload());
     await waitFor(() => expect(result.current.fetchFailed).toBe(true));
     expect(result.current.status).toBe('ready');
-    expect(result.current.data?.cards[0]?.title).toBe('Archived A');
+    expect(result.current.data?.tasks[0]?.title).toBe('Archived A');
   });
 
   it('does not apply a resource whose payload names another project', async () => {
@@ -79,7 +79,7 @@ describe('useArchive', () => {
       project: PROJECT_B,
       version: 'v1',
       cursor: `f1:${PROJECT_B.id}:v1`,
-      cards: [makeCard({ id: 8, title: 'Wrong project' })],
+      tasks: [makeTask({ id: 8, title: 'Wrong project' })],
     };
     let requests = 0;
     const { result } = renderHook(() =>

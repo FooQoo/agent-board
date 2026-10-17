@@ -152,7 +152,7 @@ fn target_paths_and_stale_expected_bytes_are_rejected_before_mutation() {
 
 #[cfg(unix)]
 #[test]
-fn symlinked_card_folder_cannot_escape_project() {
+fn symlinked_task_folder_cannot_escape_project() {
     let (root, targets, old, new) = fixture();
     let external = tempfile::tempdir().unwrap();
     fs::remove_dir_all(root.path().join("tasks/1")).unwrap();

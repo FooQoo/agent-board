@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WriteError } from '../../src/api';
 import { EpicDialog, type EpicApi } from '../../src/components/editor/EpicDialog';
 import { selectLocale } from '../../src/i18n';
-import type { Card, Epic } from '../../src/types';
-import { makeCard } from '../fixtures';
+import type { Task, Epic } from '../../src/types';
+import { makeTask } from '../fixtures';
 
 vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('../editor/fakeRichEditor'));
 
@@ -37,18 +37,18 @@ const EPIC: Epic = {
 
 const ref = { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' };
 
-function cards(): Card[] {
+function tasks(): Task[] {
   return [
-    makeCard({ id: 24, title: 'Save shared doc', cardStatus: 'done', epic: ref }),
-    makeCard({ id: 25, title: 'Image preview', cardStatus: 'doing', assignee: 'ai', epic: ref }),
-    makeCard({ id: 27, title: 'Sync to board', cardStatus: 'todo' }),
-    makeCard({
+    makeTask({ id: 24, title: 'Save shared doc', taskStatus: 'done', epic: ref }),
+    makeTask({ id: 25, title: 'Image preview', taskStatus: 'doing', assignee: 'ai', epic: ref }),
+    makeTask({ id: 27, title: 'Sync to board', taskStatus: 'todo' }),
+    makeTask({
       id: 28,
       title: 'CLI command',
-      cardStatus: 'todo',
+      taskStatus: 'todo',
       epic: { id: 'OTHER', name: 'Other', color: '#111111' },
     }),
-    makeCard({ id: 29, title: 'Plain card', cardStatus: 'todo' }),
+    makeTask({ id: 29, title: 'Plain task', taskStatus: 'todo' }),
   ];
 }
 
@@ -77,7 +77,7 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
 
 async function openEpic(
   api: EpicApi,
-  options: { onOpenTask?: (id: number) => void; epic?: Epic; board?: Card[] } = {},
+  options: { onOpenTask?: (id: number) => void; epic?: Epic; board?: Task[] } = {},
 ) {
   const onClosed = vi.fn();
   function Host() {
@@ -90,7 +90,7 @@ async function openEpic(
         {open && (
           <EpicDialog
             epic={options.epic ?? EPIC}
-            cards={options.board ?? cards()}
+            tasks={options.board ?? tasks()}
             api={api}
             onOpenTask={options.onOpenTask ?? vi.fn()}
             onClose={() => {

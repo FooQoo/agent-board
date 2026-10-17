@@ -27,7 +27,7 @@ describe('MarkdownSections as chapters', () => {
     expect(container.querySelector('.md-section__count')).toBeNull();
   });
 
-  it('keeps the chapters when the description changes under the same card', () => {
+  it('keeps the chapters when the description changes under the same task', () => {
     const { container, rerender } = render(<MarkdownSections key="card-1" source={SOURCE} />);
     rerender(<MarkdownSections key="card-1" source={`${SOURCE}\nmore`} />);
     expect(container.querySelector('.md-chapter__number')).toBeNull();

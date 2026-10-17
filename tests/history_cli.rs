@@ -2,8 +2,8 @@ mod common;
 
 use common::{Running, demo_project, json_error, json_ok};
 
-fn last_reason(card: &serde_json::Value) -> &str {
-    let entry = card["history"].as_array().unwrap().last().unwrap();
+fn last_reason(task: &serde_json::Value) -> &str {
+    let entry = task["history"].as_array().unwrap().last().unwrap();
     assert_eq!(entry.as_object().unwrap().len(), 2);
     assert!(entry["at"].as_str().unwrap().ends_with('Z'));
     entry["reason"].as_str().unwrap()
@@ -28,10 +28,10 @@ fn real_cli_appends_verbatim_notes_or_defaults_and_preserves_lane_timing() {
             "--json",
         ],
     );
-    assert_eq!(last_reason(&appended["card"]), note);
+    assert_eq!(last_reason(&appended["task"]), note);
     assert_eq!(
-        appended["card"]["cardStatusChangedAt"],
-        initial["card"]["cardStatusChangedAt"]
+        appended["task"]["taskStatusChangedAt"],
+        initial["task"]["taskStatusChangedAt"]
     );
     let file = home.path().join("reason.txt");
     std::fs::write(&file, "Validated stored answers after restart.\n").unwrap();
@@ -49,7 +49,7 @@ fn real_cli_appends_verbatim_notes_or_defaults_and_preserves_lane_timing() {
         ],
     );
     assert_eq!(
-        last_reason(&appended["card"]),
+        last_reason(&appended["task"]),
         "Validated stored answers after restart.\n"
     );
     for suffix in [vec![], vec!["--reason", "  "]] {
@@ -60,7 +60,7 @@ fn real_cli_appends_verbatim_notes_or_defaults_and_preserves_lane_timing() {
         .concat();
         let appended = json_ok(home.path(), &args);
         assert_eq!(
-            last_reason(&appended["card"]),
+            last_reason(&appended["task"]),
             "Progress note in Doing; agent is idle."
         );
     }
@@ -78,7 +78,7 @@ fn real_cli_appends_verbatim_notes_or_defaults_and_preserves_lane_timing() {
         ],
     );
     assert_eq!(
-        last_reason(&running["card"]),
+        last_reason(&running["task"]),
         "Changed agent from idle to running in Doing."
     );
     let no_op = json_ok(
@@ -96,7 +96,7 @@ fn real_cli_appends_verbatim_notes_or_defaults_and_preserves_lane_timing() {
             "--json",
         ],
     );
-    assert_eq!(running["card"]["history"], no_op["card"]["history"]);
+    assert_eq!(running["task"]["history"], no_op["task"]["history"]);
     let moved = json_ok(
         home.path(),
         &[
@@ -113,8 +113,8 @@ fn real_cli_appends_verbatim_notes_or_defaults_and_preserves_lane_timing() {
         ],
     );
     assert_eq!(
-        last_reason(&moved["card"]),
-        "Moved card from Doing to Todo; agent is idle."
+        last_reason(&moved["task"]),
+        "Moved task from Doing to Todo; agent is idle."
     );
 }
 
@@ -124,7 +124,7 @@ fn history_add_enforces_write_guards_and_reports_bad_arguments() {
     demo_project(home.path());
     assert_eq!(
         json_error(home.path(), &["--project", "Demo", "history", "add", "999"]),
-        (3, "card_not_found".into())
+        (3, "task_not_found".into())
     );
     assert_eq!(
         json_error(
@@ -176,28 +176,28 @@ fn history_add_enforces_write_guards_and_reports_bad_arguments() {
     let server = Running::start(home.path());
     let snapshot = json_ok(home.path(), &["--project", "Demo", "snapshot", "--json"]);
     let project = snapshot["project"]["id"].as_str().unwrap();
-    let card_path = format!("/api/projects/{project}/cards/1");
+    let task_path = format!("/api/projects/{project}/tasks/1");
     let draft = server.write(
         "PUT",
-        &format!("{card_path}/draft"),
+        &format!("{task_path}/draft"),
         Some(r#"{"isDraft":true}"#),
     );
     assert_eq!(draft.status, 200, "{}", draft.body);
     assert_eq!(
         json_error(home.path(), &["--project", "Demo", "history", "add", "1"]),
-        (1, "card_is_draft".into())
+        (1, "task_is_draft".into())
     );
     server.write(
         "PUT",
-        &format!("{card_path}/draft"),
+        &format!("{task_path}/draft"),
         Some(r#"{"isDraft":false}"#),
     );
-    server.write("POST", &format!("{card_path}/archive"), None);
+    server.write("POST", &format!("{task_path}/archive"), None);
     assert_eq!(
         json_error(home.path(), &["--project", "Demo", "history", "add", "1"]),
-        (1, "card_archived".into())
+        (1, "task_archived".into())
     );
-    server.write("POST", &format!("{card_path}/restore"), None);
+    server.write("POST", &format!("{task_path}/restore"), None);
     json_ok(
         home.path(),
         &[
@@ -213,7 +213,7 @@ fn history_add_enforces_write_guards_and_reports_bad_arguments() {
     );
     assert_eq!(
         json_error(home.path(), &["--project", "Demo", "history", "add", "1"]),
-        (1, "card_is_done".into())
+        (1, "task_is_done".into())
     );
 }
 
@@ -224,31 +224,31 @@ fn real_server_generates_optional_operation_reasons_but_rejects_blank_questions(
     let server = Running::start(home.path());
     let snapshot = json_ok(home.path(), &["--project", "Demo", "snapshot", "--json"]);
     let project = snapshot["project"]["id"].as_str().unwrap();
-    let card_path = format!("/api/projects/{project}/cards/1");
+    let task_path = format!("/api/projects/{project}/tasks/1");
     let running = server.write(
         "POST",
-        &format!("{card_path}/agent-status"),
+        &format!("{task_path}/agent-status"),
         Some(r#"{"agentStatus":"running"}"#),
     );
     assert_eq!(running.status, 200, "{}", running.body);
     assert_eq!(
-        last_reason(&running.json()["card"]),
+        last_reason(&running.json()["task"]),
         "Changed agent from idle to running in Doing."
     );
     let invalid = server.write(
         "POST",
-        &format!("{card_path}/agent-status"),
+        &format!("{task_path}/agent-status"),
         Some(r#"{"agentStatus":"pending","reason":" "}"#),
     );
     assert_eq!(invalid.status, 422, "{}", invalid.body);
     let moved = server.write(
         "POST",
-        &format!("{card_path}/move"),
-        Some(r#"{"cardStatus":"todo"}"#),
+        &format!("{task_path}/move"),
+        Some(r#"{"taskStatus":"todo"}"#),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
     assert_eq!(
-        last_reason(&moved.json()["card"]),
-        "Moved card from Doing to Todo; agent is idle."
+        last_reason(&moved.json()["task"]),
+        "Moved task from Doing to Todo; agent is idle."
     );
 }

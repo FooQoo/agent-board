@@ -27,7 +27,7 @@ fn body_only_draft_edit_uses_latest_markdown_acceptance_and_history() {
     let now = Utc.with_ymd_and_hms(2026, 10, 14, 12, 0, 0).unwrap();
 
     files
-        .edit_card_parts(
+        .edit_task_parts(
             &project,
             1,
             None,
@@ -44,7 +44,7 @@ fn body_only_draft_edit_uses_latest_markdown_acceptance_and_history() {
         .unwrap();
     files.set_draft(&project, 1, true, now).unwrap();
     let moved = files
-        .move_work_card_for_user(
+        .move_work_task_for_user(
             &project,
             1,
             Column::Todo,
@@ -58,7 +58,7 @@ fn body_only_draft_edit_uses_latest_markdown_acceptance_and_history() {
     let status_history = moved.value.history.clone();
 
     let edited = files
-        .edit_draft_card_parts(
+        .edit_draft_task_parts(
             &project,
             1,
             None,
@@ -71,7 +71,7 @@ fn body_only_draft_edit_uses_latest_markdown_acceptance_and_history() {
         )
         .unwrap();
     assert_eq!(edited.value.body, "Edited body while the draft was open.\n");
-    assert_eq!(edited.value.card_status, Column::Todo);
+    assert_eq!(edited.value.task_status, Column::Todo);
     assert_eq!(edited.value.acceptance[0].text, "Keep the latest condition");
     assert_eq!(edited.value.history, status_history);
 }
@@ -81,7 +81,7 @@ fn cli_file_replacement_without_history_keeps_current_history() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let initial = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    let original = initial["card"]["description"].as_str().unwrap();
+    let original = initial["task"]["description"].as_str().unwrap();
     let replacement = home.path().join("replacement.md");
     std::fs::write(&replacement, "Edited by CLI\n").unwrap();
 
@@ -101,7 +101,7 @@ fn cli_file_replacement_without_history_keeps_current_history() {
     );
     assert!(err.is_empty(), "{err}");
     let before_edit = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    let history = before_edit["card"]["history"].clone();
+    let history = before_edit["task"]["history"].clone();
     let path = replacement.to_str().unwrap();
     let (code, _, error) = agboard(
         home.path(),
@@ -110,8 +110,8 @@ fn cli_file_replacement_without_history_keeps_current_history() {
     assert_eq!(code, 0, "{error}");
 
     let after = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    assert_eq!(after["card"]["history"], history);
-    assert_eq!(after["card"]["body"], "Edited by CLI");
+    assert_eq!(after["task"]["history"], history);
+    assert_eq!(after["task"]["body"], "Edited by CLI");
 
     let (_, _, err) = agboard(
         home.path(),
@@ -129,7 +129,7 @@ fn cli_file_replacement_without_history_keeps_current_history() {
     );
     assert!(err.is_empty(), "{err}");
     let with_new_status = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    let latest_history = with_new_status["card"]["history"].clone();
+    let latest_history = with_new_status["task"]["history"].clone();
     let stale_file = home.path().join("stale.md");
     std::fs::write(&stale_file, original).unwrap();
     let stale_path = stale_file.to_str().unwrap();
@@ -139,7 +139,7 @@ fn cli_file_replacement_without_history_keeps_current_history() {
     );
     assert_eq!(code, 0, "{error}");
     let after_stale_edit = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    assert_eq!(after_stale_edit["card"]["history"], latest_history);
+    assert_eq!(after_stale_edit["task"]["history"], latest_history);
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn cli_edit_refuses_invalid_history_without_rewriting_task_markdown() {
     let md = std::path::Path::new(shared["tasks"].as_str().unwrap()).join("1/TASK.md");
     let original = std::fs::read_to_string(&md).unwrap();
     let invalid = original.replace(
-        "reason: Created card in Todo with agent idle.",
+        "reason: Created task in Todo with agent idle.",
         "reason: []",
     );
     assert_ne!(invalid, original, "fixture must contain a creation reason");
@@ -180,7 +180,7 @@ fn rejected_finalize_keeps_the_draft_body_and_history_unchanged() {
     let files = FileStore::open(&home.path().join("shared"));
     let now = Utc.with_ymd_and_hms(2026, 10, 14, 13, 0, 0).unwrap();
     files.set_draft(&project, 1, true, now).unwrap();
-    let before = files.card(&project, 1).unwrap();
+    let before = files.task(&project, 1).unwrap();
     let invalid_acceptance = [
         AcceptanceItem {
             id: "AC-1".into(),
@@ -195,7 +195,7 @@ fn rejected_finalize_keeps_the_draft_body_and_history_unchanged() {
     ];
 
     let error = files
-        .edit_draft_card_parts(
+        .edit_draft_task_parts(
             &project,
             1,
             None,
@@ -211,7 +211,7 @@ fn rejected_finalize_keeps_the_draft_body_and_history_unchanged() {
         matches!(error, agent_board::error::AgboardError::FileInvalid { .. }),
         "{error:?}"
     );
-    let after = files.card(&project, 1).unwrap();
+    let after = files.task(&project, 1).unwrap();
     assert!(after.is_draft);
     assert_eq!(after.body, before.body);
     assert_eq!(after.history, before.history);

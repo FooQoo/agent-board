@@ -1,20 +1,20 @@
 use crate::cli::args::LsArgs;
 use crate::cli::{Context, Outcome};
 use crate::clock::{Clock, format_utc};
-use crate::file_store::model::CardView;
+use crate::file_store::model::TaskView;
 use crate::file_store::reader::AllSnapshots;
 use crate::{domain::Column, error::AgboardError};
 use serde_json::json;
 
 const COLUMNS: [Column; 3] = [Column::Todo, Column::Doing, Column::Done];
 
-fn keep(args: &LsArgs, card: &CardView) -> bool {
-    args.column.is_none_or(|c| card.card_status == c.column())
+fn keep(args: &LsArgs, task: &TaskView) -> bool {
+    args.column.is_none_or(|c| task.task_status == c.column())
         && args
             .state
-            .is_none_or(|s| card.agent_status == s.run_state())
+            .is_none_or(|s| task.agent_status == s.run_state())
         && args.epic.as_deref().is_none_or(|epic| {
-            card.epic_id
+            task.epic_id
                 .as_deref()
                 .is_some_and(|id| id.eq_ignore_ascii_case(epic))
         })
@@ -24,28 +24,28 @@ pub fn run(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, AgboardError> {
     if args.all_projects {
         return run_all_projects(ctx, args);
     }
-    let cards: Vec<CardView> = ctx
+    let tasks: Vec<TaskView> = ctx
         .files
         .board(ctx.project_id()?)?
-        .cards
+        .tasks
         .into_iter()
-        .filter(|card| keep(args, card))
+        .filter(|task| keep(args, task))
         .collect();
-    let text = crate::cli::output::ls_text(&cards, &COLUMNS);
+    let text = crate::cli::output::ls_text(&tasks, &COLUMNS);
     Ok(Outcome {
         changed: false,
         human: text,
-        json: json!({"cards": cards}),
+        json: json!({"tasks": tasks}),
     })
 }
 
 /// Every project's board from one read, with the filters applied to each
-/// project's cards. A project with no matching card stays, with no cards.
+/// project's tasks. A project with no matching task stays, with no tasks.
 fn run_all_projects(ctx: &mut Context, args: &LsArgs) -> Result<Outcome, AgboardError> {
     let fetched_at = format_utc(ctx.clock.now());
     let mut all = ctx.files.all_snapshots()?;
     for project in &mut all.projects {
-        project.cards.retain(|card| keep(args, card));
+        project.tasks.retain(|task| keep(args, task));
     }
     Ok(all_projects_outcome(&fetched_at, &all))
 }
@@ -60,7 +60,7 @@ fn all_projects_outcome(fetched_at: &str, all: &AllSnapshots) -> Outcome {
                 format!(
                     "Project: {}\n{}",
                     p.project.name,
-                    crate::cli::output::ls_text(&p.cards, &COLUMNS)
+                    crate::cli::output::ls_text(&p.tasks, &COLUMNS)
                 )
             })
             .collect::<Vec<_>>()

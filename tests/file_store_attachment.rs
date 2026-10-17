@@ -1,11 +1,11 @@
-//! Images owned by a card or an epic on the shared files (AC-10 storage layer,
+//! Images owned by a task or an epic on the shared files (AC-10 storage layer,
 //! U4-3 and U4-4): owner checks, path rules, symbolic links, and the limits.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use agent_board::domain::{
-    Actor, Assignee, AttachmentInput, ChangeContext, Column, NewCard, ProjectId,
+    Actor, Assignee, AttachmentInput, ChangeContext, Column, NewTask, ProjectId,
 };
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
@@ -67,10 +67,10 @@ fn id(n: u32) -> String {
 }
 
 #[test]
-fn agents_cannot_add_or_delete_card_images_after_a_card_is_done() {
+fn agents_cannot_add_or_delete_task_images_after_a_task_is_done() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
     let saved = f
         .store
         .add_attachment(
@@ -81,9 +81,9 @@ fn agents_cannot_add_or_delete_card_images_after_a_card_is_done() {
         )
         .unwrap();
     f.store
-        .move_work_card_for_user(
+        .move_work_task_for_user(
             &f.project,
-            card,
+            task,
             Column::Done,
             ChangeContext {
                 actor: Actor::Human,
@@ -94,10 +94,10 @@ fn agents_cannot_add_or_delete_card_images_after_a_card_is_done() {
         .unwrap();
 
     assert!(
-        matches!(f.store.add_attachment(&f.project, &owner, input(&id(2), "after.png", png()), at(7)), Err(AgboardError::CardIsDone { id }) if id == card)
+        matches!(f.store.add_attachment(&f.project, &owner, input(&id(2), "after.png", png()), at(7)), Err(AgboardError::TaskIsDone { id }) if id == task)
     );
     assert!(
-        matches!(f.store.delete_attachment(&f.project, &owner, &saved.id, at(7)), Err(AgboardError::CardIsDone { id }) if id == card)
+        matches!(f.store.delete_attachment(&f.project, &owner, &saved.id, at(7)), Err(AgboardError::TaskIsDone { id }) if id == task)
     );
     assert!(
         f.store
@@ -132,12 +132,12 @@ fn fixture() -> Fixture {
 }
 
 impl Fixture {
-    fn card(&self) -> i64 {
+    fn task(&self) -> i64 {
         self.store
-            .create_card(
+            .create_task(
                 &self.project,
-                NewCard {
-                    title: "Card".into(),
+                NewTask {
+                    title: "Task".into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
@@ -167,18 +167,18 @@ impl Fixture {
         AttachmentOwner::Epic(id)
     }
 
-    fn card_assets(&self, card: i64) -> PathBuf {
+    fn task_assets(&self, task: i64) -> PathBuf {
         self.project_dir
             .join("tasks")
-            .join(card.to_string())
+            .join(task.to_string())
             .join("assets")
     }
 
-    fn task_json(&self, card: i64) -> serde_json::Value {
+    fn task_json(&self, task: i64) -> serde_json::Value {
         let text = fs::read_to_string(
             self.project_dir
                 .join("tasks")
-                .join(card.to_string())
+                .join(task.to_string())
                 .join("task.json"),
         )
         .unwrap();
@@ -187,10 +187,10 @@ impl Fixture {
 }
 
 #[test]
-fn a_card_image_is_saved_under_its_assets_folder_and_resolves_to_its_path() {
+fn a_task_image_is_saved_under_its_assets_folder_and_resolves_to_its_path() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
     let added = f
         .store
         .add_attachment(&f.project, &owner, input(&id(1), "shot.png", png()), at(5))
@@ -202,10 +202,10 @@ fn a_card_image_is_saved_under_its_assets_folder_and_resolves_to_its_path() {
     assert_eq!(added.size, png().len() as i64);
     assert_eq!(added.created_at, at(5));
 
-    let file = f.card_assets(card).join(format!("{}.png", id(1)));
+    let file = f.task_assets(task).join(format!("{}.png", id(1)));
     assert_eq!(fs::read(&file).unwrap(), png());
-    assert_eq!(f.task_json(card)["attachments"][0]["id"], id(1));
-    assert_eq!(f.task_json(card)["updatedAt"], "2026-10-05T00:00:00Z");
+    assert_eq!(f.task_json(task)["attachments"][0]["id"], id(1));
+    assert_eq!(f.task_json(task)["updatedAt"], "2026-10-05T00:00:00Z");
 
     let stored = f.store.attachment_path(&f.project, &owner, &id(1)).unwrap();
     assert_eq!(stored.path, file);
@@ -234,8 +234,8 @@ fn an_epic_image_is_saved_under_the_epic_folder() {
 #[test]
 fn a_name_with_directories_keeps_only_its_last_part() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
     let added = f
         .store
         .add_attachment(
@@ -246,28 +246,28 @@ fn a_name_with_directories_keeps_only_its_last_part() {
         )
         .unwrap();
     assert_eq!(added.name, "passwd.png");
-    assert!(f.card_assets(card).join(format!("{}.png", id(3))).is_file());
+    assert!(f.task_assets(task).join(format!("{}.png", id(3))).is_file());
 }
 
 #[test]
 fn an_image_id_of_another_owner_is_refused_in_every_direction() {
     let f = fixture();
-    let first = f.card();
-    let second = f.card();
+    let first = f.task();
+    let second = f.task();
     let epic = f.epic("ALPHA");
     f.store
         .add_attachment(
             &f.project,
-            &AttachmentOwner::Card(first),
+            &AttachmentOwner::Task(first),
             input(&id(4), "a.png", png()),
             at(5),
         )
         .unwrap();
 
-    let other_card = AttachmentOwner::Card(second);
+    let other_task = AttachmentOwner::Task(second);
     let err = f
         .store
-        .attachment_path(&f.project, &other_card, &id(4))
+        .attachment_path(&f.project, &other_task, &id(4))
         .unwrap_err();
     assert!(
         matches!(err, AgboardError::AttachmentNotFound { .. }),
@@ -284,14 +284,14 @@ fn an_image_id_of_another_owner_is_refused_in_every_direction() {
 
     let err = f
         .store
-        .delete_attachment(&f.project, &other_card, &id(4), at(6))
+        .delete_attachment(&f.project, &other_task, &id(4), at(6))
         .unwrap_err();
     assert!(
         matches!(err, AgboardError::AttachmentNotFound { .. }),
         "{err:?}"
     );
     assert!(
-        f.card_assets(first)
+        f.task_assets(first)
             .join(format!("{}.png", id(4)))
             .is_file(),
         "the other owner's file is untouched"
@@ -301,8 +301,8 @@ fn an_image_id_of_another_owner_is_refused_in_every_direction() {
 #[test]
 fn path_like_attachment_ids_are_refused_and_nothing_is_written() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
 
     let err = f
         .store
@@ -314,7 +314,7 @@ fn path_like_attachment_ids_are_refused_and_nothing_is_written() {
         )
         .unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
-    assert!(!f.card_assets(card).exists());
+    assert!(!f.task_assets(task).exists());
 
     let err = f
         .store
@@ -325,9 +325,9 @@ fn path_like_attachment_ids_are_refused_and_nothing_is_written() {
         "{err:?}"
     );
 
-    let err = layout::task_asset_path(&f.project_dir, card, "../x", "png").unwrap_err();
+    let err = layout::task_asset_path(&f.project_dir, task, "../x", "png").unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
-    let err = layout::task_asset_path(&f.project_dir, card, &id(5), "../png").unwrap_err();
+    let err = layout::task_asset_path(&f.project_dir, task, &id(5), "../png").unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     let err = layout::task_asset_path(&f.project_dir, 0, &id(5), "png").unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
@@ -344,22 +344,22 @@ fn path_like_attachment_ids_are_refused_and_nothing_is_written() {
 #[test]
 fn an_image_over_10_mib_is_refused_and_nothing_is_written() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     let mut big = png();
     big.resize(11 * MIB, 0);
     let err = f
         .store
         .add_attachment(
             &f.project,
-            &AttachmentOwner::Card(card),
+            &AttachmentOwner::Task(task),
             input(&id(6), "big.png", big),
             at(5),
         )
         .unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
-    assert!(!f.card_assets(card).exists());
+    assert!(!f.task_assets(task).exists());
     assert!(
-        f.task_json(card)["attachments"]
+        f.task_json(task)["attachments"]
             .as_array()
             .unwrap()
             .is_empty()
@@ -369,8 +369,8 @@ fn an_image_over_10_mib_is_refused_and_nothing_is_written() {
 #[test]
 fn the_twenty_first_image_of_one_owner_is_refused() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
     for n in 0..20 {
         f.store
             .add_attachment(
@@ -390,11 +390,11 @@ fn the_twenty_first_image_of_one_owner_is_refused() {
         "{err:?}"
     );
     assert_eq!(
-        f.task_json(card)["attachments"].as_array().unwrap().len(),
+        f.task_json(task)["attachments"].as_array().unwrap().len(),
         20
     );
     assert!(
-        !f.card_assets(card)
+        !f.task_assets(task)
             .join(format!("{}.png", id(200)))
             .exists()
     );
@@ -403,8 +403,8 @@ fn the_twenty_first_image_of_one_owner_is_refused() {
 #[test]
 fn the_total_of_fifty_mib_is_enforced_per_owner() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
     let almost_ten_mib = gif_of_size(10 * MIB - 4096);
     assert!(almost_ten_mib.len() <= 10 * MIB);
     for n in 0..5 {
@@ -435,12 +435,12 @@ fn the_total_of_fifty_mib_is_enforced_per_owner() {
 #[test]
 fn a_file_that_is_not_png_jpeg_webp_or_gif_is_refused() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     let err = f
         .store
         .add_attachment(
             &f.project,
-            &AttachmentOwner::Card(card),
+            &AttachmentOwner::Task(task),
             input(&id(7), "note.txt", b"plain text".to_vec()),
             at(5),
         )
@@ -451,13 +451,13 @@ fn a_file_that_is_not_png_jpeg_webp_or_gif_is_refused() {
 #[test]
 fn a_symbolic_link_in_the_owner_folder_is_refused_for_reads_and_writes() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
     f.store
         .add_attachment(&f.project, &owner, input(&id(8), "a.png", png()), at(5))
         .unwrap();
 
-    let assets = f.card_assets(card);
+    let assets = f.task_assets(task);
     let moved = f.outside.join("moved-assets");
     fs::rename(&assets, &moved).unwrap();
     symlink(&moved, &assets);
@@ -489,12 +489,12 @@ fn a_symbolic_link_in_the_owner_folder_is_refused_for_reads_and_writes() {
 #[test]
 fn a_symbolic_link_in_place_of_an_image_file_is_refused_for_reads() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
     f.store
         .add_attachment(&f.project, &owner, input(&id(10), "a.png", png()), at(5))
         .unwrap();
-    let file = f.card_assets(card).join(format!("{}.png", id(10)));
+    let file = f.task_assets(task).join(format!("{}.png", id(10)));
     let target = f.outside.join("elsewhere.png");
     fs::write(&target, png()).unwrap();
     fs::remove_file(&file).unwrap();
@@ -511,44 +511,44 @@ fn a_symbolic_link_in_place_of_an_image_file_is_refused_for_reads() {
 }
 
 #[test]
-fn archived_and_draft_cards_refuse_image_changes() {
+fn archived_and_draft_tasks_refuse_image_changes() {
     let f = fixture();
-    let archived = f.card();
-    f.store.archive_card(&f.project, archived, at(5)).unwrap();
+    let archived = f.task();
+    f.store.archive_task(&f.project, archived, at(5)).unwrap();
     let err = f
         .store
         .add_attachment(
             &f.project,
-            &AttachmentOwner::Card(archived),
+            &AttachmentOwner::Task(archived),
             input(&id(11), "a.png", png()),
             at(6),
         )
         .unwrap_err();
-    assert!(matches!(err, AgboardError::CardArchived { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::TaskArchived { .. }), "{err:?}");
 
-    let draft = f.card();
+    let draft = f.task();
     f.store.set_draft(&f.project, draft, true, at(5)).unwrap();
     let err = f
         .store
         .add_attachment(
             &f.project,
-            &AttachmentOwner::Card(draft),
+            &AttachmentOwner::Task(draft),
             input(&id(12), "a.png", png()),
             at(6),
         )
         .unwrap_err();
-    assert!(matches!(err, AgboardError::CardIsDraft { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::TaskIsDraft { .. }), "{err:?}");
 }
 
 #[test]
 fn deleting_an_image_removes_its_record_and_its_file() {
     let f = fixture();
-    let card = f.card();
-    let owner = AttachmentOwner::Card(card);
+    let task = f.task();
+    let owner = AttachmentOwner::Task(task);
     f.store
         .add_attachment(&f.project, &owner, input(&id(13), "a.png", png()), at(5))
         .unwrap();
-    let file = f.card_assets(card).join(format!("{}.png", id(13)));
+    let file = f.task_assets(task).join(format!("{}.png", id(13)));
     assert!(file.is_file());
 
     f.store
@@ -557,7 +557,7 @@ fn deleting_an_image_removes_its_record_and_its_file() {
 
     assert!(!file.exists());
     assert!(
-        f.task_json(card)["attachments"]
+        f.task_json(task)["attachments"]
             .as_array()
             .unwrap()
             .is_empty()

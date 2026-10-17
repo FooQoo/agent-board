@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { problemOf, toBoard, WriteError } from '../src/api';
 
-type WireCard = Parameters<typeof toBoard>[0]['cards'][number];
+type WireTask = Parameters<typeof toBoard>[0]['tasks'][number];
 
-const wireCard = (overrides: Record<string, unknown> = {}) =>
+const wireTask = (overrides: Record<string, unknown> = {}) =>
   ({
     id: 3,
-    title: 'Card',
+    title: 'Task',
     description: '',
     assignee: 'ai',
     epicId: null,
-    cardStatus: 'doing',
+    taskStatus: 'doing',
     position: 1,
     agentStatus: 'pending',
     isDraft: false,
@@ -25,7 +25,7 @@ const wireCard = (overrides: Record<string, unknown> = {}) =>
     agentStatusChangedAt: '2026-10-02T00:00:00Z',
     history: [],
     ...overrides,
-  }) as unknown as WireCard;
+  }) as unknown as WireTask;
 
 describe('toBoard', () => {
   it('keeps the version, cursor, epics and problems of the snapshot', () => {
@@ -48,7 +48,7 @@ describe('toBoard', () => {
           updatedAt: '2026-10-01T00:00:00Z',
         },
       ],
-      cards: [wireCard({ epicId: 'FILE-SHARE' })],
+      tasks: [wireTask({ epicId: 'FILE-SHARE' })],
       problems: [{ file: 'tasks/3/TASK.md', field: 'AC-1', reason: 'missing' }],
     });
     expect(board.version).toBe('f1-version');
@@ -57,7 +57,7 @@ describe('toBoard', () => {
     expect(board.problems).toEqual([{ file: 'tasks/3/TASK.md', field: 'AC-1', reason: 'missing' }]);
   });
 
-  it('joins a card with its epic and leaves an unlabeled card with null', () => {
+  it('joins a task with its epic and leaves an unlabeled task with null', () => {
     const board = toBoard({
       project: { id: 'a'.repeat(32), name: 'p', createdAt: '2026-10-01T00:00:00Z' },
       version: 'v',
@@ -77,17 +77,17 @@ describe('toBoard', () => {
           updatedAt: '2026-10-01T00:00:00Z',
         },
       ],
-      cards: [wireCard({ epicId: 'FILE-SHARE' }), wireCard({ id: 4, epicId: null })],
+      tasks: [wireTask({ epicId: 'FILE-SHARE' }), wireTask({ id: 4, epicId: null })],
       problems: [],
     });
-    expect(board.cards[0]?.epic).toEqual({
+    expect(board.tasks[0]?.epic).toEqual({
       id: 'FILE-SHARE',
       name: 'File share',
       color: '#7C3AED',
     });
-    expect(board.cards[1]?.epic).toBeNull();
-    expect(board.cards[0]).not.toHaveProperty('epicId');
-    expect(board.cards[0]?.pendingChoices).toEqual([{ id: 'a', label: 'Option A' }]);
+    expect(board.tasks[1]?.epic).toBeNull();
+    expect(board.tasks[0]).not.toHaveProperty('epicId');
+    expect(board.tasks[0]?.pendingChoices).toEqual([{ id: 'a', label: 'Option A' }]);
   });
 });
 

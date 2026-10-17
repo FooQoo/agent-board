@@ -52,23 +52,23 @@ fn add(ctx: &mut Context, args: &EpicAddArgs) -> Result<Outcome, AgboardError> {
     })
 }
 
-/// The JSON of an epic in a list: its metadata and how many cards name it,
+/// The JSON of an epic in a list: its metadata and how many tasks name it,
 /// archived ones included, as the delete rule counts them.
-fn summary(epic: &EpicView, card_count: usize) -> Value {
+fn summary(epic: &EpicView, task_count: usize) -> Value {
     let mut value = serde_json::to_value(epic).expect("epics serialize");
     if let Value::Object(map) = &mut value {
         map.remove("plan");
-        map.insert("cardCount".into(), json!(card_count));
+        map.insert("taskCount".into(), json!(task_count));
     }
     value
 }
 
-/// How many cards of the snapshot name each epic, by EPIC-ID.
-fn card_count(snapshot: &ProjectSnapshot, epic: &str) -> usize {
+/// How many tasks of the snapshot name each epic, by EPIC-ID.
+fn task_count(snapshot: &ProjectSnapshot, epic: &str) -> usize {
     snapshot
-        .cards
+        .tasks
         .iter()
-        .filter(|card| card.epic_id.as_deref() == Some(epic))
+        .filter(|task| task.epic_id.as_deref() == Some(epic))
         .count()
 }
 
@@ -86,9 +86,9 @@ fn ls(ctx: &mut Context) -> Result<Outcome, AgboardError> {
     let mut human = String::new();
     let mut listed = Vec::new();
     for epic in &epics {
-        let count = card_count(&snapshot, epic.id.as_str());
+        let count = task_count(&snapshot, epic.id.as_str());
         human.push_str(&format!(
-            "{}  {}  {}{}  cards: {}\n",
+            "{}  {}  {}{}  tasks: {}\n",
             epic.id,
             epic.name,
             epic.color,
@@ -108,14 +108,14 @@ fn show(ctx: &mut Context, args: &EpicIdArgs) -> Result<Outcome, AgboardError> {
     let id = EpicId::normalize(&args.id)?;
     let project = ctx.project_id()?;
     let epic = ctx.files.epic(project, &id)?;
-    let cards = card_count(&ctx.files.snapshot(project)?, id.as_str());
+    let tasks = task_count(&ctx.files.snapshot(project)?, id.as_str());
     let mut human = format!(
-        "{}  {}\nColor: {}\nDraft: {}\nCards: {}\n\n{}",
+        "{}  {}\nColor: {}\nDraft: {}\nTasks: {}\n\n{}",
         epic.id,
         epic.name,
         epic.color,
         if epic.is_draft { "yes" } else { "no" },
-        cards,
+        tasks,
         epic.plan
     );
     if !human.ends_with('\n') {
@@ -174,7 +174,7 @@ fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError>
     })
 }
 
-/// The `--priority` list: card IDs separated by commas. Empty clears the order.
+/// The `--priority` list: task IDs separated by commas. Empty clears the order.
 fn parse_priority(text: &str) -> Result<Vec<i64>, AgboardError> {
     let text = text.trim();
     if text.is_empty() {
@@ -186,14 +186,14 @@ fn parse_priority(text: &str) -> Result<Vec<i64>, AgboardError> {
                 .parse::<i64>()
                 .map_err(|_| AgboardError::InvalidValue {
                     field: "priority".to_string(),
-                    reason: "Use card IDs separated by commas, for example 24,26,25.".to_string(),
+                    reason: "Use task IDs separated by commas, for example 24,26,25.".to_string(),
                 })
         })
         .collect()
 }
 
 /// Delete an epic after a person confirms it at a terminal. The epic must
-/// exist, and the store refuses it while a card names it (`epic_in_use`).
+/// exist, and the store refuses it while a task names it (`epic_in_use`).
 pub fn rm_with_io(
     ctx: &Context,
     args: &EpicIdArgs,

@@ -1,11 +1,11 @@
 //! Lane moves and agent run states on the shared files: the rules of the
 //! state table (MODEL.md), reasons, request release on a move, and AC-6
-//! (a completion report stays in Doing; a Done card's text stays editable).
+//! (a completion report stays in Doing; a Done task's text stays editable).
 
 use std::fs;
 use std::path::PathBuf;
 
-use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::Choice;
@@ -71,11 +71,11 @@ impl Fixture {
         fs::read(self.task_path(id)).unwrap()
     }
 
-    fn ai_card(&self, title: &str) -> i64 {
+    fn ai_task(&self, title: &str) -> i64 {
         self.store
-            .create_card(
+            .create_task(
                 &self.project,
-                NewCard {
+                NewTask {
                     title: title.into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
@@ -90,9 +90,9 @@ impl Fixture {
 }
 
 #[test]
-fn reporting_running_on_a_todo_card_is_refused_and_changes_nothing() {
+fn reporting_running_on_a_todo_task_is_refused_and_changes_nothing() {
     let fx = fixture();
-    let id = fx.ai_card("todo");
+    let id = fx.ai_task("todo");
     let before = fx.bytes(id);
     let err = fx
         .store
@@ -113,13 +113,13 @@ fn reporting_running_on_a_todo_card_is_refused_and_changes_nothing() {
 }
 
 #[test]
-fn running_on_a_human_card_in_doing_is_refused() {
+fn running_on_a_human_task_in_doing_is_refused() {
     let fx = fixture();
     let id = fx
         .store
-        .create_card(
+        .create_task(
             &fx.project,
-            NewCard {
+            NewTask {
                 title: "human".into(),
                 description: String::new(),
                 assignee: Assignee::Human,
@@ -131,7 +131,7 @@ fn running_on_a_human_card_in_doing_is_refused() {
         .unwrap()
         .id;
     fx.store
-        .move_work_card_for_user(
+        .move_work_task_for_user(
             &fx.project,
             id,
             Column::Doing,
@@ -157,12 +157,12 @@ fn running_on_a_human_card_in_doing_is_refused() {
 }
 
 #[test]
-fn a_running_and_idle_card_in_doing_keeps_its_lane_and_records_each_reason() {
+fn a_running_and_idle_task_in_doing_keeps_its_lane_and_records_each_reason() {
     let fx = fixture();
-    let id = fx.ai_card("work");
+    let id = fx.ai_task("work");
     let moved = fx
         .store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -171,7 +171,7 @@ fn a_running_and_idle_card_in_doing_keeps_its_lane_and_records_each_reason() {
         )
         .unwrap();
     assert!(moved.changed);
-    assert_eq!(moved.value.card_status, Column::Doing);
+    assert_eq!(moved.value.task_status, Column::Doing);
 
     fx.store
         .set_agent_status(
@@ -195,7 +195,7 @@ fn a_running_and_idle_card_in_doing_keeps_its_lane_and_records_each_reason() {
         )
         .unwrap();
     // AC-6: a completion report stays in Doing until the coordinator moves it.
-    assert_eq!(reported.value.card_status, Column::Doing);
+    assert_eq!(reported.value.task_status, Column::Doing);
     assert_eq!(reported.value.agent_status, RunState::Idle);
 
     assert_eq!(fx.history(id).as_array().unwrap().len(), 4);
@@ -211,11 +211,11 @@ fn a_running_and_idle_card_in_doing_keeps_its_lane_and_records_each_reason() {
 }
 
 #[test]
-fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
+fn a_lane_move_returns_the_task_to_idle_and_releases_its_request() {
     let fx = fixture();
-    let id = fx.ai_card("work");
+    let id = fx.ai_task("work");
     fx.store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -239,7 +239,7 @@ fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
 
     let done = fx
         .store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Done,
@@ -247,7 +247,7 @@ fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
             later(),
         )
         .unwrap();
-    assert_eq!(done.value.card_status, Column::Done);
+    assert_eq!(done.value.task_status, Column::Done);
     assert_eq!(done.value.agent_status, RunState::Idle);
     assert!(done.value.pending_request_id.is_none());
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
@@ -258,9 +258,9 @@ fn a_lane_move_returns_the_card_to_idle_and_releases_its_request() {
 #[test]
 fn a_move_to_the_same_lane_changes_nothing() {
     let fx = fixture();
-    let id = fx.ai_card("work");
+    let id = fx.ai_task("work");
     fx.store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -271,7 +271,7 @@ fn a_move_to_the_same_lane_changes_nothing() {
     let before = fx.bytes(id);
     let same = fx
         .store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -284,14 +284,14 @@ fn a_move_to_the_same_lane_changes_nothing() {
 }
 
 #[test]
-fn a_draft_card_refuses_agent_moves_and_accepts_user_moves() {
+fn a_draft_task_refuses_agent_moves_and_accepts_user_moves() {
     let fx = fixture();
-    let id = fx.ai_card("draft");
+    let id = fx.ai_task("draft");
     fx.store.set_draft(&fx.project, id, true, now()).unwrap();
 
     let err = fx
         .store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -300,13 +300,13 @@ fn a_draft_card_refuses_agent_moves_and_accepts_user_moves() {
         )
         .unwrap_err();
     assert!(
-        matches!(err, AgboardError::CardIsDraft { id: 1 }),
+        matches!(err, AgboardError::TaskIsDraft { id: 1 }),
         "{err:?}"
     );
 
     let moved = fx
         .store
-        .move_work_card_for_user(
+        .move_work_task_for_user(
             &fx.project,
             id,
             Column::Doing,
@@ -314,15 +314,15 @@ fn a_draft_card_refuses_agent_moves_and_accepts_user_moves() {
             later(),
         )
         .unwrap();
-    assert_eq!(moved.value.card_status, Column::Doing);
+    assert_eq!(moved.value.task_status, Column::Doing);
 }
 
 #[test]
 fn a_stale_or_missing_request_id_is_refused_when_leaving_pending() {
     let fx = fixture();
-    let id = fx.ai_card("work");
+    let id = fx.ai_task("work");
     fx.store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -379,9 +379,9 @@ fn a_stale_or_missing_request_id_is_refused_when_leaving_pending() {
 #[test]
 fn a_repeated_state_is_not_a_change_even_with_another_reason() {
     let fx = fixture();
-    let id = fx.ai_card("work");
+    let id = fx.ai_task("work");
     fx.store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -418,9 +418,9 @@ fn a_repeated_state_is_not_a_change_even_with_another_reason() {
 #[test]
 fn a_blank_reason_generates_a_state_aware_default() {
     let fx = fixture();
-    let id = fx.ai_card("work");
+    let id = fx.ai_task("work");
     fx.store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -447,11 +447,11 @@ fn a_blank_reason_generates_a_state_aware_default() {
 }
 
 #[test]
-fn done_cards_reject_agent_edits_but_a_person_can_reopen_them() {
+fn done_tasks_reject_agent_edits_but_a_person_can_reopen_them() {
     let fx = fixture();
-    let id = fx.ai_card("work");
+    let id = fx.ai_task("work");
     fx.store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -460,7 +460,7 @@ fn done_cards_reject_agent_edits_but_a_person_can_reopen_them() {
         )
         .unwrap();
     fx.store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Done,
@@ -472,17 +472,17 @@ fn done_cards_reject_agent_edits_but_a_person_can_reopen_them() {
     let before = fx.bytes(id);
     let err = fx
         .store
-        .edit_card(&fx.project, id, Some("Renamed"), Some(VALID_BODY), later())
+        .edit_task(&fx.project, id, Some("Renamed"), Some(VALID_BODY), later())
         .unwrap_err();
     assert!(
-        matches!(err, AgboardError::CardIsDone { id: done } if done == id),
+        matches!(err, AgboardError::TaskIsDone { id: done } if done == id),
         "{err:?}"
     );
     assert_eq!(fx.bytes(id), before);
 
     let reopened = fx
         .store
-        .move_work_card_for_user(
+        .move_work_task_for_user(
             &fx.project,
             id,
             Column::Todo,
@@ -491,19 +491,19 @@ fn done_cards_reject_agent_edits_but_a_person_can_reopen_them() {
         )
         .unwrap();
     assert!(reopened.changed);
-    assert_eq!(reopened.value.card_status, Column::Todo);
+    assert_eq!(reopened.value.task_status, Column::Todo);
     assert_eq!(reopened.value.agent_status, RunState::Idle);
     let snapshot = fx.store.snapshot(&fx.project).unwrap();
-    assert_eq!(snapshot.cards[0].card_status, Column::Todo);
+    assert_eq!(snapshot.tasks[0].task_status, Column::Todo);
     assert!(snapshot.problems.is_empty(), "{:?}", snapshot.problems);
 }
 
 #[test]
-fn running_on_a_done_card_is_refused_by_the_state_table() {
+fn running_on_a_done_task_is_refused_by_the_state_table() {
     let fx = fixture();
-    let id = fx.ai_card("work");
+    let id = fx.ai_task("work");
     fx.store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Done,
@@ -523,7 +523,7 @@ fn running_on_a_done_card_is_refused_by_the_state_table() {
         )
         .unwrap_err();
     assert!(
-        matches!(err, AgboardError::CardIsDone { id: done } if done == id),
+        matches!(err, AgboardError::TaskIsDone { id: done } if done == id),
         "{err:?}"
     );
 }

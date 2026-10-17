@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Board, Card, Project, ProjectId } from '../src/types';
+import type { Board, Task, Project, ProjectId } from '../src/types';
 
 type Listener = (event: Event) => void;
 
@@ -56,7 +56,7 @@ export type FakeAnswer<T> = T | Error | 'not_found' | number;
 export interface FakeBackend {
   projects: FakeAnswer<Project[]>;
   boards: Record<ProjectId, FakeAnswer<Board>>;
-  archives?: Record<ProjectId, FakeAnswer<Card[]>>;
+  archives?: Record<ProjectId, FakeAnswer<Task[]>>;
   /** Awaited before a read is answered, so a test can answer requests in any order. */
   gate?: (url: string) => Promise<void> | undefined;
   /** Answers writes (POST/DELETE). Defaults to 204 for DELETE and `{card, changed}` for POST. */
@@ -83,7 +83,7 @@ export function stubBackend(backend: FakeBackend) {
       if (backend.write) return backend.write(url, init ?? {});
       return method === 'DELETE'
         ? new Response(null, { status: 204 })
-        : jsonResponse({ card: {}, changed: true });
+        : jsonResponse({ task: {}, changed: true });
     }
     await backend.gate?.(url);
     if (url === '/api/projects') {
@@ -104,11 +104,11 @@ export function stubBackend(backend: FakeBackend) {
         : undefined;
       if (!project) return errorResponse(404, 'project_not_found');
       const archiveAnswer = backend.archives?.[projectId] ?? [];
-      return answer(archiveAnswer, (cards) => ({
+      return answer(archiveAnswer, (tasks) => ({
         project: project ?? { id: projectId, name: 'unknown', createdAt: '' },
         revision: 1,
         cursor: `${projectId}:1`,
-        cards,
+        tasks,
       }));
     }
     return errorResponse(404, 'not_found');

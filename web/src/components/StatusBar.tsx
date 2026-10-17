@@ -1,9 +1,9 @@
-import { cardCountLabel, formatTime } from '../lib/format';
+import { taskCountLabel, formatTime } from '../lib/format';
 import { useTranslation } from 'react-i18next';
 
 export interface StatusBarProps {
   status: 'loading' | 'ready' | 'error';
-  cardCount: number;
+  taskCount: number;
   countKind?: 'board' | 'archive';
   connected: boolean;
   lastSyncedAt: Date | null;
@@ -42,8 +42,8 @@ export function StatusBar(props: StatusBarProps) {
       <span className="status-bar__count">
         {props.status === 'ready'
           ? props.countKind === 'archive'
-            ? t('archive.count', { count: props.cardCount })
-            : cardCountLabel(props.cardCount, t)
+            ? t('archive.count', { count: props.taskCount })
+            : taskCountLabel(props.taskCount, t)
           : '–'}
       </span>
       <span className="status-bar__sync" role="status">

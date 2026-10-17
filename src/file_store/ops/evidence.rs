@@ -1,6 +1,6 @@
-//! Text evidence of a card: UTF-8 files under the card's `evidence/` folder,
-//! recorded in `task.json`. Only the card that owns an evidence ID can read or
-//! delete it. Reads are allowed for archived cards; changes are not.
+//! Text evidence of a task: UTF-8 files under the task's `evidence/` folder,
+//! recorded in `task.json`. Only the task that owns an evidence ID can read or
+//! delete it. Reads are allowed for archived tasks; changes are not.
 
 use std::fs;
 
@@ -12,48 +12,48 @@ use super::super::layout;
 use super::super::model::{EvidenceData, EvidenceRecord};
 use super::super::reader;
 use super::attachment::last_part;
-use super::{ensure_ai_card_not_done, lock_project, new_id, save_task, stamp};
+use super::{ensure_ai_task_not_done, lock_project, new_id, save_task, stamp};
 use crate::domain::{
-    MAX_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENT_BYTES, MAX_CARD_ATTACHMENTS, ProjectId,
+    MAX_ATTACHMENT_BYTES, MAX_TASK_ATTACHMENT_BYTES, MAX_TASK_ATTACHMENTS, ProjectId,
 };
 use crate::error::AgboardError;
 
 const EVIDENCE_LIMIT_REASON: &str =
-    "A card may contain at most 20 evidence files and 50 MiB of evidence in total.";
+    "A task may contain at most 20 evidence files and 50 MiB of evidence in total.";
 
 impl FileStore {
     /// Register a UTF-8 text evidence from the agent side (the CLI). A draft
-    /// card refuses it with `card_is_draft`.
+    /// task refuses it with `task_is_draft`.
     pub fn add_evidence(
         &self,
         project: &ProjectId,
-        card_id: i64,
+        task_id: i64,
         name: &str,
         bytes: &[u8],
         now: DateTime<Utc>,
     ) -> Result<EvidenceRecord, AgboardError> {
-        self.add_evidence_gated(project, card_id, name, bytes, now, true)
+        self.add_evidence_gated(project, task_id, name, bytes, now, true)
     }
 
-    /// Register a UTF-8 text evidence from a person in the Web UI. A draft card accepts it.
+    /// Register a UTF-8 text evidence from a person in the Web UI. A draft task accepts it.
     pub fn add_evidence_for_user(
         &self,
         project: &ProjectId,
-        card_id: i64,
+        task_id: i64,
         name: &str,
         bytes: &[u8],
         now: DateTime<Utc>,
     ) -> Result<EvidenceRecord, AgboardError> {
-        self.add_evidence_gated(project, card_id, name, bytes, now, false)
+        self.add_evidence_gated(project, task_id, name, bytes, now, false)
     }
 
-    /// Register a UTF-8 text evidence for a card and write it to `evidence/`.
+    /// Register a UTF-8 text evidence for a task and write it to `evidence/`.
     /// The limits follow the image limits: 10 MiB per file, 20 files, and
-    /// 50 MiB in total per card. Images and evidence are counted separately.
+    /// 50 MiB in total per task. Images and evidence are counted separately.
     fn add_evidence_gated(
         &self,
         project: &ProjectId,
-        card_id: i64,
+        task_id: i64,
         name: &str,
         bytes: &[u8],
         now: DateTime<Utc>,
@@ -86,23 +86,23 @@ impl FileStore {
         }
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
-        let mut task = reader::read_task_strict(shared, project, card_id)?;
+        let mut task = reader::read_task_strict(shared, project, task_id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id: card_id });
+            return Err(AgboardError::TaskArchived { id: task_id });
         }
         if block_drafts && task.is_draft {
-            return Err(AgboardError::CardIsDraft { id: card_id });
+            return Err(AgboardError::TaskIsDraft { id: task_id });
         }
         if block_drafts {
-            ensure_ai_card_not_done(&task, crate::domain::Actor::Ai)?;
+            ensure_ai_task_not_done(&task, crate::domain::Actor::Ai)?;
         }
         let total: usize = task
             .evidence
             .iter()
             .map(|e| usize::try_from(e.size).unwrap_or(0))
             .sum();
-        if task.evidence.len() + 1 > MAX_CARD_ATTACHMENTS
-            || total.saturating_add(bytes.len()) > MAX_CARD_ATTACHMENT_BYTES
+        if task.evidence.len() + 1 > MAX_TASK_ATTACHMENTS
+            || total.saturating_add(bytes.len()) > MAX_TASK_ATTACHMENT_BYTES
         {
             return Err(AgboardError::InvalidValue {
                 field: "evidence".into(),
@@ -111,7 +111,7 @@ impl FileStore {
         }
 
         let id = new_id()?;
-        let path = layout::evidence_path(&project_dir, card_id, &id)?;
+        let path = layout::evidence_path(&project_dir, task_id, &id)?;
         let label = layout::shared_label(shared, &path);
         if layout::has_symlink_below(&project_dir, &path).map_err(|e| io::write_error(&label, e))? {
             return Err(io::write_error(&label, "a symbolic link is in the way"));
@@ -137,17 +137,17 @@ impl FileStore {
         Ok(record)
     }
 
-    /// Read the bytes of a card's evidence. An ID that the card does not own
+    /// Read the bytes of a task's evidence. An ID that the task does not own
     /// is `evidence_not_found`, as is a file reached through a symbolic link.
     pub fn read_evidence(
         &self,
         project: &ProjectId,
-        card_id: i64,
+        task_id: i64,
         evidence_id: &str,
     ) -> Result<EvidenceData, AgboardError> {
         let shared = self.shared_dir();
         let project_dir = reader::project_dir_checked(shared, project)?;
-        let task = reader::read_task_strict(shared, project, card_id)?;
+        let task = reader::read_task_strict(shared, project, task_id)?;
         let record = task
             .evidence
             .iter()
@@ -156,7 +156,7 @@ impl FileStore {
             .ok_or_else(|| AgboardError::EvidenceNotFound {
                 id: evidence_id.to_string(),
             })?;
-        let path = layout::evidence_path(&project_dir, card_id, &record.id)?;
+        let path = layout::evidence_path(&project_dir, task_id, &record.id)?;
         let label = layout::shared_label(shared, &path);
         let linked = layout::has_symlink_below(&project_dir, &path)
             .map_err(|e| io::read_error(&label, e))?;
@@ -169,49 +169,49 @@ impl FileStore {
         Ok(EvidenceData { record, bytes })
     }
 
-    /// Remove a card's evidence from the agent side (the CLI). A draft card refuses it.
+    /// Remove a task's evidence from the agent side (the CLI). A draft task refuses it.
     pub fn delete_evidence(
         &self,
         project: &ProjectId,
-        card_id: i64,
+        task_id: i64,
         evidence_id: &str,
         now: DateTime<Utc>,
     ) -> Result<(), AgboardError> {
-        self.delete_evidence_gated(project, card_id, evidence_id, now, true)
+        self.delete_evidence_gated(project, task_id, evidence_id, now, true)
     }
 
-    /// Remove a card's evidence from a person in the Web UI. A draft card accepts it.
+    /// Remove a task's evidence from a person in the Web UI. A draft task accepts it.
     pub fn delete_evidence_for_user(
         &self,
         project: &ProjectId,
-        card_id: i64,
+        task_id: i64,
         evidence_id: &str,
         now: DateTime<Utc>,
     ) -> Result<(), AgboardError> {
-        self.delete_evidence_gated(project, card_id, evidence_id, now, false)
+        self.delete_evidence_gated(project, task_id, evidence_id, now, false)
     }
 
-    /// Remove a card's evidence from `task.json` and delete its file. The JSON
+    /// Remove a task's evidence from `task.json` and delete its file. The JSON
     /// is saved first, so a file left by a failed removal is not referenced.
     fn delete_evidence_gated(
         &self,
         project: &ProjectId,
-        card_id: i64,
+        task_id: i64,
         evidence_id: &str,
         now: DateTime<Utc>,
         block_drafts: bool,
     ) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
-        let mut task = reader::read_task_strict(shared, project, card_id)?;
+        let mut task = reader::read_task_strict(shared, project, task_id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id: card_id });
+            return Err(AgboardError::TaskArchived { id: task_id });
         }
         if block_drafts && task.is_draft {
-            return Err(AgboardError::CardIsDraft { id: card_id });
+            return Err(AgboardError::TaskIsDraft { id: task_id });
         }
         if block_drafts {
-            ensure_ai_card_not_done(&task, crate::domain::Actor::Ai)?;
+            ensure_ai_task_not_done(&task, crate::domain::Actor::Ai)?;
         }
         let index = task
             .evidence
@@ -220,7 +220,7 @@ impl FileStore {
             .ok_or_else(|| AgboardError::EvidenceNotFound {
                 id: evidence_id.to_string(),
             })?;
-        let path = layout::evidence_path(&project_dir, card_id, evidence_id)?;
+        let path = layout::evidence_path(&project_dir, task_id, evidence_id)?;
         let label = layout::shared_label(shared, &path);
         if layout::has_symlink_below(&project_dir, &path).map_err(|e| io::write_error(&label, e))? {
             return Err(io::write_error(&label, "a symbolic link is in the way"));

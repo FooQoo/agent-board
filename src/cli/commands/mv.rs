@@ -5,7 +5,7 @@ use serde_json::json;
 
 pub fn run(ctx: &mut Context, args: &MvArgs) -> Result<Outcome, AgboardError> {
     let reason = args.change.resolve_reason()?;
-    let changed = ctx.files.move_work_card(
+    let changed = ctx.files.move_work_task(
         ctx.project_id()?,
         args.id,
         args.column.column(),
@@ -27,6 +27,6 @@ pub fn run(ctx: &mut Context, args: &MvArgs) -> Result<Outcome, AgboardError> {
     Ok(Outcome {
         changed: changed.changed,
         human,
-        json: json!({"card": changed.value}),
+        json: json!({"task": changed.value}),
     })
 }

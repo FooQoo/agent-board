@@ -1,4 +1,4 @@
-use agent_board::domain::{Actor, Assignee, NewCard};
+use agent_board::domain::{Actor, Assignee, NewTask};
 use agent_board::file_store::{
     FileStore,
     history::{ParseMode, parse_task},
@@ -24,10 +24,10 @@ fn minimal_history_is_readable_and_creation_has_only_at_and_reason() {
     let root = tempfile::tempdir().unwrap();
     let store = FileStore::open(&root.path().join("shared"));
     let project = store.create_project("History", Utc::now()).unwrap().id;
-    let card = store
-        .create_card(
+    let task = store
+        .create_task(
             &project,
-            NewCard {
+            NewTask {
                 title: "Work".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
@@ -37,7 +37,7 @@ fn minimal_history_is_readable_and_creation_has_only_at_and_reason() {
             Utc::now(),
         )
         .unwrap();
-    let event = serde_json::to_value(&card.history[0]).unwrap();
+    let event = serde_json::to_value(&task.history[0]).unwrap();
     assert_eq!(event.as_object().unwrap().len(), 2);
     assert!(
         event["reason"]
@@ -53,10 +53,10 @@ fn workflow_responses_survive_later_requests_restart_and_empty_history() {
     let shared = root.path().join("shared");
     let store = FileStore::open(&shared);
     let project = store.create_project("Responses", Utc::now()).unwrap().id;
-    let card = store
-        .create_card(
+    let task = store
+        .create_task(
             &project,
-            NewCard {
+            NewTask {
                 title: "Decision".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
@@ -69,7 +69,7 @@ fn workflow_responses_survive_later_requests_restart_and_empty_history() {
     let first = store
         .request_decision(
             &project,
-            card.id,
+            task.id,
             Actor::Ai,
             "First question?",
             vec![Choice {
@@ -85,7 +85,7 @@ fn workflow_responses_survive_later_requests_restart_and_empty_history() {
     store
         .answer_request(
             &project,
-            card.id,
+            task.id,
             &first,
             Answer {
                 actor: Actor::Human,
@@ -98,7 +98,7 @@ fn workflow_responses_survive_later_requests_restart_and_empty_history() {
     let second = store
         .request_decision(
             &project,
-            card.id,
+            task.id,
             Actor::Ai,
             "Second question?",
             vec![],
@@ -112,32 +112,32 @@ fn workflow_responses_survive_later_requests_restart_and_empty_history() {
         .join("projects")
         .join(project.as_str())
         .join("tasks")
-        .join(card.id.to_string());
+        .join(task.id.to_string());
     std::fs::write(
         path.join("TASK.md"),
         "---\nhistory: []\n---\nBody with a fake history: [{at: yesterday, reason: ignore}]\n",
     )
     .unwrap();
     let reopened = FileStore::open(&shared);
-    let pending = reopened.card(&project, card.id).unwrap();
+    let pending = reopened.task(&project, task.id).unwrap();
     assert_eq!(pending.pending_reason.as_deref(), Some("Second question?"));
     assert_eq!(pending.pending_request_id.as_deref(), Some(second.as_str()));
     assert!(pending.history.is_empty());
     let answer = reopened
-        .request_answer(&project, card.id, &first)
+        .request_answer(&project, task.id, &first)
         .unwrap()
         .unwrap();
     assert_eq!(answer.choice_id.as_deref(), Some("yes"));
     assert_eq!(answer.text.as_deref(), Some("Do it"));
     assert!(
         reopened
-            .request_answer(&project, card.id, &second)
+            .request_answer(&project, task.id, &second)
             .unwrap()
             .is_none()
     );
     let metadata: serde_json::Value =
         serde_json::from_slice(&std::fs::read(path.join("task.json")).unwrap()).unwrap();
-    assert_eq!(metadata["formatVersion"], 3);
+    assert_eq!(metadata["formatVersion"], 1);
     assert!(metadata.get("history").is_none());
     assert_eq!(metadata["requestAnswers"][0].as_object().unwrap().len(), 6);
     assert_eq!(metadata["pendingRequest"].as_object().unwrap().len(), 2);
@@ -147,7 +147,7 @@ fn workflow_responses_survive_later_requests_restart_and_empty_history() {
     std::fs::write(path.join("TASK.md"), "---\nhistory: null\n---\nBody").unwrap();
     assert!(
         reopened
-            .request_answer(&project, card.id, &first)
+            .request_answer(&project, task.id, &first)
             .unwrap()
             .is_some()
     );
@@ -166,7 +166,7 @@ fn history_reason_limit_and_unknown_fields_are_strict() {
         ..event
     };
     assert!(compose_task("", "Body", None, &[too_long]).is_err());
-    for field in ["id", "kind", "actor", "fromCardStatus", "question"] {
+    for field in ["id", "kind", "actor", "fromTaskStatus", "question"] {
         let text = format!(
             "---\nhistory:\n- at: 2026-10-15T00:00:00Z\n  reason: Valid\n  {field}: extra\n---\nBody"
         );
@@ -189,10 +189,10 @@ fn inconsistent_workflow_metadata_is_rejected_without_repairing_files() {
     let shared = root.path().join("shared");
     let store = FileStore::open(&shared);
     let project = store.create_project("Validation", Utc::now()).unwrap().id;
-    let card = store
-        .create_card(
+    let task = store
+        .create_task(
             &project,
-            NewCard {
+            NewTask {
                 title: "Validation".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
@@ -206,7 +206,7 @@ fn inconsistent_workflow_metadata_is_rejected_without_repairing_files() {
         .join("projects")
         .join(project.as_str())
         .join("tasks")
-        .join(card.id.to_string())
+        .join(task.id.to_string())
         .join("task.json");
     let original: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
@@ -225,22 +225,22 @@ fn inconsistent_workflow_metadata_is_rejected_without_repairing_files() {
         }
         let bytes = serde_json::to_vec_pretty(&invalid).unwrap();
         std::fs::write(&path, &bytes).unwrap();
-        assert!(store.card(&project, card.id).is_err(), "{patch}");
+        assert!(store.task(&project, task.id).is_err(), "{patch}");
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
     }
 }
 
 #[test]
-fn only_lane_changes_update_card_status_changed_at() {
+fn only_lane_changes_update_task_status_changed_at() {
     use agent_board::domain::{ChangeContext, Column, RunState};
     let at = |day: u32| chrono::TimeZone::with_ymd_and_hms(&Utc, 2026, 10, day, 0, 0, 0).unwrap();
     let root = tempfile::tempdir().unwrap();
     let store = FileStore::open(&root.path().join("shared"));
     let project = store.create_project("Timing", at(1)).unwrap().id;
-    let card = store
-        .create_card(
+    let task = store
+        .create_task(
             &project,
-            NewCard {
+            NewTask {
                 title: "Timing".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
@@ -250,33 +250,33 @@ fn only_lane_changes_update_card_status_changed_at() {
             at(1),
         )
         .unwrap();
-    assert_eq!(card.card_status_changed_at, at(1));
+    assert_eq!(task.task_status_changed_at, at(1));
     let ctx = || ChangeContext {
         actor: Actor::Ai,
         reason: "".into(),
     };
     let moved = store
-        .move_work_card(&project, card.id, Column::Doing, ctx(), at(2))
+        .move_work_task(&project, task.id, Column::Doing, ctx(), at(2))
         .unwrap()
         .value;
-    assert_eq!(moved.card_status_changed_at, at(2));
+    assert_eq!(moved.task_status_changed_at, at(2));
     let running = store
-        .set_agent_status(&project, card.id, RunState::Running, ctx(), None, at(3))
+        .set_agent_status(&project, task.id, RunState::Running, ctx(), None, at(3))
         .unwrap()
         .value;
-    assert_eq!(running.card_status_changed_at, at(2));
+    assert_eq!(running.task_status_changed_at, at(2));
     let note = store
-        .add_history(&project, card.id, Some("Verified details."), at(4))
+        .add_history(&project, task.id, Some("Verified details."), at(4))
         .unwrap();
-    assert_eq!(note.card_status_changed_at, at(2));
+    assert_eq!(note.task_status_changed_at, at(2));
     let edited = store
-        .edit_card(&project, card.id, Some("Renamed"), None, at(5))
+        .edit_task(&project, task.id, Some("Renamed"), None, at(5))
         .unwrap()
         .value;
-    assert_eq!(edited.card_status_changed_at, at(2));
+    assert_eq!(edited.task_status_changed_at, at(2));
     let done = store
-        .move_work_card(&project, card.id, Column::Done, ctx(), at(6))
+        .move_work_task(&project, task.id, Column::Done, ctx(), at(6))
         .unwrap()
         .value;
-    assert_eq!(done.card_status_changed_at, at(6));
+    assert_eq!(done.task_status_changed_at, at(6));
 }

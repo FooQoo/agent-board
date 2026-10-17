@@ -1,18 +1,18 @@
 import { expect, test, type Page } from '@playwright/test';
-import { agboardOk, decisionJson, mainProject, projectId, nextCardId, resetBoard, type CardJson } from '../helpers/agboard';
+import { agboardOk, decisionJson, mainProject, projectId, nextTaskId, resetBoard, type TaskJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 // An AI card in Todo can ask a decision before the work starts. It shows as pending in Todo, answers there, and
 // returns to Todo idle; a move cancels its request.
 
-const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
 const request = (page: Page, id: number) =>
-  page.locator(`.card__answer[data-card-id="${id}"]`).getByRole('region', { name: 'The agent is waiting for your answer' });
+  page.locator(`.card__answer[data-task-id="${id}"]`).getByRole('region', { name: 'The agent is waiting for your answer' });
 
-function show(id: number): CardJson & { cardStatus: string; agentStatus: string; pendingRequestId: string | null } {
-  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
+function show(id: number): TaskJson & { taskStatus: string; agentStatus: string; pendingRequestId: string | null } {
+  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
 test.beforeEach(async ({ page }) => {
@@ -21,8 +21,8 @@ test.beforeEach(async ({ page }) => {
   await waitForSync(page);
 });
 
-test('an AI card in Todo asks, shows as pending there, and the answer returns it to Todo idle', async ({ page }) => {
-  const id = nextCardId(mainProject);
+test('an AI task in Todo asks, shows as pending there, and the answer returns it to Todo idle', async ({ page }) => {
+  const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Ask before starting', '--assignee', 'ai', '--actor', 'ai']);
   agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', decisionJson('Which plan before we start?')]);
   await page.reload();
@@ -32,7 +32,7 @@ test('an AI card in Todo asks, shows as pending there, and the answer returns it
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })).toContainText('Pending');
   await expect(lane(page, 'Todo')).toContainText('Which plan before we start?');
 
-  await card(page, id).click();
+  await task(page, id).click();
   await expect(request(page, id)).toContainText('Which plan before we start?');
   const answer = request(page, id).getByRole('textbox', { name: 'Your answer' });
   await answer.fill('Plan A, then review');
@@ -40,12 +40,12 @@ test('an AI card in Todo asks, shows as pending there, and the answer returns it
   await expect(request(page, id)).toHaveCount(0);
 
   // The card is still in Todo, and idle again.
-  expect(show(id)).toMatchObject({ cardStatus: 'todo', agentStatus: 'idle', pendingRequestId: null });
+  expect(show(id)).toMatchObject({ taskStatus: 'todo', agentStatus: 'idle', pendingRequestId: null });
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })).not.toContainText('Pending');
 });
 
-test('moving a card out of Todo cancels its pending question', async ({ page }) => {
-  const id = nextCardId(mainProject);
+test('moving a task out of Todo cancels its pending question', async ({ page }) => {
+  const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Move while asking', '--assignee', 'ai', '--actor', 'ai']);
   agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', decisionJson('Still wanted?')]);
   await page.reload();
@@ -53,6 +53,6 @@ test('moving a card out of Todo cancels its pending question', async ({ page }) 
   agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'human', '--reason', 'Start now.']);
   await page.reload();
   await waitForSync(page);
-  expect(show(id)).toMatchObject({ cardStatus: 'doing', agentStatus: 'idle', pendingRequestId: null });
+  expect(show(id)).toMatchObject({ taskStatus: 'doing', agentStatus: 'idle', pendingRequestId: null });
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })).not.toContainText('Pending');
 });

@@ -9,24 +9,24 @@ import {
   agboardCatalog,
   agboardCatalogOk,
   agboardOk,
-  listCards,
+  listTasks,
   mainHome,
   mainProject,
   makeHome,
-  nextCardId,
+  nextTaskId,
   removeHome,
   resetBoard,
-  cardBody,
+  taskBody,
   workspace,
   type AgboardResult,
-  type CardJson,
+  type TaskJson,
 } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 // What a draft means for the CLI, and the limits of a body, with the real binary and a real serve.
 // The CLI never makes a draft: only the page does, so each test uses the page for that one step.
 
-interface ShownCard extends CardJson {
+interface ShownTask extends TaskJson {
   description: string;
   body: string;
   isDraft: boolean;
@@ -34,11 +34,11 @@ interface ShownCard extends CardJson {
   history: { at: string; reason: string }[];
 }
 
-const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
-function show(id: number): ShownCard {
-  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
+function show(id: number): ShownTask {
+  return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
 /** The whole board as the CLI reports it, without the time of the report. */
@@ -51,7 +51,7 @@ function board(): string {
 async function open(page: Page, id: number): Promise<void> {
   await page.goto('/');
   await waitForSync(page);
-  await card(page, id).click();
+  await task(page, id).click();
 }
 
 async function makeDraft(page: Page): Promise<void> {
@@ -61,7 +61,7 @@ async function makeDraft(page: Page): Promise<void> {
 
 /** A body of exactly `count` characters as the CLI counts them: the text alone, with no surrounding template. */
 function bodyOfLength(count: number): string {
-  return cardBody('あ'.repeat(count));
+  return taskBody('あ'.repeat(count));
 }
 
 let work: string;
@@ -96,11 +96,11 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
     expect(result.code, name).toBe(1);
     expect(result.stdout, name).toBe('');
     // The message is English and says what to do.
-    expect(result.stderr, name).toContain('card #13 is a draft and read-only for agents.');
+    expect(result.stderr, name).toContain('task #13 is a draft and read-only for agents.');
     expect(result.stderr, name).toContain('Wait for the user to finalize it, then try again.');
     const json = agboard(mainProject, [...args, '--json']);
     expect(json.code, name).toBe(1);
-    expect(JSON.parse(json.stderr || json.stdout).error.code, name).toBe('card_is_draft');
+    expect(JSON.parse(json.stderr || json.stdout).error.code, name).toBe('task_is_draft');
   }
   // Nothing changed, not even the time or the history.
   expect(board()).toBe(before);
@@ -110,10 +110,10 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
   expect(agboardOk(mainProject, ['show', '13']).stdout).toContain('Draft: yes');
   expect(agboardOk(mainProject, ['ls']).stdout).toMatch(/#13 Check the board display \[AI\] \[draft\]/);
   expect(agboardOk(mainProject, ['ls']).stdout).not.toMatch(/#14 .*\[draft\]/);
-  expect(JSON.parse(agboardOk(mainProject, ['ls', '--json']).stdout).cards.find((c: ShownCard) => c.id === 13).isDraft).toBe(true);
-  expect(JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout).cards.find((c: ShownCard) => c.id === 13).isDraft).toBe(true);
-  const added = JSON.parse(agboardOk(mainProject, ['add', 'Made while a draft exists', '--json']).stdout).card;
-  expect(added).toMatchObject({ isDraft: false, cardStatus: 'todo', agentStatus: 'idle' });
+  expect(JSON.parse(agboardOk(mainProject, ['ls', '--json']).stdout).tasks.find((c: ShownTask) => c.id === 13).isDraft).toBe(true);
+  expect(JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout).tasks.find((c: ShownTask) => c.id === 13).isDraft).toBe(true);
+  const added = JSON.parse(agboardOk(mainProject, ['add', 'Made while a draft exists', '--json']).stdout).task;
+  expect(added).toMatchObject({ isDraft: false, taskStatus: 'todo', agentStatus: 'idle' });
 
   // The page and the CLI agree; a person can finalize and the agent can write again.
   await details(page).getByRole('button', { name: 'Finalize' }).click();
@@ -122,7 +122,7 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
   expect(agboardOk(mainProject, ['edit', '13', '--title', 'Changed by an agent']).code).toBe(0);
   agboardOk(mainProject, ['state', '13', 'running', '--actor', 'ai', '--reason', 'Resuming.']);
   agboardOk(mainProject, ['mv', '13', 'done', '--actor', 'ai', '--reason', 'Finished.']);
-  expect(show(13)).toMatchObject({ title: 'Changed by an agent', cardStatus: 'done' });
+  expect(show(13)).toMatchObject({ title: 'Changed by an agent', taskStatus: 'done' });
 });
 
 test('a draft stays a draft over time, and toggling it wakes wait; history updates the displayed time', async ({
@@ -144,8 +144,8 @@ test('a draft stays a draft over time, and toggling it wakes wait; history updat
     expect(waiter.exitCode).toBeNull();
     await makeDraft(page);
     expect(await ended).toBe(0);
-    const received = JSON.parse(out) as { cards: ShownCard[]; cursor: string };
-    expect(received.cards.find((c) => c.id === 13)).toMatchObject({ isDraft: true });
+    const received = JSON.parse(out) as { tasks: ShownTask[]; cursor: string };
+    expect(received.tasks.find((c) => c.id === 13)).toMatchObject({ isDraft: true });
     expect(received.cursor).not.toBe(cursor);
   } finally {
     waiter.kill();
@@ -190,7 +190,7 @@ test('a body of exactly 50,000 characters is accepted for add, edit, and --desc 
   writeFileSync(exactFile, exact);
   writeFileSync(overFile, over);
 
-  const id = nextCardId(mainProject);
+  const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Exact limit', '--desc-file', exactFile]);
   expect([...show(id).body].length).toBe(50_000);
   const stdin = spawnSync(agboardBinary(), ['--project', mainProject, 'add', 'From stdin', '--desc', '-', '--assignee', 'ai', '--actor', 'ai'], {
@@ -215,7 +215,7 @@ test('a body of exactly 50,000 characters is accepted for add, edit, and --desc 
 
   // CRLF is stored as LF.
   const crlfFile = path.join(work, 'crlf.md');
-  writeFileSync(crlfFile, cardBody('line one\nline two').replace(/\n/g, '\r\n'));
+  writeFileSync(crlfFile, taskBody('line one\nline two').replace(/\n/g, '\r\n'));
   agboardOk(mainProject, ['edit', String(id), '--desc-file', crlfFile]);
   expect(show(id).description).not.toContain('\r');
   expect(show(id).description).toContain('line one\nline two');
@@ -223,8 +223,8 @@ test('a body of exactly 50,000 characters is accepted for add, edit, and --desc 
 
 test('a backup is a copy of the project folder; copying it back brings a draft back exactly as it left', async ({ page }) => {
   // The fixture has no drafts; every card comes back a non-draft.
-  expect(listCards(mainProject).length).toBe(8);
-  for (const item of listCards(mainProject)) expect(show(item.id).isDraft, `#${item.id}`).toBe(false);
+  expect(listTasks(mainProject).length).toBe(8);
+  for (const item of listTasks(mainProject)) expect(show(item.id).isDraft, `#${item.id}`).toBe(false);
 
   await open(page, 13);
   await makeDraft(page);
@@ -246,17 +246,17 @@ test('a backup is a copy of the project folder; copying it back brings a draft b
     if (existsSync(path.join(backup, part))) cpSync(path.join(backup, part), path.join(folder, part), { recursive: true });
   }
   expect(show(13).isDraft).toBe(true);
-  for (const item of listCards(mainProject)) {
+  for (const item of listTasks(mainProject)) {
     if (item.id !== 13) expect(show(item.id).isDraft, `#${item.id}`).toBe(false);
   }
 });
 
 test('the hook hands over active progress metadata without task bodies, even when bodies are large', async () => {
-  const body = cardBody(`## Section\n${'あいうえお'.repeat(8_000)}`);
+  const body = taskBody(`## Section\n${'あいうえお'.repeat(8_000)}`);
   const bodyFile = path.join(work, 'hook.md');
   writeFileSync(bodyFile, body);
-  const id = nextCardId(mainProject);
-  agboardOk(mainProject, ['add', 'Long hook card', '--desc-file', bodyFile]);
+  const id = nextTaskId(mainProject);
+  agboardOk(mainProject, ['add', 'Long hook task', '--desc-file', bodyFile]);
 
   const hook = () =>
     spawnSync(agboardBinary(), ['--project', mainProject, 'hook', '--agent', 'claude'], {
@@ -271,10 +271,10 @@ test('the hook hands over active progress metadata without task bodies, even whe
   expect(Buffer.byteLength(context)).toBeLessThanOrEqual(256 * 1024);
   expect(context.startsWith('AGBOARD_PROGRESS\n')).toBe(true);
   const progress = JSON.parse(context.slice('AGBOARD_PROGRESS\n'.length)) as {
-    epics: { cards: (CardJson & { isDraft: boolean })[] }[];
-    unassigned: (CardJson & { isDraft: boolean })[];
+    epics: { tasks: (TaskJson & { isDraft: boolean })[] }[];
+    unassigned: (TaskJson & { isDraft: boolean })[];
   };
-  const handed = [...progress.epics.flatMap((epic) => epic.cards), ...progress.unassigned].find((c) => c.id === id)!;
+  const handed = [...progress.epics.flatMap((epic) => epic.tasks), ...progress.unassigned].find((c) => c.id === id)!;
   expect(handed.isDraft).toBe(false);
   expect(context).not.toContain('## Section');
   expect(context).not.toContain('あ');
@@ -300,7 +300,7 @@ test('the help explains Markdown descriptions and what a refused write to a draf
   expect(general.stdout).toContain('Markdown');
   expect(general.stdout).toContain('50,000');
   expect(general.stdout).toContain('isDraft');
-  expect(general.stdout).toContain('card_is_draft');
+  expect(general.stdout).toContain('task_is_draft');
   for (const command of ['add', 'edit']) {
     const help = agboardCatalog([command, '--help']);
     expect(help.stdout, command).toContain('Markdown');

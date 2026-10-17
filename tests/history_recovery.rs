@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use agent_board::domain::{Actor, Assignee, NewCard};
+use agent_board::domain::{Actor, Assignee, NewTask};
 use agent_board::file_store::FileStore;
 use agent_board::file_store::lock::WriteLock;
 use agent_board::file_store::transaction::{
@@ -10,16 +10,16 @@ use agent_board::file_store::transaction::{
 use chrono::{TimeZone, Utc};
 
 #[test]
-fn public_snapshot_recovers_an_interrupted_pair_before_returning_a_card() {
+fn public_snapshot_recovers_an_interrupted_pair_before_returning_a_task() {
     let root = tempfile::tempdir().unwrap();
     let shared = root.path().join("shared");
     let store = FileStore::open(&shared);
     let at = Utc.with_ymd_and_hms(2026, 10, 14, 0, 0, 0).unwrap();
     let project = store.create_project("Recovery", at).unwrap().id;
     store
-        .create_card(
+        .create_task(
             &project,
-            NewCard {
+            NewTask {
                 title: "Original".into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
@@ -31,9 +31,9 @@ fn public_snapshot_recovers_an_interrupted_pair_before_returning_a_card() {
         .unwrap();
 
     let project_dir = shared.join("projects").join(project.as_str());
-    let card_dir = project_dir.join("tasks/1");
-    let json_path = card_dir.join("task.json");
-    let md_path = card_dir.join("TASK.md");
+    let task_dir = project_dir.join("tasks/1");
+    let json_path = task_dir.join("task.json");
+    let md_path = task_dir.join("TASK.md");
     let old = PairBytes {
         metadata: fs::read(&json_path).unwrap(),
         markdown: fs::read(&md_path).unwrap(),
@@ -70,7 +70,7 @@ fn public_snapshot_recovers_an_interrupted_pair_before_returning_a_card() {
     drop(lock);
 
     let snapshot = store.board(&project).unwrap();
-    assert_eq!(snapshot.cards[0].title, "Original");
+    assert_eq!(snapshot.tasks[0].title, "Original");
     assert_eq!(fs::read(&json_path).unwrap(), old.metadata);
     assert_eq!(fs::read(&md_path).unwrap(), old.markdown);
     assert!(

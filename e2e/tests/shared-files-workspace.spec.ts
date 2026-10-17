@@ -11,13 +11,13 @@ import {
   mainHome,
   mainOrigin,
   mainProject,
-  nextCardId,
+  nextTaskId,
   projectId,
   removeProject,
   replaceFileAtomically,
   replaceTaskBodyPreservingFrontmatter,
   resetBoard,
-  cardBody,
+  taskBody,
   workspace,
 } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
@@ -25,8 +25,8 @@ import { waitForSync } from '../helpers/ui';
 // The shared folder as the product keeps it: created by the CLI, read by two working directories, and edited
 // directly in its files. These scenarios use the real binary and the real serve on the main port.
 
-const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const folderOf = (project: string) => workspace(project).folder;
 
 /** Open the seeded board by its project ID, so other projects in the data area do not change what is shown. */
@@ -57,7 +57,7 @@ test.beforeEach(() => {
   resetBoard(mainProject);
 });
 
-test('a shared folder and an epic are created by the CLI, and the epic label shows on the card in its colour', async ({ page }) => {
+test('a shared folder and an epic are created by the CLI, and the epic label shows on the task in its colour', async ({ page }) => {
   // A new data area gets the shared folder, a project folder with its ID, and the README.
   const name = `Shared demo ${Date.now()}`;
   agboardCatalogOk(['project', 'create', name]);
@@ -69,14 +69,14 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
   });
   const folder = JSON.parse(agboard(name, ['workspace', '--json']).stdout).folder as string;
   expect(folder.startsWith(shared)).toBe(true);
-  expect(JSON.parse(readFileSync(path.join(folder, 'project.json'), 'utf8'))).toMatchObject({ id, name, nextCardId: 1 });
+  expect(JSON.parse(readFileSync(path.join(folder, 'project.json'), 'utf8'))).toMatchObject({ id, name, nextTaskId: 1 });
   expect(readFileSync(path.join(folder, 'README.md'), 'utf8')).toContain('TASK.md');
 
   // An epic with a plan template and a colour; a card in it.
   agboardOk(name, ['epic', 'add', 'FILE-SHARE', '--name', 'File share', '--color', '#7C3AED', '--actor', 'human']);
   expect(readFileSync(path.join(folder, 'epics', 'FILE-SHARE', 'PLAN.md'), 'utf8')).toBe('');
-  const cardId = JSON.parse(agboardOk(name, ['add', 'Upload a picture', '--epic', 'FILE-SHARE', '--json']).stdout).card.id as number;
-  expect(JSON.parse(agboardOk(name, ['ls', '--json']).stdout).cards.find((c: { id: number }) => c.id === cardId)).toMatchObject({
+  const taskId = JSON.parse(agboardOk(name, ['add', 'Upload a picture', '--epic', 'FILE-SHARE', '--json']).stdout).task.id as number;
+  expect(JSON.parse(agboardOk(name, ['ls', '--json']).stdout).tasks.find((c: { id: number }) => c.id === taskId)).toMatchObject({
     epic: { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' },
   });
 
@@ -85,8 +85,8 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
   const label = page.locator(`[data-epic-label="FILE-SHARE"]`);
   await expect(label).toHaveCount(1);
   await expect(label).toHaveCSS('background-color', 'rgb(124, 58, 237)');
-  await expect(card(page, cardId).getByText('FILE-SHARE')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add card', exact: true })).toBeVisible();
+  await expect(task(page, taskId).getByText('FILE-SHARE')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add task', exact: true })).toBeVisible();
   removeProject(name);
 });
 
@@ -99,7 +99,7 @@ test('two working directories read and write one shared TASK.md; the page and wa
   expect(JSON.parse(cliFrom(worktreeB, ['--project', mainProject, 'workspace', '--json']).stdout).folder).toBe(folder);
 
   await openBoard(page);
-  await card(page, 13).click();
+  await task(page, 13).click();
   await expect(details(page)).toContainText('Check the layout at 1280, 800, and 480 px.');
 
   // Worktree B waits for a change; its command is started first.
@@ -118,7 +118,7 @@ test('two working directories read and write one shared TASK.md; the page and wa
   const original = readFileSync(file, 'utf8');
   writeFileSync(file, original.replace('Check the layout', 'Checked from worktree A. Check the layout'));
   expect(await waitEnded).toBe(0);
-  expect(JSON.parse(waited).cards.find((c: { id: number }) => c.id === 13).description).toContain('Checked from worktree A.');
+  expect(JSON.parse(waited).tasks.find((c: { id: number }) => c.id === 13).description).toContain('Checked from worktree A.');
 
   // The open page shows the new text with no reload and no manual step.
   await expect(details(page)).toContainText('Checked from worktree A.');
@@ -137,14 +137,14 @@ test('two working directories read and write one shared TASK.md; the page and wa
   await new Promise((resolve) => setTimeout(resolve, 2000));
   expect(quiet.exitCode).toBeNull();
   await quietEnded;
-  expect(quietOut).not.toContain('"cards"');
+  expect(quietOut).not.toContain('"tasks"');
 
   // Worktree A's CLI and worktree B's CLI both read the same card, and B can change it too.
-  const seen = JSON.parse(cliFrom(worktreeA, ['--project', mainProject, 'show', '13', '--json']).stdout).card;
+  const seen = JSON.parse(cliFrom(worktreeA, ['--project', mainProject, 'show', '13', '--json']).stdout).task;
   expect(seen.description).toContain('Checked from worktree A.');
   const edited = cliFrom(worktreeB, ['--project', mainProject, 'edit', '13', '--title', 'Check the board display']);
   expect(edited.code).toBe(0);
-  expect(JSON.parse(cliFrom(worktreeA, ['--project', mainProject, 'show', '13', '--json']).stdout).card.title).toBe(
+  expect(JSON.parse(cliFrom(worktreeA, ['--project', mainProject, 'show', '13', '--json']).stdout).task.title).toBe(
     'Check the board display',
   );
 });
@@ -156,9 +156,9 @@ test('an image reference that points at another owner or outside the folder is n
   const added = JSON.parse(agboardOk(mainProject, ['attachment', 'add', '14', '--file', owned, '--actor', 'ai', '--json']).stdout);
   const otherId = (added.attachment?.id ?? added.id) as string;
   const folder = folderOf(mainProject);
-  const body = cardBody(
+  const body = taskBody(
     [
-      `![other card picture](assets/${otherId}.png)`,
+      `![other task picture](assets/${otherId}.png)`,
       '',
       '![parent folder](../../../../../../etc/passwd.png)',
       '',
@@ -172,13 +172,13 @@ test('an image reference that points at another owner or outside the folder is n
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));
   await openBoard(page);
-  await card(page, 13).click();
+  await task(page, 13).click();
   // Each reference is a No image placeholder; none of them makes a request to the folder.
   await expect(details(page).getByText('No image', { exact: true })).toHaveCount(4);
   await expect(details(page).locator('img')).toHaveCount(0);
   expect(requests.filter((url) => url.includes(`/tasks/13/assets/`) || url.includes('etc'))).toEqual([]);
   // The owner's picture is reachable only from its own card: asking for it through card 13 is refused.
-  const direct = await page.request.get(`${mainOrigin}/api/projects/${projectId(mainProject)}/cards/13/attachments/${otherId}`);
+  const direct = await page.request.get(`${mainOrigin}/api/projects/${projectId(mainProject)}/tasks/13/attachments/${otherId}`);
   expect([403, 404]).toContain(direct.status());
 });
 
@@ -196,8 +196,8 @@ test('the editor is not loaded on the first screen, and assets that are not regi
   expect(loaded.filter((name) => /RichMarkdownEditor|Diagram|cytoscape|elk|katex/i.test(name)), loaded.join(' ')).toEqual([]);
 
   // Opening the add dialog loads the editor chunk, which the first screen did not need.
-  await page.getByRole('button', { name: 'Add card', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Add card' }).getByRole('textbox', { name: 'Description (Markdown)' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add task', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Add task' }).getByRole('textbox', { name: 'Description (Markdown)' })).toBeVisible();
   await expect.poll(() => loaded.some((name) => /RichMarkdownEditor/.test(name))).toBe(true);
 
   // A name that is not registered is a 404.
@@ -208,10 +208,10 @@ test('the editor is not loaded on the first screen, and assets that are not regi
 test('a second CLI process reads the same board from another folder while the page is open', async () => {
   // Reading from a fresh process in an unrelated directory gives the same card list as the page sees.
   const elsewhere = mkdtempSync(path.join(work, 'elsewhere-'));
-  const id = nextCardId(mainProject);
+  const id = nextTaskId(mainProject);
   const result = cliFrom(elsewhere, ['--project', mainProject, 'add', 'From another folder', '--assignee', 'ai', '--actor', 'ai']);
   expect(result.code).toBe(0);
-  const listed = JSON.parse(cliFrom(elsewhere, ['--project', mainProject, 'ls', '--json']).stdout).cards as { id: number }[];
+  const listed = JSON.parse(cliFrom(elsewhere, ['--project', mainProject, 'ls', '--json']).stdout).tasks as { id: number }[];
   expect(listed.map((c) => c.id)).toContain(id);
 });
 

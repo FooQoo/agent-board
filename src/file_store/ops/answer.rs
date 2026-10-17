@@ -2,12 +2,12 @@
 //!
 //! The question and choices are current workflow metadata. Responses are kept
 //! by request ID independently of human-readable history. An answer must name
-//! the current request; it returns the card to idle and appends a readable note.
+//! the current request; it returns the task to idle and appends a readable note.
 
 use chrono::{DateTime, Utc};
 
 use super::super::FileStore;
-use super::super::model::{CardView, Choice, HistoryRecord, RequestAnswer, current_request};
+use super::super::model::{Choice, HistoryRecord, RequestAnswer, TaskView, current_request};
 use super::super::reader;
 use super::super::validate;
 use super::{lock_project, save_task, stamp};
@@ -37,8 +37,8 @@ impl FileStore {
             .find(|answer| answer.request_id == request_id))
     }
 
-    /// Ask a question of the user. The card goes to pending with a new request
-    /// ID. An empty choice list makes a reason-only request. A card that is
+    /// Ask a question of the user. The task goes to pending with a new request
+    /// ID. An empty choice list makes a reason-only request. A task that is
     /// already pending is not changed.
     pub fn request_decision(
         &self,
@@ -48,7 +48,7 @@ impl FileStore {
         question: &str,
         choices: Vec<Choice>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let question = validate::normalize_question(question)?;
         let choices = validate::normalize_choices(choices)?;
         self.change_state(
@@ -64,7 +64,7 @@ impl FileStore {
     }
 
     /// Answer the pending request `request_id`. The answer may name a choice of
-    /// the request, give a text, or both, but not neither. The card returns to
+    /// the request, give a text, or both, but not neither. The task returns to
     /// idle, and the answer is recorded in history.
     pub fn answer_request(
         &self,
@@ -73,7 +73,7 @@ impl FileStore {
         request_id: &str,
         answer: Answer,
         now: DateTime<Utc>,
-    ) -> Result<CardView, AgboardError> {
+    ) -> Result<TaskView, AgboardError> {
         let text = validate::normalize_answer_text(answer.text.as_deref().unwrap_or(""))?;
         let choice_id = answer.choice_id.filter(|c| !c.is_empty());
         if choice_id.is_none() && text.is_none() {
@@ -87,10 +87,10 @@ impl FileStore {
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
         if task.assignee != Assignee::Ai
-            || !matches!(task.card_status, Column::Todo | Column::Doing)
+            || !matches!(task.task_status, Column::Todo | Column::Doing)
             || task.agent_status != RunState::Pending
             || task.pending_request_id.as_deref() != Some(request_id)
         {
@@ -146,6 +146,6 @@ impl FileStore {
         task.updated_at = at;
         task.history.push(event);
         save_task(shared, &project_dir, &task)?;
-        reader::read_card_locked(shared, project, id)
+        reader::read_task_locked(shared, project, id)
     }
 }

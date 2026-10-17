@@ -3,17 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DetailPanel } from '../../src/components/DetailPanel';
 import { selectLocale } from '../../src/i18n';
-import type { Card } from '../../src/types';
-import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
+import type { Task } from '../../src/types';
+import { PROJECT_A, fixtureTask, makeTask } from '../fixtures';
 
 const noop = () => {};
 const noRemove = async () => true;
 
-function renderPanel(card: Card, props: Partial<Parameters<typeof DetailPanel>[0]> = {}) {
+function renderPanel(task: Task, props: Partial<Parameters<typeof DetailPanel>[0]> = {}) {
   return render(
     <DetailPanel
       projectId={PROJECT_A.id}
-      card={card}
+      task={task}
       onClose={noop}
       onRemove={noRemove}
       {...props}
@@ -27,7 +27,7 @@ beforeEach(() => selectLocale('en'));
 
 describe('tabs', () => {
   it('has a Description tab and a History tab with the number of history entries', () => {
-    renderPanel(fixtureCard(8));
+    renderPanel(fixtureTask(8));
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       'Description',
@@ -42,7 +42,7 @@ describe('tabs', () => {
 
   it('shows the history in the History tab and the description again in the Description tab', async () => {
     const { container } = renderPanel(
-      makeCard({ ...fixtureCard(8), description: 'Body text', body: 'Body text' }),
+      makeTask({ ...fixtureTask(8), description: 'Body text', body: 'Body text' }),
     );
     expect(screen.getByRole('tabpanel').textContent).toBe('Body text');
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
@@ -54,7 +54,7 @@ describe('tabs', () => {
   });
 
   it('moves between the tabs with the arrow keys', async () => {
-    renderPanel(fixtureCard(8));
+    renderPanel(fixtureTask(8));
     screen.getByRole('tab', { name: 'Description' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Conditions' }).getAttribute('aria-selected')).toBe(
@@ -68,12 +68,12 @@ describe('tabs', () => {
   });
 
   it('shows the empty note for an empty description', () => {
-    renderPanel(fixtureCard(12));
+    renderPanel(fixtureTask(12));
     expect(screen.getByRole('tabpanel').textContent).toBe('No description.');
   });
 
-  it('puts the tabs directly below the card metadata', () => {
-    const { container } = renderPanel(fixtureCard(12));
+  it('puts the tabs directly below the task metadata', () => {
+    const { container } = renderPanel(fixtureTask(12));
     const order = Array.from(container.querySelector('.detail')?.children ?? []).map(
       (el) => el.className.split(' ')[0],
     );
@@ -92,7 +92,7 @@ describe('tabs', () => {
 
 describe('chapters of the description', () => {
   it('shows each H2 chapter as a plain heading and keeps every chapter open, with no fold control', async () => {
-    const { container } = renderPanel(makeCard({ id: 50, description: `Intro\n\n${SECTIONED}` }));
+    const { container } = renderPanel(makeTask({ id: 50, description: `Intro\n\n${SECTIONED}` }));
     expect(container.querySelector('.md-chapter__number')).toBeNull();
     expect(screen.getByRole('heading', { level: 3, name: 'Goal' })).toBeTruthy();
     expect(screen.getByText('one')).toBeTruthy();
@@ -104,20 +104,20 @@ describe('chapters of the description', () => {
   });
 
   it('keeps every chapter visible when the History tab is looked at and back', async () => {
-    renderPanel(makeCard({ id: 50, description: SECTIONED }));
+    renderPanel(makeTask({ id: 50, description: SECTIONED }));
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
     await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
     expect(screen.getByText('one')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 3, name: 'Goal' })).toBeTruthy();
   });
 
-  it('returns to the Description tab when another card is shown', async () => {
-    const { rerender } = renderPanel(fixtureCard(8));
+  it('returns to the Description tab when another task is shown', async () => {
+    const { rerender } = renderPanel(fixtureTask(8));
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(9)}
+        task={fixtureTask(9)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -134,52 +134,52 @@ describe('toolbar', () => {
       .getAllByRole('button')
       .map((b) => b.textContent || b.getAttribute('aria-label'));
 
-  it('offers Make draft and Delete for an idle card that is not a draft, Delete last', () => {
-    renderPanel(fixtureCard(8));
-    expect(names()).toEqual(['Make draft', 'Archive card']);
+  it('offers Make draft and Delete for an idle task that is not a draft, Delete last', () => {
+    renderPanel(fixtureTask(8));
+    expect(names()).toEqual(['Make draft', 'Archive task']);
   });
 
   it('offers the edit icon and Delete for a draft', () => {
-    renderPanel({ ...fixtureCard(8), isDraft: true });
-    expect(names()).toEqual(['Edit card', 'Archive card']);
+    renderPanel({ ...fixtureTask(8), isDraft: true });
+    expect(names()).toEqual(['Edit task', 'Archive task']);
   });
 
-  it('offers Make draft for pending cards but only Delete for running cards', () => {
-    const { rerender } = renderPanel(fixtureCard(11));
-    expect(names()).toEqual(['Archive card']);
+  it('offers Make draft for pending tasks but only Delete for running tasks', () => {
+    const { rerender } = renderPanel(fixtureTask(11));
+    expect(names()).toEqual(['Archive task']);
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(12)}
+        task={fixtureTask(12)}
         onClose={noop}
         onRemove={noRemove}
       />,
     );
-    expect(names()).toEqual(['Make draft', 'Archive card']);
+    expect(names()).toEqual(['Make draft', 'Archive task']);
   });
 
-  it('offers Make draft to an idle card that has no run state of its own (Todo)', () => {
-    renderPanel(fixtureCard(14));
-    expect(names()).toEqual(['Make draft', 'Archive card']);
+  it('offers Make draft to an idle task that has no run state of its own (Todo)', () => {
+    renderPanel(fixtureTask(14));
+    expect(names()).toEqual(['Make draft', 'Archive task']);
   });
 
   it('shows only Delete in the History tab', async () => {
-    renderPanel({ ...fixtureCard(8), isDraft: true });
+    renderPanel({ ...fixtureTask(8), isDraft: true });
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    expect(names()).toEqual(['Archive card']);
+    expect(names()).toEqual(['Archive task']);
   });
 
-  it('calls onEdit with the card when the edit icon is pressed', async () => {
+  it('calls onEdit with the task when the edit icon is pressed', async () => {
     const onEdit = vi.fn();
-    const card = { ...fixtureCard(8), isDraft: true };
-    renderPanel(card, { onEdit });
-    await userEvent.click(screen.getByRole('button', { name: 'Edit card' }));
-    expect(onEdit).toHaveBeenCalledWith(card);
+    const task = { ...fixtureTask(8), isDraft: true };
+    renderPanel(task, { onEdit });
+    await userEvent.click(screen.getByRole('button', { name: 'Edit task' }));
+    expect(onEdit).toHaveBeenCalledWith(task);
   });
 
   it('opens the delete confirmation above the tabs', async () => {
-    const { container } = renderPanel(fixtureCard(8));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+    const { container } = renderPanel(fixtureTask(8));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive task' }));
     const confirm = container.querySelector('.delete-confirm') as HTMLElement;
     const tabs = container.querySelector('.detail__tabs') as HTMLElement;
     expect(confirm.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -189,7 +189,7 @@ describe('toolbar', () => {
   it('places restore and delete above the content tabs and removes the normal toolbar', async () => {
     const onRestore = vi.fn();
     const onRemove = vi.fn(async () => true);
-    const { container } = renderPanel(fixtureCard(8), { archived: true, onRestore, onRemove });
+    const { container } = renderPanel(fixtureTask(8), { archived: true, onRestore, onRemove });
     const detail = container.querySelector('.detail') as HTMLElement;
     const order = Array.from(detail.children).map((element) => element.className.split(' ')[0]);
     expect(order).toEqual([
@@ -204,7 +204,7 @@ describe('toolbar', () => {
       'detail__viewport',
     ]);
     expect(screen.getByRole('button', { name: 'Restore' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Delete card' }).textContent).toContain('Delete');
+    expect(screen.getByRole('button', { name: 'Delete task' }).textContent).toContain('Delete');
     expect(screen.queryByRole('toolbar')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Restore' }));
     expect(onRestore).toHaveBeenCalledTimes(1);
@@ -212,17 +212,17 @@ describe('toolbar', () => {
 
   it('uses the inline delete confirmation to call the lifecycle action and explains removed data', async () => {
     const onRemove = vi.fn(async () => true);
-    renderPanel(fixtureCard(8), { archived: true, onRemove });
-    await userEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+    renderPanel(fixtureTask(8), { archived: true, onRemove });
+    await userEvent.click(screen.getByRole('button', { name: 'Delete task' }));
     expect(screen.getByText(/description, images, and history/)).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    expect(onRemove).toHaveBeenCalledWith('delete', fixtureCard(8));
+    expect(onRemove).toHaveBeenCalledWith('delete', fixtureTask(8));
   });
 
   it('matches the Pen Japanese delete confirmation copy', async () => {
     selectLocale('ja');
-    renderPanel(fixtureCard(8), { archived: true, onRemove: vi.fn() });
-    await userEvent.click(screen.getByRole('button', { name: 'カードを削除' }));
+    renderPanel(fixtureTask(8), { archived: true, onRemove: vi.fn() });
+    await userEvent.click(screen.getByRole('button', { name: 'タスクを削除' }));
     expect(
       screen.getByText(
         '#8「Initialize the board」を削除しますか？ 本文・画像・履歴も削除されます。この操作は元に戻せません。',
@@ -232,27 +232,27 @@ describe('toolbar', () => {
   });
 
   it('shows restore failure in the selected detail and disables actions while saving', () => {
-    renderPanel(fixtureCard(8), {
+    renderPanel(fixtureTask(8), {
       archived: true,
       onRestore: vi.fn(),
       restoreFailed: true,
       operationSaving: true,
     });
-    expect(screen.getByRole('alert').textContent).toBe('Could not restore the card. Try again.');
+    expect(screen.getByRole('alert').textContent).toBe('Could not restore the task. Try again.');
     expect(screen.getByRole('button', { name: 'Restore' }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Delete card' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Delete task' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('names the toolbar buttons in Japanese', () => {
     selectLocale('ja');
-    renderPanel({ ...fixtureCard(8), isDraft: true });
-    expect(names()).toEqual(['カードを編集', 'カードをアーカイブ']);
+    renderPanel({ ...fixtureTask(8), isDraft: true });
+    expect(names()).toEqual(['タスクを編集', 'タスクをアーカイブ']);
   });
 
   it('shows the archived delete label in Japanese', () => {
     selectLocale('ja');
-    renderPanel(fixtureCard(8), { archived: true, onRestore: vi.fn() });
-    const deleteButton = screen.getByRole('button', { name: 'カードを削除' });
+    renderPanel(fixtureTask(8), { archived: true, onRestore: vi.fn() });
+    const deleteButton = screen.getByRole('button', { name: 'タスクを削除' });
     expect(deleteButton.textContent).toContain('削除');
   });
 });
@@ -274,21 +274,21 @@ describe('epic tab', () => {
     updatedAt: '2026-10-02T00:00:00Z',
   };
   const linked = (id: number) =>
-    makeCard({ id, epic: { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' } });
+    makeTask({ id, epic: { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' } });
 
-  it('says that a card without an epic belongs to none', async () => {
-    renderPanel(makeCard({ id: 60, epic: null }), { epics: [] });
+  it('says that a task without an epic belongs to none', async () => {
+    renderPanel(makeTask({ id: 60, epic: null }), { epics: [] });
     await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
-    expect(screen.getByText('This card belongs to no epic.')).toBeTruthy();
+    expect(screen.getByText('This task belongs to no epic.')).toBeTruthy();
   });
 
-  it('shows the epic plan of the card in the epic tab', async () => {
+  it('shows the epic plan of the task in the epic tab', async () => {
     renderPanel(linked(61), { epics: [EPIC_LINKED] });
     await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
     expect(screen.getByText('Epic plan text.')).toBeTruthy();
   });
 
-  it('shows only card conditions in the dedicated conditions tab', async () => {
+  it('shows only task conditions in the dedicated conditions tab', async () => {
     const { container } = renderPanel(linked(62), { epics: [EPIC_LINKED] });
     await userEvent.click(screen.getByRole('tab', { name: 'Conditions' }));
     expect(container.querySelector('.detail__dock')).toBeNull();
@@ -305,7 +305,7 @@ describe('epic tab', () => {
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={linked(63)}
+        task={linked(63)}
         onClose={noop}
         onRemove={noRemove}
         epics={[]}

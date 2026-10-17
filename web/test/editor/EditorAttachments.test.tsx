@@ -97,7 +97,7 @@ describe('editor attachment side panel', () => {
       const [open, setOpen] = useState(true);
       return open ? (
         <EditorShell
-          title="Card editor"
+          title="Task editor"
           badge="New"
           variant="create"
           dirty
@@ -117,7 +117,7 @@ describe('editor attachment side panel', () => {
     expect(screen.getByRole('dialog', { name: 'screen [one].png' })).toBeTruthy();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'screen [one].png' })).toBeNull();
-    expect(screen.getByRole('dialog', { name: 'Card editorNew' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Task editorNew' })).toBeTruthy();
     // The dialog is dirty, so a Escape that reached it would ask the question; it must not.
     expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(thumbnail));
@@ -141,7 +141,7 @@ describe('editor attachment side panel', () => {
     );
     unmount();
     render(<Host notice={{ kind: 'count' }} />);
-    expect(screen.getByRole('alert').textContent).toContain('A card holds up to 20 images.');
+    expect(screen.getByRole('alert').textContent).toContain('A task holds up to 20 images.');
   });
 });
 
@@ -170,7 +170,7 @@ describe('the empty picture state', () => {
   it('shows the guidance once, as the one drop area at the bottom of the panel', () => {
     const { panel } = renderEmpty();
     expect(within(panel).getAllByText(GUIDANCE)).toHaveLength(1);
-    expect(within(panel).queryByText('Add images to this card')).toBeNull();
+    expect(within(panel).queryByText('Add images to this task')).toBeNull();
     const area = panel.querySelector<HTMLElement>('.editor-attachments__dropzone');
     expect(area).not.toBeNull();
     expect(panel.lastElementChild).toBe(area);

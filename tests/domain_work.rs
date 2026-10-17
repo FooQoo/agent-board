@@ -2,7 +2,7 @@ use agent_board::domain::{Assignee, Column, RunState, check_work_state, validate
 
 #[test]
 fn run_states_follow_the_table_for_each_owner_and_column() {
-    // An AI card may ask (pending) in todo; it runs and waits in doing. A person's card is only idle.
+    // An AI task may ask (pending) in todo; it runs and waits in doing. A person's task is only idle.
     let allowed = |assignee: Assignee, column: Column, state: RunState| {
         state == RunState::Idle
             || matches!(

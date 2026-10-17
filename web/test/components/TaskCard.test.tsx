@@ -1,50 +1,54 @@
 import { act, render, renderHook, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { Card } from '../../src/components/Card';
-import { useCardAnswers } from '../../src/hooks/useCardAnswers';
+import { TaskCard } from '../../src/components/TaskCard';
+import { useTaskAnswers } from '../../src/hooks/useTaskAnswers';
 import { i18n } from '../../src/i18n';
-import { fixtureCard, makeCard } from '../fixtures';
+import { fixtureTask, makeTask } from '../fixtures';
 
 const noop = () => {};
 
-describe('Card', () => {
+describe('Task', () => {
   it('shows the id, title and the local update time', () => {
-    render(<Card card={fixtureCard(14)} selected={false} onSelect={noop} />);
+    render(<TaskCard task={fixtureTask(14)} selected={false} onSelect={noop} />);
     expect(screen.getByText('#14')).toBeTruthy();
     expect(screen.getByText('Prepare the Windows build')).toBeTruthy();
     expect(screen.getByText('Updated 10/02 10:08')).toBeTruthy();
   });
 
-  it('shows no run state for cards in Todo or Done', () => {
-    const { rerender } = render(<Card card={fixtureCard(14)} selected={false} onSelect={noop} />);
+  it('shows no run state for tasks in Todo or Done', () => {
+    const { rerender } = render(
+      <TaskCard task={fixtureTask(14)} selected={false} onSelect={noop} />,
+    );
     for (const label of ['Idle', 'Running', 'Pending'])
       expect(screen.queryByText(label)).toBeNull();
-    rerender(<Card card={fixtureCard(8)} selected={false} onSelect={noop} />);
+    rerender(<TaskCard task={fixtureTask(8)} selected={false} onSelect={noop} />);
     for (const label of ['Idle', 'Running', 'Pending'])
       expect(screen.queryByText(label)).toBeNull();
   });
 
-  it('shows the run state badge for cards in Doing', () => {
-    const { rerender } = render(<Card card={fixtureCard(11)} selected={false} onSelect={noop} />);
+  it('shows the run state badge for tasks in Doing', () => {
+    const { rerender } = render(
+      <TaskCard task={fixtureTask(11)} selected={false} onSelect={noop} />,
+    );
     expect(screen.getByText('Running')).toBeTruthy();
-    rerender(<Card card={fixtureCard(13)} selected={false} onSelect={noop} />);
+    rerender(<TaskCard task={fixtureTask(13)} selected={false} onSelect={noop} />);
     expect(screen.getByText('Idle')).toBeTruthy();
-    rerender(<Card card={fixtureCard(12)} selected={false} onSelect={noop} />);
+    rerender(<TaskCard task={fixtureTask(12)} selected={false} onSelect={noop} />);
     expect(screen.getByText('Pending')).toBeTruthy();
   });
 
-  it('translates the column run state and update label without changing card input or time', async () => {
-    const card = makeCard({
+  it('translates the column run state and update label without changing task input or time', async () => {
+    const task = makeTask({
       id: 40,
       title: 'Keep this title as entered',
-      cardStatus: 'doing',
+      taskStatus: 'doing',
       agentStatus: 'pending',
       pendingReason: 'Keep this waiting reason as entered',
       updatedAt: '2026-10-02T10:08:00Z',
     });
     try {
-      render(<Card card={card} selected={true} onSelect={noop} />);
+      render(<TaskCard task={task} selected={true} onSelect={noop} />);
       expect(screen.getByText('Updated 10/02 10:08')).toBeTruthy();
       await act(async () => {
         await i18n.changeLanguage('ja');
@@ -59,32 +63,36 @@ describe('Card', () => {
     }
   });
 
-  it('shows the waiting reason only for pending cards', () => {
-    const { rerender } = render(<Card card={fixtureCard(12)} selected={false} onSelect={noop} />);
+  it('shows the waiting reason only for pending tasks', () => {
+    const { rerender } = render(
+      <TaskCard task={fixtureTask(12)} selected={false} onSelect={noop} />,
+    );
     expect(screen.getByText('Waiting for confirmation on how to replace a board.')).toBeTruthy();
-    rerender(<Card card={fixtureCard(11)} selected={false} onSelect={noop} />);
+    rerender(<TaskCard task={fixtureTask(11)} selected={false} onSelect={noop} />);
     expect(screen.queryByText(/Waiting for/)).toBeNull();
   });
 
-  it('marks pending cards so they can be highlighted', () => {
-    const { container } = render(<Card card={fixtureCard(12)} selected={false} onSelect={noop} />);
+  it('marks pending tasks so they can be highlighted', () => {
+    const { container } = render(
+      <TaskCard task={fixtureTask(12)} selected={false} onSelect={noop} />,
+    );
     expect(container.querySelector('.card--pending')).not.toBeNull();
   });
 
-  it('shows the pending answer on the card without turning form clicks into card selection', async () => {
+  it('shows the pending answer on the task without turning form clicks into task selection', async () => {
     const onSelect = vi.fn();
-    const { result } = renderHook(() => useCardAnswers(vi.fn(), vi.fn()));
-    const card = makeCard({
+    const { result } = renderHook(() => useTaskAnswers(vi.fn(), vi.fn()));
+    const task = makeTask({
       id: 41,
-      cardStatus: 'todo',
+      taskStatus: 'todo',
       agentStatus: 'pending',
       pendingRequestId: 'request-41',
       pendingReason: 'Choose a direction',
     });
 
     const { container } = render(
-      <Card
-        card={card}
+      <TaskCard
+        task={task}
         selected={false}
         onSelect={onSelect}
         projectId="project-1"
@@ -97,15 +105,15 @@ describe('Card', () => {
     expect(onSelect).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy();
 
-    const cardButton = container.querySelector('.card');
-    if (!cardButton) throw new Error('card button is missing');
-    await userEvent.click(cardButton);
+    const taskButton = container.querySelector('.card');
+    if (!taskButton) throw new Error('task button is missing');
+    await userEvent.click(taskButton);
     expect(onSelect).toHaveBeenCalledWith(41);
   });
 
   it('renders markup in a title as plain text', () => {
-    const card = makeCard({ id: 30, title: '<b>Bold</b> <script>alert(1)</script>' });
-    const { container } = render(<Card card={card} selected={false} onSelect={noop} />);
+    const task = makeTask({ id: 30, title: '<b>Bold</b> <script>alert(1)</script>' });
+    const { container } = render(<TaskCard task={task} selected={false} onSelect={noop} />);
     expect(screen.getByText('<b>Bold</b> <script>alert(1)</script>')).toBeTruthy();
     expect(container.querySelector('b')).toBeNull();
     expect(container.querySelector('script')).toBeNull();
@@ -114,18 +122,20 @@ describe('Card', () => {
   it('reflects the selection and reports clicks', async () => {
     const onSelect = vi.fn();
     const { rerender } = render(
-      <Card card={fixtureCard(8)} selected={false} onSelect={onSelect} />,
+      <TaskCard task={fixtureTask(8)} selected={false} onSelect={onSelect} />,
     );
     const button = screen.getByRole('button', { name: /Initialize the board/ });
     expect(button.getAttribute('aria-current')).toBe('false');
     await userEvent.click(button);
     expect(onSelect).toHaveBeenCalledWith(8);
-    rerender(<Card card={fixtureCard(8)} selected={true} onSelect={onSelect} />);
+    rerender(<TaskCard task={fixtureTask(8)} selected={true} onSelect={onSelect} />);
     expect(button.getAttribute('aria-current')).toBe('true');
   });
 
   it('draws the grip as decoration that cannot take focus', async () => {
-    const { container } = render(<Card card={fixtureCard(8)} selected={false} onSelect={noop} />);
+    const { container } = render(
+      <TaskCard task={fixtureTask(8)} selected={false} onSelect={noop} />,
+    );
     const grip = container.querySelector('svg.grip');
     expect(grip).not.toBeNull();
     expect(grip?.getAttribute('aria-hidden')).toBe('true');

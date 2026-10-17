@@ -1,5 +1,5 @@
 //! The multi-project HTTP surface of `agboard serve`: the project list, the
-//! per-project board and card routes, guard ordering, and the change
+//! per-project board and task routes, guard ordering, and the change
 //! notifications that reach connected browsers.
 //!
 //! Servers listen on port 0 in a temporary data directory. The CLI is run as
@@ -14,7 +14,7 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::Choice;
@@ -95,8 +95,8 @@ fn read_until(server: &Running, path: &str, done: impl Fn(&Value) -> bool) -> Va
     }
 }
 
-fn card(title: &str, assignee: Assignee) -> NewCard {
-    NewCard {
+fn task(title: &str, assignee: Assignee) -> NewTask {
+    NewTask {
         title: title.into(),
         description: BODY.into(),
         assignee,
@@ -349,17 +349,17 @@ fn agboard(home: &Path, args: &[&str]) -> (i32, String, String) {
     )
 }
 
-/// Two projects "alpha" and "beta", each with cards 1 and 2 (card 1 human,
-/// card 2 AI), so the same card number exists in both.
+/// Two projects "alpha" and "beta", each with tasks 1 and 2 (task 1 human,
+/// task 2 AI), so the same task number exists in both.
 fn two_projects() -> (tempfile::TempDir, ProjectId, ProjectId) {
     let home = tempfile::tempdir().unwrap();
     let s = store(home.path());
     let a = s.create_project("alpha", t(0)).unwrap().id;
     let b = s.create_project("beta", t(0)).unwrap().id;
     for id in [&a, &b] {
-        s.create_card(id, card("Human card", Assignee::Human), t(1))
+        s.create_task(id, task("Human task", Assignee::Human), t(1))
             .unwrap();
-        s.create_card(id, card("AI card", Assignee::Ai), t(2))
+        s.create_task(id, task("AI task", Assignee::Ai), t(2))
             .unwrap();
     }
     (home, a, b)
@@ -369,19 +369,19 @@ fn snapshot_json(home: &Path, id: &ProjectId) -> Value {
     let snapshot = store(home).board(id).unwrap();
     json!({
         "version": snapshot.version,
-        "cards": serde_json::to_value(&snapshot.cards).unwrap(),
+        "tasks": serde_json::to_value(&snapshot.tasks).unwrap(),
     })
 }
 
 #[test]
-fn serve_reconciles_existing_completed_cards_and_rechecks_external_task_edits() {
+fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() {
     let home = tempfile::tempdir().unwrap();
     let store = store(home.path());
     let project = store.create_project("auto-done", t(0)).unwrap().id;
     let create = |title: &str| {
-        store.create_card(
+        store.create_task(
             &project,
-            NewCard {
+            NewTask {
                 title: title.into(),
                 description: "---\nacceptance:\n  - id: AC-1\n    text: Works\n    done: false\n---\n\nWork.\n".into(),
                 assignee: Assignee::Ai,
@@ -393,14 +393,14 @@ fn serve_reconciles_existing_completed_cards_and_rechecks_external_task_edits() 
     };
     let existing = create("Already complete");
     let edited = create("Edited while serving");
-    let pending_card = create("Answered while serving");
+    let pending_task = create("Answered while serving");
     store
-        .move_work_card(&project, pending_card.id, Column::Doing, ctx("Start"), t(2))
+        .move_work_task(&project, pending_task.id, Column::Doing, ctx("Start"), t(2))
         .unwrap();
     let request = store
         .request_decision(
             &project,
-            pending_card.id,
+            pending_task.id,
             Actor::Ai,
             "Choose",
             vec![
@@ -435,32 +435,32 @@ fn serve_reconciles_existing_completed_cards_and_rechecks_external_task_edits() 
     let server = Running::start(home.path());
     let board_path = format!("/api/projects/{project}/board");
     let board = server.get(&board_path).json();
-    assert_eq!(board["cards"][0]["cardStatus"], "done");
-    assert_eq!(board["cards"][0]["history"].as_array().unwrap().len(), 2);
+    assert_eq!(board["tasks"][0]["taskStatus"], "done");
+    assert_eq!(board["tasks"][0]["history"].as_array().unwrap().len(), 2);
 
     replace_task_body_preserving_history(&task_path(edited.id), complete);
     let notified = server.request("POST", "/api/notify", None, &[], None);
     assert_eq!(notified.status, 204, "{}", notified.body);
     let board = read_until(&server, &board_path, |board| {
-        board["cards"].as_array().is_some_and(|cards| {
-            cards
+        board["tasks"].as_array().is_some_and(|tasks| {
+            tasks
                 .iter()
-                .any(|card| card["id"] == edited.id && card["cardStatus"] == "done")
+                .any(|task| task["id"] == edited.id && task["taskStatus"] == "done")
         })
     });
-    let edited_json = board["cards"]
+    let edited_json = board["tasks"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|card| card["id"] == edited.id)
+        .find(|task| task["id"] == edited.id)
         .unwrap();
-    assert_eq!(edited_json["cardStatus"], "done");
+    assert_eq!(edited_json["taskStatus"], "done");
     assert_eq!(edited_json["history"].as_array().unwrap().len(), 2);
 
-    replace_task_body_preserving_history(&task_path(pending_card.id), complete);
+    replace_task_body_preserving_history(&task_path(pending_task.id), complete);
     let answer = server.write(
         "POST",
-        &format!("/api/projects/{project}/cards/{}/answer", pending_card.id),
+        &format!("/api/projects/{project}/tasks/{}/answer", pending_task.id),
         Some(
             &json!({
                 "requestId": request,
@@ -471,19 +471,19 @@ fn serve_reconciles_existing_completed_cards_and_rechecks_external_task_edits() 
     );
     assert_eq!(answer.status, 200, "{}", answer.body);
     let board = read_until(&server, &board_path, |board| {
-        board["cards"].as_array().is_some_and(|cards| {
-            cards
+        board["tasks"].as_array().is_some_and(|tasks| {
+            tasks
                 .iter()
-                .any(|card| card["id"] == pending_card.id && card["cardStatus"] == "done")
+                .any(|task| task["id"] == pending_task.id && task["taskStatus"] == "done")
         })
     });
     assert_eq!(
-        board["cards"]
+        board["tasks"]
             .as_array()
             .unwrap()
             .iter()
-            .find(|card| card["id"] == pending_card.id)
-            .unwrap()["cardStatus"],
+            .find(|task| task["id"] == pending_task.id)
+            .unwrap()["taskStatus"],
         "done"
     );
 }
@@ -503,7 +503,7 @@ fn the_list_of_a_new_data_area_is_empty_with_the_empty_catalog_version() {
 }
 
 #[test]
-fn the_list_has_every_project_by_name_with_no_cards_and_the_catalog_version() {
+fn the_list_has_every_project_by_name_with_no_tasks_and_the_catalog_version() {
     let (home, a, b) = two_projects();
     // Created out of name order on purpose.
     let zed = store(home.path()).create_project("Zed", t(3)).unwrap();
@@ -528,7 +528,7 @@ fn the_list_has_every_project_by_name_with_no_cards_and_the_catalog_version() {
         let keys: Vec<&String> = project.as_object().unwrap().keys().collect();
         assert_eq!(keys.len(), 3, "only id, name and createdAt: {project}");
     }
-    assert!(!reply.body.contains("cards"));
+    assert!(!reply.body.contains("tasks"));
 }
 
 #[test]
@@ -581,34 +581,34 @@ fn the_list_needs_an_accepted_host() {
 // ---------------------------------------------------------------- board
 
 #[test]
-fn the_board_has_the_full_history_the_cursor_and_no_next_card_id() {
+fn the_board_has_the_full_history_the_cursor_and_no_next_task_id() {
     let (home, a, _) = two_projects();
     store(home.path())
-        .move_work_card(&a, 2, Column::Doing, ctx("Start"), t(4))
+        .move_work_task(&a, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
     let server = Running::start(home.path());
     let reply = server.get(&format!("/api/projects/{a}/board"));
     assert_eq!(reply.status, 200, "{}", reply.body);
     let body = reply.json();
-    assert!(!reply.body.contains("nextCardId"));
+    assert!(!reply.body.contains("nextTaskId"));
     assert_eq!(body["project"]["id"], a.to_string());
     let version = body["version"].as_str().unwrap();
     assert_eq!(body["cursor"], format!("f1:{a}:{version}"));
-    assert_eq!(body["cards"].as_array().unwrap().len(), 2);
-    assert_eq!(body["cards"][1]["history"].as_array().unwrap().len(), 2);
+    assert_eq!(body["tasks"].as_array().unwrap().len(), 2);
+    assert_eq!(body["tasks"][1]["history"].as_array().unwrap().len(), 2);
 }
 
 #[test]
-fn the_same_card_number_is_read_separately_per_project() {
+fn the_same_task_number_is_read_separately_per_project() {
     let (home, a, b) = two_projects();
     store(home.path())
-        .move_work_card(&a, 2, Column::Doing, ctx("Start"), t(4))
+        .move_work_task(&a, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
     let server = Running::start(home.path());
     let alpha = server.get(&format!("/api/projects/{a}/board")).json();
     let beta = server.get(&format!("/api/projects/{b}/board")).json();
-    assert_eq!(alpha["cards"][1]["cardStatus"], "doing");
-    assert_eq!(beta["cards"][1]["cardStatus"], "todo");
+    assert_eq!(alpha["tasks"][1]["taskStatus"], "doing");
+    assert_eq!(beta["tasks"][1]["taskStatus"], "todo");
     assert_ne!(alpha["cursor"], beta["cursor"]);
 }
 
@@ -630,7 +630,7 @@ fn a_missing_or_malformed_project_and_the_old_routes_are_not_found_or_invalid() 
         server
             .write(
                 "POST",
-                "/api/cards",
+                "/api/tasks",
                 Some(r#"{"title":"x","description":"","assignee":"ai"}"#)
             )
             .status,
@@ -641,21 +641,21 @@ fn a_missing_or_malformed_project_and_the_old_routes_are_not_found_or_invalid() 
 // ---------------------------------------------------------------- writes
 
 #[test]
-fn creating_a_card_in_one_project_leaves_the_other_untouched_and_is_a_human_action() {
+fn creating_a_task_in_one_project_leaves_the_other_untouched_and_is_a_human_action() {
     let (home, a, b) = two_projects();
     let before_b = snapshot_json(home.path(), &b);
     let server = Running::start(home.path());
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards"),
+        &format!("/api/projects/{a}/tasks"),
         Some(r#"{"title":"New","description":"","assignee":"ai"}"#),
     );
     assert_eq!(reply.status, 201, "{}", reply.body);
     let created = reply.json();
-    assert_eq!(created["card"]["id"], 3);
-    assert_eq!(created["card"]["cardStatus"], "todo");
-    assert_eq!(created["card"]["agentStatus"], "idle");
-    assert_eq!(created["card"]["history"][0].as_object().unwrap().len(), 2);
+    assert_eq!(created["task"]["id"], 3);
+    assert_eq!(created["task"]["taskStatus"], "todo");
+    assert_eq!(created["task"]["agentStatus"], "idle");
+    assert_eq!(created["task"]["history"][0].as_object().unwrap().len(), 2);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 }
 
@@ -665,12 +665,12 @@ fn an_actor_sent_by_the_page_is_never_trusted() {
     let server = Running::start(home.path());
     let created = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards"),
+        &format!("/api/projects/{a}/tasks"),
         Some(r#"{"title":"Sneaky","body":"Work","acceptance":[{"id":"AC-1","text":"Still incomplete","done":false}],"assignee":"ai","actor":"ai"}"#),
     );
     assert_eq!(created.status, 201, "{}", created.body);
     assert_eq!(
-        created.json()["card"]["history"][0]
+        created.json()["task"]["history"][0]
             .as_object()
             .unwrap()
             .len(),
@@ -678,11 +678,11 @@ fn an_actor_sent_by_the_page_is_never_trusted() {
     );
     let moved = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/3/move"),
-        Some(r#"{"cardStatus":"doing","actor":"ai","reason":"Start"}"#),
+        &format!("/api/projects/{a}/tasks/3/move"),
+        Some(r#"{"taskStatus":"doing","actor":"ai","reason":"Start"}"#),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
-    let history = moved.json()["card"]["history"].clone();
+    let history = moved.json()["task"]["history"].clone();
     let last = history.as_array().unwrap().last().unwrap().clone();
     assert_eq!(last["reason"], "Start");
     assert_eq!(last.as_object().unwrap().len(), 2);
@@ -690,30 +690,30 @@ fn an_actor_sent_by_the_page_is_never_trusted() {
     // so unmet acceptance does not trigger the agent-only Done guard.
     let moved = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/3/move"),
-        Some(r#"{"cardStatus":"done","actor":"ai","reason":"Finish"}"#),
+        &format!("/api/projects/{a}/tasks/3/move"),
+        Some(r#"{"taskStatus":"done","actor":"ai","reason":"Finish"}"#),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
 }
 
 #[test]
-fn moving_card_one_in_alpha_does_not_move_card_one_in_beta() {
+fn moving_task_one_in_alpha_does_not_move_task_one_in_beta() {
     let (home, a, b) = two_projects();
     let before_b = snapshot_json(home.path(), &b);
     let server = Running::start(home.path());
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/1/move"),
-        Some(r#"{"cardStatus":"doing","reason":"Start"}"#),
+        &format!("/api/projects/{a}/tasks/1/move"),
+        Some(r#"{"taskStatus":"doing","reason":"Start"}"#),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["cardStatus"], "doing");
+    assert_eq!(reply.json()["task"]["taskStatus"], "doing");
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 }
 
 fn pending_request(home: &Path, id: &ProjectId) -> String {
     let s = store(home);
-    s.move_work_card(id, 2, Column::Doing, ctx("Start"), t(4))
+    s.move_work_task(id, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
     let result = s
         .request_decision(
@@ -737,11 +737,11 @@ fn answering_uses_the_request_of_that_project_and_a_wrong_request_changes_nothin
     let before_b = snapshot_json(home.path(), &b);
     let server = Running::start(home.path());
 
-    // beta's request does not answer alpha's card.
+    // beta's request does not answer alpha's task.
     let body = json!({"requestId": request_b, "text": "Go"}).to_string();
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/2/answer"),
+        &format!("/api/projects/{a}/tasks/2/answer"),
         Some(&body),
     );
     assert_eq!(reply.status, 409, "{}", reply.body);
@@ -752,11 +752,11 @@ fn answering_uses_the_request_of_that_project_and_a_wrong_request_changes_nothin
     let body = json!({"requestId": request_a, "text": "Go"}).to_string();
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/2/answer"),
+        &format!("/api/projects/{a}/tasks/2/answer"),
         Some(&body),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["agentStatus"], "idle");
+    assert_eq!(reply.json()["task"]["agentStatus"], "idle");
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 }
 
@@ -765,10 +765,10 @@ fn agent_status_through_http_keeps_the_state_rules() {
     let (home, a, b) = two_projects();
     let before_b = snapshot_json(home.path(), &b);
     let server = Running::start(home.path());
-    // The AI card is still in TODO: an agent state is only allowed in DOING.
+    // The AI task is still in TODO: an agent state is only allowed in DOING.
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/2/agent-status"),
+        &format!("/api/projects/{a}/tasks/2/agent-status"),
         Some(r#"{"agentStatus":"running","reason":"Go"}"#),
     );
     assert_eq!(reply.status, 422, "{}", reply.body);
@@ -781,22 +781,22 @@ fn deleting_in_one_project_leaves_the_other_untouched() {
     let (home, a, b) = two_projects();
     let before_b = snapshot_json(home.path(), &b);
     let server = Running::start(home.path());
-    let archived = server.write("POST", &format!("/api/projects/{a}/cards/1/archive"), None);
+    let archived = server.write("POST", &format!("/api/projects/{a}/tasks/1/archive"), None);
     assert_eq!(archived.status, 200, "{}", archived.body);
-    let reply = server.write("DELETE", &format!("/api/projects/{a}/cards/1"), None);
+    let reply = server.write("DELETE", &format!("/api/projects/{a}/tasks/1"), None);
     assert_eq!(reply.status, 204, "{}", reply.body);
     let ids: Vec<i64> = store(home.path())
         .board(&a)
         .unwrap()
-        .cards
+        .tasks
         .iter()
         .map(|c| c.id)
         .collect();
     assert_eq!(ids, vec![2]);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
-    let again = server.write("DELETE", &format!("/api/projects/{a}/cards/1"), None);
+    let again = server.write("DELETE", &format!("/api/projects/{a}/tasks/1"), None);
     assert_eq!(again.status, 404);
-    assert_eq!(again.code(), "card_not_found");
+    assert_eq!(again.code(), "task_not_found");
 }
 
 #[test]
@@ -814,15 +814,15 @@ fn a_write_to_a_project_that_was_deleted_is_404_and_never_lands_in_another() {
     for (method, path, body) in [
         (
             "POST",
-            format!("/api/projects/{a}/cards"),
+            format!("/api/projects/{a}/tasks"),
             Some(r#"{"title":"Late","description":"","assignee":"ai"}"#),
         ),
         (
             "POST",
-            format!("/api/projects/{a}/cards/1/move"),
-            Some(r#"{"cardStatus":"doing","reason":"Late"}"#),
+            format!("/api/projects/{a}/tasks/1/move"),
+            Some(r#"{"taskStatus":"doing","reason":"Late"}"#),
         ),
-        ("DELETE", format!("/api/projects/{a}/cards/1"), None),
+        ("DELETE", format!("/api/projects/{a}/tasks/1"), None),
     ] {
         let reply = server.write(method, &path, body);
         assert_eq!(reply.status, 404, "{method} {path}: {}", reply.body);
@@ -849,7 +849,7 @@ fn renaming_a_project_keeps_the_same_id_working() {
     assert_eq!(board["project"]["id"], a.to_string());
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards"),
+        &format!("/api/projects/{a}/tasks"),
         Some(r#"{"title":"After rename","description":"","assignee":"ai"}"#),
     );
     assert_eq!(reply.status, 201, "{}", reply.body);
@@ -862,25 +862,25 @@ fn write_routes() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
     vec![
         (
             "POST",
-            "/cards",
+            "/tasks",
             Some(r#"{"title":"x","description":"","assignee":"ai"}"#),
         ),
         (
             "POST",
-            "/cards/1/move",
-            Some(r#"{"cardStatus":"doing","reason":"r"}"#),
+            "/tasks/1/move",
+            Some(r#"{"taskStatus":"doing","reason":"r"}"#),
         ),
         (
             "POST",
-            "/cards/2/agent-status",
+            "/tasks/2/agent-status",
             Some(r#"{"agentStatus":"pending","reason":"r"}"#),
         ),
         (
             "POST",
-            "/cards/2/answer",
+            "/tasks/2/answer",
             Some(r#"{"requestId":"x","text":"r"}"#),
         ),
-        ("DELETE", "/cards/1", None),
+        ("DELETE", "/tasks/1", None),
     ]
 }
 
@@ -947,7 +947,7 @@ fn a_guard_violation_is_403_for_existing_and_missing_projects_alike() {
 fn the_guard_runs_before_the_body_is_read() {
     let (home, a, _) = two_projects();
     let server = Running::start(home.path());
-    let path = format!("/api/projects/{a}/cards");
+    let path = format!("/api/projects/{a}/tasks");
     let big = format!(
         r#"{{"title":"{}","description":"","assignee":"ai"}}"#,
         "x".repeat(70 * 1024)
@@ -967,7 +967,7 @@ fn a_broken_body_is_400_a_too_large_one_413_and_a_wrong_value_422() {
     let (home, a, _) = two_projects();
     let before = snapshot_json(home.path(), &a);
     let server = Running::start(home.path());
-    let path = format!("/api/projects/{a}/cards");
+    let path = format!("/api/projects/{a}/tasks");
 
     let reply = server.write("POST", &path, Some("{broken"));
     assert_eq!(reply.status, 400, "{}", reply.body);
@@ -1006,13 +1006,13 @@ fn a_busy_database_is_503() {
     .unwrap();
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards"),
+        &format!("/api/projects/{a}/tasks"),
         Some(r#"{"title":"Blocked","description":"","assignee":"ai"}"#),
     );
     assert_eq!(reply.status, 503, "{}", reply.body);
     assert_eq!(reply.code(), "database_busy");
     drop(_held);
-    assert_eq!(store(home.path()).board(&a).unwrap().cards.len(), 2);
+    assert_eq!(store(home.path()).board(&a).unwrap().tasks.len(), 2);
 }
 
 // ---------------------------------------------------------------- notifications
@@ -1041,7 +1041,7 @@ fn a_cli_change_reaches_an_open_event_stream_after_ready() {
     let list = server.get("/api/projects").json();
     let alpha = list["projects"][0]["id"].as_str().unwrap().to_string();
     let board = server.get(&format!("/api/projects/{alpha}/board")).json();
-    assert_eq!(board["cards"].as_array().unwrap().len(), 3);
+    assert_eq!(board["tasks"].as_array().unwrap().len(), 3);
 }
 
 #[test]
@@ -1099,13 +1099,13 @@ fn changes_that_do_not_change_anything_send_nothing() {
     // HTTP: a no-op move, a refused request and a rolled-back write.
     let moved = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/1/move"),
-        Some(r#"{"cardStatus":"todo","reason":"Same"}"#),
+        &format!("/api/projects/{a}/tasks/1/move"),
+        Some(r#"{"taskStatus":"todo","reason":"Same"}"#),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
     let refused = server.request(
         "POST",
-        &format!("/api/projects/{a}/cards"),
+        &format!("/api/projects/{a}/tasks"),
         Some(r#"{"title":"x","description":"","assignee":"ai"}"#),
         &[],
         Some("application/json"),
@@ -1113,13 +1113,13 @@ fn changes_that_do_not_change_anything_send_nothing() {
     assert_eq!(refused.status, 403);
     let invalid = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/2/agent-status"),
+        &format!("/api/projects/{a}/tasks/2/agent-status"),
         Some(r#"{"agentStatus":"running","reason":"Go"}"#),
     );
     assert_eq!(invalid.status, 422);
     let wrong_request = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/2/answer"),
+        &format!("/api/projects/{a}/tasks/2/answer"),
         Some(r#"{"requestId":"nope","text":"Go"}"#),
     );
     assert_eq!(wrong_request.status, 409);
@@ -1133,22 +1133,22 @@ fn each_confirmed_http_change_is_notified() {
     let mut events = server.events();
     let created = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards"),
+        &format!("/api/projects/{a}/tasks"),
         Some(r#"{"title":"New","description":"","assignee":"ai"}"#),
     );
     assert_eq!(created.status, 201);
     assert!(events.changed());
     let moved = server.write(
         "POST",
-        &format!("/api/projects/{a}/cards/1/move"),
-        Some(r#"{"cardStatus":"doing","reason":"Start"}"#),
+        &format!("/api/projects/{a}/tasks/1/move"),
+        Some(r#"{"taskStatus":"doing","reason":"Start"}"#),
     );
     assert_eq!(moved.status, 200);
     assert!(events.wait_for("event: changed", Duration::from_secs(3)));
-    let archived = server.write("POST", &format!("/api/projects/{a}/cards/3/archive"), None);
+    let archived = server.write("POST", &format!("/api/projects/{a}/tasks/3/archive"), None);
     assert_eq!(archived.status, 200, "{}", archived.body);
     assert!(events.wait_for("event: changed", Duration::from_secs(3)));
-    let deleted = server.write("DELETE", &format!("/api/projects/{a}/cards/3"), None);
+    let deleted = server.write("DELETE", &format!("/api/projects/{a}/tasks/3"), None);
     assert_eq!(deleted.status, 204);
     let deadline = Instant::now() + Duration::from_secs(3);
     while events.changed_count() < 4 && Instant::now() < deadline {
@@ -1198,12 +1198,12 @@ fn serving_needs_no_project_and_stopping_removes_serve_json() {
 
 // ---------------------------------------------------------------- drafts and editing
 
-fn draft_card(home: &Path, project: &ProjectId, id: i64) {
+fn draft_task(home: &Path, project: &ProjectId, id: i64) {
     store(home).set_draft(project, id, true, t(9)).unwrap();
 }
 
-fn card_json(home: &Path, project: &ProjectId, id: i64) -> Value {
-    snapshot_json(home, project)["cards"]
+fn task_json(home: &Path, project: &ProjectId, id: i64) -> Value {
+    snapshot_json(home, project)["tasks"]
         .as_array()
         .unwrap()
         .iter()
@@ -1215,10 +1215,10 @@ fn card_json(home: &Path, project: &ProjectId, id: i64) -> Value {
 #[test]
 fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
     let (home, a, _) = two_projects();
-    draft_card(home.path(), &a, 1);
+    draft_task(home.path(), &a, 1);
     let server = Running::start(home.path());
     let mut events = server.events();
-    let path = format!("/api/projects/{a}/cards/1");
+    let path = format!("/api/projects/{a}/tasks/1");
     let before_revision = snapshot_json(home.path(), &a)["version"]
         .as_str()
         .unwrap()
@@ -1226,8 +1226,8 @@ fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
 
     let reply = server.write("PATCH", &path, Some(r#"{"title":"New title"}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["title"], "New title");
-    assert_eq!(reply.json()["card"]["isDraft"], true);
+    assert_eq!(reply.json()["task"]["title"], "New title");
+    assert_eq!(reply.json()["task"]["isDraft"], true);
     assert!(events.changed());
     let after = snapshot_json(home.path(), &a);
     assert_ne!(after["version"].as_str().unwrap(), before_revision);
@@ -1242,11 +1242,11 @@ fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(
-        reply.json()["card"]["body"],
+        reply.json()["task"]["body"],
         format!("{head}Line1\nLine2{tail}")
     );
     assert!(
-        reply.json()["card"]["description"]
+        reply.json()["task"]["description"]
             .as_str()
             .unwrap()
             .contains("history:")
@@ -1267,9 +1267,9 @@ fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
 #[test]
 fn patch_with_finalize_saves_and_confirms_in_one_operation() {
     let (home, a, _) = two_projects();
-    draft_card(home.path(), &a, 1);
+    draft_task(home.path(), &a, 1);
     let server = Running::start(home.path());
-    let path = format!("/api/projects/{a}/cards/1");
+    let path = format!("/api/projects/{a}/tasks/1");
     let reply = server.write(
         "PATCH",
         &path,
@@ -1279,32 +1279,32 @@ fn patch_with_finalize_saves_and_confirms_in_one_operation() {
         ),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["isDraft"], false);
-    let stored = card_json(home.path(), &a, 1);
+    assert_eq!(reply.json()["task"]["isDraft"], false);
+    let stored = task_json(home.path(), &a, 1);
     assert_eq!(stored["isDraft"], false);
     assert_eq!(stored["title"], "Final");
     assert_eq!(stored["body"], body_with("Body"));
     assert!(stored["description"].as_str().unwrap().contains("history:"));
-    // A confirmed card is no longer editable.
+    // A confirmed task is no longer editable.
     let reply = server.write("PATCH", &path, Some(r#"{"title":"Again"}"#));
     assert_eq!(reply.status, 409, "{}", reply.body);
-    assert_eq!(reply.code(), "card_not_draft");
-    assert_eq!(card_json(home.path(), &a, 1)["title"], "Final");
+    assert_eq!(reply.code(), "task_not_draft");
+    assert_eq!(task_json(home.path(), &a, 1)["title"], "Final");
 }
 
 #[test]
-fn patch_of_a_card_that_is_not_a_draft_is_409_and_changes_nothing() {
+fn patch_of_a_task_that_is_not_a_draft_is_409_and_changes_nothing() {
     let (home, a, _) = two_projects();
     let before = snapshot_json(home.path(), &a);
     let server = Running::start(home.path());
     let mut events = server.events();
     let reply = server.write(
         "PATCH",
-        &format!("/api/projects/{a}/cards/1"),
+        &format!("/api/projects/{a}/tasks/1"),
         Some(r#"{"title":"X"}"#),
     );
     assert_eq!(reply.status, 409, "{}", reply.body);
-    assert_eq!(reply.code(), "card_not_draft");
+    assert_eq!(reply.code(), "task_not_draft");
     assert_eq!(snapshot_json(home.path(), &a), before);
     assert!(events.stays_quiet());
 }
@@ -1312,9 +1312,9 @@ fn patch_of_a_card_that_is_not_a_draft_is_409_and_changes_nothing() {
 #[test]
 fn patch_description_limit_is_50000_characters_and_the_body_limit_1_mib() {
     let (home, a, _) = two_projects();
-    draft_card(home.path(), &a, 1);
+    draft_task(home.path(), &a, 1);
     let server = Running::start(home.path());
-    let path = format!("/api/projects/{a}/cards/1");
+    let path = format!("/api/projects/{a}/tasks/1");
 
     // 50,000 Japanese characters are about 150 KB.
     let ok = json!({"description": body_of(50_000)}).to_string();
@@ -1332,7 +1332,7 @@ fn patch_description_limit_is_50000_characters_and_the_body_limit_1_mib() {
     assert_eq!(reply.status, 422);
     assert_eq!(reply.code(), "invalid_value");
     assert_eq!(
-        card_json(home.path(), &a, 1)["body"]
+        task_json(home.path(), &a, 1)["body"]
             .as_str()
             .unwrap()
             .chars()
@@ -1347,7 +1347,7 @@ fn patch_description_limit_is_50000_characters_and_the_body_limit_1_mib() {
 
     // Registration takes the same size.
     let create = json!({"title":"Long","description":body_of(50_000),"assignee":"ai"}).to_string();
-    let reply = server.write("POST", &format!("/api/projects/{a}/cards"), Some(&create));
+    let reply = server.write("POST", &format!("/api/projects/{a}/tasks"), Some(&create));
     assert_eq!(
         reply.status,
         201,
@@ -1359,10 +1359,10 @@ fn patch_description_limit_is_50000_characters_and_the_body_limit_1_mib() {
 #[test]
 fn patch_rejects_bad_bodies_without_changing_anything() {
     let (home, a, _) = two_projects();
-    draft_card(home.path(), &a, 1);
+    draft_task(home.path(), &a, 1);
     let before = snapshot_json(home.path(), &a);
     let server = Running::start(home.path());
-    let path = format!("/api/projects/{a}/cards/1");
+    let path = format!("/api/projects/{a}/tasks/1");
 
     let reply = server.write("PATCH", &path, Some("{broken"));
     assert_eq!(reply.status, 400);
@@ -1385,21 +1385,21 @@ fn patch_rejects_bad_bodies_without_changing_anything() {
 
     let reply = server.write(
         "PATCH",
-        &format!("/api/projects/{a}/cards/99"),
+        &format!("/api/projects/{a}/tasks/99"),
         Some(r#"{"title":"x"}"#),
     );
     assert_eq!(reply.status, 404);
-    assert_eq!(reply.code(), "card_not_found");
+    assert_eq!(reply.code(), "task_not_found");
     assert_eq!(snapshot_json(home.path(), &a), before);
 }
 
 #[test]
-fn put_draft_toggles_idle_cards_and_records_history_with_markdown_time() {
+fn put_draft_toggles_idle_tasks_and_records_history_with_markdown_time() {
     let (home, a, _) = two_projects();
     let server = Running::start(home.path());
     let mut events = server.events();
-    let path = format!("/api/projects/{a}/cards/1/draft");
-    let before = card_json(home.path(), &a, 1);
+    let path = format!("/api/projects/{a}/tasks/1/draft");
+    let before = task_json(home.path(), &a, 1);
     let revision = snapshot_json(home.path(), &a)["version"]
         .as_str()
         .unwrap()
@@ -1407,9 +1407,9 @@ fn put_draft_toggles_idle_cards_and_records_history_with_markdown_time() {
 
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["isDraft"], true);
+    assert_eq!(reply.json()["task"]["isDraft"], true);
     assert!(events.changed());
-    let after = card_json(home.path(), &a, 1);
+    let after = task_json(home.path(), &a, 1);
     let task_dir = home
         .path()
         .join("shared/projects")
@@ -1444,7 +1444,7 @@ fn put_draft_toggles_idle_cards_and_records_history_with_markdown_time() {
     // A real draft change rewrites TASK.md and appends a history event.
     let added = after["history"].as_array().unwrap();
     assert_eq!(added.len(), before["history"].as_array().unwrap().len() + 1);
-    assert_eq!(added.last().unwrap()["reason"], "Marked card as draft.");
+    assert_eq!(added.last().unwrap()["reason"], "Marked task as draft.");
     // The flag is part of task.json, so the content version moves.
     assert_ne!(
         snapshot_json(home.path(), &a)["version"]
@@ -1463,7 +1463,7 @@ fn put_draft_toggles_idle_cards_and_records_history_with_markdown_time() {
 
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":false}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["isDraft"], false);
+    assert_eq!(reply.json()["task"]["isDraft"], false);
 
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true,"x":1}"#));
     assert_eq!(reply.status, 400, "{}", reply.body);
@@ -1471,23 +1471,23 @@ fn put_draft_toggles_idle_cards_and_records_history_with_markdown_time() {
     assert_eq!(reply.status, 422, "{}", reply.body);
     let reply = server.write(
         "PUT",
-        &format!("/api/projects/{a}/cards/99/draft"),
+        &format!("/api/projects/{a}/tasks/99/draft"),
         Some(r#"{"isDraft":true}"#),
     );
     assert_eq!(reply.status, 404);
 }
 
 #[test]
-fn put_draft_refuses_running_but_allows_pending_cards() {
+fn put_draft_refuses_running_but_allows_pending_tasks() {
     let (home, a, _) = two_projects();
     let s = store(home.path());
-    s.move_work_card(&a, 2, Column::Doing, ctx("Start"), t(3))
+    s.move_work_task(&a, 2, Column::Doing, ctx("Start"), t(3))
         .unwrap();
     s.set_agent_status(&a, 2, RunState::Running, ctx("Go"), None, t(4))
         .unwrap();
     let before = snapshot_json(home.path(), &a);
     let server = Running::start(home.path());
-    let path = format!("/api/projects/{a}/cards/2/draft");
+    let path = format!("/api/projects/{a}/tasks/2/draft");
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
     assert_eq!(reply.status, 409, "{}", reply.body);
     assert_eq!(reply.code(), "invalid_state_for_draft");
@@ -1504,7 +1504,7 @@ fn put_draft_refuses_running_but_allows_pending_cards() {
     let before_pending = snapshot_json(home.path(), &a);
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["isDraft"], true);
+    assert_eq!(reply.json()["task"]["isDraft"], true);
     assert_ne!(
         snapshot_json(home.path(), &a)["version"],
         before_pending["version"]
@@ -1513,22 +1513,22 @@ fn put_draft_refuses_running_but_allows_pending_cards() {
 }
 
 #[test]
-fn a_draft_card_can_be_moved_and_deleted_by_the_user_but_not_driven_by_the_ai_route() {
+fn a_draft_task_can_be_moved_and_deleted_by_the_user_but_not_driven_by_the_ai_route() {
     let (home, a, _) = two_projects();
-    draft_card(home.path(), &a, 2);
-    draft_card(home.path(), &a, 1);
+    draft_task(home.path(), &a, 2);
+    draft_task(home.path(), &a, 1);
     let server = Running::start(home.path());
-    let base = format!("/api/projects/{a}/cards");
+    let base = format!("/api/projects/{a}/tasks");
 
     let reply = server.write(
         "POST",
         &format!("{base}/2/move"),
-        Some(r#"{"cardStatus":"doing","actor":"human","reason":"Start"}"#),
+        Some(r#"{"taskStatus":"doing","actor":"human","reason":"Start"}"#),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["card"]["cardStatus"], "doing");
-    assert_eq!(reply.json()["card"]["agentStatus"], "idle");
-    assert_eq!(reply.json()["card"]["isDraft"], true);
+    assert_eq!(reply.json()["task"]["taskStatus"], "doing");
+    assert_eq!(reply.json()["task"]["agentStatus"], "idle");
+    assert_eq!(reply.json()["task"]["isDraft"], true);
 
     let before = snapshot_json(home.path(), &a);
     let reply = server.write(
@@ -1537,7 +1537,7 @@ fn a_draft_card_can_be_moved_and_deleted_by_the_user_but_not_driven_by_the_ai_ro
         Some(r#"{"agentStatus":"running","actor":"ai","reason":"Go"}"#),
     );
     assert_eq!(reply.status, 409, "{}", reply.body);
-    assert_eq!(reply.code(), "card_is_draft");
+    assert_eq!(reply.code(), "task_is_draft");
     assert_eq!(snapshot_json(home.path(), &a), before);
 
     let headers = server.page_headers(&server.token());
@@ -1550,7 +1550,7 @@ fn a_draft_card_can_be_moved_and_deleted_by_the_user_but_not_driven_by_the_ai_ro
 #[test]
 fn patch_and_put_draft_need_the_write_guard_before_anything_else() {
     let (home, a, _) = two_projects();
-    draft_card(home.path(), &a, 1);
+    draft_task(home.path(), &a, 1);
     let before = snapshot_json(home.path(), &a);
     let server = Running::start(home.path());
     let mut events = server.events();
@@ -1565,10 +1565,10 @@ fn patch_and_put_draft_need_the_write_guard_before_anything_else() {
     bad_token[2].1 = wrong;
     let attempts: [Vec<(String, String)>; 4] = [Vec::new(), bad_origin, bad_site, bad_token];
     for (method, suffix, body) in [
-        ("PATCH", "cards/1", r#"{"title":"Hacked"}"#),
-        ("PATCH", "cards/99", r#"{"title":"Hacked"}"#),
-        ("PUT", "cards/1/draft", r#"{"isDraft":false}"#),
-        ("PUT", "cards/99/draft", r#"{"isDraft":false}"#),
+        ("PATCH", "tasks/1", r#"{"title":"Hacked"}"#),
+        ("PATCH", "tasks/99", r#"{"title":"Hacked"}"#),
+        ("PUT", "tasks/1/draft", r#"{"isDraft":false}"#),
+        ("PUT", "tasks/99/draft", r#"{"isDraft":false}"#),
     ] {
         for headers in &attempts {
             let reply = server.request(

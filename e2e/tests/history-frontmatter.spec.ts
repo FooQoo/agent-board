@@ -31,11 +31,11 @@ let serve: MonitorServe | undefined;
 
 interface HistoryEvent { at: string; reason: string; }
 
-interface CardView {
+interface TaskView {
 	id: number;
 	title: string;
-	cardStatus: string;
-	cardStatusChangedAt: string;
+	taskStatus: string;
+	taskStatusChangedAt: string;
 	agentStatus: string;
 	isDraft: boolean;
 	pendingRequestId: string | null;
@@ -72,17 +72,17 @@ function cliOk(args: string[]): string {
 	return result.stdout;
 }
 
-function show(id: number): CardView {
-	return JSON.parse(cliOk(['show', String(id)]).trim()).card as CardView;
+function show(id: number): TaskView {
+	return JSON.parse(cliOk(['show', String(id)]).trim()).task as TaskView;
 }
 
-function snapshot(): { cursor: string; cards: CardView[]; problems: { file: string; field: string; reason: string }[] } {
+function snapshot(): { cursor: string; tasks: TaskView[]; problems: { file: string; field: string; reason: string }[] } {
 	return JSON.parse(cliOk(['snapshot']).trim());
 }
 
-function addCard(title: string, description = 'History E2E body.', assignee: 'ai' | 'human' = 'ai'): number {
+function addTask(title: string, description = 'History E2E body.', assignee: 'ai' | 'human' = 'ai'): number {
 	const result = JSON.parse(cliOk(['add', title, '--desc', description, '--assignee', assignee, '--actor', 'human']));
-	return result.card.id as number;
+	return result.task.id as number;
 }
 
 function taskFile(id: number): string {
@@ -94,7 +94,7 @@ function taskJsonFile(id: number): string {
 }
 
 function details(page: Page) {
-	return page.getByRole('complementary', { name: 'Card details' });
+	return page.getByRole('complementary', { name: 'Task details' });
 }
 
 async function openPc(page: Page): Promise<void> {
@@ -121,7 +121,7 @@ function beginWait(cursor: string): { child: ChildProcess; result: Promise<{ cod
 }
 
 async function routeMonitorAnswer(page: Page): Promise<void> {
-	await page.route('**/monitor/api/projects/*/cards/*/answer', async (route) => {
+	await page.route('**/monitor/api/projects/*/tasks/*/answer', async (route) => {
 		const target = route.request().url();
 		const token = await page.locator('meta[name="agboard-monitor-token"]').getAttribute('content');
 		const upstream = await page.request.post(target, {
@@ -154,17 +154,17 @@ test.afterAll(async () => {
 	if (home) removeMonitorHome(home);
 });
 
-test('new card history survives restart and appears in PC and mobile details', async ({ page }) => {
-	const id = addCard('History after restart');
+test('new task history survives restart and appears in PC and mobile details', async ({ page }) => {
+	const id = addTask('History after restart');
 	cliOk(['mv', String(id), 'doing', '--actor', 'human', '--reason', 'Start the real task']);
-	let card = show(id);
-	expect(card.history).toHaveLength(2);
-	for (const event of card.history) expect(Object.keys(event).sort()).toEqual(['at', 'reason']);
-	expect(card.history.at(-1)).toMatchObject({
+	let task = show(id);
+	expect(task.history).toHaveLength(2);
+	for (const event of task.history) expect(Object.keys(event).sort()).toEqual(['at', 'reason']);
+	expect(task.history.at(-1)).toMatchObject({
 		reason: 'Start the real task',
 	});
 	const metadata = JSON.parse(readFileSync(taskJsonFile(id), 'utf8')) as Record<string, unknown>;
-	expect(metadata).toMatchObject({ formatVersion: 3, cardStatus: 'doing' });
+	expect(metadata).toMatchObject({ formatVersion: 1, taskStatus: 'doing' });
 	expect(metadata).not.toHaveProperty('history');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('history:');
 
@@ -178,17 +178,17 @@ test('new card history survives restart and appears in PC and mobile details', a
 
 	await page.setViewportSize({ width: 375, height: 812 });
 	await page.goto(`http://127.0.0.1:${remotePort}/monitor/`);
-	const monitorCard = page.getByRole('article', { name: new RegExp(`History after restart`) });
-	await monitorCard.getByRole('button', { name: 'History after restart', exact: true }).click();
+	const monitorTask = page.getByRole('article', { name: new RegExp(`History after restart`) });
+	await monitorTask.getByRole('button', { name: 'History after restart', exact: true }).click();
 	const drawer = page.getByRole('dialog', { name: 'History after restart' });
 	await drawer.getByRole('tab', { name: 'History', exact: true }).click();
 	await expect(drawer.getByRole('tabpanel')).toContainText('Start the real task');
-	card = show(id);
-	expect(card.history).toHaveLength(2);
+	task = show(id);
+	expect(task.history).toHaveLength(2);
 });
 
 test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer in show', async ({ page }) => {
-	const id = addCard('Pending history answer');
+	const id = addTask('Pending history answer');
 	cliOk(['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Begin review']);
 	const request = {
 		question: 'Which release should ship?',
@@ -209,22 +209,22 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	await article.getByRole('radio', { name: 'Plan B' }).check();
 	await article.getByRole('textbox', { name: 'Your answer' }).fill('Ship the stable release.');
 	const answerRequest = page.waitForResponse((response) =>
-		response.url().includes(`/cards/${id}/answer`) && response.request().method() === 'POST');
+		response.url().includes(`/tasks/${id}/answer`) && response.request().method() === 'POST');
 	await article.getByRole('button', { name: 'Send', exact: true }).click();
 	expect((await answerRequest).status()).toBe(200);
 	await expect(article.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
 
 	const waited = await waiting.result;
 	expect(waited.code, waited.stderr).toBe(0);
-	const waitSnapshot = JSON.parse(waited.stdout) as { cursor: string; cards: CardView[] };
+	const waitSnapshot = JSON.parse(waited.stdout) as { cursor: string; tasks: TaskView[] };
 	expect(waitSnapshot.cursor).not.toBe(pendingCursor);
-	const card = show(id);
-	expect(card.agentStatus).toBe('idle');
-	expect(card.history.at(-1)).toMatchObject({ reason: expect.stringContaining('Ship the stable release.') });
+	const task = show(id);
+	expect(task.agentStatus).toBe('idle');
+	expect(task.history.at(-1)).toMatchObject({ reason: expect.stringContaining('Ship the stable release.') });
 	const metadata = JSON.parse(readFileSync(taskJsonFile(id), 'utf8'));
 	expect(metadata.pendingRequest).toBeNull();
 	expect(metadata.requestAnswers.at(-1)).toMatchObject({ requestId, actor: 'human', choiceId: 'b', choiceLabel: 'Plan B', text: 'Ship the stable release.' });
-	expect(card.history.at(-1)?.reason).toContain('Plan B');
+	expect(task.history.at(-1)?.reason).toContain('Plan B');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('Ship the stable release.');
 	const stale = cli(['state', String(id), 'idle', '--actor', 'human', '--request', requestId!, '--reason', 'Late answer', '--json']);
 	expect(stale.code).not.toBe(0);
@@ -235,71 +235,71 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 });
 
 test('saving a body edit after a concurrent lane change keeps the newest event and CLI replacements keep history', async ({ page }) => {
-	const id = addCard('Concurrent edit history', '## Work\n\nOriginal body.');
+	const id = addTask('Concurrent edit history', '## Work\n\nOriginal body.');
 	await openPc(page);
 	await page.getByRole('button', { name: new RegExp(`^#${id} .*Concurrent edit history`) }).click();
 	const panel = details(page);
 	await panel.getByRole('button', { name: 'Make draft' }).click();
-	await panel.getByRole('button', { name: 'Edit card', exact: true }).click();
-	const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit card`) });
+	await panel.getByRole('button', { name: 'Edit task', exact: true }).click();
+	const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
 	const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
 	await expect(editor.getByText('Original body.')).toBeVisible();
 	await editor.getByText('Original body.').click();
 	await page.keyboard.press('End');
 	await page.keyboard.type('\nSaved after status update.');
-	const moved = await page.evaluate(async ({ cardId, projectId }) => {
+	const moved = await page.evaluate(async ({ taskId, projectId }) => {
 		const token = document.querySelector('meta[name="agboard-token"]')?.getAttribute('content') ?? '';
-		const response = await fetch(`/api/projects/${projectId}/cards/${cardId}/move`, {
+		const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}/move`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': token },
-			body: JSON.stringify({ cardStatus: 'doing', reason: 'Concurrent lane update' }),
+			body: JSON.stringify({ taskStatus: 'doing', reason: 'Concurrent lane update' }),
 		});
 		return response.status;
-	}, { cardId: id, projectId: pid });
+	}, { taskId: id, projectId: pid });
 	expect(moved).toBe(200);
 	await dialog.getByRole('button', { name: 'Save', exact: true }).click();
 	await expect(dialog).toHaveCount(0);
-	let card = show(id);
-	expect(card.body).toContain('Saved after status update.');
-	expect(card.cardStatus).toBe('doing');
-	expect(card.history.at(-1)).toMatchObject({ reason: 'Concurrent lane update' });
-	expect(card.history.filter((event) => event.reason === 'Concurrent lane update')).toHaveLength(1);
+	let task = show(id);
+	expect(task.body).toContain('Saved after status update.');
+	expect(task.taskStatus).toBe('doing');
+	expect(task.history.at(-1)).toMatchObject({ reason: 'Concurrent lane update' });
+	expect(task.history.filter((event) => event.reason === 'Concurrent lane update')).toHaveLength(1);
 	await panel.getByRole('button', { name: 'Finalize', exact: true }).click();
 
 	const replacement = path.join(home, 'replacement.md');
 	replaceFileAtomically(replacement, '## Work\n\nCLI replacement without a history field.\n');
 	cliOk(['edit', String(id), '--desc-file', replacement]);
-	card = show(id);
-	expect(card.body).toContain('CLI replacement without a history field.');
-	expect(card.history).toHaveLength(4);
-	expect(card.history.some((event) => event.reason === 'Concurrent lane update')).toBe(true);
-	expect(card.history.at(-1)?.reason).toContain('draft');
+	task = show(id);
+	expect(task.body).toContain('CLI replacement without a history field.');
+	expect(task.history).toHaveLength(4);
+	expect(task.history.some((event) => event.reason === 'Concurrent lane update')).toBe(true);
+	expect(task.history.at(-1)?.reason).toContain('draft');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('Concurrent lane update');
 });
 
 test('auto-Done is recorded once, and archive/restore retain their history in the archive screen', async ({ page }) => {
-	const id = addCard('Automatic completion history', '---\nacceptance:\n  - id: AC-1\n    text: All work is complete\n    done: false\n---\n\nComplete this task.');
+	const id = addTask('Automatic completion history', '---\nacceptance:\n  - id: AC-1\n    text: All work is complete\n    done: false\n---\n\nComplete this task.');
 	cliOk(['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start completed work']);
 	const file = taskFile(id);
 	const original = readFileSync(file, 'utf8');
 	const completed = original.replace('done: false', 'done: true');
 	expect(completed).not.toBe(original);
 	replaceFileAtomically(file, completed);
-	await expect.poll(() => show(id).cardStatus).toBe('done');
-	let card = show(id);
-	const automaticDone = card.history.filter((event) =>
+	await expect.poll(() => show(id).taskStatus).toBe('done');
+	let task = show(id);
+	const automaticDone = task.history.filter((event) =>
 		event.reason.includes('All acceptance conditions are complete.'));
 	expect(automaticDone).toHaveLength(1);
-	const afterDone = card.history.length;
+	const afterDone = task.history.length;
 	replaceFileAtomically(file, readFileSync(file, 'utf8'));
 	await page.waitForTimeout(300);
-	card = show(id);
-	expect(card.history).toHaveLength(afterDone);
+	task = show(id);
+	expect(task.history).toHaveLength(afterDone);
 
 	await openPc(page);
 	await page.getByRole('button', { name: new RegExp(`^#${id} .*Automatic completion history`) }).click();
 	const panel = details(page);
-	await panel.getByRole('button', { name: 'Archive card' }).click();
+	await panel.getByRole('button', { name: 'Archive task' }).click();
 	await panel.getByRole('group', { name: new RegExp(`Archive #${id}`) }).getByRole('button', { name: 'Archive', exact: true }).click();
 	await page.getByRole('banner').getByRole('button', { name: 'Archive', exact: true }).click();
 	const archived = page.locator('.archive-row > button').filter({ hasText: 'Automatic completion history' });
@@ -310,14 +310,14 @@ test('auto-Done is recorded once, and archive/restore retain their history in th
 	await expect(panel.getByRole('tabpanel')).toContainText('All acceptance conditions are complete.');
 	await panel.getByRole('button', { name: 'Restore', exact: true }).click();
 	await expect.poll(() => show(id).archivedAt).toBeNull();
-	card = show(id);
-	expect(card.history.filter((event) => event.reason.includes('Archived'))).toHaveLength(1);
-	expect(card.history.filter((event) => event.reason.includes('Restored'))).toHaveLength(1);
+	task = show(id);
+	expect(task.history.filter((event) => event.reason.includes('Archived'))).toHaveLength(1);
+	expect(task.history.filter((event) => event.reason.includes('Restored'))).toHaveLength(1);
 	expect(readFileSync(file, 'utf8')).toContain('Restored');
 });
 
 test('direct TASK.md edits advance watch and wait; invalid history stays visible and rejects writes unchanged', async ({ page }) => {
-	const id = addCard('Direct history edits', 'Before external edit.');
+	const id = addTask('Direct history edits', 'Before external edit.');
 	await openPc(page);
 	const before = snapshot();
 	const wait = beginWait(before.cursor);
@@ -325,7 +325,7 @@ test('direct TASK.md edits advance watch and wait; invalid history stays visible
 	replaceTaskBodyPreservingFrontmatter(taskFile(id), 'After external edit.');
 	const waited = await wait.result;
 	expect(waited.code, waited.stderr).toBe(0);
-	const next = JSON.parse(waited.stdout) as { cursor: string; cards: CardView[] };
+	const next = JSON.parse(waited.stdout) as { cursor: string; tasks: TaskView[] };
 	expect(next.cursor).not.toBe(before.cursor);
 	await expect.poll(() => show(id).body).toContain('After external edit.');
 	await page.reload();
@@ -346,20 +346,20 @@ test('direct TASK.md edits advance watch and wait; invalid history stays visible
 	expect(broken.history).toEqual([]);
 });
 
-function showFromSnapshot(id: number): CardView {
-	const card = snapshot().cards.find((item) => item.id === id);
-	if (!card) throw new Error(`card ${id} is missing from lenient snapshot`);
-	return card;
+function showFromSnapshot(id: number): TaskView {
+	const task = snapshot().tasks.find((item) => item.id === id);
+	if (!task) throw new Error(`task ${id} is missing from lenient snapshot`);
+	return task;
 }
 
-for (const version of [1, 2]) test(`version-${version} task files are refused without changing any bytes`, async () => {
-	const id = addCard('Unsupported old task');
+for (const version of [0, 2, 3]) test(`version-${version} task files are refused without changing any bytes`, async () => {
+	const id = addTask('Unsupported old task');
 	const metadataFile = taskJsonFile(id);
 	const metadata = JSON.parse(readFileSync(metadataFile, 'utf8')) as Record<string, unknown>;
 	replaceFileAtomically(metadataFile, `${JSON.stringify({ ...metadata, formatVersion: version }, null, 2)}\n`);
 	const before = [hash(metadataFile), hash(taskFile(id))];
 	const result = snapshot();
-	expect(result.cards.some((card) => card.id === id)).toBe(false);
+	expect(result.tasks.some((task) => task.id === id)).toBe(false);
 	expect(result.problems.some((problem) => problem.file.endsWith(`tasks/${id}/task.json`))).toBe(true);
 	const strict = cli(['show', String(id), '--json']);
 	expect(strict.code).not.toBe(0);
@@ -367,7 +367,7 @@ for (const version of [1, 2]) test(`version-${version} task files are refused wi
 });
 
 test('history add timestamps free work notes and defaults without changing lane timestamps', async ({ page }) => {
-  const id = addCard('AI work notes');
+  const id = addTask('AI work notes');
   const initial = show(id);
   const before = Date.now();
   cliOk(['history', 'add', String(id), '--reason', 'AI checked the implementation.\nAll targeted tests passed.']);
@@ -375,7 +375,7 @@ test('history add timestamps free work notes and defaults without changing lane 
   expect(recorded.history.at(-1)).toEqual({ at: expect.any(String), reason: 'AI checked the implementation.\nAll targeted tests passed.' });
   expect(Date.parse(recorded.history.at(-1)!.at)).toBeGreaterThanOrEqual(before - 1000);
   expect(Date.parse(recorded.history.at(-1)!.at)).toBeLessThanOrEqual(Date.now() + 1000);
-  expect(recorded.cardStatusChangedAt).toBe(initial.cardStatusChangedAt);
+  expect(recorded.taskStatusChangedAt).toBe(initial.taskStatusChangedAt);
   cliOk(['history', 'add', String(id)]);
   expect(show(id).history.at(-1)?.reason).toMatch(/todo/i);
   expect(show(id).history.at(-1)?.reason).toMatch(/idle/i);
@@ -394,7 +394,7 @@ test('history add timestamps free work notes and defaults without changing lane 
   cliOk(['mv', String(id), 'todo', '--actor', 'human']);
   cliOk(['state', String(id), 'idle', '--actor', 'ai']);
   expect(show(id).history).toEqual(unchanged.history);
-  expect(show(id).cardStatusChangedAt).toBe(initial.cardStatusChangedAt);
+  expect(show(id).taskStatusChangedAt).toBe(initial.taskStatusChangedAt);
 });
 
 for (const [name, record] of [
@@ -402,7 +402,7 @@ for (const [name, record] of [
   ['invalid timestamp', { at: 'not-a-timestamp', reason: 'Work note' }],
   ['empty reason', { at: '2026-10-15T00:00:00Z', reason: '' }],
 ] as const) test(`invalid history ${name} is reported and refuses append without changing TASK.md`, async () => {
-  const id = addCard(`Invalid history: ${name}`);
+  const id = addTask(`Invalid history: ${name}`);
   replaceFileAtomically(taskFile(id), `---\nhistory: ${JSON.stringify([record])}\n---\n\nReadable body.`);
   const before = hash(taskFile(id));
   expect(snapshot().problems.some((problem) => problem.file.endsWith(`tasks/${id}/TASK.md`) && problem.field.startsWith('history'))).toBe(true);

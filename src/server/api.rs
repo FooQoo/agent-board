@@ -14,13 +14,13 @@ use serde::{Deserialize, Deserializer, Serialize};
 use super::guard::{self, DeleteRequest};
 use super::{AppState, assets, events};
 use crate::domain::{
-    Actor, Assignee, ChangeContext, Changed, Column, NewCard, ProjectId, RunState,
+    Actor, Assignee, ChangeContext, Changed, Column, NewTask, ProjectId, RunState,
     validate_attachment,
 };
 use crate::error::AgboardError;
 use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::index::ProjectEntry;
-use crate::file_store::model::{AttachmentOwner, CardView, Choice, EpicUpdate, NewEpic};
+use crate::file_store::model::{AttachmentOwner, Choice, EpicUpdate, NewEpic, TaskView};
 use crate::file_store::validate::{self, EpicId};
 use crate::file_store::{Answer, FileStore, TaskTextParts};
 
@@ -87,52 +87,52 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
         .route("/api/projects", get(projects))
         .route("/api/projects/{project_id}/board", get(board))
         .route("/api/projects/{project_id}/archive", get(archive))
-        .route("/api/projects/{project_id}/cards", post(create_card))
+        .route("/api/projects/{project_id}/tasks", post(create_task))
         .route(
-            "/api/projects/{project_id}/cards/multipart",
-            post(create_card_multipart),
+            "/api/projects/{project_id}/tasks/multipart",
+            post(create_task_multipart),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}",
-            delete(delete_card).patch(edit_card),
+            "/api/projects/{project_id}/tasks/{id}",
+            delete(delete_task).patch(edit_task),
         )
         .route(
-            "/api/projects/{project_id}/cards/archive-done",
+            "/api/projects/{project_id}/tasks/archive-done",
             post(archive_done),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/archive",
-            post(archive_card),
+            "/api/projects/{project_id}/tasks/{id}/archive",
+            post(archive_task),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/restore",
-            post(restore_card),
+            "/api/projects/{project_id}/tasks/{id}/restore",
+            post(restore_task),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/multipart",
-            patch(edit_card_multipart),
+            "/api/projects/{project_id}/tasks/{id}/multipart",
+            patch(edit_task_multipart),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/attachments",
-            get(list_card_attachments)
-                .post(add_card_attachment)
-                .patch(edit_card_multipart),
+            "/api/projects/{project_id}/tasks/{id}/attachments",
+            get(list_task_attachments)
+                .post(add_task_attachment)
+                .patch(edit_task_multipart),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/attachments/{attachment_id}",
-            get(get_card_attachment).delete(delete_card_attachment),
+            "/api/projects/{project_id}/tasks/{id}/attachments/{attachment_id}",
+            get(get_task_attachment).delete(delete_task_attachment),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/evidence",
-            post(add_card_evidence),
+            "/api/projects/{project_id}/tasks/{id}/evidence",
+            post(add_task_evidence),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/evidence/{evidence_id}",
-            get(get_card_evidence).delete(delete_card_evidence),
+            "/api/projects/{project_id}/tasks/{id}/evidence/{evidence_id}",
+            get(get_task_evidence).delete(delete_task_evidence),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/epic",
-            put(set_card_epic),
+            "/api/projects/{project_id}/tasks/{id}/epic",
+            put(set_task_epic),
         )
         .route(
             "/api/projects/{project_id}/epics",
@@ -151,23 +151,23 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
             get(get_epic_attachment).delete(delete_epic_attachment),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/draft",
+            "/api/projects/{project_id}/tasks/{id}/draft",
             put(set_draft),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/move",
-            post(move_card),
+            "/api/projects/{project_id}/tasks/{id}/move",
+            post(move_task),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/reorder",
-            post(reorder_card),
+            "/api/projects/{project_id}/tasks/{id}/reorder",
+            post(reorder_task),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/agent-status",
+            "/api/projects/{project_id}/tasks/{id}/agent-status",
             post(set_agent_status),
         )
         .route(
-            "/api/projects/{project_id}/cards/{id}/answer",
+            "/api/projects/{project_id}/tasks/{id}/answer",
             post(answer_request),
         );
     if remote.is_none() {
@@ -218,22 +218,22 @@ fn error_response(
 
 pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
     let status = match error {
-        AgboardError::CardNotFound { .. }
+        AgboardError::TaskNotFound { .. }
         | AgboardError::ProjectNotFound { .. }
         | AgboardError::AttachmentNotFound { .. }
         | AgboardError::EvidenceNotFound { .. }
         | AgboardError::EpicNotFound { .. } => StatusCode::NOT_FOUND,
         AgboardError::RequestChanged
-        | AgboardError::CardIsDraft { .. }
-        | AgboardError::CardIsDone { .. }
-        | AgboardError::CardNotDraft { .. }
+        | AgboardError::TaskIsDraft { .. }
+        | AgboardError::TaskIsDone { .. }
+        | AgboardError::TaskNotDraft { .. }
         | AgboardError::InvalidStateForDraft { .. }
         | AgboardError::ProjectNameExists { .. }
         | AgboardError::AttachmentRequestConflict
         | AgboardError::EpicIdTaken { .. }
         | AgboardError::EpicInUse { .. } => StatusCode::CONFLICT,
-        AgboardError::CardArchived { .. }
-        | AgboardError::CardNotArchived { .. }
+        AgboardError::TaskArchived { .. }
+        | AgboardError::TaskNotArchived { .. }
         | AgboardError::ArchiveTargetsChanged => StatusCode::CONFLICT,
         AgboardError::InvalidArgument { .. }
         | AgboardError::InvalidValue { .. }
@@ -327,7 +327,7 @@ async fn host_guard(State(context): State<GuardContext>, request: Request, next:
 
 /// Every request that changes data needs the page's Origin, Sec-Fetch-Site and
 /// token. This runs before the path, the body or the shared files are looked at, so
-/// a refusal never tells whether a project or card exists. `POST /api/notify`
+/// a refusal never tells whether a project or task exists. `POST /api/notify`
 /// changes nothing and is open.
 async fn write_guard(
     State(context): State<GuardContext>,
@@ -611,7 +611,7 @@ pub(crate) fn parse_project_id(raw: &str) -> Result<ProjectId, AgboardError> {
     raw.parse()
 }
 
-/// The catalog: every project by name, without cards. Read in one transaction.
+/// The catalog: every project by name, without tasks. Read in one transaction.
 async fn projects(State(state): State<Arc<AppState>>) -> Response {
     match with_files(&state, |files| files.catalog()).await {
         Ok(catalog) => json_response(StatusCode::OK, &catalog),
@@ -678,11 +678,11 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
                 version: &'a str,
                 cursor: &'a crate::domain::ChangeCursor,
                 epics: &'a [crate::file_store::model::EpicView],
-                cards: Vec<&'a CardView>,
+                tasks: Vec<&'a TaskView>,
                 problems: &'a [crate::file_store::model::Problem],
             }
-            let cards = view
-                .cards
+            let tasks = view
+                .tasks
                 .iter()
                 .filter(|c| c.archived_at.is_none())
                 .collect();
@@ -693,7 +693,7 @@ async fn board(State(state): State<Arc<AppState>>, Path(raw_project): Path<Strin
                     version: &view.version,
                     cursor: &view.cursor,
                     epics: &view.epics,
-                    cards,
+                    tasks,
                     problems: &view.problems,
                 },
             )
@@ -714,7 +714,7 @@ async fn archive(State(state): State<Arc<AppState>>, Path(raw_project): Path<Str
                 "project": view.project,
                 "version": view.version,
                 "cursor": view.cursor,
-                "cards": view.cards.iter().filter(|c| c.archived_at.is_some()).collect::<Vec<_>>(),
+                "tasks": view.tasks.iter().filter(|c| c.archived_at.is_some()).collect::<Vec<_>>(),
             }),
         ),
         Err(error) => agboard_error_response(&error),
@@ -743,7 +743,7 @@ async fn notify(State(state): State<Arc<AppState>>) -> StatusCode {
     StatusCode::NO_CONTENT
 }
 
-async fn delete_card(
+async fn delete_task(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
 ) -> Response {
@@ -754,13 +754,13 @@ async fn delete_card(
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
-            "card_not_found",
-            format!("card {raw_id} not found."),
-            "Card IDs are positive whole numbers.",
+            "task_not_found",
+            format!("task {raw_id} not found."),
+            "Task IDs are positive whole numbers.",
         );
     };
     match with_files(&state, move |store| {
-        store.delete_archived_card(&project_id, id)
+        store.delete_archived_task(&project_id, id)
     })
     .await
     {
@@ -772,7 +772,7 @@ async fn delete_card(
     }
 }
 
-async fn archive_card(
+async fn archive_task(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
 ) -> Response {
@@ -780,18 +780,18 @@ async fn archive_card(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
     let result = with_files(&state, move |store| {
-        store.archive_card(&project_id, id, chrono::Utc::now())
+        store.archive_task(&project_id, id, chrono::Utc::now())
     })
     .await;
-    changed_card_response(&state, result)
+    changed_task_response(&state, result)
 }
 
-async fn restore_card(
+async fn restore_task(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
 ) -> Response {
@@ -799,15 +799,15 @@ async fn restore_card(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
     let result = with_files(&state, move |store| {
-        store.restore_card(&project_id, id, chrono::Utc::now())
+        store.restore_task(&project_id, id, chrono::Utc::now())
     })
     .await;
-    changed_card_response(&state, result)
+    changed_task_response(&state, result)
 }
 
 #[derive(Debug, Deserialize)]
@@ -837,7 +837,7 @@ async fn archive_done(
             json_response(
                 StatusCode::OK,
                 &serde_json::json!({
-                    "cards": result.value.cards,
+                    "tasks": result.value.tasks,
                     "archivedCount": result.value.archived_count,
                 }),
             )
@@ -931,7 +931,7 @@ pub(crate) fn canonical_https_authority(raw: &str) -> Option<String> {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct CreateCardInput {
+struct CreateTaskInput {
     title: String,
     /// The whole TASK.md text, frontmatter included. Not combined with `body` or `acceptance`.
     #[serde(default)]
@@ -950,7 +950,7 @@ struct CreateCardInput {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct MoveInput {
-    card_status: Column,
+    task_status: Column,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
     #[serde(default)]
@@ -959,12 +959,12 @@ struct MoveInput {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ReorderInput {
-    /// The card to put the moved card before; `null` puts it at the end of the lane.
+    /// The task to put the moved task before; `null` puts it at the end of the lane.
     before_id: Option<i64>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct EditCardInput {
+struct EditTaskInput {
     title: Option<String>,
     description: Option<String>,
     #[serde(default)]
@@ -1012,7 +1012,7 @@ struct MultipartMeta {
     request_id: String,
     #[serde(default)]
     finalize: bool,
-    /// Only a new card takes it; an edit refuses it.
+    /// Only a new task takes it; an edit refuses it.
     #[serde(default)]
     is_draft: Option<bool>,
     #[serde(default)]
@@ -1120,7 +1120,7 @@ async fn parse_multipart(mut multipart: Multipart) -> Result<MultipartPayload, R
             "A metadata part is required.",
         )
     })?;
-    if files.len() > crate::domain::MAX_CARD_ATTACHMENTS {
+    if files.len() > crate::domain::MAX_TASK_ATTACHMENTS {
         return Err(error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "attachment_limit_exceeded",
@@ -1148,10 +1148,10 @@ async fn parse_multipart(mut multipart: Multipart) -> Result<MultipartPayload, R
     Ok(MultipartPayload { meta, additions })
 }
 
-async fn create_card(
+async fn create_task(
     State(state): State<Arc<AppState>>,
     Path(raw_project): Path<String>,
-    ApiJson(input): ApiJson<CreateCardInput>,
+    ApiJson(input): ApiJson<CreateTaskInput>,
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
@@ -1167,9 +1167,9 @@ async fn create_card(
         Err(error) => return agboard_error_response(&error),
     };
     match with_files(&state, move |store| {
-        store.create_card(
+        store.create_task(
             &project_id,
-            NewCard {
+            NewTask {
                 title: input.title,
                 description,
                 assignee: input.assignee,
@@ -1181,15 +1181,15 @@ async fn create_card(
     })
     .await
     {
-        Ok(card) => {
+        Ok(task) => {
             refresh_index(&state);
-            json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
+            json_response(StatusCode::CREATED, &serde_json::json!({"task": task}))
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-async fn move_card(
+async fn move_task(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     ApiJson(input): ApiJson<MoveInput>,
@@ -1201,16 +1201,16 @@ async fn move_card(
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
-            "card_not_found",
-            "card not found.",
-            "Card ID is invalid.",
+            "task_not_found",
+            "task not found.",
+            "Task ID is invalid.",
         );
     };
     match with_files(&state, move |store| {
-        store.move_work_card_for_user(
+        store.move_work_task_for_user(
             &project_id,
             id,
-            input.card_status,
+            input.task_status,
             ChangeContext {
                 actor: Actor::Human,
                 reason: input.reason,
@@ -1226,14 +1226,14 @@ async fn move_card(
             }
             json_response(
                 StatusCode::OK,
-                &serde_json::json!({"card": result.value, "changed": result.changed}),
+                &serde_json::json!({"task": result.value, "changed": result.changed}),
             )
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-async fn reorder_card(
+async fn reorder_task(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     ApiJson(input): ApiJson<ReorderInput>,
@@ -1245,13 +1245,13 @@ async fn reorder_card(
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
-            "card_not_found",
-            "card not found.",
-            "Card ID is invalid.",
+            "task_not_found",
+            "task not found.",
+            "Task ID is invalid.",
         );
     };
     match with_files(&state, move |store| {
-        store.reorder_card(&project_id, id, input.before_id)
+        store.reorder_task(&project_id, id, input.before_id)
     })
     .await
     {
@@ -1261,7 +1261,7 @@ async fn reorder_card(
             }
             json_response(
                 StatusCode::OK,
-                &serde_json::json!({"card": result.value, "changed": result.changed}),
+                &serde_json::json!({"task": result.value, "changed": result.changed}),
             )
         }
         Err(error) => agboard_error_response(&error),
@@ -1280,9 +1280,9 @@ async fn set_agent_status(
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
-            "card_not_found",
-            "card not found.",
-            "Card ID is invalid.",
+            "task_not_found",
+            "task not found.",
+            "Task ID is invalid.",
         );
     };
     match with_files(&state, move |store| {
@@ -1316,7 +1316,7 @@ async fn set_agent_status(
             }
             json_response(
                 StatusCode::OK,
-                &serde_json::json!({"card": result.value, "changed": result.changed}),
+                &serde_json::json!({"task": result.value, "changed": result.changed}),
             )
         }
         Err(error) => agboard_error_response(&error),
@@ -1328,12 +1328,12 @@ async fn answer_request(
     Path((raw_project, raw_id)): Path<(String, String)>,
     ApiJson(input): ApiJson<AnswerInput>,
 ) -> Response {
-    answer_project_card(state, raw_project, raw_id, input).await
+    answer_project_task(state, raw_project, raw_id, input).await
 }
 
 /// Save one human answer through the shared FileStore path used by the local
 /// board and the isolated monitor endpoint.
-pub(crate) async fn answer_project_card(
+pub(crate) async fn answer_project_task(
     state: Arc<AppState>,
     raw_project: String,
     raw_id: String,
@@ -1346,9 +1346,9 @@ pub(crate) async fn answer_project_card(
     let Ok(id) = raw_id.parse::<i64>() else {
         return error_response(
             StatusCode::NOT_FOUND,
-            "card_not_found",
-            "card not found.",
-            "Card ID is invalid.",
+            "task_not_found",
+            "task not found.",
+            "Task ID is invalid.",
         );
     };
     match with_files(&state, move |store| {
@@ -1366,56 +1366,56 @@ pub(crate) async fn answer_project_card(
     })
     .await
     {
-        Ok(card) => {
+        Ok(task) => {
             refresh_index(&state);
             json_response(
                 StatusCode::OK,
-                &serde_json::json!({"card": card, "changed": true}),
+                &serde_json::json!({"task": task, "changed": true}),
             )
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-/// A card ID from the URL; one that cannot be a card is `card_not_found`.
-fn parse_card_id(raw: &str) -> Result<i64, Box<Response>> {
+/// A task ID from the URL; one that cannot be a task is `task_not_found`.
+fn parse_task_id(raw: &str) -> Result<i64, Box<Response>> {
     raw.parse::<i64>().map_err(|_| {
         Box::new(error_response(
             StatusCode::NOT_FOUND,
-            "card_not_found",
-            "card not found.",
-            "Card ID is invalid.",
+            "task_not_found",
+            "task not found.",
+            "Task ID is invalid.",
         ))
     })
 }
 
-/// A card as `{"card": ...}`, telling the browsers only if something changed.
-fn changed_card_response(
+/// A task as `{"task": ...}`, telling the browsers only if something changed.
+fn changed_task_response(
     state: &AppState,
-    result: Result<Changed<CardView>, AgboardError>,
+    result: Result<Changed<TaskView>, AgboardError>,
 ) -> Response {
     match result {
         Ok(result) => {
             if result.changed {
                 refresh_index(state);
             }
-            json_response(StatusCode::OK, &serde_json::json!({"card": result.value}))
+            json_response(StatusCode::OK, &serde_json::json!({"task": result.value}))
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
 /// Save the title and description of a draft, and confirm it with `finalize`.
-async fn edit_card(
+async fn edit_task(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
-    StrictJson(input): StrictJson<EditCardInput>,
+    StrictJson(input): StrictJson<EditTaskInput>,
 ) -> Response {
     let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
@@ -1435,7 +1435,7 @@ async fn edit_card(
             if input.description.is_some() {
                 return Err(whole_or_parts());
             }
-            store.edit_draft_card_parts(
+            store.edit_draft_task_parts(
                 &project_id,
                 id,
                 input.title.as_deref(),
@@ -1447,7 +1447,7 @@ async fn edit_card(
                 chrono::Utc::now(),
             )
         } else {
-            store.edit_draft_card(
+            store.edit_draft_task(
                 &project_id,
                 id,
                 input.title.as_deref(),
@@ -1458,10 +1458,10 @@ async fn edit_card(
         }
     })
     .await;
-    changed_card_response(&state, result)
+    changed_task_response(&state, result)
 }
 
-async fn edit_card_multipart(
+async fn edit_task_multipart(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
@@ -1470,7 +1470,7 @@ async fn edit_card_multipart(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
@@ -1502,7 +1502,7 @@ async fn edit_card_multipart(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
             "request body is invalid.",
-            "isDraft is only accepted when a card is added.",
+            "isDraft is only accepted when a task is added.",
         );
     }
     let finalize = payload.meta.finalize;
@@ -1514,14 +1514,14 @@ async fn edit_card_multipart(
     let result = with_files(&state, move |store| {
         let now = chrono::Utc::now();
         // Images first, then the text and the draft flag.
-        let owner = AttachmentOwner::Card(id);
+        let owner = AttachmentOwner::Task(id);
         for attachment_id in &removed {
             store.delete_attachment_for_user(&project_id, &owner, attachment_id, now)?;
         }
         for input in additions {
             store.add_attachment_for_user(&project_id, &owner, input, now)?;
         }
-        store.edit_draft_card(
+        store.edit_draft_task(
             &project_id,
             id,
             title.as_deref(),
@@ -1539,14 +1539,14 @@ async fn edit_card_multipart(
             }
             json_response(
                 StatusCode::OK,
-                &serde_json::json!({"card": value, "changed": changed}),
+                &serde_json::json!({"task": value, "changed": changed}),
             )
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-async fn create_card_multipart(
+async fn create_task_multipart(
     State(state): State<Arc<AppState>>,
     Path(raw_project): Path<String>,
     multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
@@ -1600,7 +1600,7 @@ async fn create_card_multipart(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
             "request body is invalid.",
-            "A new card cannot remove attachments.",
+            "A new task cannot remove attachments.",
         );
     }
     let request_id = payload.meta.request_id;
@@ -1620,9 +1620,9 @@ async fn create_card_multipart(
     let additions = payload.additions;
     let result = with_files(&state, move |store| {
         let now = chrono::Utc::now();
-        let card = store.create_card(
+        let task = store.create_task(
             &project_id,
-            NewCard {
+            NewTask {
                 title,
                 description,
                 assignee,
@@ -1631,23 +1631,23 @@ async fn create_card_multipart(
             },
             now,
         )?;
-        let owner = AttachmentOwner::Card(card.id);
+        let owner = AttachmentOwner::Task(task.id);
         for input in additions {
             store.add_attachment_for_user(&project_id, &owner, input, now)?;
         }
-        store.card(&project_id, card.id)
+        store.task(&project_id, task.id)
     })
     .await;
     match result {
-        Ok(card) => {
+        Ok(task) => {
             refresh_index(&state);
-            json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
+            json_response(StatusCode::CREATED, &serde_json::json!({"task": task}))
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-/// Turn the draft flag of a card on or off.
+/// Turn the draft flag of a task on or off.
 async fn set_draft(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
@@ -1657,7 +1657,7 @@ async fn set_draft(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
@@ -1665,7 +1665,7 @@ async fn set_draft(
         store.set_draft(&project_id, id, input.is_draft, chrono::Utc::now())
     })
     .await;
-    changed_card_response(&state, result)
+    changed_task_response(&state, result)
 }
 
 // ---------------------------------------------------------------- images and evidence
@@ -1736,10 +1736,10 @@ async fn parse_single_file(mut multipart: Multipart) -> Result<(String, Vec<u8>)
     file.ok_or_else(|| invalid_multipart("A file part is required."))
 }
 
-/// The images of a card: the list, the registration, and the delivery of one of them.
-/// The owner is checked with the project and the ID, so another card's image
+/// The images of a task: the list, the registration, and the delivery of one of them.
+/// The owner is checked with the project and the ID, so another task's image
 /// is `attachment_not_found`.
-async fn list_card_attachments(
+async fn list_task_attachments(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
 ) -> Response {
@@ -1747,20 +1747,20 @@ async fn list_card_attachments(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
-    match with_files(&state, move |store| store.card(&project_id, id)).await {
-        Ok(card) => json_response(
+    match with_files(&state, move |store| store.task(&project_id, id)).await {
+        Ok(task) => json_response(
             StatusCode::OK,
-            &serde_json::json!({"cardId": card.id, "attachments": card.attachments}),
+            &serde_json::json!({"taskId": task.id, "attachments": task.attachments}),
         ),
         Err(error) => agboard_error_response(&error),
     }
 }
 
-async fn add_card_attachment(
+async fn add_task_attachment(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
@@ -1769,7 +1769,7 @@ async fn add_card_attachment(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
@@ -1798,23 +1798,23 @@ async fn add_card_attachment(
     }
     let additions = payload.additions;
     let result = with_files(&state, move |store| {
-        let owner = AttachmentOwner::Card(id);
+        let owner = AttachmentOwner::Task(id);
         for input in additions {
             store.add_attachment_for_user(&project_id, &owner, input, chrono::Utc::now())?;
         }
-        store.card(&project_id, id)
+        store.task(&project_id, id)
     })
     .await;
     match result {
-        Ok(card) => {
+        Ok(task) => {
             refresh_index(&state);
-            json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
+            json_response(StatusCode::CREATED, &serde_json::json!({"task": task}))
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-async fn get_card_attachment(
+async fn get_task_attachment(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
 ) -> Response {
@@ -1822,13 +1822,13 @@ async fn get_card_attachment(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
     let result = with_files(&state, move |store| {
         let stored =
-            store.attachment_path(&project_id, &AttachmentOwner::Card(id), &attachment_id)?;
+            store.attachment_path(&project_id, &AttachmentOwner::Task(id), &attachment_id)?;
         let bytes = read_checked(&store, &stored.path)?;
         Ok((stored.metadata.media_type, bytes))
     })
@@ -1839,7 +1839,7 @@ async fn get_card_attachment(
     }
 }
 
-async fn delete_card_attachment(
+async fn delete_task_attachment(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
 ) -> Response {
@@ -1847,31 +1847,31 @@ async fn delete_card_attachment(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
     let result = with_files(&state, move |store| {
         store.delete_attachment_for_user(
             &project_id,
-            &AttachmentOwner::Card(id),
+            &AttachmentOwner::Task(id),
             &attachment_id,
             chrono::Utc::now(),
         )?;
-        store.card(&project_id, id)
+        store.task(&project_id, id)
     })
     .await;
     match result {
-        Ok(card) => {
+        Ok(task) => {
             refresh_index(&state);
-            json_response(StatusCode::OK, &serde_json::json!({"card": card}))
+            json_response(StatusCode::OK, &serde_json::json!({"task": task}))
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-/// Add a text evidence to a card. A person may do this on a draft.
-async fn add_card_evidence(
+/// Add a text evidence to a task. A person may do this on a draft.
+async fn add_task_evidence(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
@@ -1880,7 +1880,7 @@ async fn add_card_evidence(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
@@ -1893,20 +1893,20 @@ async fn add_card_evidence(
     };
     let result = with_files(&state, move |store| {
         store.add_evidence_for_user(&project_id, id, &name, &bytes, chrono::Utc::now())?;
-        store.card(&project_id, id)
+        store.task(&project_id, id)
     })
     .await;
     match result {
-        Ok(card) => {
+        Ok(task) => {
             refresh_index(&state);
-            json_response(StatusCode::CREATED, &serde_json::json!({"card": card}))
+            json_response(StatusCode::CREATED, &serde_json::json!({"task": task}))
         }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-/// The text of a card's evidence, as plain text that a browser shows without sniffing.
-async fn get_card_evidence(
+/// The text of a task's evidence, as plain text that a browser shows without sniffing.
+async fn get_task_evidence(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
 ) -> Response {
@@ -1914,7 +1914,7 @@ async fn get_card_evidence(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
@@ -1928,7 +1928,7 @@ async fn get_card_evidence(
     }
 }
 
-async fn delete_card_evidence(
+async fn delete_task_evidence(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
 ) -> Response {
@@ -1936,19 +1936,19 @@ async fn delete_card_evidence(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
     let result = with_files(&state, move |store| {
         store.delete_evidence_for_user(&project_id, id, &evidence_id, chrono::Utc::now())?;
-        store.card(&project_id, id)
+        store.task(&project_id, id)
     })
     .await;
     match result {
-        Ok(card) => {
+        Ok(task) => {
             refresh_index(&state);
-            json_response(StatusCode::OK, &serde_json::json!({"card": card}))
+            json_response(StatusCode::OK, &serde_json::json!({"task": task}))
         }
         Err(error) => agboard_error_response(&error),
     }
@@ -1956,7 +1956,7 @@ async fn delete_card_evidence(
 
 // ---------------------------------------------------------------- epics
 
-/// `epicId` of `PUT .../epic`: an EPIC-ID, or `null` to take the card out of
+/// `epicId` of `PUT .../epic`: an EPIC-ID, or `null` to take the task out of
 /// its epic. A missing field is `None` and is refused.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -1971,9 +1971,9 @@ fn present_or_null<'de, D: Deserializer<'de>>(
     Option::<String>::deserialize(deserializer).map(Some)
 }
 
-/// Set or clear the epic of a card. A person may do this on any card, including
+/// Set or clear the epic of a task. A person may do this on any task, including
 /// an archived one or a draft.
-async fn set_card_epic(
+async fn set_task_epic(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
     StrictJson(input): StrictJson<SetEpicInput>,
@@ -1982,7 +1982,7 @@ async fn set_card_epic(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let id = match parse_card_id(&raw_id) {
+    let id = match parse_task_id(&raw_id) {
         Ok(id) => id,
         Err(response) => return *response,
     };
@@ -2002,7 +2002,7 @@ async fn set_card_epic(
         },
     };
     let result = with_files(&state, move |store| {
-        store.set_card_epic(
+        store.set_task_epic(
             &project_id,
             id,
             epic.as_ref(),
@@ -2011,7 +2011,7 @@ async fn set_card_epic(
         )
     })
     .await;
-    changed_card_response(&state, result)
+    changed_task_response(&state, result)
 }
 
 #[derive(Deserialize)]
@@ -2043,7 +2043,7 @@ struct EpicPatchInput {
     plan: Option<String>,
     #[serde(default)]
     body: Option<String>,
-    /// The card order of the epic. Replaces the stored order.
+    /// The task order of the epic. Replaces the stored order.
     #[serde(default)]
     priority: Option<Vec<i64>>,
 }

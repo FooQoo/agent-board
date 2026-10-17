@@ -1,18 +1,18 @@
 //! Agent operations: lane moves and run states.
 //!
-//! A lane move returns the card to idle and releases its request. A run-state
+//! A lane move returns the task to idle and releases its request. A run-state
 //! change keeps the lane. A completion report is an idle state in Doing, so
-//! the card stays in Doing until the coordinator moves it.
+//! the task stays in Doing until the coordinator moves it.
 
 use chrono::{DateTime, Utc};
 
 use super::super::FileStore;
 use super::super::frontmatter;
 use super::super::layout;
-use super::super::model::{CardView, Choice, PendingRequest};
+use super::super::model::{Choice, PendingRequest, TaskView};
 use super::super::reader;
 use super::{
-    HistoryKind, Transition, ensure_ai_card_not_done, lane_end, lock_project, new_id, save_task,
+    HistoryKind, Transition, ensure_ai_task_not_done, lane_end, lock_project, new_id, save_task,
     stamp, transition_event,
 };
 use crate::domain::{
@@ -20,7 +20,7 @@ use crate::domain::{
 };
 use crate::error::AgboardError;
 
-/// An agent may move a card to Done only when its frontmatter reads and every
+/// An agent may move a task to Done only when its frontmatter reads and every
 /// condition is done. A person's move is never checked here.
 fn ensure_acceptance_met(
     shared: &std::path::Path,
@@ -51,31 +51,31 @@ fn ensure_acceptance_met(
 }
 
 impl FileStore {
-    /// Move a card to the end of a lane. A draft is refused for agents.
-    pub fn move_work_card(
+    /// Move a task to the end of a lane. A draft is refused for agents.
+    pub fn move_work_task(
         &self,
         project: &ProjectId,
         id: i64,
         to: Column,
         ctx: ChangeContext,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
-        self.move_card(project, id, to, ctx, now, true)
+    ) -> Result<Changed<TaskView>, AgboardError> {
+        self.move_task(project, id, to, ctx, now, true)
     }
 
     /// The same move for a user in the Web UI: drafts can be moved.
-    pub fn move_work_card_for_user(
+    pub fn move_work_task_for_user(
         &self,
         project: &ProjectId,
         id: i64,
         to: Column,
         ctx: ChangeContext,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
-        self.move_card(project, id, to, ctx, now, false)
+    ) -> Result<Changed<TaskView>, AgboardError> {
+        self.move_task(project, id, to, ctx, now, false)
     }
 
-    fn move_card(
+    fn move_task(
         &self,
         project: &ProjectId,
         id: i64,
@@ -83,23 +83,23 @@ impl FileStore {
         ctx: ChangeContext,
         now: DateTime<Utc>,
         block_drafts: bool,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
-        ensure_ai_card_not_done(&task, ctx.actor)?;
+        ensure_ai_task_not_done(&task, ctx.actor)?;
         if block_drafts && task.is_draft {
-            return Err(AgboardError::CardIsDraft { id });
+            return Err(AgboardError::TaskIsDraft { id });
         }
-        if ctx.actor == Actor::Ai && to == Column::Done && task.card_status != Column::Done {
+        if ctx.actor == Actor::Ai && to == Column::Done && task.task_status != Column::Done {
             ensure_acceptance_met(shared, project, id)?;
         }
-        if task.card_status == to {
+        if task.task_status == to {
             return Ok(Changed {
-                value: reader::read_card_locked(shared, project, id)?,
+                value: reader::read_task_locked(shared, project, id)?,
                 changed: false,
             });
         }
@@ -108,8 +108,8 @@ impl FileStore {
         let event = transition_event(Transition {
             kind: HistoryKind::Lane,
             reason: Some(&ctx.reason),
-            from_card: Some(task.card_status),
-            to_card: to,
+            from_task: Some(task.task_status),
+            to_task: to,
             from_agent: Some(task.agent_status),
             to_agent: RunState::Idle,
             at,
@@ -117,8 +117,8 @@ impl FileStore {
         if task.agent_status != RunState::Idle {
             task.agent_status_changed_at = at;
         }
-        task.card_status = to;
-        task.card_status_changed_at = at;
+        task.task_status = to;
+        task.task_status_changed_at = at;
         task.position = position;
         task.agent_status = RunState::Idle;
         task.pending_request_id = None;
@@ -127,12 +127,12 @@ impl FileStore {
         task.history.push(event);
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
-            value: reader::read_card_locked(shared, project, id)?,
+            value: reader::read_task_locked(shared, project, id)?,
             changed: true,
         })
     }
 
-    /// Change a card's run state. Only an AI-owned card in Doing can run or
+    /// Change a task's run state. Only an AI-owned task in Doing can run or
     /// wait. A state that is already set is not a change, whatever the reason.
     /// Leaving pending needs the current request ID in `expected_request`.
     pub fn set_agent_status(
@@ -143,7 +143,7 @@ impl FileStore {
         ctx: ChangeContext,
         expected_request: Option<&str>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         self.change_state(
             project,
             id,
@@ -169,7 +169,7 @@ impl FileStore {
         expected_request: Option<&str>,
         choices: Vec<Choice>,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         if state == RunState::Pending && choices.len() > MAX_CHOICES {
             return Err(AgboardError::InvalidValue {
                 field: "choices".into(),
@@ -180,16 +180,16 @@ impl FileStore {
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
-            return Err(AgboardError::CardArchived { id });
+            return Err(AgboardError::TaskArchived { id });
         }
-        ensure_ai_card_not_done(&task, actor)?;
+        ensure_ai_task_not_done(&task, actor)?;
         if task.is_draft {
-            return Err(AgboardError::CardIsDraft { id });
+            return Err(AgboardError::TaskIsDraft { id });
         }
-        check_work_state(task.assignee, task.card_status, state)?;
+        check_work_state(task.assignee, task.task_status, state)?;
         if task.agent_status == state {
             return Ok(Changed {
-                value: reader::read_card_locked(shared, project, id)?,
+                value: reader::read_task_locked(shared, project, id)?,
                 changed: false,
             });
         }
@@ -229,8 +229,8 @@ impl FileStore {
         let event = transition_event(Transition {
             kind: HistoryKind::Agent,
             reason: Some(&event_reason),
-            from_card: Some(task.card_status),
-            to_card: task.card_status,
+            from_task: Some(task.task_status),
+            to_task: task.task_status,
             from_agent: Some(task.agent_status),
             to_agent: state,
             at,
@@ -246,7 +246,7 @@ impl FileStore {
         task.history.push(event);
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
-            value: reader::read_card_locked(shared, project, id)?,
+            value: reader::read_task_locked(shared, project, id)?,
             changed: true,
         })
     }

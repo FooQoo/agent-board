@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useCardLifecycle } from '../../src/hooks/useCardLifecycle';
+import { useTaskLifecycle } from '../../src/hooks/useTaskLifecycle';
 import { useProjectSession } from '../../src/hooks/useProjectSession';
 import { deferred, jsonResponse, stubBackend } from '../fakes';
 import { PROJECT_A, PROJECT_B, PROJECTS, boardOf, fixtureBoard } from '../fixtures';
@@ -24,14 +24,14 @@ describe('useCardLifecycle', () => {
     const fetchMock = stubBackend(createBackend(() => response.promise));
     const { result } = renderHook(() => {
       const session = useProjectSession(PROJECT_A.id);
-      const lifecycle = useCardLifecycle(session.operations);
+      const lifecycle = useTaskLifecycle(session.operations);
       return { session, lifecycle };
     });
 
     let first!: Promise<{ ok: boolean }>;
     await act(async () => {
-      first = result.current.lifecycle.run('restore', PROJECT_A.id, { cardId: 7 });
-      const second = await result.current.lifecycle.run('restore', PROJECT_A.id, { cardId: 7 });
+      first = result.current.lifecycle.run('restore', PROJECT_A.id, { taskId: 7 });
+      const second = await result.current.lifecycle.run('restore', PROJECT_A.id, { taskId: 7 });
       expect(second.ok).toBe(false);
       result.current.session.dispatch({ type: 'URL_REQUESTED', projectId: PROJECT_B.id });
     });
@@ -39,11 +39,11 @@ describe('useCardLifecycle', () => {
     expect(result.current.session.session.pendingTarget?.projectId).toBe(PROJECT_B.id);
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
     expect(String(fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')?.[0])).toContain(
-      `/api/projects/${PROJECT_A.id}/cards/7/restore`,
+      `/api/projects/${PROJECT_A.id}/tasks/7/restore`,
     );
 
     await act(async () => {
-      response.resolve(jsonResponse({ card: {} }));
+      response.resolve(jsonResponse({ task: {} }));
       expect(await first).toEqual({ ok: true });
     });
     await waitFor(() => expect(result.current.session.session.activeProjectId).toBe(PROJECT_B.id));
@@ -54,12 +54,12 @@ describe('useCardLifecycle', () => {
     stubBackend(createBackend(() => jsonResponse({ error: { reason: 'restore failed' } }, 500)));
     const { result } = renderHook(() => {
       const session = useProjectSession(PROJECT_A.id);
-      return { session, lifecycle: useCardLifecycle(session.operations) };
+      return { session, lifecycle: useTaskLifecycle(session.operations) };
     });
 
     let outcome!: { ok: boolean };
     await act(async () => {
-      outcome = await result.current.lifecycle.run('restore', PROJECT_A.id, { cardId: 7 });
+      outcome = await result.current.lifecycle.run('restore', PROJECT_A.id, { taskId: 7 });
     });
     expect(outcome.ok).toBe(false);
     expect(result.current.session.session.operation).toBeNull();

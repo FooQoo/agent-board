@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { agboardOk, mainOrigin, mainProject, nextCardId, resetBoard } from '../helpers/agboard';
+import { agboardOk, mainOrigin, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { longMarkdown } from '../helpers/markdown';
 import { waitForSync } from '../helpers/ui';
@@ -23,23 +23,23 @@ test.afterAll(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-const details = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const body = (page: Page) => details(page).getByRole('tabpanel');
 /** The fold button of an H2 section; its name carries the count. */
 
-async function addLongCard(title = 'Long markdown'): Promise<number> {
-  const id = nextCardId(mainProject);
+async function addLongTask(title = 'Long markdown'): Promise<number> {
+  const id = nextTaskId(mainProject);
   const file = path.join(work, 'long.md');
   writeFileSync(file, longMarkdown(images.origin));
   agboardOk(mainProject, ['add', title, '--desc-file', file]);
   return id;
 }
 
-async function openCard(page: Page, id: number): Promise<void> {
+async function openTask(page: Page, id: number): Promise<void> {
   await page.goto('/');
   await waitForSync(page);
-  await card(page, id).click();
+  await task(page, id).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toBeVisible();
 }
 
@@ -49,11 +49,11 @@ test.beforeEach(() => {
   images.referers.length = 0;
 });
 
-test('a long Markdown card shows every section open, with counts, tables, checklists, quotes, and struck text', async ({
+test('a long Markdown task shows every section open, with counts, tables, checklists, quotes, and struck text', async ({
   page,
 }) => {
-  const id = await addLongCard();
-  await openCard(page, id);
+  const id = await addLongTask();
+  await openTask(page, id);
   const panel = body(page);
 
   // The text before the first H2 is always shown, and a single line break is a line break.
@@ -93,7 +93,7 @@ test('a long Markdown card shows every section open, with counts, tables, checkl
   await expect(boxes.nth(1)).not.toBeChecked();
   await panel.getByText('open task').click({ force: true });
   await expect(boxes.nth(1)).not.toBeChecked();
-  expect(JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card.description).toContain('- [ ] open task');
+  expect(JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task.description).toContain('- [ ] open task');
 
   // A wide table and a long code line scroll sideways inside the column; the page itself does not.
   const table = panel.getByRole('table');
@@ -108,10 +108,10 @@ test('a long Markdown card shows every section open, with counts, tables, checkl
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test('headings do not fold: every section stays open across tabs and cards', async ({ page }) => {
-  const id = await addLongCard();
-  agboardOk(mainProject, ['add', 'Second card', '--desc', 'No sections here.']);
-  await openCard(page, id);
+test('headings do not fold: every section stays open across tabs and tasks', async ({ page }) => {
+  const id = await addLongTask();
+  agboardOk(mainProject, ['add', 'Second task', '--desc', 'No sections here.']);
+  await openTask(page, id);
   const panel = body(page);
   await expect(panel.getByText('first item')).toBeVisible();
   await expect(panel.getByRole('table')).toBeVisible();
@@ -123,32 +123,32 @@ test('headings do not fold: every section stays open across tabs and cards', asy
   await expect(panel.getByRole('table')).toBeVisible();
 
   // Another card, then back: the same sections are shown.
-  await card(page, id + 1).click();
-  await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Second card');
+  await task(page, id + 1).click();
+  await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Second task');
   await expect(panel).toContainText('No sections here.');
-  await card(page, id).click();
+  await task(page, id).click();
   await expect(panel.getByText('first item')).toBeVisible();
   await expect(panel.getByRole('table')).toBeVisible();
 });
 
 test('a body without H2 headings is shown whole, and an empty body says so', async ({ page }) => {
-  const id = nextCardId(mainProject);
-  agboardOk(mainProject, ['add', 'Plain card', '--desc', '### Only a small heading\n\nBody text.\n\n- one\n- two']);
+  const id = nextTaskId(mainProject);
+  agboardOk(mainProject, ['add', 'Plain task', '--desc', '### Only a small heading\n\nBody text.\n\n- one\n- two']);
   await page.goto('/');
   await waitForSync(page);
-  await card(page, id).click();
+  await task(page, id).click();
   await expect(body(page).getByRole('heading', { name: 'Only a small heading' })).toBeVisible();
   await expect(body(page).getByText('Body text.')).toBeVisible();
   await expect(body(page).getByRole('button')).toHaveCount(0);
 
   // A card without a description shows no body text.
-  await card(page, 12).click();
+  await task(page, 12).click();
   await expect(body(page).getByRole('button')).toHaveCount(0);
 });
 
 test('links open in a new tab without handing over the page, and other schemes stay text', async ({ page }) => {
-  const id = await addLongCard();
-  await openCard(page, id);
+  const id = await addLongTask();
+  await openTask(page, id);
   const panel = body(page);
 
   const safe = panel.getByRole('link', { name: 'safe link' });
@@ -175,8 +175,8 @@ test('links open in a new tab without handing over the page, and other schemes s
 test('only external http(s) images are fetched, without a Referer; everything else is a No image placeholder', async ({
   page,
 }) => {
-  const id = await addLongCard();
-  await openCard(page, id);
+  const id = await addLongTask();
+  await openTask(page, id);
   const panel = body(page);
   await panel.getByRole('heading', { name: 'Pictures' }).scrollIntoViewIfNeeded();
 
@@ -197,8 +197,8 @@ test('only external http(s) images are fetched, without a Referer; everything el
 });
 
 test('raw HTML is shown as text and never runs', async ({ page }) => {
-  const id = await addLongCard();
-  await openCard(page, id);
+  const id = await addLongTask();
+  await openTask(page, id);
   await expect(body(page).getByText('<script>window.__injected = true</script><b>not bold</b>')).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { __injected?: boolean }).__injected)).toBeUndefined();
   await expect(body(page).locator('script, b')).toHaveCount(0);
@@ -207,8 +207,8 @@ test('raw HTML is shown as text and never runs', async ({ page }) => {
 test('the page loads nothing from outside, and answers with the security headers', async ({ page, request }) => {
   const requested: string[] = [];
   page.on('request', (item) => requested.push(item.url()));
-  const id = await addLongCard();
-  await openCard(page, id);
+  const id = await addLongTask();
+  await openTask(page, id);
   await expect(body(page).getByRole('img', { name: 'sample picture' })).toBeVisible();
   const hosts = new Set(requested.map((url) => new URL(url).origin));
   // The page's own server and the sample image server only.

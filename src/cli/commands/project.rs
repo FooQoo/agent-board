@@ -147,7 +147,7 @@ pub fn rm(ctx: &mut Context) -> Result<Outcome, AgboardError> {
     rm_with_io(ctx, &mut std::io::stdin().lock(), &mut std::io::stderr())
 }
 
-/// Delete the resolved project and all its cards and history, only after a
+/// Delete the resolved project and all its tasks and history, only after a
 /// human confirms. A human can be asked only when `ctx.interactive` is set and
 /// `ctx.json` is not; otherwise nothing is deleted. The ID was fixed before
 /// the question: if the project is gone when the answer arrives, this is
@@ -164,7 +164,7 @@ pub fn rm_with_io(
         });
     }
     let prompt = format!(
-        "Delete project {} and all its cards and history?",
+        "Delete project {} and all its tasks and history?",
         project.name
     );
     if !confirm::confirm(&prompt, input, output)? {

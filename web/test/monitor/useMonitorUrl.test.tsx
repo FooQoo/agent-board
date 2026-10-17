@@ -18,7 +18,7 @@ describe('useMonitorUrl', () => {
     const updates: UrlUpdateEvent[] = [];
     const { result } = renderHook(() => useMonitorUrl(PROJECTS, true), {
       wrapper: wrapperFor(
-        `project=${PROJECT_B.id}&cardProject=${PROJECT_B.id}&card=1&tab=history&x=1`,
+        `project=${PROJECT_B.id}&taskProject=${PROJECT_B.id}&task=1&tab=history&x=1`,
         (event) => updates.push(event),
       ),
     });
@@ -27,7 +27,7 @@ describe('useMonitorUrl', () => {
     expect(updates[0]?.searchParams.get('project')).toBe(PROJECT_B.id);
     expect(updates[0]?.searchParams.get('x')).toBe('1');
     expect(updates[0]?.searchParams.has('cardProject')).toBe(false);
-    expect(updates[0]?.searchParams.has('card')).toBe(false);
+    expect(updates[0]?.searchParams.has('task')).toBe(false);
     expect(updates[0]?.searchParams.has('tab')).toBe(false);
     expect(result.current.notice).toBe(false);
   });

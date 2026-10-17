@@ -57,7 +57,7 @@ interface SetupJson {
 	agents: { agent: string; status: string; changes: string[]; backupPath: string | null }[];
 }
 
-interface CardJson {
+interface TaskJson {
 	id: number;
 	title: string;
 	body: string;
@@ -259,14 +259,14 @@ test('after setup, a CLI project hands out a shared folder whose TASK.md can be 
 
 	const added = JSON.parse(
 		cliOk(['--project', name, 'add', 'Check the shared folder', '--assignee', 'ai', '--actor', 'human', '--desc', TASK_TEXT, '--json']).stdout,
-	) as { card: { id: number } };
-	const task = path.join(workspace.tasks, String(added.card.id), 'TASK.md');
+	) as { task: { id: number } };
+	const task = path.join(workspace.tasks, String(added.task.id), 'TASK.md');
 	expect(readFileSync(task, 'utf8')).toContain('First body.');
 
 	replaceFileAtomically(task, readFileSync(task, 'utf8').replace('First body.', 'Edited from the shared folder.'));
-	cliOk(['--project', name, 'history', 'add', String(added.card.id), '--reason', 'Checked from the shared folder']);
+	cliOk(['--project', name, 'history', 'add', String(added.task.id), '--reason', 'Checked from the shared folder']);
 
-	const shown = JSON.parse(cliOk(['--project', name, 'show', String(added.card.id), '--json']).stdout).card as CardJson;
+	const shown = JSON.parse(cliOk(['--project', name, 'show', String(added.task.id), '--json']).stdout).task as TaskJson;
 	expect(shown.body).toBe('Edited from the shared folder.');
 	expect(shown.acceptance).toEqual([{ id: 'AC-1', text: 'Works', done: false }]);
 	const latest = shown.history.at(-1);

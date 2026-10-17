@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { monitorClient } from '../client';
-import type { MonitorCard, MonitorFreshness, MonitorFreshnessState } from '../contracts';
+import type { MonitorTask, MonitorFreshness, MonitorFreshnessState } from '../contracts';
 import type { Board, Project, ProjectId, ProjectList } from '../../types';
 
 const BOARD_CONCURRENCY = 4;
@@ -14,7 +14,7 @@ export interface MonitorReadApi {
 
 interface MonitorSnapshot {
   projects: Project[];
-  cards: MonitorCard[];
+  tasks: MonitorTask[];
   projectVersions: Record<ProjectId, string>;
   failedProjectIds: ProjectId[];
   snapshotProblems: Array<MonitorFreshness['snapshotProblems'][number]>;
@@ -32,7 +32,7 @@ export interface UseMonitorOptions {
 
 export interface UseMonitorResult {
   projects: Project[];
-  cards: MonitorCard[];
+  tasks: MonitorTask[];
   projectVersions: Record<ProjectId, string>;
   catalogVersion: string | null;
   catalogReady: boolean;
@@ -44,7 +44,7 @@ export interface UseMonitorResult {
 
 const initialSnapshot: MonitorSnapshot = {
   projects: [],
-  cards: [],
+  tasks: [],
   projectVersions: {},
   failedProjectIds: [],
   snapshotProblems: [],
@@ -90,7 +90,7 @@ async function readSnapshot(api: MonitorReadApi, signal: AbortSignal) {
     const after = await api.fetchCatalog({ signal });
     if (before.catalogVersion !== after.catalogVersion) continue;
 
-    const cards: MonitorCard[] = [];
+    const tasks: MonitorTask[] = [];
     const projectVersions: Record<ProjectId, string> = {};
     const failedProjectIds: ProjectId[] = [];
     const snapshotProblems: MonitorSnapshot['snapshotProblems'] = [];
@@ -100,11 +100,11 @@ async function readSnapshot(api: MonitorReadApi, signal: AbortSignal) {
         continue;
       }
       projectVersions[entry.project.id] = entry.board.version;
-      cards.push(
-        ...entry.board.cards.map((card) => ({
+      tasks.push(
+        ...entry.board.tasks.map((task) => ({
           projectId: entry.project.id,
           projectName: entry.project.name,
-          card,
+          task,
         })),
       );
       snapshotProblems.push(
@@ -114,7 +114,7 @@ async function readSnapshot(api: MonitorReadApi, signal: AbortSignal) {
     return {
       projects: after.projects,
       catalogVersion: after.catalogVersion,
-      cards,
+      tasks,
       projectVersions,
       failedProjectIds,
       snapshotProblems,
@@ -179,7 +179,7 @@ export function useMonitor({
           setSnapshot((previous) => ({
             ...previous,
             projects: result.projects,
-            cards: result.cards,
+            tasks: result.tasks,
             projectVersions: result.projectVersions,
             failedProjectIds: result.failedProjectIds,
             snapshotProblems: result.snapshotProblems,
@@ -255,7 +255,7 @@ export function useMonitor({
   const state: MonitorFreshnessState = snapshot.status;
   return {
     projects: snapshot.projects,
-    cards: snapshot.cards,
+    tasks: snapshot.tasks,
     projectVersions: snapshot.projectVersions,
     catalogVersion: snapshot.catalogVersion,
     catalogReady: snapshot.catalogReady,

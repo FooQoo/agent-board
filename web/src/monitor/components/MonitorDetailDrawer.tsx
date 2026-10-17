@@ -7,7 +7,7 @@ import { HistoryTimeline } from '../../components/HistoryTimeline';
 import { AcceptanceTabView } from '../../components/detail/AcceptanceTabView';
 import { MonitorDocument } from './MonitorDocument';
 import type { Epic, Problem } from '../../types';
-import type { MonitorCard, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
+import type { MonitorTask, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
 import type { EpicReadState } from '../hooks/useMonitorDetailDrawer';
 
 const TAB_ORDER: MonitorDetailTab[] = ['description', 'acceptance', 'history', 'epic'];
@@ -115,7 +115,7 @@ export function MonitorDetailDrawer({
   resolvers,
   problems = [],
 }: {
-  item: MonitorCard | null;
+  item: MonitorTask | null;
   open: boolean;
   tab: MonitorDetailTab;
   epicRead: EpicReadState;
@@ -171,8 +171,8 @@ export function MonitorDetailDrawer({
       </Drawer>
     );
   }
-  const card = item.card;
-  const filtered = card.history;
+  const task = item.task;
+  const filtered = task.history;
 
   const tabs = [
     {
@@ -196,12 +196,12 @@ export function MonitorDetailDrawer({
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      identity={t('monitor.drawerIdentity', { id: card.id })}
-      title={card.title}
+      identity={t('monitor.drawerIdentity', { id: task.id })}
+      title={task.title}
       label={
-        card.epic ? (
-          <span className="mobile-drawer__epic-label" title={card.epic.name}>
-            {card.epic.id}
+        task.epic ? (
+          <span className="mobile-drawer__epic-label" title={task.epic.name}>
+            {task.epic.id}
           </span>
         ) : null
       }
@@ -239,17 +239,17 @@ export function MonitorDetailDrawer({
             className="monitor-drawer__panel"
           >
             <MonitorDocument
-              body={card.body}
-              acceptanceError={card.acceptanceError}
+              body={task.body}
+              acceptanceError={task.acceptanceError}
               problems={problems.filter(
                 (problem) =>
                   problem.projectId === item.projectId &&
-                  problem.file.startsWith(`projects/${item.projectId}/tasks/${card.id}/`),
+                  problem.file.startsWith(`projects/${item.projectId}/tasks/${task.id}/`),
               )}
-              attachments={card.attachments ?? []}
-              evidence={card.evidence ?? []}
-              attachmentUrl={(id) => resolvers.attachmentUrl(item.projectId, card.id, id)}
-              evidenceUrl={(id) => resolvers.evidenceUrl(item.projectId, card.id, id)}
+              attachments={task.attachments ?? []}
+              evidence={task.evidence ?? []}
+              attachmentUrl={(id) => resolvers.attachmentUrl(item.projectId, task.id, id)}
+              evidenceUrl={(id) => resolvers.evidenceUrl(item.projectId, task.id, id)}
             />
           </div>
           <div
@@ -260,7 +260,7 @@ export function MonitorDetailDrawer({
             inert={tab !== 'acceptance'}
             className="monitor-drawer__panel"
           >
-            <AcceptanceTabView card={card} />
+            <AcceptanceTabView task={task} />
           </div>
           <div
             role="tabpanel"
@@ -280,7 +280,7 @@ export function MonitorDetailDrawer({
             inert={tab !== 'epic'}
             className="monitor-drawer__panel"
           >
-            {card.epic ? (
+            {task.epic ? (
               <EpicContent
                 state={epicRead.status === 'idle' ? { status: 'loading' } : epicRead}
                 retry={onRetryEpic}

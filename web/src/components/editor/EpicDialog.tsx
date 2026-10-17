@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { epicInk } from '../../lib/epic';
-import type { Card, Epic } from '../../types';
+import type { Task, Epic } from '../../types';
 import { DiscardConfirm } from './DiscardConfirm';
 import { EditorBody, useOverLimit } from './EditorBody';
 import { EditorShell } from './EditorShell';
@@ -45,11 +45,11 @@ function nameIsValid(name: string): boolean {
  * The order of the tasks of an epic: the saved order first, then the tasks it does not list, by ID.
  * Only tasks in `members` are kept.
  */
-function orderOf(priority: readonly number[], members: readonly Card[]): number[] {
-  const ids = new Set(members.map((card) => card.id));
+function orderOf(priority: readonly number[], members: readonly Task[]): number[] {
+  const ids = new Set(members.map((task) => task.id));
   const listed = priority.filter((id) => ids.has(id));
   const rest = members
-    .map((card) => card.id)
+    .map((task) => task.id)
     .filter((id) => !listed.includes(id))
     .sort((a, b) => a - b);
   return [...listed, ...rest];
@@ -63,7 +63,7 @@ function orderOf(priority: readonly number[], members: readonly Card[]): number[
  */
 export function EpicDialog({
   epic,
-  cards,
+  tasks,
   api,
   projectId = '',
   onOpenTask,
@@ -72,11 +72,11 @@ export function EpicDialog({
 }: {
   epic: Epic;
   /** Every task of the project, read when the dialog is shown and kept up to date by the board. */
-  cards: readonly Card[];
+  tasks: readonly Task[];
   api: EpicApi;
   projectId?: string;
   /** The person pressed a task name: the dialog closes and the board shows that task. */
-  onOpenTask: (cardId: number) => void;
+  onOpenTask: (taskId: number) => void;
   onClose: () => void;
   onSavingChange?: (saving: boolean) => void;
 }) {
@@ -84,7 +84,7 @@ export function EpicDialog({
   const editor = useRef<RichMarkdownEditorHandle>(null);
   const requestId = useMultipartRequest();
   // The tasks of this epic, as the board has them now.
-  const members = cards.filter((card) => card.epic?.id === epic.id);
+  const members = tasks.filter((task) => task.epic?.id === epic.id);
   // What the server has.
   const [saved, setSaved] = useState(() => ({
     name: epic.name,
@@ -124,8 +124,8 @@ export function EpicDialog({
   // The rows shown: the order the person has, with the tasks it does not list at the end.
   const rowIds = orderOf(order, members);
   const rows = rowIds
-    .map((id) => members.find((card) => card.id === id))
-    .filter((card): card is Card => card !== undefined);
+    .map((id) => members.find((task) => task.id === id))
+    .filter((task): task is Task => task !== undefined);
   const orderChanged = JSON.stringify(order) !== JSON.stringify(saved.order);
   const dirty = imagesChanged || planChanged || detailsChanged || orderChanged;
   const overLimit = useOverLimit(plan);
@@ -219,9 +219,9 @@ export function EpicDialog({
       return next;
     });
 
-  const requestOpenTask = (cardId: number) => {
-    if (dirty) setPendingTask(cardId);
-    else onOpenTask(cardId);
+  const requestOpenTask = (taskId: number) => {
+    if (dirty) setPendingTask(taskId);
+    else onOpenTask(taskId);
   };
 
   return (
@@ -281,7 +281,7 @@ export function EpicDialog({
             }
           >
             <EpicProgressList
-              cards={rows}
+              tasks={rows}
               disabled={saving}
               onMove={move}
               onOpenTask={requestOpenTask}
@@ -307,9 +307,9 @@ export function EpicDialog({
         }}
         onKeep={() => setPendingTask(null)}
         onDiscard={() => {
-          const cardId = pendingTask;
+          const taskId = pendingTask;
           setPendingTask(null);
-          if (cardId !== null) onOpenTask(cardId);
+          if (taskId !== null) onOpenTask(taskId);
         }}
         keepLabel={t('editor.backToEdit')}
         discardLabel={t('editor.discardAndMove')}

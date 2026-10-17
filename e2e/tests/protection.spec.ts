@@ -1,42 +1,42 @@
 import { expect, test } from '@playwright/test';
-import { agboardOk, listCards, mainOrigin, mainPort, mainProject, projectId, resetBoard, cardBody, type CardJson } from '../helpers/agboard';
+import { agboardOk, listTasks, mainOrigin, mainPort, mainProject, projectId, resetBoard, taskBody, type TaskJson } from '../helpers/agboard';
 
 // Writes go to /api/projects/<ProjectId>/cards/<number>; the guard answers before it looks at the project.
-let card15: string;
+let task15: string;
 
 test.beforeEach(() => {
   resetBoard(mainProject);
-  card15 = `/api/projects/${projectId(mainProject)}/cards/15`;
+  task15 = `/api/projects/${projectId(mainProject)}/tasks/15`;
 });
 
-test('a delete request without the token or an Origin is refused and the card stays', async ({
+test('a delete request without the token or an Origin is refused and the task stays', async ({
   request,
 }) => {
-  const before = listCards(mainProject);
-  const response = await request.delete(card15);
+  const before = listTasks(mainProject);
+  const response = await request.delete(task15);
   expect(response.status()).toBe(403);
   expect((await response.json()).error.code).toBe('forbidden');
-  expect(listCards(mainProject)).toEqual(before);
+  expect(listTasks(mainProject)).toEqual(before);
 });
 
 test('a token alone, a bad token, or a wrong Origin is not enough', async ({ page, request }) => {
   await page.goto('/');
   const token = await page.locator('meta[name="agboard-token"]').getAttribute('content');
   expect(token).toMatch(/^[0-9a-f]{64}$/);
-  const before = listCards(mainProject);
+  const before = listTasks(mainProject);
 
   // The right token, but the request does not come from the page.
-  const tokenOnly = await request.delete(card15, { headers: { 'X-Agboard-Token': token! } });
+  const tokenOnly = await request.delete(task15, { headers: { 'X-Agboard-Token': token! } });
   expect(tokenOnly.status()).toBe(403);
 
   // The page's origin, but no token.
-  const originOnly = await request.delete(card15, {
+  const originOnly = await request.delete(task15, {
     headers: { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin' },
   });
   expect(originOnly.status()).toBe(403);
 
   // The page's origin and a wrong token.
-  const wrongToken = await request.delete(card15, {
+  const wrongToken = await request.delete(task15, {
     headers: {
       Origin: mainOrigin,
       'Sec-Fetch-Site': 'same-origin',
@@ -46,7 +46,7 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
   expect(wrongToken.status()).toBe(403);
 
   // The right token from another site's origin.
-  const otherOrigin = await request.delete(card15, {
+  const otherOrigin = await request.delete(task15, {
     headers: {
       Origin: 'http://example.com',
       'Sec-Fetch-Site': 'cross-site',
@@ -55,7 +55,7 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
   });
   expect(otherOrigin.status()).toBe(403);
 
-  expect(listCards(mainProject)).toEqual(before);
+  expect(listTasks(mainProject)).toEqual(before);
 });
 
 test('the token appears only in the page, never in the API responses', async ({ page, request }) => {
@@ -69,11 +69,11 @@ test('the token appears only in the page, never in the API responses', async ({ 
 // ------------------------------------------------------------------ Edit and draft writes
 
 
-interface Shown extends CardJson {
+interface Shown extends TaskJson {
   description: string;
   isDraft: boolean;
 }
-const shown = (id: number): Shown => JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
+const shown = (id: number): Shown => JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 
 /** The page's own request: its Origin, Sec-Fetch-Site, and token, as the screen sends them. */
 async function fromPage(
@@ -82,7 +82,7 @@ async function fromPage(
   path: string,
   body: unknown,
   token: string | null = null,
-): Promise<{ status: number; body: { error?: { code: string }; card?: Shown } }> {
+): Promise<{ status: number; body: { error?: { code: string }; task?: Shown } }> {
   return page.evaluate(
     async ({ method, path, body, token }) => {
       const meta = document.querySelector('meta[name="agboard-token"]')?.getAttribute('content') ?? '';
@@ -98,15 +98,15 @@ async function fromPage(
 }
 
 test('the edit and the draft switch are refused without the guard, and nothing changes', async ({ page, request }) => {
-  const card13 = `/api/projects/${projectId(mainProject)}/cards/13`;
+  const task13 = `/api/projects/${projectId(mainProject)}/tasks/13`;
   await page.goto('/');
   const token = (await page.locator('meta[name="agboard-token"]').getAttribute('content'))!;
-  const before = listCards(mainProject);
+  const before = listTasks(mainProject);
   const draftBefore = shown(13).isDraft;
 
   for (const [method, url, data] of [
-    ['PUT', `${card13}/draft`, { isDraft: true }],
-    ['PATCH', card13, { title: 'Hijacked' }],
+    ['PUT', `${task13}/draft`, { isDraft: true }],
+    ['PATCH', task13, { title: 'Hijacked' }],
   ] as const) {
     const send = (headers: Record<string, string>) => request.fetch(url, { method, data, headers });
     // Nothing at all, the token only, an Origin only, a wrong token, and a foreign Origin with the right token.
@@ -124,15 +124,15 @@ test('the edit and the draft switch are refused without the guard, and nothing c
       expect(response.status(), `${method} ${JSON.stringify(Object.keys(headers))}`).toBe(403);
     }
   }
-  expect(listCards(mainProject)).toEqual(before);
+  expect(listTasks(mainProject)).toEqual(before);
   expect(shown(13).isDraft).toBe(draftBefore);
 });
 
-test('with the guard, a draft switch and an edit follow the card rules; a bad body or an oversize one changes nothing', async ({
+test('with the guard, a draft switch and an edit follow the task rules; a bad body or an oversize one changes nothing', async ({
   page,
 }) => {
   await page.goto('/');
-  const base = `/api/projects/${projectId(mainProject)}/cards`;
+  const base = `/api/projects/${projectId(mainProject)}/tasks`;
 
   // A running card is refused; a Pending card can be drafted without answering it.
   for (const running of [11]) {
@@ -147,12 +147,12 @@ test('with the guard, a draft switch and an edit follow the card rules; a bad bo
   // An edit of a card that is not a draft is refused.
   const notDraft = await fromPage(page, 'PATCH', `${base}/13`, { description: 'Not allowed' });
   expect(notDraft.status).toBe(409);
-  expect(notDraft.body.error?.code).toBe('card_not_draft');
+  expect(notDraft.body.error?.code).toBe('task_not_draft');
   expect(shown(13).description).toContain('Check the layout at 1280, 800, and 480 px.\nLook for horizontal scrolling.');
 
   // A draft takes an edit; CRLF becomes LF; finalize hands it back in the same step.
   expect((await fromPage(page, 'PUT', `${base}/13/draft`, { isDraft: true })).status).toBe(200);
-  const edited = await fromPage(page, 'PATCH', `${base}/13`, { description: cardBody('one\r\ntwo') });
+  const edited = await fromPage(page, 'PATCH', `${base}/13`, { description: taskBody('one\r\ntwo') });
   expect(edited.status).toBe(200);
   expect(shown(13).description).toContain('one\ntwo');
   expect(shown(13).isDraft).toBe(true);

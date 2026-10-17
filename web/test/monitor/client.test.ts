@@ -20,10 +20,10 @@ describe('monitor read client', () => {
     await monitorClient.fetchBoard(PROJECT_ID);
     await monitorReadResolvers.getEpics(PROJECT_ID);
     expect(monitorReadResolvers.attachmentUrl(PROJECT_ID, 4, 'b'.repeat(32))).toBe(
-      `/monitor/api/projects/${PROJECT_ID}/cards/4/attachments/${'b'.repeat(32)}`,
+      `/monitor/api/projects/${PROJECT_ID}/tasks/4/attachments/${'b'.repeat(32)}`,
     );
     expect(monitorReadResolvers.evidenceUrl(PROJECT_ID, 4, 'c'.repeat(32))).toBe(
-      `/monitor/api/projects/${PROJECT_ID}/cards/4/evidence/${'c'.repeat(32)}`,
+      `/monitor/api/projects/${PROJECT_ID}/tasks/4/evidence/${'c'.repeat(32)}`,
     );
     expect(monitorReadResolvers.epicAttachmentUrl(PROJECT_ID, 'ABC-1', 'b'.repeat(32))).toBe(
       `/monitor/api/projects/${PROJECT_ID}/epics/ABC-1/attachments/${'b'.repeat(32)}`,
@@ -40,7 +40,7 @@ describe('monitor read client', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { monitorClient, monitorReadResolvers } = await import('../../src/monitor/client');
     expect(() => monitorClient.fetchBoard('../api')).toThrow(/project/i);
-    expect(() => monitorReadResolvers.attachmentUrl(PROJECT_ID, 0, 'x')).toThrow(/card/i);
+    expect(() => monitorReadResolvers.attachmentUrl(PROJECT_ID, 0, 'x')).toThrow(/task/i);
     expect(() => monitorReadResolvers.evidenceUrl(PROJECT_ID, 1, '../')).toThrow(/evidence/i);
     expect(() => monitorReadResolvers.epicAttachmentUrl(PROJECT_ID, '../', 'b'.repeat(32))).toThrow(
       /epic/i,
@@ -96,18 +96,18 @@ describe('monitor read client', () => {
 describe('monitor answer client', () => {
   it('uses the monitor token and only the fixed answer POST route', async () => {
     document.head.innerHTML = '<meta name="agboard-monitor-token" content="monitor-secret">';
-    const card = { id: 7, title: 'Decision', pendingRequestId: null };
+    const task = { id: 7, title: 'Decision', pendingRequestId: null };
     const fetchMock = vi.fn(
-      async () => new Response(JSON.stringify({ card, changed: true }), { status: 200 }),
+      async () => new Response(JSON.stringify({ task, changed: true }), { status: 200 }),
     );
     vi.stubGlobal('fetch', fetchMock);
     const { monitorClient } = await import('../../src/monitor/client');
 
     await expect(
       monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', choiceId: 'yes' }),
-    ).resolves.toEqual({ card, changed: true });
+    ).resolves.toEqual({ task, changed: true });
     expect(fetchMock).toHaveBeenCalledWith(
-      `/monitor/api/projects/${PROJECT_ID}/cards/7/answer`,
+      `/monitor/api/projects/${PROJECT_ID}/tasks/7/answer`,
       expect.objectContaining({
         method: 'POST',
         headers: {

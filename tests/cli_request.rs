@@ -27,7 +27,7 @@ fn three_choices() -> Value {
     })
 }
 
-/// Put card #1 into a pending request from `value` and return the request ID.
+/// Put task #1 into a pending request from `value` and return the request ID.
 fn ask(home: &Path, value: &Value) -> String {
     let file = request_file(home, "request.json", value);
     json_ok(
@@ -46,14 +46,14 @@ fn ask(home: &Path, value: &Value) -> String {
         ],
     );
     let shown = json_ok(home, &["--project", "Demo", "show", "1", "--json"]);
-    shown["card"]["pendingRequestId"]
+    shown["task"]["pendingRequestId"]
         .as_str()
         .unwrap()
         .to_string()
 }
 
-fn card(home: &Path) -> Value {
-    json_ok(home, &["--project", "Demo", "show", "1", "--json"])["card"].clone()
+fn task(home: &Path) -> Value {
+    json_ok(home, &["--project", "Demo", "show", "1", "--json"])["task"].clone()
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn a_request_file_keeps_the_question_and_its_choices() {
     demo_project(home.path());
     let request = ask(home.path(), &three_choices());
 
-    let shown = card(home.path());
+    let shown = task(home.path());
     assert_eq!(shown["agentStatus"], "pending");
     assert_eq!(shown["pendingReason"], "Which plan should we use?");
     assert_eq!(shown["pendingChoices"].as_array().unwrap().len(), 3);
@@ -91,16 +91,16 @@ fn a_reason_only_request_with_zero_choices_is_saved_in_task_history() {
             "--json",
         ],
     );
-    assert_eq!(asked["card"]["agentStatus"], "pending");
-    assert_eq!(asked["card"]["pendingReason"], "Which database?");
-    assert_eq!(asked["card"]["pendingChoices"], json!([]));
-    let agent_event = asked["card"]["history"].as_array().unwrap().last().unwrap();
+    assert_eq!(asked["task"]["agentStatus"], "pending");
+    assert_eq!(asked["task"]["pendingReason"], "Which database?");
+    assert_eq!(asked["task"]["pendingChoices"], json!([]));
+    let agent_event = asked["task"]["history"].as_array().unwrap().last().unwrap();
     assert_eq!(agent_event["reason"], "Requested decision: Which database?");
     assert_eq!(agent_event.as_object().unwrap().len(), 2);
 }
 
 #[test]
-fn answering_with_a_choice_only_returns_the_card_to_idle_and_keeps_the_choice_in_history() {
+fn answering_with_a_choice_only_returns_the_task_to_idle_and_keeps_the_choice_in_history() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let request = ask(home.path(), &three_choices());
@@ -122,7 +122,7 @@ fn answering_with_a_choice_only_returns_the_card_to_idle_and_keeps_the_choice_in
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let shown = card(home.path());
+    let shown = task(home.path());
     assert_eq!(shown["agentStatus"], "idle");
     assert_eq!(shown["pendingRequestId"], Value::Null);
     let answer = shown["history"].as_array().unwrap().last().unwrap().clone();
@@ -155,7 +155,7 @@ fn answering_with_a_note_only_is_accepted() {
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let request = card(home.path())["pendingRequestId"]
+    let request = task(home.path())["pendingRequestId"]
         .as_str()
         .unwrap()
         .to_string();
@@ -177,7 +177,7 @@ fn answering_with_a_note_only_is_accepted() {
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let shown = card(home.path());
+    let shown = task(home.path());
     assert_eq!(shown["agentStatus"], "idle");
     let answer = shown["history"].as_array().unwrap().last().unwrap().clone();
     assert!(
@@ -213,7 +213,7 @@ fn answering_with_a_choice_and_a_note_keeps_both() {
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let answer = card(home.path())["history"]
+    let answer = task(home.path())["history"]
         .as_array()
         .unwrap()
         .last()
@@ -253,7 +253,7 @@ fn answering_with_neither_a_choice_nor_a_note_is_refused_and_the_request_stays()
         ],
     );
     assert_ne!(code, 0);
-    let shown = card(home.path());
+    let shown = task(home.path());
     assert_eq!(shown["agentStatus"], "pending");
     assert_eq!(shown["pendingRequestId"], request.as_str());
 }
@@ -280,7 +280,7 @@ fn an_unknown_choice_is_refused_with_request_choice_unknown_and_nothing_changes(
         ],
     );
     assert_eq!((code, code_name.as_str()), (2, "request_choice_unknown"));
-    assert_eq!(card(home.path())["pendingRequestId"], request.as_str());
+    assert_eq!(task(home.path())["pendingRequestId"], request.as_str());
 }
 
 #[test]
@@ -420,7 +420,7 @@ fn a_request_file_is_checked_against_the_limits() {
             ],
         );
         assert_eq!((code, code_name.as_str()), (2, "invalid_value"), "{value}");
-        assert_eq!(card(home.path())["agentStatus"], "idle", "nothing changed");
+        assert_eq!(task(home.path())["agentStatus"], "idle", "nothing changed");
     };
     let choices = |n: usize, label_len: usize| -> Value {
         (0..n)
@@ -461,7 +461,7 @@ fn a_request_file_is_checked_against_the_limits() {
     );
     assert_eq!(code, 0, "{err}");
     assert_eq!(
-        card(home.path())["pendingChoices"]
+        task(home.path())["pendingChoices"]
             .as_array()
             .unwrap()
             .len(),
@@ -489,8 +489,8 @@ fn a_request_without_choices_is_saved_as_a_reason_only_request() {
         ],
     );
     assert_eq!(code, 0, "{err}");
-    assert_eq!(card(home.path())["agentStatus"], "pending");
-    assert_eq!(card(home.path())["pendingChoices"], json!([]));
+    assert_eq!(task(home.path())["agentStatus"], "pending");
+    assert_eq!(task(home.path())["pendingChoices"], json!([]));
 }
 
 #[test]
@@ -512,7 +512,7 @@ fn a_request_that_is_not_json_is_refused_and_changes_nothing() {
         ],
     );
     assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
-    assert_eq!(card(home.path())["agentStatus"], "idle");
+    assert_eq!(task(home.path())["agentStatus"], "idle");
 }
 
 #[test]
@@ -552,7 +552,7 @@ fn a_request_read_from_standard_input_keeps_its_question_and_choices() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let shown = card(home.path());
+    let shown = task(home.path());
     assert_eq!(shown["pendingReason"], "Which plan should we use?");
     assert_eq!(shown["pendingChoices"].as_array().unwrap().len(), 3);
 }
@@ -585,7 +585,7 @@ fn a_request_with_more_than_ten_choices_is_refused() {
         ],
     );
     assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
-    assert_eq!(card(home.path())["agentStatus"], "idle");
+    assert_eq!(task(home.path())["agentStatus"], "idle");
 }
 
 #[test]
@@ -607,7 +607,7 @@ fn a_reason_only_pending_state_is_refused_and_nothing_changes() {
         ],
     );
     assert_eq!((code, code_name.as_str()), (2, "invalid_argument"));
-    assert_eq!(card(home.path())["agentStatus"], "idle");
+    assert_eq!(task(home.path())["agentStatus"], "idle");
 }
 
 #[test]
@@ -637,8 +637,8 @@ fn request_file_is_gone_and_help_shows_request_json_with_an_example() {
     assert!(!out.contains("--request-file"), "{out}");
 }
 
-/// A new AI card in todo, read back by ID.
-fn todo_card(home: &Path, title: &str) -> String {
+/// A new AI task in todo, read back by ID.
+fn todo_task(home: &Path, title: &str) -> String {
     let created = json_ok(
         home,
         &[
@@ -653,11 +653,11 @@ fn todo_card(home: &Path, title: &str) -> String {
             "--json",
         ],
     );
-    created["card"]["id"].as_i64().unwrap().to_string()
+    created["task"]["id"].as_i64().unwrap().to_string()
 }
 
-/// Put card `id` into a pending request from `value` and return the request ID.
-fn ask_card(home: &Path, id: &str, value: &Value) -> String {
+/// Put task `id` into a pending request from `value` and return the request ID.
+fn ask_task(home: &Path, id: &str, value: &Value) -> String {
     let (code, _, err) = agboard(
         home,
         &[
@@ -673,20 +673,20 @@ fn ask_card(home: &Path, id: &str, value: &Value) -> String {
         ],
     );
     assert_eq!(code, 0, "{err}");
-    card_of(home, id)["pendingRequestId"]
+    task_of(home, id)["pendingRequestId"]
         .as_str()
         .unwrap()
         .to_string()
 }
 
 #[test]
-fn a_todo_card_asks_and_the_answer_returns_it_to_todo_idle() {
+fn a_todo_task_asks_and_the_answer_returns_it_to_todo_idle() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    let id = todo_card(home.path(), "Ask in todo");
-    let request = ask_card(home.path(), &id, &three_choices());
-    let shown = card_of(home.path(), &id);
-    assert_eq!(shown["cardStatus"], "todo");
+    let id = todo_task(home.path(), "Ask in todo");
+    let request = ask_task(home.path(), &id, &three_choices());
+    let shown = task_of(home.path(), &id);
+    assert_eq!(shown["taskStatus"], "todo");
     assert_eq!(shown["agentStatus"], "pending");
     let (code, _, err) = agboard(
         home.path(),
@@ -705,18 +705,18 @@ fn a_todo_card_asks_and_the_answer_returns_it_to_todo_idle() {
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let shown = card_of(home.path(), &id);
-    assert_eq!(shown["cardStatus"], "todo");
+    let shown = task_of(home.path(), &id);
+    assert_eq!(shown["taskStatus"], "todo");
     assert_eq!(shown["agentStatus"], "idle");
     assert_eq!(shown["pendingRequestId"], Value::Null);
 }
 
 #[test]
-fn run_states_refused_outside_their_column_or_owner_leave_the_card_unchanged() {
+fn run_states_refused_outside_their_column_or_owner_leave_the_task_unchanged() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    // An AI card in todo may not run.
-    let id = todo_card(home.path(), "Run in todo");
+    // An AI task in todo may not run.
+    let id = todo_task(home.path(), "Run in todo");
     let (code, _, _) = agboard(
         home.path(),
         &[
@@ -732,8 +732,8 @@ fn run_states_refused_outside_their_column_or_owner_leave_the_card_unchanged() {
         ],
     );
     assert_ne!(code, 0);
-    assert_eq!(card_of(home.path(), &id)["agentStatus"], "idle");
-    // A person's card may not be pending.
+    assert_eq!(task_of(home.path(), &id)["agentStatus"], "idle");
+    // A person's task may not be pending.
     let (code, _, err) = agboard(
         home.path(),
         &[
@@ -749,7 +749,7 @@ fn run_states_refused_outside_their_column_or_owner_leave_the_card_unchanged() {
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let mine = json_ok(home.path(), &["--project", "Demo", "snapshot", "--json"])["cards"]
+    let mine = json_ok(home.path(), &["--project", "Demo", "snapshot", "--json"])["tasks"]
         .as_array()
         .unwrap()
         .iter()
@@ -773,9 +773,9 @@ fn run_states_refused_outside_their_column_or_owner_leave_the_card_unchanged() {
         ],
     );
     assert_ne!(code, 0);
-    assert_eq!(card_of(home.path(), &mine)["agentStatus"], "idle");
-    // An AI card in done may not be pending.
-    let done = todo_card(home.path(), "Done already");
+    assert_eq!(task_of(home.path(), &mine)["agentStatus"], "idle");
+    // An AI task in done may not be pending.
+    let done = todo_task(home.path(), "Done already");
     let (code, _, err) = agboard(
         home.path(),
         &[
@@ -806,15 +806,15 @@ fn run_states_refused_outside_their_column_or_owner_leave_the_card_unchanged() {
         ],
     );
     assert_ne!(code, 0);
-    assert_eq!(card_of(home.path(), &done)["agentStatus"], "idle");
+    assert_eq!(task_of(home.path(), &done)["agentStatus"], "idle");
 }
 
 #[test]
-fn moving_a_todo_card_cancels_its_request_and_the_old_answer_is_refused() {
+fn moving_a_todo_task_cancels_its_request_and_the_old_answer_is_refused() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    let id = todo_card(home.path(), "Move while asking");
-    let request = ask_card(home.path(), &id, &three_choices());
+    let id = todo_task(home.path(), "Move while asking");
+    let request = ask_task(home.path(), &id, &three_choices());
     let (code, _, err) = agboard(
         home.path(),
         &[
@@ -830,7 +830,7 @@ fn moving_a_todo_card_cancels_its_request_and_the_old_answer_is_refused() {
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let shown = card_of(home.path(), &id);
+    let shown = task_of(home.path(), &id);
     assert_eq!(shown["agentStatus"], "idle");
     assert_eq!(shown["pendingRequestId"], Value::Null);
     let (code, code_name) = json_error(
@@ -853,6 +853,6 @@ fn moving_a_todo_card_cancels_its_request_and_the_old_answer_is_refused() {
     assert_ne!(code_name, "", "{code}");
 }
 
-fn card_of(home: &Path, id: &str) -> Value {
-    json_ok(home, &["--project", "Demo", "show", id, "--json"])["card"].clone()
+fn task_of(home: &Path, id: &str) -> Value {
+    json_ok(home, &["--project", "Demo", "show", id, "--json"])["task"].clone()
 }

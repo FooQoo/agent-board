@@ -7,7 +7,7 @@ import type {
   AnswerResult,
   AnswerWriter,
 } from '../lib/answer';
-import type { Card, ProjectId } from '../types';
+import type { Task, ProjectId } from '../types';
 
 interface Entry {
   state: AnswerFormState;
@@ -22,7 +22,7 @@ interface SavedAnswer {
 
 export type AnswerLeaseChange = (key: AnswerFormKey, projectId: ProjectId, active: boolean) => void;
 
-export type CardAnswerController = ReturnType<typeof useCardAnswers>;
+export type TaskAnswerController = ReturnType<typeof useTaskAnswers>;
 
 const emptyState = (requestId: string | null, requestChanged = false): AnswerFormState => ({
   baseRequestId: requestId,
@@ -34,17 +34,17 @@ const emptyState = (requestId: string | null, requestChanged = false): AnswerFor
   requestChanged,
 });
 
-const cardPrefix = (projectId: ProjectId, cardId: number) => `${projectId}:${cardId}:`;
+const taskPrefix = (projectId: ProjectId, taskId: number) => `${projectId}:${taskId}:`;
 
-const keyOf = (projectId: ProjectId, cardId: number, requestId: string | null) =>
-  `${projectId}:${cardId}:${requestId ?? ''}` as AnswerFormKey;
+const keyOf = (projectId: ProjectId, taskId: number, requestId: string | null) =>
+  `${projectId}:${taskId}:${requestId ?? ''}` as AnswerFormKey;
 
 const hasInput = (state: AnswerFormState | undefined) =>
   state !== undefined &&
   (state.choiceId !== null || state.text !== '' || state.phase === 'sending');
 
 /** PC answer drafts and post-save snapshots belong to a project/card/request tuple. */
-export function useCardAnswers(
+export function useTaskAnswers(
   onLeaseChange: AnswerLeaseChange,
   write: AnswerWriter = answerRequest,
 ) {
@@ -65,8 +65,8 @@ export function useCardAnswers(
       getSnapshot(key) {
         const existing = entries.current.get(key);
         if (existing) return existing.state;
-        const [projectId, cardIdText, ...requestParts] = key.split(':');
-        const prefix = cardPrefix(projectId ?? '', Number(cardIdText));
+        const [projectId, taskIdText, ...requestParts] = key.split(':');
+        const prefix = taskPrefix(projectId ?? '', Number(taskIdText));
         const requestId = requestParts.join(':') || null;
         const olderDraft = [...entries.current.entries()].find(
           ([otherKey, entry]) =>
@@ -90,10 +90,10 @@ export function useCardAnswers(
         const previous = entry?.state ?? emptyState(null);
         const state = update(previous);
         entries.current.set(key, { state, listeners: entry?.listeners ?? new Set() });
-        const [projectIdValue, cardIdText] = key.split(':');
+        const [projectIdValue, taskIdText] = key.split(':');
         const projectId = projectIdValue as ProjectId;
         if (previous.requestChanged && !state.requestChanged) {
-          const prefix = cardPrefix(projectId, Number(cardIdText));
+          const prefix = taskPrefix(projectId, Number(taskIdText));
           for (const olderKey of entries.current.keys()) {
             if (olderKey === key || !olderKey.startsWith(prefix)) continue;
             if (hasInput(entries.current.get(olderKey)?.state))
@@ -113,12 +113,12 @@ export function useCardAnswers(
   const onAnswered = useCallback(
     (
       projectId: ProjectId,
-      cardId: number,
+      taskId: number,
       requestId: string,
       result: AnswerResult,
       syncedAt: Date | null,
     ) => {
-      saved.current.set(`${projectId}:${cardId}`, {
+      saved.current.set(`${projectId}:${taskId}`, {
         requestId,
         result,
         baselineSync: syncedAt?.getTime() ?? null,
@@ -128,9 +128,9 @@ export function useCardAnswers(
     [notify],
   );
 
-  const clearCard = useCallback(
-    (projectId: ProjectId, cardId: number) => {
-      const prefix = cardPrefix(projectId, cardId);
+  const clearTask = useCallback(
+    (projectId: ProjectId, taskId: number) => {
+      const prefix = taskPrefix(projectId, taskId);
       for (const key of entries.current.keys()) {
         if (key.startsWith(prefix)) {
           if (hasInput(entries.current.get(key)?.state)) onLeaseChange(key, projectId, false);
@@ -138,31 +138,31 @@ export function useCardAnswers(
           entries.current.delete(key);
         }
       }
-      const receipt = saved.current.get(`${projectId}:${cardId}`);
-      if (receipt) staleRequests.current.add(keyOf(projectId, cardId, receipt.requestId));
-      saved.current.delete(`${projectId}:${cardId}`);
+      const receipt = saved.current.get(`${projectId}:${taskId}`);
+      if (receipt) staleRequests.current.add(keyOf(projectId, taskId, receipt.requestId));
+      saved.current.delete(`${projectId}:${taskId}`);
       notify();
     },
     [notify, onLeaseChange],
   );
 
-  const reconcileCards = useCallback(
-    (projectId: ProjectId, cards: readonly Card[]) => {
-      for (const card of cards) {
-        if (card.cardStatus === 'done') clearCard(projectId, card.id);
+  const reconcileTasks = useCallback(
+    (projectId: ProjectId, tasks: readonly Task[]) => {
+      for (const task of tasks) {
+        if (task.taskStatus === 'done') clearTask(projectId, task.id);
       }
     },
-    [clearCard],
+    [clearTask],
   );
 
   const withSavedAnswers = useCallback(
-    (projectId: ProjectId, cards: readonly Card[], syncedAt: Date | null) => {
+    (projectId: ProjectId, tasks: readonly Task[], syncedAt: Date | null) => {
       const syncTime = syncedAt?.getTime() ?? null;
-      const byId = new Map(cards.map((card) => [card.id, card]));
+      const byId = new Map(tasks.map((task) => [task.id, task]));
       for (const [key, receipt] of saved.current) {
         if (!key.startsWith(`${projectId}:`)) continue;
-        const cardId = Number(key.slice(projectId.length + 1));
-        const current = byId.get(cardId);
+        const taskId = Number(key.slice(projectId.length + 1));
+        const current = byId.get(taskId);
         if (!current) continue;
         if (
           syncTime !== null &&
@@ -171,19 +171,19 @@ export function useCardAnswers(
         )
           saved.current.delete(key);
       }
-      return cards.map((card) => {
-        const receipt = saved.current.get(`${projectId}:${card.id}`);
-        return receipt?.requestId === card.pendingRequestId ? receipt.result.card : card;
+      return tasks.map((task) => {
+        const receipt = saved.current.get(`${projectId}:${task.id}`);
+        return receipt?.requestId === task.pendingRequestId ? receipt.result.task : task;
       });
     },
     [],
   );
 
   const wasAnswered = useCallback(
-    (projectId: ProjectId, cardId: number, requestId: string | null) =>
+    (projectId: ProjectId, taskId: number, requestId: string | null) =>
       requestId !== null &&
-      (saved.current.get(`${projectId}:${cardId}`)?.requestId === requestId ||
-        staleRequests.current.has(keyOf(projectId, cardId, requestId))),
+      (saved.current.get(`${projectId}:${taskId}`)?.requestId === requestId ||
+        staleRequests.current.has(keyOf(projectId, taskId, requestId))),
     [],
   );
 
@@ -191,8 +191,8 @@ export function useCardAnswers(
     stateStore,
     writeAnswer: write,
     onAnswered,
-    clearCard,
-    reconcileCards,
+    clearTask,
+    reconcileTasks,
     withSavedAnswers,
     wasAnswered,
   };

@@ -48,7 +48,7 @@ function run(project: string, args: string[]): void {
 test('project scope, same IDs and live updates follow the shared file store', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
-  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
 
   await page.getByRole('button', { name: 'All Projects' }).click();
   await page.getByRole('menuitemradio', { name: 'Beta', exact: true }).click();
@@ -65,7 +65,7 @@ test('project scope, same IDs and live updates follow the shared file store', as
   await expect(page.getByRole('button', { name: 'Beta', exact: true })).toBeVisible();
 
   await page.goto('/monitor/');
-  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
   run('Alpha', ['mv', '2', 'done', '--actor', 'ai', '--reason', 'Finished during the monitor session']);
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '10 Done' })).toBeVisible();
 
@@ -82,7 +82,7 @@ function pathFor(project: string, id: number, name: string): string {
 test('partial shared-file damage is reported without inventing zero counts, then recovers', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
-  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
   const taskFile = pathFor('Alpha', 1, 'task.json');
   const original = readFileSync(taskFile, 'utf8');
   replaceFileAtomically(taskFile, '{ invalid json');
@@ -102,10 +102,10 @@ test('monitor overview exposes no detail or write controls and all write methods
   await page.goto('/monitor/');
   await page.getByRole('article', { name: /Alpha pending review/ }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /edit|archive|delete|restore|answer|add card/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /edit|archive|delete|restore|answer|add task/i })).toHaveCount(0);
   const before = await page.request.get(`/monitor/api/projects/${alpha}/board`).then((response) => response.text());
   for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
-    const response = await page.request.fetch(`/monitor/api/projects/${alpha}/cards/1`, { method });
+    const response = await page.request.fetch(`/monitor/api/projects/${alpha}/tasks/1`, { method });
     expect(response.status(), `${method} must be rejected by the read-only router`).toBe(405);
   }
   const after = await page.request.get(`/monitor/api/projects/${alpha}/board`).then((response) => response.text());

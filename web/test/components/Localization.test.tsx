@@ -15,7 +15,7 @@ afterEach(async () => {
 describe('localized board content', () => {
   it('translates each lane label and its accessible region name', async () => {
     await i18n.changeLanguage('ja');
-    render(<Lane column="todo" cards={[]} selectedId={null} onSelect={() => undefined} />);
+    render(<Lane column="todo" tasks={[]} selectedId={null} onSelect={() => undefined} />);
     expect(screen.getByRole('region', { name: '未着手' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: '未着手' })).toBeTruthy();
     expect(screen.getByText('0')).toBeTruthy();
@@ -44,20 +44,20 @@ describe('localized board content', () => {
     expect(screen.getByText('ボードを読み込めませんでした。')).toBeTruthy();
     expect(screen.getByRole('button', { name: '再試行' })).toBeTruthy();
     rerender(<BoardMessage kind="empty" />);
-    expect(screen.getByText('カードはまだありません。')).toBeTruthy();
-    expect(screen.getByText('「カード追加」から登録できます。')).toBeTruthy();
+    expect(screen.getByText('タスクはまだありません。')).toBeTruthy();
+    expect(screen.getByText('「タスク追加」から登録できます。')).toBeTruthy();
   });
 
   it('keeps recorded reasons and datetime unchanged when the UI language changes', async () => {
     await i18n.changeLanguage('ja');
     const events: HistoryEvent[] = [
-      { at: '2026-10-01T16:00:00Z', reason: 'Created card in Todo.' },
+      { at: '2026-10-01T16:00:00Z', reason: 'Created task in Todo.' },
       { at: '2026-10-01T16:30:00Z', reason: '着手' },
     ];
     const { container } = render(<HistoryTimeline events={events} />);
     expect(
       [...container.querySelectorAll('.history__step')].map((step) => step.textContent),
-    ).toEqual(['10/01 16:30着手', '10/01 16:00Created card in Todo.']);
+    ).toEqual(['10/01 16:30着手', '10/01 16:00Created task in Todo.']);
     expect(container.querySelector('.status-label')).toBeNull();
     expect(container.querySelector('.assignee-label')).toBeNull();
   });

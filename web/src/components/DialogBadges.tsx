@@ -3,7 +3,7 @@ import { CheckIcon, LoaderIcon, PauseIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { ColumnName, RunState } from '../types';
 
-export function CardStatusBadge({ status }: { status: ColumnName }) {
+export function TaskStatusBadge({ status }: { status: ColumnName }) {
   const { t } = useTranslation();
   return (
     <Badge variant={status === 'doing' ? 'default' : status === 'done' ? 'secondary' : 'outline'}>

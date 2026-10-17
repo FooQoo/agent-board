@@ -2,29 +2,29 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { columnLabel } from '../lib/format';
 import { useScrollCue } from '../hooks/useScrollCue';
-import type { Card as CardModel, ColumnName } from '../types';
-import { Card } from './Card';
+import type { Task as TaskModel, ColumnName } from '../types';
+import { TaskCard } from './TaskCard';
 import { LaneHeader } from './LaneHeader';
 import { useDroppable } from '@dnd-kit/react';
 import type { ProjectId } from '../types';
-import type { CardAnswerController } from '../hooks/useCardAnswers';
+import type { TaskAnswerController } from '../hooks/useTaskAnswers';
 
 export interface LaneProps {
   column: ColumnName;
-  cards: CardModel[];
+  tasks: TaskModel[];
   selectedId: number | null;
   onSelect: (id: number) => void;
   onArchive?: () => void;
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
-  answers?: CardAnswerController;
+  answers?: TaskAnswerController;
   syncedAt?: Date | null;
   onAnswerChanged?: () => void;
 }
 
 export function Lane({
   column,
-  cards,
+  tasks,
   selectedId,
   onSelect,
   onArchive,
@@ -36,7 +36,7 @@ export function Lane({
 }: LaneProps) {
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
-  const more = useScrollCue(listRef, cards);
+  const more = useScrollCue(listRef, tasks);
   const { ref, isDropTarget } = useDroppable({ id: `lane-${column}`, data: { column } });
   return (
     <section
@@ -45,15 +45,15 @@ export function Lane({
       data-drop-target={isDropTarget ? 'true' : 'false'}
       aria-label={columnLabel(column, t)}
     >
-      <LaneHeader column={column} count={cards.length} onArchive={onArchive} />
+      <LaneHeader column={column} count={tasks.length} onArchive={onArchive} />
       <div className="lane__scroll" data-more={more ? 'true' : 'false'}>
         <div className="lane__cards" ref={listRef}>
-          {cards.map((card, index) => (
-            <Card
-              key={card.id}
-              card={card}
+          {tasks.map((task, index) => (
+            <TaskCard
+              key={task.id}
+              task={task}
               index={index}
-              selected={card.id === selectedId}
+              selected={task.id === selectedId}
               onSelect={onSelect}
               onOpenEpic={onOpenEpic}
               projectId={projectId}

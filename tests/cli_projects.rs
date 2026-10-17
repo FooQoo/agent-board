@@ -43,11 +43,11 @@ fn error_code(assert: assert_cmd::assert::Assert, exit: i32) -> String {
         .to_string()
 }
 
-const CARD: [&str; 5] = ["--assignee", "ai", "--actor", "ai", "--json"];
+const TASK: [&str; 5] = ["--assignee", "ai", "--actor", "ai", "--json"];
 
-fn add_card(home: &Path, project: &str, title: &str) -> Value {
+fn add_task(home: &Path, project: &str, title: &str) -> Value {
     let mut args = vec!["--project", project, "add", title];
-    args.extend(CARD);
+    args.extend(TASK);
     stdout_json(agboard(home, &args))
 }
 
@@ -66,7 +66,7 @@ fn world(home: &Path) -> Value {
 }
 
 fn titles(home: &Path, project: &str) -> Vec<String> {
-    stdout_json(agboard(home, &["--project", project, "ls", "--json"]))["cards"]
+    stdout_json(agboard(home, &["--project", project, "ls", "--json"]))["tasks"]
         .as_array()
         .unwrap()
         .iter()
@@ -82,13 +82,13 @@ fn two_projects(home: &Path) {
 // ---- AC-1, AC-3: create, list, rename, isolation ----------------------------
 
 #[test]
-fn two_projects_keep_equal_card_numbers_apart() {
+fn two_projects_keep_equal_task_numbers_apart() {
     let home = tempdir().unwrap();
     two_projects(home.path());
-    let a = add_card(home.path(), "A", "only in A");
-    let b = add_card(home.path(), "B", "only in B");
-    assert_eq!(a["card"]["id"], 1);
-    assert_eq!(b["card"]["id"], 1);
+    let a = add_task(home.path(), "A", "only in A");
+    let b = add_task(home.path(), "B", "only in B");
+    assert_eq!(a["task"]["id"], 1);
+    assert_eq!(b["task"]["id"], 1);
 
     agboard(
         home.path(),
@@ -129,15 +129,15 @@ fn two_projects_keep_equal_card_numbers_apart() {
         home.path(),
         &["--project", "B", "show", "1", "--json"],
     ));
-    assert_eq!(shown_a["card"]["title"], "only in A");
-    assert_eq!(shown_a["card"]["cardStatus"], "doing");
-    assert_eq!(shown_a["card"]["agentStatus"], "running");
-    assert_eq!(shown_b["card"]["title"], "only in B");
-    assert_eq!(shown_b["card"]["cardStatus"], "todo");
-    assert_eq!(shown_b["card"]["agentStatus"], "idle");
-    assert_eq!(shown_b["card"]["history"].as_array().unwrap().len(), 1);
+    assert_eq!(shown_a["task"]["title"], "only in A");
+    assert_eq!(shown_a["task"]["taskStatus"], "doing");
+    assert_eq!(shown_a["task"]["agentStatus"], "running");
+    assert_eq!(shown_b["task"]["title"], "only in B");
+    assert_eq!(shown_b["task"]["taskStatus"], "todo");
+    assert_eq!(shown_b["task"]["agentStatus"], "idle");
+    assert_eq!(shown_b["task"]["history"].as_array().unwrap().len(), 1);
 
-    // A card number that exists in neither project is not found, per project.
+    // A task number that exists in neither project is not found, per project.
     agboard(home.path(), &["--project", "B", "show", "2", "--json"])
         .failure()
         .code(3);
@@ -191,7 +191,7 @@ fn project_create_prints_the_project_and_ls_lists_by_name_with_the_catalog_versi
 fn creating_or_renaming_to_an_existing_name_is_refused_and_changes_nothing() {
     let home = tempdir().unwrap();
     two_projects(home.path());
-    add_card(home.path(), "A", "kept");
+    add_task(home.path(), "A", "kept");
     let before = world(home.path());
 
     for args in [
@@ -324,7 +324,7 @@ fn project_option_syntax_before_or_after_the_command_with_spaces_and_duplicates(
         vec!["--json", "--project=My team board", "ls"],
     ] {
         let value = stdout_json(agboard(home.path(), &args));
-        assert!(value["cards"].is_array(), "{args:?}");
+        assert!(value["tasks"].is_array(), "{args:?}");
     }
     // The option given twice is rejected, even with the same value.
     for args in [
@@ -379,10 +379,10 @@ fn global_commands_reject_project_and_work_with_no_projects() {
 // ---- AC-4: deletion needs a human -----------------------------------------
 
 #[test]
-fn project_rm_and_card_rm_refuse_without_a_human_terminal() {
+fn project_rm_and_task_rm_refuse_without_a_human_terminal() {
     let home = tempdir().unwrap();
     two_projects(home.path());
-    add_card(home.path(), "A", "keep me");
+    add_task(home.path(), "A", "keep me");
     let before = world(home.path());
     for args in [
         vec!["--project", "A", "project", "rm", "--json"],
@@ -435,7 +435,7 @@ mod terminal {
         }
     }
 
-    const PROMPT: &str = "Delete project A and all its cards and history? [y/N] ";
+    const PROMPT: &str = "Delete project A and all its tasks and history? [y/N] ";
 
     #[test]
     fn project_rm_asks_on_the_terminal_and_only_a_yes_deletes() {
@@ -451,8 +451,8 @@ mod terminal {
         ] {
             let home = tempdir().unwrap();
             two_projects(home.path());
-            add_card(home.path(), "A", "a1");
-            add_card(home.path(), "B", "b1");
+            add_task(home.path(), "A", "a1");
+            add_task(home.path(), "B", "b1");
             let before = world(home.path());
 
             let mut term = session(home.path(), &["--project", "A", "project", "rm"]);
@@ -637,8 +637,8 @@ fn only_a_confirmed_real_change_notifies_once_and_to_the_data_directory() {
         }
         (code, err, calls)
     };
-    let card = ["--assignee", "ai", "--actor", "ai"];
-    let add = |p| [&["--project", p, "add", "x"][..], &card].concat();
+    let task = ["--assignee", "ai", "--actor", "ai"];
+    let add = |p| [&["--project", p, "add", "x"][..], &task].concat();
 
     // Real changes: one notification each.
     assert_eq!(calls(&["project", "create", "A"]).2, 1);
@@ -790,7 +790,7 @@ mod races {
     use super::*;
     use agent_board::cli::args::ProjectRenameArgs;
     use agent_board::cli::commands::project;
-    use agent_board::domain::{Actor, Assignee, NewCard, ProjectId};
+    use agent_board::domain::{Actor, Assignee, NewTask, ProjectId};
     use agent_board::file_store::FileStore;
 
     struct World {
@@ -815,14 +815,14 @@ mod races {
         }
     }
 
-    fn put(store: &FileStore, name: &str, card: &str) -> ProjectId {
+    fn put(store: &FileStore, name: &str, task: &str) -> ProjectId {
         let at = chrono::Utc::now();
         let id = store.create_project(name, at).unwrap().id;
         store
-            .create_card(
+            .create_task(
                 &id,
-                NewCard {
-                    title: card.into(),
+                NewTask {
+                    title: task.into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
@@ -864,7 +864,7 @@ mod races {
             assert!(!outcome.changed);
             assert_eq!(
                 String::from_utf8(prompt).unwrap(),
-                "Delete project A b and all its cards and history? [y/N] "
+                "Delete project A b and all its tasks and history? [y/N] "
             );
             assert_eq!(outcome.human, "Cancelled. Nothing was changed.\n");
             assert_eq!(outcome.json, json!({"cancelled": true}));
@@ -908,8 +908,8 @@ mod races {
         let reborn = reborn.unwrap();
         assert_ne!(reborn, a);
         let kept = w.mine.snapshot(&reborn).unwrap();
-        assert_eq!(kept.cards.len(), 1);
-        assert_eq!(kept.cards[0].title, "new one");
+        assert_eq!(kept.tasks.len(), 1);
+        assert_eq!(kept.tasks[0].title, "new one");
     }
 
     #[test]

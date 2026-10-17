@@ -1,4 +1,4 @@
-import type { Card, ColumnName } from '../types';
+import type { Task, ColumnName } from '../types';
 import type { TFunction } from 'i18next';
 
 const pad = (n: number): string => String(n).padStart(2, '0');
@@ -14,8 +14,8 @@ export function formatTime(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function cardCountLabel(n: number, t?: TFunction): string {
-  return t ? t('status.cardCount', { count: n }) : n === 1 ? '1 card' : `${n} cards`;
+export function taskCountLabel(n: number, t?: TFunction): string {
+  return t ? t('status.cardCount', { count: n }) : n === 1 ? '1 task' : `${n} tasks`;
 }
 
 const COLUMN_LABELS: Record<ColumnName, string> = {
@@ -35,11 +35,11 @@ const STATE_LABELS = {
 } as const;
 
 /** The run state is only shown for cards in Doing. */
-export function stateLabel(card: Card, t?: TFunction): string | null {
+export function stateLabel(task: Task, t?: TFunction): string | null {
   // An AI card shows its run state in Doing, and a pending question in Todo (before the work starts).
   const shows =
-    card.assignee === 'ai' &&
-    (card.cardStatus === 'doing' || (card.cardStatus === 'todo' && card.agentStatus === 'pending'));
+    task.assignee === 'ai' &&
+    (task.taskStatus === 'doing' || (task.taskStatus === 'todo' && task.agentStatus === 'pending'));
   if (!shows) return null;
-  return t ? t(`runState.${card.agentStatus}`) : STATE_LABELS[card.agentStatus];
+  return t ? t(`runState.${task.agentStatus}`) : STATE_LABELS[task.agentStatus];
 }

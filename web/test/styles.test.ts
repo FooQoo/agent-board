@@ -90,7 +90,7 @@ describe('app.css', () => {
     );
   });
 
-  it('spins the loader on the board card only', () => {
+  it('spins the loader on the board task only', () => {
     expect(css).toMatch(/\.card \.spinner\s*\{[^}]*animation:\s*spin/);
     expect(css).not.toMatch(/(^|\n)\.spinner\s*\{[^}]*animation:\s*spin/);
   });

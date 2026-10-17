@@ -5,8 +5,8 @@ import type { Project } from '../../types';
 
 const monitorUrlState = {
   project: parseAsString,
-  cardProject: parseAsString,
-  card: parseAsString,
+  taskProject: parseAsString,
+  task: parseAsString,
   tab: parseAsString,
 };
 
@@ -19,11 +19,11 @@ export function useMonitorUrl(projects: Project[], catalogReady: boolean) {
   useEffect(() => {
     if (!catalogReady) return;
     const validScope = query.project === null || projects.some(({ id }) => id === query.project);
-    const hasDetailQuery = query.cardProject !== null || query.card !== null || query.tab !== null;
+    const hasDetailQuery = query.taskProject !== null || query.task !== null || query.tab !== null;
     if (!validScope) setNotice(true);
     if (!validScope || hasDetailQuery) {
       void setQuery(
-        { project: validScope ? query.project : null, cardProject: null, card: null, tab: null },
+        { project: validScope ? query.project : null, taskProject: null, task: null, tab: null },
         { history: 'replace' },
       );
     }
@@ -34,8 +34,8 @@ export function useMonitorUrl(projects: Project[], catalogReady: boolean) {
       setNotice(false);
       void setQuery({
         project: next === 'all' ? null : next,
-        cardProject: null,
-        card: null,
+        taskProject: null,
+        task: null,
         tab: null,
       });
     },

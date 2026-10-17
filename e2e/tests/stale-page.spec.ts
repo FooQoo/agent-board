@@ -30,9 +30,9 @@ test.afterAll(async () => {
   removeHome(home);
 });
 
-async function addCard(page: import('@playwright/test').Page, title: string): Promise<void> {
-  await page.getByRole('button', { name: 'Add card' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add card' });
+async function addTask(page: import('@playwright/test').Page, title: string): Promise<void> {
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add task' });
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill(title);
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(dialog).toHaveCount(0);
@@ -46,8 +46,8 @@ test('after a restart, a save from an open page asks for a reload, and the reloa
   await stopServe(serve);
   serve = await startServe(statesPort, home);
 
-  await page.getByRole('button', { name: 'Add card' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add card' });
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add task' });
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed before the reload');
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -63,6 +63,6 @@ test('after a restart, a save from an open page asks for a reload, and the reloa
   await page.waitForLoadState('load');
   await waitForSync(page);
   await expect(page.locator('.stale-page')).toHaveCount(0);
-  await addCard(page, 'Saved after the reload');
+  await addTask(page, 'Saved after the reload');
   expect(agboardOk('Stale Board', ['ls', '--json'], home).stdout).toContain('Saved after the reload');
 });

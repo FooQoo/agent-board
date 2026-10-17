@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   addEpicAttachments,
   deleteEpicAttachment,
-  setCardEpic,
+  setTaskEpic,
   updateEpic,
   WriteError,
 } from '../src/api';
@@ -32,12 +32,12 @@ describe('epic writes', () => {
     expect(JSON.parse(String(init?.body))).toEqual({ plan: '## Goal' });
   });
 
-  it('puts a card into an epic and takes it out with null', async () => {
-    const fetchMock = stubFetch(200, { card: { id: 27 } });
-    await setCardEpic(PROJECT, 27, 'FILE-SHARE');
-    await setCardEpic(PROJECT, 27, null);
+  it('puts a task into an epic and takes it out with null', async () => {
+    const fetchMock = stubFetch(200, { task: { id: 27 } });
+    await setTaskEpic(PROJECT, 27, 'FILE-SHARE');
+    await setTaskEpic(PROJECT, 27, null);
     const [first, second] = fetchMock.mock.calls;
-    expect(first?.[0]).toBe(`/api/projects/${PROJECT}/cards/27/epic`);
+    expect(first?.[0]).toBe(`/api/projects/${PROJECT}/tasks/27/epic`);
     expect(first?.[1]?.method).toBe('PUT');
     expect(JSON.parse(String(first?.[1]?.body))).toEqual({ epicId: 'FILE-SHARE' });
     expect(JSON.parse(String(second?.[1]?.body))).toEqual({ epicId: null });
@@ -77,11 +77,11 @@ describe('epic writes', () => {
 
   it('turns a refused write into a WriteError with the server reason', async () => {
     stubFetch(409, {
-      error: { code: 'card_archived', message: 'x', reason: 'Card #8 is archived.' },
+      error: { code: 'task_archived', message: 'x', reason: 'Task #8 is archived.' },
     });
-    const failure = await setCardEpic(PROJECT, 8, 'FILE-SHARE').catch((error: unknown) => error);
+    const failure = await setTaskEpic(PROJECT, 8, 'FILE-SHARE').catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(WriteError);
-    expect((failure as WriteError).message).toBe('Card #8 is archived.');
-    expect((failure as WriteError).code).toBe('card_archived');
+    expect((failure as WriteError).message).toBe('Task #8 is archived.');
+    expect((failure as WriteError).code).toBe('task_archived');
   });
 });

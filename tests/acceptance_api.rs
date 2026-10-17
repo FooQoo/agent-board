@@ -1,4 +1,4 @@
-//! The acceptance conditions over HTTP: card conditions are saved as a body
+//! The acceptance conditions over HTTP: task conditions are saved as a body
 //! and a list of conditions, the frontmatter is written by the server, and
 //! other frontmatter keys are kept.
 
@@ -17,29 +17,29 @@ fn project_id(home: &Path) -> String {
 }
 
 #[test]
-fn a_card_is_created_from_a_body_and_its_conditions() {
+fn a_task_is_created_from_a_body_and_its_conditions() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
-    let cards = format!("/api/projects/{pid}/cards");
+    let tasks = format!("/api/projects/{pid}/tasks");
     let payload = json!({
         "title": "Listed",
         "assignee": "ai",
         "body": "Free body.\n",
         "acceptance": [{"id": "AC-1", "text": "Returns JSON", "done": false}],
     });
-    let created = server.write("POST", &cards, Some(&payload.to_string()));
+    let created = server.write("POST", &tasks, Some(&payload.to_string()));
     assert_eq!(created.status, 201, "{}", created.body);
-    let card = &created.json()["card"];
-    assert_eq!(card["body"], "Free body.\n");
+    let task = &created.json()["task"];
+    assert_eq!(task["body"], "Free body.\n");
     assert_eq!(
-        card["acceptance"],
+        task["acceptance"],
         json!([{"id": "AC-1", "text": "Returns JSON", "done": false}])
     );
-    assert_eq!(card["acceptanceError"], false);
+    assert_eq!(task["acceptanceError"], false);
     assert!(
-        card["description"]
+        task["description"]
             .as_str()
             .unwrap()
             .starts_with("---\nacceptance:\n")
@@ -48,7 +48,7 @@ fn a_card_is_created_from_a_body_and_its_conditions() {
 }
 
 #[test]
-fn a_card_takes_either_a_description_or_a_body_not_both() {
+fn a_task_takes_either_a_description_or_a_body_not_both() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let pid = project_id(home.path());
@@ -61,7 +61,7 @@ fn a_card_takes_either_a_description_or_a_body_not_both() {
     });
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{pid}/cards"),
+        &format!("/api/projects/{pid}/tasks"),
         Some(&payload.to_string()),
     );
     assert_eq!(reply.status, 422, "{}", reply.body);
@@ -75,21 +75,21 @@ fn saving_a_body_keeps_the_conditions_and_other_frontmatter_keys() {
     demo_project(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
-    let cards = format!("/api/projects/{pid}/cards");
+    let tasks = format!("/api/projects/{pid}/tasks");
     let description = "---\ntags:\n  - plan\nacceptance:\n  - id: AC-1\n    text: Works\n    done: false\n---\n\nold\n";
     let created = server.write(
         "POST",
-        &cards,
+        &tasks,
         Some(&json!({"title": "Keep", "assignee": "ai", "description": description}).to_string()),
     );
     assert_eq!(created.status, 201, "{}", created.body);
-    let id = created.json()["card"]["id"].as_i64().unwrap();
-    let card_path = format!("{cards}/{id}");
+    let id = created.json()["task"]["id"].as_i64().unwrap();
+    let task_path = format!("{tasks}/{id}");
     assert_eq!(
         server
             .write(
                 "PUT",
-                &format!("{card_path}/draft"),
+                &format!("{task_path}/draft"),
                 Some(r#"{"isDraft":true}"#)
             )
             .status,
@@ -98,26 +98,26 @@ fn saving_a_body_keeps_the_conditions_and_other_frontmatter_keys() {
 
     let saved = server.write(
         "PATCH",
-        &card_path,
+        &task_path,
         Some(&json!({"body": "new body\n"}).to_string()),
     );
     assert_eq!(saved.status, 200, "{}", saved.body);
-    let card = &saved.json()["card"];
-    assert_eq!(card["body"], "new body\n");
-    assert_eq!(card["acceptance"][0]["id"], "AC-1");
-    let text = card["description"].as_str().unwrap();
+    let task = &saved.json()["task"];
+    assert_eq!(task["body"], "new body\n");
+    assert_eq!(task["acceptance"][0]["id"], "AC-1");
+    let text = task["description"].as_str().unwrap();
     assert!(text.contains("tags:"), "{text}");
 
     let conditions = server.write(
         "PATCH",
-        &card_path,
+        &task_path,
         Some(&json!({"acceptance": []}).to_string()),
     );
     assert_eq!(conditions.status, 200, "{}", conditions.body);
-    let card = &conditions.json()["card"];
-    assert_eq!(card["acceptance"], json!([]));
-    assert_eq!(card["body"], "new body\n", "the body is kept");
-    assert!(card["description"].as_str().unwrap().contains("tags:"));
+    let task = &conditions.json()["task"];
+    assert_eq!(task["acceptance"], json!([]));
+    assert_eq!(task["body"], "new body\n", "the body is kept");
+    assert!(task["description"].as_str().unwrap().contains("tags:"));
     server.stop();
 }
 
@@ -127,30 +127,30 @@ fn a_refused_conditions_list_saves_nothing() {
     demo_project(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
-    let card_path = format!("/api/projects/{pid}/cards/1");
+    let task_path = format!("/api/projects/{pid}/tasks/1");
     assert_eq!(
         server
             .write(
                 "PUT",
-                &format!("{card_path}/draft"),
+                &format!("{task_path}/draft"),
                 Some(r#"{"isDraft":true}"#)
             )
             .status,
         200
     );
-    let description_of_card_one = |server: &Running| {
-        server.get(&format!("/api/projects/{pid}/board")).json()["cards"][0]["description"].clone()
+    let description_of_task_one = |server: &Running| {
+        server.get(&format!("/api/projects/{pid}/board")).json()["tasks"][0]["description"].clone()
     };
-    let before = description_of_card_one(&server);
+    let before = description_of_task_one(&server);
     let duplicate = json!({
         "acceptance": [
             {"id": "AC-1", "text": "one", "done": false},
             {"id": "AC-1", "text": "two", "done": false},
         ],
     });
-    let reply = server.write("PATCH", &card_path, Some(&duplicate.to_string()));
+    let reply = server.write("PATCH", &task_path, Some(&duplicate.to_string()));
     assert_eq!(reply.status, 422, "{}", reply.body);
-    assert_eq!(description_of_card_one(&server), before);
+    assert_eq!(description_of_task_one(&server), before);
     server.stop();
 }
 
@@ -162,7 +162,7 @@ fn editing_a_draft_body_keeps_the_current_markdown_history() {
     let server = Running::start(home.path());
     let created = server.write(
         "POST",
-        &format!("/api/projects/{pid}/cards"),
+        &format!("/api/projects/{pid}/tasks"),
         Some(
             &json!({
                 "title": "Draft body edit",
@@ -175,26 +175,26 @@ fn editing_a_draft_body_keeps_the_current_markdown_history() {
         ),
     );
     assert_eq!(created.status, 201, "{}", created.body);
-    let id = created.json()["card"]["id"].as_i64().unwrap();
+    let id = created.json()["task"]["id"].as_i64().unwrap();
     let moved = server.write(
         "POST",
-        &format!("/api/projects/{pid}/cards/{id}/move"),
-        Some(r#"{"cardStatus":"doing","reason":"Reprioritized"}"#),
+        &format!("/api/projects/{pid}/tasks/{id}/move"),
+        Some(r#"{"taskStatus":"doing","reason":"Reprioritized"}"#),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
-    let latest_history = moved.json()["card"]["history"].clone();
+    let latest_history = moved.json()["task"]["history"].clone();
 
     let edited = server.write(
         "PATCH",
-        &format!("/api/projects/{pid}/cards/{id}"),
+        &format!("/api/projects/{pid}/tasks/{id}"),
         Some(r#"{"body":"After edit.\n"}"#),
     );
     assert_eq!(edited.status, 200, "{}", edited.body);
-    let card = &edited.json()["card"];
-    assert_eq!(card["body"], "After edit.\n");
-    assert_eq!(card["acceptance"][0]["text"], "Keep this condition");
-    assert_eq!(card["history"], latest_history);
-    assert!(card["description"].as_str().unwrap().contains("history:"));
+    let task = &edited.json()["task"];
+    assert_eq!(task["body"], "After edit.\n");
+    assert_eq!(task["acceptance"][0]["text"], "Keep this condition");
+    assert_eq!(task["history"], latest_history);
+    assert!(task["description"].as_str().unwrap().contains("history:"));
     server.stop();
 }
 
@@ -240,10 +240,10 @@ fn the_board_move_to_done_is_not_blocked_by_unmet_conditions() {
     demo_project(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
-    let cards = format!("/api/projects/{pid}/cards");
+    let tasks = format!("/api/projects/{pid}/tasks");
     let created = server.write(
         "POST",
-        &cards,
+        &tasks,
         Some(
             &json!({
                 "title": "Unmet",
@@ -255,13 +255,13 @@ fn the_board_move_to_done_is_not_blocked_by_unmet_conditions() {
         ),
     );
     assert_eq!(created.status, 201, "{}", created.body);
-    let id = created.json()["card"]["id"].as_i64().unwrap();
+    let id = created.json()["task"]["id"].as_i64().unwrap();
     let moved = server.write(
         "POST",
-        &format!("{cards}/{id}/move"),
-        Some(r#"{"cardStatus":"done","reason":"Dropped by the person."}"#),
+        &format!("{tasks}/{id}/move"),
+        Some(r#"{"taskStatus":"done","reason":"Dropped by the person."}"#),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
-    assert_eq!(moved.json()["card"]["cardStatus"], "done");
+    assert_eq!(moved.json()["task"]["taskStatus"], "done");
     server.stop();
 }

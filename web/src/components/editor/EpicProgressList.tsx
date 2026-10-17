@@ -5,26 +5,26 @@ import { isSortable, useSortable } from '@dnd-kit/react/sortable';
 import { AcceptanceProgress } from '../acceptance/AcceptanceProgress';
 import { AssigneeLabel } from '../AssigneeLabel';
 import { StatusLabel } from '../StatusLabel';
-import { CardContent } from '../Card';
+import { TaskCardContent } from '../TaskCard';
 import { formatShort } from '../../lib/format';
-import type { Card } from '../../types';
+import type { Task } from '../../types';
 
 /**
  * The progress table of an epic: its tasks in the order they are worked on. Dragging a row changes
  * only this order; it does not move the task between columns. The order is saved with the dialog.
  */
 export function EpicProgressList({
-  cards,
+  tasks,
   disabled,
   onMove,
   onOpenTask,
 }: {
   /** The tasks of this epic in their current order. */
-  cards: readonly Card[];
+  tasks: readonly Task[];
   disabled: boolean;
   /** The new order: the moved task goes from `from` to `to` in the list. */
   onMove: (from: number, to: number) => void;
-  onOpenTask: (cardId: number) => void;
+  onOpenTask: (taskId: number) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -38,16 +38,16 @@ export function EpicProgressList({
         if (from !== to) onMove(from, to);
       }}
     >
-      {cards.length === 0 ? (
+      {tasks.length === 0 ? (
         <p className="epic-progress__empty">{t('epic.progressEmpty')}</p>
       ) : (
         <>
           <p className="epic-progress__hint">{t('epic.progressReorder')}</p>
           <ol className="epic-progress__list" aria-label={t('epic.progressTitle')}>
-            {cards.map((card, index) => (
+            {tasks.map((task, index) => (
               <ProgressRow
-                key={card.id}
-                card={card}
+                key={task.id}
+                task={task}
                 index={index}
                 disabled={disabled}
                 onOpenTask={onOpenTask}
@@ -62,56 +62,56 @@ export function EpicProgressList({
 }
 
 function ProgressRow({
-  card,
+  task,
   index,
   disabled,
   onOpenTask,
 }: {
-  card: Card;
+  task: Task;
   index: number;
   disabled: boolean;
-  onOpenTask: (cardId: number) => void;
+  onOpenTask: (taskId: number) => void;
 }) {
   const { t } = useTranslation();
-  const { ref, handleRef, isDragging } = useSortable({ id: card.id, index, disabled });
+  const { ref, handleRef, isDragging } = useSortable({ id: task.id, index, disabled });
   return (
     <li
       ref={ref}
       className={[
         'epic-progress__row',
         'card',
-        card.agentStatus === 'pending' && card.cardStatus !== 'done' ? 'card--pending' : '',
+        task.agentStatus === 'pending' && task.taskStatus !== 'done' ? 'card--pending' : '',
         isDragging ? 'is-dragging' : '',
       ]
         .filter(Boolean)
         .join(' ')}
-      data-task-id={card.id}
+      data-task-id={task.id}
     >
       <div className="card__top">
         <span ref={handleRef} className="epic-progress__grip" aria-hidden="true">
           <GripVerticalIcon focusable="false" />
         </span>
-        <span className="card__id">#{card.id}</span>
-        <AssigneeLabel assignee={card.assignee} />
-        {card.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+        <span className="card__id">#{task.id}</span>
+        <AssigneeLabel assignee={task.assignee} />
+        {task.isDraft && <span className="card__draft">{t('draft.label')}</span>}
         <span className="card__spacer" />
         <StatusLabel
-          kind={card.cardStatus === 'done' ? 'card' : 'agent'}
-          status={card.cardStatus === 'done' ? 'done' : card.agentStatus}
+          kind={task.taskStatus === 'done' ? 'card' : 'agent'}
+          status={task.taskStatus === 'done' ? 'done' : task.agentStatus}
         />
       </div>
-      <CardContent
-        card={card}
+      <TaskCardContent
+        task={task}
         titleClassName="card__title epic-progress__name"
         titleActionDisabled={disabled}
-        onTitleClick={() => onOpenTask(card.id)}
+        onTitleClick={() => onOpenTask(task.id)}
         showPendingReason={false}
       />
       <div className="card__foot epic-progress__foot">
         <span className="card__updated">
-          {t('card.updated', { date: formatShort(card.updatedAt) })}
+          {t('card.updated', { date: formatShort(task.updatedAt) })}
         </span>
-        <AcceptanceProgress card={card} />
+        <AcceptanceProgress task={task} />
       </div>
     </li>
   );

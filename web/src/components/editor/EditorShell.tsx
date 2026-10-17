@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { findCardButton } from '../DialogFrame';
+import { findTaskButton } from '../DialogFrame';
 import { DiscardConfirm } from './DiscardConfirm';
 import '../../styles/editor.css';
 import '../../styles/editor-epic.css';
@@ -12,8 +12,8 @@ import '../../styles/rich-body.css';
 
 export interface EditorShellProps {
   /** `#14` — shown before the title when the dialog is about an existing card. */
-  cardId?: number;
-  /** Shown before the title instead of `#cardId`, for an epic (its EPIC-ID). */
+  taskId?: number;
+  /** Shown before the title instead of `#taskId`, for an epic (its EPIC-ID). */
   idLabel?: string;
   /** The label the focus returns to when the dialog closes, if the opener is gone. */
   returnFocusSelector?: string;
@@ -44,7 +44,7 @@ export interface EditorShellProps {
  * and the footer with its buttons, plus the discard question.
  */
 export function EditorShell({
-  cardId,
+  taskId,
   idLabel,
   returnFocusSelector,
   title,
@@ -72,7 +72,7 @@ export function EditorShell({
     else onClose();
   };
 
-  const shownId = idLabel ?? (cardId !== undefined ? `#${cardId}` : undefined);
+  const shownId = idLabel ?? (taskId !== undefined ? `#${taskId}` : undefined);
 
   return (
     <Dialog open onOpenChange={(open) => !open && requestClose()}>
@@ -101,8 +101,8 @@ export function EditorShell({
             opener.focus();
           } else if (returnFocusSelector !== undefined) {
             document.querySelector<HTMLElement>(returnFocusSelector)?.focus();
-          } else if (cardId !== undefined) {
-            findCardButton(cardId)?.focus();
+          } else if (taskId !== undefined) {
+            findTaskButton(taskId)?.focus();
           }
         }}
       >

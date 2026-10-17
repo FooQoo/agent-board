@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Epic, Project } from '../../types';
-import type { MonitorCard, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
+import type { MonitorTask, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
 
 export type EpicReadState =
   | { status: 'idle' }
@@ -12,8 +12,8 @@ export type EpicReadState =
 
 interface DrawerTarget {
   projectId: string;
-  cardId: number;
-  item: MonitorCard;
+  taskId: number;
+  item: MonitorTask;
 }
 
 type ProjectEpics =
@@ -22,7 +22,7 @@ type ProjectEpics =
   | { status: 'error'; cause: unknown };
 
 export function useMonitorDetailDrawer(
-  cards: readonly MonitorCard[],
+  tasks: readonly MonitorTask[],
   resolvers: MonitorReadResolvers,
   projects: readonly Project[],
 ) {
@@ -36,13 +36,13 @@ export function useMonitorDetailDrawer(
   const currentItem = useMemo(() => {
     if (!target) return null;
     return (
-      cards.find((item) => item.projectId === target.projectId && item.card.id === target.cardId) ??
+      tasks.find((item) => item.projectId === target.projectId && item.task.id === target.taskId) ??
       target.item
     );
-  }, [cards, target]);
+  }, [tasks, target]);
 
-  const show = useCallback((item: MonitorCard, nextTab: MonitorDetailTab) => {
-    setTarget({ projectId: item.projectId, cardId: item.card.id, item });
+  const show = useCallback((item: MonitorTask, nextTab: MonitorDetailTab) => {
+    setTarget({ projectId: item.projectId, taskId: item.task.id, item });
     setTab(nextTab);
     setOpen(true);
   }, []);
@@ -75,7 +75,7 @@ export function useMonitorDetailDrawer(
     };
   }, [requestKey, resolvers]);
 
-  const epicId = currentItem?.card.epic?.id;
+  const epicId = currentItem?.task.epic?.id;
   const cached = currentItem ? projectEpics[currentItem.projectId] : undefined;
   let epicRead: EpicReadState = { status: 'idle' };
   if (epicId) {

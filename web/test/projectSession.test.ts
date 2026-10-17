@@ -6,7 +6,7 @@ import {
   type SessionState,
 } from '../src/lib/projectSession';
 import type { AnswerFormKey } from '../src/lib/answer';
-import { makeCard } from './fixtures';
+import { makeTask } from './fixtures';
 
 const A = 'a'.repeat(32);
 const B = 'b'.repeat(32);
@@ -48,7 +48,7 @@ describe('sessionReducer: switching without an operation', () => {
     });
   });
 
-  it('does not carry a card number of one project into another with the same number', () => {
+  it('does not carry a task number of one project into another with the same number', () => {
     const state = run(
       initSession(A),
       { type: 'SELECT_CARD', id: 8 },
@@ -194,15 +194,15 @@ describe('sessionReducer: saving', () => {
   });
 });
 
-describe('sessionReducer: removed cards', () => {
-  const card = makeCard({ id: 8 });
+describe('sessionReducer: removed tasks', () => {
+  const task = makeTask({ id: 8 });
 
-  it('clears the selection of the deleted card, finishes the operation and applies the pending request', () => {
+  it('clears the selection of the deleted task, finishes the operation and applies the pending request', () => {
     const state = run(
       initSession(A, 8),
       { type: 'OPEN_OPERATION', operationId: 1, kind: 'delete', projectId: A },
       { type: 'URL_REQUESTED', projectId: B },
-      { type: 'CARD_REMOVED', operationId: 1, projectId: A, cardId: card.id },
+      { type: 'CARD_REMOVED', operationId: 1, projectId: A, taskId: task.id },
     );
     expect(state.operation).toBeNull();
     expect(state.selectedId).toBeNull();
@@ -213,17 +213,17 @@ describe('sessionReducer: removed cards', () => {
     const state = run(
       initSession(A, 8),
       { type: 'OPEN_OPERATION', operationId: 1, kind: 'delete', projectId: A },
-      { type: 'CARD_REMOVED', operationId: 1, projectId: A, cardId: 8 },
+      { type: 'CARD_REMOVED', operationId: 1, projectId: A, taskId: 8 },
     );
     expect(state).toMatchObject({ activeProjectId: A, selectedId: null, operation: null });
   });
 
-  it('does not clear the selection of the same card number in another project', () => {
+  it('does not clear the selection of the same task number in another project', () => {
     const state = run(initSession(B, 8), {
       type: 'CARD_REMOVED',
       operationId: 9,
       projectId: A,
-      cardId: 8,
+      taskId: 8,
     });
     expect(state.selectedId).toBe(8);
   });
@@ -246,14 +246,14 @@ describe('sessionReducer: archive view state', () => {
   });
 
   it('keeps the bulk archive target snapshot attached to its project', () => {
-    const targets = [makeCard({ id: 8 })];
+    const targets = [makeTask({ id: 8 })];
     const state = run(
       initSession(A),
       { type: 'OPEN_OPERATION', operationId: 1, kind: 'archive-done', projectId: A },
       { type: 'OPEN_BULK_ARCHIVE', projectId: A, targets },
     );
-    targets.push(makeCard({ id: 9 }));
+    targets.push(makeTask({ id: 9 }));
     expect(state.bulkArchive?.projectId).toBe(A);
-    expect(state.bulkArchive?.targets.map((card) => card.id)).toEqual([8]);
+    expect(state.bulkArchive?.targets.map((task) => task.id)).toEqual([8]);
   });
 });

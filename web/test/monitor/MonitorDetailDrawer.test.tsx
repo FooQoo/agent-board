@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { MonitorView } from '../../src/monitor/View';
 import type { MonitorReadResolvers, MonitorViewProps } from '../../src/monitor/contracts';
-import { makeCard, PROJECT_A } from '../fixtures';
+import { makeTask, PROJECT_A } from '../fixtures';
 import { shouldIgnoreTabSwipe } from '../../src/monitor/components/MonitorDetailDrawer';
 import type { Epic } from '../../src/types';
 
@@ -43,18 +43,18 @@ function setup({
   epicId?: string | null;
   getEpics?: MonitorReadResolvers['getEpics'];
 } = {}) {
-  const card = makeCard({
+  const task = makeTask({
     id: 7,
-    title: 'Read this card',
-    description: 'Card description',
-    body: 'Card description',
+    title: 'Read this task',
+    description: 'Task description',
+    body: 'Task description',
     epic: epicId ? { id: epicId, name: 'Mobile work', color: '#4466aa' } : null,
     history: [{ at: '2026-10-12T08:00:00Z', reason: 'Keep both options' }],
   });
-  const item = { projectId: PROJECT_A.id, projectName: PROJECT_A.name, card };
+  const item = { projectId: PROJECT_A.id, projectName: PROJECT_A.name, task };
   const readResolvers: MonitorReadResolvers = {
-    attachmentUrl: (_project, _card, id) => `/owned/card/${id}`,
-    evidenceUrl: (_project, _card, id) => `/owned/evidence/${id}`,
+    attachmentUrl: (_project, _task, id) => `/owned/task/${id}`,
+    evidenceUrl: (_project, _task, id) => `/owned/evidence/${id}`,
     epicAttachmentUrl: (_project, _epic, id) => `/owned/epic/${id}`,
     getEpics,
   };
@@ -74,13 +74,13 @@ function setup({
 }
 
 describe('monitor detail drawer', () => {
-  it('opens the body from the card title, links tabs accessibly, and retains each panel in place', async () => {
+  it('opens the body from the task title, links tabs accessibly, and retains each panel in place', async () => {
     const user = userEvent.setup();
     const { props } = setup();
     render(<MonitorView {...props} />);
 
     await waitFor(() => expect(props.readResolvers?.getEpics).toHaveBeenCalledTimes(1));
-    const title = screen.getByRole('button', { name: 'Read this card' });
+    const title = screen.getByRole('button', { name: 'Read this task' });
     await user.click(title);
     const dialog = screen.getByRole('dialog');
     expect(dialog.querySelector('.detail__viewport')).toBeNull();
@@ -134,10 +134,10 @@ describe('monitor detail drawer', () => {
 
     const unlinked = setup({ epicId: null });
     rerender(<MonitorView {...unlinked.props} />);
-    await user.click(screen.getByRole('button', { name: 'Read this card' }));
+    await user.click(screen.getByRole('button', { name: 'Read this task' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('tab', { name: 'Epic' }));
     expect(
-      within(screen.getByRole('dialog')).getByText('This card is not linked to an epic.'),
+      within(screen.getByRole('dialog')).getByText('This task is not linked to an epic.'),
     ).toBeTruthy();
   });
 
@@ -167,7 +167,7 @@ describe('monitor detail drawer', () => {
       todo: [
         {
           ...secondItem,
-          card: { ...secondItem.card, epic: { id: 'MOB-2', name: 'Other', color: '#4466aa' } },
+          task: { ...secondItem.task, epic: { id: 'MOB-2', name: 'Other', color: '#4466aa' } },
         },
       ],
       readResolvers: { ...secondResolvers, getEpics },
@@ -189,7 +189,7 @@ describe('monitor detail drawer', () => {
   it('closes from the close button, Escape, and backdrop and restores focus to the title', async () => {
     const user = userEvent.setup();
     render(<MonitorView {...setup().props} />);
-    const title = screen.getByRole('button', { name: 'Read this card' });
+    const title = screen.getByRole('button', { name: 'Read this task' });
     await user.click(title);
     const dialog = screen.getByRole('dialog');
     const close = within(dialog).getByRole('button', { name: 'Close details' });
@@ -208,9 +208,9 @@ describe('monitor detail drawer', () => {
 
   it('does not interpret form, link, table, code, or image gestures as tab swipes', async () => {
     const user = userEvent.setup();
-    const card = makeCard({
+    const task = makeTask({
       id: 7,
-      title: 'Read this card',
+      title: 'Read this task',
       body: '[A link](https://example.com)\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\n```ts\nconst x = 1\n```\n\n![Preview](attachment:0123456789abcdef0123456789abcdef)',
       attachments: [
         {
@@ -227,8 +227,8 @@ describe('monitor detail drawer', () => {
       pendingChoices: [{ id: 'a', label: 'A' }],
     });
     const data = setup();
-    render(<MonitorView {...data.props} todo={[{ ...required(data.props.todo[0]), card }]} />);
-    await user.click(screen.getByRole('button', { name: 'Read this card' }));
+    render(<MonitorView {...data.props} todo={[{ ...required(data.props.todo[0]), task }]} />);
+    await user.click(screen.getByRole('button', { name: 'Read this task' }));
     const dialog = screen.getByRole('dialog');
     const bodyTab = within(dialog).getByRole('tab', { name: 'Body' });
     const historyTab = within(dialog).getByRole('tab', { name: /History/ });

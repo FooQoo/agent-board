@@ -1,4 +1,4 @@
-import type { Board, Card, Project } from '../src/types';
+import type { Board, Task, Project } from '../src/types';
 import boardJson from './fixtures/board.json';
 
 export const fixtureBoard = boardJson as unknown as Board;
@@ -17,36 +17,36 @@ export const PROJECT_C: Project = {
 export const PROJECTS: Project[] = [PROJECT_A, PROJECT_B, PROJECT_C];
 
 /** A board of `project` with `cards`. */
-export function boardOf(project: Project, cards: Card[], revision = 1): Board {
+export function boardOf(project: Project, tasks: Task[], revision = 1): Board {
   return {
     project,
     version: `v${revision}`,
     cursor: `f1:${project.id}:v${revision}`,
     epics: [],
-    cards,
+    tasks,
     problems: [],
   };
 }
 
-export function fixtureCard(id: number): Card {
-  const card = fixtureBoard.cards.find((c) => c.id === id);
-  if (!card) throw new Error(`fixture card #${id} not found`);
-  return structuredClone(card);
+export function fixtureTask(id: number): Task {
+  const task = fixtureBoard.tasks.find((c) => c.id === id);
+  if (!task) throw new Error(`fixture task #${id} not found`);
+  return structuredClone(task);
 }
 
-export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
+export function makeTask(overrides: Partial<Task> & Pick<Task, 'id'>): Task {
   const at = '2026-10-02T00:00:00Z';
   const description = overrides.description ?? '';
   return {
-    title: `Card ${overrides.id}`,
+    title: `Task ${overrides.id}`,
     description,
     // Without frontmatter the body is the whole text.
     body: description,
     acceptance: [],
     acceptanceError: false,
     assignee: 'ai',
-    cardStatus: 'todo',
-    cardStatusChangedAt: at,
+    taskStatus: 'todo',
+    taskStatusChangedAt: at,
     position: 1,
     agentStatus: 'idle',
     pendingReason: null,
@@ -57,7 +57,7 @@ export function makeCard(overrides: Partial<Card> & Pick<Card, 'id'>): Card {
     updatedAt: at,
     agentStatusChangedAt: at,
     isDraft: false,
-    history: [{ at: at, reason: 'Created card in Todo.' }],
+    history: [{ at: at, reason: 'Created task in Todo.' }],
     attachments: [],
     evidence: [],
     ...overrides,

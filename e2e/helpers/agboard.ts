@@ -140,11 +140,11 @@ export function workspace(project: string, home: string = mainHome()): Workspace
   return JSON.parse(agboardOk(project, ['workspace', '--json'], home).stdout);
 }
 
-export interface CardJson {
+export interface TaskJson {
   id: number;
   title: string;
-  cardStatus: 'todo' | 'doing' | 'done';
-  cardStatusChangedAt: string;
+  taskStatus: 'todo' | 'doing' | 'done';
+  taskStatusChangedAt: string;
   assignee: 'ai' | 'human';
   agentStatus: 'idle' | 'running' | 'pending';
   pendingReason: string | null;
@@ -153,24 +153,24 @@ export interface CardJson {
 }
 
 /** The cards of `project` from `agboard ls --json`. */
-export function listCards(project: string, home: string = mainHome()): CardJson[] {
-  return JSON.parse(agboardOk(project, ['ls', '--json'], home).stdout).cards;
+export function listTasks(project: string, home: string = mainHome()): TaskJson[] {
+  return JSON.parse(agboardOk(project, ['ls', '--json'], home).stdout).tasks;
 }
 
 /**
  * The ID the next card of `project` will get, read from the project's `project.json`. Card IDs are never
  * reused, so specs that create cards read this after the reset instead of assuming a number.
  */
-export function nextCardId(project: string, home: string = mainHome()): number {
+export function nextTaskId(project: string, home: string = mainHome()): number {
   const file = path.join(workspace(project, home).folder, 'project.json');
-  return (JSON.parse(readFileSync(file, 'utf8')) as { nextCardId: number }).nextCardId;
+  return (JSON.parse(readFileSync(file, 'utf8')) as { nextTaskId: number }).nextTaskId;
 }
 
 /**
  * The body a spec writes to a card. The CLI reads any Markdown as the body, so the text is passed as given,
  * with surrounding blank lines removed.
  */
-export function cardBody(text: string): string {
+export function taskBody(text: string): string {
   return text.trim();
 }
 
@@ -186,7 +186,7 @@ export function replaceTaskBodyPreservingFrontmatter(file: string, body: string)
   const current = readFileSync(file, 'utf8');
   const match = current.match(/^---\n([\s\S]*?)\n---\n(?:\n)?[\s\S]*$/);
   if (!match) throw new Error(`${file} has no valid frontmatter to preserve`);
-  replaceFileAtomically(file, `---\n${match[1]}\n---\n\n${cardBody(body)}\n`);
+  replaceFileAtomically(file, `---\n${match[1]}\n---\n\n${taskBody(body)}\n`);
 }
 
 function writeJson(file: string, value: unknown): void {
@@ -226,7 +226,7 @@ function historyFrontmatter(events: Record<string, unknown>[]): string {
 }
 
 function taskMarkdown(description: string, events: Record<string, unknown>[]): string {
-  const text = cardBody(description);
+  const text = taskBody(description);
   const frontmatter = historyFrontmatter(events);
   const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return `---\n${frontmatter}\n---\n\n${text}`;
@@ -237,14 +237,14 @@ function taskMarkdown(description: string, events: Record<string, unknown>[]): s
 
 interface FixtureEvent { at: string; reason: string; }
 
-interface FixtureCard {
+interface FixtureTask {
   id: number;
   title: string;
   description: string;
   position: number;
   assignee: 'ai' | 'human';
-  cardStatus: 'todo' | 'doing' | 'done';
-  cardStatusChangedAt: string;
+  taskStatus: 'todo' | 'doing' | 'done';
+  taskStatusChangedAt: string;
   agentStatus: 'idle' | 'running' | 'pending';
   pendingReason: string | null;
   pendingRequestId: string | null;
@@ -256,35 +256,35 @@ interface FixtureCard {
 }
 
 interface Fixture {
-  board: { name: string; createdAt: string; nextCardId: number };
-  cards: FixtureCard[];
+  board: { name: string; createdAt: string; nextTaskId: number };
+  tasks: FixtureTask[];
 }
 
 /** The task.json and TASK.md of one fixture card, in the current file format. */
-function taskFilesFor(card: FixtureCard): { task: Record<string, unknown>; markdown: string } {
-  const history = card.history.map(({ at, reason }) => ({ at, reason }));
-  const task = {
-    formatVersion: 3,
-    id: card.id,
-    title: card.title,
-    assignee: card.assignee,
+function taskFilesFor(item: FixtureTask): { task: Record<string, unknown>; markdown: string } {
+  const history = item.history.map(({ at, reason }) => ({ at, reason }));
+  const taskJson = {
+    formatVersion: 1,
+    id: item.id,
+    title: item.title,
+    assignee: item.assignee,
     epicId: null,
-    cardStatus: card.cardStatus,
-    cardStatusChangedAt: card.cardStatusChangedAt,
-    agentStatus: card.agentStatus,
-    position: card.position,
+    taskStatus: item.taskStatus,
+    taskStatusChangedAt: item.taskStatusChangedAt,
+    agentStatus: item.agentStatus,
+    position: item.position,
     isDraft: false,
     archivedAt: null,
-    pendingRequestId: card.agentStatus === 'pending' ? card.pendingRequestId : null,
-    pendingRequest: card.agentStatus === 'pending' ? { question: card.pendingReason ?? '', choices: card.pendingChoices ?? [] } : null,
+    pendingRequestId: item.agentStatus === 'pending' ? item.pendingRequestId : null,
+    pendingRequest: item.agentStatus === 'pending' ? { question: item.pendingReason ?? '', choices: item.pendingChoices ?? [] } : null,
     requestAnswers: [],
-    createdAt: card.createdAt,
-    updatedAt: card.updatedAt,
-    agentStatusChangedAt: card.agentStatusChangedAt,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    agentStatusChangedAt: item.agentStatusChangedAt,
     attachments: [],
     evidence: [],
   };
-  return { task, markdown: taskMarkdown(card.description, history) };
+  return { task: taskJson, markdown: taskMarkdown(item.description, history) };
 }
 
 /**
@@ -297,21 +297,21 @@ export function seedProject(project: string, file: string, home: string = mainHo
   rmSync(path.join(folder, 'tasks'), { recursive: true, force: true });
   rmSync(path.join(folder, 'epics'), { recursive: true, force: true });
   const fixture = JSON.parse(readFileSync(file, 'utf8')) as Fixture;
-  for (const card of fixture.cards) {
-    const dir = path.join(folder, 'tasks', String(card.id));
+  for (const item of fixture.tasks) {
+    const dir = path.join(folder, 'tasks', String(item.id));
     mkdirSync(dir, { recursive: true });
-    const { task, markdown } = taskFilesFor(card);
+    const { task, markdown } = taskFilesFor(item);
     writeJson(path.join(dir, 'task.json'), task);
     replaceFileAtomically(path.join(dir, 'TASK.md'), markdown);
     // The screen shows the newer of task.json's updatedAt and TASK.md's modification time, so both files
     // carry the fixture's time and the seeded cards keep the times the specs expect.
-    const at = new Date(card.updatedAt);
+    const at = new Date(item.updatedAt);
     utimesSync(path.join(dir, 'task.json'), at, at);
     utimesSync(path.join(dir, 'TASK.md'), at, at);
   }
   const projectFile = path.join(folder, 'project.json');
   const current = JSON.parse(readFileSync(projectFile, 'utf8')) as Record<string, unknown>;
-  writeJson(projectFile, { ...current, nextCardId: fixture.board.nextCardId });
+  writeJson(projectFile, { ...current, nextTaskId: fixture.board.nextTaskId });
 }
 
 /** Create `project` if it does not exist yet. */
@@ -382,9 +382,9 @@ function withTestDefaults(project: string, args: string[], home: string): string
   if (command === 'state' && result[2] === 'idle' && !result.includes('--request')) {
     const snapshot = spawnSync(agboardBinary(), ['--project', project, 'snapshot', '--json'], { env: agboardEnv(home), encoding: 'utf8' });
     if (snapshot.status === 0) {
-      const card = (JSON.parse(snapshot.stdout).cards as CardJson[]).find((item) => item.id === Number(result[1]));
-      if (card?.agentStatus === 'pending' && card.pendingRequestId) {
-        result.push('--request', card.pendingRequestId);
+      const task = (JSON.parse(snapshot.stdout).tasks as TaskJson[]).find((item) => item.id === Number(result[1]));
+      if (task?.agentStatus === 'pending' && task.pendingRequestId) {
+        result.push('--request', task.pendingRequestId);
         if (!result.includes('--reason') && !result.includes('--reason-file')) result.push('--reason', 'User confirmed the current request.');
       }
     }

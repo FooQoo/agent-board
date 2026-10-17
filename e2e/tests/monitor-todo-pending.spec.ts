@@ -37,24 +37,24 @@ test.afterAll(async () => {
   if (home) removeMonitorHome(home);
 });
 
-test('a pending AI card in Todo shows its state and question on the mobile monitor', async ({ page }) => {
+test('a pending AI task in Todo shows its state and question on the mobile monitor', async ({ page }) => {
   cli(['add', 'Ask before starting on mobile', '--assignee', 'ai', '--actor', 'ai']);
-  const cards = JSON.parse(cli(['ls', '--json'])).cards as { id: number; title: string }[];
-  const id = cards.find((card) => card.title === 'Ask before starting on mobile')!.id;
+  const tasks = JSON.parse(cli(['ls', '--json'])).tasks as { id: number; title: string }[];
+  const id = tasks.find((task) => task.title === 'Ask before starting on mobile')!.id;
   cli(['state', String(id), 'pending', '--actor', 'ai', '--request-json', decisionJson('Which order on mobile?')]);
 
   await page.goto('/monitor/');
-  const card = page.getByText('Ask before starting on mobile').locator('xpath=ancestor::*[contains(@class,"monitor-card")][1]');
-  await expect(card).toContainText('Which order on mobile?');
-  await expect(card).toContainText('Pending');
+  const task = page.getByText('Ask before starting on mobile').locator('xpath=ancestor::*[contains(@class,"monitor-card")][1]');
+  await expect(task).toContainText('Which order on mobile?');
+  await expect(task).toContainText('Pending');
 });
 
-test('the mobile monitor shows how many conditions of a card are done', async ({ page }) => {
+test('the mobile monitor shows how many conditions of a task are done', async ({ page }) => {
   const description = '---\nacceptance:\n  - id: AC-1\n    text: First\n    done: true\n  - id: AC-2\n    text: Second\n    done: false\n---\n\nBody.\n';
   cli(['add', 'Conditions on mobile', '--assignee', 'ai', '--actor', 'ai', '--desc', description]);
 
   await page.goto('/monitor/');
-  const card = page.getByText('Conditions on mobile').locator('xpath=ancestor::*[contains(@class,"monitor-card")][1]');
-  await expect(card).toContainText('1/2');
-  await expect(card.locator('.acceptance-chip')).toHaveAttribute('title', 'Acceptance conditions 1 / 2');
+  const task = page.getByText('Conditions on mobile').locator('xpath=ancestor::*[contains(@class,"monitor-card")][1]');
+  await expect(task).toContainText('1/2');
+  await expect(task.locator('.acceptance-chip')).toHaveAttribute('title', 'Acceptance conditions 1 / 2');
 });

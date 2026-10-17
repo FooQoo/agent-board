@@ -1,4 +1,4 @@
-//! Durable replacement of one card's JSON/Markdown pair.
+//! Durable replacement of one task's JSON/Markdown pair.
 //!
 //! Callers must hold the project's WriteLock for save and recovery, and must
 //! recover before reading public state. Prepared journals roll back; committed
@@ -59,7 +59,7 @@ struct PairHashes {
 pub struct Recovery {
     /// Journals whose prepared/committed pair was resolved.
     pub recovered: usize,
-    /// Relative card targets that recovery resolved, for cache invalidation.
+    /// Relative task targets that recovery resolved, for cache invalidation.
     pub targets: Vec<PairTargets>,
 }
 
@@ -174,7 +174,7 @@ fn validate_targets(project: &Path, targets: &PairTargets) -> Result<(), Agboard
     if json.is_none() || json != valid(&targets.markdown, "TASK.md") {
         return Err(write_error(
             ".internal/transactions",
-            "Transaction targets must be task.json and TASK.md of the same card.",
+            "Transaction targets must be task.json and TASK.md of the same task.",
         ));
     }
     for target in [&targets.metadata, &targets.markdown] {

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { allPages, guideFiles, guideScreenshots, readRepoFile, repoRoot } from './site';
+import { allPages, devFiles, guideFiles, guideScreenshots, readRepoFile, repoRoot } from './site';
 
 // Static checks that need no browser: the Pages workflow, links to the removed documents,
 // the contributor instructions, and the source files behind the pages.
@@ -115,24 +115,34 @@ test.describe('removed documents (AC-10)', () => {
 });
 
 test.describe('contributor instructions (AC-10)', () => {
-  test('AGENTS.md allows the Japanese site pages and documents the docs workflow', () => {
+  test('AGENTS.md indexes the developer reference, the guide, and the contributor guide', () => {
     const agents = readRepoFile('AGENTS.md');
-    expect(agents).toContain('docs/ja/**');
-    expect(agents).toContain('CONTRIBUTING.ja.md');
-    for (const command of [
-      'pnpm --dir docs install',
-      'pnpm --dir docs build',
-      'pnpm --dir docs dev',
-      'node e2e/scripts/docs-screenshots.mjs',
-      'node e2e/scripts/demo-video.mjs',
+    for (const target of [
+      'docs/dev/index.md',
+      'docs/dev/concepts/overview.md',
+      'docs/dev/concepts/tasks-and-states.md',
+      'docs/dev/concepts/saving-and-recovery.md',
+      'docs/dev/concepts/agents.md',
+      'docs/dev/concepts/security.md',
+      'docs/dev/reference/files.md',
+      'docs/dev/reference/web-api.md',
+      'docs/dev/reference/errors.md',
+      'docs/dev/troubleshooting.md',
+      'docs/dev/getting-started/setup.md',
+      'docs/dev/getting-started/pull-request.md#conventions',
+      'docs/dev/getting-started/pull-request.md#verification',
+      'docs/dev/docs-and-images.md',
+      'docs/guide/automation/cli.md',
     ]) {
-      expect(agents, command).toContain(command);
+      expect(agents, target).toContain(`](${target})`);
     }
   });
 
-  for (const file of ['CONTRIBUTING.md', 'CONTRIBUTING.ja.md']) {
-    test(`${file} describes build, preview, screenshots, videos, and the workflow`, () => {
-      const text = readRepoFile(file);
+  for (const dir of [path.join('docs', 'dev'), path.join('docs', 'ja', 'dev')]) {
+    test(`${dir} describes build, preview, screenshots, videos, the workflow, and the language rule`, () => {
+      const text = ['getting-started/setup.md', 'getting-started/pull-request.md', 'docs-and-images.md']
+        .map((file) => readRepoFile(dir, file))
+        .join('\n');
       for (const command of [
         'pnpm --dir docs install',
         'pnpm --dir docs dev',
@@ -142,9 +152,20 @@ test.describe('contributor instructions (AC-10)', () => {
         'node e2e/scripts/demo-video.mjs',
         '.github/workflows/docs.yml',
         'docs/ja/',
+        'docs/ja/**',
+        'CONTRIBUTING.ja.md',
       ]) {
         expect(text, command).toContain(command);
       }
+    });
+  }
+
+  for (const [file, site] of [
+    ['CONTRIBUTING.md', 'https://fooqoo.github.io/agent-board/dev/getting-started/setup'],
+    ['CONTRIBUTING.ja.md', 'https://fooqoo.github.io/agent-board/ja/dev/getting-started/setup'],
+  ]) {
+    test(`${file} points to the contributor guide on the site`, () => {
+      expect(readRepoFile(file)).toContain(site);
     });
   }
 });
@@ -159,7 +180,13 @@ test.describe('site sources', () => {
       expect(en).not.toContain('docs-site:placeholder');
       expect(ja).not.toContain('docs-site:placeholder');
     }
-    expect(allPages).toHaveLength(22);
+    for (const file of devFiles) {
+      const en = readRepoFile('docs', 'dev', `${file}.md`);
+      const ja = readRepoFile('docs', 'ja', 'dev', `${file}.md`);
+      const sections = (text: string) => text.split('\n').filter((line) => /^##+ /.test(line)).length;
+      expect(sections(ja), `dev/${file}: headings`).toBe(sections(en));
+    }
+    expect(allPages).toHaveLength(72);
   });
 
   test('the twelve guide screenshots exist as readable PNGs', () => {

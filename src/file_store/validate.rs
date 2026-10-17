@@ -166,7 +166,7 @@ fn defect(field: impl Into<String>, reason: impl Into<String>) -> Defect {
     }
 }
 
-/// The TASK.md written when a card is created without a body.
+/// The TASK.md written when a task is created without a body.
 pub fn task_template() -> String {
     "---\nacceptance: []\n---\n\n".to_string()
 }
@@ -374,13 +374,13 @@ pub fn check_project(file: &ProjectFile, folder_id: &str) -> Vec<Defect> {
             "Project names must be 1 to 50 characters on one line.",
         ));
     }
-    if file.next_card_id < 1 {
-        out.push(defect("nextCardId", "The next card ID starts at 1."));
+    if file.next_task_id < 1 {
+        out.push(defect("nextTaskId", "The next task ID starts at 1."));
     }
     out
 }
 
-/// Defects of `task.json`. `folder_id` is the card ID of the folder.
+/// Defects of `task.json`. `folder_id` is the task ID of the folder.
 pub fn check_task(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
     let mut out = check_task_metadata(task, folder_id);
     out.extend(check_history(&task.history));
@@ -402,22 +402,22 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
     if task.position < 1 {
         out.push(defect("position", "Positions start at 1."));
     }
-    if check_work_state(task.assignee, task.card_status, task.agent_status).is_err() {
+    if check_work_state(task.assignee, task.task_status, task.agent_status).is_err() {
         out.push(defect(
             "agentStatus",
-            "Running and pending need an AI-owned card in Doing.",
+            "Running and pending need an AI-owned task in Doing.",
         ));
     }
     if task.is_draft && !matches!(task.agent_status, RunState::Idle | RunState::Pending) {
         out.push(defect(
             "isDraft",
-            "Only idle or pending cards can be drafts.",
+            "Only idle or pending tasks can be drafts.",
         ));
     }
     match (task.agent_status, task.pending_request_id.as_deref()) {
         (RunState::Pending, None) => out.push(defect(
             "pendingRequestId",
-            "A pending card needs a request ID.",
+            "A pending task needs a request ID.",
         )),
         (RunState::Pending, Some(id)) => {
             if !is_hex32(id) {
@@ -429,7 +429,7 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
         }
         (_, Some(_)) => out.push(defect(
             "pendingRequestId",
-            "Only a pending card has a request ID.",
+            "Only a pending task has a request ID.",
         )),
         (_, None) => {}
     }
@@ -449,11 +449,11 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
         }
         (None, RunState::Pending) => out.push(defect(
             "pendingRequest",
-            "A pending card needs its question and choices.",
+            "A pending task needs its question and choices.",
         )),
         (Some(_), _) => out.push(defect(
             "pendingRequest",
-            "Only a pending card has a request.",
+            "Only a pending task has a request.",
         )),
         (None, _) => {}
     }
@@ -503,7 +503,7 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
     {
         out.push(defect(
             "archivedAt",
-            "An archived card is idle and has no request.",
+            "An archived task is idle and has no request.",
         ));
     }
     out

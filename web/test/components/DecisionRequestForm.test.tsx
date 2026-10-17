@@ -5,7 +5,7 @@ import { DecisionRequestForm } from '../../src/components/detail/DecisionRequest
 import { selectLocale } from '../../src/i18n';
 import type { AnswerFormKey, AnswerFormState, AnswerFormStateStore } from '../../src/lib/answer';
 import { noOperations } from '../../src/lib/projectSession';
-import { makeCard, PROJECT_A } from '../fixtures';
+import { makeTask, PROJECT_A } from '../fixtures';
 
 function memoryStore(): AnswerFormStateStore {
   const states = new Map<AnswerFormKey, AnswerFormState>();
@@ -40,7 +40,7 @@ function memoryStore(): AnswerFormStateStore {
   };
 }
 
-const pending = makeCard({
+const pending = makeTask({
   id: 15,
   agentStatus: 'pending',
   pendingRequestId: 'request-15',
@@ -55,13 +55,13 @@ beforeEach(() => {
 describe('DecisionRequestForm', () => {
   it('uses an injected writer and restores its draft from an optional state store after remount', async () => {
     const store = memoryStore();
-    const writeAnswer = vi.fn(async (_projectId, _cardId, _input) => ({
-      card: pending,
+    const writeAnswer = vi.fn(async (_projectId, _taskId, _input) => ({
+      task: pending,
       changed: true,
     }));
     const props = {
       projectId: PROJECT_A.id,
-      card: pending,
+      task: pending,
       operations: noOperations,
       writeAnswer,
       stateStore: store,
@@ -86,7 +86,7 @@ describe('DecisionRequestForm', () => {
   it('keeps the input visible and disables editing when the host is locked', async () => {
     const props = {
       projectId: PROJECT_A.id,
-      card: pending,
+      task: pending,
       operations: noOperations,
       writeAnswer: vi.fn(),
       disabled: true,

@@ -1,13 +1,13 @@
 //! Small renderers shared by CLI commands.
 use crate::domain::{Column, RunState};
-use crate::file_store::model::CardView;
+use crate::file_store::model::TaskView;
 use serde_json::Value;
 
 /// The order of keys in JSON output. Keys not listed come last.
 ///
 /// One list serves every object, so a key keeps one position: a project is
-/// `id, name, createdAt`, a board `name, nextCardId, createdAt`, and the
-/// snapshot root `fetchedAt, project, version, cursor, nextCardId, cards, problems`.
+/// `id, name, createdAt`, a board `name, nextTaskId, createdAt`, and the
+/// snapshot root `fetchedAt, project, version, cursor, nextTaskId, tasks, problems`.
 const KEY_ORDER: [&str; 35] = [
     "error",
     "code",
@@ -20,20 +20,20 @@ const KEY_ORDER: [&str; 35] = [
     "version",
     "cursor",
     "board",
-    "card",
-    "cardId",
-    "cards",
+    "task",
+    "taskId",
+    "tasks",
     "attachment",
     "attachments",
     "path",
     "url",
     "id",
     "name",
-    "nextCardId",
+    "nextTaskId",
     "title",
     "description",
     "assignee",
-    "cardStatus",
+    "taskStatus",
     "position",
     "agentStatus",
     "pendingReason",
@@ -85,8 +85,8 @@ pub fn render_json(value: &Value) -> String {
     }
 }
 
-pub fn card_value(card: &CardView) -> Value {
-    serde_json::to_value(card).expect("Agent Board cards serialize")
+pub fn task_value(task: &TaskView) -> Value {
+    serde_json::to_value(task).expect("Agent Board tasks serialize")
 }
 
 pub fn state_text(state: RunState, reason: Option<&str>) -> String {
@@ -96,26 +96,26 @@ pub fn state_text(state: RunState, reason: Option<&str>) -> String {
     }
 }
 
-pub fn ls_text(cards: &[CardView], columns: &[Column]) -> String {
+pub fn ls_text(tasks: &[TaskView], columns: &[Column]) -> String {
     let mut out = String::new();
     for column in columns {
         out.push_str(&format!("{}\n", column.label()));
-        for card in cards.iter().filter(|card| card.card_status == *column) {
-            out.push_str(&format!("  #{} {}", card.id, card.title));
-            out.push_str(match card.assignee {
+        for task in tasks.iter().filter(|task| task.task_status == *column) {
+            out.push_str(&format!("  #{} {}", task.id, task.title));
+            out.push_str(match task.assignee {
                 crate::domain::Assignee::Ai => " [AI]",
                 crate::domain::Assignee::Human => " [User]",
             });
-            if card.is_draft {
+            if task.is_draft {
                 out.push_str(" [draft]");
             }
-            if let Some(epic) = &card.epic_id {
+            if let Some(epic) = &task.epic_id {
                 out.push_str(&format!(" [{epic}]"));
             }
-            if card.assignee == crate::domain::Assignee::Ai && column == &Column::Doing {
+            if task.assignee == crate::domain::Assignee::Ai && column == &Column::Doing {
                 out.push_str(&format!(
                     " [{}]",
-                    state_text(card.agent_status, card.pending_reason.as_deref())
+                    state_text(task.agent_status, task.pending_reason.as_deref())
                 ));
             }
             out.push('\n');
@@ -124,37 +124,37 @@ pub fn ls_text(cards: &[CardView], columns: &[Column]) -> String {
     out
 }
 
-pub fn show_text(card: &CardView) -> String {
+pub fn show_text(task: &TaskView) -> String {
     let mut out = format!(
-        "#{} {}\nCard status: {}\nAssignee: {}\n",
-        card.id,
-        card.title,
-        card.card_status.label(),
-        match card.assignee {
+        "#{} {}\nTask status: {}\nAssignee: {}\n",
+        task.id,
+        task.title,
+        task.task_status.label(),
+        match task.assignee {
             crate::domain::Assignee::Ai => "AI",
             crate::domain::Assignee::Human => "User",
         }
     );
-    if card.assignee == crate::domain::Assignee::Ai && card.card_status == Column::Doing {
+    if task.assignee == crate::domain::Assignee::Ai && task.task_status == Column::Doing {
         out.push_str(&format!(
             "Agent status: {}\n",
-            state_text(card.agent_status, card.pending_reason.as_deref())
+            state_text(task.agent_status, task.pending_reason.as_deref())
         ));
     }
-    if let Some(epic) = &card.epic_id {
+    if let Some(epic) = &task.epic_id {
         out.push_str(&format!("Epic: {epic}\n"));
     }
-    if card.is_draft {
+    if task.is_draft {
         out.push_str("Draft: yes\n");
     }
-    if let Some(archived_at) = card.archived_at {
+    if let Some(archived_at) = task.archived_at {
         out.push_str(&format!("Archived at: {}\n", archived_at.to_rfc3339()));
     }
-    if !card.description.is_empty() {
-        out.push_str(&format!("Description:\n{}\n", card.description));
+    if !task.description.is_empty() {
+        out.push_str(&format!("Description:\n{}\n", task.description));
     }
     out.push_str("History:\n");
-    for event in card.history.iter().rev() {
+    for event in task.history.iter().rev() {
         out.push_str(&format!(
             "  {}: {}\n",
             crate::clock::format_utc(event.at),

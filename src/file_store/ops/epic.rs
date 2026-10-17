@@ -1,6 +1,6 @@
 //! Epic operations: creation under a temporary folder, the update of the
-//! metadata and the plan, deletion refused while cards refer to the epic, and
-//! the epic of a card. Every write holds the project's write lock.
+//! metadata and the plan, deletion refused while tasks refer to the epic, and
+//! the epic of a task. Every write holds the project's write lock.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -11,11 +11,11 @@ use super::super::FileStore;
 use super::super::frontmatter;
 use super::super::io;
 use super::super::layout;
-use super::super::model::{CardView, EpicFile, EpicUpdate, EpicView, NewEpic};
+use super::super::model::{EpicFile, EpicUpdate, EpicView, NewEpic, TaskView};
 use super::super::reader;
 use super::super::validate::{self, EpicId};
 use super::{
-    HistoryKind, Transition, ensure_ai_card_not_done, lock_project, save_task, stamp,
+    HistoryKind, Transition, ensure_ai_task_not_done, lock_project, save_task, stamp,
     transition_event,
 };
 use crate::domain::{Actor, Changed, ProjectId};
@@ -250,10 +250,10 @@ impl FileStore {
         })
     }
 
-    /// Replace an epic's card order, the `priority` list of its PLAN.md. The
-    /// list is checked first (positive IDs, no repeats). IDs that no card of
+    /// Replace an epic's task order, the `priority` list of its PLAN.md. The
+    /// list is checked first (positive IDs, no repeats). IDs that no task of
     /// the epic holds any more are dropped, so the stored order is the order of
-    /// the cards that exist. Other frontmatter keys and the body stay. A list
+    /// the tasks that exist. Other frontmatter keys and the body stay. A list
     /// that does not change writes nothing.
     pub fn set_epic_priority(
         &self,
@@ -270,15 +270,15 @@ impl FileStore {
         let (_project_dir, _lock) = lock_project(shared, project)?;
         let (dir, mut file) = read_epic_file(shared, project, id)?;
         let members: Vec<i64> = reader::read_snapshot_locked(shared, project)?
-            .cards
+            .tasks
             .iter()
-            .filter(|card| card.epic_id.as_deref() == Some(id.as_str()))
-            .map(|card| card.id)
+            .filter(|task| task.epic_id.as_deref() == Some(id.as_str()))
+            .map(|task| task.id)
             .collect();
         let kept: Vec<i64> = priority
             .iter()
             .copied()
-            .filter(|card| members.contains(card))
+            .filter(|task| members.contains(task))
             .collect();
 
         let current_plan = read_plan(shared, &dir)?;
@@ -303,7 +303,7 @@ impl FileStore {
         })
     }
 
-    /// Delete an epic folder. Refused with `epic_in_use` while any card, archived
+    /// Delete an epic folder. Refused with `epic_in_use` while any task, archived
     /// ones included, names the epic. The folder is renamed out of the way first,
     /// then removed. A folder whose `epic.json` is broken can still be deleted.
     pub fn delete_epic(&self, project: &ProjectId, id: &EpicId) -> Result<(), AgboardError> {
@@ -313,8 +313,8 @@ impl FileStore {
         if !dir.is_dir() {
             return Err(AgboardError::EpicNotFound { id: id.to_string() });
         }
-        for card_id in reader::card_ids(&project_dir)? {
-            let task = reader::read_task_strict(shared, project, card_id)?;
+        for task_id in reader::task_ids(&project_dir)? {
+            let task = reader::read_task_strict(shared, project, task_id)?;
             if task.epic_id.as_deref() == Some(id.as_str()) {
                 return Err(AgboardError::EpicInUse { id: id.to_string() });
             }
@@ -330,36 +330,36 @@ impl FileStore {
         fs::remove_dir_all(&trash).map_err(|e| io::write_error(&label, e))
     }
 
-    /// Set (`Some`) or clear (`None`) the epic of a card. Only a real change
+    /// Set (`Some`) or clear (`None`) the epic of a task. Only a real change
     /// adds an epic history event and moves `updatedAt`. An AI cannot change an
-    /// archived or draft card; a person can.
-    pub fn set_card_epic(
+    /// archived or draft task; a person can.
+    pub fn set_task_epic(
         &self,
         project: &ProjectId,
-        card_id: i64,
+        task_id: i64,
         epic: Option<&EpicId>,
         actor: Actor,
         now: DateTime<Utc>,
-    ) -> Result<Changed<CardView>, AgboardError> {
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
-        let mut task = reader::read_task_strict(shared, project, card_id)?;
+        let mut task = reader::read_task_strict(shared, project, task_id)?;
         if matches!(actor, Actor::Ai) {
             if task.archived_at.is_some() {
-                return Err(AgboardError::CardArchived { id: card_id });
+                return Err(AgboardError::TaskArchived { id: task_id });
             }
             if task.is_draft {
-                return Err(AgboardError::CardIsDraft { id: card_id });
+                return Err(AgboardError::TaskIsDraft { id: task_id });
             }
         }
-        ensure_ai_card_not_done(&task, actor)?;
+        ensure_ai_task_not_done(&task, actor)?;
         if let Some(id) = epic {
             read_epic_file(shared, project, id)?;
         }
         let next = epic.map(|id| id.to_string());
         if task.epic_id == next {
             return Ok(Changed {
-                value: reader::read_card_locked(shared, project, card_id)?,
+                value: reader::read_task_locked(shared, project, task_id)?,
                 changed: false,
             });
         }
@@ -372,8 +372,8 @@ impl FileStore {
         let event = transition_event(Transition {
             kind: HistoryKind::Epic,
             reason: Some(&reason),
-            from_card: Some(task.card_status),
-            to_card: task.card_status,
+            from_task: Some(task.task_status),
+            to_task: task.task_status,
             from_agent: Some(task.agent_status),
             to_agent: task.agent_status,
             at,
@@ -383,7 +383,7 @@ impl FileStore {
         task.updated_at = at;
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
-            value: reader::read_card_locked(shared, project, card_id)?,
+            value: reader::read_task_locked(shared, project, task_id)?,
             changed: true,
         })
     }

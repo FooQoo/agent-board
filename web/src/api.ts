@@ -3,7 +3,7 @@ import type {
   Assignee,
   Board,
   AcceptanceItem,
-  Card,
+  Task,
   ColumnName,
   Epic,
   EpicRef,
@@ -63,7 +63,7 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 /** A card as the server writes it: the epic is an ID that the board resolves against `epics`. */
-type WireCard = Omit<Card, 'epic'> & { epicId: string | null };
+type WireTask = Omit<Task, 'epic'> & { epicId: string | null };
 
 /** The board as the server writes it. The snapshot joins each card with its epic. */
 interface WireBoard {
@@ -71,11 +71,11 @@ interface WireBoard {
   version: string;
   cursor: string;
   epics: Epic[];
-  cards: WireCard[];
+  tasks: WireTask[];
   problems: Problem[];
 }
 
-function toCard(wire: WireCard, epics: readonly Epic[]): Card {
+function toTask(wire: WireTask, epics: readonly Epic[]): Task {
   const { epicId, ...rest } = wire;
   const found = epicId === null ? undefined : epics.find((e) => e.id === epicId);
   const epic: EpicRef | null = found
@@ -91,7 +91,7 @@ export function toBoard(wire: WireBoard): Board {
     version: wire.version,
     cursor: wire.cursor,
     epics: wire.epics,
-    cards: wire.cards.map((card) => toCard(card, wire.epics)),
+    tasks: wire.tasks.map((task) => toTask(task, wire.epics)),
     problems: wire.problems,
   };
 }
@@ -113,43 +113,43 @@ export interface ArchiveResponse {
   version: string;
   cursor: string;
   /** The archive response has no epic table, so an archived card carries no epic label. */
-  cards: Card[];
+  tasks: Task[];
 }
 
 export async function fetchArchive(projectId: ProjectId): Promise<ArchiveResponse> {
-  const wire = await getJson<Omit<ArchiveResponse, 'cards'> & { cards: WireCard[] }>(
+  const wire = await getJson<Omit<ArchiveResponse, 'tasks'> & { tasks: WireTask[] }>(
     `${projectPath(projectId)}/archive`,
   );
-  return { ...wire, cards: wire.cards.map((card) => toCard(card, [])) };
+  return { ...wire, tasks: wire.tasks.map((task) => toTask(task, [])) };
 }
 
-async function postEmpty(path: string): Promise<{ card: Card }> {
+async function postEmpty(path: string): Promise<{ task: Task }> {
   const response = await fetch(path, {
     method: 'POST',
     headers: { 'X-Agboard-Token': readToken() },
   });
-  const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
-  if (!response.ok || !body.card)
+  const body = (await response.json()) as { task?: Task; error?: ApiError['error'] };
+  if (!response.ok || !body.task)
     throw writeFailure(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       body.error?.code ?? null,
       body.error?.message ?? null,
     );
-  return { card: body.card };
+  return { task: body.task };
 }
 
-export function archiveCard(projectId: ProjectId, id: number) {
-  return postEmpty(`${projectPath(projectId)}/cards/${id}/archive`);
+export function archiveTask(projectId: ProjectId, id: number) {
+  return postEmpty(`${projectPath(projectId)}/tasks/${id}/archive`);
 }
 
-export function restoreCard(projectId: ProjectId, id: number) {
-  return postEmpty(`${projectPath(projectId)}/cards/${id}/restore`);
+export function restoreTask(projectId: ProjectId, id: number) {
+  return postEmpty(`${projectPath(projectId)}/tasks/${id}/restore`);
 }
 
 export async function archiveDone(projectId: ProjectId, ids: readonly number[]) {
-  return postCard<{ cards: Card[]; archivedCount: number }>(
-    `${projectPath(projectId)}/cards/archive-done`,
+  return postTask<{ tasks: Task[]; archivedCount: number }>(
+    `${projectPath(projectId)}/tasks/archive-done`,
     { ids },
   );
 }
@@ -161,9 +161,9 @@ export async function archiveDone(projectId: ProjectId, ids: readonly number[]) 
  */
 export type DeleteResult = 'deleted' | 'not_found' | 'failed';
 
-export async function deleteCard(projectId: ProjectId, id: number): Promise<DeleteResult> {
+export async function deleteTask(projectId: ProjectId, id: number): Promise<DeleteResult> {
   try {
-    const response = await fetch(`${projectPath(projectId)}/cards/${id}`, {
+    const response = await fetch(`${projectPath(projectId)}/tasks/${id}`, {
       method: 'DELETE',
       headers: { 'X-Agboard-Token': readToken() },
     });
@@ -175,14 +175,14 @@ export async function deleteCard(projectId: ProjectId, id: number): Promise<Dele
   }
 }
 
-async function postCard<T>(path: string, value: unknown): Promise<T> {
+async function postTask<T>(path: string, value: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': readToken() },
     body: JSON.stringify(value),
   });
   const body = (await response.json()) as {
-    card?: Card;
+    task?: Task;
     changed?: boolean;
     error?: ApiError['error'];
   };
@@ -201,7 +201,7 @@ async function postCard<T>(path: string, value: unknown): Promise<T> {
  * A new card. Give either `description` (the whole TASK.md text) or `body` with `acceptance`; the server
  * writes the frontmatter from the parts.
  */
-export async function createCard(
+export async function createTask(
   projectId: ProjectId,
   input: {
     title: string;
@@ -212,7 +212,7 @@ export async function createCard(
     isDraft?: boolean;
   },
 ) {
-  return postCard<{ card: Card }>(`${projectPath(projectId)}/cards`, {
+  return postTask<{ task: Task }>(`${projectPath(projectId)}/tasks`, {
     ...input,
     isDraft: input.isDraft ?? false,
   });
@@ -241,18 +241,18 @@ function multipartBody(
 
 async function sendMultipart(path: string, body: FormData, method: 'POST' | 'PATCH') {
   const response = await fetch(path, { method, headers: { 'X-Agboard-Token': readToken() }, body });
-  const data = (await response.json()) as { card?: Card; error?: ApiError['error'] };
-  if (!response.ok || !data.card)
+  const data = (await response.json()) as { task?: Task; error?: ApiError['error'] };
+  if (!response.ok || !data.task)
     throw writeFailure(
       data.error?.reason ?? `Request failed (${response.status})`,
       response.status,
       data.error?.code ?? null,
       data.error?.message ?? null,
     );
-  return { card: data.card };
+  return { task: data.task };
 }
 
-export function createCardMultipart(
+export function createTaskMultipart(
   projectId: ProjectId,
   input: {
     title: string;
@@ -264,7 +264,7 @@ export function createCardMultipart(
   },
 ) {
   return sendMultipart(
-    `${projectPath(projectId)}/cards/multipart`,
+    `${projectPath(projectId)}/tasks/multipart`,
     multipartBody(
       { ...input, requestId: input.requestId ?? crypto.randomUUID(), attachments: undefined },
       input.attachments,
@@ -277,7 +277,7 @@ export function createCardMultipart(
  * Adds a card in one request: with its images when there are some (multipart), and as a draft when
  * `isDraft` is set. A refused request is not repeated here, so a failure never adds two cards.
  */
-export async function createNewCard(
+export async function createNewTask(
   projectId: ProjectId,
   input: {
     title: string;
@@ -290,7 +290,7 @@ export async function createNewCard(
 ) {
   const isDraft = input.isDraft ?? false;
   if (input.attachments?.length)
-    return createCardMultipart(projectId, {
+    return createTaskMultipart(projectId, {
       title: input.title,
       description: input.description,
       assignee: input.assignee,
@@ -298,7 +298,7 @@ export async function createNewCard(
       requestId: input.requestId,
       attachments: input.attachments,
     });
-  return createCard(projectId, {
+  return createTask(projectId, {
     title: input.title,
     description: input.description,
     assignee: input.assignee,
@@ -306,46 +306,46 @@ export async function createNewCard(
   });
 }
 
-export async function moveCard(
+export async function moveTask(
   projectId: ProjectId,
   id: number,
-  cardStatus: ColumnName,
+  taskStatus: ColumnName,
   reason: string,
 ) {
-  return postCard<{ card: Card; changed: boolean }>(`${projectPath(projectId)}/cards/${id}/move`, {
-    cardStatus,
+  return postTask<{ task: Task; changed: boolean }>(`${projectPath(projectId)}/tasks/${id}/move`, {
+    taskStatus,
     reason,
   });
 }
 
 /** Puts a card just before `beforeId` in its lane, or at the end of the lane when `beforeId` is null. */
-export async function reorderCard(projectId: ProjectId, id: number, beforeId: number | null) {
-  return postCard<{ card: Card; changed: boolean }>(
-    `${projectPath(projectId)}/cards/${id}/reorder`,
+export async function reorderTask(projectId: ProjectId, id: number, beforeId: number | null) {
+  return postTask<{ task: Task; changed: boolean }>(
+    `${projectPath(projectId)}/tasks/${id}/reorder`,
     { beforeId },
   );
 }
 
 export async function answerRequest(projectId: ProjectId, id: number, input: AnswerInput) {
-  return postCard<{ card: Card; changed: boolean }>(
-    `${projectPath(projectId)}/cards/${id}/answer`,
+  return postTask<{ task: Task; changed: boolean }>(
+    `${projectPath(projectId)}/tasks/${id}/answer`,
     input,
   );
 }
 
 /** Sends a write that answers `{card}` or an error body (PATCH and PUT). */
-async function sendCard(
+async function sendTask(
   method: 'PATCH' | 'PUT',
   path: string,
   value: unknown,
-): Promise<{ card: Card }> {
+): Promise<{ task: Task }> {
   const response = await fetch(path, {
     method,
     headers: { 'Content-Type': 'application/json', 'X-Agboard-Token': readToken() },
     body: JSON.stringify(value),
   });
-  const body = (await response.json()) as { card?: Card; error?: ApiError['error'] };
-  if (!response.ok || body.card === undefined) {
+  const body = (await response.json()) as { task?: Task; error?: ApiError['error'] };
+  if (!response.ok || body.task === undefined) {
     throw writeFailure(
       body.error?.reason ?? `Request failed (${response.status})`,
       response.status,
@@ -353,7 +353,7 @@ async function sendCard(
       body.error?.message ?? null,
     );
   }
-  return { card: body.card };
+  return { task: body.task };
 }
 
 /**
@@ -361,7 +361,7 @@ async function sendCard(
  * the latest TASK.md under the server's write lock; history is never sent by this editor. `finalize`
  * also hands the card back to the agents in the same step.
  */
-export async function editCard(
+export async function editTask(
   projectId: ProjectId,
   id: number,
   input: {
@@ -372,10 +372,10 @@ export async function editCard(
     finalize?: boolean;
   },
 ) {
-  return sendCard('PATCH', `${projectPath(projectId)}/cards/${id}`, input);
+  return sendTask('PATCH', `${projectPath(projectId)}/tasks/${id}`, input);
 }
 
-export function editCardMultipart(
+export function editTaskMultipart(
   projectId: ProjectId,
   id: number,
   input: {
@@ -389,7 +389,7 @@ export function editCardMultipart(
 ) {
   const { attachments, removedAttachmentIds = [], ...meta } = input;
   return sendMultipart(
-    `${projectPath(projectId)}/cards/${id}/multipart`,
+    `${projectPath(projectId)}/tasks/${id}/multipart`,
     multipartBody(
       { ...meta, requestId: input.requestId ?? crypto.randomUUID() },
       attachments,
@@ -401,7 +401,7 @@ export function editCardMultipart(
 
 /** Makes a card a draft (`true`) or finalizes it (`false`). Only an idle card can become a draft. */
 export async function setDraft(projectId: ProjectId, id: number, isDraft: boolean) {
-  return sendCard('PUT', `${projectPath(projectId)}/cards/${id}/draft`, { isDraft });
+  return sendTask('PUT', `${projectPath(projectId)}/tasks/${id}/draft`, { isDraft });
 }
 
 /** Sends a request whose answer is `{epic}` or an error body. */
@@ -448,8 +448,8 @@ export function updateEpic(
 }
 
 /** Puts a card into the epic (`epicId`) or takes it out (`null`). */
-export function setCardEpic(projectId: ProjectId, id: number, epicId: string | null) {
-  return sendCard('PUT', `${projectPath(projectId)}/cards/${id}/epic`, { epicId });
+export function setTaskEpic(projectId: ProjectId, id: number, epicId: string | null) {
+  return sendTask('PUT', `${projectPath(projectId)}/tasks/${id}/epic`, { epicId });
 }
 
 /** Adds images to an epic. The IDs of the images are the ones the screen made, so a retry is the same write. */

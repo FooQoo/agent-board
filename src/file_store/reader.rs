@@ -2,7 +2,7 @@
 //!
 //! Two styles of read exist. The strict reads (`read_*`) fail on the first
 //! defect of the file they need, and writes depend on them. The snapshot read
-//! keeps going: a broken card is left out and reported in `problems`, and a
+//! keeps going: a broken task is left out and reported in `problems`, and a
 //! TASK.md with a format defect is returned as it is, with the defect reported.
 //! `project.json` is the one file whose defect fails the whole snapshot.
 
@@ -23,7 +23,7 @@ use super::io;
 use super::layout;
 use super::lock::WriteLock;
 use super::model::{
-    CardEpic, CardView, EpicFile, EpicView, Problem, ProjectFile, TaskFile, TaskMetadata,
+    EpicFile, EpicView, Problem, ProjectFile, TaskEpic, TaskFile, TaskMetadata, TaskView,
     WorkspaceFile, current_request,
 };
 use super::transaction;
@@ -32,17 +32,17 @@ use crate::domain::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 use crate::error::AgboardError;
 
 /// One project as the snapshot returns it: the project, its content version and
-/// the cursor for that version, its cards with their full history, and every
+/// the cursor for that version, its tasks with their full history, and every
 /// defect that was tolerated while reading it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectSnapshot {
     pub project: ProjectMeta,
-    pub next_card_id: i64,
+    pub next_task_id: i64,
     pub version: String,
     pub cursor: ChangeCursor,
     pub epics: Vec<EpicView>,
-    pub cards: Vec<CardView>,
+    pub tasks: Vec<TaskView>,
     pub problems: Vec<Problem>,
 }
 
@@ -126,15 +126,15 @@ pub(super) fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, V
 }
 
 impl ProjectSnapshot {
-    /// The same snapshot without the archived cards (the board and the CLI snapshot).
+    /// The same snapshot without the archived tasks (the board and the CLI snapshot).
     pub fn without_archived(mut self) -> ProjectSnapshot {
-        self.cards.retain(|card| card.archived_at.is_none());
+        self.tasks.retain(|task| task.archived_at.is_none());
         self
     }
 
-    /// The same snapshot with only the archived cards (the archive list).
+    /// The same snapshot with only the archived tasks (the archive list).
     pub fn only_archived(mut self) -> ProjectSnapshot {
-        self.cards.retain(|card| card.archived_at.is_some());
+        self.tasks.retain(|task| task.archived_at.is_some());
         self
     }
 }
@@ -149,9 +149,9 @@ pub struct FetchedSnapshot<'a> {
     pub snapshot: &'a ProjectSnapshot,
 }
 
-/// A card that was read leniently: its view and the defects of its text.
-pub(crate) struct CardLoad {
-    pub view: CardView,
+/// A task that was read leniently: its view and the defects of its text.
+pub(crate) struct TaskLoad {
+    pub view: TaskView,
     pub problems: Vec<Problem>,
 }
 
@@ -183,7 +183,7 @@ fn parse_task_metadata(bytes: &[u8], label: &str) -> Result<TaskMetadata, Agboar
         field: String::new(),
         reason: format!("The JSON is malformed: {e}."),
     })?;
-    validate::check_format_version_expected(&value, label, 3)?;
+    validate::check_format_version(&value, label)?;
     serde_json::from_value(value).map_err(|e| {
         let message = e.to_string();
         AgboardError::FileInvalid {
@@ -329,9 +329,9 @@ pub fn read_project_file(shared: &Path, id: &ProjectId) -> Result<ProjectFile, A
     }
 }
 
-/// The card IDs of a project, in ascending order. Only folders with canonical
+/// The task IDs of a project, in ascending order. Only folders with canonical
 /// names count; a temporary folder or a stray file is ignored.
-pub(crate) fn card_ids(project_dir: &Path) -> Result<Vec<i64>, AgboardError> {
+pub(crate) fn task_ids(project_dir: &Path) -> Result<Vec<i64>, AgboardError> {
     let tasks = layout::tasks_dir(project_dir);
     if !tasks.is_dir() {
         return Ok(Vec::new());
@@ -346,7 +346,7 @@ pub(crate) fn card_ids(project_dir: &Path) -> Result<Vec<i64>, AgboardError> {
             continue;
         }
         let name = entry.file_name();
-        if let Some(id) = name.to_str().and_then(layout::parse_card_dir) {
+        if let Some(id) = name.to_str().and_then(layout::parse_task_dir) {
             ids.push(id);
         }
     }
@@ -354,15 +354,15 @@ pub(crate) fn card_ids(project_dir: &Path) -> Result<Vec<i64>, AgboardError> {
     Ok(ids)
 }
 
-/// Read a card for a snapshot. A defect in `task.json` fails the card, and
+/// Read a task for a snapshot. A defect in `task.json` fails the task, and
 /// the caller reports it as problems. A defect in TASK.md returns the text.
-pub(crate) fn read_card_lenient(
+pub(crate) fn read_task_lenient(
     shared: &Path,
     project_id: &ProjectId,
-    card_id: i64,
-) -> Result<CardLoad, Vec<Problem>> {
+    task_id: i64,
+) -> Result<TaskLoad, Vec<Problem>> {
     let project_dir = layout::project_dir(shared, project_id);
-    let dir = layout::task_dir(&project_dir, card_id);
+    let dir = layout::task_dir(&project_dir, task_id);
     let json_path = layout::task_json(&dir);
     let json_label = layout::shared_label(shared, &json_path);
     let metadata: TaskMetadata = match io::read_bytes(&json_path, &json_label)
@@ -372,7 +372,7 @@ pub(crate) fn read_card_lenient(
         Err(error) => return Err(vec![problem_of(error)]),
     };
     let task = metadata.with_history(Vec::new());
-    let defects = validate::check_task_metadata(&task, card_id);
+    let defects = validate::check_task_metadata(&task, task_id);
     if !defects.is_empty() {
         return Err(defects
             .into_iter()
@@ -409,26 +409,26 @@ pub(crate) fn read_card_lenient(
     };
     let mut joined = task;
     joined.history = history;
-    Ok(CardLoad {
-        view: card_view(joined, description, file_time(&md_path)),
+    Ok(TaskLoad {
+        view: task_view(joined, description, file_time(&md_path)),
         problems,
     })
 }
 
-/// Build the card view from its two files. `updatedAt` is the newer of the
+/// Build the task view from its two files. `updatedAt` is the newer of the
 /// task's own time and the TASK.md modification time.
-pub(crate) fn card_view(
+pub(crate) fn task_view(
     task: TaskFile,
     description: String,
     body_modified: Option<DateTime<Utc>>,
-) -> CardView {
+) -> TaskView {
     let (pending_reason, pending_choices) = match current_request(&task) {
         Some(event) => (Some(event.question.clone()), event.choices.clone()),
         None => (None, Vec::new()),
     };
     let updated_at = body_modified.map_or(task.updated_at, |m| m.max(task.updated_at));
     let parts = frontmatter::parse(&description);
-    CardView {
+    TaskView {
         id: task.id,
         title: task.title,
         description,
@@ -438,7 +438,7 @@ pub(crate) fn card_view(
         assignee: task.assignee,
         epic_id: task.epic_id,
         epic: None,
-        card_status: task.card_status,
+        task_status: task.task_status,
         position: task.position,
         agent_status: task.agent_status,
         is_draft: task.is_draft,
@@ -451,44 +451,44 @@ pub(crate) fn card_view(
         created_at: task.created_at,
         updated_at,
         agent_status_changed_at: task.agent_status_changed_at,
-        card_status_changed_at: task.card_status_changed_at,
+        task_status_changed_at: task.task_status_changed_at,
         history: task.history,
     }
 }
 
-/// Resolve the epic of a card from the epics of its project. An epic ID that
-/// names no epic leaves the card with no epic.
-pub(crate) fn attach_epic(view: &mut CardView, epics: &[EpicView]) {
+/// Resolve the epic of a task from the epics of its project. An epic ID that
+/// names no epic leaves the task with no epic.
+pub(crate) fn attach_epic(view: &mut TaskView, epics: &[EpicView]) {
     view.epic = view
         .epic_id
         .as_deref()
         .and_then(|id| epics.iter().find(|epic| epic.id.as_str() == id))
-        .map(|epic| CardEpic {
+        .map(|epic| TaskEpic {
             id: epic.id.clone(),
             name: epic.name.clone(),
             color: epic.color.clone(),
         });
 }
 
-/// Read and check `task.json` of one card. A missing card is `card_not_found`;
+/// Read and check `task.json` of one task. A missing task is `task_not_found`;
 /// a defect in the file is `file_invalid` with the shared-relative path.
 /// This reads workflow metadata independently of TASK.md history.
 pub(crate) fn read_task_metadata_strict(
     shared: &Path,
     project_id: &ProjectId,
-    card_id: i64,
+    task_id: i64,
 ) -> Result<TaskFile, AgboardError> {
     let project_dir = project_dir_checked(shared, project_id)?;
-    let dir = layout::task_dir(&project_dir, card_id);
+    let dir = layout::task_dir(&project_dir, task_id);
     if !dir.is_dir() {
-        return Err(AgboardError::CardNotFound { id: card_id });
+        return Err(AgboardError::TaskNotFound { id: task_id });
     }
     let path = layout::task_json(&dir);
     let label = layout::shared_label(shared, &path);
     let bytes = io::read_bytes(&path, &label)?;
     let metadata: TaskMetadata = parse_task_metadata(&bytes, &label)?;
     let task = metadata.with_history(Vec::new());
-    if let Some(d) = validate::check_task_metadata(&task, card_id)
+    if let Some(d) = validate::check_task_metadata(&task, task_id)
         .into_iter()
         .next()
     {
@@ -505,10 +505,10 @@ pub(crate) fn read_task_metadata_strict(
 pub(crate) fn read_task_strict(
     shared: &Path,
     project_id: &ProjectId,
-    card_id: i64,
+    task_id: i64,
 ) -> Result<TaskFile, AgboardError> {
-    let task = read_task_metadata_strict(shared, project_id, card_id)?;
-    let dir = layout::task_dir(&layout::project_dir(shared, project_id), card_id);
+    let task = read_task_metadata_strict(shared, project_id, task_id)?;
+    let dir = layout::task_dir(&layout::project_dir(shared, project_id), task_id);
     let md_path = layout::task_md(&dir);
     let md_label = layout::shared_label(shared, &md_path);
     let text = io::read_text(&md_path, &md_label)?;
@@ -525,45 +525,45 @@ pub(crate) fn read_task_strict(
     Ok(joined)
 }
 
-/// The text of a card's TASK.md.
+/// The text of a task's TASK.md.
 pub(crate) fn read_body(
     shared: &Path,
     project_id: &ProjectId,
-    card_id: i64,
+    task_id: i64,
 ) -> Result<String, AgboardError> {
     let project_dir = project_dir_checked(shared, project_id)?;
-    let path = layout::task_md(&layout::task_dir(&project_dir, card_id));
+    let path = layout::task_md(&layout::task_dir(&project_dir, task_id));
     io::read_text(&path, &layout::shared_label(shared, &path))
 }
 
-/// One card, read strictly: `task.json` must pass, and TASK.md must be readable.
-pub fn read_card(
+/// One task, read strictly: `task.json` must pass, and TASK.md must be readable.
+pub fn read_task(
     shared: &Path,
     project_id: &ProjectId,
-    card_id: i64,
-) -> Result<CardView, AgboardError> {
+    task_id: i64,
+) -> Result<TaskView, AgboardError> {
     let project_dir = project_dir_checked(shared, project_id)?;
     let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
     transaction::recover_locked(&project_dir)?;
-    read_card_locked(shared, project_id, card_id)
+    read_task_locked(shared, project_id, task_id)
 }
 
-/// Read one card while the caller already holds its project lock.
-pub(crate) fn read_card_locked(
+/// Read one task while the caller already holds its project lock.
+pub(crate) fn read_task_locked(
     shared: &Path,
     project_id: &ProjectId,
-    card_id: i64,
-) -> Result<CardView, AgboardError> {
-    let task = read_task_strict(shared, project_id, card_id)?;
-    let body = read_body(shared, project_id, card_id)?;
+    task_id: i64,
+) -> Result<TaskView, AgboardError> {
+    let task = read_task_strict(shared, project_id, task_id)?;
+    let body = read_body(shared, project_id, task_id)?;
     let project_dir = layout::project_dir(shared, project_id);
-    let md_path = layout::task_md(&layout::task_dir(&project_dir, card_id));
-    let mut view = card_view(task, body, file_time(&md_path));
+    let md_path = layout::task_md(&layout::task_dir(&project_dir, task_id));
+    let mut view = task_view(task, body, file_time(&md_path));
     attach_epic(&mut view, &read_epics(shared, &project_dir).0);
     Ok(view)
 }
 
-/// The snapshot of one project: its project file (strict), and every card
+/// The snapshot of one project: its project file (strict), and every task
 /// with the defects that were tolerated.
 pub fn read_snapshot(
     shared: &Path,
@@ -586,29 +586,29 @@ pub(crate) fn read_snapshot_locked(
     let version = index::project_version(&project_dir);
     let cursor = ChangeCursor::new(project_id.clone(), &version)?;
     let file = read_project_file(shared, project_id)?;
-    let next_card_id = file.next_card_id;
+    let next_task_id = file.next_task_id;
     let project = meta_of(file);
-    let mut cards = Vec::new();
+    let mut tasks = Vec::new();
     let (epics, mut problems) = read_epics(shared, &project_dir);
-    for card_id in card_ids(&project_dir)? {
-        match read_card_lenient(shared, project_id, card_id) {
+    for task_id in task_ids(&project_dir)? {
+        match read_task_lenient(shared, project_id, task_id) {
             Ok(load) => {
-                cards.push(load.view);
+                tasks.push(load.view);
                 problems.extend(load.problems);
             }
             Err(found) => problems.extend(found),
         }
     }
-    for card in &mut cards {
-        attach_epic(card, &epics);
+    for task in &mut tasks {
+        attach_epic(task, &epics);
     }
     Ok(ProjectSnapshot {
         project,
-        next_card_id,
+        next_task_id,
         version,
         cursor,
         epics,
-        cards,
+        tasks,
         problems,
     })
 }
@@ -641,13 +641,13 @@ impl FileStore {
             })
     }
 
-    /// One project's unarchived cards, with its version, its cursor, and the
+    /// One project's unarchived tasks, with its version, its cursor, and the
     /// defects of its files.
     pub fn board(&self, id: &ProjectId) -> Result<ProjectSnapshot, AgboardError> {
         Ok(read_snapshot(self.shared_dir(), id)?.without_archived())
     }
 
-    /// One project's archived cards, read the same way as [`FileStore::board`].
+    /// One project's archived tasks, read the same way as [`FileStore::board`].
     pub fn archive_snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, AgboardError> {
         Ok(read_snapshot(self.shared_dir(), id)?.only_archived())
     }

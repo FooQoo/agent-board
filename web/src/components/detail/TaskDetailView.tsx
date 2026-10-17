@@ -3,7 +3,7 @@ import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { historyItems } from '../../lib/history';
 import { stateLabel } from '../../lib/format';
-import type { Card, Epic, Problem, ProjectId } from '../../types';
+import type { Task, Epic, Problem, ProjectId } from '../../types';
 import { AssigneeLabel } from '../AssigneeLabel';
 import { HistoryTimeline } from '../HistoryTimeline';
 import { StatusLabel } from '../StatusLabel';
@@ -14,9 +14,9 @@ import { EpicTabView, type EpicTabStatus } from './EpicTabView';
 import { AcceptanceTabView } from './AcceptanceTabView';
 import '../../styles/detail.css';
 
-export interface CardDetailViewProps {
+export interface TaskDetailViewProps {
   projectId: ProjectId;
-  card: Card;
+  task: Task;
   tab: DetailTab;
   onTabChange(tab: DetailTab): void;
   onClose(): void;
@@ -36,13 +36,13 @@ export interface CardDetailViewProps {
 }
 
 /** Side-effect-free shared card display. Optional children are PC-only operations supplied by its host. */
-export function CardDetailView({
+export function TaskDetailView({
   projectId,
-  card,
+  task,
   tab,
   onTabChange,
   onClose,
-  attachmentUrl = (id) => `/api/projects/${projectId}/cards/${card.id}/attachments/${id}`,
+  attachmentUrl = (id) => `/api/projects/${projectId}/tasks/${task.id}/attachments/${id}`,
   evidenceUrl,
   problems = [],
   epics,
@@ -53,15 +53,15 @@ export function CardDetailView({
   readOnlyDraft = true,
   toolbar,
   children,
-}: CardDetailViewProps) {
+}: TaskDetailViewProps) {
   const { t } = useTranslation();
   const idBase = useId();
   const ownProblems = problems.filter((problem) =>
-    problem.file.startsWith(`projects/${projectId}/tasks/${card.id}/`),
+    problem.file.startsWith(`projects/${projectId}/tasks/${task.id}/`),
   );
   // The card's epic is looked up in the project's epics; a card without one has no epic tab content.
-  const epic = card.epic ? (epics?.find((item) => item.id === card.epic?.id) ?? null) : null;
-  const epicStatus: EpicTabStatus = !card.epic
+  const epic = task.epic ? (epics?.find((item) => item.id === task.epic?.id) ?? null) : null;
+  const epicStatus: EpicTabStatus = !task.epic
     ? 'none'
     : epic
       ? 'ready'
@@ -72,7 +72,7 @@ export function CardDetailView({
     <aside className="detail detail-view" aria-label={t('detail.title')}>
       <div className="detail__top">
         <span className="detail__id">
-          {ownerName && <span className="detail__owner">{ownerName} · </span>}#{card.id}
+          {ownerName && <span className="detail__owner">{ownerName} · </span>}#{task.id}
         </span>
         {toolbar}
         <button
@@ -85,28 +85,28 @@ export function CardDetailView({
         </button>
       </div>
       <h2 className="detail__title" id="card-detail-title">
-        {card.title}
+        {task.title}
       </h2>
       <div className="detail__meta">
-        <StatusLabel kind="card" status={card.cardStatus} monitor={statusLabels === 'monitor'} />
-        {stateLabel(card) !== null && (
+        <StatusLabel kind="card" status={task.taskStatus} monitor={statusLabels === 'monitor'} />
+        {stateLabel(task) !== null && (
           <StatusLabel
             kind="agent"
-            status={card.agentStatus}
+            status={task.agentStatus}
             monitor={statusLabels === 'monitor'}
           />
         )}
-        <AssigneeLabel assignee={card.assignee} />
+        <AssigneeLabel assignee={task.assignee} />
         <span className="detail__assignee" aria-hidden="true">
-          {t(`assignee.${card.assignee}`)}
+          {t(`assignee.${task.assignee}`)}
         </span>
       </div>
-      {readOnlyDraft && card.isDraft && <DraftStatus />}
+      {readOnlyDraft && task.isDraft && <DraftStatus />}
       {children}
       <DetailTabs
         idBase={idBase}
         tab={tab}
-        historyCount={historyItems(card.history).length}
+        historyCount={historyItems(task.history).length}
         onChange={onTabChange}
       />
       <div
@@ -117,13 +117,13 @@ export function CardDetailView({
         hidden={tab !== 'description'}
       >
         <BodyDocumentView
-          body={card.body}
-          acceptanceError={card.acceptanceError}
+          body={task.body}
+          acceptanceError={task.acceptanceError}
           problems={ownProblems}
-          attachments={card.attachments ?? []}
-          evidence={card.evidence ?? []}
+          attachments={task.attachments ?? []}
+          evidence={task.evidence ?? []}
           projectId={projectId}
-          cardId={card.id}
+          taskId={task.id}
           attachmentUrl={attachmentUrl}
           evidenceUrl={evidenceUrl}
         />
@@ -144,7 +144,7 @@ export function CardDetailView({
         aria-labelledby={tabId(idBase, 'history')}
         hidden={tab !== 'history'}
       >
-        <HistoryTimeline events={card.history} />
+        <HistoryTimeline events={task.history} />
       </div>
       <div
         className="detail__viewport"
@@ -153,7 +153,7 @@ export function CardDetailView({
         aria-labelledby={tabId(idBase, 'acceptance')}
         hidden={tab !== 'acceptance'}
       >
-        <AcceptanceTabView card={card} />
+        <AcceptanceTabView task={task} />
       </div>
     </aside>
   );

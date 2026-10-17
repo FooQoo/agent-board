@@ -1,5 +1,5 @@
-//! The acceptance conditions in the CLI: an agent cannot move a card to Done
-//! while a condition is unmet, and a person or a card with no conditions can.
+//! The acceptance conditions in the CLI: an agent cannot move a task to Done
+//! while a condition is unmet, and a person or a task with no conditions can.
 
 mod common;
 
@@ -21,7 +21,7 @@ fn write(home: &std::path::Path, name: &str, text: &str) -> std::path::PathBuf {
     path
 }
 
-fn add_card(home: &std::path::Path, desc: &str) {
+fn add_task(home: &std::path::Path, desc: &str) {
     let file = write(home, "desc.md", desc);
     let file = file.to_str().unwrap();
     let (code, _, err) = agboard(
@@ -30,7 +30,7 @@ fn add_card(home: &std::path::Path, desc: &str) {
             "--project",
             "Demo",
             "add",
-            "Card",
+            "Task",
             "--assignee",
             "ai",
             "--actor",
@@ -42,18 +42,18 @@ fn add_card(home: &std::path::Path, desc: &str) {
     assert_eq!(code, 0, "{err}");
 }
 
-fn card_status(home: &std::path::Path, id: &str) -> String {
-    json_ok(home, &["--project", "Demo", "show", id, "--json"])["card"]["cardStatus"]
+fn task_status(home: &std::path::Path, id: &str) -> String {
+    json_ok(home, &["--project", "Demo", "show", id, "--json"])["task"]["taskStatus"]
         .as_str()
         .unwrap()
         .to_string()
 }
 
 #[test]
-fn an_agent_cannot_move_a_card_to_done_while_a_condition_is_unmet() {
+fn an_agent_cannot_move_a_task_to_done_while_a_condition_is_unmet() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_card(home.path(), UNMET);
+    add_task(home.path(), UNMET);
 
     let (code, error) = json_error(
         home.path(),
@@ -72,7 +72,7 @@ fn an_agent_cannot_move_a_card_to_done_while_a_condition_is_unmet() {
     assert_eq!(code, 2);
     assert_eq!(error, "acceptance_unmet");
     assert_eq!(
-        card_status(home.path(), "2"),
+        task_status(home.path(), "2"),
         "todo",
         "a refused move changes nothing"
     );
@@ -82,7 +82,7 @@ fn an_agent_cannot_move_a_card_to_done_while_a_condition_is_unmet() {
 fn the_refusal_names_the_unmet_conditions() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_card(home.path(), UNMET);
+    add_task(home.path(), UNMET);
     let (_, _, err) = agboard(
         home.path(),
         &[
@@ -102,10 +102,10 @@ fn the_refusal_names_the_unmet_conditions() {
 }
 
 #[test]
-fn an_agent_can_move_a_card_to_done_when_every_condition_is_met() {
+fn an_agent_can_move_a_task_to_done_when_every_condition_is_met() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_card(home.path(), ALL_MET);
+    add_task(home.path(), ALL_MET);
     run_ok(
         home.path(),
         &[
@@ -120,11 +120,11 @@ fn an_agent_can_move_a_card_to_done_when_every_condition_is_met() {
             "Verified.",
         ],
     );
-    assert_eq!(card_status(home.path(), "2"), "done");
+    assert_eq!(task_status(home.path(), "2"), "done");
 }
 
 #[test]
-fn a_card_without_conditions_can_be_moved_to_done_by_an_agent() {
+fn a_task_without_conditions_can_be_moved_to_done_by_an_agent() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     run_ok(
@@ -141,14 +141,14 @@ fn a_card_without_conditions_can_be_moved_to_done_by_an_agent() {
             "Nothing to check.",
         ],
     );
-    assert_eq!(card_status(home.path(), "1"), "done");
+    assert_eq!(task_status(home.path(), "1"), "done");
 }
 
 #[test]
-fn a_person_can_move_a_card_to_done_while_a_condition_is_unmet() {
+fn a_person_can_move_a_task_to_done_while_a_condition_is_unmet() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_card(home.path(), UNMET);
+    add_task(home.path(), UNMET);
     run_ok(
         home.path(),
         &[
@@ -163,14 +163,14 @@ fn a_person_can_move_a_card_to_done_while_a_condition_is_unmet() {
             "Dropped the second condition.",
         ],
     );
-    assert_eq!(card_status(home.path(), "2"), "done");
+    assert_eq!(task_status(home.path(), "2"), "done");
 }
 
 #[test]
 fn an_agent_is_refused_when_the_frontmatter_has_a_defect() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_card(home.path(), ALL_MET);
+    add_task(home.path(), ALL_MET);
     // The CLI refuses a defective file when it is written, so the defect is put in by hand.
     let project = json_ok(home.path(), &["project", "ls", "--json"])["projects"][0]["id"]
         .as_str()
@@ -201,7 +201,7 @@ fn an_agent_is_refused_when_the_frontmatter_has_a_defect() {
     );
     assert_eq!(code, 1);
     assert_eq!(error, "file_invalid");
-    assert_eq!(card_status(home.path(), "2"), "todo");
+    assert_eq!(task_status(home.path(), "2"), "todo");
 }
 
 #[test]

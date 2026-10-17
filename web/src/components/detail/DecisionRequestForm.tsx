@@ -23,7 +23,7 @@ import type {
 } from '../../lib/answer';
 import { problemOf, WriteError } from '../../lib/writeErrors';
 import type { OperationControls } from '../../lib/projectSession';
-import type { Card, ProjectId } from '../../types';
+import type { Task, ProjectId } from '../../types';
 import '../../styles/decision-request.css';
 
 const MAX_ANSWER = 2000;
@@ -61,7 +61,7 @@ function useCut(ref: React.RefObject<HTMLElement | null>, text: string | null, a
 /** Shared answer form for the local board and the isolated mobile monitor. */
 export function DecisionRequestForm({
   projectId,
-  card,
+  task,
   operations,
   writeAnswer,
   disabled = false,
@@ -71,7 +71,7 @@ export function DecisionRequestForm({
   onRequestStale,
 }: {
   projectId: ProjectId;
-  card: Card;
+  task: Task;
   operations: OperationControls;
   writeAnswer: AnswerWriter;
   disabled?: boolean;
@@ -81,9 +81,9 @@ export function DecisionRequestForm({
   onRequestStale?: (requestId: string) => void;
 }) {
   const { t } = useTranslation();
-  const requestId = card.pendingRequestId;
-  const choices = card.pendingChoices;
-  const storeKey = `${projectId}:${card.id}:${requestId ?? ''}` as AnswerFormKey;
+  const requestId = task.pendingRequestId;
+  const choices = task.pendingChoices;
+  const storeKey = `${projectId}:${task.id}:${requestId ?? ''}` as AnswerFormKey;
   const [localState, setLocalState] = useState(
     () => stateStore?.getSnapshot(storeKey) ?? initialState(requestId),
   );
@@ -119,7 +119,7 @@ export function DecisionRequestForm({
   const textareaId = useId();
   const messageId = useId();
 
-  const cut = useCut(reasonRef, card.pendingReason, !localState.questionExpanded);
+  const cut = useCut(reasonRef, task.pendingReason, !localState.questionExpanded);
   const stale = requestId !== localState.baseRequestId;
   const hasText = localState.text.trim() !== '';
   const tooLong = [...localState.text].length > MAX_ANSWER;
@@ -183,7 +183,7 @@ export function DecisionRequestForm({
     const id = operationId.current;
     if (id !== null) operations.saveStarted(id);
     try {
-      const result = await writeAnswer(projectId, card.id, input);
+      const result = await writeAnswer(projectId, task.id, input);
       sending.current = false;
       if (!mounted.current) return;
       clear();
@@ -231,13 +231,13 @@ export function DecisionRequestForm({
         <PauseIcon aria-hidden="true" />
         <span>{t('request.title')}</span>
       </p>
-      {card.pendingReason && (
+      {task.pendingReason && (
         <>
           <p
             ref={reasonRef}
             className={`detail__reason${localState.questionExpanded ? '' : ' detail__reason--clamped'}`}
           >
-            {card.pendingReason}
+            {task.pendingReason}
           </p>
           {!localState.questionExpanded && cut && (
             <button

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard } from '../helpers/agboard';
+import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 const png = Buffer.from(
@@ -8,11 +8,11 @@ const png = Buffer.from(
 	'base64',
 );
 
-test('real archive detail preserves content, restores the lane, and permanently deletes an archived card', async ({
+test('real archive detail preserves content, restores the lane, and permanently deletes an archived task', async ({
 	page,
 }, testInfo) => {
 	resetBoard(mainProject);
-	const keepId = nextCardId(mainProject);
+	const keepId = nextTaskId(mainProject);
 	const keepTitle = 'Archive flow keep with attachment';
 	const keepDescription = 'Preserve this **Markdown** description through archive and restore.';
 	agboardOk(mainProject, [
@@ -30,7 +30,7 @@ test('real archive detail preserves content, restores the lane, and permanently 
 	agboardOk(mainProject, ['attachment', 'add', String(keepId), '--file', imagePath, '--actor', 'ai']);
 	agboardOk(mainProject, ['mv', String(keepId), 'done', '--actor', 'ai', '--reason', 'Prepare archive E2E']);
 
-	const deleteId = nextCardId(mainProject);
+	const deleteId = nextTaskId(mainProject);
 	const deleteTitle = 'Archive flow permanent delete';
 	agboardOk(mainProject, [
 		'add',
@@ -53,10 +53,10 @@ test('real archive detail preserves content, restores the lane, and permanently 
 	const done = page.getByRole('region', { name: '完了' });
 	await done.getByRole('button', { name: new RegExp(keepTitle) }).click();
 	const detail = page.locator('.detail');
-	await detail.getByRole('button', { name: 'カードをアーカイブ' }).click();
+	await detail.getByRole('button', { name: 'タスクをアーカイブ' }).click();
 	await detail.getByRole('button', { name: 'アーカイブ', exact: true }).click();
 	await expect(done.getByRole('button', { name: new RegExp(keepTitle) })).toHaveCount(0);
-	await expect.poll(() => listCards(mainProject).some((card) => card.id === keepId)).toBe(false);
+	await expect.poll(() => listTasks(mainProject).some((task) => task.id === keepId)).toBe(false);
 
 	await page.locator('.header__archive').click();
 	const archivedRow = page.locator('.archive-row > button').filter({ hasText: keepTitle });
@@ -67,7 +67,7 @@ test('real archive detail preserves content, restores the lane, and permanently 
 	await expect(detail.getByRole('tab', { name: /^履歴/ })).toContainText('履歴');
 	await page.screenshot({ path: testInfo.outputPath('01-archive-detail.png') });
 
-	await detail.getByRole('button', { name: 'カードを削除' }).click();
+	await detail.getByRole('button', { name: 'タスクを削除' }).click();
 	const penCopy = `#${keepId}「${keepTitle}」を削除しますか？ 本文・画像・履歴も削除されます。この操作は元に戻せません。`;
 	await expect(detail.locator('.delete-confirm__message')).toHaveText(penCopy);
 	const geometry = await detail.evaluate((element) => {
@@ -86,22 +86,22 @@ test('real archive detail preserves content, restores the lane, and permanently 
 	await page.screenshot({ path: testInfo.outputPath('02-archive-delete-confirmation.png') });
 	await detail.getByRole('button', { name: 'キャンセル' }).click();
 	await detail.getByRole('button', { name: '復元' }).click();
-	await expect.poll(() => listCards(mainProject).find((card) => card.id === keepId)?.cardStatus).toBe('done');
-	await expect.poll(() => listCards(mainProject).find((card) => card.id === keepId)?.agentStatus).toBe('idle');
-	const restored = listCards(mainProject).find((card) => card.id === keepId)!;
-	expect(restored).toMatchObject({ title: keepTitle, cardStatus: 'done', agentStatus: 'idle' });
+	await expect.poll(() => listTasks(mainProject).find((task) => task.id === keepId)?.taskStatus).toBe('done');
+	await expect.poll(() => listTasks(mainProject).find((task) => task.id === keepId)?.agentStatus).toBe('idle');
+	const restored = listTasks(mainProject).find((task) => task.id === keepId)!;
+	expect(restored).toMatchObject({ title: keepTitle, taskStatus: 'done', agentStatus: 'idle' });
 
-	const deleteCard = page.getByRole('button', { name: new RegExp(deleteTitle) });
+	const deleteTask = page.getByRole('button', { name: new RegExp(deleteTitle) });
 	await page.locator('.header__back').click();
-	await expect(deleteCard).toBeVisible();
+	await expect(deleteTask).toBeVisible();
 	await page.getByRole('region', { name: '完了' }).getByRole('button', { name: new RegExp(deleteTitle) }).click();
-	await detail.getByRole('button', { name: 'カードをアーカイブ' }).click();
+	await detail.getByRole('button', { name: 'タスクをアーカイブ' }).click();
 	await detail.getByRole('button', { name: 'アーカイブ', exact: true }).click();
 	await page.locator('.header__archive').click();
 	await page.locator('.archive-row > button').filter({ hasText: deleteTitle }).click();
-	await detail.getByRole('button', { name: 'カードを削除' }).click();
+	await detail.getByRole('button', { name: 'タスクを削除' }).click();
 	await detail.getByRole('button', { name: '削除', exact: true }).click();
 	await expect(page.locator('.archive-row > button').filter({ hasText: deleteTitle })).toHaveCount(0);
-	const finalCards = listCards(mainProject);
-	expect(finalCards.some((card) => card.id === deleteId)).toBe(false);
+	const finalTasks = listTasks(mainProject);
+	expect(finalTasks.some((task) => task.id === deleteId)).toBe(false);
 });

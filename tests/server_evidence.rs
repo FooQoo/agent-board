@@ -1,4 +1,4 @@
-//! The HTTP surface of card and epic images and of text evidence: registration,
+//! The HTTP surface of task and epic images and of text evidence: registration,
 //! delivery only to the owner (AC-10), the draft rule of U6-8, and the
 //! headers that keep a text file from being sniffed. Servers listen on port 0.
 
@@ -21,7 +21,7 @@ fn project_id(home: &Path) -> String {
         .to_string()
 }
 
-/// A card-image registration: one PNG as the `file` part, its metadata as `metadata`.
+/// A task-image registration: one PNG as the `file` part, its metadata as `metadata`.
 fn image_body(id: &str) -> Vec<u8> {
     let metadata = json!({
         "requestId": "11111111111111111111111111111111",
@@ -35,14 +35,14 @@ fn image_body(id: &str) -> Vec<u8> {
     )
 }
 
-fn add_second_card(home: &Path) {
+fn add_second_task(home: &Path) {
     let (code, _, err) = agboard(
         home,
         &[
             "--project",
             "Demo",
             "add",
-            "Second card",
+            "Second task",
             "--assignee",
             "ai",
             "--actor",
@@ -53,50 +53,50 @@ fn add_second_card(home: &Path) {
 }
 
 #[test]
-fn a_card_image_is_served_only_to_its_own_card_with_its_media_type() {
+fn a_task_image_is_served_only_to_its_own_task_with_its_media_type() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_second_card(home.path());
+    add_second_task(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
 
     let added = server.write_multipart(
         "POST",
-        &format!("/api/projects/{pid}/cards/1/attachments"),
+        &format!("/api/projects/{pid}/tasks/1/attachments"),
         image_body(IMAGE_ID),
         BOUNDARY,
     );
     assert_eq!(added.status, 201, "{}", added.body);
-    assert_eq!(added.json()["card"]["attachments"][0]["id"], IMAGE_ID);
+    assert_eq!(added.json()["task"]["attachments"][0]["id"], IMAGE_ID);
 
     let served = server.get(&format!(
-        "/api/projects/{pid}/cards/1/attachments/{IMAGE_ID}"
+        "/api/projects/{pid}/tasks/1/attachments/{IMAGE_ID}"
     ));
     assert_eq!(served.status, 200);
     assert_eq!(served.header("content-type"), Some("image/png"));
     assert_eq!(served.header("x-content-type-options"), Some("nosniff"));
     assert_eq!(served.bytes, png());
 
-    let other_card = server.get(&format!(
-        "/api/projects/{pid}/cards/2/attachments/{IMAGE_ID}"
+    let other_task = server.get(&format!(
+        "/api/projects/{pid}/tasks/2/attachments/{IMAGE_ID}"
     ));
-    assert_eq!(other_card.status, 404);
-    assert_eq!(other_card.code(), "attachment_not_found");
+    assert_eq!(other_task.status, 404);
+    assert_eq!(other_task.code(), "attachment_not_found");
 
     let malformed = server.get(&format!(
-        "/api/projects/{pid}/cards/1/attachments/not-an-id"
+        "/api/projects/{pid}/tasks/1/attachments/not-an-id"
     ));
     assert_eq!(malformed.status, 404);
 
     let deleted = server.write(
         "DELETE",
-        &format!("/api/projects/{pid}/cards/1/attachments/{IMAGE_ID}"),
+        &format!("/api/projects/{pid}/tasks/1/attachments/{IMAGE_ID}"),
         None,
     );
     assert_eq!(deleted.status, 200, "{}", deleted.body);
-    assert_eq!(deleted.json()["card"]["attachments"], json!([]));
+    assert_eq!(deleted.json()["task"]["attachments"], json!([]));
     let gone = server.get(&format!(
-        "/api/projects/{pid}/cards/1/attachments/{IMAGE_ID}"
+        "/api/projects/{pid}/tasks/1/attachments/{IMAGE_ID}"
     ));
     assert_eq!(gone.status, 404);
     server.stop();
@@ -106,7 +106,7 @@ fn a_card_image_is_served_only_to_its_own_card_with_its_media_type() {
 fn an_epic_image_is_served_only_through_its_own_epic() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_second_card(home.path());
+    add_second_task(home.path());
     for id in ["FILE-SHARE", "OTHER"] {
         let (code, _, err) = agboard(
             home.path(),
@@ -148,10 +148,10 @@ fn an_epic_image_is_served_only_through_its_own_epic() {
         "/api/projects/{pid}/epics/OTHER/attachments/{IMAGE_ID}"
     ));
     assert_eq!(other_epic.status, 404);
-    let by_card = server.get(&format!(
-        "/api/projects/{pid}/cards/1/attachments/{IMAGE_ID}"
+    let by_task = server.get(&format!(
+        "/api/projects/{pid}/tasks/1/attachments/{IMAGE_ID}"
     ));
-    assert_eq!(by_card.status, 404);
+    assert_eq!(by_task.status, 404);
     let unknown_epic = server.get(&format!(
         "/api/projects/{pid}/epics/NOPE-1/attachments/{IMAGE_ID}"
     ));
@@ -193,7 +193,7 @@ fn a_person_may_add_images_and_evidence_to_a_draft_but_the_cli_may_not() {
 
     let image = server.write_multipart(
         "POST",
-        &format!("/api/projects/{pid}/cards/1/attachments"),
+        &format!("/api/projects/{pid}/tasks/1/attachments"),
         image_body(IMAGE_ID),
         BOUNDARY,
     );
@@ -204,7 +204,7 @@ fn a_person_may_add_images_and_evidence_to_a_draft_but_the_cli_may_not() {
     );
     let evidence = server.write_multipart(
         "POST",
-        &format!("/api/projects/{pid}/cards/1/evidence"),
+        &format!("/api/projects/{pid}/tasks/1/evidence"),
         multipart(BOUNDARY, &[], &[("file", "run.log", b"draft run\n")]),
         BOUNDARY,
     );
@@ -233,34 +233,34 @@ fn a_person_may_add_images_and_evidence_to_a_draft_but_the_cli_may_not() {
     );
     assert_eq!(
         (code, code_name.as_str()),
-        (1, "card_is_draft"),
+        (1, "task_is_draft"),
         "the CLI refuses drafts"
     );
 }
 
 #[test]
-fn evidence_is_served_as_plain_text_only_to_the_card_that_owns_it() {
+fn evidence_is_served_as_plain_text_only_to_the_task_that_owns_it() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_second_card(home.path());
+    add_second_task(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
     let text = "step 1 ok\n<script>alert(1)</script>\n";
 
     let added = server.write_multipart(
         "POST",
-        &format!("/api/projects/{pid}/cards/1/evidence"),
+        &format!("/api/projects/{pid}/tasks/1/evidence"),
         multipart(BOUNDARY, &[], &[("file", "run.log", text.as_bytes())]),
         BOUNDARY,
     );
     assert_eq!(added.status, 201, "{}", added.body);
-    let evidence_id = added.json()["card"]["evidence"][0]["id"]
+    let evidence_id = added.json()["task"]["evidence"][0]["id"]
         .as_str()
         .unwrap()
         .to_string();
 
     let served = server.get(&format!(
-        "/api/projects/{pid}/cards/1/evidence/{evidence_id}"
+        "/api/projects/{pid}/tasks/1/evidence/{evidence_id}"
     ));
     assert_eq!(served.status, 200);
     assert_eq!(
@@ -275,14 +275,14 @@ fn evidence_is_served_as_plain_text_only_to_the_card_that_owns_it() {
     );
 
     let other = server.get(&format!(
-        "/api/projects/{pid}/cards/2/evidence/{evidence_id}"
+        "/api/projects/{pid}/tasks/2/evidence/{evidence_id}"
     ));
     assert_eq!(other.status, 404);
     assert_eq!(other.code(), "evidence_not_found");
 
     let binary = server.write_multipart(
         "POST",
-        &format!("/api/projects/{pid}/cards/1/evidence"),
+        &format!("/api/projects/{pid}/tasks/1/evidence"),
         multipart(BOUNDARY, &[], &[("file", "bin.log", &[0xff, 0xfe, 0x00])]),
         BOUNDARY,
     );
@@ -290,14 +290,14 @@ fn evidence_is_served_as_plain_text_only_to_the_card_that_owns_it() {
 
     let deleted = server.write(
         "DELETE",
-        &format!("/api/projects/{pid}/cards/1/evidence/{evidence_id}"),
+        &format!("/api/projects/{pid}/tasks/1/evidence/{evidence_id}"),
         None,
     );
     assert_eq!(deleted.status, 200, "{}", deleted.body);
     assert_eq!(
         server
             .get(&format!(
-                "/api/projects/{pid}/cards/1/evidence/{evidence_id}"
+                "/api/projects/{pid}/tasks/1/evidence/{evidence_id}"
             ))
             .status,
         404
@@ -306,7 +306,7 @@ fn evidence_is_served_as_plain_text_only_to_the_card_that_owns_it() {
 }
 
 #[test]
-fn an_image_of_another_project_is_not_found_even_with_the_same_card_number() {
+fn an_image_of_another_project_is_not_found_even_with_the_same_task_number() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let (code, _, err) = agboard(home.path(), &["project", "create", "Other"]);
@@ -340,13 +340,13 @@ fn an_image_of_another_project_is_not_found_even_with_the_same_card_number() {
 
     let added = server.write_multipart(
         "POST",
-        &format!("/api/projects/{pid}/cards/1/attachments"),
+        &format!("/api/projects/{pid}/tasks/1/attachments"),
         image_body(IMAGE_ID),
         BOUNDARY,
     );
     assert_eq!(added.status, 201, "{}", added.body);
     let served = server.get(&format!(
-        "/api/projects/{other_pid}/cards/1/attachments/{IMAGE_ID}"
+        "/api/projects/{other_pid}/tasks/1/attachments/{IMAGE_ID}"
     ));
     assert_eq!(served.status, 404);
     assert_eq!(served.code(), "attachment_not_found");
@@ -366,12 +366,12 @@ fn an_image_registration_with_a_bad_metadata_part_is_refused_and_nothing_is_writ
     );
     let reply = server.write_multipart(
         "POST",
-        &format!("/api/projects/{pid}/cards/1/attachments"),
+        &format!("/api/projects/{pid}/tasks/1/attachments"),
         body,
         BOUNDARY,
     );
     assert_eq!(reply.status, 422);
-    let card = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    assert_eq!(card["card"]["attachments"], Value::Array(vec![]));
+    let task = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
+    assert_eq!(task["task"]["attachments"], Value::Array(vec![]));
     server.stop();
 }

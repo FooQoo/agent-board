@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DetailPanel } from '../../src/components/DetailPanel';
 import { selectLocale } from '../../src/i18n';
-import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
+import { PROJECT_A, fixtureTask, makeTask } from '../fixtures';
 
 const noop = () => {};
 const noRemove = async () => true;
@@ -18,21 +18,21 @@ describe('DetailPanel', () => {
   it('translates the detail region, empty selection, headings, and accessible controls', () => {
     selectLocale('ja');
     const { rerender } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onRemove={noRemove} />,
+      <DetailPanel projectId={PROJECT_A.id} task={null} onClose={noop} onRemove={noRemove} />,
     );
-    expect(screen.getByRole('complementary', { name: 'カードの詳細' })).toBeTruthy();
-    expect(screen.getByText('カードを選択すると詳細を表示します。')).toBeTruthy();
+    expect(screen.getByRole('complementary', { name: 'タスクの詳細' })).toBeTruthy();
+    expect(screen.getByText('タスクを選択すると詳細を表示します。')).toBeTruthy();
 
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(15)}
+        task={fixtureTask(15)}
         onClose={noop}
         onRemove={noRemove}
       />,
     );
     expect(screen.getByRole('button', { name: '詳細を閉じる' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'カードをアーカイブ' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'タスクをアーカイブ' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '下書きにする' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: '本文' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: /^履歴/ })).toBeTruthy();
@@ -40,18 +40,18 @@ describe('DetailPanel', () => {
     selectLocale('en');
   });
 
-  it('asks for a selection when no card is selected', () => {
-    render(<DetailPanel projectId={PROJECT_A.id} card={null} onClose={noop} onRemove={noRemove} />);
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Archive card' })).toBeNull();
+  it('asks for a selection when no task is selected', () => {
+    render(<DetailPanel projectId={PROJECT_A.id} task={null} onClose={noop} onRemove={noRemove} />);
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Archive task' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Close details' })).toBeNull();
   });
 
-  it('shows the id, title, column, description and history of the selected card', () => {
+  it('shows the id, title, column, description and history of the selected task', () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -63,13 +63,13 @@ describe('DetailPanel', () => {
     expect(screen.getByText('Create the storage for the board with agboard init.')).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'History 3', selected: false })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Close details' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Archive card' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Archive task' })).toBeTruthy();
   });
 
   it('shows every line break and shows markup as text', () => {
-    const card = makeCard({ id: 31, description: 'Line one\nLine **two**\n<b>three</b>' });
+    const task = makeTask({ id: 31, description: 'Line one\nLine **two**\n<b>three</b>' });
     const { container } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onRemove={noRemove} />,
+      <DetailPanel projectId={PROJECT_A.id} task={task} onClose={noop} onRemove={noRemove} />,
     );
     const panel = screen.getByRole('tabpanel');
     expect(panel.querySelectorAll('br')).toHaveLength(2);
@@ -82,7 +82,7 @@ describe('DetailPanel', () => {
     render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(12)}
+        task={fixtureTask(12)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -94,7 +94,7 @@ describe('DetailPanel', () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -104,27 +104,27 @@ describe('DetailPanel', () => {
     expect(steps).toHaveLength(3);
     const texts = Array.from(steps).map((step) => step.textContent);
     expect(texts).toEqual([
-      '10/02 09:48Moved card from Doing to Done.',
-      '10/01 16:30Moved card from Todo to Doing.',
-      '10/01 16:00Created card in Todo.',
+      '10/02 09:48Moved task from Doing to Done.',
+      '10/01 16:30Moved task from Todo to Doing.',
+      '10/01 16:00Created task in Todo.',
     ]);
     expect(steps[0]?.getAttribute('data-column')).toBeNull();
     expect(steps[2]?.getAttribute('data-column')).toBeNull();
   });
 
-  it('adds a point when a card returned to an earlier column', async () => {
-    const card = makeCard({
+  it('adds a point when a task returned to an earlier column', async () => {
+    const task = makeTask({
       id: 32,
-      cardStatus: 'doing',
+      taskStatus: 'doing',
       history: [
-        { at: '2026-10-01T16:00:00Z', reason: 'Created card in Todo.' },
+        { at: '2026-10-01T16:00:00Z', reason: 'Created task in Todo.' },
         { at: '2026-10-01T16:30:00Z', reason: 'move' },
         { at: '2026-10-01T17:00:00Z', reason: 'move' },
         { at: '2026-10-01T18:00:00Z', reason: 'move' },
       ],
     });
     const { container } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onRemove={noRemove} />,
+      <DetailPanel projectId={PROJECT_A.id} task={task} onClose={noop} onRemove={noRemove} />,
     );
     await openHistory();
     expect(container.querySelectorAll('.history__step')).toHaveLength(4);
@@ -134,7 +134,7 @@ describe('DetailPanel', () => {
     const { rerender } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(11)}
+        task={fixtureTask(11)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -145,7 +145,7 @@ describe('DetailPanel', () => {
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(12)}
+        task={fixtureTask(12)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -157,7 +157,7 @@ describe('DetailPanel', () => {
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -170,7 +170,7 @@ describe('DetailPanel', () => {
     render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={onClose}
         onRemove={noRemove}
       />,
@@ -183,7 +183,7 @@ describe('DetailPanel', () => {
     render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -196,7 +196,7 @@ describe('DetailPanel', () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -213,7 +213,7 @@ describe('DetailPanel', () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -226,7 +226,7 @@ describe('DetailPanel', () => {
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={noop}
         onRemove={noRemove}
       />,
@@ -241,12 +241,12 @@ describe('DetailPanel', () => {
     render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(8)}
+        task={fixtureTask(8)}
         onClose={noop}
         onRemove={noRemove}
       />,
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive task' }));
     const group = screen.getByRole('group', { name: /^Archive #8/ });
     expect(
       within(group).getByRole('button', { name: 'Archive' }).getAttribute('data-variant'),
@@ -258,7 +258,7 @@ describe('DetailPanel', () => {
 
   it('uses neutral dots for duplicate notes even when their text mentions statuses or actors', async () => {
     const at = '2026-10-01T16:00:00Z';
-    const card = makeCard({
+    const task = makeTask({
       id: 33,
       history: [
         { at, reason: 'AI checked Pending work.' },
@@ -267,7 +267,7 @@ describe('DetailPanel', () => {
       ],
     });
     const { container } = render(
-      <DetailPanel projectId={PROJECT_A.id} card={card} onClose={noop} onRemove={noRemove} />,
+      <DetailPanel projectId={PROJECT_A.id} task={task} onClose={noop} onRemove={noRemove} />,
     );
     await openHistory();
     expect(
@@ -291,7 +291,7 @@ it('shows every attachment after the description and only offers viewing control
   const { container } = render(
     <DetailPanel
       projectId={PROJECT_A.id}
-      card={makeCard({
+      task={makeTask({
         id: 1,
         description: 'Text without an image reference',
         attachments: [attachment],
@@ -310,7 +310,7 @@ it('shows every attachment after the description and only offers viewing control
   await userEvent.click(within(list).getByRole('button', { name: 'Preview unreferenced.png' }));
   const zoom = screen.getByRole('dialog', { name: 'unreferenced.png' });
   expect(within(zoom).getByRole('img').getAttribute('src')).toContain(
-    `/api/projects/${PROJECT_A.id}/cards/`,
+    `/api/projects/${PROJECT_A.id}/tasks/`,
   );
   await userEvent.click(within(zoom).getByRole('button', { name: 'Close' }));
   expect(screen.queryByRole('dialog')).toBeNull();

@@ -20,10 +20,10 @@ try {
       const started = await startServer(home);
       server = started.server;
       const { origin, remote } = started;
-      expect(cli(home, ['--project', project, 'show', '6']).card.cardStatus).toBe('done');
+      expect(cli(home, ['--project', project, 'show', '6']).task.taskStatus).toBe('done');
       const progress = cli(home, ['progress']);
       expect(progress.project.id).toBe(id);
-      expect(progress.epics.find((epic) => epic.id === 'LAUNCH').cards.map((card) => card.id))
+      expect(progress.epics.find((epic) => epic.id === 'LAUNCH').tasks.map((task) => task.id))
         .toEqual([4, 7, 5]);
       context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, timezoneId: 'UTC' });
       await context.addInitScript((lang) => {
@@ -35,8 +35,8 @@ try {
       page.on('pageerror', (error) => errors.push(error.message));
       const suffix = locale === 'ja' ? '.ja' : '';
       await page.goto(`${origin}/?project=${id}`);
-      const card = page.getByRole('button', { name: /^#3(?!\d)/ });
-      await card.click();
+      const task = page.getByRole('button', { name: /^#3(?!\d)/ });
+      await task.click();
       await expect(page.getByRole('tab')).toHaveCount(4);
       await expect(page.locator('.card__answer').getByText(text.question, { exact: true })).toBeVisible();
       await expect(page.locator('.detail-view .detail__request')).toHaveCount(0);

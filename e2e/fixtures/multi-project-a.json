@@ -4,16 +4,16 @@
   "board": {
     "name": "Alpha",
     "createdAt": "2026-10-01T07:00:00Z",
-    "nextCardId": 4
+    "nextTaskId": 4
   },
-  "cards": [
+  "tasks": [
     {
       "id": 1,
       "title": "Alpha: draft the release notes",
       "description": "Notes for the Alpha release.",
       "position": 1,
       "assignee": "human",
-      "cardStatus": "todo",
+      "taskStatus": "todo",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -23,10 +23,10 @@
       "history": [
         {
           "at": "2026-10-01T08:00:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         }
       ],
-      "cardStatusChangedAt": "2026-10-01T08:00:00Z"
+      "taskStatusChangedAt": "2026-10-01T08:00:00Z"
     },
     {
       "id": 2,
@@ -34,7 +34,7 @@
       "description": "",
       "position": 1,
       "assignee": "ai",
-      "cardStatus": "doing",
+      "taskStatus": "doing",
       "agentStatus": "pending",
       "pendingReason": "Which license should Alpha use?",
       "pendingRequestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -44,7 +44,7 @@
       "history": [
         {
           "at": "2026-10-01T09:00:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-01T09:30:00Z",
@@ -55,7 +55,7 @@
           "reason": "Which license should Alpha use?"
         }
       ],
-      "cardStatusChangedAt": "2026-10-01T09:30:00Z"
+      "taskStatusChangedAt": "2026-10-01T09:30:00Z"
     },
     {
       "id": 3,
@@ -63,7 +63,7 @@
       "description": "Create the Alpha repository.",
       "position": 1,
       "assignee": "ai",
-      "cardStatus": "done",
+      "taskStatus": "done",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -73,7 +73,7 @@
       "history": [
         {
           "at": "2026-10-01T11:00:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-01T11:10:00Z",
@@ -84,7 +84,7 @@
           "reason": "Repository is ready"
         }
       ],
-      "cardStatusChangedAt": "2026-10-01T11:40:00Z"
+      "taskStatusChangedAt": "2026-10-01T11:40:00Z"
     }
   ]
 }

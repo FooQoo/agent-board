@@ -29,7 +29,7 @@ describe('StatusLabel', () => {
     }
   });
 
-  it('marks only the running loader as spinning so that the board card can animate it', () => {
+  it('marks only the running loader as spinning so that the board task can animate it', () => {
     const { container } = render(<StatusLabel kind="agent" status="running" />);
     expect(container.querySelector('svg.spinner')).not.toBeNull();
   });

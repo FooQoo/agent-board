@@ -42,7 +42,7 @@ test('loading is distinct from an empty project', async ({ page }) => {
   });
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto('/monitor/');
-  await expect(page.getByRole('region', { name: 'Cards' })).toContainText('Loading monitor…');
+  await expect(page.getByRole('region', { name: 'Tasks' })).toContainText('Loading monitor…');
   await expect(page.getByRole('status')).toContainText('Loading monitor…');
   await expect(page.getByText('No pending decisions.')).toHaveCount(0);
   await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
@@ -103,10 +103,10 @@ test('monitor reads the shared language and theme settings', async ({ page }) =>
   await expect(japanesePending.locator('.status-label')).toHaveText('待機中');
   await expect(japaneseRunning.locator('.status-label')).toHaveText('稼働中');
   await expect(japaneseIdle.locator('.status-label')).toHaveText('未稼働');
-  await expect(page.getByRole('article', { name: /Alpha draft card/ })).toHaveAccessibleName(/未着手/);
+  await expect(page.getByRole('article', { name: /Alpha draft task/ })).toHaveAccessibleName(/未着手/);
   await expect(page.getByRole('article', { name: /Alpha ordinary todo/ })).toHaveAccessibleName(/未着手/);
   await expect(page.getByRole('article', { name: /Alpha completed 1/ })).toHaveAccessibleName(/完了/);
-  await expect(page.getByRole('article', { name: /Alpha draft card/ }).locator('.status-label')).toHaveText('未稼働');
+  await expect(page.getByRole('article', { name: /Alpha draft task/ }).locator('.status-label')).toHaveText('未稼働');
   await expect(page.getByRole('article', { name: /Alpha ordinary todo/ }).locator('.status-label')).toHaveText('未稼働');
   await expect(page.getByRole('article', { name: /Alpha completed 1/ }).locator('.status-label')).toHaveCount(0);
   await page.getByRole('button', { name: '設定' }).click();
@@ -131,10 +131,10 @@ test('monitor reads the shared language and theme settings', async ({ page }) =>
   await expect(englishPending.locator('.status-label')).toHaveText('Pending');
   await expect(englishRunning.locator('.status-label')).toHaveText('Running');
   await expect(englishIdle.locator('.status-label')).toHaveText('Idle');
-  await expect(page.getByRole('article', { name: /Alpha draft card/ })).toHaveAccessibleName(/Todo/);
+  await expect(page.getByRole('article', { name: /Alpha draft task/ })).toHaveAccessibleName(/Todo/);
   await expect(page.getByRole('article', { name: /Alpha ordinary todo/ })).toHaveAccessibleName(/Todo/);
   await expect(page.getByRole('article', { name: /Alpha completed 1/ })).toHaveAccessibleName(/Done/);
-  await expect(page.getByRole('article', { name: /Alpha draft card/ }).locator('.status-label')).toHaveText('Idle');
+  await expect(page.getByRole('article', { name: /Alpha draft task/ }).locator('.status-label')).toHaveText('Idle');
   await expect(page.getByRole('article', { name: /Alpha ordinary todo/ }).locator('.status-label')).toHaveText('Idle');
   await expect(page.getByRole('article', { name: /Alpha completed 1/ }).locator('.status-label')).toHaveCount(0);
 });
@@ -248,7 +248,7 @@ test('a timed-out catalog read keeps the last snapshot instead of showing zero w
   await requestStarted;
   await page.clock.fastForward(10_000);
   await expect(page.getByRole('status')).toContainText('Updated · Automatic updates stopped');
-  await expect(monitorCard(page, 1, 'Alpha pending review')).toBeVisible();
+  await expect(monitorTask(page, 1, 'Alpha pending review')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Todo' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '6 Doing' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '9 Done' })).toBeVisible();
@@ -256,7 +256,7 @@ test('a timed-out catalog read keeps the last snapshot instead of showing zero w
   await page.unroute('**/monitor/api/projects');
 });
 
-const monitorCard = (page: Page, id: number, title: string) =>
+const monitorTask = (page: Page, id: number, title: string) =>
   page.getByRole('article', { name: new RegExp(`^#${id}.*${title}`) });
 
 test('the bottom drawer follows a downward handle drag and dismisses', async ({ page }) => {
@@ -274,9 +274,9 @@ test('the bottom drawer follows a downward handle drag and dismisses', async ({ 
     await touchPage.route('**/monitor/api/projects/*/board', async (route) => {
       const response = await route.fetch();
       const board = await response.json();
-      for (const card of board.cards) {
-        if (card.title === 'Alpha completed 8') {
-          card.epic = { id: 'SWIPE', name: 'Loaded swipe epic', color: '#4466aa' };
+      for (const task of board.tasks) {
+        if (task.title === 'Alpha completed 8') {
+          task.epic = { id: 'SWIPE', name: 'Loaded swipe epic', color: '#4466aa' };
         }
       }
       await route.fulfill({ response, json: board });
@@ -383,7 +383,7 @@ test('the shared entry chooses once at the initial width, preserving query and f
     await page.setViewportSize({ width, height: 640 });
     await page.goto(`/?project=${alpha}&x=1#running`);
     await expect(page).toHaveURL(`${monitorOrigin}/monitor/?project=${alpha}&x=1#running`);
-    await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
     await page.setViewportSize({ width: 1280, height: 900 });
     await expect(page).toHaveURL(`${monitorOrigin}/monitor/?project=${alpha}&x=1#running`);
   }
@@ -391,7 +391,7 @@ test('the shared entry chooses once at the initial width, preserving query and f
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/?project=${alpha}&x=1#running`);
     await expect(page).toHaveURL(`${monitorOrigin}/board/?project=${alpha}&x=1#running`);
-    await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add task' })).toBeVisible();
   }
 
   await page.setViewportSize({ width: 375, height: 640 });
@@ -401,21 +401,21 @@ test('the shared entry chooses once at the initial width, preserving query and f
   await expect(page.getByRole('link', { name: 'Open board' })).toBeVisible();
 });
 
-test('monitor renders both projects and same-number cards, preserves direct routes, and keeps all content inside its panels', async ({ page }) => {
+test('monitor renders both projects and same-number tasks, preserves direct routes, and keeps all content inside its panels', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 640 });
   const requests: string[] = [];
   page.on('request', (request) => requests.push(new URL(request.url()).pathname));
   await page.goto('/monitor/');
   await expect(page.getByRole('button', { name: 'All Projects' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '2 Todo' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '6 Doing' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '9 Done' })).toBeVisible();
-  await expect(monitorCard(page, 1, 'Alpha pending review')).toBeVisible();
-  await expect(monitorCard(page, 1, 'Beta pending review')).toBeVisible();
-  await expect(monitorCard(page, 2, 'Alpha running one')).toBeVisible();
-  await expect(monitorCard(page, 3, 'Alpha running two')).toBeVisible();
-  await expect(monitorCard(page, 11, 'Alpha completed 8')).toHaveCount(1);
+  await expect(monitorTask(page, 1, 'Alpha pending review')).toBeVisible();
+  await expect(monitorTask(page, 1, 'Beta pending review')).toBeVisible();
+  await expect(monitorTask(page, 2, 'Alpha running one')).toBeVisible();
+  await expect(monitorTask(page, 3, 'Alpha running two')).toBeVisible();
+  await expect(monitorTask(page, 11, 'Alpha completed 8')).toHaveCount(1);
   expect(requests).toContain('/assets/monitor/monitor.js');
   expect(requests).not.toContain('/assets/app.js');
   expect(requests).not.toContain('/assets/index.js');
@@ -497,13 +497,13 @@ test('monitor renders both projects and same-number cards, preserves direct rout
   await expect(page.getByRole('dialog').getByRole('tab', { name: 'Body' })).toBeVisible();
   await expect(page.getByRole('dialog').getByRole('tab', { name: 'History' })).toBeVisible();
   await expect(page.getByRole('dialog').getByRole('tab', { name: 'Epic' })).toBeVisible();
-  await page.goto(`/monitor/?project=${alpha}&cardProject=${alpha}&card=4&tab=history`);
+  await page.goto(`/monitor/?project=${alpha}&taskProject=${alpha}&task=4&tab=history`);
   await expect(page).toHaveURL(`${monitorOrigin}/monitor/?project=${alpha}`);
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await page.setViewportSize({ width: 320, height: 568 });
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
   const overflow = await page.evaluate(() => ({
     width: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
@@ -518,34 +518,34 @@ test('direct monitor and board URLs stay on their chosen view across reload and 
   await page.setViewportSize({ width: 375, height: 640 });
   await page.goto(`/monitor/?project=${alpha}`);
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 900 });
-  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
   await page.goto(`/board/?project=${alpha}`);
   await page.setViewportSize({ width: 375, height: 640 });
-  await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add task' })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add task' })).toBeVisible();
 });
 
-test('100 cards and 100-character titles remain reachable and open details on a narrow screen', async ({ page }) => {
+test('100 tasks and 100-character titles remain reachable and open details on a narrow screen', async ({ page }) => {
   test.setTimeout(120_000);
   await stopMonitorServe(serve);
   const longProject = addDenseMonitorFixture(home);
   serve = await startMonitorServe(home);
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/monitor/');
-  await expect(page.getByRole('region', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Tasks' })).toBeVisible();
   await page.getByRole('button', { name: 'All Projects' }).click();
   await page.getByRole('menuitemradio', { name: 'Alpha', exact: true }).click();
   await page.getByRole('region', { name: 'Work summary' }).getByRole('button', { name: '94 Done' }).click();
-  const list = page.getByRole('region', { name: 'Cards' });
+  const list = page.getByRole('region', { name: 'Tasks' });
   await expect(list.getByRole('article', { name: /#100.*Done/ })).toBeVisible();
   expect(await list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
   await list.getByRole('article', { name: /#100.*Done/ }).click();
   const drawer = page.getByRole('dialog');
   await expect(drawer).toBeVisible();
-  await expect(drawer.getByRole('heading', { name: /^Card 100 L+/ })).toBeVisible();
+  await expect(drawer.getByRole('heading', { name: /^Task 100 L+/ })).toBeVisible();
   await drawer.getByRole('button', { name: 'Close details', exact: true }).click();
   await expect(drawer).toHaveCount(0);
 

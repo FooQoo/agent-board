@@ -4,16 +4,16 @@
   "board": {
     "name": "Beta",
     "createdAt": "2026-10-01T07:30:00Z",
-    "nextCardId": 4
+    "nextTaskId": 4
   },
-  "cards": [
+  "tasks": [
     {
       "id": 1,
       "title": "Beta: benchmark the importer",
       "description": "Measure Beta imports.",
       "position": 1,
       "assignee": "ai",
-      "cardStatus": "todo",
+      "taskStatus": "todo",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -23,10 +23,10 @@
       "history": [
         {
           "at": "2026-10-01T08:30:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         }
       ],
-      "cardStatusChangedAt": "2026-10-01T08:30:00Z"
+      "taskStatusChangedAt": "2026-10-01T08:30:00Z"
     },
     {
       "id": 2,
@@ -34,7 +34,7 @@
       "description": "",
       "position": 1,
       "assignee": "ai",
-      "cardStatus": "doing",
+      "taskStatus": "doing",
       "agentStatus": "pending",
       "pendingReason": "Which database should Beta use?",
       "pendingRequestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -44,7 +44,7 @@
       "history": [
         {
           "at": "2026-10-01T09:15:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-01T09:45:00Z",
@@ -55,7 +55,7 @@
           "reason": "Which database should Beta use?"
         }
       ],
-      "cardStatusChangedAt": "2026-10-01T09:45:00Z"
+      "taskStatusChangedAt": "2026-10-01T09:45:00Z"
     },
     {
       "id": 3,
@@ -63,7 +63,7 @@
       "description": "",
       "position": 2,
       "assignee": "ai",
-      "cardStatus": "doing",
+      "taskStatus": "doing",
       "agentStatus": "running",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -73,7 +73,7 @@
       "history": [
         {
           "at": "2026-10-01T10:30:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-01T10:40:00Z",
@@ -84,7 +84,7 @@
           "reason": "Working on the parser"
         }
       ],
-      "cardStatusChangedAt": "2026-10-01T10:40:00Z"
+      "taskStatusChangedAt": "2026-10-01T10:40:00Z"
     }
   ]
 }

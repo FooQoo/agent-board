@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use agent_board::domain::{Actor, Assignee, NewCard, ProjectId};
+use agent_board::domain::{Actor, Assignee, NewTask, ProjectId};
 use agent_board::file_store::FileStore;
 use agent_board::file_store::index::{ProjectEntry, ProjectIndex};
 use agent_board::file_store::watch::Watch;
@@ -29,7 +29,7 @@ struct Fixture {
 }
 
 impl Fixture {
-    /// One project with one card, the index started on the folder, and a
+    /// One project with one task, the index started on the folder, and a
     /// receiver for the `changed` broadcast.
     async fn start() -> Fixture {
         let root = tempfile::tempdir().unwrap();
@@ -37,9 +37,9 @@ impl Fixture {
         let store = FileStore::open(&shared);
         let project = store.create_project("Alpha", now()).unwrap().id;
         store
-            .create_card(
+            .create_task(
                 &project,
-                NewCard {
+                NewTask {
                     title: "First".into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
@@ -101,7 +101,7 @@ async fn an_external_save_of_task_md_is_seen_without_any_notify() {
     match index.entry(&fx.project).unwrap() {
         ProjectEntry::Ready { view, .. } => {
             assert!(
-                view.cards[0]
+                view.tasks[0]
                     .description
                     .contains("Edited outside the store")
             );
@@ -189,7 +189,7 @@ async fn a_change_is_announced_once_for_a_burst_of_writes() {
     let index = fx.index.read().unwrap();
     match index.entry(&fx.project).unwrap() {
         ProjectEntry::Ready { view, .. } => {
-            assert!(view.cards[0].description.contains("burst 9"));
+            assert!(view.tasks[0].description.contains("burst 9"));
         }
         other => panic!("expected a ready project, got {other:?}"),
     }

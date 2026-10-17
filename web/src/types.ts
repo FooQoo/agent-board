@@ -76,7 +76,7 @@ export interface AcceptanceItem {
   done: boolean;
 }
 
-export interface Card {
+export interface Task {
   id: number;
   title: string;
   /** The whole TASK.md text, frontmatter included. */
@@ -86,9 +86,9 @@ export interface Card {
   acceptance: AcceptanceItem[];
   acceptanceError: boolean;
   assignee: Assignee;
-  cardStatus: ColumnName;
+  taskStatus: ColumnName;
   /** Time of the last real lane change; independent of later notes and edits. */
-  cardStatusChangedAt: string;
+  taskStatusChangedAt: string;
   position: number;
   agentStatus: RunState;
   pendingReason: string | null;
@@ -119,15 +119,15 @@ export interface Board {
   version: string;
   cursor: string;
   epics: Epic[];
-  cards: Card[];
+  tasks: Task[];
   problems: Problem[];
 }
 
 /** What a card dialog (create, move, edit) is asked to do. */
 export type DialogAction =
   | { kind: 'create' }
-  | { kind: 'move'; card: Card; target: ColumnName }
-  | { kind: 'edit'; card: Card }
+  | { kind: 'move'; task: Task; target: ColumnName }
+  | { kind: 'edit'; task: Task }
   | { kind: 'epic'; epic: Epic };
 
 /** Error body shared by the CLI `--json` output and the Web API. */

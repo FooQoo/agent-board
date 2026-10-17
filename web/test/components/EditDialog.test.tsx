@@ -2,17 +2,17 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WriteError, editCard } from '../../src/api';
+import { WriteError, editTask } from '../../src/api';
 import { ActionDialog } from '../../src/components/ActionDialog';
 import { selectLocale } from '../../src/i18n';
 import { editorSpy } from '../editor/fakeRichEditor';
-import { makeCard } from '../fixtures';
+import { makeTask } from '../fixtures';
 
 vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('../editor/fakeRichEditor'));
 
 type Data = Parameters<React.ComponentProps<typeof ActionDialog>['onSubmit']>[0];
 
-const DRAFT = makeCard({
+const DRAFT = makeTask({
   id: 14,
   title: 'CLI target selection',
   description: '## Goal\n\nExplain the target.\n\n## Done when\n\n- [ ] AC-1',
@@ -31,7 +31,7 @@ function deferred() {
 
 async function openEdit(
   onSubmit: (data: Data) => Promise<void> = async () => undefined,
-  card = DRAFT,
+  task = DRAFT,
 ) {
   const onClosed = vi.fn();
   function Host() {
@@ -43,7 +43,7 @@ async function openEdit(
         </button>
         {open && (
           <ActionDialog
-            action={{ kind: 'edit', card }}
+            action={{ kind: 'edit', task }}
             onSubmit={onSubmit}
             onClose={() => {
               setOpen(false);
@@ -60,19 +60,19 @@ async function openEdit(
   return {
     opener,
     onClosed,
-    dialog: screen.getByRole('dialog', { name: new RegExp(`#${card.id}`) }),
+    dialog: screen.getByRole('dialog', { name: new RegExp(`#${task.id}`) }),
   };
 }
 
 describe('epic row', () => {
   it('sits in the right column above the images panel, not above the title', async () => {
-    const card = makeCard({
+    const task = makeTask({
       id: 15,
       title: 'Labeled draft',
       isDraft: true,
       epic: { id: 'SHARED-FILES', name: 'Shared files', color: '#7C3AED' },
     });
-    const { dialog } = await openEdit(async () => undefined, card);
+    const { dialog } = await openEdit(async () => undefined, task);
     const chip = within(dialog).getByText('SHARED-FILES');
     const row = chip.closest('.editor__epic-row') as HTMLElement;
     expect(row).not.toBeNull();
@@ -85,7 +85,7 @@ describe('epic row', () => {
     expect((main.firstElementChild as HTMLElement).querySelector('input')).not.toBeNull();
   });
 
-  it('is absent for a card without an epic', async () => {
+  it('is absent for a task without an epic', async () => {
     const { dialog } = await openEdit();
     expect(dialog.querySelector('.editor__epic-row')).toBeNull();
   });
@@ -122,7 +122,7 @@ describe('edit dialog layout', () => {
   it('shows the header, the outline, the fields, the draft box and one Cancel and Save pair', async () => {
     const { dialog } = await openEdit();
     expect(within(dialog).getByText('#14')).toBeTruthy();
-    expect(within(dialog).getByText('Edit card')).toBeTruthy();
+    expect(within(dialog).getByText('Edit task')).toBeTruthy();
     // The draft state is not edited here: no badge and no draft box.
     expect(dialog.querySelector('.editor__badge')?.textContent ?? '').toBe('');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe(
@@ -147,7 +147,7 @@ describe('edit dialog layout', () => {
   it('shows the Japanese wording', async () => {
     selectLocale('ja');
     const { dialog } = await openEdit();
-    expect(within(dialog).getByText('カードを編集')).toBeTruthy();
+    expect(within(dialog).getByText('タスクを編集')).toBeTruthy();
     expect(within(dialog).queryByRole('checkbox')).toBeNull();
     for (const name of ['キャンセル', '保存']) {
       expect(button(dialog, name)).toBeTruthy();
@@ -174,13 +174,13 @@ describe('edit dialog layout', () => {
   });
 
   it('marks the first chapter as current when the text starts before any chapter', async () => {
-    const card = makeCard({
+    const task = makeTask({
       id: 14,
       isDraft: true,
       description:
         'An introduction before the first chapter.\n\n## Goal\n\nText.\n\n## Done when\n\n- [ ] AC-1',
     });
-    const { dialog } = await openEdit(undefined, card);
+    const { dialog } = await openEdit(undefined, task);
     const items = within(dialog)
       .getByRole('navigation', { name: 'Outline' })
       .querySelectorAll('.editor__outline-item');
@@ -197,13 +197,13 @@ describe('edit dialog layout', () => {
 
 describe('saving', () => {
   it('saves the body and the conditions in one request, and the done flag is kept', async () => {
-    const card = makeCard({
+    const task = makeTask({
       id: 16,
       description: '## Goal\n\nBody.',
       acceptance: [{ id: 'AC-1', text: 'Works', done: false }],
     });
     const onSubmit = vi.fn(async (_data: Data) => undefined);
-    const { dialog } = await openEdit(onSubmit, card);
+    const { dialog } = await openEdit(onSubmit, task);
     // The conditions fold at the bottom of the dialog; open them to check the condition.
     await userEvent.click(within(dialog).getByRole('button', { name: /^Acceptance conditions/ }));
     await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Done: AC-1' }));
@@ -250,7 +250,7 @@ describe('saving', () => {
 
   it('sends the removed stored images first, before the body', async () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
-    const card = makeCard({
+    const task = makeTask({
       id: 14,
       isDraft: true,
       description: '## Goal\n\nBody.',
@@ -264,7 +264,7 @@ describe('saving', () => {
         },
       ],
     });
-    const { dialog, onClosed } = await openEdit(onSubmit, card);
+    const { dialog, onClosed } = await openEdit(onSubmit, task);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove shot.png' }));
     setDescription('## Goal\n\nChanged.', dialog);
     await userEvent.click(button(dialog, 'Save'));
@@ -278,8 +278,8 @@ describe('saving', () => {
   });
 
   it('normalizes CRLF line endings of the stored text', async () => {
-    const card = makeCard({ id: 3, isDraft: true, description: 'a\r\nb' });
-    const { dialog } = await openEdit(undefined, card);
+    const task = makeTask({ id: 3, isDraft: true, description: 'a\r\nb' });
+    const { dialog } = await openEdit(undefined, task);
     expect(descriptionOf(dialog)).toBe('a\nb');
     expect(button(dialog, 'Save').disabled).toBe(true);
   });
@@ -312,7 +312,7 @@ describe('saving', () => {
 
 describe('save failures', () => {
   it('keeps the input and finished steps, shows the message, and retries only what is left', async () => {
-    const card = makeCard({
+    const task = makeTask({
       id: 14,
       isDraft: true,
       description: '## Goal\n\nBody.',
@@ -332,7 +332,7 @@ describe('save failures', () => {
       .mockRejectedValueOnce(new WriteError('Description is too long.', 422, 'invalid_value'))
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(undefined);
-    const { dialog, onClosed } = await openEdit(onSubmit, card);
+    const { dialog, onClosed } = await openEdit(onSubmit, task);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove old.png' }));
     setDescription('keep this', dialog);
     setTitle('kept title', dialog);
@@ -357,15 +357,15 @@ describe('save failures', () => {
     ]);
   });
 
-  it('says the card is not a draft for a 409 card_not_draft', async () => {
+  it('says the task is not a draft for a 409 task_not_draft', async () => {
     const onSubmit = vi.fn(async (_data: Data) => {
-      throw new WriteError('Card #14 is not a draft.', 409, 'card_not_draft');
+      throw new WriteError('Task #14 is not a draft.', 409, 'task_not_draft');
     });
     const { dialog } = await openEdit(onSubmit);
     setDescription('x', dialog);
     await userEvent.click(button(dialog, 'Save'));
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
-      'This card is not a draft.',
+      'This task is not a draft.',
     );
     expect(descriptionOf(dialog)).toBe('x');
   });
@@ -493,15 +493,15 @@ describe('with the real API client', () => {
   }
 
   it('patches the draft with the changed description only', async () => {
-    const fetchMock = stubFetch(200, { card: DRAFT });
+    const fetchMock = stubFetch(200, { task: DRAFT });
     const { dialog, onClosed } = await openEdit((data) =>
-      editCard(PROJECT, DRAFT.id, data).then(() => undefined),
+      editTask(PROJECT, DRAFT.id, data).then(() => undefined),
     );
     setDescription('## Body', dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
     const [url, init] = fetchMock.mock.calls[0] ?? [];
-    expect(url).toBe(`/api/projects/${PROJECT}/cards/14`);
+    expect(url).toBe(`/api/projects/${PROJECT}/tasks/14`);
     expect(init?.method).toBe('PATCH');
     expect(JSON.parse(String(init?.body))).toEqual({ body: '## Body', acceptance: [] });
   });
@@ -511,7 +511,7 @@ describe('with the real API client', () => {
       error: { code: 'invalid_value', message: 'x', reason: 'Description is 50,001 of 50,000.' },
     });
     const { dialog, onClosed } = await openEdit((data) =>
-      editCard(PROJECT, DRAFT.id, data).then(() => undefined),
+      editTask(PROJECT, DRAFT.id, data).then(() => undefined),
     );
     setDescription('x', dialog);
     await userEvent.click(button(dialog, 'Save'));

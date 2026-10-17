@@ -1,15 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CardDetailView } from '../../src/components/detail/CardDetailView';
+import { TaskDetailView } from '../../src/components/detail/TaskDetailView';
 import { selectLocale } from '../../src/i18n';
-import { PROJECT_A, makeCard } from '../fixtures';
+import { PROJECT_A, makeTask } from '../fixtures';
 
-describe('CardDetailView', () => {
+describe('TaskDetailView', () => {
   beforeEach(() => selectLocale('en'));
-  it('renders the shared card body without duplicating the card answer prompt', async () => {
+  it('renders the shared task body without duplicating the task answer prompt', async () => {
     const onClose = vi.fn();
-    const card = makeCard({
+    const task = makeTask({
       id: 72,
       title: 'Awaiting API review',
       agentStatus: 'pending',
@@ -21,9 +21,9 @@ describe('CardDetailView', () => {
       description: '## Work\nReview the routes.',
     });
     const { container } = render(
-      <CardDetailView
+      <TaskDetailView
         projectId={PROJECT_A.id}
-        card={card}
+        task={task}
         tab="description"
         onTabChange={vi.fn()}
         onClose={onClose}
@@ -47,9 +47,9 @@ describe('CardDetailView', () => {
   it('localizes shared status labels when the selected locale is Japanese', () => {
     selectLocale('ja');
     render(
-      <CardDetailView
+      <TaskDetailView
         projectId={PROJECT_A.id}
-        card={makeCard({ id: 73, cardStatus: 'done', agentStatus: 'idle' })}
+        task={makeTask({ id: 73, taskStatus: 'done', agentStatus: 'idle' })}
         tab="description"
         onTabChange={vi.fn()}
         onClose={vi.fn()}

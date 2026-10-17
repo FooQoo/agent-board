@@ -29,8 +29,8 @@ function cli(args: string[]): string {
 }
 
 function show(id: number) {
-  return JSON.parse(cli(['show', String(id), '--json'])).card as {
-    cardStatus: string;
+  return JSON.parse(cli(['show', String(id), '--json'])).task as {
+    taskStatus: string;
     agentStatus: string;
     pendingRequestId: string | null;
     history: { at: string; reason: string }[];
@@ -52,12 +52,12 @@ test('answers Todo and Doing requests through the monitor API and records them i
   page,
 }) => {
   cli(['add', 'Todo answer on mobile', '--assignee', 'ai', '--actor', 'ai']);
-  const todoCard = JSON.parse(cli(['ls', '--json'])).cards.find(
-    (card: { title: string }) => card.title === 'Todo answer on mobile',
+  const todoTask = JSON.parse(cli(['ls', '--json'])).tasks.find(
+    (task: { title: string }) => task.title === 'Todo answer on mobile',
   ) as { id: number };
   cli([
     'state',
-    String(todoCard.id),
+    String(todoTask.id),
     'pending',
     '--actor',
     'ai',
@@ -68,7 +68,7 @@ test('answers Todo and Doing requests through the monitor API and records them i
   // The remote write guard requires HTTPS Origin/Host headers from its trusted reverse proxy.
   // The test listener is HTTP, so forward the browser's real request through the API client while
   // supplying exactly the headers that the configured trusted HTTPS origin would preserve.
-  await page.route('**/monitor/api/projects/*/cards/*/answer', async (route) => {
+  await page.route('**/monitor/api/projects/*/tasks/*/answer', async (route) => {
     const target = route.request().url();
     const token = await page.locator('meta[name="agboard-monitor-token"]').getAttribute('content');
     const upstream = await page.request.post(target, {
@@ -84,26 +84,26 @@ test('answers Todo and Doing requests through the monitor API and records them i
   });
 
   await page.goto('/monitor/');
-  const cards = [
+  const tasks = [
     { id: 1, title: 'Alpha pending review', question: 'Waiting for the user review.', answer: 'Reviewed in Doing.' },
-    { id: todoCard.id, title: 'Todo answer on mobile', question: 'Choose before work starts.', answer: 'Reviewed in Todo.' },
+    { id: todoTask.id, title: 'Todo answer on mobile', question: 'Choose before work starts.', answer: 'Reviewed in Todo.' },
   ];
-  for (const item of cards) {
-    const card = page.getByRole('article', { name: new RegExp(item.title) });
-    await expect(card).toContainText('Pending');
-    await card.getByRole('textbox', { name: 'Your answer' }).fill(item.answer);
-    const requestPath = `/monitor/api/projects/${projectId}/cards/${item.id}/answer`;
+  for (const item of tasks) {
+    const task = page.getByRole('article', { name: new RegExp(item.title) });
+    await expect(task).toContainText('Pending');
+    await task.getByRole('textbox', { name: 'Your answer' }).fill(item.answer);
+    const requestPath = `/monitor/api/projects/${projectId}/tasks/${item.id}/answer`;
     const responsePromise = page.waitForResponse(
       (response) => response.url().endsWith(requestPath) && response.request().method() === 'POST',
     );
-    await card.getByRole('button', { name: 'Send', exact: true }).click();
+    await task.getByRole('button', { name: 'Send', exact: true }).click();
     const response = await responsePromise;
     expect(response.status(), await response.text()).toBe(200);
-    await expect(card).not.toContainText('Pending');
+    await expect(task).not.toContainText('Pending');
 
     const stored = show(item.id);
     expect(stored).toMatchObject({
-      cardStatus: item.id === 1 ? 'doing' : 'todo',
+      taskStatus: item.id === 1 ? 'doing' : 'todo',
       agentStatus: 'idle',
       pendingRequestId: null,
     });

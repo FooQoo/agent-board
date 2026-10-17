@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { agboardBinary, agboardCatalogOk, projectId, cardBody, decisionJson, workspace } from './agboard';
+import { agboardBinary, agboardCatalogOk, projectId, taskBody, decisionJson, workspace } from './agboard';
 
 export const monitorPort = Number(process.env.AGBOARD_MONITOR_PORT ?? 8060);
 export const remotePort = Number(process.env.AGBOARD_REMOTE_PORT ?? 8061);
@@ -24,11 +24,11 @@ function run(home: string, args: string[]): string {
   return result.stdout;
 }
 
-function card(home: string, project: string, title: string, description: string): number {
+function task(home: string, project: string, title: string, description: string): number {
   const value = JSON.parse(
-    run(home, ['--project', project, 'add', title, '--desc', cardBody(description), '--assignee', 'ai', '--actor', 'ai', '--json']),
-  ) as { card: { id: number } };
-  return value.card.id;
+    run(home, ['--project', project, 'add', title, '--desc', taskBody(description), '--assignee', 'ai', '--actor', 'ai', '--json']),
+  ) as { task: { id: number } };
+  return value.task.id;
 }
 
 function move(home: string, project: string, id: number, lane: 'doing' | 'done', reason: string): void {
@@ -49,18 +49,18 @@ export function createMonitorHome(): string {
   const home = mkdtempSync(path.join(os.tmpdir(), 'agent-board-monitor-'));
   for (const name of ['Alpha', 'Beta', 'Empty', 'DeleteMe']) agboardCatalogOk(['project', 'create', name], home);
 
-  const alphaPending = card(home, 'Alpha', 'Alpha pending review', 'Pending request body.');
+  const alphaPending = task(home, 'Alpha', 'Alpha pending review', 'Pending request body.');
   move(home, 'Alpha', alphaPending, 'doing', 'Start review');
   state(home, 'Alpha', alphaPending, 'pending', 'Waiting for the user review.');
   const alphaRunning = [
-    card(home, 'Alpha', 'Alpha running one', 'Running card one.'),
-    card(home, 'Alpha', 'Alpha running two', 'Running card two.'),
+    task(home, 'Alpha', 'Alpha running one', 'Running task one.'),
+    task(home, 'Alpha', 'Alpha running two', 'Running task two.'),
   ];
   for (const id of alphaRunning) {
     move(home, 'Alpha', id, 'doing', 'Start work');
     state(home, 'Alpha', id, 'running', 'Working now');
   }
-  const firstCompleted = card(home, 'Alpha', 'Alpha completed 1', 'Completed detail 1.');
+  const firstCompleted = task(home, 'Alpha', 'Alpha completed 1', 'Completed detail 1.');
   move(home, 'Alpha', firstCompleted, 'doing', 'Start work');
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -74,34 +74,34 @@ export function createMonitorHome(): string {
     run(home, ['--project', 'Alpha', 'attachment', 'add', '4', '--file', image, '--actor', 'ai', '--json']),
   ) as { attachment: { id: string } };
   run(home, [
-    '--project', 'Alpha', 'edit', '4', '--desc', cardBody(
+    '--project', 'Alpha', 'edit', '4', '--desc', taskBody(
       `A shared read-only detail with an owned image and Mermaid diagram.\n\n![monitor.png](attachment:${attachment.attachment.id})\n\n\`\`\`mermaid\ngraph TD\n  A[Monitor] --> B[Shared files]\n\`\`\``,
     ), '--json',
   ]);
   run(home, ['--project', 'Alpha', 'evidence', 'add', '4', evidenceFile, '--name', 'run.log', '--json']);
   move(home, 'Alpha', firstCompleted, 'done', 'Complete work');
   for (let index = 1; index < 8; index++) {
-    const id = card(home, 'Alpha', `Alpha completed ${index + 1}`, `Completed detail ${index + 1}.`);
+    const id = task(home, 'Alpha', `Alpha completed ${index + 1}`, `Completed detail ${index + 1}.`);
     move(home, 'Alpha', id, 'doing', 'Start work');
     move(home, 'Alpha', id, 'done', 'Complete work');
   }
-  const draftId = card(home, 'Alpha', 'Alpha draft card', 'Draft content that must remain visible.');
+  const draftId = task(home, 'Alpha', 'Alpha draft task', 'Draft content that must remain visible.');
   const alphaFolder = workspace('Alpha', home).folder;
   const draftPath = path.join(alphaFolder, 'tasks', String(draftId), 'task.json');
   const draft = JSON.parse(readFileSync(draftPath, 'utf8')) as Record<string, unknown>;
   writeJson(draftPath, { ...draft, isDraft: true });
 
   // Keep both draft and ordinary Todo cards, and an idle card already in Doing,
-  // so the view proves its columns come from cardStatus rather than agentStatus.
-  card(home, 'Alpha', 'Alpha ordinary todo', 'An ordinary card that has not started.');
-  const idleDoing = card(home, 'Alpha', 'Alpha idle doing', 'A doing card with no active agent status.');
-  move(home, 'Alpha', idleDoing, 'doing', 'Put the idle card in Doing');
+  // so the view proves its columns come from taskStatus rather than agentStatus.
+  task(home, 'Alpha', 'Alpha ordinary todo', 'An ordinary task that has not started.');
+  const idleDoing = task(home, 'Alpha', 'Alpha idle doing', 'A doing task with no active agent status.');
+  move(home, 'Alpha', idleDoing, 'doing', 'Put the idle task in Doing');
 
-  const betaPending = card(home, 'Beta', 'Beta pending review', 'Same-number project card.');
+  const betaPending = task(home, 'Beta', 'Beta pending review', 'Same-number project task.');
   move(home, 'Beta', betaPending, 'doing', 'Start review');
   state(home, 'Beta', betaPending, 'pending', 'Waiting for Beta input.');
   for (const [index, status] of (['running', 'done'] as const).entries()) {
-    const id = card(home, 'Beta', `Beta ${status} #${index + 2}`, `Beta detail ${status}.`);
+    const id = task(home, 'Beta', `Beta ${status} #${index + 2}`, `Beta detail ${status}.`);
     move(home, 'Beta', id, 'doing', 'Start work');
     if (status === 'running') state(home, 'Beta', id, 'running', 'Working on Beta');
     else move(home, 'Beta', id, 'done', 'Complete Beta');
@@ -214,27 +214,27 @@ export function addDenseMonitorFixture(home: string): string {
   const tail = '\n\nLong body tail marker.';
   agboardCatalogOk(['project', 'create', longProject], home);
   for (let id = 15; id <= 100; id++) {
-    const prefix = `Card ${id} `;
+    const prefix = `Task ${id} `;
     const title = prefix + 'L'.repeat(100 - prefix.length);
     const longBodyStart = `Long body start ${id}.\n\n`;
     const bodyText = id === 100
-      ? `${longBodyStart}${'x'.repeat(50_000 - cardBody(`${longBodyStart}${tail}`).length)}${tail}`
-      : `Dense card ${id}.`;
-    const created = card(home, 'Alpha', title, bodyText);
-    if (created !== id) throw new Error(`expected dense fixture card ${id}, got ${created}`);
-    move(home, 'Alpha', id, 'doing', 'Start dense fixture card');
-    move(home, 'Alpha', id, 'done', 'Complete dense fixture card');
+      ? `${longBodyStart}${'x'.repeat(50_000 - taskBody(`${longBodyStart}${tail}`).length)}${tail}`
+      : `Dense task ${id}.`;
+    const created = task(home, 'Alpha', title, bodyText);
+    if (created !== id) throw new Error(`expected dense fixture task ${id}, got ${created}`);
+    move(home, 'Alpha', id, 'doing', 'Start dense fixture task');
+    move(home, 'Alpha', id, 'done', 'Complete dense fixture task');
   }
 
   const longTitle = 'T'.repeat(100);
   const longFile = path.join(home, 'long-description.md');
   const longBodyStart = 'Long body start\n\n';
-  const longText = `${longBodyStart}${'x'.repeat(50_000 - cardBody(`${longBodyStart}${tail}`).length)}${tail}`;
-  writeFileSync(longFile, cardBody(longText), 'utf8');
+  const longText = `${longBodyStart}${'x'.repeat(50_000 - taskBody(`${longBodyStart}${tail}`).length)}${tail}`;
+  writeFileSync(longFile, taskBody(longText), 'utf8');
   const added = JSON.parse(run(home, [
     '--project', longProject, 'add', longTitle, '--desc-file', longFile, '--assignee', 'ai', '--actor', 'ai', '--json',
-  ])) as { card: { id: number } };
-  move(home, longProject, added.card.id, 'doing', 'Start long-title fixture');
-  state(home, longProject, added.card.id, 'running', 'Check long-title visibility');
+  ])) as { task: { id: number } };
+  move(home, longProject, added.task.id, 'doing', 'Start long-title fixture');
+  state(home, longProject, added.task.id, 'running', 'Check long-title visibility');
   return longProject;
 }

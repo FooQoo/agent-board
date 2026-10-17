@@ -1,21 +1,21 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Card } from '../../src/components/Card';
+import { TaskCard } from '../../src/components/TaskCard';
 import { DetailPanel } from '../../src/components/DetailPanel';
 import { selectLocale } from '../../src/i18n';
-import type { Card as CardModel } from '../../src/types';
+import type { Task as TaskModel } from '../../src/types';
 import { deferred, jsonResponse } from '../fakes';
-import { PROJECT_A, fixtureCard } from '../fixtures';
+import { PROJECT_A, fixtureTask } from '../fixtures';
 
 const noop = () => {};
 const noRemove = async () => true;
 
-function renderPanel(card: CardModel, onChanged = vi.fn()) {
+function renderPanel(task: TaskModel, onChanged = vi.fn()) {
   render(
     <DetailPanel
       projectId={PROJECT_A.id}
-      card={card}
+      task={task}
       onClose={noop}
       onRemove={noRemove}
       onChanged={onChanged}
@@ -24,7 +24,7 @@ function renderPanel(card: CardModel, onChanged = vi.fn()) {
   return onChanged;
 }
 
-const draftOf = (card: CardModel): CardModel => ({ ...card, isDraft: true });
+const draftOf = (task: TaskModel): TaskModel => ({ ...task, isDraft: true });
 
 beforeEach(() => {
   selectLocale('en');
@@ -37,14 +37,14 @@ afterEach(() => {
 });
 
 describe('draft banner', () => {
-  it('is not shown for a card that is not a draft', () => {
-    renderPanel(fixtureCard(8));
+  it('is not shown for a task that is not a draft', () => {
+    renderPanel(fixtureTask(8));
     expect(screen.queryByRole('button', { name: 'Finalize' })).toBeNull();
     expect(screen.queryByText('Draft')).toBeNull();
   });
 
   it('says Draft, that agents only read, and offers Finalize', () => {
-    renderPanel(draftOf(fixtureCard(8)));
+    renderPanel(draftOf(fixtureTask(8)));
     expect(screen.getByText('Draft')).toBeTruthy();
     expect(screen.getByText(/read/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Finalize' })).toBeTruthy();
@@ -52,7 +52,7 @@ describe('draft banner', () => {
 
   it('is written in Japanese', () => {
     selectLocale('ja');
-    renderPanel(draftOf(fixtureCard(8)));
+    renderPanel(draftOf(fixtureTask(8)));
     expect(screen.getByText('下書き')).toBeTruthy();
     expect(screen.getByText('AIは読み取り専用です。確定すると、AIが扱えます。')).toBeTruthy();
     expect(screen.getByRole('button', { name: '確定する' })).toBeTruthy();
@@ -61,22 +61,22 @@ describe('draft banner', () => {
 
 describe('Make draft and Finalize', () => {
   it('Make draft sends PUT draft true and reports the change', async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ card: fixtureCard(8) }));
+    const fetchMock = vi.fn(async () => jsonResponse({ task: fixtureTask(8) }));
     vi.stubGlobal('fetch', fetchMock);
-    const onChanged = renderPanel(fixtureCard(8));
+    const onChanged = renderPanel(fixtureTask(8));
     await userEvent.click(screen.getByRole('button', { name: 'Make draft' }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe(`/api/projects/${PROJECT_A.id}/cards/8/draft`);
+    expect(url).toBe(`/api/projects/${PROJECT_A.id}/tasks/8/draft`);
     expect(init.method).toBe('PUT');
     expect(JSON.parse(String(init.body))).toEqual({ isDraft: true });
   });
 
   it('Finalize sends PUT draft false and reports the change', async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ card: fixtureCard(8) }));
+    const fetchMock = vi.fn(async () => jsonResponse({ task: fixtureTask(8) }));
     vi.stubGlobal('fetch', fetchMock);
-    const onChanged = renderPanel(draftOf(fixtureCard(8)));
+    const onChanged = renderPanel(draftOf(fixtureTask(8)));
     await userEvent.click(screen.getByRole('button', { name: 'Finalize' }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -93,7 +93,7 @@ describe('Make draft and Finalize', () => {
         ),
       ),
     );
-    const onChanged = renderPanel(fixtureCard(8));
+    const onChanged = renderPanel(fixtureTask(8));
     await userEvent.click(screen.getByRole('button', { name: 'Make draft' }));
     expect((await screen.findByRole('alert')).textContent).toBe('Could not save. Try again.');
     expect(onChanged).not.toHaveBeenCalled();
@@ -104,9 +104,9 @@ describe('Make draft and Finalize', () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new TypeError('down'))
-      .mockResolvedValueOnce(jsonResponse({ card: fixtureCard(8) }));
+      .mockResolvedValueOnce(jsonResponse({ task: fixtureTask(8) }));
     vi.stubGlobal('fetch', fetchMock);
-    const onChanged = renderPanel(draftOf(fixtureCard(8)));
+    const onChanged = renderPanel(draftOf(fixtureTask(8)));
     await userEvent.click(screen.getByRole('button', { name: 'Finalize' }));
     expect((await screen.findByRole('alert')).textContent).toBe('Could not save. Try again.');
     expect(onChanged).not.toHaveBeenCalled();
@@ -119,19 +119,19 @@ describe('Make draft and Finalize', () => {
     const gate = deferred<Response>();
     const fetchMock = vi.fn(() => gate.promise);
     vi.stubGlobal('fetch', fetchMock);
-    renderPanel(fixtureCard(8));
+    renderPanel(fixtureTask(8));
     const button = screen.getByRole('button', { name: 'Make draft' });
     await userEvent.click(button);
     await userEvent.click(button);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect((button as HTMLButtonElement).disabled).toBe(true);
-    gate.resolve(jsonResponse({ card: fixtureCard(8) }));
+    gate.resolve(jsonResponse({ task: fixtureTask(8) }));
     await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
   });
 
   it('Make draft is Japanese: 下書きにする', () => {
     selectLocale('ja');
-    renderPanel(fixtureCard(8));
+    renderPanel(fixtureTask(8));
     expect(screen.getByRole('button', { name: '下書きにする' })).toBeTruthy();
   });
 });
@@ -139,10 +139,10 @@ describe('Make draft and Finalize', () => {
 describe('draft chip on the tile', () => {
   it('shows Draft next to the id and the assignee only for a draft', () => {
     const { container, rerender } = render(
-      <Card card={fixtureCard(14)} selected={false} onSelect={noop} />,
+      <TaskCard task={fixtureTask(14)} selected={false} onSelect={noop} />,
     );
     expect(container.querySelector('.card__draft')).toBeNull();
-    rerender(<Card card={draftOf(fixtureCard(14))} selected={false} onSelect={noop} />);
+    rerender(<TaskCard task={draftOf(fixtureTask(14))} selected={false} onSelect={noop} />);
     const chip = container.querySelector('.card__draft');
     expect(chip?.textContent).toBe('Draft');
     const top = container.querySelector('.card__top') as HTMLElement;
@@ -160,7 +160,7 @@ describe('draft chip on the tile', () => {
 
   it('says 下書き in Japanese', () => {
     selectLocale('ja');
-    render(<Card card={draftOf(fixtureCard(14))} selected={false} onSelect={noop} />);
+    render(<TaskCard task={draftOf(fixtureTask(14))} selected={false} onSelect={noop} />);
     expect(screen.getByText('下書き')).toBeTruthy();
   });
 });

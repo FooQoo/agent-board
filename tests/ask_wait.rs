@@ -47,7 +47,7 @@ fn start_server(home: &Path) -> Child {
     server
 }
 
-/// A board with one AI card in todo.
+/// A board with one AI task in todo.
 fn board(home: &Path) {
     assert!(agboard(home, &["init"]).status.success());
     assert!(
@@ -57,19 +57,19 @@ fn board(home: &Path) {
     );
 }
 
-fn card(home: &Path) -> Value {
+fn task(home: &Path) -> Value {
     let shown = agboard(home, &["show", "1", "--json"]);
-    serde_json::from_slice::<Value>(&shown.stdout).unwrap()["card"].clone()
+    serde_json::from_slice::<Value>(&shown.stdout).unwrap()["task"].clone()
 }
 
-/// The pending request ID once the card has asked.
+/// The pending request ID once the task has asked.
 fn wait_for_request(home: &Path) -> String {
     let deadline = Instant::now() + Duration::from_secs(15);
     loop {
-        if let Some(id) = card(home)["pendingRequestId"].as_str() {
+        if let Some(id) = task(home)["pendingRequestId"].as_str() {
             return id.to_string();
         }
-        assert!(Instant::now() < deadline, "the card never became pending");
+        assert!(Instant::now() < deadline, "the task never became pending");
         std::thread::sleep(Duration::from_millis(50));
     }
 }
@@ -155,8 +155,8 @@ fn the_answer_comes_back_when_the_request_is_answered() {
     assert_eq!(reply["answer"]["choiceId"], "a");
     assert_eq!(reply["answer"]["choiceLabel"], "Plan A");
     assert_eq!(reply["answer"]["text"], "Go ahead.");
-    assert_eq!(reply["card"]["agentStatus"], "idle");
-    assert_eq!(reply["card"]["cardStatus"], "todo");
+    assert_eq!(reply["task"]["agentStatus"], "idle");
+    assert_eq!(reply["task"]["taskStatus"], "todo");
 }
 
 #[test]
@@ -169,7 +169,7 @@ fn a_timeout_is_not_an_answer_and_the_request_stays() {
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "wait_timeout");
-    assert_eq!(card(home.path())["agentStatus"], "pending");
+    assert_eq!(task(home.path())["agentStatus"], "pending");
 }
 
 #[test]
@@ -205,7 +205,7 @@ fn wait_without_a_timeout_returns_the_answer_and_leaves_no_expiry() {
     let reply: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(reply["answer"]["choiceId"], "a");
     assert_eq!(reply["answer"]["choiceLabel"], "Plan A");
-    assert_eq!(reply["card"]["agentStatus"], "idle");
+    assert_eq!(reply["task"]["agentStatus"], "idle");
 }
 
 #[test]
@@ -225,9 +225,9 @@ fn a_move_cancels_the_request_and_the_wait_says_so() {
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "request_changed");
-    // An explicit card move withdraws the question; ending the waiter does not
-    // restore or otherwise rewrite the card's new state.
-    assert_eq!(card(home.path())["agentStatus"], "idle");
+    // An explicit task move withdraws the question; ending the waiter does not
+    // restore or otherwise rewrite the task's new state.
+    assert_eq!(task(home.path())["agentStatus"], "idle");
 }
 
 #[test]
@@ -243,8 +243,8 @@ fn an_indefinite_wait_reports_connection_loss_without_expiring_the_question() {
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "board_unavailable");
-    assert_eq!(card(home.path())["agentStatus"], "pending");
-    assert!(card(home.path())["pendingRequestId"].is_string());
+    assert_eq!(task(home.path())["agentStatus"], "pending");
+    assert!(task(home.path())["pendingRequestId"].is_string());
 }
 
 #[cfg(unix)]
@@ -255,7 +255,7 @@ fn interrupting_the_indefinite_wait_preserves_the_pending_question() {
     let server = start_server(home.path());
     let waiter = ask_and_wait_forever(home.path());
     wait_for_request(home.path());
-    assert_eq!(card(home.path())["agentStatus"], "pending");
+    assert_eq!(task(home.path())["agentStatus"], "pending");
 
     let status = Command::new("kill")
         .args(["-INT", &waiter.id().to_string()])
@@ -264,8 +264,8 @@ fn interrupting_the_indefinite_wait_preserves_the_pending_question() {
     assert!(status.success());
     let output = waiter.wait_with_output().unwrap();
     assert!(!output.status.success());
-    assert_eq!(card(home.path())["agentStatus"], "pending");
-    assert!(card(home.path())["pendingRequestId"].is_string());
+    assert_eq!(task(home.path())["agentStatus"], "pending");
+    assert!(task(home.path())["pendingRequestId"].is_string());
     stop(server);
 }
 
@@ -277,7 +277,7 @@ fn without_a_server_nothing_is_asked() {
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "board_unavailable");
-    assert_eq!(card(home.path())["agentStatus"], "idle");
+    assert_eq!(task(home.path())["agentStatus"], "idle");
 }
 
 #[test]
@@ -305,7 +305,7 @@ fn a_wait_without_its_time_or_out_of_range_is_refused_and_nothing_is_asked() {
         assert!(!output.status.success(), "{wait}");
         let error: Value = serde_json::from_slice(&output.stderr).unwrap();
         assert_eq!(error["error"]["code"], "invalid_value", "{wait}");
-        assert_eq!(card(home.path())["agentStatus"], "idle", "{wait}");
+        assert_eq!(task(home.path())["agentStatus"], "idle", "{wait}");
     }
 }
 
@@ -326,5 +326,5 @@ fn without_a_wait_the_question_is_sent_and_the_command_returns() {
         ],
     );
     assert!(output.status.success());
-    assert_eq!(card(home.path())["agentStatus"], "pending");
+    assert_eq!(task(home.path())["agentStatus"], "pending");
 }

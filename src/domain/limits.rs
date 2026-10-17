@@ -1,8 +1,8 @@
 use crate::error::AgboardError;
 
 pub const MAX_ATTACHMENT_BYTES: usize = 10 * 1024 * 1024;
-pub const MAX_CARD_ATTACHMENTS: usize = 20;
-pub const MAX_CARD_ATTACHMENT_BYTES: usize = 50 * 1024 * 1024;
+pub const MAX_TASK_ATTACHMENTS: usize = 20;
+pub const MAX_TASK_ATTACHMENT_BYTES: usize = 50 * 1024 * 1024;
 
 /// Decision requests: at most this many choices, each with a label of at most
 /// `MAX_CHOICE_LABEL_CHARS` and an ID of at most `MAX_CHOICE_ID_CHARS`.

@@ -25,20 +25,20 @@ pub fn readme_text() -> String {
 \n\
 This folder is one Agent Board project. Its state is kept in these files.\n\
 \n\
-- `project.json`: the project ID, name, creation time, and the next card number. Do not edit it; use the `agboard` CLI.\n\
-- `tasks/<card-id>/task.json`: a card's metadata such as its current status and assignee. Do not edit it; use the `agboard` CLI.\n\
-- `tasks/<card-id>/TASK.md`: a card's body, acceptance conditions, and operation history. TASK.md history is the source of truth for card operation history.\n\
+- `project.json`: the project ID, name, creation time, and the next task number. Do not edit it; use the `agboard` CLI.\n\
+- `tasks/<task-id>/task.json`: a task's metadata such as its current status and assignee. Do not edit it; use the `agboard` CLI.\n\
+- `tasks/<task-id>/TASK.md`: a task's body, acceptance conditions, and operation history. TASK.md history is the source of truth for task operation history.\n\
 - `epics/<epic-id>/epic.json`: an epic's fields. Do not edit it; use the `agboard` CLI.\n\
 - `epics/<epic-id>/PLAN.md`: an epic's plan. Write a temporary file in the same folder and rename it over PLAN.md.\n\
 - `.internal/`: lock files. Do not edit or delete them.\n\
 \n\
-TASK.md frontmatter holds its `acceptance` completion conditions and `history` entries containing only `at` and a nonempty `reason`; new cards accept an empty list and Agent Board adds a creation note.\n\
+TASK.md frontmatter holds its `acceptance` completion conditions and `history` entries containing only `at` and a nonempty `reason`; new tasks accept an empty list and Agent Board adds a creation note.\n\
 Each condition is an item with `id` (AC-n), `text`, and `done` (true or false), for example:\n\
 `---`, `acceptance:`, `  - id: AC-1`, `    text: The list is returned as JSON`, `    done: false`, `---`.\n\
-The body after the frontmatter is free Markdown. PLAN.md uses only `priority` for managed metadata; write epic reference conditions directly in its body. Other keys in the frontmatter are kept. For cards, the `history` list is written by Agent Board when operations occur; ordinary body and acceptance edits preserve it.\n\
-New cards use `formatVersion: 3`. Version 1 and version 2 task files are not migrated or read by this version. Before using a new version with an old board, the user must remove the old data and start with new cards; Agent Board never deletes old data automatically.\n\
-Do not edit TASK.md of a card that is a draft.\n\
-Do not delete a card folder or an epic folder. Ask a person to delete a card or an epic with the `agboard` CLI.\n"
+The body after the frontmatter is free Markdown. PLAN.md uses only `priority` for managed metadata; write epic reference conditions directly in its body. Other keys in the frontmatter are kept. For tasks, the `history` list is written by Agent Board when operations occur; ordinary body and acceptance edits preserve it.\n\
+Every JSON file uses `formatVersion: 1`. Files with any other version or with unknown fields are reported and are not migrated or read; Agent Board never converts or deletes them automatically.\n\
+Do not edit TASK.md of a task that is a draft.\n\
+Do not delete a task folder or an epic folder. Ask a person to delete a task or an epic with the `agboard` CLI.\n"
         .to_string()
 }
 
@@ -55,7 +55,7 @@ pub(crate) fn ensure_workspace(shared: &std::path::Path) -> Result<(), AgboardEr
 }
 
 impl FileStore {
-    /// Create an empty project with a new ID and the next card number at 1.
+    /// Create an empty project with a new ID and the next task number at 1.
     /// The name is trimmed and must be unique (case-sensitive) among projects.
     pub fn create_project(
         &self,
@@ -94,7 +94,7 @@ impl FileStore {
                 id: id.clone(),
                 name: name.clone(),
                 created_at,
-                next_card_id: 1,
+                next_task_id: 1,
             };
             io::write_json(
                 &layout::project_file(&temp),
@@ -122,7 +122,7 @@ impl FileStore {
 }
 
 impl FileStore {
-    /// Rename a project. The ID and the cards do not change. The name is
+    /// Rename a project. The ID and the tasks do not change. The name is
     /// trimmed and checked against the other projects' names under the catalog
     /// lock; a name equal to the current one changes nothing.
     pub fn rename_project(
@@ -157,7 +157,7 @@ impl FileStore {
         })
     }
 
-    /// Delete a project and all its cards. The folder is first renamed out of
+    /// Delete a project and all its tasks. The folder is first renamed out of
     /// the projects folder, so it disappears from the list in one step, then
     /// removed. Other projects are not touched.
     pub fn delete_project(&self, id: &ProjectId) -> Result<(), AgboardError> {
@@ -178,8 +178,8 @@ impl FileStore {
 }
 
 impl FileStore {
-    /// Empty one project's board. The ID, name, creation time and next card
-    /// number stay, so card numbers are never reused. The cards and epics
+    /// Empty one project's board. The ID, name, creation time and next task
+    /// number stay, so task numbers are never reused. The tasks and epics
     /// folders are moved aside and replaced by empty ones. `changed` is false
     /// when there was nothing to remove.
     pub fn reset_project(&self, id: &ProjectId) -> Result<Changed<BoardMeta>, AgboardError> {
@@ -188,10 +188,10 @@ impl FileStore {
         let file = reader::read_project_file(shared, id)?;
         let board = BoardMeta {
             name: file.name.clone(),
-            next_card_id: file.next_card_id,
+            next_task_id: file.next_task_id,
             created_at: file.created_at,
         };
-        let had_content = !reader::card_ids(&dir)?.is_empty()
+        let had_content = !reader::task_ids(&dir)?.is_empty()
             || fs::read_dir(layout::epics_dir(&dir))
                 .map(|mut entries| entries.next().is_some())
                 .unwrap_or(false);

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { TFunction } from 'i18next';
 import {
-  cardCountLabel,
+  taskCountLabel,
   columnLabel,
   formatShort,
   formatTime,
   stateLabel,
 } from '../src/lib/format';
-import { makeCard } from './fixtures';
+import { makeTask } from './fixtures';
 
 const translate = ((key: string, options?: Record<string, unknown>): string => {
   const labels: Record<string, string> = {
@@ -40,19 +40,19 @@ describe('formatTime', () => {
 });
 
 describe('cardCountLabel', () => {
-  it('uses the singular for exactly one card', () => {
-    expect(cardCountLabel(1)).toBe('1 card');
+  it('uses the singular for exactly one task', () => {
+    expect(taskCountLabel(1)).toBe('1 task');
   });
 
   it('uses the plural otherwise', () => {
-    expect(cardCountLabel(0)).toBe('0 cards');
-    expect(cardCountLabel(8)).toBe('8 cards');
+    expect(taskCountLabel(0)).toBe('0 tasks');
+    expect(taskCountLabel(8)).toBe('8 tasks');
   });
 
-  it('uses the selected language for zero, one and multiple cards', () => {
-    expect(cardCountLabel(0, translate)).toBe('0件');
-    expect(cardCountLabel(1, translate)).toBe('1件');
-    expect(cardCountLabel(8, translate)).toBe('8件');
+  it('uses the selected language for zero, one and multiple tasks', () => {
+    expect(taskCountLabel(0, translate)).toBe('0件');
+    expect(taskCountLabel(1, translate)).toBe('1件');
+    expect(taskCountLabel(8, translate)).toBe('8件');
   });
 });
 
@@ -71,31 +71,31 @@ describe('columnLabel', () => {
 });
 
 describe('stateLabel', () => {
-  it('returns the run state label for doing cards', () => {
-    expect(stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'idle' }))).toBe('Idle');
-    expect(stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'running' }))).toBe(
+  it('returns the run state label for doing tasks', () => {
+    expect(stateLabel(makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'idle' }))).toBe('Idle');
+    expect(stateLabel(makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'running' }))).toBe(
       'Running',
     );
-    expect(stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'pending' }))).toBe(
+    expect(stateLabel(makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'pending' }))).toBe(
       'Pending',
     );
   });
 
-  it('translates run state values only for doing cards', () => {
+  it('translates run state values only for doing tasks', () => {
     expect(
-      stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'idle' }), translate),
+      stateLabel(makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'idle' }), translate),
     ).toBe('未稼働');
     expect(
-      stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'running' }), translate),
+      stateLabel(makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'running' }), translate),
     ).toBe('稼働中');
     expect(
-      stateLabel(makeCard({ id: 1, cardStatus: 'doing', agentStatus: 'pending' }), translate),
+      stateLabel(makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'pending' }), translate),
     ).toBe('待機中');
-    expect(stateLabel(makeCard({ id: 1, cardStatus: 'todo' }), translate)).toBeNull();
+    expect(stateLabel(makeTask({ id: 1, taskStatus: 'todo' }), translate)).toBeNull();
   });
 
-  it('returns null for cards that are not in doing', () => {
-    expect(stateLabel(makeCard({ id: 1, cardStatus: 'todo' }))).toBeNull();
-    expect(stateLabel(makeCard({ id: 1, cardStatus: 'done' }))).toBeNull();
+  it('returns null for tasks that are not in doing', () => {
+    expect(stateLabel(makeTask({ id: 1, taskStatus: 'todo' }))).toBeNull();
+    expect(stateLabel(makeTask({ id: 1, taskStatus: 'done' }))).toBeNull();
   });
 });

@@ -76,7 +76,7 @@ pub fn json_error(home: &Path, args: &[&str]) -> (i32, String) {
     (code, value["error"]["code"].as_str().unwrap().to_string())
 }
 
-/// A project named "Demo" with one card (#1, AI, Doing, idle).
+/// A project named "Demo" with one task (#1, AI, Doing, idle).
 pub fn demo_project(home: &Path) {
     let (code, _, err) = agboard(home, &["project", "create", "Demo"]);
     assert_eq!(code, 0, "{err}");

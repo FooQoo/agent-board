@@ -33,13 +33,13 @@ pub enum AgboardError {
     BoundProjectMissing {
         folder: String,
     },
-    CardNotFound {
+    TaskNotFound {
         id: i64,
     },
-    CardArchived {
+    TaskArchived {
         id: i64,
     },
-    CardNotArchived {
+    TaskNotArchived {
         id: i64,
     },
     ArchiveTargetsChanged,
@@ -57,7 +57,7 @@ pub enum AgboardError {
     EpicNotFound {
         id: String,
     },
-    /// Cards (archived ones included) still refer to the epic.
+    /// Tasks (archived ones included) still refer to the epic.
     EpicInUse {
         id: String,
     },
@@ -77,24 +77,24 @@ pub enum AgboardError {
         column: Column,
     },
     InvalidStateForAssignee,
-    /// The card is a draft: agents and the CLI cannot change it.
-    CardIsDraft {
+    /// The task is a draft: agents and the CLI cannot change it.
+    TaskIsDraft {
         id: i64,
     },
-    /// An agent tried to change a completed card.
-    CardIsDone {
+    /// An agent tried to change a completed task.
+    TaskIsDone {
         id: i64,
     },
-    /// An agent tried to move a card to Done while these conditions are unmet.
+    /// An agent tried to move a task to Done while these conditions are unmet.
     AcceptanceUnmet {
         id: i64,
         unmet: Vec<String>,
     },
-    /// A draft operation was applied to a card that is not a draft.
-    CardNotDraft {
+    /// A draft operation was applied to a task that is not a draft.
+    TaskNotDraft {
         id: i64,
     },
-    /// Only cards whose agent status is idle can become drafts.
+    /// Only tasks whose agent status is idle can become drafts.
     InvalidStateForDraft {
         id: i64,
         state: RunState,
@@ -162,9 +162,9 @@ impl AgboardError {
             AgboardError::FolderBoundElsewhere { .. } => "folder_bound_elsewhere",
             AgboardError::FolderUnbound { .. } => "folder_unbound",
             AgboardError::BoundProjectMissing { .. } => "bound_project_missing",
-            AgboardError::CardNotFound { .. } => "card_not_found",
-            AgboardError::CardArchived { .. } => "card_archived",
-            AgboardError::CardNotArchived { .. } => "card_not_archived",
+            AgboardError::TaskNotFound { .. } => "task_not_found",
+            AgboardError::TaskArchived { .. } => "task_archived",
+            AgboardError::TaskNotArchived { .. } => "task_not_archived",
             AgboardError::ArchiveTargetsChanged => "archive_targets_changed",
             AgboardError::AttachmentNotFound { .. } => "attachment_not_found",
             AgboardError::AttachmentRequestConflict => "attachment_request_conflict",
@@ -177,10 +177,10 @@ impl AgboardError {
             AgboardError::InvalidValue { .. } => "invalid_value",
             AgboardError::InvalidStateForColumn { .. } => "invalid_state_for_column",
             AgboardError::InvalidStateForAssignee => "invalid_state_for_assignee",
-            AgboardError::CardIsDraft { .. } => "card_is_draft",
-            AgboardError::CardIsDone { .. } => "card_is_done",
+            AgboardError::TaskIsDraft { .. } => "task_is_draft",
+            AgboardError::TaskIsDone { .. } => "task_is_done",
             AgboardError::AcceptanceUnmet { .. } => "acceptance_unmet",
-            AgboardError::CardNotDraft { .. } => "card_not_draft",
+            AgboardError::TaskNotDraft { .. } => "task_not_draft",
             AgboardError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
             AgboardError::RequestChanged => "request_changed",
             AgboardError::ConfirmationRequired { .. } => "confirmation_required",
@@ -206,7 +206,7 @@ impl AgboardError {
             AgboardError::ProjectNameExists { .. } => 2,
             AgboardError::FolderBoundElsewhere { .. } => 2,
             AgboardError::FolderUnbound { .. } | AgboardError::BoundProjectMissing { .. } => 4,
-            AgboardError::CardNotFound { .. } => 3,
+            AgboardError::TaskNotFound { .. } => 3,
             AgboardError::InvalidArgument { .. } | AgboardError::InvalidValue { .. } => 2,
             AgboardError::InvalidStateForAssignee => 2,
             AgboardError::RequestChoiceUnknown { .. } => 2,
@@ -231,9 +231,9 @@ impl AgboardError {
             AgboardError::ProjectNameExists { name } => {
                 format!("project \"{name}\" already exists.")
             }
-            AgboardError::CardNotFound { id } => format!("card #{id} not found."),
-            AgboardError::CardArchived { id } => format!("card #{id} is archived."),
-            AgboardError::CardNotArchived { id } => format!("card #{id} is not archived."),
+            AgboardError::TaskNotFound { id } => format!("task #{id} not found."),
+            AgboardError::TaskArchived { id } => format!("task #{id} is archived."),
+            AgboardError::TaskNotArchived { id } => format!("task #{id} is not archived."),
             AgboardError::ArchiveTargetsChanged => "archive targets changed.".into(),
             AgboardError::AttachmentNotFound { id } => format!("attachment {id} not found."),
             AgboardError::AttachmentRequestConflict => {
@@ -243,24 +243,24 @@ impl AgboardError {
             AgboardError::EvidenceNotFound { id } => format!("evidence {id} not found."),
             AgboardError::EpicIdTaken { id } => format!("epic {id} already exists."),
             AgboardError::EpicNotFound { id } => format!("epic {id} not found."),
-            AgboardError::EpicInUse { id } => format!("epic {id} is used by cards."),
+            AgboardError::EpicInUse { id } => format!("epic {id} is used by tasks."),
             AgboardError::InvalidArgument { message, .. } => message.clone(),
             AgboardError::InvalidValue { field, .. } => format!("{field} is invalid."),
             AgboardError::InvalidStateForColumn { id, state, .. } => {
                 format!("cannot set #{id} to {}.", state.as_str())
             }
             AgboardError::InvalidStateForAssignee => "state is invalid for this assignee.".into(),
-            AgboardError::CardIsDraft { id } => {
-                format!("card #{id} is a draft and read-only for agents.")
+            AgboardError::TaskIsDraft { id } => {
+                format!("task #{id} is a draft and read-only for agents.")
             }
-            AgboardError::CardIsDone { id } => {
-                format!("card #{id} is done and read-only for agents.")
+            AgboardError::TaskIsDone { id } => {
+                format!("task #{id} is done and read-only for agents.")
             }
             AgboardError::AcceptanceUnmet { id, unmet } => format!(
-                "card #{id} has unmet acceptance conditions: {}.",
+                "task #{id} has unmet acceptance conditions: {}.",
                 unmet.join(", ")
             ),
-            AgboardError::CardNotDraft { id } => format!("card #{id} is not a draft."),
+            AgboardError::TaskNotDraft { id } => format!("task #{id} is not a draft."),
             AgboardError::InvalidStateForDraft { id, state } => {
                 format!("cannot make #{id} a draft while it is {}.", state.as_str())
             }
@@ -308,51 +308,51 @@ impl AgboardError {
             AgboardError::BoundProjectMissing { .. } => {
                 "Bind this folder to a project with \"agboard project bind NAME\".".to_string()
             }
-            AgboardError::CardNotFound { id } => {
-                format!("No card has ID {id}. Run \"agboard ls\" to see the cards.")
+            AgboardError::TaskNotFound { id } => {
+                format!("No task has ID {id}. Run \"agboard ls\" to see the tasks.")
             }
-            AgboardError::CardArchived { .. } => "Restore the card before editing it.".into(),
-            AgboardError::CardNotArchived { .. } => "Only an archived card can be deleted here.".into(),
-            AgboardError::ArchiveTargetsChanged => "Read the latest Done cards and confirm the archive again.".into(),
-            AgboardError::AttachmentNotFound { .. } => "The attachment does not belong to this card.".into(),
+            AgboardError::TaskArchived { .. } => "Restore the task before editing it.".into(),
+            AgboardError::TaskNotArchived { .. } => "Only an archived task can be deleted here.".into(),
+            AgboardError::ArchiveTargetsChanged => "Read the latest Done tasks and confirm the archive again.".into(),
+            AgboardError::AttachmentNotFound { .. } => "The attachment does not belong to this task.".into(),
             AgboardError::AttachmentRequestConflict => "Use a new request ID when the content changes.".into(),
-            AgboardError::AttachmentLimitExceeded => "A card may contain at most 20 images and 50 MiB in total.".into(),
-            AgboardError::EvidenceNotFound { .. } => "The evidence does not belong to this card.".into(),
+            AgboardError::AttachmentLimitExceeded => "A task may contain at most 20 images and 50 MiB in total.".into(),
+            AgboardError::EvidenceNotFound { .. } => "The evidence does not belong to this task.".into(),
             AgboardError::EpicIdTaken { .. } => "Choose another EPIC-ID.".into(),
             AgboardError::EpicNotFound { .. } => "No epic has this EPIC-ID in the project.".into(),
-            AgboardError::EpicInUse { .. } => "Move or clear the cards that belong to this epic first.".into(),
+            AgboardError::EpicInUse { .. } => "Move or clear the tasks that belong to this epic first.".into(),
             AgboardError::InvalidArgument { command, .. } => match command {
                 Some(command) => format!("Run \"agboard {command} --help\" for usage."),
                 None => "Run \"agboard --help\" for usage.".to_string(),
             },
             AgboardError::InvalidValue { reason, .. } => reason.clone(),
             AgboardError::InvalidStateForColumn { id, column, .. } => format!(
-                "Only cards in Doing can be running or pending. #{id} is in {}.",
+                "Only tasks in Doing can be running or pending. #{id} is in {}.",
                 column.label()
             ),
             AgboardError::InvalidStateForAssignee => {
-                "Only AI-owned cards in Doing can be running or pending.".into()
+                "Only AI-owned tasks in Doing can be running or pending.".into()
             }
-            AgboardError::CardIsDraft { .. } => {
+            AgboardError::TaskIsDraft { .. } => {
                 "Wait for the user to finalize it, then try again.".into()
             }
-            AgboardError::CardIsDone { .. } => {
-                "A person must move the card out of Done before you can change it.".into()
+            AgboardError::TaskIsDone { .. } => {
+                "A person must move the task out of Done before you can change it.".into()
             }
             AgboardError::AcceptanceUnmet { .. } => {
-                "Mark each condition done once it is verified, or ask a person to move the card.".into()
+                "Mark each condition done once it is verified, or ask a person to move the task.".into()
             }
-            AgboardError::CardNotDraft { id } => {
+            AgboardError::TaskNotDraft { id } => {
                 format!("Only a draft can be saved or finalized this way. #{id} is not a draft.")
             }
             AgboardError::InvalidStateForDraft { id, .. } => format!(
-                "Only cards whose agent status is idle can become drafts. #{id} is not idle."
+                "Only tasks whose agent status is idle can become drafts. #{id} is not idle."
             ),
             AgboardError::RequestChanged => {
                 "Read the latest board before answering this request.".into()
             }
             AgboardError::ConfirmationRequired { .. } => {
-                "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board."
+                "Run this command yourself in a terminal. Agents cannot delete tasks or projects, or replace a board."
                     .to_string()
             }
             AgboardError::FileError { reason, .. } => reason.clone(),
@@ -400,7 +400,7 @@ mod tests {
             AgboardError::ProjectNameExists {
                 name: "Alpha".into(),
             },
-            AgboardError::CardNotFound { id: 7 },
+            AgboardError::TaskNotFound { id: 7 },
             AgboardError::InvalidArgument {
                 message: "unexpected argument '--x'".into(),
                 command: Some("add".into()),
@@ -415,20 +415,20 @@ mod tests {
                 column: Column::Todo,
             },
             AgboardError::InvalidStateForAssignee,
-            AgboardError::CardIsDraft { id: 5 },
-            AgboardError::CardIsDone { id: 5 },
+            AgboardError::TaskIsDraft { id: 5 },
+            AgboardError::TaskIsDone { id: 5 },
             AgboardError::AcceptanceUnmet {
                 id: 5,
                 unmet: vec!["AC-2".into()],
             },
-            AgboardError::CardNotDraft { id: 5 },
+            AgboardError::TaskNotDraft { id: 5 },
             AgboardError::InvalidStateForDraft {
                 id: 6,
                 state: RunState::Running,
             },
             AgboardError::RequestChanged,
             AgboardError::ConfirmationRequired {
-                operation: "deleting a card".into(),
+                operation: "deleting a task".into(),
             },
             AgboardError::FileError {
                 action: FileAction::Read,
@@ -480,15 +480,15 @@ mod tests {
             vec![
                 ("project_not_found", 4),
                 ("project_name_exists", 2),
-                ("card_not_found", 3),
+                ("task_not_found", 3),
                 ("invalid_argument", 2),
                 ("invalid_value", 2),
                 ("invalid_state_for_column", 1),
                 ("invalid_state_for_assignee", 2),
-                ("card_is_draft", 1),
-                ("card_is_done", 1),
+                ("task_is_draft", 1),
+                ("task_is_done", 1),
                 ("acceptance_unmet", 2),
-                ("card_not_draft", 1),
+                ("task_not_draft", 1),
                 ("invalid_state_for_draft", 1),
                 ("request_changed", 1),
                 ("confirmation_required", 1),
@@ -524,8 +524,8 @@ mod tests {
                 "Project names must be unique. Choose another name.",
             ),
             (
-                "card #7 not found.",
-                "No card has ID 7. Run \"agboard ls\" to see the cards.",
+                "task #7 not found.",
+                "No task has ID 7. Run \"agboard ls\" to see the tasks.",
             ),
             (
                 "unexpected argument '--x'",
@@ -534,39 +534,39 @@ mod tests {
             ("title is invalid.", "r"),
             (
                 "cannot set #11 to running.",
-                "Only cards in Doing can be running or pending. #11 is in Todo.",
+                "Only tasks in Doing can be running or pending. #11 is in Todo.",
             ),
             (
                 "state is invalid for this assignee.",
-                "Only AI-owned cards in Doing can be running or pending.",
+                "Only AI-owned tasks in Doing can be running or pending.",
             ),
             (
-                "card #5 is a draft and read-only for agents.",
+                "task #5 is a draft and read-only for agents.",
                 "Wait for the user to finalize it, then try again.",
             ),
             (
-                "card #5 is done and read-only for agents.",
-                "A person must move the card out of Done before you can change it.",
+                "task #5 is done and read-only for agents.",
+                "A person must move the task out of Done before you can change it.",
             ),
             (
-                "card #5 has unmet acceptance conditions: AC-2.",
-                "Mark each condition done once it is verified, or ask a person to move the card.",
+                "task #5 has unmet acceptance conditions: AC-2.",
+                "Mark each condition done once it is verified, or ask a person to move the task.",
             ),
             (
-                "card #5 is not a draft.",
+                "task #5 is not a draft.",
                 "Only a draft can be saved or finalized this way. #5 is not a draft.",
             ),
             (
                 "cannot make #6 a draft while it is running.",
-                "Only cards whose agent status is idle can become drafts. #6 is not idle.",
+                "Only tasks whose agent status is idle can become drafts. #6 is not idle.",
             ),
             (
                 "the pending request has changed.",
                 "Read the latest board before answering this request.",
             ),
             (
-                "deleting a card needs confirmation from a human.",
-                "Run this command yourself in a terminal. Agents cannot delete cards or projects, or replace a board.",
+                "deleting a task needs confirmation from a human.",
+                "Run this command yourself in a terminal. Agents cannot delete tasks or projects, or replace a board.",
             ),
             (
                 "cannot read a.json.",

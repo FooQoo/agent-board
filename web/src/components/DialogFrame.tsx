@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import '../styles/modal.css';
 
 /** The button of a card on the board (the focus target after a drag-and-drop move). */
-export function findCardButton(id: number): HTMLElement | null {
+export function findTaskButton(id: number): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>('button.card')) {
     if (element.querySelector('.card__id')?.textContent === `#${id}`) return element;
   }
@@ -17,7 +17,7 @@ export interface DialogFrameProps {
   title: string;
   submitLabel: string;
   /** The card the dialog is about; focus returns to its tile when the opener is gone. */
-  cardId?: number;
+  taskId?: number;
   /** The dialog is done: saved, or cancelled. */
   onClose: () => void;
   /** Reports that a save started (`true`) or failed and the input was kept (`false`). */
@@ -33,7 +33,7 @@ export interface DialogFrameProps {
 export function DialogFrame({
   title,
   submitLabel,
-  cardId,
+  taskId,
   onClose,
   onSavingChange,
   validate,
@@ -96,8 +96,8 @@ export function DialogFrame({
           event.preventDefault();
           if (opener instanceof HTMLElement && opener !== document.body && opener.isConnected) {
             opener.focus();
-          } else if (cardId !== undefined) {
-            findCardButton(cardId)?.focus();
+          } else if (taskId !== undefined) {
+            findTaskButton(taskId)?.focus();
           }
         }}
       >

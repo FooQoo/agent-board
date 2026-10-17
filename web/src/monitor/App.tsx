@@ -6,7 +6,7 @@ import { createMonitorFixtureProps } from './mock';
 import { monitorFreshnessForStream, useMonitor } from './hooks/useMonitor';
 import { useMonitorEvents } from './hooks/useMonitorEvents';
 import { useMonitorUrl } from './hooks/useMonitorUrl';
-import { selectMonitorCards } from './model/select';
+import { selectMonitorTasks } from './model/select';
 import { useMonitorInteractions } from './hooks/useMonitorInteractions';
 import { monitorClient } from './client';
 
@@ -29,14 +29,14 @@ function MonitorConnectedApp() {
   const route = useMonitorUrl(monitor.projects, monitor.catalogReady);
   const [appliedScope, setAppliedScope] = useState(route.scope);
   useEffect(() => {
-    answers.reconcileCards(monitor.cards);
-  }, [answers.reconcileCards, monitor.cards]);
+    answers.reconcileTasks(monitor.tasks);
+  }, [answers.reconcileTasks, monitor.tasks]);
   useEffect(() => {
     if (!answers.locked) setAppliedScope(route.scope);
   }, [answers.locked, route.scope]);
   const scope = answers.locked ? appliedScope : route.scope;
-  const cards = answers.cardsWithSavedAnswers(monitor.cards, monitor.freshness.state === 'fresh');
-  const visible = selectMonitorCards(cards, scope);
+  const tasks = answers.tasksWithSavedAnswers(monitor.tasks, monitor.freshness.state === 'fresh');
+  const visible = selectMonitorTasks(tasks, scope);
   const hasPartial =
     monitor.freshness.failedProjectIds.length > 0 || monitor.freshness.snapshotProblems.length > 0;
   const freshness = monitorFreshnessForStream(monitor.freshness, events.state);

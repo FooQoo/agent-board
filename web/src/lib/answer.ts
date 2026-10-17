@@ -1,4 +1,4 @@
-import type { Card, ProjectId } from '../types';
+import type { Task, ProjectId } from '../types';
 
 /** An answer to the request currently shown on a card. */
 export interface AnswerInput {
@@ -8,14 +8,14 @@ export interface AnswerInput {
 }
 
 export interface AnswerResult {
-  card: Card;
+  task: Task;
   changed: boolean;
 }
 
 /** The transport is injected so the shared form never depends on a PC or monitor API. */
 export type AnswerWriter = (
   projectId: ProjectId,
-  cardId: number,
+  taskId: number,
   input: AnswerInput,
 ) => Promise<AnswerResult>;
 

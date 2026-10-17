@@ -112,7 +112,7 @@ fn a_cursor_names_the_content_version_and_a_different_version_answers_at_once() 
             "--json",
         ],
     );
-    assert_eq!(answer["cards"][0]["title"], "Changed");
+    assert_eq!(answer["tasks"][0]["title"], "Changed");
     assert_ne!(answer["cursor"], cursor);
 }
 
@@ -138,7 +138,7 @@ fn the_old_revision_cursor_is_refused() {
 }
 
 #[test]
-fn init_empties_the_named_project_and_keeps_its_id_name_and_card_number() {
+fn init_empties_the_named_project_and_keeps_its_id_name_and_task_number() {
     let home = tempfile::tempdir().unwrap();
     let id = demo(home.path());
     let body = "## 作業内容\n\nWork.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
@@ -165,7 +165,7 @@ fn init_empties_the_named_project_and_keeps_its_id_name_and_card_number() {
         .code(1)
         .stderr(predicates::str::contains("confirmation_required"));
     assert_eq!(
-        json(home.path(), &["--project", "Demo", "ls", "--json"])["cards"]
+        json(home.path(), &["--project", "Demo", "ls", "--json"])["tasks"]
             .as_array()
             .unwrap()
             .len(),
@@ -173,7 +173,7 @@ fn init_empties_the_named_project_and_keeps_its_id_name_and_card_number() {
     );
 
     // The confirmed replacement itself is the store's reset: the same ID and
-    // name, no cards, and the card number is kept.
+    // name, no tasks, and the task number is kept.
     let files = agent_board::file_store::FileStore::open(&home.path().join("shared"));
     let project = files.project_by_name("Demo").unwrap();
     assert_eq!(project.id.to_string(), id);
@@ -182,6 +182,6 @@ fn init_empties_the_named_project_and_keeps_its_id_name_and_card_number() {
     assert_eq!(listed["projects"][0]["id"], id);
     assert_eq!(listed["projects"][0]["name"], "Demo");
     let snapshot = json(home.path(), &["--project", "Demo", "snapshot", "--json"]);
-    assert_eq!(snapshot["cards"], serde_json::json!([]));
-    assert_eq!(snapshot["nextCardId"], 2);
+    assert_eq!(snapshot["tasks"], serde_json::json!([]));
+    assert_eq!(snapshot["nextTaskId"], 2);
 }

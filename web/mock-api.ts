@@ -5,7 +5,7 @@ import type { Plugin } from 'vite';
 import type {
   Assignee,
   Board,
-  Card,
+  Task,
   ColumnName,
   Epic,
   HistoryEvent,
@@ -19,7 +19,7 @@ interface MockBoard {
   revision: number;
   epics: Epic[];
   problems: Problem[];
-  cards: Card[];
+  tasks: Task[];
 }
 
 /** An epic the sample board shows: its label and frame on a few cards. */
@@ -49,15 +49,15 @@ const SAMPLE_EPIC: Epic = {
   createdAt: '2026-10-01T07:00:00Z',
   updatedAt: '2026-10-01T07:00:00Z',
 };
-const SAMPLE_EPIC_CARDS = [11, 12, 14];
+const SAMPLE_EPIC_TASKS = [11, 12, 14];
 
 /** Completion conditions the sample cards show: one part done, and all done. */
-const SAMPLE_CONDITIONS: Record<number, Card['acceptance']> = {
+const SAMPLE_CONDITIONS: Record<number, Task['acceptance']> = {
   11: [
-    { id: 'AC-1', text: 'Cards move between lanes', done: true },
+    { id: 'AC-1', text: 'Tasks move between lanes', done: true },
     { id: 'AC-2', text: 'Each move confirms the status change', done: true },
     { id: 'AC-3', text: 'The history keeps the reason', done: false },
-    { id: 'AC-4', text: 'A waiting card goes back to idle', done: false },
+    { id: 'AC-4', text: 'A waiting task goes back to idle', done: false },
   ],
   12: [
     { id: 'AC-1', text: 'The board shows the restore', done: true },
@@ -79,8 +79,8 @@ const SAMPLE_PROJECTS: Project[] = [
   { id: 'c3d4e5f60718293a4b5c6d7e8f90a1b2', name: 'tech-blog', createdAt: '2026-10-01T09:00:00Z' },
 ];
 
-function asBoard(project: Project, cards: Card[]): MockBoard {
-  return { project, revision: 1, epics: [SAMPLE_EPIC], problems: [], cards };
+function asBoard(project: Project, tasks: Task[]): MockBoard {
+  return { project, revision: 1, epics: [SAMPLE_EPIC], problems: [], tasks };
 }
 
 function versionOf(board: MockBoard): string {
@@ -88,26 +88,26 @@ function versionOf(board: MockBoard): string {
 }
 
 /** A card as the server writes it: the epic is an ID that the board resolves against `epics`. */
-function toWireCard({ epic, ...card }: Card) {
-  return { ...card, epicId: epic?.id ?? null };
+function toWireTask({ epic, ...task }: Task) {
+  return { ...task, epicId: epic?.id ?? null };
 }
 
 /** The board snapshot as the server writes it (`GET /api/projects/{id}/board`). */
-function wireBoard(board: MockBoard, cards: Card[]) {
+function wireBoard(board: MockBoard, tasks: Task[]) {
   return {
     project: board.project,
     version: versionOf(board),
     cursor: `f1:${board.project.id}:${versionOf(board)}`,
     epics: board.epics,
-    cards: cards.map(toWireCard),
+    tasks: tasks.map(toWireTask),
     problems: board.problems,
   };
 }
 
 /** A card with a long Markdown description, to try the description rendering with sample data. */
-function longMarkdownCard(cards: Card[]): Card {
-  const template = cards[0] as Card;
-  const id = Math.max(...cards.map((card) => card.id)) + 1;
+function longMarkdownTask(tasks: Task[]): Task {
+  const template = tasks[0] as Task;
+  const id = Math.max(...tasks.map((task) => task.id)) + 1;
   return {
     ...template,
     id,
@@ -116,12 +116,12 @@ function longMarkdownCard(cards: Card[]): Card {
       resolve(import.meta.dirname, 'test/fixtures/long-markdown.md'),
       'utf8',
     ),
-    cardStatus: 'todo',
+    taskStatus: 'todo',
     agentStatus: 'idle',
     pendingReason: null,
     pendingRequestId: null,
     isDraft: false,
-    position: cards.filter((card) => card.cardStatus === 'todo').length + 1,
+    position: tasks.filter((task) => task.taskStatus === 'todo').length + 1,
   };
 }
 
@@ -131,21 +131,21 @@ const SAMPLE_IMAGE =
 
 function loadFixtures(): Record<string, MockBoard> {
   const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as Board;
-  const withEpic = (cards: Card[]): Card[] =>
-    cards.map((card) => {
-      const conditions = SAMPLE_CONDITIONS[card.id];
+  const withEpic = (tasks: Task[]): Task[] =>
+    tasks.map((task) => {
+      const conditions = SAMPLE_CONDITIONS[task.id];
       // Card 16 has a frontmatter that cannot be read: its body is shown whole, with a notice.
       const broken =
-        card.id === 16
+        task.id === 16
           ? {
-              ...card,
+              ...task,
               body: "---\nacceptance:\n  - id: AC-1\n    text: ''\n---\n\nThe body stays visible.\n",
               acceptance: [],
               acceptanceError: true,
             }
-          : card;
+          : task;
       const withConditions = conditions ? { ...broken, acceptance: conditions } : broken;
-      return SAMPLE_EPIC_CARDS.includes(card.id)
+      return SAMPLE_EPIC_TASKS.includes(task.id)
         ? {
             ...withConditions,
             epic: { id: SAMPLE_EPIC.id, name: SAMPLE_EPIC.name, color: SAMPLE_EPIC.color },
@@ -154,8 +154,8 @@ function loadFixtures(): Record<string, MockBoard> {
     });
   const [first, second, third] = SAMPLE_PROJECTS as [Project, Project, Project];
   return {
-    [first.id]: asBoard(first, withEpic([...fixture.cards, longMarkdownCard(fixture.cards)])),
-    [second.id]: asBoard(second, withEpic(fixture.cards.slice(0, 3))),
+    [first.id]: asBoard(first, withEpic([...fixture.tasks, longMarkdownTask(fixture.tasks)])),
+    [second.id]: asBoard(second, withEpic(fixture.tasks.slice(0, 3))),
     [third.id]: asBoard(third, []),
   };
 }
@@ -208,16 +208,16 @@ export function mockApi(): Plugin {
   const broadcastChanged = () => {
     for (const client of clients) client.write('event: changed\ndata: {}\n\n');
   };
-  const update = (id: string, change: (board: MockBoard) => Card[]) => {
+  const update = (id: string, change: (board: MockBoard) => Task[]) => {
     const board = boards[id];
     if (!board) return;
     boards = {
       ...boards,
-      [id]: { ...board, revision: board.revision + 1, cards: change(board) },
+      [id]: { ...board, revision: board.revision + 1, tasks: change(board) },
     };
     broadcastChanged();
   };
-  const taskMarkdown = (body: string, acceptance: Card['acceptance'], history: Card['history']) =>
+  const taskMarkdown = (body: string, acceptance: Task['acceptance'], history: Task['history']) =>
     `---\nacceptance: ${JSON.stringify(acceptance)}\nhistory: ${JSON.stringify(history)}\n---\n\n${body}`;
 
   return {
@@ -252,18 +252,18 @@ export function mockApi(): Plugin {
         // The epic and card writes of the editing dialogs (edit, epic, draft, membership).
         const epicPath =
           /^\/api\/projects\/([^/]+)\/epics\/([^/]+)(\/attachments(?:\/[^/]+)?)?$/.exec(path);
-        const cardWritePath =
-          /^\/api\/projects\/([^/]+)\/cards\/(\d+)(\/multipart|\/draft|\/epic)?$/.exec(path);
+        const taskWritePath =
+          /^\/api\/projects\/([^/]+)\/tasks\/(\d+)(\/multipart|\/draft|\/epic)?$/.exec(path);
         const method = req.method ?? '';
         if (
           (epicPath && ['PATCH', 'POST', 'DELETE'].includes(method)) ||
-          (cardWritePath && ['PATCH', 'PUT'].includes(method))
+          (taskWritePath && ['PATCH', 'PUT'].includes(method))
         ) {
-          const target = boards[(epicPath ?? cardWritePath)?.[1] ?? ''];
+          const target = boards[(epicPath ?? taskWritePath)?.[1] ?? ''];
           if (!target)
             return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
           const input =
-            method === 'PATCH' && !epicPath?.[3] && !cardWritePath?.[3]
+            method === 'PATCH' && !epicPath?.[3] && !taskWritePath?.[3]
               ? await readJson(req)
               : null;
           if (epicPath) {
@@ -295,20 +295,20 @@ export function mockApi(): Plugin {
             for await (const _ of req) void _;
             return sendJson(res, 200, { epic });
           }
-          const cardId = Number(cardWritePath?.[2]);
-          const card = target.cards.find((item) => item.id === cardId);
-          if (!card) return sendError(res, 404, 'card_not_found', 'card not found.', 'Unknown ID.');
-          const suffix = cardWritePath?.[3] ?? '';
-          let next: Card = card;
+          const taskId = Number(taskWritePath?.[2]);
+          const task = target.tasks.find((item) => item.id === taskId);
+          if (!task) return sendError(res, 404, 'task_not_found', 'task not found.', 'Unknown ID.');
+          const suffix = taskWritePath?.[3] ?? '';
+          let next: Task = task;
           if (suffix === '/draft') {
             const body = await readJson(req);
-            next = { ...card, isDraft: Boolean(body.isDraft) };
+            next = { ...task, isDraft: Boolean(body.isDraft) };
           } else if (suffix === '/epic') {
             const body = await readJson(req);
             const epicId = typeof body.epicId === 'string' ? body.epicId : null;
             const epic = epicId ? target.epics.find((item) => item.id === epicId) : undefined;
             next = {
-              ...card,
+              ...task,
               epic: epic ? { id: epic.id, name: epic.name, color: epic.color } : null,
             };
           } else if (suffix === '/multipart') {
@@ -316,18 +316,18 @@ export function mockApi(): Plugin {
           } else {
             const body = input ?? {};
             const history =
-              body.finalize === true && card.isDraft
+              body.finalize === true && task.isDraft
                 ? [
-                    ...card.history,
+                    ...task.history,
                     { at: new Date().toISOString(), reason: 'Finalized the draft.' },
                   ]
-                : card.history;
-            const editedBody = typeof body.body === 'string' ? body.body : card.body;
+                : task.history;
+            const editedBody = typeof body.body === 'string' ? body.body : task.body;
             const editedAcceptance = Array.isArray(body.acceptance)
-              ? (body.acceptance as Card['acceptance'])
-              : card.acceptance;
+              ? (body.acceptance as Task['acceptance'])
+              : task.acceptance;
             next = {
-              ...card,
+              ...task,
               ...(typeof body.title === 'string' ? { title: body.title } : {}),
               ...(typeof body.description === 'string' ||
               typeof body.body === 'string' ||
@@ -347,14 +347,14 @@ export function mockApi(): Plugin {
             [target.project.id]: {
               ...target,
               revision: target.revision + 1,
-              cards: target.cards.map((item) => (item.id === cardId ? next : item)),
+              tasks: target.tasks.map((item) => (item.id === taskId ? next : item)),
             },
           };
           broadcastChanged();
-          return sendJson(res, 200, { card: toWireCard(next), changed: true });
+          return sendJson(res, 200, { task: toWireTask(next), changed: true });
         }
 
-        const projectMatch = /^\/api\/projects\/([^/]+)\/(board|archive|cards.*)$/.exec(path);
+        const projectMatch = /^\/api\/projects\/([^/]+)\/(board|archive|tasks.*)$/.exec(path);
         const projectId = projectMatch?.[1] ?? '';
         const rest = projectMatch?.[2] ?? '';
         const found = boards[projectId];
@@ -364,13 +364,13 @@ export function mockApi(): Plugin {
             return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
           const archive = wireBoard(
             found,
-            found.cards.filter((card) => card.archivedAt),
+            found.tasks.filter((task) => task.archivedAt),
           );
           return sendJson(res, 200, {
             project: archive.project,
             version: archive.version,
             cursor: archive.cursor,
-            cards: archive.cards,
+            tasks: archive.tasks,
           });
         }
 
@@ -395,7 +395,7 @@ export function mockApi(): Plugin {
                 ? wireBoard(found, [])
                 : wireBoard(
                     found,
-                    found.cards.filter((card) => !card.archivedAt),
+                    found.tasks.filter((task) => !task.archivedAt),
                   ),
             );
           };
@@ -432,7 +432,7 @@ export function mockApi(): Plugin {
           return;
         }
 
-        const deleteMatch = /^cards\/(\d+)$/.exec(rest);
+        const deleteMatch = /^tasks\/(\d+)$/.exec(rest);
         if (req.method === 'DELETE' && deleteMatch) {
           if (!req.headers['x-agboard-token']) {
             return sendError(
@@ -456,22 +456,22 @@ export function mockApi(): Plugin {
             );
           }
           const id = Number(deleteMatch[1]);
-          if (!found.cards.some((card) => card.id === id)) {
+          if (!found.tasks.some((task) => task.id === id)) {
             return sendError(
               res,
               404,
-              'card_not_found',
-              `card #${id} not found.`,
-              `No card has ID ${id}.`,
+              'task_not_found',
+              `task #${id} not found.`,
+              `No task has ID ${id}.`,
             );
           }
-          update(projectId, (board) => board.cards.filter((card) => card.id !== id));
+          update(projectId, (board) => board.tasks.filter((task) => task.id !== id));
           res.statusCode = 204;
           res.end();
           return;
         }
 
-        const archiveMatch = /^cards\/(\d+)\/(archive|restore)$/.exec(rest);
+        const archiveMatch = /^tasks\/(\d+)\/(archive|restore)$/.exec(rest);
         if (req.method === 'POST' && archiveMatch) {
           if (!req.headers['x-agboard-token'])
             return sendError(
@@ -482,11 +482,11 @@ export function mockApi(): Plugin {
               'Missing X-Agboard-Token header.',
             );
           const id = Number(archiveMatch[1]);
-          const card = found?.cards.find((item) => item.id === id);
-          if (!card)
-            return sendError(res, 404, 'card_not_found', `card #${id} not found.`, 'Unknown ID.');
+          const task = found?.tasks.find((item) => item.id === id);
+          if (!task)
+            return sendError(res, 404, 'task_not_found', `task #${id} not found.`, 'Unknown ID.');
           update(projectId, (board) =>
-            board.cards.map((item) =>
+            board.tasks.map((item) =>
               item.id === id
                 ? {
                     ...item,
@@ -499,8 +499,8 @@ export function mockApi(): Plugin {
             ),
           );
           return sendJson(res, 200, {
-            card: {
-              ...card,
+            task: {
+              ...task,
               archivedAt: archiveMatch[2] === 'archive' ? new Date().toISOString() : null,
               agentStatus: 'idle',
               pendingReason: null,
@@ -509,7 +509,7 @@ export function mockApi(): Plugin {
           });
         }
 
-        if (req.method === 'POST' && rest === 'cards/archive-done') {
+        if (req.method === 'POST' && rest === 'tasks/archive-done') {
           if (!req.headers['x-agboard-token'])
             return sendError(
               res,
@@ -523,8 +523,8 @@ export function mockApi(): Plugin {
           const archivedAt = new Date().toISOString();
           let count = 0;
           update(projectId, (board) =>
-            board.cards.map((item) => {
-              if (!ids.has(item.id) || item.cardStatus !== 'done' || item.archivedAt) return item;
+            board.tasks.map((item) => {
+              if (!ids.has(item.id) || item.taskStatus !== 'done' || item.archivedAt) return item;
               count += 1;
               return {
                 ...item,
@@ -536,13 +536,13 @@ export function mockApi(): Plugin {
             }),
           );
           return sendJson(res, 200, {
-            cards: found?.cards.filter((card) => ids.has(card.id)) ?? [],
+            tasks: found?.tasks.filter((task) => ids.has(task.id)) ?? [],
             archivedCount: count,
           });
         }
 
-        const cardMatch = /^cards\/(\d+)\/(move|answer)$/.exec(rest);
-        if (req.method === 'POST' && (rest === 'cards' || cardMatch)) {
+        const taskMatch = /^tasks\/(\d+)\/(move|answer)$/.exec(rest);
+        if (req.method === 'POST' && (rest === 'tasks' || taskMatch)) {
           if (!req.headers['x-agboard-token'])
             return sendError(
               res,
@@ -557,19 +557,19 @@ export function mockApi(): Plugin {
           try {
             const input = await readJson(req);
             const now = new Date().toISOString();
-            if (rest === 'cards') {
+            if (rest === 'tasks') {
               const title = String(input.title ?? '').trim();
               if (!title || title.length > 100 || !['ai', 'human'].includes(String(input.assignee)))
                 return sendError(
                   res,
                   422,
                   'validation',
-                  'invalid card.',
+                  'invalid task.',
                   'A title and assignee are required.',
                 );
-              const id = Math.max(0, ...found.cards.map((card) => card.id)) + 1;
-              const event: HistoryEvent = { at: now, reason: 'Created card in Todo.' };
-              const card: Card = {
+              const id = Math.max(0, ...found.tasks.map((task) => task.id)) + 1;
+              const event: HistoryEvent = { at: now, reason: 'Created task in Todo.' };
+              const task: Task = {
                 id,
                 title,
                 description: String(input.description ?? ''),
@@ -577,9 +577,9 @@ export function mockApi(): Plugin {
                 acceptance: [],
                 acceptanceError: false,
                 assignee: input.assignee as Assignee,
-                cardStatus: 'todo',
-                cardStatusChangedAt: now,
-                position: found.cards.filter((item) => item.cardStatus === 'todo').length + 1,
+                taskStatus: 'todo',
+                taskStatusChangedAt: now,
+                position: found.tasks.filter((item) => item.taskStatus === 'todo').length + 1,
                 agentStatus: 'idle',
                 pendingReason: null,
                 pendingRequestId: null,
@@ -594,28 +594,28 @@ export function mockApi(): Plugin {
                 attachments: [],
                 evidence: [],
               };
-              update(projectId, (board) => [...board.cards, card]);
-              return sendJson(res, 201, { card });
+              update(projectId, (board) => [...board.tasks, task]);
+              return sendJson(res, 201, { task });
             }
-            const id = Number(cardMatch?.[1]);
-            const card = found.cards.find((item) => item.id === id);
-            if (!card)
+            const id = Number(taskMatch?.[1]);
+            const task = found.tasks.find((item) => item.id === id);
+            if (!task)
               return sendError(
                 res,
                 404,
-                'card_not_found',
-                `card #${id} not found.`,
-                `No card has ID ${id}.`,
+                'task_not_found',
+                `task #${id} not found.`,
+                `No task has ID ${id}.`,
               );
-            const saveCard = (updated: Card) =>
+            const saveTask = (updated: Task) =>
               update(projectId, (board) =>
-                board.cards.map((item) => (item.id === updated.id ? updated : item)),
+                board.tasks.map((item) => (item.id === updated.id ? updated : item)),
               );
-            if (cardMatch?.[2] === 'move') {
+            if (taskMatch?.[2] === 'move') {
               const suppliedReason = String(input.reason ?? '');
               const reason = suppliedReason.trim()
                 ? suppliedReason
-                : `User changed the status from ${card.cardStatus} to ${String(input.cardStatus)}.`;
+                : `User changed the status from ${task.taskStatus} to ${String(input.taskStatus)}.`;
               if (reason.length > 2000)
                 return sendError(
                   res,
@@ -624,37 +624,37 @@ export function mockApi(): Plugin {
                   'invalid reason.',
                   'Use up to 2,000 characters for the reason.',
                 );
-              const target = String(input.cardStatus) as ColumnName;
-              if (!['todo', 'doing', 'done'].includes(target) || target === card.cardStatus)
+              const target = String(input.taskStatus) as ColumnName;
+              if (!['todo', 'doing', 'done'].includes(target) || target === task.taskStatus)
                 return sendError(
                   res,
                   422,
                   'validation',
                   'invalid status.',
-                  'Choose a different card status.',
+                  'Choose a different task status.',
                 );
               const event: HistoryEvent = { at: now, reason };
               const updated = {
-                ...card,
-                cardStatus: target,
-                cardStatusChangedAt: now,
+                ...task,
+                taskStatus: target,
+                taskStatusChangedAt: now,
                 agentStatus: 'idle' as const,
                 pendingReason: null,
                 pendingRequestId: null,
                 updatedAt: now,
                 agentStatusChangedAt: now,
-                history: [...card.history, event],
+                history: [...task.history, event],
               };
-              saveCard(updated);
-              return sendJson(res, 200, { card: updated, changed: true });
+              saveTask(updated);
+              return sendJson(res, 200, { task: updated, changed: true });
             }
-            if (card.agentStatus !== 'pending' || input.requestId !== card.pendingRequestId)
+            if (task.agentStatus !== 'pending' || input.requestId !== task.pendingRequestId)
               return sendError(
                 res,
                 409,
                 'request_changed',
                 'the request has changed.',
-                'Refresh the card and answer the current request.',
+                'Refresh the task and answer the current request.',
               );
             const choiceId = typeof input.choiceId === 'string' ? input.choiceId : undefined;
             const text = typeof input.text === 'string' ? input.text.trim() : '';
@@ -677,7 +677,7 @@ export function mockApi(): Plugin {
             const choice =
               choiceId === undefined
                 ? undefined
-                : card.pendingChoices.find((item) => item.id === choiceId);
+                : task.pendingChoices.find((item) => item.id === choiceId);
             if (choiceId !== undefined && !choice)
               return sendError(
                 res,
@@ -691,17 +691,17 @@ export function mockApi(): Plugin {
               reason: [choice?.label, text].filter(Boolean).join(' — '),
             };
             const updated = {
-              ...card,
+              ...task,
               agentStatus: 'idle' as const,
               pendingReason: null,
               pendingRequestId: null,
               pendingChoices: [],
               updatedAt: now,
               agentStatusChangedAt: now,
-              history: [...card.history, event],
+              history: [...task.history, event],
             };
-            saveCard(updated);
-            return sendJson(res, 200, { card: updated, changed: true });
+            saveTask(updated);
+            return sendJson(res, 200, { task: updated, changed: true });
           } catch {
             return sendError(
               res,

@@ -3,10 +3,10 @@ import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useBoard } from '../src/hooks/useBoard';
 import { deferred, stubBackend, type FakeBackend } from './fakes';
-import { PROJECT_A, PROJECT_B, boardOf, fixtureBoard, makeCard } from './fixtures';
+import { PROJECT_A, PROJECT_B, boardOf, fixtureBoard, makeTask } from './fixtures';
 
 const boardA = fixtureBoard;
-const boardB = boardOf(PROJECT_B, [makeCard({ id: 8, title: 'B card eight' })], 2);
+const boardB = boardOf(PROJECT_B, [makeTask({ id: 8, title: 'B task eight' })], 2);
 
 function backend(overrides: Partial<FakeBackend> = {}): FakeBackend {
   return {
@@ -33,7 +33,7 @@ describe('useBoard', () => {
       `/api/projects/${PROJECT_A.id}/board`,
       expect.anything(),
     );
-    expect(result.current.board?.cards).toHaveLength(8);
+    expect(result.current.board?.tasks).toHaveLength(8);
     expect(result.current.fetchFailed).toBe(false);
     expect(result.current.lastSyncedAt).toBeInstanceOf(Date);
   });
@@ -56,7 +56,7 @@ describe('useBoard', () => {
     expect(result.current.board).toBeNull();
     expect(result.current.status).toBe('loading');
     await waitFor(() => expect(result.current.board?.project.id).toBe(PROJECT_B.id));
-    expect(result.current.board?.cards).toHaveLength(1);
+    expect(result.current.board?.tasks).toHaveLength(1);
   });
 
   it('does not let a late answer for the old project replace the new one', async () => {
@@ -76,7 +76,7 @@ describe('useBoard', () => {
     });
 
     expect(result.current.board?.project.id).toBe(PROJECT_B.id);
-    expect(result.current.board?.cards).toHaveLength(1);
+    expect(result.current.board?.tasks).toHaveLength(1);
   });
 
   it('ignores the first answer for A when the project goes A to B to A and the answers arrive reversed', async () => {
@@ -99,19 +99,19 @@ describe('useBoard', () => {
     rerender({ id: PROJECT_A.id });
     expect(result.current.board).toBeNull();
 
-    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeCard({ id: 1, title: 'Newest' })], 9);
+    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeTask({ id: 1, title: 'Newest' })], 9);
     await act(async () => {
       second.resolve();
       await Promise.resolve();
     });
-    await waitFor(() => expect(result.current.board?.cards[0]?.title).toBe('Newest'));
+    await waitFor(() => expect(result.current.board?.tasks[0]?.title).toBe('Newest'));
 
     fake.boards[PROJECT_A.id] = boardA;
     await act(async () => {
       first.resolve();
       await Promise.resolve();
     });
-    expect(result.current.board?.cards[0]?.title).toBe('Newest');
+    expect(result.current.board?.tasks[0]?.title).toBe('Newest');
   });
 
   it('is not overwritten by a request from the first StrictMode mount', async () => {
@@ -123,16 +123,16 @@ describe('useBoard', () => {
         return calls === 1 ? early.promise : undefined;
       },
     });
-    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeCard({ id: 1, title: 'Stale' })], 1);
+    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeTask({ id: 1, title: 'Stale' })], 1);
     stubBackend(fake);
     const { result } = renderHook(() => useBoard(PROJECT_A.id), { wrapper: StrictMode });
-    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeCard({ id: 1, title: 'Fresh' })], 2);
+    fake.boards[PROJECT_A.id] = boardOf(PROJECT_A, [makeTask({ id: 1, title: 'Fresh' })], 2);
     await waitFor(() => expect(result.current.status).toBe('ready'));
     await act(async () => {
       early.resolve();
       await Promise.resolve();
     });
-    expect(result.current.board?.cards[0]?.title).not.toBe('Stale');
+    expect(result.current.board?.tasks[0]?.title).not.toBe('Stale');
   });
 
   it('reports a missing project as not_found, not as a failure to retry', async () => {
@@ -178,7 +178,7 @@ describe('useBoard', () => {
 
     await waitFor(() => expect(result.current.fetchFailed).toBe(true));
     expect(result.current.status).toBe('ready');
-    expect(result.current.board?.cards).toHaveLength(8);
+    expect(result.current.board?.tasks).toHaveLength(8);
     expect(result.current.lastSyncedAt).toBe(syncedAt);
   });
 
@@ -201,10 +201,10 @@ describe('useBoard', () => {
     const { result } = renderHook(() => useBoard(PROJECT_A.id));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
-    fake.boards[PROJECT_A.id] = { ...boardA, cards: boardA.cards.slice(0, 3) };
+    fake.boards[PROJECT_A.id] = { ...boardA, tasks: boardA.tasks.slice(0, 3) };
     act(() => result.current.reload());
 
     expect(result.current.status).toBe('ready');
-    await waitFor(() => expect(result.current.board?.cards).toHaveLength(3));
+    await waitFor(() => expect(result.current.board?.tasks).toHaveLength(3));
   });
 });

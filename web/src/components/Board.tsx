@@ -1,29 +1,29 @@
-import { groupCards } from '../lib/board';
-import type { Card, ColumnName } from '../types';
+import { groupTasks } from '../lib/board';
+import type { Task, ColumnName } from '../types';
 import { BoardMessage, type BoardMessageKind } from './BoardMessage';
 import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
 import { isSortable } from '@dnd-kit/react/sortable';
 import type { ProjectId } from '../types';
-import type { CardAnswerController } from '../hooks/useCardAnswers';
+import type { TaskAnswerController } from '../hooks/useTaskAnswers';
 
 const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
 
 export interface BoardProps {
   /** A state shown in place of the lanes; `null` shows the lanes. */
   message: Exclude<BoardMessageKind, 'empty'> | null;
-  cards: Card[];
+  tasks: Task[];
   selectedId: number | null;
   onSelect: (id: number) => void;
   onRetry: () => void;
-  onMove: (card: Card, column: ColumnName) => void;
+  onMove: (task: Task, column: ColumnName) => void;
   /** A card was dropped in another place of its own lane: just before `beforeId`, or at the end. */
-  onReorder?: (card: Card, beforeId: number | null) => void;
+  onReorder?: (task: Task, beforeId: number | null) => void;
   onArchiveDone?: () => void;
   /** The EPIC-ID label of a card was pressed. */
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
-  answers?: CardAnswerController;
+  answers?: TaskAnswerController;
   syncedAt?: Date | null;
   onAnswerChanged?: () => void;
   layoutRef?: (node: HTMLDivElement | null) => void;
@@ -31,7 +31,7 @@ export interface BoardProps {
 
 export function Board({
   message,
-  cards,
+  tasks,
   selectedId,
   onSelect,
   onRetry,
@@ -53,11 +53,11 @@ export function Board({
     );
   }
 
-  const groups = groupCards(cards);
+  const groups = groupTasks(tasks);
   // Reset the drag controller when cards change lanes so its retained source element cannot
   // remain beside the newly rendered card. Edits and same-lane reordering keep the controller.
-  const laneMembership = cards
-    .map((card) => `${card.id}:${card.cardStatus}`)
+  const laneMembership = tasks
+    .map((task) => `${task.id}:${task.taskStatus}`)
     .sort()
     .join('|');
   return (
@@ -71,22 +71,22 @@ export function Board({
       }}
       onDragEnd={(event) => {
         if (event.canceled) return;
-        const cardId = event.operation.source?.data.cardId;
+        const taskId = event.operation.source?.data.taskId;
         const source = event.operation.source;
         const column: unknown = event.operation.target?.data.column;
-        const card = cards.find((item) => item.id === cardId);
-        if (!card || !(column === 'todo' || column === 'doing' || column === 'done')) return;
-        if (card.cardStatus !== column) {
+        const task = tasks.find((item) => item.id === taskId);
+        if (!task || !(column === 'todo' || column === 'doing' || column === 'done')) return;
+        if (task.taskStatus !== column) {
           // The drag drops the focus from the card. Give it back first, so the dialog returns to the card.
           if (source?.element instanceof HTMLElement) source.element.focus();
-          onMove(card, column);
+          onMove(task, column);
           return;
         }
         if (!onReorder || !source || !isSortable(source)) return;
         const { initialIndex, index } = source.sortable;
         if (initialIndex === index) return;
-        const others = groups[column].filter((item) => item.id !== card.id);
-        onReorder(card, others[index]?.id ?? null);
+        const others = groups[column].filter((item) => item.id !== task.id);
+        onReorder(task, others[index]?.id ?? null);
       }}
     >
       <main className="board">
@@ -95,7 +95,7 @@ export function Board({
             <Lane
               key={column}
               column={column}
-              cards={groups[column]}
+              tasks={groups[column]}
               selectedId={selectedId}
               onSelect={onSelect}
               onArchive={column === 'done' ? onArchiveDone : undefined}
@@ -107,7 +107,7 @@ export function Board({
             />
           ))}
         </div>
-        {cards.length === 0 && <BoardMessage kind="empty" />}
+        {tasks.length === 0 && <BoardMessage kind="empty" />}
       </main>
     </DragDropProvider>
   );

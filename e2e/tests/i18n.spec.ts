@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { listCards, mainHome, resetBoard, mainProject } from '../helpers/agboard';
+import { listTasks, mainHome, resetBoard, mainProject } from '../helpers/agboard';
 
 test.use({ locale: 'ja-JP' });
 
@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
 test('starts in English in a Japanese browser, switches and persists without translating board data', async ({
   page,
@@ -47,16 +47,16 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(lane(page, '未着手').getByRole('heading', { level: 2 })).toHaveText('未着手');
   await expect(lane(page, '進行中').getByRole('heading', { level: 2 })).toHaveText('進行中');
   await expect(lane(page, '完了').getByRole('heading', { level: 2 })).toHaveText('完了');
-  await expect(card(page, 11)).toContainText('稼働中');
-  await expect(card(page, 12)).toContainText('待機中');
-  await expect(card(page, 13)).toContainText('未稼働');
-  await expect(card(page, 12).locator('..')).toContainText('Waiting for confirmation on how to replace a board.');
-  await expect(card(page, 12)).toContainText('更新 10/02 10:36');
+  await expect(task(page, 11)).toContainText('稼働中');
+  await expect(task(page, 12)).toContainText('待機中');
+  await expect(task(page, 13)).toContainText('未稼働');
+  await expect(task(page, 12).locator('..')).toContainText('Waiting for confirmation on how to replace a board.');
+  await expect(task(page, 12)).toContainText('更新 10/02 10:36');
   await expect(page.getByRole('contentinfo')).toContainText('8件');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^同期済み \d{2}:\d{2}$/);
 
-  await card(page, 12).click();
-  const panel = page.getByRole('complementary', { name: 'カードの詳細' });
+  await task(page, 12).click();
+  const panel = page.getByRole('complementary', { name: 'タスクの詳細' });
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Restore a board from JSON');
   await expect(panel).toContainText('進行中');
   await expect(panel).toContainText('待機中');
@@ -65,8 +65,8 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await panel.getByRole('tab', { name: '履歴 3' }).click();
   await expect(panel.getByRole('tabpanel').getByRole('listitem')).toHaveText([
     '10/02 10:36Waiting for confirmation on how to replace a board.',
-    '10/02 01:10Moved card from Todo to Doing.',
-    '10/02 00:20Created card in Todo.',
+    '10/02 01:10Moved task from Todo to Doing.',
+    '10/02 00:20Created task in Todo.',
   ]);
   await expect(panel.getByRole('tabpanel').getByRole('img')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('02-japanese-board-detail.png') });
@@ -74,17 +74,17 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await panel.getByRole('tab', { name: /^受入条件/ }).click();
   await expect(panel.getByRole('tabpanel')).toContainText('受入条件');
   await expect(panel).not.toContainText('受け入れ');
-  await page.getByRole('button', { name: 'カード追加' }).click();
-  const createDialog = page.getByRole('dialog', { name: 'カードを追加' });
+  await page.getByRole('button', { name: 'タスク追加' }).click();
+  const createDialog = page.getByRole('dialog', { name: 'タスクを追加' });
   await expect(createDialog.getByRole('button', { name: /^受入条件/ })).toBeVisible();
   await expect(createDialog).not.toContainText('受け入れ');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
-  const storedCard = listCards(mainProject).find(({ id }) => id === 12);
-  expect(storedCard).toMatchObject({
+  const storedTask = listTasks(mainProject).find(({ id }) => id === 12);
+  expect(storedTask).toMatchObject({
     title: 'Restore a board from JSON',
-    cardStatus: 'doing',
+    taskStatus: 'doing',
     agentStatus: 'pending',
     pendingReason: 'Waiting for confirmation on how to replace a board.',
   });
@@ -94,7 +94,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^同期済み/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   await expect(lane(page, '未着手')).toBeVisible();
-  await expect(card(page, 12)).toContainText('待機中');
+  await expect(task(page, 12)).toContainText('待機中');
 
   await page.getByRole('button', { name: '設定' }).click();
   await page.getByRole('radio', { name: 'English' }).click();
@@ -103,14 +103,14 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(lane(page, 'Todo')).toBeVisible();
-  await expect(card(page, 12)).toContainText('Pending');
-  expect(listCards(mainProject).find(({ id }) => id === 12)).toMatchObject({ cardStatus: 'doing', agentStatus: 'pending' });
+  await expect(task(page, 12)).toContainText('Pending');
+  expect(listTasks(mainProject).find(({ id }) => id === 12)).toMatchObject({ taskStatus: 'doing', agentStatus: 'pending' });
 });
 
-test('keyboard selection keeps an open archive confirmation and the selected card', async ({ page }, testInfo) => {
-  await card(page, 12).click();
-  const panel = page.getByRole('complementary', { name: 'Card details' });
-  await panel.getByRole('button', { name: 'Archive card' }).click();
+test('keyboard selection keeps an open archive confirmation and the selected task', async ({ page }, testInfo) => {
+  await task(page, 12).click();
+  const panel = page.getByRole('complementary', { name: 'Task details' });
+  await panel.getByRole('button', { name: 'Archive task' }).click();
   await expect(panel.getByText('Archive #12 "Restore a board from JSON"? You can restore it from the archive.')).toBeVisible();
 
   const trigger = page.getByRole('button', { name: 'Settings' });
@@ -131,8 +131,8 @@ test('keyboard selection keeps an open archive confirmation and the selected car
   const japaneseTrigger = page.getByRole('button', { name: '設定' });
   await expect(japaneseTrigger).toBeFocused();
   await expect(dialog).toHaveCount(0);
-  await expect(card(page, 12)).toHaveAttribute('aria-current', 'true');
-  const japanesePanel = page.getByRole('complementary', { name: 'カードの詳細' });
+  await expect(task(page, 12)).toHaveAttribute('aria-current', 'true');
+  const japanesePanel = page.getByRole('complementary', { name: 'タスクの詳細' });
   await expect(
     japanesePanel.getByText('#12「Restore a board from JSON」をアーカイブしますか？ アーカイブ一覧から復元できます。'),
   ).toBeVisible();
@@ -142,7 +142,7 @@ test('keyboard selection keeps an open archive confirmation and the selected car
     .getByRole('group', { name: /をアーカイブしますか/ })
     .getByRole('button', { name: 'キャンセル', exact: true })
     .click();
-  expect(listCards(mainProject).map(({ id }) => id)).toContain(12);
+  expect(listTasks(mainProject).map(({ id }) => id)).toContain(12);
 });
 
 test('the settings dialog stays within the desktop viewports', async ({ page }, testInfo) => {

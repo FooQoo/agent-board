@@ -2,7 +2,7 @@ import { editorValue, pasteMarkdown } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
-import { agboardOk, listCards, mainProject, nextCardId, resetBoard, cardBody, decisionJson } from '../helpers/agboard';
+import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The Rust serve on 7631 is real; only the browser storage and a few request
@@ -86,7 +86,7 @@ let fresh = 0;
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
-  fresh = nextCardId(mainProject);
+  fresh = nextTaskId(mainProject);
   pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 });
@@ -97,11 +97,11 @@ test.afterEach(() => {
 
 const synced = (page: Page) => page.getByRole('contentinfo').getByRole('status');
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
-const details = (page: Page, name = 'Card details') => page.getByRole('complementary', { name });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const details = (page: Page, name = 'Task details') => page.getByRole('complementary', { name });
 const html = (page: Page) => page.locator('html');
 // An open dialog makes the page behind it inert, so the header button is found by CSS then.
-const addButtonBehindDialog = (page: Page) => page.locator('header button', { hasText: /^(Add card|カード追加)$/ });
+const addButtonBehindDialog = (page: Page) => page.locator('header button', { hasText: /^(Add task|タスク追加)$/ });
 
 /** Opens the board with the storage this test starts with (a new browser context: empty). */
 async function openFresh(page: Page): Promise<void> {
@@ -143,8 +143,8 @@ async function expectTheme(page: Page, mode: Mode, accent: Accent, withAddButton
 const storedTheme = (page: Page) => page.evaluate((key) => localStorage.getItem(key), THEME_KEY);
 
 /** Moves the card with a real drag to the target lane; the reason dialog opens. */
-async function dragCardTo(page: Page, id: number, laneName: string): Promise<Locator> {
-  const source = await card(page, id).boundingBox();
+async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Locator> {
+  const source = await task(page, id).boundingBox();
   const target = await lane(page, laneName).boundingBox();
   if (!source || !target) throw new Error('Could not measure the drag source and target.');
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
@@ -330,7 +330,7 @@ test.describe('a storage that fails', () => {
       };
     });
     await expectTheme(page, 'Light', 'Blue');
-    await expect(card(page, 12)).toBeVisible();
+    await expect(task(page, 12)).toBeVisible();
   });
 
   test('saving the theme throws: the choice still applies to this page and the next page falls back', async ({
@@ -384,8 +384,8 @@ test.describe('a storage that fails', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expectTheme(page, 'Dark', 'Orange');
-    await card(page, 12).click();
-    await expect(details(page, 'カードの詳細').getByRole('heading', { level: 2 })).toHaveText('Restore a board from JSON');
+    await task(page, 12).click();
+    await expect(details(page, 'タスクの詳細').getByRole('heading', { level: 2 })).toHaveText('Restore a board from JSON');
   });
 });
 
@@ -405,7 +405,7 @@ test('the settings stay available while the board loads and when it cannot load'
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.getByText('Loading board…')).toBeVisible();
   // While loading there is no board, so no board name or Add card; the settings are there.
-  await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
   const dialog = await openSettings(page);
   await dialog.getByRole('radio', { name: 'Dark Teal' }).click();
   await expectTheme(page, 'Dark', 'Teal', false);
@@ -415,7 +415,7 @@ test('the settings stay available while the board loads and when it cannot load'
   failing = true;
   release();
   await expect(page.getByRole('alert')).toContainText('Could not load this board.');
-  await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
   await expect(page.getByRole('contentinfo')).toContainText('Not synced');
   // The theme chosen while loading is still in effect, and can be changed on the error screen.
@@ -428,9 +428,9 @@ test('the settings stay available while the board loads and when it cannot load'
 
   failing = false;
   await page.getByRole('button', { name: 'Retry' }).click();
-  await expect(card(page, 12)).toBeVisible();
+  await expect(task(page, 12)).toBeVisible();
   await expect(addButtonBehindDialog(page)).toHaveCSS('background-color', ACCENT_RGB.Light.Red);
-  await expect(page.getByRole('button', { name: 'Add card' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add task' })).toBeVisible();
 });
 
 // ------------------------------------------------------------------ Focus
@@ -444,7 +444,7 @@ test('the settings dialog takes the focus, keeps it inside, and gives it back', 
   await expect(dialog).toBeVisible();
   // The focus goes to the chosen language, and the board behind is not reachable.
   await expect(dialog.getByRole('radio', { name: 'English' })).toBeFocused();
-  await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
   await expect(page.getByRole('region')).toHaveCount(0);
 
   // Tab and Shift+Tab wrap around inside the dialog.
@@ -475,14 +475,14 @@ test('the settings dialog takes the focus, keeps it inside, and gives it back', 
   await page.keyboard.press('Escape');
 });
 
-test('Add card takes the focus to the title, keeps it inside, and gives it back; the input survives a click outside', async ({
+test('Add task takes the focus to the title, keeps it inside, and gives it back; the input survives a click outside', async ({
   page,
 }) => {
   await openFresh(page);
-  const add = page.getByRole('button', { name: 'Add card' });
+  const add = page.getByRole('button', { name: 'Add task' });
   await add.focus();
   await page.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Add card' });
+  const dialog = page.getByRole('dialog', { name: 'Add task' });
   await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeFocused();
   for (let step = 0; step < 12; step += 1) {
     await page.keyboard.press('Tab');
@@ -506,7 +506,7 @@ test('Add card takes the focus to the title, keeps it inside, and gives it back;
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(add).toBeFocused();
-  expect(listCards(mainProject).map(({ title }) => title)).not.toContain('Typed and kept');
+  expect(listTasks(mainProject).map(({ title }) => title)).not.toContain('Typed and kept');
 
   // Cancel and the close button also give the focus back.
   await add.click();
@@ -519,8 +519,8 @@ test('Add card takes the focus to the title, keeps it inside, and gives it back;
 
 test('the move dialog and the answer dialog take the focus and give it back', async ({ page }) => {
   await openFresh(page);
-  const move = await dragCardTo(page, 16, 'Doing');
-  await expect(move).toContainText('Move card');
+  const move = await dragTaskTo(page, 16, 'Doing');
+  await expect(move).toContainText('Move task');
   await expect(move.getByRole('textbox', { name: 'Reason (optional)' })).toBeFocused();
   for (let step = 0; step < 8; step += 1) {
     await page.keyboard.press('Tab');
@@ -529,35 +529,35 @@ test('the move dialog and the answer dialog take the focus and give it back', as
   await page.keyboard.press('Escape');
   await expect(move).toHaveCount(0);
   // Nothing moved, and the focus is on the card that was dragged.
-  await expect(card(page, 16)).toBeFocused();
-  expect(listCards(mainProject).find(({ id }) => id === 16)?.cardStatus).toBe('todo');
+  await expect(task(page, 16)).toBeFocused();
+  expect(listTasks(mainProject).find(({ id }) => id === 16)?.taskStatus).toBe('todo');
 
-  await card(page, 12).click();
+  await task(page, 12).click();
   // The answer is typed in place, not in a dialog: the form is open with the request, and its text area takes focus.
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  const answerBox = page.locator('.card__answer[data-card-id="12"]').getByRole('textbox', { name: 'Your answer' });
+  const answerBox = page.locator('.card__answer[data-task-id="12"]').getByRole('textbox', { name: 'Your answer' });
   await answerBox.click();
   await expect(answerBox).toBeFocused();
-  await page.locator('.card__answer[data-card-id="12"]').getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.locator('.card__answer[data-task-id="12"]').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(answerBox).toHaveValue('');
-  expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
+  expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
 });
 
-test('while a card is being saved the dialog cannot be submitted again or closed', async ({ page }) => {
+test('while a task is being saved the dialog cannot be submitted again or closed', async ({ page }) => {
   await openFresh(page);
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
   let posts = 0;
-  await page.route('**/api/projects/*/cards', async (route) => {
+  await page.route('**/api/projects/*/tasks', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     posts += 1;
     await gate;
     return route.fallback();
   });
-  await page.getByRole('button', { name: 'Add card' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add card' });
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add task' });
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Saved once');
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -575,7 +575,7 @@ test('while a card is being saved the dialog cannot be submitted again or closed
   await expect(dialog).toHaveCount(0);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Saved once `) })).toBeVisible();
   expect(posts).toBe(1);
-  expect(listCards(mainProject).filter(({ title }) => title === 'Saved once')).toHaveLength(1);
+  expect(listTasks(mainProject).filter(({ title }) => title === 'Saved once')).toHaveLength(1);
 });
 
 // ------------------------------------------------------------------ The language never changes the data
@@ -583,24 +583,24 @@ test('while a card is being saved the dialog cannot be submitted again or closed
 test('changing the language does not translate or alter what was entered', async ({ page }) => {
   await openFresh(page);
   // Enter a card in English, move it with a reason, and answer a decision request.
-  await page.getByRole('button', { name: 'Add card' }).click();
-  const create = page.getByRole('dialog', { name: 'Add card' });
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const create = page.getByRole('dialog', { name: 'Add task' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Draft the release note');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), cardBody('Line one\n\nLine two'));
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Line one\n\nLine two'));
   await create.getByRole('radio', { name: 'User' }).click();
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Draft the release note `) })).toBeVisible();
-  const move = await dragCardTo(page, fresh, 'Doing');
+  const move = await dragTaskTo(page, fresh, 'Doing');
   await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the draft today.');
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
-  await card(page, 12).click();
-  const answer = page.locator(`.card__answer[data-card-id="12"]`);
+  await task(page, 12).click();
+  const answer = page.locator(`.card__answer[data-task-id="12"]`);
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Keep the database name.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(card(page, 12)).toContainText('Idle');
+  await expect(task(page, 12)).toContainText('Idle');
 
-  const before = listCards(mainProject);
+  const before = listTasks(mainProject);
   const dialog = await openSettings(page);
   await dialog.getByRole('radio', { name: '日本語' }).click();
   await page.keyboard.press('Escape');
@@ -611,25 +611,25 @@ test('changing the language does not translate or alter what was entered', async
   const entered = lane(page, '進行中').getByRole('button', { name: new RegExp(`^#${fresh}(?!\\d)`) });
   await expect(entered).toContainText('Draft the release note');
   await entered.click();
-  const panel = details(page, 'カードの詳細');
+  const panel = details(page, 'タスクの詳細');
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Draft the release note');
   await expect(panel.getByText('Line one')).toBeVisible();
   expect(await panel.getByText('Line one').evaluate((element) => (element as HTMLElement).innerText)).toBe('Line one');
   await expect(panel.getByText('Line two')).toBeVisible();
   await panel.getByRole('tab', { name: '履歴 2' }).click();
   await expect(panel).toContainText('Starting the draft today.');
-  await card(page, 12).click();
+  await task(page, 12).click();
   await expect(panel).toContainText('Keep the database name.');
-  expect(listCards(mainProject)).toEqual(before);
+  expect(listTasks(mainProject)).toEqual(before);
 
   // A card entered in Japanese mode is stored as typed too.
-  await page.getByRole('button', { name: 'カード追加' }).click();
-  const japaneseCreate = page.getByRole('dialog', { name: 'カードを追加' });
+  await page.getByRole('button', { name: 'タスク追加' }).click();
+  const japaneseCreate = page.getByRole('dialog', { name: 'タスクを追加' });
   await expect(japaneseCreate).toBeVisible();
   await japaneseCreate.getByRole('textbox', { name: 'タイトル', exact: true }).fill('Release note review');
   await japaneseCreate.getByRole('button', { name: '追加', exact: true }).click();
   await expect(lane(page, '未着手').getByRole('button', { name: new RegExp(`^#${fresh + 1} `) })).toContainText('Release note review');
-  expect(listCards(mainProject).find(({ id }) => id === fresh + 1)?.title).toBe('Release note review');
+  expect(listTasks(mainProject).find(({ id }) => id === fresh + 1)?.title).toBe('Release note review');
 });
 
 // ------------------------------------------------------------------ The board operations with a chosen theme
@@ -646,22 +646,22 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   });
 
   // Create.
-  await page.getByRole('button', { name: 'Add card' }).click();
-  const create = page.getByRole('dialog', { name: 'Add card' });
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const create = page.getByRole('dialog', { name: 'Add task' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Review the themes');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), cardBody('Check all 24 themes.'));
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Check all 24 themes.'));
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create).toHaveCount(0);
   const created = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Review the themes Updated \\d\\d\\/\\d\\d \\d\\d:\\d\\d$`) });
   await expect(created).toBeVisible();
   await expect(lane(page, 'Todo').getByText('4', { exact: true })).toBeVisible();
-  await expect(page.getByRole('contentinfo')).toContainText('9 cards');
-  expect(listCards(mainProject).find(({ id }) => id === fresh)).toMatchObject({ title: 'Review the themes', cardStatus: 'todo', assignee: 'ai' });
+  await expect(page.getByRole('contentinfo')).toContainText('9 tasks');
+  expect(listTasks(mainProject).find(({ id }) => id === fresh)).toMatchObject({ title: 'Review the themes', taskStatus: 'todo', assignee: 'ai' });
 
   // Move with a reason by dragging; nothing changes until it is confirmed.
-  const move = await dragCardTo(page, fresh, 'Doing');
+  const move = await dragTaskTo(page, fresh, 'Doing');
   await expect(move.getByRole('group', { name: 'Status change' })).toHaveText(/Todo\s*Doing/);
-  expect(listCards(mainProject).find(({ id }) => id === fresh)?.cardStatus).toBe('todo');
+  expect(listTasks(mainProject).find(({ id }) => id === fresh)?.taskStatus).toBe('todo');
   await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the review.');
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move).toHaveCount(0);
@@ -669,35 +669,35 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh}(?!\\d)`) }).click();
   await details(page).getByRole('tab', { name: /^History/ }).click();
   await expect(details(page).getByRole('listitem').first()).toContainText('Starting the review.');
-  expect(listCards(mainProject).find(({ id }) => id === fresh)).toMatchObject({ cardStatus: 'doing' });
+  expect(listTasks(mainProject).find(({ id }) => id === fresh)).toMatchObject({ taskStatus: 'doing' });
 
   // Answer a decision request; the run state goes back to Idle and the answer is in the history.
-  await card(page, 12).click();
+  await task(page, 12).click();
   const panel = details(page);
   await expect(panel).toContainText('Pending');
-  const answer = page.locator('.card__answer[data-card-id="12"]').getByRole('region', { name: 'The agent is waiting for your answer' });
+  const answer = page.locator('.card__answer[data-task-id="12"]').getByRole('region', { name: 'The agent is waiting for your answer' });
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Replace the board after a backup.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(answer).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('listitem').first()).toContainText('Replace the board after a backup.');
-  await expect(page.locator('.card__answer[data-card-id="12"]')).toHaveCount(0);
-  expect(listCards(mainProject).find(({ id }) => id === 12)).toMatchObject({ agentStatus: 'idle', pendingReason: null });
+  await expect(page.locator('.card__answer[data-task-id="12"]')).toHaveCount(0);
+  expect(listTasks(mainProject).find(({ id }) => id === 12)).toMatchObject({ agentStatus: 'idle', pendingReason: null });
 
   // Archive from the toolbar beside the tabs; Cancel keeps the card, Archive removes it from the board.
   await lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh}(?!\\d)`) }).click();
-  await panel.getByRole('button', { name: 'Archive card' }).click();
+  await panel.getByRole('button', { name: 'Archive task' }).click();
   const confirm = panel.getByRole('group', { name: `Archive #${fresh} "Review the themes"? You can restore it from the archive.` });
   await expect(confirm).toBeVisible();
   await confirm.getByRole('button', { name: 'Cancel' }).click();
   await expect(confirm).toHaveCount(0);
-  expect(listCards(mainProject).map(({ id }) => id)).toContain(fresh);
-  await panel.getByRole('button', { name: 'Archive card' }).click();
+  expect(listTasks(mainProject).map(({ id }) => id)).toContain(fresh);
+  await panel.getByRole('button', { name: 'Archive task' }).click();
   await panel.getByRole('button', { name: 'Archive', exact: true }).click();
-  await expect(panel).toContainText('Select a card to see its details.');
-  await expect(page.getByRole('contentinfo')).toContainText('8 cards');
-  expect(listCards(mainProject).map(({ id }) => id)).not.toContain(fresh);
+  await expect(panel).toContainText('Select a task to see its details.');
+  await expect(page.getByRole('contentinfo')).toContainText('8 tasks');
+  expect(listTasks(mainProject).map(({ id }) => id)).not.toContain(fresh);
 
   // Changes made outside the page arrive without a reload (server-sent events).
   agboardOk(mainProject, ['add', 'Added by the CLI', '--desc', 'Live']);
@@ -723,7 +723,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
 test('a request that fails keeps what was typed, shows the reason, and can be sent again', async ({ page }) => {
   await openFresh(page);
   let mode: 'reject' | 'abort' | 'pass' = 'reject';
-  await page.route('**/api/projects/*/cards', async (route) => {
+  await page.route('**/api/projects/*/tasks', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     if (mode === 'abort') return route.abort('failed');
     if (mode === 'reject') {
@@ -736,10 +736,10 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
     return route.fallback();
   });
 
-  await page.getByRole('button', { name: 'Add card' }).click();
-  const create = page.getByRole('dialog', { name: 'Add card' });
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const create = page.getByRole('dialog', { name: 'Add task' });
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed title');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), cardBody('Typed description\n\nsecond line'));
+  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Typed description\n\nsecond line'));
   await create.getByRole('radio', { name: 'User' }).click();
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
@@ -753,7 +753,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
     await expect(create.getByRole('button', { name: 'Cancel' })).toBeEnabled();
   };
   await keepsInput();
-  expect(listCards(mainProject).map(({ title }) => title)).not.toContain('Typed title');
+  expect(listTasks(mainProject).map(({ title }) => title)).not.toContain('Typed title');
 
   mode = 'abort';
   await create.getByRole('button', { name: 'Add', exact: true }).click();
@@ -765,11 +765,11 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   await create.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(create).toHaveCount(0);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Typed title `) })).toBeVisible();
-  expect(listCards(mainProject).filter(({ title }) => title === 'Typed title')).toHaveLength(1);
+  expect(listTasks(mainProject).filter(({ title }) => title === 'Typed title')).toHaveLength(1);
 
   // Moving: a refused move keeps the reason and the card where it was.
   let moveFails = true;
-  await page.route('**/api/projects/*/cards/16/move', async (route) => {
+  await page.route('**/api/projects/*/tasks/16/move', async (route) => {
     if (!moveFails) return route.fallback();
     return route.fulfill({
       status: 500,
@@ -777,12 +777,12 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
       body: JSON.stringify({ error: { reason: 'The move was refused.' } }),
     });
   });
-  const move = await dragCardTo(page, 16, 'Doing');
+  const move = await dragTaskTo(page, 16, 'Doing');
   await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Kept reason.');
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move.getByRole('alert')).toHaveText('The move was refused.');
   await expect(move.getByRole('textbox', { name: 'Reason (optional)' })).toHaveValue('Kept reason.');
-  expect(listCards(mainProject).find(({ id }) => id === 16)?.cardStatus).toBe('todo');
+  expect(listTasks(mainProject).find(({ id }) => id === 16)?.taskStatus).toBe('todo');
   moveFails = false;
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move).toHaveCount(0);
@@ -790,7 +790,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
 
   // Answering: a refused answer keeps the text, and the card stays pending.
   let answerFails = true;
-  await page.route('**/api/projects/*/cards/12/answer', async (route) => {
+  await page.route('**/api/projects/*/tasks/12/answer', async (route) => {
     if (!answerFails) return route.fallback();
     return route.fulfill({
       status: 409,
@@ -798,42 +798,42 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
       body: JSON.stringify({ error: { reason: 'The request was already answered.' } }),
     });
   });
-  await card(page, 12).click();
-  const answer = page.locator('.card__answer[data-card-id="12"]').getByRole('region', { name: 'The agent is waiting for your answer' });
+  await task(page, 12).click();
+  const answer = page.locator('.card__answer[data-task-id="12"]').getByRole('region', { name: 'The agent is waiting for your answer' });
   await answer.getByRole('textbox', { name: 'Your answer' }).fill('Kept answer.');
   await answer.getByRole('button', { name: 'Send', exact: true }).click();
   // The in-place answer shows the board's fixed save-failure text rather than the server's reason.
   await expect(answer.getByRole('alert')).toHaveText('Could not save. Try again.');
   await expect(answer.getByRole('textbox', { name: 'Your answer' })).toHaveValue('Kept answer.');
-  expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
+  expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
   answerFails = false;
   await answer.getByRole('button', { name: /^(Send|Retry)$/ }).click();
   await expect(answer).toHaveCount(0);
-  expect(listCards(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('idle');
+  expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('idle');
 });
 
-test('an archive that fails keeps the card, the selection, and the confirmation', async ({ page }) => {
-  agboardOk(mainProject, ['add', 'Disposable card']);
+test('an archive that fails keeps the task, the selection, and the confirmation', async ({ page }) => {
+  agboardOk(mainProject, ['add', 'Disposable task']);
   await openFresh(page);
   let fails = true;
-  await page.route(`**/api/projects/*/cards/${fresh}/archive`, async (route) => {
+  await page.route(`**/api/projects/*/tasks/${fresh}/archive`, async (route) => {
     if (route.request().method() !== 'POST' || !fails) return route.fallback();
     return route.fulfill({ status: 500, body: 'no' });
   });
-  await card(page, fresh).click();
+  await task(page, fresh).click();
   const panel = details(page);
-  await panel.getByRole('button', { name: 'Archive card' }).click();
+  await panel.getByRole('button', { name: 'Archive task' }).click();
   await panel.getByRole('button', { name: 'Archive', exact: true }).click();
-  await expect(panel.getByRole('alert')).toHaveText('Could not archive the card. Try again.');
-  await expect(panel.getByRole('group', { name: `Archive #${fresh} "Disposable card"? You can restore it from the archive.` })).toBeVisible();
-  await expect(card(page, fresh)).toHaveAttribute('aria-current', 'true');
-  expect(listCards(mainProject).map(({ id }) => id)).toContain(fresh);
+  await expect(panel.getByRole('alert')).toHaveText('Could not archive the task. Try again.');
+  await expect(panel.getByRole('group', { name: `Archive #${fresh} "Disposable task"? You can restore it from the archive.` })).toBeVisible();
+  await expect(task(page, fresh)).toHaveAttribute('aria-current', 'true');
+  expect(listTasks(mainProject).map(({ id }) => id)).toContain(fresh);
 
   fails = false;
   await panel.getByRole('button', { name: 'Archive', exact: true }).click();
-  await expect(card(page, fresh)).toHaveCount(0);
-  await expect(panel).toContainText('Select a card to see its details.');
-  expect(listCards(mainProject).map(({ id }) => id)).not.toContain(fresh);
+  await expect(task(page, fresh)).toHaveCount(0);
+  await expect(panel).toContainText('Select a task to see its details.');
+  expect(listTasks(mainProject).map(({ id }) => id)).not.toContain(fresh);
 });
 
 // ------------------------------------------------------------------ Screenshots in the order of use
@@ -867,10 +867,10 @@ async function shot(page: Page, testInfo: TestInfo, name: string): Promise<void>
 test('screenshots of the settings, the light and dark boards, yellow and red, and the states', async ({
   page,
 }, testInfo) => {
-  agboardOk(mainProject, ['add', 'Disposable card']);
+  agboardOk(mainProject, ['add', 'Disposable task']);
   await openFresh(page);
   await shot(page, testInfo, '01-board-light-blue.png');
-  await card(page, 12).click();
+  await task(page, 12).click();
   await shot(page, testInfo, '02-pending-selected-light-blue.png');
   const dialog = await openSettings(page);
   await shot(page, testInfo, '03-settings-light-blue.png');
@@ -894,10 +894,10 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
   }
 
   // The dialogs, in Dark Red.
-  await page.getByRole('button', { name: 'Add card' }).click();
+  await page.getByRole('button', { name: 'Add task' }).click();
   await shot(page, testInfo, '07-create-dark-red.png');
   await page.keyboard.press('Escape');
-  const move = await dragCardTo(page, 16, 'Doing');
+  const move = await dragTaskTo(page, 16, 'Doing');
   await shot(page, testInfo, '08-move-dark-red.png');
   void move;
   await page.keyboard.press('Escape');
@@ -905,16 +905,16 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
   await page.keyboard.press('Escape');
 
   // The archive confirmation and its failure.
-  await card(page, fresh).click();
-  await details(page).getByRole('button', { name: 'Archive card' }).click();
+  await task(page, fresh).click();
+  await details(page).getByRole('button', { name: 'Archive task' }).click();
   await shot(page, testInfo, '10-archive-confirm-dark-red.png');
-  await page.route(`**/api/projects/*/cards/${fresh}/archive`, (route) =>
+  await page.route(`**/api/projects/*/tasks/${fresh}/archive`, (route) =>
     route.request().method() === 'POST' ? route.fulfill({ status: 500, body: 'no' }) : route.fallback(),
   );
   await details(page).getByRole('button', { name: 'Archive', exact: true }).click();
   await expect(details(page).getByRole('alert')).toBeVisible();
   await shot(page, testInfo, '11-archive-failed-dark-red.png');
-  await page.unroute(`**/api/projects/*/cards/${fresh}/archive`);
+  await page.unroute(`**/api/projects/*/tasks/${fresh}/archive`);
 
   // Loading and error states in the same theme.
   let release!: () => void;

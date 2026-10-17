@@ -12,7 +12,7 @@ use crate::server::{self, ServeConfig};
 /// The startup line goes straight to standard output from `on_ready`, so it
 /// appears only once the port is bound; `execute` prints nothing for `serve`
 /// afterwards. The command works on the whole data area, never on one project
-/// or card, and changes nothing that needs a notification.
+/// or task, and changes nothing that needs a notification.
 pub fn run(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
     let remote = args.remote_port.map(|port| server::RemoteServeConfig {
         port,

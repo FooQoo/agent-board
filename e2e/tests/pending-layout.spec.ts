@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { agboardOk, mainProject, nextCardId, projectId, resetBoard } from '../helpers/agboard';
+import { agboardOk, mainProject, nextTaskId, projectId, resetBoard } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 test.afterEach(async ({ page }) => {
@@ -18,7 +18,7 @@ for (const { locale, theme, height } of [
     for (let i = 0; i < 12; i++) {
       agboardOk(mainProject, ['add', `Other work ${i}`, '--assignee', 'ai', '--actor', 'ai']);
     }
-    const id = nextCardId(mainProject);
+    const id = nextTaskId(mainProject);
     const question = '共有ホームとsetupの全体計画と詳細計画を承認しますか？ ~/.agent-boardを既定の保存先にし、agboard setupでCodex・Claude Codeの共有フォルダ設定へ追加します。既存設定を保持し、旧データの移行は行いません。';
     agboardOk(mainProject, ['add', '共有ホームとsetupの計画をレビューする', '--assignee', 'ai', '--actor', 'ai']);
     agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
@@ -34,7 +34,7 @@ for (const { locale, theme, height } of [
     await waitForSync(page);
     await expect(page.locator('html')).toHaveAttribute('data-mode', theme);
     await expect(page.locator('html')).toHaveAttribute('lang', locale);
-    const answer = page.locator(`.card__answer[data-card-id="${id}"]`);
+    const answer = page.locator(`.card__answer[data-task-id="${id}"]`);
     const item = answer.locator('..');
     await expect(answer).toContainText(question);
     await expect(item.getByText(question, { exact: true })).toHaveCount(1);
@@ -69,7 +69,7 @@ for (const { locale, theme, height } of [
     await answer.getByText('この計画を承認する', { exact: true }).click();
     await answer.getByRole('button', { name: locale === 'ja' ? '送信' : 'Send', exact: true }).click();
     await expect(answer).toHaveCount(0);
-    const result = JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).card;
+    const result = JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
     expect(result.agentStatus).toBe('idle');
     expect(result.history.at(-1).reason).toContain('この計画を承認する');
   });

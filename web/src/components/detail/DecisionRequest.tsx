@@ -1,7 +1,7 @@
 import { answerRequest } from '../../api';
 import { DecisionRequestForm } from './DecisionRequestForm';
 import type { OperationControls } from '../../lib/projectSession';
-import type { Card, ProjectId } from '../../types';
+import type { Task, ProjectId } from '../../types';
 
 /**
  * The decision request of a pending card: the question, the single choice, the free text and Send, in
@@ -10,13 +10,13 @@ import type { Card, ProjectId } from '../../types';
  */
 export function DecisionRequest({
   projectId,
-  card,
+  task,
   operations,
   onChanged,
   onAnswered,
 }: {
   projectId: ProjectId;
-  card: Card;
+  task: Task;
   operations: OperationControls;
   /** An answer was saved (or found stale): the board should be fetched again. */
   onChanged?: () => void;
@@ -31,7 +31,7 @@ export function DecisionRequest({
   return (
     <DecisionRequestForm
       projectId={projectId}
-      card={card}
+      task={task}
       operations={operations}
       writeAnswer={writeAnswer}
       onChanged={onChanged}

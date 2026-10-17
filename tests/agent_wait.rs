@@ -88,7 +88,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     );
     assert!(pending.status.success());
     let pending: Value = serde_json::from_slice(&pending.stdout).unwrap();
-    let request_id = pending["card"]["pendingRequestId"].as_str().unwrap();
+    let request_id = pending["task"]["pendingRequestId"].as_str().unwrap();
     let baseline = agboard(home.path(), &["snapshot", "--json"]);
     assert!(baseline.status.success());
     let baseline: Value = serde_json::from_slice(&baseline.stdout).unwrap();
@@ -139,11 +139,11 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     );
     let snapshot: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_ne!(snapshot["version"], baseline["version"]);
-    assert_eq!(snapshot["cards"][0]["title"], "Answer the user");
-    assert_eq!(snapshot["cards"][0]["agentStatus"], "idle");
-    assert_eq!(snapshot["cards"][0]["history"].as_array().unwrap().len(), 4);
+    assert_eq!(snapshot["tasks"][0]["title"], "Answer the user");
+    assert_eq!(snapshot["tasks"][0]["agentStatus"], "idle");
+    assert_eq!(snapshot["tasks"][0]["history"].as_array().unwrap().len(), 4);
     assert!(
-        snapshot["cards"][0]["history"][3]["reason"]
+        snapshot["tasks"][0]["history"][3]["reason"]
             .as_str()
             .unwrap()
             .contains("Answer: Keep the current behavior and explain the tradeoff.")
@@ -163,8 +163,8 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     assert!(resume.status.success());
     let latest = agboard(home.path(), &["snapshot", "--json"]);
     let latest: Value = serde_json::from_slice(&latest.stdout).unwrap();
-    assert_eq!(latest["cards"][0]["agentStatus"], "running");
-    assert_eq!(latest["cards"][0]["history"].as_array().unwrap().len(), 5);
+    assert_eq!(latest["tasks"][0]["agentStatus"], "running");
+    assert_eq!(latest["tasks"][0]["history"].as_array().unwrap().len(), 5);
     server.kill().unwrap();
     let _ = server.wait();
 }

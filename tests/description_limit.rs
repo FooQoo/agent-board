@@ -1,4 +1,4 @@
-//! The 50,000-character limit counts the Markdown body of a card. The frontmatter
+//! The 50,000-character limit counts the Markdown body of a task. The frontmatter
 //! the product writes around the body is not counted, so a body of exactly the
 //! limit can be saved with its conditions.
 
@@ -17,7 +17,7 @@ fn add_with_body(home: &std::path::Path, body: &str) -> (i32, String) {
             "--project",
             "Demo",
             "add",
-            "Card",
+            "Task",
             "--assignee",
             "ai",
             "--actor",

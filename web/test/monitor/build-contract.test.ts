@@ -69,7 +69,7 @@ describe('isolated monitor build', () => {
     const graph = read('monitor/dependency-graph.json');
     expect(graph).not.toMatch(/src\/App|components\/editor|src\/api\//);
     expect(graph).toContain('src/monitor-main.tsx');
-    expect(graph).not.toMatch(/ReadOnlyDetail|ReadOnlyEpic|CardDetailView|src\/components\/editor/);
+    expect(graph).not.toMatch(/ReadOnlyDetail|ReadOnlyEpic|TaskDetailView|src\/components\/editor/);
     expect(graph).toContain('MonitorDocument');
     expect(graph).not.toMatch(
       /BodyDocumentView|AcceptanceView|MarkdownSections|styles\/detail\.css/,

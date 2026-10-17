@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 
 use crate::domain::{ProjectId, ProjectMeta};
 use crate::error::AgboardError;
-use model::CardView;
+use model::TaskView;
 pub use ops::Answer;
 use reader::ProjectSnapshot;
 
@@ -58,13 +58,13 @@ impl FileStore {
         reader::list_projects(&self.shared)
     }
 
-    /// One project with its cards and the defects tolerated while reading.
+    /// One project with its tasks and the defects tolerated while reading.
     pub fn snapshot(&self, id: &ProjectId) -> Result<ProjectSnapshot, AgboardError> {
         reader::read_snapshot(&self.shared, id)
     }
 
-    /// One card, read strictly.
-    pub fn card(&self, id: &ProjectId, card_id: i64) -> Result<CardView, AgboardError> {
-        reader::read_card(&self.shared, id, card_id)
+    /// One task, read strictly.
+    pub fn task(&self, id: &ProjectId, task_id: i64) -> Result<TaskView, AgboardError> {
+        reader::read_task(&self.shared, id, task_id)
     }
 }

@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { MonitorView } from '../../src/monitor/View';
-import type { MonitorCard, MonitorFreshness, MonitorViewProps } from '../../src/monitor/contracts';
-import { PROJECT_A, makeCard } from '../fixtures';
+import type { MonitorTask, MonitorFreshness, MonitorViewProps } from '../../src/monitor/contracts';
+import { PROJECT_A, makeTask } from '../fixtures';
 import { useMonitorInteractions } from '../../src/monitor/hooks/useMonitorInteractions';
 
 beforeEach(() => selectLocale('en'));
@@ -16,8 +16,8 @@ const freshness: MonitorFreshness = {
   snapshotProblems: [],
 };
 
-function item(card: MonitorCard['card']): MonitorCard {
-  return { projectId: PROJECT_A.id, projectName: PROJECT_A.name, card };
+function item(task: MonitorTask['task']): MonitorTask {
+  return { projectId: PROJECT_A.id, projectName: PROJECT_A.name, task };
 }
 
 function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
@@ -27,10 +27,10 @@ function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
     summary: { todo: 1, doing: 2, done: 1 },
     todo: [
       item(
-        makeCard({
+        makeTask({
           id: 1,
           title: 'Todo decision',
-          cardStatus: 'todo',
+          taskStatus: 'todo',
           agentStatus: 'pending',
           pendingReason: 'Should the draft include both approaches?',
           pendingRequestId: 'request-1',
@@ -44,18 +44,18 @@ function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
     ],
     doing: [
       item(
-        makeCard({
+        makeTask({
           id: 2,
           title: 'Doing running',
-          cardStatus: 'doing',
+          taskStatus: 'doing',
           agentStatus: 'running',
         }),
       ),
       item(
-        makeCard({
+        makeTask({
           id: 4,
           title: 'Doing decision',
-          cardStatus: 'doing',
+          taskStatus: 'doing',
           agentStatus: 'pending',
           pendingReason: 'Should the implementation use the shared form?',
           pendingRequestId: 'request-4',
@@ -63,7 +63,7 @@ function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
         }),
       ),
     ],
-    done: [item(makeCard({ id: 3, title: 'Done', cardStatus: 'done' }))],
+    done: [item(makeTask({ id: 3, title: 'Done', taskStatus: 'done' }))],
     freshness,
     onScopeChange: () => undefined,
     onRefresh: () => undefined,
@@ -71,8 +71,8 @@ function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
   };
 }
 
-describe('mobile monitor lanes and card actions', () => {
-  it('counts cards once by cardStatus and keeps run state inline', () => {
+describe('mobile monitor lanes and task actions', () => {
+  it('counts tasks once by taskStatus and keeps run state inline', () => {
     render(<MonitorView {...props()} />);
 
     expect(screen.getByRole('button', { name: '1Todo' })).toBeTruthy();
@@ -86,7 +86,7 @@ describe('mobile monitor lanes and card actions', () => {
     expect(screen.getByText('Running')).toBeTruthy();
   });
 
-  it('renders the shared answer form and opens the body drawer without disturbing the card', async () => {
+  it('renders the shared answer form and opens the body drawer without disturbing the task', async () => {
     render(<MonitorView {...props()} />);
 
     const title = screen.getByRole('button', { name: 'Todo decision' }) as HTMLButtonElement;
@@ -116,16 +116,16 @@ describe('mobile monitor lanes and card actions', () => {
   it('reports title and epic-label actions as distinct drawer tabs', async () => {
     const onOpenDetail = vi.fn();
     const target = item(
-      makeCard({
+      makeTask({
         id: 4,
-        title: 'Linked card',
+        title: 'Linked task',
         epic: { id: 'MOB-1', name: 'Mobile interaction', color: '#4466aa' },
       }),
     );
     const user = userEvent.setup();
     render(<MonitorView {...props({ todo: [target], doing: [], done: [], onOpenDetail })} />);
 
-    await user.click(screen.getByRole('button', { name: 'Linked card' }));
+    await user.click(screen.getByRole('button', { name: 'Linked task' }));
     expect(onOpenDetail).toHaveBeenLastCalledWith(target, 'description');
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Close details' }),
@@ -142,11 +142,11 @@ describe('mobile monitor lanes and card actions', () => {
 });
 
 describe('monitor answer interactions', () => {
-  it('answers Todo and Doing cards through the shared form and prevents resubmission from the old snapshot', async () => {
-    const writeAnswer = vi.fn(async (_projectId, cardId: number) => ({
-      card: makeCard({
-        id: cardId,
-        cardStatus: cardId === 1 ? 'todo' : 'doing',
+  it('answers Todo and Doing tasks through the shared form and prevents resubmission from the old snapshot', async () => {
+    const writeAnswer = vi.fn(async (_projectId, taskId: number) => ({
+      task: makeTask({
+        id: taskId,
+        taskStatus: taskId === 1 ? 'todo' : 'doing',
         agentStatus: 'idle',
         pendingRequestId: null,
       }),
@@ -198,7 +198,7 @@ describe('monitor answer retry and retained drafts', () => {
       .fn()
       .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValueOnce({
-        card: makeCard({ id: 1, cardStatus: 'todo', agentStatus: 'idle', pendingRequestId: null }),
+        task: makeTask({ id: 1, taskStatus: 'todo', agentStatus: 'idle', pendingRequestId: null }),
         changed: true,
       });
     function Connected() {

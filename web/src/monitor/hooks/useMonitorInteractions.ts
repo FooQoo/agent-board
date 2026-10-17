@@ -8,7 +8,7 @@ import type {
 } from '../../lib/answer';
 import type { OperationControls } from '../../lib/projectSession';
 import type { ProjectId } from '../../types';
-import type { MonitorCard } from '../contracts';
+import type { MonitorTask } from '../contracts';
 
 interface Entry {
   state: AnswerFormState;
@@ -33,7 +33,7 @@ export interface UseMonitorInteractionsOptions {
 export interface OrphanAnswerDraft {
   key: AnswerFormKey;
   projectName: string;
-  cardId: number;
+  taskId: number;
   text: string;
   choiceId: string | null;
 }
@@ -41,14 +41,14 @@ export interface OrphanAnswerDraft {
 export interface MonitorAnswerController {
   writeAnswer: AnswerWriter;
   stateStore: AnswerFormStateStore;
-  operationsFor(projectId: ProjectId, cardId: number, requestId: string | null): OperationControls;
-  onAnswered(item: MonitorCard, requestId: string, result: AnswerResult): void;
-  markRequestStale(projectId: ProjectId, cardId: number, requestId: string): void;
-  orphanDrafts(cards: readonly MonitorCard[]): OrphanAnswerDraft[];
+  operationsFor(projectId: ProjectId, taskId: number, requestId: string | null): OperationControls;
+  onAnswered(item: MonitorTask, requestId: string, result: AnswerResult): void;
+  markRequestStale(projectId: ProjectId, taskId: number, requestId: string): void;
+  orphanDrafts(tasks: readonly MonitorTask[]): OrphanAnswerDraft[];
   clearOrphanDraft(key: AnswerFormKey): void;
-  reconcileCards(cards: readonly MonitorCard[]): void;
-  cardsWithSavedAnswers(cards: readonly MonitorCard[], snapshotIsFresh: boolean): MonitorCard[];
-  wasAnswered(projectId: ProjectId, cardId: number, requestId: string | null): boolean;
+  reconcileTasks(tasks: readonly MonitorTask[]): void;
+  tasksWithSavedAnswers(tasks: readonly MonitorTask[], snapshotIsFresh: boolean): MonitorTask[];
+  wasAnswered(projectId: ProjectId, taskId: number, requestId: string | null): boolean;
   locked: boolean;
 }
 
@@ -56,12 +56,12 @@ const defaultWriter: AnswerWriter = async () => {
   throw new Error('Monitor answer writer is not connected.');
 };
 
-function formKey(projectId: ProjectId, cardId: number, requestId: string | null): AnswerFormKey {
-  return `${projectId}:${cardId}:${requestId ?? ''}` as AnswerFormKey;
+function formKey(projectId: ProjectId, taskId: number, requestId: string | null): AnswerFormKey {
+  return `${projectId}:${taskId}:${requestId ?? ''}` as AnswerFormKey;
 }
 
-function cardPrefix(projectId: ProjectId, cardId: number): string {
-  return `${projectId}:${cardId}:`;
+function taskPrefix(projectId: ProjectId, taskId: number): string {
+  return `${projectId}:${taskId}:`;
 }
 
 function initialState(requestId: string | null, requestChanged = false): AnswerFormState {
@@ -108,9 +108,9 @@ export function useMonitorInteractions({
       getSnapshot(key) {
         const existing = entries.current.get(key);
         if (existing) return existing.state;
-        const [projectId, cardIdText, ...requestParts] = key.split(':');
-        const cardId = Number(cardIdText);
-        const prefix = cardPrefix(projectId ?? '', cardId);
+        const [projectId, taskIdText, ...requestParts] = key.split(':');
+        const taskId = Number(taskIdText);
+        const prefix = taskPrefix(projectId ?? '', taskId);
         const hasOlderDraft = [...entries.current.entries()].some(
           ([otherKey, entry]) =>
             otherKey.startsWith(prefix) && otherKey !== key && hasInput(entry.state),
@@ -133,8 +133,8 @@ export function useMonitorInteractions({
           listeners: entries.current.get(key)?.listeners ?? new Set(),
         });
         if (current.requestChanged && !next.requestChanged) {
-          const [projectId, cardIdText] = key.split(':');
-          const prefix = cardPrefix(projectId ?? '', Number(cardIdText));
+          const [projectId, taskIdText] = key.split(':');
+          const prefix = taskPrefix(projectId ?? '', Number(taskIdText));
           for (const olderKey of entries.current.keys()) {
             if (olderKey !== key && olderKey.startsWith(prefix)) {
               entries.current.delete(olderKey);
@@ -149,8 +149,8 @@ export function useMonitorInteractions({
   );
 
   const operationsFor = useCallback(
-    (projectId: ProjectId, cardId: number, requestId: string | null): OperationControls => {
-      const key = formKey(projectId, cardId, requestId);
+    (projectId: ProjectId, taskId: number, requestId: string | null): OperationControls => {
+      const key = formKey(projectId, taskId, requestId);
       return {
         begin(_kind, operationProjectId) {
           const existing = leases.current.get(key);
@@ -181,9 +181,9 @@ export function useMonitorInteractions({
           leases.current.delete(key);
           notify();
         },
-        cardRemoved(id, removedProjectId, removedCardId) {
+        taskRemoved(id, removedProjectId, removedTaskId) {
           if (id !== leases.current.get(key)?.id) return;
-          if (removedProjectId === projectId && removedCardId === cardId) {
+          if (removedProjectId === projectId && removedTaskId === taskId) {
             leases.current.delete(key);
             entries.current.delete(key);
             notify();
@@ -199,50 +199,50 @@ export function useMonitorInteractions({
   );
 
   const onAnswered = useCallback(
-    (item: MonitorCard, requestId: string, result: AnswerResult) => {
-      const requestKey = formKey(item.projectId, item.card.id, requestId);
+    (item: MonitorTask, requestId: string, result: AnswerResult) => {
+      const requestKey = formKey(item.projectId, item.task.id, requestId);
       if (staleRequests.current.has(requestKey)) return;
-      saved.current.set(`${item.projectId}:${item.card.id}`, { requestId, result });
+      saved.current.set(`${item.projectId}:${item.task.id}`, { requestId, result });
       notify();
     },
     [notify],
   );
 
   const markRequestStale = useCallback(
-    (projectId: ProjectId, cardId: number, requestId: string) => {
-      staleRequests.current.add(formKey(projectId, cardId, requestId));
+    (projectId: ProjectId, taskId: number, requestId: string) => {
+      staleRequests.current.add(formKey(projectId, taskId, requestId));
       notify();
     },
     [notify],
   );
 
-  const orphanDrafts = useCallback((cards: readonly MonitorCard[]) => {
-    const byId = new Map(cards.map((item) => [`${item.projectId}:${item.card.id}`, item]));
+  const orphanDrafts = useCallback((tasks: readonly MonitorTask[]) => {
+    const byId = new Map(tasks.map((item) => [`${item.projectId}:${item.task.id}`, item]));
     const drafts: OrphanAnswerDraft[] = [];
     for (const [key, entry] of entries.current) {
       if (!hasInput(entry.state)) continue;
-      const [projectId, cardIdText, ...requestParts] = key.split(':');
-      const current = byId.get(`${projectId}:${cardIdText}`);
+      const [projectId, taskIdText, ...requestParts] = key.split(':');
+      const current = byId.get(`${projectId}:${taskIdText}`);
       if (current) projectNames.current.set(current.projectId, current.projectName);
-      if (current?.card.cardStatus === 'done') continue;
+      if (current?.task.taskStatus === 'done') continue;
       if (
-        current?.card.pendingRequestId &&
-        current.card.pendingRequestId !== requestParts.join(':')
+        current?.task.pendingRequestId &&
+        current.task.pendingRequestId !== requestParts.join(':')
       )
         continue;
       if (!current) {
         drafts.push({
           key,
           projectName: projectNames.current.get(projectId ?? '') ?? '—',
-          cardId: Number(cardIdText),
+          taskId: Number(taskIdText),
           text: entry.state.text,
           choiceId: entry.state.choiceId,
         });
-      } else if (current.card.pendingRequestId === null) {
+      } else if (current.task.pendingRequestId === null) {
         drafts.push({
           key,
           projectName: current.projectName,
-          cardId: current.card.id,
+          taskId: current.task.id,
           text: entry.state.text,
           choiceId: entry.state.choiceId,
         });
@@ -261,13 +261,13 @@ export function useMonitorInteractions({
     [notify],
   );
 
-  const reconcileCards = useCallback(
-    (cards: readonly MonitorCard[]) => {
-      const byId = new Map(cards.map((item) => [`${item.projectId}:${item.card.id}`, item]));
+  const reconcileTasks = useCallback(
+    (tasks: readonly MonitorTask[]) => {
+      const byId = new Map(tasks.map((item) => [`${item.projectId}:${item.task.id}`, item]));
       let changed = false;
       for (const key of entries.current.keys()) {
-        const [projectId, cardIdText] = key.split(':');
-        if (byId.get(`${projectId}:${cardIdText}`)?.card.cardStatus === 'done') {
+        const [projectId, taskIdText] = key.split(':');
+        if (byId.get(`${projectId}:${taskIdText}`)?.task.taskStatus === 'done') {
           staleRequests.current.add(key);
           entries.current.delete(key);
           leases.current.delete(key);
@@ -275,9 +275,9 @@ export function useMonitorInteractions({
         }
       }
       for (const [key, receipt] of saved.current) {
-        if (byId.get(key)?.card.cardStatus !== 'done') continue;
-        const [projectId, cardIdText] = key.split(':');
-        staleRequests.current.add(formKey(projectId ?? '', Number(cardIdText), receipt.requestId));
+        if (byId.get(key)?.task.taskStatus !== 'done') continue;
+        const [projectId, taskIdText] = key.split(':');
+        staleRequests.current.add(formKey(projectId ?? '', Number(taskIdText), receipt.requestId));
         saved.current.delete(key);
         changed = true;
       }
@@ -286,30 +286,30 @@ export function useMonitorInteractions({
     [notify],
   );
 
-  const cardsWithSavedAnswers = useCallback(
-    (cards: readonly MonitorCard[], snapshotIsFresh: boolean) => {
-      const byId = new Map(cards.map((item) => [`${item.projectId}:${item.card.id}`, item]));
+  const tasksWithSavedAnswers = useCallback(
+    (tasks: readonly MonitorTask[], snapshotIsFresh: boolean) => {
+      const byId = new Map(tasks.map((item) => [`${item.projectId}:${item.task.id}`, item]));
       for (const [key, receipt] of saved.current) {
         const current = byId.get(key);
-        if (snapshotIsFresh && current && current.card.pendingRequestId !== receipt.requestId) {
+        if (snapshotIsFresh && current && current.task.pendingRequestId !== receipt.requestId) {
           saved.current.delete(key);
         }
       }
-      return cards.map((item) => {
-        const receipt = saved.current.get(`${item.projectId}:${item.card.id}`);
-        if (!receipt || item.card.pendingRequestId !== receipt.requestId) return item;
-        return { ...item, card: receipt.result.card };
+      return tasks.map((item) => {
+        const receipt = saved.current.get(`${item.projectId}:${item.task.id}`);
+        if (!receipt || item.task.pendingRequestId !== receipt.requestId) return item;
+        return { ...item, task: receipt.result.task };
       });
     },
     [],
   );
 
   const wasAnswered = useCallback(
-    (projectId: ProjectId, cardId: number, requestId: string | null) => {
+    (projectId: ProjectId, taskId: number, requestId: string | null) => {
       return (
         requestId !== null &&
-        (saved.current.get(`${projectId}:${cardId}`)?.requestId === requestId ||
-          staleRequests.current.has(formKey(projectId, cardId, requestId)))
+        (saved.current.get(`${projectId}:${taskId}`)?.requestId === requestId ||
+          staleRequests.current.has(formKey(projectId, taskId, requestId)))
       );
     },
     [],
@@ -325,8 +325,8 @@ export function useMonitorInteractions({
     markRequestStale,
     orphanDrafts,
     clearOrphanDraft,
-    reconcileCards,
-    cardsWithSavedAnswers,
+    reconcileTasks,
+    tasksWithSavedAnswers,
     wasAnswered,
     locked,
   };

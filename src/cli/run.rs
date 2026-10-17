@@ -129,7 +129,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, cli.json),
         };
     }
-    // `serve` needs no project and no card context: it opens the data area
+    // `serve` needs no project and no task context: it opens the data area
     // itself, writes its startup line while it runs, and prints nothing after.
     if let Command::Serve(args) = &cli.command {
         return match commands::serve::run(cli.json, args) {

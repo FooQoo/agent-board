@@ -40,20 +40,20 @@ fn an_empty_data_area_gets_workspace_project_and_readme() {
     assert_eq!(project_json["id"], project.id.as_str());
     assert_eq!(project_json["name"], "Alpha");
     assert_eq!(project_json["createdAt"], "2026-10-04T00:00:00Z");
-    assert_eq!(project_json["nextCardId"], 1);
+    assert_eq!(project_json["nextTaskId"], 1);
     let readme = fs::read_to_string(dir.join("README.md")).unwrap();
     // The guidance for people and agents who touch the files directly (U9-6).
     for rule in [
-        "Do not edit TASK.md of a card that is a draft.",
+        "Do not edit TASK.md of a task that is a draft.",
         "Do not edit it; use the `agboard` CLI.",
-        "Do not delete a card folder or an epic folder.",
-        "a card's metadata such as its current status and assignee.",
-        "a card's body, acceptance conditions, and operation history.",
-        "TASK.md history is the source of truth for card operation history.",
+        "Do not delete a task folder or an epic folder.",
+        "a task's metadata such as its current status and assignee.",
+        "a task's body, acceptance conditions, and operation history.",
+        "TASK.md history is the source of truth for task operation history.",
         "The body after the frontmatter is free Markdown.",
-        "`formatVersion: 3`",
-        "Version 1 and version 2 task files are not migrated or read by this version.",
-        "Agent Board never deletes old data automatically.",
+        "`formatVersion: 1`",
+        "Files with any other version or with unknown fields are reported and are not migrated or read;",
+        "Agent Board never converts or deletes them automatically.",
     ] {
         assert!(readme.contains(rule), "README lacks {rule:?}");
     }
@@ -203,12 +203,12 @@ fn a_missing_project_is_project_not_found() {
 }
 
 #[test]
-fn a_snapshot_of_an_empty_project_has_no_cards_and_no_problems() {
+fn a_snapshot_of_an_empty_project_has_no_tasks_and_no_problems() {
     let (_root, store) = store();
     let project = store.create_project("Alpha", now()).unwrap();
     let snapshot = store.snapshot(&project.id).unwrap();
     assert_eq!(snapshot.project.name, "Alpha");
-    assert_eq!(snapshot.next_card_id, 1);
-    assert!(snapshot.cards.is_empty());
+    assert_eq!(snapshot.next_task_id, 1);
+    assert!(snapshot.tasks.is_empty());
     assert!(snapshot.problems.is_empty());
 }

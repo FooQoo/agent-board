@@ -68,7 +68,7 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
     let create_body = r###"{"title":"Remote edit","description":"## 作業内容\n\nRemote edit\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Saved\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n","assignee":"ai"}"###;
     let good = server.request(
         "POST",
-        &format!("{base}/cards"),
+        &format!("{base}/tasks"),
         &[
             ("Host", "monitor.example"),
             ("Origin", ORIGIN),
@@ -105,7 +105,7 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
     assert_eq!(local_read, read.body);
     let second_origin = server.request(
         "POST",
-        &format!("{base}/cards"),
+        &format!("{base}/tasks"),
         &[
             ("Host", "tail.example:8443"),
             ("Origin", ORIGIN2),
@@ -179,7 +179,7 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
             &[("Host", "monitor.example")],
             "",
         );
-        let rejected = server.request("POST", &format!("{base}/cards"), &headers, create_body);
+        let rejected = server.request("POST", &format!("{base}/tasks"), &headers, create_body);
         assert_eq!(rejected.status, 403, "{}", rejected.body);
         let after = server.request(
             "GET",
@@ -192,7 +192,7 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
 
     let override_request = server.request(
         "POST",
-        &format!("{base}/cards"),
+        &format!("{base}/tasks"),
         &[
             ("Host", "monitor.example"),
             ("Origin", ORIGIN),
@@ -206,7 +206,7 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
     assert_eq!(override_request.status, 403);
     let forwarded = server.request(
         "POST",
-        &format!("{base}/cards"),
+        &format!("{base}/tasks"),
         &[
             ("Host", "monitor.example"),
             ("Origin", ORIGIN),

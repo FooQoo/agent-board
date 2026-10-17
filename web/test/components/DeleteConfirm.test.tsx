@@ -3,15 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { DetailPanel } from '../../src/components/DetailPanel';
-import { PROJECT_A, fixtureCard, makeCard } from '../fixtures';
+import { PROJECT_A, fixtureTask, makeTask } from '../fixtures';
 
-const CONFIRM_TEXT = 'Archive #11 "Implement card moves"? You can restore it from the archive.';
+const CONFIRM_TEXT = 'Archive #11 "Implement task moves"? You can restore it from the archive.';
 
 function renderPanel(onRemove = vi.fn(async () => true)) {
   render(
     <DetailPanel
       projectId={PROJECT_A.id}
-      card={fixtureCard(11)}
+      task={fixtureTask(11)}
       onClose={() => {}}
       onRemove={onRemove}
     />,
@@ -20,7 +20,7 @@ function renderPanel(onRemove = vi.fn(async () => true)) {
 }
 
 async function openConfirm() {
-  await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Archive task' }));
 }
 
 beforeEach(() => {
@@ -30,12 +30,12 @@ beforeEach(() => {
 
 describe('inline archive confirmation', () => {
   it('renders localized confirmation text and failure without interpreting a title as markup', () => {
-    const card = makeCard({ id: 42, title: '<img src=x onerror="alert(1)"> & "quoted"' });
+    const task = makeTask({ id: 42, title: '<img src=x onerror="alert(1)"> & "quoted"' });
     selectLocale('ja');
     const { container } = render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={card}
+        task={task}
         onClose={() => {}}
         onRemove={async () => false}
         initialConfirm
@@ -47,7 +47,7 @@ describe('inline archive confirmation', () => {
       '#42「<img src=x onerror="alert(1)"> & "quoted"」をアーカイブしますか？ アーカイブ一覧から復元できます。',
     );
     expect(screen.getByRole('alert').textContent).toBe(
-      'カードをアーカイブできませんでした。もう一度お試しください。',
+      'タスクをアーカイブできませんでした。もう一度お試しください。',
     );
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByRole('button', { name: 'アーカイブ' })).toBeTruthy();
@@ -63,7 +63,7 @@ describe('inline archive confirmation', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onRemove).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Archive card' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Archive task' }));
   });
 
   it('keeps the inline confirmation open after a lifecycle failure and allows retry', async () => {
@@ -71,11 +71,11 @@ describe('inline archive confirmation', () => {
     renderPanel(onRemove);
     await openConfirm();
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
-    expect(await screen.findByText('Could not archive the card. Try again.')).toBeTruthy();
+    expect(await screen.findByText('Could not archive the task. Try again.')).toBeTruthy();
     expect(screen.getByText(CONFIRM_TEXT)).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
     expect(onRemove).toHaveBeenCalledTimes(2);
-    expect(onRemove).toHaveBeenLastCalledWith('archive', fixtureCard(11));
+    expect(onRemove).toHaveBeenLastCalledWith('archive', fixtureTask(11));
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -84,7 +84,7 @@ describe('inline archive confirmation', () => {
     render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={fixtureCard(11)}
+        task={fixtureTask(11)}
         onClose={() => {}}
         onRemove={onRemove}
         initialConfirm

@@ -9,7 +9,7 @@ import {
   PROJECTS,
   boardOf,
   fixtureBoard,
-  makeCard,
+  makeTask,
 } from '../fixtures';
 
 function deferred<T>() {
@@ -28,7 +28,7 @@ function apiFor(
     [PROJECT_A.id]: structuredClone(fixtureBoard),
     [PROJECT_B.id]: boardOf(
       PROJECT_B,
-      [makeCard({ id: 2, cardStatus: 'doing', agentStatus: 'running' })],
+      [makeTask({ id: 2, taskStatus: 'doing', agentStatus: 'running' })],
       2,
     ),
     [PROJECT_C.id]: boardOf(PROJECT_C, [], 3),
@@ -76,14 +76,14 @@ describe('useMonitor', () => {
       .mockResolvedValueOnce(next);
     const api: MonitorReadApi = {
       fetchCatalog: catalog,
-      fetchBoard: vi.fn(async () => boardOf(PROJECT_B, [makeCard({ id: 7 })], 7)),
+      fetchBoard: vi.fn(async () => boardOf(PROJECT_B, [makeTask({ id: 7 })], 7)),
     };
     const { result } = renderHook(() => useMonitor({ api }));
     await waitFor(() => expect(result.current.freshness.state).toBe('fresh'));
     expect(catalog).toHaveBeenCalledTimes(4);
     expect(api.fetchBoard).toHaveBeenCalledTimes(2);
     expect(result.current.projects).toEqual([PROJECT_B]);
-    expect(result.current.cards.map(({ projectId }) => projectId)).toEqual([PROJECT_B.id]);
+    expect(result.current.tasks.map(({ projectId }) => projectId)).toEqual([PROJECT_B.id]);
   });
 
   it('limits All Projects board reads to four at a time', async () => {
@@ -129,7 +129,7 @@ describe('useMonitor', () => {
     });
     expect(result.current.freshness.state).toBe('partial');
     expect(result.current.freshness.failedProjectIds).toEqual([PROJECT_B.id]);
-    expect(result.current.cards.every(({ projectId }) => projectId !== PROJECT_B.id)).toBe(true);
+    expect(result.current.tasks.every(({ projectId }) => projectId !== PROJECT_B.id)).toBe(true);
     const requests = vi.mocked(api.fetchCatalog).mock.calls.length;
     await act(async () => vi.advanceTimersByTimeAsync(999));
     expect(api.fetchCatalog).toHaveBeenCalledTimes(requests);
@@ -218,7 +218,7 @@ describe('useMonitor', () => {
     act(() => result.current.onVisibility(true));
     await waitFor(() => expect(result.current.freshness.state).toBe('fresh'));
     expect(api.fetchBoard).toHaveBeenCalledTimes(2);
-    expect(result.current.cards[0]?.projectId).toBe(PROJECT_A.id);
+    expect(result.current.tasks[0]?.projectId).toBe(PROJECT_A.id);
   });
 
   it('coalesces changed events during an active read into one follow-up refresh', async () => {

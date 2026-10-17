@@ -16,9 +16,9 @@ async function open(page: Page, width: number, height = 900): Promise<void> {
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
 }
 
-const panel = (page: Page) => page.getByRole('complementary', { name: 'Card details' });
-const handle = (page: Page) => page.getByRole('separator', { name: 'Resize card details' });
-const card = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+const panel = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
+const handle = (page: Page) => page.getByRole('separator', { name: 'Resize task details' });
+const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
 async function box(locator: Locator) {
   const found = await locator.boundingBox();
@@ -59,9 +59,9 @@ const computed = (page: Page, selector: string, props: string[]) =>
   );
 
 function fillDone(extra = 14): void {
-  for (let i = 0; i < extra; i += 1) agboardOk(mainProject, ['add', `Extra done card ${i + 1}`]);
-  const cards = JSON.parse(agboardOk(mainProject, ['ls', '--json']).stdout).cards as { id: number; title: string }[];
-  for (const c of cards.filter((x) => x.title.startsWith('Extra done card'))) agboardOk(mainProject, ['mv', String(c.id), 'done']);
+  for (let i = 0; i < extra; i += 1) agboardOk(mainProject, ['add', `Extra done task ${i + 1}`]);
+  const tasks = JSON.parse(agboardOk(mainProject, ['ls', '--json']).stdout).tasks as { id: number; title: string }[];
+  for (const c of tasks.filter((x) => x.title.startsWith('Extra done task'))) agboardOk(mainProject, ['mv', String(c.id), 'done']);
 }
 
 // ---------------------------------------------------------------- Desktop layout
@@ -75,7 +75,7 @@ for (const locale of ['en', 'ja']) {
       }, { locale, detailWidth });
       await page.setViewportSize({ width: 1920, height: 900 });
       await page.goto(`/?project=${projectId(mainProject)}`);
-      await card(page, 8).click();
+      await task(page, 8).click();
       const detail = page.locator('.detail');
       const row = await box(detail.locator('.detail__tabs'));
       const tabs = await box(detail.getByRole('tablist'));
@@ -138,10 +138,10 @@ for (const width of [1024, 1280, 1920]) {
     expect(panelBox.x + panelBox.width).toBe(width);
     expect(boxes[2].x + boxes[2].width).toBeLessThanOrEqual(panelBox.x);
     await expect(handle(page)).toBeVisible();
-    await card(page, 8).click();
+    await task(page, 8).click();
     await expect(panel(page).getByRole('button', { name: 'Close details' })).toBeVisible();
     await panel(page).getByRole('button', { name: 'Close details' }).click();
-    await expect(panel(page).getByText('Select a card to see its details.')).toBeVisible();
+    await expect(panel(page).getByText('Select a task to see its details.')).toBeVisible();
   });
 }
 
@@ -198,7 +198,7 @@ test('1280px: an overflowing Done lane shows the fade and a scrollbar until the 
   expect((await cue(page, 2)).fade).toBe(0);
 });
 
-test('1920px: a lane that fits its cards shows neither fade nor scrollbar', async ({ page }) => {
+test('1920px: a lane that fits its tasks shows neither fade nor scrollbar', async ({ page }) => {
   await open(page, 1920, 1200);
   // The board follows the reset files a moment later; the fixture's lanes are measured once they are shown.
   await expect(page.locator('.lane__cards').nth(2).locator('.card')).toHaveCount(2);
@@ -260,8 +260,8 @@ test('1280px then 1024px: the width follows the limit and returns', async ({ pag
 
 test('dragging keeps the selection and the archive confirmation and selects no text', async ({ page }) => {
   await open(page, 1280);
-  await card(page, 8).click();
-  await panel(page).getByRole('button', { name: 'Archive card' }).click();
+  await task(page, 8).click();
+  await panel(page).getByRole('button', { name: 'Archive task' }).click();
   const confirm = panel(page).getByRole('group', { name: /^Archive #8/ });
   await expect(confirm).toBeVisible();
 
@@ -284,7 +284,7 @@ test('Japanese: the handle is named in Japanese', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('radio', { name: '日本語' }).click();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('separator', { name: 'カードの詳細の幅を変更' })).toBeVisible();
+  await expect(page.getByRole('separator', { name: 'タスクの詳細の幅を変更' })).toBeVisible();
 });
 
 // ---------------------------------------------------------------- AC-5
@@ -329,7 +329,7 @@ test('when storing fails the page keeps the dragged width and a reload opens at 
 test('evidence screenshots at 1280x900', async ({ page }, testInfo) => {
   fillDone(3);
   await open(page, 1280);
-  await card(page, 8).click();
+  await task(page, 8).click();
   await page.locator('.lane__cards').nth(2).evaluate((el) => {
     el.scrollTop = 0;
   });

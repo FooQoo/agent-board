@@ -44,7 +44,7 @@ fn ok(output: &Output) {
     );
 }
 
-fn add_card(home: &Path, project: &str, title: &str) {
+fn add_task(home: &Path, project: &str, title: &str) {
     ok(&agboard(
         home,
         project,
@@ -229,7 +229,7 @@ fn error_of(output: &Output) -> Value {
 fn two_projects(home: &Path) {
     for (project, title) in [("Alpha", "Alpha secret"), ("Beta", "Beta secret")] {
         ok(&agboard(home, project, &["init"]));
-        add_card(home, project, title);
+        add_task(home, project, title);
         ok(&agboard(
             home,
             project,
@@ -256,11 +256,11 @@ fn two_projects(home: &Path) {
 #[test]
 fn the_hook_passes_only_the_named_projects_progress_table() {
     let home = tempdir().unwrap();
-    // Both projects have a card #1, so a mix-up would be visible.
+    // Both projects have a task #1, so a mix-up would be visible.
     ok(&agboard(home.path(), "Alpha", &["init"]));
     ok(&agboard(home.path(), "Beta", &["init"]));
     for (project, title) in [("Alpha", "Alpha secret"), ("Beta", "Beta secret")] {
-        add_card(home.path(), project, title);
+        add_task(home.path(), project, title);
         ok(&agboard(
             home.path(),
             project,
@@ -297,7 +297,7 @@ fn the_hook_passes_only_the_named_projects_progress_table() {
         let passed: Value = serde_json::from_str(body).unwrap();
         assert_eq!(passed["project"]["name"], project);
         assert!(passed["unassigned"].as_array().unwrap().is_empty());
-        assert!(passed.get("cards").is_none());
+        assert!(passed.get("tasks").is_none());
         assert!(!context.contains("needs a decision"));
         assert!(!context.contains("started"));
         assert!(!context.contains(other), "{other} leaked into {project}");
@@ -393,14 +393,14 @@ fn progress_uses_the_nearest_bound_ancestor_and_explicit_project_overrides_it() 
         &nested,
         &["project", "create", "Beta"],
     ));
-    add_card(home.path(), "Alpha", "Root card");
-    add_card(home.path(), "Beta", "Nested card");
+    add_task(home.path(), "Alpha", "Root task");
+    add_task(home.path(), "Beta", "Nested task");
 
     let nearest = agboard_in(home.path(), &deeper, &["progress", "--json"]);
     ok(&nearest);
     let nearest: Value = serde_json::from_slice(&nearest.stdout).unwrap();
     assert_eq!(nearest["project"]["name"], "Beta");
-    assert_eq!(nearest["unassigned"][0]["title"], "Nested card");
+    assert_eq!(nearest["unassigned"][0]["title"], "Nested task");
 
     let explicit = agboard_in(
         home.path(),
@@ -410,7 +410,7 @@ fn progress_uses_the_nearest_bound_ancestor_and_explicit_project_overrides_it() 
     ok(&explicit);
     let explicit: Value = serde_json::from_slice(&explicit.stdout).unwrap();
     assert_eq!(explicit["project"]["name"], "Alpha");
-    assert_eq!(explicit["unassigned"][0]["title"], "Root card");
+    assert_eq!(explicit["unassigned"][0]["title"], "Root task");
 }
 
 #[test]
@@ -492,8 +492,8 @@ fn hook_uses_cwd_binding_and_emits_the_same_read_only_progress_snapshot() {
         &nested,
         &["project", "create", "Beta"],
     ));
-    add_card(home.path(), "Alpha", "Root card");
-    add_card(home.path(), "Beta", "Nested card");
+    add_task(home.path(), "Alpha", "Root task");
+    add_task(home.path(), "Beta", "Nested task");
 
     let before = tree_of(home.path());
     let input = format!(
@@ -506,7 +506,7 @@ fn hook_uses_cwd_binding_and_emits_the_same_read_only_progress_snapshot() {
         serde_json::from_str::<Value>(passed_context.strip_prefix("AGBOARD_PROGRESS\n").unwrap())
             .unwrap();
     assert_eq!(hook["project"]["name"], "Beta");
-    assert_eq!(hook["unassigned"][0]["title"], "Nested card");
+    assert_eq!(hook["unassigned"][0]["title"], "Nested task");
     assert!(hook.get("sessionId").is_none());
 
     // When a client omits cwd, the process cwd is used.
@@ -542,11 +542,11 @@ fn hook_explicit_project_overrides_cwd_binding_and_missing_binding_is_an_error()
         &root,
         &["project", "create", "Alpha"],
     ));
-    add_card(home.path(), "Alpha", "Bound card");
+    add_task(home.path(), "Alpha", "Bound task");
     ok(&agboard(home.path(), "Beta", &["init"]));
     // The unbound directory stays unregistered; Beta is used only as the
     // explicit override in the first request below.
-    add_card(home.path(), "Beta", "Explicit card");
+    add_task(home.path(), "Beta", "Explicit task");
 
     // An explicit project has precedence over both cwd and an input cwd.
     let input = format!(
@@ -563,7 +563,7 @@ fn hook_explicit_project_overrides_cwd_binding_and_missing_binding_is_an_error()
     let progress: Value =
         serde_json::from_str(body.strip_prefix("AGBOARD_PROGRESS\n").unwrap()).unwrap();
     assert_eq!(progress["project"]["name"], "Beta");
-    assert_eq!(progress["unassigned"][0]["title"], "Explicit card");
+    assert_eq!(progress["unassigned"][0]["title"], "Explicit task");
 
     let output = hook_in(home.path(), None, "claude", SESSION_START, Some(&unbound));
     assert_eq!(error_code(&context(&output)), "folder_unbound");
@@ -609,19 +609,19 @@ fn a_change_to_another_project_does_not_end_the_wait_but_an_answer_does() {
     let mut waiter = spawn_wait(home.path(), "Alpha", &after, None);
     std::thread::sleep(Duration::from_millis(500));
     // Beta changes twice; Alpha's wait must go on.
-    add_card(home.path(), "Beta", "More Beta work");
-    add_card(home.path(), "Beta", "Even more Beta work");
+    add_task(home.path(), "Beta", "More Beta work");
+    add_task(home.path(), "Beta", "Even more Beta work");
     assert!(still_running(&mut waiter, Duration::from_millis(800)));
 
     // An answer in Alpha ends it with Alpha's latest snapshot.
-    add_card(home.path(), "Alpha", "Alpha answer card");
+    add_task(home.path(), "Alpha", "Alpha answer task");
     let output = finish(waiter, Duration::from_secs(10));
     ok(&output);
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(result["project"]["name"], "Alpha");
     assert!(result.get("fetchedAt").is_some());
     let text = String::from_utf8_lossy(&output.stdout);
-    assert!(text.contains("Alpha answer card"));
+    assert!(text.contains("Alpha answer task"));
     assert!(!text.contains("Beta"));
     stop(server);
 }
@@ -691,7 +691,7 @@ fn a_change_made_before_the_event_stream_is_ready_is_not_lost() {
         .to_string();
     let server = start_server(home.path());
     // Confirmed after the cursor was read and before the wait starts.
-    add_card(home.path(), "Alpha", "Early change");
+    add_task(home.path(), "Alpha", "Early change");
     let output = finish(
         spawn_wait(home.path(), "Alpha", &after, None),
         Duration::from_secs(10),
@@ -732,7 +732,7 @@ fn a_rename_while_waiting_returns_the_latest_snapshot_of_the_same_project() {
         "Gamma",
         &["project", "rename", "Delta"],
     ));
-    add_card(home.path(), "Delta", "After two renames");
+    add_task(home.path(), "Delta", "After two renames");
     let output = finish(waiter, Duration::from_secs(10));
     ok(&output);
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
@@ -763,9 +763,9 @@ fn deleting_the_project_while_waiting_is_an_error_and_a_same_name_project_is_not
         let now = chrono::Utc::now();
         let recreated = store.create_project("Alpha", now).unwrap();
         store
-            .create_card(
+            .create_task(
                 &recreated.id,
-                agent_board::domain::NewCard {
+                agent_board::domain::NewTask {
                     title: "Belongs to the new Alpha".into(),
                     description: "## 作業内容\n\nNew.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".into(),
                     assignee: agent_board::domain::Assignee::Ai,
@@ -897,15 +897,15 @@ fn consecutive_changes_return_the_latest_snapshot() {
     let server = start_server(home.path());
     let waiter = spawn_wait(home.path(), "Alpha", &after, None);
     std::thread::sleep(Duration::from_millis(500));
-    add_card(home.path(), "Alpha", "First change");
-    add_card(home.path(), "Alpha", "Second change");
+    add_task(home.path(), "Alpha", "First change");
+    add_task(home.path(), "Alpha", "Second change");
     let output = finish(waiter, Duration::from_secs(10));
     ok(&output);
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_ne!(result["version"], alpha["version"]);
     // Whatever it returns is a complete, current snapshot of Alpha.
     let latest = snapshot(home.path(), "Alpha");
-    let cards = result["cards"].as_array().unwrap();
-    assert!(cards.len() >= 2 && cards.len() <= latest["cards"].as_array().unwrap().len());
+    let tasks = result["tasks"].as_array().unwrap();
+    assert!(tasks.len() >= 2 && tasks.len() <= latest["tasks"].as_array().unwrap().len());
     stop(server);
 }

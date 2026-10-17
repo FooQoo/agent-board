@@ -10,7 +10,7 @@
 
 (The tasks, their order and dependencies, and how the whole is verified.)
 
-| Order | Card | Task | Owner | Depends on |
+| Order | Task | Task | Owner | Depends on |
 | --- | --- | --- | --- | --- |
 | 1 | #<id> | (title) | ai | - |
 
@@ -20,4 +20,4 @@
 
 ## Decisions
 
-(Decisions that changed this plan, with the date and the card where each was made.)
+(Decisions that changed this plan, with the date and the task where each was made.)

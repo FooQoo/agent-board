@@ -38,9 +38,9 @@ test('an empty board shows the lanes and a hint for agents', async ({ page }) =>
     await expect(lane.getByRole('heading', { level: 2 })).toHaveText(name);
     await expect(lane.getByText('0', { exact: true })).toBeVisible();
   }
-  await expect(page.getByText('No cards yet.')).toBeVisible();
-  await expect(page.getByText('Add a card to get started.')).toBeVisible();
-  await expect(page.getByRole('contentinfo')).toContainText('0 cards');
+  await expect(page.getByText('No tasks yet.')).toBeVisible();
+  await expect(page.getByText('Add a task to get started.')).toBeVisible();
+  await expect(page.getByRole('contentinfo')).toContainText('0 tasks');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced \d{2}:\d{2}$/);
 });
 
@@ -55,8 +55,8 @@ test('stopping the serve shows Disconnected, and restarting it reconnects and fe
   await stopServe(serve);
   await expect(status).toHaveText(`Disconnected · Last synced ${synced}`);
   // The last board stays on screen.
-  await expect(page.getByText('No cards yet.')).toBeVisible();
-  await expect(page.getByRole('contentinfo')).toContainText('0 cards');
+  await expect(page.getByText('No tasks yet.')).toBeVisible();
+  await expect(page.getByRole('contentinfo')).toContainText('0 tasks');
 
   // The CLI still works while the serve is down, and the change waits for the screen.
   agboardOk('Empty Board', ['add', 'Added while disconnected'], home);
@@ -66,8 +66,8 @@ test('stopping the serve shows Disconnected, and restarting it reconnects and fe
     page.getByRole('button', { name: /^#1 AI Added while disconnected / }),
   ).toBeVisible({ timeout: 30_000 });
   await expect(status).toHaveText(/^Synced \d{2}:\d{2}$/);
-  await expect(page.getByRole('contentinfo')).toContainText('1 card');
-  await expect(page.getByText('No cards yet.')).toHaveCount(0);
+  await expect(page.getByRole('contentinfo')).toContainText('1 task');
+  await expect(page.getByText('No tasks yet.')).toHaveCount(0);
 
   // Live updates work again after the reconnect.
   agboardOk('Empty Board', ['add', 'Added after reconnecting'], home);

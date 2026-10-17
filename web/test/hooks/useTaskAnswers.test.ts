@@ -1,13 +1,13 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { useCardAnswers } from '../../src/hooks/useCardAnswers';
+import { useTaskAnswers } from '../../src/hooks/useTaskAnswers';
 import type { AnswerResult } from '../../src/lib/answer';
-import { makeCard, PROJECT_A } from '../fixtures';
+import { makeTask, PROJECT_A } from '../fixtures';
 
 const requestId = 'request-123';
-const pending = makeCard({
+const pending = makeTask({
   id: 123,
-  cardStatus: 'todo',
+  taskStatus: 'todo',
   agentStatus: 'pending',
   pendingRequestId: requestId,
   pendingReason: 'Choose a direction',
@@ -21,10 +21,10 @@ const answered = {
 
 describe('useCardAnswers', () => {
   it('keeps an answer receipt visible until a newer board snapshot contains it', () => {
-    const { result } = renderHook(() => useCardAnswers(vi.fn()));
+    const { result } = renderHook(() => useTaskAnswers(vi.fn()));
     const syncBeforeAnswer = new Date('2026-10-12T01:00:00Z');
     const syncAfterAnswer = new Date('2026-10-12T01:01:00Z');
-    const response: AnswerResult = { card: answered, changed: true };
+    const response: AnswerResult = { task: answered, changed: true };
 
     act(() =>
       result.current.onAnswered(PROJECT_A.id, pending.id, requestId, response, syncBeforeAnswer),
@@ -38,9 +38,9 @@ describe('useCardAnswers', () => {
     );
   });
 
-  it('holds a dirty draft lease and clears its draft and stale request when the card reaches Done', () => {
+  it('holds a dirty draft lease and clears its draft and stale request when the task reaches Done', () => {
     const onLeaseChange = vi.fn();
-    const { result } = renderHook(() => useCardAnswers(onLeaseChange));
+    const { result } = renderHook(() => useTaskAnswers(onLeaseChange));
     const key = `${PROJECT_A.id}:${pending.id}:${requestId}` as const;
 
     act(() => {
@@ -49,7 +49,7 @@ describe('useCardAnswers', () => {
     });
     expect(onLeaseChange).toHaveBeenLastCalledWith(key, PROJECT_A.id, true);
 
-    act(() => result.current.reconcileCards(PROJECT_A.id, [{ ...pending, cardStatus: 'done' }]));
+    act(() => result.current.reconcileTasks(PROJECT_A.id, [{ ...pending, taskStatus: 'done' }]));
 
     expect(onLeaseChange).toHaveBeenLastCalledWith(key, PROJECT_A.id, false);
     expect(result.current.wasAnswered(PROJECT_A.id, pending.id, requestId)).toBe(true);
@@ -58,7 +58,7 @@ describe('useCardAnswers', () => {
 
   it('keeps old text for a changed request and transfers the lease only after the user edits it', () => {
     const onLeaseChange = vi.fn();
-    const { result } = renderHook(() => useCardAnswers(onLeaseChange));
+    const { result } = renderHook(() => useTaskAnswers(onLeaseChange));
     const oldKey = `${PROJECT_A.id}:${pending.id}:${requestId}` as const;
     const newKey = `${PROJECT_A.id}:${pending.id}:request-456` as const;
 

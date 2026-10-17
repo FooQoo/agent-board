@@ -48,8 +48,8 @@ pub fn epics_dir(project_dir: &Path) -> PathBuf {
     project_dir.join("epics")
 }
 
-pub fn task_dir(project_dir: &Path, card_id: i64) -> PathBuf {
-    tasks_dir(project_dir).join(card_id.to_string())
+pub fn task_dir(project_dir: &Path, task_id: i64) -> PathBuf {
+    tasks_dir(project_dir).join(task_id.to_string())
 }
 
 pub fn task_json(task_dir: &Path) -> PathBuf {
@@ -102,7 +102,7 @@ pub fn epic_plan(epic_dir: &Path) -> PathBuf {
     epic_dir.join("PLAN.md")
 }
 
-/// The `assets/` folder of an owner (a card folder or an epic folder).
+/// The `assets/` folder of an owner (a task folder or an epic folder).
 pub fn assets_dir(owner_dir: &Path) -> PathBuf {
     owner_dir.join("assets")
 }
@@ -119,15 +119,15 @@ pub fn asset_extension(media_type: &str) -> Option<&'static str> {
     }
 }
 
-/// `tasks/<card-id>/assets/<attachment-id>.<ext>`. The ID is checked first.
+/// `tasks/<task-id>/assets/<attachment-id>.<ext>`. The ID is checked first.
 pub fn task_asset_path(
     project_dir: &Path,
-    card_id: i64,
+    task_id: i64,
     attachment_id: &str,
     ext: &str,
 ) -> Result<PathBuf, AgboardError> {
-    check_card_id(card_id)?;
-    asset_file(&task_dir(project_dir, card_id), attachment_id, ext)
+    check_task_id(task_id)?;
+    asset_file(&task_dir(project_dir, task_id), attachment_id, ext)
 }
 
 /// `epics/<EPIC-ID>/assets/<attachment-id>.<ext>`. The ID is checked first.
@@ -151,23 +151,23 @@ fn asset_file(owner_dir: &Path, attachment_id: &str, ext: &str) -> Result<PathBu
     Ok(assets_dir(owner_dir).join(format!("{attachment_id}.{ext}")))
 }
 
-/// `tasks/<card-id>/evidence/<evidence-id>.log`. The ID is checked first.
+/// `tasks/<task-id>/evidence/<evidence-id>.log`. The ID is checked first.
 pub fn evidence_path(
     project_dir: &Path,
-    card_id: i64,
+    task_id: i64,
     evidence_id: &str,
 ) -> Result<PathBuf, AgboardError> {
-    check_card_id(card_id)?;
+    check_task_id(task_id)?;
     validate::check_object_id(evidence_id, "evidenceId")?;
-    let dir = task_dir(project_dir, card_id).join("evidence");
+    let dir = task_dir(project_dir, task_id).join("evidence");
     Ok(dir.join(format!("{evidence_id}.log")))
 }
 
-fn check_card_id(card_id: i64) -> Result<(), AgboardError> {
-    if card_id < 1 {
+fn check_task_id(task_id: i64) -> Result<(), AgboardError> {
+    if task_id < 1 {
         return Err(AgboardError::InvalidValue {
-            field: "cardId".into(),
-            reason: "Card IDs start at 1.".into(),
+            field: "taskId".into(),
+            reason: "Task IDs start at 1.".into(),
         });
     }
     Ok(())
@@ -193,9 +193,9 @@ pub fn has_symlink_below(project_dir: &Path, path: &Path) -> io::Result<bool> {
     Ok(false)
 }
 
-/// The card ID a folder name stands for. Only canonical positive decimal
+/// The task ID a folder name stands for. Only canonical positive decimal
 /// names count (`1`, `12`); `01`, `0`, and dot-prefixed temporary folders do not.
-pub fn parse_card_dir(name: &str) -> Option<i64> {
+pub fn parse_task_dir(name: &str) -> Option<i64> {
     let canonical =
         !name.is_empty() && name.bytes().all(|b| b.is_ascii_digit()) && !name.starts_with('0');
     if !canonical {
@@ -209,11 +209,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn card_folder_names_must_be_canonical_positive_integers() {
-        assert_eq!(parse_card_dir("1"), Some(1));
-        assert_eq!(parse_card_dir("12"), Some(12));
+    fn task_folder_names_must_be_canonical_positive_integers() {
+        assert_eq!(parse_task_dir("1"), Some(1));
+        assert_eq!(parse_task_dir("12"), Some(12));
         for bad in ["", "0", "01", "-1", "1a", ".new-1", " 1"] {
-            assert_eq!(parse_card_dir(bad), None, "{bad:?}");
+            assert_eq!(parse_task_dir(bad), None, "{bad:?}");
         }
     }
 

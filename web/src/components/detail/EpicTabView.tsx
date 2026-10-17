@@ -48,7 +48,7 @@ export function EpicTabView({
       />
       <DetailAttachments
         projectId={projectId}
-        cardId={0}
+        taskId={0}
         attachments={epic.attachments}
         attachmentUrl={attachmentUrl}
       />

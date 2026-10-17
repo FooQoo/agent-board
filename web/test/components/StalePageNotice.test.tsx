@@ -29,7 +29,7 @@ describe('writeFailure', () => {
   it('fires the stale-page event only for a page with an out-of-date token', () => {
     const onStale = vi.fn();
     window.addEventListener(STALE_PAGE_EVENT, onStale);
-    const other = writeFailure('Bad file.', 422, 'file_invalid', 'card.md');
+    const other = writeFailure('Bad file.', 422, 'file_invalid', 'task.md');
     expect(other.code).toBe('file_invalid');
     expect(onStale).not.toHaveBeenCalled();
     const stale = writeFailure('Reload.', 403, 'page_out_of_date', null);

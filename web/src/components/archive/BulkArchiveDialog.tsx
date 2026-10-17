@@ -8,12 +8,12 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { Card } from '../../types';
+import type { Task } from '../../types';
 import '../../styles/modal.css';
 
 export interface BulkArchiveDialogProps {
   projectName: string;
-  targets: readonly Card[];
+  targets: readonly Task[];
   saving: boolean;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
@@ -118,11 +118,11 @@ export function BulkArchiveDialog({
               </tr>
             </thead>
             <tbody>
-              {targets.map((card) => (
-                <tr key={card.id}>
-                  <td>#{card.id}</td>
-                  <td>{card.title}</td>
-                  <td>{t(`assignee.${card.assignee}`)}</td>
+              {targets.map((task) => (
+                <tr key={task.id}>
+                  <td>#{task.id}</td>
+                  <td>{task.title}</td>
+                  <td>{t(`assignee.${task.assignee}`)}</td>
                 </tr>
               ))}
             </tbody>

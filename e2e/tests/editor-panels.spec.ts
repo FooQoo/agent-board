@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
-import { agboardOk, mainProject, nextCardId, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
+import { agboardOk, mainProject, nextTaskId, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 const conditions = Array.from({ length: 40 }, (_, i) => `- [ ] Condition ${i + 1}`).join('\n');
@@ -58,22 +58,22 @@ for (const mode of ['light', 'dark'] as const) {
   }
 }
 
-test('creation and card editing use the same single conditions panel and compact body start', async ({ page }, testInfo) => {
+test('creation and task editing use the same single conditions panel and compact body start', async ({ page }, testInfo) => {
   resetBoard(mainProject);
-  const id = nextCardId(mainProject);
-  agboardOk(mainProject, ['add', 'Card layout', '--desc', body, '--assignee', 'human', '--actor', 'human']);
+  const id = nextTaskId(mainProject);
+  agboardOk(mainProject, ['add', 'Task layout', '--desc', body, '--assignee', 'human', '--actor', 'human']);
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   await page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) }).click();
   await page.getByRole('button', { name: 'Make draft', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit card', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit task', exact: true }).click();
   const dialog = page.locator('.editor-dialog');
   await dialog.locator('.conditions-dock__head').click();
   await expect(dialog.locator('.acceptance-edit__head')).toHaveCount(0);
   await expect(dialog.locator('.conditions-dock__title')).toHaveCSS('font-size', '14px');
   await page.screenshot({ path: testInfo.outputPath('card-edit.png') });
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.getByRole('button', { name: 'Add card', exact: true }).click();
+  await page.getByRole('button', { name: 'Add task', exact: true }).click();
   await dialog.locator('.conditions-dock__head').click();
   await dialog.getByRole('button', { name: 'Add condition', exact: true }).click();
   await dialog.getByRole('textbox', { name: 'Condition AC-1', exact: true }).fill('First condition');

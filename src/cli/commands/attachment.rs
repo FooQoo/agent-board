@@ -1,5 +1,5 @@
-//! `attachment ls|add|get`: a card's images, kept in the card's `assets/`
-//! folder. The CLI is the agent side, so a draft card refuses an addition.
+//! `attachment ls|add|get`: a task's images, kept in the task's `assets/`
+//! folder. The CLI is the agent side, so a draft task refuses an addition.
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -24,9 +24,9 @@ pub fn run(
 }
 
 fn list(ctx: &mut Context, args: &AttachmentLsArgs) -> Result<Outcome, AgboardError> {
-    let attachments = ctx.files.card(ctx.project_id()?, args.card_id)?.attachments;
+    let attachments = ctx.files.task(ctx.project_id()?, args.task_id)?.attachments;
     let human = if attachments.is_empty() {
-        format!("#{} has no attachments.\n", args.card_id)
+        format!("#{} has no attachments.\n", args.task_id)
     } else {
         attachments
             .iter()
@@ -36,7 +36,7 @@ fn list(ctx: &mut Context, args: &AttachmentLsArgs) -> Result<Outcome, AgboardEr
     Ok(Outcome {
         changed: false,
         human,
-        json: json!({"cardId": args.card_id, "attachments": attachments}),
+        json: json!({"taskId": args.task_id, "attachments": attachments}),
     })
 }
 
@@ -45,7 +45,7 @@ fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, AgboardEr
     let id = random_id()?;
     let attachment = ctx.files.add_attachment(
         ctx.project_id()?,
-        &AttachmentOwner::Card(args.card_id),
+        &AttachmentOwner::Task(args.task_id),
         AttachmentInput {
             id: id.clone(),
             name: args
@@ -64,16 +64,16 @@ fn add(ctx: &mut Context, args: &AttachmentAddArgs) -> Result<Outcome, AgboardEr
         changed: true,
         human: format!(
             "Added attachment {} to #{}: {path}\n",
-            attachment.id, args.card_id
+            attachment.id, args.task_id
         ),
-        json: json!({"cardId": args.card_id, "attachment": attachment, "path": path}),
+        json: json!({"taskId": args.task_id, "attachment": attachment, "path": path}),
     })
 }
 
 fn get(ctx: &mut Context, args: &AttachmentGetArgs) -> Result<Outcome, AgboardError> {
     let stored = ctx.files.attachment_path(
         ctx.project_id()?,
-        &AttachmentOwner::Card(args.card_id),
+        &AttachmentOwner::Task(args.task_id),
         &args.attachment_id,
     )?;
     let bytes =

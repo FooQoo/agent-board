@@ -33,7 +33,7 @@ const copy = {
       start: 'Start planning the rollout', running: 'Drafting the rollout options',
       resume: 'Preview first was chosen; writing the checklist',
     },
-    captions: ['Agent starts the task', 'Agent asks a question', 'You answer on the card',
+    captions: ['Agent starts the task', 'Agent asks a question', 'You answer on the task',
       'Agent resumes and checks the conditions', 'Done automatically'],
   },
   ja: {
@@ -52,7 +52,7 @@ const copy = {
       start: '公開の進め方の計画に着手する', running: '公開方法の案を整理している',
       resume: '先にプレビューを共有すると決まったので、チェックリストを書く',
     },
-    captions: ['エージェントが作業を始める', 'エージェントが質問する', 'カード上で回答する',
+    captions: ['エージェントが作業を始める', 'エージェントが質問する', 'タスク上で回答する',
       'エージェントが再開し、受入条件を確認する', '自動で完了'],
   },
 };
@@ -176,9 +176,9 @@ async function record(browser, locale, tmp) {
       if (server.exitCode !== null) throw new Error(stderr);
       return fetch(`${origin}/api/health`).then((r) => r.ok).catch(() => false);
     }).toBe(true);
-    const hero = cli(home, ['--project', project, 'show', String(heroId)]).card;
+    const hero = cli(home, ['--project', project, 'show', String(heroId)]).task;
     expect(hero.title).toBe(text.hero);
-    expect(hero.cardStatus).toBe('todo');
+    expect(hero.taskStatus).toBe('todo');
 
     const run = (...args) => cli(home, ['--project', project, ...args]);
     context = await browser.newContext({
@@ -194,7 +194,7 @@ async function record(browser, locale, tmp) {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`${origin}/?project=${projectId}`);
     const lanes = page.locator('section.lane');
-    const card = page.getByRole('button', { name: new RegExp(`^#${heroId}(?!\\d)`) });
+    const task = page.getByRole('button', { name: new RegExp(`^#${heroId}(?!\\d)`) });
     await expect(lanes).toHaveCount(3);
     await expect(lanes.nth(0).getByRole('button', { name: new RegExp(`^#${heroId}(?!\\d)`) })).toBeVisible();
     await installOverlay(page);
@@ -209,7 +209,7 @@ async function record(browser, locale, tmp) {
     run('mv', String(heroId), 'doing', '--actor', 'ai', '--reason', text.reasons.start);
     run('state', String(heroId), 'running', '--actor', 'ai', '--reason', text.reasons.running);
     await expect(lanes.nth(1).getByRole('button', { name: new RegExp(`^#${heroId}(?!\\d)`) })).toBeVisible();
-    await expect(card.locator('[data-status="running"], .status--running').first()).toBeVisible()
+    await expect(task.locator('[data-status="running"], .status--running').first()).toBeVisible()
       .catch(() => undefined);
     await page.waitForTimeout(2800);
 
@@ -219,7 +219,7 @@ async function record(browser, locale, tmp) {
     run('state', String(heroId), 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
       question: text.question, choices: text.choices.map(([id, label]) => ({ id, label })),
     }));
-    const answer = page.locator(`.card__answer[data-card-id="${heroId}"]`);
+    const answer = page.locator(`.card__answer[data-task-id="${heroId}"]`);
     await expect(answer.getByText(text.question, { exact: true })).toBeVisible();
     await page.waitForTimeout(3200);
 
@@ -248,7 +248,7 @@ async function record(browser, locale, tmp) {
     for (let done = 1; done <= 3; done++) {
       run('edit', String(heroId), '--desc', markdown(text, done));
       if (done < 3) {
-        await expect(card.locator('.acceptance-chip')).toContainText(`${done}/3`);
+        await expect(task.locator('.acceptance-chip')).toContainText(`${done}/3`);
         await page.waitForTimeout(1800);
       }
     }
@@ -258,7 +258,7 @@ async function record(browser, locale, tmp) {
     await expect(lanes.nth(2).getByRole('button', { name: new RegExp(`^#${heroId}(?!\\d)`) })).toBeVisible();
     await page.waitForTimeout(3600);
     const end = (Date.now() - created) / 1000;
-    expect(run('show', String(heroId)).card.cardStatus).toBe('done');
+    expect(run('show', String(heroId)).task.taskStatus).toBe('done');
     expect(errors).toEqual([]);
 
     await context.close();

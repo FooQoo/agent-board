@@ -34,20 +34,20 @@ async function dragOnto(page: Page, from: Locator, to: Locator, below: boolean) 
   await page.mouse.up();
 }
 
-test('dragging a card above another in its lane reorders it and keeps the order after a reload', async ({
+test('dragging a task above another in its lane reorders it and keeps the order after a reload', async ({
   page,
 }) => {
   const before = await ids(page, 'Todo');
   expect(before.length).toBeGreaterThan(1);
-  const cards = lane(page, 'Todo').locator('.card__item');
-  await dragOnto(page, cards.last(), cards.first(), false);
+  const tasks = lane(page, 'Todo').locator('.card__item');
+  await dragOnto(page, tasks.last(), tasks.first(), false);
   const expected = [before[before.length - 1], ...before.slice(0, -1)];
   await expect.poll(() => ids(page, 'Todo')).toEqual(expected);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // The cards keep the lane's gap after the drop.
   await expect
     .poll(() =>
-      cards.evaluateAll((nodes) =>
+      tasks.evaluateAll((nodes) =>
         nodes.slice(1).map((node, i) =>
           Math.round(node.getBoundingClientRect().top - nodes[i].getBoundingClientRect().bottom),
         ),
@@ -58,25 +58,25 @@ test('dragging a card above another in its lane reorders it and keeps the order 
   await expect.poll(() => ids(page, 'Todo')).toEqual(expected);
 });
 
-test('dragging a card to the bottom of its lane reorders it', async ({ page }) => {
+test('dragging a task to the bottom of its lane reorders it', async ({ page }) => {
   const before = await ids(page, 'Todo');
-  const cards = lane(page, 'Todo').locator('.card__item');
-  await dragOnto(page, cards.first(), cards.last(), true);
+  const tasks = lane(page, 'Todo').locator('.card__item');
+  await dragOnto(page, tasks.first(), tasks.last(), true);
   const expected = [...before.slice(1), before[0]];
   await expect.poll(() => ids(page, 'Todo')).toEqual(expected);
 });
 
 test('the Done lane reorders in the order it shows', async ({ page }) => {
   const before = await ids(page, 'Done');
-  const cards = lane(page, 'Done').locator('.card__item');
-  await dragOnto(page, cards.last(), cards.first(), false);
+  const tasks = lane(page, 'Done').locator('.card__item');
+  await dragOnto(page, tasks.last(), tasks.first(), false);
   const expected = [before[before.length - 1], ...before.slice(0, -1)];
   await expect.poll(() => ids(page, 'Done')).toEqual(expected);
   await page.reload();
   await expect.poll(() => ids(page, 'Done')).toEqual(expected);
 });
 
-test('dropping a card on another lane still asks for a reason and does not reorder', async ({
+test('dropping a task on another lane still asks for a reason and does not reorder', async ({
   page,
 }) => {
   const todo = await ids(page, 'Todo');

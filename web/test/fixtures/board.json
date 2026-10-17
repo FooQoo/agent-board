@@ -5,14 +5,14 @@
     "createdAt": "2026-10-01T07:00:00Z"
   },
   "cursor": "a1b2c3d4e5f60718293a4b5c6d7e8f90:25",
-  "cards": [
+  "tasks": [
     {
       "id": 8,
       "title": "Initialize the board",
       "description": "Create the storage for the board with agboard init.",
       "position": 1,
       "assignee": "ai",
-      "cardStatus": "done",
+      "taskStatus": "done",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -23,15 +23,15 @@
       "history": [
         {
           "at": "2026-10-01T16:00:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-01T16:30:00Z",
-          "reason": "Moved card from Todo to Doing."
+          "reason": "Moved task from Todo to Doing."
         },
         {
           "at": "2026-10-02T09:48:00Z",
-          "reason": "Moved card from Doing to Done."
+          "reason": "Moved task from Doing to Done."
         }
       ],
       "pendingChoices": [],
@@ -40,15 +40,15 @@
       "body": "Create the storage for the board with agboard init.",
       "acceptance": [],
       "acceptanceError": false,
-      "cardStatusChangedAt": "2026-10-02T09:48:00Z"
+      "taskStatusChangedAt": "2026-10-02T09:48:00Z"
     },
     {
       "id": 9,
-      "title": "Return the card list as JSON",
-      "description": "Print the cards as JSON so that agents can read them.",
+      "title": "Return the task list as JSON",
+      "description": "Print the tasks as JSON so that agents can read them.",
       "position": 2,
       "assignee": "ai",
-      "cardStatus": "done",
+      "taskStatus": "done",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -59,32 +59,32 @@
       "history": [
         {
           "at": "2026-10-01T16:10:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-01T17:00:00Z",
-          "reason": "Moved card from Todo to Doing."
+          "reason": "Moved task from Todo to Doing."
         },
         {
           "at": "2026-10-02T10:02:00Z",
-          "reason": "Moved card from Doing to Done."
+          "reason": "Moved task from Doing to Done."
         }
       ],
       "pendingChoices": [],
       "epic": null,
       "evidence": [],
-      "body": "Print the cards as JSON so that agents can read them.",
+      "body": "Print the tasks as JSON so that agents can read them.",
       "acceptance": [],
       "acceptanceError": false,
-      "cardStatusChangedAt": "2026-10-02T10:02:00Z"
+      "taskStatusChangedAt": "2026-10-02T10:02:00Z"
     },
     {
       "id": 11,
-      "title": "Implement card moves",
-      "description": "Move a card to another column and record the transition.",
+      "title": "Implement task moves",
+      "description": "Move a task to another column and record the transition.",
       "position": 1,
       "assignee": "ai",
-      "cardStatus": "doing",
+      "taskStatus": "doing",
       "agentStatus": "running",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -95,24 +95,24 @@
       "history": [
         {
           "at": "2026-10-01T16:00:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-01T16:30:00Z",
-          "reason": "Moved card from Todo to Doing."
+          "reason": "Moved task from Todo to Doing."
         },
         {
           "at": "2026-10-02T10:42:00Z",
-          "reason": "Working on this card"
+          "reason": "Working on this task"
         }
       ],
       "pendingChoices": [],
       "epic": null,
       "evidence": [],
-      "body": "Move a card to another column and record the transition.",
+      "body": "Move a task to another column and record the transition.",
       "acceptance": [],
       "acceptanceError": false,
-      "cardStatusChangedAt": "2026-10-01T16:30:00Z"
+      "taskStatusChangedAt": "2026-10-01T16:30:00Z"
     },
     {
       "id": 12,
@@ -120,7 +120,7 @@
       "description": "",
       "position": 2,
       "assignee": "ai",
-      "cardStatus": "doing",
+      "taskStatus": "doing",
       "agentStatus": "pending",
       "pendingReason": "Waiting for confirmation on how to replace a board.",
       "pendingRequestId": "0123456789abcdef0123456789abcdef",
@@ -131,11 +131,11 @@
       "history": [
         {
           "at": "2026-10-02T00:20:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-02T01:10:00Z",
-          "reason": "Moved card from Todo to Doing."
+          "reason": "Moved task from Todo to Doing."
         },
         {
           "at": "2026-10-02T10:36:00Z",
@@ -157,7 +157,7 @@
       "body": "",
       "acceptance": [],
       "acceptanceError": false,
-      "cardStatusChangedAt": "2026-10-02T01:10:00Z"
+      "taskStatusChangedAt": "2026-10-02T01:10:00Z"
     },
     {
       "id": 13,
@@ -165,7 +165,7 @@
       "description": "Check the layout at 1280, 800, and 480 px.\nLook for horizontal scrolling.",
       "position": 3,
       "assignee": "ai",
-      "cardStatus": "doing",
+      "taskStatus": "doing",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -176,11 +176,11 @@
       "history": [
         {
           "at": "2026-10-02T02:00:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         },
         {
           "at": "2026-10-02T10:12:00Z",
-          "reason": "Moved card from Todo to Doing."
+          "reason": "Moved task from Todo to Doing."
         }
       ],
       "pendingChoices": [],
@@ -189,7 +189,7 @@
       "body": "Check the layout at 1280, 800, and 480 px.\nLook for horizontal scrolling.",
       "acceptance": [],
       "acceptanceError": false,
-      "cardStatusChangedAt": "2026-10-02T10:12:00Z"
+      "taskStatusChangedAt": "2026-10-02T10:12:00Z"
     },
     {
       "id": 14,
@@ -197,7 +197,7 @@
       "description": "Build Agent Board for Windows x64.",
       "position": 1,
       "assignee": "human",
-      "cardStatus": "todo",
+      "taskStatus": "todo",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -208,7 +208,7 @@
       "history": [
         {
           "at": "2026-10-02T03:00:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         }
       ],
       "pendingChoices": [],
@@ -217,7 +217,7 @@
       "body": "Build Agent Board for Windows x64.",
       "acceptance": [],
       "acceptanceError": false,
-      "cardStatusChangedAt": "2026-10-02T03:00:00Z"
+      "taskStatusChangedAt": "2026-10-02T03:00:00Z"
     },
     {
       "id": 15,
@@ -225,7 +225,7 @@
       "description": "",
       "position": 2,
       "assignee": "ai",
-      "cardStatus": "todo",
+      "taskStatus": "todo",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -236,7 +236,7 @@
       "history": [
         {
           "at": "2026-10-02T09:25:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         }
       ],
       "pendingChoices": [],
@@ -245,7 +245,7 @@
       "body": "",
       "acceptance": [],
       "acceptanceError": false,
-      "cardStatusChangedAt": "2026-10-02T09:25:00Z"
+      "taskStatusChangedAt": "2026-10-02T09:25:00Z"
     },
     {
       "id": 16,
@@ -253,7 +253,7 @@
       "description": "",
       "position": 3,
       "assignee": "ai",
-      "cardStatus": "todo",
+      "taskStatus": "todo",
       "agentStatus": "idle",
       "pendingReason": null,
       "pendingRequestId": null,
@@ -264,7 +264,7 @@
       "history": [
         {
           "at": "2026-10-02T09:30:00Z",
-          "reason": "Created card in Todo."
+          "reason": "Created task in Todo."
         }
       ],
       "pendingChoices": [],
@@ -273,7 +273,7 @@
       "body": "",
       "acceptance": [],
       "acceptanceError": false,
-      "cardStatusChangedAt": "2026-10-02T09:30:00Z"
+      "taskStatusChangedAt": "2026-10-02T09:30:00Z"
     }
   ],
   "version": "fixture-25",

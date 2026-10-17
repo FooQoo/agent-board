@@ -1,13 +1,13 @@
-//! Epic creation, update, deletion, and card membership on the shared files
+//! Epic creation, update, deletion, and task membership on the shared files
 //! (AC-2 storage layer, U4-1 and U4-2).
 
 use std::fs;
 use std::path::PathBuf;
 
-use agent_board::domain::{Actor, Assignee, NewCard, ProjectId};
+use agent_board::domain::{Actor, Assignee, NewTask, ProjectId};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
-use agent_board::file_store::model::{CardView, EpicUpdate, EpicView, NewEpic};
+use agent_board::file_store::model::{EpicUpdate, EpicView, NewEpic, TaskView};
 use agent_board::file_store::validate::EpicId;
 use chrono::{TimeZone, Utc};
 
@@ -48,7 +48,7 @@ impl Fixture {
         self.project_dir().join("epics").join(id)
     }
 
-    fn card_dir(&self, id: i64) -> PathBuf {
+    fn task_dir(&self, id: i64) -> PathBuf {
         self.project_dir().join("tasks").join(id.to_string())
     }
 
@@ -66,11 +66,11 @@ impl Fixture {
         )
     }
 
-    fn card(&self, title: &str) -> CardView {
+    fn task(&self, title: &str) -> TaskView {
         self.store
-            .create_card(
+            .create_task(
                 &self.project,
-                NewCard {
+                NewTask {
                     title: title.into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
@@ -222,15 +222,15 @@ fn colors_are_stored_as_uppercase_hex_and_other_colors_are_refused() {
 }
 
 #[test]
-fn an_epic_used_by_a_card_cannot_be_deleted_even_when_the_card_is_archived() {
+fn an_epic_used_by_a_task_cannot_be_deleted_even_when_the_task_is_archived() {
     let f = fixture();
     f.new_epic("FILE-SHARE").unwrap();
-    let card = f.card("Uses the epic");
+    let task = f.task("Uses the epic");
     let epic = epic_id("FILE-SHARE");
     f.store
-        .set_card_epic(&f.project, card.id, Some(&epic), Actor::Human, at(5))
+        .set_task_epic(&f.project, task.id, Some(&epic), Actor::Human, at(5))
         .unwrap();
-    f.store.archive_card(&f.project, card.id, at(6)).unwrap();
+    f.store.archive_task(&f.project, task.id, at(6)).unwrap();
     let json_before = bytes_of(f.epic_dir("FILE-SHARE").join("epic.json"));
 
     let err = f.store.delete_epic(&f.project, &epic).unwrap_err();
@@ -266,13 +266,13 @@ fn setting_and_clearing_an_epic_records_history_only_for_real_changes() {
     let f = fixture();
     f.new_epic("ALPHA").unwrap();
     f.new_epic("BETA").unwrap();
-    let card = f.card("Membership");
+    let task = f.task("Membership");
     let alpha = epic_id("ALPHA");
     let beta = epic_id("BETA");
 
     let set = f
         .store
-        .set_card_epic(&f.project, card.id, Some(&alpha), Actor::Ai, at(5))
+        .set_task_epic(&f.project, task.id, Some(&alpha), Actor::Ai, at(5))
         .unwrap();
     assert!(set.changed);
     assert_eq!(set.value.epic_id.as_deref(), Some("ALPHA"));
@@ -280,28 +280,28 @@ fn setting_and_clearing_an_epic_records_history_only_for_real_changes() {
         set.value.history.last().unwrap().reason,
         "Changed epic from none to ALPHA."
     );
-    let task_before = bytes_of(f.card_dir(card.id).join("task.json"));
+    let task_before = bytes_of(f.task_dir(task.id).join("task.json"));
     let same = f
         .store
-        .set_card_epic(&f.project, card.id, Some(&alpha), Actor::Ai, at(6))
+        .set_task_epic(&f.project, task.id, Some(&alpha), Actor::Ai, at(6))
         .unwrap();
     assert!(!same.changed);
     assert_eq!(
-        bytes_of(f.card_dir(card.id).join("task.json")),
+        bytes_of(f.task_dir(task.id).join("task.json")),
         task_before,
         "setting the same epic writes nothing"
     );
 
     let moved = f
         .store
-        .set_card_epic(&f.project, card.id, Some(&beta), Actor::Human, at(7))
+        .set_task_epic(&f.project, task.id, Some(&beta), Actor::Human, at(7))
         .unwrap();
     assert_eq!(moved.value.epic_id.as_deref(), Some("BETA"));
     assert_eq!(moved.value.history.len(), 3);
 
     let cleared = f
         .store
-        .set_card_epic(&f.project, card.id, None, Actor::Human, at(8))
+        .set_task_epic(&f.project, task.id, None, Actor::Human, at(8))
         .unwrap();
     assert!(cleared.changed);
     assert_eq!(cleared.value.epic_id, None);
@@ -315,14 +315,14 @@ fn setting_and_clearing_an_epic_records_history_only_for_real_changes() {
 #[test]
 fn setting_an_unknown_epic_is_refused_and_changes_nothing() {
     let f = fixture();
-    let card = f.card("No epic yet");
-    let task_before = bytes_of(f.card_dir(card.id).join("task.json"));
+    let task = f.task("No epic yet");
+    let task_before = bytes_of(f.task_dir(task.id).join("task.json"));
 
     let err = f
         .store
-        .set_card_epic(
+        .set_task_epic(
             &f.project,
-            card.id,
+            task.id,
             Some(&epic_id("NOPE")),
             Actor::Human,
             at(5),
@@ -330,42 +330,42 @@ fn setting_an_unknown_epic_is_refused_and_changes_nothing() {
         .unwrap_err();
 
     assert!(matches!(err, AgboardError::EpicNotFound { .. }), "{err:?}");
-    assert_eq!(bytes_of(f.card_dir(card.id).join("task.json")), task_before);
+    assert_eq!(bytes_of(f.task_dir(task.id).join("task.json")), task_before);
 }
 
 #[test]
-fn an_agent_cannot_change_the_epic_of_an_archived_or_draft_card_but_a_human_can() {
+fn an_agent_cannot_change_the_epic_of_an_archived_or_draft_task_but_a_human_can() {
     let f = fixture();
     f.new_epic("ALPHA").unwrap();
     let alpha = epic_id("ALPHA");
 
-    let archived = f.card("Archived");
+    let archived = f.task("Archived");
     f.store
-        .archive_card(&f.project, archived.id, at(5))
+        .archive_task(&f.project, archived.id, at(5))
         .unwrap();
     let err = f
         .store
-        .set_card_epic(&f.project, archived.id, Some(&alpha), Actor::Ai, at(6))
+        .set_task_epic(&f.project, archived.id, Some(&alpha), Actor::Ai, at(6))
         .unwrap_err();
-    assert!(matches!(err, AgboardError::CardArchived { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::TaskArchived { .. }), "{err:?}");
     let human = f
         .store
-        .set_card_epic(&f.project, archived.id, Some(&alpha), Actor::Human, at(6))
+        .set_task_epic(&f.project, archived.id, Some(&alpha), Actor::Human, at(6))
         .unwrap();
     assert_eq!(human.value.epic_id.as_deref(), Some("ALPHA"));
 
-    let draft = f.card("Draft");
+    let draft = f.task("Draft");
     f.store
         .set_draft(&f.project, draft.id, true, at(5))
         .unwrap();
     let err = f
         .store
-        .set_card_epic(&f.project, draft.id, Some(&alpha), Actor::Ai, at(6))
+        .set_task_epic(&f.project, draft.id, Some(&alpha), Actor::Ai, at(6))
         .unwrap_err();
-    assert!(matches!(err, AgboardError::CardIsDraft { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::TaskIsDraft { .. }), "{err:?}");
     let human = f
         .store
-        .set_card_epic(&f.project, draft.id, Some(&alpha), Actor::Human, at(6))
+        .set_task_epic(&f.project, draft.id, Some(&alpha), Actor::Human, at(6))
         .unwrap();
     assert_eq!(human.value.epic_id.as_deref(), Some("ALPHA"));
 }
@@ -498,14 +498,14 @@ fn valid_plan(goal: &str) -> String {
 }
 
 #[test]
-fn an_ai_cannot_change_epic_membership_after_a_card_is_done() {
+fn an_ai_cannot_change_epic_membership_after_a_task_is_done() {
     let f = fixture();
     f.new_epic("FILE-SHARE").unwrap();
-    let card = f.card("Completed card");
+    let task = f.task("Completed task");
     f.store
-        .move_work_card(
+        .move_work_task(
             &f.project,
-            card.id,
+            task.id,
             agent_board::domain::Column::Done,
             agent_board::domain::ChangeContext {
                 actor: Actor::Ai,
@@ -517,13 +517,13 @@ fn an_ai_cannot_change_epic_membership_after_a_card_is_done() {
 
     let err = f
         .store
-        .set_card_epic(
+        .set_task_epic(
             &f.project,
-            card.id,
+            task.id,
             Some(&epic_id("FILE-SHARE")),
             Actor::Ai,
             at(6),
         )
         .unwrap_err();
-    assert!(matches!(err, AgboardError::CardIsDone { id } if id == card.id));
+    assert!(matches!(err, AgboardError::TaskIsDone { id } if id == task.id));
 }

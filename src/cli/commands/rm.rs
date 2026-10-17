@@ -21,14 +21,14 @@ pub fn run_with_io(
     output: &mut impl Write,
 ) -> Result<Outcome, AgboardError> {
     let project_id = ctx.project_id()?;
-    let card = ctx.files.card(project_id, args.id)?;
+    let task = ctx.files.task(project_id, args.id)?;
     if ctx.json || !ctx.interactive {
         return Err(AgboardError::ConfirmationRequired {
-            operation: "deleting a card".into(),
+            operation: "deleting a task".into(),
         });
     }
     if !confirm::confirm(
-        &format!("Delete #{} {}? This cannot be undone.", card.id, card.title),
+        &format!("Delete #{} {}? This cannot be undone.", task.id, task.title),
         input,
         output,
     )? {
@@ -38,7 +38,7 @@ pub fn run_with_io(
             json: json!({"cancelled": true}),
         });
     }
-    ctx.files.delete_card(project_id, args.id)?;
+    ctx.files.delete_task(project_id, args.id)?;
     Ok(Outcome {
         changed: true,
         human: format!("Deleted #{}.\n", args.id),

@@ -108,7 +108,7 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::server::{ServeConfig, run_until};
@@ -145,16 +145,16 @@ fn main_id(home: &Path) -> ProjectId {
     store_in(home).project_by_name("main").unwrap().id
 }
 
-/// A temporary board with one user card and two AI cards in distinct states.
+/// A temporary board with one user task and two AI tasks in distinct states.
 fn board_home() -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
     let store = store_in(home.path());
     let main = store.create_project("main", t(0)).unwrap().id;
     let add = |title: &str, assignee| {
         store
-            .create_card(
+            .create_task(
                 &main,
-                NewCard {
+                NewTask {
                     title: title.into(),
                     description: BODY.into(),
                     assignee,
@@ -168,18 +168,18 @@ fn board_home() -> tempfile::TempDir {
             )
             .unwrap()
     };
-    let _first = add("First card", Assignee::Human);
-    let second = add("Second card", Assignee::Ai);
-    let third = add("Third card", Assignee::Ai);
+    let _first = add("First task", Assignee::Human);
+    let second = add("Second task", Assignee::Ai);
+    let third = add("Third task", Assignee::Ai);
     let context = |reason: &str| ChangeContext {
         actor: Actor::Ai,
         reason: reason.into(),
     };
     store
-        .move_work_card(&main, second.id, Column::Doing, context("Start"), t(4))
+        .move_work_task(&main, second.id, Column::Doing, context("Start"), t(4))
         .unwrap();
     store
-        .move_work_card(&main, third.id, Column::Doing, context("Start"), t(5))
+        .move_work_task(&main, third.id, Column::Doing, context("Start"), t(5))
         .unwrap();
     store
         .set_agent_status(
@@ -204,11 +204,11 @@ fn board_home() -> tempfile::TempDir {
     home
 }
 
-fn card_ids(home: &Path) -> Vec<i64> {
+fn task_ids(home: &Path) -> Vec<i64> {
     let mut ids: Vec<i64> = store_in(home)
         .board(&main_id(home))
         .unwrap()
-        .cards
+        .tasks
         .iter()
         .map(|c| c.id)
         .collect();
@@ -368,7 +368,7 @@ impl Running {
 
     fn delete_as_page(&self, id: i64) -> Reply {
         let headers = self.page_headers(&self.token());
-        self.send_owned("DELETE", &self.api(&format!("/cards/{id}")), &headers)
+        self.send_owned("DELETE", &self.api(&format!("/tasks/{id}")), &headers)
     }
 
     /// Open `GET /api/events` and wait for the `ready` event.
@@ -573,16 +573,16 @@ fn board_matches_the_stores_snapshot_in_the_model_shape() {
         "version": snapshot.version,
         "cursor": snapshot.cursor.to_string(),
         "epics": [],
-        "cards": serde_json::to_value(&snapshot.cards).unwrap(),
+        "tasks": serde_json::to_value(&snapshot.tasks).unwrap(),
         "problems": [],
     });
     let actual: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
     assert_eq!(actual, expected);
-    assert_eq!(actual["cards"].as_array().unwrap().len(), 3);
+    assert_eq!(actual["tasks"].as_array().unwrap().len(), 3);
 
-    // The documented key order, at the board and at each card.
+    // The documented key order, at the board and at each task.
     assert_eq!(actual["version"], snapshot.version);
-    assert_eq!(actual["cards"][2]["pendingReason"], "Waiting for review");
+    assert_eq!(actual["tasks"][2]["pendingReason"], "Waiting for review");
 }
 
 #[test]
@@ -590,10 +590,10 @@ fn board_reflects_changes_made_after_the_server_started() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     store_in(home.path())
-        .create_card(
+        .create_task(
             &main_id(home.path()),
-            NewCard {
-                title: "Late card".into(),
+            NewTask {
+                title: "Late task".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
                 actor: Actor::Ai,
@@ -608,12 +608,12 @@ fn board_reflects_changes_made_after_the_server_started() {
     let actual = loop {
         let actual: serde_json::Value =
             serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
-        if actual["cards"].as_array().unwrap().len() == 4 || Instant::now() > deadline {
+        if actual["tasks"].as_array().unwrap().len() == 4 || Instant::now() > deadline {
             break actual;
         }
         std::thread::sleep(Duration::from_millis(50));
     };
-    assert_eq!(actual["cards"].as_array().unwrap().len(), 4);
+    assert_eq!(actual["tasks"].as_array().unwrap().len(), 4);
 }
 
 #[test]
@@ -623,7 +623,7 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let mut events = server.events();
     let denied = server.send_json(
         "POST",
-        &server.api("/cards"),
+        &server.api("/tasks"),
         r#"{"title":"Denied","description":"","assignee":"ai","actor":"ai"}"#,
         None,
     );
@@ -631,28 +631,28 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let token = server.token();
     let created = server.send_json(
         "POST",
-        &server.api("/cards"),
+        &server.api("/tasks"),
         r#"{"title":"New work","description":"","assignee":"ai","actor":"ai"}"#,
         Some(&token),
     );
     assert_eq!(created.status, 201, "{}", created.body);
     let moved = server.send_json(
         "POST",
-        &server.api("/cards/4/move"),
-        r#"{"cardStatus":"doing","actor":"ai","reason":"Start"}"#,
+        &server.api("/tasks/4/move"),
+        r#"{"taskStatus":"doing","actor":"ai","reason":"Start"}"#,
         Some(&token),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
     let pending = server.send_json(
         "POST",
-        &server.api("/cards/4/agent-status"),
+        &server.api("/tasks/4/agent-status"),
         r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction","choices":[{"id":"a","label":"Plan A"},{"id":"b","label":"Plan B"}]}"#,
         Some(&token),
     );
     assert_eq!(pending.status, 200, "{}", pending.body);
     let no_choices = server.send_json(
         "POST",
-        &server.api("/cards/4/agent-status"),
+        &server.api("/tasks/4/agent-status"),
         r#"{"agentStatus":"pending","actor":"ai","reason":"A question with no choices"}"#,
         Some(&token),
     );
@@ -662,15 +662,15 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
         false
     );
     let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
-    let request_id = request["card"]["pendingRequestId"].as_str().unwrap();
+    let request_id = request["task"]["pendingRequestId"].as_str().unwrap();
     let body = serde_json::json!({"requestId":request_id,"actor":"human","text":"Proceed with A"})
         .to_string();
-    let answered = server.send_json("POST", &server.api("/cards/4/answer"), &body, Some(&token));
+    let answered = server.send_json("POST", &server.api("/tasks/4/answer"), &body, Some(&token));
     assert_eq!(answered.status, 200, "{}", answered.body);
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
-    assert_eq!(board["cards"][3]["agentStatus"], "idle");
-    assert_eq!(board["cards"][3]["history"].as_array().unwrap().len(), 4);
+    assert_eq!(board["tasks"][3]["agentStatus"], "idle");
+    assert_eq!(board["tasks"][3]["history"].as_array().unwrap().len(), 4);
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 }
 
@@ -681,16 +681,16 @@ fn archive_api_has_separate_reads_bulk_operation_restore_and_delete_guard() {
     let token = server.token();
     let mut events = server.events();
 
-    let archived = server.send_json("POST", &server.api("/cards/1/archive"), "", Some(&token));
+    let archived = server.send_json("POST", &server.api("/tasks/1/archive"), "", Some(&token));
     assert_eq!(archived.status, 200, "{}", archived.body);
-    let card: serde_json::Value = serde_json::from_str(&archived.body).unwrap();
-    assert!(card["card"]["archivedAt"].is_string());
+    let task: serde_json::Value = serde_json::from_str(&archived.body).unwrap();
+    assert!(task["task"]["archivedAt"].is_string());
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
     assert!(
-        !board["cards"]
+        !board["tasks"]
             .as_array()
             .unwrap()
             .iter()
@@ -698,23 +698,23 @@ fn archive_api_has_separate_reads_bulk_operation_restore_and_delete_guard() {
     );
     let archive: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
-    assert_eq!(archive["cards"].as_array().unwrap().len(), 1);
-    assert_eq!(archive["cards"][0]["id"], 1);
+    assert_eq!(archive["tasks"].as_array().unwrap().len(), 1);
+    assert_eq!(archive["tasks"][0]["id"], 1);
 
-    let restored = server.send_json("POST", &server.api("/cards/1/restore"), "", Some(&token));
+    let restored = server.send_json("POST", &server.api("/tasks/1/restore"), "", Some(&token));
     assert_eq!(restored.status, 200, "{}", restored.body);
     assert!(restored.body.contains("\"archivedAt\":null"));
 
     let moved = server.send_json(
         "POST",
-        &server.api("/cards/1/move"),
-        r#"{"cardStatus":"done","reason":"Finish"}"#,
+        &server.api("/tasks/1/move"),
+        r#"{"taskStatus":"done","reason":"Finish"}"#,
         Some(&token),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
     let bulk = server.send_json(
         "POST",
-        &server.api("/cards/archive-done"),
+        &server.api("/tasks/archive-done"),
         r#"{"ids":[1]}"#,
         Some(&token),
     );
@@ -729,18 +729,18 @@ fn archive_api_has_separate_reads_bulk_operation_restore_and_delete_guard() {
     assert_eq!(server.get(&server.api("/archive")).status, 200);
     let archive: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
-    assert!(archive["cards"].as_array().unwrap().is_empty());
+    assert!(archive["tasks"].as_array().unwrap().is_empty());
 }
 
-/// Add a second project "other" that has a card with the same number as the
-/// first card of "main", and return its ID.
+/// Add a second project "other" that has a task with the same number as the
+/// first task of "main", and return its ID.
 fn add_other_project(home: &Path) -> ProjectId {
     let store = store_in(home);
     let other = store.create_project("other", t(0)).unwrap().id;
     store
-        .create_card(
+        .create_task(
             &other,
-            NewCard {
+            NewTask {
                 title: "Other first".into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
@@ -754,7 +754,7 @@ fn add_other_project(home: &Path) -> ProjectId {
 }
 
 #[test]
-fn the_same_card_number_in_two_projects_never_mixes_through_the_api() {
+fn the_same_task_number_in_two_projects_never_mixes_through_the_api() {
     let home = board_home();
     let other = add_other_project(home.path());
     let main = main_id(home.path());
@@ -764,14 +764,14 @@ fn the_same_card_number_in_two_projects_never_mixes_through_the_api() {
 
     let moved = server.send_json(
         "POST",
-        &format!("/api/projects/{other}/cards/1/move"),
-        r#"{"cardStatus":"doing","actor":"ai","reason":"Start"}"#,
+        &format!("/api/projects/{other}/tasks/1/move"),
+        r#"{"taskStatus":"doing","actor":"ai","reason":"Start"}"#,
         Some(&token),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
     let created = server.send_json(
         "POST",
-        &format!("/api/projects/{other}/cards"),
+        &format!("/api/projects/{other}/tasks"),
         r#"{"title":"Second in other","description":"","assignee":"ai","actor":"ai"}"#,
         Some(&token),
     );
@@ -781,23 +781,23 @@ fn the_same_card_number_in_two_projects_never_mixes_through_the_api() {
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&format!("/api/projects/{other}/board")).body).unwrap();
     assert_eq!(board["project"]["name"], "other");
-    assert_eq!(board["cards"].as_array().unwrap().len(), 2);
-    assert_eq!(board["cards"][0]["cardStatus"], "doing");
+    assert_eq!(board["tasks"].as_array().unwrap().len(), 2);
+    assert_eq!(board["tasks"][0]["taskStatus"], "doing");
 
-    // Card #3 exists only in "main": it cannot be reached through "other".
+    // Task #3 exists only in "main": it cannot be reached through "other".
     let headers = server.page_headers(&token);
     let reply = server.send_owned(
         "DELETE",
-        &format!("/api/projects/{other}/cards/3"),
+        &format!("/api/projects/{other}/tasks/3"),
         &headers,
     );
     assert_eq!(reply.status, 404);
-    assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
-    let archived = server.send_json("POST", &server.api("/cards/3/archive"), "", Some(&token));
+    assert_eq!(task_ids(home.path()), vec![1, 2, 3]);
+    let archived = server.send_json("POST", &server.api("/tasks/3/archive"), "", Some(&token));
     assert_eq!(archived.status, 200, "{}", archived.body);
-    let reply = server.send_owned("DELETE", &server.api("/cards/3"), &headers);
+    let reply = server.send_owned("DELETE", &server.api("/tasks/3"), &headers);
     assert_eq!(reply.status, 204);
-    assert_eq!(card_ids(home.path()), vec![1, 2]);
+    assert_eq!(task_ids(home.path()), vec![1, 2]);
 }
 
 #[test]
@@ -810,7 +810,7 @@ fn a_project_that_does_not_exist_or_is_malformed_is_refused_before_any_change() 
 
     let reply = server.send_json(
         "POST",
-        &format!("/api/projects/{ghost}/cards"),
+        &format!("/api/projects/{ghost}/tasks"),
         r#"{"title":"Nowhere","description":"","assignee":"ai","actor":"ai"}"#,
         Some(&token),
     );
@@ -820,7 +820,7 @@ fn a_project_that_does_not_exist_or_is_malformed_is_refused_before_any_change() 
 
     let reply = server.send_json(
         "POST",
-        "/api/projects/not-an-id/cards",
+        "/api/projects/not-an-id/tasks",
         r#"{"title":"Nowhere","description":"","assignee":"ai","actor":"ai"}"#,
         Some(&token),
     );
@@ -829,7 +829,7 @@ fn a_project_that_does_not_exist_or_is_malformed_is_refused_before_any_change() 
     // The guard still comes first: no token, no existence check.
     let reply = server.send_json(
         "POST",
-        &format!("/api/projects/{ghost}/cards"),
+        &format!("/api/projects/{ghost}/tasks"),
         r#"{"title":"Nowhere","description":"","assignee":"ai","actor":"ai"}"#,
         None,
     );
@@ -841,24 +841,24 @@ fn a_project_that_does_not_exist_or_is_malformed_is_refused_before_any_change() 
 }
 
 #[test]
-fn the_old_target_less_card_routes_do_not_exist() {
+fn the_old_target_less_task_routes_do_not_exist() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let token = server.token();
     assert_eq!(server.get("/api/board").status, 404);
     let reply = server.send_json(
         "POST",
-        "/api/cards",
+        "/api/tasks",
         r#"{"title":"Old","description":"","assignee":"ai","actor":"ai"}"#,
         Some(&token),
     );
     assert_eq!(reply.status, 404);
     let headers = server.page_headers(&token);
     assert_eq!(
-        server.send_owned("DELETE", "/api/cards/1", &headers).status,
+        server.send_owned("DELETE", "/api/tasks/1", &headers).status,
         404
     );
-    assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
+    assert_eq!(task_ids(home.path()), vec![1, 2, 3]);
 }
 
 #[test]
@@ -909,7 +909,7 @@ fn a_foreign_host_is_403_on_every_path() {
     let server = Running::start(home.path(), 0).unwrap();
     let evil = format!("evil.example:{}", server.port());
     let board = server.api("/board");
-    let card = server.api("/cards/1");
+    let task = server.api("/tasks/1");
     let requests = [
         ("GET", "/"),
         ("GET", "/assets/app.js"),
@@ -918,7 +918,7 @@ fn a_foreign_host_is_403_on_every_path() {
         ("GET", "/api/events"),
         ("GET", "/api/health"),
         ("POST", "/api/notify"),
-        ("DELETE", card.as_str()),
+        ("DELETE", task.as_str()),
         ("GET", "/nope"),
         ("POST", board.as_str()),
     ];
@@ -930,7 +930,7 @@ fn a_foreign_host_is_403_on_every_path() {
         assert!(body["error"]["message"].is_string());
         assert!(body["error"]["reason"].is_string());
     }
-    assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
+    assert_eq!(task_ids(home.path()), vec![1, 2, 3]);
 }
 
 #[test]
@@ -988,12 +988,12 @@ fn a_request_without_a_host_header_is_403() {
 // ---------------------------------------------------------------- delete
 
 #[test]
-fn a_delete_meeting_all_four_conditions_returns_204_and_removes_the_card() {
+fn a_delete_meeting_all_four_conditions_returns_204_and_removes_the_task() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let archive = server.send_json(
         "POST",
-        &server.api("/cards/2/archive"),
+        &server.api("/tasks/2/archive"),
         "",
         Some(&server.token()),
     );
@@ -1001,10 +1001,10 @@ fn a_delete_meeting_all_four_conditions_returns_204_and_removes_the_card() {
     let reply = server.delete_as_page(2);
     assert_eq!(reply.status, 204);
     assert_eq!(reply.body, "");
-    assert_eq!(card_ids(home.path()), vec![1, 3]);
+    assert_eq!(task_ids(home.path()), vec![1, 3]);
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
-    assert_eq!(board["cards"].as_array().unwrap().len(), 2);
+    assert_eq!(board["tasks"].as_array().unwrap().len(), 2);
 }
 
 #[test]
@@ -1015,11 +1015,11 @@ fn localhost_origin_and_host_also_delete() {
     let port = server.port();
     let host = format!("localhost:{port}");
     let origin = format!("http://localhost:{port}");
-    let archived = server.send_json("POST", &server.api("/cards/1/archive"), "", Some(&token));
+    let archived = server.send_json("POST", &server.api("/tasks/1/archive"), "", Some(&token));
     assert_eq!(archived.status, 200, "{}", archived.body);
     let reply = server.send(
         "DELETE",
-        &server.api("/cards/1"),
+        &server.api("/tasks/1"),
         &[
             ("Host", host.as_str()),
             ("Origin", origin.as_str()),
@@ -1028,11 +1028,11 @@ fn localhost_origin_and_host_also_delete() {
         ],
     );
     assert_eq!(reply.status, 204);
-    assert_eq!(card_ids(home.path()), vec![2, 3]);
+    assert_eq!(task_ids(home.path()), vec![2, 3]);
 }
 
 #[test]
-fn a_delete_missing_any_one_condition_is_403_and_the_card_remains() {
+fn a_delete_missing_any_one_condition_is_403_and_the_task_remains() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let token = server.token();
@@ -1087,7 +1087,7 @@ fn a_delete_missing_any_one_condition_is_403_and_the_card_remains() {
         if let Some(v) = token {
             headers.push(("X-Agboard-Token", v));
         }
-        let reply = server.send("DELETE", &server.api("/cards/1"), &headers);
+        let reply = server.send("DELETE", &server.api("/tasks/1"), &headers);
         assert_eq!(reply.status, 403, "{name}");
         let body: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
         // A token that is present but wrong comes from an earlier server: the page asks for a reload. Anything
@@ -1098,7 +1098,7 @@ fn a_delete_missing_any_one_condition_is_403_and_the_card_remains() {
             "forbidden"
         };
         assert_eq!(body["error"]["code"], expected, "{name}");
-        assert_eq!(card_ids(home.path()), vec![1, 2, 3], "{name}");
+        assert_eq!(task_ids(home.path()), vec![1, 2, 3], "{name}");
     }
 }
 
@@ -1110,18 +1110,18 @@ fn the_token_is_not_accepted_from_a_query_string() {
     let origin = format!("http://127.0.0.1:{}", server.port());
     let reply = server.send(
         "DELETE",
-        &server.api(&format!("/cards/1?token={token}")),
+        &server.api(&format!("/tasks/1?token={token}")),
         &[
             ("Origin", origin.as_str()),
             ("Sec-Fetch-Site", "same-origin"),
         ],
     );
     assert_eq!(reply.status, 403);
-    assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
+    assert_eq!(task_ids(home.path()), vec![1, 2, 3]);
 }
 
 #[test]
-fn deleting_a_missing_card_is_404_with_the_error_body() {
+fn deleting_a_missing_task_is_404_with_the_error_body() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let reply = server.delete_as_page(99);
@@ -1130,17 +1130,17 @@ fn deleting_a_missing_card_is_404_with_the_error_body() {
     assert_eq!(
         body,
         serde_json::json!({"error": {
-            "code": "card_not_found",
-            "message": "card #99 not found.",
-            "reason": "No card has ID 99. Run \"agboard ls\" to see the cards.",
+            "code": "task_not_found",
+            "message": "task #99 not found.",
+            "reason": "No task has ID 99. Run \"agboard ls\" to see the tasks.",
         }})
     );
     for bad_id in ["abc", "0", "-1", "1.5"] {
         let headers = server.page_headers(&server.token());
-        let reply = server.send_owned("DELETE", &server.api(&format!("/cards/{bad_id}")), &headers);
+        let reply = server.send_owned("DELETE", &server.api(&format!("/tasks/{bad_id}")), &headers);
         assert_eq!(reply.status, 404, "{bad_id}");
     }
-    assert_eq!(card_ids(home.path()), vec![1, 2, 3]);
+    assert_eq!(task_ids(home.path()), vec![1, 2, 3]);
 }
 
 #[test]
@@ -1148,7 +1148,7 @@ fn the_guard_runs_before_the_existence_check() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     assert_eq!(
-        server.send("DELETE", &server.api("/cards/99"), &[]).status,
+        server.send("DELETE", &server.api("/tasks/99"), &[]).status,
         403
     );
 }
@@ -1181,9 +1181,9 @@ fn notify_sends_changed_to_every_connected_client() {
     let mut first = server.events();
     let mut second = server.events();
     store_in(home.path())
-        .create_card(
+        .create_task(
             &main_id(home.path()),
-            NewCard {
+            NewTask {
                 title: "Notified".into(),
                 description: BODY.into(),
                 assignee: Assignee::Ai,
@@ -1205,9 +1205,9 @@ fn each_notify_sends_one_changed() {
     let mut events = server.events();
     for n in 1..=3 {
         store_in(home.path())
-            .create_card(
+            .create_task(
                 &main_id(home.path()),
-                NewCard {
+                NewTask {
                     title: format!("Notified {n}"),
                     description: BODY.into(),
                     assignee: Assignee::Ai,
@@ -1232,7 +1232,7 @@ fn a_successful_delete_sends_changed_and_a_refused_one_does_not() {
     let server = Running::start(home.path(), 0).unwrap();
     let mut events = server.events();
     assert_eq!(
-        server.send("DELETE", &server.api("/cards/1"), &[]).status,
+        server.send("DELETE", &server.api("/tasks/1"), &[]).status,
         403
     );
     assert_eq!(server.delete_as_page(99).status, 404);
@@ -1243,7 +1243,7 @@ fn a_successful_delete_sends_changed_and_a_refused_one_does_not() {
     );
     let archive = server.send_json(
         "POST",
-        &server.api("/cards/1/archive"),
+        &server.api("/tasks/1/archive"),
         "",
         Some(&server.token()),
     );
@@ -1441,9 +1441,9 @@ fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
     let server = Running::start(home.path(), 0).unwrap();
     let mut events = server.events();
     store_in(home.path())
-        .create_card(
+        .create_task(
             &main_id(home.path()),
-            NewCard {
+            NewTask {
                 title: "From the CLI side".into(),
                 description: BODY.into(),
                 assignee: Assignee::Ai,
@@ -1665,14 +1665,14 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
     assert_eq!(problems[0]["file"], label);
     assert_eq!(problems[0]["field"], "acceptance[0].done");
     assert!(!problems[0]["reason"].as_str().unwrap().is_empty());
-    // The card still shows the text as it was saved; the product does not rewrite it.
-    let card = board["cards"]
+    // The task still shows the text as it was saved; the product does not rewrite it.
+    let task = board["tasks"]
         .as_array()
         .unwrap()
         .iter()
         .find(|c| c["id"] == 1)
         .unwrap();
-    assert_eq!(card["description"], defective);
+    assert_eq!(task["description"], defective);
 
     let parsed = agent_board::file_store::history::parse_task(
         &original,
@@ -1753,7 +1753,7 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
 }
 
 #[test]
-fn a_restarted_server_serves_the_same_cards_and_version() {
+fn a_restarted_server_serves_the_same_tasks_and_version() {
     let home = board_home();
     let first = Running::start(home.path(), 0).unwrap();
     let before: serde_json::Value =
@@ -1766,8 +1766,8 @@ fn a_restarted_server_serves_the_same_cards_and_version() {
         serde_json::from_str(&second.get(&second.api("/board")).body).unwrap();
     assert_eq!(after["version"], before["version"]);
     assert_eq!(after["cursor"], before["cursor"]);
-    assert_eq!(after["cards"], before["cards"]);
-    assert_eq!(after["cards"].as_array().unwrap().len(), 3);
+    assert_eq!(after["tasks"], before["tasks"]);
+    assert_eq!(after["tasks"].as_array().unwrap().len(), 3);
 }
 
 #[test]
@@ -1778,7 +1778,7 @@ fn archive_done_refuses_empty_and_repeated_lists_and_changed_targets_and_resends
     let bulk = |body: &str| {
         server.send_json(
             "POST",
-            &server.api("/cards/archive-done"),
+            &server.api("/tasks/archive-done"),
             body,
             Some(&token),
         )
@@ -1791,18 +1791,18 @@ fn archive_done_refuses_empty_and_repeated_lists_and_changed_targets_and_resends
     assert_eq!(repeated.status, 422, "{}", repeated.body);
     assert_eq!(error_code_of(&repeated.body), "invalid_value");
 
-    // Card 1 is in Todo, so it is not a target: nothing is archived.
+    // Task 1 is in Todo, so it is not a target: nothing is archived.
     let not_done = bulk(r#"{"ids":[1]}"#);
     assert_eq!(not_done.status, 409, "{}", not_done.body);
     assert_eq!(error_code_of(&not_done.body), "archive_targets_changed");
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
-    assert_eq!(board["cards"].as_array().unwrap().len(), 3);
+    assert_eq!(board["tasks"].as_array().unwrap().len(), 3);
 
     let moved = server.send_json(
         "POST",
-        &server.api("/cards/1/move"),
-        r#"{"cardStatus":"done","reason":"Finish"}"#,
+        &server.api("/tasks/1/move"),
+        r#"{"taskStatus":"done","reason":"Finish"}"#,
         Some(&token),
     );
     assert_eq!(moved.status, 200, "{}", moved.body);
@@ -1812,20 +1812,20 @@ fn archive_done_refuses_empty_and_repeated_lists_and_changed_targets_and_resends
     assert_eq!(error_code_of(&missing.body), "archive_targets_changed");
     let archive: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
-    assert!(archive["cards"].as_array().unwrap().is_empty());
+    assert!(archive["tasks"].as_array().unwrap().is_empty());
 
     let done = bulk(r#"{"ids":[1]}"#);
     assert_eq!(done.status, 200, "{}", done.body);
     let body: serde_json::Value = serde_json::from_str(&done.body).unwrap();
     assert_eq!(body["archivedCount"], 1);
-    assert!(body["cards"][0]["archivedAt"].is_string());
+    assert!(body["tasks"][0]["archivedAt"].is_string());
 
-    // A resend of the same bulk archive archives nothing and answers the same cards.
+    // A resend of the same bulk archive archives nothing and answers the same tasks.
     let again = bulk(r#"{"ids":[1]}"#);
     assert_eq!(again.status, 200, "{}", again.body);
     let body: serde_json::Value = serde_json::from_str(&again.body).unwrap();
     assert_eq!(body["archivedCount"], 0);
-    assert!(body["cards"][0]["archivedAt"].is_string());
+    assert!(body["tasks"][0]["archivedAt"].is_string());
 }
 
 fn two_choices() -> Vec<agent_board::file_store::model::Choice> {
@@ -1848,7 +1848,7 @@ fn a_write_with_a_token_from_an_earlier_server_asks_for_a_reload() {
     let body = r#"{"title":"Stale","description":"","assignee":"ai","actor":"ai"}"#;
     let stale = server.send_json(
         "POST",
-        &server.api("/cards"),
+        &server.api("/tasks"),
         body,
         Some("an-earlier-token"),
     );
@@ -1858,16 +1858,16 @@ fn a_write_with_a_token_from_an_earlier_server_asks_for_a_reload() {
         "{}",
         stale.body
     );
-    let missing = server.send_json("POST", &server.api("/cards"), body, None);
+    let missing = server.send_json("POST", &server.api("/tasks"), body, None);
     assert_eq!(missing.status, 403, "{}", missing.body);
     assert!(missing.body.contains("\"forbidden\""), "{}", missing.body);
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
     assert!(
-        board["cards"]
+        board["tasks"]
             .as_array()
             .unwrap()
             .iter()
-            .all(|card| card["title"] != "Stale")
+            .all(|task| task["title"] != "Stale")
     );
 }

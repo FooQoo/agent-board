@@ -3,7 +3,7 @@
 //! Everything here runs the real `agboard` binary against the shared files in a temporary data area:
 //! the CLI, a real `agboard serve` on port 0 with HTTP and server-sent events, the agent hook and `wait`,
 //! and a pseudo-terminal for the commands that need a person. The projects come from the backup fixtures
-//! the browser specs use (`e2e/fixtures/multi-project-*.json`), which hold a card #1 each with different
+//! the browser specs use (`e2e/fixtures/multi-project-*.json`), which hold a task #1 each with different
 //! content.
 
 mod common;
@@ -83,21 +83,21 @@ fn assert_error(output: &Output, code: &str, exit: i32) {
     assert_eq!(error_of(output)["code"], code, "{output:?}");
 }
 
-/// Build the project from a backup fixture on the shared files: the cards in
+/// Build the project from a backup fixture on the shared files: the tasks in
 /// their order, with their lane and run state. Pending requests are not
 /// replayed as a reason-only request.
 fn import_fixture(home: &Path, project: &str, file: &str) {
     let backup: Value = serde_json::from_slice(&std::fs::read(fixture(file)).unwrap()).unwrap();
     ok(&run(home, None, &["project", "create", project]));
-    for card in backup["cards"].as_array().unwrap() {
-        let body = valid_body(card["description"].as_str().unwrap());
-        let assignee = card["assignee"].as_str().unwrap();
+    for task in backup["tasks"].as_array().unwrap() {
+        let body = valid_body(task["description"].as_str().unwrap());
+        let assignee = task["assignee"].as_str().unwrap();
         ok(&agboard(
             home,
             project,
             &[
                 "add",
-                card["title"].as_str().unwrap(),
+                task["title"].as_str().unwrap(),
                 "--assignee",
                 assignee,
                 "--actor",
@@ -106,8 +106,8 @@ fn import_fixture(home: &Path, project: &str, file: &str) {
                 &body,
             ],
         ));
-        let id = card["id"].as_i64().unwrap().to_string();
-        let lane = card["cardStatus"].as_str().unwrap();
+        let id = task["id"].as_i64().unwrap().to_string();
+        let lane = task["taskStatus"].as_str().unwrap();
         if lane != "todo" {
             ok(&agboard(
                 home,
@@ -115,9 +115,9 @@ fn import_fixture(home: &Path, project: &str, file: &str) {
                 &["mv", &id, lane, "--actor", "human", "--reason", "fixture"],
             ));
         }
-        let state = card["agentStatus"].as_str().unwrap();
+        let state = task["agentStatus"].as_str().unwrap();
         if state == "running" || state == "pending" {
-            let reason = card["pendingReason"].as_str().unwrap_or("fixture");
+            let reason = task["pendingReason"].as_str().unwrap_or("fixture");
             let request = common::decision_json(reason);
             let args: Vec<&str> = if state == "pending" {
                 vec![
@@ -144,19 +144,19 @@ fn valid_body(text: &str) -> String {
     )
 }
 
-/// Alpha and Beta from the fixtures: each has a card #1 with its own content.
+/// Alpha and Beta from the fixtures: each has a task #1 with its own content.
 fn two_projects(home: &Path) {
     import_fixture(home, "Alpha", "multi-project-a.json");
     import_fixture(home, "Beta", "multi-project-b.json");
 }
 
-/// The request ID that card `id` of `project` is waiting on, as the board names it.
+/// The request ID that task `id` of `project` is waiting on, as the board names it.
 fn pending_request(home: &Path, project: &str, id: i64) -> String {
-    snapshot(home, project)["cards"]
+    snapshot(home, project)["tasks"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|card| card["id"] == id)
+        .find(|task| task["id"] == id)
         .unwrap()["pendingRequestId"]
         .as_str()
         .unwrap()
@@ -194,13 +194,13 @@ fn project_names(home: &Path) -> Vec<String> {
         .collect()
 }
 
-fn card(snapshot: &Value, id: i64) -> &Value {
-    snapshot["cards"]
+fn task(snapshot: &Value, id: i64) -> &Value {
+    snapshot["tasks"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|card| card["id"] == id)
-        .unwrap_or_else(|| panic!("no card #{id}"))
+        .find(|task| task["id"] == id)
+        .unwrap_or_else(|| panic!("no task #{id}"))
 }
 
 /// A running `agboard serve --port 0`, stopped when dropped so that a failing test leaves nothing behind.
@@ -665,7 +665,7 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
     let alpha_id = project_id(home.path(), "Alpha");
     let beta_id = project_id(home.path(), "Beta");
 
-    // Each project's board has its own cards, with their full history.
+    // Each project's board has its own tasks, with their full history.
     let alpha_board = server
         .get(&format!("/api/projects/{alpha_id}/board"))
         .json();
@@ -673,15 +673,15 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
     assert_eq!(alpha_board["project"]["name"], "Alpha");
     assert_eq!(beta_board["project"]["name"], "Beta");
     assert_eq!(
-        card(&alpha_board, 1)["title"],
+        task(&alpha_board, 1)["title"],
         "Alpha: draft the release notes"
     );
     assert_eq!(
-        card(&beta_board, 1)["title"],
+        task(&beta_board, 1)["title"],
         "Beta: benchmark the importer"
     );
     assert_eq!(
-        card(&alpha_board, 2)["history"].as_array().unwrap().len(),
+        task(&alpha_board, 2)["history"].as_array().unwrap().len(),
         3
     );
 
@@ -690,7 +690,7 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
     ok(&agboard(
         home.path(),
         "Beta",
-        &["edit", "1", "--title", "Beta: renamed card"],
+        &["edit", "1", "--title", "Beta: renamed task"],
     ));
     assert!(events.wait_for("event: changed", Duration::from_secs(5)));
     let heard = events.changed_count();
@@ -699,7 +699,7 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
     let before = world(home.path());
     let reply = server.request(
         "POST",
-        &format!("/api/projects/{alpha_id}/cards"),
+        &format!("/api/projects/{alpha_id}/tasks"),
         Some(&json!({ "title": "x", "description": "", "assignee": "ai" })),
         &[],
     );
@@ -719,27 +719,27 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
     );
     let reply = server.write(
         "POST",
-        "/api/projects/00000000000000000000000000000000/cards",
+        "/api/projects/00000000000000000000000000000000/tasks",
         Some(&json!({ "title": "x", "description": "", "assignee": "ai" })),
     );
     assert_eq!(reply.status, 404);
     assert_eq!(world(home.path()), before);
     assert_eq!(events.changed_count(), heard);
 
-    // The web moves a card of Alpha with a reason; Beta keeps every byte.
+    // The web moves a task of Alpha with a reason; Beta keeps every byte.
     let beta = content(snapshot(home.path(), "Beta"));
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{alpha_id}/cards/1/move"),
-        Some(&json!({ "cardStatus": "doing", "reason": "Starting the notes." })),
+        &format!("/api/projects/{alpha_id}/tasks/1/move"),
+        Some(&json!({ "taskStatus": "doing", "reason": "Starting the notes." })),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert!(events.wait_for_changes(heard + 1, Duration::from_secs(5)));
     assert_eq!(content(snapshot(home.path(), "Beta")), beta);
     let moved = snapshot(home.path(), "Alpha");
-    assert_eq!(card(&moved, 1)["cardStatus"], "doing");
+    assert_eq!(task(&moved, 1)["taskStatus"], "doing");
     assert_eq!(
-        card(&moved, 1)["history"]
+        task(&moved, 1)["history"]
             .as_array()
             .unwrap()
             .last()
@@ -783,7 +783,7 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
         assert_eq!((old.status, old.code()), (404, "project_not_found".into()));
         let reply = server.write(
             "POST",
-            &format!("/api/projects/{alpha_id}/cards"),
+            &format!("/api/projects/{alpha_id}/tasks"),
             Some(&json!({ "title": "late", "description": "", "assignee": "ai" })),
         );
         assert_eq!(reply.status, 404);
@@ -791,12 +791,12 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
         let fresh = loop {
             let board = server.get(&format!("/api/projects/{new_id}/board")).json();
-            if board["cards"].is_array() || std::time::Instant::now() > deadline {
+            if board["tasks"].is_array() || std::time::Instant::now() > deadline {
                 break board;
             }
             std::thread::sleep(std::time::Duration::from_millis(50));
         };
-        assert_eq!(fresh["cards"], json!([]));
+        assert_eq!(fresh["tasks"], json!([]));
         assert_eq!(content(snapshot(home.path(), "Beta")), beta);
     }
 }
@@ -826,7 +826,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
         let progress: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
         assert_eq!(progress["project"]["id"], alpha_id.as_str());
         assert_eq!(progress["unassigned"].as_array().unwrap().len(), 1);
-        assert!(progress.get("cards").is_none());
+        assert!(progress.get("tasks").is_none());
     }
     assert!(!hook(home.path(), "Beta", "claude").contains("Alpha"));
 
@@ -861,7 +861,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     );
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{alpha_id}/cards/2/answer"),
+        &format!("/api/projects/{alpha_id}/tasks/2/answer"),
         Some(&json!({ "requestId": pending_request(home.path(), "Alpha", 2), "text": "Use the MIT license." })),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
@@ -869,8 +869,8 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     let received = stdout_json(&output);
     assert_eq!(received["project"]["id"], alpha_id.as_str());
     assert_eq!(received["project"]["name"], "Alpha");
-    assert_eq!(card(&received, 2)["agentStatus"], "idle");
-    let history = card(&received, 2)["history"].as_array().unwrap().clone();
+    assert_eq!(task(&received, 2)["agentStatus"], "idle");
+    let history = task(&received, 2)["history"].as_array().unwrap().clone();
     assert!(
         history.last().unwrap()["reason"]
             .as_str()
@@ -901,7 +901,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|card| card["id"] == 2)
+        .find(|task| task["id"] == 2)
         .unwrap();
     assert_eq!(resumed["agentStatus"], "running");
     assert!(resumed.get("description").is_none());
@@ -936,7 +936,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     assert_eq!(received["project"]["name"], "Alpha Two");
     // The addition itself is in the project the wait followed (the wait may have ended at the rename).
     assert_eq!(
-        card(&snapshot(home.path(), "Alpha Two"), 4)["title"],
+        task(&snapshot(home.path(), "Alpha Two"), 4)["title"],
         "After the rename"
     );
 

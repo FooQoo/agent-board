@@ -1,4 +1,4 @@
-import type { Assignee, Card, DialogAction } from '../types';
+import type { Assignee, Task, DialogAction } from '../types';
 import { CreateDialog } from './CreateDialog';
 import { EditDialog } from './editor/EditDialog';
 import { EpicDialog, type EpicApi } from './editor/EpicDialog';
@@ -31,7 +31,7 @@ export function ActionDialog({
   onSavingChange,
   onSubmit,
   projectId,
-  cards = [],
+  tasks = [],
   epicApi,
   onOpenTask,
 }: {
@@ -43,11 +43,11 @@ export function ActionDialog({
   onSubmit: (data: ActionDialogData) => Promise<void>;
   projectId?: string;
   /** Latest tasks of the project, for lane confirmation and the epic task list. */
-  cards?: readonly Card[];
+  tasks?: readonly Task[];
   /** The writes of the epic dialog, bound to the project it was opened in. */
   epicApi?: EpicApi;
   /** The epic dialog asks for the board to show a task. */
-  onOpenTask?: (cardId: number) => void;
+  onOpenTask?: (taskId: number) => void;
 }) {
   switch (action.kind) {
     case 'create':
@@ -62,7 +62,7 @@ export function ActionDialog({
     case 'move':
       return (
         <MoveDialog
-          card={cards.find((card) => card.id === action.card.id) ?? action.card}
+          task={tasks.find((task) => task.id === action.task.id) ?? action.task}
           target={action.target}
           onClose={onClose}
           onSavingChange={onSavingChange}
@@ -72,7 +72,7 @@ export function ActionDialog({
     case 'edit':
       return (
         <EditDialog
-          card={action.card}
+          task={action.task}
           onClose={onClose}
           onSavingChange={onSavingChange}
           onSubmit={onSubmit}
@@ -84,7 +84,7 @@ export function ActionDialog({
       return (
         <EpicDialog
           epic={action.epic}
-          cards={cards}
+          tasks={tasks}
           api={epicApi}
           projectId={projectId}
           onOpenTask={onOpenTask}

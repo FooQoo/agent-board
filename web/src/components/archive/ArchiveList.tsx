@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import type { ArchiveResponse } from '../../api';
 import type { ProjectResourceResult } from '../../hooks/useProjectResource';
-import type { Card } from '../../types';
+import type { Task } from '../../types';
 import { AssigneeLabel } from '../AssigneeLabel';
 import '../../styles/archive.css';
 
@@ -28,7 +28,7 @@ export function ArchiveList({
   layoutRef,
 }: ArchiveListProps) {
   const { t } = useTranslation();
-  const cards: Card[] = data?.cards ?? [];
+  const tasks: Task[] = data?.tasks ?? [];
 
   return (
     <main className="archive-list-pane" ref={layoutRef}>
@@ -37,11 +37,11 @@ export function ArchiveList({
           <h2>{t('archive.title')}</h2>
           {status === 'ready' && (
             <span className="archive-list-pane__count">
-              {t('archive.count', { count: cards.length })}
+              {t('archive.count', { count: tasks.length })}
             </span>
           )}
         </div>
-        {cards.length > 0 && <p>{t('archive.description')}</p>}
+        {tasks.length > 0 && <p>{t('archive.description')}</p>}
       </header>
 
       {status === 'loading' && (
@@ -68,7 +68,7 @@ export function ArchiveList({
         </p>
       )}
 
-      {status === 'ready' && cards.length === 0 && (
+      {status === 'ready' && tasks.length === 0 && (
         <div className="archive-list-pane__empty">
           <ArchiveIcon aria-hidden="true" />
           <p>{t('archive.empty')}</p>
@@ -76,26 +76,26 @@ export function ArchiveList({
         </div>
       )}
 
-      {status === 'ready' && cards.length > 0 && (
+      {status === 'ready' && tasks.length > 0 && (
         <div className="archive-list" role="list" aria-label={t('archive.heading')}>
-          {cards.map((card) => (
-            <div className="archive-row" role="listitem" key={card.id}>
+          {tasks.map((task) => (
+            <div className="archive-row" role="listitem" key={task.id}>
               <button
                 type="button"
-                aria-pressed={selectedId === card.id}
-                onClick={() => onSelect(selectedId === card.id ? null : card.id)}
+                aria-pressed={selectedId === task.id}
+                onClick={() => onSelect(selectedId === task.id ? null : task.id)}
               >
-                <span className="archive-row__id">#{card.id}</span>
-                <span className="archive-row__title" title={card.title}>
-                  {card.title}
+                <span className="archive-row__id">#{task.id}</span>
+                <span className="archive-row__title" title={task.title}>
+                  {task.title}
                 </span>
-                <AssigneeLabel assignee={card.assignee} />
+                <AssigneeLabel assignee={task.assignee} />
                 <time
                   className="archive-row__date"
-                  dateTime={card.archivedAt ?? undefined}
-                  title={card.archivedAt ?? undefined}
+                  dateTime={task.archivedAt ?? undefined}
+                  title={task.archivedAt ?? undefined}
                 >
-                  {card.archivedAt?.slice(0, 10) ?? '—'}
+                  {task.archivedAt?.slice(0, 10) ?? '—'}
                 </time>
               </button>
             </div>

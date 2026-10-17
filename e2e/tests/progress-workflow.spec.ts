@@ -72,15 +72,15 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     agboardOk(project, ['epic', 'add', 'RELEASE', '--name', 'Release work', '--actor', 'human'], home);
     agboardOk(project, ['add', 'Publish release', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'ai', '--desc', 'Private task body for progress omission check.'], home);
     agboardOk(project, ['add', 'Prepare release notes', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'ai', '--desc', 'Another private task body.'], home);
-    const cards = JSON.parse(agboardOk(project, ['ls', '--json'], home).stdout).cards as Array<{ id: number; title: string }>;
-    const publish = cards.find((card) => card.title === 'Publish release')!.id;
-    const notes = cards.find((card) => card.title === 'Prepare release notes')!.id;
+    const tasks = JSON.parse(agboardOk(project, ['ls', '--json'], home).stdout).tasks as Array<{ id: number; title: string }>;
+    const publish = tasks.find((task) => task.title === 'Publish release')!.id;
+    const notes = tasks.find((task) => task.title === 'Prepare release notes')!.id;
     agboardOk(project, ['epic', 'edit', 'RELEASE', '--priority', `${notes},${publish}`], home);
 
     const progress = run(['progress', '--json'], home, work);
     expect(progress.code, progress.stderr).toBe(0);
     const progressJson = JSON.parse(progress.stdout);
-    expect(progressJson.epics[0].cards.map((card: { id: number }) => card.id)).toEqual([notes, publish]);
+    expect(progressJson.epics[0].tasks.map((task: { id: number }) => task.id)).toEqual([notes, publish]);
     expect(JSON.stringify(progressJson)).not.toContain('Private task body');
 
     const hook = run(['hook', '--agent', 'codex', '--json'], home, work, JSON.stringify({
@@ -110,23 +110,23 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
         const result = await waitResult;
         throw new Error(`wait command exited ${result.code}: ${result.stderr}${result.stdout}`);
       }
-      return JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).card.agentStatus;
+      return JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).task.agentStatus;
     }).toBe('pending');
 
     // Completing the condition cannot auto-Done a card while it is waiting for a human answer.
     const taskWhilePending = readFileSync(taskFile, 'utf8');
     replaceFileAtomically(taskFile, taskWhilePending.replace('done: false', 'done: true'));
     expect((await page.request.post(new URL('/api/notify', serve.url).toString())).status()).toBe(204);
-    expect(JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).card.acceptance)
+    expect(JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).task.acceptance)
       .toEqual([{ id: 'AC-1', text: 'Release plan confirmed', done: true }]);
-    expect(JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).card)
-      .toMatchObject({ cardStatus: 'doing', agentStatus: 'pending' });
+    expect(JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).task)
+      .toMatchObject({ taskStatus: 'doing', agentStatus: 'pending' });
 
     await page.goto(`${serve.url}?project=${projectId}`);
-    const cardButton = page.getByRole('button', { name: new RegExp(`^#${publish}(?!\\d)`) });
-    await expect(cardButton).toBeVisible();
-    await cardButton.click();
-    const answer = page.locator(`.card__answer[data-card-id="${publish}"]`)
+    const taskButton = page.getByRole('button', { name: new RegExp(`^#${publish}(?!\\d)`) });
+    await expect(taskButton).toBeVisible();
+    await taskButton.click();
+    const answer = page.locator(`.card__answer[data-task-id="${publish}"]`)
       .getByRole('region', { name: 'The agent is waiting for your answer' });
     await expect(answer).toContainText('Which release plan should we use?');
     await page.screenshot({ path: testInfo.outputPath('pending-release-question.png') });
@@ -137,16 +137,16 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     const completed = await waitResult;
     expect(completed.code, completed.stderr).toBe(0);
     expect(completed.stdout).toContain('Choose Plan A and publish after review.');
-    await expect.poll(() => JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).card.cardStatus)
+    await expect.poll(() => JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).task.taskStatus)
       .toBe('done');
-    const shown = JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).card;
-    expect(shown).toMatchObject({ cardStatus: 'done', agentStatus: 'idle', pendingRequestId: null });
+    const shown = JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).task;
+    expect(shown).toMatchObject({ taskStatus: 'done', agentStatus: 'idle', pendingRequestId: null });
     expect(shown.acceptance).toEqual([{ id: 'AC-1', text: 'Release plan confirmed', done: true }]);
 
     const rejected = run(projectArgs(['edit', String(publish), '--title', 'AI changed Done']), home, work);
     expect(rejected.code).not.toBe(0);
-    expect(rejected.stderr).toContain(`card #${publish} is done and read-only for agents`);
-    expect(JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).card.title)
+    expect(rejected.stderr).toContain(`task #${publish} is done and read-only for agents`);
+    expect(JSON.parse(agboardOk(project, ['show', String(publish), '--json'], home).stdout).task.title)
       .toBe('Publish release');
   } finally {
     if (waiter && waiter.exitCode === null && waiter.signalCode === null) waiter.kill('SIGTERM');

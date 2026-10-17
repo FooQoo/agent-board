@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Barrier, mpsc};
 use std::time::Duration;
 
-use agent_board::domain::{Actor, Assignee, NewCard, ProjectId};
+use agent_board::domain::{Actor, Assignee, NewTask, ProjectId};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::lock::WriteLock;
@@ -39,13 +39,13 @@ impl Fixture {
         self.shared.join("projects").join(id.as_str())
     }
 
-    fn with_card(&self, name: &str) -> ProjectId {
+    fn with_task(&self, name: &str) -> ProjectId {
         let id = self.store.create_project(name, now()).unwrap().id;
         self.store
-            .create_card(
+            .create_task(
                 &id,
-                NewCard {
-                    title: "card".into(),
+                NewTask {
+                    title: "task".into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
@@ -59,9 +59,9 @@ impl Fixture {
 }
 
 #[test]
-fn renaming_keeps_the_id_and_the_cards_and_saves_the_trimmed_name() {
+fn renaming_keeps_the_id_and_the_tasks_and_saves_the_trimmed_name() {
     let fx = fixture();
-    let id = fx.with_card("Alpha");
+    let id = fx.with_task("Alpha");
     let dir = fx.project_dir(&id);
     let task_before = fs::read(dir.join("tasks/1/task.json")).unwrap();
 
@@ -82,7 +82,7 @@ fn renaming_keeps_the_id_and_the_cards_and_saves_the_trimmed_name() {
         serde_json::from_str(&fs::read_to_string(dir.join("project.json")).unwrap()).unwrap();
     assert_eq!(project_json["id"], id.as_str());
     assert_eq!(project_json["name"], "Gamma");
-    assert_eq!(project_json["nextCardId"], 2);
+    assert_eq!(project_json["nextTaskId"], 2);
     assert_eq!(
         fs::read(dir.join("tasks/1/task.json")).unwrap(),
         task_before
@@ -171,10 +171,10 @@ fn two_concurrent_renames_to_one_name_leave_exactly_one_success() {
 }
 
 #[test]
-fn deleting_removes_only_that_project_and_its_cards() {
+fn deleting_removes_only_that_project_and_its_tasks() {
     let fx = fixture();
-    let doomed = fx.with_card("Doomed");
-    let kept = fx.with_card("Kept");
+    let doomed = fx.with_task("Doomed");
+    let kept = fx.with_task("Kept");
     let kept_dir = fx.project_dir(&kept);
     let kept_project = fs::read(kept_dir.join("project.json")).unwrap();
     let kept_task = fs::read(kept_dir.join("tasks/1/task.json")).unwrap();
@@ -194,7 +194,7 @@ fn deleting_removes_only_that_project_and_its_cards() {
         kept_task
     );
     let snapshot = fx.store.snapshot(&kept).unwrap();
-    assert_eq!(snapshot.cards.len(), 1);
+    assert_eq!(snapshot.tasks.len(), 1);
     assert!(snapshot.problems.is_empty());
     // No leftover of the deleted folder remains in the projects folder.
     let leftovers: Vec<String> = fs::read_dir(fx.shared.join("projects"))

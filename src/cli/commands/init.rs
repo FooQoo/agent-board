@@ -33,7 +33,7 @@ pub fn run_with_io(
             let project = ctx.files.create_project(name, ctx.clock.now())?;
             let board = BoardMeta {
                 name: project.name.clone(),
-                next_card_id: 1,
+                next_task_id: 1,
                 created_at: project.created_at,
             };
             return Ok(Outcome {
@@ -57,7 +57,7 @@ pub fn run_with_io(
         });
     }
     let prompt = format!(
-        "Project \"{}\" already has a board. Replace it with an empty board? All its cards and history will be deleted.",
+        "Project \"{}\" already has a board. Replace it with an empty board? All its tasks and history will be deleted.",
         existing.name
     );
     if !confirm::confirm(&prompt, input, output)? {

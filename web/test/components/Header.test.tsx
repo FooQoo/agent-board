@@ -39,7 +39,7 @@ describe('settings entry in the header', () => {
     expect(container.querySelector('img[src="/logo.png"]')).toBeNull();
   });
 
-  it('shows the project switcher after a slash and the Add card button', () => {
+  it('shows the project switcher after a slash and the Add task button', () => {
     const { container } = render(
       <Header
         projects={[{ ...PROJECT_A, name: 'my-board' }]}
@@ -49,7 +49,7 @@ describe('settings entry in the header', () => {
     );
     expect(screen.getByRole('button', { name: 'my-board' })).toBeTruthy();
     expect(container.querySelector('.header__slash')?.getAttribute('aria-hidden')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Add card' }).getAttribute('data-slot')).toBe(
+    expect(screen.getByRole('button', { name: 'Add task' }).getAttribute('data-slot')).toBe(
       'button',
     );
   });
@@ -58,7 +58,7 @@ describe('settings entry in the header', () => {
     const { container } = render(<Header />);
     expect(container.querySelector('.header__slash')).toBeNull();
     expect(container.querySelector('.header__board')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' }).getAttribute('data-slot')).toBe(
       'button',
     );
@@ -67,7 +67,7 @@ describe('settings entry in the header', () => {
   it('keeps the Settings button while the board name is unknown (loading or error)', () => {
     render(<Header />);
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
   });
 
   it('opens the settings dialog, which holds the language choice', async () => {
@@ -138,7 +138,7 @@ describe('settings entry in the header', () => {
   it('still calls onAdd from the add button', async () => {
     const onAdd = vi.fn();
     render(<Header projects={PROJECTS} activeProjectId={PROJECT_A.id} canAdd onAdd={onAdd} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Add card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add task' }));
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 });

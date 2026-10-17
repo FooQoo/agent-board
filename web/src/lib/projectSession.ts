@@ -1,4 +1,4 @@
-import type { Card, DialogAction, ProjectId } from '../types';
+import type { Task, DialogAction, ProjectId } from '../types';
 import type { AnswerFormKey } from './answer';
 
 export type OperationKind =
@@ -38,7 +38,7 @@ export interface SessionState {
   selectedId: number | null;
   viewMode: ViewMode;
   archiveSelectedId: number | null;
-  bulkArchive: { projectId: ProjectId; targets: Card[] } | null;
+  bulkArchive: { projectId: ProjectId; targets: Task[] } | null;
   dialog: DialogAction | null;
   operation: Operation | null;
   pendingTarget: PendingTarget | null;
@@ -50,7 +50,7 @@ export type SessionAction =
   | { type: 'SELECT_CARD'; id: number | null }
   | { type: 'SET_VIEW_MODE'; mode: ViewMode }
   | { type: 'SELECT_ARCHIVE_CARD'; id: number | null }
-  | { type: 'OPEN_BULK_ARCHIVE'; projectId: ProjectId; targets: Card[] }
+  | { type: 'OPEN_BULK_ARCHIVE'; projectId: ProjectId; targets: Task[] }
   | { type: 'CLOSE_BULK_ARCHIVE' }
   | {
       type: 'OPEN_OPERATION';
@@ -63,7 +63,7 @@ export type SessionAction =
   | { type: 'SAVE_FAILED'; operationId: number }
   | { type: 'OPERATION_FINISHED'; operationId: number }
   | { type: 'OPERATION_CANCELLED'; operationId: number }
-  | { type: 'CARD_REMOVED'; operationId: number; projectId: ProjectId; cardId: number }
+  | { type: 'CARD_REMOVED'; operationId: number; projectId: ProjectId; taskId: number }
   | { type: 'ANSWER_LEASE_STARTED'; key: AnswerFormKey; projectId: ProjectId }
   | { type: 'ANSWER_LEASE_ENDED'; key: AnswerFormKey; projectId: ProjectId };
 
@@ -185,11 +185,11 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
       return finishOperation(state);
     case 'CARD_REMOVED': {
       const cleared: SessionState =
-        state.activeProjectId === action.projectId && state.selectedId === action.cardId
+        state.activeProjectId === action.projectId && state.selectedId === action.taskId
           ? { ...state, selectedId: null }
           : state;
       const archiveCleared =
-        cleared.activeProjectId === action.projectId && cleared.archiveSelectedId === action.cardId
+        cleared.activeProjectId === action.projectId && cleared.archiveSelectedId === action.taskId
           ? { ...cleared, archiveSelectedId: null }
           : cleared;
       return archiveCleared.operation?.id === action.operationId
@@ -220,7 +220,7 @@ export interface OperationControls {
   saveFailed: (operationId: number) => void;
   /** The operation finished or was cancelled. */
   end: (operationId: number) => void;
-  cardRemoved: (operationId: number, projectId: ProjectId, cardId: number) => void;
+  taskRemoved: (operationId: number, projectId: ProjectId, taskId: number) => void;
   isCurrent?: (operationId: number, projectId: ProjectId) => boolean;
 }
 
@@ -230,7 +230,7 @@ export const noOperations: OperationControls = {
   saveStarted: () => {},
   saveFailed: () => {},
   end: () => {},
-  cardRemoved: () => {},
+  taskRemoved: () => {},
 };
 
 /** A project ID is 32 lowercase hexadecimal digits; anything else is an invalid URL value. */

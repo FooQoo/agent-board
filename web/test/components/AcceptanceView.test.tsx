@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AcceptanceView } from '../../src/components/acceptance/AcceptanceView';
 import { DetailPanel } from '../../src/components/DetailPanel';
 import { selectLocale } from '../../src/i18n';
-import { PROJECT_A, makeCard } from '../fixtures';
+import { PROJECT_A, makeTask } from '../fixtures';
 
 beforeEach(() => selectLocale('en'));
 
@@ -39,9 +39,9 @@ describe('AcceptanceView', () => {
 
 describe('unreadable conditions in the detail body', () => {
   it('says that the conditions cannot be read and that the body is shown', () => {
-    const card = makeCard({
+    const task = makeTask({
       id: 12,
-      title: 'Card',
+      title: 'Task',
       description: '---\nacceptance:\n  - id: AC-1\n    text: \n---\n\nBody below\n',
       body: '---\nacceptance:\n  - id: AC-1\n    text: \n---\n\nBody below\n',
       acceptanceError: true,
@@ -49,7 +49,7 @@ describe('unreadable conditions in the detail body', () => {
     render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={card}
+        task={task}
         problems={[]}
         onClose={() => {}}
         onRemove={async () => true}
@@ -65,9 +65,9 @@ describe('unreadable conditions in the detail body', () => {
 
 describe('DetailPanel body', () => {
   it('shows the body without the frontmatter and the conditions above it', () => {
-    const card = makeCard({
+    const task = makeTask({
       id: 12,
-      title: 'Card',
+      title: 'Task',
       description:
         '---\nacceptance:\n  - id: AC-1\n    text: Works\n    done: false\n---\n\nBody only\n',
       body: 'Body only\n',
@@ -76,7 +76,7 @@ describe('DetailPanel body', () => {
     render(
       <DetailPanel
         projectId={PROJECT_A.id}
-        card={card}
+        task={task}
         problems={[]}
         onClose={() => {}}
         onRemove={async () => true}

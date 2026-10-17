@@ -3,19 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/i18n';
 import { MonitorView } from '../../src/monitor/View';
 import type { MonitorViewProps } from '../../src/monitor/contracts';
-import { makeCard, PROJECT_A, PROJECTS } from '../fixtures';
+import { makeTask, PROJECT_A, PROJECTS } from '../fixtures';
 
 function props(): MonitorViewProps {
   const item = (
     id: number,
-    cardStatus: 'todo' | 'doing' | 'done',
+    taskStatus: 'todo' | 'doing' | 'done',
     agentStatus: 'idle' | 'running' | 'pending',
   ) => ({
     projectId: PROJECT_A.id,
     projectName: PROJECT_A.name,
-    card: makeCard({
+    task: makeTask({
       id,
-      cardStatus,
+      taskStatus,
       agentStatus,
       pendingReason: agentStatus === 'pending' ? 'Waiting for decision' : null,
       pendingRequestId: agentStatus === 'pending' ? `request-${id}` : null,
@@ -42,7 +42,7 @@ function props(): MonitorViewProps {
 
 describe('MonitorView', () => {
   beforeEach(() => selectLocale('en'));
-  it('lists each card once in its Todo, Doing, or Done lane', () => {
+  it('lists each task once in its Todo, Doing, or Done lane', () => {
     const { container } = render(<MonitorView {...props()} />);
     expect(container.querySelector('header.header')).toBeTruthy();
     const headings = screen
@@ -54,14 +54,14 @@ describe('MonitorView', () => {
       expect(within(summary).getByRole('button', { name: label })).toBeTruthy();
     }
     expect(screen.getAllByRole('article', { name: /^#4 / })).toHaveLength(1);
-    const pendingCard = screen.getByRole('article', { name: /^#4 Doing Pending / });
-    expect(pendingCard.querySelector('.status-label')?.textContent).toBe('Pending');
-    expect(within(pendingCard).getByText('Waiting for decision')).toBeTruthy();
-    expect(within(pendingCard).getByRole('textbox')).toBeTruthy();
+    const pendingTask = screen.getByRole('article', { name: /^#4 Doing Pending / });
+    expect(pendingTask.querySelector('.status-label')?.textContent).toBe('Pending');
+    expect(within(pendingTask).getByText('Waiting for decision')).toBeTruthy();
+    expect(within(pendingTask).getByRole('textbox')).toBeTruthy();
     expect(
-      (within(pendingCard).getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled,
+      (within(pendingTask).getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect(pendingCard.getAttribute('data-agent-status')).toBe('pending');
+    expect(pendingTask.getAttribute('data-agent-status')).toBe('pending');
     const idleTodo = screen.getByRole('article', { name: /^#1 Todo Idle / });
     expect(idleTodo.getAttribute('data-agent-status')).toBe('idle');
     expect(idleTodo.querySelector('.status-label')?.textContent).toBe('Idle');
@@ -69,12 +69,12 @@ describe('MonitorView', () => {
     expect(idleDoing.getAttribute('data-agent-status')).toBe('idle');
     expect(idleDoing.querySelector('.status-label')?.textContent).toBe('Idle');
 
-    const doneCard = screen.getByRole('article', { name: /^#3 Done / });
-    expect(doneCard.querySelector('.status-label')).toBeNull();
+    const doneTask = screen.getByRole('article', { name: /^#3 Done / });
+    expect(doneTask.querySelector('.status-label')).toBeNull();
     expect(
       (
-        within(doneCard).getByRole('button', {
-          name: 'Card 3',
+        within(doneTask).getByRole('button', {
+          name: 'Task 3',
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false);

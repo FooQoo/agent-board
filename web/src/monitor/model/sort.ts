@@ -1,4 +1,4 @@
-import type { MonitorCard } from '../contracts';
+import type { MonitorTask } from '../contracts';
 
 function time(value: string | null | undefined): number {
   if (!value) return Number.NEGATIVE_INFINITY;
@@ -7,16 +7,16 @@ function time(value: string | null | undefined): number {
 }
 
 /** A lane timestamp stays stable when a later work note or body edit is saved. */
-export function completedAt(item: MonitorCard): string | null {
-  return item.card.cardStatus === 'done' ? item.card.cardStatusChangedAt : null;
+export function completedAt(item: MonitorTask): string | null {
+  return item.task.taskStatus === 'done' ? item.task.taskStatusChangedAt : null;
 }
 
-function stableTie(a: MonitorCard, b: MonitorCard): number {
-  return a.projectId.localeCompare(b.projectId) || a.card.id - b.card.id;
+function stableTie(a: MonitorTask, b: MonitorTask): number {
+  return a.projectId.localeCompare(b.projectId) || a.task.id - b.task.id;
 }
 
-function byTime(getTime: (item: MonitorCard) => string | null, newestFirst: boolean) {
-  return (a: MonitorCard, b: MonitorCard) => {
+function byTime(getTime: (item: MonitorTask) => string | null, newestFirst: boolean) {
+  return (a: MonitorTask, b: MonitorTask) => {
     const aTime = time(getTime(a));
     const bTime = time(getTime(b));
     if (aTime === bTime) return stableTie(a, b);
@@ -27,16 +27,16 @@ function byTime(getTime: (item: MonitorCard) => string | null, newestFirst: bool
 }
 
 /** Keep project groups stable and preserve each board lane's manual card order. */
-export function sortLane(items: readonly MonitorCard[]): MonitorCard[] {
+export function sortLane(items: readonly MonitorTask[]): MonitorTask[] {
   return [...items].sort(
     (a, b) =>
       a.projectName.localeCompare(b.projectName) ||
       a.projectId.localeCompare(b.projectId) ||
-      a.card.position - b.card.position ||
-      a.card.id - b.card.id,
+      a.task.position - b.task.position ||
+      a.task.id - b.task.id,
   );
 }
 
-export function sortDone(items: readonly MonitorCard[]): MonitorCard[] {
+export function sortDone(items: readonly MonitorTask[]): MonitorTask[] {
   return [...items].sort(byTime(completedAt, true));
 }

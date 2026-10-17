@@ -57,12 +57,12 @@ pub(crate) fn router(state: Arc<MonitorState>) -> Router {
         )
         .route("/monitor/api/events", get(events))
         .route(
-            "/monitor/api/projects/{project_id}/cards/{id}/attachments/{attachment_id}",
-            get(card_attachment).head(card_attachment),
+            "/monitor/api/projects/{project_id}/tasks/{id}/attachments/{attachment_id}",
+            get(task_attachment).head(task_attachment),
         )
         .route(
-            "/monitor/api/projects/{project_id}/cards/{id}/evidence/{evidence_id}",
-            get(card_evidence).head(card_evidence),
+            "/monitor/api/projects/{project_id}/tasks/{id}/evidence/{evidence_id}",
+            get(task_evidence).head(task_evidence),
         )
         .route(
             "/monitor/api/projects/{project_id}/epics",
@@ -195,13 +195,13 @@ async fn board(
                 version: &'a str,
                 cursor: &'a crate::domain::ChangeCursor,
                 epics: &'a [crate::file_store::model::EpicView],
-                cards: Vec<&'a crate::file_store::model::CardView>,
+                tasks: Vec<&'a crate::file_store::model::TaskView>,
                 problems: &'a [crate::file_store::model::Problem],
             }
-            let cards = view
-                .cards
+            let tasks = view
+                .tasks
                 .iter()
-                .filter(|card| card.archived_at.is_none())
+                .filter(|task| task.archived_at.is_none())
                 .collect();
             api::json_response(
                 StatusCode::OK,
@@ -210,7 +210,7 @@ async fn board(
                     version: &view.version,
                     cursor: &view.cursor,
                     epics: &view.epics,
-                    cards,
+                    tasks,
                     problems: &view.problems,
                 },
             )
@@ -219,7 +219,7 @@ async fn board(
     }
 }
 
-async fn card_attachment(
+async fn task_attachment(
     State(state): State<Arc<MonitorState>>,
     Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
 ) -> Response {
@@ -233,7 +233,7 @@ async fn card_attachment(
     let result = tokio::task::spawn_blocking(move || {
         let store = FileStore::open(&state.shared);
         let stored =
-            store.attachment_path(&project_id, &AttachmentOwner::Card(id), &attachment_id)?;
+            store.attachment_path(&project_id, &AttachmentOwner::Task(id), &attachment_id)?;
         let bytes = api::read_checked(&store, &stored.path)?;
         Ok::<_, AgboardError>((stored.metadata.media_type, bytes))
     })
@@ -247,7 +247,7 @@ async fn card_attachment(
     }
 }
 
-async fn card_evidence(
+async fn task_evidence(
     State(state): State<Arc<MonitorState>>,
     Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
 ) -> Response {

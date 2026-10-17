@@ -23,7 +23,7 @@ use crate::error::AgboardError;
 /// What the index knows about one project.
 #[derive(Debug)]
 pub enum ProjectEntry {
-    /// The project was read; its cards may still carry problems.
+    /// The project was read; its tasks may still carry problems.
     Ready {
         view: Arc<ProjectSnapshot>,
         version: String,
@@ -176,7 +176,7 @@ pub fn scan_ids(shared: &Path) -> Result<Vec<ProjectId>, AgboardError> {
 
 /// The content version of one project folder: 32 lowercase hexadecimal
 /// digits. It covers `project.json`, every epic's `epic.json` and `PLAN.md`,
-/// every card's `task.json` and `TASK.md`, and the names (not the contents)
+/// every task's `task.json` and `TASK.md`, and the names (not the contents)
 /// of the files in `assets/` and `evidence/`. Dot-prefixed names are skipped.
 pub fn project_version(project_dir: &Path) -> String {
     let mut items: Vec<(String, Option<String>)> = Vec::new();

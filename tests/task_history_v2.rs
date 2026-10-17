@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::Answer;
 use agent_board::file_store::FileStore;
@@ -64,9 +64,9 @@ impl Fixture {
 
     fn create(&self, description: &str) -> i64 {
         self.store
-            .create_card(
+            .create_task(
                 &self.project,
-                NewCard {
+                NewTask {
                     title: "Task".into(),
                     description: description.into(),
                     assignee: Assignee::Ai,
@@ -88,34 +88,34 @@ fn task_json_is_metadata_only_and_task_md_is_the_history_source() {
         serde_json::from_slice(&fs::read(fx.task_dir(id).join("task.json")).unwrap()).unwrap();
     let markdown = fs::read_to_string(fx.task_dir(id).join("TASK.md")).unwrap();
 
-    assert_eq!(json["formatVersion"], 3);
+    assert_eq!(json["formatVersion"], 1);
     assert!(json.get("history").is_none());
     assert!(markdown.contains("history:"));
-    assert_eq!(fx.store.card(&fx.project, id).unwrap().history.len(), 1);
+    assert_eq!(fx.store.task(&fx.project, id).unwrap().history.len(), 1);
 }
 
 #[test]
-fn task_format_versions_one_and_two_are_reported_and_left_byte_for_byte_unchanged() {
+fn task_format_versions_other_than_one_are_reported_and_left_byte_for_byte_unchanged() {
     let fx = fixture();
     let id = fx.create("");
     let json_path = fx.task_dir(id).join("task.json");
     let mut json: serde_json::Value =
         serde_json::from_slice(&fs::read(&json_path).unwrap()).unwrap();
-    for version in [1, 2] {
+    for version in [0, 2, 3] {
         json["formatVersion"] = version.into();
         let bytes = serde_json::to_vec_pretty(&json).unwrap();
         fs::write(&json_path, &bytes).unwrap();
         let files_before = file_tree(&fx.task_dir(id));
 
         let snapshot = fx.store.board(&fx.project).unwrap();
-        assert!(snapshot.cards.is_empty());
+        assert!(snapshot.tasks.is_empty());
         assert!(snapshot.problems.iter().any(|problem| {
             problem.file.ends_with("task.json")
                 && problem.field == "formatVersion"
-                && problem.reason.contains("Only formatVersion 3")
+                && problem.reason.contains("Only formatVersion 1")
         }));
         assert!(matches!(
-            fx.store.card(&fx.project, id),
+            fx.store.task(&fx.project, id),
             Err(AgboardError::FormatUnsupported { .. })
         ));
         assert_eq!(fs::read(&json_path).unwrap(), bytes);
@@ -137,9 +137,9 @@ fn malformed_history_keeps_body_and_acceptance_but_blocks_updates() {
     .unwrap();
 
     let snapshot = fx.store.board(&fx.project).unwrap();
-    assert_eq!(snapshot.cards[0].body, "Visible body");
-    assert_eq!(snapshot.cards[0].acceptance.len(), 1);
-    assert!(!snapshot.cards[0].acceptance_error);
+    assert_eq!(snapshot.tasks[0].body, "Visible body");
+    assert_eq!(snapshot.tasks[0].acceptance.len(), 1);
+    assert!(!snapshot.tasks[0].acceptance_error);
     assert!(
         snapshot
             .problems
@@ -163,7 +163,7 @@ fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
     let id = fx.create("");
     let moved = fx
         .store
-        .move_work_card(
+        .move_work_task(
             &fx.project,
             id,
             Column::Doing,
@@ -206,7 +206,7 @@ fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
     assert_eq!(fs::read(fx.task_dir(id).join("TASK.md")).unwrap(), before);
 
     let reopened = FileStore::open(&fx.shared);
-    let pending = reopened.card(&fx.project, id).unwrap();
+    let pending = reopened.task(&fx.project, id).unwrap();
     assert_eq!(pending.agent_status, RunState::Pending);
     assert_eq!(pending.pending_reason.as_deref(), Some("Continue?"));
     assert!(pending.pending_choices.is_empty());

@@ -56,7 +56,7 @@ fn hook_adds_the_progress_table_for_supported_events_without_mutating_data() {
     // Work metadata is included, while details/history are not sent to the hook.
     assert_eq!(snapshot["unassigned"].as_array().unwrap().len(), 1);
     assert_eq!(snapshot["unassigned"][0]["title"], "Question");
-    assert!(snapshot.get("cards").is_none());
+    assert!(snapshot.get("tasks").is_none());
     assert!(snapshot.get("sessionId").is_none());
     assert_eq!(snapshot["epics"].as_array().unwrap().len(), 0);
     assert_eq!(before, tree_of(&db_path));
@@ -125,7 +125,7 @@ fn task_body(text: &str) -> String {
 }
 
 fn board_with_descriptions(descriptions: &[String]) -> (tempfile::TempDir, std::path::PathBuf) {
-    use agent_board::domain::{Actor, Assignee, NewCard};
+    use agent_board::domain::{Actor, Assignee, NewTask};
     use agent_board::file_store::FileStore;
     let home = tempdir().unwrap();
     let db_path = home.path().join("shared");
@@ -137,10 +137,10 @@ fn board_with_descriptions(descriptions: &[String]) -> (tempfile::TempDir, std::
         let room = 50_000 - task_body("").chars().count();
         let description: String = description.chars().take(room).collect();
         store
-            .create_card(
+            .create_task(
                 &project,
-                NewCard {
-                    title: format!("Card {index}"),
+                NewTask {
+                    title: format!("Task {index}"),
                     description: task_body(&description),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
@@ -185,7 +185,7 @@ fn hook_omits_long_descriptions_from_the_progress_table() {
         assert!(context.starts_with("AGBOARD_PROGRESS\n"), "{agent} {event}");
         assert!(context.len() < 10 * 1024);
         let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
-        assert!(snapshot.get("cards").is_none());
+        assert!(snapshot.get("tasks").is_none());
         assert!(!context.contains(&ten_kb));
         assert!(!context.contains("end"));
     }

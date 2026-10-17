@@ -1,23 +1,23 @@
 import { useTranslation } from 'react-i18next';
 import { ListChecksIcon } from 'lucide-react';
-import type { AcceptanceItem, Card } from '../../types';
+import type { AcceptanceItem, Task } from '../../types';
 import { AcceptanceList } from '../acceptance/AcceptanceList';
 import { progressOf } from '../../lib/acceptance';
 import './acceptance-tab.css';
 
 /** Read-only completion conditions of the task. Epic references stay in the plan body. */
 export function AcceptanceTabView({
-  card,
+  task,
 }: {
-  card: Pick<Card, 'acceptance' | 'acceptanceError'>;
+  task: Pick<Task, 'acceptance' | 'acceptanceError'>;
 }) {
   const { t } = useTranslation();
   return (
     <div className="acceptance-tab">
       <ConditionSection
         title={t('detail.conditionsCard')}
-        items={card.acceptance}
-        unreadable={card.acceptanceError}
+        items={task.acceptance}
+        unreadable={task.acceptanceError}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-//! `state`: a card's run state. Answering a pending request, asking one with
+//! `state`: a task's run state. Answering a pending request, asking one with
 //! `--request-json`, and the plain run-state changes.
 
 use std::io::Read;
@@ -12,7 +12,7 @@ use crate::cli::{Context, Outcome};
 use crate::domain::{ChangeContext, RunState, validate_work_reason};
 use crate::error::{AgboardError, FileAction};
 use crate::file_store::Answer;
-use crate::file_store::model::{CardView, Choice};
+use crate::file_store::model::{Choice, TaskView};
 
 /// The JSON of `--request-json`: a question and zero to ten choices.
 #[derive(Debug, Deserialize)]
@@ -36,7 +36,7 @@ struct WaitSpec {
 /// The longest wait, in seconds: a day.
 const MAX_WAIT_SECS: u64 = 86_400;
 
-/// Wait until request `request` of card `id` is answered or withdrawn, and return the card then. A
+/// Wait until request `request` of task `id` is answered or withdrawn, and return the task then. A
 /// wait-command timeout is `wait_timeout`; a request that a move took back is `request_changed`.
 /// Neither ending expires or otherwise changes the question. This uses the same event stream as
 /// `agboard wait`, so it needs a running `agboard serve`.
@@ -45,7 +45,7 @@ fn wait_for_resolution(
     id: i64,
     request: &str,
     timeout_secs: Option<u64>,
-) -> Result<CardView, AgboardError> {
+) -> Result<TaskView, AgboardError> {
     let project = ctx.project()?;
     let (name, project_id) = (project.name.clone(), project.id.clone());
     let shared = ctx.files.shared_dir().to_path_buf();
@@ -58,14 +58,14 @@ fn wait_for_resolution(
     let deadline = timeout_secs.map(|seconds| Instant::now() + Duration::from_secs(seconds));
     loop {
         let snapshot = ctx.files.board(&project_id)?;
-        let card = ctx.files.card(&project_id, id)?;
-        if card.pending_request_id.as_deref() != Some(request) {
+        let task = ctx.files.task(&project_id, id)?;
+        if task.pending_request_id.as_deref() != Some(request) {
             let answered = ctx
                 .files
                 .request_answer(&project_id, id, request)?
                 .is_some();
             return if answered {
-                Ok(card)
+                Ok(task)
             } else {
                 Err(AgboardError::RequestChanged)
             };
@@ -153,7 +153,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         })
         .transpose()?;
     let project_id = ctx.project_id()?;
-    let current = ctx.files.card(project_id, args.id)?;
+    let current = ctx.files.task(project_id, args.id)?;
     let answering = current.agent_status == RunState::Pending && state == RunState::Idle;
 
     if args.request.is_some() && !answering {
@@ -214,7 +214,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         }
     }
 
-    let (card, changed) = if answering {
+    let (task, changed) = if answering {
         let request = args
             .request
             .as_deref()
@@ -224,10 +224,10 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             choice_id: args.choice.clone(),
             text: reason,
         };
-        let card =
+        let task =
             ctx.files
                 .answer_request(project_id, args.id, request, answer, ctx.clock.now())?;
-        (card, true)
+        (task, true)
     } else if let Some(file) = request {
         let result = ctx.files.request_decision(
             project_id,
@@ -251,7 +251,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         (result.value, result.changed)
     };
     if wait_requested {
-        let request = card
+        let request = task
             .pending_request_id
             .clone()
             .ok_or_else(|| invalid("The request is not pending."))?;
@@ -276,7 +276,7 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         return Ok(Outcome {
             changed: true,
             human: format!("#{} answered: {} {}\n", args.id, note, text).replace("  ", " "),
-            json: json!({"card": resolved, "answer": answer}),
+            json: json!({"task": resolved, "answer": answer}),
         });
     }
     let human = if changed {
@@ -287,6 +287,6 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
     Ok(Outcome {
         changed,
         human,
-        json: json!({"card": card}),
+        json: json!({"task": task}),
     })
 }

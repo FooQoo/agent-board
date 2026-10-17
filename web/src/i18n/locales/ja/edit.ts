@@ -1,6 +1,6 @@
 export const editJa = {
   dialog: {
-    addCard: 'カード追加',
+    addCard: 'タスク追加',
     moveTitle: '列を移動',
     cardStatus: '移動先',
     chooseStatus: 'ステータスを選択',
@@ -8,7 +8,7 @@ export const editJa = {
     reason: '変更理由(任意)',
     close: '閉じる',
     statusChange: '状態の変更',
-    moveHint: '確定するまでカードの状態は変わりません。',
+    moveHint: '確定するまでタスクの状態は変わりません。',
     moveReasonDefault: '{{who}}が{{from}}から{{to}}に変更しました。',
     reasonRequired: '理由は2,000文字以内で入力してください。',
     saveFailed: '変更を保存できませんでした。',
@@ -17,9 +17,9 @@ export const editJa = {
     saving: '保存中…',
   },
   editor: {
-    editCardTitle: 'カードを編集',
+    editCardTitle: 'タスクを編集',
     savingStatus: '保存しています…',
-    addCardTitle: 'カードを追加',
+    addCardTitle: 'タスクを追加',
     draft: '下書き',
     epic: 'エピック',
     titleLabel: 'タイトル',
@@ -41,7 +41,7 @@ export const editJa = {
     retry: '再試行',
     add: '追加',
     saveFailed: '保存できませんでした。入力は残っています。もう一度お試しください。',
-    notDraft: 'このカードは下書きではありません。',
+    notDraft: 'このタスクは下書きではありません。',
     discardTitle: '変更を破棄しますか?',
     discardBody: '保存していない変更があります。このまま閉じると、入力した内容は失われます。',
     keepEditing: '編集に戻る',
@@ -53,8 +53,8 @@ export const editJa = {
     attachmentTooLarge: '{{name}} は 10 MB を超えています。小さい画像を選んでください。',
     attachmentFormat:
       '{{name}} は対応していない形式です。PNG・JPEG・WebP・GIF の画像を選んでください。',
-    attachmentCount: '1つのカードに追加できる画像は20枚までです。',
-    attachmentTotal: '1つのカードの画像は合計50 MBまでです。',
+    attachmentCount: '1つのタスクに追加できる画像は20枚までです。',
+    attachmentTotal: '1つのタスクの画像は合計50 MBまでです。',
     attachmentsLabel: '画像添付',
     attachmentsDropHint: 'ファイル選択、ドラッグ＆ドロップ、貼り付けに対応',
     addAttachment: '画像を添付',

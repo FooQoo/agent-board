@@ -19,7 +19,7 @@ test('the header and the page title show the board name', async ({ page }) => {
   await expect(header).toContainText('Agent Board');
 });
 
-test('three lanes show their names and card counts', async ({ page }) => {
+test('three lanes show their names and task counts', async ({ page }) => {
   const counts = { Todo: '3', Doing: '3', Done: '2' } as const;
   for (const [name, count] of Object.entries(counts) as [keyof typeof counts, string][]) {
     const column = lane(page, name);
@@ -30,7 +30,7 @@ test('three lanes show their names and card counts', async ({ page }) => {
   await expect(page.getByRole('region', { name: /^(Todo|Doing|Done)$/ })).toHaveCount(3);
 });
 
-test('a card shows its ID, title, and update time', async ({ page }) => {
+test('a task shows its ID, title, and update time', async ({ page }) => {
   await expect(
     lane(page, 'Todo').getByRole('button', { name: '#14 User Prepare the Windows build Updated 10/02 10:08' }),
   ).toBeVisible();
@@ -40,9 +40,9 @@ test('a card shows its ID, title, and update time', async ({ page }) => {
   await expect(
     lane(page, 'Done').getByRole('button', { name: '#8 AI Initialize the board Updated 10/02 09:48' }),
   ).toBeVisible();
-  const card = lane(page, 'Todo').getByRole('button').first();
-  const idBounds = await card.locator('.card__id').boundingBox();
-  const iconBounds = await card.getByRole('img', { name: 'User' }).boundingBox();
+  const task = lane(page, 'Todo').getByRole('button').first();
+  const idBounds = await task.locator('.card__id').boundingBox();
+  const iconBounds = await task.getByRole('img', { name: 'User' }).boundingBox();
   expect(idBounds).not.toBeNull();
   expect(iconBounds).not.toBeNull();
   expect(iconBounds!.x).toBeGreaterThan(idBounds!.x + idBounds!.width);
@@ -55,12 +55,12 @@ test('a card shows its ID, title, and update time', async ({ page }) => {
   ]);
 });
 
-test('Doing cards show Idle, Running, or Pending, and a pending card shows its reason', async ({
+test('Doing tasks show Idle, Running, or Pending, and a pending task shows its reason', async ({
   page,
 }) => {
   const doing = lane(page, 'Doing');
   await expect(
-    doing.getByRole('button', { name: '#11 AI Running Implement card moves Updated 10/02 10:42' }),
+    doing.getByRole('button', { name: '#11 AI Running Implement task moves Updated 10/02 10:42' }),
   ).toBeVisible();
   await expect(
     doing.getByRole('button', { name: '#13 AI Idle Check the board display Updated 10/02 10:12' }),
@@ -77,13 +77,13 @@ test('Doing cards show Idle, Running, or Pending, and a pending card shows its r
   }
 });
 
-test('Done lists the newest card first', async ({ page }) => {
+test('Done lists the newest task first', async ({ page }) => {
   await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button')).toHaveText([/^#9(?!\d)/, /^#8(?!\d)/]);
 });
 
-test('the footer shows the card count and the sync time', async ({ page }) => {
+test('the footer shows the task count and the sync time', async ({ page }) => {
   const footer = page.getByRole('contentinfo');
-  await expect(footer).toContainText('8 cards');
+  await expect(footer).toContainText('8 tasks');
   const status = footer.getByRole('status');
   await expect(status).toHaveText(/^Synced \d{2}:\d{2}$/);
 

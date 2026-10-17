@@ -13,7 +13,7 @@ use crate::error::AgboardError;
 const AUTO_DONE_REASON: &str = "All acceptance conditions are complete.";
 
 impl FileStore {
-    /// Complete every eligible card in every project. Used before the serve
+    /// Complete every eligible task in every project. Used before the serve
     /// publishes its first snapshot, so existing work is reconciled on startup.
     pub(crate) fn auto_complete_all(&self, now: DateTime<Utc>) -> Result<bool, AgboardError> {
         let mut changed = false;
@@ -23,8 +23,8 @@ impl FileStore {
         Ok(changed)
     }
 
-    /// Recheck the latest card files while holding the project write lock.
-    /// Invalid or ineligible cards are left alone; moving a card to Done makes
+    /// Recheck the latest task files while holding the project write lock.
+    /// Invalid or ineligible tasks are left alone; moving a task to Done makes
     /// subsequent watch notifications idempotent.
     pub(crate) fn auto_complete_project(
         &self,
@@ -35,19 +35,19 @@ impl FileStore {
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut changed = false;
 
-        for id in reader::card_ids(&project_dir)? {
-            let Ok(loaded) = reader::read_card_lenient(shared, project, id) else {
+        for id in reader::task_ids(&project_dir)? {
+            let Ok(loaded) = reader::read_task_lenient(shared, project, id) else {
                 continue;
             };
-            let card = loaded.view;
-            if card.assignee != crate::domain::Assignee::Ai
-                || card.is_draft
-                || card.archived_at.is_some()
-                || !matches!(card.card_status, Column::Todo | Column::Doing)
-                || card.agent_status == RunState::Pending
-                || card.acceptance_error
-                || card.acceptance.is_empty()
-                || card.acceptance.iter().any(|item| !item.done)
+            let task = loaded.view;
+            if task.assignee != crate::domain::Assignee::Ai
+                || task.is_draft
+                || task.archived_at.is_some()
+                || !matches!(task.task_status, Column::Todo | Column::Doing)
+                || task.agent_status == RunState::Pending
+                || task.acceptance_error
+                || task.acceptance.is_empty()
+                || task.acceptance.iter().any(|item| !item.done)
             {
                 continue;
             }
@@ -67,7 +67,7 @@ impl FileStore {
                 || task.assignee != crate::domain::Assignee::Ai
                 || task.is_draft
                 || task.archived_at.is_some()
-                || !matches!(task.card_status, Column::Todo | Column::Doing)
+                || !matches!(task.task_status, Column::Todo | Column::Doing)
                 || task.agent_status == RunState::Pending
             {
                 continue;
@@ -78,8 +78,8 @@ impl FileStore {
             let event = transition_event(Transition {
                 kind: HistoryKind::Lane,
                 reason: Some(AUTO_DONE_REASON),
-                from_card: Some(task.card_status),
-                to_card: Column::Done,
+                from_task: Some(task.task_status),
+                to_task: Column::Done,
                 from_agent: Some(task.agent_status),
                 to_agent: RunState::Idle,
                 at,
@@ -87,8 +87,8 @@ impl FileStore {
             if task.agent_status != RunState::Idle {
                 task.agent_status_changed_at = at;
             }
-            task.card_status = Column::Done;
-            task.card_status_changed_at = at;
+            task.task_status = Column::Done;
+            task.task_status_changed_at = at;
             task.agent_status = RunState::Idle;
             task.pending_request_id = None;
             task.pending_request = None;
@@ -108,7 +108,7 @@ mod tests {
 
     use chrono::{TimeZone, Utc};
 
-    use crate::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId, RunState};
+    use crate::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
     use crate::file_store::FileStore;
 
     fn at(day: u32) -> chrono::DateTime<Utc> {
@@ -136,11 +136,11 @@ mod tests {
             }
         }
 
-        fn card(&self, name: &str, assignee: Assignee, body: &str, draft: bool) -> i64 {
+        fn task(&self, name: &str, assignee: Assignee, body: &str, draft: bool) -> i64 {
             self.store
-                .create_card(
+                .create_task(
                     &self.project,
-                    NewCard {
+                    NewTask {
                         title: name.into(),
                         description: body.into(),
                         assignee,
@@ -188,15 +188,15 @@ mod tests {
     #[test]
     fn completed_ai_todo_moves_once_and_records_a_reasoned_lane_event() {
         let f = Fixture::new();
-        let id = f.card("Complete", Assignee::Ai, COMPLETE, false);
+        let id = f.task("Complete", Assignee::Ai, COMPLETE, false);
 
         assert!(f.store.auto_complete_all(at(2)).unwrap());
         assert!(!f.store.auto_complete_all(at(3)).unwrap());
 
-        let card = f.store.card(&f.project, id).unwrap();
-        assert_eq!(card.card_status, Column::Done);
-        assert_eq!(card.agent_status, RunState::Idle);
-        let completed: Vec<_> = card
+        let task = f.store.task(&f.project, id).unwrap();
+        assert_eq!(task.task_status, Column::Done);
+        assert_eq!(task.agent_status, RunState::Idle);
+        let completed: Vec<_> = task
             .history
             .iter()
             .filter(|e| e.reason == super::AUTO_DONE_REASON)
@@ -208,16 +208,16 @@ mod tests {
     #[test]
     fn only_valid_nonempty_fully_done_ai_conditions_are_eligible() {
         let f = Fixture::new();
-        let open = f.card("Open", Assignee::Ai, OPEN, false);
-        let human = f.card("Human", Assignee::Human, COMPLETE, false);
-        let draft = f.card("Draft", Assignee::Ai, COMPLETE, true);
-        let none = f.card(
+        let open = f.task("Open", Assignee::Ai, OPEN, false);
+        let human = f.task("Human", Assignee::Human, COMPLETE, false);
+        let draft = f.task("Draft", Assignee::Ai, COMPLETE, true);
+        let none = f.task(
             "None",
             Assignee::Ai,
             "---\nacceptance: []\n---\n\nWork.\n",
             false,
         );
-        let invalid = f.card("Invalid", Assignee::Ai, OPEN, false);
+        let invalid = f.task("Invalid", Assignee::Ai, OPEN, false);
         let valid = std::fs::read_to_string(f.path(invalid)).unwrap();
         let (_, history) = valid.split_once("history:").unwrap();
         std::fs::write(
@@ -230,18 +230,18 @@ mod tests {
 
         for id in [open, human, draft, none, invalid] {
             assert_ne!(
-                f.store.card(&f.project, id).unwrap().card_status,
+                f.store.task(&f.project, id).unwrap().task_status,
                 Column::Done
             );
         }
     }
 
     #[test]
-    fn pending_is_left_alone_then_answered_card_is_reconsidered() {
+    fn pending_is_left_alone_then_answered_task_is_reconsidered() {
         let f = Fixture::new();
-        let id = f.card("Pending", Assignee::Ai, COMPLETE, false);
+        let id = f.task("Pending", Assignee::Ai, COMPLETE, false);
         f.store
-            .move_work_card(
+            .move_work_task(
                 &f.project,
                 id,
                 Column::Doing,
@@ -276,7 +276,7 @@ mod tests {
 
         f.store.auto_complete_all(at(4)).unwrap();
         assert_eq!(
-            f.store.card(&f.project, id).unwrap().agent_status,
+            f.store.task(&f.project, id).unwrap().agent_status,
             RunState::Pending
         );
         f.store
@@ -294,22 +294,22 @@ mod tests {
             .unwrap();
         f.store.auto_complete_all(at(6)).unwrap();
 
-        let card = f.store.card(&f.project, id).unwrap();
-        assert_eq!(card.card_status, Column::Done);
-        assert_eq!(card.agent_status, RunState::Idle);
+        let task = f.store.task(&f.project, id).unwrap();
+        assert_eq!(task.task_status, Column::Done);
+        assert_eq!(task.agent_status, RunState::Idle);
     }
 
     #[test]
     fn direct_task_file_updates_are_rechecked_and_existing_done_is_not_reopened() {
         let f = Fixture::new();
-        let id = f.card("Edited externally", Assignee::Ai, OPEN, false);
+        let id = f.task("Edited externally", Assignee::Ai, OPEN, false);
         f.replace_description(id, COMPLETE);
         assert!(f.store.auto_complete_all(at(2)).unwrap());
 
         f.replace_description(id, OPEN);
         assert!(!f.store.auto_complete_all(at(3)).unwrap());
         assert_eq!(
-            f.store.card(&f.project, id).unwrap().card_status,
+            f.store.task(&f.project, id).unwrap().task_status,
             Column::Done
         );
     }

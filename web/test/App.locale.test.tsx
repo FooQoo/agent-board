@@ -18,11 +18,11 @@ describe('language changes in the app', () => {
       projects: PROJECTS,
       boards: { [PROJECT_A.id]: structuredClone(fixtureBoard) },
       write: (url, init) => {
-        if (url === `/api/projects/${PROJECT_A.id}/cards/14/archive` && init.method === 'POST') {
+        if (url === `/api/projects/${PROJECT_A.id}/tasks/14/archive` && init.method === 'POST') {
           const board = backend.boards[PROJECT_A.id] as Board;
           backend.boards[PROJECT_A.id] = {
             ...board,
-            cards: board.cards.filter((card) => card.id !== 14),
+            tasks: board.tasks.filter((task) => task.id !== 14),
           };
           return new Response(null, { status: 204 });
         }
@@ -42,11 +42,11 @@ describe('language changes in the app', () => {
     window.localStorage.clear();
   });
 
-  it('keeps the selected card and open archive confirmation when switching languages', async () => {
+  it('keeps the selected task and open archive confirmation when switching languages', async () => {
     renderApp(`?project=${PROJECT_A.id}`);
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: /Prepare the Windows build/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive task' }));
     expect(
       screen.getByText(
         'Archive #14 "Prepare the Windows build"? You can restore it from the archive.',

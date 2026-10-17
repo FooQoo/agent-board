@@ -47,7 +47,7 @@ fn the_write_protections_apply_to_the_new_routes() {
         ),
         (
             "PUT",
-            format!("/api/projects/{pid}/cards/1/epic"),
+            format!("/api/projects/{pid}/tasks/1/epic"),
             Some(r#"{"epicId":null}"#),
         ),
     ] {
@@ -145,7 +145,7 @@ fn an_epic_is_created_listed_read_and_changed_over_http() {
 }
 
 #[test]
-fn a_card_takes_and_leaves_an_epic_over_http_and_a_person_may_change_an_archived_card() {
+fn a_task_takes_and_leaves_an_epic_over_http_and_a_person_may_change_an_archived_task() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let (code, _, err) = agboard(
@@ -165,12 +165,12 @@ fn a_card_takes_and_leaves_an_epic_over_http_and_a_person_may_change_an_archived
     assert_eq!(code, 0, "{err}");
     let pid = project_id(home.path());
     let server = Running::start(home.path());
-    let path = format!("/api/projects/{pid}/cards/1/epic");
+    let path = format!("/api/projects/{pid}/tasks/1/epic");
 
     let set = server.write("PUT", &path, Some(r#"{"epicId":"FILE-SHARE"}"#));
     assert_eq!(set.status, 200, "{}", set.body);
-    assert_eq!(set.json()["card"]["epicId"], "FILE-SHARE");
-    assert_eq!(set.json()["card"]["epic"]["name"], "File share");
+    assert_eq!(set.json()["task"]["epicId"], "FILE-SHARE");
+    assert_eq!(set.json()["task"]["epic"]["name"], "File share");
 
     let unknown = server.write("PUT", &path, Some(r#"{"epicId":"NOPE-1"}"#));
     assert_eq!(unknown.status, 404);
@@ -181,9 +181,9 @@ fn a_card_takes_and_leaves_an_epic_over_http_and_a_person_may_change_an_archived
 
     let cleared = server.write("PUT", &path, Some(r#"{"epicId":null}"#));
     assert_eq!(cleared.status, 200);
-    assert_eq!(cleared.json()["card"]["epicId"], Value::Null);
+    assert_eq!(cleared.json()["task"]["epicId"], Value::Null);
 
-    // A card that is archived takes no AI change, but a person may change it.
+    // A task that is archived takes no AI change, but a person may change it.
     let (code, _, err) = agboard(
         home.path(),
         &[
@@ -201,13 +201,13 @@ fn a_card_takes_and_leaves_an_epic_over_http_and_a_person_may_change_an_archived
     assert_eq!(code, 0, "{err}");
     let archived = server.write(
         "POST",
-        &format!("/api/projects/{pid}/cards/1/archive"),
+        &format!("/api/projects/{pid}/tasks/1/archive"),
         None,
     );
     assert_eq!(archived.status, 200, "{}", archived.body);
     let person = server.write("PUT", &path, Some(r#"{"epicId":"FILE-SHARE"}"#));
     assert_eq!(person.status, 200, "{}", person.body);
-    assert_eq!(person.json()["card"]["epicId"], "FILE-SHARE");
+    assert_eq!(person.json()["task"]["epicId"], "FILE-SHARE");
     server.stop();
 }
 
@@ -240,11 +240,11 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
     let pid = project_id(home.path());
     let server = Running::start(home.path());
     let shown = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    let request = shown["card"]["pendingRequestId"]
+    let request = shown["task"]["pendingRequestId"]
         .as_str()
         .unwrap()
         .to_string();
-    let path = format!("/api/projects/{pid}/cards/1/answer");
+    let path = format!("/api/projects/{pid}/tasks/1/answer");
 
     let unknown = server.write(
         "POST",
@@ -275,8 +275,8 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
         Some(&json!({"requestId": request, "choiceId": "proceed", "text": "Go."}).to_string()),
     );
     assert_eq!(answered.status, 200, "{}", answered.body);
-    assert_eq!(answered.json()["card"]["agentStatus"], "idle");
-    let last = answered.json()["card"]["history"]
+    assert_eq!(answered.json()["task"]["agentStatus"], "idle");
+    let last = answered.json()["task"]["history"]
         .as_array()
         .unwrap()
         .last()

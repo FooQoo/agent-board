@@ -7,7 +7,7 @@ fn ask(input: &[u8]) -> (bool, String) {
     let mut reader = Cursor::new(input.to_vec());
     let mut output = Vec::new();
     let answer = confirm(
-        "Delete #11 \"Implement card moves\"?",
+        "Delete #11 \"Implement task moves\"?",
         &mut reader,
         &mut output,
     )
@@ -48,7 +48,7 @@ fn invalid_utf8_input_cancels() {
 #[test]
 fn prompt_is_followed_by_a_space_and_the_choice_marker() {
     let (_, printed) = ask(b"n\n");
-    assert_eq!(printed, "Delete #11 \"Implement card moves\"? [y/N] ");
+    assert_eq!(printed, "Delete #11 \"Implement task moves\"? [y/N] ");
 }
 
 #[test]

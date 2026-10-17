@@ -1,10 +1,10 @@
-//! Text evidence owned by a card on the shared files (AC-10 storage layer,
+//! Text evidence owned by a task on the shared files (AC-10 storage layer,
 //! U4-3 and U4-5): UTF-8 only, owner checks, path rules, and limits.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewCard, ProjectId};
+use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::layout;
@@ -42,12 +42,12 @@ fn fixture() -> Fixture {
 }
 
 impl Fixture {
-    fn card(&self) -> i64 {
+    fn task(&self) -> i64 {
         self.store
-            .create_card(
+            .create_task(
                 &self.project,
-                NewCard {
-                    title: "Card".into(),
+                NewTask {
+                    title: "Task".into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
@@ -59,18 +59,18 @@ impl Fixture {
             .id
     }
 
-    fn evidence_dir(&self, card: i64) -> PathBuf {
+    fn evidence_dir(&self, task: i64) -> PathBuf {
         self.project_dir
             .join("tasks")
-            .join(card.to_string())
+            .join(task.to_string())
             .join("evidence")
     }
 
-    fn task_json(&self, card: i64) -> serde_json::Value {
+    fn task_json(&self, task: i64) -> serde_json::Value {
         let text = fs::read_to_string(
             self.project_dir
                 .join("tasks")
-                .join(card.to_string())
+                .join(task.to_string())
                 .join("task.json"),
         )
         .unwrap();
@@ -83,17 +83,17 @@ fn id(n: u32) -> String {
 }
 
 #[test]
-fn agents_cannot_add_or_delete_evidence_after_a_card_is_done() {
+fn agents_cannot_add_or_delete_evidence_after_a_task_is_done() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     let record = f
         .store
-        .add_evidence(&f.project, card, "run.log", b"kept", at(5))
+        .add_evidence(&f.project, task, "run.log", b"kept", at(5))
         .unwrap();
     f.store
-        .move_work_card_for_user(
+        .move_work_task_for_user(
             &f.project,
-            card,
+            task,
             Column::Done,
             ChangeContext {
                 actor: Actor::Human,
@@ -104,14 +104,14 @@ fn agents_cannot_add_or_delete_evidence_after_a_card_is_done() {
         .unwrap();
 
     assert!(
-        matches!(f.store.add_evidence(&f.project, card, "next.log", b"new", at(7)), Err(AgboardError::CardIsDone { id }) if id == card)
+        matches!(f.store.add_evidence(&f.project, task, "next.log", b"new", at(7)), Err(AgboardError::TaskIsDone { id }) if id == task)
     );
     assert!(
-        matches!(f.store.delete_evidence(&f.project, card, &record.id, at(7)), Err(AgboardError::CardIsDone { id }) if id == card)
+        matches!(f.store.delete_evidence(&f.project, task, &record.id, at(7)), Err(AgboardError::TaskIsDone { id }) if id == task)
     );
     assert_eq!(
         f.store
-            .read_evidence(&f.project, card, &record.id)
+            .read_evidence(&f.project, task, &record.id)
             .unwrap()
             .bytes,
         b"kept"
@@ -119,25 +119,25 @@ fn agents_cannot_add_or_delete_evidence_after_a_card_is_done() {
 }
 
 #[test]
-fn text_evidence_is_saved_under_the_card_and_read_back_byte_for_byte() {
+fn text_evidence_is_saved_under_the_task_and_read_back_byte_for_byte() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     let text = "line one\r\nline two 日本語 🚀\nno trailing newline".as_bytes();
 
     let record = f
         .store
-        .add_evidence(&f.project, card, "run.log", text, at(5))
+        .add_evidence(&f.project, task, "run.log", text, at(5))
         .unwrap();
 
     assert_eq!(record.name, "run.log");
     assert_eq!(record.size, text.len() as i64);
     assert_eq!(record.created_at, at(5));
     assert_eq!(record.id.len(), 32);
-    let file = f.evidence_dir(card).join(format!("{}.log", record.id));
+    let file = f.evidence_dir(task).join(format!("{}.log", record.id));
     assert_eq!(fs::read(&file).unwrap(), text);
-    assert_eq!(f.task_json(card)["evidence"][0]["id"], record.id.as_str());
+    assert_eq!(f.task_json(task)["evidence"][0]["id"], record.id.as_str());
 
-    let data = f.store.read_evidence(&f.project, card, &record.id).unwrap();
+    let data = f.store.read_evidence(&f.project, task, &record.id).unwrap();
     assert_eq!(data.bytes, text);
     assert_eq!(data.record, record);
 }
@@ -145,28 +145,28 @@ fn text_evidence_is_saved_under_the_card_and_read_back_byte_for_byte() {
 #[test]
 fn evidence_must_be_non_empty_utf8_text() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     let err = f
         .store
-        .add_evidence(&f.project, card, "bin.log", &[0xff, 0xfe, 0x00], at(5))
+        .add_evidence(&f.project, task, "bin.log", &[0xff, 0xfe, 0x00], at(5))
         .unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 
     let err = f
         .store
-        .add_evidence(&f.project, card, "empty.log", b"", at(5))
+        .add_evidence(&f.project, task, "empty.log", b"", at(5))
         .unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 
-    assert!(f.task_json(card)["evidence"].as_array().unwrap().is_empty());
-    assert!(!f.evidence_dir(card).exists());
+    assert!(f.task_json(task)["evidence"].as_array().unwrap().is_empty());
+    assert!(!f.evidence_dir(task).exists());
 }
 
 #[test]
-fn evidence_is_checked_against_the_card_that_owns_it() {
+fn evidence_is_checked_against_the_task_that_owns_it() {
     let f = fixture();
-    let owner = f.card();
-    let other = f.card();
+    let owner = f.task();
+    let other = f.task();
     let record = f
         .store
         .add_evidence(&f.project, owner, "run.log", b"owned", at(5))
@@ -197,79 +197,79 @@ fn evidence_is_checked_against_the_card_that_owns_it() {
 #[test]
 fn path_like_evidence_ids_are_refused() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     f.store
-        .add_evidence(&f.project, card, "run.log", b"x", at(5))
+        .add_evidence(&f.project, task, "run.log", b"x", at(5))
         .unwrap();
 
     for bad in ["../task", "../../project", "/etc/passwd", "ABC"] {
-        let err = f.store.read_evidence(&f.project, card, bad).unwrap_err();
+        let err = f.store.read_evidence(&f.project, task, bad).unwrap_err();
         assert!(
             matches!(err, AgboardError::EvidenceNotFound { .. }),
             "{bad}: {err:?}"
         );
     }
 
-    let err = layout::evidence_path(&f.project_dir, card, "../x").unwrap_err();
+    let err = layout::evidence_path(&f.project_dir, task, "../x").unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     let err = layout::evidence_path(&f.project_dir, 0, &id(1)).unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 }
 
 #[test]
-fn archived_and_draft_cards_refuse_evidence_changes_but_allow_reads() {
+fn archived_and_draft_tasks_refuse_evidence_changes_but_allow_reads() {
     let f = fixture();
-    let archived = f.card();
+    let archived = f.task();
     let kept = f
         .store
         .add_evidence(&f.project, archived, "kept.log", b"kept", at(5))
         .unwrap();
-    f.store.archive_card(&f.project, archived, at(5)).unwrap();
+    f.store.archive_task(&f.project, archived, at(5)).unwrap();
 
     let err = f
         .store
         .add_evidence(&f.project, archived, "new.log", b"new", at(6))
         .unwrap_err();
-    assert!(matches!(err, AgboardError::CardArchived { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::TaskArchived { .. }), "{err:?}");
     let err = f
         .store
         .delete_evidence(&f.project, archived, &kept.id, at(6))
         .unwrap_err();
-    assert!(matches!(err, AgboardError::CardArchived { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::TaskArchived { .. }), "{err:?}");
     let data = f
         .store
         .read_evidence(&f.project, archived, &kept.id)
         .unwrap();
     assert_eq!(data.bytes, b"kept");
 
-    let draft = f.card();
+    let draft = f.task();
     f.store.set_draft(&f.project, draft, true, at(5)).unwrap();
     let err = f
         .store
         .add_evidence(&f.project, draft, "new.log", b"new", at(6))
         .unwrap_err();
-    assert!(matches!(err, AgboardError::CardIsDraft { .. }), "{err:?}");
+    assert!(matches!(err, AgboardError::TaskIsDraft { .. }), "{err:?}");
 }
 
 #[test]
 fn deleting_evidence_removes_its_record_and_file() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     let record = f
         .store
-        .add_evidence(&f.project, card, "run.log", b"gone soon", at(5))
+        .add_evidence(&f.project, task, "run.log", b"gone soon", at(5))
         .unwrap();
-    let file = f.evidence_dir(card).join(format!("{}.log", record.id));
+    let file = f.evidence_dir(task).join(format!("{}.log", record.id));
 
     f.store
-        .delete_evidence(&f.project, card, &record.id, at(6))
+        .delete_evidence(&f.project, task, &record.id, at(6))
         .unwrap();
 
     assert!(!file.exists());
-    assert!(f.task_json(card)["evidence"].as_array().unwrap().is_empty());
+    assert!(f.task_json(task)["evidence"].as_array().unwrap().is_empty());
     let err = f
         .store
-        .read_evidence(&f.project, card, &record.id)
+        .read_evidence(&f.project, task, &record.id)
         .unwrap_err();
     assert!(
         matches!(err, AgboardError::EvidenceNotFound { .. }),
@@ -277,7 +277,7 @@ fn deleting_evidence_removes_its_record_and_file() {
     );
     let err = f
         .store
-        .delete_evidence(&f.project, card, &record.id, at(7))
+        .delete_evidence(&f.project, task, &record.id, at(7))
         .unwrap_err();
     assert!(
         matches!(err, AgboardError::EvidenceNotFound { .. }),
@@ -288,19 +288,19 @@ fn deleting_evidence_removes_its_record_and_file() {
 #[test]
 fn a_symbolic_link_in_the_evidence_folder_is_not_read() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     let record = f
         .store
-        .add_evidence(&f.project, card, "run.log", b"inside", at(5))
+        .add_evidence(&f.project, task, "run.log", b"inside", at(5))
         .unwrap();
-    let dir = f.evidence_dir(card);
+    let dir = f.evidence_dir(task);
     let moved = f.outside.join("moved-evidence");
     fs::rename(&dir, &moved).unwrap();
     symlink(&moved, &dir);
 
     let err = f
         .store
-        .read_evidence(&f.project, card, &record.id)
+        .read_evidence(&f.project, task, &record.id)
         .unwrap_err();
     assert!(
         matches!(err, AgboardError::EvidenceNotFound { .. }),
@@ -309,7 +309,7 @@ fn a_symbolic_link_in_the_evidence_folder_is_not_read() {
 
     let err = f
         .store
-        .add_evidence(&f.project, card, "new.log", b"new", at(6))
+        .add_evidence(&f.project, task, "new.log", b"new", at(6))
         .unwrap_err();
     assert!(matches!(err, AgboardError::FileError { .. }), "{err:?}");
     assert!(!moved.join(format!("{}.log", id(99))).exists());
@@ -318,20 +318,20 @@ fn a_symbolic_link_in_the_evidence_folder_is_not_read() {
 #[test]
 fn the_evidence_limits_follow_the_image_limits() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     for _ in 0..20 {
         f.store
-            .add_evidence(&f.project, card, "run.log", b"x", at(5))
+            .add_evidence(&f.project, task, "run.log", b"x", at(5))
             .unwrap();
     }
     let err = f
         .store
-        .add_evidence(&f.project, card, "run.log", b"x", at(5))
+        .add_evidence(&f.project, task, "run.log", b"x", at(5))
         .unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
-    assert_eq!(f.task_json(card)["evidence"].as_array().unwrap().len(), 20);
+    assert_eq!(f.task_json(task)["evidence"].as_array().unwrap().len(), 20);
 
-    let other = f.card();
+    let other = f.task();
     let big = vec![b'a'; 11 * MIB];
     let err = f
         .store
@@ -343,15 +343,15 @@ fn the_evidence_limits_follow_the_image_limits() {
 #[test]
 fn an_evidence_name_keeps_only_its_last_part() {
     let f = fixture();
-    let card = f.card();
+    let task = f.task();
     let record = f
         .store
-        .add_evidence(&f.project, card, "../../logs/run.log", b"x", at(5))
+        .add_evidence(&f.project, task, "../../logs/run.log", b"x", at(5))
         .unwrap();
     assert_eq!(record.name, "run.log");
     let err = f
         .store
-        .add_evidence(&f.project, card, "", b"x", at(5))
+        .add_evidence(&f.project, task, "", b"x", at(5))
         .unwrap_err();
     assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
 }

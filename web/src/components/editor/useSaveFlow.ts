@@ -36,7 +36,7 @@ export function useSaveFlow({
         // The server's reason is not shown: a known code has its own sentence, any other failure
         // gets the design's sentence, and the input stays in both cases.
         setError(
-          cause instanceof WriteError && cause.code === 'card_not_draft'
+          cause instanceof WriteError && cause.code === 'task_not_draft'
             ? t('editor.notDraft')
             : t('editor.saveFailed'),
         );

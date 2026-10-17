@@ -1,4 +1,4 @@
-//! The CLI for epics, epic membership, text evidence, and card images (AC-2
+//! The CLI for epics, epic membership, text evidence, and task images (AC-2
 //! and AC-5's CLI side, U6-1, U6-5, U6-6, and the draft rule of U6-8). Each
 //! test runs the real binary against a temporary data area.
 
@@ -160,7 +160,7 @@ fn epic_edit_changes_the_name_the_color_and_the_plan_from_a_file() {
 }
 
 #[test]
-fn edit_sets_and_clears_the_epic_of_a_card_and_ls_filters_by_it() {
+fn edit_sets_and_clears_the_epic_of_a_task_and_ls_filters_by_it() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     epic_add(home.path(), "FILE-SHARE", "File share", Some("#111111"));
@@ -171,19 +171,19 @@ fn edit_sets_and_clears_the_epic_of_a_card_and_ls_filters_by_it() {
     );
     assert_eq!(code, 0, "{err}");
     let listed = json_ok(home.path(), &["--project", "Demo", "ls", "--json"]);
-    assert_eq!(listed["cards"][0]["epicId"], "FILE-SHARE");
-    assert_eq!(listed["cards"][0]["epic"]["id"], "FILE-SHARE");
-    assert_eq!(listed["cards"][0]["epic"]["color"], "#111111");
+    assert_eq!(listed["tasks"][0]["epicId"], "FILE-SHARE");
+    assert_eq!(listed["tasks"][0]["epic"]["id"], "FILE-SHARE");
+    assert_eq!(listed["tasks"][0]["epic"]["color"], "#111111");
     let filtered = json_ok(
         home.path(),
         &["--project", "Demo", "ls", "--epic", "FILE-SHARE", "--json"],
     );
-    assert_eq!(filtered["cards"].as_array().unwrap().len(), 1);
+    assert_eq!(filtered["tasks"].as_array().unwrap().len(), 1);
     let other = json_ok(
         home.path(),
         &["--project", "Demo", "ls", "--epic", "NOPE-1", "--json"],
     );
-    assert_eq!(other["cards"].as_array().unwrap().len(), 0);
+    assert_eq!(other["tasks"].as_array().unwrap().len(), 0);
 
     let (code, _, err) = agboard(
         home.path(),
@@ -191,12 +191,12 @@ fn edit_sets_and_clears_the_epic_of_a_card_and_ls_filters_by_it() {
     );
     assert_eq!(code, 0, "{err}");
     let cleared = json_ok(home.path(), &["--project", "Demo", "ls", "--json"]);
-    assert_eq!(cleared["cards"][0]["epicId"], Value::Null);
-    assert_eq!(cleared["cards"][0]["epic"], Value::Null);
+    assert_eq!(cleared["tasks"][0]["epicId"], Value::Null);
+    assert_eq!(cleared["tasks"][0]["epic"], Value::Null);
 }
 
 #[test]
-fn the_human_list_shows_the_epic_id_of_a_card() {
+fn the_human_list_shows_the_epic_id_of_a_task() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     epic_add(home.path(), "FILE-SHARE", "File share", Some("#111111"));
@@ -210,7 +210,7 @@ fn the_human_list_shows_the_epic_id_of_a_card() {
 }
 
 #[test]
-fn an_unknown_epic_is_refused_and_the_card_keeps_its_epic() {
+fn an_unknown_epic_is_refused_and_the_task_keeps_its_epic() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let (code, code_name) = json_error(
@@ -218,12 +218,12 @@ fn an_unknown_epic_is_refused_and_the_card_keeps_its_epic() {
         &["--project", "Demo", "edit", "1", "--epic", "NOPE"],
     );
     assert_eq!((code, code_name.as_str()), (1, "epic_not_found"));
-    let card = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    assert_eq!(card["card"]["epicId"], Value::Null);
+    let task = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
+    assert_eq!(task["task"]["epicId"], Value::Null);
 }
 
 #[test]
-fn epic_ls_json_lists_each_epic_with_its_color_and_card_count() {
+fn epic_ls_json_lists_each_epic_with_its_color_and_task_count() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     epic_add(home.path(), "FILE-SHARE", "File share", Some("#111111"));
@@ -240,8 +240,8 @@ fn epic_ls_json_lists_each_epic_with_its_color_and_card_count() {
     assert_eq!(epics[1]["id"], "FILE-SHARE");
     assert_eq!(epics[1]["name"], "File share");
     assert_eq!(epics[1]["color"], "#111111");
-    assert_eq!(epics[1]["cardCount"], 1);
-    assert_eq!(epics[0]["cardCount"], 0);
+    assert_eq!(epics[1]["taskCount"], 1);
+    assert_eq!(epics[0]["taskCount"], 0);
 }
 
 #[test]
@@ -377,7 +377,7 @@ fn an_image_added_from_the_cli_returns_its_asset_path_and_can_be_read_back() {
 }
 
 #[test]
-fn a_draft_card_refuses_cli_image_evidence_and_epic_changes_but_reads_still_work() {
+fn a_draft_task_refuses_cli_image_evidence_and_epic_changes_but_reads_still_work() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     epic_add(home.path(), "FILE-SHARE", "File share", Some("#111111"));
@@ -399,7 +399,7 @@ fn a_draft_card_refuses_cli_image_evidence_and_epic_changes_but_reads_still_work
     );
     let evidence_id = evidence["evidence"]["id"].as_str().unwrap().to_string();
 
-    // A person marks the card as a draft through the Web path (the store API).
+    // A person marks the task as a draft through the Web path (the store API).
     let store = FileStore::open(&home.path().join("shared"));
     store
         .set_draft(&project_id(home.path()), 1, true, chrono::Utc::now())
@@ -409,7 +409,7 @@ fn a_draft_card_refuses_cli_image_evidence_and_epic_changes_but_reads_still_work
         home.path(),
         &["--project", "Demo", "edit", "1", "--epic", "FILE-SHARE"],
     );
-    assert_eq!((code, code_name.as_str()), (1, "card_is_draft"));
+    assert_eq!((code, code_name.as_str()), (1, "task_is_draft"));
     let (code, code_name) = json_error(
         home.path(),
         &[
@@ -424,7 +424,7 @@ fn a_draft_card_refuses_cli_image_evidence_and_epic_changes_but_reads_still_work
             "human",
         ],
     );
-    assert_eq!((code, code_name.as_str()), (1, "card_is_draft"));
+    assert_eq!((code, code_name.as_str()), (1, "task_is_draft"));
     let (code, code_name) = json_error(
         home.path(),
         &[
@@ -436,16 +436,16 @@ fn a_draft_card_refuses_cli_image_evidence_and_epic_changes_but_reads_still_work
             log.to_str().unwrap(),
         ],
     );
-    assert_eq!((code, code_name.as_str()), (1, "card_is_draft"));
+    assert_eq!((code, code_name.as_str()), (1, "task_is_draft"));
     let (code, code_name) = json_error(
         home.path(),
         &["--project", "Demo", "evidence", "rm", "1", &evidence_id],
     );
-    assert_eq!((code, code_name.as_str()), (1, "card_is_draft"));
+    assert_eq!((code, code_name.as_str()), (1, "task_is_draft"));
 
     let shown = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    assert_eq!(shown["card"]["isDraft"], true);
-    assert_eq!(shown["card"]["epicId"], Value::Null);
+    assert_eq!(shown["task"]["isDraft"], true);
+    assert_eq!(shown["task"]["epicId"], Value::Null);
     let (code, _, err) = agboard(
         home.path(),
         &["--project", "Demo", "evidence", "show", "1", &evidence_id],

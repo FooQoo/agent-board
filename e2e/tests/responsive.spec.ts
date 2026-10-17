@@ -14,7 +14,7 @@ async function open(page: Page, width: number, selectId?: number): Promise<void>
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
   if (selectId !== undefined) {
     await page.getByRole('button', { name: new RegExp(`^#${selectId}(?!\\d)`) }).click();
-    await expect(page.getByRole('complementary', { name: 'Card details' })).toContainText(`#${selectId}`);
+    await expect(page.getByRole('complementary', { name: 'Task details' })).toContainText(`#${selectId}`);
   }
 }
 
@@ -47,7 +47,7 @@ for (const width of [1024, 1280, 1920]) {
   test(`${width}px: three lanes, the panel at the right between the header and the footer`, async ({ page }) => {
     for (const selectId of [undefined, 8]) {
       await open(page, width, selectId);
-      const panel = await box(page.getByRole('complementary', { name: 'Card details' }));
+      const panel = await box(page.getByRole('complementary', { name: 'Task details' }));
       expect(panel.x + panel.width).toBe(width);
       expect(panel.width).toBe(width === 1024 ? 344 : 360);
 

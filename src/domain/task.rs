@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct BoardMeta {
     pub name: String,
-    pub next_card_id: i64,
+    pub next_task_id: i64,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
 }

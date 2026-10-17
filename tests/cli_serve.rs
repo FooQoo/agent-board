@@ -331,8 +331,8 @@ fn a_write_that_changes_the_board_notifies_the_running_serve() {
     let home = board();
     let fake = FakeServe::start(home.path(), 7943);
     let commands: &[&[&str]] = &[
-        &["add", "First card"],
-        &["add", "Second card", "--desc", BODY],
+        &["add", "First task"],
+        &["add", "Second task", "--desc", BODY],
         &["edit", "1", "--title", "Renamed"],
         &["mv", "1", "doing"],
         &["state", "1", "running"],
@@ -352,7 +352,7 @@ fn a_write_that_changes_the_board_notifies_the_running_serve() {
 fn commands_that_change_nothing_do_not_notify() {
     let _serial = serial();
     let home = board();
-    run_ok(home.path(), &["add", "A card"]);
+    run_ok(home.path(), &["add", "A task"]);
     run_ok(home.path(), &["mv", "1", "doing"]);
     let fake = FakeServe::start(home.path(), 7943);
     let quiet: &[&[&str]] = &[
@@ -497,7 +497,7 @@ fn a_subscriber_receives_changed_after_add_mv_and_state() {
     let (serving, _) = Serving::start(home.path(), 7949);
     let mut events = serving.events();
     let commands: &[&[&str]] = &[
-        &["add", "A card"],
+        &["add", "A task"],
         &["mv", "1", "doing"],
         &["state", "1", "running"],
     ];
@@ -517,7 +517,7 @@ fn a_subscriber_receives_changed_after_add_mv_and_state() {
 fn a_subscriber_receives_nothing_for_commands_that_change_nothing() {
     let _serial = serial();
     let home = board();
-    run_ok(home.path(), &["add", "A card"]);
+    run_ok(home.path(), &["add", "A task"]);
     run_ok(home.path(), &["mv", "1", "doing"]);
     let (serving, _) = Serving::start(home.path(), 7960);
     let mut events = serving.events();

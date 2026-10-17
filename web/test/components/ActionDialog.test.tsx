@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WriteError } from '../../src/api';
 import { ActionDialog, type DialogAction } from '../../src/components/ActionDialog';
 import { selectLocale } from '../../src/i18n';
-import { fixtureCard } from '../fixtures';
+import { fixtureTask } from '../fixtures';
 
 vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('../editor/fakeRichEditor'));
 
@@ -81,7 +81,7 @@ afterEach(() => {
 describe('create dialog', () => {
   it('shows the add form with the AI as the default assignee', async () => {
     const { dialog } = await openHost({ kind: 'create' }, async () => undefined);
-    expect(dialog.textContent).toContain('Add card');
+    expect(dialog.textContent).toContain('Add task');
     expect(within(dialog).getByText('Draft', { selector: '.editor__badge' })).toBeTruthy();
     expect(within(dialog).getByLabelText('Title')).toBeTruthy();
     expect(within(dialog).getByRole('textbox', { name: 'Description (Markdown)' })).toBeTruthy();
@@ -283,14 +283,14 @@ describe('closing and focus', () => {
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('draft');
   });
 
-  it('closes an empty new card without a question', async () => {
+  it('closes an empty new task without a question', async () => {
     const { dialog, onClosed } = await openHost({ kind: 'create' }, async () => undefined);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
     expect(screen.queryByText('Discard changes?')).toBeNull();
   });
 
-  it('asks before closing a typed new card, like the edit dialog', async () => {
+  it('asks before closing a typed new task, like the edit dialog', async () => {
     const { dialog, onClosed } = await openHost({ kind: 'create' }, async () => undefined);
     await userEvent.type(within(dialog).getByLabelText('Title'), 'half written');
     expect(within(dialog).getByText('You have unsaved changes.')).toBeTruthy();
@@ -306,19 +306,19 @@ describe('closing and focus', () => {
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
   });
 
-  it('returns focus to the source card when there is no opener (drag move)', async () => {
-    const card = fixtureCard(14);
+  it('returns focus to the source task when there is no opener (drag move)', async () => {
+    const task = fixtureTask(14);
     function DragHost() {
       const [open, setOpen] = useState(true);
       return (
         <>
           <button type="button" className="card">
-            <span className="card__id">#{card.id}</span>
-            <span>{card.title}</span>
+            <span className="card__id">#{task.id}</span>
+            <span>{task.title}</span>
           </button>
           {open && (
             <ActionDialog
-              action={{ kind: 'move', card, target: 'doing' }}
+              action={{ kind: 'move', task, target: 'doing' }}
               onSubmit={async () => undefined}
               onClose={() => setOpen(false)}
             />
@@ -330,7 +330,7 @@ describe('closing and focus', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: new RegExp(`^#${card.id}`) }),
+      screen.getByRole('button', { name: new RegExp(`^#${task.id}`) }),
     );
   });
 });
@@ -340,7 +340,7 @@ describe('move dialog', () => {
     selectLocale('ja');
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog } = await openHost(
-      { kind: 'move', card: fixtureCard(14), target: 'done' },
+      { kind: 'move', task: fixtureTask(14), target: 'done' },
       onSubmit,
     );
     const reason = within(dialog).getByLabelText(/^変更理由/) as HTMLTextAreaElement;
@@ -352,10 +352,10 @@ describe('move dialog', () => {
   });
 
   it('shows the transition and submits a localized default when the reason is blank', async () => {
-    const card = fixtureCard(14);
+    const task = fixtureTask(14);
     const onSubmit = vi.fn(async (_data: Data) => undefined);
-    const { dialog, onClosed } = await openHost({ kind: 'move', card, target: 'doing' }, onSubmit);
-    expect(within(dialog).getByText(`#${card.id} ${card.title}`)).toBeTruthy();
+    const { dialog, onClosed } = await openHost({ kind: 'move', task, target: 'doing' }, onSubmit);
+    expect(within(dialog).getByText(`#${task.id} ${task.title}`)).toBeTruthy();
     const transition = within(dialog).getByRole('group', { name: 'Status change' });
     expect(transition.textContent).toMatch(/Todo.*Doing/);
 
@@ -370,12 +370,12 @@ describe('move dialog', () => {
   });
 });
 
-it('generates the move reason from the latest card state and language at confirmation', async () => {
+it('generates the move reason from the latest task state and language at confirmation', async () => {
   const onSubmit = vi.fn(async (_data: Data) => undefined);
-  const card = fixtureCard(14);
+  const task = fixtureTask(14);
   const { rerender } = render(
     <ActionDialog
-      action={{ kind: 'move', card, target: 'doing' }}
+      action={{ kind: 'move', task, target: 'doing' }}
       onClose={() => undefined}
       onSubmit={onSubmit}
     />,
@@ -385,7 +385,7 @@ it('generates the move reason from the latest card state and language at confirm
   selectLocale('ja');
   rerender(
     <ActionDialog
-      action={{ kind: 'move', card: { ...card, cardStatus: 'done' }, target: 'todo' }}
+      action={{ kind: 'move', task: { ...task, taskStatus: 'done' }, target: 'todo' }}
       onClose={() => undefined}
       onSubmit={onSubmit}
     />,
@@ -397,7 +397,7 @@ it('generates the move reason from the latest card state and language at confirm
 it('keeps an explicit move reason exactly as written', async () => {
   const onSubmit = vi.fn(async (_data: Data) => undefined);
   const { dialog } = await openHost(
-    { kind: 'move', card: fixtureCard(14), target: 'doing' },
+    { kind: 'move', task: fixtureTask(14), target: 'doing' },
     onSubmit,
   );
   await userEvent.type(
@@ -408,19 +408,19 @@ it('keeps an explicit move reason exactly as written', async () => {
   expect(onSubmit).toHaveBeenCalledWith({ reason: '  Ready to start\nAfter review.  ' });
 });
 
-it('uses the refreshed card lane instead of the snapshot saved when the dialog opened', async () => {
+it('uses the refreshed task lane instead of the snapshot saved when the dialog opened', async () => {
   const onSubmit = vi.fn(async (_data: Data) => undefined);
-  const card = fixtureCard(14);
-  const action = { kind: 'move' as const, card, target: 'doing' as const };
+  const task = fixtureTask(14);
+  const action = { kind: 'move' as const, task, target: 'doing' as const };
   const { rerender } = render(
-    <ActionDialog action={action} onClose={() => undefined} onSubmit={onSubmit} cards={[card]} />,
+    <ActionDialog action={action} onClose={() => undefined} onSubmit={onSubmit} tasks={[task]} />,
   );
   rerender(
     <ActionDialog
       action={action}
       onClose={() => undefined}
       onSubmit={onSubmit}
-      cards={[{ ...card, cardStatus: 'done' }]}
+      tasks={[{ ...task, taskStatus: 'done' }]}
     />,
   );
   await userEvent.click(screen.getByRole('button', { name: 'Move' }));

@@ -3,7 +3,7 @@ import { historyItems } from '../src/lib/history';
 import type { HistoryEvent } from '../src/types';
 
 const events: HistoryEvent[] = [
-  { at: '2026-10-02T09:48:00Z', reason: 'Created card in Todo.' },
+  { at: '2026-10-02T09:48:00Z', reason: 'Created task in Todo.' },
   { at: '2026-10-01T16:30:00Z', reason: 'Started implementation after approval.' },
   { at: '2026-10-01T16:30:00Z', reason: 'Started implementation after approval.' },
 ];

@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AnswerFormState } from '../../src/lib/answer';
 
 import { useMonitorInteractions } from '../../src/monitor/hooks/useMonitorInteractions';
-import { PROJECT_A, makeCard } from '../fixtures';
+import { PROJECT_A, makeTask } from '../fixtures';
 
 const item = (
-  card = makeCard({ id: 3, cardStatus: 'todo', agentStatus: 'pending', pendingRequestId: 'r1' }),
+  task = makeTask({ id: 3, taskStatus: 'todo', agentStatus: 'pending', pendingRequestId: 'r1' }),
 ) => ({
   projectId: PROJECT_A.id,
   projectName: PROJECT_A.name,
-  card,
+  task,
 });
 
 describe('useMonitorInteractions', () => {
@@ -63,32 +63,32 @@ describe('useMonitorInteractions', () => {
   it('records successful answers so an old pending snapshot cannot offer a duplicate send, then adopts fresh data', () => {
     const { result } = renderHook(() => useMonitorInteractions());
     const old = item();
-    const answered = makeCard({
+    const answered = makeTask({
       id: 3,
-      cardStatus: 'todo',
+      taskStatus: 'todo',
       agentStatus: 'idle',
       pendingRequestId: null,
     });
-    act(() => result.current.onAnswered(old, 'r1', { card: answered, changed: true }));
+    act(() => result.current.onAnswered(old, 'r1', { task: answered, changed: true }));
     expect(result.current.wasAnswered(PROJECT_A.id, 3, 'r1')).toBe(true);
-    expect(result.current.cardsWithSavedAnswers([old], false)[0]?.card.pendingRequestId).toBeNull();
-    act(() => result.current.cardsWithSavedAnswers([item(answered)], true));
+    expect(result.current.tasksWithSavedAnswers([old], false)[0]?.task.pendingRequestId).toBeNull();
+    act(() => result.current.tasksWithSavedAnswers([item(answered)], true));
     expect(result.current.wasAnswered(PROJECT_A.id, 3, 'r1')).toBe(false);
   });
 
   it.each(['todo', 'doing'] as const)(
-    'uses the same response controller for a pending card in %s',
+    'uses the same response controller for a pending task in %s',
     async (status) => {
-      const writeAnswer = vi.fn(async (_projectId, _cardId, _input) => ({
-        card: makeCard({ id: 3, cardStatus: status, agentStatus: 'idle', pendingRequestId: null }),
+      const writeAnswer = vi.fn(async (_projectId, _taskId, _input) => ({
+        task: makeTask({ id: 3, taskStatus: status, agentStatus: 'idle', pendingRequestId: null }),
         changed: true,
       }));
       const { result } = renderHook(() => useMonitorInteractions({ writeAnswer }));
       const original = item(
-        makeCard({ id: 3, cardStatus: status, agentStatus: 'pending', pendingRequestId: 'r1' }),
+        makeTask({ id: 3, taskStatus: status, agentStatus: 'pending', pendingRequestId: 'r1' }),
       );
       await act(async () => {
-        const data = await result.current.writeAnswer(original.projectId, original.card.id, {
+        const data = await result.current.writeAnswer(original.projectId, original.task.id, {
           requestId: 'r1',
           text: 'Confirmed',
         });
@@ -98,7 +98,7 @@ describe('useMonitorInteractions', () => {
         requestId: 'r1',
         text: 'Confirmed',
       });
-      expect(result.current.cardsWithSavedAnswers([original], false)[0]?.card.cardStatus).toBe(
+      expect(result.current.tasksWithSavedAnswers([original], false)[0]?.task.taskStatus).toBe(
         status,
       );
       expect(result.current.wasAnswered(PROJECT_A.id, 3, 'r1')).toBe(true);
@@ -120,7 +120,7 @@ describe('stale monitor answer drafts', () => {
     });
     const drafts = result.current.orphanDrafts([]);
     expect(drafts).toEqual([
-      { key, projectName: '—', cardId: 3, text: 'Retain me', choiceId: 'approve' },
+      { key, projectName: '—', taskId: 3, text: 'Retain me', choiceId: 'approve' },
     ]);
     expect(result.current.locked).toBe(true);
     act(() => result.current.clearOrphanDraft(key));
@@ -128,7 +128,7 @@ describe('stale monitor answer drafts', () => {
     expect(result.current.orphanDrafts([])).toEqual([]);
   });
 
-  it('clears retained answer input when a card moves to Done', () => {
+  it('clears retained answer input when a task moves to Done', () => {
     const { result } = renderHook(() => useMonitorInteractions());
     const key = `${PROJECT_A.id}:3:r1` as const;
     act(() => {
@@ -136,8 +136,8 @@ describe('stale monitor answer drafts', () => {
       result.current.stateStore.update(key, (state) => ({ ...state, text: 'Discard on done' }));
     });
     act(() =>
-      result.current.reconcileCards([
-        item(makeCard({ id: 3, cardStatus: 'done', agentStatus: 'idle', pendingRequestId: null })),
+      result.current.reconcileTasks([
+        item(makeTask({ id: 3, taskStatus: 'done', agentStatus: 'idle', pendingRequestId: null })),
       ]),
     );
     expect(result.current.locked).toBe(false);
@@ -153,25 +153,25 @@ describe('stale monitor answer drafts', () => {
 });
 
 describe('late mobile answer responses', () => {
-  it('does not restore an answer or draft after the card is observed in Done', () => {
+  it('does not restore an answer or draft after the task is observed in Done', () => {
     const { result } = renderHook(() => useMonitorInteractions());
     const pending = item(
-      makeCard({ id: 3, cardStatus: 'doing', agentStatus: 'pending', pendingRequestId: 'r1' }),
+      makeTask({ id: 3, taskStatus: 'doing', agentStatus: 'pending', pendingRequestId: 'r1' }),
     );
     const done = item(
-      makeCard({ id: 3, cardStatus: 'done', agentStatus: 'idle', pendingRequestId: null }),
+      makeTask({ id: 3, taskStatus: 'done', agentStatus: 'idle', pendingRequestId: null }),
     );
     act(() => {
       const key = `${PROJECT_A.id}:3:r1` as const;
       result.current.stateStore.getSnapshot(key);
       result.current.stateStore.update(key, (state) => ({ ...state, text: 'Late response' }));
-      result.current.reconcileCards([done]);
+      result.current.reconcileTasks([done]);
       result.current.onAnswered(pending, 'r1', {
-        card: makeCard({ id: 3, cardStatus: 'todo', agentStatus: 'idle', pendingRequestId: null }),
+        task: makeTask({ id: 3, taskStatus: 'todo', agentStatus: 'idle', pendingRequestId: null }),
         changed: true,
       });
     });
-    expect(result.current.cardsWithSavedAnswers([pending], false)[0]?.card.cardStatus).toBe(
+    expect(result.current.tasksWithSavedAnswers([pending], false)[0]?.task.taskStatus).toBe(
       'doing',
     );
     expect(result.current.wasAnswered(PROJECT_A.id, 3, 'r1')).toBe(true);

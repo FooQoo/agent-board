@@ -89,7 +89,7 @@ describe('locale selection', () => {
       },
     };
     render(<CountProbe />);
-    expect(screen.getByText('2 cards')).toBeTruthy();
+    expect(screen.getByText('2 tasks')).toBeTruthy();
 
     let result: ReturnType<typeof selectLocale> | undefined;
     await act(async () => {

@@ -11,7 +11,7 @@ it('shows only the task conditions, all read-only without fold controls', () => 
     text: `Condition ${i + 1}`,
     done: i === 0,
   }));
-  render(<AcceptanceTabView card={{ acceptance: items, acceptanceError: false }} />);
+  render(<AcceptanceTabView task={{ acceptance: items, acceptanceError: false }} />);
   expect(screen.getAllByRole('checkbox')).toHaveLength(12);
   expect(screen.queryByRole('region', { name: 'Epic' })).toBeNull();
   expect(screen.queryByRole('button')).toBeNull();
@@ -21,9 +21,9 @@ it('shows only the task conditions, all read-only without fold controls', () => 
 
 it('handles empty and unreadable task conditions without invalid progress', () => {
   const { rerender } = render(
-    <AcceptanceTabView card={{ acceptance: [], acceptanceError: false }} />,
+    <AcceptanceTabView task={{ acceptance: [], acceptanceError: false }} />,
   );
   expect(screen.getByText('No acceptance conditions.')).toBeTruthy();
-  rerender(<AcceptanceTabView card={{ acceptance: [], acceptanceError: true }} />);
+  rerender(<AcceptanceTabView task={{ acceptance: [], acceptanceError: true }} />);
   expect(screen.getByRole('status').textContent).toBe('Acceptance conditions cannot be read');
 });

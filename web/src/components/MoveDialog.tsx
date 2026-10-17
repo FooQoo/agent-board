@@ -3,18 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRightIcon } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Card, ColumnName } from '../types';
-import { CardStatusBadge } from './DialogBadges';
+import type { Task, ColumnName } from '../types';
+import { TaskStatusBadge } from './DialogBadges';
 import { DialogFrame } from './DialogFrame';
 
 export function MoveDialog({
-  card,
+  task,
   target,
   onClose,
   onSavingChange,
   onSubmit,
 }: {
-  card: Card;
+  task: Task;
   target: ColumnName;
   onClose: () => void;
   onSavingChange?: (saving: boolean) => void;
@@ -28,7 +28,7 @@ export function MoveDialog({
     <DialogFrame
       title={t('dialog.moveTitle')}
       submitLabel={t('dialog.submitMove')}
-      cardId={card.id}
+      taskId={task.id}
       onClose={onClose}
       onSavingChange={onSavingChange}
       validate={() => ([...reason].length > 2000 ? t('dialog.reasonRequired') : null)}
@@ -38,19 +38,19 @@ export function MoveDialog({
             ? reason
             : t('dialog.moveReasonDefault', {
                 who: t('assignee.human'),
-                from: t(`column.${card.cardStatus}`),
+                from: t(`column.${task.taskStatus}`),
                 to: t(`column.${target}`),
               }),
         })
       }
     >
       <p className="modal__card">
-        #{card.id} {card.title}
+        #{task.id} {task.title}
       </p>
       <div className="modal__statuses" role="group" aria-label={t('dialog.statusChange')}>
-        <CardStatusBadge status={card.cardStatus} />
+        <TaskStatusBadge status={task.taskStatus} />
         <ArrowRightIcon className="modal__arrow" aria-hidden="true" />
-        <CardStatusBadge status={target} />
+        <TaskStatusBadge status={target} />
       </div>
       <div className="modal__field">
         <Label htmlFor={reasonId}>{t('dialog.reason')}</Label>

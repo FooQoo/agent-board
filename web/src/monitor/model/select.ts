@@ -1,13 +1,13 @@
-import type { MonitorCard, MonitorScope } from '../contracts';
+import type { MonitorTask, MonitorScope } from '../contracts';
 
 /** Select each active card once by board lane, regardless of owner or agent run state. */
-export function selectMonitorCards(cards: readonly MonitorCard[], scope: MonitorScope) {
-  const active = cards.filter(
-    ({ projectId, card }) => (scope === 'all' || projectId === scope) && !card.archivedAt,
+export function selectMonitorTasks(tasks: readonly MonitorTask[], scope: MonitorScope) {
+  const active = tasks.filter(
+    ({ projectId, task }) => (scope === 'all' || projectId === scope) && !task.archivedAt,
   );
   return {
-    todo: active.filter(({ card }) => card.cardStatus === 'todo'),
-    doing: active.filter(({ card }) => card.cardStatus === 'doing'),
-    done: active.filter(({ card }) => card.cardStatus === 'done'),
+    todo: active.filter(({ task }) => task.taskStatus === 'todo'),
+    doing: active.filter(({ task }) => task.taskStatus === 'doing'),
+    done: active.filter(({ task }) => task.taskStatus === 'done'),
   };
 }

@@ -1,10 +1,10 @@
-import type { Card, Epic, Project, ProjectId } from '../types';
+import type { Task, Epic, Project, ProjectId } from '../types';
 import type { MonitorAnswerController } from './hooks/useMonitorInteractions';
 
-export interface MonitorCard {
+export interface MonitorTask {
   projectId: ProjectId;
   projectName: string;
-  card: Card;
+  task: Task;
 }
 
 export type MonitorScope = 'all' | ProjectId;
@@ -20,18 +20,18 @@ export interface MonitorFreshness {
 }
 
 export interface MonitorReadResolvers {
-  attachmentUrl(projectId: ProjectId, cardId: number, attachmentId: string): string;
-  evidenceUrl(projectId: ProjectId, cardId: number, evidenceId: string): string;
+  attachmentUrl(projectId: ProjectId, taskId: number, attachmentId: string): string;
+  evidenceUrl(projectId: ProjectId, taskId: number, evidenceId: string): string;
   epicAttachmentUrl(projectId: ProjectId, epicId: string, attachmentId: string): string;
   getEpics(projectId: ProjectId, signal?: AbortSignal): Promise<Epic[]>;
 }
 
 /** Explicitly unconnected U1 resolvers. U4 supplies the live read-only API adapter. */
 export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
-  attachmentUrl: (projectId, cardId, attachmentId) =>
-    `/monitor/api/projects/${encodeURIComponent(projectId)}/cards/${cardId}/attachments/${encodeURIComponent(attachmentId)}`,
-  evidenceUrl: (projectId, cardId, evidenceId) =>
-    `/monitor/api/projects/${encodeURIComponent(projectId)}/cards/${cardId}/evidence/${encodeURIComponent(evidenceId)}`,
+  attachmentUrl: (projectId, taskId, attachmentId) =>
+    `/monitor/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/attachments/${encodeURIComponent(attachmentId)}`,
+  evidenceUrl: (projectId, taskId, evidenceId) =>
+    `/monitor/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/evidence/${encodeURIComponent(evidenceId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
     `/monitor/api/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/attachments/${encodeURIComponent(attachmentId)}`,
   getEpics: async () => {
@@ -45,9 +45,9 @@ export interface MonitorViewProps {
   projects: Project[];
   scope: MonitorScope;
   summary: MonitorSummary;
-  todo: MonitorCard[];
-  doing: MonitorCard[];
-  done: MonitorCard[];
+  todo: MonitorTask[];
+  doing: MonitorTask[];
+  done: MonitorTask[];
   freshness: MonitorFreshness;
   onScopeChange(scope: MonitorScope): void;
   onRefresh(): void;
@@ -55,6 +55,6 @@ export interface MonitorViewProps {
   readResolvers?: MonitorReadResolvers;
   scopeLocked?: boolean;
   /** Read-only resolvers used by the monitor drawer. */
-  onOpenDetail?(target: MonitorCard, tab: MonitorDetailTab): void;
+  onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
   routeNotice?: boolean;
 }

@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import type { Card } from '../types';
+import type { Task } from '../types';
 
 export interface DeleteConfirmProps {
-  card: Card;
+  task: Task;
   action?: 'archive' | 'delete';
   saving: boolean;
   /** The confirmation was opened by the user, so keyboard focus moves into it. */
@@ -17,7 +17,7 @@ export interface DeleteConfirmProps {
 }
 
 export function DeleteConfirm({
-  card,
+  task,
   action = 'delete',
   saving,
   focusOnMount,
@@ -55,8 +55,8 @@ export function DeleteConfirm({
     <div className="delete-confirm" role="group" aria-labelledby={messageId}>
       <p id={messageId} className="delete-confirm__message">
         {t(action === 'archive' ? 'archive.confirm' : 'delete.confirm', {
-          id: card.id,
-          title: card.title,
+          id: task.id,
+          title: task.title,
         })}
       </p>
       {failed && (

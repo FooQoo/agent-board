@@ -19,8 +19,8 @@ for (const locale of ['en', 'ja'] as const) {
       resetBoard(mainProject);
       await page.goto('/');
       await waitForSync(page);
-      await page.getByRole('button', { name: locale === 'ja' ? 'カード追加' : 'Add card', exact: true }).click();
-      const dialog = page.getByRole('dialog', { name: locale === 'ja' ? 'カードを追加' : 'Add card' });
+      await page.getByRole('button', { name: locale === 'ja' ? 'タスク追加' : 'Add task', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: locale === 'ja' ? 'タスクを追加' : 'Add task' });
       await expect(dialog).toBeVisible();
       const ai = dialog.getByRole('radio', { name: 'AI', exact: true });
       const user = dialog.getByRole('radio', { name: locale === 'ja' ? 'ユーザ' : 'User', exact: true });

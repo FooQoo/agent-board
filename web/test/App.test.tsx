@@ -29,14 +29,14 @@ beforeEach(() => {
     projects: PROJECTS,
     boards: { [PROJECT_A.id]: structuredClone(fixtureBoard) },
     write: (url, init) => {
-      const match = /^\/api\/projects\/([0-9a-f]{32})\/cards\/(\d+)\/archive$/.exec(url);
+      const match = /^\/api\/projects\/([0-9a-f]{32})\/tasks\/(\d+)\/archive$/.exec(url);
       if (match?.[1] === PROJECT_A.id && init.method === 'POST') {
-        const card = current().cards.find((c) => c.id === Number(match[2]));
+        const task = current().tasks.find((c) => c.id === Number(match[2]));
         setCurrent({
           ...current(),
-          cards: current().cards.filter((c) => c.id !== Number(match[2])),
+          tasks: current().tasks.filter((c) => c.id !== Number(match[2])),
         });
-        return jsonResponse({ card: { ...card, archivedAt: '2026-10-08T00:00:00Z' } });
+        return jsonResponse({ task: { ...task, archivedAt: '2026-10-08T00:00:00Z' } });
       }
       return jsonResponse({}, 404);
     },
@@ -56,16 +56,16 @@ afterEach(() => {
 });
 
 const lane = (name: string) => screen.getByRole('region', { name });
-const cardButton = (title: string) => screen.getByRole('button', { name: new RegExp(title) });
+const taskButton = (title: string) => screen.getByRole('button', { name: new RegExp(title) });
 
 describe('App', () => {
   it('shows Loading… first, then the board with its name in the header and the page title', async () => {
     show();
     expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.getByText('Connecting…')).toBeTruthy();
-    expect(screen.queryByRole('complementary', { name: 'Card details' })).toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Task details' })).toBeNull();
     expect(screen.queryByRole('separator')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'agent-board' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
@@ -73,15 +73,15 @@ describe('App', () => {
     await screen.findByText('agent-board');
     expect(document.title).toBe('agent-board - Agent Board');
     await screen.findByRole('region', { name: 'Todo' });
-    expect(screen.getByRole('complementary', { name: 'Card details' })).toBeTruthy();
-    expect(screen.getByRole('separator', { name: 'Resize card details' })).toBeTruthy();
+    expect(screen.getByRole('complementary', { name: 'Task details' })).toBeTruthy();
+    expect(screen.getByRole('separator', { name: 'Resize task details' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Agent Board' })).toBeTruthy();
     expect(screen.getByText('agent-board')).toBeTruthy();
     expect(document.title).toBe('agent-board - Agent Board');
-    expect(screen.getByText('8 cards')).toBeTruthy();
+    expect(screen.getByText('8 tasks')).toBeTruthy();
   });
 
-  it('lays the cards out in three lanes with counts, newest Done first', async () => {
+  it('lays the tasks out in three lanes with counts, newest Done first', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
     const titles = (name: string) =>
@@ -96,85 +96,85 @@ describe('App', () => {
     ).toBe('2');
   });
 
-  it('shows the details of a clicked card and clears them with Close details', async () => {
+  it('shows the details of a clicked task and clears them with Close details', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
 
-    await userEvent.click(cardButton('Initialize the board'));
+    await userEvent.click(taskButton('Initialize the board'));
     expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
-    expect(cardButton('Initialize the board').getAttribute('aria-current')).toBe('true');
+    expect(taskButton('Initialize the board').getAttribute('aria-current')).toBe('true');
 
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
-    expect(screen.getByText('Select a card to see its details.')).toBeTruthy();
-    expect(cardButton('Initialize the board').getAttribute('aria-current')).toBe('false');
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
+    expect(taskButton('Initialize the board').getAttribute('aria-current')).toBe('false');
   });
 
-  it('switches the details when another card is clicked', async () => {
+  it('switches the details when another task is clicked', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton('Initialize the board'));
-    await userEvent.click(cardButton('Implement card moves'));
-    expect(screen.getByRole('heading', { level: 2, name: 'Implement card moves' })).toBeTruthy();
+    await userEvent.click(taskButton('Initialize the board'));
+    await userEvent.click(taskButton('Implement task moves'));
+    expect(screen.getByRole('heading', { level: 2, name: 'Implement task moves' })).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 2, name: 'Initialize the board' })).toBeNull();
   });
 
-  it('keeps the selection when the board changes and the card still exists', async () => {
+  it('keeps the selection when the board changes and the task still exists', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton('Implement card moves'));
+    await userEvent.click(taskButton('Implement task moves'));
 
     setCurrent({
       ...current(),
-      cards: current().cards.map((c) =>
+      tasks: current().tasks.map((c) =>
         c.id === 11 ? { ...c, agentStatus: 'pending' as const, pendingReason: 'Waiting' } : c,
       ),
     });
     act(() => FakeEventSource.latest.emit('changed'));
 
     await waitFor(() => expect(screen.getAllByText('Pending').length).toBeGreaterThan(0));
-    expect(screen.getByRole('heading', { level: 2, name: 'Implement card moves' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Implement task moves' })).toBeTruthy();
   });
 
-  it('clears the selection when the selected card disappears', async () => {
+  it('clears the selection when the selected task disappears', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton('Initialize the board'));
+    await userEvent.click(taskButton('Initialize the board'));
 
-    setCurrent({ ...current(), cards: current().cards.filter((c) => c.id !== 8) });
+    setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
     act(() => FakeEventSource.latest.emit('changed'));
 
-    await waitFor(() => expect(screen.getByText('Select a card to see its details.')).toBeTruthy());
-    expect(screen.getByText('7 cards')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Select a task to see its details.')).toBeTruthy());
+    expect(screen.getByText('7 tasks')).toBeTruthy();
   });
 
-  it('archives a card after confirmation, returns to no selection and fetches the board again', async () => {
+  it('archives a task after confirmation, returns to no selection and fetches the board again', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(cardButton('Prepare the Windows build'));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive card' }));
+    await userEvent.click(taskButton('Prepare the Windows build'));
+    await userEvent.click(screen.getByRole('button', { name: 'Archive task' }));
     await userEvent.click(
       within(screen.getByRole('complementary')).getByRole('button', { name: 'Archive' }),
     );
 
-    await waitFor(() => expect(screen.getByText('Select a card to see its details.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Select a task to see its details.')).toBeTruthy());
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /Prepare the Windows build/ })).toBeNull(),
     );
-    expect(screen.getByText('7 cards')).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/cards/14/archive`, {
+    expect(screen.getByText('7 tasks')).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/projects/${PROJECT_A.id}/tasks/14/archive`, {
       method: 'POST',
       headers: { 'X-Agboard-Token': 'test-token' },
     });
   });
 
   it('shows the empty board message with three empty lanes', async () => {
-    setCurrent({ ...current(), cards: [] });
+    setCurrent({ ...current(), tasks: [] });
     show();
-    expect(await screen.findByText('No cards yet.')).toBeTruthy();
-    expect(screen.getByText('Add a card to get started.')).toBeTruthy();
+    expect(await screen.findByText('No tasks yet.')).toBeTruthy();
+    expect(screen.getByText('Add a task to get started.')).toBeTruthy();
     expect(screen.getAllByRole('region')).toHaveLength(3);
-    expect(screen.getByText('0 cards')).toBeTruthy();
+    expect(screen.getByText('0 tasks')).toBeTruthy();
   });
 
   it('shows the load error with Retry and recovers when retried', async () => {
@@ -183,9 +183,9 @@ describe('App', () => {
     expect(await screen.findByText('Could not load this board.')).toBeTruthy();
     expect(screen.getByText('Not synced')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' }).getAttribute('data-slot')).toBe('button');
-    expect(screen.getByRole('complementary', { name: 'Card details' })).toBeTruthy();
+    expect(screen.getByRole('complementary', { name: 'Task details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'agent-board' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add card' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
     backend.boards[PROJECT_A.id] = structuredClone(fixtureBoard);
@@ -209,17 +209,17 @@ describe('App', () => {
     show({ initial: { select: 11, confirm: true, deleteFail: true } });
     expect(
       await screen.findByText(
-        'Archive #11 "Implement card moves"? You can restore it from the archive.',
+        'Archive #11 "Implement task moves"? You can restore it from the archive.',
       ),
     ).toBeTruthy();
-    expect(screen.getByText('Could not archive the card. Try again.')).toBeTruthy();
-    expect(cardButton('Implement card moves').getAttribute('aria-current')).toBe('true');
+    expect(screen.getByText('Could not archive the task. Try again.')).toBeTruthy();
+    expect(taskButton('Implement task moves').getAttribute('aria-current')).toBe('true');
   });
 
-  it('does not open the sample confirmation for a card selected later', async () => {
+  it('does not open the sample confirmation for a task selected later', async () => {
     show({ initial: { select: 11, confirm: true } });
     await screen.findByText(/You can restore it from the archive/);
-    await userEvent.click(cardButton('Check the board display'));
+    await userEvent.click(taskButton('Check the board display'));
     expect(screen.queryByText(/You can restore it from the archive/)).toBeNull();
   });
 });

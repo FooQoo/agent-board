@@ -4,7 +4,7 @@ use agent_board::file_store::{
 };
 
 fn created() -> HistoryRecord {
-    serde_json::from_value(serde_json::json!({"at":"2026-10-14T00:00:00Z","reason":"Created card in Todo with agent idle."})).unwrap()
+    serde_json::from_value(serde_json::json!({"at":"2026-10-14T00:00:00Z","reason":"Created task in Todo with agent idle."})).unwrap()
 }
 
 #[test]
@@ -106,13 +106,13 @@ fn malformed_yaml_and_unclosed_frontmatter_keep_body_and_never_compose() {
 
 #[test]
 fn metadata_serialization_does_not_contain_history_and_join_is_lossless() {
-    let task: TaskFile = serde_json::from_value(serde_json::json!({"formatVersion":3,"id":1,"title":"Test","assignee":"ai","epicId":null,"cardStatus":"todo","agentStatus":"idle","position":1,"isDraft":false,"archivedAt":null,"pendingRequestId":null,"pendingRequest":null,"requestAnswers":[],"createdAt":"2026-10-14T00:00:00Z","updatedAt":"2026-10-14T00:00:00Z","agentStatusChangedAt":"2026-10-14T00:00:00Z","cardStatusChangedAt":"2026-10-14T00:00:00Z","attachments":[],"evidence":[],"history":[created()]})).unwrap();
+    let task: TaskFile = serde_json::from_value(serde_json::json!({"formatVersion":1,"id":1,"title":"Test","assignee":"ai","epicId":null,"taskStatus":"todo","agentStatus":"idle","position":1,"isDraft":false,"archivedAt":null,"pendingRequestId":null,"pendingRequest":null,"requestAnswers":[],"createdAt":"2026-10-14T00:00:00Z","updatedAt":"2026-10-14T00:00:00Z","agentStatusChangedAt":"2026-10-14T00:00:00Z","taskStatusChangedAt":"2026-10-14T00:00:00Z","attachments":[],"evidence":[],"history":[created()]})).unwrap();
     let metadata = TaskMetadata::from(&task);
     let value = serde_json::to_value(&metadata).unwrap();
-    assert_eq!(value["formatVersion"], 3);
+    assert_eq!(value["formatVersion"], 1);
     assert!(value.get("history").is_none());
     let mut expected = task.clone();
-    expected.format_version = 3;
+    expected.format_version = 1;
     assert_eq!(metadata.with_history(task.history), expected);
 }
 
@@ -121,7 +121,7 @@ fn invalid_history_field_types_and_timestamps_have_precise_paths() {
     let original = compose_task("", "Body", None, &[created()]).unwrap();
     for (before, after, field) in [
         (
-            "reason: Created card in Todo with agent idle.",
+            "reason: Created task in Todo with agent idle.",
             "reason: []",
             "reason",
         ),

@@ -26,12 +26,12 @@ pub struct ChangeContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NewCard {
+pub struct NewTask {
     pub title: String,
     pub description: String,
     pub assignee: Assignee,
     pub actor: Actor,
-    /// The card starts as a draft (agent idle). The default is a normal card.
+    /// The task starts as a draft (agent idle). The default is a normal task.
     pub is_draft: bool,
 }
 
@@ -43,12 +43,12 @@ pub struct Changed<T> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Card {
+pub struct Task {
     pub id: i64,
     pub title: String,
     pub description: String,
     pub assignee: Assignee,
-    pub card_status: Column,
+    pub task_status: Column,
     pub position: i64,
     pub agent_status: RunState,
     pub pending_reason: Option<String>,
@@ -69,7 +69,7 @@ pub struct Card {
     pub attachments: Vec<Attachment>,
 }
 
-/// Metadata for an image attached to a card. The image bytes are deliberately
+/// Metadata for an image attached to a task. The image bytes are deliberately
 /// excluded from snapshots and are returned only by an explicit read.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -98,7 +98,7 @@ pub struct AttachmentData {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BulkArchiveResult {
-    pub cards: Vec<Card>,
+    pub tasks: Vec<Task>,
     pub archived_count: usize,
 }
 
@@ -107,12 +107,12 @@ pub struct BulkArchiveResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidatedBoard {
     pub metadata: super::BoardMeta,
-    pub cards: Vec<Card>,
+    pub tasks: Vec<Task>,
     pub attachments: Vec<ValidatedAttachment>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidatedAttachment {
-    pub card_id: i64,
+    pub task_id: i64,
     pub data: AttachmentData,
 }

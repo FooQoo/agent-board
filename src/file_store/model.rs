@@ -1,8 +1,8 @@
 //! Persisted shapes of the shared files (MODEL.md, "共有領域の形式") and the
-//! card view that the readers return.
+//! task view that the readers return.
 //!
 //! The file shapes are strict: unknown fields are rejected and every JSON file
-//! carries `formatVersion`. The view is what callers receive for a card.
+//! carries `formatVersion`. The view is what callers receive for a task.
 
 use std::path::PathBuf;
 
@@ -21,7 +21,7 @@ pub struct WorkspaceFile {
     pub format_version: u32,
 }
 
-/// `project.json`: one project's identity and card counter.
+/// `project.json`: one project's identity and task counter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ProjectFile {
@@ -30,7 +30,7 @@ pub struct ProjectFile {
     pub name: String,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
-    pub next_card_id: i64,
+    pub next_task_id: i64,
 }
 
 /// One option of a decision request.
@@ -71,7 +71,7 @@ pub struct RequestAnswer {
     pub at: DateTime<Utc>,
 }
 
-/// Metadata of a file attached to a card as evidence.
+/// Metadata of a file attached to a task as evidence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct EvidenceRecord {
@@ -82,7 +82,7 @@ pub struct EvidenceRecord {
     pub created_at: DateTime<Utc>,
 }
 
-/// In-memory card aggregate. Metadata is in `task.json`; text and history are in TASK.md.
+/// In-memory task aggregate. Metadata is in `task.json`; text and history are in TASK.md.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct TaskFile {
@@ -91,7 +91,7 @@ pub struct TaskFile {
     pub title: String,
     pub assignee: Assignee,
     pub epic_id: Option<String>,
-    pub card_status: Column,
+    pub task_status: Column,
     pub agent_status: RunState,
     pub position: i64,
     pub is_draft: bool,
@@ -107,13 +107,13 @@ pub struct TaskFile {
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
-    pub card_status_changed_at: DateTime<Utc>,
+    pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
     pub evidence: Vec<EvidenceRecord>,
     pub history: Vec<HistoryRecord>,
 }
 
-/// Version 3 `task.json`: operational metadata. History is stored only in TASK.md.
+/// `task.json`: operational metadata. History is stored only in TASK.md.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct TaskMetadata {
@@ -122,7 +122,7 @@ pub struct TaskMetadata {
     pub title: String,
     pub assignee: Assignee,
     pub epic_id: Option<String>,
-    pub card_status: Column,
+    pub task_status: Column,
     pub agent_status: RunState,
     pub position: i64,
     pub is_draft: bool,
@@ -138,7 +138,7 @@ pub struct TaskMetadata {
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
-    pub card_status_changed_at: DateTime<Utc>,
+    pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
     pub evidence: Vec<EvidenceRecord>,
 }
@@ -146,12 +146,12 @@ pub struct TaskMetadata {
 impl From<&TaskFile> for TaskMetadata {
     fn from(task: &TaskFile) -> Self {
         Self {
-            format_version: 3,
+            format_version: super::layout::FORMAT_VERSION,
             id: task.id,
             title: task.title.clone(),
             assignee: task.assignee,
             epic_id: task.epic_id.clone(),
-            card_status: task.card_status,
+            task_status: task.task_status,
             agent_status: task.agent_status,
             position: task.position,
             is_draft: task.is_draft,
@@ -162,7 +162,7 @@ impl From<&TaskFile> for TaskMetadata {
             created_at: task.created_at,
             updated_at: task.updated_at,
             agent_status_changed_at: task.agent_status_changed_at,
-            card_status_changed_at: task.card_status_changed_at,
+            task_status_changed_at: task.task_status_changed_at,
             attachments: task.attachments.clone(),
             evidence: task.evidence.clone(),
         }
@@ -178,7 +178,7 @@ impl TaskMetadata {
             title: self.title,
             assignee: self.assignee,
             epic_id: self.epic_id,
-            card_status: self.card_status,
+            task_status: self.task_status,
             agent_status: self.agent_status,
             position: self.position,
             is_draft: self.is_draft,
@@ -189,7 +189,7 @@ impl TaskMetadata {
             created_at: self.created_at,
             updated_at: self.updated_at,
             agent_status_changed_at: self.agent_status_changed_at,
-            card_status_changed_at: self.card_status_changed_at,
+            task_status_changed_at: self.task_status_changed_at,
             attachments: self.attachments,
             evidence: self.evidence,
             history,
@@ -203,21 +203,21 @@ pub fn current_request(task: &TaskFile) -> Option<&PendingRequest> {
     task.pending_request.as_ref()
 }
 
-/// The epic a card belongs to, resolved from the epic's own file. Renaming or
-/// recoloring the epic changes this; the card file keeps only the ID.
+/// The epic a task belongs to, resolved from the epic's own file. Renaming or
+/// recoloring the epic changes this; the task file keeps only the ID.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CardEpic {
+pub struct TaskEpic {
     pub id: EpicId,
     pub name: String,
     pub color: String,
 }
 
-/// A card as callers receive it: `task.json` plus `TASK.md`, with the pending
+/// A task as callers receive it: `task.json` plus `TASK.md`, with the pending
 /// question and choices resolved from workflow metadata, and the epic resolved from its file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CardView {
+pub struct TaskView {
     pub id: i64,
     pub title: String,
     pub description: String,
@@ -227,8 +227,8 @@ pub struct CardView {
     pub acceptance_error: bool,
     pub assignee: Assignee,
     pub epic_id: Option<String>,
-    pub epic: Option<CardEpic>,
-    pub card_status: Column,
+    pub epic: Option<TaskEpic>,
+    pub task_status: Column,
     pub position: i64,
     pub agent_status: RunState,
     pub is_draft: bool,
@@ -246,7 +246,7 @@ pub struct CardView {
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
-    pub card_status_changed_at: DateTime<Utc>,
+    pub task_status_changed_at: DateTime<Utc>,
     pub history: Vec<HistoryRecord>,
 }
 
@@ -277,7 +277,7 @@ pub struct EpicView {
     pub plan: String,
     /// PLAN.md without its frontmatter: the text after the closing line, or the whole file when there is no closing line.
     pub body: String,
-    /// The card order of the epic (PLAN.md `priority`); empty when none is stored.
+    /// The task order of the epic (PLAN.md `priority`); empty when none is stored.
     pub priority: Vec<i64>,
     /// The stored `priority` cannot be read; the order is then ignored.
     pub priority_error: bool,
@@ -309,10 +309,10 @@ pub struct EpicUpdate {
     pub plan: Option<String>,
 }
 
-/// The owner of an image: a card (task) or an epic.
+/// The owner of an image: a task (task) or an epic.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttachmentOwner {
-    Card(i64),
+    Task(i64),
     Epic(EpicId),
 }
 

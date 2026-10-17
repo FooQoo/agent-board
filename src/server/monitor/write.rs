@@ -25,7 +25,7 @@ pub(crate) fn router(app: Arc<AppState>, guard: RemoteGuard) -> Router {
         .route("/monitor", get(redirect_monitor).head(redirect_monitor))
         .route("/monitor/", get(index).head(index))
         .route(
-            "/monitor/api/projects/{project_id}/cards/{id}/answer",
+            "/monitor/api/projects/{project_id}/tasks/{id}/answer",
             axum::routing::post(answer),
         )
         .layer(middleware::from_fn_with_state(state.clone(), write_guard))
@@ -59,7 +59,7 @@ async fn answer(
     Path((project_id, id)): Path<(String, String)>,
     ApiJson(input): ApiJson<AnswerInput>,
 ) -> Response {
-    api::answer_project_card(state.app.clone(), project_id, id, input).await
+    api::answer_project_task(state.app.clone(), project_id, id, input).await
 }
 
 async fn host_guard(
