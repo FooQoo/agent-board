@@ -434,6 +434,25 @@ async function sendEpic(
   return { epic: data.epic };
 }
 
+/**
+ * Deletes an epic. The server answers 204 when it is gone and refuses with `epic_in_use` while a task
+ * (archived ones included) still names it.
+ */
+export async function deleteEpic(projectId: ProjectId, epicId: string): Promise<void> {
+  const response = await fetch(`${projectPath(projectId)}/epics/${encodeURIComponent(epicId)}`, {
+    method: 'DELETE',
+    headers: { 'X-Agboard-Token': readToken() },
+  });
+  if (response.ok) return;
+  const body = (await response.json().catch(() => ({}))) as { error?: ApiError['error'] };
+  throw writeFailure(
+    body.error?.reason ?? `Request failed (${response.status})`,
+    response.status,
+    body.error?.code ?? null,
+    body.error?.message ?? null,
+  );
+}
+
 /** The name, color, draft flag or plan of an epic. Only the given fields change. */
 export function updateEpic(
   projectId: ProjectId,

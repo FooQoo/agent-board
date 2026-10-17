@@ -235,13 +235,17 @@ fn epic_ls_json_lists_each_epic_with_its_color_and_task_count() {
 
     let listed = json_ok(home.path(), &["--project", "Demo", "epic", "ls", "--json"]);
     let epics = listed["epics"].as_array().unwrap();
-    assert_eq!(epics.len(), 2);
-    assert_eq!(epics[0]["id"], "ALPHA");
-    assert_eq!(epics[1]["id"], "FILE-SHARE");
-    assert_eq!(epics[1]["name"], "File share");
-    assert_eq!(epics[1]["color"], "#111111");
-    assert_eq!(epics[1]["taskCount"], 1);
-    assert_eq!(epics[0]["taskCount"], 0);
+    // The two default epics are listed with the ones added here.
+    let ids: Vec<&str> = epics
+        .iter()
+        .map(|epic| epic["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, ["ALPHA", "BUG", "ENHANCEMENT", "FILE-SHARE"]);
+    let by_id = |id: &str| epics.iter().find(|epic| epic["id"] == id).unwrap();
+    assert_eq!(by_id("FILE-SHARE")["name"], "File share");
+    assert_eq!(by_id("FILE-SHARE")["color"], "#111111");
+    assert_eq!(by_id("FILE-SHARE")["taskCount"], 1);
+    assert_eq!(by_id("ALPHA")["taskCount"], 0);
 }
 
 #[test]

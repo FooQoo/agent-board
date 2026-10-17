@@ -56,7 +56,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 - Images live in the owner's `assets/` and evidence in the task's `evidence/`. Bodies reference images as `assets/<attachment-id>.<ext>` (or the older `attachment:<id>`). Images are PNG, JPEG, WebP, or GIF; at most 10 MiB each, 20 per owner, and 50 MiB in total.
 - `bindings.json` and `serve.json` are machine-local. `serve.json` (`{"pid":41235,"port":7420,"started_at":"..."}`) tells the CLI where to notify and `wait` where to connect; it never holds a token.
 
-`project.json` holds `formatVersion`, `id`, `name`, `createdAt`, and `nextTaskId`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`. A `task.json` looks like this:
+`project.json` holds `formatVersion`, `id`, `name`, `createdAt`, `nextTaskId`, and `defaultEpicsSeeded`. The last one is `true` once the project has been offered the default epics `BUG` and `ENHANCEMENT`; it is written once, so a default epic that was deleted is not created again. A file without it is read as `false`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`. A `task.json` looks like this:
 
 ```json
 {

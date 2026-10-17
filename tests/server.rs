@@ -572,8 +572,11 @@ fn board_matches_the_stores_snapshot_in_the_model_shape() {
         },
         "version": snapshot.version,
         "cursor": snapshot.cursor.to_string(),
-        "epics": [],
-        "epicTaskCounts": {},
+        "epics": serde_json::to_value(&snapshot.epics).unwrap(),
+        "epicTaskCounts": {
+            "BUG": {"todo": 0, "doing": 0, "done": 0, "archived": 0, "total": 0},
+            "ENHANCEMENT": {"todo": 0, "doing": 0, "done": 0, "archived": 0, "total": 0},
+        },
         "tasks": serde_json::to_value(&snapshot.tasks).unwrap(),
         "problems": [],
     });
@@ -793,14 +796,15 @@ fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
     assert_eq!(tasks[0]["id"], 1);
     assert_eq!(tasks[0]["epicId"], "EPIC-1");
     let epics = archive["epics"].as_array().expect("archive lists epics");
-    assert_eq!(epics.len(), 2, "{archive}");
+    // The two default epics come with the two created here.
+    assert_eq!(epics.len(), 4, "{archive}");
     let names: Vec<&str> = epics.iter().map(|e| e["name"].as_str().unwrap()).collect();
     assert!(names.contains(&"Archived epic"), "{archive}");
     assert!(names.contains(&"Live epic"), "{archive}");
 }
 
 #[test]
-fn archive_api_answers_an_empty_epic_list_when_no_epics_exist() {
+fn archive_api_lists_the_default_epics_when_no_archived_task_uses_one() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let token = server.token();
@@ -808,7 +812,13 @@ fn archive_api_answers_an_empty_epic_list_when_no_epics_exist() {
     assert_eq!(archived.status, 200, "{}", archived.body);
     let archive: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
-    assert_eq!(archive["epics"], serde_json::json!([]), "{archive}");
+    let ids: Vec<&str> = archive["epics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|epic| epic["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, ["BUG", "ENHANCEMENT"], "{archive}");
 }
 
 /// Add a second project "other" that has a task with the same number as the
@@ -1794,8 +1804,10 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
     let server = Running::start(home.path(), 0).unwrap();
     let board = board_until(&server, |b| !b["epics"].as_array().unwrap().is_empty());
     let epics = board["epics"].as_array().unwrap();
-    assert_eq!(epics.len(), 1, "{board}");
-    let epic = &epics[0];
+    // The two default epics come first in ID order, then the one added here.
+    let ids: Vec<&str> = epics.iter().map(|e| e["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["BUG", "ENHANCEMENT", "EPIC-1"], "{board}");
+    let epic = &epics[2];
     assert_eq!(epic["id"], "EPIC-1");
     assert_eq!(epic["name"], "First epic");
     assert_eq!(epic["color"], "#3366CC");

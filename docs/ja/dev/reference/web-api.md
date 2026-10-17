@@ -20,7 +20,7 @@
 | `…/tasks/{id}/attachments`、`…/attachments/{attachmentId}` | タスクの画像（GET・POST・DELETE）。ProjectId・タスクID・添付IDで照合する。 |
 | `GET …/tasks/{id}/evidence/{evidenceId}` | タスクの証跡を`text/plain; charset=utf-8`で返す。 |
 | `GET`・`POST /api/projects/{projectId}/epics` | エピックの一覧と作成（id・name・color・isDraft・planまたはbody）。`acceptance`の入力は受け付けない。201。 |
-| `GET`・`PATCH /api/projects/{projectId}/epics/{epicId}` | 取得、またはname・color・isDraft・planまたはbody・priorityの更新。本文と未知のメタデータを保つ。`PLAN.md`→`epic.json`の順に保存する。 |
+| `GET`・`PATCH`・`DELETE /api/projects/{projectId}/epics/{epicId}` | 取得、またはname・color・isDraft・planまたはbody・priorityの更新。本文と未知のメタデータを保つ。`PLAN.md`→`epic.json`の順に保存する。`DELETE`は204を返す。そのエピックを名指ししているタスク（アーカイブ済みを含む）が一つでもあれば、409 `epic_in_use`で拒否する。 |
 | `…/epics/{epicId}/attachments`、`…/{attachmentId}` | エピックの画像。 |
 | `POST …/tasks/{id}/archive`、`POST …/tasks/{id}/restore` | 本文なし。すでにその状態のタスクに繰り返すと、変更せず同じタスクを返す。 |
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |

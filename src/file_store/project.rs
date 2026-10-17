@@ -95,6 +95,7 @@ impl FileStore {
                 name: name.clone(),
                 created_at,
                 next_task_id: 1,
+                default_epics_seeded: false,
             };
             io::write_json(
                 &layout::project_file(&temp),
@@ -113,6 +114,9 @@ impl FileStore {
             let _ = fs::remove_dir_all(&temp);
             return Err(error);
         }
+        // A failed seeding leaves the flag unset, so the next start offers the
+        // default epics again; the new project itself is complete.
+        let _ = self.seed_default_epics(&id, now);
         Ok(ProjectMeta {
             id,
             name,

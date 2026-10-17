@@ -65,9 +65,17 @@ fn the_write_protections_apply_to_the_new_routes() {
     }
     let listed = server.get(&format!("/api/projects/{pid}/epics"));
     assert_eq!(listed.status, 200);
+    // Only the two default epics exist, unchanged by the refused writes.
+    let listed_json = listed.json();
+    let ids: Vec<&str> = listed_json["epics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|epic| epic["id"].as_str().unwrap())
+        .collect();
     assert_eq!(
-        listed.json()["epics"],
-        json!([]),
+        ids,
+        ["BUG", "ENHANCEMENT"],
         "a refused write changes nothing"
     );
     server.stop();
@@ -105,7 +113,15 @@ fn an_epic_is_created_listed_read_and_changed_over_http() {
     assert!(epic.get("acceptance").is_none());
 
     let listed = server.get(&epics);
-    assert_eq!(listed.json()["epics"][0]["id"], "FILE-SHARE");
+    assert!(
+        listed.json()["epics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|epic| epic["id"] == "FILE-SHARE"),
+        "{}",
+        listed.body
+    );
     let one = server.get(&format!("{epics}/FILE-SHARE"));
     assert_eq!(one.status, 200);
     assert_eq!(one.json()["epic"]["name"], "File share");
@@ -284,5 +300,41 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
         .clone();
     assert!(last["reason"].as_str().unwrap().contains("Go."));
     assert_eq!(last.as_object().unwrap().len(), 2);
+    server.stop();
+}
+
+#[test]
+fn an_epic_is_deleted_over_http_and_an_epic_in_use_is_refused() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let pid = project_id(home.path());
+    let server = Running::start(home.path());
+    let epics = format!("/api/projects/{pid}/epics");
+
+    let created = server.write("POST", &epics, Some(r#"{"id":"SPARE","name":"Spare"}"#));
+    assert_eq!(created.status, 201, "{}", created.body);
+
+    // A default epic can be deleted like any other.
+    let bug = server.write("DELETE", &format!("{epics}/BUG"), None);
+    assert_eq!(bug.status, 204, "{}", bug.body);
+    let gone = server.get(&format!("{epics}/BUG"));
+    assert_eq!(gone.status, 404);
+    assert_eq!(gone.code(), "epic_not_found");
+
+    // An epic that a task names is refused, and nothing changes.
+    let set = server.write(
+        "PUT",
+        &format!("/api/projects/{pid}/tasks/1/epic"),
+        Some(r#"{"epicId":"ENHANCEMENT"}"#),
+    );
+    assert_eq!(set.status, 200, "{}", set.body);
+    let in_use = server.write("DELETE", &format!("{epics}/ENHANCEMENT"), None);
+    assert_eq!(in_use.status, 409, "{}", in_use.body);
+    assert_eq!(in_use.code(), "epic_in_use");
+    assert_eq!(server.get(&format!("{epics}/ENHANCEMENT")).status, 200);
+
+    let missing = server.write("DELETE", &format!("{epics}/NOPE-1"), None);
+    assert_eq!(missing.status, 404);
+    assert_eq!(missing.code(), "epic_not_found");
     server.stop();
 }

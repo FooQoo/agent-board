@@ -140,7 +140,7 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
         )
         .route(
             "/api/projects/{project_id}/epics/{epic_id}",
-            get(get_epic).patch(update_epic),
+            get(get_epic).patch(update_epic).delete(delete_epic),
         )
         .route(
             "/api/projects/{project_id}/epics/{epic_id}/attachments",
@@ -2160,6 +2160,33 @@ async fn create_epic(
         Ok(epic) => {
             refresh_index(&state);
             json_response(StatusCode::CREATED, &serde_json::json!({"epic": epic}))
+        }
+        Err(error) => agboard_error_response(&error),
+    }
+}
+
+/// Delete an epic. Refused with `epic_in_use` while any task, archived ones
+/// included, names it; nothing is changed then.
+async fn delete_epic(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_epic)): Path<(String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return agboard_error_response(&error),
+    };
+    let epic_id = match parse_epic_id(&raw_epic) {
+        Ok(id) => id,
+        Err(error) => return agboard_error_response(&error),
+    };
+    match with_files(&state, move |store| {
+        store.delete_epic(&project_id, &epic_id)
+    })
+    .await
+    {
+        Ok(()) => {
+            refresh_index(&state);
+            StatusCode::NO_CONTENT.into_response()
         }
         Err(error) => agboard_error_response(&error),
     }

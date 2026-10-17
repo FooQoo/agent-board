@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { epicInk } from '../../lib/epic';
 import type { Task, Epic } from '../../types';
 import { DiscardConfirm } from './DiscardConfirm';
+import { EpicDeleteConfirm } from './EpicDeleteConfirm';
+import { WriteError } from '../../lib/writeErrors';
 import { EditorBody, useOverLimit } from './EditorBody';
 import { EditorShell } from './EditorShell';
 import type { EditorAttachment, StoredAttachment } from './attachmentTypes';
@@ -26,6 +28,8 @@ export interface EpicApi {
   saveDetails(details: { name: string; color: string; isDraft: boolean }): Promise<void>;
   /** Saves the card order of the epic: the IDs of its tasks, first is first. */
   savePriority(priority: number[]): Promise<void>;
+  /** Deletes the epic. The server refuses while a task still names it. */
+  remove(): Promise<void>;
 }
 
 type Step = 'images' | 'plan' | 'details' | 'order';
@@ -105,6 +109,9 @@ export function EpicDialog({
   const [pendingTask, setPendingTask] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const busy = useRef(false);
   // Whether a step has been saved in this dialog; it decides how a failure is worded.
   const somethingSaved = useRef(false);
@@ -202,6 +209,28 @@ export function EpicDialog({
     }
   };
 
+  // Deleting the epic closes the dialog once the board has been fetched again; a refused delete keeps it open.
+  const remove = async () => {
+    if (busy.current) return;
+    busy.current = true;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.remove();
+      busy.current = false;
+      setDeleting(false);
+      onClose();
+    } catch (cause) {
+      busy.current = false;
+      setDeleting(false);
+      setDeleteError(
+        cause instanceof WriteError && cause.code === 'epic_in_use'
+          ? t('epic.deleteInUse')
+          : t('epic.deleteFailed'),
+      );
+    }
+  };
+
   const stepName = (step: Step): string =>
     step === 'images'
       ? t('epic.stepImages')
@@ -239,9 +268,23 @@ export function EpicDialog({
       onClose={onClose}
       status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
       actions={
-        <Button type="button" disabled={saving || !valid || !dirty} onClick={() => void run()}>
-          {saving ? t('dialog.saving') : t('editor.save')}
-        </Button>
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="epic-delete-button"
+            disabled={saving || deleting}
+            onClick={() => {
+              setDeleteError(null);
+              setConfirmDelete(true);
+            }}
+          >
+            {t('epic.deleteButton')}
+          </Button>
+          <Button type="button" disabled={saving || !valid || !dirty} onClick={() => void run()}>
+            {saving ? t('dialog.saving') : t('editor.save')}
+          </Button>
+        </>
       }
     >
       <EditorBody
@@ -313,6 +356,15 @@ export function EpicDialog({
         }}
         keepLabel={t('editor.backToEdit')}
         discardLabel={t('editor.discardAndMove')}
+      />
+      <EpicDeleteConfirm
+        open={confirmDelete}
+        epicId={epic.id}
+        dirty={dirty}
+        busy={deleting}
+        error={deleteError}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => void remove()}
       />
     </EditorShell>
   );

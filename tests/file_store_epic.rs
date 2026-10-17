@@ -139,7 +139,14 @@ fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_plan() {
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
-    assert_eq!(leftovers, vec!["FILE-SHARE"], "no .new-* folder is left");
+    assert!(
+        leftovers.iter().any(|name| name == "FILE-SHARE"),
+        "{leftovers:?}"
+    );
+    assert!(
+        leftovers.iter().all(|name| !name.starts_with(".new-")),
+        "no .new-* folder is left: {leftovers:?}"
+    );
 }
 
 #[test]
@@ -182,8 +189,9 @@ fn epic_ids_outside_the_grammar_are_refused_and_no_folder_is_made() {
         );
     }
     assert!(!f.project_dir().join("epics").join("ESCAPE").exists());
+    // Only the two default epics exist; a refused ID adds no folder.
     let entries = fs::read_dir(f.project_dir().join("epics")).unwrap().count();
-    assert_eq!(entries, 0);
+    assert_eq!(entries, 2);
 }
 
 #[test]
@@ -526,4 +534,67 @@ fn an_ai_cannot_change_epic_membership_after_a_task_is_done() {
         )
         .unwrap_err();
     assert!(matches!(err, AgboardError::TaskIsDone { id } if id == task.id));
+}
+
+fn epic_ids(f: &Fixture) -> Vec<String> {
+    f.store
+        .board(&f.project)
+        .unwrap()
+        .epics
+        .iter()
+        .map(|epic| epic.id.as_str().to_string())
+        .collect()
+}
+
+#[test]
+fn a_new_project_starts_with_the_default_epics_and_one_can_be_deleted() {
+    let f = fixture();
+    assert_eq!(epic_ids(&f), ["BUG", "ENHANCEMENT"]);
+    f.store.delete_epic(&f.project, &epic_id("BUG")).unwrap();
+    assert_eq!(epic_ids(&f), ["ENHANCEMENT"]);
+}
+
+#[test]
+fn a_deleted_default_epic_is_not_offered_again() {
+    let f = fixture();
+    f.store.delete_epic(&f.project, &epic_id("BUG")).unwrap();
+    f.store.seed_default_epics(&f.project, at(5)).unwrap();
+    f.store.seed_unseeded_projects(at(5));
+    assert_eq!(epic_ids(&f), ["ENHANCEMENT"]);
+}
+
+#[test]
+fn an_existing_project_is_offered_the_defaults_once_on_start() {
+    let f = fixture();
+    // A project from before the defaults: no default epics and no seeded flag.
+    f.store.delete_epic(&f.project, &epic_id("BUG")).unwrap();
+    f.store
+        .delete_epic(&f.project, &epic_id("ENHANCEMENT"))
+        .unwrap();
+    let path = f.project_dir().join("project.json");
+    let mut file: serde_json::Value = serde_json::from_slice(&bytes_of(path.clone())).unwrap();
+    file.as_object_mut().unwrap().remove("defaultEpicsSeeded");
+    fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+
+    f.store.seed_unseeded_projects(at(6));
+    assert_eq!(epic_ids(&f), ["BUG", "ENHANCEMENT"]);
+
+    f.store.delete_epic(&f.project, &epic_id("BUG")).unwrap();
+    f.store.seed_unseeded_projects(at(7));
+    assert_eq!(epic_ids(&f), ["ENHANCEMENT"]);
+}
+
+#[test]
+fn a_default_epic_in_use_by_a_task_is_refused_and_kept() {
+    let f = fixture();
+    let task = f.task("Bug report");
+    f.store
+        .set_task_epic(&f.project, task.id, Some(&epic_id("BUG")), Actor::Ai, at(5))
+        .unwrap();
+    let err = f
+        .store
+        .delete_epic(&f.project, &epic_id("BUG"))
+        .unwrap_err();
+    assert!(matches!(err, AgboardError::EpicInUse { .. }), "{err:?}");
+    assert_eq!(epic_ids(&f), ["BUG", "ENHANCEMENT"]);
 }
