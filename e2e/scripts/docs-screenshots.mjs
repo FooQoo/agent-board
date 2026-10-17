@@ -131,8 +131,17 @@ try {
       await expect(page.locator('.archive-row > button')).toHaveCount(2 + more.archived.length);
       await shot('archive', page, page);
 
+      // epic-list: every epic with its task counts, and the plan of one beside the list.
+      await page.locator('.header__back').click();
+      await page.locator('.header__epics').click();
+      // The two default epics and the two sample epics.
+      await expect(page.locator('.epic-row > button')).toHaveCount(4);
+      await page.locator('.epic-row > button').filter({ hasText: 'LAUNCH' }).click();
+      await expect(page.locator('.epic-detail')).toBeVisible();
+      await shot('epic-list', page, page);
+
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured 6 guide screenshots; no browser errors.`);
+      console.log(`${locale}: captured 7 guide screenshots; no browser errors.`);
     } finally {
       await Promise.all(contexts.map((ctx) => ctx.close()));
       await stop(server);
