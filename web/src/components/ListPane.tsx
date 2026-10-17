@@ -15,14 +15,15 @@ export interface ListPaneProps {
   fetchFailed: boolean;
   onRetry: () => void;
   layoutRef?: (node: HTMLElement | null) => void;
-  /** The list has no rows: the empty state's icon, title, and hint. */
-  empty: { icon: ReactNode; title: string; hint: string };
+  /** The list has no rows: the empty state's icon, title, and an optional hint. */
+  empty: { icon: ReactNode; title: string; hint?: string };
   /** The rows are present. Their markup is the children. */
   hasRows: boolean;
   /** The accessible name of the row list. */
   listLabel: string;
   loadError: string;
   refreshError: string;
+  className?: string;
   children?: ReactNode;
 }
 
@@ -44,12 +45,13 @@ export function ListPane({
   listLabel,
   loadError,
   refreshError,
+  className,
   children,
 }: ListPaneProps) {
   const { t } = useTranslation();
 
   return (
-    <main className="list-pane" ref={layoutRef}>
+    <main className={className ? `list-pane ${className}` : 'list-pane'} ref={layoutRef}>
       <header className="list-pane__header">
         <div className="list-pane__heading">
           <h2>{title}</h2>
@@ -86,7 +88,7 @@ export function ListPane({
         <div className="list-pane__empty">
           {empty.icon}
           <p>{empty.title}</p>
-          <p>{empty.hint}</p>
+          {empty.hint && <p>{empty.hint}</p>}
         </div>
       )}
 

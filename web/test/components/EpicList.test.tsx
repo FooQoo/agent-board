@@ -61,9 +61,9 @@ describe('EpicList', () => {
     expect(within(group).getByText('Doing').nextElementSibling?.textContent).toBe('1');
     expect(within(group).getByText('Done').nextElementSibling?.textContent).toBe('0');
     expect(within(group).getByText('Archived').nextElementSibling?.textContent).toBe('3');
-    expect(within(bug).getByText('6 tasks')).toBeTruthy();
+    expect(within(bug).getByText('Total 6 tasks')).toBeTruthy();
     expect(
-      within(screen.getByRole('button', { name: /ENHANCEMENT/ })).getByText('0 tasks'),
+      within(screen.getByRole('button', { name: /ENHANCEMENT/ })).getByText('Total 0 tasks'),
     ).toBeTruthy();
   });
 

@@ -29,6 +29,8 @@ export function useDetailWidth(
   layoutRef: RefObject<HTMLElement | null>,
   /** Changes when the content of the body changes (the lanes appear, a state message takes their place). */
   contentKey: string | boolean,
+  /** The columns beside the detail panel that keep their minimum width: three lanes on the board, one list on the epic list. */
+  lanes = 3,
 ): DetailWidth {
   const [preferred, setPreferred] = useState(() => readStoredWidth() ?? DEFAULT_WIDTH);
   const [layoutMax, setLayoutMax] = useState(Number.POSITIVE_INFINITY);
@@ -45,14 +47,17 @@ export function useDetailWidth(
     const style = layout ? window.getComputedStyle(layout) : null;
     // A state message shows no lanes; it keeps the width the lanes would leave, so the panel does not jump.
     setLayoutMax(
-      maxWidthFor({
-        bodyWidth: body.getBoundingClientRect().width,
-        paddingLeft: style ? px(style.paddingLeft) : LANES_PADDING,
-        paddingRight: style ? px(style.paddingRight) : LANES_PADDING,
-        gap: style ? px(style.columnGap) : LANES_GAP,
-      }),
+      maxWidthFor(
+        {
+          bodyWidth: body.getBoundingClientRect().width,
+          paddingLeft: style ? px(style.paddingLeft) : LANES_PADDING,
+          paddingRight: style ? px(style.paddingRight) : LANES_PADDING,
+          gap: style ? px(style.columnGap) : LANES_GAP,
+        },
+        lanes,
+      ),
     );
-  }, [bodyRef, layoutRef]);
+  }, [bodyRef, layoutRef, lanes]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: contentKey triggers a fresh measurement when the content changes
   useEffect(() => {

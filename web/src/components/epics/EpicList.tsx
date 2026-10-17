@@ -36,8 +36,10 @@ export function EpicList({
 
   return (
     <ListPane
+      className="epic-list"
       title={t('epics.title')}
       countText={t('epics.count', { count: rows.length })}
+      description={t('epics.description')}
       status={status}
       fetchFailed={fetchFailed}
       onRetry={onRetry}
@@ -45,7 +47,6 @@ export function EpicList({
       empty={{
         icon: <LayersIcon aria-hidden="true" />,
         title: t('epics.empty'),
-        hint: t('epics.emptyHint'),
       }}
       hasRows={rows.length > 0}
       listLabel={t('epics.heading')}
@@ -60,7 +61,7 @@ export function EpicList({
             onClick={() => onSelect(selectedId === epic.id ? null : epic.id)}
           >
             <span className="epic-row__top">
-              <EpicBadge epic={epic} className="epic-row__badge" />
+              <EpicBadge epic={epic} className="epic-row__badge" icon={false} />
               <span className="epic-row__total">
                 {counts[epic.id] === undefined
                   ? '—'

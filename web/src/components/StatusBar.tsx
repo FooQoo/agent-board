@@ -44,7 +44,7 @@ export function StatusBar(props: StatusBarProps) {
           ? props.countKind === 'archive'
             ? t('archive.count', { count: props.taskCount })
             : props.countKind === 'epics'
-              ? t('epics.count', { count: props.taskCount })
+              ? t('epics.statusCount', { count: props.taskCount })
               : taskCountLabel(props.taskCount, t)
           : '–'}
       </span>

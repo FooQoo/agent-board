@@ -9,17 +9,26 @@ export function epicBadgeStyle(epic: EpicRef): CSSProperties {
 }
 
 /** The icon and the ID of an epic label. The host element supplies its own class and role. */
-export function EpicBadgeContent({ epic }: { epic: EpicRef }) {
+export function EpicBadgeContent({ epic, icon = true }: { epic: EpicRef; icon?: boolean }) {
   return (
     <>
-      <LayersIcon aria-hidden="true" focusable="false" />
+      {icon && <LayersIcon aria-hidden="true" focusable="false" />}
       <span>{epic.id}</span>
     </>
   );
 }
 
 /** A non-interactive epic label, for places where the row itself is the button. */
-export function EpicBadge({ epic, className }: { epic: EpicRef; className: string }) {
+export function EpicBadge({
+  epic,
+  className,
+  icon = true,
+}: {
+  epic: EpicRef;
+  className: string;
+  /** The layers icon before the ID. The epic list shows the ID alone. */
+  icon?: boolean;
+}) {
   return (
     <span
       className={className}
@@ -27,7 +36,7 @@ export function EpicBadge({ epic, className }: { epic: EpicRef; className: strin
       style={epicBadgeStyle(epic)}
       title={epic.name}
     >
-      <EpicBadgeContent epic={epic} />
+      <EpicBadgeContent epic={epic} icon={icon} />
     </span>
   );
 }

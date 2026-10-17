@@ -201,6 +201,7 @@ export function App({ initial }: AppProps) {
     bodyRef,
     layoutRef,
     `${detailShown}:${session.viewMode}:${view}:${archive.status}`,
+    epicsVisible ? 1 : 3,
   );
   const [mockInitial] = useState(initial);
   const isMockTask = selected !== null && selected.id === mockInitial?.select;

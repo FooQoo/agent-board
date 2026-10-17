@@ -21,23 +21,22 @@ export function EpicDetailPanel({ projectId, epic, onEdit, onClose }: EpicDetail
     <aside className="detail detail-view epic-detail" aria-label={t('epics.detailTitle')}>
       <div className="detail__top">
         <span className="detail__id">
-          <EpicBadge epic={epic} className="epic-detail__badge" />
+          <EpicBadge epic={epic} className="epic-detail__badge" icon={false} />
         </span>
         <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
           <button
             type="button"
-            className="detail__tool detail__tool--text"
+            className="detail__tool epic-detail__tool"
             aria-label={t('epics.edit')}
             title={t('epics.edit')}
             onClick={onEdit}
           >
             <PencilIcon aria-hidden="true" />
-            {t('epics.edit')}
           </button>
         </div>
         <button
           type="button"
-          className="detail__close"
+          className="detail__close epic-detail__tool"
           aria-label={t('detail.close')}
           onClick={onClose}
         >

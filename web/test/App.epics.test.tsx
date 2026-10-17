@@ -85,8 +85,8 @@ describe('the epic list in the app shell', () => {
       expect.stringContaining('ALPHA'),
       expect.stringContaining('ZETA'),
     ]);
-    expect(within(rows[0] as HTMLElement).getByText('2 tasks')).toBeTruthy();
-    expect(within(rows[1] as HTMLElement).getByText('0 tasks')).toBeTruthy();
+    expect(within(rows[0] as HTMLElement).getByText('Total 2 tasks')).toBeTruthy();
+    expect(within(rows[1] as HTMLElement).getByText('Total 0 tasks')).toBeTruthy();
     expect(within(screen.getByRole('main')).getByText('2 epics')).toBeTruthy();
     expect(screen.getByText('2 epics', { selector: '.status-bar__count' })).toBeTruthy();
     // With nothing selected the list takes the full width and no detail column is shown.
