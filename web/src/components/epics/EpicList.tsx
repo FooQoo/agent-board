@@ -1,4 +1,5 @@
 import { LayersIcon } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectResourceResult } from '../../hooks/useProjectResource';
 import type { Epic, EpicTaskCounts as Counts } from '../../types';
@@ -33,6 +34,15 @@ export function EpicList({
 }: EpicListProps) {
   const { t } = useTranslation();
   const rows = [...(epics ?? [])].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const rowButtons = useRef(new Map<string, HTMLButtonElement>());
+  const previousSelected = useRef(selectedId);
+
+  // Closing the details moves focus back to the row they belong to; otherwise focus is lost with the panel.
+  useEffect(() => {
+    const previous = previousSelected.current;
+    previousSelected.current = selectedId;
+    if (selectedId === null && previous !== null) rowButtons.current.get(previous)?.focus();
+  }, [selectedId]);
 
   return (
     <ListPane
@@ -56,6 +66,10 @@ export function EpicList({
       {rows.map((epic) => (
         <div className="epic-row" role="listitem" key={epic.id}>
           <button
+            ref={(node) => {
+              if (node) rowButtons.current.set(epic.id, node);
+              else rowButtons.current.delete(epic.id);
+            }}
             type="button"
             aria-pressed={selectedId === epic.id}
             onClick={() => onSelect(selectedId === epic.id ? null : epic.id)}

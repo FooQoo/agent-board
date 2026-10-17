@@ -95,11 +95,11 @@
 }
 
 @media (max-width: 760px) {
-  .archive-list-pane {
+  .list-pane {
     padding: 16px;
   }
 
-  .archive-list-pane__heading h2 {
+  .list-pane__heading h2 {
     font-size: 18px;
   }
 }

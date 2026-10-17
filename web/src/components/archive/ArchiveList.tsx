@@ -63,7 +63,6 @@ export function ArchiveList({
             </span>
             <AssigneeLabel assignee={task.assignee} />
             <span className="archive-row__meta">
-              {task.epic && <EpicBadge epic={task.epic} className="archive-row__epic" />}
               <time
                 className="archive-row__date"
                 dateTime={task.archivedAt ?? undefined}
@@ -71,6 +70,7 @@ export function ArchiveList({
               >
                 {task.archivedAt?.slice(0, 10) ?? '—'}
               </time>
+              {task.epic && <EpicBadge epic={task.epic} className="archive-row__epic" />}
             </span>
           </button>
         </div>

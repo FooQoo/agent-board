@@ -76,6 +76,21 @@ describe('EpicList', () => {
     expect(onSelect).toHaveBeenLastCalledWith('ENHANCEMENT');
   });
 
+  it('moves focus back to the row when its details close', () => {
+    const props: EpicListProps = {
+      epics: [epic('BUG'), epic('ENHANCEMENT')],
+      counts: { BUG: counts(2, 1, 0, 3), ENHANCEMENT: counts(0, 0, 0, 0) },
+      status: 'ready',
+      fetchFailed: false,
+      selectedId: 'BUG',
+      onSelect: vi.fn(),
+      onRetry: vi.fn(),
+    };
+    const { rerender } = render(<EpicList {...props} />);
+    rerender(<EpicList {...props} selectedId={null} />);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /BUG/ }));
+  });
+
   it('keeps a missing count as a dash rather than zero', () => {
     renderList({ counts: { BUG: counts(1, 0, 0, 0) } });
     const enhancement = screen.getByRole('button', { name: /ENHANCEMENT/ });
