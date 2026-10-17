@@ -24,14 +24,14 @@ features:
       width: 28
       height: 28
     title: One board for people and AI agents
-    details: Track work in Todo, Doing, and Done, with Running and Pending states showing what the agent is doing. Answer questions directly on a card from your PC or phone.
+    details: Track work in Todo, Doing, and Done, with Running and Pending states showing what the agent is doing. Answer questions directly on a task from your PC or phone.
   - icon:
       src: /icons/list-ordered.svg
       alt: ''
       width: 28
       height: 28
     title: A progress table that keeps agents moving
-    details: Order tasks within an epic and let agboard progress return the work that can advance. When every acceptance condition is verified, eligible AI cards move to Done automatically.
+    details: Order tasks within an epic and let agboard progress return the work that can advance. When every acceptance condition is verified, eligible AI tasks move to Done automatically.
   - icon:
       src: /icons/file-text.svg
       alt: ''
@@ -49,13 +49,13 @@ import { withBase } from 'vitepress'
 
 <video class="demo-video" :src="withBase('/videos/demo.mp4')" :poster="withBase('/videos/demo.jpg')" autoplay muted loop playsinline></video>
 
-One card, start to finish: the agent starts the task and asks a question, you answer on the card, and the agent resumes. When every acceptance condition is checked, the card moves to Done on its own.
+One task, start to finish: the agent starts the task and asks a question, you answer on the task, and the agent resumes. When every acceptance condition is checked, the task moves to Done on its own.
 
 ## The board
 
 When an agent works for a long time, you need to see what is moving, what is waiting, and what response will unblock it. Agent Board gives users and agents one shared, history-backed board.
 
-![Desktop board with a question on its card, acceptance counts, and four detail tabs](./images/board.png){.screenshot}
+![Desktop board with a question on its task, acceptance counts, and four detail tabs](./images/board.png){.screenshot}
 
 ## Epics and progress
 
@@ -81,11 +81,11 @@ Agent Board runs on your machine, with no account or hosted service. Install it,
 
 2. **Let your agent register work**
 
-   Connect Claude Code or Codex with a hook. The agent reads the progress table and adds cards. [Working with agents](./guide/agents)
+   Connect Claude Code or Codex with a hook. The agent reads the progress table and adds tasks. [Working with agents](./guide/automation/agents)
 
-3. **Answer on the card**
+3. **Answer on the task**
 
-   When the agent asks a question, choose an option on the card from your PC or your phone. [Decisions](./guide/decisions)
+   When the agent asks a question, choose an option on the task from your PC or your phone. [Decisions](./guide/use/decisions)
 
 </div>
 

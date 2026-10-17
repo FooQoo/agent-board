@@ -1,0 +1,91 @@
+---
+title: Working with agents
+---
+
+# Working with agents
+
+Agents work from the same board as you. A hook gives them a short progress table, they pick a task, report what they do, ask you when a decision is needed, and wait for the answer. This page shows how to connect an agent and what the loop looks like. You can see the loop by hand in the [Quickstart](../quickstart).
+
+## Connect your agent
+
+Connecting an agent takes three separate steps, all manual:
+
+1. **Prepare the shared folder** so the agent may write there: run `agboard setup` once. It only adds the data folder to your Codex and Claude Code user settings; it installs neither hooks nor the skill. See [Set up the shared folder](../operations/data#set-up-the-shared-folder).
+2. **Register the hook** that hands the agent the progress table.
+3. **Install the agent skill** (`agent-board`) that tells the agent how to work.
+
+The settings templates for the hooks live in the repository's `integrations/` folder, so follow the [Claude Code and Codex integration guide](https://github.com/FooQoo/agent-board/blob/main/integrations/README.md) instead of copying them here:
+
+- **Claude Code.** Merge `integrations/claude-code/settings.json` into the project's `.claude/settings.json` and review it in `/hooks`.
+- **Codex CLI and Codex App.** Merge `integrations/codex/hooks.json` into the project's `.codex/hooks.json` and review it in `/hooks`.
+
+Register the project's folder with `agboard project create` or `agboard project bind` so the hook knows which project it belongs to.
+
+Hooks and the agent skill run `agboard` from your `PATH`, so they use the installed version, not a development build. See [Install and start](../getting-started#update).
+
+### What the hook does
+
+- **Folder resolution.** The hook command is fixed, `agboard hook --agent claude`, with no project name or session ID. It reads `cwd` from its input and uses the nearest registered ancestor folder; an explicit `--project NAME` overrides the binding. A missing or broken binding returns `AGBOARD_ERROR`; the hook never guesses another project.
+- **Progress table.** The hook supplies the same concise table as `agboard progress`. Done, archived, and Pending tasks are left out. If the table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes.
+
+### What agents may edit
+
+- Agents may edit only a non-draft task's `TASK.md` and an epic's `PLAN.md`, as the project's `README.md` allows.
+- `task.json` holds metadata and is changed through the CLI. `TASK.md` holds the body, the acceptance conditions, and the history.
+- Task operations add history automatically; agents use `history add` for meaningful progress, and keep plans, verification results, and evidence references in the body.
+- Agents never edit `epic.json` or `project.json`, never delete task or epic folders, and never put machine-specific absolute paths in shared files.
+
+The format is in [Markdown file format](./file-format).
+
+## The work loop
+
+```mermaid
+flowchart TD
+    P["Read progress"] --> R["Read the plan and task files"]
+    R --> D["Move to Doing, report Running"]
+    D --> L["Record work and evidence"]
+    L --> Q{"Decision needed?"}
+    Q -- yes --> PE["Ask: Pending with choices"]
+    PE --> A["You answer on the task"]
+    A --> RE["Read the answer, resume with a reason"]
+    RE --> L
+    Q -- no --> V["Verify and check conditions"]
+    V --> DN["All conditions done: moves to Done automatically"]
+    L -. nothing can proceed .-> W["snapshot, then wait"]
+    W --> P
+```
+
+1. **Choose.** Read `agboard progress --json` and select a ready AI-owned task, following its epic's saved task order. Read only the selected epic's `PLAN.md` and the task's `TASK.md`; use `show` when you need its history or an open question.
+2. **Start.** Move the task to Doing with a reason, then report Running. Review a user-owned task only when it affects the work.
+3. **Work and record.** Record meaningful progress with `history add`, with concise reasons based on actual work and verification. Keep the plan, results, and evidence references in the body and full logs in evidence files. Moves and state changes already add history, so do not duplicate them.
+4. **Ask when blocked.** Ask a question with Pending when you need a decision (see [Decisions](../use/decisions)).
+5. **Resume.** After an answer, read the task and history, reconsider the plan, and resume with a reason.
+6. **Finish.** Mark acceptance conditions done only after verifying them. Eligible AI tasks move to Done automatically when all conditions are complete.
+7. **Wait.** If no work can proceed, wait for a change (see below).
+
+For the progress table, see [Epics and progress](../use/epics).
+
+## Wait for changes
+
+```sh
+agboard --project "My project" snapshot --json
+agboard --project "My project" wait --after "<cursor>" --json
+```
+
+A cursor has the format `f1:<project-id>:<version>`. Use the value that `snapshot` returns; do not construct one.
+
+- `wait` needs a running `agboard serve` in the same data area and listens for changes without polling.
+- It follows the same project through a rename, so update the name in future commands and hooks. Changes to other projects do not end it. If the project is deleted, it fails with `project_not_found`.
+- `wait_timeout`, `board_unavailable`, `cursor_invalid`, and `project_not_found` are errors, never answers.
+- When `wait` returns, read the full snapshot and history, reconsider the user's reason, then resume or ask a follow-up question.
+
+## Drafts and errors
+
+A draft (`isDraft: true`) is read-only for agents: `edit`, `mv`, and `state` fail with `task_is_draft`. Work on other tasks until the user finalizes it.
+
+On `AGBOARD_ERROR`, a missing project, a technical connection failure, or an unreadable board, report the problem and stop board-dependent changes until a valid progress table is available. A timeout or an interrupted wait does not answer or expire a question. For causes and fixes, see [Troubleshooting](../operations/troubleshooting).
+
+## Next
+
+- [CLI reference](./cli): every command an agent uses.
+- [Decisions](../use/decisions): how agents ask, and how you answer.

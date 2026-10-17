@@ -1,0 +1,113 @@
+# 共有ファイル
+
+Agent Boardが保存するすべてのファイルを、項目と例とともに示します。ファイルの使われ方は[タスクと状態](../concepts/tasks-and-states.md)と[保存と復旧](../concepts/saving-and-recovery.md)にあります。
+
+## タスク
+
+タスクはボード上の作業の単位です。タスクの状態は`task.json`に、本文・受入条件・履歴は`TASK.md`にあります。
+
+| 項目 | 規則 |
+| --- | --- |
+| `id` | 正の整数。ボード内で一意で、フォルダ名と一致する。 |
+| `title` | 前後の空白を除いて1〜100文字、1行。 |
+| `description` | frontmatterを含む`TASK.md`の全文。50,000文字の上限は本文だけを数える。CRLFはLFに正規化する。 |
+| `body` | `description`からfrontmatterを除いた本文。見出し構成は自由。GitHub Flavored Markdownに対応。 |
+| `acceptance`・`acceptanceError` | frontmatterの受入条件（不正なときは空）と、`acceptance`かYAML構文が不正かどうか。 |
+| `assignee` | `ai`か`human`。作成時に決め、以後は変えない。 |
+| `epicId` | 同じプロジェクトのEPIC-ID、または`null`。 |
+| `taskStatus` | レーン。`todo`・`doing`・`done`。 |
+| `position` | 正の整数。同じレーンの未アーカイブのタスク内で一意。 |
+| `agentStatus` | AIの稼働状態。`idle`・`running`・`pending`。 |
+| `isDraft` | 既定は`false`。人が準備中のタスク（下書き）。 |
+| `pendingRequestId`・`pendingRequest` | Pendingの間の未回答の判断依頼。それ以外は`null`。 |
+| `requestAnswers` | 再起動後も依頼IDで引けるよう保存する回答。 |
+| `archivedAt` | `null`、またはアーカイブ日時。 |
+| `attachments`・`evidence` | 各ファイルのID・名前・サイズ・作成日時（画像はMIME型も）。 |
+| `createdAt`・`updatedAt` | 作成日時と、取得時に`task.json`と`TASK.md`の更新日時の新しい方。 |
+| `agentStatusChangedAt`・`taskStatusChangedAt` | 稼働状態の最後の変更と、レーンの最後の実際の変更。本文の編集・進捗の記録・同じレーンへの操作では`taskStatusChangedAt`は変わらない。 |
+| `history` | `TASK.md`から読む。保存と応答は古い順。 |
+
+文字数はUnicodeスカラー値で数えます。`assignee`（タスクの担当）は`actor`（操作した主体）とは別です。actorは権限を決め、履歴には保存しません。
+
+## ディスク上のファイル
+
+データ領域は、どのOSでもホームディレクトリの`.agent-board/`、または空でない`AGBOARD_HOME`です。ホームディレクトリを解決できなければ、作業フォルダで代用せずにコマンドが失敗します。
+
+```text
+<data-root>/
+  shared/
+    workspace.json
+    projects/
+      <project-id>/
+        project.json
+        README.md
+        epics/<EPIC-ID>/{epic.json, PLAN.md, assets/<attachment-id>.<ext>}
+        tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>, evidence/<evidence-id>.log}
+        .internal/write.lock
+        .internal/transactions/<transaction-id>.json
+  bindings.json
+  serve.json
+  lifecycle.lock
+```
+
+- JSONはUTF-8・camelCase・2スペースのインデントで、末尾に改行を一つ付けます。未知の項目は拒否します。
+- `workspace.json`は`{"format":"agboard-files","formatVersion":1}`です。`project.json`と`epic.json`は`formatVersion: 1`、`task.json`も`formatVersion: 1`を持ちます。対応するバージョンは1だけです。それ以外は`format_unsupported`を報告し、変更せずに残します。移行もフォールバックもしません。
+- `.`で始まる名前は正本ではありません。`README.md`はフォルダと編集の規則の案内で、製品が作成時に書きます。
+- 画像は所有者の`assets/`に、証跡はタスクの`evidence/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
+- `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`（`{"pid":41235,"port":7420,"started_at":"..."}`）は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。
+
+`project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`を持ちます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。`task.json`は次のような形です。
+
+```json
+{
+  "formatVersion": 1,
+  "id": 1,
+  "title": "Implement the answer UI",
+  "assignee": "ai",
+  "epicId": null,
+  "taskStatus": "todo",
+  "agentStatus": "idle",
+  "position": 1,
+  "isDraft": false,
+  "archivedAt": null,
+  "pendingRequestId": null,
+  "pendingRequest": null,
+  "requestAnswers": [],
+  "createdAt": "2026-10-10T00:00:00Z",
+  "updatedAt": "2026-10-10T00:00:00Z",
+  "agentStatusChangedAt": "2026-10-10T00:00:00Z",
+  "taskStatusChangedAt": "2026-10-10T00:00:00Z",
+  "attachments": [],
+  "evidence": []
+}
+```
+
+- `pendingRequest`は`{question, choices}`で、choicesは`[{"id":"proceed","label":"Proceed"}]`のような形です。
+- `requestAnswers`の各項目は`{requestId, actor, choiceId, choiceLabel, text, at}`です。`choiceId`と`choiceLabel`は両方`null`か両方設定、`text`は`null`か有効な回答で、選択と文の少なくとも一方があります。`requestId`は一意で、現在の`pendingRequestId`とは異なります。
+
+`TASK.md`では`history`が必須です（`history: []`も有効）。新規タスクの入力では省略するか空のリストにでき、作成の入力に空でない履歴があれば拒否します。本文と受入条件の編集は最新の履歴を保ち、`edit --desc-file`は履歴を追加しません。直接編集で履歴を追記する場合は、既存の内容を保ち、`at`/`reason`の項目だけを追加します。ただし、日時の付与と原子的な追記を行うCLIの利用を推奨します。
+
+```yaml
+---
+acceptance: []
+history:
+  - at: "2026-10-15T01:30:00Z"
+    reason: "Verified the setup guide links and saved the build output as evidence."
+---
+```
+
+プロジェクトは`shared/projects/<project-id>/`を複製してバックアップし、`serve`を止めてフォルダを戻して復元します。エクスポートやインポートのコマンドはありません。[データのガイド](../../guide/operations/data.md)を参照してください。
+
+## タスクのJSONとスナップショット
+
+CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。`task.json`のメタデータに、`history`・`description`・`body`・`acceptance`・`acceptanceError`、解決した`pendingReason`と`pendingChoices`、表示用の`updatedAt`、`epic`（`{id, name, color}`または`null`）を加えたものです。`pendingRequest`と`requestAnswers`が履歴に現れることはありません。待機する`state ... --request-json`は、解決した回答を別の`answer`で返します。
+
+- スナップショットは、`project`・`version`・`cursor`・`epics`・`tasks`（それぞれ全履歴を持つ）・`problems`を一度の読み込みから返します。CLIのスナップショットは`nextTaskId`も含み、CLIのスナップショット・Hook・`wait`は`fetchedAt`を含みます。
+- プロジェクト一覧は`projects`（id・name・createdAt）と`catalogVersion`を返し、タスクは含みません。
+- `ls --all-projects --json`は、`catalogVersion`と、プロジェクトごとのスナップショットを名前順に返します。cursorはそれぞれのプロジェクトのものです。
+
+`problems`は形式の不備を報告します。`[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`の形で、`field`は`frontmatter`・`acceptance[<index>].<key>`・`history`・`history[<index>].<key>`のいずれか、`file`は`shared/`からの相対パス、`reason`は英語です。不備が読み書きにどう影響するかは[保存と復旧](../concepts/saving-and-recovery.md#ファイルに不備があるとき)にあります。
+
+## フォルダの紐付け
+
+フォルダの紐付けは、実フォルダとProjectIdを対応づけ、Hookと`agboard progress`が作業フォルダが属するプロジェクトを識別できるようにします。端末ローカルのデータ領域にだけ保存し、共有領域や追跡ファイルには保存しません。ProjectIdを保存するので、名前変更に追従し、同じ名前で作り直したプロジェクトへは移りません。最も近い紐付け済みの祖先フォルダを使います。存在しないフォルダ・壊れた紐付け・削除済みのProjectIdは、説明つきのエラーにします。

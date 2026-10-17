@@ -69,9 +69,43 @@ video.demo-video {
   box-shadow: var(--screenshot-shadow);
 }
 
+/* Keep table columns readable and let VitePress's table scroller handle wide content. */
+.vp-doc table {
+  max-width: 100%;
+}
+.vp-doc th,
+.vp-doc td {
+  min-width: 10rem;
+  vertical-align: top;
+}
+.vp-doc th:nth-child(2),
+.vp-doc td:nth-child(2) {
+  min-width: 20rem;
+}
+
+/* Technology choices pair each list of tools with a readable explanation column. */
+.vp-doc .technology-table th:last-child,
+.vp-doc .technology-table td:last-child {
+  min-width: 20rem;
+}
+
 /* Wide Mermaid diagrams scroll inside their own box instead of the page. */
 .vp-doc .mermaid {
+  max-width: 100%;
+  margin: 24px 0;
+  padding: 16px;
   overflow-x: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+}
+
+/* Keep labels at their intended size. Narrow screens scroll the diagram instead of
+   shrinking every label to fit the article width. */
+.vp-doc .mermaid svg {
+  display: block;
+  max-width: none !important;
+  margin-inline: auto;
 }
 
 /* Mermaid's default edge-label background is a light grey box; in dark mode use the page
