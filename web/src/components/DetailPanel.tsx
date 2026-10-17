@@ -193,6 +193,7 @@ function DetailBody({
               <button
                 type="button"
                 className="detail__tool detail__tool--text detail__restore"
+                title={t('archive.restore')}
                 disabled={operationSaving}
                 onClick={onRestore}
               >

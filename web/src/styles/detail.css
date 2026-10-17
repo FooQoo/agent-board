@@ -277,6 +277,14 @@
     padding: 0;
     font-size: 0;
   }
+
+  /* Restore is the way back from the archive, so it keeps its label at the narrow width. */
+  .detail__restore {
+    width: auto;
+    gap: 5px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
 }
 
 /* At the minimum column width, the tab names take priority over decorative icons. */
