@@ -60,6 +60,14 @@
   line-height: 15px;
 }
 
+.epic-row__tags,
+.epic-detail__tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .epic-row__total {
   flex: none;
   color: var(--r-muted);

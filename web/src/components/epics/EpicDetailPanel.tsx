@@ -31,8 +31,9 @@ export function EpicDetailPanel({ projectId, epic, onEdit, onClose }: EpicDetail
   return (
     <aside className="detail detail-view epic-detail" aria-label={t('epics.detailTitle')}>
       <div className="detail__top">
-        <span className="detail__id">
+        <span className="detail__id epic-detail__tags">
           <EpicBadge epic={epic} className="epic-detail__badge" icon={false} />
+          {epic.isDraft && <span className="card__draft">{t('draft.label')}</span>}
         </span>
         <div
           className="detail__toolbar epic-detail__toolbar"

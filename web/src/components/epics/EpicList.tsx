@@ -75,7 +75,10 @@ export function EpicList({
             onClick={() => onSelect(selectedId === epic.id ? null : epic.id)}
           >
             <span className="epic-row__top">
-              <EpicBadge epic={epic} className="epic-row__badge" icon={false} />
+              <span className="epic-row__tags">
+                <EpicBadge epic={epic} className="epic-row__badge" icon={false} />
+                {epic.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+              </span>
               <span className="epic-row__total">
                 {counts[epic.id] === undefined
                   ? '—'

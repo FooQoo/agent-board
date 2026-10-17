@@ -111,6 +111,12 @@ describe('EpicList', () => {
     expect(screen.getByText('Could not refresh the epics.')).toBeTruthy();
   });
 
+  it('marks a draft epic with the Draft label and leaves the others unmarked', () => {
+    renderList({ epics: [epic('BUG'), epic('DRAFTY', { isDraft: true })] });
+    expect(within(screen.getByRole('button', { name: /DRAFTY/ })).getByText('Draft')).toBeTruthy();
+    expect(within(screen.getByRole('button', { name: /BUG/ })).queryByText('Draft')).toBeNull();
+  });
+
   it('shows the empty state when there are no epics', () => {
     renderList({ epics: [], counts: {} });
     expect(screen.getByText('No epics yet')).toBeTruthy();
@@ -141,6 +147,18 @@ describe('EpicDetailPanel', () => {
     const toolbar = screen.getByRole('toolbar', { name: 'Epic actions' });
     expect(within(toolbar).getByRole('button', { name: 'Close details' })).toBeTruthy();
     expect(within(toolbar).getByRole('button', { name: 'Edit epic' })).toBeTruthy();
+  });
+
+  it('marks a draft epic in its details', () => {
+    render(
+      <EpicDetailPanel
+        projectId={PROJECT_A.id}
+        epic={epic('DRAFTY', { isDraft: true, body: 'Plan.' })}
+        onEdit={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByText('Draft')).toBeTruthy();
   });
 
   it('says there is no plan yet when the body is empty', () => {
