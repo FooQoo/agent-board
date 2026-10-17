@@ -127,6 +127,15 @@ ol {
   min-width: 0;
 }
 
+.header__board-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--r-muted);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .header__spacer {
   flex: 1;
 }

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArchiveIcon, LayersIcon, PlusIcon, SettingsIcon } from 'lucide-react';
+import { ArchiveIcon, ArrowLeftIcon, LayersIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Project, ProjectId } from '../types';
 import type { ViewMode } from '../lib/projectSession';
@@ -54,14 +54,21 @@ export function Header({
           <span className="header__slash" aria-hidden="true">
             /
           </span>
-          <div className="header__switcher">
-            <ProjectSwitcher
-              projects={projects}
-              activeProjectId={activeProjectId}
-              disabled={projectSwitchDisabled}
-              onSelect={onSelectProject}
-            />
-          </div>
+          {viewMode === 'epics' ? (
+            // The epic screen shows the project's name as text, as its design does; switch projects from the board.
+            <span className="header__board-name">
+              {projects.find((project) => project.id === activeProjectId)?.name ?? ''}
+            </span>
+          ) : (
+            <div className="header__switcher">
+              <ProjectSwitcher
+                projects={projects}
+                activeProjectId={activeProjectId}
+                disabled={projectSwitchDisabled}
+                onSelect={onSelectProject}
+              />
+            </div>
+          )}
         </>
       )}
       <span className="header__spacer" aria-hidden="true" />
@@ -79,6 +86,7 @@ export function Header({
           disabled={switchDisabled}
           onClick={onBack}
         >
+          {viewMode === 'epics' && <ArrowLeftIcon aria-hidden="true" />}
           {viewMode === 'epics' ? t('epics.back') : t('archive.back')}
         </Button>
       ) : canAdd ? (

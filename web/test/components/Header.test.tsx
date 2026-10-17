@@ -54,6 +54,20 @@ describe('settings entry in the header', () => {
     );
   });
 
+  it('shows the project name as text and an arrow back in the epic view', () => {
+    render(
+      <Header
+        projects={[{ ...PROJECT_A, name: 'my-board' }]}
+        activeProjectId={PROJECT_A.id}
+        viewMode="epics"
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'my-board' })).toBeNull();
+    expect(screen.getByText('my-board').className).toBe('header__board-name');
+    const back = screen.getByRole('button', { name: 'Back to board' });
+    expect(back.querySelector('svg')).toBeTruthy();
+  });
+
   it('shows only the logo, the app name and Settings while the board is unknown', () => {
     const { container } = render(<Header />);
     expect(container.querySelector('.header__slash')).toBeNull();
