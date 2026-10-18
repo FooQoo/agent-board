@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Writes to the shared files.
 //!
 //! Every write takes the project's write lock, reads the latest files, checks

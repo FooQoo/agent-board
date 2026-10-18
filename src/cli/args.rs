@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Command line definition (clap derive) and argument post-validation.
 
 use std::ffi::OsString;

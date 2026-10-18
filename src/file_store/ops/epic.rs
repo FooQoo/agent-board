@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Epic operations: creation under a temporary folder, the update of the
 //! metadata and the plan, deletion refused while tasks refer to the epic, and
 //! the epic of a task. Every write holds the project's write lock.

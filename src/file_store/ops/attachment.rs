@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Image operations for a task or an epic: registration, deletion, and the
 //! path of a stored image. An image belongs to one owner. An ID that belongs
 //! to another owner, or to none, is `attachment_not_found`.

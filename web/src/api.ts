@@ -1,3 +1,4 @@
+// biome-ignore lint/style/noExcessiveLinesPerFile: predates the 300-line limit; split it by responsibility rather than growing it.
 import { i18n } from './i18n';
 import type {
   ApiError,

@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Checks that decide whether shared-file content is accepted.
 //!
 //! The JSON checks return every defect of a file. The TASK.md and PLAN.md checks

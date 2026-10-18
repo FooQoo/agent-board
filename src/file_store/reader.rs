@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Reading shared files.
 //!
 //! Two styles of read exist. The strict reads (`read_*`) fail on the first

@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! The isolated read-only monitor router. Its state has no write service or token.
 
 use std::collections::HashSet;

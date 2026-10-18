@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 use thiserror::Error;
 
 use crate::domain::{Column, RunState};

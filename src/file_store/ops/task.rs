@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Task operations: creation, title and body edits, the draft flag, archive,
 //! restore, and deletion of an archived task.
 

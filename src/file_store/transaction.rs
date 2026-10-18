@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Durable replacement of one task's JSON/Markdown pair.
 //!
 //! Callers must hold the project's WriteLock for save and recovery, and must

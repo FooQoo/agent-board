@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Persisted shapes of the shared files (MODEL.md, "共有領域の形式") and the
 //! task view that the readers return.
 //!

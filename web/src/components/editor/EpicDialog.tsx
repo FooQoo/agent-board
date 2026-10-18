@@ -1,3 +1,4 @@
+// biome-ignore lint/style/noExcessiveLinesPerFile: predates the 300-line limit; split it by responsibility rather than growing it.
 import { Button } from '@/components/ui/button';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

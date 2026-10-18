@@ -1,3 +1,4 @@
+// biome-ignore lint/style/noExcessiveLinesPerFile: predates the 300-line limit; split it by responsibility rather than growing it.
 import { markdown } from '@codemirror/lang-markdown';
 import { LanguageDescription } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';

@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Parse, prepare the context, run the command, print, then call `after_commit`.
 
 use std::ffi::OsString;

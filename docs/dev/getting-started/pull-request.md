@@ -8,6 +8,10 @@ Before you change behavior, read the [developer reference](../index.md) for the 
 
 - Keep source code, code comments, repository instructions, and the English README (`README.md`) in English. Localized UI resources, `README.ja.md`, `CONTRIBUTING.ja.md`, and the Japanese documentation site pages under `docs/ja/**` may use their target language; English is the source, so update the Japanese translation in the same change. All other documentation remains in English.
 - Keep implementation and tests in this repository.
+- Keep each production source file within 300 lines: `src/**/*.rs`, and `.ts` and `.tsx` under `web/src/`. Tests and styles have no limit.
+  - Rust: `tests/file_size.rs` counts the lines before a file's `#[cfg(test)]` module.
+  - Web UI: Biome's `noExcessiveLinesPerFile` rule in `web/biome.json` checks the files, so `pnpm --dir web check` reports them.
+  - A file that must stay longer says so on its first line, with a reason: `// file-size: allow (reason)` in Rust, and `// biome-ignore lint/style/noExcessiveLinesPerFile: reason` in the web UI. Such a file has no limit, so prefer splitting it by responsibility. The Rust test also fails when a marker has no reason, or when its file fits the limit.
 - The developer reference in `docs/dev/reference/` describes how Agent Board works now. Update it, and its Japanese translation in `docs/ja/dev/reference/`, in the same change as the behavior it describes.
 - Never commit machine-specific absolute paths to hooks, configuration, scripts, documentation, or generated artifacts, including personal home directories and local checkout paths.
 - Use repository-relative paths for project files and executables, `PATH` for installed commands, or environment variables resolved at runtime. Keep machine-specific overrides in ignored local files.

@@ -1,3 +1,4 @@
+// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! TASK.md acceptance frontmatter and PLAN.md priority metadata:
 //! the body that follows it, and the composition that writes both back.
 //!
