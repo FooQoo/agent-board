@@ -15,6 +15,8 @@ The skill is named `agent-board`; the executable is `agboard`. A typical loop: t
 
 Agents append progress at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without per-entry approval, and never duplicate entries that operations already appended. The body keeps the plan, results, and evidence references; full logs go to evidence files.
 
+The skill gives `BUG` and `ENHANCEMENT` a fixed-body exception: they are ongoing classification epics, not per-feature plans. Their canonical bodies live in `assets/BUG-PLAN.md` and `assets/ENHANCEMENT-PLAN.md` beside the skill. After one-time initialization in the board’s language, normal work and listener runs record plans and outcomes only on tasks. An explicit user request is required to replace existing non-empty content, with useful old content preserved as task evidence. Priority frontmatter remains editable. This is not a server-side edit restriction.
+
 ## The progress table and the hook
 
 The progress table lists non-Pending Todo and Doing tasks, grouped by epic in `priority` order, with each task's ID, title, owner, status, acceptance counts, and the paths of its `PLAN.md` and `TASK.md`. It never includes bodies or history. A Pending task higher in the order does not block lower tasks, and an answered task that is still unfinished returns to the table.

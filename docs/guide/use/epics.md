@@ -25,7 +25,9 @@ agboard --project "My project" edit 1 --clear-epic
 
 ## Default epics
 
-Every project starts with two epics, `BUG` (named Bug) and `ENHANCEMENT` (named Enhancement), so that bug reports and improvements have a place to go. A project that already exists gets them the next time `agboard serve` starts. They behave like any other epic: you can rename, recolor, and delete them. A deleted default epic is not created again.
+Every project starts with two epics, `BUG` (named Bug) and `ENHANCEMENT` (named Enhancement), so that bug reports and improvements have a place to go. A project that already exists gets them the next time `agboard serve` starts. You can rename, recolor, and delete them. A deleted default epic is not created again.
+
+The agent skill treats these two IDs as ongoing classification epics with fixed bodies. `BUG` collects defects in existing behavior; `ENHANCEMENT` collects requests for new capabilities and improvements. An empty body is initialized once from the skill’s fixed template in the board’s language. Per-task plans, decisions, and verification stay in task bodies, history, and evidence. Agents do not append progress or completion summaries to these epic bodies. They preserve a non-empty body unless you explicitly request replacing or changing it, and keep useful existing records as task evidence before a replacement. Task priority can still be changed. This is a skill workflow; the browser editor remains available.
 
 ## Browse all epics
 

@@ -78,6 +78,12 @@ A task's completion conditions live in its frontmatter (`acceptance`), and the b
 
 ## 4. Plan with epics and tasks
 
+### Fixed bodies for BUG and ENHANCEMENT
+
+The epics whose IDs are exactly `BUG` and `ENHANCEMENT` are ongoing classification buckets, even if their display names change. They are exceptions to epic planning and closure below. Initialize an empty body once from [BUG-PLAN.md](assets/BUG-PLAN.md) or [ENHANCEMENT-PLAN.md](assets/ENHANCEMENT-PLAN.md), using the board's language with the same meaning and structure. After initialization, treat the body as read-only unless the user explicitly requests changing its fixed content. Do not replace a non-empty body silently; an explicitly requested replacement must preserve any useful existing records as task evidence first.
+
+For these two epics, keep per-task plans, decisions, verification, and results in each `TASK.md`, history, and evidence. Do not append task lists or progress to `PLAN.md`, and do not close the epic or add an overall completion summary when its current tasks finish. This rule applies to ordinary work, listening, and resumption. Task order remains configurable through priority frontmatter; preserve it and all other metadata when initializing or explicitly replacing the body. Names, colors, and task membership are unaffected. Other epics keep the normal planning workflow.
+
 1. Create an epic for a body of work, then write its plan from [assets/PLAN.md](assets/PLAN.md):
 
    ```sh
@@ -91,7 +97,7 @@ A task's completion conditions live in its frontmatter (`acceptance`), and the b
    agboard --project "<name>" add "<title>" --assignee ai --actor ai --epic <EPIC-ID> --desc-file <path>
    ```
 
-3. Record the task tasks and their order in the epic's approach section.
+3. Record the task tasks and their order in the epic's approach section, except for the fixed classification bodies of `BUG` and `ENHANCEMENT` above.
 
 Check the progress table and use `show` when needed to find existing tasks before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` tasks for work the user must do, and read them to understand the shared plan. A task belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
 
@@ -137,7 +143,7 @@ Lane and run-state operations already append their own history. Do not add a sec
 4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded. Before saving the last completed condition, record the verification in history and keep its result and evidence reference in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI task automatically. Do not manually move a task to Done during the normal work loop. If the task does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
 5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
 6. **Finish or interrupt.** Automatic completion removes the task from progress. Done tasks are read-only for agents: do not edit their task files, append history, add evidence or attachments, or change their lane or run state. A user can reopen them when needed. If work stops before completion, record why through the corresponding state or lane operation, or `history add` if the state remains accurate. When work resumes, record the resumed work the same way.
-7. **Close the epic.** When all of an epic's task tasks are done, verify the epic's reference conditions written in the PLAN.md body and record the outcome there. The app does not manage epic acceptance frontmatter or epic history.
+7. **Close the epic.** When all of an epic's task tasks are done, verify the epic's reference conditions written in the PLAN.md body and record the outcome there. Skip this step for `BUG` and `ENHANCEMENT`: their bodies stay fixed and the classification epics stay open. The app does not manage epic acceptance frontmatter or epic history.
 
 Keep history reasons concise and useful. Keep detailed logs in evidence files; the TASK body holds the plan, verification results, and references without a chronological execution log.
 
