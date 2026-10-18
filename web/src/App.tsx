@@ -431,6 +431,7 @@ export function App({ initial }: AppProps) {
           }
           tasks={tasks}
           epics={boardData?.epics ?? []}
+          epicsFetchFailed={board.fetchFailed}
           epicApi={
             dialog.kind === 'epic'
               ? epicApi(operation.projectId, dialog.epic.id, () =>

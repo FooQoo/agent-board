@@ -30,12 +30,14 @@ export interface RequestInput {
 
 export function RequestDialog({
   epics,
+  epicsFetchFailed = false,
   onClose,
   onSavingChange,
   onSubmit,
   onCreateManually,
 }: {
   epics: readonly Epic[];
+  epicsFetchFailed?: boolean;
   onClose: () => void;
   onSavingChange?: (saving: boolean) => void;
   onSubmit: (input: RequestInput) => Promise<void>;
@@ -109,33 +111,41 @@ export function RequestDialog({
       </div>
       <div className="modal__field">
         <Label id="request-epic-label">{t('simpleTask.epicLabel')}</Label>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="request-dialog__epic-trigger"
-              aria-labelledby="request-epic-label"
-              disabled={saving}
-            >
-              <span>{selectedEpic?.name ?? t('simpleTask.noEpic')}</span>
-              <ChevronDownIcon aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="request-dialog__epic-menu" align="start">
-            <DropdownMenuRadioGroup
-              value={epicId || '__none'}
-              onValueChange={(value) => setEpicId(value === '__none' ? '' : value)}
-            >
-              <DropdownMenuRadioItem value="__none">{t('simpleTask.noEpic')}</DropdownMenuRadioItem>
-              {epics.map((epic) => (
-                <DropdownMenuRadioItem key={epic.id} value={epic.id}>
-                  {epic.name}
+        {epicsFetchFailed ? (
+          <p className="modal__error" role="alert">
+            {t('simpleTask.epicLoadError')}
+          </p>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="request-dialog__epic-trigger"
+                aria-labelledby="request-epic-label"
+                disabled={saving}
+              >
+                <span>{selectedEpic?.name ?? t('simpleTask.noEpic')}</span>
+                <ChevronDownIcon aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="request-dialog__epic-menu" align="start">
+              <DropdownMenuRadioGroup
+                value={epicId || '__none'}
+                onValueChange={(value) => setEpicId(value === '__none' ? '' : value)}
+              >
+                <DropdownMenuRadioItem value="__none">
+                  {t('simpleTask.noEpic')}
                 </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                {epics.map((epic) => (
+                  <DropdownMenuRadioItem key={epic.id} value={epic.id}>
+                    {epic.name}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       <AttachmentPanel
         attachments={attachmentsState.attachments}

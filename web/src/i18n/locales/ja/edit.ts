@@ -5,6 +5,7 @@ export const editJa = {
     promptLabel: '何をしてほしいですか？',
     promptPlaceholder: '依頼内容を入力',
     epicLabel: 'エピック（任意）',
+    epicLoadError: 'エピックを読み込めませんでした。時間をおいて再度お試しください。',
     noEpic: 'エピックなし',
     footerNote:
       '起票済みのAIがタスク詳細を補完して作業を始めます。\n起票済みのAIがいない場合、タスクはTodoに残ります。',

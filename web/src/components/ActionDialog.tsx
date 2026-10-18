@@ -37,6 +37,7 @@ export function ActionDialog({
   projectId,
   tasks = [],
   epics = [],
+  epicsFetchFailed = false,
   epicApi,
   onOpenTask,
 }: {
@@ -51,6 +52,8 @@ export function ActionDialog({
   tasks?: readonly Task[];
   /** The latest epics in the project snapshot, for request creation. */
   epics?: readonly Epic[];
+  /** The epic snapshot failed to refresh; do not present the missing list as empty. */
+  epicsFetchFailed?: boolean;
   /** The writes of the epic dialog, bound to the project it was opened in. */
   epicApi?: EpicApi;
   /** The epic dialog asks for the board to show a task. */
@@ -80,6 +83,7 @@ export function ActionDialog({
       return (
         <RequestDialog
           epics={epics}
+          epicsFetchFailed={epicsFetchFailed}
           onClose={onClose}
           onSavingChange={onSavingChange}
           onSubmit={(input) => onSubmit(input)}
