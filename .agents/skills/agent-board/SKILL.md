@@ -125,7 +125,7 @@ The CLI assigns the timestamp and applies AI write permissions; no event ID, kin
 
 Lane and run-state operations already append their own history. Do not add a second entry for the same operation or use `edit --desc-file` to append it. After writing progress, inspect a fresh `show <id> --json` when confirmation is needed.
 
-1. **Choose.** From the progress table, pick a ready AI task in `todo`, respecting the epic's task order, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed.
+1. **Choose.** From the progress table, pick a ready AI task in `todo`, respecting the epic's task order, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed. Before starting an editable AI task, review its title. If it is a pasted request or does not make the work clear, use `edit <id> --title "<concise title>"` to state the affected area and requested change in the task's language. Preserve the original request in the body and keep its image attachments; do not expand scope or invent a resolution. Keep an already clear title. If the request is ambiguous, resolve that ambiguity before giving it a more specific title. Record a meaningful title change in history. This applies to the ordinary loop and listener; drafts, archived tasks, Done tasks, and human-owned tasks remain outside this step.
 2. **Start.** Move the task and report the work with concise reasons. These operations record the start automatically:
 
    ```sh

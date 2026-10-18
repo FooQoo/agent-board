@@ -67,6 +67,8 @@ flowchart TD
 
 For the progress table, see [Epics and progress](../use/epics).
 
+After reading an editable AI task, the agent shortens an unclear title to describe the affected area and requested change before starting work. The original request and images stay in the task body and attachments. An already clear title stays as it is. This happens in the agent session, including listener mode; the form still initially uses the request's first non-empty line. Completed tasks are not renamed by the agent.
+
 Agents ask task-related questions only on the board, including clarification and approval. Each request includes choices and waits for your answer by default (`"wait": {}`). Chat may point you to the pending request. If the board is unavailable, the agent reports the problem and waits to ask there.
 
 ## Wait for changes

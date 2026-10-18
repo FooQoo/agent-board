@@ -11,7 +11,7 @@ Agents use Agent Board through three pieces: the skill that tells them how to wo
 | Progress table | `src/progress.rs` | The list of workable tasks, shared by `agboard progress` and the hook. |
 | `wait` | `src/agent/wait.rs` | Block until the project changes or a decision is answered. |
 
-The skill is named `agent-board`; the executable is `agboard`. A typical loop: the hook shows the progress table → the agent reads only the `PLAN.md` and `TASK.md` it needs → it moves the task to Doing and Running → it records progress with `history add` → it asks a decision with `"wait": {}` when blocked → it checks conditions off, and automatic Done finishes the task.
+The skill is named `agent-board`; the executable is `agboard`. A typical loop: the hook shows the progress table → the agent reads only the `PLAN.md` and `TASK.md` it needs → it clarifies an unclear title through `agboard edit --title`, preserving the original request → it moves the task to Doing and Running → it records progress with `history add` → it asks a decision with `"wait": {}` when blocked → it checks conditions off, and automatic Done finishes the task. Title refinement is a skill instruction shared by the ordinary loop and listener, not a server-side summarization feature.
 
 Agents append progress at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without per-entry approval, and never duplicate entries that operations already appended. The body keeps the plan, results, and evidence references; full logs go to evidence files.
 
