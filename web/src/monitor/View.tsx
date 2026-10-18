@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { Suspense, useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Header } from '../components/Header';
@@ -9,12 +9,24 @@ import { Freshness } from './components/Freshness';
 import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { unconnectedMonitorReadResolvers } from './contracts';
-import { MonitorDetailDrawer } from './components/MonitorDetailDrawer';
+import { preloadable } from '../lib/preloadable';
+
+/** The drawer, with the Markdown view, history and swipe code, loads after the list is shown. */
+const detailDrawer = preloadable(() =>
+  import('./components/MonitorDetailDrawer').then((module) => module.MonitorDetailDrawer),
+);
+
+/** Fetches the drawer's code; the view calls it once the list is shown. */
+export const preloadMonitorDrawer = detailDrawer.preload;
 
 export function MonitorView(props: MonitorViewProps) {
   const { t } = useTranslation();
   const listId = useId();
   const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // A failed fetch is tried again when the drawer is first rendered.
+    detailDrawer.preload().catch(() => {});
+  }, []);
   const { projects, scope, summary, todo, doing, done, freshness, onScopeChange } = props;
   const ordered = {
     todo: sortLane(todo),
@@ -118,17 +130,19 @@ export function MonitorView(props: MonitorViewProps) {
         }}
         answerController={props.answerController}
       />
-      <MonitorDetailDrawer
-        item={detail.target}
-        open={detail.open}
-        tab={detail.tab}
-        epicRead={detail.epicRead}
-        onOpenChange={detail.close}
-        onTabChange={detail.setTab}
-        onRetryEpic={detail.retryEpic}
-        resolvers={props.readResolvers ?? unconnectedMonitorReadResolvers}
-        problems={freshness.snapshotProblems}
-      />
+      <Suspense fallback={null}>
+        <detailDrawer.Component
+          item={detail.target}
+          open={detail.open}
+          tab={detail.tab}
+          epicRead={detail.epicRead}
+          onOpenChange={detail.close}
+          onTabChange={detail.setTab}
+          onRetryEpic={detail.retryEpic}
+          resolvers={props.readResolvers ?? unconnectedMonitorReadResolvers}
+          problems={freshness.snapshotProblems}
+        />
+      </Suspense>
       <Freshness
         state={freshness.state}
         lastFetchedAt={freshness.lastFetchedAt}

@@ -1,5 +1,6 @@
 // biome-ignore lint/style/noExcessiveLinesPerFile: predates the 300-line limit; split it by responsibility rather than growing it.
 import {
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -9,9 +10,8 @@ import {
 } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useTranslation } from 'react-i18next';
-import { ActionDialog } from './components/ActionDialog';
+import { actionDialog, bulkArchiveDialog, preloadBoardCode } from './components/lazyDialogs';
 import { Board } from './components/Board';
-import { BulkArchiveDialog } from './components/archive/BulkArchiveDialog';
 import { ArchiveList } from './components/archive/ArchiveList';
 import { EpicList } from './components/epics/EpicList';
 import { EpicDetailPanel, EpicDetailPlaceholder } from './components/epics/EpicDetailPanel';
@@ -34,6 +34,7 @@ import { useBoard } from './hooks/useBoard';
 import { useArchive } from './hooks/useArchive';
 import { useTaskLifecycle } from './hooks/useTaskLifecycle';
 import { useBoardEvents } from './hooks/useBoardEvents';
+import { useBuildReload } from './hooks/useBuildReload';
 import { useDetailWidth } from './hooks/useDetailWidth';
 import { useProjects } from './hooks/useProjects';
 import { STALE_PAGE_EVENT } from './api';
@@ -180,13 +181,15 @@ export function App({ initial }: AppProps) {
     [reloadBoard],
   );
 
-  const { streamDown } = useBoardEvents(
+  const { streamDown, serverBuild } = useBoardEvents(
     useCallback(() => {
       reloadProjects();
       reloadBoard();
       archive.reload();
     }, [reloadProjects, reloadBoard, archive.reload]),
   );
+  useBuildReload(serverBuild, session.operation !== null || session.answerLeases.length > 0);
+  useEffect(preloadBoardCode, []);
 
   const openDialog = (dialog: DialogAction) => {
     if (session.operation !== null || !isProjectId(activeId)) return;
@@ -421,111 +424,115 @@ export function App({ initial }: AppProps) {
         note={archiveVisible ? undefined : STATUS_NOTE[view]}
       />
       {dialog && operation && (
-        <ActionDialog
-          key={`${operation.id}:${operation.projectId}`}
-          action={dialog}
-          projectId={operation.projectId}
-          onClose={() => operations.end(operation.id)}
-          onSavingChange={(saving) =>
-            saving ? operations.saveStarted(operation.id) : operations.saveFailed(operation.id)
-          }
-          tasks={tasks}
-          epics={boardData?.epics ?? []}
-          epicsFetchFailed={board.fetchFailed}
-          epicApi={
-            dialog.kind === 'epic'
-              ? epicApi(operation.projectId, dialog.epic.id, () =>
-                  refreshProject(operation.projectId),
-                )
-              : undefined
-          }
-          onOpenTask={(taskId) => {
-            // The epic dialog closes and the board shows the task in the detail panel.
-            operations.end(operation.id);
-            dispatch({ type: 'SET_VIEW_MODE', mode: 'board' });
-            dispatch({ type: 'SELECT_CARD', id: taskId });
-          }}
-          onSubmit={async (data) => {
-            // Writes go to the project the form was opened in, not to whatever the URL says now.
-            const projectId = operation.projectId;
-            if (dialog.kind === 'request' && data.requestKind === 'simple') {
-              await createSimpleTaskMultipart(projectId, {
-                description: data.description ?? '',
-                epicId: data.epicId ?? null,
-                requestId: data.requestId ?? crypto.randomUUID(),
-                attachments: data.attachments ?? [],
-              });
-            } else if (dialog.kind === 'create' || dialog.kind === 'request') {
-              await createNewTask(projectId, {
-                title: data.title ?? '',
-                description: data.description ?? '',
-                assignee: data.assignee as Assignee,
-                isDraft: data.isDraft,
-                requestId: data.requestId,
-                attachments: data.attachments,
-              });
-            } else if (dialog.kind === 'move') {
-              await moveTask(
-                projectId,
-                dialog.task.id,
-                dialog.target as ColumnName,
-                data.reason ?? '',
-              );
-              if (dialog.target === 'done') taskAnswers.clearTask(projectId, dialog.task.id);
-            } else if (dialog.kind === 'edit')
-              if (data.attachments || data.removedAttachmentIds?.length)
-                await editTaskMultipart(projectId, dialog.task.id, {
-                  title: data.title,
-                  description: data.description,
-                  finalize: data.finalize,
-                  requestId: data.requestId,
+        <Suspense fallback={null}>
+          <actionDialog.Component
+            key={`${operation.id}:${operation.projectId}`}
+            action={dialog}
+            projectId={operation.projectId}
+            onClose={() => operations.end(operation.id)}
+            onSavingChange={(saving) =>
+              saving ? operations.saveStarted(operation.id) : operations.saveFailed(operation.id)
+            }
+            tasks={tasks}
+            epics={boardData?.epics ?? []}
+            epicsFetchFailed={board.fetchFailed}
+            epicApi={
+              dialog.kind === 'epic'
+                ? epicApi(operation.projectId, dialog.epic.id, () =>
+                    refreshProject(operation.projectId),
+                  )
+                : undefined
+            }
+            onOpenTask={(taskId) => {
+              // The epic dialog closes and the board shows the task in the detail panel.
+              operations.end(operation.id);
+              dispatch({ type: 'SET_VIEW_MODE', mode: 'board' });
+              dispatch({ type: 'SELECT_CARD', id: taskId });
+            }}
+            onSubmit={async (data) => {
+              // Writes go to the project the form was opened in, not to whatever the URL says now.
+              const projectId = operation.projectId;
+              if (dialog.kind === 'request' && data.requestKind === 'simple') {
+                await createSimpleTaskMultipart(projectId, {
+                  description: data.description ?? '',
+                  epicId: data.epicId ?? null,
+                  requestId: data.requestId ?? crypto.randomUUID(),
                   attachments: data.attachments ?? [],
-                  removedAttachmentIds: data.removedAttachmentIds,
                 });
-              else
-                await editTask(projectId, dialog.task.id, {
-                  title: data.title,
-                  description: data.description,
-                  body: data.body,
-                  acceptance: data.acceptance,
-                  finalize: data.finalize,
+              } else if (dialog.kind === 'create' || dialog.kind === 'request') {
+                await createNewTask(projectId, {
+                  title: data.title ?? '',
+                  description: data.description ?? '',
+                  assignee: data.assignee as Assignee,
+                  isDraft: data.isDraft,
+                  requestId: data.requestId,
+                  attachments: data.attachments,
                 });
-            refreshProject(projectId);
-          }}
-        />
+              } else if (dialog.kind === 'move') {
+                await moveTask(
+                  projectId,
+                  dialog.task.id,
+                  dialog.target as ColumnName,
+                  data.reason ?? '',
+                );
+                if (dialog.target === 'done') taskAnswers.clearTask(projectId, dialog.task.id);
+              } else if (dialog.kind === 'edit')
+                if (data.attachments || data.removedAttachmentIds?.length)
+                  await editTaskMultipart(projectId, dialog.task.id, {
+                    title: data.title,
+                    description: data.description,
+                    finalize: data.finalize,
+                    requestId: data.requestId,
+                    attachments: data.attachments ?? [],
+                    removedAttachmentIds: data.removedAttachmentIds,
+                  });
+                else
+                  await editTask(projectId, dialog.task.id, {
+                    title: data.title,
+                    description: data.description,
+                    body: data.body,
+                    acceptance: data.acceptance,
+                    finalize: data.finalize,
+                  });
+              refreshProject(projectId);
+            }}
+          />
+        </Suspense>
       )}
       {session.bulkArchive && (
-        <BulkArchiveDialog
-          projectName={
-            projects.projects.find((project) => project.id === session.bulkArchive?.projectId)
-              ?.name ?? t('project.none')
-          }
-          targets={session.bulkArchive.targets}
-          saving={session.operation?.kind === 'archive-done' && session.operation.saving}
-          onCancel={() => {
-            if (session.operation?.kind === 'archive-done') operations.end(session.operation.id);
-            dispatch({ type: 'CLOSE_BULK_ARCHIVE' });
-          }}
-          onConfirm={async () => {
-            const bulkArchive = session.bulkArchive;
-            if (!bulkArchive) return;
-            const result = await archiveLifecycle.run(
-              'archive-done',
-              bulkArchive.projectId,
-              { taskIds: bulkArchive.targets.map((task) => task.id) },
-              { keepOperationOnError: true },
-            );
-            if (!result.ok) {
-              throw new Error(
-                result.error instanceof WriteError && result.error.status === 409
-                  ? t('archive.bulkConflict')
-                  : t('archive.error'),
-              );
+        <Suspense fallback={null}>
+          <bulkArchiveDialog.Component
+            projectName={
+              projects.projects.find((project) => project.id === session.bulkArchive?.projectId)
+                ?.name ?? t('project.none')
             }
-            dispatch({ type: 'CLOSE_BULK_ARCHIVE' });
-            refreshProject(bulkArchive.projectId);
-          }}
-        />
+            targets={session.bulkArchive.targets}
+            saving={session.operation?.kind === 'archive-done' && session.operation.saving}
+            onCancel={() => {
+              if (session.operation?.kind === 'archive-done') operations.end(session.operation.id);
+              dispatch({ type: 'CLOSE_BULK_ARCHIVE' });
+            }}
+            onConfirm={async () => {
+              const bulkArchive = session.bulkArchive;
+              if (!bulkArchive) return;
+              const result = await archiveLifecycle.run(
+                'archive-done',
+                bulkArchive.projectId,
+                { taskIds: bulkArchive.targets.map((task) => task.id) },
+                { keepOperationOnError: true },
+              );
+              if (!result.ok) {
+                throw new Error(
+                  result.error instanceof WriteError && result.error.status === 409
+                    ? t('archive.bulkConflict')
+                    : t('archive.error'),
+                );
+              }
+              dispatch({ type: 'CLOSE_BULK_ARCHIVE' });
+              refreshProject(bulkArchive.projectId);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

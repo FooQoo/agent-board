@@ -395,6 +395,16 @@
   color: var(--r-muted);
 }
 
+/* The source text, shown for the moment before the Markdown renderer has loaded. */
+.md-pending {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--r-text2);
+}
+
 /* ---- Enlargeable pictures and captures ---- */
 
 .md__image-open {

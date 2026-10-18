@@ -38,8 +38,9 @@ export class FakeEventSource {
     this.closed = true;
   }
 
-  emit(type: string): void {
-    for (const listener of this.listeners.get(type) ?? []) listener(new Event(type));
+  emit(type: string, data?: string): void {
+    const event = data === undefined ? new Event(type) : new MessageEvent(type, { data });
+    for (const listener of this.listeners.get(type) ?? []) listener(event);
   }
 }
 

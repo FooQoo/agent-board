@@ -1,77 +1,66 @@
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
 
 const accessDir = new URL('../dist/access/', import.meta.url);
 const monitorDir = new URL('../dist/monitor/', import.meta.url);
 
-async function finalizeHtml(dir, sourceName, targetName, requiredScript, requiredCss) {
-  const source = new URL(sourceName, dir);
+const FORBIDDEN = /agboard-token|\/assets\/app[-.]/;
+const MONITOR_ENTRY = /^monitor-[\w-]+\.(js|css)$/;
+const MONITOR_CHUNK = /^chunk-[\w.-]+\.js$/;
+const MIME = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8' };
+
+async function finalizeAccess() {
+  const source = new URL('access.html', accessDir);
+  const script = '/assets/access/entry.js';
   let html = await readFile(source, 'utf8');
-  if (!html.includes(requiredScript))
-    throw new Error(`${source.pathname} must reference ${requiredScript}`);
-  if (requiredCss && !html.includes(requiredCss))
-    throw new Error(`${source.pathname} must reference ${requiredCss}`);
-  if (/agboard-token|\/assets\/app\.js/.test(html))
+  if (!html.includes(script)) throw new Error(`${source.pathname} must reference ${script}`);
+  if (FORBIDDEN.test(html))
     throw new Error(`${source.pathname} contains a forbidden token or PC asset reference`);
-  for (const assetPath of [requiredScript, requiredCss].filter(Boolean)) {
-    const assetName = assetPath.split('/').at(-1);
-    // Change entry URLs so browsers bypass assets retained under the former cache policy.
-    const version = createHash('sha256')
-      .update('agboard-remote-assets:no-store\0')
-      .update(await readFile(new URL(assetName, dir)))
-      .digest('hex')
-      .slice(0, 16);
-    html = html.replaceAll(assetPath, `${assetPath}?v=${version}`);
-  }
+  // The access script keeps a fixed name and is never cached; the version only makes browsers
+  // skip a copy saved under an earlier long-lived cache policy.
+  const version = createHash('sha256')
+    .update('agboard-remote-assets:no-store\0')
+    .update(await readFile(new URL('entry.js', accessDir)))
+    .digest('hex')
+    .slice(0, 16);
+  html = html.replaceAll(script, `${script}?v=${version}`);
   await writeFile(source, html);
-  await rename(source, new URL(targetName, dir));
+  await rename(source, new URL('index.html', accessDir));
+  if (html.includes('agboard-token'))
+    throw new Error('The public access entry must not contain a session token meta.');
+  const manifest = {
+    assets: [
+      { name: 'index.html', mime: 'text/html; charset=utf-8' },
+      { name: 'entry.js', mime: MIME.js },
+    ],
+  };
+  await writeFile(new URL('manifest.json', accessDir), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
-await finalizeHtml(accessDir, 'access.html', 'index.html', '/assets/access/entry.js');
-await finalizeHtml(
-  monitorDir,
-  'monitor.html',
-  'index.html',
-  '/assets/monitor/monitor.js',
-  '/assets/monitor/monitor.css',
-);
+async function finalizeMonitor() {
+  const source = new URL('monitor.html', monitorDir);
+  const html = await readFile(source, 'utf8');
+  const files = (await readdir(monitorDir)).sort();
+  const entries = files.filter((name) => MONITOR_ENTRY.test(name));
+  for (const extension of ['js', 'css']) {
+    const entry = entries.find((name) => name.endsWith(`.${extension}`));
+    if (!entry || !html.includes(`/assets/monitor/${entry}`))
+      throw new Error(`${source.pathname} must reference the content-named monitor .${extension}`);
+  }
+  if (FORBIDDEN.test(html))
+    throw new Error(`${source.pathname} contains a forbidden token or PC asset reference`);
+  if (!html.includes('name="agboard-monitor-token" content="{{AGBOARD_MONITOR_TOKEN}}"'))
+    throw new Error('The monitor entry must contain only its runtime token placeholder.');
+  if (!html.includes('name="agboard-build" content="{{AGBOARD_BUILD_ID}}"'))
+    throw new Error('The monitor entry must contain the build ID placeholder.');
+  await rename(source, new URL('index.html', monitorDir));
 
-const accessManifest = {
-  assets: [
-    { name: 'index.html', mime: 'text/html; charset=utf-8' },
-    { name: 'entry.js', mime: 'text/javascript; charset=utf-8' },
-  ],
-};
-await writeFile(
-  new URL('manifest.json', accessDir),
-  `${JSON.stringify(accessManifest, null, 2)}\n`,
-);
-
-const monitorManifest = {
-  assets: [
-    { name: 'index.html', mime: 'text/html; charset=utf-8' },
-    { name: 'monitor.js', mime: 'text/javascript; charset=utf-8' },
-    { name: 'monitor.css', mime: 'text/css; charset=utf-8' },
-  ],
-};
-const { readdir } = await import('node:fs/promises');
-for (const name of (await readdir(new URL('', monitorDir)))
-  .filter((file) => /^viewer-[^/]+\.js$/.test(file))
-  .sort()) {
-  monitorManifest.assets.push({ name, mime: 'text/javascript; charset=utf-8' });
+  const assets = [...entries, ...files.filter((name) => MONITOR_CHUNK.test(name))].map((name) => ({
+    name,
+    mime: MIME[name.split('.').at(-1)],
+  }));
+  await writeFile(new URL('manifest.json', monitorDir), `${JSON.stringify({ assets }, null, 2)}\n`);
 }
-await writeFile(
-  new URL('manifest.json', monitorDir),
-  `${JSON.stringify(monitorManifest, null, 2)}\n`,
-);
 
-const accessHtml = await readFile(join(fileURLToPath(accessDir), 'index.html'), 'utf8');
-const monitorHtml = await readFile(join(fileURLToPath(monitorDir), 'index.html'), 'utf8');
-if (accessHtml.includes('agboard-token'))
-  throw new Error('The public access entry must not contain a session token meta.');
-if (!monitorHtml.includes('name="agboard-monitor-token" content="{{AGBOARD_MONITOR_TOKEN}}"'))
-  throw new Error('The monitor entry must contain only its runtime token placeholder.');
-if (monitorHtml.includes('name="agboard-token"'))
-  throw new Error('The monitor entry must not contain the PC session token meta.');
+await finalizeAccess();
+await finalizeMonitor();

@@ -3,10 +3,10 @@
 use std::sync::Arc;
 
 use axum::extract::{Extension, Path, State};
-use axum::http::{StatusCode, header};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 
-use crate::server::{AppState, assets, monitor};
+use crate::server::{AppState, assets, monitor, web_assets};
 
 /// The token the remote host guard hands to the board page it serves.
 #[derive(Clone)]
@@ -77,27 +77,12 @@ pub(super) async fn board_redirect() -> Response {
         .into_response()
 }
 
-pub(super) async fn app_js() -> Response {
-    text_response("text/javascript; charset=utf-8", assets::APP_JS.to_string())
-}
-
-pub(super) async fn app_css() -> Response {
-    text_response("text/css; charset=utf-8", assets::APP_CSS.to_string())
-}
-
-/// An on-demand web chunk. Only names in the build's table are served; the
-/// file name is looked up, never joined to a path. Chunks are named by their
-/// content hash, so they never change and can be cached for a year.
-pub(super) async fn chunk(Path(name): Path<String>) -> Response {
-    match assets::lookup(&name) {
-        Some((bytes, content_type)) => (
-            [
-                (header::CONTENT_TYPE, content_type),
-                (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
-            ],
-            bytes,
-        )
-            .into_response(),
+/// A content-named script or stylesheet of the board, cached for a year. Only
+/// names in the build's table are served; the name is looked up, never joined
+/// to a path.
+pub(super) async fn asset(Path(name): Path<String>, headers: HeaderMap) -> Response {
+    match web_assets::find(web_assets::APP_ASSETS, &name) {
+        Some(asset) => web_assets::response(asset, &headers),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }

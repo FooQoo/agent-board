@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { readyBuildId } from '../../lib/buildReload';
 
 export type MonitorRefreshReason = 'ready' | 'changed' | 'disconnected' | 'visible' | 'manual';
 export type MonitorStreamState = 'connecting' | 'connected' | 'disconnected' | 'hidden';
@@ -14,6 +15,8 @@ export interface UseMonitorEventsOptions {
 
 export interface UseMonitorEventsResult {
   state: MonitorStreamState;
+  /** The build ID the latest `ready` named. */
+  build: string | null;
 }
 
 /** Owns only the read-only EventSource lifecycle. Snapshot reads remain in useMonitor. */
@@ -28,6 +31,7 @@ export function useMonitorEvents({
   const [state, setState] = useState<MonitorStreamState>(() =>
     document.visibilityState === 'hidden' ? 'hidden' : 'connecting',
   );
+  const [build, setBuild] = useState<string | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -90,9 +94,10 @@ export function useMonitorEvents({
         return;
       }
       source = candidate;
-      candidate.addEventListener('ready', () => {
+      candidate.addEventListener('ready', (event) => {
         if (source !== candidate || disposed) return;
         readySeen = true;
+        setBuild(readyBuildId(event));
         setState('connected');
         armHeartbeatDeadline(candidate);
         if (skipNextReadyRefresh) skipNextReadyRefresh = false;
@@ -147,5 +152,5 @@ export function useMonitorEvents({
     };
   }, []);
 
-  return { state };
+  return { state, build };
 }

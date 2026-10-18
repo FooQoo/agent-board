@@ -16,6 +16,7 @@ pub mod remote;
 mod request;
 mod response;
 mod store;
+pub mod web_assets;
 
 use std::future::Future;
 use std::net::{SocketAddr, TcpListener};

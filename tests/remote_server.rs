@@ -1,7 +1,17 @@
 #[path = "support/mobile_monitor.rs"]
 mod support;
 
+use agent_board::server::web_assets::{APP_ASSETS, EmbeddedAsset, MONITOR_ASSETS};
 use support::{ORIGIN, ORIGIN2, Running, home, monitor_token, token};
+
+/// The name of the content-named entry script in `table`.
+fn entry_script(table: &[EmbeddedAsset], prefix: &str) -> &'static str {
+    table
+        .iter()
+        .find(|asset| asset.name.starts_with(prefix) && asset.name.ends_with(".js"))
+        .expect("the build has an entry script")
+        .name
+}
 
 #[test]
 fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
@@ -42,7 +52,12 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
     assert!(board.body.contains(&remote_token));
     assert_eq!(
         server
-            .request("GET", "/assets/app.js", &[("Host", "monitor.example")], "")
+            .request(
+                "GET",
+                &format!("/assets/{}", entry_script(APP_ASSETS, "app-")),
+                &[("Host", "monitor.example")],
+                ""
+            )
             .status,
         200
     );
@@ -50,7 +65,10 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
         server
             .request(
                 "GET",
-                "/assets/monitor/monitor.js",
+                &format!(
+                    "/assets/monitor/{}",
+                    entry_script(MONITOR_ASSETS, "monitor-")
+                ),
                 &[("Host", "monitor.example")],
                 ""
             )
@@ -252,7 +270,10 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
         server
             .request(
                 "GET",
-                "/assets/monitor/monitor.js",
+                &format!(
+                    "/assets/monitor/{}",
+                    entry_script(MONITOR_ASSETS, "monitor-")
+                ),
                 &[("Host", "unregistered.example")],
                 ""
             )
@@ -261,9 +282,9 @@ fn remote_entry_board_token_and_pc_write_guard_are_separate_from_local() {
     );
 
     let local_monitor_alias = ureq::get(&format!(
-        "http://127.0.0.1:{}{}/assets/monitor/monitor.js",
+        "http://127.0.0.1:{}/assets/monitor/{}",
         server.local.port(),
-        ""
+        entry_script(MONITOR_ASSETS, "monitor-")
     ))
     .call()
     .unwrap_err();

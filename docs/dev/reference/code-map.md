@@ -48,10 +48,11 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | `guard` | Host, Origin, Sec-Fetch-Site and token checks for local and remote writes, and canonical HTTPS origins. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
 | `store`<br>`answer` | Blocking file access, the index, and URL IDs for every router; saving an answer, shared by the board and the monitor. |
+| `web_assets` | The embedded scripts and stylesheets of the board and the monitor, their build IDs, and the cacheable gzip or plain response. |
 
 The main files and directories outside `src/` are:
 
-- `build.rs`: embeds the built web UI.
+- `build.rs`: embeds the built web UI and writes the asset tables and build IDs.
 - `web/`: the Vite app.
 - `tests/`: Rust integration and CLI tests.
 - `e2e/`: Playwright tests and the screenshot and video scripts.

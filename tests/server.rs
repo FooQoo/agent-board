@@ -52,11 +52,11 @@ fn build_script_stops_the_build_without_the_web_assets() {
 
 #[test]
 fn build_script_stops_the_build_when_one_asset_is_missing() {
-    let dir = fake_manifest(&["index.html", "assets/app.css"]);
+    let dir = fake_manifest(&["logo.png", "logo-white.png"]);
     let out = run_build_script(dir.path());
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("assets/app.js"), "{stderr}");
+    assert!(stderr.contains("index.html"), "{stderr}");
     assert!(
         stderr.contains("Run \"pnpm --dir web build\" first."),
         "{stderr}"
@@ -65,7 +65,7 @@ fn build_script_stops_the_build_when_one_asset_is_missing() {
 
 #[test]
 fn build_script_stops_the_build_when_the_white_logo_is_missing() {
-    let dir = fake_manifest(&["index.html", "assets/app.js", "assets/app.css", "logo.png"]);
+    let dir = fake_manifest(&["index.html", "logo.png"]);
     let out = run_build_script(dir.path());
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
@@ -79,19 +79,28 @@ fn build_script_stops_the_build_when_the_white_logo_is_missing() {
 #[test]
 fn build_script_passes_and_watches_the_dist_directory_when_built() {
     let dir = fake_manifest(&[
-        "index.html",
-        "assets/app.js",
-        "assets/app.css",
         "logo.png",
         "logo-white.png",
         "access/index.html",
         "access/entry.js",
-        "monitor/index.html",
-        "monitor/monitor.js",
-        "monitor/monitor.css",
+        "assets/app-A.js",
+        "assets/app-A.js.gz",
+        "monitor/monitor-M.js",
+        "monitor/monitor-M.js.gz",
     ]);
+    let dist = dir.path().join("web/dist");
+    std::fs::write(
+        dist.join("index.html"),
+        r#"<script src="/assets/app-A.js">"#,
+    )
+    .unwrap();
+    std::fs::write(
+        dist.join("monitor/index.html"),
+        r#"<script src="/assets/monitor/monitor-M.js">"#,
+    )
+    .unwrap();
     let out = run_build_script(dir.path());
-    assert!(out.status.success());
+    assert!(out.status.success(), "{out:?}");
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("cargo:rerun-if-changed=web/dist"),
@@ -481,7 +490,18 @@ fn index_is_html_with_a_fresh_64_hex_token() {
     assert!(page.body.contains(&format!(
         "<meta name=\"agboard-token\" content=\"{token}\" />"
     )));
-    assert!(page.body.contains("src=\"/assets/app.js\""));
+    let script = agent_board::server::web_assets::APP_ASSETS
+        .iter()
+        .find(|asset| asset.name.starts_with("app-") && asset.name.ends_with(".js"))
+        .unwrap();
+    assert!(
+        page.body
+            .contains(&format!("src=\"/assets/{}\"", script.name))
+    );
+    assert!(page.body.contains(&format!(
+        "<meta name=\"agboard-build\" content=\"{}\" />",
+        agent_board::server::web_assets::APP_BUILD_ID
+    )));
 }
 
 #[test]
@@ -496,61 +516,23 @@ fn the_token_is_stable_within_a_run_and_differs_between_runs() {
 }
 
 #[test]
-fn assets_are_served_with_their_content_types() {
+fn logos_are_served_as_png() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
-    let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("web/dist/assets");
-
-    let js = server.get("/assets/app.js");
-    assert_eq!(js.status, 200);
-    assert_eq!(
-        js.content_type.as_deref(),
-        Some("text/javascript; charset=utf-8")
-    );
-    assert_eq!(js.cache_control.as_deref(), Some("no-store"));
-    assert_eq!(
-        js.body,
-        std::fs::read_to_string(dist.join("app.js")).unwrap()
-    );
-
-    let logo = server.get("/logo.png");
-    assert_eq!(logo.status, 200);
-    assert_eq!(logo.content_type.as_deref(), Some("image/png"));
-    assert_eq!(logo.cache_control.as_deref(), Some("no-store"));
-    let logo_bytes = ureq::get(server.url("/logo.png"))
-        .call()
-        .unwrap()
-        .body_mut()
-        .read_to_vec()
-        .unwrap();
-    assert_eq!(
-        logo_bytes,
-        std::fs::read(dist.parent().unwrap().join("logo.png")).unwrap()
-    );
-
-    let white = server.get("/logo-white.png");
-    assert_eq!(white.status, 200);
-    assert_eq!(white.content_type.as_deref(), Some("image/png"));
-    assert_eq!(white.cache_control.as_deref(), Some("no-store"));
-    let white_bytes = ureq::get(server.url("/logo-white.png"))
-        .call()
-        .unwrap()
-        .body_mut()
-        .read_to_vec()
-        .unwrap();
-    assert_eq!(
-        white_bytes,
-        std::fs::read(dist.parent().unwrap().join("logo-white.png")).unwrap()
-    );
-
-    let css = server.get("/assets/app.css");
-    assert_eq!(css.status, 200);
-    assert_eq!(css.content_type.as_deref(), Some("text/css; charset=utf-8"));
-    assert_eq!(css.cache_control.as_deref(), Some("no-store"));
-    assert_eq!(
-        css.body,
-        std::fs::read_to_string(dist.join("app.css")).unwrap()
-    );
+    let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("web/dist");
+    for name in ["logo.png", "logo-white.png"] {
+        let reply = server.get(&format!("/{name}"));
+        assert_eq!(reply.status, 200, "{name}");
+        assert_eq!(reply.content_type.as_deref(), Some("image/png"), "{name}");
+        assert_eq!(reply.cache_control.as_deref(), Some("no-store"), "{name}");
+        let bytes = ureq::get(server.url(&format!("/{name}")))
+            .call()
+            .unwrap()
+            .body_mut()
+            .read_to_vec()
+            .unwrap();
+        assert_eq!(bytes, std::fs::read(dist.join(name)).unwrap(), "{name}");
+    }
 }
 
 // ---------------------------------------------------------------- API
@@ -1260,7 +1242,11 @@ fn events_start_with_ready_and_the_right_headers() {
             .to_ascii_lowercase()
             .contains("content-type: text/event-stream")
     );
-    assert!(events.received.contains("event: ready\ndata: {}\n\n"));
+    let ready = format!(
+        "event: ready\ndata: {{\"build\":\"{}\"}}\n\n",
+        agent_board::server::web_assets::APP_BUILD_ID
+    );
+    assert!(events.received.contains(&ready), "{}", events.received);
 }
 
 #[test]

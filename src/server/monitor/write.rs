@@ -46,7 +46,7 @@ async fn redirect_monitor() -> Response {
 }
 
 async fn index(State(state): State<Arc<WriteState>>) -> Response {
-    let html = assets::MONITOR_HTML.replace("{{AGBOARD_MONITOR_TOKEN}}", &state.guard.token);
+    let html = assets::render_monitor(&state.guard.token);
     (
         [
             (header::CONTENT_TYPE, "text/html; charset=utf-8"),

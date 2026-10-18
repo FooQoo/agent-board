@@ -28,6 +28,13 @@ describe('useBoardEvents', () => {
     expect(onRefresh).toHaveBeenCalledTimes(2);
   });
 
+  it('reports the build the latest ready named', () => {
+    const { result } = renderHook(() => useBoardEvents(() => {}));
+    expect(result.current.serverBuild).toBeNull();
+    act(() => FakeEventSource.latest.emit('ready', '{"build":"0123456789abcdef"}'));
+    expect(result.current.serverBuild).toBe('0123456789abcdef');
+  });
+
   it('calls the latest callback without reopening the stream', () => {
     const first = vi.fn();
     const second = vi.fn();

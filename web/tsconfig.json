@@ -18,5 +18,5 @@
     "paths": { "@/*": ["./src/*"] },
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "test", "vite.config.ts", "mock-api.ts", "live-api.ts"]
+  "include": ["src", "test", "vite.config.ts", "chunk-graph.ts", "mock-api.ts", "live-api.ts"]
 }

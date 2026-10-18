@@ -189,11 +189,11 @@ test('the editor is not loaded on the first screen, and assets that are not regi
     if (url.pathname.startsWith('/assets/')) loaded.push(path.basename(url.pathname));
   });
   await openBoard(page);
-  // The first screen loads the app bundle and its style only.
-  expect(loaded.some((name) => /^app\.js$/.test(name))).toBe(true);
-  expect(loaded.some((name) => /^app\.css$/.test(name))).toBe(true);
+  // The first screen loads the content-named app bundle and its style only.
+  expect(loaded.some((name) => /^app-[\w-]+\.js$/.test(name))).toBe(true);
+  expect(loaded.some((name) => /^app-[\w-]+\.css$/.test(name))).toBe(true);
   // The editor, the diagram engines (one chunk per diagram kind, plus its layout and graph code) wait for their use.
-  expect(loaded.filter((name) => /RichMarkdownEditor|Diagram|cytoscape|elk|katex/i.test(name)), loaded.join(' ')).toEqual([]);
+  expect(loaded.filter((name) => /RichMarkdownEditor|Diagram|cytoscape|elk|katex|codemirror/i.test(name)), loaded.join(' ')).toEqual([]);
 
   // Opening the add dialog loads the editor chunk, which the first screen did not need.
   const create = await openManualCreateDialog(page);

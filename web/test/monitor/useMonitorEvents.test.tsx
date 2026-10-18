@@ -27,8 +27,10 @@ describe('useMonitorEvents', () => {
     expect(result.current.state).toBe('connecting');
     act(() => FakeEventSource.latest.emit('open'));
     expect(result.current.state).toBe('connecting');
-    act(() => FakeEventSource.latest.emit('ready'));
+    expect(result.current.build).toBeNull();
+    act(() => FakeEventSource.latest.emit('ready', '{"build":"0123456789abcdef"}'));
     expect(result.current.state).toBe('connected');
+    expect(result.current.build).toBe('0123456789abcdef');
     act(() => FakeEventSource.latest.emit('heartbeat'));
     act(() => vi.advanceTimersByTime(30_000));
     expect(result.current.state).toBe('connected');
