@@ -223,6 +223,9 @@
 
 .request-dialog {
   width: 680px;
+  top: 100px;
+  bottom: auto;
+  translate: -50% 0;
   gap: 28px;
   overflow-x: hidden;
   padding: 23px;
@@ -331,6 +334,53 @@
   min-height: 42px;
 }
 
+.request-dialog.has-attachments .request-dialog__epic {
+  gap: 6px;
+}
+
+.request-dialog.has-attachments .request-dialog__attachments {
+  margin-bottom: 2px;
+}
+
+.request-dialog.has-attachments .request-dialog__request + .request-dialog__epic {
+  margin-top: -4px;
+}
+
+.request-dialog.has-attachments .request-dialog__epic + .request-dialog__attachments {
+  margin-top: -2px;
+}
+
+.request-dialog.has-attachments .editor-attachments__header {
+  margin-bottom: 0;
+}
+
+.request-dialog.has-attachments .editor-attachments__add {
+  height: 33px;
+}
+
+.request-dialog.has-attachments .editor-attachments__meta {
+  height: 13px;
+  line-height: 13px;
+}
+
+.request-dialog.has-attachments .editor-attachments__name,
+.request-dialog.has-attachments .editor-attachments__size {
+  line-height: 13px;
+}
+
+.request-dialog.has-attachments .editor-attachments__actions:empty {
+  display: none;
+}
+
+.request-dialog.has-attachments .editor-attachments__dropzone {
+  min-height: 39px;
+}
+
+.request-dialog.has-attachments .editor-attachments__drop {
+  min-height: 37px;
+  padding-block: 11px;
+}
+
 .request-dialog .modal__footer {
   margin: 0 -23px -23px;
   padding: 19px 23px 20px;
@@ -372,6 +422,15 @@
     margin-top: 45px;
   }
 
+  .request-dialog.has-attachments .modal__footer {
+    padding-top: 15px;
+    padding-bottom: 19px;
+  }
+
+  .request-dialog.has-attachments .modal__actions {
+    margin-top: 48px;
+  }
+
   .request-dialog.has-footer-error .modal__actions {
     margin-top: 81px;
   }
@@ -384,7 +443,7 @@
     translate: -50% 0;
     max-height: calc(100dvh - 56px);
     gap: 11px;
-    padding: 23px 15px 15px;
+    padding: 23px 15px 14px;
   }
 
   .request-dialog .modal__header {
