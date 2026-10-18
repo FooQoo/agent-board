@@ -100,7 +100,7 @@ export function RequestDialog({
       save={submit}
       dirty={dirty}
       scrollBody
-      className={`request-dialog${attachmentsState.attachments.length > 0 ? ' has-attachments' : ''}`}
+      className="request-dialog"
       errorInFooter
       submitDisabled={!valid}
       secondaryAction={{

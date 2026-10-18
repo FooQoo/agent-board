@@ -65,7 +65,8 @@ test('request attachment headings use the same typography as the other field lab
 });
 
 test('the image picker stays square at the left without resizing the request dialog', async ({ page }, testInfo) => {
-  for (const mode of ['light', 'dark']) {
+  for (const { mode, width } of [{ mode: 'light', width: 1280 }, { mode: 'dark', width: 1280 }, { mode: 'light', width: 390 }, { mode: 'dark', width: 390 }]) {
+    await page.setViewportSize({ width, height: 1100 });
     await page.evaluate((value) => localStorage.setItem('agboard.theme', JSON.stringify({ mode: value, accent: 'blue' })), mode);
     await page.reload();
     await waitForSync(page);
@@ -80,6 +81,7 @@ test('the image picker stays square at the left without resizing the request dia
     await dialog.screenshot({ path: testInfo.outputPath(`request-empty-focus-${mode}.png`) });
     await textarea.fill('Stable image tray');
     const add = dialog.getByRole('button', { name: 'Add image attachment', exact: true });
+    const emptyPicker = await add.boundingBox();
     const chooserPromise = page.waitForEvent('filechooser');
     await add.click();
     const chooser = await chooserPromise;
@@ -90,6 +92,19 @@ test('the image picker stays square at the left without resizing the request dia
     const size = await add.boundingBox();
     if (size === null) throw new Error('The image picker did not render.');
     expect(size.width).toBe(size.height);
+    if (!emptyPicker) throw new Error('The empty image picker did not render.');
+    expect(size.y).toBeCloseTo(emptyPicker.y, 1);
+    const preview = await dialog.locator('.editor-attachments__preview').first().boundingBox();
+    if (!preview) throw new Error('The image preview did not render.');
+    expect(preview.y).toBeCloseTo(size.y, 1);
+    expect(preview.width).toBeCloseTo(size.width, 1);
+    expect(preview.height).toBeCloseTo(size.height, 1);
+    const unusedSpace = await dialog.locator('.modal__body').evaluate((body) => {
+      const hint = body.querySelector('.editor-attachments__hint');
+      if (!hint) throw new Error('The attachment hint did not render.');
+      return body.getBoundingClientRect().bottom - hint.getBoundingClientRect().bottom;
+    });
+    expect(unusedSpace).toBeLessThan(24);
     await dialog.locator('.editor-attachments__list').evaluate((list) => { list.scrollLeft = list.scrollWidth; });
     await expect(add).toBeInViewport();
     const left = await add.evaluate((button) => button.getBoundingClientRect().left - (button.parentElement?.getBoundingClientRect().left ?? 0));
