@@ -10,8 +10,11 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 
 use crate::server::AppState;
-use crate::server::api::{self, AnswerInput, ApiJson, RemoteGuard};
+use crate::server::answer::{AnswerInput, answer_project_task};
+use crate::server::guard::{self, RemoteGuard};
 use crate::server::monitor::assets;
+use crate::server::request::ApiJson;
+use crate::server::response::{forbidden, page_out_of_date};
 
 #[derive(Clone)]
 struct WriteState {
@@ -60,7 +63,7 @@ async fn answer(
     Path((project_id, id)): Path<(String, String)>,
     ApiJson(input): ApiJson<AnswerInput>,
 ) -> Response {
-    api::answer_project_task(headers, state.app.clone(), project_id, id, input).await
+    answer_project_task(headers, state.app.clone(), project_id, id, input).await
 }
 
 async fn host_guard(
@@ -95,7 +98,7 @@ async fn write_guard(
     }
     if answer_path
         && matches!(*request.method(), Method::POST)
-        && api::remote_write_allowed(request.headers(), &state.guard)
+        && guard::remote_write_allowed(request.headers(), &state.guard)
     {
         return next.run(request).await;
     }
@@ -103,9 +106,9 @@ async fn write_guard(
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     }
     if monitor_request_except_token_is_allowed(request.headers(), &state.guard) {
-        api::page_out_of_date()
+        page_out_of_date()
     } else {
-        api::forbidden("Changes can only be made from the current monitor page.")
+        forbidden("Changes can only be made from the current monitor page.")
     }
 }
 
@@ -125,12 +128,12 @@ fn monitor_request_except_token_is_allowed(headers: &HeaderMap, guard: &RemoteGu
     let host = headers.get(header::HOST).and_then(|v| v.to_str().ok());
     let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
     let site = headers.get("sec-fetch-site").and_then(|v| v.to_str().ok());
-    let Some((origin, authority)) = origin.and_then(api::canonical_https_origin) else {
+    let Some((origin, authority)) = origin.and_then(guard::canonical_https_origin) else {
         return false;
     };
     guard.origins.contains(&origin)
         && host
-            .and_then(api::canonical_https_authority)
+            .and_then(guard::canonical_https_authority)
             .is_some_and(|host| host == authority)
         && site == Some("same-origin")
 }

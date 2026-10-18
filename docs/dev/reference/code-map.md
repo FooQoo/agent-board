@@ -39,6 +39,16 @@ Inside `file_store`, the pieces you will touch most often are:
 | `project`, `bindings` | The project catalog and folder bindings. |
 | `index`, `watch` | The in-memory index inside `serve`, and OS event watching. |
 
+Inside `server`, routers depend on shared modules rather than on each other:
+
+| Module | Responsibility |
+| --- | --- |
+| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images and evidence, epics, and epic images. |
+| `monitor/`<br>`remote` | The monitor's read router and its answer endpoint, and the HTTPS remote listener that combines them with the board router. |
+| `guard` | Host, Origin, Sec-Fetch-Site and token checks for local and remote writes, and canonical HTTPS origins. |
+| `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
+| `store`<br>`answer` | Blocking file access, the index, and URL IDs for every router; saving an answer, shared by the board and the monitor. |
+
 The main files and directories outside `src/` are:
 
 - `build.rs`: embeds the built web UI.

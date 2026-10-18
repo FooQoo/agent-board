@@ -21,7 +21,8 @@ use crate::file_store::FileStore;
 use crate::file_store::index::ProjectIndex;
 use crate::file_store::model::AttachmentOwner;
 use crate::file_store::validate::EpicId;
-use crate::server::api;
+use crate::server::response::{agboard_error_response, file_response, json_response};
+use crate::server::store::{indexed_view_in, parse_project_id, read_checked};
 
 #[derive(Clone)]
 pub(crate) struct MonitorState {
@@ -173,8 +174,8 @@ async fn asset(Path(name): Path<String>) -> Response {
 
 async fn projects(State(state): State<Arc<MonitorState>>) -> Response {
     match FileStore::open(&state.shared).catalog() {
-        Ok(catalog) => api::json_response(StatusCode::OK, &catalog),
-        Err(error) => api::agboard_error_response(&error),
+        Ok(catalog) => json_response(StatusCode::OK, &catalog),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -182,11 +183,11 @@ async fn board(
     State(state): State<Arc<MonitorState>>,
     Path(raw_project): Path<String>,
 ) -> Response {
-    let project_id = match api::parse_project_id(&raw_project) {
+    let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return api::agboard_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
-    match api::indexed_view_in(&state.shared, &state.index, &project_id) {
+    match indexed_view_in(&state.shared, &state.index, &project_id) {
         Ok(view) => {
             #[derive(serde::Serialize)]
             #[serde(rename_all = "camelCase")]
@@ -209,7 +210,7 @@ async fn board(
                 .collect();
             let epic_task_counts =
                 crate::server::epic_counts::task_counts_by_epic(&view.epics, &view.tasks);
-            api::json_response(
+            json_response(
                 StatusCode::OK,
                 &Board {
                     project: &view.project,
@@ -222,7 +223,7 @@ async fn board(
                 },
             )
         }
-        Err(error) => api::agboard_error_response(&error),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -230,9 +231,9 @@ async fn task_attachment(
     State(state): State<Arc<MonitorState>>,
     Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
 ) -> Response {
-    let project_id = match api::parse_project_id(&raw_project) {
+    let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return api::agboard_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let Ok(id) = raw_id.parse::<i64>() else {
         return StatusCode::NOT_FOUND.into_response();
@@ -241,14 +242,14 @@ async fn task_attachment(
         let store = FileStore::open(&state.shared);
         let stored =
             store.attachment_path(&project_id, &AttachmentOwner::Task(id), &attachment_id)?;
-        let bytes = api::read_checked(&store, &stored.path)?;
+        let bytes = read_checked(&store, &stored.path)?;
         Ok::<_, AgboardError>((stored.metadata.media_type, bytes))
     })
     .await;
     match result {
-        Ok(Ok((mime, bytes))) => api::file_response(&mime, bytes),
-        Ok(Err(error)) => api::agboard_error_response(&error),
-        Err(error) => api::agboard_error_response(&AgboardError::DatabaseError {
+        Ok(Ok((mime, bytes))) => file_response(&mime, bytes),
+        Ok(Err(error)) => agboard_error_response(&error),
+        Err(error) => agboard_error_response(&AgboardError::DatabaseError {
             reason: error.to_string(),
         }),
     }
@@ -258,9 +259,9 @@ async fn task_evidence(
     State(state): State<Arc<MonitorState>>,
     Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
 ) -> Response {
-    let project_id = match api::parse_project_id(&raw_project) {
+    let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return api::agboard_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let Ok(id) = raw_id.parse::<i64>() else {
         return StatusCode::NOT_FOUND.into_response();
@@ -270,9 +271,9 @@ async fn task_evidence(
     })
     .await;
     match result {
-        Ok(Ok(data)) => api::file_response("text/plain; charset=utf-8", data.bytes),
-        Ok(Err(error)) => api::agboard_error_response(&error),
-        Err(error) => api::agboard_error_response(&AgboardError::DatabaseError {
+        Ok(Ok(data)) => file_response("text/plain; charset=utf-8", data.bytes),
+        Ok(Err(error)) => agboard_error_response(&error),
+        Err(error) => agboard_error_response(&AgboardError::DatabaseError {
             reason: error.to_string(),
         }),
     }
@@ -282,13 +283,13 @@ async fn epics(
     State(state): State<Arc<MonitorState>>,
     Path(raw_project): Path<String>,
 ) -> Response {
-    let project_id = match api::parse_project_id(&raw_project) {
+    let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return api::agboard_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
-    match api::indexed_view_in(&state.shared, &state.index, &project_id) {
-        Ok(view) => api::json_response(StatusCode::OK, &serde_json::json!({"epics": view.epics})),
-        Err(error) => api::agboard_error_response(&error),
+    match indexed_view_in(&state.shared, &state.index, &project_id) {
+        Ok(view) => json_response(StatusCode::OK, &serde_json::json!({"epics": view.epics})),
+        Err(error) => agboard_error_response(&error),
     }
 }
 
@@ -296,22 +297,22 @@ async fn epic(
     State(state): State<Arc<MonitorState>>,
     Path((raw_project, raw_epic)): Path<(String, String)>,
 ) -> Response {
-    let project_id = match api::parse_project_id(&raw_project) {
+    let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return api::agboard_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let epic_id = match raw_epic.parse::<EpicId>() {
         Ok(id) => id,
-        Err(error) => return api::agboard_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let result = tokio::task::spawn_blocking(move || {
         FileStore::open(&state.shared).epic(&project_id, &epic_id)
     })
     .await;
     match result {
-        Ok(Ok(epic)) => api::json_response(StatusCode::OK, &serde_json::json!({"epic": epic})),
-        Ok(Err(error)) => api::agboard_error_response(&error),
-        Err(error) => api::agboard_error_response(&AgboardError::DatabaseError {
+        Ok(Ok(epic)) => json_response(StatusCode::OK, &serde_json::json!({"epic": epic})),
+        Ok(Err(error)) => agboard_error_response(&error),
+        Err(error) => agboard_error_response(&AgboardError::DatabaseError {
             reason: error.to_string(),
         }),
     }
@@ -321,26 +322,26 @@ async fn epic_attachment(
     State(state): State<Arc<MonitorState>>,
     Path((raw_project, raw_epic, attachment_id)): Path<(String, String, String)>,
 ) -> Response {
-    let project_id = match api::parse_project_id(&raw_project) {
+    let project_id = match parse_project_id(&raw_project) {
         Ok(id) => id,
-        Err(error) => return api::agboard_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let epic_id = match raw_epic.parse::<EpicId>() {
         Ok(id) => id,
-        Err(error) => return api::agboard_error_response(&error),
+        Err(error) => return agboard_error_response(&error),
     };
     let result = tokio::task::spawn_blocking(move || {
         let store = FileStore::open(&state.shared);
         let owner = AttachmentOwner::Epic(epic_id);
         let stored = store.attachment_path(&project_id, &owner, &attachment_id)?;
-        let bytes = api::read_checked(&store, &stored.path)?;
+        let bytes = read_checked(&store, &stored.path)?;
         Ok::<_, AgboardError>((stored.metadata.media_type, bytes))
     })
     .await;
     match result {
-        Ok(Ok((mime, bytes))) => api::file_response(&mime, bytes),
-        Ok(Err(error)) => api::agboard_error_response(&error),
-        Err(error) => api::agboard_error_response(&AgboardError::DatabaseError {
+        Ok(Ok((mime, bytes))) => file_response(&mime, bytes),
+        Ok(Err(error)) => agboard_error_response(&error),
+        Err(error) => agboard_error_response(&AgboardError::DatabaseError {
             reason: error.to_string(),
         }),
     }

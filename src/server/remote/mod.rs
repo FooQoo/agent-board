@@ -24,7 +24,7 @@ pub(crate) fn router(
     authorities.insert(format!("127.0.0.1:{port}"));
     for origin in origins {
         let (origin, authority) =
-            super::api::canonical_https_origin(origin).ok_or_else(|| invalid_origin(origin))?;
+            super::guard::canonical_https_origin(origin).ok_or_else(|| invalid_origin(origin))?;
         allowed_origins.insert(origin);
         authorities.insert(authority);
     }
@@ -32,7 +32,7 @@ pub(crate) fn router(
         return Err(invalid_origin("(none)"));
     }
     let authorities = Arc::new(authorities);
-    let guard = super::api::RemoteGuard {
+    let guard = super::guard::RemoteGuard {
         port,
         origins: Arc::new(allowed_origins),
         authorities: authorities.clone(),
@@ -45,7 +45,7 @@ pub(crate) fn router(
         app.changed.clone(),
         authorities.as_ref().clone(),
     ));
-    let monitor_write_guard = super::api::RemoteGuard {
+    let monitor_write_guard = super::guard::RemoteGuard {
         token: monitor_token,
         ..guard.clone()
     };

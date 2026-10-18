@@ -3,6 +3,7 @@
 //! `run` builds its own tokio runtime; the rest of the CLI never starts one.
 //! The server listens on 127.0.0.1 only and reads the shared files per request.
 
+mod answer;
 mod api;
 pub mod assets;
 pub mod dist;
@@ -12,6 +13,9 @@ pub mod guard;
 mod instance;
 pub mod monitor;
 pub mod remote;
+mod request;
+mod response;
+mod store;
 
 use std::future::Future;
 use std::net::{SocketAddr, TcpListener};
