@@ -1,53 +1,21 @@
 //! Wait for a change to one project, then return one complete read-only
-//! snapshot of it.
-//!
-//! The project name is resolved to an ID once, at the start. From then on only
-//! that ID is read, so a rename keeps the wait on the same project, a deletion
-//! ends it with `project_not_found`, and a project created later under the same
-//! name is never followed.
-//!
-//! A cursor names a content version. A different version now is an answer at
-//! once; the same version waits for the server's `changed` and reads again.
+//! snapshot of it. The wait engine owns event handling and the absolute
+//! deadline; this adapter supplies the cursor predicate and CLI meaning.
 
 use std::path::Path;
-use std::time::{Duration, Instant};
-
-use eventsource_stream::Eventsource;
-use futures_util::StreamExt;
+use std::time::Duration;
 
 use crate::{
+    agent::wait_engine::{Evaluation, WaitReader, WaitResult, wait_until},
     clock::{Clock, SystemClock, format_utc},
     domain::{ChangeCursor, ProjectId, validate_project_name},
     error::AgboardError,
-    file_store::{FileStore, reader::FetchedSnapshot},
-    paths,
+    file_store::{
+        FileStore,
+        model::TaskView,
+        reader::{FetchedSnapshot, ProjectSnapshot},
+    },
 };
-
-/// How long connecting to the server (health check, then event stream) may take.
-const CONNECT_LIMIT: Duration = Duration::from_secs(3);
-
-#[derive(serde::Deserialize)]
-struct Health {
-    ok: bool,
-    pid: u32,
-}
-
-fn unavailable(reason: impl Into<String>) -> AgboardError {
-    AgboardError::BoardUnavailable {
-        reason: reason.into(),
-    }
-}
-
-/// A failure to read the board. A project that is gone keeps its own error
-/// (exit code 4); every other failure is "unavailable".
-fn read_error(error: AgboardError, name: &str) -> AgboardError {
-    match error {
-        AgboardError::ProjectNotFound { .. } => AgboardError::ProjectNotFound {
-            project: name.to_string(),
-        },
-        other => unavailable(format!("{} {}", other.message(), other.reason())),
-    }
-}
 
 /// Reads of the one project with a fixed ID.
 struct Reader<'a> {
@@ -56,30 +24,20 @@ struct Reader<'a> {
     id: ProjectId,
 }
 
-impl Reader<'_> {
-    /// The project's version and its complete snapshot as JSON, from one read.
-    fn read(&self) -> Result<(String, String), AgboardError> {
-        let store = FileStore::open(self.shared);
-        let snapshot = store
+impl WaitReader for Reader<'_> {
+    type Snapshot = ProjectSnapshot;
+
+    fn read(&self) -> Result<Self::Snapshot, AgboardError> {
+        FileStore::open(self.shared)
             .board(&self.id)
-            .map_err(|error| read_error(error, self.name))?;
-        let json = serde_json::to_string(&FetchedSnapshot {
-            fetched_at: format_utc(SystemClock.now()),
-            snapshot: &snapshot,
-        })
-        .map_err(|error| unavailable(error.to_string()))?;
-        Ok((snapshot.version.clone(), json))
-    }
-
-    /// The snapshot when its version is not the cursor's; `None` when it still is.
-    fn compare(&self, version: &str) -> Result<Option<String>, AgboardError> {
-        let (current, json) = self.read()?;
-        Ok((current != version).then_some(json))
-    }
-
-    /// The last look when the time is up: a change that arrived is a success.
-    fn last_look(&self, version: &str) -> Result<String, AgboardError> {
-        self.compare(version)?.ok_or(AgboardError::WaitTimeout)
+            .map_err(|error| match error {
+                AgboardError::ProjectNotFound { .. } => AgboardError::ProjectNotFound {
+                    project: self.name.to_string(),
+                },
+                other => AgboardError::BoardUnavailable {
+                    reason: format!("{} {}", other.message(), other.reason()),
+                },
+            })
     }
 }
 
@@ -88,7 +46,14 @@ fn resolve(shared: &Path, name: &str, cursor: &ChangeCursor) -> Result<ProjectId
     let name = validate_project_name(name)?;
     let id = FileStore::open(shared)
         .project_by_name(&name)
-        .map_err(|error| read_error(error, &name))?
+        .map_err(|error| match error {
+            AgboardError::ProjectNotFound { .. } => AgboardError::ProjectNotFound {
+                project: name.clone(),
+            },
+            other => AgboardError::BoardUnavailable {
+                reason: format!("{} {}", other.message(), other.reason()),
+            },
+        })?
         .id;
     if id != cursor.project_id {
         return Err(AgboardError::CursorInvalid {
@@ -99,151 +64,119 @@ fn resolve(shared: &Path, name: &str, cursor: &ChangeCursor) -> Result<ProjectId
     Ok(id)
 }
 
-/// Time left of an optional overall limit, capped at the connection limit.
-fn connect_budget(began: Instant, timeout: Option<Duration>) -> Duration {
-    match timeout {
-        Some(total) => total.saturating_sub(began.elapsed()).min(CONNECT_LIMIT),
-        None => CONNECT_LIMIT,
-    }
-}
-
-fn expired(began: Instant, timeout: Option<Duration>) -> bool {
-    timeout.is_some_and(|total| began.elapsed() >= total)
-}
-
-/// Wait for a change to the project named `project` after `cursor`, on the
-/// board at `db_path` and the server that serves that same data directory.
+/// Wait for a change to the project named `project`, on the board at
+/// `shared_dir` and the server that serves that same data directory.
 ///
-/// Returns the project's latest complete snapshot as JSON. A timeout, a lost
-/// connection and an invalid cursor are errors, never answers. Nothing is
-/// written and no polling happens; the only repeated reads follow server events.
+/// Returns the latest complete snapshot as JSON. A timeout, lost connection,
+/// or invalid cursor is an error, never an answer. Nothing is written and no
+/// polling happens; reads follow only the initial request and server events.
 pub async fn wait_for_change(
-    shared: &Path,
+    shared_dir: &Path,
     project: &str,
     cursor: ChangeCursor,
     timeout_secs: Option<u64>,
 ) -> Result<String, AgboardError> {
-    let began = Instant::now();
-    let timeout = timeout_secs.map(Duration::from_secs);
-    let id = resolve(shared, project, &cursor)?;
+    let deadline =
+        timeout_secs.map(|seconds| tokio::time::Instant::now() + Duration::from_secs(seconds));
+    let id = resolve(shared_dir, project, &cursor)?;
     let reader = Reader {
-        shared,
+        shared: shared_dir,
         name: project,
         id,
     };
-    let after = cursor.version.as_str();
-    if timeout == Some(Duration::ZERO) {
-        return reader.last_look(after);
+    let result = wait_until(shared_dir, &reader, deadline, |snapshot| {
+        if snapshot.version == cursor.version {
+            return Ok(Evaluation::Continue);
+        }
+        let json = serde_json::to_string(&FetchedSnapshot {
+            fetched_at: format_utc(SystemClock.now()),
+            snapshot,
+        })
+        .map_err(|error| AgboardError::BoardUnavailable {
+            reason: error.to_string(),
+        })?;
+        Ok(Evaluation::Ready(json))
+    })
+    .await?;
+    match result {
+        WaitResult::Satisfied(json) => Ok(json),
+        WaitResult::DeadlineReached(_) => Err(AgboardError::WaitTimeout),
     }
+}
 
-    // The data area holds both the shared folder and serve.json.
-    let dir = shared
-        .parent()
-        .filter(|dir| !dir.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
-    let info = paths::read_serve_info_in(dir).ok_or_else(|| {
-        unavailable("No running Agent Board server was found. Run \"agboard serve\".")
-    })?;
-    let client = reqwest::Client::builder()
-        .connect_timeout(CONNECT_LIMIT)
-        .redirect(reqwest::redirect::Policy::none())
+struct PendingSnapshot {
+    task: TaskView,
+    answered: bool,
+}
+
+struct PendingReader<'a> {
+    shared: &'a Path,
+    project_name: &'a str,
+    project_id: ProjectId,
+    task_id: i64,
+    request_id: &'a str,
+}
+
+impl WaitReader for PendingReader<'_> {
+    type Snapshot = PendingSnapshot;
+
+    fn read(&self) -> Result<Self::Snapshot, AgboardError> {
+        let store = FileStore::open(self.shared);
+        let task = store
+            .task(&self.project_id, self.task_id)
+            .map_err(|error| match error {
+                AgboardError::ProjectNotFound { .. } => AgboardError::ProjectNotFound {
+                    project: self.project_name.to_string(),
+                },
+                other => other,
+            })?;
+        let answered = if task.pending_request_id.as_deref() == Some(self.request_id) {
+            false
+        } else {
+            store
+                .request_answer(&self.project_id, self.task_id, self.request_id)?
+                .is_some()
+        };
+        Ok(PendingSnapshot { task, answered })
+    }
+}
+
+/// Wait for one request to be answered or withdrawn using the same event
+/// engine as cursor waits. The original request remains stored on timeout.
+pub fn wait_for_pending_resolution(
+    shared: &Path,
+    project_name: &str,
+    project_id: ProjectId,
+    task_id: i64,
+    request_id: &str,
+    timeout_secs: Option<u64>,
+) -> Result<TaskView, AgboardError> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
         .build()
-        .map_err(|error| unavailable(error.to_string()))?;
-    let base = format!("http://127.0.0.1:{}", info.port);
-
-    let budget = connect_budget(began, timeout);
-    if budget.is_zero() {
-        return reader.last_look(after);
-    }
-    let health = client
-        .get(format!("{base}/api/health"))
-        .timeout(budget)
-        .send()
-        .await
-        .and_then(reqwest::Response::error_for_status);
-    let health: Health = match health {
-        Ok(response) => response
-            .json()
-            .await
-            .map_err(|error| unavailable(error.to_string()))?,
-        Err(error) if error.is_timeout() && expired(began, timeout) => {
-            return reader.last_look(after);
-        }
-        Err(error) => {
-            return Err(unavailable(format!(
-                "serve.json names the server on port {}, which does not answer ({error}). The server may have stopped; run \"agboard serve\" again.",
-                info.port
-            )));
-        }
+        .map_err(|error| AgboardError::BoardUnavailable {
+            reason: error.to_string(),
+        })?;
+    let deadline =
+        timeout_secs.map(|seconds| tokio::time::Instant::now() + Duration::from_secs(seconds));
+    let reader = PendingReader {
+        shared,
+        project_name,
+        project_id,
+        task_id,
+        request_id,
     };
-    if !health.ok || health.pid != info.pid {
-        return Err(unavailable(format!(
-            "serve.json names process {} on port {}, but that port is answered by another process. Run \"agboard serve\" again.",
-            info.pid, info.port
-        )));
-    }
-
-    // Bound only the connection; the event stream itself stays open while we wait.
-    let budget = connect_budget(began, timeout);
-    if budget.is_zero() {
-        return reader.last_look(after);
-    }
-    let connecting = tokio::time::timeout(
-        budget,
-        client
-            .get(format!("{base}/api/events"))
-            .header("Host", format!("127.0.0.1:{}", info.port))
-            .send(),
-    )
-    .await;
-    let response = match connecting {
-        Ok(Ok(response)) => response
-            .error_for_status()
-            .map_err(|error| unavailable(error.to_string()))?,
-        Ok(Err(error)) if error.is_timeout() && expired(began, timeout) => {
-            return reader.last_look(after);
+    match runtime.block_on(wait_until(shared, &reader, deadline, |snapshot| {
+        if snapshot.task.pending_request_id.as_deref() == Some(request_id) {
+            return Ok(Evaluation::Continue);
         }
-        Ok(Err(error)) => return Err(unavailable(error.to_string())),
-        Err(_) if expired(began, timeout) => return reader.last_look(after),
-        Err(_) => return Err(unavailable("The event stream connection timed out.")),
-    };
-
-    let mut events = response.bytes_stream().eventsource();
-    let mut ready = false;
-    loop {
-        let next = match timeout {
-            Some(total) => {
-                let remaining = total.saturating_sub(began.elapsed());
-                if remaining.is_zero() {
-                    return reader.last_look(after);
-                }
-                match tokio::time::timeout(remaining, events.next()).await {
-                    Ok(next) => next,
-                    // The time is up while the stream is still open.
-                    Err(_) => return reader.last_look(after),
-                }
-            }
-            None => events.next().await,
-        };
-        let event = match next {
-            Some(Ok(event)) => event,
-            Some(Err(error)) => {
-                return Err(unavailable(format!("The event stream failed: {error}")));
-            }
-            // The server closed the stream. That is a lost connection, not a
-            // timeout and not "no change".
-            None => return Err(unavailable("The event stream was disconnected.")),
-        };
-        // Only events after `ready` are compared: the first read happens once
-        // the subscription exists, so a change made before it is still seen.
-        if event.event == "ready" {
-            ready = true;
+        if snapshot.answered {
+            Ok(Evaluation::Ready(snapshot.task.clone()))
+        } else {
+            Err(AgboardError::RequestChanged)
         }
-        if ready
-            && (event.event == "ready" || event.event == "changed")
-            && let Some(json) = reader.compare(after)?
-        {
-            return Ok(json);
-        }
+    }))? {
+        WaitResult::Satisfied(task) => Ok(task),
+        WaitResult::DeadlineReached(_) => Err(AgboardError::WaitTimeout),
     }
 }
