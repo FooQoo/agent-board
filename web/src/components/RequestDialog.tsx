@@ -96,7 +96,7 @@ export function RequestDialog({
       }
       save={submit}
       dirty={dirty}
-      className="request-dialog"
+      className={`request-dialog${attachmentsState.attachments.length > 0 ? ' has-attachments' : ''}`}
       errorInFooter
       footerNote={<p className="modal__card request-dialog__note">{t('simpleTask.footerNote')}</p>}
       submitDisabled={!valid}

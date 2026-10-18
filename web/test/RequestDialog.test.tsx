@@ -39,9 +39,19 @@ describe('simple request dialog', () => {
     const textarea = screen.getByRole('textbox', { name: 'What should be done?' });
     await user.type(textarea, 'Keep this request');
     await user.click(screen.getByRole('button', { name: 'Submit task' }));
-    expect((await screen.findByRole('alert')).textContent).toBe(
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(
       'Could not save the task. Your input and images are kept. Try again.',
     );
+    const footerCopy = alert.closest('.modal__footer-copy');
+    expect(footerCopy).not.toBeNull();
+    if (footerCopy === null) throw new Error('expected the error inside the footer copy');
+    const footerChildren = [...footerCopy.children];
+    const noteIndex = footerChildren.findIndex((child) =>
+      child.classList.contains('request-dialog__note'),
+    );
+    expect(noteIndex).toBeGreaterThanOrEqual(0);
+    expect(footerChildren.indexOf(alert)).toBeLessThan(noteIndex);
     expect((textarea as HTMLTextAreaElement).value).toBe('Keep this request');
   });
 
