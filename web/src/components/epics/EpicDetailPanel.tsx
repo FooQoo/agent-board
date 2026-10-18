@@ -1,9 +1,10 @@
-import { PencilIcon, XIcon } from 'lucide-react';
+import { PencilIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Epic, ProjectId } from '../../types';
 import { EpicBadge } from '../EpicBadge';
 import { DetailAttachments } from '../detail/DetailAttachments';
 import { EpicTabView } from '../detail/EpicTabView';
+import { DetailHeader } from '../detail/DetailHeader';
 import '../../styles/detail.css';
 import '../../styles/epics.css';
 
@@ -30,32 +31,29 @@ export function EpicDetailPanel({ projectId, epic, onEdit, onClose }: EpicDetail
   const { t } = useTranslation();
   return (
     <aside className="detail detail-view epic-detail" aria-label={t('epics.detailTitle')}>
-      <div className="detail__top">
-        <span className="detail__id epic-detail__tags">
-          <EpicBadge epic={epic} className="epic-detail__badge" icon={false} />
-          {epic.isDraft && <span className="card__draft">{t('draft.label')}</span>}
-        </span>
-        <div className="detail__toolbar" role="toolbar" aria-label={t('epics.actions')}>
-          <button
-            type="button"
-            className="detail__tool"
-            aria-label={t('epics.edit')}
-            title={t('epics.edit')}
-            onClick={onEdit}
-          >
-            <PencilIcon aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="detail__close"
-            aria-label={t('detail.close')}
-            title={t('detail.close')}
-            onClick={onClose}
-          >
-            <XIcon aria-hidden="true" />
-          </button>
-        </div>
-      </div>
+      <DetailHeader
+        identityClassName="epic-detail__tags"
+        identity={
+          <>
+            <EpicBadge epic={epic} className="epic-detail__badge" icon={false} />
+            {epic.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+          </>
+        }
+        onClose={onClose}
+        toolbar={
+          <div className="detail__toolbar" role="toolbar" aria-label={t('epics.actions')}>
+            <button
+              type="button"
+              className="detail__tool"
+              aria-label={t('epics.edit')}
+              title={t('epics.edit')}
+              onClick={onEdit}
+            >
+              <PencilIcon aria-hidden="true" />
+            </button>
+          </div>
+        }
+      />
       <h2 className="detail__title" id="epic-detail-title">
         {epic.name}
       </h2>

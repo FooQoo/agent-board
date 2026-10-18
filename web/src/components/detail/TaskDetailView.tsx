@@ -1,4 +1,3 @@
-import { XIcon } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { historyItems } from '../../lib/history';
@@ -12,6 +11,7 @@ import { type DetailTab, DetailTabs, panelId, tabId } from './DetailTabs';
 import { DraftStatus } from './DraftStatus';
 import { EpicTabView, type EpicTabStatus } from './EpicTabView';
 import { AcceptanceTabView } from './AcceptanceTabView';
+import { DetailHeader } from './DetailHeader';
 import '../../styles/detail.css';
 
 export interface TaskDetailViewProps {
@@ -70,20 +70,15 @@ export function TaskDetailView({
         : 'failed';
   return (
     <aside className="detail detail-view" aria-label={t('detail.title')}>
-      <div className="detail__top">
-        <span className="detail__id">
-          {ownerName && <span className="detail__owner">{ownerName} · </span>}#{task.id}
-        </span>
-        {toolbar}
-        <button
-          type="button"
-          className="detail__close"
-          aria-label={t('detail.close')}
-          onClick={onClose}
-        >
-          <XIcon aria-hidden="true" />
-        </button>
-      </div>
+      <DetailHeader
+        identity={
+          <>
+            {ownerName && <span className="detail__owner">{ownerName} · </span>}#{task.id}
+          </>
+        }
+        toolbar={toolbar}
+        onClose={onClose}
+      />
       <h2 className="detail__title" id="card-detail-title">
         {task.title}
       </h2>

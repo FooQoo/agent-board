@@ -43,6 +43,8 @@ JSON and HTML responses are `no-store`. Scripts and stylesheets are named by the
 
 The epic list reads `epics` and `epicTaskCounts` from the board response. The server computes the counts from the same snapshot as the epics, so the list never mixes two reads. The mobile monitor carries the same counts in its board response, but it has no epic list screen. The list shares its frame with the archive through `ListPane`, and each state (loading, load failure, refresh failure, empty) comes from the project resource, so a failed refresh keeps the last good rows.
 
+Task details (including the archive and monitor) and epic details share `DetailHeader` in `web/src/components/detail/DetailHeader.tsx`. It places the identity, action toolbar, and close control in one common layout so the close control keeps the same spacing. Each host supplies its own actions.
+
 ## Behavior on failure in the UI
 
 **Saving and answering**
