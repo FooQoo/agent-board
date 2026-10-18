@@ -152,7 +152,11 @@ pub(super) async fn create_task_multipart(
                 "A simple request description is required.",
             );
         };
-        let title: String = first_line.trim().chars().take(120).collect();
+        let title: String = first_line
+            .trim()
+            .chars()
+            .take(crate::domain::MAX_TITLE_CHARS)
+            .collect();
         let request_id = payload.meta.request_id;
         let epic_id = payload.meta.epic_id;
         let additions = payload.additions;
