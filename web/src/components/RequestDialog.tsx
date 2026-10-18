@@ -59,17 +59,21 @@ export function RequestDialog({
   const submit = async () => {
     setSaving(true);
     try {
-      await onSubmit({
-        requestKind: 'simple',
-        description,
-        epicId: epicId || null,
-        requestId: requestId({
+      try {
+        await onSubmit({
+          requestKind: 'simple',
           description,
           epicId: epicId || null,
-          attachments: attachmentsState.attachments.map((attachment) => attachment.id),
-        }),
-        attachments: attachmentsState.attachments,
-      });
+          requestId: requestId({
+            description,
+            epicId: epicId || null,
+            attachments: attachmentsState.attachments.map((attachment) => attachment.id),
+          }),
+          attachments: attachmentsState.attachments,
+        });
+      } catch {
+        throw new Error(t('simpleTask.saveFailed'));
+      }
     } finally {
       setSaving(false);
     }
@@ -93,6 +97,7 @@ export function RequestDialog({
       save={submit}
       dirty={dirty}
       className="request-dialog"
+      errorInFooter
       footerNote={<p className="modal__card request-dialog__note">{t('simpleTask.footerNote')}</p>}
       submitDisabled={!valid}
       secondaryAction={{ label: t('simpleTask.createManually'), onClick: onCreateManually }}
@@ -109,7 +114,7 @@ export function RequestDialog({
           aria-invalid={!valid}
         />
       </div>
-      <div className="modal__field">
+      <div className="modal__field request-dialog__epic">
         <Label id="request-epic-label">{t('simpleTask.epicLabel')}</Label>
         {epicsFetchFailed ? (
           <p className="modal__error" role="alert">
@@ -154,6 +159,7 @@ export function RequestDialog({
         notice={attachmentsState.error}
         disabled={saving}
         className="request-dialog__attachments"
+        optionalHeader
       />
     </DialogFrame>
   );

@@ -26,6 +26,25 @@ const epics: Epic[] = [
 ];
 
 describe('simple request dialog', () => {
+  it('keeps a failed request in the form and shows the designed recovery message', async () => {
+    render(
+      <RequestDialog
+        epics={[]}
+        onClose={vi.fn()}
+        onSubmit={vi.fn().mockRejectedValue(new Error('Request failed (503)'))}
+        onCreateManually={vi.fn()}
+      />,
+    );
+    const user = userEvent.setup();
+    const textarea = screen.getByRole('textbox', { name: 'What should be done?' });
+    await user.type(textarea, 'Keep this request');
+    await user.click(screen.getByRole('button', { name: 'Submit task' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Could not save the task. Your input and images are kept. Try again.',
+    );
+    expect((textarea as HTMLTextAreaElement).value).toBe('Keep this request');
+  });
+
   it('submits a regular AI request with its original text, optional epic and stable retry identity', async () => {
     const submit = vi
       .fn<(input: RequestInput) => Promise<void>>()
@@ -41,6 +60,8 @@ describe('simple request dialog', () => {
         onCreateManually={vi.fn()}
       />,
     );
+    expect(screen.getByText('Attachments (optional)')).toBeTruthy();
+    expect(screen.getByText('· 0')).toBeTruthy();
     const user = userEvent.setup();
     const textarea = screen.getByRole('textbox', { name: 'What should be done?' });
     fireEvent.change(textarea, {

@@ -243,6 +243,18 @@
   gap: 8px;
 }
 
+.request-dialog .request-dialog__request {
+  gap: 1px;
+}
+
+.request-dialog .request-dialog__epic {
+  gap: 3px;
+}
+
+.request-dialog__epic + .request-dialog__attachments {
+  margin-top: 2px;
+}
+
 .request-dialog__textarea {
   height: 168px;
   min-height: 168px;
@@ -287,7 +299,7 @@
   overflow-y: auto;
 }
 
-.request-dialog__attachments {
+.request-dialog .request-dialog__attachments {
   flex: none;
   min-height: auto;
   gap: 14px;
@@ -315,12 +327,24 @@
 
 .request-dialog .modal__footer {
   margin: 0 -23px -23px;
-  padding: 16px 23px 18px;
+  padding: 19px 23px 20px;
 }
 
 .request-dialog .modal__footer-copy {
   max-width: none;
   gap: 12px;
+}
+
+.request-dialog.has-footer-error .modal__error {
+  margin-top: 2px;
+}
+
+.request-dialog.has-footer-error .modal__footer-copy {
+  gap: 16px;
+}
+
+.request-dialog.has-footer-error .modal__link {
+  margin-top: 10px;
 }
 
 .request-dialog__note {
@@ -332,9 +356,27 @@
   align-items: flex-end;
 }
 
+@media (min-width: 641px) {
+  .request-dialog .modal__footer {
+    align-items: flex-start;
+  }
+
+  .request-dialog .modal__actions {
+    align-self: flex-start;
+    margin-top: 45px;
+  }
+
+  .request-dialog.has-footer-error .modal__actions {
+    margin-top: 81px;
+  }
+}
+
 @media (max-width: 640px) {
   .request-dialog {
-    gap: 16px;
+    top: 40px;
+    bottom: auto;
+    translate: -50% 0;
+    gap: 11px;
     padding: 23px 15px 15px;
   }
 
@@ -344,7 +386,32 @@
   }
 
   .request-dialog .modal__form {
-    gap: 16px;
+    gap: 14px;
+  }
+
+  .request-dialog .request-dialog__request {
+    gap: 8px;
+  }
+
+  .request-dialog .request-dialog__epic {
+    gap: 6px;
+  }
+
+  .request-dialog__epic + .request-dialog__attachments {
+    margin-top: 6px;
+  }
+
+  .request-dialog .request-dialog__attachments {
+    gap: 13px;
+  }
+
+  .request-dialog__attachments .editor-attachments__header {
+    margin-bottom: -2.5px;
+  }
+
+  .request-dialog__attachments .editor-attachments__dropzone,
+  .request-dialog__attachments .editor-attachments__drop {
+    min-height: 41px;
   }
 
   .request-dialog__textarea {
@@ -358,8 +425,9 @@
   .request-dialog .modal__footer {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
     margin: 0 -15px -15px;
-    padding: 16px 15px 20px;
+    padding: 19px 15px 20px;
   }
 
   .request-dialog .modal__footer-copy {
@@ -369,6 +437,8 @@
 
   .request-dialog .modal__actions {
     flex-direction: column;
+    align-self: stretch;
+    margin-top: 0;
   }
 
   .request-dialog .modal__actions button {

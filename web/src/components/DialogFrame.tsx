@@ -31,6 +31,8 @@ export interface DialogFrameProps {
   dirty?: boolean;
   /** Optional content below the form fields and above the action row. */
   footerNote?: ReactNode;
+  /** Places a save error inside the footer, for forms whose approved layout puts it there. */
+  errorInFooter?: boolean;
   /** Optional secondary route, such as switching to the full manual editor. */
   secondaryAction?: { label: string; onClick: () => void };
   submitDisabled?: boolean;
@@ -49,6 +51,7 @@ export function DialogFrame({
   save,
   dirty = false,
   footerNote,
+  errorInFooter = false,
   secondaryAction,
   submitDisabled = false,
   className = '',
@@ -102,7 +105,7 @@ export function DialogFrame({
   return (
     <Dialog open onOpenChange={(open) => !open && requestDiscard('close')}>
       <DialogContent
-        className={`modal action-dialog ${className}`.trim()}
+        className={`modal action-dialog ${className}${errorInFooter && error ? ' has-footer-error' : ''}`.trim()}
         showCloseButton={false}
         aria-describedby={undefined}
         onEscapeKeyDown={(event) => {
@@ -136,7 +139,7 @@ export function DialogFrame({
         </div>
         <form className="modal__form" ref={formRef} onSubmit={submit} noValidate>
           {children}
-          {error && (
+          {error && !errorInFooter && (
             <p className="modal__error" role="alert">
               {error}
             </p>
@@ -144,6 +147,11 @@ export function DialogFrame({
           <div className={footerNote || secondaryAction ? 'modal__footer' : 'modal__actions'}>
             {(footerNote || secondaryAction) && (
               <div className="modal__footer-copy">
+                {error && errorInFooter && (
+                  <p className="modal__error" role="alert">
+                    {error}
+                  </p>
+                )}
                 {footerNote}
                 {secondaryAction && (
                   <button

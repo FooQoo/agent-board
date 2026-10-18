@@ -12,6 +12,7 @@ export const editJa = {
     createManually: '手動で作成',
     required: '依頼内容を入力してください。',
     tooLong: '依頼全体を{{max}}文字以内にしてください。',
+    saveFailed: 'タスクを保存できませんでした。入力と画像は残っています。もう一度お試しください。',
   },
   dialog: {
     addCard: 'タスク追加',
@@ -63,6 +64,8 @@ export const editJa = {
     backToEdit: '戻る',
     discardAndMove: '破棄して移動',
     attachments: '添付画像',
+    attachmentsOptional: '添付画像（任意）',
+    attachmentsOptionalCount: '・{{count}}',
     attachmentRefusedTitle: '画像を追加できません',
     attachmentTooLarge: '{{name}} は 10 MB を超えています。小さい画像を選んでください。',
     attachmentFormat:
