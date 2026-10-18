@@ -27,7 +27,7 @@ Choose **Add task** in the board header to open the short request form. Enter wh
 
 If an AI session is listening, it can pick up this task along with tasks already in Todo. If no session is listening, the task stays on the board for later. **Create manually** in the request form opens the existing full task editor, where you can set the title, description, assignee, draft state, conditions, and images yourself. The usual task editor and its save behavior remain available.
 
-The request and its optional epic and images are saved together. If saving fails, the form keeps your text and selected images so you can retry. Images are optional and use the same PNG, JPEG, WebP, and GIF limits as other task attachments.
+The request and its optional epic and images are saved together. The epic picker shows each epic's ID on a label in its configured color, both in the menu and after selection; its full name is available on hover. If saving fails, the form keeps your text and selected images so you can retry. Images are optional and use the same PNG, JPEG, WebP, and GIF limits as other task attachments.
 
 Use the square **Add image attachment** tile at the left of the image row to select files. The tile and square previews share the same top edge, and adding images keeps the row in place. The tile remains at the left while you scroll through the previews. The form fits its content without leaving a large blank area below the attachments. You can also paste an image into the request text field or drop it into the attachment area. On shorter screens, the fields scroll while **Cancel** and **Submit task** remain visible.
 

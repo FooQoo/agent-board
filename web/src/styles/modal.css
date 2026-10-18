@@ -306,10 +306,27 @@
   cursor: pointer;
 }
 
-.request-dialog__epic-trigger svg {
+.request-dialog__epic-trigger > svg {
   width: 16px;
   height: 16px;
   color: var(--r-muted);
+}
+
+.request-dialog__epic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 15px;
+}
+
+.request-dialog__epic-badge svg {
+  width: 12px;
+  height: 12px;
 }
 
 .request-dialog__epic-trigger:focus-visible {

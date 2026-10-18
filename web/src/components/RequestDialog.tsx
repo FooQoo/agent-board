@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import type { Epic } from '../types';
 import { DialogFrame } from './DialogFrame';
+import { EpicBadge } from './EpicBadge';
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import type { EditorAttachment } from './editor/attachmentTypes';
 import { useAttachmentState } from './editor/useAttachmentState';
@@ -138,7 +139,11 @@ export function RequestDialog({
                 aria-labelledby="request-epic-label"
                 disabled={saving}
               >
-                <span>{selectedEpic?.name ?? t('simpleTask.noEpic')}</span>
+                {selectedEpic ? (
+                  <EpicBadge epic={selectedEpic} className="request-dialog__epic-badge" />
+                ) : (
+                  <span>{t('simpleTask.noEpic')}</span>
+                )}
                 <ChevronDownIcon aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
@@ -151,8 +156,8 @@ export function RequestDialog({
                   {t('simpleTask.noEpic')}
                 </DropdownMenuRadioItem>
                 {epics.map((epic) => (
-                  <DropdownMenuRadioItem key={epic.id} value={epic.id}>
-                    {epic.name}
+                  <DropdownMenuRadioItem key={epic.id} value={epic.id} aria-label={epic.name}>
+                    <EpicBadge epic={epic} className="request-dialog__epic-badge" />
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
