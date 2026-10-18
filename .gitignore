@@ -8,3 +8,4 @@ e2e/playwright-report/
 .playwright-mcp
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+graphify-out
