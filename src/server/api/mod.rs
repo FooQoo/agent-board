@@ -43,9 +43,6 @@ use tasks::*;
 const MAX_MULTIPART_BODY: usize = 52 * 1024 * 1024;
 
 #[derive(Clone)]
-struct RemotePageToken(String);
-
-#[derive(Clone)]
 struct GuardContext {
     port: u16,
     token: String,

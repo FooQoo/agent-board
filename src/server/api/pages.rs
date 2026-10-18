@@ -6,8 +6,11 @@ use axum::extract::{Extension, Path, State};
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 
-use super::RemotePageToken;
 use crate::server::{AppState, assets, monitor};
+
+/// The token the remote host guard hands to the board page it serves.
+#[derive(Clone)]
+pub(super) struct RemotePageToken(pub(super) String);
 
 /// What the board page may load and do. Scripts, fonts and connections stay on
 /// this server; images may come from anywhere so a description can show them.
