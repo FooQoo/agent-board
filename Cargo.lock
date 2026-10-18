@@ -20,6 +20,7 @@ dependencies = [
  "dirs",
  "eventsource-stream",
  "expectrl",
+ "flate2",
  "futures-util",
  "getrandom 0.4.3",
  "image",

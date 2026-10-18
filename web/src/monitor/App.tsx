@@ -8,6 +8,7 @@ import { useMonitorEvents } from './hooks/useMonitorEvents';
 import { useMonitorUrl } from './hooks/useMonitorUrl';
 import { selectMonitorTasks } from './model/select';
 import { useMonitorInteractions } from './hooks/useMonitorInteractions';
+import { useBuildReload } from '../hooks/useBuildReload';
 import { monitorClient } from './client';
 
 export function App() {
@@ -26,6 +27,7 @@ function MonitorConnectedApp() {
     onRefresh: refresh,
     onVisibility: monitor.onVisibility,
   });
+  useBuildReload(events.build, answers.locked);
   const route = useMonitorUrl(monitor.projects, monitor.catalogReady);
   const [appliedScope, setAppliedScope] = useState(route.scope);
   useEffect(() => {

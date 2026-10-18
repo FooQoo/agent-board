@@ -1,11 +1,16 @@
-import { useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArchiveIcon, ArrowLeftIcon, LayersIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Project, ProjectId } from '../types';
 import type { ViewMode } from '../lib/projectSession';
 import { ProjectSwitcher } from './ProjectSwitcher';
-import { SettingsDialog } from './SettingsDialog';
+import { preloadable } from '../lib/preloadable';
+
+/** The settings dialog loads after the header is shown (see `preloadable`). */
+export const settingsDialog = preloadable(() =>
+  import('./SettingsDialog').then((module) => module.SettingsDialog),
+);
 
 export interface HeaderProps {
   /** The project list; `null` until it is known, which hides the switcher. */
@@ -39,6 +44,10 @@ export function Header({
 }: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  useEffect(() => {
+    // A failed fetch is tried again when the dialog is first rendered.
+    settingsDialog.preload().catch(() => {});
+  }, []);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
@@ -125,11 +134,13 @@ export function Header({
       >
         <SettingsIcon aria-hidden="true" />
       </Button>
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        restoreFocusRef={settingsButtonRef}
-      />
+      <Suspense fallback={null}>
+        <settingsDialog.Component
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          restoreFocusRef={settingsButtonRef}
+        />
+      </Suspense>
     </header>
   );
 }

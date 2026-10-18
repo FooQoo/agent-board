@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.access.config.ts && vite build --config vite.monitor.config.ts && node scripts/finalize-monitor-build.mjs",
+    "build": "vite build && vite build --config vite.access.config.ts && vite build --config vite.monitor.config.ts && node scripts/finalize-monitor-build.mjs && node scripts/compress-dist.mjs",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",
     "lint": "biome lint .",

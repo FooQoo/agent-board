@@ -53,7 +53,7 @@ fn monitor_api_is_read_only_allowlisted_and_uses_the_shared_snapshot() {
 }
 
 #[test]
-fn monitor_assets_are_not_cached_including_viewer_chunks_and_missing_files() {
+fn monitor_assets_are_cached_by_content_name_and_missing_files_are_not() {
     let home = home();
     let server = Running::start(home.path());
     let host = server.monitor_headers();
@@ -61,16 +61,27 @@ fn monitor_assets_are_not_cached_including_viewer_chunks_and_missing_files() {
         serde_json::from_str(include_str!("../web/dist/monitor/manifest.json")).unwrap();
     for asset in manifest["assets"].as_array().unwrap() {
         let name = asset["name"].as_str().unwrap();
-        let path = format!("/assets/monitor/{name}?v=test");
+        let path = format!("/assets/monitor/{name}");
         for method in ["GET", "HEAD"] {
             let response = server.request(method, &path, &host, "");
             assert_eq!(response.status, 200, "{method} {path}");
-            assert_eq!(response.header("cache-control"), Some("no-store"), "{path}");
+            assert_eq!(
+                response.header("cache-control"),
+                Some("public, max-age=31536000, immutable"),
+                "{path}"
+            );
+            assert_eq!(response.header("vary"), Some("accept-encoding"), "{path}");
         }
     }
-    let missing = server.request("GET", "/assets/monitor/missing.js", &host, "");
-    assert_eq!(missing.status, 404);
-    assert_eq!(missing.header("cache-control"), Some("no-store"));
+    for missing in ["missing.js", "index.html", "monitor.js", "manifest.json"] {
+        let response = server.request("GET", &format!("/assets/monitor/{missing}"), &host, "");
+        assert_eq!(response.status, 404, "{missing}");
+        assert_eq!(
+            response.header("cache-control"),
+            Some("no-store"),
+            "{missing}"
+        );
+    }
 }
 
 #[test]
@@ -97,7 +108,15 @@ fn monitor_events_emit_ready_and_react_to_the_shared_change_broadcast() {
         }
         String::from_utf8(body).unwrap()
     }
-    assert!(next_event(&mut reader).contains("event: ready"));
+    let ready = next_event(&mut reader);
+    assert!(ready.contains("event: ready"), "{ready}");
+    assert!(
+        ready.contains(&format!(
+            r#"data: {{"build":"{}"}}"#,
+            agent_board::server::web_assets::MONITOR_BUILD_ID
+        )),
+        "{ready}"
+    );
     let files = agent_board::file_store::FileStore::open(&home.path().join("shared"));
     files.create_project("other", chrono::Utc::now()).unwrap();
     assert!(next_event(&mut reader).contains("event: changed"));

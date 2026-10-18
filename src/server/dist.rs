@@ -4,16 +4,12 @@
 use std::path::Path;
 
 /// Files `pnpm --dir web build` must produce under `web/dist/`.
-pub const REQUIRED_FILES: [&str; 5] = [
-    "index.html",
-    "assets/app.js",
-    "assets/app.css",
-    "logo.png",
-    "logo-white.png",
-];
+/// The scripts and stylesheets are named by their content, so `build.rs`
+/// checks them through the files the HTML names.
+pub const REQUIRED_FILES: [&str; 3] = ["index.html", "logo.png", "logo-white.png"];
 
 pub const ACCESS_REQUIRED_FILES: [&str; 2] = ["index.html", "entry.js"];
-pub const MONITOR_REQUIRED_FILES: [&str; 3] = ["index.html", "monitor.js", "monitor.css"];
+pub const MONITOR_REQUIRED_FILES: [&str; 1] = ["index.html"];
 
 /// Required files missing beneath one isolated web asset namespace.
 pub fn missing_namespace_files<'a>(
@@ -67,13 +63,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         assert_eq!(
             missing_files(&tmp.path().join("dist")),
-            vec![
-                "index.html",
-                "assets/app.js",
-                "assets/app.css",
-                "logo.png",
-                "logo-white.png"
-            ]
+            vec!["index.html", "logo.png", "logo-white.png"]
         );
     }
 
@@ -81,10 +71,8 @@ mod tests {
     fn only_the_absent_files_are_reported() {
         let tmp = tempfile::tempdir().unwrap();
         touch(tmp.path(), "index.html");
-        touch(tmp.path(), "assets/app.css");
-        touch(tmp.path(), "logo.png");
         touch(tmp.path(), "logo-white.png");
-        assert_eq!(missing_files(tmp.path()), vec!["assets/app.js"]);
+        assert_eq!(missing_files(tmp.path()), vec!["logo.png"]);
     }
 
     #[test]
@@ -99,19 +87,17 @@ mod tests {
     #[test]
     fn a_directory_in_place_of_a_file_does_not_count() {
         let tmp = tempfile::tempdir().unwrap();
-        touch(tmp.path(), "index.html");
-        touch(tmp.path(), "assets/app.css");
         touch(tmp.path(), "logo.png");
         touch(tmp.path(), "logo-white.png");
-        std::fs::create_dir_all(tmp.path().join("assets/app.js")).unwrap();
-        assert_eq!(missing_files(tmp.path()), vec!["assets/app.js"]);
+        std::fs::create_dir_all(tmp.path().join("index.html")).unwrap();
+        assert_eq!(missing_files(tmp.path()), vec!["index.html"]);
     }
 
     #[test]
     fn the_message_tells_how_to_build_and_names_the_files() {
-        let message = error_message(&["index.html", "assets/app.js"]);
+        let message = error_message(&["index.html", "logo.png"]);
         assert!(message.contains("Run \"pnpm --dir web build\" first."));
-        assert!(message.contains("index.html, assets/app.js"));
+        assert!(message.contains("index.html, logo.png"));
     }
 
     #[test]
@@ -123,15 +109,15 @@ mod tests {
         );
         assert_eq!(
             missing_namespace_files(tmp.path(), "monitor", &MONITOR_REQUIRED_FILES),
-            vec!["index.html", "monitor.js", "monitor.css"]
+            vec!["index.html"]
         );
         assert!(
             namespace_error_message("access", &["entry.js"])
                 .contains("Run \"pnpm --dir web build\" first.")
         );
         assert!(
-            namespace_error_message("monitor", &["monitor.css"])
-                .contains("missing in web/dist/monitor: monitor.css")
+            namespace_error_message("monitor", &["index.html"])
+                .contains("missing in web/dist/monitor: index.html")
         );
     }
 }

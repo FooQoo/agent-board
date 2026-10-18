@@ -416,9 +416,8 @@ test('monitor renders both projects and same-number tasks, preserves direct rout
   await expect(monitorTask(page, 2, 'Alpha running one')).toBeVisible();
   await expect(monitorTask(page, 3, 'Alpha running two')).toBeVisible();
   await expect(monitorTask(page, 11, 'Alpha completed 8')).toHaveCount(1);
-  expect(requests).toContain('/assets/monitor/monitor.js');
-  expect(requests).not.toContain('/assets/app.js');
-  expect(requests).not.toContain('/assets/index.js');
+  expect(requests.some((url) => /^\/assets\/monitor\/monitor-[\w-]+\.js$/.test(url))).toBe(true);
+  expect(requests.filter((url) => /^\/assets\/(app|index)[-.]/.test(url))).toEqual([]);
 
   const html = await page.request.get('/monitor/');
   const htmlText = await html.text();

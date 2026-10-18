@@ -1,6 +1,6 @@
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { ensureSyntaxTree } from '@codemirror/language';
-import { EditorState } from '@codemirror/state';
+import type { Heading } from 'mdast';
+import { visit } from 'unist-util-visit';
+import { parseMarkdown } from '../../lib/markdown/parse';
 
 export interface OutlineItem {
   /** The heading text without the `## ` marker. */
@@ -9,34 +9,25 @@ export interface OutlineItem {
   from: number;
 }
 
-const H2_NODES = new Set(['ATXHeading2', 'SetextHeading2']);
-/** Parsing a description of the maximum size takes a few milliseconds; this is only a safety net. */
-const PARSE_BUDGET_MS = 2000;
-
 /**
  * The `##` headings of a Markdown text, read from its syntax tree. A `##` inside a code block is
- * not a heading in the tree, so it is not listed.
+ * not a heading in the tree, so it is not listed. The parser is the one the Markdown view uses, so
+ * the outline needs nothing from the editor's own bundle.
  */
 export function outlineOf(source: string): OutlineItem[] {
   if (source === '') return [];
-  const state = EditorState.create({
-    doc: source,
-    extensions: [markdown({ base: markdownLanguage })],
-  });
-  const tree = ensureSyntaxTree(state, state.doc.length, PARSE_BUDGET_MS);
-  if (tree === null) return [];
   const items: OutlineItem[] = [];
-  tree.iterate({
-    enter(node) {
-      if (!H2_NODES.has(node.name)) return;
-      const raw = state.sliceDoc(node.from, node.to);
-      const first = raw.split('\n')[0] ?? '';
-      const text = (node.name === 'ATXHeading2' ? first.replace(/^#{2}[ \t]*/, '') : first)
-        .replace(/[ \t]+#+[ \t]*$/, '')
-        .trim();
-      items.push({ text, from: node.from });
-      return false;
-    },
+  visit(parseMarkdown(source), 'heading', (node: Heading) => {
+    const from = node.position?.start.offset;
+    const to = node.position?.end.offset;
+    if (node.depth !== 2 || from === undefined || to === undefined) return;
+    const first = source.slice(from, to).split('\n')[0] ?? '';
+    const text = first
+      .replace(/^#{2}(?=[ \t]|$)[ \t]*/, '')
+      .replace(/[ \t]+#+[ \t]*$/, '')
+      .replace(/^#+$/, '')
+      .trim();
+    items.push({ text, from });
   });
   return items;
 }
