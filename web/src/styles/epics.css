@@ -160,26 +160,6 @@
   line-height: 15px;
 }
 
-.epic-detail .epic-detail__tool {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: var(--r-surface);
-  color: var(--r-text2);
-}
-
-.epic-detail .epic-detail__tool svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* The edit and close icons sit in one toolbar, 8px apart, as in the design. */
-.epic-detail .epic-detail__toolbar {
-  gap: 8px;
-}
-
 @media (max-width: 760px) {
   .epic-row > button {
     padding: 12px;

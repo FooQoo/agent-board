@@ -35,14 +35,10 @@ export function EpicDetailPanel({ projectId, epic, onEdit, onClose }: EpicDetail
           <EpicBadge epic={epic} className="epic-detail__badge" icon={false} />
           {epic.isDraft && <span className="card__draft">{t('draft.label')}</span>}
         </span>
-        <div
-          className="detail__toolbar epic-detail__toolbar"
-          role="toolbar"
-          aria-label={t('epics.actions')}
-        >
+        <div className="detail__toolbar" role="toolbar" aria-label={t('epics.actions')}>
           <button
             type="button"
-            className="epic-detail__tool"
+            className="detail__tool"
             aria-label={t('epics.edit')}
             title={t('epics.edit')}
             onClick={onEdit}
@@ -51,7 +47,7 @@ export function EpicDetailPanel({ projectId, epic, onEdit, onClose }: EpicDetail
           </button>
           <button
             type="button"
-            className="epic-detail__tool"
+            className="detail__close"
             aria-label={t('detail.close')}
             title={t('detail.close')}
             onClick={onClose}
