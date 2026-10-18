@@ -13,7 +13,7 @@ import {
   workspace,
   type TaskJson,
 } from '../helpers/agboard';
-import { editorValue, waitForSync } from '../helpers/ui';
+import { editorValue, openManualCreateDialog, waitForSync } from '../helpers/ui';
 
 // The acceptance conditions on the real page and in the real CLI: how they show on the board and in the details,
 // how a person adds, edits, reorders, and checks them, what a broken frontmatter does, and when an agent may not
@@ -125,8 +125,7 @@ test('the board and the details show the number of conditions done, and nothing 
 
 test('a person adds conditions when creating a task, and the CLI reads them back with the same ids and text', async ({ page }) => {
   const id = nextTaskId(mainProject);
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Plan the list endpoint');
   await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   for (const [index, condition] of THREE.entries()) {
@@ -140,8 +139,7 @@ test('a person adds conditions when creating a task, and the CLI reads them back
 });
 
 test('the focus ring of the first condition is not cut off by the scrolling list', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   await dialog.getByRole('button', { name: 'Add condition' }).click();
   const first = dialog.getByRole('textbox', { name: 'Condition AC-1' });

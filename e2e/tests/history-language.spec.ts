@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
-import { pasteMarkdown, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, waitForSync } from '../helpers/ui';
 
 test('selected UI language is saved in new history and does not rewrite existing entries', async ({ page }) => {
   resetBoard(mainProject);
@@ -10,8 +10,7 @@ test('selected UI language is saved in new history and does not rewrite existing
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('radio', { name: '日本語', exact: true }).click();
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'タスク追加', exact: true }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'タイトル', exact: true }).fill('Language history');
   await pasteMarkdown(dialog.getByRole('textbox', { name: '説明(Markdown)', exact: true }), 'English task body.');
   await dialog.getByRole('button', { name: '追加', exact: true }).click();
@@ -26,8 +25,7 @@ test('selected UI language is saved in new history and does not rewrite existing
   await waitForSync(page);
   expect(stored().history).toEqual(original);
   const next = nextTaskId(mainProject);
-  await page.getByRole('button', { name: 'Add task', exact: true }).click();
-  const englishDialog = page.getByRole('dialog');
+  const englishDialog = await openManualCreateDialog(page);
   await englishDialog.getByRole('textbox', { name: 'Title', exact: true }).fill('日本語のタスク');
   await pasteMarkdown(englishDialog.getByRole('textbox', { name: 'Description (Markdown)', exact: true }), '日本語の本文。');
   await englishDialog.getByRole('button', { name: 'Add', exact: true }).click();

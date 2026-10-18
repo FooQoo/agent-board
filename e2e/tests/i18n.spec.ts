@@ -2,6 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { listTasks, mainHome, resetBoard, mainProject } from '../helpers/agboard';
+import { openManualCreateDialog } from '../helpers/ui';
 
 test.use({ locale: 'ja-JP' });
 
@@ -74,8 +75,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await panel.getByRole('tab', { name: /^受入条件/ }).click();
   await expect(panel.getByRole('tabpanel')).toContainText('受入条件');
   await expect(panel).not.toContainText('受け入れ');
-  await page.getByRole('button', { name: 'タスク追加' }).click();
-  const createDialog = page.getByRole('dialog', { name: 'タスクを追加' });
+  const createDialog = await openManualCreateDialog(page);
   await expect(createDialog.getByRole('button', { name: /^受入条件/ })).toBeVisible();
   await expect(createDialog).not.toContainText('受け入れ');
   await page.keyboard.press('Escape');

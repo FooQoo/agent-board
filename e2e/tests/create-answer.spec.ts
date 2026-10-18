@@ -2,7 +2,7 @@ import { expectHistoryNote } from '../helpers/history';
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson, decisionJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
-import { pasteMarkdown, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, waitForSync } from '../helpers/ui';
 
 // Adding a card in the shared dialog, and answering a decision request on its card, on the real page.
 
@@ -44,8 +44,7 @@ test('a task is added with a title, the AI as the default owner, and a Markdown 
   page,
 }) => {
   const id = nextTaskId(mainProject);
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await expect(dialog).toContainText('Add task');
   // The owner defaults to the AI; nothing can be added without a title.
   await expect(dialog.getByRole('radio', { name: 'AI', exact: true })).toBeChecked();
@@ -94,8 +93,7 @@ test('a task is added with a title, the AI as the default owner, and a Markdown 
 
 test('a task for the user is added without a body; closing without typing asks nothing', async ({ page }) => {
   const id = nextTaskId(mainProject);
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('radio', { name: 'User', exact: true }).check();
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Check the invoice');
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
@@ -108,15 +106,14 @@ test('a task for the user is added without a body; closing without typing asks n
   expectHistoryNote(show(id).history[0], ['Created task in Todo', 'agent idle']);
   await task(page, id).click();
 
-  await page.getByRole('button', { name: 'Add task' }).click();
+  await openManualCreateDialog(page);
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toHaveCount(0);
   expect(listTasks(mainProject).map((item) => item.id)).toEqual(expect.not.arrayContaining([id + 1]));
 });
 
 test('a title or body over the limit cannot be added', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Long body');
   await dialog.getByRole('textbox', { name: 'Description (Markdown)' }).click();
   // The counter counts the Markdown the editor writes, so the text is filled up to the limit by reading it.

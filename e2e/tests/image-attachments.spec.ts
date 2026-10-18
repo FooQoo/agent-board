@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody } from '../helpers/agboard';
-import { pasteMarkdown, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, waitForSync } from '../helpers/ui';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -18,8 +18,7 @@ test('side attachments render, persist, retry safely and become No image after d
   const id = nextTaskId(mainProject);
   await page.goto('/');
   await waitForSync(page);
-  await page.getByRole('button', { name: 'Add task', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Image round trip');
   // The body starts with the required headings; the picture is inserted into it from the side pane.
   await pasteMarkdown(body(dialog), taskBody('Pictures follow.'));
@@ -101,8 +100,7 @@ test('clipboard images open the side pane and cancellation discards them', async
   const id = nextTaskId(mainProject);
   await page.goto('/');
   await waitForSync(page);
-  await page.getByRole('button', { name: 'Add task', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await body(dialog).evaluate((element, base64) => {
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     const data = new DataTransfer();
@@ -124,8 +122,7 @@ test('drop works at narrow widths without shrinking the body and CLI can read sa
   await page.setViewportSize({ width: 960, height: 900 });
   await page.goto('/');
   await waitForSync(page);
-  await page.getByRole('button', { name: 'Add task', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Dropped image');
   await pasteMarkdown(body(dialog), taskBody('Dropped below.'));
   const widthBefore = (await body(dialog).boundingBox())!.width;

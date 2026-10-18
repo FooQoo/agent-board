@@ -20,7 +20,7 @@ import {
   taskBody,
   workspace,
 } from '../helpers/agboard';
-import { waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, waitForSync } from '../helpers/ui';
 
 // The shared folder as the product keeps it: created by the CLI, read by two working directories, and edited
 // directly in its files. These scenarios use the real binary and the real serve on the main port.
@@ -196,8 +196,8 @@ test('the editor is not loaded on the first screen, and assets that are not regi
   expect(loaded.filter((name) => /RichMarkdownEditor|Diagram|cytoscape|elk|katex/i.test(name)), loaded.join(' ')).toEqual([]);
 
   // Opening the add dialog loads the editor chunk, which the first screen did not need.
-  await page.getByRole('button', { name: 'Add task', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Add task' }).getByRole('textbox', { name: 'Description (Markdown)' })).toBeVisible();
+  const create = await openManualCreateDialog(page);
+  await expect(create.getByRole('textbox', { name: 'Description (Markdown)' })).toBeVisible();
   await expect.poll(() => loaded.some((name) => /RichMarkdownEditor/.test(name))).toBe(true);
 
   // A name that is not registered is a 404.

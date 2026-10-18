@@ -9,7 +9,7 @@ import {
   stopServe,
   type Serve,
 } from '../helpers/agboard';
-import { waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, waitForSync } from '../helpers/ui';
 
 // This spec restarts its serve while a page is open, so its token goes out of date. It owns the same port and data
 // directory as the states spec, which runs in another file, one file at a time.
@@ -31,8 +31,7 @@ test.afterAll(async () => {
 });
 
 async function addTask(page: import('@playwright/test').Page, title: string): Promise<void> {
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill(title);
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(dialog).toHaveCount(0);
@@ -46,8 +45,7 @@ test('after a restart, a save from an open page asks for a reload, and the reloa
   await stopServe(serve);
   serve = await startServe(statesPort, home);
 
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed before the reload');
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
 

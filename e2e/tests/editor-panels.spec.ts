@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import { agboardOk, mainProject, nextTaskId, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
-import { waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, waitForSync } from '../helpers/ui';
 
 const conditions = Array.from({ length: 40 }, (_, i) => `- [ ] Condition ${i + 1}`).join('\n');
 const body = `# 進行表と自動完了によるAIの操作削減\n\n## 目的・背景\n\nAIがプロジェクト全体の進行表から作業を選び、必要なエピック計画と作業記録だけを読んで進める。完了更新とプロジェクト指定の操作を減らす。\n\n## スコープ\n\n進行表、プロジェクトとフォルダの登録、エピックの進行順、Hook、自動Doneを扱う。\n\n### プロジェクトの識別\n\nフォルダの登録では \`agboard project bind NAME\` を使い、最も近い祖先の登録を参照する。\n\n${'More body text.\n\n'.repeat(60)}\n\n## Reference conditions\n\n${conditions}`;
@@ -73,7 +73,7 @@ test('creation and task editing use the same single conditions panel and compact
   await expect(dialog.locator('.conditions-dock__title')).toHaveCSS('font-size', '14px');
   await page.screenshot({ path: testInfo.outputPath('card-edit.png') });
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.getByRole('button', { name: 'Add task', exact: true }).click();
+  await openManualCreateDialog(page);
   await dialog.locator('.conditions-dock__head').click();
   await dialog.getByRole('button', { name: 'Add condition', exact: true }).click();
   await dialog.getByRole('textbox', { name: 'Condition AC-1', exact: true }).fill('First condition');

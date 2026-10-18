@@ -17,6 +17,7 @@ import {
   type Serve,
 } from '../helpers/agboard';
 import { spawn, spawnSync } from 'node:child_process';
+import { openManualCreateDialog } from '../helpers/ui';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
 // the browser are real. The browser's requests are touched only where a test needs a slow or failing
@@ -206,8 +207,7 @@ test.describe('two projects with the same task numbers', () => {
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
 
     // Create a card in Alpha; it gets the next Alpha number.
-    await page.getByRole('button', { name: 'Add task' }).click();
-    const create = page.getByRole('dialog', { name: 'Add task' });
+    const create = await openManualCreateDialog(page);
     await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Alpha: made on the page');
     await create.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(create).toHaveCount(0);
@@ -375,8 +375,7 @@ test.describe('two projects with the same task numbers', () => {
       await open(page, alpha);
       let close: () => Promise<void>;
       if (kind === 'create') {
-        await page.getByRole('button', { name: 'Add task' }).click();
-        const dialog = page.getByRole('dialog', { name: 'Add task' });
+        const dialog = await openManualCreateDialog(page);
         close = async () => {
           await dialog.getByRole('button', { name: 'Cancel' }).click();
         };
@@ -424,8 +423,7 @@ test.describe('two projects with the same task numbers', () => {
     });
     const fresh = nextTaskId('Beta', home);
 
-    await page.getByRole('button', { name: 'Add task' }).click();
-    const create = page.getByRole('dialog', { name: 'Add task' });
+    const create = await openManualCreateDialog(page);
     await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed in Beta');
     // The browser walks the history back and forth several times while the form is open.
     await page.goBack();
@@ -466,8 +464,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect(task(page, 1)).toHaveText(/Beta: benchmark the importer/);
 
     // Cancel: the form closes and the screen follows the URL (Alpha).
-    await page.getByRole('button', { name: 'Add task' }).click();
-    const create = page.getByRole('dialog', { name: 'Add task' });
+    const create = await openManualCreateDialog(page);
     await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Never saved');
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
@@ -541,8 +538,7 @@ test.describe('two projects with the same task numbers', () => {
       return route.fallback();
     });
 
-    await page.getByRole('button', { name: 'Add task' }).click();
-    const create = page.getByRole('dialog', { name: 'Add task' });
+    const create = await openManualCreateDialog(page);
     await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Kept title');
     await create.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');

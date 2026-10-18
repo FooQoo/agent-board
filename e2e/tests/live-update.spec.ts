@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
-import { pasteMarkdown } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown } from '../helpers/ui';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
 let fresh = 0;
@@ -142,8 +142,7 @@ test('the selection stays on a task that moves to another lane', async ({ page }
 });
 
 test('users can add a task, choose its owner, and move it with a reason', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const create = page.getByRole('dialog', { name: 'Add task' });
+  const create = await openManualCreateDialog(page);
   await expect(create.getByRole('radio', { name: 'AI', exact: true })).toBeChecked();
   await expect(create.getByRole('radio', { name: 'User', exact: true })).not.toBeChecked();
   await create.getByRole('textbox', { name: 'Title' }).fill('Review the release notes');

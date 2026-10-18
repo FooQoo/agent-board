@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { resetBoard, mainProject } from '../helpers/agboard';
-import { waitForSync, editorValue } from '../helpers/ui';
+import { waitForSync, editorValue, openManualCreateDialog } from '../helpers/ui';
 
 // The rich body editor of the add dialog: an empty editor shows its placeholder and takes typing, Enter starts a
 // new paragraph, and Home and the arrows move the caret inside the text. The Markdown it writes has a blank line
@@ -19,8 +19,7 @@ for (const locale of ['en', 'ja'] as const) {
       resetBoard(mainProject);
       await page.goto('/');
       await waitForSync(page);
-      await page.getByRole('button', { name: locale === 'ja' ? 'タスク追加' : 'Add task', exact: true }).click();
-      const dialog = page.getByRole('dialog', { name: locale === 'ja' ? 'タスクを追加' : 'Add task' });
+      const dialog = await openManualCreateDialog(page);
       await expect(dialog).toBeVisible();
       const ai = dialog.getByRole('radio', { name: 'AI', exact: true });
       const user = dialog.getByRole('radio', { name: locale === 'ja' ? 'ユーザ' : 'User', exact: true });

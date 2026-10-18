@@ -1,4 +1,4 @@
-import { editorValue, pasteMarkdown } from '../helpers/ui';
+import { editorValue, openManualCreateDialog, pasteMarkdown } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
@@ -475,14 +475,20 @@ test('the settings dialog takes the focus, keeps it inside, and gives it back', 
   await page.keyboard.press('Escape');
 });
 
-test('Add task takes the focus to the title, keeps it inside, and gives it back; the input survives a click outside', async ({
+test('task creation dialogs take focus, keep it inside, and preserve the manual input across a click outside', async ({
   page,
 }) => {
   await openFresh(page);
   const add = page.getByRole('button', { name: 'Add task' });
   await add.focus();
   await page.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const request = page.getByRole('dialog', { name: 'New task' });
+  await expect(request.getByRole('textbox', { name: 'What should be done?' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(request).toHaveCount(0);
+  await expect(add).toBeFocused();
+
+  const dialog = await openManualCreateDialog(page);
   await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeFocused();
   for (let step = 0; step < 12; step += 1) {
     await page.keyboard.press('Tab');
@@ -501,20 +507,17 @@ test('Add task takes the focus to the title, keeps it inside, and gives it back;
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed and kept');
 
-  // The typed title is unsaved, so Escape asks first; Discard and close then gives the focus back.
+  // The typed title is unsaved, so Escape asks first; Discard and close discards it.
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(add).toBeFocused();
   expect(listTasks(mainProject).map(({ title }) => title)).not.toContain('Typed and kept');
 
-  // Cancel and the close button also give the focus back.
-  await add.click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-  await expect(add).toBeFocused();
-  await add.click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
-  await expect(add).toBeFocused();
+  // Cancel and the close button also dismiss the manual editor.
+  await (await openManualCreateDialog(page)).getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog', { name: /^(Add task|タスクを追加)/ })).toHaveCount(0);
+  await (await openManualCreateDialog(page)).getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog', { name: /^(Add task|タスクを追加)/ })).toHaveCount(0);
 });
 
 test('the move dialog and the answer dialog take the focus and give it back', async ({ page }) => {
@@ -556,8 +559,7 @@ test('while a task is being saved the dialog cannot be submitted again or closed
     await gate;
     return route.fallback();
   });
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add task' });
+  const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Saved once');
   await dialog.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -583,8 +585,7 @@ test('while a task is being saved the dialog cannot be submitted again or closed
 test('changing the language does not translate or alter what was entered', async ({ page }) => {
   await openFresh(page);
   // Enter a card in English, move it with a reason, and answer a decision request.
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const create = page.getByRole('dialog', { name: 'Add task' });
+  const create = await openManualCreateDialog(page);
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Draft the release note');
   await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Line one\n\nLine two'));
   await create.getByRole('radio', { name: 'User' }).click();
@@ -623,8 +624,7 @@ test('changing the language does not translate or alter what was entered', async
   expect(listTasks(mainProject)).toEqual(before);
 
   // A card entered in Japanese mode is stored as typed too.
-  await page.getByRole('button', { name: 'タスク追加' }).click();
-  const japaneseCreate = page.getByRole('dialog', { name: 'タスクを追加' });
+  const japaneseCreate = await openManualCreateDialog(page);
   await expect(japaneseCreate).toBeVisible();
   await japaneseCreate.getByRole('textbox', { name: 'タイトル', exact: true }).fill('Release note review');
   await japaneseCreate.getByRole('button', { name: '追加', exact: true }).click();
@@ -646,8 +646,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   });
 
   // Create.
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const create = page.getByRole('dialog', { name: 'Add task' });
+  const create = await openManualCreateDialog(page);
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Review the themes');
   await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Check all 24 themes.'));
   await create.getByRole('button', { name: 'Add', exact: true }).click();
@@ -736,8 +735,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
     return route.fallback();
   });
 
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const create = page.getByRole('dialog', { name: 'Add task' });
+  const create = await openManualCreateDialog(page);
   await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed title');
   await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Typed description\n\nsecond line'));
   await create.getByRole('radio', { name: 'User' }).click();
@@ -894,7 +892,7 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
   }
 
   // The dialogs, in Dark Red.
-  await page.getByRole('button', { name: 'Add task' }).click();
+  await openManualCreateDialog(page);
   await shot(page, testInfo, '07-create-dark-red.png');
   await page.keyboard.press('Escape');
   const move = await dragTaskTo(page, 16, 'Doing');
