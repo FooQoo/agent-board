@@ -20,7 +20,7 @@ pnpm --dir docs preview --port <port>   # ビルドしたサイトを配信
 ガイドの画像とデモ動画は、次のスクリプトで再生成します。どちらも先に[Web画面とCLIをビルド](./getting-started/setup.md#ビルド)し、[検証](./getting-started/pull-request.md#検証)のPlaywrightのブラウザをインストールしておく必要があります。
 
 ```sh
-node e2e/scripts/docs-screenshots.mjs   # docs/images/guide/*.png(英日14枚)
+node e2e/scripts/docs-screenshots.mjs   # docs/images/guide/*.png(英日16枚)
 node e2e/scripts/demo-video.mjs         # docs/public/videos/(ffmpegも必要)
 ```
 

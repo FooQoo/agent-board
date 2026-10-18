@@ -18,6 +18,9 @@ const extra = {
     archived: ['Set up the repository', 'Choose the color palette', 'Write the first draft'],
     archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
     makeDraft: 'Make draft', edit: 'Edit task', settings: 'Settings', cancel: 'Cancel',
+    addCard: 'Add task', promptLabel: 'What should be done?', epicLabel: 'Epic (optional)',
+    attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
+    discard: 'Discard and close',
   },
   ja: {
     editorTask: 3,
@@ -26,6 +29,9 @@ const extra = {
     archived: ['リポジトリを準備する', '配色を決める', '最初の下書きを書く'],
     archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
     makeDraft: '下書きにする', edit: 'タスクを編集', settings: '設定', cancel: 'キャンセル',
+    addCard: 'タスク追加', promptLabel: '何をしてほしいですか？', epicLabel: 'エピック（任意）',
+    attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
+    discard: '破棄して閉じる',
   },
 };
 
@@ -75,6 +81,32 @@ try {
       };
       const page = await open('light');
       const task = (n) => page.getByRole('button', { name: new RegExp(`^#${n}(?!\\d)`) });
+
+      // task-request: a real short request with an optional epic and image.
+      await page.getByRole('button', { name: more.addCard, exact: true }).click();
+      const request = page.getByRole('dialog', { name: locale === 'ja' ? '新しいタスク' : 'New task' });
+      await request.getByRole('textbox', { name: more.promptLabel }).fill(more.requestText);
+      await request.getByRole('button', { name: more.epicLabel }).click();
+      await page.getByRole('menuitemradio', { name: text.design, exact: true }).click();
+      await request.locator('input[type="file"]').setInputFiles(path.join(repo, 'docs/public/logo.png'));
+      await expect(request.getByRole('button', {
+        name: locale === 'ja' ? 'logo.pngをプレビュー' : 'Preview logo.png',
+      })).toBeVisible();
+      await expect(request.getByRole('region', { name: more.attachLabel })).toBeVisible();
+      await expect(request.getByText('logo.png', { exact: true })).toBeVisible();
+      await expect(request.getByRole('button', {
+        name: locale === 'ja' ? 'logo.pngを削除' : 'Remove logo.png',
+      })).toBeVisible();
+      const tileBox = await request.locator('.editor-attachments__tile').boundingBox();
+      const listBox = await request.locator('.editor-attachments__list').boundingBox();
+      if (!tileBox || tileBox.width < 100 || tileBox.height < 80 || !listBox || listBox.height < 120) {
+        throw new Error(`The attached image tile is not visibly laid out: ${JSON.stringify(tileBox)}`);
+      }
+      await shot('task-request', request, page);
+      await request.getByRole('button', { name: more.cancel, exact: true }).click();
+      await page.getByRole('dialog', { name: locale === 'ja' ? '変更を破棄しますか?' : 'Discard changes?' })
+        .getByRole('button', { name: more.discard, exact: true }).click();
+      await expect(request).toHaveCount(0);
 
       // question: the Pending card with its answer field.
       await expect(task(3)).toBeVisible();
@@ -141,7 +173,7 @@ try {
       await shot('epic-list', page, page);
 
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured 7 guide screenshots; no browser errors.`);
+      console.log(`${locale}: captured 8 guide screenshots; no browser errors.`);
     } finally {
       await Promise.all(contexts.map((ctx) => ctx.close()));
       await stop(server);

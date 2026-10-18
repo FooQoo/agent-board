@@ -83,6 +83,20 @@ A cursor has the format `f1:<project-id>:<version>`. Use the value that `snapsho
 - `wait_timeout`, `board_unavailable`, `cursor_invalid`, and `project_not_found` are errors, never answers.
 - When `wait` returns, read the full snapshot and history, reconsider the user's reason, then resume or ask a follow-up question.
 
+## Listen for the next task
+
+You can keep one already-open Codex or Claude Code session working through AI tasks in one project. Run `agboard serve` against the same data area, then start listening explicitly and choose how many seconds the board must have no eligible task before the command ends:
+
+```sh
+agboard --project "My project" wait --until task --idle-timeout 300 --json
+```
+
+The timeout is required and must be from 1 to 86,400 seconds; there is no default. A task already in Todo is returned immediately, so tasks created before listening are included. Each successful call returns one task. Finish or pause that task, then call `wait` again in the same session to take the next one. The selector follows the same order as the progress table: epics sorted by ID, each epic's saved task priority and then task ID, followed by ungrouped tasks by ID. It selects only AI-owned, Todo, Idle, non-draft, non-archived tasks. It does not claim or edit the task; read its plan, body, attachments, and current state before deciding whether its work is approved and ready to start. Keep ordinary manual task creation available; it creates the same kind of task the listener can later pick up.
+
+Use the [listener procedure in the agent-board skill](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md) for the full loop, including pending decisions and recovery after a session is interrupted. A Pending task keeps the same session waiting for the answer; it is not another task to skip to, and its time does not count toward idle timeout. After the answer, read it and resume that task before listening again.
+
+`idle_timeout` is a normal exit with code 0. It says only that no eligible task appeared for the full requested interval. A lost server connection, invalid board data, deleted project, or invalid command is an error; it must not be reported as an empty board. See the [CLI reference](./cli#wait-for-changes-or-a-task) for the output and error codes.
+
 ## Drafts and errors
 
 A draft (`isDraft: true`) is read-only for agents: `edit`, `mv`, and `state` fail with `task_is_draft`. Work on other tasks until the user finalizes it.

@@ -52,6 +52,10 @@ It groups active tasks under epics and lists unassigned work. Done, archived, an
 
 After context compaction, read a fresh progress table before any board-dependent change. This skill does not register hooks; never add or edit the user's installed hook command.
 
+### Explicit listen mode
+
+The normal work loop selects a task and finishes that turn. Start the serial listener loop only when the user explicitly asks to listen for tasks. In that mode, follow [the listener procedure](references/listening.md): establish one project and a positive idle timeout with the user, use `wait --until task --idle-timeout <seconds> --json`, process one task at a time in this same session, and start the next wait after resolving the current task. The wait command is not a background agent or a task claim. Do not treat a wait result as approval to implement; read the current plan and task first. The full idle interval with no eligible task exits normally; connection, project, data, and argument failures remain errors.
+
 ## 3. Find and edit the shared files
 
 Get the folder paths from the selected project's progress table; never assume or hard-code their location. For general project metadata, use an explicit project:
@@ -168,7 +172,7 @@ The user answers in the browser with a choice, a note, or both. The answer retur
 
 ## 8. Wait and resume
 
-When no work can proceed, wait for a change using the `cursor` of the latest snapshot of the same project. This wait can continue indefinitely; optionally set `--timeout` to limit the wait command, or press Ctrl+C to stop it. Neither action changes tasks or questions:
+When no work can proceed in the ordinary work loop, wait for a change using the `cursor` of the latest snapshot of the same project. This wait can continue indefinitely; optionally set `--timeout` to limit the wait command, or press Ctrl+C to stop it. Neither action changes tasks or questions:
 
 ```sh
 agboard --project "<name>" wait --after "<cursor>" --json
@@ -183,6 +187,8 @@ agboard --project "<name>" state <id> running --actor ai --reason "<how the answ
 ```
 
 If the answer changes the scope or completion conditions, update `TASK.md` (and `PLAN.md` if affected) before resuming. If new information still conflicts, ask again.
+
+For an explicitly requested serial listener, use [`references/listening.md`](references/listening.md) and `wait --until task --idle-timeout <seconds> --json`. That mode returns one eligible task or a successful `idle_timeout`; it is distinct from waiting for a change or a Pending answer. Do not start it implicitly as part of the ordinary work loop.
 
 ## 9. Drafts and archived tasks
 

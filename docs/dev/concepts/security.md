@@ -79,6 +79,7 @@ Titles, descriptions, reasons, and answers are written by agents and users, so t
 ## Project boundaries
 
 - Naming the target every time and the immutable ProjectId keep cooperative agents from confusing projects, task numbers, or names. They are not per-project authentication or authorization.
+- The task-wait selector is a mechanical filter, not an approval or authorization check. It returns a single eligible task but does not claim it or prevent a second listener from returning the same task. Agents must read the current plan and task, honor their existing approval boundaries, and re-check state before acting. The shared files remain writable by programs running as the same OS user.
 - Project names and IDs in URLs are never treated as identity or permission, and there is no HTTP API for managing projects.
 - `ls --all-projects` is read-only and returns every project's tasks and history; with everything running as the same OS user, it does not narrow what it reads. Writes, the hook, and `wait` still target exactly one explicit project.
 - The hook gives only the progress table of the project bound to its `cwd` and never selects all projects implicitly. Templates and the generic skill never embed a project name or absolute path.

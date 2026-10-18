@@ -60,6 +60,22 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 
 `wait` blocks until the project's version differs from the cursor. It exits with an error instead of a snapshot for `wait_timeout`, `board_unavailable`, `cursor_invalid`, and `project_not_found`; none of them means "answered". See [Error codes](./errors.md).
 
+`wait --until task --idle-timeout <seconds> --json` selects one eligible AI-owned Todo/Idle task, including tasks that existed before listening began. The selection order matches the progress table. The result includes the task and local paths for its `TASK.md` and, when assigned to an epic, `PLAN.md`. Selection does not claim or edit the task.
+
+Abbreviated example; task fields are omitted.
+
+```json
+{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","planPath":"…/epics/DESIGN/PLAN.md"}
+```
+
+If the requested interval passes with no eligible task, the command returns a successful result (exit code 0):
+
+```json
+{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}
+```
+
+The timeout is required and ranges from 1 to 86,400 seconds. Connection, project, data, and argument errors remain errors; they are not encoded as `idle_timeout`. See [Error codes](./errors.md#server-and-waiting).
+
 ## Decision requests
 
 `agboard state <id> pending --request-json <json>` takes:

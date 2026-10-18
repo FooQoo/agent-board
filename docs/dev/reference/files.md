@@ -23,6 +23,7 @@ A task is one unit of work on the board. A task's state lives in `task.json`; it
 | `requestAnswers` | Answers kept for lookup by request ID, including after a restart. |
 | `archivedAt` | `null`, or the archive time. |
 | `attachments`, `evidence` | ID, name, size, and creation time of each file (images also have a MIME type). |
+| `simpleRequest` | Optional idempotency metadata `{requestId, payloadHash}` for tasks created through the short request form. Absent from normal and older tasks. |
 | `createdAt`, `updatedAt` | Creation time; when read, the later of the `task.json` and `TASK.md` modification times. |
 | `agentStatusChangedAt`, `taskStatusChangedAt` | Last run-state change and last real lane change. Body edits, progress records, and same-lane operations do not change `taskStatusChangedAt`. |
 | `history` | Read from `TASK.md`; stored and returned oldest first. |
@@ -84,6 +85,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 
 - `pendingRequest` is `{question, choices}` with choices like `[{"id":"proceed","label":"Proceed"}]`.
 - Each `requestAnswers` item is `{requestId, actor, choiceId, choiceLabel, text, at}`. `choiceId` and `choiceLabel` are both `null` or both set; `text` is `null` or a valid answer; at least one of choice or text is present. `requestId` is unique and differs from the current `pendingRequestId`.
+- `simpleRequest` is present only on tasks created by the short-request endpoint. `payloadHash` is the 64-character lowercase hexadecimal SHA-256 of the normalized request content, selected epic, and image metadata and bytes. A repeat submission with the same request ID and hash returns the existing task; a different hash with that ID is refused.
 
 In `TASK.md`, `history` is required (`history: []` is valid). New-task input may omit it or pass an empty list; non-empty history in creation input is rejected. Body and acceptance edits keep the latest history, and `edit --desc-file` never appends. A direct append may add only `at`/`reason` entries while keeping everything else; the CLI is preferred because it handles time and atomicity.
 

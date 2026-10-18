@@ -12,6 +12,7 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | `GET /api/projects` | `projects` (id, name, createdAt) and `catalogVersion`, without tasks. 200 even when empty. |
 | `GET /api/projects/{projectId}/board` | project, version, cursor, epics, `epicTaskCounts` (per epic: todo, doing, done, archived, total; archived counts only as archived; all from the same snapshot), unarchived tasks with bodies and full history, problems. No `nextTaskId`. |
 | `POST /api/projects/{projectId}/tasks` | Creates a Todo/Idle task from title, body, acceptance, assignee, isDraft. The server composes and validates the frontmatter. 201. |
+| `POST /api/projects/{projectId}/tasks/multipart` | Creates a regular task with images, or an AI task from a short request with its optional epic and images, in one multipart submission. See below. |
 | `PATCH /api/projects/{projectId}/tasks/{id}` | Updates title, body, acceptance, and optional `finalize: true` on a **draft** task. Body alone keeps the frontmatter; acceptance alone keeps the body; `description` with `body` is 422 `invalid_value`. Last write wins. Non-draft is 409 `task_not_draft`. |
 | `PUT /api/projects/{projectId}/tasks/{id}/draft` | Sets `isDraft`. A running task is 409 `invalid_state_for_draft`. |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`. Unknown EPIC-ID is 404 `epic_not_found`. |
@@ -32,6 +33,22 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | `POST /api/notify` | Asks every client to re-fetch. Changes no data and needs no token. 204. |
 | `GET /api/health` | `ok` and `pid`. |
 
+### Multipart task creation
+
+`POST /api/projects/{projectId}/tasks/multipart` accepts exactly one `metadata` part containing JSON and zero or more `file` parts. Each file must have a matching `{id, name}` entry in `metadata.attachments`; normal attachment count, size, and media-type limits apply. For a regular task, metadata includes `requestId`, `title`, `description`, `assignee`, and optionally `isDraft`. For the short request form, send:
+
+```json
+{
+  "requestKind": "simple",
+  "requestId": "<stable-id-for-this-submission>",
+  "description": "First line becomes the title\n\nFull request details",
+  "epicId": "DESIGN",
+  "attachments": [{"id": "<attachment-id>", "name": "sketch.png"}]
+}
+```
+
+`epicId` and `attachments` are optional; omit the epic or use `null`, and use an empty attachments array when there are no images. A simple request accepts no `title`, `assignee`, `isDraft`, or `finalize` metadata. The server creates an AI-owned Todo task, wraps the original text in `## 元の依頼`, and derives the title from the first non-empty line (up to 100 Unicode characters). It validates and stages the task and its images under the project lock, then publishes them together by renaming the completed task directory. The response is `201 {"task": …, "replayed": false}` for a new task or `200 {"task": …, "replayed": true}` when a retry matches an existing submission. Reusing a `requestId` with different normalized content returns `409 attachment_request_conflict`. A normal manually created task continues to use `POST /tasks` or the regular multipart metadata; it does not become a simple request.
+
 **Bulk archive.** The target IDs are fixed when the confirmation opens; the request never re-collects all Done tasks. Under the lock every unarchived target must still be Done. If any target moved or was deleted, the whole request is 409 `archive_targets_changed` and nothing changes. Targets that are already archived count as done, so a retry after a lost response never duplicates history. Targets are saved one at a time with a single reload and notification at the end; if a save fails partway, the saved targets stay archived and a retry handles the rest.
 
 **Errors** carry `code`, `message`, and `reason`:
@@ -41,7 +58,7 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | 400 | Malformed JSON. |
 | 403 | A guard failed. |
 | 404 | Project, task, or epic not found. |
-| 409 | `request_changed`, `task_not_draft`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
+| 409 | `request_changed`, `attachment_request_conflict`, `task_not_draft`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
 | 413 | Body over 1 MiB. |
 | 422 | Invalid ID syntax, input, or state rule; or an invalid source file (`file_invalid`) with path, field, and reason. |
 | 503 | The lock wait timed out. |
