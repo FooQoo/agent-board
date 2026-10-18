@@ -64,7 +64,7 @@ pub fn validate_attachment(
 }
 
 const NAME_MAX: usize = 50;
-const TITLE_MAX: usize = 100;
+pub const MAX_TITLE_CHARS: usize = 100;
 const REASON_MAX: usize = 100;
 const DESCRIPTION_MAX: usize = 50_000;
 
@@ -106,7 +106,7 @@ pub fn validate_project_name(value: &str) -> Result<String, AgboardError> {
 }
 
 pub fn validate_title(value: &str) -> Result<String, AgboardError> {
-    one_line(value, TITLE_MAX)
+    one_line(value, MAX_TITLE_CHARS)
         .ok_or_else(|| invalid("title", "Titles must be 1 to 100 characters on one line."))
 }
 

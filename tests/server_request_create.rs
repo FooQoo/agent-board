@@ -111,6 +111,23 @@ fn a_simple_request_can_belong_to_an_existing_epic() {
 }
 
 #[test]
+fn a_simple_request_truncates_unicode_title_to_the_task_title_limit() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let pid = project_id(home.path());
+    let server = Running::start(home.path());
+
+    let expected_title = format!("{}🌱", "界".repeat(99));
+    let first_line = format!("{expected_title}終");
+    assert_eq!(first_line.chars().count(), 101);
+
+    let created = task(&send(&server, &pid, &first_line, None, false), 201);
+    let title = created["title"].as_str().unwrap();
+    assert_eq!(title, expected_title);
+    assert_eq!(title.chars().count(), 100);
+}
+
+#[test]
 fn simple_request_publishes_body_and_image_together_and_replays_idempotently() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());

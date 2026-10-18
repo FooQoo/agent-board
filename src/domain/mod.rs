@@ -10,7 +10,7 @@ pub use column::{Column, RunState};
 pub use limits::{
     MAX_ANSWER_TEXT_CHARS, MAX_ATTACHMENT_BYTES, MAX_CHOICE_ID_CHARS, MAX_CHOICE_LABEL_CHARS,
     MAX_CHOICES, MAX_QUESTION_CHARS, MAX_TASK_ATTACHMENT_BYTES, MAX_TASK_ATTACHMENTS,
-    normalize_and_validate_description, validate_attachment, validate_board_name,
+    MAX_TITLE_CHARS, normalize_and_validate_description, validate_attachment, validate_board_name,
     validate_project_name, validate_reason, validate_title,
 };
 pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
