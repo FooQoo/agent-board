@@ -2,17 +2,17 @@
 //! `--request-json`, and the plain run-state changes.
 
 use std::io::Read;
-use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 use serde_json::json;
 
+use crate::agent::wait::wait_for_pending_resolution;
 use crate::cli::args::{StateArgs, read_reason};
 use crate::cli::{Context, Outcome};
 use crate::domain::{ChangeContext, RunState, validate_work_reason};
 use crate::error::{AgboardError, FileAction};
 use crate::file_store::Answer;
-use crate::file_store::model::{Choice, TaskView};
+use crate::file_store::model::Choice;
 
 /// The JSON of `--request-json`: a question and zero to ten choices.
 #[derive(Debug, Deserialize)]
@@ -35,53 +35,6 @@ struct WaitSpec {
 
 /// The longest wait, in seconds: a day.
 const MAX_WAIT_SECS: u64 = 86_400;
-
-/// Wait until request `request` of task `id` is answered or withdrawn, and return the task then. A
-/// wait-command timeout is `wait_timeout`; a request that a move took back is `request_changed`.
-/// Neither ending expires or otherwise changes the question. This uses the same event stream as
-/// `agboard wait`, so it needs a running `agboard serve`.
-fn wait_for_resolution(
-    ctx: &Context,
-    id: i64,
-    request: &str,
-    timeout_secs: Option<u64>,
-) -> Result<TaskView, AgboardError> {
-    let project = ctx.project()?;
-    let (name, project_id) = (project.name.clone(), project.id.clone());
-    let shared = ctx.files.shared_dir().to_path_buf();
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|error| AgboardError::BoardUnavailable {
-            reason: error.to_string(),
-        })?;
-    let deadline = timeout_secs.map(|seconds| Instant::now() + Duration::from_secs(seconds));
-    loop {
-        let snapshot = ctx.files.board(&project_id)?;
-        let task = ctx.files.task(&project_id, id)?;
-        if task.pending_request_id.as_deref() != Some(request) {
-            let answered = ctx
-                .files
-                .request_answer(&project_id, id, request)?
-                .is_some();
-            return if answered {
-                Ok(task)
-            } else {
-                Err(AgboardError::RequestChanged)
-            };
-        }
-        let remaining = deadline.map(|deadline| deadline.saturating_duration_since(Instant::now()));
-        if remaining.is_some_and(|remaining| remaining.is_zero()) {
-            return Err(AgboardError::WaitTimeout);
-        }
-        runtime.block_on(crate::agent::wait::wait_for_change(
-            &shared,
-            &name,
-            snapshot.cursor.clone(),
-            remaining.map(|remaining| remaining.as_secs().max(1)),
-        ))?;
-    }
-}
 
 /// The workflow response retained for this request ID.
 fn answer_of(
@@ -263,7 +216,15 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
             .unwrap_or_else(|| std::path::Path::new("."))
             .to_path_buf();
         crate::cli::run::after_commit(ctx, &dir);
-        let resolved = wait_for_resolution(ctx, args.id, &request, wait_secs)?;
+        let project = ctx.project()?;
+        let resolved = wait_for_pending_resolution(
+            ctx.files.shared_dir(),
+            &project.name,
+            project.id.clone(),
+            args.id,
+            &request,
+            wait_secs,
+        )?;
         let answer = answer_of(ctx, args.id, &request)?;
         let note = answer
             .as_ref()
