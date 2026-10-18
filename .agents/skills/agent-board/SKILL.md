@@ -108,7 +108,7 @@ Lanes are `todo`, `doing`, and `done`. AI tasks may be Pending in Todo or Doing;
 
 - `running` means you are working on it. `pending` means you need the user's decision.
 - A real lane move resets the run state to `idle` and withdraws any open question. Withdrawal is not an answer.
-- `running` is self-reported and is not reset automatically. Do not change a state just because a session started or paused; change it when the work changes.
+- `running` is self-reported and is not reset automatically. Set it while actively working, return it to `idle` when active work stops, and use `pending` while waiting for a user decision. A session starting or resuming alone does not make a task `running`.
 - Never report `running` or `pending` on a `human` task.
 - Every `mv` and `state` needs `--actor`, which controls permission. `--reason` is optional for lane and non-Pending state changes (up to 10,000 characters); missing or blank reasons are generated from the current state. Never use `--actor human` unless the user explicitly gave that direction.
 

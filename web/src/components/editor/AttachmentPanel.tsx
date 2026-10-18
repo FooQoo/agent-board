@@ -3,6 +3,7 @@ import { useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Lightbox } from '../Lightbox';
 import type { EditorAttachment } from './attachmentTypes';
 import { formatAttachmentSize } from './attachmentTypes';
@@ -23,6 +24,7 @@ export interface AttachmentPanelProps {
   showHeader?: boolean;
   /** Use the compact optional-attachment heading from the task request design. */
   optionalHeader?: boolean;
+  layout?: 'sidebar' | 'tray';
 }
 
 function noticeText(notice: AttachmentNotice, t: TFunction): string {
@@ -51,6 +53,7 @@ export function AttachmentPanel({
   className = '',
   showHeader = true,
   optionalHeader = false,
+  layout = 'sidebar',
 }: AttachmentPanelProps) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
@@ -76,6 +79,38 @@ export function AttachmentPanel({
     }
   };
 
+  const tray = layout === 'tray';
+  const addButton = (
+    <Button
+      type="button"
+      variant="outline"
+      className={tray ? 'editor-attachments__add-tile' : 'editor-attachments__add'}
+      aria-label={t('editor.addAttachment')}
+      disabled={disabled}
+      onClick={() => input.current?.click()}
+    >
+      <PlusIcon aria-hidden="true" />
+      {t('editor.addAttachment')}
+    </Button>
+  );
+  const imageList = (
+    <div className="editor-attachments__list">
+      {attachments.map((attachment) => (
+        <AttachmentTile
+          key={attachment.id}
+          attachment={attachment}
+          disabled={disabled}
+          onRemove={() => onRemove(attachment.id)}
+          onInsert={onInsert ? () => onInsert(attachment) : undefined}
+          onZoom={(trigger) => {
+            zoomTrigger.current = trigger;
+            setZoom(attachment);
+          }}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <section
       id={id}
@@ -85,10 +120,16 @@ export function AttachmentPanel({
     >
       {showHeader && (
         <div className="editor-attachments__header">
-          <span className="editor-attachments__title">
-            {!optionalHeader && <PaperclipIcon aria-hidden="true" />}
-            {optionalHeader ? t('editor.attachmentsOptional') : t('editor.attachments')}
-          </span>
+          {optionalHeader ? (
+            <Label asChild>
+              <span>{t('editor.attachmentsOptional')}</span>
+            </Label>
+          ) : (
+            <span className="editor-attachments__title">
+              <PaperclipIcon aria-hidden="true" />
+              {t('editor.attachments')}
+            </span>
+          )}
           <span className="editor-attachments__count">
             {optionalHeader
               ? t('editor.attachmentsOptionalCount', { count: attachments.length })
@@ -108,17 +149,7 @@ export function AttachmentPanel({
           )}
         </div>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        className="editor-attachments__add"
-        aria-label={t('editor.addAttachment')}
-        disabled={disabled}
-        onClick={() => input.current?.click()}
-      >
-        <PlusIcon aria-hidden="true" />
-        {t('editor.addAttachment')}
-      </Button>
+      {!tray && addButton}
       {notice && (
         <div className="editor-attachments__notice" role="alert">
           <strong>{t('editor.attachmentRefusedTitle')}</strong>
@@ -152,33 +183,28 @@ export function AttachmentPanel({
         }}
         onDrop={onDrop}
       >
-        {attachments.length > 0 && (
-          <div className="editor-attachments__list">
-            {attachments.map((attachment) => (
-              <AttachmentTile
-                key={attachment.id}
-                attachment={attachment}
-                disabled={disabled}
-                onRemove={() => onRemove(attachment.id)}
-                onInsert={onInsert ? () => onInsert(attachment) : undefined}
-                onZoom={(trigger) => {
-                  zoomTrigger.current = trigger;
-                  setZoom(attachment);
-                }}
-              />
-            ))}
+        {tray ? (
+          <div className="editor-attachments__tray">
+            {addButton}
+            {imageList}
           </div>
+        ) : attachments.length > 0 ? (
+          imageList
+        ) : null}
+        {/* The sidebar hint opens the picker; the tray has its own square picker. */}
+        {tray ? (
+          <p className="editor-attachments__hint">{t('editor.attachmentsDropHint')}</p>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            className="editor-attachments__drop"
+            disabled={disabled}
+            onClick={() => input.current?.click()}
+          >
+            {t('editor.attachmentsDropHint')}
+          </Button>
         )}
-        {/* The one drop area, at the bottom of the panel: its guidance text opens the file picker. */}
-        <Button
-          type="button"
-          variant="ghost"
-          className="editor-attachments__drop"
-          disabled={disabled}
-          onClick={() => input.current?.click()}
-        >
-          {t('editor.attachmentsDropHint')}
-        </Button>
       </div>
       {zoom !== null && (
         <Lightbox

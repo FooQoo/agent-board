@@ -40,14 +40,13 @@
 ```json
 {
   "requestKind": "simple",
-  "requestId": "<送信内容を識別する固定ID>",
   "description": "1行目をタイトルに使います\n\n依頼の詳細",
   "epicId": "DESIGN",
   "attachments": [{"id": "<画像ID>", "name": "sketch.png"}]
 }
 ```
 
-`epicId`と`attachments`は任意です。エピックがない場合は省略するか`null`、画像がない場合は空配列にします。簡易依頼では`title`・`assignee`・`isDraft`・`finalize`を指定できません。サーバーはAI担当・Todoのタスクを作り、入力本文を`## 元の依頼`で囲み、最初の空でない行（Unicode文字数で最大100文字）からタイトルを作ります。プロジェクトロック内でタスクと画像を検証・ステージングし、完成したタスクフォルダを一度にrenameして公開します。新規作成は`201 {"task": …, "replayed": false}`、同一送信の再試行は`200 {"task": …, "replayed": true}`です。内容が異なる同一`requestId`を再利用すると`409 attachment_request_conflict`になります。手動で作る通常タスクは従来どおり`POST /tasks`か通常のmultipart形式を使い、簡易依頼用の契約へ切り替わりません。
+`epicId`と`attachments`は任意です。エピックがない場合は省略するか`null`、画像がない場合は空配列にします。簡易依頼では`title`・`assignee`・`isDraft`・`finalize`を指定できません。サーバーはAI担当・Todoのタスクを作り、入力本文を`## 元の依頼`で囲み、最初の空でない行（Unicode文字数で最大100文字）からタイトルを作ります。プロジェクトロック内でタスクと画像を検証・ステージングし、完成したタスクフォルダを一度にrenameして公開します。受け付けた送信は毎回新しいタスクになり、`201 {"task": …}`を返します。本文などの一致による重複判定はしません。手動で作る通常タスクは従来どおり`POST /tasks`か通常のmultipart形式を使い、簡易依頼用の契約へ切り替わりません。
 
 **一括アーカイブ。** 対象のIDは確認を開いた時点で固定し、送信時にDoneのタスクを集め直すことはありません。ロックの中で、未アーカイブの対象がすべてまだDoneであることを確かめます。移動または削除された対象が一つでもあれば、要求全体を409 `archive_targets_changed`にして何も変えません。アーカイブ済みの対象は完了済みとして扱うので、応答を失った後の再送で履歴は重複しません。対象は一件ずつ保存し、最後に一回だけ再読み込みと通知を行います。途中で保存に失敗すると、保存済みの対象はアーカイブされたまま残り、再送で残りを処理します。
 
@@ -58,7 +57,7 @@
 | 400 | 壊れたJSON。 |
 | 403 | 保護に失敗した。 |
 | 404 | プロジェクト・タスク・エピックがない。 |
-| 409 | `request_changed`・`attachment_request_conflict`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
+| 409 | `request_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
 | 413 | 1 MiBを超える本文。 |
 | 422 | ID構文・入力・状態の規則の違反。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
 | 503 | ロック待ちが時間切れになった。 |

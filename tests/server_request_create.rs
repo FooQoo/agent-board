@@ -9,8 +9,6 @@ use common::{Reply, Running, agboard, demo_project, multipart, png};
 use serde_json::{Value, json};
 
 const BOUNDARY: &str = "agboard-simple-request";
-const REQUEST_ID: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
 fn project_id(home: &Path) -> String {
     common::json_ok(home, &["project", "ls", "--json"])["projects"][0]["id"]
         .as_str()
@@ -40,7 +38,6 @@ fn send_images(
     images: Vec<Vec<u8>>,
 ) -> Reply {
     let mut metadata = json!({
-        "requestId": REQUEST_ID,
         "requestKind": "simple",
         "description": text,
     });
@@ -128,7 +125,7 @@ fn a_simple_request_truncates_unicode_title_to_the_task_title_limit() {
 }
 
 #[test]
-fn simple_request_publishes_body_and_image_together_and_replays_idempotently() {
+fn simple_request_publishes_body_and_each_submission_creates_a_task() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let pid = project_id(home.path());
@@ -153,12 +150,41 @@ fn simple_request_publishes_body_and_image_together_and_replays_idempotently() {
     assert!(first["description"].as_str().unwrap().contains("元の依頼"));
     assert_eq!(task_count(&server, &pid), before + 1);
 
-    let replay = task(
+    let second = task(
         &send_images(&server, &pid, "Build the thing\nDetails", None, images),
-        200,
+        201,
     );
-    assert_eq!(replay["id"], first["id"]);
-    assert_eq!(task_count(&server, &pid), before + 1);
+    assert_ne!(second["id"], first["id"]);
+    assert_eq!(task_count(&server, &pid), before + 2);
+}
+
+#[test]
+fn a_legacy_task_parse_problem_does_not_block_simple_request_creation() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let pid = project_id(home.path());
+    let legacy_task = home
+        .path()
+        .join("shared")
+        .join("projects")
+        .join(&pid)
+        .join("tasks/1/task.json");
+    let mut metadata: Value = serde_json::from_slice(&fs::read(&legacy_task).unwrap()).unwrap();
+    metadata["cardStatus"] = json!("doing");
+    fs::write(&legacy_task, serde_json::to_vec_pretty(&metadata).unwrap()).unwrap();
+
+    let server = Running::start(home.path());
+    let created = task(&send(&server, &pid, "A new request", None, false), 201);
+    assert_eq!(created["id"], 2);
+
+    let board = server.get(&format!("/api/projects/{pid}/board"));
+    assert_eq!(board.status, 200, "{}", board.body);
+    let board: Value = serde_json::from_str(&board.body).unwrap();
+    assert!(board["problems"].as_array().unwrap().iter().any(|problem| {
+        problem["file"]
+            .as_str()
+            .is_some_and(|file| file.ends_with("tasks/1/task.json"))
+    }));
 }
 
 #[test]
@@ -235,21 +261,21 @@ fn a_staging_creation_failure_publishes_no_task_and_a_retry_can_recover() {
 }
 
 #[test]
-fn same_request_id_with_different_content_conflicts_without_publishing_another_task() {
+fn repeated_simple_request_content_creates_distinct_tasks() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
     let before = task_count(&server, &pid);
-    task(&send(&server, &pid, "First", None, false), 201);
+    let first = task(&send(&server, &pid, "First", None, false), 201);
 
-    let conflict = send(&server, &pid, "Changed", None, false);
-    assert_eq!(conflict.status, 409, "{}", conflict.body);
-    assert_eq!(task_count(&server, &pid), before + 1);
+    let second = task(&send(&server, &pid, "First", None, false), 201);
+    assert_ne!(second["id"], first["id"]);
+    assert_eq!(task_count(&server, &pid), before + 2);
 }
 
 #[test]
-fn simultaneous_retries_with_the_same_request_id_publish_only_one_task() {
+fn simultaneous_simple_requests_create_distinct_tasks() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let pid = project_id(home.path());
@@ -261,12 +287,12 @@ fn simultaneous_retries_with_the_same_request_id_publish_only_one_task() {
         let two = scope.spawn(|| send(&server, &pid, "Concurrent", None, false));
         (one.join().unwrap(), two.join().unwrap())
     });
-    assert!([201, 200].contains(&first.status), "{}", first.body);
-    assert!([201, 200].contains(&second.status), "{}", second.body);
+    assert_eq!(first.status, 201, "{}", first.body);
+    assert_eq!(second.status, 201, "{}", second.body);
     let first_task = serde_json::from_str::<Value>(&first.body).unwrap()["task"]["id"].clone();
     let second_task = serde_json::from_str::<Value>(&second.body).unwrap()["task"]["id"].clone();
-    assert_eq!(first_task, second_task);
-    assert_eq!(task_count(&server, &pid), before + 1);
+    assert_ne!(first_task, second_task);
+    assert_eq!(task_count(&server, &pid), before + 2);
 }
 
 #[test]

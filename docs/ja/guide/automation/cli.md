@@ -98,7 +98,7 @@ agboard project bind "My project" --folder ./docs
 
 ## 変更またはタスクを待つ
 
-`wait`には二つのモードがあります。`--after <cursor>`は[エージェントとの連携](./agents#変更を待つ)のとおりプロジェクトの変更を待ちます。`--until task`は、リッスン開始前からTodoにあったタスクも含め、対象となるAI担当タスクを一件返します。
+`wait`には二つのモードがあります。`--after <cursor>`は[エージェントとの連携](./agents#変更を待つ)のとおりプロジェクトの変更を待ちます。`--until task`は、リッスン開始前からTodoにあったタスクや、IdleのままDoingにあるタスクも含め、対象となるAI担当タスクを一件返します。
 
 ```sh
 agboard --project "My project" wait --until task --idle-timeout 300 --json

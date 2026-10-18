@@ -26,7 +26,7 @@ const epics: Epic[] = [
 ];
 
 describe('simple request dialog', () => {
-  it('keeps a failed request in the form and shows the designed recovery message', async () => {
+  it('keeps a failed request in the form and shows the server error', async () => {
     render(
       <RequestDialog
         epics={[]}
@@ -40,9 +40,7 @@ describe('simple request dialog', () => {
     await user.type(textarea, 'Keep this request');
     await user.click(screen.getByRole('button', { name: 'Submit task' }));
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toBe(
-      'Could not save the task. Your input and images are kept. Try again.',
-    );
+    expect(alert.textContent).toBe('Request failed (503)');
     const footerCopy = alert.closest('.modal__footer-copy');
     expect(footerCopy).not.toBeNull();
     if (footerCopy === null) throw new Error('expected the error inside the footer copy');
@@ -55,7 +53,7 @@ describe('simple request dialog', () => {
     expect((textarea as HTMLTextAreaElement).value).toBe('Keep this request');
   });
 
-  it('submits a regular AI request with its original text, optional epic and stable retry identity', async () => {
+  it('submits a regular AI request with its original text and optional epic', async () => {
     const submit = vi
       .fn<(input: RequestInput) => Promise<void>>()
       .mockRejectedValueOnce(
@@ -91,7 +89,8 @@ describe('simple request dialog', () => {
     if (first === undefined || retry === undefined)
       throw new Error('expected both request attempts');
     expect(first).toMatchObject({ requestKind: 'simple', epicId: 'TASK-LISTEN', attachments: [] });
-    expect(first.requestId).toBe(retry.requestId);
+    expect(first).not.toHaveProperty('requestId');
+    expect(retry).not.toHaveProperty('requestId');
     expect(first.description).toBe('  First line\nsecond line  ');
   });
 

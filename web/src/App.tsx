@@ -456,7 +456,6 @@ export function App({ initial }: AppProps) {
                 await createSimpleTaskMultipart(projectId, {
                   description: data.description ?? '',
                   epicId: data.epicId ?? null,
-                  requestId: data.requestId ?? crypto.randomUUID(),
                   attachments: data.attachments ?? [],
                 });
               } else if (dialog.kind === 'create' || dialog.kind === 'request') {

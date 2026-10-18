@@ -1,5 +1,5 @@
-import { ChevronDownIcon } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDownIcon, SquarePenIcon } from 'lucide-react';
+import { useState, type ClipboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import type { Epic } from '../types';
@@ -7,7 +7,6 @@ import { DialogFrame } from './DialogFrame';
 import { AttachmentPanel } from './editor/AttachmentPanel';
 import type { EditorAttachment } from './editor/attachmentTypes';
 import { useAttachmentState } from './editor/useAttachmentState';
-import { useMultipartRequest } from './editor/useMultipartRequest';
 import { countChars, DESCRIPTION_LIMIT, normalizeNewlines } from './editor/limits';
 import {
   DropdownMenu,
@@ -24,7 +23,6 @@ export interface RequestInput {
   requestKind: 'simple';
   description: string;
   epicId: string | null;
-  requestId: string;
   attachments: EditorAttachment[];
 }
 
@@ -47,7 +45,6 @@ export function RequestDialog({
   const [request, setRequest] = useState('');
   const [epicId, setEpicId] = useState('');
   const [saving, setSaving] = useState(false);
-  const requestId = useMultipartRequest();
   const attachmentsState = useAttachmentState({ resolveStoredUrl: () => '' });
   const normalized = normalizeNewlines(request);
   // U3 derives the task title and wraps the original request in its own task section. Keep the
@@ -55,6 +52,14 @@ export function RequestDialog({
   const description = normalized;
   const valid = request.trim() !== '' && countChars(description) <= DESCRIPTION_LIMIT;
   const dirty = request !== '' || epicId !== '' || attachmentsState.attachments.length > 0;
+
+  const pasteImage = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (saving) return;
+    const files = Array.from(event.clipboardData.files);
+    if (files.length === 0) return;
+    event.preventDefault();
+    attachmentsState.addFiles(files);
+  };
 
   const submit = async () => {
     setSaving(true);
@@ -64,15 +69,13 @@ export function RequestDialog({
           requestKind: 'simple',
           description,
           epicId: epicId || null,
-          requestId: requestId({
-            description,
-            epicId: epicId || null,
-            attachments: attachmentsState.attachments.map((attachment) => attachment.id),
-          }),
           attachments: attachmentsState.attachments,
         });
-      } catch {
-        throw new Error(t('simpleTask.saveFailed'));
+      } catch (cause) {
+        // Keep server validation details visible so a failed request can be diagnosed and fixed.
+        // Network failures still use the localized fallback message.
+        const message = cause instanceof Error ? cause.message : '';
+        throw new Error(message || t('simpleTask.saveFailed'));
       }
     } finally {
       setSaving(false);
@@ -96,11 +99,16 @@ export function RequestDialog({
       }
       save={submit}
       dirty={dirty}
+      scrollBody
       className={`request-dialog${attachmentsState.attachments.length > 0 ? ' has-attachments' : ''}`}
       errorInFooter
       footerNote={<p className="modal__card request-dialog__note">{t('simpleTask.footerNote')}</p>}
       submitDisabled={!valid}
-      secondaryAction={{ label: t('simpleTask.createManually'), onClick: onCreateManually }}
+      secondaryAction={{
+        label: t('simpleTask.createManually'),
+        icon: <SquarePenIcon aria-hidden="true" />,
+        onClick: onCreateManually,
+      }}
     >
       <div className="modal__field request-dialog__request">
         <Label htmlFor="request-content">{t('simpleTask.promptLabel')}</Label>
@@ -110,8 +118,9 @@ export function RequestDialog({
           value={request}
           disabled={saving}
           onChange={(event) => setRequest(event.currentTarget.value)}
+          onPaste={pasteImage}
           placeholder={t('simpleTask.promptPlaceholder')}
-          aria-invalid={!valid}
+          aria-invalid={request !== '' && !valid}
         />
       </div>
       <div className="modal__field request-dialog__epic">
@@ -160,6 +169,7 @@ export function RequestDialog({
         disabled={saving}
         className="request-dialog__attachments"
         optionalHeader
+        layout="tray"
       />
     </DialogFrame>
   );

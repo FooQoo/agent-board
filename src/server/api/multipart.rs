@@ -13,6 +13,7 @@ use crate::server::response::error_response;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct MultipartMeta {
+    #[serde(default)]
     pub(super) request_id: String,
     #[serde(default)]
     pub(super) request_kind: Option<String>,

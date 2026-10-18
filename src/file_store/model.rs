@@ -115,8 +115,8 @@ pub struct TaskFile {
     pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
     pub evidence: Vec<EvidenceRecord>,
-    /// Idempotency data for the simple-request API. Absent from ordinary and
-    /// historical tasks so the on-disk format remains backward compatible.
+    /// Legacy request metadata retained when reading existing task files.
+    /// New simple requests do not write or use this field.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub simple_request: Option<SimpleRequestMetadata>,
     pub history: Vec<HistoryRecord>,
@@ -135,7 +135,6 @@ pub struct SimpleRequestInput {
     pub title: String,
     pub body: String,
     pub epic_id: Option<String>,
-    pub request_id: String,
     pub images: Vec<AttachmentInput>,
 }
 

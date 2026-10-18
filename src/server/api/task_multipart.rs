@@ -139,7 +139,7 @@ pub(super) async fn create_task_multipart(
             || !payload.meta.remove_attachment_ids.is_empty()
         {
             return super::multipart::invalid_multipart(
-                "A simple request accepts description, optional epicId, images, and requestId only.",
+                "A simple request accepts description, optional epicId, and images only.",
             );
         }
         let Some(description) = payload.meta.description else {
@@ -157,7 +157,6 @@ pub(super) async fn create_task_multipart(
             .chars()
             .take(crate::domain::MAX_TITLE_CHARS)
             .collect();
-        let request_id = payload.meta.request_id;
         let epic_id = payload.meta.epic_id;
         let additions = payload.additions;
         let result = with_request_files(&state, &headers, move |store| {
@@ -167,7 +166,6 @@ pub(super) async fn create_task_multipart(
                     title,
                     body: description,
                     epic_id,
-                    request_id,
                     images: additions,
                 },
                 chrono::Utc::now(),
@@ -175,18 +173,9 @@ pub(super) async fn create_task_multipart(
         })
         .await;
         return match result {
-            Ok((task, created)) => {
-                if created {
-                    refresh_index(&state);
-                }
-                json_response(
-                    if created {
-                        StatusCode::CREATED
-                    } else {
-                        StatusCode::OK
-                    },
-                    &serde_json::json!({"task": task, "replayed": !created}),
-                )
+            Ok(task) => {
+                refresh_index(&state);
+                json_response(StatusCode::CREATED, &serde_json::json!({"task": task}))
             }
             Err(error) => agboard_error_response(&error),
         };

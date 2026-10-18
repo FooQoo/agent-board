@@ -60,7 +60,7 @@
 
 `wait`は、プロジェクトのversionがcursorと違うまで待ちます。`wait_timeout`・`board_unavailable`・`cursor_invalid`・`project_not_found`のときは、スナップショットではなくエラーで終わります。どれも「回答された」という意味ではありません。[エラーコード](./errors.md)を参照してください。
 
-`wait --until task --idle-timeout <seconds> --json`は、待機を始める前から存在するタスクも含め、AI担当・Todo・Idleの対象タスクを一件選びます。順序は進行表と同じです。結果にはタスクと、その`TASK.md`およびエピックがあれば`PLAN.md`のローカルパスが含まれます。取得はタスクを占有したり編集したりしません。
+`wait --until task --idle-timeout <seconds> --json`は、待機を始める前から存在するタスクも含め、AI担当でTodoまたはDoing、かつIdleの対象タスクを一件選びます。順序は進行表と同じです。結果にはタスクと、その`TASK.md`およびエピックがあれば`PLAN.md`のローカルパスが含まれます。取得はタスクを占有したり編集したりしません。
 
 taskの項目を省略した例です。
 

@@ -47,7 +47,7 @@ Only the `TASK.md`/`task.json` pair is atomic. Images, `PLAN.md`, and `epic.json
 
 ### Creating a task from a short request
 
-The short request form sends the description, optional epic, images, and a `requestId` together through `POST /api/projects/{projectId}/tasks/multipart`. FileStore validates the project, epic, description, and every image under one project lock. It hashes the normalized request payload and uses the ID to recognize a retry: the same ID and payload returns the existing task, while the same ID with different content fails with `attachment_request_conflict` (HTTP 409).
+The short request form sends the description, optional epic, and images together through `POST /api/projects/{projectId}/tasks/multipart`. FileStore validates the project, epic, description, and every image under one project lock. Each accepted submission creates a new task; the server does not compare content to recognize retries, so resubmitting after an uncertain network failure can create a second task.
 
 The task metadata and body are written into a private staging directory, followed by the image files. One same-filesystem directory rename publishes the complete task. Until that rename, task listing and the wait selector cannot see it. The success response and change notification happen after publication. A failure removes the staging directory; an already-reserved task number may remain unused. This path creates an AI-owned Todo task and keeps the submitted text under `## 元の依頼`; normal manual task creation and editing retain their existing behavior.
 

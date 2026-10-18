@@ -34,8 +34,10 @@ export interface DialogFrameProps {
   /** Places a save error inside the footer, for forms whose approved layout puts it there. */
   errorInFooter?: boolean;
   /** Optional secondary route, such as switching to the full manual editor. */
-  secondaryAction?: { label: string; onClick: () => void };
+  secondaryAction?: { label: string; icon?: ReactNode; onClick: () => void };
   submitDisabled?: boolean;
+  /** Scrolls the fields while keeping the footer outside the scrolling region. */
+  scrollBody?: boolean;
   className?: string;
   children: ReactNode;
 }
@@ -54,6 +56,7 @@ export function DialogFrame({
   errorInFooter = false,
   secondaryAction,
   submitDisabled = false,
+  scrollBody = false,
   className = '',
   children,
 }: DialogFrameProps) {
@@ -138,7 +141,7 @@ export function DialogFrame({
           </button>
         </div>
         <form className="modal__form" ref={formRef} onSubmit={submit} noValidate>
-          {children}
+          {scrollBody ? <div className="modal__body">{children}</div> : children}
           {error && !errorInFooter && (
             <p className="modal__error" role="alert">
               {error}
@@ -154,14 +157,17 @@ export function DialogFrame({
                 )}
                 {footerNote}
                 {secondaryAction && (
-                  <button
+                  <Button
                     type="button"
-                    className="modal__link"
+                    variant="outline"
+                    size="sm"
+                    className="modal__secondary-action"
                     disabled={saving}
                     onClick={() => requestDiscard('secondary')}
                   >
+                    {secondaryAction.icon}
                     {secondaryAction.label}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

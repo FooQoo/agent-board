@@ -29,6 +29,8 @@ If an AI session is listening, it can pick up this task along with tasks already
 
 The request and its optional epic and images are saved together. If saving fails, the form keeps your text and selected images so you can retry. Images are optional and use the same PNG, JPEG, WebP, and GIF limits as other task attachments.
 
+Use the square **Add image attachment** tile at the left of the image row to select files. The tile remains at the left while you scroll through the square image previews. You can also paste an image into the request text field or drop it into the attachment area. On shorter screens, the fields scroll while **Cancel** and **Submit task** remain visible.
+
 ## Add images
 
 In the browser editor, select, drop, or paste an image, then insert it into the text. Images can be PNG, JPEG, WebP, or GIF, up to 10 MiB each, with at most 20 per task and 50 MiB in total.

@@ -328,19 +328,35 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
     assert!(loose > second);
 
     let mut selected_ids = vec![selected["task"]["id"].as_i64().unwrap()];
-    for completed_pick in [second, first, beta] {
+    for completed_pick in [second, first, doing, beta] {
+        if completed_pick != doing {
+            success(
+                home.path(),
+                &[
+                    "--project",
+                    "Demo",
+                    "mv",
+                    &completed_pick.to_string(),
+                    "doing",
+                    "--actor",
+                    "ai",
+                    "--reason",
+                    "picked for the next step",
+                ],
+            );
+        }
         success(
             home.path(),
             &[
                 "--project",
                 "Demo",
-                "mv",
+                "state",
                 &completed_pick.to_string(),
-                "doing",
+                "running",
                 "--actor",
                 "ai",
                 "--reason",
-                "picked for the next step",
+                "starting the selected task",
             ],
         );
         let next = json(
@@ -361,7 +377,7 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
             assert!(next["planPath"].is_null());
         }
     }
-    assert_eq!(selected_ids, vec![second, first, beta, loose]);
+    assert_eq!(selected_ids, vec![second, first, doing, beta, loose]);
 }
 
 #[test]

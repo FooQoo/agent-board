@@ -98,7 +98,7 @@ Renaming keeps the project's ID, folder registrations, and tasks. Folder registr
 
 ## Wait for changes or a task
 
-The `wait` command has two modes. `--after <cursor>` waits for a project change as described in [Working with agents](./agents#wait-for-changes). `--until task` returns one eligible AI task, including one that was already in Todo before listening started:
+The `wait` command has two modes. `--after <cursor>` waits for a project change as described in [Working with agents](./agents#wait-for-changes). `--until task` returns one eligible AI task, including one that was already in Todo or an idle task in Doing before listening started:
 
 ```sh
 agboard --project "My project" wait --until task --idle-timeout 300 --json

@@ -41,7 +41,6 @@
 | `epic_in_use` | まだタスクがエピックを参照している。 | 1 | 409 |
 | `attachment_not_found`・`evidence_not_found` | 画像や証跡のIDがない。 | 1 | 404 |
 | `attachment_limit_exceeded` | 画像が大きすぎる、または添付先の画像件数や合計サイズが上限を超える。 | 1 | 422 |
-| `attachment_request_conflict` | 要求IDが別の内容で再利用された。 | 1 | 409 |
 
 ## 入力とファイル
 

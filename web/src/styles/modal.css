@@ -207,51 +207,63 @@
   min-width: 0;
 }
 
-.modal__link {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--r-accent);
-  font: inherit;
-  cursor: pointer;
-}
-
-.modal__link:disabled {
-  cursor: default;
-  opacity: 0.5;
+.modal__secondary-action {
+  align-self: flex-start;
 }
 
 .request-dialog {
   width: 680px;
-  top: 100px;
+  top: min(100px, 8dvh);
   bottom: auto;
   translate: -50% 0;
+  max-height: calc(100dvh - min(100px, 8dvh) - 16px);
+  height: 760px;
   gap: 28px;
-  overflow-x: hidden;
+  overflow: hidden;
   padding: 23px;
   border-radius: 12px;
 }
 
 .request-dialog .modal__header {
+  flex: none;
   margin: 0 -23px;
   padding: 0 23px 14px;
   border-bottom: 1px solid var(--r-border);
 }
 
 .request-dialog .modal__form {
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 22px;
+  /* Leave space inside the clipping boundary for controls' focus rings. */
+  margin: -4px;
+  padding: 4px;
+  overflow: visible;
+}
+
+.request-dialog .modal__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  gap: 22px;
+  margin: -4px;
+  padding: 4px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .request-dialog .modal__field {
+  flex: none;
   gap: 8px;
 }
 
 .request-dialog .request-dialog__request {
-  gap: 1px;
+  gap: 8px;
 }
 
 .request-dialog .request-dialog__epic {
-  gap: 3px;
+  gap: 8px;
 }
 
 .request-dialog__epic + .request-dialog__attachments {
@@ -265,7 +277,17 @@
   border-color: var(--r-border);
   border-radius: 8px;
   background: var(--r-surface2);
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.request-dialog__textarea:focus-visible {
+  outline: none;
+  border-color: var(--r-accent);
+}
+
+.request-dialog__textarea[aria-invalid="true"] {
+  border-color: var(--r-danger);
 }
 
 .request-dialog__epic-trigger {
@@ -290,8 +312,7 @@
   color: var(--r-muted);
 }
 
-.request-dialog__epic-trigger:focus-visible,
-.modal__link:focus-visible {
+.request-dialog__epic-trigger:focus-visible {
   outline: 2px solid var(--r-accent);
   outline-offset: 2px;
 }
@@ -304,9 +325,9 @@
 
 .request-dialog .request-dialog__attachments {
   flex: none;
-  min-height: auto;
   gap: 14px;
   padding: 0;
+  overflow: visible;
 }
 
 .request-dialog__attachments .editor-attachments__header {
@@ -316,22 +337,67 @@
 .request-dialog__attachments .editor-attachments__add {
   height: 34px;
   padding: 0 12px;
+  font-size: 13px;
 }
 
 .request-dialog__attachments .editor-attachments__dropzone {
+  display: flex;
   flex: none;
-  min-height: 42px;
-  overflow: visible;
+  flex-direction: column;
+  min-height: min-content;
 }
 
 .request-dialog__attachments .editor-attachments__list {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 4px;
+  margin: -4px;
+}
+
+.request-dialog__attachments .editor-attachments__tray {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.request-dialog__attachments .editor-attachments__add-tile {
   flex: none;
-  min-height: auto;
-  overflow: visible;
+  flex-direction: column;
+  width: 132px;
+  height: 132px;
+  padding: 12px;
+  border-style: dashed;
+  background: var(--r-surface);
+  white-space: normal;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.request-dialog__attachments .editor-attachments__hint {
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 17px;
 }
 
 .request-dialog__attachments .editor-attachments__drop {
+  flex: none;
   min-height: 42px;
+  margin-top: 0;
+}
+
+.request-dialog__attachments .editor-attachments__tile {
+  width: 132px;
+}
+
+.request-dialog__attachments .editor-attachments__preview {
+  width: 132px;
+  height: 132px;
 }
 
 .request-dialog.has-attachments .request-dialog__epic {
@@ -382,6 +448,7 @@
 }
 
 .request-dialog .modal__footer {
+  flex: none;
   margin: 0 -23px -23px;
   padding: 19px 23px 20px;
 }
@@ -399,10 +466,6 @@
   gap: 16px;
 }
 
-.request-dialog.has-footer-error .modal__link {
-  margin-top: 10px;
-}
-
 .request-dialog__note {
   white-space: pre-line;
 }
@@ -414,12 +477,12 @@
 
 @media (min-width: 641px) {
   .request-dialog .modal__footer {
-    align-items: flex-start;
+    align-items: flex-end;
   }
 
   .request-dialog .modal__actions {
-    align-self: flex-start;
-    margin-top: 45px;
+    align-self: flex-end;
+    margin-top: 0;
   }
 
   .request-dialog.has-attachments .modal__footer {
@@ -428,11 +491,11 @@
   }
 
   .request-dialog.has-attachments .modal__actions {
-    margin-top: 48px;
+    margin-top: 0;
   }
 
   .request-dialog.has-footer-error .modal__actions {
-    margin-top: 81px;
+    margin-top: 0;
   }
 }
 
@@ -452,6 +515,13 @@
   }
 
   .request-dialog .modal__form {
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 14px;
+    overflow: visible;
+  }
+
+  .request-dialog .modal__body {
     gap: 14px;
   }
 
@@ -468,6 +538,7 @@
   }
 
   .request-dialog .request-dialog__attachments {
+    flex: none;
     gap: 13px;
   }
 
@@ -478,6 +549,21 @@
   .request-dialog__attachments .editor-attachments__dropzone,
   .request-dialog__attachments .editor-attachments__drop {
     min-height: 41px;
+  }
+
+  .request-dialog__attachments .editor-attachments__dropzone {
+    min-height: min-content;
+  }
+
+  .request-dialog__attachments .editor-attachments__tile,
+  .request-dialog__attachments .editor-attachments__preview,
+  .request-dialog__attachments .editor-attachments__add-tile {
+    width: 104px;
+  }
+
+  .request-dialog__attachments .editor-attachments__preview,
+  .request-dialog__attachments .editor-attachments__add-tile {
+    height: 104px;
   }
 
   .request-dialog__textarea {

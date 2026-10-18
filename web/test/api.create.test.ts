@@ -25,7 +25,6 @@ describe('creating a task', () => {
     await createSimpleTaskMultipart(PROJECT, {
       description: 'Task title\n\n## Original request\n\nDo this',
       epicId: 'TASK-LISTEN',
-      requestId: 'request-1',
       attachments: [],
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -35,7 +34,6 @@ describe('creating a task', () => {
     const metadata = JSON.parse(String((init.body as FormData).get('metadata')));
     expect(metadata).toMatchObject({
       requestKind: 'simple',
-      requestId: 'request-1',
       epicId: 'TASK-LISTEN',
       description: 'Task title\n\n## Original request\n\nDo this',
       attachments: [],

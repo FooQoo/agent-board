@@ -40,14 +40,13 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 ```json
 {
   "requestKind": "simple",
-  "requestId": "<stable-id-for-this-submission>",
   "description": "First line becomes the title\n\nFull request details",
   "epicId": "DESIGN",
   "attachments": [{"id": "<attachment-id>", "name": "sketch.png"}]
 }
 ```
 
-`epicId` and `attachments` are optional; omit the epic or use `null`, and use an empty attachments array when there are no images. A simple request accepts no `title`, `assignee`, `isDraft`, or `finalize` metadata. The server creates an AI-owned Todo task, wraps the original text in `## 元の依頼`, and derives the title from the first non-empty line (up to 100 Unicode characters). It validates and stages the task and its images under the project lock, then publishes them together by renaming the completed task directory. The response is `201 {"task": …, "replayed": false}` for a new task or `200 {"task": …, "replayed": true}` when a retry matches an existing submission. Reusing a `requestId` with different normalized content returns `409 attachment_request_conflict`. A normal manually created task continues to use `POST /tasks` or the regular multipart metadata; it does not become a simple request.
+`epicId` and `attachments` are optional; omit the epic or use `null`, and use an empty attachments array when there are no images. A simple request accepts no `title`, `assignee`, `isDraft`, or `finalize` metadata. The server creates an AI-owned Todo task, wraps the original text in `## 元の依頼`, and derives the title from the first non-empty line (up to 100 Unicode characters). It validates and stages the task and its images under the project lock, then publishes them together by renaming the completed task directory. Every accepted submission creates a new task and returns `201 {"task": …}`; the server does not compare content to detect duplicates. A normal manually created task continues to use `POST /tasks` or the regular multipart metadata; it does not become a simple request.
 
 **Bulk archive.** The target IDs are fixed when the confirmation opens; the request never re-collects all Done tasks. Under the lock every unarchived target must still be Done. If any target moved or was deleted, the whole request is 409 `archive_targets_changed` and nothing changes. Targets that are already archived count as done, so a retry after a lost response never duplicates history. Targets are saved one at a time with a single reload and notification at the end; if a save fails partway, the saved targets stay archived and a retry handles the rest.
 
@@ -58,7 +57,7 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | 400 | Malformed JSON. |
 | 403 | A guard failed. |
 | 404 | Project, task, or epic not found. |
-| 409 | `request_changed`, `attachment_request_conflict`, `task_not_draft`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
+| 409 | `request_changed`, `task_not_draft`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
 | 413 | Body over 1 MiB. |
 | 422 | Invalid ID syntax, input, or state rule; or an invalid source file (`file_invalid`) with path, field, and reason. |
 | 503 | The lock wait timed out. |

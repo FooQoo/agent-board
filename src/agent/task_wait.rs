@@ -124,7 +124,7 @@ fn select(snapshot: &ProjectSnapshot) -> Option<&TaskView> {
         .into_iter()
         .find(|task| {
             task.assignee == Assignee::Ai
-                && task.task_status == Column::Todo
+                && matches!(task.task_status, Column::Todo | Column::Doing)
                 && task.agent_status == RunState::Idle
                 && !task.is_draft
                 && task.archived_at.is_none()

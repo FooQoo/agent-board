@@ -41,7 +41,6 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `epic_in_use` | A task still refers to the epic. | 1 | 409 |
 | `attachment_not_found`, `evidence_not_found` | The image or evidence ID does not exist. | 1 | 404 |
 | `attachment_limit_exceeded` | An image is too large, or the owner has too many images. | 1 | 422 |
-| `attachment_request_conflict` | A request ID was reused with different content. | 1 | 409 |
 
 ## Input and files
 

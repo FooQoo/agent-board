@@ -47,7 +47,6 @@ pub enum AgboardError {
     AttachmentNotFound {
         id: String,
     },
-    AttachmentRequestConflict,
     AttachmentLimitExceeded,
     EvidenceNotFound {
         id: String,
@@ -168,7 +167,6 @@ impl AgboardError {
             AgboardError::TaskNotArchived { .. } => "task_not_archived",
             AgboardError::ArchiveTargetsChanged => "archive_targets_changed",
             AgboardError::AttachmentNotFound { .. } => "attachment_not_found",
-            AgboardError::AttachmentRequestConflict => "attachment_request_conflict",
             AgboardError::AttachmentLimitExceeded => "attachment_limit_exceeded",
             AgboardError::EvidenceNotFound { .. } => "evidence_not_found",
             AgboardError::EpicIdTaken { .. } => "epic_id_taken",
@@ -237,9 +235,6 @@ impl AgboardError {
             AgboardError::TaskNotArchived { id } => format!("task #{id} is not archived."),
             AgboardError::ArchiveTargetsChanged => "archive targets changed.".into(),
             AgboardError::AttachmentNotFound { id } => format!("attachment {id} not found."),
-            AgboardError::AttachmentRequestConflict => {
-                "attachment request was reused with different content.".into()
-            }
             AgboardError::AttachmentLimitExceeded => "attachment limits were exceeded.".into(),
             AgboardError::EvidenceNotFound { id } => format!("evidence {id} not found."),
             AgboardError::EpicIdTaken { id } => format!("epic {id} already exists."),
@@ -316,7 +311,6 @@ impl AgboardError {
             AgboardError::TaskNotArchived { .. } => "Only an archived task can be deleted here.".into(),
             AgboardError::ArchiveTargetsChanged => "Read the latest Done tasks and confirm the archive again.".into(),
             AgboardError::AttachmentNotFound { .. } => "The attachment does not belong to this task.".into(),
-            AgboardError::AttachmentRequestConflict => "Use a new request ID when the content changes.".into(),
             AgboardError::AttachmentLimitExceeded => "A task may contain at most 20 images and 50 MiB in total.".into(),
             AgboardError::EvidenceNotFound { .. } => "The evidence does not belong to this task.".into(),
             AgboardError::EpicIdTaken { .. } => "Choose another EPIC-ID.".into(),

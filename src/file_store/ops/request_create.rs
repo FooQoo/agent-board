@@ -1,9 +1,8 @@
-//! Atomic creation for the simple-request API, including images and retries.
+//! Atomic creation for the simple-request API, including images.
 
 use std::fs;
 
 use chrono::{DateTime, Utc};
-use sha2::{Digest, Sha256};
 
 use super::super::FileStore;
 use super::super::history::{ParseMode, compose_task, parse_task};
@@ -17,14 +16,13 @@ use crate::error::AgboardError;
 
 impl FileStore {
     /// Create a simple AI task and publish its complete directory with one
-    /// same-filesystem rename. Repeated request IDs return the original task
-    /// only when the normalized request payload is identical.
+    /// same-filesystem rename. Each accepted submission creates a new task.
     pub fn create_simple_request(
         &self,
         project: &ProjectId,
         request: SimpleRequestInput,
         now: DateTime<Utc>,
-    ) -> Result<(model::TaskView, bool), AgboardError> {
+    ) -> Result<model::TaskView, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let title = validate_title(&request.title)?;
@@ -32,12 +30,6 @@ impl FileStore {
         let normalized_body = crate::domain::normalize_and_validate_description(
             &crate::file_store::frontmatter::parse(&body).body,
         )?;
-        if request.request_id.is_empty() {
-            return Err(AgboardError::InvalidValue {
-                field: "requestId".into(),
-                reason: "requestId is required.".into(),
-            });
-        }
         let epic = request
             .epic_id
             .as_deref()
@@ -74,35 +66,6 @@ impl FileStore {
         }
         if request.images.len() > crate::domain::MAX_TASK_ATTACHMENTS {
             return Err(AgboardError::AttachmentLimitExceeded);
-        }
-
-        let mut canonical = serde_json::to_vec(&(
-            &title,
-            &normalized_body,
-            epic.as_ref().map(ToString::to_string),
-            &request
-                .images
-                .iter()
-                .zip(&attachments)
-                .map(|(image, (media, name))| (&image.id, name, media, &image.bytes))
-                .collect::<Vec<_>>(),
-        ))
-        .map_err(|e| io::write_error("request", e))?;
-        let payload_hash = format!("{:x}", Sha256::digest(&canonical));
-        canonical.clear();
-
-        for id in reader::task_ids(&project_dir)? {
-            let existing = reader::read_task_strict(shared, project, id)?;
-            if let Some(saved) = existing
-                .simple_request
-                .as_ref()
-                .filter(|saved| saved.request_id == request.request_id)
-            {
-                if saved.payload_hash == payload_hash {
-                    return Ok((reader::read_task_locked(shared, project, id)?, false));
-                }
-                return Err(AgboardError::AttachmentRequestConflict);
-            }
         }
 
         let mut project_file = reader::read_project_file(shared, project)?;
@@ -149,10 +112,9 @@ impl FileStore {
             task_status_changed_at: at,
             attachments: stored_attachments,
             evidence: Vec::new(),
-            simple_request: Some(model::SimpleRequestMetadata {
-                request_id: request.request_id.clone(),
-                payload_hash,
-            }),
+            // `simpleRequest` remains readable for compatibility with records
+            // created by older versions, but new tasks no longer store it.
+            simple_request: None,
             history: vec![transition_event(Transition {
                 language,
                 kind: HistoryKind::Created,
@@ -217,6 +179,6 @@ impl FileStore {
             let _ = fs::remove_dir_all(&staging);
             return Err(error);
         }
-        Ok((reader::read_task_locked(shared, project, id)?, true))
+        reader::read_task_locked(shared, project, id)
     }
 }

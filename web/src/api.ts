@@ -302,7 +302,6 @@ export function createSimpleTaskMultipart(
   input: {
     description: string;
     epicId: string | null;
-    requestId: string;
     attachments: readonly EditorAttachment[];
   },
 ) {
@@ -311,7 +310,6 @@ export function createSimpleTaskMultipart(
     multipartBody(
       {
         requestKind: 'simple',
-        requestId: input.requestId,
         description: input.description,
         epicId: input.epicId,
         attachments: undefined,

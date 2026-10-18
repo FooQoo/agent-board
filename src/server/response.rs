@@ -47,7 +47,6 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::TaskNotDraft { .. }
         | AgboardError::InvalidStateForDraft { .. }
         | AgboardError::ProjectNameExists { .. }
-        | AgboardError::AttachmentRequestConflict
         | AgboardError::EpicIdTaken { .. }
         | AgboardError::EpicInUse { .. } => StatusCode::CONFLICT,
         AgboardError::TaskArchived { .. }
