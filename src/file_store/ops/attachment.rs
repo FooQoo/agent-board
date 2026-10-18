@@ -27,7 +27,7 @@ use crate::error::AgboardError;
 
 /// The record that owns the images, read strictly.
 enum Loaded {
-    Task(TaskFile),
+    Task(Box<TaskFile>),
     Epic(EpicFile),
 }
 
@@ -83,9 +83,9 @@ fn load(
     owner: &AttachmentOwner,
 ) -> Result<Loaded, AgboardError> {
     match owner {
-        AttachmentOwner::Task(id) => Ok(Loaded::Task(reader::read_task_strict(
+        AttachmentOwner::Task(id) => Ok(Loaded::Task(Box::new(reader::read_task_strict(
             shared, project, *id,
-        )?)),
+        )?))),
         AttachmentOwner::Epic(id) => {
             read_epic_file(shared, project, id).map(|(_, file)| Loaded::Epic(file))
         }

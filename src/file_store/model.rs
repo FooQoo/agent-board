@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::frontmatter::AcceptanceItem;
 use super::validate::EpicId;
-use crate::domain::{Actor, Assignee, Attachment, Column, ProjectId, RunState};
+use crate::domain::{Actor, Assignee, Attachment, AttachmentInput, Column, ProjectId, RunState};
 
 /// `workspace.json`: the marker of the shared area.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -115,7 +115,28 @@ pub struct TaskFile {
     pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
     pub evidence: Vec<EvidenceRecord>,
+    /// Idempotency data for the simple-request API. Absent from ordinary and
+    /// historical tasks so the on-disk format remains backward compatible.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub simple_request: Option<SimpleRequestMetadata>,
     pub history: Vec<HistoryRecord>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct SimpleRequestMetadata {
+    pub request_id: String,
+    pub payload_hash: String,
+}
+
+/// A submitted simple request for atomic FileStore creation.
+#[derive(Debug, Clone)]
+pub struct SimpleRequestInput {
+    pub title: String,
+    pub body: String,
+    pub epic_id: Option<String>,
+    pub request_id: String,
+    pub images: Vec<AttachmentInput>,
 }
 
 /// `task.json`: operational metadata. History is stored only in TASK.md.
@@ -146,6 +167,8 @@ pub struct TaskMetadata {
     pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
     pub evidence: Vec<EvidenceRecord>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub simple_request: Option<SimpleRequestMetadata>,
 }
 
 impl From<&TaskFile> for TaskMetadata {
@@ -170,6 +193,7 @@ impl From<&TaskFile> for TaskMetadata {
             task_status_changed_at: task.task_status_changed_at,
             attachments: task.attachments.clone(),
             evidence: task.evidence.clone(),
+            simple_request: task.simple_request.clone(),
         }
     }
 }
@@ -197,6 +221,7 @@ impl TaskMetadata {
             task_status_changed_at: self.task_status_changed_at,
             attachments: self.attachments,
             evidence: self.evidence,
+            simple_request: self.simple_request,
             history,
         }
     }
