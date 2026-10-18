@@ -114,13 +114,23 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             .map_err(|error| AgboardError::BoardUnavailable {
                 reason: error.to_string(),
             })
-            .and_then(|runtime| {
-                runtime.block_on(crate::agent::wait::wait_for_change(
+            .and_then(|runtime| match args.until {
+                Some(args::WaitUntilArg::Task) => {
+                    runtime.block_on(crate::agent::task_wait::wait_for_task(
+                        &env.shared_dir,
+                        cli.project().unwrap_or_default(),
+                        args.idle_timeout
+                            .expect("wait task mode requires --idle-timeout"),
+                    ))
+                }
+                None => runtime.block_on(crate::agent::wait::wait_for_change(
                     &env.shared_dir,
                     cli.project().unwrap_or_default(),
-                    args.after.clone(),
+                    args.after
+                        .clone()
+                        .unwrap_or_else(|| unreachable!("wait args validated")),
                     args.timeout,
-                ))
+                )),
             });
         return match result {
             Ok(output) => {
