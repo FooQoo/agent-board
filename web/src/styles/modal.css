@@ -321,6 +321,12 @@
   overflow: visible;
 }
 
+.request-dialog__attachments .editor-attachments__list {
+  flex: none;
+  min-height: auto;
+  overflow: visible;
+}
+
 .request-dialog__attachments .editor-attachments__drop {
   min-height: 42px;
 }
@@ -376,6 +382,7 @@
     top: 40px;
     bottom: auto;
     translate: -50% 0;
+    max-height: calc(100dvh - 56px);
     gap: 11px;
     padding: 23px 15px 15px;
   }
