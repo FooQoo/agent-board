@@ -15,6 +15,10 @@ use crate::server::response::error_response;
 pub(super) struct MultipartMeta {
     pub(super) request_id: String,
     #[serde(default)]
+    pub(super) request_kind: Option<String>,
+    #[serde(default)]
+    pub(super) epic_id: Option<String>,
+    #[serde(default)]
     pub(super) finalize: bool,
     /// Only a new task takes it; an edit refuses it.
     #[serde(default)]

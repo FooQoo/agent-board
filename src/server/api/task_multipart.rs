@@ -10,6 +10,7 @@ use super::multipart::parse_multipart;
 use super::parse_task_id;
 use crate::domain::{Actor, Changed, NewTask, validate_attachment};
 use crate::file_store::model::AttachmentOwner;
+use crate::file_store::model::SimpleRequestInput;
 use crate::server::AppState;
 use crate::server::response::{agboard_error_response, error_response, json_response};
 use crate::server::store::{parse_project_id, refresh_index, with_request_files};
@@ -43,6 +44,11 @@ pub(super) async fn edit_task_multipart(
         Ok(value) => value,
         Err(response) => return response,
     };
+    if payload.meta.request_kind.is_some() || payload.meta.epic_id.is_some() {
+        return super::multipart::invalid_multipart(
+            "requestKind and epicId are only accepted when creating a simple request.",
+        );
+    }
     if payload.meta.request_id.is_empty() {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -125,6 +131,67 @@ pub(super) async fn create_task_multipart(
         Ok(value) => value,
         Err(response) => return response,
     };
+    if payload.meta.request_kind.as_deref() == Some("simple") {
+        if payload.meta.title.is_some()
+            || payload.meta.assignee.is_some()
+            || payload.meta.is_draft.is_some()
+            || payload.meta.finalize
+            || !payload.meta.remove_attachment_ids.is_empty()
+        {
+            return super::multipart::invalid_multipart(
+                "A simple request accepts description, optional epicId, images, and requestId only.",
+            );
+        }
+        let Some(description) = payload.meta.description else {
+            return super::multipart::invalid_multipart(
+                "A simple request description is required.",
+            );
+        };
+        let Some(first_line) = description.lines().find(|line| !line.trim().is_empty()) else {
+            return super::multipart::invalid_multipart(
+                "A simple request description is required.",
+            );
+        };
+        let title: String = first_line.trim().chars().take(120).collect();
+        let request_id = payload.meta.request_id;
+        let epic_id = payload.meta.epic_id;
+        let additions = payload.additions;
+        let result = with_request_files(&state, &headers, move |store| {
+            store.create_simple_request(
+                &project_id,
+                SimpleRequestInput {
+                    title,
+                    body: description,
+                    epic_id,
+                    request_id,
+                    images: additions,
+                },
+                chrono::Utc::now(),
+            )
+        })
+        .await;
+        return match result {
+            Ok((task, created)) => {
+                if created {
+                    refresh_index(&state);
+                }
+                json_response(
+                    if created {
+                        StatusCode::CREATED
+                    } else {
+                        StatusCode::OK
+                    },
+                    &serde_json::json!({"task": task, "replayed": !created}),
+                )
+            }
+            Err(error) => agboard_error_response(&error),
+        };
+    }
+    if payload.meta.request_kind.is_some() || payload.meta.epic_id.is_some() {
+        return super::multipart::invalid_multipart(
+            "requestKind and epicId are only accepted for simple requests.",
+        );
+    }
     let Some(title) = payload.meta.title else {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
