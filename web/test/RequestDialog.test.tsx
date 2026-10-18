@@ -1,0 +1,90 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { RequestDialog, type RequestInput } from '../src/components/RequestDialog';
+import { selectLocale } from '../src/i18n';
+import type { Epic } from '../src/types';
+
+afterEach(cleanup);
+beforeEach(() => selectLocale('en'));
+afterEach(() => selectLocale('en'));
+
+const epics: Epic[] = [
+  {
+    id: 'TASK-LISTEN',
+    name: 'Task listening',
+    color: '#3456ef',
+    isDraft: false,
+    plan: '',
+    body: '',
+    priority: [],
+    priorityError: false,
+    attachments: [],
+    createdAt: '',
+    updatedAt: '',
+  },
+];
+
+describe('simple request dialog', () => {
+  it('submits a regular AI request with its original text, optional epic and stable retry identity', async () => {
+    const submit = vi
+      .fn<(input: RequestInput) => Promise<void>>()
+      .mockRejectedValueOnce(
+        new Error('Could not save the task. Your input and images are kept. Try again.'),
+      )
+      .mockResolvedValueOnce();
+    render(
+      <RequestDialog
+        epics={epics}
+        onClose={vi.fn()}
+        onSubmit={submit}
+        onCreateManually={vi.fn()}
+      />,
+    );
+    const user = userEvent.setup();
+    const textarea = screen.getByRole('textbox', { name: 'What should be done?' });
+    fireEvent.change(textarea, {
+      target: { value: '  First line\r\nsecond line  ' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Epic (optional)' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'Task listening' }));
+    await user.click(screen.getByRole('button', { name: 'Submit task' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Could not save the task');
+    expect((textarea as HTMLTextAreaElement).value).toBe('  First line\nsecond line  ');
+    await user.click(screen.getByRole('button', { name: 'Submit task' }));
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
+    const first = submit.mock.calls[0]?.[0];
+    const retry = submit.mock.calls[1]?.[0];
+    expect(first).toBeDefined();
+    expect(retry).toBeDefined();
+    if (first === undefined || retry === undefined)
+      throw new Error('expected both request attempts');
+    expect(first).toMatchObject({ requestKind: 'simple', epicId: 'TASK-LISTEN', attachments: [] });
+    expect(first.requestId).toBe(retry.requestId);
+    expect(first.description).toBe('  First line\nsecond line  ');
+  });
+
+  it('asks before discarding a request to switch to manual creation', async () => {
+    const onCreateManually = vi.fn();
+    render(
+      <RequestDialog
+        epics={[]}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        onCreateManually={onCreateManually}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: 'What should be done?' }), 'Keep this');
+    await user.click(screen.getByRole('button', { name: 'Create manually' }));
+    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(onCreateManually).not.toHaveBeenCalled();
+    expect(
+      (screen.getByRole('textbox', { name: 'What should be done?' }) as HTMLTextAreaElement).value,
+    ).toBe('Keep this');
+    await user.click(screen.getByRole('button', { name: 'Create manually' }));
+    await user.click(screen.getByRole('button', { name: 'Discard and close' }));
+    expect(onCreateManually).toHaveBeenCalledOnce();
+  });
+});

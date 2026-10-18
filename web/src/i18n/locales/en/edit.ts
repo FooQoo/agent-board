@@ -1,4 +1,17 @@
 export const editEn = {
+  simpleTask: {
+    title: 'New task',
+    submit: 'Submit task',
+    promptLabel: 'What should be done?',
+    promptPlaceholder: 'Describe the task',
+    epicLabel: 'Epic (optional)',
+    noEpic: 'No epic',
+    footerNote:
+      'A listening AI will complete task details and start work.\nIf no AI is listening, the task stays in Todo.',
+    createManually: 'Create manually',
+    required: 'Enter what should be done.',
+    tooLong: 'Keep the complete request within {{max}} characters.',
+  },
   dialog: {
     addCard: 'Add task',
     moveTitle: 'Move task',

@@ -1,4 +1,17 @@
 export const editJa = {
+  simpleTask: {
+    title: '新しいタスク',
+    submit: 'タスクを登録',
+    promptLabel: '何をしてほしいですか？',
+    promptPlaceholder: '依頼内容を入力',
+    epicLabel: 'エピック（任意）',
+    noEpic: 'エピックなし',
+    footerNote:
+      '起票済みのAIがタスク詳細を補完して作業を始めます。\n起票済みのAIがいない場合、タスクはTodoに残ります。',
+    createManually: '手動で作成',
+    required: '依頼内容を入力してください。',
+    tooLong: '依頼全体を{{max}}文字以内にしてください。',
+  },
   dialog: {
     addCard: 'タスク追加',
     moveTitle: '列を移動',
