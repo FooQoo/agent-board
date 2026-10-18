@@ -46,6 +46,14 @@ The skill requires all task-related questions to use board decision requests, wi
 
 **Decision requests with `"wait": {}`** ask and wait in one command. The question stays Pending until it is answered or a lane move withdraws it (`request_changed`); ending or interrupting the wait never expires it. The waiting command returns the resolved answer as `answer`. The local wait client does not follow HTTP redirects and connects only to the same `serve` on 127.0.0.1.
 
+### Waiting for the next task
+
+`agboard --project <name> wait --until task --idle-timeout <seconds> --json` uses the same event-driven wait engine. It reads eligible tasks immediately before subscribing, checks again after the SSE `ready`, and checks after each `changed` event. A single monotonic deadline starts when the initial snapshot has no eligible task; unrelated project changes and keep-alives do not extend it. At the deadline it reads once more, returning a task if one arrived at the boundary, otherwise `idle_timeout` with exit code 0.
+
+The selector uses `ordered_tasks`, the same ordering as the progress table: epics sorted by ID, each epic's saved task priority and then task ID, followed by ungrouped tasks by ID. It returns one AI-owned, Todo, Idle, non-draft, non-archived task. The initial read means tasks created before listening are eligible. The result contains the snapshot cursor, the task, its local `TASK.md` path, and its `PLAN.md` path when it has an epic. Selection is read-only and does not claim a task; callers must re-read its state before acting. A timeout is a normal idle result, while a read defect, unavailable server, or deleted project remains an error.
+
+For one-session orchestration, the [agent-board listener procedure](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md) describes task enrichment, approval checks, Pending answers, sequential work, and interruption recovery. A Pending task blocks that session until its existing request is answered; listener mode does not skip it or treat its time as idle.
+
 ## Automatic Done
 
 The rule is defined in [Data model](./history-and-decisions.md#acceptance-conditions-and-automatic-done). Evaluation works like this:

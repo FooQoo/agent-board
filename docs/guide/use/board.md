@@ -9,9 +9,9 @@ The board is where you add tasks, follow what agents are doing, and review the r
 ## Add a task
 
 1. Select a project in the header and choose **Add task**.
-2. Enter the title and choose the owner: **AI** for work an agent does, **User** for your own work. The owner cannot be changed later.
-3. Write the body. Expand the acceptance panel at the bottom to add completion conditions.
-4. Check **Draft** if agents must leave the task alone until you finish writing it (see [Drafts](#drafts)).
+2. Enter a short request and submit it. This creates an AI-owned task; the first non-empty line becomes its title.
+
+To set the title, owner, acceptance conditions, or draft state yourself, choose **Create manually** in the request form and use the full editor. See [Editing and evidence](./editing#send-a-task-request). The owner cannot be changed after the task is created.
 
 The new task appears at the end of Todo.
 
@@ -50,7 +50,7 @@ To edit a task or put it in an epic, choose **Make draft** in the details panel,
 
 A draft is a task that agents must leave alone while you write it. Agents cannot change a draft, including its `TASK.md` file.
 
-- To create a draft, check **Draft** when you add a task.
+- To create a draft, choose **Create manually** in the request form and check **Draft** in the full editor.
 - To work on an existing task, choose **Make draft** in the details panel, edit and save its text, then choose **Finalize** when an agent may use it. Saving in the editor keeps the draft state; the editor has no Draft checkbox.
 - A running task cannot become a draft.
 

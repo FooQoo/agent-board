@@ -20,7 +20,7 @@ Keep diagrams focused on one flow. Flowcharts and sequence diagrams retain their
 Regenerate the guide screenshots and the demo videos with the scripts below. Both need the web UI and CLI [built](./getting-started/setup.md#build) first, and the Playwright browser from [Verification](./getting-started/pull-request.md#verification).
 
 ```sh
-node e2e/scripts/docs-screenshots.mjs   # docs/images/guide/*.png (14 images, English and Japanese)
+node e2e/scripts/docs-screenshots.mjs   # docs/images/guide/*.png (16 images, English and Japanese)
 node e2e/scripts/demo-video.mjs         # docs/public/videos/ (also needs ffmpeg)
 ```
 

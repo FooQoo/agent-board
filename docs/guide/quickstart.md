@@ -21,7 +21,7 @@ Leave the server running and open [http://127.0.0.1:7420/](http://127.0.0.1:7420
 
 ## 2. Add a task yourself
 
-In the browser, choose **Add task**, type the title `Write the setup guide`, leave the owner as **User**, and add the task. It appears in Todo as task #1.
+In the browser, choose **Add task**, then **Create manually** in the request form. Type the title `Write the setup guide`, leave the owner as **User**, and add the task. It appears in Todo as task #1.
 
 ## 3. Hand a task to an agent
 

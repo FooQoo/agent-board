@@ -12,6 +12,7 @@
 | `GET /api/projects` | `projects`（id・name・createdAt）と`catalogVersion`。タスクは含まない。0件でも200。 |
 | `GET /api/projects/{projectId}/board` | project・version・cursor・epics・`epicTaskCounts`（エピックごとにtodo・doing・done・archived・total。アーカイブ済みはarchivedだけに数え、同じスナップショットから集計する）、本文と全履歴を持つ未アーカイブのtasks、problems。`nextTaskId`はない。 |
 | `POST /api/projects/{projectId}/tasks` | title・body・acceptance・assignee・isDraftからTodo・Idleのタスクを作る。サーバーがfrontmatterを組み立てて検証する。201。 |
+| `POST /api/projects/{projectId}/tasks/multipart` | 画像付きの通常タスク、または依頼本文・任意のエピック・画像をまとめた簡易依頼タスクを作る。下記を参照。 |
 | `PATCH /api/projects/{projectId}/tasks/{id}` | **下書き**のタスクのtitle・body・acceptanceと任意の`finalize: true`を更新する。bodyだけならfrontmatterを、acceptanceだけなら本文を保つ。`description`と`body`の同時指定は422 `invalid_value`。後から保存した内容が優先される。下書きでなければ409 `task_not_draft`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/draft` | `isDraft`を設定する。Runningのタスクは409 `invalid_state_for_draft`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`。未知のEPIC-IDは404 `epic_not_found`。 |
@@ -32,6 +33,22 @@
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
 
+### multipartでタスクを作成する
+
+`POST /api/projects/{projectId}/tasks/multipart`は、JSONの`metadata`パートを一つ、`file`パートを0件以上受け付けます。各ファイルには、`metadata.attachments`に対応する`{id, name}`が必要です。通常の添付枚数・サイズ・メディア形式の制限も適用されます。通常のタスクでは、`requestId`・`title`・`description`・`assignee`と任意の`isDraft`を指定します。簡易依頼フォームの場合は次のように送ります。
+
+```json
+{
+  "requestKind": "simple",
+  "requestId": "<送信内容を識別する固定ID>",
+  "description": "1行目をタイトルに使います\n\n依頼の詳細",
+  "epicId": "DESIGN",
+  "attachments": [{"id": "<画像ID>", "name": "sketch.png"}]
+}
+```
+
+`epicId`と`attachments`は任意です。エピックがない場合は省略するか`null`、画像がない場合は空配列にします。簡易依頼では`title`・`assignee`・`isDraft`・`finalize`を指定できません。サーバーはAI担当・Todoのタスクを作り、入力本文を`## 元の依頼`で囲み、最初の空でない行（Unicode文字数で最大100文字）からタイトルを作ります。プロジェクトロック内でタスクと画像を検証・ステージングし、完成したタスクフォルダを一度にrenameして公開します。新規作成は`201 {"task": …, "replayed": false}`、同一送信の再試行は`200 {"task": …, "replayed": true}`です。内容が異なる同一`requestId`を再利用すると`409 attachment_request_conflict`になります。手動で作る通常タスクは従来どおり`POST /tasks`か通常のmultipart形式を使い、簡易依頼用の契約へ切り替わりません。
+
 **一括アーカイブ。** 対象のIDは確認を開いた時点で固定し、送信時にDoneのタスクを集め直すことはありません。ロックの中で、未アーカイブの対象がすべてまだDoneであることを確かめます。移動または削除された対象が一つでもあれば、要求全体を409 `archive_targets_changed`にして何も変えません。アーカイブ済みの対象は完了済みとして扱うので、応答を失った後の再送で履歴は重複しません。対象は一件ずつ保存し、最後に一回だけ再読み込みと通知を行います。途中で保存に失敗すると、保存済みの対象はアーカイブされたまま残り、再送で残りを処理します。
 
 **エラー**は`code`・`message`・`reason`を持ちます。
@@ -41,7 +58,7 @@
 | 400 | 壊れたJSON。 |
 | 403 | 保護に失敗した。 |
 | 404 | プロジェクト・タスク・エピックがない。 |
-| 409 | `request_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
+| 409 | `request_changed`・`attachment_request_conflict`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
 | 413 | 1 MiBを超える本文。 |
 | 422 | ID構文・入力・状態の規則の違反。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
 | 503 | ロック待ちが時間切れになった。 |

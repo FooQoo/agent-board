@@ -23,6 +23,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `requestAnswers` | 再起動後も依頼IDで引けるよう保存する回答。 |
 | `archivedAt` | `null`、またはアーカイブ日時。 |
 | `attachments`・`evidence` | 各ファイルのID・名前・サイズ・作成日時（画像はMIME型も）。 |
+| `simpleRequest` | 簡易依頼フォームで作成したタスクだけにある任意の冪等性メタデータ`{requestId, payloadHash}`。通常・過去のタスクにはない。 |
 | `createdAt`・`updatedAt` | 作成日時と、取得時に`task.json`と`TASK.md`の更新日時の新しい方。 |
 | `agentStatusChangedAt`・`taskStatusChangedAt` | 稼働状態の最後の変更と、レーンの最後の実際の変更。本文の編集・進捗の記録・同じレーンへの操作では`taskStatusChangedAt`は変わらない。 |
 | `history` | `TASK.md`から読む。保存と応答は古い順。 |
@@ -84,6 +85,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 
 - `pendingRequest`は`{question, choices}`で、choicesは`[{"id":"proceed","label":"Proceed"}]`のような形です。
 - `requestAnswers`の各項目は`{requestId, actor, choiceId, choiceLabel, text, at}`です。`choiceId`と`choiceLabel`は両方`null`か両方設定、`text`は`null`か有効な回答で、選択と文の少なくとも一方があります。`requestId`は一意で、現在の`pendingRequestId`とは異なります。
+- `simpleRequest`は簡易依頼用のendpointで作ったタスクだけに保存されます。`payloadHash`は正規化した依頼内容・選択エピック・画像メタデータと画像データから計算した64文字の小文字16進数で表したSHA-256です。同じ依頼IDとhashでの再送は既存タスクを返します。同じIDでhashが異なる要求は拒否されます。
 
 `TASK.md`では`history`が必須です（`history: []`も有効）。新規タスクの入力では省略するか空のリストにでき、作成の入力に空でない履歴があれば拒否します。本文と受入条件の編集は最新の履歴を保ち、`edit --desc-file`は履歴を追加しません。直接編集で履歴を追記する場合は、既存の内容を保ち、`at`/`reason`の項目だけを追加します。ただし、日時の付与と原子的な追記を行うCLIの利用を推奨します。
 

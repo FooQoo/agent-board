@@ -96,6 +96,24 @@ agboard project bind "My project" --folder ./docs
 
 Renaming keeps the project's ID, folder registrations, and tasks. Folder registrations and project deletion are described in [Data and backups](../operations/data#projects-and-folders).
 
+## Wait for changes or a task
+
+The `wait` command has two modes. `--after <cursor>` waits for a project change as described in [Working with agents](./agents#wait-for-changes). `--until task` returns one eligible AI task, including one that was already in Todo before listening started:
+
+```sh
+agboard --project "My project" wait --until task --idle-timeout 300 --json
+```
+
+`--idle-timeout` is required with `--until task` and accepts 1 to 86,400 seconds. It has no default. Each invocation returns at most one task, in the same order as the progress table; it does not claim or change the task. After resolving the returned task, call `wait` again to continue. See [Working with agents](./agents#listen-for-the-next-task) for the full session workflow and how Pending tasks are handled.
+
+On success, task mode prints one JSON object and exits 0:
+
+```json
+{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","planPath":null}
+```
+
+When there has been no eligible task for the full interval, it prints `{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}` and exits 0. This is a normal idle completion; it does not say that previous work succeeded. `board_unavailable`, `project_not_found`, invalid board data, and invalid arguments remain errors with non-zero exit codes. `--timeout` applies only to `--after` mode; it reports `wait_timeout` as an error and does not answer a Pending question.
+
 ## Set up the shared folder
 
 `agboard setup` creates the data folder and its `shared/` folder, then adds the data folder to the Codex and Claude Code user settings so that agents can write there. It needs no project, and you run it yourself; it does not install hooks or the agent skill.

@@ -65,7 +65,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `port_in_use` | The port is taken. | 1 | n/a |
 | `board_unavailable` | `wait` or the hook cannot reach the server. | 1 | n/a |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | 1 | n/a |
-| `wait_timeout` | `wait` reached its optional `--timeout` with no change. | 1 | n/a |
+| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change. It is not a Pending answer. | 1 | n/a |
 | `forbidden` | A web write failed the guard (Host, Origin, `Sec-Fetch-Site`, or token). | n/a | 403 |
 
 ## Exit codes
@@ -79,3 +79,5 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | 4 | The project was not found or the folder is not bound. |
 
 Other web statuses: 400 for malformed JSON and 413 for a body over 1 MiB. Guards run before the target is looked up, so a refused request never reveals what exists.
+
+Task mode (`wait --until task --idle-timeout <seconds>`) has a different successful ending: when no eligible task arrives before its idle deadline, it prints a `kind: "idle_timeout"` JSON result and exits 0. An eligible task also exits 0. Invalid arguments exit 2. A missing project exits 4. A stopped/mismatched server, invalid board data, or a stream failure returns `board_unavailable` and exits 1; these are errors, not idle completion. The idle timeout is 1 to 86,400 seconds and is required.

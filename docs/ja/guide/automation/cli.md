@@ -96,6 +96,24 @@ agboard project bind "My project" --folder ./docs
 
 名前を変えても、プロジェクトのID・フォルダの登録・タスクは保たれます。フォルダの登録とプロジェクトの削除は、[データとバックアップ](../operations/data#プロジェクトとフォルダ)に説明があります。
 
+## 変更またはタスクを待つ
+
+`wait`には二つのモードがあります。`--after <cursor>`は[エージェントとの連携](./agents#変更を待つ)のとおりプロジェクトの変更を待ちます。`--until task`は、リッスン開始前からTodoにあったタスクも含め、対象となるAI担当タスクを一件返します。
+
+```sh
+agboard --project "My project" wait --until task --idle-timeout 300 --json
+```
+
+`--until task`には`--idle-timeout`が必須です。1〜86,400秒を指定し、既定値はありません。一回の呼び出しで返すのは進行表と同じ順序の一件で、タスクを占有したり変更したりしません。取得したタスクを解決したら、再び`wait`を呼び出します。セッション全体の流れとPendingの扱いは[エージェントとの連携](./agents#次のタスクを待つ)を参照してください。
+
+取得成功時は、一つのJSONオブジェクトを出力して終了コード0を返します。
+
+```json
+{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","planPath":null}
+```
+
+指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。Pendingの質問への回答にはなりません。
+
 ## 共有フォルダをセットアップする
 
 `agboard setup`は、データフォルダとその`shared/`フォルダを作り、エージェントがそこへ書けるよう、CodexとClaude Codeのユーザー設定にデータフォルダを加えます。プロジェクトは要らず、あなた自身が実行します。Hookやエージェントのスキルはインストールしません。

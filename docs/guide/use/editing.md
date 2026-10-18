@@ -19,6 +19,16 @@ The editor shows the outline on the left, the Markdown body in the middle, and t
 
 For the epic dialog (name, color, plan, and task order), see [Epics and progress](./epics). For drafts, see [The board](./board#drafts).
 
+## Send a task request
+
+Choose **Add task** in the board header to open the short request form. Enter what you want done, optionally choose an epic and attach images, then submit. The new AI-owned task appears in Todo with your complete request preserved in its body. The first non-empty line supplies its title, up to 100 Unicode characters.
+
+![Short task request form with an epic selected and an image attached](../../images/guide/task-request.png){.screenshot}
+
+If an AI session is listening, it can pick up this task along with tasks already in Todo. If no session is listening, the task stays on the board for later. **Create manually** in the request form opens the existing full task editor, where you can set the title, description, assignee, draft state, conditions, and images yourself. The usual task editor and its save behavior remain available.
+
+The request and its optional epic and images are saved together. If saving fails, the form keeps your text and selected images so you can retry. Images are optional and use the same PNG, JPEG, WebP, and GIF limits as other task attachments.
+
 ## Add images
 
 In the browser editor, select, drop, or paste an image, then insert it into the text. Images can be PNG, JPEG, WebP, or GIF, up to 10 MiB each, with at most 20 per task and 50 MiB in total.
