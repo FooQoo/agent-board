@@ -137,6 +137,7 @@ export interface Board {
 /** What a card dialog (create, move, edit) is asked to do. */
 export type DialogAction =
   | { kind: 'create' }
+  | { kind: 'request' }
   | { kind: 'move'; task: Task; target: ColumnName }
   | { kind: 'edit'; task: Task }
   | { kind: 'epic'; epic: Epic };

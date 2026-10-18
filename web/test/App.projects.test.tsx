@@ -635,6 +635,7 @@ describe('refreshing on events', () => {
 
 async function openCreateForm() {
   await userEvent.click(screen.getByRole('button', { name: 'Add task' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Create manually' }));
   return screen.getByRole('dialog');
 }
 

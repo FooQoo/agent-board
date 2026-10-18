@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { DiscardConfirm } from './editor/DiscardConfirm';
 import '../styles/modal.css';
 
 /** The button of a card on the board (the focus target after a drag-and-drop move). */
@@ -26,6 +27,16 @@ export interface DialogFrameProps {
   validate: () => string | null;
   /** Saves. A rejection keeps the dialog open and shows its message. */
   save: () => Promise<void>;
+  /** Asks before closing or changing dialog when the form has unsaved input. */
+  dirty?: boolean;
+  /** Optional content below the form fields and above the action row. */
+  footerNote?: ReactNode;
+  /** Places a save error inside the footer, for forms whose approved layout puts it there. */
+  errorInFooter?: boolean;
+  /** Optional secondary route, such as switching to the full manual editor. */
+  secondaryAction?: { label: string; onClick: () => void };
+  submitDisabled?: boolean;
+  className?: string;
   children: ReactNode;
 }
 
@@ -38,6 +49,12 @@ export function DialogFrame({
   onSavingChange,
   validate,
   save,
+  dirty = false,
+  footerNote,
+  errorInFooter = false,
+  secondaryAction,
+  submitDisabled = false,
+  className = '',
   children,
 }: DialogFrameProps) {
   const { t } = useTranslation();
@@ -48,9 +65,16 @@ export function DialogFrame({
   const formRef = useRef<HTMLFormElement>(null);
   // Where the focus was when the dialog opened (the button that opened it).
   const [opener] = useState(() => document.activeElement);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [discardAction, setDiscardAction] = useState<'close' | 'secondary'>('close');
 
-  const close = () => {
-    if (!savingRef.current) onClose();
+  const requestDiscard = (action: 'close' | 'secondary') => {
+    if (savingRef.current) return;
+    if (dirty) {
+      setDiscardAction(action);
+      setConfirmDiscard(true);
+    } else if (action === 'close') onClose();
+    else secondaryAction?.onClick();
   };
 
   const submit = async (event: FormEvent) => {
@@ -79,9 +103,9 @@ export function DialogFrame({
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && close()}>
+    <Dialog open onOpenChange={(open) => !open && requestDiscard('close')}>
       <DialogContent
-        className="modal action-dialog"
+        className={`modal action-dialog ${className}${errorInFooter && error ? ' has-footer-error' : ''}`.trim()}
         showCloseButton={false}
         aria-describedby={undefined}
         onEscapeKeyDown={(event) => {
@@ -108,27 +132,64 @@ export function DialogFrame({
             className="modal__close"
             aria-label={t('dialog.close')}
             disabled={saving}
-            onClick={close}
+            onClick={() => requestDiscard('close')}
           >
             <XIcon aria-hidden="true" />
           </button>
         </div>
         <form className="modal__form" ref={formRef} onSubmit={submit} noValidate>
           {children}
-          {error && (
+          {error && !errorInFooter && (
             <p className="modal__error" role="alert">
               {error}
             </p>
           )}
-          <div className="modal__actions">
-            <Button type="button" variant="outline" onClick={close} disabled={saving}>
-              {t('dialog.cancel')}
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? t('dialog.saving') : submitLabel}
-            </Button>
+          <div className={footerNote || secondaryAction ? 'modal__footer' : 'modal__actions'}>
+            {(footerNote || secondaryAction) && (
+              <div className="modal__footer-copy">
+                {error && errorInFooter && (
+                  <p className="modal__error" role="alert">
+                    {error}
+                  </p>
+                )}
+                {footerNote}
+                {secondaryAction && (
+                  <button
+                    type="button"
+                    className="modal__link"
+                    disabled={saving}
+                    onClick={() => requestDiscard('secondary')}
+                  >
+                    {secondaryAction.label}
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="modal__actions">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => requestDiscard('close')}
+                disabled={saving}
+              >
+                {t('dialog.cancel')}
+              </Button>
+              <Button type="submit" disabled={saving || submitDisabled}>
+                {saving ? t('dialog.saving') : submitLabel}
+              </Button>
+            </div>
           </div>
         </form>
+        <DiscardConfirm
+          open={confirmDiscard}
+          onOpenChange={setConfirmDiscard}
+          onKeep={() => setConfirmDiscard(false)}
+          onDiscard={() => {
+            setConfirmDiscard(false);
+            if (discardAction === 'close') onClose();
+            else secondaryAction?.onClick();
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

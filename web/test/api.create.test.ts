@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WriteError, createNewTask } from '../src/api';
+import { WriteError, createNewTask, createSimpleTaskMultipart } from '../src/api';
 import type { EditorAttachment } from '../src/components/editor/attachmentTypes';
 import { fixtureTask } from './fixtures';
 
@@ -20,6 +20,29 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('creating a task', () => {
+  it('sends simple requests through multipart even without images', async () => {
+    const fetchMock = respond(201, { task: fixtureTask(9) });
+    await createSimpleTaskMultipart(PROJECT, {
+      description: 'Task title\n\n## Original request\n\nDo this',
+      epicId: 'TASK-LISTEN',
+      requestId: 'request-1',
+      attachments: [],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`/api/projects/${PROJECT}/tasks/multipart`);
+    expect(init.method).toBe('POST');
+    const metadata = JSON.parse(String((init.body as FormData).get('metadata')));
+    expect(metadata).toMatchObject({
+      requestKind: 'simple',
+      requestId: 'request-1',
+      epicId: 'TASK-LISTEN',
+      description: 'Task title\n\n## Original request\n\nDo this',
+      attachments: [],
+    });
+    expect((init.body as FormData).get('file')).toBeNull();
+  });
+
   it('sends the draft flag in the one create request', async () => {
     const fetchMock = respond(201, { task: { ...fixtureTask(9), isDraft: true } });
     const result = await createNewTask(PROJECT, {

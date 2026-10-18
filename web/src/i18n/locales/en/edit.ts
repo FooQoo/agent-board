@@ -1,4 +1,19 @@
 export const editEn = {
+  simpleTask: {
+    title: 'New task',
+    submit: 'Submit task',
+    promptLabel: 'What should be done?',
+    promptPlaceholder: 'Describe the task',
+    epicLabel: 'Epic (optional)',
+    epicLoadError: 'Could not load the epics. Try again later.',
+    noEpic: 'No epic',
+    footerNote:
+      'A listening AI will complete task details and start work.\nIf no AI is listening, the task stays in Todo.',
+    createManually: 'Create manually',
+    required: 'Enter what should be done.',
+    tooLong: 'Keep the complete request within {{max}} characters.',
+    saveFailed: 'Could not save the task. Your input and images are kept. Try again.',
+  },
   dialog: {
     addCard: 'Add task',
     moveTitle: 'Move task',
@@ -49,6 +64,8 @@ export const editEn = {
     backToEdit: 'Back',
     discardAndMove: 'Discard and move',
     attachments: 'Attachments',
+    attachmentsOptional: 'Attachments (optional)',
+    attachmentsOptionalCount: '· {{count}}',
     attachmentRefusedTitle: 'Cannot add the image',
     attachmentTooLarge: '{{name}} is larger than 10 MB. Choose a smaller image.',
     attachmentFormat: '{{name}} is not a supported format. Choose a PNG, JPEG, WebP or GIF image.',

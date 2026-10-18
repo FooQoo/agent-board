@@ -296,6 +296,32 @@ export function createTaskMultipart(
   );
 }
 
+/** Creates a regular AI task from a request, with its epic and images published atomically. */
+export function createSimpleTaskMultipart(
+  projectId: ProjectId,
+  input: {
+    description: string;
+    epicId: string | null;
+    requestId: string;
+    attachments: readonly EditorAttachment[];
+  },
+) {
+  return sendMultipart(
+    `${projectPath(projectId)}/tasks/multipart`,
+    multipartBody(
+      {
+        requestKind: 'simple',
+        requestId: input.requestId,
+        description: input.description,
+        epicId: input.epicId,
+        attachments: undefined,
+      },
+      input.attachments,
+    ),
+    'POST',
+  );
+}
+
 /**
  * Adds a card in one request: with its images when there are some (multipart), and as a draft when
  * `isDraft` is set. A refused request is not repeated here, so a failure never adds two cards.

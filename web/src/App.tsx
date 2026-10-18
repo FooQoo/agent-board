@@ -22,6 +22,7 @@ import { ResizeHandle } from './components/ResizeHandle';
 import { StatusBar, type StatusBarProps } from './components/StatusBar';
 import {
   createNewTask,
+  createSimpleTaskMultipart,
   editTask,
   editTaskMultipart,
   moveTask,
@@ -189,7 +190,7 @@ export function App({ initial }: AppProps) {
 
   const openDialog = (dialog: DialogAction) => {
     if (session.operation !== null || !isProjectId(activeId)) return;
-    operations.begin(dialog.kind, activeId, dialog);
+    operations.begin(dialog.kind === 'request' ? 'create' : dialog.kind, activeId, dialog);
   };
 
   const detailShown = view !== 'projects-loading' && view !== 'projects-error';
@@ -231,7 +232,7 @@ export function App({ initial }: AppProps) {
         onBack={() => {
           dispatch({ type: 'SET_VIEW_MODE', mode: 'board' });
         }}
-        onAdd={() => openDialog({ kind: 'create' })}
+        onAdd={() => openDialog({ kind: 'request' })}
         onArchive={() => {
           dispatch({ type: 'SET_VIEW_MODE', mode: 'archive' });
         }}
@@ -429,6 +430,8 @@ export function App({ initial }: AppProps) {
             saving ? operations.saveStarted(operation.id) : operations.saveFailed(operation.id)
           }
           tasks={tasks}
+          epics={boardData?.epics ?? []}
+          epicsFetchFailed={board.fetchFailed}
           epicApi={
             dialog.kind === 'epic'
               ? epicApi(operation.projectId, dialog.epic.id, () =>
@@ -445,7 +448,14 @@ export function App({ initial }: AppProps) {
           onSubmit={async (data) => {
             // Writes go to the project the form was opened in, not to whatever the URL says now.
             const projectId = operation.projectId;
-            if (dialog.kind === 'create') {
+            if (dialog.kind === 'request' && data.requestKind === 'simple') {
+              await createSimpleTaskMultipart(projectId, {
+                description: data.description ?? '',
+                epicId: data.epicId ?? null,
+                requestId: data.requestId ?? crypto.randomUUID(),
+                attachments: data.attachments ?? [],
+              });
+            } else if (dialog.kind === 'create' || dialog.kind === 'request') {
               await createNewTask(projectId, {
                 title: data.title ?? '',
                 description: data.description ?? '',

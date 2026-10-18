@@ -21,6 +21,8 @@ export interface AttachmentPanelProps {
   disabled?: boolean;
   className?: string;
   showHeader?: boolean;
+  /** Use the compact optional-attachment heading from the task request design. */
+  optionalHeader?: boolean;
 }
 
 function noticeText(notice: AttachmentNotice, t: TFunction): string {
@@ -48,6 +50,7 @@ export function AttachmentPanel({
   disabled = false,
   className = '',
   showHeader = true,
+  optionalHeader = false,
 }: AttachmentPanelProps) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
@@ -83,10 +86,14 @@ export function AttachmentPanel({
       {showHeader && (
         <div className="editor-attachments__header">
           <span className="editor-attachments__title">
-            <PaperclipIcon aria-hidden="true" />
-            {t('editor.attachments')}
+            {!optionalHeader && <PaperclipIcon aria-hidden="true" />}
+            {optionalHeader ? t('editor.attachmentsOptional') : t('editor.attachments')}
           </span>
-          <span className="editor-attachments__count">{attachments.length}</span>
+          <span className="editor-attachments__count">
+            {optionalHeader
+              ? t('editor.attachmentsOptionalCount', { count: attachments.length })
+              : attachments.length}
+          </span>
           {onClose && (
             <Button
               type="button"
