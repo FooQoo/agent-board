@@ -1,5 +1,5 @@
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, beforeAll } from 'vitest';
 
 if (typeof window.matchMedia === 'undefined') {
   window.matchMedia = (media) => ({
@@ -57,4 +57,27 @@ if (typeof Range.prototype.getBoundingClientRect !== 'function') {
 
 afterEach(() => {
   cleanup();
+});
+
+// Code that the pages load after their first screen is fetched before each file's tests, so a
+// dialog opens in the same render as it would once the page has settled.
+beforeAll(async () => {
+  const [
+    { actionDialog, bulkArchiveDialog },
+    { settingsDialog },
+    { preloadMonitorDrawer },
+    markdown,
+  ] = await Promise.all([
+    import('../src/components/lazyDialogs'),
+    import('../src/components/Header'),
+    import('../src/monitor/View'),
+    import('../src/components/markdown/LazyMarkdownSections'),
+  ]);
+  await Promise.all([
+    actionDialog.preload(),
+    bulkArchiveDialog.preload(),
+    settingsDialog.preload(),
+    preloadMonitorDrawer(),
+    markdown.preloadMarkdownSections(),
+  ]);
 });

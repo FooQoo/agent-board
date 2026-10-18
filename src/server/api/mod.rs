@@ -74,9 +74,7 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
             .route("/assets/access/entry.js", get(access_js));
     }
     router = router
-        .route("/assets/app.js", get(app_js))
-        .route("/assets/app.css", get(app_css))
-        .route("/assets/{name}", get(chunk))
+        .route("/assets/{name}", get(asset))
         .route("/logo.png", get(logo_png))
         .route("/logo-white.png", get(logo_white_png))
         .route("/api/events", get(events::events))

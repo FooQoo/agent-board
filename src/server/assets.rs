@@ -1,18 +1,13 @@
-//! The web UI files embedded in the executable and the session token.
+//! The board page, the logos and the session token. The board's scripts and
+//! stylesheets are in [`super::web_assets`].
 
+use super::web_assets::{APP_BUILD_ID, BUILD_ID_PLACEHOLDER};
 use crate::error::AgboardError;
 
-/// `web/dist/index.html`, with [`TOKEN_PLACEHOLDER`] in the token `<meta>`.
+/// `web/dist/index.html`, with [`TOKEN_PLACEHOLDER`] in the token `<meta>`
+/// and [`BUILD_ID_PLACEHOLDER`] in the build `<meta>`.
 pub const INDEX_HTML: &str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/web/dist/index.html"));
-pub const APP_JS: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/web/dist/assets/app.js"
-));
-pub const APP_CSS: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/web/dist/assets/app.css"
-));
 
 pub const LOGO_PNG: &[u8] =
     include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/web/dist/logo.png"));
@@ -28,9 +23,12 @@ pub const TOKEN_PLACEHOLDER: &str = "{{AGBOARD_TOKEN}}";
 /// Number of random bytes behind a session token (64 hex characters).
 const TOKEN_BYTES: usize = 32;
 
-/// `template` with the token placeholder replaced by `token`.
+/// `template` with the token placeholder replaced by `token` and the build ID
+/// placeholder by the board's build ID.
 pub fn render_index(template: &str, token: &str) -> String {
-    template.replace(TOKEN_PLACEHOLDER, token)
+    template
+        .replace(TOKEN_PLACEHOLDER, token)
+        .replace(BUILD_ID_PLACEHOLDER, APP_BUILD_ID)
 }
 
 /// Lowercase hexadecimal text of `bytes`.
@@ -72,11 +70,24 @@ mod tests {
     }
 
     #[test]
-    fn the_embedded_index_has_one_placeholder_and_the_app_script() {
+    fn render_index_fills_in_the_build_id() {
+        let html = r#"<meta name="agboard-build" content="{{AGBOARD_BUILD_ID}}" />"#;
+        assert_eq!(
+            render_index(html, "abc"),
+            format!(r#"<meta name="agboard-build" content="{APP_BUILD_ID}" />"#)
+        );
+    }
+
+    #[test]
+    fn the_embedded_index_has_each_placeholder_once_and_loads_embedded_files() {
         assert_eq!(INDEX_HTML.matches(TOKEN_PLACEHOLDER).count(), 1);
-        assert!(INDEX_HTML.contains(r#"src="/assets/app.js""#));
-        assert!(!APP_JS.is_empty());
-        assert!(!APP_CSS.is_empty());
+        assert_eq!(INDEX_HTML.matches(BUILD_ID_PLACEHOLDER).count(), 1);
+        for asset in super::super::web_assets::APP_ASSETS
+            .iter()
+            .filter(|asset| asset.name.starts_with("app-"))
+        {
+            assert!(INDEX_HTML.contains(&format!("\"/assets/{}\"", asset.name)));
+        }
     }
 
     #[test]
@@ -92,60 +103,5 @@ mod tests {
             );
         }
         assert_ne!(a, b);
-    }
-}
-
-// The on-demand web chunks that `build.rs` found in `web/dist/assets`, as
-// `ASSET_CHUNKS`: `(file name, bytes)`.
-include!(concat!(env!("OUT_DIR"), "/assets_table.rs"));
-
-/// Every on-demand chunk is an ES module.
-pub const CHUNK_CONTENT_TYPE: &str = "text/javascript; charset=utf-8";
-
-/// The bytes and content type of the chunk named `name`. Only names in the
-/// table are found, so `..`, `/` and any other name are `None`.
-pub fn lookup(name: &str) -> Option<(&'static [u8], &'static str)> {
-    find(ASSET_CHUNKS, name).map(|bytes| (bytes, CHUNK_CONTENT_TYPE))
-}
-
-fn find(table: &'static [(&'static str, &'static [u8])], name: &str) -> Option<&'static [u8]> {
-    table
-        .iter()
-        .find(|(known, _)| *known == name)
-        .map(|(_, bytes)| *bytes)
-}
-
-#[cfg(test)]
-mod chunk_tests {
-    use super::*;
-
-    static TABLE: &[(&str, &[u8])] = &[("app-a.js", b"alpha"), ("app-b.js", b"beta")];
-
-    #[test]
-    fn a_listed_name_finds_its_bytes() {
-        assert_eq!(find(TABLE, "app-b.js"), Some(&b"beta"[..]));
-        assert_eq!(find(TABLE, "app-a.js"), Some(&b"alpha"[..]));
-    }
-
-    #[test]
-    fn any_other_name_finds_nothing() {
-        for name in [
-            "",
-            "app-c.js",
-            "app-a",
-            "app-a.js/",
-            "../app-a.js",
-            "app-a.js\0",
-        ] {
-            assert_eq!(find(TABLE, name), None, "{name:?}");
-        }
-    }
-
-    #[test]
-    fn the_real_table_only_holds_app_chunks() {
-        for (name, _) in ASSET_CHUNKS {
-            assert!(name.starts_with("app-") && name.ends_with(".js"), "{name}");
-            assert!(!name.contains('/') && !name.contains(".."), "{name}");
-        }
     }
 }

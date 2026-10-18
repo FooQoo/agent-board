@@ -11,7 +11,7 @@ import type {
   HistoryEvent,
   Problem,
   Project,
-} from './src/types';
+} from './src/types.ts';
 
 /** The mock keeps the board's parts; the version and cursor are made from the revision when it answers. */
 interface MockBoard {

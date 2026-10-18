@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use axum::Router;
 use axum::extract::{Path, Request, State};
-use axum::http::{Method, StatusCode, header};
+use axum::http::{HeaderMap, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::sse::Event;
 use axum::response::{IntoResponse, Response, Sse};
@@ -24,6 +24,7 @@ use crate::file_store::model::AttachmentOwner;
 use crate::file_store::validate::EpicId;
 use crate::server::response::{agboard_error_response, file_response, json_response};
 use crate::server::store::{indexed_view_in, parse_project_id, read_checked};
+use crate::server::web_assets::{self, MONITOR_BUILD_ID};
 
 #[derive(Clone)]
 pub(crate) struct MonitorState {
@@ -146,7 +147,7 @@ async fn security_headers(request: Request, next: Next) -> Response {
         headers.insert(header::CONTENT_SECURITY_POLICY, header::HeaderValue::from_static(
             "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
         ));
-    } else if path.starts_with("/monitor/api/") || path.starts_with("/assets/monitor/") {
+    } else if path.starts_with("/monitor/api/") {
         headers.insert(
             header::CACHE_CONTROL,
             header::HeaderValue::from_static("no-store"),
@@ -159,17 +160,12 @@ async fn not_found() -> Response {
     StatusCode::NOT_FOUND.into_response()
 }
 
-async fn asset(Path(name): Path<String>) -> Response {
+/// A content-named monitor file, cached for a year; any other name is a 404
+/// that is not cached.
+async fn asset(Path(name): Path<String>, headers: HeaderMap) -> Response {
     match super::assets::monitor_lookup(&name) {
-        Some((bytes, mime)) => (
-            [
-                (header::CONTENT_TYPE, mime),
-                (header::CACHE_CONTROL, "no-store"),
-            ],
-            bytes,
-        )
-            .into_response(),
-        None => StatusCode::NOT_FOUND.into_response(),
+        Some(asset) => web_assets::response(asset, &headers),
+        None => ([(header::CACHE_CONTROL, "no-store")], StatusCode::NOT_FOUND).into_response(),
     }
 }
 
@@ -364,7 +360,9 @@ enum MonitorEvent {
 impl MonitorEvent {
     fn into_sse(self) -> Event {
         match self {
-            Self::Ready => Event::default().event("ready").data("{}"),
+            Self::Ready => Event::default()
+                .event("ready")
+                .data(format!(r#"{{"build":"{MONITOR_BUILD_ID}"}}"#)),
             Self::Changed => Event::default().event("changed").data("{}"),
             Self::Heartbeat => Event::default().event("heartbeat").data("{}"),
         }

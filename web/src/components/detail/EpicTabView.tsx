@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { Epic, ProjectId } from '../../types';
-import { MarkdownSections } from '../markdown/MarkdownSections';
+import { LazyMarkdownSections } from '../markdown/LazyMarkdownSections';
 import { DetailAttachments } from './DetailAttachments';
 
 /** What the epic tab of a card can show: nothing, the epic, or why the epic is not there. */
@@ -40,7 +40,7 @@ export function EpicTabView({
     `/api/projects/${projectId}/epics/${encodeURIComponent(epic.id)}/attachments/${encodeURIComponent(id)}`;
   return (
     <>
-      <MarkdownSections
+      <LazyMarkdownSections
         source={epic.body}
         resolveAttachment={(id) =>
           epic.attachments.some((item) => item.id === id) ? attachmentUrl(id) : null

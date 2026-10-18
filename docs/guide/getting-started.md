@@ -48,7 +48,7 @@ pnpm --dir web build
 cargo install --path . --locked --force
 ```
 
-The CLI embeds the built web UI, so build the web UI first. `--force` replaces the installed version. Stop and restart `agboard serve` after an update to use the new executable and UI.
+The CLI embeds the built web UI, so build the web UI first. `--force` replaces the installed version. Stop and restart `agboard serve` after an update to use the new executable and UI. Open boards and monitors reload themselves once the server is back, after you finish any edit or answer in progress.
 
 Hooks and the agent skill run `agboard` from your `PATH`, so they use the installed version. A development build (`cargo build`, `cargo run`, or `target/debug/agboard`) is a separate executable; reinstall to make those changes available to hooks.
 

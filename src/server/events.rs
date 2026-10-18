@@ -10,12 +10,14 @@ use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::{Stream, StreamExt};
 
 use super::AppState;
+use super::web_assets::APP_BUILD_ID;
 
 /// How often an idle connection gets a comment line, so proxies and browsers
 /// keep it open.
 const KEEP_ALIVE: Duration = Duration::from_secs(15);
 
-/// `ready` right after connecting, then `changed` for every change.
+/// `ready` right after connecting, carrying the board's build ID, then
+/// `changed` for every change. A page whose own build ID differs reloads.
 ///
 /// The subscription is made before the response starts, so a change that
 /// happens after the client sees `ready` is never missed. A client that lags
@@ -24,7 +26,9 @@ pub(crate) async fn events(
     State(state): State<Arc<AppState>>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let changes = BroadcastStream::new(state.changed.subscribe());
-    let stream = tokio_stream::once(Ok(Event::default().event("ready").data("{}")))
-        .chain(changes.map(|_| Ok(Event::default().event("changed").data("{}"))));
+    let stream = tokio_stream::once(Ok(Event::default()
+        .event("ready")
+        .data(format!(r#"{{"build":"{APP_BUILD_ID}"}}"#))))
+    .chain(changes.map(|_| Ok(Event::default().event("changed").data("{}"))));
     Sse::new(stream).keep_alive(KeepAlive::new().interval(KEEP_ALIVE))
 }

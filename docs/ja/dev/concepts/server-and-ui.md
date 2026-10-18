@@ -19,16 +19,19 @@
 
 書き込みの対象は、常にURLのProjectIdです。Webの`actor`は常に`human`で、要求から受け取ることはありません。`/api/board`のような対象のない経路、互換の別名、プロジェクトを作成・名前変更・削除するHTTP APIはありません。
 
-JSONとHTMLの応答は`no-store`です。HTMLの応答には`Referrer-Policy: no-referrer`と`Content-Security-Policy`を付けます。スクリプトと接続は自分自身だけ、スタイルは自分自身と`'unsafe-inline'`（エディターが実行時に`<style>`を挿入するため）、画像は自分自身・`data:`・`http`・`https`です。
+JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシートは内容から名前を付け、`Cache-Control: public, max-age=31536000, immutable`で送ります。ブラウザがgzipを受け付ける場合はgzipで圧縮して送ります。新しいビルドではHTMLが読み込む名前が変わるため、再読み込みすれば常に最新の画面になります。HTMLの応答には`Referrer-Policy: no-referrer`と`Content-Security-Policy`を付けます。スクリプトと接続は自分自身だけ、スタイルは自分自身と`'unsafe-inline'`（エディターが実行時に`<style>`を挿入するため）、画像は自分自身・`data:`・`http`・`https`です。
 
 ## Web画面の作り
 
 - `web/`はVite・TypeScript・Reactのアプリです。nuqsが選択対象のプロジェクトをURLで管理し（`useQueryState('project', parseAsString)`）、`useBoard`がプロジェクトごとの取得・購読・読み込みを担い、一つの`useReducer`が適用中のプロジェクト・切り替え待ち・タスクの選択・ダイアログを連動させます。部品内の入力は`useState`です。ほかの状態管理やフォームのライブラリは足しません。
 - 初回のプロジェクト選択はブラウザ履歴を置き換え、メニューからの選択は履歴に追加します。戻る・進むはnuqsのadapterに従います。History APIを直接使ったり、独自に`popstate`を処理したりはしません。
-- `pnpm --dir web build`は、固定の名前の`index.html`・`assets/app.js`・`assets/app.css`、動的な分割チャンク`assets/app-[name]-[hash].js`としてのエディターとMermaid、独自のmanifestを持つ`access/`と`monitor/`の別ビルドを出力します。
-- Rustは固定のファイルと二つのロゴを埋め込みます。`build.rs`は分割資産を`OUT_DIR`の表にまとめ、表にある名前だけを配信します。ファイルがなければ`Run "pnpm --dir web build" first.`でビルドを止めます。画面のビルドを`cargo build`の前に行うのはこのためです。`web/dist/`はコミットしません。
+- `pnpm --dir web build`は、`index.html`、入口のスクリプトとスタイルシート`assets/app-[hash].js`・`assets/app-[hash].css`、動的な分割チャンク`assets/chunk-[name]-[hash].js`としてのエディターとMermaid、独自のmanifestを持つ`access/`と`monitor/`の別ビルドを出力します。ボードのビルドは、チャンクごとのimport・`web/src/`のモジュール・パッケージを記した`chunk-graph.json`も書き出します。最後の手順で、すべてのスクリプトとスタイルシートの横に`.gz`を書き出します。
+- 最初のスクリプトには、最初の画面に必要なものだけを入れます。カード・エピック・一括アーカイブ・設定のダイアログ、詳細パネルのMarkdown表示、モニターの詳細ドロワーは`preloadable`（`web/src/lib/preloadable.ts`）で分割し、最初の画面を表示した直後に取得します。表示部品が届くまで、本文はプレーンテキストで表示します。エディターのアウトラインは表示側のMarkdownパーサーで`##`見出しを読むため、CodeMirrorはエディターを開いたときにだけ読み込まれます。
+- `web/test/monitor/build-contract.test.ts`は、ページごとの初回読み込み（入口と、そこから静的にimportされるチャンク）に上限を設け、500 kBを超えるスクリプトは使うときだけ読み込むことを確かめます。Viteの`chunkSizeWarningLimit`は、使うときだけ読み込む大きなチャンク（MermaidのELKレイアウト、文法パーサー、リッチエディター）に合わせて1500 kBにしています。
+- Rustは二つのロゴ、HTMLのテンプレート、`.gz`ファイルを埋め込みます。`build.rs`はボードとモニターのスクリプトとスタイルシートを`OUT_DIR`の表にまとめ、両方にある同じファイルは一度だけ埋め込みます。配信するのは表にある名前だけです。各ページのHTMLとファイル名から、ページごとのビルドIDも作ります。ファイルや`.gz`がない場合、またはHTMLが表にないファイルを読み込む場合は、`Run "pnpm --dir web build" first.`でビルドを止めます。画面のビルドを`cargo build`の前に行うのはこのためです。`web/dist/`はコミットしません。
+- 各HTMLは`<meta name="agboard-build">`に自分のビルドIDを持ち、SSEの`ready`はサーバーの現在のビルドIDを伝えます。両者が違うとページを一度だけ再読み込みします。編集ダイアログ、送信前の回答、そのほかの操作が開いている間は、終わるまで待ちます（`useBuildReload`）。同じビルドのために一度再読み込みしたタブは、もう再読み込みしません。ビルドIDを持たないページ（Viteの開発サーバー）は再読み込みしません。
 - 表示用の純粋関数（日時、並び替え、件数）は`web/src/lib/`に置いてVitestで試験し、コンポーネントはTesting Libraryで試験します。
-- shadcnのRadix版部品（Dialog・Button・Badge・Input・Textarea・Label・RadioGroup・DropdownMenu）は`web/src/components/ui/`に置き、`cn`は`web/src/lib/utils.ts`、別名は`@/* → ./src/*`です。Dialogのフォーカスはライブラリに任せ、保存中に閉じさせない・送信・入力の保持は機能側で扱います。UIのスタイルは`styles/ui.css`、テーマと製品のスタイルは`styles/theme.css`・`tokens.css`・`app.css`です。
+- shadcnのRadix版部品（Dialog・Button・Badge・Input・Textarea・Label・RadioGroup・DropdownMenu）と、モニターの下から出るシート（Radix Dialogを使う`drawer.tsx`）は`web/src/components/ui/`に置き、`cn`は`web/src/lib/utils.ts`、別名は`@/* → ./src/*`です。Dialogのフォーカスはライブラリに任せ、保存中に閉じさせない・送信・入力の保持は機能側で扱います。UIのスタイルは`styles/ui.css`、テーマと製品のスタイルは`styles/theme.css`・`tokens.css`・`app.css`です。
 - 外部のCDNやフォントは読み込みません。書体は`--font-sans`と`--font-mono`の指定だけです。
 - 本文の上限・書式の検証・下書きの規則・エラーは`domain`と`file_store`の一か所に置き、CLIとサーバーが共有します。
 

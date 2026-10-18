@@ -1,6 +1,6 @@
 import { DetailAttachments } from './DetailAttachments';
 import { DetailEvidence } from './DetailEvidence';
-import { MarkdownSections } from '../markdown/MarkdownSections';
+import { LazyMarkdownSections } from '../markdown/LazyMarkdownSections';
 import { ProblemNotice } from './ProblemNotice';
 import { useTranslation } from 'react-i18next';
 import type { Attachment, EvidenceRecord, Problem, ProjectId } from '../../types';
@@ -46,7 +46,7 @@ export function BodyDocumentView({
           <p className="acceptance-unreadable__note">{t('acceptance.unreadableNote')}</p>
         </div>
       )}
-      <MarkdownSections
+      <LazyMarkdownSections
         source={body}
         resolveAttachment={(id) =>
           attachments.some((item) => item.id === id) ? attachmentUrl(id) : null

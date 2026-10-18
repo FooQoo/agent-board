@@ -10,10 +10,10 @@ The routes served by the remote listener, including the mobile monitor. How the 
 | GET/HEAD `/board/` and desktop assets | The normal desktop HTML and assets, with the remote token in the HTML. |
 | Desktop API under `/api/projects`, GET `/api/events` | The normal board; every write goes through the remote guard. CLI-only `notify` and `health` are not served. |
 | GET/HEAD `/monitor/` | Monitor HTML; the answer token is injected only when served. |
-| GET/HEAD `/assets/monitor/{name}` | Only viewer assets in the monitor manifest. |
+| GET/HEAD `/assets/monitor/{name}` | Only the content-named scripts and stylesheets in the monitor manifest, cached as immutable and gzip-compressed when accepted. Other names are 404 with `no-store`. |
 | GET/HEAD `/logo.png`, `/logo-white.png` | Logos. |
 | GET `/monitor/api/projects`, `/monitor/api/projects/{projectId}/board` | Read contracts with bodies, full history, and problems. |
-| GET `/monitor/api/events` | Dedicated SSE with `ready`, `changed`, and `heartbeat`. |
+| GET `/monitor/api/events` | Dedicated SSE with `ready` (carrying the monitor's build ID), `changed`, and `heartbeat`. |
 | POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | Answers the current request only. |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/attachments/{attachmentId}` | Owned images only. |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/evidence/{evidenceId}` | Owned text evidence only. |

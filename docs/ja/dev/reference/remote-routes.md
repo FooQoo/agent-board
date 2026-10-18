@@ -10,10 +10,10 @@
 | GET/HEAD `/board/`とPCの資産 | 通常のPCのHTMLと資産。HTMLにリモート用トークンを含む。 |
 | `/api/projects`以下のPCのAPI、GET `/api/events` | 通常のボード。すべての書き込みはリモート用の書き込み保護を通る。CLI専用の`notify`と`health`は配信しない。 |
 | GET/HEAD `/monitor/` | モニターのHTML。回答用のトークンは配信時にだけ差し込む。 |
-| GET/HEAD `/assets/monitor/{name}` | モニターのmanifestにある閲覧用の資産だけ。 |
+| GET/HEAD `/assets/monitor/{name}` | モニターのmanifestにある、内容から名前を付けたスクリプトとスタイルシートだけ。immutableでキャッシュさせ、受け付ける場合はgzipで送る。ほかの名前は`no-store`の404。 |
 | GET/HEAD `/logo.png`、`/logo-white.png` | ロゴ。 |
 | GET `/monitor/api/projects`、`/monitor/api/projects/{projectId}/board` | 本文・全履歴・problemsを持つ読み取り専用のAPI。 |
-| GET `/monitor/api/events` | `ready`・`changed`・`heartbeat`の専用SSE。 |
+| GET `/monitor/api/events` | `ready`（モニターのビルドIDを含む）・`changed`・`heartbeat`の専用SSE。 |
 | POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | 現在の依頼への回答だけ。 |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/attachments/{attachmentId}` | 所有する画像だけ。 |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/evidence/{evidenceId}` | 所有するテキストの証跡だけ。 |
