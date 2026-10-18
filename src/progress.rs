@@ -71,21 +71,14 @@ pub fn build(
     fetched_at: DateTime<Utc>,
 ) -> Progress {
     let project_dir = layout::project_dir(shared, &snapshot.project.id);
-    let listed: Vec<&TaskView> = snapshot
-        .tasks
-        .iter()
-        .filter(|task| is_listed(task))
-        .collect();
+    let listed = ordered_tasks(snapshot);
 
     let mut epics: Vec<&EpicView> = snapshot.epics.iter().collect();
     epics.sort_by(|a, b| a.id.as_str().cmp(b.id.as_str()));
     let mut groups = Vec::new();
     for epic in epics {
-        let (priority, priority_error) = match frontmatter::priority_of(&epic.plan) {
-            Ok(order) => (order, false),
-            Err(_) => (Vec::new(), true),
-        };
-        let mut tasks: Vec<&TaskView> = listed
+        let priority_error = frontmatter::priority_of(&epic.plan).is_err();
+        let tasks: Vec<&TaskView> = listed
             .iter()
             .copied()
             .filter(|task| task.epic_id.as_deref() == Some(epic.id.as_str()))
@@ -93,7 +86,6 @@ pub fn build(
         if tasks.is_empty() {
             continue;
         }
-        tasks.sort_by_key(|task| (rank(&priority, task.id), task.id));
         let epic_dir = layout::epic_dir(&project_dir, &epic.id);
         groups.push(ProgressEpic {
             id: epic.id.as_str().to_string(),
@@ -107,7 +99,7 @@ pub fn build(
         });
     }
 
-    let mut unassigned: Vec<&TaskView> = listed
+    let unassigned: Vec<&TaskView> = listed
         .iter()
         .copied()
         .filter(|task| {
@@ -116,7 +108,6 @@ pub fn build(
                 .is_none_or(|id| !snapshot.epics.iter().any(|epic| epic.id.as_str() == id))
         })
         .collect();
-    unassigned.sort_by_key(|task| task.id);
 
     Progress {
         project: snapshot.project.clone(),
@@ -129,6 +120,43 @@ pub fn build(
             .map(|task| task_of(task, &project_dir))
             .collect(),
     }
+}
+
+/// Tasks in the same order shown by the progress table. Task selection uses
+/// this list too, so epic ordering, PLAN priority and the unassigned tail stay
+/// one contract. This intentionally keeps progress' existing visibility
+/// rules; callers apply any narrower selection predicate afterwards.
+pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
+    let mut epics: Vec<&EpicView> = snapshot.epics.iter().collect();
+    epics.sort_by(|a, b| a.id.as_str().cmp(b.id.as_str()));
+    let listed: Vec<&TaskView> = snapshot
+        .tasks
+        .iter()
+        .filter(|task| is_listed(task))
+        .collect();
+    let mut ordered = Vec::new();
+    for epic in epics {
+        let priority = frontmatter::priority_of(&epic.plan).unwrap_or_default();
+        let mut tasks: Vec<&TaskView> = listed
+            .iter()
+            .copied()
+            .filter(|task| task.epic_id.as_deref() == Some(epic.id.as_str()))
+            .collect();
+        tasks.sort_by_key(|task| (rank(&priority, task.id), task.id));
+        ordered.extend(tasks);
+    }
+    let mut unassigned: Vec<&TaskView> = listed
+        .iter()
+        .copied()
+        .filter(|task| {
+            task.epic_id
+                .as_deref()
+                .is_none_or(|id| !snapshot.epics.iter().any(|epic| epic.id.as_str() == id))
+        })
+        .collect();
+    unassigned.sort_by_key(|task| task.id);
+    ordered.extend(unassigned);
+    ordered
 }
 
 fn is_listed(task: &TaskView) -> bool {

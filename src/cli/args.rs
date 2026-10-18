@@ -38,7 +38,7 @@ Commands:
   snapshot Fetch the complete board and history
   progress Show active work in epic priority order
   hook    Add the current progress table to an agent hook
-  wait    Wait for a board change and fetch its history
+  wait    Wait for a board change or the next task
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser
   setup   Add the shared folder to Codex and Claude Code settings
@@ -129,7 +129,7 @@ pub enum Command {
     Snapshot(SnapshotArgs),
     /// Add the current progress table to an agent hook
     Hook(HookArgs),
-    /// Wait for a board change and fetch its history
+    /// Wait for a board change or the next task
     Wait(WaitArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
@@ -265,14 +265,26 @@ pub struct HookArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo wait --after 0123456789abcdef0123456789abcdef:12 --json\n  agboard --project demo wait --after 0123456789abcdef0123456789abcdef:12 --timeout 60 --json"
+    after_help = "Examples:\n  agboard --project demo wait --after f1:0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef --json\n  agboard --project demo wait --after f1:0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef --timeout 60 --json\n  agboard --project demo wait --until task --idle-timeout 300 --json"
 )]
 pub struct WaitArgs {
     /// Cursor to wait after, as printed by snapshot: f1:<project-id>:<version>
-    #[arg(long, value_name = "CURSOR", value_parser = parse_cursor)]
-    pub after: ChangeCursor,
-    #[arg(long)]
+    #[arg(long, value_name = "CURSOR", value_parser = parse_cursor, conflicts_with_all = ["until", "idle_timeout"])]
+    pub after: Option<ChangeCursor>,
+    /// Maximum time to wait for a board change; only with --after
+    #[arg(long, requires = "after", conflicts_with_all = ["until", "idle_timeout"])]
     pub timeout: Option<u64>,
+    /// Wait for the next eligible task
+    #[arg(long, value_enum, conflicts_with_all = ["after", "timeout"])]
+    pub until: Option<WaitUntilArg>,
+    /// Seconds with no eligible task before normal idle completion (1..86400)
+    #[arg(long, value_name = "SECONDS", value_parser = clap::value_parser!(u64).range(1..=86400), requires = "until")]
+    pub idle_timeout: Option<u64>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum WaitUntilArg {
+    Task,
 }
 
 fn parse_cursor(text: &str) -> Result<ChangeCursor, String> {
@@ -989,6 +1001,26 @@ impl Cli {
                 command: Some("attachment get".into()),
             }),
             Command::Serve(args) => validate_remote_args(args),
+            Command::Wait(args) if args.until.is_none() && args.after.is_none() => {
+                Err(AgboardError::InvalidArgument {
+                    message: "wait requires --after CURSOR or --until task --idle-timeout SECONDS.".into(),
+                    command: Some("wait".into()),
+                })
+            }
+            Command::Wait(args)
+                if args.until == Some(WaitUntilArg::Task) && args.idle_timeout.is_none() =>
+            {
+                Err(AgboardError::InvalidArgument {
+                    message: "wait --until task requires --idle-timeout SECONDS.".into(),
+                    command: Some("wait".into()),
+                })
+            }
+            Command::Wait(args) if args.until.is_none() && args.idle_timeout.is_some() => {
+                Err(AgboardError::InvalidArgument {
+                    message: "--idle-timeout is only valid with --until task.".into(),
+                    command: Some("wait".into()),
+                })
+            }
             _ => Ok(()),
         }
     }
