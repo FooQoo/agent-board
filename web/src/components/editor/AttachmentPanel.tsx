@@ -130,11 +130,9 @@ export function AttachmentPanel({
               {t('editor.attachments')}
             </span>
           )}
-          <span className="editor-attachments__count">
-            {optionalHeader
-              ? t('editor.attachmentsOptionalCount', { count: attachments.length })
-              : attachments.length}
-          </span>
+          {!optionalHeader && (
+            <span className="editor-attachments__count">{attachments.length}</span>
+          )}
           {onClose && (
             <Button
               type="button"

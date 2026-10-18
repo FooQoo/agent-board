@@ -160,7 +160,6 @@ export function DialogFrame({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     className="modal__secondary-action"
                     disabled={saving}
                     onClick={() => requestDiscard('secondary')}

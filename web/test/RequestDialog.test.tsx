@@ -44,12 +44,7 @@ describe('simple request dialog', () => {
     const footerCopy = alert.closest('.modal__footer-copy');
     expect(footerCopy).not.toBeNull();
     if (footerCopy === null) throw new Error('expected the error inside the footer copy');
-    const footerChildren = [...footerCopy.children];
-    const noteIndex = footerChildren.findIndex((child) =>
-      child.classList.contains('request-dialog__note'),
-    );
-    expect(noteIndex).toBeGreaterThanOrEqual(0);
-    expect(footerChildren.indexOf(alert)).toBeLessThan(noteIndex);
+    expect(footerCopy.contains(screen.getByRole('button', { name: 'Create manually' }))).toBe(true);
     expect((textarea as HTMLTextAreaElement).value).toBe('Keep this request');
   });
 
@@ -69,7 +64,6 @@ describe('simple request dialog', () => {
       />,
     );
     expect(screen.getByText('Attachments (optional)')).toBeTruthy();
-    expect(screen.getByText('· 0')).toBeTruthy();
     const user = userEvent.setup();
     const textarea = screen.getByRole('textbox', { name: 'What should be done?' });
     fireEvent.change(textarea, {

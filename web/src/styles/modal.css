@@ -466,10 +466,6 @@
   gap: 16px;
 }
 
-.request-dialog__note {
-  white-space: pre-line;
-}
-
 .request-dialog .modal__actions {
   flex: none;
   align-items: flex-end;
@@ -595,6 +591,10 @@
 
   .request-dialog .modal__actions button {
     width: 100%;
+  }
+
+  .request-dialog .modal__secondary-action {
+    align-self: stretch;
   }
 }
 

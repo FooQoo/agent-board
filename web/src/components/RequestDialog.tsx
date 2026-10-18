@@ -102,7 +102,6 @@ export function RequestDialog({
       scrollBody
       className={`request-dialog${attachmentsState.attachments.length > 0 ? ' has-attachments' : ''}`}
       errorInFooter
-      footerNote={<p className="modal__card request-dialog__note">{t('simpleTask.footerNote')}</p>}
       submitDisabled={!valid}
       secondaryAction={{
         label: t('simpleTask.createManually'),

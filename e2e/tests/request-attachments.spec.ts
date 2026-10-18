@@ -30,6 +30,28 @@ test('the request text field leaves room for its complete focus ring', async ({ 
   await dialog.screenshot({ path: testInfo.outputPath('request-focused-border.png') });
 });
 
+test('request actions share a button height and keep the footer concise', async ({ page }) => {
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.getByRole('button', { name: 'Add task' }).click();
+    const dialog = page.getByRole('dialog', { name: 'New task' });
+    await dialog.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)));
+    const sizes = await dialog.locator('.modal__footer button').evaluateAll((buttons) => buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return { height: box.height, width: box.width };
+    }));
+    expect(sizes).toHaveLength(3);
+    for (const size of sizes) expect(size.height).toBeCloseTo(sizes[0].height, 1);
+    if (width === 390) {
+      for (const size of sizes) expect(size.width).toBeCloseTo(sizes[0].width, 1);
+    }
+    await expect(dialog.locator('.request-dialog__note')).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Create manually' })).toBeInViewport();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+  }
+});
+
 test('request attachment headings use the same typography as the other field labels', async ({ page }) => {
   await page.getByRole('button', { name: 'Add task' }).click();
   const dialog = page.getByRole('dialog', { name: 'New task' });
@@ -150,7 +172,7 @@ test('request dialog attachments stay visible and operable on desktop, dark, and
   await page.locator('.lightbox__close').click();
   await expect(dialog.getByRole('button', { name: 'Remove shared-notes.png' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Remove shared-notes.png' }).click();
-  await expect(dialog.getByText('· 0', { exact: true })).toBeVisible();
+  await expect(dialog.locator('.editor-attachments__tile')).toHaveCount(0);
 
   await page.evaluate(() =>
     localStorage.setItem('agboard.theme', JSON.stringify({ mode: 'dark', accent: 'blue' })),

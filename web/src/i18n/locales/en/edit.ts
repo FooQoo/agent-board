@@ -7,8 +7,6 @@ export const editEn = {
     epicLabel: 'Epic (optional)',
     epicLoadError: 'Could not load the epics. Try again later.',
     noEpic: 'No epic',
-    footerNote:
-      'A listening AI will complete task details and start work.\nIf no AI is listening, the task stays in Todo.',
     createManually: 'Create manually',
     required: 'Enter what should be done.',
     tooLong: 'Keep the complete request within {{max}} characters.',
@@ -65,7 +63,6 @@ export const editEn = {
     discardAndMove: 'Discard and move',
     attachments: 'Attachments',
     attachmentsOptional: 'Attachments (optional)',
-    attachmentsOptionalCount: '· {{count}}',
     attachmentRefusedTitle: 'Cannot add the image',
     attachmentTooLarge: '{{name}} is larger than 10 MB. Choose a smaller image.',
     attachmentFormat: '{{name}} is not a supported format. Choose a PNG, JPEG, WebP or GIF image.',
