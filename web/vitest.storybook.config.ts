@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
@@ -25,6 +26,7 @@ export default defineConfig({
         },
         publicDir: storyStatic,
         plugins: [
+          tailwindcss(),
           // Runs every Story as a test. The addon takes the Stories from .storybook/main.ts.
           storybookTest({
             configDir: `${root}.storybook`,
