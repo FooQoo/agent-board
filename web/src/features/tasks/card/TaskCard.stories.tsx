@@ -26,7 +26,10 @@ export const PendingWithEpic: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Waiting for a decision.')).toBeInTheDocument();
-    await userEvent.click(canvas.getAllByRole('button', { name: /e1a2b3c4/ })[1]);
+    const buttons = canvas.getAllByRole('button', { name: /e1a2b3c4/ });
+    const epicButton = buttons.at(-1);
+    if (!epicButton) throw new Error('Epic button was not rendered.');
+    await userEvent.click(epicButton);
     await expect(args.onSelect).not.toHaveBeenCalled();
   },
 };
