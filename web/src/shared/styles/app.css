@@ -575,6 +575,7 @@ ol {
   flex: none;
   align-items: center;
   justify-content: space-between;
+  gap: 4px;
   min-height: 18px;
 }
 
@@ -588,8 +589,8 @@ ol {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 27px;
+  height: 25px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -602,8 +603,8 @@ ol {
 }
 
 .detail__close svg {
-  width: 18px;
-  height: 18px;
+  width: 13px;
+  height: 13px;
 }
 
 .detail__title {

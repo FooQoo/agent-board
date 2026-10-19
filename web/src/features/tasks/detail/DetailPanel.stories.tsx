@@ -139,8 +139,37 @@ export const Draft: Story = {
       await userEvent.click(view.getByRole('button', { name: 'Edit task' }));
       expect(args.onEdit).toHaveBeenLastCalledWith(args.task);
     }
+    expectActionIconSpacing(canvasElement);
   },
 };
+
+/** A draft on a phone: its edit, archive, and close icons keep equal spacing. */
+export const DraftPhone: Story = {
+  args: { task: sampleCard({ id: 8, isDraft: true }) },
+  globals: { width: 'phone-390' },
+  play: async ({ canvasElement }) => {
+    expect(canvasElement.querySelector('.detail__draft')).not.toBeNull();
+    expectActionIconSpacing(canvasElement);
+  },
+};
+
+function expectActionIconSpacing(canvasElement: HTMLElement) {
+  const icons = [
+    ...canvasElement.querySelectorAll<SVGElement>(
+      '.detail__toolbar > button svg, .detail__close svg',
+    ),
+  ];
+  expect(icons).toHaveLength(3);
+  const centers = icons.map((icon) => {
+    const bounds = icon.getBoundingClientRect();
+    return bounds.left + bounds.width / 2;
+  });
+  const [first, second, third] = centers;
+  if (first === undefined || second === undefined || third === undefined) {
+    throw new Error('Expected three action icons');
+  }
+  expect(Math.abs(second - first - (third - second))).toBeLessThan(0.1);
+}
 
 /** The archive view, where a restore failed: the failure is shown above the body. */
 export const ArchivedRestoreFailed: Story = {

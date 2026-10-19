@@ -177,7 +177,12 @@
             },
             {
               "id": "task-detail-detailpanel--draft",
-              "states": ["composite rendering"],
+              "states": ["composite rendering", "aligned action icon spacing"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--draft-phone",
+              "states": ["aligned action icon spacing at phone width"],
               "interaction": false
             }
           ]
