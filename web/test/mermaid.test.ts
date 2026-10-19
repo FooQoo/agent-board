@@ -7,7 +7,7 @@ const { initialize, render } = vi.hoisted(() => ({
 
 vi.mock('mermaid', () => ({ default: { initialize, render } }));
 
-import { mermaidThemeFromCss, renderMermaid } from '../src/lib/mermaid';
+import { mermaidThemeFromCss, renderMermaid } from '../src/shared/markdown/mermaid';
 
 const root = document.documentElement;
 

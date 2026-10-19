@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { MonitorViewProps } from '../../src/monitor/contracts';
-import { unconnectedMonitorReadResolvers } from '../../src/monitor/contracts';
-import { MonitorView } from '../../src/monitor/View';
+import type { MonitorViewProps } from '../../src/pages/monitor/contracts';
+import { unconnectedMonitorReadResolvers } from '../../src/pages/monitor/contracts';
+import { MonitorView } from '../../src/pages/monitor/View';
 
 const props: MonitorViewProps = {
   projects: [{ id: 'a'.repeat(32), name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' }],

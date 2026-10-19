@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { countItems } from '../../src/lib/markdown/countItems';
-import { splitSections } from '../../src/lib/markdown/splitSections';
-import { safeImageUrl, safeLinkUrl } from '../../src/lib/markdown/urls';
+import { countItems } from '../../src/shared/markdown/model/countItems';
+import { splitSections } from '../../src/shared/markdown/model/splitSections';
+import { safeImageUrl, safeLinkUrl } from '../../src/shared/markdown/model/urls';
 
 describe('splitSections', () => {
   it('returns no sections when there is no H2', () => {

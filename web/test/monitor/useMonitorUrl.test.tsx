@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { NuqsTestingAdapter, type UrlUpdateEvent } from 'nuqs/adapters/testing';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { useMonitorUrl } from '../../src/monitor/hooks/useMonitorUrl';
+import { useMonitorUrl } from '../../src/pages/monitor/hooks/useMonitorUrl';
 import { PROJECT_A, PROJECT_B, PROJECTS } from '../fixtures';
 
 function wrapperFor(search: string, onUrlUpdate: (event: UrlUpdateEvent) => void) {

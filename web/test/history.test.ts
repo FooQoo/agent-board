@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { historyItems } from '../src/lib/history';
-import type { HistoryEvent } from '../src/types';
+import { historyItems } from '../src/features/tasks/history/model/history';
+import type { HistoryEvent } from '../src/shared/api/contracts';
 
 const events: HistoryEvent[] = [
   { at: '2026-10-02T09:48:00Z', reason: 'Created task in Todo.' },

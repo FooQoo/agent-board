@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useBoard } from '../src/hooks/useBoard';
+import { useBoard } from '../src/pages/board/model/useBoard';
 import { deferred, stubBackend, type FakeBackend } from './fakes';
 import { PROJECT_A, PROJECT_B, boardOf, fixtureBoard, makeTask } from './fixtures';
 

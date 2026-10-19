@@ -5,8 +5,8 @@ import {
   setTaskEpic,
   updateEpic,
   WriteError,
-} from '../src/api';
-import type { EditorAttachment } from '../src/components/editor/attachmentTypes';
+} from '../src/app/api';
+import type { EditorAttachment } from '../src/shared/ui/editor/attachmentTypes';
 
 const PROJECT = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
 const EPIC = { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED', isDraft: false };

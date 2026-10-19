@@ -6,9 +6,9 @@ import { join } from 'node:path';
 import {
   RichMarkdownEditor,
   type RichMarkdownEditorHandle,
-} from '../src/components/editor/RichMarkdownEditor';
-import { CODE_LANGUAGES, MermaidPreviews } from '../src/components/editor/RichMarkdownEditor.impl';
-import { selectLocale } from '../src/i18n';
+} from '../src/shared/rich-editor/RichMarkdownEditor';
+import { CODE_LANGUAGES, MermaidPreviews } from '../src/shared/rich-editor/RichMarkdownEditor.impl';
+import { selectLocale } from '../src/shared/i18n';
 
 const { draw, initialize } = vi.hoisted(() => ({ draw: vi.fn(), initialize: vi.fn() }));
 
@@ -199,7 +199,7 @@ describe('RichMarkdownEditor', () => {
 
   it('does not load the Crepe theme or the block, LaTeX, top bar, or AI features', () => {
     const source = readFileSync(
-      join(import.meta.dirname, '../src/components/editor/RichMarkdownEditor.impl.tsx'),
+      join(import.meta.dirname, '../src/shared/rich-editor/RichMarkdownEditor.impl.tsx'),
       'utf8',
     );
     expect(source).not.toMatch(/crepe\/theme/);

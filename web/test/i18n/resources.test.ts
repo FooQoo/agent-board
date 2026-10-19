@@ -1,6 +1,6 @@
 import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { resources } from '../../src/i18n/resources';
+import { resources } from '../../src/shared/i18n/resources';
 
 function leafPaths(value: unknown, prefix = ''): string[] {
   if (typeof value !== 'object' || value === null) return [prefix];

@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { AcceptanceEditor } from '../../src/components/acceptance/AcceptanceEditor';
-import { ConditionsLink } from '../../src/components/acceptance/ConditionsLink';
-import { selectLocale } from '../../src/i18n';
-import type { AcceptanceItem } from '../../src/types';
+import { AcceptanceEditor } from '../../src/features/tasks/acceptance/AcceptanceEditor';
+import { ConditionsLink } from '../../src/features/tasks/acceptance/ConditionsLink';
+import { selectLocale } from '../../src/shared/i18n';
+import type { AcceptanceItem } from '../../src/shared/api/contracts';
 
 beforeEach(() => selectLocale('en'));
 

@@ -1,7 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import { useRef } from 'react';
 import { describe, expect, it } from 'vitest';
-import { useScrollCue } from '../../src/hooks/useScrollCue';
+import { useScrollCue } from '../../src/shared/lib/scroll/useScrollCue';
 
 function setMetrics(
   el: HTMLElement,

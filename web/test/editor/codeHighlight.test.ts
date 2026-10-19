@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CODE_HIGHLIGHT_COLORS } from '../../src/components/editor/codeHighlight';
+import { CODE_HIGHLIGHT_COLORS } from '../../src/shared/rich-editor/codeHighlight';
 
 describe('code block highlighting', () => {
   it('colors tokens only with the page tokens, so it follows the theme and keeps its contrast', () => {

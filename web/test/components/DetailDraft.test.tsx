@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TaskCard } from '../../src/components/TaskCard';
-import { DetailPanel } from '../../src/components/DetailPanel';
-import { selectLocale } from '../../src/i18n';
-import type { Task as TaskModel } from '../../src/types';
+import { TaskCard } from '../../src/features/tasks/card/TaskCard';
+import { DetailPanel } from '../../src/features/tasks/detail/DetailPanel';
+import { selectLocale } from '../../src/shared/i18n';
+import type { Task as TaskModel } from '../../src/shared/api/contracts';
 import { deferred, jsonResponse } from '../fakes';
 import { PROJECT_A, fixtureTask } from '../fixtures';
 

@@ -1,11 +1,15 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { selectLocale } from '../../src/i18n';
-import { MonitorView } from '../../src/monitor/View';
-import type { MonitorTask, MonitorFreshness, MonitorViewProps } from '../../src/monitor/contracts';
+import { selectLocale } from '../../src/shared/i18n';
+import { MonitorView } from '../../src/pages/monitor/View';
+import type {
+  MonitorTask,
+  MonitorFreshness,
+  MonitorViewProps,
+} from '../../src/pages/monitor/contracts';
 import { PROJECT_A, makeTask } from '../fixtures';
-import { useMonitorInteractions } from '../../src/monitor/hooks/useMonitorInteractions';
+import { useMonitorInteractions } from '../../src/pages/monitor/hooks/useMonitorInteractions';
 
 beforeEach(() => selectLocale('en'));
 

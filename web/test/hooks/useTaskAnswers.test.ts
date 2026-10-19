@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { useTaskAnswers } from '../../src/hooks/useTaskAnswers';
-import type { AnswerResult } from '../../src/lib/answer';
+import { useTaskAnswers } from '../../src/features/tasks/answer/model/useTaskAnswers';
+import type { AnswerResult } from '../../src/features/tasks/answer/model/answer';
 import { makeTask, PROJECT_A } from '../fixtures';
 
 const requestId = 'request-123';

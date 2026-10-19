@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { editTask, setDraft } from '../src/api';
+import { editTask, setDraft } from '../src/app/api';
 import { fixtureTask } from './fixtures';
 
 const PROJECT = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';

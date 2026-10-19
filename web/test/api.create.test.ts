@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WriteError, createNewTask, createSimpleTaskMultipart } from '../src/api';
-import type { EditorAttachment } from '../src/components/editor/attachmentTypes';
+import { WriteError, createNewTask, createSimpleTaskMultipart } from '../src/app/api';
+import type { EditorAttachment } from '../src/shared/ui/editor/attachmentTypes';
 import { fixtureTask } from './fixtures';
 
 const PROJECT = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';

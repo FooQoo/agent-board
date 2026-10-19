@@ -2,12 +2,15 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WriteError } from '../../src/api';
-import { ActionDialog, type DialogAction } from '../../src/components/ActionDialog';
-import { selectLocale } from '../../src/i18n';
+import { WriteError } from '../../src/app/api';
+import { ActionDialog, type DialogAction } from '../../src/app/dialogs/ActionDialog';
+import { selectLocale } from '../../src/shared/i18n';
 import { fixtureTask } from '../fixtures';
 
-vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('../editor/fakeRichEditor'));
+vi.mock(
+  '../../src/shared/rich-editor/RichMarkdownEditor',
+  () => import('../editor/fakeRichEditor'),
+);
 
 type Data = Parameters<React.ComponentProps<typeof ActionDialog>['onSubmit']>[0];
 

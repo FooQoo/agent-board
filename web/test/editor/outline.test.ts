@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeOutlineIndex, outlineOf } from '../../src/components/editor/outline';
+import { activeOutlineIndex, outlineOf } from '../../src/shared/rich-editor/outline';
 
 describe('outlineOf', () => {
   it('is empty without a heading', () => {

@@ -5,7 +5,7 @@ import {
   parseStoredWidth,
   readStoredWidth,
   writeStoredWidth,
-} from '../src/lib/detailWidth';
+} from '../src/shared/lib/detail-width/detailWidth';
 
 afterEach(() => {
   vi.restoreAllMocks();

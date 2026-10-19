@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useDetailWidth } from '../../src/hooks/useDetailWidth';
+import { useDetailWidth } from '../../src/shared/lib/detail-width/useDetailWidth';
 
 function makeBody(width: number) {
   const body = document.createElement('div');

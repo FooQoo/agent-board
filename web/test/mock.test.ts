@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readMockInitial } from '../src/mock';
+import { readMockInitial } from '../src/app/development/mock';
 
 describe('readMockInitial', () => {
   it('reads select, confirm and deleteFail from the query string', () => {

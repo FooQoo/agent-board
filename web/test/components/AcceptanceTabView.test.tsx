@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, expect, it } from 'vitest';
-import { AcceptanceTabView } from '../../src/components/detail/AcceptanceTabView';
-import { selectLocale } from '../../src/i18n';
+import { AcceptanceTabView } from '../../src/features/tasks/detail/AcceptanceTabView';
+import { selectLocale } from '../../src/shared/i18n';
 
 beforeEach(() => selectLocale('en'));
 

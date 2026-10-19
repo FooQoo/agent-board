@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const CSS = join(import.meta.dirname, '../../src/styles');
+const CSS = join(import.meta.dirname, '../../src/shared/styles');
 
 /** The declarations of the first rule whose selector is exactly `selector`. */
 function rule(css: string, selector: string): string {

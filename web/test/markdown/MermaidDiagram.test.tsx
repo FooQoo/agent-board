@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MermaidDiagram } from '../../src/components/markdown/MermaidDiagram';
-import { selectLocale } from '../../src/i18n';
+import { MermaidDiagram } from '../../src/shared/markdown/MermaidDiagram';
+import { selectLocale } from '../../src/shared/i18n';
 
 const { initialize, draw } = vi.hoisted(() => ({
   initialize: vi.fn(),

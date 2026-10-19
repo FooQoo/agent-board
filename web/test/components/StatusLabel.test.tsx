@@ -1,6 +1,6 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { StatusLabel } from '../../src/components/StatusLabel';
+import { StatusLabel } from '../../src/features/tasks/status/StatusLabel';
 
 afterEach(cleanup);
 

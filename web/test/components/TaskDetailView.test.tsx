@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TaskDetailView } from '../../src/components/detail/TaskDetailView';
-import { selectLocale } from '../../src/i18n';
+import { TaskDetailView } from '../../src/features/tasks/detail/TaskDetailView';
+import { selectLocale } from '../../src/shared/i18n';
 import { PROJECT_A, makeTask } from '../fixtures';
 
 describe('TaskDetailView', () => {

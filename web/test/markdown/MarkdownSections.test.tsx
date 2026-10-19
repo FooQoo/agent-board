@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MarkdownSections } from '../../src/components/markdown/MarkdownSections';
-import { selectLocale } from '../../src/i18n';
+import { MarkdownSections } from '../../src/shared/markdown/MarkdownSections';
+import { selectLocale } from '../../src/shared/i18n';
 
 beforeEach(() => selectLocale('en'));
 afterEach(cleanup);

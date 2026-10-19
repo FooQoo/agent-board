@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { epicInk, contrastRatio } from '../../src/lib/epic';
+import { epicInk, contrastRatio } from '../../src/features/epics/model/epic';
 
 describe('epicInk', () => {
   it('uses white on a dark epic color and dark ink on a light one', () => {

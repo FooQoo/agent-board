@@ -1,8 +1,8 @@
 import { act, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { selectLocale } from '../../src/i18n';
-import { MonitorView } from '../../src/monitor/View';
-import type { MonitorViewProps } from '../../src/monitor/contracts';
+import { selectLocale } from '../../src/shared/i18n';
+import { MonitorView } from '../../src/pages/monitor/View';
+import type { MonitorViewProps } from '../../src/pages/monitor/contracts';
 import { makeTask, PROJECT_A, PROJECTS } from '../fixtures';
 
 function props(): MonitorViewProps {

@@ -1,8 +1,8 @@
 import { act, renderHook, cleanup } from '@testing-library/react';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { useAttachmentState } from '../../src/components/editor/useAttachmentState';
-import { useMultipartRequest } from '../../src/components/editor/useMultipartRequest';
+import { useAttachmentState } from '../../src/shared/ui/editor/useAttachmentState';
+import { useMultipartRequest } from '../../src/shared/ui/editor/useMultipartRequest';
 
 afterEach(() => {
   cleanup();

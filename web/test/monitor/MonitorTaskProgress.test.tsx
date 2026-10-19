@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { selectLocale } from '../../src/i18n';
-import { MonitorTask } from '../../src/monitor/components/MonitorTask';
-import type { MonitorTask as MonitorTaskModel } from '../../src/monitor/contracts';
+import { selectLocale } from '../../src/shared/i18n';
+import { MonitorTask } from '../../src/pages/monitor/components/MonitorTask';
+import type { MonitorTask as MonitorTaskModel } from '../../src/pages/monitor/contracts';
 import { PROJECT_A, makeTask } from '../fixtures';
 
 beforeEach(() => selectLocale('en'));

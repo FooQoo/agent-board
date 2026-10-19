@@ -1,6 +1,6 @@
 import { useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { vi } from 'vitest';
-import type { RichMarkdownEditorHandle } from '../../src/components/editor/RichMarkdownEditor';
+import type { RichMarkdownEditorHandle } from '../../src/shared/rich-editor/RichMarkdownEditor';
 
 /**
  * A stand-in for the rich editor in the dialog tests: a plain textarea with the handle the dialogs

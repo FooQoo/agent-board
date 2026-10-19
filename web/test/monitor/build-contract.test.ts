@@ -75,13 +75,17 @@ describe('isolated monitor build', () => {
 
   it('keeps the monitor dependency graph independent of PC app and editor modules', () => {
     const graph = read('monitor/dependency-graph.json');
-    expect(graph).not.toMatch(/src\/App|components\/editor|src\/api\//);
-    expect(graph).toContain('src/monitor-main.tsx');
+    expect(graph).not.toMatch(
+      /src\/app\/App|\/editor\/|src\/shared\/rich-editor|src\/app\/api\.ts/,
+    );
+    expect(graph).toContain('src/app/entry/monitor.tsx');
     expect(graph).toContain('MonitorDetailDrawer');
-    expect(graph).not.toMatch(/ReadOnlyDetail|ReadOnlyEpic|TaskDetailView|src\/components\/editor/);
+    expect(graph).not.toMatch(
+      /ReadOnlyDetail|ReadOnlyEpic|TaskDetailView|\/editor\/|src\/shared\/rich-editor/,
+    );
     expect(graph).toContain('MonitorDocument');
     expect(graph).not.toMatch(
-      /BodyDocumentView|AcceptanceView|MarkdownSections|styles\/detail\.css/,
+      /BodyDocumentView|AcceptanceView|MarkdownSections|tasks\/detail\/detail\.css/,
     );
   });
 });
@@ -106,13 +110,13 @@ describe('board build', () => {
     const packages = chunks.flatMap((chunk) => chunk?.packages ?? []);
     expect(packages).toContain('react-dom');
     for (const later of [
-      'src/components/ActionDialog.tsx',
-      'src/components/editor/EditDialog.tsx',
-      'src/components/editor/EpicDialog.tsx',
-      'src/components/editor/outline.ts',
-      'src/components/markdown/MarkdownSections.tsx',
-      'src/components/markdown/MarkdownView.tsx',
-      'src/components/SettingsDialog.tsx',
+      'src/app/dialogs/ActionDialog.tsx',
+      'src/features/tasks/editor/EditDialog.tsx',
+      'src/features/epics/editor/EpicDialog.tsx',
+      'src/shared/rich-editor/outline.ts',
+      'src/shared/markdown/MarkdownSections.tsx',
+      'src/shared/markdown/MarkdownView.tsx',
+      'src/features/settings/ui/SettingsDialog.tsx',
     ])
       expect(sources).not.toContain(later);
     expect(

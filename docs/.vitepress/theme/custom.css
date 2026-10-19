@@ -1,6 +1,6 @@
 /*
  * Brand colors follow the app's default theme (light mode, blue accent):
- * web/src/styles/theme.css --r-accent #2563eb (light) and #6b9aff (dark).
+ * web/src/shared/styles/theme.css --r-accent #2563eb (light) and #6b9aff (dark).
  */
 :root {
   --vp-c-brand-1: #2563eb;

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Board, Epic, Task, Project, ProjectId } from '../src/types';
+import type { Board, Epic, Task, Project, ProjectId } from '../src/shared/api/contracts';
 
 type Listener = (event: Event) => void;
 

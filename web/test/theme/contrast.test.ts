@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(
-  join(resolve(import.meta.dirname, '../..'), 'src/styles/theme.css'),
+  join(resolve(import.meta.dirname, '../..'), 'src/shared/styles/theme.css'),
   'utf8',
 ).replace(/\/\*[\s\S]*?\*\//g, '');
 

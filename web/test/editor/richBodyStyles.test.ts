@@ -19,9 +19,9 @@ describe('rich body styling', () => {
   });
 
   it('is loaded with the editor dialogs and styles the parts Crepe draws', () => {
-    const shell = readFileSync(join(SRC, 'components/editor/EditorShell.tsx'), 'utf8');
+    const shell = readFileSync(join(SRC, 'shared/ui/editor/EditorShell.tsx'), 'utf8');
     expect(shell).toContain("'../../styles/rich-body.css'");
-    const css = readFileSync(join(SRC, 'styles/rich-body.css'), 'utf8');
+    const css = readFileSync(join(SRC, 'shared/styles/rich-body.css'), 'utf8');
     for (const selector of [
       '.rich-markdown .milkdown-toolbar',
       '.rich-markdown .milkdown-toolbar .toolbar-item',
@@ -36,7 +36,7 @@ describe('rich body styling', () => {
   });
 
   it('takes every color from the app tokens, as the reading view does', () => {
-    const css = readFileSync(join(SRC, 'styles/rich-body.css'), 'utf8');
+    const css = readFileSync(join(SRC, 'shared/styles/rich-body.css'), 'utf8');
     expect(css.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).toEqual([]);
     expect(css).toContain('var(--r-accent)');
     expect(css).toContain('var(--r-surface)');
@@ -45,10 +45,10 @@ describe('rich body styling', () => {
 });
 
 describe('focus frames and code block headers', () => {
-  const read = (name: string) => readFileSync(join(SRC, 'styles', name), 'utf8');
+  const read = (name: string) => readFileSync(join(SRC, 'shared/styles', name), 'utf8');
 
   it('the title shows no frame while it is edited, only the caret', () => {
-    const css = read('editor-epic.css');
+    const css = readFileSync(join(SRC, 'features/epics/editor/editor-epic.css'), 'utf8');
     const start = css.indexOf('.editor__input--title:focus');
     expect(start).toBeGreaterThan(-1);
     const block = css.slice(start, css.indexOf('}', start));
@@ -72,7 +72,7 @@ describe('focus frames and code block headers', () => {
 });
 
 describe('table block controls', () => {
-  const css = readFileSync(join(SRC, 'styles/rich-table.css'), 'utf8');
+  const css = readFileSync(join(SRC, 'shared/styles/rich-table.css'), 'utf8');
 
   it('keeps the handles out of the flow and hidden until the table is used', () => {
     for (const selector of [
@@ -91,7 +91,7 @@ describe('table block controls', () => {
 
 describe('code block current line', () => {
   it('shows no wash that would lower the text contrast', () => {
-    const css = readFileSync(join(SRC, 'styles/rich-body.css'), 'utf8');
+    const css = readFileSync(join(SRC, 'shared/styles/rich-body.css'), 'utf8');
     const start = css.indexOf('.rich-markdown .milkdown-code-block .cm-activeLine,');
     expect(start).toBeGreaterThan(-1);
     expect(css.slice(start, css.indexOf('}', start))).toContain('background: transparent');

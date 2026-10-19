@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
+import { renderEpicLabel } from '../support/composition';
 import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { TaskCard } from '../../src/components/TaskCard';
+import { TaskCard } from '../../src/features/tasks/card/TaskCard';
 import { makeTask } from '../fixtures';
 
 const epic = { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' };
@@ -11,7 +12,9 @@ const epic = { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' };
 describe('Task epic label', () => {
   it('shows the EPIC-ID under the title and gives the task no epic-colored frame', () => {
     const task = makeTask({ id: 20, title: 'Labeled', epic });
-    const { container } = render(<TaskCard task={task} selected={false} onSelect={() => {}} />);
+    const { container } = render(
+      <TaskCard task={task} selected={false} onSelect={() => {}} renderEpic={renderEpicLabel()} />,
+    );
     const label = screen.getByRole('button', { name: 'FILE-SHARE' });
     const title = screen.getByText('Labeled');
     expect(title.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -38,7 +41,9 @@ describe('Task epic label', () => {
       agentStatus: 'pending',
       pendingReason: 'Waiting',
     });
-    const { container } = render(<TaskCard task={task} selected={true} onSelect={() => {}} />);
+    const { container } = render(
+      <TaskCard task={task} selected={true} onSelect={() => {}} renderEpic={renderEpicLabel()} />,
+    );
     expect(container.querySelector('.card--pending')).not.toBeNull();
     expect(container.querySelector('.card--selected')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'FILE-SHARE' })).toBeTruthy();
@@ -52,7 +57,7 @@ describe('Task epic label', () => {
         task={makeTask({ id: 23, epic })}
         selected={false}
         onSelect={onSelect}
-        onOpenEpic={onOpenEpic}
+        renderEpic={renderEpicLabel(onOpenEpic)}
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: 'FILE-SHARE' }));
@@ -75,7 +80,7 @@ describe('Task epic label', () => {
 });
 
 describe('task frames', () => {
-  const css = readFileSync(join(import.meta.dirname, '../../src/styles/app.css'), 'utf8');
+  const css = readFileSync(join(import.meta.dirname, '../../src/shared/styles/app.css'), 'utf8');
 
   it('never take the epic color: a task has the normal border, a selected task the accent frame only', () => {
     expect(css).not.toContain('epic-color');

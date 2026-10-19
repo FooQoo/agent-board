@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { problemOf, toBoard, WriteError } from '../src/api';
+import { problemOf, toBoard, WriteError } from '../src/app/api';
 
 type WireTask = Parameters<typeof toBoard>[0]['tasks'][number];
 

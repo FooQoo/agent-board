@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useBuildReload } from '../../src/hooks/useBuildReload';
+import { useBuildReload } from '../../src/app/model/useBuildReload';
 
 const OWN = '0123456789abcdef';
 const NEW = 'fedcba9876543210';

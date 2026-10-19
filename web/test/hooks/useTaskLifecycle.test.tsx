@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useTaskLifecycle } from '../../src/hooks/useTaskLifecycle';
-import { useProjectSession } from '../../src/hooks/useProjectSession';
+import { useTaskLifecycle } from '../../src/features/tasks/model/useTaskLifecycle';
+import { useProjectSession } from '../../src/app/model/useProjectSession';
 import { deferred, jsonResponse, stubBackend } from '../fakes';
 import { PROJECT_A, PROJECT_B, PROJECTS, boardOf, fixtureBoard } from '../fixtures';
 

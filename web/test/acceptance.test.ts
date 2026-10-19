@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { acceptanceProblem, composeNewText, nextId, progressOf } from '../src/lib/acceptance';
+import {
+  acceptanceProblem,
+  composeNewText,
+  nextId,
+  progressOf,
+} from '../src/features/tasks/acceptance/model/acceptance';
 
 const item = (id: string, done: boolean) => ({ id, text: `text ${id}`, done });
 

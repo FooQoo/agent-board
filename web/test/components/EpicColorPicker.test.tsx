@@ -2,8 +2,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { EpicColorPicker, hexToHsv, hsvToHex } from '../../src/components/editor/EpicColorPicker';
-import { selectLocale } from '../../src/i18n';
+import {
+  EpicColorPicker,
+  hexToHsv,
+  hsvToHex,
+} from '../../src/features/epics/editor/EpicColorPicker';
+import { selectLocale } from '../../src/shared/i18n';
 
 afterEach(cleanup);
 

@@ -20,7 +20,7 @@ afterEach(() => {
 
 describe('useMonitorEvents', () => {
   it('waits for ready and heartbeat, refreshes ready and changed, and never polls on heartbeat', async () => {
-    const { result } = await import('../../src/monitor/hooks/useMonitorEvents').then(
+    const { result } = await import('../../src/pages/monitor/hooks/useMonitorEvents').then(
       ({ useMonitorEvents }) => renderHook(() => useMonitorEvents({ onRefresh: vi.fn() })),
     );
     expect(FakeEventSource.latest.url).toBe('/monitor/api/events');
@@ -38,7 +38,7 @@ describe('useMonitorEvents', () => {
 
   it('drops a silent stream at 45 seconds and retries using the bounded schedule', async () => {
     const refresh = vi.fn();
-    const { result } = await import('../../src/monitor/hooks/useMonitorEvents').then(
+    const { result } = await import('../../src/pages/monitor/hooks/useMonitorEvents').then(
       ({ useMonitorEvents }) => renderHook(() => useMonitorEvents({ onRefresh: refresh })),
     );
     act(() => FakeEventSource.latest.emit('ready'));
@@ -56,7 +56,7 @@ describe('useMonitorEvents', () => {
   it('stops the stream and retry timers while hidden, then refreshes and reconnects when visible', async () => {
     const refresh = vi.fn();
     const onVisibility = vi.fn();
-    const { result } = await import('../../src/monitor/hooks/useMonitorEvents').then(
+    const { result } = await import('../../src/pages/monitor/hooks/useMonitorEvents').then(
       ({ useMonitorEvents }) =>
         renderHook(() => useMonitorEvents({ onRefresh: refresh, onVisibility })),
     );
@@ -82,7 +82,7 @@ describe('useMonitorEvents', () => {
 
   it('coalesces duplicate visible-ready refreshes and leaves a fresh stream alone until changed', async () => {
     const refresh = vi.fn();
-    const { result } = await import('../../src/monitor/hooks/useMonitorEvents').then(
+    const { result } = await import('../../src/pages/monitor/hooks/useMonitorEvents').then(
       ({ useMonitorEvents }) => renderHook(() => useMonitorEvents({ onRefresh: refresh })),
     );
     act(() => FakeEventSource.latest.emit('ready'));
