@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "description": "Format and collection settings of the story coverage ledger. A story-coverage.json sits beside the UI parts it covers and lists each exported part with its Stories, or with the reason it has none. This file says which files count as UI parts and what every entry must look like.",
+  "collect": {
+    "sourceRoot": "src",
+    "uiLayers": ["app", "pages", "features", "shared"],
+    "coverageFilePattern": "^story-coverage(?:\\.[a-z0-9-]+)?\\.json$",
+    "coverageFileNaming": "A folder's first covered file uses story-coverage.json. Any further file in the same folder uses story-coverage.<name>.json, where <name> is the source file name without its extension, and its file field must name <name>.tsx or <name>.ts in that folder.",
+    "storyFileSuffix": ".stories.tsx",
+    "excludedFileSuffixes": [".stories.tsx", ".test.ts", ".test.tsx", ".d.ts"]
+  },
+  "entry": {
+    "storyIdPattern": "^[a-z0-9]+(?:-[a-z0-9]+)*--[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "exportNamePattern": "^[A-Za-z][A-Za-z0-9]*$",
+    "exclusionMinLength": 12,
+    "storyIdRule": "Storybook's own ID: toId(meta.title, storyNameFromExport(exportName)) from storybook/internal/csf"
+  },
+  "inventory": {
+    "status": "partial",
+    "owner": "U7",
+    "method": "The final unit lists every exported UI part under collect.uiLayers with the TypeScript compiler API and requires each one to have an entry or an exclusion. Until then, only the entries written in coverage files are checked, and a part with no entry is not counted as covered."
+  }
+}

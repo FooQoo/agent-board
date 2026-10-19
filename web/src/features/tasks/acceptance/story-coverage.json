@@ -17,6 +17,11 @@
           "interaction": false
         },
         {
+          "id": "task-acceptance-acceptanceprogress--three-of-five",
+          "states": ["three of five"],
+          "interaction": false
+        },
+        {
           "id": "task-acceptance-acceptanceprogress--complete",
           "states": ["complete"],
           "interaction": false

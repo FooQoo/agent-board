@@ -16,7 +16,7 @@ import modalCss from '../../src/shared/styles/modal.css?inline';
 import monitorCss from '../../src/pages/monitor/monitor.css?inline';
 
 export type StoryLocale = 'en' | 'ja';
-export type StoryWidth = 'desktop' | 'phone';
+export type StoryWidth = 'desktop' | 'phone-375' | 'phone-390';
 export type StoryFrame = 'board' | 'monitor';
 
 /** The toolbar values a Story reads. The toolbar itself is declared in preview.tsx. */
@@ -27,8 +27,12 @@ export interface StoryGlobals {
   width: StoryWidth;
 }
 
-/** Widths of the two layouts a Story is checked at: the desktop board and the phone monitor. */
-export const STORY_WIDTHS: Record<StoryWidth, number> = { desktop: 1280, phone: 390 };
+/** Widths a Story is checked at: the desktop board, and the phone monitor at two phone widths. */
+export const STORY_WIDTHS: Record<StoryWidth, number> = {
+  desktop: 1280,
+  'phone-375': 375,
+  'phone-390': 390,
+};
 
 /** The monitor's own stylesheets. They are injected only in a monitor frame, and removed after it. */
 export const MONITOR_STYLESHEETS = [modalCss, decisionRequestCss, monitorCss];
@@ -133,7 +137,7 @@ export function StoryEnvironment({
           className={`story-frame story-frame--${frame} story-frame--${globals.width}`}
           data-story-width={globals.width}
           data-story-frame={frame}
-          style={{ width: STORY_WIDTHS[globals.width], maxWidth: '100%', margin: '0 auto' }}
+          style={{ width: STORY_WIDTHS[globals.width], margin: '0 auto' }}
         >
           {children}
         </div>

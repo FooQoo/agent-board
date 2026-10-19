@@ -1,2 +1,6 @@
+# pnpm 12 refuses a clean install while a package's install script has no decision. Storybook brings
+# esbuild in as an optional peer of Vite. esbuild's platform binary comes from its own optional package
+# (@esbuild/<platform>), and its install script only verifies that binary, so the script is disabled.
+# The product build does not depend on it; the Storybook build and browser tests were run with it off.
 allowBuilds:
   esbuild: false

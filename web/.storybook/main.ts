@@ -11,8 +11,9 @@ const config: StorybookConfig = {
       builder: { viteConfigPath: '.storybook/vite.config.ts' },
     },
   },
-  // The product logos in the app's public folder.
-  staticDirs: ['../public'],
+  // The product logos in the app's public folder, and the synthetic images for Stories in
+  // .storybook/static. Both are served from the root, so one URL works in Storybook and in the tests.
+  staticDirs: ['../public', './static'],
   core: { disableTelemetry: true },
 };
 

@@ -73,11 +73,17 @@ TZ=UTC pnpm --dir web test:storybook
 - `storybook`は開発サーバーを`http://127.0.0.1:8610/`で起動します。
 - `build-storybook`は静的ビルドを`web/storybook-static/`に出力します。
 - `typecheck:storybook`はStoryとStorybookの設定を型検査します。
-- `test:storybook`はStoryと共通部分の試験をChromiumで実行します。
+- `test:storybook`はChromiumでブラウザの試験を2つのプロジェクトとして実行します。1つはすべてのStoryを、再生関数を含めて実行します。もう1つは`web/.storybook/`の共通部分の試験を実行します。
+
+表示幅の切り替えでは、デスクトップの1280px、携帯の監視画面の375pxと390pxを選べます。
 
 Storybookのビルドはアプリのビルドと分けています。Storybookは専用のViteの設定（`web/.storybook/vite.config.ts`）を使うため、アプリのモック、実APIへの接続、チャンクの設定は適用されません。出力先も異なり、Storybookは`web/storybook-static/`、アプリは`web/dist/`です。
 
-製品のコードからStoryや`web/.storybook/`の内容をimportしてはいけません。Storyとテストだけが共通の部品を使えます。`pnpm --dir web check`がこの規則を確認します。また、Storyは製品のAPIとイベントストリームへのリクエストを拒否するため、それらを呼ぶStoryは失敗します。
+製品のコードからStoryや`web/.storybook/`の内容をimportしてはいけません。Storyとテストだけが共通の部分を使えます。`pnpm --dir web check`がこの規則を確認します。300行の上限は`web/src`の製品のファイルだけに適用され、Storyとテストはこの上限の対象外です。また、Storyは製品のAPIとイベントストリームへのリクエストを拒否するため、それらを呼ぶStoryは失敗します。
+
+Storyで使う架空の画像は`web/.storybook/static/`にあります。Storybookとテストはこのフォルダをルートから配信するため、Storyは設定なしに`/sample-attachment.png`のようなURLを使えます。
+
+各UIのフォルダには`story-coverage.json`を置きます。これは隣にあるソースファイルの公開された部品、各部品を表示するStory、Storyが示す状態を一覧にします。同じフォルダでほかのファイルも対象にする場合は`story-coverage.<name>.json`を使います。形式と規則は`web/.storybook/support/component-coverage.json`にあります。台帳の検査はこれらのファイルを検証し、Story IDをStorybookが登録するStoryと照合します。ただし、製品の公開された部品をすべて列挙する検査はまだありません。
 
 ## ソースからインストール
 

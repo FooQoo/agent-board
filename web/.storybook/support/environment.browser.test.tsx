@@ -55,12 +55,12 @@ describe('story environment', () => {
 
   it('renders the width frame at the desktop and phone widths', () => {
     const { container, unmount } = render(
-      <StoryEnvironment globals={globals({ width: 'phone' })} frame="board">
+      <StoryEnvironment globals={globals({ width: 'phone-390' })} frame="board">
         <span>content</span>
       </StoryEnvironment>,
     );
     const frame = container.querySelector<HTMLElement>('[data-story-width]');
-    expect(frame?.dataset.storyWidth).toBe('phone');
+    expect(frame?.dataset.storyWidth).toBe('phone-390');
     expect(frame?.style.width).toBe('390px');
     unmount();
   });
@@ -75,7 +75,7 @@ describe('story environment', () => {
     expect(count()).toBe(0);
     board.unmount();
     const monitor = render(
-      <StoryEnvironment globals={globals({ width: 'phone' })} frame="monitor">
+      <StoryEnvironment globals={globals({ width: 'phone-390' })} frame="monitor">
         <span>monitor</span>
       </StoryEnvironment>,
     );

@@ -1,46 +1,30 @@
-// The format of the story coverage files. Each UI folder keeps a `story-coverage.json` beside the
-// parts it covers. It lists every exported UI part of its file, the Stories that show it, and the
-// states those Stories show. A part with no Story of its own states the reason instead.
-//
-// Only the format lives here. The owning unit writes the data, and the coverage test checks it.
+// File-system side of the story coverage ledger: finds and validates the coverage files under the
+// source root. The format and the rules come from coverage-model.ts and component-coverage.json.
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix } from 'node:path';
+import {
+  COVERAGE_CONFIG,
+  coverageNamePart,
+  isCoverageFileName,
+  isUiPartFile,
+  type StoryCoverageFile,
+} from './coverage-model.ts';
 
-export const STORY_COVERAGE_FILE = 'story-coverage.json';
+export * from './coverage-model.ts';
 
-export interface StoryCoverageStory {
-  /** The Storybook story ID: `<title in kebab case>--<story export in kebab case>`. */
-  id: string;
-  /** The states the Story shows, such as `empty`, `saving` or `failed`. */
-  states: string[];
-  /** Whether a play function drives a real interaction (a click, typing or a keyboard step). */
-  interaction: boolean;
+/** Every UI part file under `srcRoot`, relative to it, in a stable order. */
+export function uiPartFiles(srcRoot: string, dir = '', into: string[] = []): string[] {
+  for (const name of readdirSync(join(srcRoot, dir)).sort()) {
+    const path = posix.join(dir, name);
+    if (statSync(join(srcRoot, path)).isDirectory()) uiPartFiles(srcRoot, path, into);
+    else if (isUiPartFile(path)) into.push(path);
+  }
+  return into;
 }
-
-export interface StoryCoverageExport {
-  /** The exported UI part, as the file names it. */
-  name: string;
-  /** The Stories that show the part. Empty only when `exclusion` gives the reason. */
-  stories: StoryCoverageStory[];
-  /** Why the part has no Story of its own, such as "rendered only inside its parent". */
-  exclusion?: string;
-}
-
-export interface StoryCoverageFile {
-  schemaVersion: 1;
-  /** The unit that owns this file. */
-  owner: string;
-  /** The product file the exports come from, relative to `web/src`. */
-  file: string;
-  exports: StoryCoverageExport[];
-}
-
-const STORY_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*--[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const EXPORT_NAME = /^[A-Za-z][A-Za-z0-9]*$/;
 
 /** Whether `text` exports `name` as a declaration or in an export list. */
-function exports(text: string, name: string): boolean {
+function exportsName(text: string, name: string): boolean {
   const declared = new RegExp(
     `export\\s+(?:default\\s+)?(?:function|const|class|let)\\s+${name}\\b`,
   );
@@ -48,15 +32,27 @@ function exports(text: string, name: string): boolean {
   return declared.test(text) || listed.test(text);
 }
 
-/** Every problem in one coverage file, as printable lines. `srcRoot` is the absolute `web/src`. */
-export function validateStoryCoverage(value: unknown, srcRoot: string): string[] {
+/**
+ * Every problem in one coverage file, as printable lines. `srcRoot` is the absolute source root, and
+ * `coverageName` is the coverage file's own name, which sets the part name it may cover.
+ */
+export function validateStoryCoverage(
+  value: unknown,
+  srcRoot: string,
+  coverageName = 'story-coverage.json',
+): string[] {
+  const { storyIdPattern, exportNamePattern, exclusionMinLength } = COVERAGE_CONFIG.entry;
+  const storyId = new RegExp(storyIdPattern);
+  const exportName = new RegExp(exportNamePattern);
   const problems: string[] = [];
   const file = value as Partial<StoryCoverageFile>;
   if (typeof file !== 'object' || file === null) return ['the file is not an object'];
   if (file.schemaVersion !== 1) problems.push('schemaVersion must be 1');
   if (typeof file.owner !== 'string' || file.owner === '') problems.push('owner is missing');
-  if (typeof file.file !== 'string' || !/\.tsx?$/.test(file.file)) {
-    problems.push('file must name a .ts or .tsx source under src');
+  if (typeof file.file !== 'string' || !isUiPartFile(file.file)) {
+    problems.push(
+      `file must name a UI part under ${COVERAGE_CONFIG.collect.uiLayers.join(', ')} (not a story or test)`,
+    );
     return problems;
   }
   const path = join(srcRoot, file.file);
@@ -64,29 +60,42 @@ export function validateStoryCoverage(value: unknown, srcRoot: string): string[]
     problems.push(`${file.file} does not exist`);
     return problems;
   }
+  const part = coverageNamePart(coverageName);
+  const sourceName = posix.basename(file.file).replace(/\.tsx?$/, '');
+  if (part !== null && part !== sourceName) {
+    problems.push(
+      `${coverageName} may only cover ${sourceName}.tsx or ${sourceName}.ts, not ${file.file}`,
+    );
+  }
   const text = readFileSync(path, 'utf8');
   if (!Array.isArray(file.exports) || file.exports.length === 0) {
     problems.push(`${file.file}: exports must list at least one part`);
     return problems;
   }
-  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
   for (const item of file.exports) {
-    const label = `${file.file}#${item.name}`;
-    if (typeof item.name !== 'string' || !EXPORT_NAME.test(item.name)) {
+    // One Story may show several parts of the file, so an ID may repeat across parts but not within one.
+    const seenIds = new Set<string>();
+    const label = `${file.file}#${String(item?.name)}`;
+    if (typeof item.name !== 'string' || !exportName.test(item.name)) {
       problems.push(`${file.file}: invalid export name ${String(item.name)}`);
       continue;
     }
-    if (!exports(text, item.name)) problems.push(`${label} is not exported by ${file.file}`);
+    if (seenNames.has(item.name)) problems.push(`${label} is listed twice`);
+    seenNames.add(item.name);
+    if (!exportsName(text, item.name)) problems.push(`${label} is not exported by ${file.file}`);
     const stories = Array.isArray(item.stories) ? item.stories : [];
     const reason = typeof item.exclusion === 'string' ? item.exclusion.trim() : '';
-    if (stories.length === 0 && reason === '') {
-      problems.push(`${label} has neither a Story nor an exclusion reason`);
+    if (stories.length === 0 && reason.length < exclusionMinLength) {
+      problems.push(
+        `${label} has neither a Story nor an exclusion reason of ${exclusionMinLength}+ characters`,
+      );
     }
     if (stories.length > 0 && item.exclusion !== undefined) {
       problems.push(`${label} lists Stories and an exclusion; choose one`);
     }
     for (const story of stories) {
-      if (typeof story.id !== 'string' || !STORY_ID.test(story.id)) {
+      if (typeof story.id !== 'string' || !storyId.test(story.id)) {
         problems.push(`${label}: invalid story ID ${String(story.id)}`);
       } else if (seenIds.has(story.id)) {
         problems.push(`${label}: duplicate story ID ${story.id}`);
@@ -102,53 +111,17 @@ export function validateStoryCoverage(value: unknown, srcRoot: string): string[]
   return problems;
 }
 
-/** Every `story-coverage.json` under a folder, as absolute paths, in a stable order. */
+/** Every coverage file under a folder, as absolute paths, in a stable order. */
 export function findStoryCoverage(dir: string, into: string[] = []): string[] {
   for (const name of readdirSync(dir).sort()) {
     const path = posix.join(dir, name);
     if (statSync(path).isDirectory()) findStoryCoverage(path, into);
-    else if (name === STORY_COVERAGE_FILE) into.push(path);
+    else if (isCoverageFileName(name)) into.push(path);
   }
   return into;
 }
 
-export interface LedgerRow {
-  file: string;
-  part: string;
-  storyId: string | null;
-  states: string[];
-  interaction: boolean;
-}
-
-/** One row per Story for the ledger: the file, the part, the Story ID, its states and interaction. */
-export function ledgerRows(files: StoryCoverageFile[]): LedgerRow[] {
-  const rows: LedgerRow[] = [];
-  for (const file of files) {
-    for (const item of file.exports) {
-      if (item.stories.length === 0) {
-        rows.push({
-          file: file.file,
-          part: item.name,
-          storyId: null,
-          states: [],
-          interaction: false,
-        });
-      }
-      for (const story of item.stories) {
-        rows.push({
-          file: file.file,
-          part: item.name,
-          storyId: story.id,
-          states: story.states,
-          interaction: story.interaction,
-        });
-      }
-    }
-  }
-  return rows;
-}
-
-/** Reads and reports every coverage file under `srcRoot`. */
+/** Reads and validates every coverage file under `srcRoot`. */
 export function readStoryCoverage(srcRoot: string): {
   files: StoryCoverageFile[];
   problems: string[];
@@ -157,7 +130,7 @@ export function readStoryCoverage(srcRoot: string): {
   const problems: string[] = [];
   for (const path of findStoryCoverage(srcRoot)) {
     const value = JSON.parse(readFileSync(path, 'utf8'));
-    const found = validateStoryCoverage(value, srcRoot);
+    const found = validateStoryCoverage(value, srcRoot, posix.basename(path));
     for (const line of found) problems.push(`${posix.relative(srcRoot, path)}: ${line}`);
     if (found.length === 0) files.push(value as StoryCoverageFile);
   }

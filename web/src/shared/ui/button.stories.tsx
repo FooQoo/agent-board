@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { useTranslation } from 'react-i18next';
 import { Button } from './button';
 
 const meta = {
@@ -50,5 +51,21 @@ export const ClickCallsHandler: Story = {
     const button = within(canvasElement).getByRole('button', { name: 'Save' });
     await userEvent.click(button);
     expect(args.onClick).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** The product's own label, translated at render: the same text as the adopted screen's button. */
+function TranslatedButton({ labelKey }: { labelKey: 'simpleTask.submit' }) {
+  const { t } = useTranslation();
+  return <Button>{t(labelKey)}</Button>;
+}
+
+/** The primary button of the task form, with the product's own English label ("Submit task"). */
+export const ProductSubmitLabel: Story = {
+  render: () => <TranslatedButton labelKey="simpleTask.submit" />,
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getByRole('button', { name: 'Submit task' }),
+    ).toBeInTheDocument();
   },
 };

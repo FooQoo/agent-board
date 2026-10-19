@@ -4,6 +4,12 @@
 import type { Epic, Project, Task } from '../../src/shared/api/contracts';
 import type { MonitorTask } from '../../src/pages/monitor/contracts';
 
+/**
+ * The URL of the synthetic 96×64 PNG in `.storybook/static` (a blue and grey pattern, with no personal
+ * or product content). Storybook and the browser tests both serve that folder from the root.
+ */
+export const SAMPLE_IMAGE_URL = '/sample-attachment.png';
+
 /** The fixed clock of every Story, in UTC. */
 export const FIXED_NOW = '2026-10-02T09:00:00.000Z';
 
@@ -62,7 +68,7 @@ export function makeEpic(overrides: Partial<Epic> = {}): Epic {
   };
 }
 
-/** A card as the monitor shows it: the task with the project it belongs to. */
+/** A card as the monitor shows it: a copy of the task, with the project it belongs to. */
 export function makeMonitorTask(task: Task, project: Project): MonitorTask {
-  return { projectId: project.id, projectName: project.name, task };
+  return { projectId: project.id, projectName: project.name, task: structuredClone(task) };
 }

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "owner": "U1",
+  "file": "shared/ui/dialog.tsx",
+  "exports": [
+    {
+      "name": "Dialog",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--trigger",
+          "states": ["closed", "opened by click"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DialogTrigger",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--trigger",
+          "states": ["closed", "opened by click"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "DialogPortal",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DialogOverlay",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DialogContent",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DialogHeader",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DialogTitle",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DialogDescription",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DialogFooter",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DialogClose",
+      "stories": [
+        {
+          "id": "shared-ui-dialog--open",
+          "states": ["open", "with title, description and footer"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}
