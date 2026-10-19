@@ -20,6 +20,11 @@
           "interaction": false
         },
         {
+          "id": "task-detail-detailpanel--attachment-available",
+          "states": ["owned attachment", "Markdown image loaded", "attachment list image loaded"],
+          "interaction": false
+        },
+        {
           "id": "task-detail-detailpanel--card-phone",
           "states": ["card", "phone 390px"],
           "interaction": false

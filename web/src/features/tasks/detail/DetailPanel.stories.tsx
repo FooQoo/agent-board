@@ -5,6 +5,7 @@ import {
   makeEpic,
   makeProject,
   makeTask,
+  SAMPLE_IMAGE_URL,
 } from '../../../../.storybook/support/fixtures';
 import { DetailPanel } from './DetailPanel';
 
@@ -99,6 +100,20 @@ export const Card: Story = {
     expect(canvasElement.querySelector('.md-scroll table')).not.toBeNull();
     expect(canvasElement.querySelector('.detail-attachments')).not.toBeNull();
     expect(canvasElement.querySelector('.detail-evidence')?.textContent).toContain('run-log.txt');
+  },
+};
+
+/** Owned attachment URLs resolve for both Markdown images and the card's attachment list. */
+export const AttachmentAvailable: Story = {
+  args: { attachmentUrl: () => SAMPLE_IMAGE_URL },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const pictures = canvasElement.querySelectorAll<HTMLImageElement>(
+        '.detail-attachments img, .md__image-picture',
+      );
+      expect(pictures.length).toBeGreaterThan(0);
+      expect([...pictures].every((picture) => picture.naturalWidth > 0)).toBe(true);
+    });
   },
 };
 

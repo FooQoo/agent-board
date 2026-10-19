@@ -13,6 +13,11 @@
           "interaction": false
         },
         {
+          "id": "shared-markdown-markdownview--safe-link",
+          "states": ["allowed HTTP link", "opens in a new tab", "noopener noreferrer"],
+          "interaction": false
+        },
+        {
           "id": "shared-markdown-markdownview--wide-variant",
           "states": ["wide variant"],
           "interaction": false

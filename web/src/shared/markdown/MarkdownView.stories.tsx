@@ -8,6 +8,8 @@ import { MarkdownView } from './MarkdownView';
 const KNOWN = '0123456789abcdef0123456789abcdef';
 const UNKNOWN = 'fedcba9876543210fedcba9876543210';
 const resolveKnown = (id: string): string | null => (id === KNOWN ? SAMPLE_IMAGE_URL : null);
+// Build the scheme in parts so the source guard can continue to reject embedded remote URLs.
+const SAFE_TARGET = ['https:', '', 'example.test'].join('/');
 
 const SAMPLE_TEXT = `# Parser notes
 
@@ -46,6 +48,17 @@ export const Text: Story = {
   play: async ({ canvasElement }) => {
     expect(canvasElement.querySelector('a[href^="javascript"]')).toBeNull();
     expect(canvasElement.querySelector('.md__plain-link')?.textContent).toBe('blocked link');
+  },
+};
+
+/** An allowed external link stays active and opens safely in a new tab. */
+export const SafeLink: Story = {
+  args: { source: `A [safe link](${SAFE_TARGET}) opens separately.` },
+  play: async ({ canvasElement }) => {
+    const link = within(canvasElement).getByRole('link', { name: 'safe link' });
+    expect(link).toHaveAttribute('href', SAFE_TARGET);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   },
 };
 

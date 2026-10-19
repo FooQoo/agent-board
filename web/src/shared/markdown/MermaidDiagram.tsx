@@ -39,34 +39,29 @@ function DrawnSvg({ svg, className }: { svg: string; className: string }) {
   return <span ref={host} className={className} />;
 }
 
+/** What the diagram area shows: the drawing is still running, it is drawn, or it was refused. */
+export type MermaidViewState =
+  | { status: 'loading' }
+  | { status: 'failed'; message: string }
+  | { status: 'drawn'; svg: string };
+
+/** The view state of a finished or unfinished drawing. `null` means the drawing has not finished. */
+export function mermaidViewStateOf(result: RenderResult | null): MermaidViewState {
+  if (result === null) return { status: 'loading' };
+  if (!result.ok) return { status: 'failed', message: result.message };
+  return { status: 'drawn', svg: result.svg };
+}
+
 /**
- * A Mermaid block drawn as a diagram. A wrong notation shows one line of the error and the source,
- * so the text can still be read and corrected. A drawn diagram opens enlarged on a press.
+ * The presentation of one Mermaid block in each state. It takes the state as given, so every state can
+ * be shown on its own. A wrong notation shows one line of the error and the source, so the text can still
+ * be read and corrected. A drawn diagram opens enlarged on a press.
  */
-export function MermaidDiagram({ source }: { source: string }) {
+export function MermaidDiagramView({ source, state }: { source: string; state: MermaidViewState }) {
   const { t } = useTranslation();
-  const theme = useMermaidTheme();
-  const [drawn, setDrawn] = useState<{
-    source: string;
-    theme: MermaidTheme;
-    result: RenderResult;
-  } | null>(null);
   const [enlarged, setEnlarged] = useState(false);
 
-  useEffect(() => {
-    let current = true;
-    void renderMermaid(source, theme).then((result) => {
-      if (current) setDrawn({ source, theme, result });
-    });
-    return () => {
-      current = false;
-    };
-  }, [source, theme]);
-
-  const result =
-    drawn !== null && drawn.source === source && drawn.theme === theme ? drawn.result : null;
-
-  if (result === null) {
+  if (state.status === 'loading') {
     return (
       <figure className="md-mermaid md-mermaid--loading" aria-busy="true">
         <p className="md-mermaid__status">{t('markdown.diagramLoading')}</p>
@@ -74,11 +69,11 @@ export function MermaidDiagram({ source }: { source: string }) {
     );
   }
 
-  if (!result.ok) {
+  if (state.status === 'failed') {
     return (
       <figure className="md-mermaid md-mermaid--error">
         <p className="md-mermaid__status" role="alert">
-          {t('markdown.diagramError', { message: result.message })}
+          {t('markdown.diagramError', { message: state.message })}
         </p>
         <pre className="md-mermaid__source">
           <code>{source}</code>
@@ -96,14 +91,39 @@ export function MermaidDiagram({ source }: { source: string }) {
           aria-label={t('markdown.enlargeDiagram')}
           onClick={() => setEnlarged(true)}
         >
-          <DrawnSvg className="md-mermaid__svg" svg={result.svg} />
+          <DrawnSvg className="md-mermaid__svg" svg={state.svg} />
         </button>
       </figure>
       {enlarged && (
         <Lightbox label={t('markdown.enlargeDiagram')} onClose={() => setEnlarged(false)}>
-          <DrawnSvg className="lightbox__diagram" svg={result.svg} />
+          <DrawnSvg className="lightbox__diagram" svg={state.svg} />
         </Lightbox>
       )}
     </>
   );
+}
+
+/** A Mermaid block drawn with the page's theme. The drawing runs once per source and theme. */
+export function MermaidDiagram({ source }: { source: string }) {
+  const theme = useMermaidTheme();
+  const [drawn, setDrawn] = useState<{
+    source: string;
+    theme: MermaidTheme;
+    result: RenderResult;
+  } | null>(null);
+
+  useEffect(() => {
+    let current = true;
+    void renderMermaid(source, theme).then((result) => {
+      if (current) setDrawn({ source, theme, result });
+    });
+    return () => {
+      current = false;
+    };
+  }, [source, theme]);
+
+  const result =
+    drawn !== null && drawn.source === source && drawn.theme === theme ? drawn.result : null;
+
+  return <MermaidDiagramView source={source} state={mermaidViewStateOf(result)} />;
 }
