@@ -48,7 +48,7 @@ describe('focus frames and code block headers', () => {
   const read = (name: string) => readFileSync(join(SRC, 'shared/styles', name), 'utf8');
 
   it('the title shows no frame while it is edited, only the caret', () => {
-    const css = readFileSync(join(SRC, 'features/epics/editor/editor-epic.css'), 'utf8');
+    const css = readFileSync(join(SRC, 'shared/ui/editor/editor-common.css'), 'utf8');
     const start = css.indexOf('.editor__input--title:focus');
     expect(start).toBeGreaterThan(-1);
     const block = css.slice(start, css.indexOf('}', start));

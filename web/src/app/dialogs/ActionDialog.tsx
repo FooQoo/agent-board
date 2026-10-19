@@ -11,7 +11,6 @@ import { EpicBadge } from '../../features/epics/label/EpicBadge';
 import { epicInk } from '../../features/epics/model/epic';
 import type { ProgressTaskRenderer } from '../../features/epics/editor/EpicProgressList';
 import type { EpicRef } from '../../shared/api/contracts';
-import '../../features/epics/editor/editor-epic.css';
 
 export type { DialogAction };
 

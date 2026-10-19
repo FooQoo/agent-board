@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { findTaskButton } from '../dialog-frame/DialogFrame';
 import { DiscardConfirm } from './DiscardConfirm';
 import '../../styles/editor.css';
+import './editor-common.css';
 import '../../styles/rich-table.css';
 import '../../styles/rich-body.css';
 
