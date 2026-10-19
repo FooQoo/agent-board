@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "owner": "U5",
+  "files": [
+    {
+      "file": "app/App.tsx",
+      "exports": [
+        {
+          "name": "App",
+          "exclusion": "App is a URL/session integration wrapper verified by App tests and product E2E."
+        }
+      ]
+    },
+    {
+      "file": "app/BoardWorkspace.tsx",
+      "exports": [
+        {
+          "name": "BoardWorkspace",
+          "stories": [
+            { "id": "app-board-workspace--board", "states": ["selected task in board view"], "interaction": true },
+            { "id": "app-board-workspace--archive", "states": ["archive view"], "interaction": false },
+            { "id": "app-board-workspace--epics", "states": ["epic list and detail view"], "interaction": false }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/AppDialogs.tsx",
+      "exports": [
+        {
+          "name": "AppDialogs",
+          "stories": [
+            { "id": "app-app-dialogs--create", "states": ["create dialog through the lazy boundary"], "interaction": true }
+          ]
+        }
+      ]
+    }
+  ]
+}
