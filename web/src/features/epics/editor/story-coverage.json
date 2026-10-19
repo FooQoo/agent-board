@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "owner": "U3",
+  "files": [
+    {
+      "file": "features/epics/editor/EpicDialog.tsx",
+      "exports": [
+        {
+          "name": "EpicDialog",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--unchanged",
+              "states": [
+                "unchanged",
+                "plan",
+                "image attachment",
+                "progress order",
+                "save disabled"
+              ],
+              "interaction": false
+            },
+            {
+              "id": "epic-editor-epicdialog--details-save-retry",
+              "states": ["editing", "saving", "failed save", "input retained", "retry"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/epics/editor/EpicEditorView.tsx",
+      "exports": [
+        {
+          "name": "EpicEditorView",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--unchanged",
+              "states": ["label row", "editor body", "progress list", "attachments"],
+              "interaction": false
+            },
+            {
+              "id": "epic-editor-epicdialog--details-save-retry",
+              "states": ["editing", "saving", "error", "retry"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/epics/editor/useEpicEditor.ts",
+      "exports": [
+        {
+          "name": "useEpicEditor",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--details-save-retry",
+              "states": ["details save", "failure retention", "retry only unsaved step"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/epics/editor/epicEditorModel.ts",
+      "exports": [
+        {
+          "name": "nameIsValid",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--details-save-retry",
+              "states": ["valid epic name"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "orderOf",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--unchanged",
+              "states": ["saved task order", "unlisted members appended"],
+              "interaction": false
+            }
+          ]
+        },
+        {
+          "name": "storedOf",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--details-save-retry",
+              "states": ["attachment metadata after save"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
