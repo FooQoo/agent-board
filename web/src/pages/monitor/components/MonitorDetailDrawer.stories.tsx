@@ -7,6 +7,14 @@ import type { EpicReadState } from '../hooks/useMonitorDetailDrawer';
 import { createMonitorFixtureProps } from '../mock';
 import { MonitorDetailDrawer } from './MonitorDetailDrawer';
 
+const meta = {
+  title: 'Pages/Monitor/Components/MonitorDetailDrawer',
+  component: DrawerStory,
+  parameters: { storyFrame: 'monitor' },
+} satisfies Meta<typeof DrawerStory>;
+
+type Story = StoryObj<typeof meta>;
+
 const epic: Epic = {
   id: 'MOB-1',
   name: 'Mobile work',
@@ -56,14 +64,7 @@ function DrawerStory({ epicState = 'loaded' }: { epicState?: 'loaded' | 'error' 
   );
 }
 
-const meta = {
-  title: 'Pages/Monitor/Components/MonitorDetailDrawer',
-  component: DrawerStory,
-  parameters: { storyFrame: 'monitor' },
-} satisfies Meta<typeof DrawerStory>;
-
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 /** The drawer keeps all four linked panels mounted and presents loaded epic content. */
 export const FourTabs: Story = {

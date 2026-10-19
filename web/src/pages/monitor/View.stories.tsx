@@ -5,6 +5,14 @@ import type { MonitorViewProps } from './contracts';
 import { MonitorView } from './View';
 import { createMonitorFixtureProps } from './mock';
 
+const meta = {
+  title: 'Pages/Monitor',
+  component: MonitorPageStory,
+  parameters: { storyFrame: 'monitor' },
+} satisfies Meta<typeof MonitorPageStory>;
+
+type Story = StoryObj<typeof meta>;
+
 const epic: Epic = {
   id: 'MOB-1',
   name: 'Mobile work',
@@ -42,14 +50,7 @@ function MonitorPageStory({ epicReadFails = false }: { epicReadFails?: boolean }
   return <MonitorView {...props} readResolvers={readResolvers} />;
 }
 
-const meta = {
-  title: 'Pages/Monitor',
-  component: MonitorPageStory,
-  parameters: { storyFrame: 'monitor' },
-} satisfies Meta<typeof MonitorPageStory>;
-
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 /** The monitor opens the mobile drawer with body, acceptance, history, and epic tabs. */
 export const DrawerTabs: Story = {
