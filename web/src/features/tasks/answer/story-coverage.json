@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "owner": "U2",
+  "files": [
+    {
+      "file": "features/tasks/answer/DecisionRequestFormView.tsx",
+      "exports": [
+        {
+          "name": "DecisionRequestFormView",
+          "stories": [
+            {
+              "id": "task-answer-decisionrequestformview--empty",
+              "states": ["no choice", "no answer"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestformview--choices-and-selected",
+              "states": ["choice selected"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestformview--free-text-only",
+              "states": ["free text"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestformview--sending",
+              "states": ["sending", "disabled input"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestformview--failed-with-input-kept",
+              "states": ["failed", "input kept"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestformview--request-changed",
+              "states": ["request changed", "send disabled"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestformview--too-long",
+              "states": ["over 2,000 code points"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestformview--expand-question",
+              "states": ["expanded question"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/DecisionRequestForm.tsx",
+      "exports": [
+        {
+          "name": "DecisionRequestForm",
+          "stories": [
+            {
+              "id": "task-answer-decisionrequestform--empty",
+              "states": ["not answered"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestform--with-choices",
+              "states": ["choice", "sendable"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionrequestform--sending-rejects-duplicate-submit",
+              "states": ["sending", "duplicate submit"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionrequestform--failed-then-retry",
+              "states": ["failure", "same input retry"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionrequestform--restores-draft-from-state-store",
+              "states": ["restored choice", "restored text"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestform--request-changed",
+              "states": ["request changed", "send disabled"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/useDecisionRequestForm.ts",
+      "exports": [
+        {
+          "name": "useDecisionRequestForm",
+          "stories": [],
+          "exclusion": "Internal hook exercised through DecisionRequestForm interaction stories."
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/useQuestionClamp.ts",
+      "exports": [
+        {
+          "name": "useQuestionClamp",
+          "stories": [],
+          "exclusion": "Internal layout hook exercised through the four-line question clamp in View stories."
+        }
+      ]
+    }
+  ]
+}
