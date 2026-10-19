@@ -4,6 +4,12 @@ import type { ProgressTaskRenderer } from './EpicProgressList';
 import { makeEpic, makeTask } from '../../../../.storybook/support/fixtures';
 import { EpicDialog } from './EpicDialog';
 
+const meta: Meta<typeof EpicDialog> = {
+  title: 'Epic/Editor/EpicDialog',
+  component: EpicDialog,
+  parameters: { layout: 'fullscreen' },
+};
+
 const epic = makeEpic({
   id: 'planning',
   name: 'Planning',
@@ -51,27 +57,22 @@ function saveDetailsFailsOnce() {
   });
 }
 
-const meta = {
-  title: 'Epic/Editor/EpicDialog',
-  component: EpicDialog,
-  args: {
-    epic,
-    tasks,
-    projectId: 'sample-project',
-    renderTask,
-    api: {
-      addImages: fn(async () => {}),
-      removeImage: fn(async () => {}),
-      savePlan: fn(async () => {}),
-      saveDetails: fn(async () => {}),
-      savePriority: fn(async () => {}),
-      remove: fn(async () => {}),
-    },
-    onOpenTask: fn(),
-    onClose: fn(),
+meta.args = {
+  epic,
+  tasks,
+  projectId: 'sample-project',
+  renderTask,
+  api: {
+    addImages: fn(async () => {}),
+    removeImage: fn(async () => {}),
+    savePlan: fn(async () => {}),
+    saveDetails: fn(async () => {}),
+    savePriority: fn(async () => {}),
+    remove: fn(async () => {}),
   },
-  parameters: { layout: 'fullscreen' },
-} satisfies Meta<typeof EpicDialog>;
+  onOpenTask: fn(),
+  onClose: fn(),
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;
