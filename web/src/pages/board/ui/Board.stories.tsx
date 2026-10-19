@@ -4,12 +4,28 @@ import { makeEpic, makeTask } from '../../../../.storybook/support/fixtures';
 import { Board } from './Board';
 
 const meta = {
-  title: 'Pages/Board/Board', component: Board,
-  args: { message: null, tasks: [
-    makeTask({ id: 21, title: 'Draft the plan', taskStatus: 'todo' }),
-    makeTask({ id: 22, title: 'Build the UI', taskStatus: 'doing', agentStatus: 'running', epic: makeEpic() }),
-    makeTask({ id: 23, title: 'Ship the change', taskStatus: 'done', assignee: 'human' }),
-  ], selectedId: null, onSelect: fn(), onRetry: fn(), onMove: fn(), onReorder: fn(), onOpenEpic: fn() },
+  title: 'Pages/Board/Board',
+  component: Board,
+  args: {
+    message: null,
+    tasks: [
+      makeTask({ id: 21, title: 'Draft the plan', taskStatus: 'todo' }),
+      makeTask({
+        id: 22,
+        title: 'Build the UI',
+        taskStatus: 'doing',
+        agentStatus: 'running',
+        epic: makeEpic(),
+      }),
+      makeTask({ id: 23, title: 'Ship the change', taskStatus: 'done', assignee: 'human' }),
+    ],
+    selectedId: null,
+    onSelect: fn(),
+    onRetry: fn(),
+    onMove: fn(),
+    onReorder: fn(),
+    onOpenEpic: fn(),
+  },
 } satisfies Meta<typeof Board>;
 export default meta;
 type Story = StoryObj<typeof meta>;

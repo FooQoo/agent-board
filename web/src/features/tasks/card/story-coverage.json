@@ -1,19 +1,47 @@
 {
   "schemaVersion": 1,
   "owner": "U12",
-  "files": [{
-    "file": "features/tasks/card/TaskCard.tsx",
-    "exports": [
-      { "name": "TaskCard", "stories": [], "exclusion": "TaskCard is the sortable and answer-controller host; its visual states are rendered by TaskCardView Stories, and board composition is covered beside Board." },
-      { "name": "TaskCardView", "stories": [
-        { "id": "task-card-taskcard--default", "states": ["doing", "running", "title", "updated time"], "interaction": false },
-        { "id": "task-card-taskcard--selected", "states": ["selected", "aria-current"], "interaction": true },
-        { "id": "task-card-taskcard--draft", "states": ["draft"], "interaction": false },
-        { "id": "task-card-taskcard--pending-with-epic", "states": ["pending reason", "epic label", "epic click does not select card"], "interaction": true }
-      ]},
-      { "name": "TaskCardContent", "stories": [
-        { "id": "task-card-taskcard--content", "states": ["title", "pending reason slot"], "interaction": false }
-      ]}
-    ]
-  }]
+  "files": [
+    {
+      "file": "features/tasks/card/TaskCard.tsx",
+      "exports": [
+        {
+          "name": "TaskCard",
+          "stories": [],
+          "exclusion": "TaskCard is the sortable and answer-controller host; its visual states are rendered by TaskCardView Stories, and board composition is covered beside Board."
+        },
+        {
+          "name": "TaskCardView",
+          "stories": [
+            {
+              "id": "task-card-taskcard--default",
+              "states": ["doing", "running", "title", "updated time"],
+              "interaction": false
+            },
+            {
+              "id": "task-card-taskcard--selected",
+              "states": ["selected", "aria-current"],
+              "interaction": true
+            },
+            { "id": "task-card-taskcard--draft", "states": ["draft"], "interaction": false },
+            {
+              "id": "task-card-taskcard--pending-with-epic",
+              "states": ["pending reason", "epic label", "epic click does not select card"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "TaskCardContent",
+          "stories": [
+            {
+              "id": "task-card-taskcard--content",
+              "states": ["title", "pending reason slot"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

@@ -8,11 +8,20 @@ import { EditorShell } from './EditorShell';
 
 function EditorHost() {
   const [title, setTitle] = useState('Prepare release notes');
-  const [description, setDescription] = useState('## Summary\n\nA real editor inside the shared shell.\n');
-  const [conditions, setConditions] = useState([{ id: 'AC-1', text: 'Keep the source text', done: false }]);
+  const [description, setDescription] = useState(
+    '## Summary\n\nA real editor inside the shared shell.\n',
+  );
+  const [conditions, setConditions] = useState([
+    { id: 'AC-1', text: 'Keep the source text', done: false },
+  ]);
   const editorRef = useRef<RichMarkdownEditorHandle>(null);
   const [closed, setClosed] = useState(false);
-  if (closed) return <button type="button" onClick={() => setClosed(false)}>Open editor</button>;
+  if (closed)
+    return (
+      <button type="button" onClick={() => setClosed(false)}>
+        Open editor
+      </button>
+    );
   return (
     <EditorShell
       taskId={42}
@@ -24,7 +33,11 @@ function EditorHost() {
       error={null}
       onClose={() => setClosed(true)}
       status="Unsaved changes"
-      actions={<button type="button" onClick={() => setClosed(true)}>Save</button>}
+      actions={
+        <button type="button" onClick={() => setClosed(true)}>
+          Save
+        </button>
+      }
     >
       <EditorBody
         title={title}

@@ -2,8 +2,21 @@
   "schemaVersion": 1,
   "owner": "U12",
   "file": "features/epics/summary/EpicTaskCounts.tsx",
-  "exports": [{ "name": "EpicTaskCounts", "stories": [
-    { "id": "epic-summary-epictaskcounts--all-statuses", "states": ["todo", "doing", "done", "archived", "total"], "interaction": false },
-    { "id": "epic-summary-epictaskcounts--missing-counts", "states": ["counts unavailable", "dash"], "interaction": false }
-  ]}]
+  "exports": [
+    {
+      "name": "EpicTaskCounts",
+      "stories": [
+        {
+          "id": "epic-summary-epictaskcounts--all-statuses",
+          "states": ["todo", "doing", "done", "archived", "total"],
+          "interaction": false
+        },
+        {
+          "id": "epic-summary-epictaskcounts--missing-counts",
+          "states": ["counts unavailable", "dash"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
 }

@@ -16,17 +16,36 @@ type Story = StoryObj<typeof meta>;
 
 function AttachmentHost() {
   const [attachments, setAttachments] = useState<EditorAttachment[]>([
-    { id: 'stored-1', name: 'planning.png', mediaType: 'image/png', size: 4096, url: SAMPLE_IMAGE_URL, source: 'stored' },
+    {
+      id: 'stored-1',
+      name: 'planning.png',
+      mediaType: 'image/png',
+      size: 4096,
+      url: SAMPLE_IMAGE_URL,
+      source: 'stored',
+    },
   ]);
   return (
     <AttachmentPanel
       attachments={attachments}
-      onFiles={(files) => setAttachments((current) => [...current, ...files.map((file, index) => ({
-        id: `local-${index + 1}`, name: file.name, mediaType: file.type, size: file.size,
-        url: URL.createObjectURL(file), source: 'local' as const, file,
-      }))])}
+      onFiles={(files) =>
+        setAttachments((current) => [
+          ...current,
+          ...files.map((file, index) => ({
+            id: `local-${index + 1}`,
+            name: file.name,
+            mediaType: file.type,
+            size: file.size,
+            url: URL.createObjectURL(file),
+            source: 'local' as const,
+            file,
+          })),
+        ])
+      }
       onRemove={(id) => setAttachments((current) => current.filter((item) => item.id !== id))}
-      onInsert={(item) => { document.body.dataset.inserted = item.id; }}
+      onInsert={(item) => {
+        document.body.dataset.inserted = item.id;
+      }}
     />
   );
 }
@@ -56,6 +75,8 @@ export const RefusedImage: Story = {
 export const SavingDisabled: Story = {
   args: { disabled: true },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('button', { name: 'Add image attachment' })).toBeDisabled();
+    await expect(
+      within(canvasElement).getByRole('button', { name: 'Add image attachment' }),
+    ).toBeDisabled();
   },
 };

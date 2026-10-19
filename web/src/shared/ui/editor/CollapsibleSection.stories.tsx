@@ -21,7 +21,12 @@ type Story = StoryObj<typeof meta>;
 function CollapsibleHost() {
   const [open, setOpen] = useState(true);
   return (
-    <CollapsibleSection title="Image attachments" count={2} open={open} onToggle={() => setOpen((value) => !value)}>
+    <CollapsibleSection
+      title="Image attachments"
+      count={2}
+      open={open}
+      onToggle={() => setOpen((value) => !value)}
+    >
       <p>Attachment panel content stays mounted while folded.</p>
     </CollapsibleSection>
   );

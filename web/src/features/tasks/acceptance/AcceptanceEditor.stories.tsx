@@ -4,7 +4,13 @@ import { expect, userEvent, within } from 'storybook/test';
 import type { AcceptanceItem } from '../../../shared/api/contracts';
 import { AcceptanceEditor } from './AcceptanceEditor';
 
-function AcceptanceEditorHost({ initial, disabled = false }: { initial: AcceptanceItem[]; disabled?: boolean }) {
+function AcceptanceEditorHost({
+  initial,
+  disabled = false,
+}: {
+  initial: AcceptanceItem[];
+  disabled?: boolean;
+}) {
   const [items, setItems] = useState(initial);
   return <AcceptanceEditor items={items} onChange={setItems} disabled={disabled} />;
 }
@@ -38,14 +44,20 @@ export const InvalidCondition: Story = {
   args: { initial: [{ id: 'AC-1', text: '', done: false }] },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole('alert')).toBeInTheDocument();
-    await expect(within(canvasElement).getByRole('textbox', { name: 'Condition AC-1' })).toHaveAttribute('aria-invalid', 'true');
+    await expect(
+      within(canvasElement).getByRole('textbox', { name: 'Condition AC-1' }),
+    ).toHaveAttribute('aria-invalid', 'true');
   },
 };
 
 export const SavingDisabled: Story = {
   args: { disabled: true },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('button', { name: 'Add condition' })).toBeDisabled();
-    await expect(within(canvasElement).getByRole('textbox', { name: 'Condition AC-1' })).toBeDisabled();
+    await expect(
+      within(canvasElement).getByRole('button', { name: 'Add condition' }),
+    ).toBeDisabled();
+    await expect(
+      within(canvasElement).getByRole('textbox', { name: 'Condition AC-1' }),
+    ).toBeDisabled();
   },
 };
