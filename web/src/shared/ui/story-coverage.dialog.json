@@ -15,6 +15,31 @@
           "id": "shared-ui-dialog--open",
           "states": ["open", "with title, description and footer"],
           "interaction": false
+        },
+        {
+          "id": "shared-ui-dialog--escape-restores-focus",
+          "states": ["escape", "focus back to trigger"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--close-icon-dismisses",
+          "states": ["corner close", "change callback"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--without-close-icon",
+          "states": ["no corner close", "footer cancel closes"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--footer-close-button",
+          "states": ["footer close button"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-dialog--portal-follows-theme",
+          "states": ["portal", "12 accents x light and dark"],
+          "interaction": false
         }
       ]
     },
@@ -24,6 +49,11 @@
         {
           "id": "shared-ui-dialog--trigger",
           "states": ["closed", "opened by click"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--escape-restores-focus",
+          "states": ["focus back to trigger"],
           "interaction": true
         }
       ]
@@ -35,6 +65,11 @@
           "id": "shared-ui-dialog--open",
           "states": ["open", "with title, description and footer"],
           "interaction": false
+        },
+        {
+          "id": "shared-ui-dialog--portal-follows-theme",
+          "states": ["portal", "12 accents x light and dark"],
+          "interaction": false
         }
       ]
     },
@@ -45,6 +80,11 @@
           "id": "shared-ui-dialog--open",
           "states": ["open", "with title, description and footer"],
           "interaction": false
+        },
+        {
+          "id": "shared-ui-dialog--portal-follows-theme",
+          "states": ["portal", "12 accents x light and dark"],
+          "interaction": false
         }
       ]
     },
@@ -54,6 +94,31 @@
         {
           "id": "shared-ui-dialog--open",
           "states": ["open", "with title, description and footer"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-dialog--escape-restores-focus",
+          "states": ["escape", "focus back to trigger"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--close-icon-dismisses",
+          "states": ["corner close", "change callback"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--without-close-icon",
+          "states": ["no corner close"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--footer-close-button",
+          "states": ["two Close buttons"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-dialog--portal-follows-theme",
+          "states": ["portal", "12 accents x light and dark"],
           "interaction": false
         }
       ]
@@ -95,6 +160,16 @@
           "id": "shared-ui-dialog--open",
           "states": ["open", "with title, description and footer"],
           "interaction": false
+        },
+        {
+          "id": "shared-ui-dialog--without-close-icon",
+          "states": ["footer cancel closes"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--footer-close-button",
+          "states": ["footer close button"],
+          "interaction": false
         }
       ]
     },
@@ -104,6 +179,21 @@
         {
           "id": "shared-ui-dialog--open",
           "states": ["open", "with title, description and footer"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-dialog--close-icon-dismisses",
+          "states": ["corner close", "change callback"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--without-close-icon",
+          "states": ["footer cancel closes"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialog--footer-close-button",
+          "states": ["footer close button"],
           "interaction": false
         }
       ]

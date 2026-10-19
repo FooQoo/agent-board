@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/status-bar/StatusBar.tsx",
+  "exports": [
+    {
+      "name": "StatusBar",
+      "stories": [
+        {
+          "id": "shared-ui-statusbar--ready",
+          "states": ["ready", "several tasks", "synced", "ok tone"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--single-task",
+          "states": ["one task"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--empty-board",
+          "states": ["zero tasks"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--disconnected",
+          "states": ["disconnected", "last synced", "warn tone"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--loading",
+          "states": ["loading", "connecting", "idle tone"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--connection-error",
+          "states": ["error", "not connected", "warn tone"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--archive-count",
+          "states": ["archive count", "plural"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--epics-count",
+          "states": ["epics count"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--note-board-loading",
+          "states": ["note boardLoading"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--note-not-synced",
+          "states": ["note notSynced"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--note-no-projects",
+          "states": ["note noProjects"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--note-no-selection",
+          "states": ["note noSelection"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--japanese-ready",
+          "states": ["japanese", "synced"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

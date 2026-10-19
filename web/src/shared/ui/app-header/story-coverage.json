@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/app-header/Header.tsx",
+  "exports": [
+    {
+      "name": "Header",
+      "stories": [
+        {
+          "id": "shared-ui-header--board",
+          "states": ["board", "add, epics, archive and settings enabled"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-header--board-not-ready",
+          "states": ["board not loaded", "settings only"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-header--switch-disabled",
+          "states": ["card form open", "switcher and buttons disabled"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-header--archive-view",
+          "states": ["archive", "back to board"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-header--epics-view",
+          "states": ["epics", "project name text", "back to board"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-header--no-project-list",
+          "states": ["no project list", "app name only"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-header--japanese-board",
+          "states": ["japanese", "board"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-header--action-callbacks",
+          "states": ["add", "epics", "archive", "change callbacks"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-header--settings-opens-and-restores-focus",
+          "states": ["settings dialog", "escape", "focus back to settings"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

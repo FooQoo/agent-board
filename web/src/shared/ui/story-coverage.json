@@ -42,13 +42,38 @@
           "interaction": false
         },
         {
+          "id": "shared-ui-button--icon-size",
+          "states": ["icon size", "aria-label"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-button--as-link",
+          "states": ["asChild link"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-button--focus-visible",
+          "states": ["focus"],
+          "interaction": true
+        },
+        {
           "id": "shared-ui-button--click-calls-handler",
           "states": ["click"],
           "interaction": true
         },
         {
+          "id": "shared-ui-button--enter-calls-handler",
+          "states": ["enter key", "focus"],
+          "interaction": true
+        },
+        {
           "id": "shared-ui-button--product-submit-label",
           "states": ["product label", "enabled"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-themematrix--smoke",
+          "states": ["12 accents x light and dark"],
           "interaction": false
         }
       ]

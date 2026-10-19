@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/popover.tsx",
+  "exports": [
+    {
+      "name": "Popover",
+      "stories": [
+        { "id": "shared-ui-popover--closed", "states": ["closed"], "interaction": false },
+        {
+          "id": "shared-ui-popover--opened-by-click",
+          "states": ["opened by click"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-popover--escape-restores-focus",
+          "states": ["escape", "focus back to trigger"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-popover--open-start-aligned",
+          "states": ["open at start", "align start"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "PopoverTrigger",
+      "stories": [
+        { "id": "shared-ui-popover--closed", "states": ["closed"], "interaction": false },
+        {
+          "id": "shared-ui-popover--opened-by-click",
+          "states": ["opened by click"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-popover--escape-restores-focus",
+          "states": ["escape", "focus back to trigger"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "PopoverContent",
+      "stories": [
+        {
+          "id": "shared-ui-popover--opened-by-click",
+          "states": ["content in body"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-popover--open-start-aligned",
+          "states": ["open at start", "align start"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

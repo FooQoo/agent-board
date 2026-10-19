@@ -8,6 +8,7 @@ import {
   isUiPartFile,
   ledgerRows,
   readStoryCoverage,
+  storyIdsBeside,
   uiPartFiles,
   validateStoryCoverage,
 } from '../.storybook/support/coverage';
@@ -210,7 +211,9 @@ describe('story coverage validation', () => {
     expect(problems).toContain(
       'task-status-statuslabel--card-todo is not registered by a .stories.tsx file in shared/ui',
     );
-    expect(problems).toContain('2 such file(s) there');
+    // The count is the number of Story files beside the part, which grows as each part gets its own file.
+    const storyFiles = storyIdsBeside(SRC, PLACE.location).storyFiles.length;
+    expect(problems).toContain(`${storyFiles} such file(s) there`);
   });
 
   it('refuses a Story ID that no Story file beside the part registers', () => {

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/detail-tabs.tsx",
+  "exports": [
+    {
+      "name": "DetailTabList",
+      "stories": [
+        {
+          "id": "shared-ui-detailtabs--default",
+          "states": ["selected description", "counts"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-detailtabs--click-selects",
+          "states": ["click", "change callback"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-detailtabs--arrow-keys-wrap",
+          "states": ["arrow right and left", "wrap around"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-detailtabs--home-and-end",
+          "states": ["home", "end"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-detailtabs--no-wrap-stops-at-end",
+          "states": ["no wrap", "arrow stops at first"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "detailTabId",
+      "stories": [],
+      "exclusion": "An ID helper; the tab IDs are checked through the tabs that DetailTabList renders."
+    },
+    {
+      "name": "detailPanelId",
+      "stories": [],
+      "exclusion": "An ID helper; the panel IDs are checked through the tabs that DetailTabList renders."
+    }
+  ]
+}

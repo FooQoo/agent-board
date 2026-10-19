@@ -40,6 +40,16 @@
           "id": "task-status-statuslabel--monitor-running",
           "states": ["monitor wording"],
           "interaction": false
+        },
+        {
+          "id": "task-status-statuslabel--monitor-pending",
+          "states": ["monitor wording", "agent pending"],
+          "interaction": false
+        },
+        {
+          "id": "task-status-statuslabel--monitor-done-lane",
+          "states": ["monitor wording", "card done"],
+          "interaction": false
         }
       ]
     }

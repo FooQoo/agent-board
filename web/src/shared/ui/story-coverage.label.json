@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/label.tsx",
+  "exports": [
+    {
+      "name": "Label",
+      "stories": [
+        { "id": "shared-ui-label--default", "states": ["default"], "interaction": false },
+        {
+          "id": "shared-ui-label--focuses-field",
+          "states": ["click", "linked field focus"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-label--disabled-group",
+          "states": ["disabled group"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

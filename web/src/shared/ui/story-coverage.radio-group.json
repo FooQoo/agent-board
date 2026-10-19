@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/radio-group.tsx",
+  "exports": [
+    {
+      "name": "RadioGroup",
+      "stories": [
+        { "id": "shared-ui-radiogroup--default", "states": ["one selected"], "interaction": false },
+        {
+          "id": "shared-ui-radiogroup--disabled-choice",
+          "states": ["disabled choice"],
+          "interaction": false
+        },
+        { "id": "shared-ui-radiogroup--invalid", "states": ["invalid"], "interaction": false },
+        {
+          "id": "shared-ui-radiogroup--keyboard-selects",
+          "states": ["arrow keys move focus", "space checks", "change callback"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "RadioGroupItem",
+      "stories": [
+        {
+          "id": "shared-ui-radiogroup--default",
+          "states": ["selected", "unselected"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-radiogroup--disabled-choice",
+          "states": ["disabled"],
+          "interaction": false
+        },
+        { "id": "shared-ui-radiogroup--invalid", "states": ["invalid"], "interaction": false },
+        {
+          "id": "shared-ui-radiogroup--keyboard-selects",
+          "states": ["focus", "space checks"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}
