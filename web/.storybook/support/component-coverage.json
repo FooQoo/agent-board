@@ -22,5 +22,14 @@
     "status": "partial",
     "owner": "U7",
     "method": "The final unit lists every exported UI part under collect.uiLayers with the TypeScript compiler API and requires each one to have an entry or an exclusion. Until then, only the entries written in coverage files are checked, and a part with no entry is not counted as covered."
+  },
+  "completeness": {
+    "gate": "pnpm --dir web test:storybook is the formal completeness gate for Stories. Its storybook-support project compares the Story IDs Storybook registers with the IDs listed in the coverage files, in both directions.",
+    "nodeCheckLimit": "The Node validator in coverage.ts checks only the Story IDs that coverage files list, and their placement. It cannot see a Story that no coverage file lists, so it does not prove completeness."
+  },
+  "storyOwnership": {
+    "seed": "U1 wrote the first Stories and coverage files of the representative parts, as seeds.",
+    "after": "From then on, the unit that the planning inventory (UI-INVENTORY) assigns to the source file extends the adjacent *.stories.tsx and story-coverage files. A unit must not add a second Story for a part that already has one. It edits the existing file.",
+    "u1Scope": "Shared support, dependencies and configuration under web/.storybook/ stay with U1."
   }
 }

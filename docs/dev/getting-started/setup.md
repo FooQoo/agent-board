@@ -83,7 +83,7 @@ Product code must not import a Story or anything under `web/.storybook/`. Only S
 
 Synthetic images for Stories live in `web/.storybook/static/`. Storybook and the tests serve that folder from the root, so a Story can use a URL such as `/sample-attachment.png` without any setup.
 
-Each UI folder keeps a `story-coverage.json`. It lists the exported parts of the source file beside it, the Stories that show each part, and the states they show. A folder with a second covered file uses `story-coverage.<name>.json`. A coverage file must sit in the folder of the part it covers, and each Story ID it lists must be registered by a `*.stories.tsx` file in that same folder. The format and the rules are in `web/.storybook/support/component-coverage.json`. The coverage check validates these files and compares their Story IDs with the Stories Storybook registers. It does not yet list every exported part of the product.
+Each UI folder keeps a `story-coverage.json`. It lists the exported parts of the source file beside it, the Stories that show each part, and the states they show. A folder with a second covered file uses `story-coverage.<name>.json`. A coverage file must sit in the folder of the part it covers, and each Story ID it lists must be registered by a `*.stories.tsx` file in that same folder. The format and the rules are in `web/.storybook/support/component-coverage.json`. The coverage check validates these files and compares their Story IDs with the Stories Storybook registers. It does not yet list every exported part of the product. `test:storybook` is the check that every registered Story is listed. A Story file beside a part is extended by the owner of that part, rather than duplicated.
 
 ## Install from source
 

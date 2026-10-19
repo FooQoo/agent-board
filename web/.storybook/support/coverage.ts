@@ -1,5 +1,10 @@
 // File-system side of the story coverage ledger: finds and validates the coverage files under the
 // source root. The format and the rules come from coverage-model.ts and component-coverage.json.
+//
+// Limit: this Node check validates the Story IDs that coverage files list, and where they sit. It cannot
+// see a Story that no coverage file lists. The formal completeness gate is `pnpm --dir web test:storybook`,
+// whose storybook-support project compares the registered Story IDs with the coverage files in both
+// directions (see component-coverage.json, "completeness").
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix } from 'node:path';

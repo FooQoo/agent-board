@@ -1,6 +1,15 @@
-# pnpm 12 refuses a clean install while a package's install script has no decision. Storybook brings
-# esbuild in as an optional peer of Vite. esbuild's platform binary comes from its own optional package
-# (@esbuild/<platform>), and its install script only verifies that binary, so the script is disabled.
-# The product build does not depend on it; the Storybook build and browser tests were run with it off.
+# Storybook brings esbuild in through Vite's optional peer. pnpm 12 refuses a clean install while a
+# package's install script has no decision (ERR_PNPM_IGNORED_BUILDS), so the decision is recorded here.
+#
+# esbuild's postinstall script (install.js) does four things: it honours an ESBUILD_BINARY_PATH override;
+# if the platform package (@esbuild/<platform>, an optionalDependency) is missing, it downloads that
+# package (npm, then registry.npmjs.org checked by SHA-256); it replaces bin/esbuild, the JavaScript
+# launcher, with a hard link to the native binary (not on Windows, Yarn or WASM); and it runs a version
+# check on the binary.
+#
+# With the script disabled, esbuild runs through its JavaScript launcher, which uses the platform package
+# pnpm installs from the lockfile. The override, the download fallback, the binary swap and the version
+# check do not run. A clean install with the script disabled built the product output identically, except
+# for two files that record the absolute build path.
 allowBuilds:
   esbuild: false

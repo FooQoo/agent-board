@@ -24,6 +24,8 @@ export interface CoverageConfig {
     ownerRule: string;
   };
   inventory: { status: string; owner: string; method: string };
+  completeness: { gate: string; nodeCheckLimit: string };
+  storyOwnership: { seed: string; after: string; u1Scope: string };
 }
 
 export const COVERAGE_CONFIG = config as CoverageConfig;
