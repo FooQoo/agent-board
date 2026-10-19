@@ -33,8 +33,17 @@ export const LongScrollableList: Story = {
   },
 };
 export const RetryAfterConflict: Story = {
-  args: {
-    onConfirm: fn().mockRejectedValueOnce(new Error('Conflict')).mockResolvedValueOnce(undefined),
+  render: (args) => {
+    let attempt = 0;
+    return (
+      <BulkArchiveDialog
+        {...args}
+        onConfirm={async () => {
+          await args.onConfirm();
+          if (attempt++ === 0) throw new Error('Conflict');
+        }}
+      />
+    );
   },
   play: async ({ args }) => {
     const view = within(document.body);

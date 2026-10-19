@@ -35,7 +35,7 @@ export const ManualRouteAfterDiscard: Story = {
     const view = within(document.body);
     await userEvent.type(view.getByLabelText('What should be done?'), 'Keep this request');
     await userEvent.click(view.getByRole('button', { name: 'Create manually' }));
-    await userEvent.click(view.getByRole('button', { name: 'Discard' }));
+    await userEvent.click(view.getByRole('button', { name: 'Discard and close' }));
     await expect(args.onCreateManually).toHaveBeenCalledTimes(1);
   },
 };

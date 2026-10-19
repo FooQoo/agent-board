@@ -26,7 +26,7 @@ export const EmptyReasonUsesDefault: Story = {
 export const OptionalReason: Story = {
   play: async ({ args }) => {
     const view = within(document.body);
-    const field = view.getByLabelText('Reason');
+    const field = view.getByLabelText('Reason (optional)');
     await userEvent.clear(field);
     await userEvent.type(field, 'Move after review');
     await userEvent.click(view.getByRole('button', { name: 'Move' }));

@@ -15,20 +15,28 @@ export const Empty: Story = {};
 export const ValidationAndSubmit: Story = {
   play: async ({ args }) => {
     const view = within(document.body);
-    await userEvent.click(view.getByRole('button', { name: 'Add' }));
-    await expect(view.getByRole('button', { name: 'Add' })).toBeDisabled();
+    const add = view.getByRole('button', { name: 'Add' });
+    await expect(add).toBeDisabled();
     await userEvent.type(view.getByPlaceholderText('Title (up to 100 characters)'), 'A new task');
-    await userEvent.click(view.getByRole('button', { name: 'Add' }));
+    await expect(add).toBeEnabled();
+    await userEvent.click(add);
     await expect(args.onSubmit).toHaveBeenCalledTimes(1);
     await expect(args.onClose).toHaveBeenCalledTimes(1);
   },
 };
 
 export const SaveFailureRetry: Story = {
-  args: {
-    onSubmit: fn()
-      .mockRejectedValueOnce(new Error('temporary failure'))
-      .mockResolvedValueOnce(undefined),
+  render: (args) => {
+    let attempt = 0;
+    return (
+      <CreateDialog
+        {...args}
+        onSubmit={async (input) => {
+          await args.onSubmit(input);
+          if (attempt++ === 0) throw new Error('temporary failure');
+        }}
+      />
+    );
   },
   play: async ({ args }) => {
     const view = within(document.body);
