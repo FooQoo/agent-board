@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "owner": "U11",
+  "file": "shared/markdown/MarkdownView.tsx",
+  "exports": [
+    {
+      "name": "MarkdownView",
+      "stories": [
+        { "id": "shared-markdown-markdownview--empty", "states": ["empty"], "interaction": false },
+        {
+          "id": "shared-markdown-markdownview--text",
+          "states": ["headings and code", "blocked link as text"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--wide-variant",
+          "states": ["wide variant"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--wide-table-phone",
+          "states": ["wide table", "phone 375px", "scrolls in its frame"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--long-text",
+          "states": ["long text", "thirty paragraphs"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--checklist",
+          "states": ["checked", "open", "read-only"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--raw-html",
+          "states": ["raw HTML as text"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--image-resolved",
+          "states": ["image", "loaded"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--image-unresolved",
+          "states": ["image", "unknown attachment", "no image"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--image-not-allowed",
+          "states": ["image", "relative path", "data URL", "unowned asset"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--image-failed",
+          "states": ["image", "load failed", "no image"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--image-captures",
+          "states": ["image row", "two captures"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--image-enlarge",
+          "states": ["image", "enlarged", "closed"],
+          "interaction": true
+        },
+        {
+          "id": "shared-markdown-markdownview--mermaid-valid",
+          "states": ["mermaid", "drawn"],
+          "interaction": false
+        },
+        {
+          "id": "shared-markdown-markdownview--mermaid-invalid",
+          "states": ["mermaid", "wrong notation", "source shown"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

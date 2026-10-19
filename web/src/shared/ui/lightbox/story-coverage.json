@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "owner": "U11",
+  "file": "shared/ui/lightbox/Lightbox.tsx",
+  "exports": [
+    {
+      "name": "Lightbox",
+      "stories": [
+        {
+          "id": "shared-ui-lightbox--picture",
+          "states": ["open", "picture"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-lightbox--close-calls",
+          "states": ["close control"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}
