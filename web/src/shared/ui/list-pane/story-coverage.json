@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "owner": "U12",
+  "file": "shared/ui/list-pane/ListPane.tsx",
+  "exports": [{ "name": "ListPane", "stories": [
+    { "id": "ui-listpane--rows", "states": ["header", "count", "description", "rows"], "interaction": false },
+    { "id": "ui-listpane--empty", "states": ["empty"], "interaction": false },
+    { "id": "ui-listpane--loading", "states": ["loading"], "interaction": false },
+    { "id": "ui-listpane--load-error", "states": ["load error", "retry"], "interaction": false },
+    { "id": "ui-listpane--refresh-error", "states": ["refresh error", "retry", "rows retained"], "interaction": true }
+  ]}]
+}

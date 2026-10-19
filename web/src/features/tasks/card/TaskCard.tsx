@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefCallback } from 'react';
 import { formatShort, stateLabel } from '../model/format';
 import { AcceptanceProgress } from '../acceptance/AcceptanceProgress';
 import type { EpicRef, Task as TaskModel } from '../../../shared/api/contracts';
@@ -25,6 +25,17 @@ export interface TaskCardProps {
   answers?: TaskAnswerController;
   syncedAt?: Date | null;
   onAnswerChanged?: () => void;
+}
+
+export interface TaskCardViewProps {
+  task: TaskModel;
+  selected: boolean;
+  isDragging?: boolean;
+  onSelect: (id: number) => void;
+  cardRef?: RefCallback<HTMLDivElement>;
+  renderEpic?: (epic: EpicRef) => ReactNode;
+  showPendingReason?: boolean;
+  children?: ReactNode;
 }
 
 export function TaskCardContent({
@@ -67,6 +78,65 @@ export function TaskCardContent({
   );
 }
 
+/** Visual card shell, independent of drag-and-drop and inline answer controllers. */
+export function TaskCardView({
+  task,
+  selected,
+  isDragging = false,
+  onSelect,
+  cardRef,
+  renderEpic,
+  showPendingReason = task.agentStatus === 'pending',
+  children,
+}: TaskCardViewProps) {
+  const { t } = useTranslation();
+  const showsState = stateLabel(task, t) !== null;
+  const pending = showsState && task.agentStatus === 'pending';
+  const className = [
+    'card',
+    pending ? 'card--pending' : '',
+    selected ? 'card--selected' : '',
+    isDragging ? 'card--dragging' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div className="card__item" role="group" tabIndex={-1}>
+      <div
+        ref={cardRef}
+        className={className}
+        role="button"
+        tabIndex={0}
+        aria-current={selected ? 'true' : 'false'}
+        onClick={() => onSelect(task.id)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && event.target === event.currentTarget) onSelect(task.id);
+        }}
+      >
+        <span className="card__top">
+          <GripVerticalIcon aria-hidden="true" focusable="false" className="grip" />
+          <span className="card__id">#{task.id}</span>
+          <AssigneeLabel assignee={task.assignee} />
+          {task.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+          <span className="card__spacer" />
+          {showsState && <StatusLabel kind="agent" status={task.agentStatus} />}
+          <AcceptanceProgress task={task} />
+        </span>
+        <TaskCardContent task={task} showPendingReason={pending && showPendingReason}>
+          {task.epic && renderEpic?.(task.epic)}
+        </TaskCardContent>
+        <span className="card__foot">
+          <span className="card__updated">
+            {t('card.updated', { date: formatShort(task.updatedAt) })}
+          </span>
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /**
  * A board card. It is a direct child of its lane's card container, so the sorting moves it among its
  * siblings and the lane keeps its gaps. The card is the draggable, selectable area (the drag library gives it the button role); the
@@ -93,47 +163,16 @@ export function TaskCard({
     group: task.taskStatus,
     data: { taskId: task.id, column: task.taskStatus },
   });
-  const epic = task.epic;
-  const className = [
-    'card',
-    pending ? 'card--pending' : '',
-    selected ? 'card--selected' : '',
-    isDragging ? 'card--dragging' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
   return (
-    <div className="card__item" role="group" tabIndex={-1}>
-      <div
-        ref={ref}
-        className={className}
-        role="button"
-        tabIndex={0}
-        aria-current={selected ? 'true' : 'false'}
-        onClick={() => onSelect(task.id)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && event.target === event.currentTarget) onSelect(task.id);
-        }}
-      >
-        <span className="card__top">
-          <GripVerticalIcon aria-hidden="true" focusable="false" className="grip" />
-          <span className="card__id">#{task.id}</span>
-          <AssigneeLabel assignee={task.assignee} />
-          {task.isDraft && <span className="card__draft">{t('draft.label')}</span>}
-          <span className="card__spacer" />
-          {showsState && <StatusLabel kind="agent" status={task.agentStatus} />}
-          <AcceptanceProgress task={task} />
-        </span>
-        <TaskCardContent task={task} showPendingReason={pending && !showInlineAnswer}>
-          {epic && renderEpic?.(epic)}
-        </TaskCardContent>
-        <span className="card__foot">
-          <span className="card__updated">
-            {t('card.updated', { date: formatShort(task.updatedAt) })}
-          </span>
-        </span>
-      </div>
+    <TaskCardView
+      task={task}
+      selected={selected}
+      isDragging={isDragging}
+      onSelect={onSelect}
+      cardRef={ref}
+      renderEpic={renderEpic}
+      showPendingReason={!showInlineAnswer}
+    >
       {projectId && answers && showInlineAnswer && (
         <div className="card__answer" data-task-id={task.id}>
           <DecisionRequestForm
@@ -151,6 +190,6 @@ export function TaskCard({
           />
         </div>
       )}
-    </div>
+    </TaskCardView>
   );
 }

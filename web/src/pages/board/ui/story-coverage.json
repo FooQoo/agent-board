@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "owner": "U12",
+  "files": [
+    { "file": "pages/board/ui/Board.tsx", "exports": [{ "name": "Board", "stories": [
+      { "id": "pages-board-board--three-lanes", "states": ["todo", "doing", "done", "card selection", "epic"], "interaction": true },
+      { "id": "pages-board-board--empty", "states": ["zero tasks"], "interaction": false },
+      { "id": "pages-board-board--loading", "states": ["loading"], "interaction": false },
+      { "id": "pages-board-board--failed", "states": ["load error", "retry"], "interaction": true }
+    ]}]},
+    { "file": "pages/board/ui/Lane.tsx", "exports": [{ "name": "Lane", "stories": [
+      { "id": "pages-board-lane--two-tasks", "states": ["two tasks", "selection"], "interaction": true },
+      { "id": "pages-board-lane--empty-lane", "states": ["zero tasks"], "interaction": false }
+    ]}]},
+    { "file": "pages/board/ui/LaneHeader.tsx", "exports": [{ "name": "LaneHeader", "stories": [
+      { "id": "pages-board-laneheader--done-with-archive", "states": ["done", "archive enabled"], "interaction": true },
+      { "id": "pages-board-laneheader--empty-done", "states": ["done", "zero tasks", "archive disabled"], "interaction": false },
+      { "id": "pages-board-laneheader--todo", "states": ["todo", "no archive action"], "interaction": false }
+    ]}]}
+  ]
+}

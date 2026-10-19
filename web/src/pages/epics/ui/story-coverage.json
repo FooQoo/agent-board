@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "owner": "U12",
+  "files": [
+    { "file": "pages/epics/ui/EpicList.tsx", "exports": [{ "name": "EpicList", "stories": [
+      { "id": "pages-epics-epiclist--with-counts", "states": ["sorted epics", "counts", "select"], "interaction": true },
+      { "id": "pages-epics-epiclist--selected-and-draft", "states": ["selected", "draft"], "interaction": false },
+      { "id": "pages-epics-epiclist--missing-counts", "states": ["count unavailable"], "interaction": false },
+      { "id": "pages-epics-epiclist--empty", "states": ["zero epics"], "interaction": false },
+      { "id": "pages-epics-epiclist--loading", "states": ["loading"], "interaction": false },
+      { "id": "pages-epics-epiclist--load-error-and-retry", "states": ["load error", "retry"], "interaction": true },
+      { "id": "pages-epics-epiclist--refresh-error-keeps-rows", "states": ["refresh error", "stale rows retained"], "interaction": false }
+    ]}]},
+    { "file": "pages/epics/ui/EpicDetailPanel.tsx", "exports": [
+      { "name": "EpicDetailPanel", "stories": [
+        { "id": "pages-epics-epicdetailpanel--selected", "states": ["selected", "edit", "close"], "interaction": true },
+        { "id": "pages-epics-epicdetailpanel--with-plan", "states": ["plan markdown"], "interaction": false }
+      ]},
+      { "name": "EpicDetailPlaceholder", "stories": [
+        { "id": "pages-epics-epicdetailpanel--no-selection", "states": ["no selection"], "interaction": false }
+      ]}
+    ]}
+  ]
+}

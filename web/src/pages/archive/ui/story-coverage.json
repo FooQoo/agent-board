@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "owner": "U12",
+  "file": "pages/archive/ui/ArchiveList.tsx",
+  "exports": [{ "name": "ArchiveList", "stories": [
+    { "id": "pages-archive-archivelist--rows", "states": ["archived rows", "epic", "select"], "interaction": true },
+    { "id": "pages-archive-archivelist--selected", "states": ["selected row"], "interaction": false },
+    { "id": "pages-archive-archivelist--empty", "states": ["zero tasks"], "interaction": false },
+    { "id": "pages-archive-archivelist--loading", "states": ["loading"], "interaction": false },
+    { "id": "pages-archive-archivelist--load-error-and-retry", "states": ["load error", "retry"], "interaction": true },
+    { "id": "pages-archive-archivelist--refresh-error-keeps-rows", "states": ["refresh error", "stale rows retained"], "interaction": false }
+  ]}]
+}
