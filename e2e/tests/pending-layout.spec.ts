@@ -13,6 +13,37 @@ for (const { locale, theme, height } of [
   { locale: 'ja', theme: 'dark', height: 600 },
   { locale: 'en', theme: 'light', height: 900 },
 ]) {
+  test(`several pending cards keep the page and footer inside the viewport (${locale})`, async ({ page }) => {
+    resetBoard(mainProject);
+    for (let i = 0; i < 3; i++) {
+      const id = nextTaskId(mainProject);
+      agboardOk(mainProject, ['add', `Pending layout ${i}`, '--assignee', 'ai', '--actor', 'ai']);
+      agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Layout sample']);
+      agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
+        question: `Which approach should be used for sample ${i}?`,
+        choices: [{ id: 'first', label: 'First approach' }, { id: 'second', label: 'Second approach' }],
+      })]);
+    }
+    await page.setViewportSize({ width: 1280, height });
+    await page.addInitScript(({ locale, theme }) => {
+      localStorage.setItem('agboard.locale', locale);
+      localStorage.setItem('agboard.theme', JSON.stringify({ mode: theme, accent: 'blue' }));
+    }, { locale, theme });
+    await page.goto(`/?project=${projectId(mainProject)}`);
+    await waitForSync(page);
+    const lane = page.getByRole('region', { name: locale === 'ja' ? '進行中' : 'Doing', exact: true });
+    await expect(lane.locator('.card__answer')).toHaveCount(4);
+    await lane.locator('.card__answer').last().scrollIntoViewIfNeeded();
+    const bounds = await page.evaluate(() => ({
+      pageHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+      footerBottom: document.querySelector('footer')?.getBoundingClientRect().bottom,
+    }));
+    expect(bounds.pageHeight).toBeLessThanOrEqual(bounds.viewportHeight + 1);
+    expect(bounds.footerBottom).toBeLessThanOrEqual(bounds.viewportHeight + 1);
+    await expect(page.getByRole('contentinfo')).toBeInViewport({ ratio: 1 });
+  });
+
   test(`a crowded lane keeps a long pending request readable and answerable (${locale}, ${height})`, async ({ page }, testInfo) => {
     resetBoard(mainProject);
     for (let i = 0; i < 12; i++) {

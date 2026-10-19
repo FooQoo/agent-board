@@ -129,6 +129,28 @@ function longMarkdownTask(tasks: Task[]): Task {
 const SAMPLE_IMAGE =
   '<svg xmlns="http://www.w3.org/2000/svg" width="312" height="130" viewBox="0 0 312 130"><rect width="312" height="130" fill="#e9effd"/><g fill="none" stroke="#5a6f96" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" transform="translate(136 49)"><rect x="0" y="0" width="40" height="32" rx="4"/><circle cx="10" cy="10" r="3"/><path d="M40 24 28 13 8 32"/></g></svg>';
 
+const EXTRA_PENDING: Record<
+  number,
+  Pick<Task, 'pendingReason' | 'pendingRequestId' | 'pendingChoices'>
+> = {
+  11: {
+    pendingReason: 'Waiting for a decision on how to order the task moves.',
+    pendingRequestId: '11111111111111111111111111111111',
+    pendingChoices: [
+      { id: 'fifo', label: 'Keep the order they were moved in' },
+      { id: 'priority', label: 'Sort by priority' },
+    ],
+  },
+  13: {
+    pendingReason: 'Waiting for confirmation on which display to check.',
+    pendingRequestId: '13131313131313131313131313131313',
+    pendingChoices: [
+      { id: 'board', label: 'The board view' },
+      { id: 'archive', label: 'The archive view' },
+    ],
+  },
+};
+
 function loadFixtures(): Record<string, MockBoard> {
   const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as Board;
   const withEpic = (tasks: Task[]): Task[] =>
@@ -145,12 +167,17 @@ function loadFixtures(): Record<string, MockBoard> {
             }
           : task;
       const withConditions = conditions ? { ...broken, acceptance: conditions } : broken;
+      // Cards 11 and 13 also wait for an answer, so the Doing lane shows several pending cards at once.
+      const extraPending = EXTRA_PENDING[task.id];
+      const pending: Task = extraPending
+        ? { ...withConditions, agentStatus: 'pending', ...extraPending }
+        : withConditions;
       return SAMPLE_EPIC_TASKS.includes(task.id)
         ? {
-            ...withConditions,
+            ...pending,
             epic: { id: SAMPLE_EPIC.id, name: SAMPLE_EPIC.name, color: SAMPLE_EPIC.color },
           }
-        : withConditions;
+        : pending;
     });
   const [first, second, third] = SAMPLE_PROJECTS as [Project, Project, Project];
   return {

@@ -304,6 +304,8 @@ ol {
 }
 
 .lane__cards {
+  /* Visually hidden controls in the cards (the answer radios) are positioned inside this scroll area, not the page. */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;

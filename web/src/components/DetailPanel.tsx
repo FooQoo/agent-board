@@ -221,7 +221,7 @@ function DetailBody({
                 <EditIcon aria-hidden="true" />
               </button>
             )}
-            {tab === 'description' && canMakeDraft && (
+            {canMakeDraft && (
               <button
                 type="button"
                 className="detail__tool detail__tool--text"

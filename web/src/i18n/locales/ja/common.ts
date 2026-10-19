@@ -82,6 +82,7 @@ export const commonJa = {
     actions: 'エピックの操作',
     detailPrompt: 'エピックを選ぶと詳細が表示されます。',
     edit: 'エピックを編集',
+    delete: 'エピックを削除',
     countsLabel: '状態別のタスク',
     counts: {
       todo: '未着手',

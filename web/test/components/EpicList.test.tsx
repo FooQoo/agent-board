@@ -1,11 +1,12 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EpicDetailPanel } from '../../src/components/epics/EpicDetailPanel';
 import { EpicList, type EpicListProps } from '../../src/components/epics/EpicList';
 import { selectLocale } from '../../src/i18n';
+import { useProjectSession } from '../../src/hooks/useProjectSession';
 import type { Epic, EpicTaskCounts } from '../../src/types';
-import { PROJECT_A } from '../fixtures';
+import { PROJECT_A, PROJECT_B } from '../fixtures';
 
 beforeEach(() => selectLocale('en'));
 
@@ -53,6 +54,36 @@ function renderList(props: Partial<EpicListProps> = {}) {
 }
 
 describe('EpicList', () => {
+  it('defers a project change until the epic delete confirmation is cancelled', async () => {
+    function ProtectedDetails({ requested }: { requested: string }) {
+      const { session, operations } = useProjectSession(requested);
+      return (
+        <>
+          <output data-testid="active-project">{session.activeProjectId}</output>
+          <EpicDetailPanel
+            projectId={PROJECT_A.id}
+            epic={epic('BUG')}
+            onEdit={() => {}}
+            onDelete={async () => {}}
+            onClose={() => {}}
+            operations={operations}
+          />
+        </>
+      );
+    }
+    const { rerender } = render(<ProtectedDetails requested={PROJECT_A.id} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
+    rerender(<ProtectedDetails requested={PROJECT_B.id} />);
+    expect(screen.getByTestId('active-project').textContent).toBe(PROJECT_A.id);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('active-project').textContent).toBe(PROJECT_B.id),
+    );
+  });
+
   it('shows each epic with its four counts in lane order and its total', () => {
     renderList();
     const bug = screen.getByRole('button', { name: /BUG/ });
@@ -111,6 +142,45 @@ describe('EpicList', () => {
     expect(screen.getByText('Could not refresh the epics.')).toBeTruthy();
   });
 
+  it('asks before deleting and deletes after confirmation', async () => {
+    const onDelete = vi.fn(async () => {});
+    render(
+      <EpicDetailPanel
+        projectId={PROJECT_A.id}
+        epic={epic('BUG', { body: 'Plan.' })}
+        onEdit={() => {}}
+        onDelete={onDelete}
+        onClose={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
+    expect(onDelete).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete epic' }),
+    );
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the question open and says why when the delete is refused', async () => {
+    const { WriteError } = await import('../../src/lib/writeErrors');
+    render(
+      <EpicDetailPanel
+        projectId={PROJECT_A.id}
+        epic={epic('BUG', { body: 'Plan.' })}
+        onEdit={() => {}}
+        onDelete={async () => {
+          throw new WriteError('refused', 409, 'epic_in_use');
+        }}
+        onClose={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete epic' }),
+    );
+    expect((await screen.findByRole('alert')).textContent).toContain('A task still uses this epic');
+  });
+
   it('marks a draft epic with the Draft label and leaves the others unmarked', () => {
     renderList({ epics: [epic('BUG'), epic('DRAFTY', { isDraft: true })] });
     expect(within(screen.getByRole('button', { name: /DRAFTY/ })).getByText('Draft')).toBeTruthy();
@@ -133,6 +203,7 @@ describe('EpicDetailPanel', () => {
         projectId={PROJECT_A.id}
         epic={epic('BUG', { name: 'Bugs', body: '## Goal\n\nFix it.' })}
         onEdit={onEdit}
+        onDelete={async () => {}}
         onClose={onClose}
       />,
     );
@@ -157,6 +228,7 @@ describe('EpicDetailPanel', () => {
         projectId={PROJECT_A.id}
         epic={epic('DRAFTY', { isDraft: true, body: 'Plan.' })}
         onEdit={() => {}}
+        onDelete={async () => {}}
         onClose={() => {}}
       />,
     );
@@ -169,6 +241,7 @@ describe('EpicDetailPanel', () => {
         projectId={PROJECT_A.id}
         epic={epic('BUG', { body: '   ' })}
         onEdit={() => {}}
+        onDelete={async () => {}}
         onClose={() => {}}
       />,
     );

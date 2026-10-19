@@ -318,6 +318,10 @@ export function App({ initial }: AppProps) {
                 projectId={activeId}
                 epic={selectedEpic}
                 onEdit={() => openDialog({ kind: 'epic', epic: selectedEpic })}
+                operations={operations}
+                onDelete={() =>
+                  epicApi(activeId, selectedEpic.id, () => refreshProject(activeId)).remove()
+                }
                 onClose={() => dispatch({ type: 'SELECT_EPIC', id: null })}
               />
             )}

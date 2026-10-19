@@ -129,6 +129,14 @@ describe('Make draft and Finalize', () => {
     await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
   });
 
+  it('keeps Make draft in the toolbar on every tab', async () => {
+    renderPanel(fixtureTask(8));
+    for (const name of [/^History/, /^Conditions/, /^Epic/]) {
+      await userEvent.click(screen.getByRole('tab', { name }));
+      expect(screen.getByRole('button', { name: 'Make draft' })).toBeTruthy();
+    }
+  });
+
   it('Make draft is Japanese: 下書きにする', () => {
     selectLocale('ja');
     renderPanel(fixtureTask(8));

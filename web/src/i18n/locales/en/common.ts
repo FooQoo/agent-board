@@ -82,6 +82,7 @@ export const commonEn = {
     actions: 'Epic actions',
     detailPrompt: 'Select an epic to see its details.',
     edit: 'Edit epic',
+    delete: 'Delete epic',
     countsLabel: 'Tasks by state',
     counts: {
       todo: 'Todo',

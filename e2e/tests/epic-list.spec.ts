@@ -16,6 +16,31 @@ const actionGap = (page: import('@playwright/test').Page) =>
 		return close.getBoundingClientRect().left - action.getBoundingClientRect().right;
 	});
 
+test('epic details confirm deletion, retain refusals, and remove an unused epic', async ({ page }) => {
+	resetBoard(mainProject);
+	agboardOk(mainProject, ['epic', 'add', 'EMPTYDEL', '--name', 'Empty epic sample', '--actor', 'ai']);
+	agboardOk(mainProject, ['epic', 'add', 'USEDDEL', '--name', 'Occupied epic sample', '--actor', 'ai']);
+	agboardOk(mainProject, ['add', 'Keep the used epic', '--assignee', 'ai', '--actor', 'ai', '--epic', 'USEDDEL']);
+	await page.goto('/');
+	await waitForSync(page);
+	await page.getByRole('button', { name: 'Epics', exact: true }).click();
+	await row(page, 'Occupied epic sample').getByRole('button').first().click();
+	await page.getByRole('button', { name: 'Delete epic', exact: true }).click();
+	const confirm = page.getByRole('dialog');
+	await confirm.getByRole('button', { name: 'Delete epic', exact: true }).click();
+	await expect(confirm.getByRole('alert')).toContainText('A task still uses this epic');
+	await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
+	await row(page, 'Empty epic sample').getByRole('button').first().click();
+	await page.getByRole('button', { name: 'Delete epic', exact: true }).click();
+	await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
+	await expect(row(page, 'Empty epic sample')).toBeVisible();
+	await page.getByRole('button', { name: 'Delete epic', exact: true }).click();
+	await confirm.getByRole('button', { name: 'Delete epic', exact: true }).click();
+	await expect(confirm).toHaveCount(0);
+	await expect(row(page, 'Empty epic sample')).toHaveCount(0);
+	await expect(page.getByText('Select an epic to see its details.')).toBeVisible();
+});
+
 test('the header lists the epics with their counts, and selecting one shows its details beside the list', async ({
 	page,
 }) => {

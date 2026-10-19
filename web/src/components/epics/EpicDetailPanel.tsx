@@ -1,10 +1,14 @@
-import { PencilIcon } from 'lucide-react';
+import { PencilIcon, Trash2Icon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Epic, ProjectId } from '../../types';
+import { WriteError } from '../../lib/writeErrors';
+import { noOperations, type OperationControls } from '../../lib/projectSession';
 import { EpicBadge } from '../EpicBadge';
 import { DetailAttachments } from '../detail/DetailAttachments';
 import { EpicTabView } from '../detail/EpicTabView';
 import { DetailHeader } from '../detail/DetailHeader';
+import { EpicDeleteConfirm } from '../editor/EpicDeleteConfirm';
 import '../../styles/detail.css';
 import '../../styles/epics.css';
 
@@ -13,6 +17,9 @@ export interface EpicDetailPanelProps {
   epic: Epic;
   /** Opens the existing epic editor. */
   onEdit: () => void;
+  /** Deletes the epic; the server refuses while a task still names it. */
+  onDelete: () => Promise<void>;
+  operations?: OperationControls;
   onClose: () => void;
 }
 
@@ -26,9 +33,53 @@ export function EpicDetailPlaceholder() {
   );
 }
 
-/** The read-only details of the selected epic: its label, name, plan, and images, with edit and close. */
-export function EpicDetailPanel({ projectId, epic, onEdit, onClose }: EpicDetailPanelProps) {
+/** The read-only details of the selected epic: its label, name, plan, and images, with edit, delete, and close. */
+export function EpicDetailPanel({
+  projectId,
+  epic,
+  onEdit,
+  onDelete,
+  operations = noOperations,
+  onClose,
+}: EpicDetailPanelProps) {
   const { t } = useTranslation();
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const operation = useRef<number | null>(null);
+  const controls = useRef(operations);
+  controls.current = operations;
+
+  useEffect(() => {
+    if (!confirming) return;
+    const id = controls.current.begin('delete', projectId);
+    operation.current = id;
+    return () => {
+      controls.current.end(id);
+      operation.current = null;
+    };
+  }, [confirming, projectId]);
+
+  // A deleted epic leaves the board, which clears the selection and unmounts this panel; a refusal keeps the question open.
+  const remove = async () => {
+    if (operation.current !== null) controls.current.saveStarted(operation.current);
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete();
+      setConfirming(false);
+    } catch (cause) {
+      if (operation.current !== null) controls.current.saveFailed(operation.current);
+      setDeleteError(
+        cause instanceof WriteError && cause.code === 'epic_in_use'
+          ? t('epic.deleteInUse')
+          : t('epic.deleteFailed'),
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <aside className="detail detail-view epic-detail" aria-label={t('epics.detailTitle')}>
       <DetailHeader
@@ -50,6 +101,18 @@ export function EpicDetailPanel({ projectId, epic, onEdit, onClose }: EpicDetail
               onClick={onEdit}
             >
               <PencilIcon aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="detail__tool detail__tool--delete"
+              aria-label={t('epics.delete')}
+              title={t('epics.delete')}
+              onClick={() => {
+                setDeleteError(null);
+                setConfirming(true);
+              }}
+            >
+              <Trash2Icon aria-hidden="true" />
             </button>
           </div>
         }
@@ -73,6 +136,15 @@ export function EpicDetailPanel({ projectId, epic, onEdit, onClose }: EpicDetail
       ) : (
         <EpicTabView projectId={projectId} epic={epic} status="ready" />
       )}
+      <EpicDeleteConfirm
+        open={confirming}
+        epicId={epic.id}
+        dirty={false}
+        busy={deleting}
+        error={deleteError}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => void remove()}
+      />
     </aside>
   );
 }
