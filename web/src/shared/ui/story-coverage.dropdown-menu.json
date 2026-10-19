@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/dropdown-menu.tsx",
+  "exports": [
+    {
+      "name": "DropdownMenu",
+      "stories": [
+        { "id": "shared-ui-dropdownmenu--closed", "states": ["closed"], "interaction": false },
+        {
+          "id": "shared-ui-dropdownmenu--opened-by-click",
+          "states": ["opened by click", "current item checked"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dropdownmenu--chooses-item",
+          "states": ["choose item", "menu closes"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dropdownmenu--keyboard-opens",
+          "states": ["enter opens", "first item focused"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "DropdownMenuTrigger",
+      "stories": [
+        { "id": "shared-ui-dropdownmenu--closed", "states": ["closed"], "interaction": false },
+        {
+          "id": "shared-ui-dropdownmenu--keyboard-opens",
+          "states": ["enter opens"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "DropdownMenuContent",
+      "stories": [
+        {
+          "id": "shared-ui-dropdownmenu--opened-by-click",
+          "states": ["open", "content in body"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dropdownmenu--chooses-item",
+          "states": ["open", "choose item"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "DropdownMenuLabel",
+      "stories": [
+        {
+          "id": "shared-ui-dropdownmenu--opened-by-click",
+          "states": ["open", "column label"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "DropdownMenuRadioGroup",
+      "stories": [
+        {
+          "id": "shared-ui-dropdownmenu--opened-by-click",
+          "states": ["open", "single choice"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dropdownmenu--chooses-item",
+          "states": ["single choice", "change callback"],
+          "interaction": true
+        }
+      ]
+    },
+    {
+      "name": "DropdownMenuRadioItem",
+      "stories": [
+        {
+          "id": "shared-ui-dropdownmenu--opened-by-click",
+          "states": ["checked item", "unchecked items"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dropdownmenu--chooses-item",
+          "states": ["click choice"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dropdownmenu--keyboard-opens",
+          "states": ["focus first item"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

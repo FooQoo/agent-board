@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/stale-page-notice/StalePageNotice.tsx",
+  "exports": [
+    {
+      "name": "StalePageNotice",
+      "stories": [
+        {
+          "id": "shared-ui-stalepagenotice--default",
+          "states": ["alert", "reload button"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-stalepagenotice--above-open-dialog",
+          "states": ["over an open dialog", "z-index 1000"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

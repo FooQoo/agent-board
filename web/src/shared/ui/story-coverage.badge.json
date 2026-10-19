@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/badge.tsx",
+  "exports": [
+    {
+      "name": "Badge",
+      "stories": [
+        {
+          "id": "shared-ui-badge--default",
+          "states": ["default", "secondary"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-badge--pending",
+          "states": ["pending"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-badge--destructive",
+          "states": ["destructive"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-badge--all-variants",
+          "states": ["all variants"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-badge--as-link",
+          "states": ["asChild link"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-badge--long-text",
+          "states": ["long text, no wrap"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-themematrix--smoke",
+          "states": ["12 accents x light and dark"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "badgeVariants",
+      "stories": [],
+      "exclusion": "A class helper; every variant is shown through Badge."
+    }
+  ]
+}

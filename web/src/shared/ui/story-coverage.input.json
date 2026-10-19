@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/input.tsx",
+  "exports": [
+    {
+      "name": "Input",
+      "stories": [
+        {
+          "id": "shared-ui-input--empty",
+          "states": ["empty", "placeholder"],
+          "interaction": false
+        },
+        { "id": "shared-ui-input--with-value", "states": ["value"], "interaction": false },
+        { "id": "shared-ui-input--disabled", "states": ["disabled"], "interaction": false },
+        { "id": "shared-ui-input--invalid", "states": ["invalid"], "interaction": false },
+        {
+          "id": "shared-ui-input--typing-calls-change",
+          "states": ["focus", "typing", "change callback"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

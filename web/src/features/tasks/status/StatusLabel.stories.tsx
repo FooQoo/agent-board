@@ -33,3 +33,19 @@ export const AgentPending: Story = { args: { kind: 'agent', status: 'pending' } 
 
 /** The monitor shows the agent states with its own words. */
 export const MonitorRunning: Story = { args: { kind: 'agent', status: 'running', monitor: true } };
+
+/** The monitor shows a pending agent with its own pending wording and the pause icon. */
+export const MonitorPending: Story = {
+  args: { kind: 'agent', status: 'pending', monitor: true },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText('Pending')).toBeInTheDocument();
+  },
+};
+
+/** A done card in the monitor reads as a completed lane, with the same check icon as the board. */
+export const MonitorDoneLane: Story = {
+  args: { kind: 'card', status: 'done', monitor: true },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText('Done')).toBeInTheDocument();
+  },
+};

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/checkbox.tsx",
+  "exports": [
+    {
+      "name": "Checkbox",
+      "stories": [
+        { "id": "shared-ui-checkbox--unchecked", "states": ["unchecked"], "interaction": false },
+        { "id": "shared-ui-checkbox--checked", "states": ["checked"], "interaction": false },
+        {
+          "id": "shared-ui-checkbox--indeterminate",
+          "states": ["indeterminate"],
+          "interaction": false
+        },
+        { "id": "shared-ui-checkbox--disabled", "states": ["disabled"], "interaction": false },
+        { "id": "shared-ui-checkbox--invalid", "states": ["invalid"], "interaction": false },
+        {
+          "id": "shared-ui-checkbox--keyboard-toggle",
+          "states": ["focus", "space toggles"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-themematrix--smoke",
+          "states": ["12 accents x light and dark"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

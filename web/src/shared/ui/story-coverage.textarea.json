@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/textarea.tsx",
+  "exports": [
+    {
+      "name": "Textarea",
+      "stories": [
+        {
+          "id": "shared-ui-textarea--empty",
+          "states": ["empty", "placeholder"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-textarea--multi-line",
+          "states": ["several lines"],
+          "interaction": false
+        },
+        { "id": "shared-ui-textarea--disabled", "states": ["disabled"], "interaction": false },
+        { "id": "shared-ui-textarea--invalid", "states": ["invalid"], "interaction": false },
+        {
+          "id": "shared-ui-textarea--typing-adds-line",
+          "states": ["focus", "typing", "enter adds a line"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

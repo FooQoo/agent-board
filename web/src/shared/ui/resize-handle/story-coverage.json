@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/resize-handle/ResizeHandle.tsx",
+  "exports": [
+    {
+      "name": "ResizeHandle",
+      "stories": [
+        {
+          "id": "shared-ui-resizehandle--default",
+          "states": ["separator", "vertical", "three grips"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-resizehandle--drag-callbacks",
+          "states": ["pointer move reports x", "pointer up ends drag"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

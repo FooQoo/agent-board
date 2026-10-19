@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/drawer.tsx",
+  "exports": [
+    {
+      "name": "Drawer",
+      "stories": [
+        {
+          "id": "shared-ui-drawer--closed",
+          "states": ["closed", "opened by trigger", "modal dialog named by title"],
+          "interaction": true
+        },
+        { "id": "shared-ui-drawer--open-at-start", "states": ["open"], "interaction": false },
+        {
+          "id": "shared-ui-drawer--escape-closes",
+          "states": ["escape", "change callback", "focus back to trigger"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-drawer--close-button-dismisses",
+          "states": ["close button", "change callback"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-drawer--handle-arrow-down-dismisses",
+          "states": ["handle", "arrow down", "change callback"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-drawer--with-label",
+          "states": ["status label under title"],
+          "interaction": false
+        },
+        { "id": "shared-ui-drawer--long-body", "states": ["long body"], "interaction": false }
+      ]
+    }
+  ]
+}

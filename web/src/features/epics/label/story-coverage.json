@@ -20,6 +20,11 @@
           "id": "epic-label-epiclabel--click-opens-epic",
           "states": ["click"],
           "interaction": true
+        },
+        {
+          "id": "epic-label-epiclabel--stop-propagation-keeps-row",
+          "states": ["click", "stopPropagation", "row not called"],
+          "interaction": true
         }
       ]
     }

@@ -15,6 +15,16 @@
           "id": "task-history-historytimeline--single",
           "states": ["one event"],
           "interaction": false
+        },
+        {
+          "id": "task-history-historytimeline--empty",
+          "states": ["no events"],
+          "interaction": false
+        },
+        {
+          "id": "task-history-historytimeline--long-reason",
+          "states": ["long reason wraps"],
+          "interaction": false
         }
       ]
     }

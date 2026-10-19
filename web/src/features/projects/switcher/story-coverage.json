@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "features/projects/switcher/ProjectSwitcher.tsx",
+  "exports": [
+    {
+      "name": "ProjectSwitcher",
+      "stories": [
+        {
+          "id": "project-switcher-projectswitcher--closed",
+          "states": ["closed", "active name", "title tooltip"],
+          "interaction": false
+        },
+        {
+          "id": "project-switcher-projectswitcher--open",
+          "states": ["open menu", "projects label", "active item checked"],
+          "interaction": true
+        },
+        {
+          "id": "project-switcher-projectswitcher--selects-project",
+          "states": ["choose project", "change callback", "menu closes"],
+          "interaction": true
+        },
+        {
+          "id": "project-switcher-projectswitcher--disabled",
+          "states": ["disabled"],
+          "interaction": false
+        },
+        {
+          "id": "project-switcher-projectswitcher--all-projects",
+          "states": ["all projects scope", "checked"],
+          "interaction": true
+        },
+        {
+          "id": "project-switcher-projectswitcher--no-projects",
+          "states": ["no projects", "disabled"],
+          "interaction": false
+        },
+        {
+          "id": "project-switcher-projectswitcher--no-selection",
+          "states": ["no selection", "choose a project"],
+          "interaction": false
+        },
+        {
+          "id": "project-switcher-projectswitcher--japanese-no-selection",
+          "states": ["japanese", "choose a project"],
+          "interaction": false
+        },
+        {
+          "id": "project-switcher-projectswitcher--long-name",
+          "states": ["long name", "full name in tooltip"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

@@ -28,3 +28,20 @@ export const ClickOpensEpic: Story = {
     expect(args.onClick).toHaveBeenCalledTimes(1);
   },
 };
+
+const onRowClick = fn();
+
+/** The label sits in a clickable row. With stopPropagation, its click opens the epic and not the row. */
+export const StopPropagationKeepsRow: Story = {
+  render: () => (
+    // biome-ignore lint/a11y/noStaticElementInteractions: the row stands in for a clickable card row, which the label must not reach.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: the probe checks only the mouse path; the label's own keyboard path is covered by its button.
+    <div onClick={onRowClick}>
+      <EpicLabel epic={epic} className="card__epic" stopPropagation onClick={fn()} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: epic.id }));
+    await expect(onRowClick).not.toHaveBeenCalled();
+  },
+};
