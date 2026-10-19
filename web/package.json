@@ -20,7 +20,8 @@
     "storybook": "storybook dev -p 8610 -h 127.0.0.1 --no-open --ci",
     "build-storybook": "storybook build --quiet -o storybook-static",
     "typecheck:storybook": "tsc -p tsconfig.storybook.json --noEmit",
-    "test:storybook": "vitest run --config vitest.storybook.config.ts"
+    "test:storybook": "vitest run --config vitest.storybook.config.ts --maxWorkers=1 --no-file-parallelism",
+    "verify:story-coverage": "node scripts/verify-story-coverage.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

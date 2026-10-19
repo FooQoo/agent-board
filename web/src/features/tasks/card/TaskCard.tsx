@@ -121,7 +121,6 @@ export function TaskCardView({
           {task.isDraft && <span className="card__draft">{t('draft.label')}</span>}
           <span className="card__spacer" />
           {showsState && <StatusLabel kind="agent" status={task.agentStatus} />}
-          <AcceptanceProgress task={task} />
         </span>
         <TaskCardContent task={task} showPendingReason={pending && showPendingReason}>
           {task.epic && renderEpic?.(task.epic)}
@@ -130,6 +129,7 @@ export function TaskCardView({
           <span className="card__updated">
             {t('card.updated', { date: formatShort(task.updatedAt) })}
           </span>
+          <AcceptanceProgress task={task} />
         </span>
       </div>
       {children}
@@ -156,7 +156,9 @@ export function TaskCard({
   const { t } = useTranslation();
   const showsState = stateLabel(task, t) !== null;
   const pending = showsState && task.agentStatus === 'pending';
-  const showInlineAnswer = Boolean(projectId && answers && pending);
+  const showInlineAnswer = Boolean(
+    projectId && answers && pending && task.pendingRequestId !== null,
+  );
   const { ref, isDragging } = useSortable({
     id: `card-${task.id}`,
     index,

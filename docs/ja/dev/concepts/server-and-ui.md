@@ -60,6 +60,8 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 
 `pnpm --dir web check`は、Biomeの後に`web/scripts/check-boundaries.mjs`を実行します。静的import、`import type`、再エクスポート、`import()`をたどり、規則に反するimport、解決できないimport、循環importがあると失敗します。許可リストで黙らせず、共通部分を下の層へ移すか、ページで組み合わせてください。機能全体を一つのファイルから再エクスポートしないでください。エディターやMarkdown表示のような重いモジュールが最初のスクリプトに入ってしまいます。遅延importは実装ファイルを指します。
 
+UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳はソースの近くに置きます。台帳では、公開された部品とStory ID、表示状態を対応付けます。ページStoryは画面全体の合成を、部品Storyはその部品が持つ状態と操作を記録します。コマンドと台帳検査の現在の範囲は[Storybook](../getting-started/setup.md#storybook)を参照してください。
+
 ## 画面での失敗時の振る舞い
 
 **保存と回答**

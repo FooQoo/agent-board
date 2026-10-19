@@ -32,6 +32,56 @@
               "id": "app-board-workspace--epics",
               "states": ["epic list and detail view"],
               "interaction": false
+            },
+            {
+              "id": "app-board-workspace--projects-loading",
+              "states": ["project catalog loading state"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--projects-error",
+              "states": ["project catalog error with retry state"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--no-projects",
+              "states": ["empty project catalog state"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--resolving-project",
+              "states": ["project selection resolving state"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--project-not-found",
+              "states": ["unknown project state"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--board-loading",
+              "states": ["board data loading state"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--board-error",
+              "states": ["board data error with retry state"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--board-loading-whole-screen",
+              "states": ["full-screen board data loading state without the detail pane"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--board-error-whole-screen",
+              "states": ["full-screen board data error with retry and disconnected status"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--disconnected",
+              "states": ["board remains visible while live updates are disconnected"],
+              "interaction": false
             }
           ]
         }

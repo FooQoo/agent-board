@@ -64,12 +64,14 @@ export function BoardWorkspace({
     <>
       {stalePage ? <StalePageNotice /> : null}
       <Header
-        projects={detailShown ? projects.projects : null}
+        projects={
+          projects.projects.length > 0 || model.view === 'no-projects' ? projects.projects : null
+        }
         activeProjectId={known ? activeId : null}
         switchDisabled={operation !== null}
         projectSwitcher={projectSwitcher}
         settings={settingsSlot}
-        canAdd={model.view === 'board' && session.viewMode === 'board'}
+        canAdd={session.viewMode === 'board' && model.view === 'board'}
         viewMode={session.viewMode}
         onBack={actions.onBack}
         onAdd={actions.onAdd}
@@ -212,7 +214,9 @@ export function BoardWorkspace({
                       ? 'noSelection'
                       : model.view === 'board-loading'
                         ? 'boardLoading'
-                        : 'notSynced'
+                        : model.view === 'board-error' && model.barStatus === 'error'
+                          ? undefined
+                          : 'notSynced'
         }
       />
     </>

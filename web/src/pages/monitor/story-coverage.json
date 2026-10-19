@@ -1,20 +1,35 @@
 {
   "schemaVersion": 1,
   "owner": "U4",
-  "file": "pages/monitor/View.tsx",
-  "exports": [
+  "files": [
     {
-      "name": "MonitorView",
-      "stories": [
+      "file": "pages/monitor/View.tsx",
+      "exports": [
         {
-          "id": "pages-monitor--drawer-tabs",
-          "states": ["mobile drawer", "four tabs", "epic loaded"],
-          "interaction": true
-        },
+          "name": "MonitorView",
+          "stories": [
+            {
+              "id": "pages-monitor--drawer-tabs",
+              "states": ["mobile drawer", "four tabs", "epic loaded"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor--epic-read-failure",
+              "states": ["epic read error", "retry action"],
+              "interaction": true
+            }
+          ]
+        }
+      ],
+      "owner": "U4"
+    },
+    {
+      "file": "pages/monitor/App.tsx",
+      "exports": [
         {
-          "id": "pages-monitor--epic-read-failure",
-          "states": ["epic read error", "retry action"],
-          "interaction": true
+          "name": "App",
+          "stories": [],
+          "exclusion": "The routing and app bootstrap wrapper is exercised by the product E2E suite; MonitorView has direct Stories in this folder."
         }
       ]
     }

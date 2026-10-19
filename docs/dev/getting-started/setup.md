@@ -61,7 +61,7 @@ The data area holds `shared/` (the projects as plain files), `serve.json` while 
 
 ## Storybook
 
-Storybook shows each part of the web UI with synthetic data. Its toolbar switches the language, light or dark mode, accent color, and width. Stories sit beside the parts they show, as `web/src/**/*.stories.tsx`. The shared fixtures, decorators, and test adapters are in `web/.storybook/`.
+Storybook shows UI parts and complete pages with synthetic data. Its toolbar switches the language, light or dark mode, accent color, and width. Stories sit beside the parts they show, as `web/src/**/*.stories.tsx`; page-level Stories compose the same parts used by the application. The shared fixtures, decorators, and test adapters are in `web/.storybook/`.
 
 ```sh
 pnpm --dir web storybook
@@ -83,7 +83,9 @@ Product code must not import a Story or anything under `web/.storybook/`. Only S
 
 Synthetic images for Stories live in `web/.storybook/static/`. Storybook and the tests serve that folder from the root, so a Story can use a URL such as `/sample-attachment.png` without any setup.
 
-Each UI folder keeps a `story-coverage.json`. It lists the exported parts of the source file beside it, the Stories that show each part, and the states they show. A folder with a second covered file uses `story-coverage.<name>.json`. A coverage file must sit in the folder of the part it covers, and each Story ID it lists must be registered by a `*.stories.tsx` file in that same folder. The format and the rules are in `web/.storybook/support/component-coverage.json`. The coverage check validates these files and compares their Story IDs with the Stories Storybook registers. It does not yet list every exported part of the product. `test:storybook` is the check that every registered Story is listed. A Story file beside a part is extended by the owner of that part, rather than duplicated.
+Keep each part's `*.stories.tsx`, focused `*.test.tsx`, dedicated styles, and `story-coverage*.json` beside that part. A screen Story covers the composed page and its important page states; it does not replace Stories for the parts that own their own behavior. For example, `Pages/Board/Board` with the `ThreeLanes` export produces `pages-board-board--three-lanes`. Use typed `Meta`/`StoryObj` args to provide stable fixtures, and add a `play` function when a user interaction matters. Extend an existing Story file for that part instead of adding a duplicate.
+
+A folder's `story-coverage.json` lists its source exports, the Stories that show them, and their states; use `story-coverage.<name>.json` when the folder already has a shared ledger. Each ledger must sit beside its parts, and listed Story IDs must be registered by a `*.stories.tsx` file in that folder. The format and rules are in `web/.storybook/support/component-coverage.json`. The Node check validates ledger entries and placement. The current inventory is still partial: it does not yet prove that every UI export has an entry. The `test:storybook` support checks that registered Story IDs and listed Story IDs match in both directions; the final UI-export inventory is a separate gate. Keep Story args synthetic and use the shared fixtures/adapters; the network guard rejects requests to the product API and event stream.
 
 ## Install from source
 

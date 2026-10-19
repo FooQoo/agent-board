@@ -35,6 +35,11 @@ export function uiPartFiles(srcRoot: string, dir = '', into: string[] = []): str
 
 /** Whether `text` exports `name` as a declaration or in an export list. */
 function exportsName(text: string, name: string): boolean {
+  if (name === 'default') {
+    return /export\s+default\s+(?:(?:async\s+)?function\s+[A-Za-z_$][\w$]*|class\s+[A-Za-z_$][\w$]*|[A-Za-z_$][\w$]*)/.test(
+      text,
+    );
+  }
   const declared = new RegExp(
     `export\\s+(?:default\\s+)?(?:function|const|class|let)\\s+${name}\\b`,
   );

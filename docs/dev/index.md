@@ -15,11 +15,11 @@ flowchart LR
 
 | Part | What you will find | Read it when |
 | --- | --- | --- |
-| [Get started](./getting-started/setup.md) | Set up and run, follow a first change, verify and open a pull request. | You want to build and change something. |
+| [Get started](./getting-started/setup.md) | Set up and run, follow a first change, use Storybook, verify and open a pull request. | You want to build and change something. |
 | [Concepts](./concepts/overview.md) | Short pages that explain one idea each: the overall design, tasks and states, history and decisions, saving and recovery, notifications, the server, agents, remote access, and security. | You want to understand how it works before you change it. |
 | [Reference](./reference/files.md) | Facts to look up: shared files, the web API, error codes, the JSON that agents receive, remote routes, and the code map. | You know what you are looking for. |
 | [Troubleshooting](./troubleshooting.md) | Symptoms, causes, and what to do. | Something fails. |
-| [Documentation and images](./docs-and-images.md) | Previewing the site and regenerating screenshots and videos. | You change `docs/` or the UI. |
+| [Documentation and images](./docs-and-images.md) | Previewing the site, UI Stories, and regenerating screenshots and videos. | You change `docs/` or the UI. |
 
 ## A path for your first day
 

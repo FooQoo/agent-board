@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "owner": "U13",
+  "files": [
+    {
+      "file": "features/tasks/editor/EditDialog.tsx",
+      "exports": [
+        {
+          "name": "EditDialog",
+          "stories": [
+            {
+              "id": "task-editor-editdialog--default",
+              "states": ["editable draft card"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

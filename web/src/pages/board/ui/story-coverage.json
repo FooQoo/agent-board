@@ -13,8 +13,16 @@
               "states": ["todo", "doing", "done", "card selection", "epic"],
               "interaction": true
             },
-            { "id": "pages-board-board--empty", "states": ["zero tasks"], "interaction": false },
-            { "id": "pages-board-board--loading", "states": ["loading"], "interaction": false },
+            {
+              "id": "pages-board-board--empty",
+              "states": ["zero tasks"],
+              "interaction": false
+            },
+            {
+              "id": "pages-board-board--loading",
+              "states": ["loading"],
+              "interaction": false
+            },
             {
               "id": "pages-board-board--failed",
               "states": ["load error", "retry"],
@@ -35,7 +43,11 @@
               "states": ["two tasks", "selection"],
               "interaction": true
             },
-            { "id": "pages-board-lane--empty-lane", "states": ["zero tasks"], "interaction": false }
+            {
+              "id": "pages-board-lane--empty-lane",
+              "states": ["zero tasks"],
+              "interaction": false
+            }
           ]
         }
       ]
@@ -59,6 +71,26 @@
             {
               "id": "pages-board-laneheader--todo",
               "states": ["todo", "no archive action"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/board/ui/BoardMessage.tsx",
+      "exports": [
+        {
+          "name": "BoardMessage",
+          "stories": [
+            {
+              "id": "pages-board-board--loading",
+              "states": ["covered visual states"],
+              "interaction": false
+            },
+            {
+              "id": "pages-board-board--failed",
+              "states": ["covered visual states"],
               "interaction": false
             }
           ]

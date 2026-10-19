@@ -28,7 +28,9 @@ describe('Storybook configuration', () => {
     expect(scripts.storybook).toBe('storybook dev -p 8610 -h 127.0.0.1 --no-open --ci');
     expect(scripts['build-storybook']).toBe('storybook build --quiet -o storybook-static');
     expect(scripts['typecheck:storybook']).toBe('tsc -p tsconfig.storybook.json --noEmit');
-    expect(scripts['test:storybook']).toBe('vitest run --config vitest.storybook.config.ts');
+    expect(scripts['test:storybook']).toBe(
+      'vitest run --config vitest.storybook.config.ts --maxWorkers=1 --no-file-parallelism',
+    );
     expect(scripts.test).toBe('vitest run');
   });
 

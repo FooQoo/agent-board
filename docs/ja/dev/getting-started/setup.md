@@ -61,7 +61,7 @@ cargo run -- serve --port <port>
 
 ## Storybook
 
-Storybookでは、Web画面の各部品を架空のデータで表示できます。ツールバーで表示言語、ライト・ダークモード、アクセントの色、表示幅を切り替えられます。Storyは部品と同じ場所に、`web/src/**/*.stories.tsx`として置きます。共通のfixture、decorator、テスト用の部品は`web/.storybook/`にあります。
+Storybookでは、UI部品とページ全体を架空のデータで表示できます。ツールバーで表示言語、ライト・ダークモード、アクセントの色、表示幅を切り替えられます。Storyは対象部品と同じ場所に`web/src/**/*.stories.tsx`として置きます。ページStoryは、アプリと同じ部品を組み合わせて画面全体を確認します。共通のfixture、decorator、テスト用の部品は`web/.storybook/`にあります。
 
 ```sh
 pnpm --dir web storybook
@@ -83,7 +83,9 @@ Storybookのビルドはアプリのビルドと分けています。Storybook�
 
 Storyで使う架空の画像は`web/.storybook/static/`にあります。Storybookとテストはこのフォルダをルートから配信するため、Storyは設定なしに`/sample-attachment.png`のようなURLを使えます。
 
-各UIのフォルダには`story-coverage.json`を置きます。これは隣にあるソースファイルの公開された部品、各部品を表示するStory、Storyが示す状態を一覧にします。同じフォルダでほかのファイルも対象にする場合は`story-coverage.<name>.json`を使います。台帳のファイルは、対象の部品と同じフォルダに置く必要があります。そして、そこに挙げるStory IDは、同じフォルダの`*.stories.tsx`ファイルが登録しているものに限ります。形式と規則は`web/.storybook/support/component-coverage.json`にあります。台帳の検査はこれらのファイルを検証し、Story IDをStorybookが登録するStoryと照合します。ただし、製品の公開された部品をすべて列挙する検査はまだありません。登録されているStoryがすべて台帳に載っているかは、`test:storybook`で確かめます。部品の隣にあるStoryファイルは、重複させず、その部品の担当者が拡張します。
+各部品の`*.stories.tsx`、焦点を絞った`*.test.tsx`、専用スタイル、`story-coverage*.json`は、その部品の近くに置きます。画面Storyでは、部品を組み合わせたページ全体と主要な画面状態を確認します。部品自身の振る舞いを持つStoryの代わりにはなりません。たとえば`Pages/Board/Board`と`ThreeLanes`の組み合わせから、`pages-board-board--three-lanes`というIDが作られます。型付きの`Meta`/`StoryObj`と安定したfixtureを使い、操作が重要な場合は`play`関数を追加します。Storyを重複して作らず、対象部品の既存ファイルを拡張してください。
+
+各フォルダの`story-coverage.json`には、ソースのexport、表示するStory、各Storyが扱う状態を記録します。同じフォルダに複数の台帳が必要な場合は`story-coverage.<name>.json`を使います。台帳は対象部品の隣に置き、Story IDもそのフォルダの`*.stories.tsx`が登録するものに限ります。形式と規則は`web/.storybook/support/component-coverage.json`にあります。Nodeの検査は台帳の記載と配置を検証します。現在のexport台帳はまだ部分的で、UI exportのすべてが記載済みであることは保証しません。`test:storybook`の共通部品テストは、登録されたStory IDと台帳に記載されたStory IDが双方向で一致することを確認します。全UI exportの棚卸しは別の最終ゲートです。Storyには共通fixtureとadapterを使い、製品APIやイベントストリームへのアクセスを拒否する通信ガードの対象にします。
 
 ## ソースからインストール
 

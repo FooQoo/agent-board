@@ -111,6 +111,31 @@
           "exclusion": "Internal layout hook exercised through the four-line question clamp in View stories."
         }
       ]
+    },
+    {
+      "file": "features/tasks/answer/DecisionRequest.tsx",
+      "exports": [
+        {
+          "name": "DecisionRequest",
+          "stories": [
+            {
+              "id": "task-answer-decisionrequestform--empty",
+              "states": ["composite rendering"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestform--with-choices",
+              "states": ["composite rendering"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionrequestform--failed-then-retry",
+              "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
     }
   ]
 }

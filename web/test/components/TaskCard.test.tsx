@@ -27,6 +27,16 @@ describe('Task', () => {
       expect(screen.queryByText(label)).toBeNull();
   });
 
+  it('shows acceptance progress in the card footer', () => {
+    const task = makeTask({
+      id: 42,
+      acceptance: [{ id: 'AC-1', text: 'Ready', done: false }],
+    });
+    const { container } = render(<TaskCard task={task} selected={false} onSelect={noop} />);
+    const footer = container.querySelector('.card__foot');
+    expect(footer?.querySelector('.acceptance-chip')).not.toBeNull();
+  });
+
   it('shows the run state badge for tasks in Doing', () => {
     const { rerender } = render(
       <TaskCard task={fixtureTask(11)} selected={false} onSelect={noop} />,
@@ -109,6 +119,30 @@ describe('Task', () => {
     if (!taskButton) throw new Error('task button is missing');
     await userEvent.click(taskButton);
     expect(onSelect).toHaveBeenCalledWith(41);
+  });
+
+  it('keeps the waiting reason visible when no decision request is active', () => {
+    const { result } = renderHook(() => useTaskAnswers(vi.fn(), vi.fn()));
+    const task = makeTask({
+      id: 42,
+      taskStatus: 'doing',
+      agentStatus: 'pending',
+      pendingReason: 'Waiting for the request to be restored.',
+      pendingRequestId: null,
+    });
+
+    render(
+      <TaskCard
+        task={task}
+        selected={false}
+        onSelect={noop}
+        projectId="project-1"
+        answers={result.current}
+      />,
+    );
+
+    expect(screen.getByText('Waiting for the request to be restored.')).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: 'Your answer' })).toBeNull();
   });
 
   it('renders markup in a title as plain text', () => {

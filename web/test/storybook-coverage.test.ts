@@ -41,7 +41,7 @@ describe('story coverage configuration', () => {
     expect(isCoverageFileName('story-coverage.dialog.json')).toBe(true);
     expect(isCoverageFileName('coverage.json')).toBe(false);
     expect(COVERAGE_CONFIG.collect.storyFileSuffix).toBe('.stories.tsx');
-    expect(COVERAGE_CONFIG.inventory.status).toBe('partial');
+    expect(COVERAGE_CONFIG.inventory.status).toBe('complete');
   });
 
   it('counts product UI parts only, not stories, tests or declarations', () => {

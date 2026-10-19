@@ -29,7 +29,10 @@ test.describe('PC condition tab', () => {
         }, { locale, mode });
         await page.goto(`/?project=${projectId(mainProject)}`);
         await waitForSync(page);
-        await page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) }).click();
+        await page
+          .getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })
+          .locator('.card__title')
+          .click();
         const detail = page.locator('.detail-view');
         await expect(detail.getByRole('tab')).toHaveCount(4);
         await expect(detail.locator('.detail__dock')).toHaveCount(0);

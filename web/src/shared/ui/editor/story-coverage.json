@@ -81,6 +81,21 @@
           ]
         }
       ]
+    },
+    {
+      "file": "shared/ui/editor/DiscardConfirm.tsx",
+      "exports": [
+        {
+          "name": "DiscardConfirm",
+          "stories": [
+            {
+              "id": "editor-editorbody--saving-error-and-retry",
+              "states": ["covered visual states"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
     }
   ]
 }

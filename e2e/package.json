@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
-    "test:docs": "playwright test -c playwright.docs.config.ts"
+    "test:docs": "playwright test -c playwright.docs.config.ts",
+    "test:storybook": "playwright test -c playwright.storybook.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

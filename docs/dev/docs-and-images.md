@@ -26,6 +26,10 @@ node e2e/scripts/demo-video.mjs         # docs/public/videos/ (also needs ffmpeg
 
 Both scripts use disposable data in a temporary `AGBOARD_HOME` and their own loopback ports, so your saved board and port 7420 are untouched. Review the generated images and videos before committing them.
 
+## UI stories and coverage
+
+Use Storybook to isolate a component state or compose a full page with the same UI parts the application uses. Keep the Story, focused test, dedicated stylesheet, and coverage entry with the source. When a component or page changes, update its Story and visible-state entry, then review the rendered page at the locale, theme, and viewport it represents. The Storybook page in [Set up and run](./getting-started/setup.md#storybook) describes the current automated coverage limits.
+
 ## README screenshots
 
 After [building the web UI and CLI](./getting-started/setup.md#build), regenerate the README images:

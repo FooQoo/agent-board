@@ -60,6 +60,8 @@ A file may import its own feature or page and the layers below it. `shared/` imp
 
 `pnpm --dir web check` runs `web/scripts/check-boundaries.mjs` after Biome. It follows static imports, `import type`, re-exports, and `import()`, and fails on an import that breaks these rules, one it cannot resolve, or an import cycle. Do not silence it with an allowlist; move the shared piece down or compose it in the page. Do not re-export a whole feature from one file, because a heavy module such as the editor or the Markdown renderer would then reach the first script. Lazy imports name the implementation file.
 
+Keep a UI part's Stories, focused tests, dedicated CSS, and coverage ledger beside its source. The ledger connects each exported part to its Story IDs and visible states. A page-level Story documents the composed screen; a part-level Story documents the states and interactions owned by that part. See [Storybook](../getting-started/setup.md#storybook) for the commands and the current coverage limits.
+
 ## Behavior on failure in the UI
 
 **Saving and answering**

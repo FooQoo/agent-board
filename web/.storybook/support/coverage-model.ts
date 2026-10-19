@@ -9,6 +9,7 @@ export interface CoverageConfig {
   collect: {
     sourceRoot: string;
     uiLayers: string[];
+    componentSourceExclusions: Array<{ file: string; reason: string }>;
     coverageFilePattern: string;
     coverageFileNaming: string;
     placement: string;

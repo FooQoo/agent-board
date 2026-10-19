@@ -97,6 +97,56 @@
           ]
         }
       ]
+    },
+    {
+      "file": "features/epics/editor/EpicColorPicker.tsx",
+      "exports": [
+        {
+          "name": "EpicColorPicker",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--unchanged",
+              "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/epics/editor/EpicDeleteConfirm.tsx",
+      "exports": [
+        {
+          "name": "EpicDeleteConfirm",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--details-save-retry",
+              "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/epics/editor/EpicProgressList.tsx",
+      "exports": [
+        {
+          "name": "EpicProgressList",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--unchanged",
+              "states": ["composite rendering"],
+              "interaction": false
+            },
+            {
+              "id": "epic-editor-epicdialog--details-save-retry",
+              "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
     }
   ]
 }

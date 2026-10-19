@@ -35,7 +35,7 @@ Open **Epics** in the header to see every epic in the project, in ID order, incl
 
 ![Epic list showing each epic's task counts, with the plan of the selected epic beside it](../../images/guide/epic-list.png){.screenshot}
 
-Select an epic to read its name, plan, and images in the details column beside the list. The column stays in place, as it does in the archive, and reads "Select an epic to see its details." until you select one. The pencil button in the detail header (**Edit epic**) opens the same editor as the epic label. The trash button next to it (**Delete epic**) asks for confirmation and then deletes the epic under the same rules as the editor's **Delete epic**, described below. The edit, delete, and close icons use the same style and spacing as task and archive details. Close the details or select the row again to return to the prompt. **Back to board** returns to the board.
+Select an epic to read its name, plan, and images in the details column beside the list. The column stays in place, as it does in the archive, and reads "Select an epic to see its details." until you select one. The edit button in the detail header (**Edit epic**) opens the same editor as the epic label. The trash button next to it (**Delete epic**) asks for confirmation and then deletes the epic under the same rules as the editor's **Delete epic**, described below. The edit, delete, and close icons use the same style and spacing as task and archive details. Close the details or select the row again to return to the prompt. **Back to board** returns to the board.
 
 ## Order the work
 

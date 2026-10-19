@@ -22,10 +22,33 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+export const Idle: Story = {
+  args: { task: makeTask({ id: 46, taskStatus: 'doing', agentStatus: 'idle' }) },
+  play: async ({ canvasElement }) =>
+    expect(within(canvasElement).getByText('Idle')).toBeInTheDocument(),
+};
 export const Selected: Story = {
   args: { selected: true },
   play: async ({ canvasElement }) =>
     expect(within(canvasElement).getByRole('button')).toHaveAttribute('aria-current', 'true'),
+};
+export const PartialAcceptance: Story = {
+  args: {
+    task: makeTask({
+      id: 45,
+      title: 'Prepare release',
+      taskStatus: 'doing',
+      acceptance: [
+        { id: 'a1', text: 'Build passes', done: true },
+        { id: 'a2', text: 'Docs are updated', done: true },
+        { id: 'a3', text: 'Release notes are ready', done: true },
+        { id: 'a4', text: 'Review is complete', done: false },
+        { id: 'a5', text: 'Artifact is verified', done: false },
+      ],
+    }),
+  },
+  play: async ({ canvasElement }) =>
+    expect(within(canvasElement).getByText('3/5')).toBeInTheDocument(),
 };
 export const Draft: Story = { args: { task: makeTask({ id: 43, isDraft: true }) } };
 export const PendingWithEpic: Story = {

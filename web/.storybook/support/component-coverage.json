@@ -4,6 +4,12 @@
   "collect": {
     "sourceRoot": "src",
     "uiLayers": ["app", "pages", "features", "shared"],
+    "componentSourceExclusions": [
+      {
+        "file": "app/development/MarkdownSample.tsx",
+        "reason": "Development-only sample, not a product UI component; the same Markdown renderer is covered by shared/markdown Stories."
+      }
+    ],
     "coverageFilePattern": "^story-coverage(?:\\.[a-z0-9-]+)?\\.json$",
     "coverageFileNaming": "story-coverage.json holds either one source (file) or several sources (files). A multi-source document is always named story-coverage.json; each entry in files may name its own owner, and otherwise uses the document owner. A single-source document may instead be named story-coverage.<name>.json, where <name> is its source file name without extension, when its folder already has a story-coverage.json. A source file belongs to one coverage document only.",
     "storyFileSuffix": ".stories.tsx",
@@ -19,13 +25,13 @@
     "ownerRule": "The owner is the unit that the planning inventory (UI-INVENTORY) assigns the source file to. That inventory lives outside this repository, so the check validates only the format."
   },
   "inventory": {
-    "status": "partial",
+    "status": "complete",
     "owner": "U7",
-    "method": "The final unit lists every exported UI part under collect.uiLayers with the TypeScript compiler API and requires each one to have an entry or an exclusion. Until then, only the entries written in coverage files are checked, and a part with no entry is not counted as covered."
+    "method": "The final unit uses the TypeScript compiler API to discover named PascalCase React component exports in TSX sources under collect.uiLayers. Every discovered export is present in a neighboring coverage ledger with registered Story IDs or a reasoned exclusion. app/development/MarkdownSample.tsx is explicitly excluded as a development-only sample. Non-visual APIs, hooks, models, and type-only exports remain covered by focused tests or the Stories of their owning component."
   },
   "completeness": {
-    "gate": "pnpm --dir web test:storybook is the formal completeness gate for Stories. Its storybook-support project compares the Story IDs Storybook registers with the IDs listed in the coverage files, in both directions.",
-    "nodeCheckLimit": "The Node validator in coverage.ts checks only the Story IDs that coverage files list, and their placement. It cannot see a Story that no coverage file lists, so it does not prove completeness."
+    "gate": "Run pnpm --dir web build-storybook, pnpm --dir web verify:story-coverage, and pnpm --dir web test:storybook. The export verifier checks every exported React component found by the TypeScript compiler API and compares ledger IDs with the generated Storybook index in both directions; the Storybook support tests validate ledger placement and entry shape.",
+    "nodeCheckLimit": "The export verifier recognizes named PascalCase value exports in TSX files containing JSX, plus named default component functions. It does not require Stories for API/model/hooks/types that do not render UI. Coverage test validation still checks every listed export and every Story ID."
   },
   "storyOwnership": {
     "seed": "U1 wrote the first Stories and coverage files of the representative parts, as seeds.",

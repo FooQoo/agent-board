@@ -61,6 +61,136 @@
           ]
         }
       ]
+    },
+    {
+      "file": "pages/monitor/components/Freshness.tsx",
+      "exports": [
+        {
+          "name": "Freshness",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorgallery--loaded",
+              "states": ["monitor list composition"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--loading",
+              "states": ["initial loading", "unknown summary counts"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--partial-fetch-failure",
+              "states": ["partial project fetch failure", "readable project tasks retained"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorSectionHeader.tsx",
+      "exports": [
+        {
+          "name": "MonitorSectionHeader",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorgallery--loaded",
+              "states": ["monitor list composition"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--empty",
+              "states": ["empty todo, doing, and done sections"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--loading",
+              "states": ["initial loading", "unknown section counts"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--partial-fetch-failure",
+              "states": ["partial project fetch failure", "readable task sections retained"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--section-headers",
+              "states": ["todo, doing, and done headings"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorTask.tsx",
+      "exports": [
+        {
+          "name": "MonitorTask",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorgallery--loaded",
+              "states": ["monitor list composition"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--partial-fetch-failure",
+              "states": ["readable task rows retained while a project fetch fails"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/TaskList.tsx",
+      "exports": [
+        {
+          "name": "TaskList",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorgallery--loaded",
+              "states": ["monitor list composition"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--empty",
+              "states": ["empty sections"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--loading",
+              "states": ["loading message", "unknown section counts"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--partial-fetch-failure",
+              "states": ["partial project fetch failure"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--section-headers",
+              "states": ["todo, doing, and done section headings"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorDocument.tsx",
+      "exports": [
+        {
+          "name": "MonitorDocument",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
+              "states": ["task body in drawer"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
     }
   ]
 }

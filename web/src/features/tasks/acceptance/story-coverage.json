@@ -62,6 +62,81 @@
           ]
         }
       ]
+    },
+    {
+      "file": "features/tasks/acceptance/AcceptanceList.tsx",
+      "exports": [
+        {
+          "name": "AcceptanceList",
+          "stories": [
+            {
+              "id": "task-acceptance-acceptanceprogress--partial",
+              "states": ["composite rendering"],
+              "interaction": false
+            },
+            {
+              "id": "task-acceptance-acceptanceprogress--complete",
+              "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/acceptance/AcceptanceView.tsx",
+      "exports": [
+        {
+          "name": "AcceptanceView",
+          "stories": [
+            {
+              "id": "task-acceptance-acceptanceprogress--partial",
+              "states": ["composite rendering"],
+              "interaction": false
+            },
+            {
+              "id": "task-acceptance-acceptanceprogress--complete",
+              "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/acceptance/ConditionsDock.tsx",
+      "exports": [
+        {
+          "name": "ConditionsDock",
+          "stories": [
+            {
+              "id": "task-acceptance-acceptanceeditor--edit-conditions",
+              "states": ["composite rendering"],
+              "interaction": false
+            },
+            {
+              "id": "task-acceptance-acceptanceeditor--saving-disabled",
+              "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/acceptance/ConditionsLink.tsx",
+      "exports": [
+        {
+          "name": "ConditionsLink",
+          "stories": [
+            {
+              "id": "task-acceptance-acceptanceeditor--edit-conditions",
+              "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
     }
   ],
   "owner": "U13"

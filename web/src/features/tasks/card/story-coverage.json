@@ -19,11 +19,25 @@
               "interaction": false
             },
             {
+              "id": "task-card-taskcard--idle",
+              "states": ["doing", "idle run state"],
+              "interaction": true
+            },
+            {
               "id": "task-card-taskcard--selected",
               "states": ["selected", "aria-current"],
               "interaction": true
             },
-            { "id": "task-card-taskcard--draft", "states": ["draft"], "interaction": false },
+            {
+              "id": "task-card-taskcard--partial-acceptance",
+              "states": ["three of five acceptance conditions", "card composition"],
+              "interaction": true
+            },
+            {
+              "id": "task-card-taskcard--draft",
+              "states": ["draft"],
+              "interaction": false
+            },
             {
               "id": "task-card-taskcard--pending-with-epic",
               "states": ["pending reason", "epic label", "epic click does not select card"],
@@ -37,6 +51,21 @@
             {
               "id": "task-card-taskcard--content",
               "states": ["title", "pending reason slot"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/card/TaskProgressRow.tsx",
+      "exports": [
+        {
+          "name": "TaskProgressRow",
+          "stories": [
+            {
+              "id": "task-card-taskprogressrow--default",
+              "states": ["covered visual states"],
               "interaction": false
             }
           ]

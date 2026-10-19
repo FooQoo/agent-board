@@ -1,90 +1,125 @@
 {
   "schemaVersion": 1,
   "owner": "U8",
-  "file": "shared/rich-editor/RichMarkdownEditor.tsx",
-  "exports": [
+  "files": [
     {
-      "name": "RichMarkdownEditor",
-      "stories": [
+      "file": "shared/rich-editor/RichMarkdownEditor.tsx",
+      "exports": [
         {
-          "id": "editor-richmarkdowneditor--empty",
-          "states": ["empty", "placeholder", "ready editable"],
-          "interaction": false
-        },
+          "name": "RichMarkdownEditor",
+          "stories": [
+            {
+              "id": "editor-richmarkdowneditor--empty",
+              "states": ["empty", "placeholder", "ready editable"],
+              "interaction": false
+            },
+            {
+              "id": "editor-richmarkdowneditor--outline",
+              "states": ["headings", "bullets", "original text kept", "untouched reports nothing"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--long-document",
+              "states": ["long text", "go to second heading", "cursor offset of Section 2"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--edit-text",
+              "states": ["typing", "change reported", "bullet normalized", "immediate read"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--command-before-ready",
+              "states": ["insert before ready", "applied after ready"],
+              "interaction": false
+            },
+            {
+              "id": "editor-richmarkdowneditor--table-editing",
+              "states": ["table", "cell edit"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--images",
+              "states": ["image resolved", "image missing", "alt and title kept"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--code-languages",
+              "states": [
+                "known languages highlighted",
+                "unknown language fallback",
+                "header active",
+                "source kept"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--diagram",
+              "states": ["mermaid valid"],
+              "interaction": false
+            },
+            {
+              "id": "editor-richmarkdowneditor--diagram-invalid",
+              "states": ["mermaid invalid", "localized error text (en)", "source kept"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--diagram-invalid-japanese",
+              "states": ["mermaid invalid", "localized error text (ja)"],
+              "interaction": false
+            },
+            {
+              "id": "editor-richmarkdowneditor--diagram-theme-change",
+              "states": ["theme change redraw"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--readonly",
+              "states": ["readonly", "typing refused"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--external-update",
+              "states": ["external value", "session replaced"],
+              "interaction": true
+            },
+            {
+              "id": "editor-richmarkdowneditor--close-and-reopen",
+              "states": ["destroy", "reopen"],
+              "interaction": true
+            }
+          ]
+        }
+      ],
+      "owner": "U8"
+    },
+    {
+      "file": "shared/rich-editor/RichMarkdownEditor.impl.tsx",
+      "exports": [
         {
-          "id": "editor-richmarkdowneditor--outline",
-          "states": ["headings", "bullets", "original text kept", "untouched reports nothing"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--long-document",
-          "states": ["long text", "go to second heading", "cursor offset of Section 2"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--edit-text",
-          "states": ["typing", "change reported", "bullet normalized", "immediate read"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--command-before-ready",
-          "states": ["insert before ready", "applied after ready"],
-          "interaction": false
-        },
-        {
-          "id": "editor-richmarkdowneditor--table-editing",
-          "states": ["table", "cell edit"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--images",
-          "states": ["image resolved", "image missing", "alt and title kept"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--code-languages",
-          "states": [
-            "known languages highlighted",
-            "unknown language fallback",
-            "header active",
-            "source kept"
-          ],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--diagram",
-          "states": ["mermaid valid"],
-          "interaction": false
-        },
-        {
-          "id": "editor-richmarkdowneditor--diagram-invalid",
-          "states": ["mermaid invalid", "localized error text (en)", "source kept"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--diagram-invalid-japanese",
-          "states": ["mermaid invalid", "localized error text (ja)"],
-          "interaction": false
-        },
-        {
-          "id": "editor-richmarkdowneditor--diagram-theme-change",
-          "states": ["theme change redraw"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--readonly",
-          "states": ["readonly", "typing refused"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--external-update",
-          "states": ["external value", "session replaced"],
-          "interaction": true
-        },
-        {
-          "id": "editor-richmarkdowneditor--close-and-reopen",
-          "states": ["destroy", "reopen"],
-          "interaction": true
+          "name": "default",
+          "stories": [
+            {
+              "id": "editor-richmarkdowneditor--empty",
+              "states": ["covered visual states"],
+              "interaction": false
+            },
+            {
+              "id": "editor-richmarkdowneditor--outline",
+              "states": ["covered visual states"],
+              "interaction": false
+            },
+            {
+              "id": "editor-richmarkdowneditor--images",
+              "states": ["covered visual states"],
+              "interaction": false
+            },
+            {
+              "id": "editor-richmarkdowneditor--diagram",
+              "states": ["covered visual states"],
+              "interaction": false
+            }
+          ]
         }
       ]
     }
