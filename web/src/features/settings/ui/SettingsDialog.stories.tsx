@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import type { LocaleStorageProvider } from '../../../shared/i18n';
 import type { ThemeStorageProvider } from '../../../shared/theme';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { SettingsDialog } from './SettingsDialog';
 
 function memoryStorage(): Storage {
@@ -26,7 +27,7 @@ const themeStorageProvider: ThemeStorageProvider = memoryStorage;
 const meta: Meta<typeof SettingsDialog> = {
   title: 'Settings/SettingsDialog',
   component: SettingsDialog,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: { open: true, onOpenChange: () => {}, localeStorageProvider, themeStorageProvider },
 };
 export default meta;

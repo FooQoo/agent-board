@@ -2,12 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import type { ProgressTaskRenderer } from './EpicProgressList';
 import { makeEpic, makeTask } from '../../../../.storybook/support/fixtures';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { EpicDialog } from './EpicDialog';
 
 const meta: Meta<typeof EpicDialog> = {
   title: 'Epic/Editor/EpicDialog',
   component: EpicDialog,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
 };
 
 const epic = makeEpic({

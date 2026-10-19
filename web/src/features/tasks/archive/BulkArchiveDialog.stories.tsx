@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { makeTask } from '../../../../.storybook/support/fixtures';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { BulkArchiveDialog } from './BulkArchiveDialog';
 const targets = [makeTask({ id: 31 }), makeTask({ id: 32, assignee: 'human' })];
 const meta: Meta<typeof BulkArchiveDialog> = {
   title: 'Task/Dialogs/BulkArchiveDialog',
   component: BulkArchiveDialog,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: {
     projectName: 'sample-project',
     targets,

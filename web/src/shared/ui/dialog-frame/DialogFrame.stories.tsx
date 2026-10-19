@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { DialogFrame, type DialogFrameProps } from './DialogFrame';
 
 type DialogFrameStoryProps = Omit<DialogFrameProps, 'children'>;
@@ -15,7 +16,7 @@ function DialogFrameStory(args: DialogFrameStoryProps) {
 const meta = {
   title: 'Shared/DialogFrame',
   component: DialogFrameStory,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: {
     title: 'Create task',
     submitLabel: 'Save',

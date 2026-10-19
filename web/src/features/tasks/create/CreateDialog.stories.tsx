@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { CreateDialog } from './CreateDialog';
 
 const meta: Meta<typeof CreateDialog> = {
   title: 'Task/Dialogs/CreateDialog',
   component: CreateDialog,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: { onClose: fn(), onSubmit: fn(async () => {}) },
 };
 export default meta;

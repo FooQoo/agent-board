@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import { makeTask } from '../../../../.storybook/support/fixtures';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { EditDialog } from './EditDialog';
 
 const meta = {
   title: 'Task/Editor/EditDialog',
   component: EditDialog,
+  parameters: modalDocsParameters,
   args: {
     task: makeTask({ id: 12, isDraft: true, title: 'Edit this task' }),
     onClose: fn(),

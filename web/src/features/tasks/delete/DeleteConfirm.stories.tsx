@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { makeTask } from '../../../../.storybook/support/fixtures';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { DeleteConfirm } from './DeleteConfirm';
 
 const meta: Meta<typeof DeleteConfirm> = {
   title: 'Task/Dialogs/DeleteConfirm',
   component: DeleteConfirm,
+  parameters: modalDocsParameters,
   args: {
     task: makeTask({ id: 27, title: 'Retire old endpoint' }),
     saving: false,

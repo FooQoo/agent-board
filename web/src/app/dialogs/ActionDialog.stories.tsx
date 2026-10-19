@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { makeEpic, makeTask } from '../../../.storybook/support/fixtures';
+import { modalDocsParameters } from '../../../.storybook/support/modal-docs';
 import { ActionDialog } from './ActionDialog';
 
 const task = makeTask({ id: 42, taskStatus: 'todo' });
@@ -8,7 +9,7 @@ const epic = makeEpic({ id: 'release', name: 'Release plan' });
 const meta: Meta<typeof ActionDialog> = {
   title: 'Task/Dialogs/ActionDialog',
   component: ActionDialog,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: {
     action: { kind: 'create' },
     onClose: fn(),

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';
 import { makeProject, makeTask } from '../../.storybook/support/fixtures';
+import { modalDocsParameters } from '../../.storybook/support/modal-docs';
 import type { AppControllerModel } from './contracts';
 import { AppDialogs } from './AppDialogs';
 
@@ -10,7 +11,7 @@ const task = makeTask({ id: 31, title: taskTitle });
 const meta = {
   title: 'App/App Dialogs',
   component: AppDialogs,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: {
     model: {
       session: {

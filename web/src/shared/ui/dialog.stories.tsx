@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ACCENTS, MODES, selectTheme } from '../theme';
 import { createMemoryStorage } from '../../../.storybook/support/decorators';
+import { modalDocsParameters } from '../../../.storybook/support/modal-docs';
 import { Button } from './button';
 import {
   Dialog,
@@ -25,6 +26,7 @@ async function settleTheme(): Promise<void> {
 const meta = {
   title: 'Shared/UI/Dialog',
   component: Dialog,
+  parameters: modalDocsParameters,
 } satisfies Meta<typeof Dialog>;
 
 export default meta;

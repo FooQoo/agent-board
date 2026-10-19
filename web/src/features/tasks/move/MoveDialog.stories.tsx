@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { makeTask } from '../../../../.storybook/support/fixtures';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { MoveDialog } from './MoveDialog';
 
 const meta: Meta<typeof MoveDialog> = {
   title: 'Task/Dialogs/MoveDialog',
   component: MoveDialog,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: {
     task: makeTask({ id: 42, title: 'Review the release' }),
     target: 'doing',
