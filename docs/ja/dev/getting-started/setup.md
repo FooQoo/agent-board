@@ -83,7 +83,7 @@ Storybookのビルドはアプリのビルドと分けています。Storybook�
 
 Storyで使う架空の画像は`web/.storybook/static/`にあります。Storybookとテストはこのフォルダをルートから配信するため、Storyは設定なしに`/sample-attachment.png`のようなURLを使えます。
 
-各UIのフォルダには`story-coverage.json`を置きます。これは隣にあるソースファイルの公開された部品、各部品を表示するStory、Storyが示す状態を一覧にします。同じフォルダでほかのファイルも対象にする場合は`story-coverage.<name>.json`を使います。形式と規則は`web/.storybook/support/component-coverage.json`にあります。台帳の検査はこれらのファイルを検証し、Story IDをStorybookが登録するStoryと照合します。ただし、製品の公開された部品をすべて列挙する検査はまだありません。
+各UIのフォルダには`story-coverage.json`を置きます。これは隣にあるソースファイルの公開された部品、各部品を表示するStory、Storyが示す状態を一覧にします。同じフォルダでほかのファイルも対象にする場合は`story-coverage.<name>.json`を使います。台帳のファイルは、対象の部品と同じフォルダに置く必要があります。そして、そこに挙げるStory IDは、同じフォルダの`*.stories.tsx`ファイルが登録しているものに限ります。形式と規則は`web/.storybook/support/component-coverage.json`にあります。台帳の検査はこれらのファイルを検証し、Story IDをStorybookが登録するStoryと照合します。ただし、製品の公開された部品をすべて列挙する検査はまだありません。
 
 ## ソースからインストール
 

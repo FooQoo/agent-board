@@ -1,13 +1,21 @@
 {
   "schemaVersion": 1,
-  "owner": "U1",
+  "owner": "U10",
   "file": "features/tasks/assignee/AssigneeLabel.tsx",
   "exports": [
     {
       "name": "AssigneeLabel",
       "stories": [
-        { "id": "task-assignee-assigneelabel--ai", "states": ["ai"], "interaction": false },
-        { "id": "task-assignee-assigneelabel--human", "states": ["human"], "interaction": false }
+        {
+          "id": "task-assignee-assigneelabel--ai",
+          "states": ["ai"],
+          "interaction": false
+        },
+        {
+          "id": "task-assignee-assigneelabel--human",
+          "states": ["human"],
+          "interaction": false
+        }
       ]
     }
   ]

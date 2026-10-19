@@ -11,6 +11,7 @@ export interface CoverageConfig {
     uiLayers: string[];
     coverageFilePattern: string;
     coverageFileNaming: string;
+    placement: string;
     storyFileSuffix: string;
     excludedFileSuffixes: string[];
   };
@@ -19,6 +20,8 @@ export interface CoverageConfig {
     exportNamePattern: string;
     exclusionMinLength: number;
     storyIdRule: string;
+    ownerPattern: string;
+    ownerRule: string;
   };
   inventory: { status: string; owner: string; method: string };
 }

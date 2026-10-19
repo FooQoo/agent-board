@@ -14,6 +14,9 @@ import {
 
 const SRC = join(import.meta.dirname, '../src');
 
+/** The coverage file of the shared UI folder, which holds the Stories beside button.tsx and dialog.tsx. */
+const PLACE = { name: 'story-coverage.json', location: 'shared/ui' };
+
 /** A minimal valid entry for `shared/ui/button.tsx`, changed per test. */
 function entry(overrides: Record<string, unknown> = {}) {
   return {
@@ -76,7 +79,7 @@ describe('story coverage files in the product', () => {
 
 describe('story coverage validation', () => {
   it('accepts a complete entry', () => {
-    expect(validateStoryCoverage(entry(), SRC)).toEqual([]);
+    expect(validateStoryCoverage(entry(), SRC, PLACE)).toEqual([]);
   });
 
   it('accepts an export with an exclusion reason and no Story', () => {
@@ -89,7 +92,7 @@ describe('story coverage validation', () => {
         },
       ],
     });
-    expect(validateStoryCoverage(value, SRC)).toEqual([]);
+    expect(validateStoryCoverage(value, SRC, PLACE)).toEqual([]);
   });
 
   it('gives a named coverage file only the source of its name', () => {
@@ -102,23 +105,35 @@ describe('story coverage validation', () => {
         },
       ],
     });
-    expect(validateStoryCoverage(value, SRC, 'story-coverage.dialog.json')).toEqual([]);
-    expect(validateStoryCoverage(value, SRC, 'story-coverage.json')).toEqual([]);
-    const wrong = validateStoryCoverage(entry(), SRC, 'story-coverage.dialog.json');
+    expect(
+      validateStoryCoverage(value, SRC, {
+        name: 'story-coverage.dialog.json',
+        location: 'shared/ui',
+      }),
+    ).toEqual([]);
+    expect(validateStoryCoverage(value, SRC, PLACE)).toEqual([]);
+    const wrong = validateStoryCoverage(entry(), SRC, {
+      name: 'story-coverage.dialog.json',
+      location: 'shared/ui',
+    });
     expect(wrong.join('\n')).toContain(
       'may only cover button.tsx or button.ts, not shared/ui/button.tsx',
     );
   });
 
   it('refuses a story or test file as the covered part', () => {
-    const problems = validateStoryCoverage(entry({ file: 'shared/ui/button.stories.tsx' }), SRC);
+    const problems = validateStoryCoverage(
+      entry({ file: 'shared/ui/button.stories.tsx' }),
+      SRC,
+      PLACE,
+    );
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain('not a story or test');
   });
 
   it('refuses a file outside the UI layers', () => {
     expect(
-      validateStoryCoverage(entry({ file: '../.storybook/support/fixtures.ts' }), SRC)[0],
+      validateStoryCoverage(entry({ file: '../.storybook/support/fixtures.ts' }), SRC, PLACE)[0],
     ).toContain('not a story or test');
   });
 
@@ -131,7 +146,7 @@ describe('story coverage validation', () => {
         },
       ],
     });
-    expect(validateStoryCoverage(value, SRC).join('\n')).toContain(
+    expect(validateStoryCoverage(value, SRC, PLACE).join('\n')).toContain(
       'is not exported by shared/ui/button.tsx',
     );
   });
@@ -145,18 +160,18 @@ describe('story coverage validation', () => {
         },
       ],
     });
-    expect(validateStoryCoverage(value, SRC).join('\n')).toContain('invalid story ID');
+    expect(validateStoryCoverage(value, SRC, PLACE).join('\n')).toContain('invalid story ID');
   });
 
   it('refuses a duplicate ID inside one file', () => {
     const story = { id: 'shared-ui-button--default', states: ['x'], interaction: false };
     const value = entry({ exports: [{ name: 'Button', stories: [story, story] }] });
-    expect(validateStoryCoverage(value, SRC).join('\n')).toContain('duplicate story ID');
+    expect(validateStoryCoverage(value, SRC, PLACE).join('\n')).toContain('duplicate story ID');
   });
 
   it('refuses a part with neither a Story nor a long enough reason', () => {
     const value = entry({ exports: [{ name: 'Button', stories: [], exclusion: 'short' }] });
-    expect(validateStoryCoverage(value, SRC).join('\n')).toContain(
+    expect(validateStoryCoverage(value, SRC, PLACE).join('\n')).toContain(
       `neither a Story nor an exclusion reason of ${COVERAGE_CONFIG.entry.exclusionMinLength}+`,
     );
   });
@@ -165,9 +180,61 @@ describe('story coverage validation', () => {
     const value = entry({
       exports: [{ name: 'Button', stories: [{ id: 'shared-ui-button--default', states: [] }] }],
     });
-    const problems = validateStoryCoverage(value, SRC).join('\n');
+    const problems = validateStoryCoverage(value, SRC, PLACE).join('\n');
     expect(problems).toContain('lists no states');
     expect(problems).toContain('must say whether it has an interaction');
+  });
+
+  it('refuses a coverage file that is not beside the part it covers', () => {
+    const problems = validateStoryCoverage(entry(), SRC, {
+      name: 'story-coverage.json',
+      location: 'features/tasks/status',
+    });
+    expect(problems.join('\n')).toContain(
+      'story-coverage.json is in features/tasks/status but covers shared/ui/button.tsx; a coverage file must sit beside the part it covers (shared/ui)',
+    );
+  });
+
+  it('refuses a Story that is registered in another folder, and says where the Stories are', () => {
+    const value = entry({
+      exports: [
+        {
+          name: 'Button',
+          stories: [
+            { id: 'task-status-statuslabel--card-todo', states: ['x'], interaction: false },
+          ],
+        },
+      ],
+    });
+    const problems = validateStoryCoverage(value, SRC, PLACE).join('\n');
+    expect(problems).toContain(
+      'task-status-statuslabel--card-todo is not registered by a .stories.tsx file in shared/ui',
+    );
+    expect(problems).toContain('2 such file(s) there');
+  });
+
+  it('refuses a Story ID that no Story file beside the part registers', () => {
+    const value = entry({
+      exports: [
+        {
+          name: 'Button',
+          stories: [{ id: 'shared-ui-button--missing-story', states: ['x'], interaction: false }],
+        },
+      ],
+    });
+    expect(validateStoryCoverage(value, SRC, PLACE).join('\n')).toContain(
+      'shared-ui-button--missing-story is not registered by a .stories.tsx file in shared/ui',
+    );
+  });
+
+  it('refuses an owner that is not a unit identifier', () => {
+    for (const owner of ['Uten', 'u10', '', 10]) {
+      expect(
+        validateStoryCoverage(entry({ owner }), SRC, PLACE).join('\n'),
+        String(owner),
+      ).toContain('owner must match ^U\\d+$');
+    }
+    expect(validateStoryCoverage(entry({ owner: 'U10' }), SRC, PLACE)).toEqual([]);
   });
 
   it('refuses a part that lists both Stories and an exclusion', () => {
@@ -180,7 +247,7 @@ describe('story coverage validation', () => {
         },
       ],
     });
-    expect(validateStoryCoverage(value, SRC).join('\n')).toContain('choose one');
+    expect(validateStoryCoverage(value, SRC, PLACE).join('\n')).toContain('choose one');
   });
 });
 

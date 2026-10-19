@@ -7,13 +7,16 @@
     "coverageFilePattern": "^story-coverage(?:\\.[a-z0-9-]+)?\\.json$",
     "coverageFileNaming": "A folder's first covered file uses story-coverage.json. Any further file in the same folder uses story-coverage.<name>.json, where <name> is the source file name without its extension, and its file field must name <name>.tsx or <name>.ts in that folder.",
     "storyFileSuffix": ".stories.tsx",
-    "excludedFileSuffixes": [".stories.tsx", ".test.ts", ".test.tsx", ".d.ts"]
+    "excludedFileSuffixes": [".stories.tsx", ".test.ts", ".test.tsx", ".d.ts"],
+    "placement": "A coverage file sits in the folder of the part it covers. Each Story ID it lists must be registered by a *.stories.tsx file in that same folder, so the Story and its coverage travel together."
   },
   "entry": {
     "storyIdPattern": "^[a-z0-9]+(?:-[a-z0-9]+)*--[a-z0-9]+(?:-[a-z0-9]+)*$",
     "exportNamePattern": "^[A-Za-z][A-Za-z0-9]*$",
     "exclusionMinLength": 12,
-    "storyIdRule": "Storybook's own ID: toId(meta.title, storyNameFromExport(exportName)) from storybook/internal/csf"
+    "storyIdRule": "Storybook's own ID: toId(meta.title, storyNameFromExport(exportName)) from storybook/internal/csf",
+    "ownerPattern": "^U\\d+$",
+    "ownerRule": "The owner is the unit that the planning inventory (UI-INVENTORY) assigns the source file to. That inventory lives outside this repository, so the check validates only the format."
   },
   "inventory": {
     "status": "partial",

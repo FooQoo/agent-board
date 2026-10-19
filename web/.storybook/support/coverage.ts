@@ -3,6 +3,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix } from 'node:path';
+import { storyNameFromExport, toId } from 'storybook/internal/csf';
 import {
   COVERAGE_CONFIG,
   coverageNamePart,
@@ -32,23 +33,60 @@ function exportsName(text: string, name: string): boolean {
   return declared.test(text) || listed.test(text);
 }
 
+/** Where a coverage file is: its name, and its folder relative to the source root. */
+export interface CoveragePlacement {
+  name: string;
+  location: string;
+}
+
 /**
- * Every problem in one coverage file, as printable lines. `srcRoot` is the absolute source root, and
- * `coverageName` is the coverage file's own name, which sets the part name it may cover.
+ * The Story IDs that the `*.stories.tsx` files of one folder register, computed as Storybook computes
+ * them: `toId(title, storyNameFromExport(export))`.
+ */
+export function storyIdsBeside(
+  srcRoot: string,
+  location: string,
+): { ids: string[]; storyFiles: string[] } {
+  const suffix = COVERAGE_CONFIG.collect.storyFileSuffix;
+  const dir = join(srcRoot, location);
+  const storyFiles = existsSync(dir)
+    ? readdirSync(dir)
+        .filter((n) => n.endsWith(suffix))
+        .sort()
+    : [];
+  const ids: string[] = [];
+  for (const name of storyFiles) {
+    const text = readFileSync(join(dir, name), 'utf8');
+    const title = /title:\s*['"]([^'"]+)['"]/.exec(text)?.[1];
+    if (!title) continue;
+    for (const match of text.matchAll(/^export const ([A-Za-z][A-Za-z0-9]*)\b/gm)) {
+      ids.push(toId(title, storyNameFromExport(match[1] ?? '')));
+    }
+  }
+  return { ids, storyFiles };
+}
+
+/**
+ * Every problem in one coverage file, as printable lines. `srcRoot` is the absolute source root. The
+ * file must sit beside the part it covers, its name sets the part it may cover, and every Story ID it
+ * lists must be registered by a Story file in that same folder.
  */
 export function validateStoryCoverage(
   value: unknown,
   srcRoot: string,
-  coverageName = 'story-coverage.json',
+  placement: CoveragePlacement,
 ): string[] {
-  const { storyIdPattern, exportNamePattern, exclusionMinLength } = COVERAGE_CONFIG.entry;
+  const { storyIdPattern, exportNamePattern, exclusionMinLength, ownerPattern } =
+    COVERAGE_CONFIG.entry;
   const storyId = new RegExp(storyIdPattern);
   const exportName = new RegExp(exportNamePattern);
   const problems: string[] = [];
   const file = value as Partial<StoryCoverageFile>;
   if (typeof file !== 'object' || file === null) return ['the file is not an object'];
   if (file.schemaVersion !== 1) problems.push('schemaVersion must be 1');
-  if (typeof file.owner !== 'string' || file.owner === '') problems.push('owner is missing');
+  if (typeof file.owner !== 'string' || !new RegExp(ownerPattern).test(file.owner)) {
+    problems.push(`owner must match ${ownerPattern}, such as U10 (the unit the inventory assigns)`);
+  }
   if (typeof file.file !== 'string' || !isUiPartFile(file.file)) {
     problems.push(
       `file must name a UI part under ${COVERAGE_CONFIG.collect.uiLayers.join(', ')} (not a story or test)`,
@@ -60,13 +98,20 @@ export function validateStoryCoverage(
     problems.push(`${file.file} does not exist`);
     return problems;
   }
-  const part = coverageNamePart(coverageName);
+  const expectedLocation = posix.dirname(file.file);
+  if (placement.location !== expectedLocation) {
+    problems.push(
+      `${placement.name} is in ${placement.location || '.'} but covers ${file.file}; a coverage file must sit beside the part it covers (${expectedLocation})`,
+    );
+  }
+  const part = coverageNamePart(placement.name);
   const sourceName = posix.basename(file.file).replace(/\.tsx?$/, '');
   if (part !== null && part !== sourceName) {
     problems.push(
-      `${coverageName} may only cover ${sourceName}.tsx or ${sourceName}.ts, not ${file.file}`,
+      `${placement.name} may only cover ${sourceName}.tsx or ${sourceName}.ts, not ${file.file}`,
     );
   }
+  const beside = storyIdsBeside(srcRoot, placement.location);
   const text = readFileSync(path, 'utf8');
   if (!Array.isArray(file.exports) || file.exports.length === 0) {
     problems.push(`${file.file}: exports must list at least one part`);
@@ -100,6 +145,11 @@ export function validateStoryCoverage(
       } else if (seenIds.has(story.id)) {
         problems.push(`${label}: duplicate story ID ${story.id}`);
       } else seenIds.add(story.id);
+      if (typeof story.id === 'string' && !beside.ids.includes(story.id)) {
+        problems.push(
+          `${label}: ${story.id} is not registered by a ${COVERAGE_CONFIG.collect.storyFileSuffix} file in ${placement.location || '.'} (${beside.storyFiles.length} such file(s) there)`,
+        );
+      }
       if (!Array.isArray(story.states) || story.states.length === 0) {
         problems.push(`${label}: ${String(story.id)} lists no states`);
       }
@@ -130,7 +180,11 @@ export function readStoryCoverage(srcRoot: string): {
   const problems: string[] = [];
   for (const path of findStoryCoverage(srcRoot)) {
     const value = JSON.parse(readFileSync(path, 'utf8'));
-    const found = validateStoryCoverage(value, srcRoot, posix.basename(path));
+    const placement = {
+      name: posix.basename(path),
+      location: posix.relative(srcRoot, posix.dirname(path)),
+    };
+    const found = validateStoryCoverage(value, srcRoot, placement);
     for (const line of found) problems.push(`${posix.relative(srcRoot, path)}: ${line}`);
     if (found.length === 0) files.push(value as StoryCoverageFile);
   }
