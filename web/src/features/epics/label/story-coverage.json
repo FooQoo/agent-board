@@ -1,30 +1,89 @@
 {
   "schemaVersion": 1,
   "owner": "U10",
-  "file": "features/epics/label/EpicLabel.tsx",
-  "exports": [
+  "files": [
     {
-      "name": "EpicLabel",
-      "stories": [
+      "file": "features/epics/label/EpicBadge.tsx",
+      "exports": [
         {
-          "id": "epic-label-epiclabel--default",
-          "states": ["enabled"],
-          "interaction": false
+          "name": "EpicBadge",
+          "stories": [
+            {
+              "id": "epic-label-epicbadge--default",
+              "states": ["enabled", "icon", "tooltip", "epic background color", "contrast text color", "non-interactive"],
+              "interaction": false
+            },
+            {
+              "id": "epic-label-epicbadge--icon-hidden",
+              "states": ["enabled", "icon hidden"],
+              "interaction": false
+            },
+            {
+              "id": "epic-label-epicbadge--long-name-tooltip",
+              "states": ["long name", "tooltip", "visible ID"],
+              "interaction": false
+            }
+          ]
         },
         {
-          "id": "epic-label-epiclabel--disabled",
-          "states": ["disabled"],
-          "interaction": false
+          "name": "EpicBadgeContent",
+          "stories": [
+            {
+              "id": "epic-label-epicbadge--default",
+              "states": ["icon", "ID"],
+              "interaction": false
+            },
+            {
+              "id": "epic-label-epicbadge--icon-hidden",
+              "states": ["icon hidden", "ID"],
+              "interaction": false
+            },
+            {
+              "id": "epic-label-epicbadge--long-name-tooltip",
+              "states": ["ID", "tooltip supplied by host"],
+              "interaction": false
+            }
+          ]
         },
         {
-          "id": "epic-label-epiclabel--click-opens-epic",
-          "states": ["click"],
-          "interaction": true
-        },
+          "name": "epicBadgeStyle",
+          "stories": [
+            {
+              "id": "epic-label-epicbadge--default",
+              "states": ["epic background color", "contrast text color"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/epics/label/EpicLabel.tsx",
+      "exports": [
         {
-          "id": "epic-label-epiclabel--stop-propagation-keeps-row",
-          "states": ["click", "stopPropagation", "row not called"],
-          "interaction": true
+          "name": "EpicLabel",
+          "stories": [
+            {
+              "id": "epic-label-epiclabel--default",
+              "states": ["enabled"],
+              "interaction": false
+            },
+            {
+              "id": "epic-label-epiclabel--disabled",
+              "states": ["disabled"],
+              "interaction": false
+            },
+            {
+              "id": "epic-label-epiclabel--click-opens-epic",
+              "states": ["click"],
+              "interaction": true
+            },
+            {
+              "id": "epic-label-epiclabel--stop-propagation-keeps-row",
+              "states": ["click", "stopPropagation", "row not called"],
+              "interaction": true
+            }
+          ]
         }
       ]
     }
