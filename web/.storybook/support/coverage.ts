@@ -12,9 +12,13 @@ import { storyNameFromExport, toId } from 'storybook/internal/csf';
 import {
   COVERAGE_CONFIG,
   coverageNamePart,
+  coverageSources,
   isCoverageFileName,
   isUiPartFile,
+  type StoryCoverageDocument,
+  type StoryCoverageExport,
   type StoryCoverageFile,
+  type StoryCoverageSourceEntry,
 } from './coverage-model.ts';
 
 export * from './coverage-model.ts';
@@ -71,69 +75,70 @@ export function storyIdsBeside(
   return { ids, storyFiles };
 }
 
+interface SourceContext {
+  srcRoot: string;
+  placement: CoveragePlacement;
+  beside: { ids: string[]; storyFiles: string[] };
+}
+
 /**
- * Every problem in one coverage file, as printable lines. `srcRoot` is the absolute source root. The
- * file must sit beside the part it covers, its name sets the part it may cover, and every Story ID it
- * lists must be registered by a Story file in that same folder.
+ * The problems of one source entry: its file, its exports and its Stories. The file must sit beside the
+ * coverage file, and every Story ID must be registered by a Story file in that same folder. `nameRule`
+ * applies the single-file name rule (`story-coverage.<name>.json` covers `<name>`).
  */
-export function validateStoryCoverage(
-  value: unknown,
-  srcRoot: string,
-  placement: CoveragePlacement,
+function validateSource(
+  source: { file?: unknown; exports?: unknown },
+  ctx: SourceContext,
+  nameRule: boolean,
 ): string[] {
-  const { storyIdPattern, exportNamePattern, exclusionMinLength, ownerPattern } =
-    COVERAGE_CONFIG.entry;
+  const { exportNamePattern, exclusionMinLength, storyIdPattern } = COVERAGE_CONFIG.entry;
   const storyId = new RegExp(storyIdPattern);
   const exportName = new RegExp(exportNamePattern);
+  const { placement, srcRoot, beside } = ctx;
   const problems: string[] = [];
-  const file = value as Partial<StoryCoverageFile>;
-  if (typeof file !== 'object' || file === null) return ['the file is not an object'];
-  if (file.schemaVersion !== 1) problems.push('schemaVersion must be 1');
-  if (typeof file.owner !== 'string' || !new RegExp(ownerPattern).test(file.owner)) {
-    problems.push(`owner must match ${ownerPattern}, such as U10 (the unit the inventory assigns)`);
-  }
-  if (typeof file.file !== 'string' || !isUiPartFile(file.file)) {
+  if (typeof source.file !== 'string' || !isUiPartFile(source.file)) {
     problems.push(
       `file must name a UI part under ${COVERAGE_CONFIG.collect.uiLayers.join(', ')} (not a story or test)`,
     );
     return problems;
   }
-  const path = join(srcRoot, file.file);
-  if (!existsSync(path)) {
-    problems.push(`${file.file} does not exist`);
+  const file = source.file;
+  if (!existsSync(join(srcRoot, file))) {
+    problems.push(`${file} does not exist`);
     return problems;
   }
-  const expectedLocation = posix.dirname(file.file);
+  const expectedLocation = posix.dirname(file);
   if (placement.location !== expectedLocation) {
     problems.push(
-      `${placement.name} is in ${placement.location || '.'} but covers ${file.file}; a coverage file must sit beside the part it covers (${expectedLocation})`,
+      `${placement.name} is in ${placement.location || '.'} but covers ${file}; a coverage file must sit beside the part it covers (${expectedLocation})`,
     );
   }
-  const part = coverageNamePart(placement.name);
-  const sourceName = posix.basename(file.file).replace(/\.tsx?$/, '');
-  if (part !== null && part !== sourceName) {
-    problems.push(
-      `${placement.name} may only cover ${sourceName}.tsx or ${sourceName}.ts, not ${file.file}`,
-    );
+  if (nameRule) {
+    const part = coverageNamePart(placement.name);
+    const sourceName = posix.basename(file).replace(/\.tsx?$/, '');
+    if (part !== null && part !== sourceName) {
+      problems.push(
+        `${placement.name} may only cover ${sourceName}.tsx or ${sourceName}.ts, not ${file}`,
+      );
+    }
   }
-  const beside = storyIdsBeside(srcRoot, placement.location);
-  const text = readFileSync(path, 'utf8');
-  if (!Array.isArray(file.exports) || file.exports.length === 0) {
-    problems.push(`${file.file}: exports must list at least one part`);
+  const text = readFileSync(join(srcRoot, file), 'utf8');
+  if (!Array.isArray(source.exports) || source.exports.length === 0) {
+    problems.push(`${file}: exports must list at least one part`);
     return problems;
   }
   const seenNames = new Set<string>();
-  for (const item of file.exports) {
+  for (const item of source.exports as StoryCoverageExport[]) {
     // One Story may show several parts of the file, so an ID may repeat across parts but not within one.
     const seenIds = new Set<string>();
-    const label = `${file.file}#${String(item?.name)}`;
+    const label = `${file}#${String(item?.name)}`;
     if (typeof item.name !== 'string' || !exportName.test(item.name)) {
-      problems.push(`${file.file}: invalid export name ${String(item.name)}`);
+      problems.push(`${file}: invalid export name ${String(item.name)}`);
       continue;
     }
     if (seenNames.has(item.name)) problems.push(`${label} is listed twice`);
     seenNames.add(item.name);
-    if (!exportsName(text, item.name)) problems.push(`${label} is not exported by ${file.file}`);
+    if (!exportsName(text, item.name)) problems.push(`${label} is not exported by ${file}`);
     const stories = Array.isArray(item.stories) ? item.stories : [];
     const reason = typeof item.exclusion === 'string' ? item.exclusion.trim() : '';
     if (stories.length === 0 && reason.length < exclusionMinLength) {
@@ -166,6 +171,78 @@ export function validateStoryCoverage(
   return problems;
 }
 
+/**
+ * Every problem in one coverage document, as printable lines. `srcRoot` is the absolute source root.
+ *
+ * A document has one of two forms. The single-source form has `file` and `exports`, and its name may
+ * be `story-coverage.<name>.json`. The multi-source form has `files`, a list of sources that each may
+ * name their own `owner`, and it must be named `story-coverage.json`. Either way, each source must sit
+ * beside the coverage file, and each Story ID must be registered by a Story file in that folder.
+ */
+export function validateStoryCoverage(
+  value: unknown,
+  srcRoot: string,
+  placement: CoveragePlacement,
+): string[] {
+  const { ownerPattern } = COVERAGE_CONFIG.entry;
+  const owner = new RegExp(ownerPattern);
+  const problems: string[] = [];
+  const document = value as Partial<StoryCoverageFile> & { files?: unknown };
+  if (typeof document !== 'object' || document === null) return ['the file is not an object'];
+  if (document.schemaVersion !== 1) problems.push('schemaVersion must be 1');
+  if (typeof document.owner !== 'string' || !owner.test(document.owner)) {
+    problems.push(`owner must match ${ownerPattern}, such as U10 (the unit the inventory assigns)`);
+  }
+  const ctx: SourceContext = {
+    srcRoot,
+    placement,
+    beside: storyIdsBeside(srcRoot, placement.location),
+  };
+  const hasFile = 'file' in document;
+  const hasFiles = 'files' in document;
+  if (hasFile && hasFiles) {
+    problems.push('use either file (one source) or files (several sources), not both');
+    return problems;
+  }
+  if (!hasFile && !hasFiles) {
+    problems.push('name the covered sources in file (one) or files (several)');
+    return problems;
+  }
+  if (!hasFiles) {
+    return [...problems, ...validateSource(document, ctx, true)];
+  }
+  if (placement.name !== 'story-coverage.json') {
+    problems.push(
+      `${placement.name} lists several sources, so it must be named story-coverage.json`,
+    );
+  }
+  if (!Array.isArray(document.files) || document.files.length === 0) {
+    problems.push('files must list at least one source');
+    return problems;
+  }
+  const seen = new Set<string>();
+  for (const entry of document.files as Partial<StoryCoverageSourceEntry>[]) {
+    if (typeof entry !== 'object' || entry === null) {
+      problems.push('each files entry must be an object');
+      continue;
+    }
+    if (
+      entry.owner !== undefined &&
+      (typeof entry.owner !== 'string' || !owner.test(entry.owner))
+    ) {
+      problems.push(
+        `${String(entry.file)}: owner must match ${ownerPattern}, such as U11 (the unit the inventory assigns)`,
+      );
+    }
+    if (typeof entry.file === 'string') {
+      if (seen.has(entry.file)) problems.push(`${entry.file} is listed twice in files`);
+      seen.add(entry.file);
+    }
+    problems.push(...validateSource(entry, ctx, false));
+  }
+  return problems;
+}
+
 /** Every coverage file under a folder, as absolute paths, in a stable order. */
 export function findStoryCoverage(dir: string, into: string[] = []): string[] {
   for (const name of readdirSync(dir).sort()) {
@@ -176,22 +253,50 @@ export function findStoryCoverage(dir: string, into: string[] = []): string[] {
   return into;
 }
 
+/**
+ * Files that look like coverage ledgers but have a name the format does not allow (for example a
+ * PascalCase name). They are reported rather than skipped, so no source is left unchecked by accident.
+ */
+export function misnamedCoverageFiles(dir: string, into: string[] = []): string[] {
+  for (const name of readdirSync(dir).sort()) {
+    const path = posix.join(dir, name);
+    if (statSync(path).isDirectory()) misnamedCoverageFiles(path, into);
+    else if (/^story-coverage/i.test(name) && !isCoverageFileName(name)) into.push(path);
+  }
+  return into;
+}
+
 /** Reads and validates every coverage file under `srcRoot`. */
 export function readStoryCoverage(srcRoot: string): {
-  files: StoryCoverageFile[];
+  files: StoryCoverageDocument[];
   problems: string[];
 } {
-  const files: StoryCoverageFile[] = [];
+  const files: StoryCoverageDocument[] = [];
   const problems: string[] = [];
+  const coveredBy = new Map<string, string>();
+  for (const path of misnamedCoverageFiles(srcRoot)) {
+    problems.push(
+      `${posix.relative(srcRoot, path)}: not a coverage file name; use story-coverage.json, or story-coverage.<lowercase-name>.json for a single source`,
+    );
+  }
   for (const path of findStoryCoverage(srcRoot)) {
     const value = JSON.parse(readFileSync(path, 'utf8'));
     const placement = {
       name: posix.basename(path),
       location: posix.relative(srcRoot, posix.dirname(path)),
     };
+    const relative = posix.relative(srcRoot, path);
     const found = validateStoryCoverage(value, srcRoot, placement);
-    for (const line of found) problems.push(`${posix.relative(srcRoot, path)}: ${line}`);
-    if (found.length === 0) files.push(value as StoryCoverageFile);
+    for (const line of found) problems.push(`${relative}: ${line}`);
+    if (found.length > 0) continue;
+    files.push(value as StoryCoverageDocument);
+    // A source belongs to one coverage document, so its owner and its Stories are stated once.
+    for (const source of coverageSources(value as StoryCoverageDocument)) {
+      const first = coveredBy.get(source.file);
+      if (first !== undefined) {
+        problems.push(`${relative}: ${source.file} is already covered by ${first}`);
+      } else coveredBy.set(source.file, relative);
+    }
   }
   return { files, problems };
 }

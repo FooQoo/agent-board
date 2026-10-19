@@ -5,7 +5,7 @@
     "sourceRoot": "src",
     "uiLayers": ["app", "pages", "features", "shared"],
     "coverageFilePattern": "^story-coverage(?:\\.[a-z0-9-]+)?\\.json$",
-    "coverageFileNaming": "A folder's first covered file uses story-coverage.json. Any further file in the same folder uses story-coverage.<name>.json, where <name> is the source file name without its extension, and its file field must name <name>.tsx or <name>.ts in that folder.",
+    "coverageFileNaming": "story-coverage.json holds either one source (file) or several sources (files). A multi-source document is always named story-coverage.json; each entry in files may name its own owner, and otherwise uses the document owner. A single-source document may instead be named story-coverage.<name>.json, where <name> is its source file name without extension, when its folder already has a story-coverage.json. A source file belongs to one coverage document only.",
     "storyFileSuffix": ".stories.tsx",
     "excludedFileSuffixes": [".stories.tsx", ".test.ts", ".test.tsx", ".d.ts"],
     "placement": "A coverage file sits in the folder of the part it covers. Each Story ID it lists must be registered by a *.stories.tsx file in that same folder, so the Story and its coverage travel together."
