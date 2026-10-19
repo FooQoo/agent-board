@@ -2,10 +2,11 @@ import { AppDialogs } from './AppDialogs';
 import { BoardWorkspace } from './BoardWorkspace';
 import { useAppActions } from './useAppActions';
 import { useAppController } from './useAppController';
+import type { AppInitial } from './contracts';
 
 export interface AppProps {
   /** Mock mode only: initial UI state taken from the page URL (see `src/mock.ts`). */
-  initial?: { select?: number; confirm?: boolean; deleteFail?: boolean };
+  initial?: AppInitial;
 }
 
 /** Connects the project session to the workspace and its lazily loaded dialogs. */

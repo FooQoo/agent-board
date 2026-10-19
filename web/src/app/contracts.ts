@@ -12,6 +12,8 @@ import type { TaskAnswerController } from '../features/tasks/answer/model/useTas
 import type { ActionDialogData } from '../features/tasks/model/actionData';
 import type { EpicApi } from '../features/epics/editor/epicApi';
 
+export type AppInitial = { select?: number; confirm?: boolean; deleteFail?: boolean };
+
 export type AppView =
   | 'projects-loading'
   | 'projects-error'

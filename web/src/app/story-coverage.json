@@ -17,9 +17,21 @@
         {
           "name": "BoardWorkspace",
           "stories": [
-            { "id": "app-board-workspace--board", "states": ["selected task in board view"], "interaction": true },
-            { "id": "app-board-workspace--archive", "states": ["archive view"], "interaction": false },
-            { "id": "app-board-workspace--epics", "states": ["epic list and detail view"], "interaction": false }
+            {
+              "id": "app-board-workspace--board",
+              "states": ["selected task in board view"],
+              "interaction": true
+            },
+            {
+              "id": "app-board-workspace--archive",
+              "states": ["archive view"],
+              "interaction": false
+            },
+            {
+              "id": "app-board-workspace--epics",
+              "states": ["epic list and detail view"],
+              "interaction": false
+            }
           ]
         }
       ]
@@ -30,7 +42,11 @@
         {
           "name": "AppDialogs",
           "stories": [
-            { "id": "app-app-dialogs--create", "states": ["create dialog through the lazy boundary"], "interaction": true }
+            {
+              "id": "app-app-dialogs--create",
+              "states": ["create dialog through the lazy boundary"],
+              "interaction": true
+            }
           ]
         }
       ]

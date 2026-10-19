@@ -13,9 +13,8 @@ import { findTask, nextSelection } from '../features/tasks/model/board';
 import { isProjectId } from './model/projectSession';
 import { STALE_PAGE_EVENT } from './api';
 import { preloadBoardCode } from './dialogs/lazyDialogs';
-import type { AppControllerModel, AppView } from './contracts';
+import type { AppControllerModel, AppInitial, AppView } from './contracts';
 import type { DialogAction, ProjectId } from '../shared/api/contracts';
-import type { AppProps } from './App';
 
 const BOARD_MESSAGE: Partial<Record<AppView, AppControllerModel['message']>> = {
   'projects-loading': 'loading',
@@ -27,7 +26,7 @@ const BOARD_MESSAGE: Partial<Record<AppView, AppControllerModel['message']>> = {
   'board-error': 'boardError',
 };
 
-export function useAppController(initial: AppProps['initial']): AppControllerModel {
+export function useAppController(initial: AppInitial | undefined): AppControllerModel {
   const [requested, setRequested] = useQueryState('project', parseAsString);
   const { session, dispatch, operations, answerLeaseControls } = useProjectSession(
     requested,
