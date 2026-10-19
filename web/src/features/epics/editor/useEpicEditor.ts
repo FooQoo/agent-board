@@ -7,7 +7,7 @@ import { normalizeNewlines } from '../../../shared/ui/editor/limits';
 import type { RichMarkdownEditorHandle } from '../../../shared/rich-editor/RichMarkdownEditor';
 import { useAttachmentState } from '../../../shared/ui/editor/useAttachmentState';
 import { useMultipartRequest } from '../../../shared/ui/editor/useMultipartRequest';
-import type { EpicApi } from './EpicDialog';
+import type { EpicApi } from './epicApi';
 import {
   nameIsValid,
   orderOf,
