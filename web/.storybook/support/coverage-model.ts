@@ -64,6 +64,10 @@ export interface StoryCoverageExport {
   exclusion?: string;
 }
 
+/**
+ * A coverage document that covers one source file. This is the original form, and it is still valid:
+ * the file is `story-coverage.json` or `story-coverage.<name>.json`.
+ */
 export interface StoryCoverageFile {
   schemaVersion: 1;
   /** The unit that owns this file. */
@@ -71,6 +75,47 @@ export interface StoryCoverageFile {
   /** The product file the exports come from, relative to the source root. */
   file: string;
   exports: StoryCoverageExport[];
+}
+
+/** One source inside a multi-source document. Its owner overrides the document owner when present. */
+export interface StoryCoverageSourceEntry {
+  /** The product file the exports come from, relative to the source root. */
+  file: string;
+  /** The unit that owns this source, when it differs from the document owner. */
+  owner?: string;
+  exports: StoryCoverageExport[];
+}
+
+/**
+ * A coverage document that covers several sources in its own folder, as PascalCase sibling components
+ * need. It is always named `story-coverage.json`.
+ */
+export interface StoryCoverageSourceList {
+  schemaVersion: 1;
+  /** The default owner of the sources that do not name their own. */
+  owner: string;
+  files: StoryCoverageSourceEntry[];
+}
+
+export type StoryCoverageDocument = StoryCoverageFile | StoryCoverageSourceList;
+
+/** One source with its owner resolved, whichever document form it came from. */
+export interface StoryCoverageSource {
+  file: string;
+  owner: string;
+  exports: StoryCoverageExport[];
+}
+
+/** The sources a coverage document covers, each with its owner resolved. */
+export function coverageSources(document: StoryCoverageDocument): StoryCoverageSource[] {
+  if ('files' in document) {
+    return document.files.map((entry) => ({
+      file: entry.file,
+      owner: entry.owner ?? document.owner,
+      exports: entry.exports,
+    }));
+  }
+  return [{ file: document.file, owner: document.owner, exports: document.exports }];
 }
 
 /** Whether a source path (relative to the source root) is a UI part the ledger covers. */
@@ -84,34 +129,40 @@ export function isUiPartFile(file: string): boolean {
 
 export interface LedgerRow {
   file: string;
+  /** The unit that owns the source file, as the source's own or the document's owner. */
+  owner: string;
   part: string;
   storyId: string | null;
   states: string[];
   interaction: boolean;
 }
 
-/** One row per Story for the ledger: the file, the part, the Story ID, its states and interaction. */
-export function ledgerRows(files: StoryCoverageFile[]): LedgerRow[] {
+/** One row per Story for the ledger: the file, its owner, the part, the Story ID, states and interaction. */
+export function ledgerRows(documents: StoryCoverageDocument[]): LedgerRow[] {
   const rows: LedgerRow[] = [];
-  for (const file of files) {
-    for (const item of file.exports) {
-      if (item.stories.length === 0) {
-        rows.push({
-          file: file.file,
-          part: item.name,
-          storyId: null,
-          states: [],
-          interaction: false,
-        });
-      }
-      for (const story of item.stories) {
-        rows.push({
-          file: file.file,
-          part: item.name,
-          storyId: story.id,
-          states: story.states,
-          interaction: story.interaction,
-        });
+  for (const document of documents) {
+    for (const source of coverageSources(document)) {
+      for (const item of source.exports) {
+        if (item.stories.length === 0) {
+          rows.push({
+            file: source.file,
+            owner: source.owner,
+            part: item.name,
+            storyId: null,
+            states: [],
+            interaction: false,
+          });
+        }
+        for (const story of item.stories) {
+          rows.push({
+            file: source.file,
+            owner: source.owner,
+            part: item.name,
+            storyId: story.id,
+            states: story.states,
+            interaction: story.interaction,
+          });
+        }
       }
     }
   }
@@ -125,18 +176,20 @@ export interface CoveragePart {
 
 /** The index a generated report reads: file, then part, then its Story IDs or its exclusion. */
 export function coverageIndex(
-  files: StoryCoverageFile[],
+  documents: StoryCoverageDocument[],
 ): Record<string, Record<string, CoveragePart>> {
   const index: Record<string, Record<string, CoveragePart>> = {};
-  for (const file of files) {
-    const parts: Record<string, CoveragePart> = {};
-    for (const item of file.exports) {
-      parts[item.name] = {
-        storyIds: item.stories.map((story) => story.id),
-        exclusion: item.exclusion?.trim() || null,
-      };
+  for (const document of documents) {
+    for (const source of coverageSources(document)) {
+      const parts: Record<string, CoveragePart> = {};
+      for (const item of source.exports) {
+        parts[item.name] = {
+          storyIds: item.stories.map((story) => story.id),
+          exclusion: item.exclusion?.trim() || null,
+        };
+      }
+      index[source.file] = parts;
     }
-    index[file.file] = parts;
   }
   return index;
 }
@@ -146,10 +199,12 @@ export function coverageIndex(
  * registered Stories no file lists; `unknown` are listed IDs Storybook does not register.
  */
 export function compareStoryIds(
-  files: StoryCoverageFile[],
+  documents: StoryCoverageDocument[],
   registeredIds: readonly string[],
 ): { missing: string[]; unknown: string[] } {
-  const listed = new Set(ledgerRows(files).flatMap((row) => (row.storyId ? [row.storyId] : [])));
+  const listed = new Set(
+    ledgerRows(documents).flatMap((row) => (row.storyId ? [row.storyId] : [])),
+  );
   const registered = new Set(registeredIds);
   return {
     missing: [...registered].filter((id) => !listed.has(id)).sort(),

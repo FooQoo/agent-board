@@ -1,16 +1,19 @@
 import { isExportStory, storyNameFromExport, toId } from 'storybook/internal/csf';
 import { describe, expect, it } from 'vitest';
-import { COVERAGE_CONFIG, compareStoryIds, type StoryCoverageFile } from './coverage-model';
+import { COVERAGE_CONFIG, compareStoryIds, type StoryCoverageDocument } from './coverage-model';
 
 // Every story module and coverage file of the product, loaded by Vite in the browser.
 const storyModules = import.meta.glob<Record<string, unknown> & { default: { title?: string } }>(
   '../../src/**/*.stories.tsx',
   { eager: true },
 );
-const coverageModules = import.meta.glob<StoryCoverageFile>('../../src/**/story-coverage*.json', {
-  eager: true,
-  import: 'default',
-});
+const coverageModules = import.meta.glob<StoryCoverageDocument>(
+  '../../src/**/story-coverage*.json',
+  {
+    eager: true,
+    import: 'default',
+  },
+);
 
 /** The IDs Storybook registers for the modules: `toId(title, storyNameFromExport(export))`. */
 function registeredStoryIds(): string[] {
