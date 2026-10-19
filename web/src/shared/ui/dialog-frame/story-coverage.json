@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "file": "shared/ui/dialog-frame/DialogFrame.tsx",
+  "exports": [
+    {
+      "name": "DialogFrame",
+      "stories": [
+        {
+          "id": "shared-dialogframe--ready",
+          "states": ["ready form", "cancel", "submit"],
+          "interaction": false
+        },
+        {
+          "id": "shared-dialogframe--validation-error",
+          "states": ["validation error", "alert"],
+          "interaction": true
+        },
+        {
+          "id": "shared-dialogframe--save-failure-retry",
+          "states": ["save failure", "retry", "success closes"],
+          "interaction": true
+        },
+        {
+          "id": "shared-dialogframe--confirm-discard",
+          "states": ["dirty form", "discard confirmation", "discard closes"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

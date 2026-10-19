@@ -1,55 +1,86 @@
 {
   "schemaVersion": 1,
   "owner": "U10",
-  "file": "features/tasks/status/StatusLabel.tsx",
-  "exports": [
+  "files": [
     {
-      "name": "StatusLabel",
-      "stories": [
+      "file": "features/tasks/status/StatusLabel.tsx",
+      "owner": "U10",
+      "exports": [
         {
-          "id": "task-status-statuslabel--card-todo",
-          "states": ["card todo"],
-          "interaction": false
+          "name": "StatusLabel",
+          "stories": [
+            {
+              "id": "task-status-statuslabel--card-todo",
+              "states": ["card todo"],
+              "interaction": false
+            },
+            {
+              "id": "task-status-statuslabel--card-doing",
+              "states": ["card doing"],
+              "interaction": false
+            },
+            {
+              "id": "task-status-statuslabel--card-done",
+              "states": ["card done"],
+              "interaction": false
+            },
+            {
+              "id": "task-status-statuslabel--agent-idle",
+              "states": ["agent idle"],
+              "interaction": false
+            },
+            {
+              "id": "task-status-statuslabel--agent-running",
+              "states": ["agent running"],
+              "interaction": false
+            },
+            {
+              "id": "task-status-statuslabel--agent-pending",
+              "states": ["agent pending"],
+              "interaction": false
+            },
+            {
+              "id": "task-status-statuslabel--monitor-running",
+              "states": ["monitor wording"],
+              "interaction": false
+            },
+            {
+              "id": "task-status-statuslabel--monitor-pending",
+              "states": ["monitor wording", "agent pending"],
+              "interaction": false
+            },
+            {
+              "id": "task-status-statuslabel--monitor-done-lane",
+              "states": ["monitor wording", "card done"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/status/DialogBadges.tsx",
+      "owner": "U9",
+      "exports": [
+        {
+          "name": "TaskStatusBadge",
+          "stories": [
+            {
+              "id": "task-status-dialogbadges--task-statuses",
+              "states": ["todo", "doing", "done"],
+              "interaction": false
+            }
+          ]
         },
         {
-          "id": "task-status-statuslabel--card-doing",
-          "states": ["card doing"],
-          "interaction": false
-        },
-        {
-          "id": "task-status-statuslabel--card-done",
-          "states": ["card done"],
-          "interaction": false
-        },
-        {
-          "id": "task-status-statuslabel--agent-idle",
-          "states": ["agent idle"],
-          "interaction": false
-        },
-        {
-          "id": "task-status-statuslabel--agent-running",
-          "states": ["agent running"],
-          "interaction": false
-        },
-        {
-          "id": "task-status-statuslabel--agent-pending",
-          "states": ["agent pending"],
-          "interaction": false
-        },
-        {
-          "id": "task-status-statuslabel--monitor-running",
-          "states": ["monitor wording"],
-          "interaction": false
-        },
-        {
-          "id": "task-status-statuslabel--monitor-pending",
-          "states": ["monitor wording", "agent pending"],
-          "interaction": false
-        },
-        {
-          "id": "task-status-statuslabel--monitor-done-lane",
-          "states": ["monitor wording", "card done"],
-          "interaction": false
+          "name": "RunStatusBadge",
+          "stories": [
+            {
+              "id": "task-status-dialogbadges--run-statuses",
+              "states": ["idle", "running", "pending"],
+              "interaction": false
+            }
+          ]
         }
       ]
     }
