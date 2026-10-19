@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "owner": "U1",
+  "file": "shared/ui/button.tsx",
+  "exports": [
+    {
+      "name": "Button",
+      "stories": [
+        {
+          "id": "shared-ui-button--default",
+          "states": ["default", "enabled"],
+          "interaction": false
+        },
+        { "id": "shared-ui-button--outline", "states": ["outline"], "interaction": false },
+        { "id": "shared-ui-button--destructive", "states": ["destructive"], "interaction": false },
+        { "id": "shared-ui-button--ghost", "states": ["ghost"], "interaction": false },
+        { "id": "shared-ui-button--small", "states": ["small"], "interaction": false },
+        { "id": "shared-ui-button--disabled", "states": ["disabled"], "interaction": false },
+        {
+          "id": "shared-ui-button--all-variants",
+          "states": ["all variants", "all sizes"],
+          "interaction": false
+        },
+        { "id": "shared-ui-button--click-calls-handler", "states": ["click"], "interaction": true }
+      ]
+    },
+    {
+      "name": "buttonVariants",
+      "stories": [],
+      "exclusion": "A class helper; every variant and size is shown through Button."
+    }
+  ]
+}

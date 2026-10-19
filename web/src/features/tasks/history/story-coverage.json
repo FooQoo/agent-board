@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "owner": "U1",
+  "file": "features/tasks/history/HistoryTimeline.tsx",
+  "exports": [
+    {
+      "name": "HistoryTimeline",
+      "stories": [
+        {
+          "id": "task-history-historytimeline--default",
+          "states": ["several events"],
+          "interaction": false
+        },
+        {
+          "id": "task-history-historytimeline--single",
+          "states": ["one event"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

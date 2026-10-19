@@ -59,6 +59,26 @@ cargo run -- serve --port <port>
 
 データ領域には、プロジェクトのファイルを保存する`shared/`、サーバーの稼働情報を示す`serve.json`、多重起動を防ぐ`lifecycle.lock`があります。データベースは使いません。`task.json`はタスクの現在の状態（`formatVersion: 1`）を、`TASK.md`は本文・受入条件と`at`/`reason`の履歴を持ちます。`formatVersion`が1でないファイルは未対応として報告し、移行しません。すべてのファイルは[データモデル](../reference/files.md#ディスク上のファイル)で説明しています。
 
+## Storybook
+
+Storybookでは、Web画面の各部品を架空のデータで表示できます。ツールバーで表示言語、ライト・ダークモード、アクセントの色、表示幅を切り替えられます。Storyは部品と同じ場所に、`web/src/**/*.stories.tsx`として置きます。共通のfixture、decorator、テスト用の部品は`web/.storybook/`にあります。
+
+```sh
+pnpm --dir web storybook
+pnpm --dir web build-storybook
+pnpm --dir web typecheck:storybook
+TZ=UTC pnpm --dir web test:storybook
+```
+
+- `storybook`は開発サーバーを`http://127.0.0.1:8610/`で起動します。
+- `build-storybook`は静的ビルドを`web/storybook-static/`に出力します。
+- `typecheck:storybook`はStoryとStorybookの設定を型検査します。
+- `test:storybook`はStoryと共通部分の試験をChromiumで実行します。
+
+Storybookのビルドはアプリのビルドと分けています。Storybookは専用のViteの設定（`web/.storybook/vite.config.ts`）を使うため、アプリのモック、実APIへの接続、チャンクの設定は適用されません。出力先も異なり、Storybookは`web/storybook-static/`、アプリは`web/dist/`です。
+
+製品のコードからStoryや`web/.storybook/`の内容をimportしてはいけません。Storyとテストだけが共通の部品を使えます。`pnpm --dir web check`がこの規則を確認します。また、Storyは製品のAPIとイベントストリームへのリクエストを拒否するため、それらを呼ぶStoryは失敗します。
+
 ## ソースからインストール
 
 エージェントとHookは`PATH`の`agboard`を実行するので、変更をエージェント経由で試すには、ビルドした実行ファイルをインストールします。

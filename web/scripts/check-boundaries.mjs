@@ -9,6 +9,10 @@ import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const LAYERS = ['app', 'pages', 'features', 'shared'];
+// The Storybook support sits above the layers, for development only: stories and tests may import it,
+// and product code may not.
+const SUPPORT = '.storybook/';
+const STORY_OR_TEST = /\.(stories|test)\.tsx?$/;
 const EXTENSIONS = ['', '.ts', '.tsx', '.css', '.json', '/index.ts', '/index.tsx'];
 const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(?\s*)(['"])([^'"\n]+)\1/g;
 
@@ -93,12 +97,20 @@ export function analyze(sources) {
   const problems = [];
   const graph = new Map();
   for (const [path, text] of Object.entries(sources)) {
-    if (!/\.(ts|tsx)$/.test(path)) continue;
+    if (!/\.(ts|tsx)$/.test(path) || path.startsWith(SUPPORT)) continue;
     const targets = importsOf(path, text, files);
     graph.set(path, []);
     for (const target of targets) {
       if (target.endsWith('(missing)')) {
         problems.push(`${path}: cannot resolve ${target}`);
+        continue;
+      }
+      if (target.startsWith(SUPPORT)) {
+        if (!STORY_OR_TEST.test(path)) {
+          problems.push(
+            `${path}: imports ${target}: only stories and tests may use Storybook support`,
+          );
+        }
         continue;
       }
       if (/\.(ts|tsx)$/.test(target)) graph.get(path).push(target);
@@ -122,7 +134,7 @@ function readTree(root, dir, into) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
   if (!existsSync(join(root, 'src'))) throw new Error('web/src is missing.');
-  const problems = analyze(readTree(root, 'src', {}));
+  const problems = analyze(readTree(root, '.storybook', readTree(root, 'src', {})));
   for (const line of problems) console.error(line);
   console.log(`Checked the import boundaries of web/src: ${problems.length} problem(s).`);
   process.exit(problems.length === 0 ? 0 : 1);

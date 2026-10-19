@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "owner": "U1",
+  "file": "features/epics/label/EpicLabel.tsx",
+  "exports": [
+    {
+      "name": "EpicLabel",
+      "stories": [
+        { "id": "epic-label-epiclabel--default", "states": ["enabled"], "interaction": false },
+        { "id": "epic-label-epiclabel--disabled", "states": ["disabled"], "interaction": false },
+        { "id": "epic-label-epiclabel--click-opens-epic", "states": ["click"], "interaction": true }
+      ]
+    }
+  ]
+}

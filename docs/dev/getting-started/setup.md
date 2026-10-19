@@ -59,6 +59,26 @@ cargo run -- serve --port <port>
 
 The data area holds `shared/` (the projects as plain files), `serve.json` while a server runs, and `lifecycle.lock`. Nothing is stored in a database. `task.json` holds a task's current state (`formatVersion: 1`), and `TASK.md` holds its body, acceptance conditions, and `at`/`reason` history; a file with any other `formatVersion` is reported as unsupported and never migrated. The [data model](../reference/files.md#files-on-disk) describes every file.
 
+## Storybook
+
+Storybook shows each part of the web UI with synthetic data. Its toolbar switches the language, light or dark mode, accent color, and width. Stories sit beside the parts they show, as `web/src/**/*.stories.tsx`. The shared fixtures, decorators, and test adapters are in `web/.storybook/`.
+
+```sh
+pnpm --dir web storybook
+pnpm --dir web build-storybook
+pnpm --dir web typecheck:storybook
+TZ=UTC pnpm --dir web test:storybook
+```
+
+- `storybook` starts the dev server at `http://127.0.0.1:8610/`.
+- `build-storybook` writes a static build to `web/storybook-static/`.
+- `typecheck:storybook` type-checks the Stories and the Storybook setup.
+- `test:storybook` runs the Story and support tests in Chromium.
+
+The Storybook build is separate from the app build. Storybook uses its own Vite configuration (`web/.storybook/vite.config.ts`), so the app's mock, live, and chunk settings do not apply to it. Storybook writes to `web/storybook-static/`, and the app writes to `web/dist/`.
+
+Product code must not import a Story or anything under `web/.storybook/`. Only Stories and tests may use the shared support. `pnpm --dir web check` enforces this rule. A Story also refuses requests to the product API and its event stream, so a Story that calls them fails.
+
 ## Install from source
 
 Agents and hooks run `agboard` from your `PATH`, so to try a change through an agent, install your build:

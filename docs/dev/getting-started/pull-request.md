@@ -36,6 +36,9 @@ TZ=UTC cargo test
 pnpm --dir web typecheck
 pnpm --dir web check
 TZ=UTC pnpm --dir web test
+pnpm --dir web typecheck:storybook
+TZ=UTC pnpm --dir web test:storybook
+pnpm --dir web build-storybook
 ```
 
 Run `pnpm --dir web format` to apply the web formatter.
