@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "owner": "U4",
+  "file": "pages/monitor/View.tsx",
+  "exports": [
+    {
+      "name": "MonitorView",
+      "stories": [
+        {
+          "id": "pages-monitor--drawer-tabs",
+          "states": ["mobile drawer", "four tabs", "epic loaded"],
+          "interaction": true
+        },
+        {
+          "id": "pages-monitor--epic-read-failure",
+          "states": ["epic read error", "retry action"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

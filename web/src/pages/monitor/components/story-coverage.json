@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "owner": "U4",
+  "files": [
+    {
+      "file": "pages/monitor/components/MonitorDetailDrawer.tsx",
+      "exports": [
+        {
+          "name": "MonitorDetailDrawer",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
+              "states": ["four tabs", "history panel", "loaded epic"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--epic-error",
+              "states": ["epic read error", "retry"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "shouldIgnoreTabSwipe",
+          "stories": [],
+          "exclusion": "An exported predicate covered by the focused monitor drawer interaction test."
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorDrawerPanels.tsx",
+      "exports": [
+        {
+          "name": "MonitorDrawerPanels",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
+              "states": ["body", "acceptance", "history", "epic panels"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorEpicContent.tsx",
+      "exports": [
+        {
+          "name": "MonitorEpicContent",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
+              "states": ["loaded epic"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--epic-error",
+              "states": ["retryable error"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
