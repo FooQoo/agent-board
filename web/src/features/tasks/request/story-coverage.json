@@ -15,7 +15,17 @@
             },
             {
               "id": "task-dialogs-requestdialog--request-submit",
-              "states": ["input", "submit"],
+              "states": ["input", "submit without epic", "null epic id"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-requestdialog--select-epic",
+              "states": ["epic dropdown label", "select epic", "submit selected epic id"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-requestdialog--clear-epic-selection",
+              "states": ["select epic", "select no epic", "submit null epic id"],
               "interaction": true
             },
             {

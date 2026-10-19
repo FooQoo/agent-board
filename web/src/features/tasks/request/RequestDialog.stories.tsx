@@ -27,7 +27,44 @@ export const RequestSubmit: Story = {
     await userEvent.type(input, 'Review the release plan');
     await userEvent.click(view.getByRole('button', { name: 'Submit task' }));
     await expect(args.onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ description: 'Review the release plan', requestKind: 'simple' }),
+      expect.objectContaining({
+        description: 'Review the release plan',
+        requestKind: 'simple',
+        epicId: null,
+      }),
+    );
+  },
+};
+export const SelectEpic: Story = {
+  play: async ({ args }) => {
+    const view = within(document.body);
+    await userEvent.type(view.getByLabelText('What should be done?'), 'Review the release plan');
+    await userEvent.click(view.getByRole('button', { name: 'Epic (optional)' }));
+    await expect(view.getByRole('menuitemradio', { name: 'Release' })).toBeInTheDocument();
+    await userEvent.click(view.getByRole('menuitemradio', { name: 'Release' }));
+    await expect(view.getByRole('button', { name: 'Epic (optional)' })).toHaveTextContent(
+      'Release',
+    );
+    await userEvent.click(view.getByRole('button', { name: 'Submit task' }));
+    await expect(args.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ epicId: 'release', description: 'Review the release plan' }),
+    );
+  },
+};
+export const ClearEpicSelection: Story = {
+  play: async ({ args }) => {
+    const view = within(document.body);
+    await userEvent.type(view.getByLabelText('What should be done?'), 'Review the release plan');
+    await userEvent.click(view.getByRole('button', { name: 'Epic (optional)' }));
+    await userEvent.click(view.getByRole('menuitemradio', { name: 'Release' }));
+    await userEvent.click(view.getByRole('button', { name: 'Epic (optional)' }));
+    await userEvent.click(view.getByRole('menuitemradio', { name: 'No epic' }));
+    await expect(view.getByRole('button', { name: 'Epic (optional)' })).toHaveTextContent(
+      'No epic',
+    );
+    await userEvent.click(view.getByRole('button', { name: 'Submit task' }));
+    await expect(args.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ epicId: null, description: 'Review the release plan' }),
     );
   },
 };

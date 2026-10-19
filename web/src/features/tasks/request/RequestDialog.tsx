@@ -159,7 +159,7 @@ export function RequestDialog({
                 </DropdownMenuRadioItem>
                 {epics.map((epic) => (
                   <DropdownMenuRadioItem key={epic.id} value={epic.id} aria-label={epic.name}>
-                    renderEpic(epic, "request-dialog__epic-badge")
+                    {renderEpic(epic, 'request-dialog__epic-badge')}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
