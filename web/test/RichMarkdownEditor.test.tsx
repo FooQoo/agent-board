@@ -9,6 +9,9 @@ import {
 } from '../src/shared/rich-editor/RichMarkdownEditor';
 import { CODE_LANGUAGES, MermaidPreviews } from '../src/shared/rich-editor/RichMarkdownEditor.impl';
 import { selectLocale } from '../src/shared/i18n';
+import i18next from 'i18next';
+
+const errorText = (message: string) => i18next.t('markdown.diagramError', { message });
 
 const { draw, initialize } = vi.hoisted(() => ({ draw: vi.fn(), initialize: vi.fn() }));
 
@@ -199,7 +202,7 @@ describe('RichMarkdownEditor', () => {
 
   it('does not load the Crepe theme or the block, LaTeX, top bar, or AI features', () => {
     const source = readFileSync(
-      join(import.meta.dirname, '../src/shared/rich-editor/RichMarkdownEditor.impl.tsx'),
+      join(import.meta.dirname, '../src/shared/rich-editor/createEditor.ts'),
       'utf8',
     );
     expect(source).not.toMatch(/crepe\/theme/);
@@ -215,7 +218,7 @@ describe('mermaid preview in code blocks', () => {
   });
 
   it('draws a mermaid block into the given element', async () => {
-    const previews = new MermaidPreviews();
+    const previews = new MermaidPreviews(errorText);
     const apply = vi.fn();
     previews.render('mermaid', 'flowchart TD\n  P1 --> Q1', apply);
     await waitFor(() => expect(apply).toHaveBeenCalled());
@@ -225,7 +228,7 @@ describe('mermaid preview in code blocks', () => {
   });
 
   it('shows one line of the error for a wrong mermaid block, and does not reject the save', async () => {
-    const previews = new MermaidPreviews();
+    const previews = new MermaidPreviews(errorText);
     const apply = vi.fn();
     previews.render('mermaid', 'flowchart TD\n  BROKEN', apply);
     await waitFor(() => expect(apply).toHaveBeenCalled());
@@ -236,7 +239,7 @@ describe('mermaid preview in code blocks', () => {
   });
 
   it('leaves other languages without a preview', () => {
-    const previews = new MermaidPreviews();
+    const previews = new MermaidPreviews(errorText);
     const apply = vi.fn();
     expect(previews.render('ts', 'const x = 1;', apply)).toBeNull();
     expect(apply).not.toHaveBeenCalled();
@@ -244,7 +247,7 @@ describe('mermaid preview in code blocks', () => {
   });
 
   it('redraws a preview when the page theme changes, and draws it again in the new colors', async () => {
-    const previews = new MermaidPreviews();
+    const previews = new MermaidPreviews(errorText);
     const apply = vi.fn();
     previews.render('mermaid', 'flowchart TD\n  T1 --> T2', apply);
     await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
@@ -258,7 +261,7 @@ describe('mermaid preview in code blocks', () => {
   });
 
   it('does not redraw when the page changes without a change of its theme', async () => {
-    const previews = new MermaidPreviews();
+    const previews = new MermaidPreviews(errorText);
     const apply = vi.fn();
     previews.render('mermaid', 'flowchart TD\n  U1 --> U2', apply);
     await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
@@ -270,7 +273,7 @@ describe('mermaid preview in code blocks', () => {
   });
 
   it('stops redrawing after it is disposed', async () => {
-    const previews = new MermaidPreviews();
+    const previews = new MermaidPreviews(errorText);
     const apply = vi.fn();
     previews.render('mermaid', 'flowchart TD\n  V1 --> V2', apply);
     await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
