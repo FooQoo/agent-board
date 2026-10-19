@@ -4,9 +4,9 @@ import {
   taskCountLabel,
   columnLabel,
   formatShort,
-  formatTime,
   stateLabel,
-} from '../src/lib/format';
+} from '../src/features/tasks/model/format';
+import { formatTime } from '../src/shared/lib/time/formatTime';
 import { makeTask } from './fixtures';
 
 const translate = ((key: string, options?: Record<string, unknown>): string => {

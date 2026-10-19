@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Board, ProjectList } from '../../src/types';
-import { useMonitor, type MonitorReadApi } from '../../src/monitor/hooks/useMonitor';
+import type { Board, ProjectList } from '../../src/shared/api/contracts';
+import { useMonitor, type MonitorReadApi } from '../../src/pages/monitor/hooks/useMonitor';
 import {
   PROJECT_A,
   PROJECT_B,

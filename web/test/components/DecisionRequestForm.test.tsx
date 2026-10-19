@@ -1,10 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DecisionRequestForm } from '../../src/components/detail/DecisionRequestForm';
-import { selectLocale } from '../../src/i18n';
-import type { AnswerFormKey, AnswerFormState, AnswerFormStateStore } from '../../src/lib/answer';
-import { noOperations } from '../../src/lib/projectSession';
+import { DecisionRequestForm } from '../../src/features/tasks/answer/DecisionRequestForm';
+import { selectLocale } from '../../src/shared/i18n';
+import type {
+  AnswerFormKey,
+  AnswerFormState,
+  AnswerFormStateStore,
+} from '../../src/features/tasks/answer/model/answer';
+import { noOperations } from '../../src/shared/lib/operations/operations';
 import { makeTask, PROJECT_A } from '../fixtures';
 
 function memoryStore(): AnswerFormStateStore {

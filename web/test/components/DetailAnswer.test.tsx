@@ -1,11 +1,11 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TaskCard } from '../../src/components/TaskCard';
-import { useTaskAnswers } from '../../src/hooks/useTaskAnswers';
-import { selectLocale } from '../../src/i18n';
-import type { AnswerLeaseChange } from '../../src/hooks/useTaskAnswers';
-import type { Task as TaskModel } from '../../src/types';
+import { TaskCard } from '../../src/features/tasks/card/TaskCard';
+import { useTaskAnswers } from '../../src/features/tasks/answer/model/useTaskAnswers';
+import { selectLocale } from '../../src/shared/i18n';
+import type { AnswerLeaseChange } from '../../src/features/tasks/answer/model/useTaskAnswers';
+import type { Task as TaskModel } from '../../src/shared/api/contracts';
 import { deferred, jsonResponse } from '../fakes';
 import { PROJECT_A, makeTask } from '../fixtures';
 

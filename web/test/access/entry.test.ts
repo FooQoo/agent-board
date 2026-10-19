@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { redirectForInitialViewport } from '../../src/access/routing';
+import { redirectForInitialViewport } from '../../src/app/access/routing';
 
 describe('shared access entry', () => {
   it.each([
@@ -26,11 +26,11 @@ describe('shared access entry', () => {
     expect(html).toContain('href="/board/"');
     expect(html).toContain('href="/monitor/"');
     expect(html).not.toContain('agboard-token');
-    expect(html).toContain('/src/access/entry.ts');
+    expect(html).toContain('/src/app/access/entry.ts');
   });
 
   it('does not subscribe to resize or history changes', () => {
-    const source = readFileSync(resolve('src/access/entry.ts'), 'utf8');
+    const source = readFileSync(resolve('src/app/access/entry.ts'), 'utf8');
     expect(source).not.toMatch(/addEventListener\s*\(\s*['"](?:resize|change)['"]/);
     expect(source).toContain('location.replace');
   });

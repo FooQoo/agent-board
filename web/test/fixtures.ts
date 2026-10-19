@@ -1,4 +1,4 @@
-import type { Board, Task, Project } from '../src/types';
+import type { Board, Task, Project } from '../src/shared/api/contracts';
 import boardJson from './fixtures/board.json';
 
 export const fixtureBoard = boardJson as unknown as Board;

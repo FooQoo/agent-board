@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { selectLocale } from '../src/i18n';
-import type { Epic, EpicTaskCounts } from '../src/types';
+import { selectLocale } from '../src/shared/i18n';
+import type { Epic, EpicTaskCounts } from '../src/shared/api/contracts';
 import { FakeEventSource, stubBackend, type FakeBackend } from './fakes';
 import {
   PROJECTS,

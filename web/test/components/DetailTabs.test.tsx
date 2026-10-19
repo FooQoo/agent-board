@@ -1,9 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DetailPanel } from '../../src/components/DetailPanel';
-import { selectLocale } from '../../src/i18n';
-import type { Task } from '../../src/types';
+import { DetailPanel } from '../../src/features/tasks/detail/DetailPanel';
+import { selectLocale } from '../../src/shared/i18n';
+import type { Task } from '../../src/shared/api/contracts';
 import { PROJECT_A, fixtureTask, makeTask } from '../fixtures';
 
 const noop = () => {};

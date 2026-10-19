@@ -1,9 +1,9 @@
 import { act, render, renderHook, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { TaskCard } from '../../src/components/TaskCard';
-import { useTaskAnswers } from '../../src/hooks/useTaskAnswers';
-import { i18n } from '../../src/i18n';
+import { TaskCard } from '../../src/features/tasks/card/TaskCard';
+import { useTaskAnswers } from '../../src/features/tasks/answer/model/useTaskAnswers';
+import { i18n } from '../../src/shared/i18n';
 import { fixtureTask, makeTask } from '../fixtures';
 
 const noop = () => {};

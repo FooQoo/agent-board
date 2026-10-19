@@ -1,9 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ProjectSwitcher } from '../../src/components/ProjectSwitcher';
-import { selectLocale } from '../../src/i18n';
-import type { Project } from '../../src/types';
+import { ProjectSwitcher } from '../../src/features/projects/switcher/ProjectSwitcher';
+import { selectLocale } from '../../src/shared/i18n';
+import type { Project } from '../../src/shared/api/contracts';
 import { PROJECTS, PROJECT_A, PROJECT_B, PROJECT_C } from '../fixtures';
 
 beforeEach(() => selectLocale('en'));

@@ -37,7 +37,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe('tokens.css', () => {
-  const tokens = read('src/styles/tokens.css').toLowerCase();
+  const tokens = read('src/shared/styles/tokens.css').toLowerCase();
   const dark = tokens.slice(tokens.indexOf(':root[data-mode="dark"]'));
 
   it.each(Object.entries(DESIGN_LIGHT))('defines the light design token %s', (name, value) => {
@@ -65,7 +65,7 @@ describe('tokens.css', () => {
 });
 
 describe('app.css', () => {
-  const css = read('src/styles/app.css');
+  const css = read('src/shared/styles/app.css');
 
   it('takes every color from the theme tokens instead of literals', () => {
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
@@ -73,8 +73,8 @@ describe('app.css', () => {
   });
 
   it('keeps narrow archive layouts inside the app surface', () => {
-    expect(read('src/styles/archive.css')).toMatch(/@media[^{]*max-width/);
-    expect(read('src/styles/resize.css')).not.toMatch(/@media[^{]*(min|max)-width/);
+    expect(read('src/pages/archive/archive.css')).toMatch(/@media[^{]*max-width/);
+    expect(read('src/shared/styles/resize.css')).not.toMatch(/@media[^{]*(min|max)-width/);
   });
 
   it('does not override the Tailwind button utilities with an unlayered button rule', () => {

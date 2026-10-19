@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MarkdownView } from '../../src/components/markdown/MarkdownView';
-import { selectLocale } from '../../src/i18n';
+import { MarkdownView } from '../../src/shared/markdown/MarkdownView';
+import { selectLocale } from '../../src/shared/i18n';
 
 vi.mock('mermaid', () => ({
   default: {

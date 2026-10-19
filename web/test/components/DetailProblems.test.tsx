@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DetailPanel } from '../../src/components/DetailPanel';
-import { selectLocale } from '../../src/i18n';
-import type { Problem } from '../../src/types';
+import { DetailPanel } from '../../src/features/tasks/detail/DetailPanel';
+import { selectLocale } from '../../src/shared/i18n';
+import type { Problem } from '../../src/shared/api/contracts';
 import { PROJECT_A, makeTask } from '../fixtures';
 
 const noop = () => {};

@@ -1,9 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { RequestDialog, type RequestInput } from '../src/components/RequestDialog';
-import { selectLocale } from '../src/i18n';
-import type { Epic } from '../src/types';
+import { RequestDialog, type RequestInput } from '../src/features/tasks/request/RequestDialog';
+import { renderEpicBadge } from './support/composition';
+import { selectLocale } from '../src/shared/i18n';
+import type { Epic } from '../src/shared/api/contracts';
 
 afterEach(cleanup);
 beforeEach(() => selectLocale('en'));
@@ -33,6 +34,7 @@ describe('simple request dialog', () => {
         onClose={vi.fn()}
         onSubmit={vi.fn().mockRejectedValue(new Error('Request failed (503)'))}
         onCreateManually={vi.fn()}
+        renderEpic={renderEpicBadge}
       />,
     );
     const user = userEvent.setup();
@@ -61,6 +63,7 @@ describe('simple request dialog', () => {
         onClose={vi.fn()}
         onSubmit={submit}
         onCreateManually={vi.fn()}
+        renderEpic={renderEpicBadge}
       />,
     );
     expect(screen.getByText('Attachments (optional)')).toBeTruthy();
@@ -96,6 +99,7 @@ describe('simple request dialog', () => {
         onClose={vi.fn()}
         onSubmit={vi.fn()}
         onCreateManually={onCreateManually}
+        renderEpic={renderEpicBadge}
       />,
     );
     const user = userEvent.setup();

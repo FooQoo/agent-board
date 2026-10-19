@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { claimBuildReload, pageBuildId, readyBuildId } from '../../src/lib/buildReload';
+import { claimBuildReload } from '../../src/app/model/buildReload';
+import { pageBuildId, readyBuildId } from '../../src/shared/lib/build/buildId';
 
 const OWN = '0123456789abcdef';
 const NEW = 'fedcba9876543210';

@@ -4,8 +4,8 @@ import {
   sessionReducer,
   type SessionAction,
   type SessionState,
-} from '../src/lib/projectSession';
-import type { AnswerFormKey } from '../src/lib/answer';
+} from '../src/app/model/projectSession';
+import type { AnswerFormKey } from '../src/features/tasks/answer/model/answer';
 import { makeTask } from './fixtures';
 
 const A = 'a'.repeat(32);

@@ -53,7 +53,7 @@ Inside `server`, routers depend on shared modules rather than on each other:
 The main files and directories outside `src/` are:
 
 - `build.rs`: embeds the built web UI and writes the asset tables and build IDs.
-- `web/`: the Vite app.
+- `web/`: the Vite app. Its source in `web/src/` is split into `app/`, `pages/`, `features/`, and `shared/` (see [Where the web code lives](../concepts/server-and-ui.md#where-the-web-code-lives)).
 - `tests/`: Rust integration and CLI tests.
 - `e2e/`: Playwright tests and the screenshot and video scripts.
 - `docs/`: this documentation site.

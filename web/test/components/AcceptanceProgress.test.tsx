@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { AcceptanceProgress } from '../../src/components/acceptance/AcceptanceProgress';
-import { selectLocale } from '../../src/i18n';
+import { AcceptanceProgress } from '../../src/features/tasks/acceptance/AcceptanceProgress';
+import { selectLocale } from '../../src/shared/i18n';
 import { makeTask } from '../fixtures';
 
 beforeEach(() => selectLocale('en'));

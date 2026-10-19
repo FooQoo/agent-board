@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { NuqsTestingAdapter, type UrlUpdateEvent } from 'nuqs/adapters/testing';
 import { vi } from 'vitest';
-import { App, type AppProps } from '../src/App';
+import { App, type AppProps } from '../src/app/App';
 
 /**
  * Renders the app inside the nuqs testing adapter with an in-memory URL. `navigate` replaces the URL from

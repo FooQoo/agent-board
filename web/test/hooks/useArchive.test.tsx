@@ -1,9 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useArchive } from '../../src/hooks/useArchive';
-import { useProjectResource } from '../../src/hooks/useProjectResource';
-import type { ArchiveResponse } from '../../src/api';
-import type { Task } from '../../src/types';
+import { useArchive } from '../../src/pages/archive/model/useArchive';
+import { useProjectResource } from '../../src/features/projects/model/useProjectResource';
+import type { ArchiveResponse } from '../../src/app/api';
+import type { Task } from '../../src/shared/api/contracts';
 import { deferred, stubBackend, type FakeBackend } from '../fakes';
 import { PROJECT_A, PROJECT_B, PROJECTS, boardOf, fixtureBoard, makeTask } from '../fixtures';
 

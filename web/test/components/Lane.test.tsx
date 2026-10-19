@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { Lane } from '../../src/components/Lane';
+import { Lane } from '../../src/pages/board/ui/Lane';
 import { fixtureTask } from '../fixtures';
 
 describe('Lane scroll cue', () => {

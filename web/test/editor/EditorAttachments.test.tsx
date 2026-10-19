@@ -1,15 +1,15 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, useRef, useState } from 'react';
-import type { RichMarkdownEditorHandle } from '../../src/components/editor/RichMarkdownEditor';
+import type { RichMarkdownEditorHandle } from '../../src/shared/rich-editor/RichMarkdownEditor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EditorShell } from '../../src/components/editor/EditorShell';
-import { EditorBody } from '../../src/components/editor/EditorBody';
-import { selectLocale } from '../../src/i18n';
-import type { AttachmentNotice } from '../../src/components/editor/useAttachmentState';
+import { EditorShell } from '../../src/shared/ui/editor/EditorShell';
+import { EditorBody } from '../../src/shared/ui/editor/EditorBody';
+import { selectLocale } from '../../src/shared/i18n';
+import type { AttachmentNotice } from '../../src/shared/ui/editor/useAttachmentState';
 import { editorSpy } from './fakeRichEditor';
 
-vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('./fakeRichEditor'));
+vi.mock('../../src/shared/rich-editor/RichMarkdownEditor', () => import('./fakeRichEditor'));
 
 const attachment = {
   id: '0123456789abcdef0123456789abcdef',

@@ -1,12 +1,12 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { selectLocale } from '../../src/i18n';
-import { MonitorView } from '../../src/monitor/View';
-import type { MonitorReadResolvers, MonitorViewProps } from '../../src/monitor/contracts';
+import { selectLocale } from '../../src/shared/i18n';
+import { MonitorView } from '../../src/pages/monitor/View';
+import type { MonitorReadResolvers, MonitorViewProps } from '../../src/pages/monitor/contracts';
 import { makeTask, PROJECT_A } from '../fixtures';
-import { shouldIgnoreTabSwipe } from '../../src/monitor/components/MonitorDetailDrawer';
-import type { Epic } from '../../src/types';
+import { shouldIgnoreTabSwipe } from '../../src/pages/monitor/components/MonitorDetailDrawer';
+import type { Epic } from '../../src/shared/api/contracts';
 
 beforeEach(() => selectLocale('en'));
 

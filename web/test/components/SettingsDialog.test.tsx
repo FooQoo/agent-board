@@ -4,9 +4,9 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SettingsDialog, THEME_SWATCHES } from '../../src/components/SettingsDialog';
-import { selectLocale } from '../../src/i18n';
-import { ACCENTS, MODES, selectTheme } from '../../src/theme';
+import { SettingsDialog, THEME_SWATCHES } from '../../src/features/settings/ui/SettingsDialog';
+import { selectLocale } from '../../src/shared/i18n';
+import { ACCENTS, MODES, selectTheme } from '../../src/shared/theme';
 
 const COLORS = [
   'Blue',
@@ -110,7 +110,7 @@ describe('SettingsDialog content', () => {
 
   it('keeps the swatch colors in step with the theme tokens of theme.css', () => {
     const css = readFileSync(
-      join(resolve(import.meta.dirname, '../..'), 'src/styles/theme.css'),
+      join(resolve(import.meta.dirname, '../..'), 'src/shared/styles/theme.css'),
       'utf8',
     );
     expect(Object.keys(THEME_SWATCHES)).toHaveLength(24);

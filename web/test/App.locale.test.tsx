@@ -1,8 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { selectLocale } from '../src/i18n';
-import type { Board } from '../src/types';
+import { selectLocale } from '../src/shared/i18n';
+import type { Board } from '../src/shared/api/contracts';
 import { FakeEventSource, jsonResponse, stubBackend, type FakeBackend } from './fakes';
 import { PROJECTS, PROJECT_A, fixtureBoard } from './fixtures';
 import { renderApp } from './renderApp';

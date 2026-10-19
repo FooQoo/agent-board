@@ -10,7 +10,7 @@
 - 実装とテストはこのリポジトリに置きます。
 - プロダクションのソースファイル(`src/**/*.rs`と、`web/src/`配下の`.ts`・`.tsx`)は、1ファイル300行以内に収めます。テストとスタイルには上限はありません。
   - Rust: `tests/file_size.rs`が確認し、`#[cfg(test)]`モジュールより前の行だけを数えます。
-  - Web画面: `web/biome.json`のBiomeのルール`noExcessiveLinesPerFile`が確認するので、`pnpm --dir web check`で検出されます。
+  - Web画面: `web/biome.json`のBiomeのルール`noExcessiveLinesPerFile`が確認するので、`pnpm --dir web check`で検出されます。同じコマンドが、続けて`web/src/`のimportの層と循環も検査します（[Webコードの置き場所](../concepts/server-and-ui.md#webコードの置き場所)）。
   - どうしても長いままにするファイルは、先頭行に理由つきでその旨を書きます。Rustでは`// file-size: allow (理由)`、Web画面では`// biome-ignore lint/style/noExcessiveLinesPerFile: 理由`です。この指定をしたファイルには上限がかからないので、できるだけ責務ごとに分けてください。Rustのテストは、理由のない指定や、上限に収まっているファイルに残った指定も失敗にします。
 - `docs/dev/reference/`の開発者向けリファレンスは、Agent Boardの現在の仕組みを記述します。振る舞いを変えるときは、同じ変更でリファレンスと`docs/ja/dev/reference/`の日本語訳を更新します。
 - Hook、設定、スクリプト、文書、生成物に、マシン固有の絶対パスをコミットしないでください。個人のホームディレクトリやローカルのチェックアウト先も含みます。

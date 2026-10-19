@@ -17,7 +17,7 @@ function rule(css: string, selector: string): string {
 }
 
 describe('desktop layout', () => {
-  const css = read('src/styles/app.css');
+  const css = read('src/shared/styles/app.css');
 
   it('stacks the header, the body and the status bar to the full viewport height', () => {
     expect(rule(css, '.app')).toMatch(/height:\s*100dvh/);
@@ -48,7 +48,7 @@ describe('desktop layout', () => {
     expect(detail).toMatch(/padding:\s*28px/);
     expect(detail).toMatch(/border-left:\s*1px solid var\(--r-border\)/);
     expect(detail).toMatch(/gap:\s*18px/);
-    const viewport = rule(read('src/styles/detail.css'), '.detail__viewport');
+    const viewport = rule(read('src/features/tasks/detail/detail.css'), '.detail__viewport');
     expect(viewport).toMatch(/overflow-y:\s*auto/);
   });
 });

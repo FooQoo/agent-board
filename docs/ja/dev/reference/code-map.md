@@ -53,7 +53,7 @@
 `src/`以外の主なファイルとディレクトリは次のとおりです。
 
 - `build.rs`: ビルドしたWeb画面を埋め込み、資産の表とビルドIDを書き出します。
-- `web/`: Viteのアプリです。
+- `web/`: Viteのアプリです。`web/src/`のソースは`app/`・`pages/`・`features/`・`shared/`に分けています（[Webコードの置き場所](../concepts/server-and-ui.md#webコードの置き場所)）。
 - `tests/`: Rustの結合テストとCLIのテストを置きます。
 - `e2e/`: Playwrightのテストと、スクリーンショット・動画の生成スクリプトを置きます。
 - `docs/`: このドキュメントサイトです。

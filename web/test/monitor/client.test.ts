@@ -14,7 +14,7 @@ describe('monitor read client', () => {
         }),
     );
     vi.stubGlobal('fetch', fetchMock);
-    const { monitorClient, monitorReadResolvers } = await import('../../src/monitor/client');
+    const { monitorClient, monitorReadResolvers } = await import('../../src/pages/monitor/client');
 
     await monitorClient.fetchCatalog();
     await monitorClient.fetchBoard(PROJECT_ID);
@@ -38,7 +38,7 @@ describe('monitor read client', () => {
   it('rejects unsafe path segments before making a request', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    const { monitorClient, monitorReadResolvers } = await import('../../src/monitor/client');
+    const { monitorClient, monitorReadResolvers } = await import('../../src/pages/monitor/client');
     expect(() => monitorClient.fetchBoard('../api')).toThrow(/project/i);
     expect(() => monitorReadResolvers.attachmentUrl(PROJECT_ID, 0, 'x')).toThrow(/task/i);
     expect(() => monitorReadResolvers.evidenceUrl(PROJECT_ID, 1, '../')).toThrow(/evidence/i);
@@ -64,7 +64,7 @@ describe('monitor read client', () => {
           ),
       ),
     );
-    const { monitorClient, MonitorClientError } = await import('../../src/monitor/client');
+    const { monitorClient, MonitorClientError } = await import('../../src/pages/monitor/client');
     await expect(monitorClient.fetchBoard(PROJECT_ID)).rejects.toMatchObject({
       name: 'MonitorClientError',
       status: 404,
@@ -84,7 +84,7 @@ describe('monitor read client', () => {
         }),
     );
     vi.stubGlobal('fetch', fetchMock);
-    const { monitorClient } = await import('../../src/monitor/client');
+    const { monitorClient } = await import('../../src/pages/monitor/client');
     const request = monitorClient.fetchCatalog({ timeoutMs: 100 });
     const rejection = expect(request).rejects.toMatchObject({ code: 'timeout', status: 0 });
     await vi.advanceTimersByTimeAsync(101);
@@ -101,7 +101,7 @@ describe('monitor answer client', () => {
       async () => new Response(JSON.stringify({ task, changed: true }), { status: 200 }),
     );
     vi.stubGlobal('fetch', fetchMock);
-    const { monitorClient } = await import('../../src/monitor/client');
+    const { monitorClient } = await import('../../src/pages/monitor/client');
 
     await expect(
       monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', choiceId: 'yes' }),
@@ -132,7 +132,7 @@ describe('monitor answer client', () => {
         ),
     );
     vi.stubGlobal('fetch', fetchMock);
-    const { monitorClient } = await import('../../src/monitor/client');
+    const { monitorClient } = await import('../../src/pages/monitor/client');
     await expect(
       monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', text: 'answer' }),
     ).rejects.toMatchObject({ status: 403, code: 'page_out_of_date' });

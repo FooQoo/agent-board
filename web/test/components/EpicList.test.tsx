@@ -1,11 +1,11 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EpicDetailPanel } from '../../src/components/epics/EpicDetailPanel';
-import { EpicList, type EpicListProps } from '../../src/components/epics/EpicList';
-import { selectLocale } from '../../src/i18n';
-import { useProjectSession } from '../../src/hooks/useProjectSession';
-import type { Epic, EpicTaskCounts } from '../../src/types';
+import { EpicDetailPanel } from '../../src/pages/epics/ui/EpicDetailPanel';
+import { EpicList, type EpicListProps } from '../../src/pages/epics/ui/EpicList';
+import { selectLocale } from '../../src/shared/i18n';
+import { useProjectSession } from '../../src/app/model/useProjectSession';
+import type { Epic, EpicTaskCounts } from '../../src/shared/api/contracts';
 import { PROJECT_A, PROJECT_B } from '../fixtures';
 
 beforeEach(() => selectLocale('en'));
@@ -162,7 +162,7 @@ describe('EpicList', () => {
   });
 
   it('keeps the question open and says why when the delete is refused', async () => {
-    const { WriteError } = await import('../../src/lib/writeErrors');
+    const { WriteError } = await import('../../src/shared/api/writeErrors');
     render(
       <EpicDetailPanel
         projectId={PROJECT_A.id}

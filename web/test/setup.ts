@@ -68,10 +68,10 @@ beforeAll(async () => {
     { preloadMonitorDrawer },
     markdown,
   ] = await Promise.all([
-    import('../src/components/lazyDialogs'),
-    import('../src/components/Header'),
-    import('../src/monitor/View'),
-    import('../src/components/markdown/LazyMarkdownSections'),
+    import('../src/app/dialogs/lazyDialogs'),
+    import('../src/features/settings/ui/settingsSlot'),
+    import('../src/pages/monitor/View'),
+    import('../src/shared/markdown/LazyMarkdownSections'),
   ]);
   await Promise.all([
     actionDialog.preload(),

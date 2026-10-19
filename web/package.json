@@ -12,9 +12,10 @@
     "dev": "vite",
     "build": "vite build && vite build --config vite.access.config.ts && vite build --config vite.monitor.config.ts && node scripts/finalize-monitor-build.mjs && node scripts/compress-dist.mjs",
     "typecheck": "tsc --noEmit",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
     "format": "biome format --write .",
     "lint": "biome lint .",
-    "check": "biome check .",
+    "check": "biome check . && node scripts/check-boundaries.mjs",
     "test": "vitest run"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findTask, groupTasks, nextSelection } from '../src/lib/board';
+import { findTask, groupTasks, nextSelection } from '../src/features/tasks/model/board';
 import { fixtureBoard, makeTask } from './fixtures';
 
 const ids = (tasks: { id: number }[]) => tasks.map((c) => c.id);

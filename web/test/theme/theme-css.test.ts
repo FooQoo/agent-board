@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ACCENTS, MODES } from '../../src/theme';
+import { ACCENTS, MODES } from '../../src/shared/theme';
 
 const css = readFileSync(
-  join(resolve(import.meta.dirname, '../..'), 'src/styles/theme.css'),
+  join(resolve(import.meta.dirname, '../..'), 'src/shared/styles/theme.css'),
   'utf8',
 ).replace(/\/\*[\s\S]*?\*\//g, '');
 

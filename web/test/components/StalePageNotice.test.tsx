@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { STALE_PAGE_EVENT, writeFailure } from '../../src/api';
-import { StalePageNotice } from '../../src/components/notice/StalePageNotice';
-import { selectLocale } from '../../src/i18n';
+import { STALE_PAGE_EVENT, writeFailure } from '../../src/app/api';
+import { StalePageNotice } from '../../src/shared/ui/stale-page-notice/StalePageNotice';
+import { selectLocale } from '../../src/shared/i18n';
 
 beforeEach(() => selectLocale('en'));
 afterEach(() => vi.restoreAllMocks());

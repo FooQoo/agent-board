@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { AcceptanceView } from '../../src/components/acceptance/AcceptanceView';
-import { DetailPanel } from '../../src/components/DetailPanel';
-import { selectLocale } from '../../src/i18n';
+import { AcceptanceView } from '../../src/features/tasks/acceptance/AcceptanceView';
+import { DetailPanel } from '../../src/features/tasks/detail/DetailPanel';
+import { selectLocale } from '../../src/shared/i18n';
 import { PROJECT_A, makeTask } from '../fixtures';
 
 beforeEach(() => selectLocale('en'));

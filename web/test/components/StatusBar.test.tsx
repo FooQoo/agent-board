@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { StatusBar } from '../../src/components/StatusBar';
-import { i18n } from '../../src/i18n';
+import { StatusBar } from '../../src/shared/ui/status-bar/StatusBar';
+import { i18n } from '../../src/shared/i18n';
 
 const synced = new Date(2026, 9, 2, 10, 42);
 

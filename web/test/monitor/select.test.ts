@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PROJECT_A, PROJECT_B, makeTask } from '../fixtures';
-import { selectMonitorTasks } from '../../src/monitor/model/select';
-import type { MonitorTask } from '../../src/monitor/contracts';
+import { selectMonitorTasks } from '../../src/pages/monitor/model/select';
+import type { MonitorTask } from '../../src/pages/monitor/contracts';
 
 const item = (
   projectId: string,

@@ -1,8 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { AnswerFormState } from '../../src/lib/answer';
+import type { AnswerFormState } from '../../src/features/tasks/answer/model/answer';
 
-import { useMonitorInteractions } from '../../src/monitor/hooks/useMonitorInteractions';
+import { useMonitorInteractions } from '../../src/pages/monitor/hooks/useMonitorInteractions';
 import { PROJECT_A, makeTask } from '../fixtures';
 
 const item = (

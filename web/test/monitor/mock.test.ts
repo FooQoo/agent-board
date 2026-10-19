@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createMonitorFixtureProps } from '../../src/monitor/mock';
+import { createMonitorFixtureProps } from '../../src/pages/monitor/mock';
 
 describe('AC-1 monitor fixture', () => {
   beforeEach(() => window.history.replaceState(null, '', '/?fixture=ac1'));

@@ -26,12 +26,12 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 - `web/`はVite・TypeScript・Reactのアプリです。nuqsが選択対象のプロジェクトをURLで管理し（`useQueryState('project', parseAsString)`）、`useBoard`がプロジェクトごとの取得・購読・読み込みを担い、一つの`useReducer`が適用中のプロジェクト・切り替え待ち・タスクの選択・ダイアログを連動させます。部品内の入力は`useState`です。ほかの状態管理やフォームのライブラリは足しません。
 - 初回のプロジェクト選択はブラウザ履歴を置き換え、メニューからの選択は履歴に追加します。戻る・進むはnuqsのadapterに従います。History APIを直接使ったり、独自に`popstate`を処理したりはしません。
 - `pnpm --dir web build`は、`index.html`、入口のスクリプトとスタイルシート`assets/app-[hash].js`・`assets/app-[hash].css`、動的な分割チャンク`assets/chunk-[name]-[hash].js`としてのエディターとMermaid、独自のmanifestを持つ`access/`と`monitor/`の別ビルドを出力します。ボードのビルドは、チャンクごとのimport・`web/src/`のモジュール・パッケージを記した`chunk-graph.json`も書き出します。最後の手順で、すべてのスクリプトとスタイルシートの横に`.gz`を書き出します。
-- 最初のスクリプトには、最初の画面に必要なものだけを入れます。カード・エピック・一括アーカイブ・設定のダイアログ、詳細パネルのMarkdown表示、モニターの詳細ドロワーは`preloadable`（`web/src/lib/preloadable.ts`）で分割し、最初の画面を表示した直後に取得します。表示部品が届くまで、本文はプレーンテキストで表示します。エディターのアウトラインは表示側のMarkdownパーサーで`##`見出しを読むため、CodeMirrorはエディターを開いたときにだけ読み込まれます。
+- 最初のスクリプトには、最初の画面に必要なものだけを入れます。カード・エピック・一括アーカイブ・設定のダイアログ、詳細パネルのMarkdown表示、モニターの詳細ドロワーは`preloadable`（`web/src/shared/lib/lazy/preloadable.ts`）で分割し、最初の画面を表示した直後に取得します。表示部品が届くまで、本文はプレーンテキストで表示します。エディターのアウトラインは表示側のMarkdownパーサーで`##`見出しを読むため、CodeMirrorはエディターを開いたときにだけ読み込まれます。
 - `web/test/monitor/build-contract.test.ts`は、ページごとの初回読み込み（入口と、そこから静的にimportされるチャンク）に上限を設け、500 kBを超えるスクリプトは使うときだけ読み込むことを確かめます。Viteの`chunkSizeWarningLimit`は、使うときだけ読み込む大きなチャンク（MermaidのELKレイアウト、文法パーサー、リッチエディター）に合わせて1500 kBにしています。
 - Rustは二つのロゴ、HTMLのテンプレート、`.gz`ファイルを埋め込みます。`build.rs`はボードとモニターのスクリプトとスタイルシートを`OUT_DIR`の表にまとめ、両方にある同じファイルは一度だけ埋め込みます。配信するのは表にある名前だけです。各ページのHTMLとファイル名から、ページごとのビルドIDも作ります。ファイルや`.gz`がない場合、またはHTMLが表にないファイルを読み込む場合は、`Run "pnpm --dir web build" first.`でビルドを止めます。画面のビルドを`cargo build`の前に行うのはこのためです。`web/dist/`はコミットしません。
 - 各HTMLは`<meta name="agboard-build">`に自分のビルドIDを持ち、SSEの`ready`はサーバーの現在のビルドIDを伝えます。両者が違うとページを一度だけ再読み込みします。編集ダイアログ、送信前の回答、そのほかの操作が開いている間は、終わるまで待ちます（`useBuildReload`）。同じビルドのために一度再読み込みしたタブは、もう再読み込みしません。ビルドIDを持たないページ（Viteの開発サーバー）は再読み込みしません。
-- 表示用の純粋関数（日時、並び替え、件数）は`web/src/lib/`に置いてVitestで試験し、コンポーネントはTesting Libraryで試験します。
-- shadcnのRadix版部品（Dialog・Button・Badge・Input・Textarea・Label・RadioGroup・DropdownMenu）と、モニターの下から出るシート（Radix Dialogを使う`drawer.tsx`）は`web/src/components/ui/`に置き、`cn`は`web/src/lib/utils.ts`、別名は`@/* → ./src/*`です。Dialogのフォーカスはライブラリに任せ、保存中に閉じさせない・送信・入力の保持は機能側で扱います。UIのスタイルは`styles/ui.css`、テーマと製品のスタイルは`styles/theme.css`・`tokens.css`・`app.css`です。
+- 表示用の純粋関数（日時、並び替え、件数）は`web/src/features/*/model/`または`web/src/shared/lib/`に置いてVitestで試験し、コンポーネントはTesting Libraryで試験します。
+- shadcnのRadix版部品（Dialog・Button・Badge・Input・Textarea・Label・RadioGroup・DropdownMenu）と、モニターの下から出るシート（Radix Dialogを使う`drawer.tsx`）は`web/src/shared/ui/`に置き、`cn`は`web/src/shared/lib/classnames/utils.ts`、別名は`@/* → ./src/*`です。Dialogのフォーカスはライブラリに任せ、保存中に閉じさせない・送信・入力の保持は機能側で扱います。UIのスタイルは`shared/styles/ui.css`、テーマと製品のスタイルは`shared/styles/theme.css`・`tokens.css`・`app.css`です。
 - 外部のCDNやフォントは読み込みません。書体は`--font-sans`と`--font-mono`の指定だけです。
 - 本文の上限・書式の検証・下書きの規則・エラーは`domain`と`file_store`の一か所に置き、CLIとサーバーが共有します。
 
@@ -39,11 +39,26 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 
 **エディター。** `RichMarkdownEditor`（Milkdown Crepe）は`MarkdownEditor`と同じ契約を保ちます。`value`・`onChange`・`onCursorChange`・`disabled`と、`goTo`・`focus`・`insert`を持つrefです。遅延読み込みで、その間は`MarkdownView`を表示します。有効にするのはCodeMirror・ListItem・ImageBlock・Cursor・Placeholder・LinkTooltip・Toolbar・Tableだけで、Crepeのテーマは使いません。初期値はマウント時に一度だけ渡し、`onChange`は利用者の編集でだけ呼びます。編集していない文書は元の文字列のまま保存するので、変えていないMarkdownの書式は崩れません。アップロードは保留中の添付になり、`assets/<id>.<ext>`で参照します。Mermaidのプレビューと閲覧は`renderMermaid`を共有します。
 
-**テーマ。** `web/src/theme/index.ts`が、テーマの型・一覧・検証・DOMの属性・保存を受け持ちます。テーマはモード（lightかdark）と12色のアクセントの一つです。Reactの描画前に`data-mode`・`data-accent`・`dark`クラス・`color-scheme`を同期して適用し、`localStorage`の`agboard.theme`に保存します。テーマの変更はAPIにもタスクの履歴にも届きません。
+**テーマ。** `web/src/shared/theme/index.ts`が、テーマの型・一覧・検証・DOMの属性・保存を受け持ちます。テーマはモード（lightかdark）と12色のアクセントの一つです。Reactの描画前に`data-mode`・`data-accent`・`dark`クラス・`color-scheme`を同期して適用し、`localStorage`の`agboard.theme`に保存します。テーマの変更はAPIにもタスクの履歴にも届きません。
 
 エピック一覧は、ボードの応答の`epics`と`epicTaskCounts`を読みます。件数はサーバーが`epics`と同じスナップショットから集計するので、一覧が二つの読み込みを混ぜることはありません。モバイルモニターも同じ件数を応答に含みますが、エピック一覧の画面はありません。一覧はアーカイブと`ListPane`で外枠を共有し、読み込み中・読み込み失敗・再取得失敗・空の各状態はプロジェクトのresourceから決まります。再取得に失敗しても直前に読めた行を残します。
 
-タスク詳細（アーカイブ・モニターを含む）とエピック詳細は、`web/src/components/detail/DetailHeader.tsx`の`DetailHeader`を共有します。識別表示・操作ツールバー・閉じるボタンを共通の配置にし、閉じるボタンまでの間隔を揃えます。画面ごとの操作は呼び出し側が渡します。
+タスク詳細（アーカイブ・モニターを含む）とエピック詳細は、`web/src/features/tasks/detail/DetailHeader.tsx`の`DetailHeader`を共有します。識別表示・操作ツールバー・閉じるボタンを共通の配置にし、閉じるボタンまでの間隔を揃えます。画面ごとの操作は呼び出し側が渡します。
+
+### Webコードの置き場所
+
+`web/src/`は、上から順に次の4層です。
+
+| 層 | 置くもの |
+| --- | --- |
+| `app/` | 3つの入口（`entry/board.tsx`・`entry/monitor.tsx`・`access/entry.ts`）、ボードの`App`、プロジェクトのセッション、集約する`api.ts`、遅延ダイアログの接続、サンプルデータのモード。 |
+| `pages/` | 画面ごとのフォルダー: `board/`・`archive/`・`epics/`・`monitor/`。 |
+| `features/` | `tasks/`・`epics/`・`projects/`・`settings/`: 一つの主題の表示、フック、計算、リクエスト。 |
+| `shared/` | `ui/`の基盤部品と汎用の枠、`markdown/`、`rich-editor/`、`api/`（HTTPの共通処理とサーバーのやり取りの型）、`lib/`、`styles/`、`theme/`、`i18n/`。 |
+
+ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`RequestDialog`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。モニターの`useBuildReload`も、入口から同じように渡します。
+
+`pnpm --dir web check`は、Biomeの後に`web/scripts/check-boundaries.mjs`を実行します。静的import、`import type`、再エクスポート、`import()`をたどり、規則に反するimport、解決できないimport、循環importがあると失敗します。許可リストで黙らせず、共通部分を下の層へ移すか、ページで組み合わせてください。機能全体を一つのファイルから再エクスポートしないでください。エディターやMarkdown表示のような重いモジュールが最初のスクリプトに入ってしまいます。遅延importは実装ファイルを指します。
 
 ## 画面での失敗時の振る舞い
 

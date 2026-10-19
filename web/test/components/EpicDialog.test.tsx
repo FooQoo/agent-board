@@ -1,14 +1,18 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { renderProgressTask } from '../support/composition';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WriteError } from '../../src/api';
-import { EpicDialog, type EpicApi } from '../../src/components/editor/EpicDialog';
-import { selectLocale } from '../../src/i18n';
-import type { Task, Epic } from '../../src/types';
+import { WriteError } from '../../src/app/api';
+import { EpicDialog, type EpicApi } from '../../src/features/epics/editor/EpicDialog';
+import { selectLocale } from '../../src/shared/i18n';
+import type { Task, Epic } from '../../src/shared/api/contracts';
 import { makeTask } from '../fixtures';
 
-vi.mock('../../src/components/editor/RichMarkdownEditor', () => import('../editor/fakeRichEditor'));
+vi.mock(
+  '../../src/shared/rich-editor/RichMarkdownEditor',
+  () => import('../editor/fakeRichEditor'),
+);
 
 const PLAN = '## Goal\n\nShare the plan.\n\n## Steps\n\nDo it.';
 const IMAGE = 'c'.repeat(32);
@@ -95,6 +99,7 @@ async function openEpic(
             epic={options.epic ?? EPIC}
             tasks={options.board ?? tasks()}
             api={api}
+            renderTask={renderProgressTask}
             onOpenTask={options.onOpenTask ?? vi.fn()}
             onClose={() => {
               setOpen(false);

@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BoardMessage } from '../../src/components/BoardMessage';
-import { HistoryTimeline } from '../../src/components/HistoryTimeline';
-import { Lane } from '../../src/components/Lane';
-import { LaneHeader } from '../../src/components/LaneHeader';
-import { StatusLabel } from '../../src/components/StatusLabel';
-import { i18n } from '../../src/i18n';
-import type { HistoryEvent } from '../../src/types';
+import { BoardMessage } from '../../src/pages/board/ui/BoardMessage';
+import { HistoryTimeline } from '../../src/features/tasks/history/HistoryTimeline';
+import { Lane } from '../../src/pages/board/ui/Lane';
+import { LaneHeader } from '../../src/pages/board/ui/LaneHeader';
+import { StatusLabel } from '../../src/features/tasks/status/StatusLabel';
+import { i18n } from '../../src/shared/i18n';
+import type { HistoryEvent } from '../../src/shared/api/contracts';
 
 afterEach(async () => {
   await i18n.changeLanguage('en');

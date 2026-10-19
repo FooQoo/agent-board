@@ -8,7 +8,7 @@ import {
   readLocale,
   selectLocale,
   type LocaleStorageProvider,
-} from '../../src/i18n';
+} from '../../src/shared/i18n';
 
 function memoryStorage(value: string | null) {
   return {

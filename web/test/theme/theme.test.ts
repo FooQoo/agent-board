@@ -9,7 +9,7 @@ import {
   THEME_STORAGE_KEY,
   type Theme,
   type ThemeStorage,
-} from '../../src/theme';
+} from '../../src/shared/theme';
 
 function memoryStorage(initial?: string): ThemeStorage & { value: string | null } {
   const store = { value: initial ?? null };
