@@ -30,6 +30,8 @@ export interface DetailPanelProps {
   initialConfirm?: boolean;
   /** Mock mode only: show the delete failure message immediately. */
   initialDeleteFailed?: boolean;
+  /** Resolves owned attachments for the body and the attachment list. */
+  attachmentUrl?: (id: string) => string;
   /** Archive view changes the destructive action to permanent deletion. */
   archived?: boolean;
   /** The board's format defects. The ones of this card's files are shown above its body. */
@@ -54,6 +56,7 @@ export function DetailPanel({
   onRemove,
   initialConfirm,
   initialDeleteFailed,
+  attachmentUrl,
   archived = false,
   onRestore,
   operationSaving = false,
@@ -96,6 +99,7 @@ export function DetailPanel({
       epics={epics}
       epicsFailed={epicsFailed}
       onRetryEpics={onRetryEpics}
+      attachmentUrl={attachmentUrl}
     />
   );
 }
@@ -120,6 +124,7 @@ function DetailBody({
   onRemove,
   initialConfirm,
   initialDeleteFailed,
+  attachmentUrl,
   archived,
   onRestore,
   operationSaving,
@@ -244,6 +249,7 @@ function DetailBody({
         )
       }
       problems={problems}
+      attachmentUrl={attachmentUrl}
     >
       {task.isDraft && !archived && (
         <DraftBanner

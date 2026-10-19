@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "owner": "U11",
+  "file": "features/tasks/detail/DetailPanel.tsx",
+  "exports": [
+    {
+      "name": "DetailPanel",
+      "stories": [
+        { "id": "task-detail-detailpanel--no-card", "states": ["no card"], "interaction": false },
+        {
+          "id": "task-detail-detailpanel--card",
+          "states": [
+            "card",
+            "chapters",
+            "table",
+            "mermaid drawn",
+            "attachment missing",
+            "evidence"
+          ],
+          "interaction": false
+        },
+        {
+          "id": "task-detail-detailpanel--attachment-available",
+          "states": ["owned attachment", "Markdown image loaded", "attachment list image loaded"],
+          "interaction": false
+        },
+        {
+          "id": "task-detail-detailpanel--card-phone",
+          "states": ["card", "phone 390px"],
+          "interaction": false
+        },
+        { "id": "task-detail-detailpanel--draft", "states": ["draft"], "interaction": false },
+        {
+          "id": "task-detail-detailpanel--archived-restore-failed",
+          "states": ["archived", "restore failed"],
+          "interaction": false
+        },
+        {
+          "id": "task-detail-detailpanel--problems",
+          "states": ["own problems", "other card hidden"],
+          "interaction": false
+        },
+        {
+          "id": "task-detail-detailpanel--unreadable",
+          "states": ["unreadable", "reason listed"],
+          "interaction": false
+        },
+        {
+          "id": "task-detail-detailpanel--tab-history",
+          "states": ["history tab"],
+          "interaction": true
+        },
+        {
+          "id": "task-detail-detailpanel--tab-conditions",
+          "states": ["conditions tab", "three of five"],
+          "interaction": true
+        },
+        {
+          "id": "task-detail-detailpanel--tab-epic-ready",
+          "states": ["epic tab", "epic shown"],
+          "interaction": true
+        },
+        {
+          "id": "task-detail-detailpanel--tab-epic-loading",
+          "states": ["epic tab", "loading"],
+          "interaction": true
+        },
+        {
+          "id": "task-detail-detailpanel--tab-epic-failed",
+          "states": ["epic tab", "failed", "retry"],
+          "interaction": true
+        },
+        {
+          "id": "task-detail-detailpanel--tab-epic-none",
+          "states": ["epic tab", "no epic"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}
