@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "features/tasks/request/RequestDialog.tsx",
+      "exports": [
+        {
+          "name": "RequestDialog",
+          "stories": [
+            {
+              "id": "task-dialogs-requestdialog--empty",
+              "states": ["empty request", "disabled submit"],
+              "interaction": false
+            },
+            {
+              "id": "task-dialogs-requestdialog--request-submit",
+              "states": ["input", "submit"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-requestdialog--manual-route-after-discard",
+              "states": ["dirty input", "unsaved confirmation", "manual route"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-requestdialog--epic-fetch-failure",
+              "states": ["epic fetch error"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

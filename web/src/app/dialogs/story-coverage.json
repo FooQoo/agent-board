@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "app/dialogs/ActionDialog.tsx",
+      "exports": [
+        {
+          "name": "ActionDialog",
+          "stories": [
+            {
+              "id": "task-dialogs-actiondialog--create",
+              "states": ["create action opens real CreateDialog"],
+              "interaction": false
+            },
+            {
+              "id": "task-dialogs-actiondialog--request",
+              "states": ["request action opens real RequestDialog"],
+              "interaction": false
+            },
+            {
+              "id": "task-dialogs-actiondialog--move",
+              "states": ["move action opens real MoveDialog"],
+              "interaction": false
+            },
+            {
+              "id": "task-dialogs-actiondialog--edit",
+              "states": ["edit action opens real EditDialog"],
+              "interaction": false
+            },
+            {
+              "id": "task-dialogs-actiondialog--epic",
+              "states": ["epic action opens real EpicDialog"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

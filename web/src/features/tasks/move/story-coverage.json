@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "features/tasks/move/MoveDialog.tsx",
+      "exports": [
+        {
+          "name": "MoveDialog",
+          "stories": [
+            {
+              "id": "task-dialogs-movedialog--empty-reason-uses-default",
+              "states": ["optional reason", "default reason"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-movedialog--optional-reason",
+              "states": ["custom reason"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

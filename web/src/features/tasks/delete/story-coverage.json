@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "features/tasks/delete/DeleteButton.tsx",
+      "exports": [
+        {
+          "name": "DeleteButton",
+          "stories": [
+            {
+              "id": "task-dialogs-deletebutton--delete",
+              "states": ["delete action", "accessible label"],
+              "interaction": false
+            },
+            {
+              "id": "task-dialogs-deletebutton--archive-with-label",
+              "states": ["archive action", "visible label"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/delete/DeleteConfirm.tsx",
+      "exports": [
+        {
+          "name": "DeleteConfirm",
+          "stories": [
+            {
+              "id": "task-dialogs-deleteconfirm--confirm-delete",
+              "states": ["delete confirmation", "success"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-deleteconfirm--failed-retry",
+              "states": ["failed confirmation", "retry"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-deleteconfirm--archive",
+              "states": ["archive confirmation"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

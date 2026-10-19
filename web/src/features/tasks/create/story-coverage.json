@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "features/tasks/create/CreateDialog.tsx",
+      "exports": [
+        {
+          "name": "CreateDialog",
+          "stories": [
+            {
+              "id": "task-dialogs-createdialog--empty",
+              "states": ["empty", "validation disabled"],
+              "interaction": false
+            },
+            {
+              "id": "task-dialogs-createdialog--validation-and-submit",
+              "states": ["valid input", "submit", "close after success"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-createdialog--save-failure-retry",
+              "states": ["failed save", "input retained", "retry"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { RadioGroup } from '@/shared/ui/radio-group';
 import '../../../shared/styles/modal.css';
-import { selectLocale, type Locale } from '../../../shared/i18n';
+import { selectLocale, type Locale, type LocaleStorageProvider } from '../../../shared/i18n';
 import {
   ACCENTS,
   MODES,
@@ -13,6 +13,7 @@ import {
   type Accent,
   type Mode,
   type Theme,
+  type ThemeStorageProvider,
 } from '../../../shared/theme';
 
 /**
@@ -98,14 +99,20 @@ export function SettingsDialog({
   open,
   onOpenChange,
   restoreFocusRef,
+  localeStorageProvider,
+  themeStorageProvider,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Where the focus goes when the dialog closes (the settings button). */
   restoreFocusRef?: { current: HTMLElement | null };
+  /** Optional persistence boundary for isolated stories and deterministic tests. */
+  localeStorageProvider?: LocaleStorageProvider;
+  themeStorageProvider?: ThemeStorageProvider;
 }) {
   const { t, i18n } = useTranslation();
   const [theme, setTheme] = useState<Theme>(currentTheme);
+  const [saveError, setSaveError] = useState(false);
   const openerRef = useRef<Element | null>(null);
   const languageId = useId();
   const themeId = useId();
@@ -123,8 +130,15 @@ export function SettingsDialog({
   const chooseTheme = (value: string) => {
     const [mode, accent] = value.split('-');
     if (!isMode(mode) || !isAccent(accent)) return;
-    selectTheme({ mode, accent });
-    setTheme({ mode, accent });
+    const nextTheme = { mode, accent };
+    const result = selectTheme(nextTheme, themeStorageProvider);
+    setTheme(nextTheme);
+    setSaveError(!result.persisted);
+  };
+
+  const chooseLocale = (value: string) => {
+    const result = selectLocale(value === 'ja' ? 'ja' : 'en', localeStorageProvider);
+    setSaveError(!result.persisted);
   };
 
   return (
@@ -167,7 +181,7 @@ export function SettingsDialog({
             data-language-group=""
             aria-labelledby={languageId}
             value={locale}
-            onValueChange={(value) => selectLocale(value === 'ja' ? 'ja' : 'en')}
+            onValueChange={chooseLocale}
           >
             {LOCALES.map((value) => (
               <RadioGroupPrimitive.Item
@@ -228,6 +242,11 @@ export function SettingsDialog({
           </RadioGroup>
         </section>
 
+        {saveError && (
+          <p className="modal__error" role="alert">
+            {t('dialog.saveFailed')}
+          </p>
+        )}
         <p className="settings__note">{t('settings.note')}</p>
       </DialogContent>
     </Dialog>

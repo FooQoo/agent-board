@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "features/tasks/archive/BulkArchiveDialog.tsx",
+      "exports": [
+        {
+          "name": "BulkArchiveDialog",
+          "stories": [
+            {
+              "id": "task-dialogs-bulkarchivedialog--two-targets",
+              "states": ["multiple targets", "confirm"],
+              "interaction": true
+            },
+            {
+              "id": "task-dialogs-bulkarchivedialog--long-scrollable-list",
+              "states": ["long target list", "scroll region"],
+              "interaction": false
+            },
+            {
+              "id": "task-dialogs-bulkarchivedialog--retry-after-conflict",
+              "states": ["conflict", "retry"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

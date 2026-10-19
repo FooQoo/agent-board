@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "features/settings/ui/SettingsDialog.tsx",
+      "exports": [
+        {
+          "name": "SettingsDialog",
+          "stories": [
+            {
+              "id": "settings-settingsdialog--language-and-themes",
+              "states": [
+                "English/Japanese",
+                "24 theme choices",
+                "keyboard selection",
+                "memory storage",
+                "light/dark accent swatches"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "settings-settingsdialog--storage-failure",
+              "states": ["storage failure", "visible alert"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
