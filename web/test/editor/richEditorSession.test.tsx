@@ -25,25 +25,38 @@ afterEach(() => {
 });
 
 const prose = () => document.querySelector<HTMLElement>('.ProseMirror');
+const isReady = () => prose()?.getAttribute('aria-label') === 'Description';
 
 describe('the editor session', () => {
   it('applies a command given before the editor is ready, once it is', async () => {
     const onChange = vi.fn();
-    let seen: RichMarkdownEditorHandle | null = null;
+    const given: { handle: RichMarkdownEditorHandle | null; ready: boolean | null } = {
+      handle: null,
+      ready: null,
+    };
     render(
       <RichMarkdownEditor
         value={TEXT}
         onChange={onChange}
         aria-label="Description"
         ref={(handle) => {
-          if (handle !== null && seen === null) {
-            seen = handle;
+          if (handle !== null && given.handle === null) {
+            given.handle = handle;
+            // The editor labels its document only once it is ready.
+            given.ready = isReady();
             handle.insert('Early ');
           }
         }}
       />,
     );
-    await waitFor(() => expect(onChange).toHaveBeenCalled(), { timeout: 5000 });
+    // The handle exists as soon as the editor code has loaded, which is before the editor is ready.
+    await waitFor(() => expect(given.handle).not.toBeNull(), { timeout: 15000 });
+    expect(given.ready).toBe(false);
+    // Readiness is the signal; loading the editor code is slow on a cold start and is not what is tested.
+    await waitFor(() => expect(isReady()).toBe(true), { timeout: 15000 });
+    // The deferred command ran in the same step that made the editor ready, so the text has it now.
+    expect(given.handle?.markdown()).toContain('Early');
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
     expect(onChange.mock.calls.at(-1)?.[0]).toContain('Early');
   });
 

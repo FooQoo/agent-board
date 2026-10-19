@@ -146,13 +146,20 @@ export const Outline: Story = {
   },
 };
 
+/** The heading action puts the cursor in Section 2 and reports the offset of that heading's `##`. */
 export const LongDocument: Story = {
   args: { initial: LONG },
   play: async ({ canvasElement }) => {
     await readyEditor(canvasElement);
     await waitFor(() => expect(canvasElement.querySelectorAll('h2')).toHaveLength(12));
     await userEvent.click(within(canvasElement).getByText('Go to second heading'));
-    await waitFor(() => expect(output(canvasElement, 'cursor')).toHaveTextContent(/^\d+$/));
+    await waitFor(() =>
+      expect(output(canvasElement, 'cursor')).toHaveTextContent(
+        String(LONG.indexOf('## Section 2')),
+      ),
+    );
+    const selected = window.getSelection()?.anchorNode?.parentElement?.closest('h2');
+    await expect(selected?.textContent).toBe('Section 2');
   },
 };
 
@@ -218,6 +225,7 @@ export const Images: Story = {
   },
 };
 
+/** Known languages are highlighted; an unknown one keeps its name and its text, without colors. */
 export const CodeLanguages: Story = {
   args: { initial: CODE },
   play: async ({ canvasElement }) => {
@@ -227,11 +235,23 @@ export const CodeLanguages: Story = {
     );
     await waitFor(() => expect(canvasElement.querySelectorAll('.cm-editor')).toHaveLength(3));
     const blocks = canvasElement.querySelectorAll<HTMLElement>('.milkdown-code-block');
-    await userEvent.click(blocks[0] as HTMLElement);
-    await expect(blocks[0]?.getAttribute('data-active')).toBe('true');
-    await userEvent.click(blocks[1] as HTMLElement);
-    await expect(blocks[0]?.getAttribute('data-active')).toBeNull();
+    const [ts, python, unknown] = [blocks[0], blocks[1], blocks[2]] as HTMLElement[];
+    await waitFor(() => expect(ts?.querySelectorAll('.cm-line span').length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(python?.querySelectorAll('.cm-line span').length).toBeGreaterThan(0),
+    );
+    await expect(unknown?.textContent).toContain('unknownlang');
+    await expect(unknown?.querySelector('.cm-line')?.textContent).toBe('plain words');
+    await expect(unknown?.querySelectorAll('.cm-line span')).toHaveLength(0);
+    await userEvent.click(ts as HTMLElement);
+    await expect(ts?.getAttribute('data-active')).toBe('true');
+    await userEvent.click(python as HTMLElement);
+    await expect(ts?.getAttribute('data-active')).toBeNull();
     await expect(output(canvasElement, 'changes')).toHaveTextContent('0');
+    await userEvent.click(within(canvasElement).getByText('Read text'));
+    await expect(output(canvasElement, 'read').textContent).toContain(
+      '```unknownlang\nplain words',
+    );
   },
 };
 
@@ -245,22 +265,46 @@ export const Diagram: Story = {
   },
 };
 
-/** A wrong diagram shows one line of the error, in the page language, and its text is kept. */
+const invalidDiagramAlert = async (canvasElement: HTMLElement) => {
+  const alert = await waitFor(
+    () => {
+      const found = canvasElement.querySelector('.rich-mermaid--error');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    },
+    { timeout: 15000 },
+  );
+  await expect(alert.getAttribute('role')).toBe('alert');
+  await expect(alert).toBeVisible();
+  return alert;
+};
+
+const DIAGRAM_ERROR = {
+  en: 'The diagram cannot be drawn: Parse error on line 2:',
+  ja: '図を描けません: Parse error on line 2:',
+} as const;
+
+/** A wrong diagram shows one line of the error in the page language, and its text is kept. */
 export const DiagramInvalid: Story = {
   args: { initial: BROKEN_DIAGRAM },
-  play: async ({ canvasElement }) => {
+  globals: { locale: 'en' },
+  play: async ({ canvasElement, globals }) => {
     await readyEditor(canvasElement);
-    const alert = await waitFor(
-      () => {
-        const found = canvasElement.querySelector('.rich-mermaid--error');
-        expect(found).not.toBeNull();
-        return found as HTMLElement;
-      },
-      { timeout: 15000 },
-    );
-    await expect(alert.getAttribute('role')).toBe('alert');
+    const alert = await invalidDiagramAlert(canvasElement);
+    await expect(alert).toHaveTextContent(DIAGRAM_ERROR[globals.locale as 'en' | 'ja']);
     await userEvent.click(within(canvasElement).getByText('Read text'));
     await expect(output(canvasElement, 'read').textContent).toBe(BROKEN_DIAGRAM);
+  },
+};
+
+/** The same error in Japanese: the sentence comes from the page language, not from the editor. */
+export const DiagramInvalidJapanese: Story = {
+  args: { initial: BROKEN_DIAGRAM },
+  globals: { locale: 'ja' },
+  play: async ({ canvasElement, globals }) => {
+    await readyEditor(canvasElement);
+    const alert = await invalidDiagramAlert(canvasElement);
+    await expect(alert).toHaveTextContent(DIAGRAM_ERROR[globals.locale as 'en' | 'ja']);
   },
 };
 

@@ -18,7 +18,7 @@
         },
         {
           "id": "editor-richmarkdowneditor--long-document",
-          "states": ["long text", "go to heading", "cursor report"],
+          "states": ["long text", "go to second heading", "cursor offset of Section 2"],
           "interaction": true
         },
         {
@@ -43,7 +43,12 @@
         },
         {
           "id": "editor-richmarkdowneditor--code-languages",
-          "states": ["code languages", "unknown language", "header active"],
+          "states": [
+            "known languages highlighted",
+            "unknown language fallback",
+            "header active",
+            "source kept"
+          ],
           "interaction": true
         },
         {
@@ -53,8 +58,13 @@
         },
         {
           "id": "editor-richmarkdowneditor--diagram-invalid",
-          "states": ["mermaid invalid", "error line", "source kept"],
+          "states": ["mermaid invalid", "localized error text (en)", "source kept"],
           "interaction": true
+        },
+        {
+          "id": "editor-richmarkdowneditor--diagram-invalid-japanese",
+          "states": ["mermaid invalid", "localized error text (ja)"],
+          "interaction": false
         },
         {
           "id": "editor-richmarkdowneditor--diagram-theme-change",
