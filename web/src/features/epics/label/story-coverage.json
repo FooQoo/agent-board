@@ -10,7 +10,14 @@
           "stories": [
             {
               "id": "epic-label-epicbadge--default",
-              "states": ["enabled", "icon", "tooltip", "epic background color", "contrast text color", "non-interactive"],
+              "states": [
+                "enabled",
+                "icon",
+                "tooltip",
+                "epic background color",
+                "contrast text color",
+                "non-interactive"
+              ],
               "interaction": false
             },
             {
