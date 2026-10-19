@@ -1,24 +1,29 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { DialogFrame } from './DialogFrame';
+import { DialogFrame, type DialogFrameProps } from './DialogFrame';
+
+type DialogFrameStoryProps = Omit<DialogFrameProps, 'children'>;
+
+function DialogFrameStory(args: DialogFrameStoryProps) {
+  return (
+    <DialogFrame {...args}>
+      <input aria-label="Task title" defaultValue="A task" />
+    </DialogFrame>
+  );
+}
 
 const meta = {
   title: 'Shared/DialogFrame',
-  component: DialogFrame,
+  component: DialogFrameStory,
   parameters: { layout: 'fullscreen' },
   args: {
     title: 'Create task',
     submitLabel: 'Save',
     onClose: fn(),
-    validate: fn(() => null),
+    validate: fn<() => string | null>(() => null),
     save: fn(async () => {}),
   },
-  render: (args) => (
-    <DialogFrame {...args}>
-      <input aria-label="Task title" defaultValue="A task" />
-    </DialogFrame>
-  ),
-} satisfies Meta<typeof DialogFrame>;
+} satisfies Meta<typeof DialogFrameStory>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
