@@ -1,37 +1,89 @@
 {
   "schemaVersion": 1,
-  "owner": "U11",
-  "file": "features/tasks/acceptance/AcceptanceProgress.tsx",
-  "exports": [
+  "files": [
     {
-      "name": "AcceptanceProgress",
-      "stories": [
+      "owner": "U11",
+      "file": "features/tasks/acceptance/AcceptanceProgress.tsx",
+      "exports": [
         {
-          "id": "task-acceptance-acceptanceprogress--no-conditions",
-          "states": ["no conditions"],
-          "interaction": false
-        },
+          "name": "AcceptanceProgress",
+          "stories": [
+            {
+              "id": "task-acceptance-acceptanceprogress--no-conditions",
+              "states": [
+                "no conditions"
+              ],
+              "interaction": false
+            },
+            {
+              "id": "task-acceptance-acceptanceprogress--partial",
+              "states": [
+                "partial"
+              ],
+              "interaction": false
+            },
+            {
+              "id": "task-acceptance-acceptanceprogress--three-of-five",
+              "states": [
+                "three of five"
+              ],
+              "interaction": false
+            },
+            {
+              "id": "task-acceptance-acceptanceprogress--complete",
+              "states": [
+                "complete"
+              ],
+              "interaction": false
+            },
+            {
+              "id": "task-acceptance-acceptanceprogress--unreadable",
+              "states": [
+                "unreadable"
+              ],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "owner": "U13",
+      "file": "features/tasks/acceptance/AcceptanceEditor.tsx",
+      "exports": [
         {
-          "id": "task-acceptance-acceptanceprogress--partial",
-          "states": ["partial"],
-          "interaction": false
-        },
-        {
-          "id": "task-acceptance-acceptanceprogress--three-of-five",
-          "states": ["three of five"],
-          "interaction": false
-        },
-        {
-          "id": "task-acceptance-acceptanceprogress--complete",
-          "states": ["complete"],
-          "interaction": false
-        },
-        {
-          "id": "task-acceptance-acceptanceprogress--unreadable",
-          "states": ["unreadable"],
-          "interaction": false
+          "name": "AcceptanceEditor",
+          "stories": [
+            {
+              "id": "task-acceptance-acceptanceeditor--edit-conditions",
+              "states": [
+                "text edit",
+                "done toggle",
+                "add with focus",
+                "remove"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-acceptance-acceptanceeditor--invalid-condition",
+              "states": [
+                "empty condition",
+                "validation"
+              ],
+              "interaction": false
+            },
+            {
+              "id": "task-acceptance-acceptanceeditor--saving-disabled",
+              "states": [
+                "saving",
+                "inputs disabled"
+              ],
+              "interaction": false
+            }
+          ]
         }
       ]
     }
-  ]
+  ],
+  "owner": "U13"
 }

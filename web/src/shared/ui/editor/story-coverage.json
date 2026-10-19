@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "owner": "U13",
+  "files": [
+    {
+      "file": "shared/ui/editor/EditorBody.tsx",
+      "exports": [
+        {
+          "name": "EditorBody",
+          "stories": [
+            { "id": "editor-editorbody--shared-edit-surface", "states": ["shared editor shell", "title input", "real markdown editor", "acceptance conditions"], "interaction": true }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/ui/editor/EditorShell.tsx",
+      "exports": [
+        {
+          "name": "EditorShell",
+          "stories": [
+            { "id": "editor-editorbody--shared-edit-surface", "states": ["dialog shell", "header", "footer"], "interaction": true },
+            { "id": "editor-editorbody--saving-error-and-retry", "states": ["save error", "retry action"], "interaction": true }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/ui/editor/AttachmentPanel.tsx",
+      "exports": [
+        {
+          "name": "AttachmentPanel",
+          "stories": [
+            { "id": "editor-attachmentpanel--stored-attachment", "states": ["stored attachment", "remove action"], "interaction": true },
+            { "id": "editor-attachmentpanel--refused-image", "states": ["unsupported image notice"], "interaction": false },
+            { "id": "editor-attachmentpanel--saving-disabled", "states": ["saving", "add disabled"], "interaction": false }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/ui/editor/CollapsibleSection.tsx",
+      "exports": [
+        {
+          "name": "CollapsibleSection",
+          "stories": [
+            { "id": "editor-collapsiblesection--fold-and-keep-content", "states": ["open", "folded", "content retained"], "interaction": true }
+          ]
+        }
+      ]
+    }
+  ]
+}
