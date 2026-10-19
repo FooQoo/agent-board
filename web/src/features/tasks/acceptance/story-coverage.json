@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "owner": "U11",
+  "file": "features/tasks/acceptance/AcceptanceProgress.tsx",
+  "exports": [
+    {
+      "name": "AcceptanceProgress",
+      "stories": [
+        {
+          "id": "task-acceptance-acceptanceprogress--no-conditions",
+          "states": ["no conditions"],
+          "interaction": false
+        },
+        {
+          "id": "task-acceptance-acceptanceprogress--partial",
+          "states": ["partial"],
+          "interaction": false
+        },
+        {
+          "id": "task-acceptance-acceptanceprogress--three-of-five",
+          "states": ["three of five"],
+          "interaction": false
+        },
+        {
+          "id": "task-acceptance-acceptanceprogress--complete",
+          "states": ["complete"],
+          "interaction": false
+        },
+        {
+          "id": "task-acceptance-acceptanceprogress--unreadable",
+          "states": ["unreadable"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

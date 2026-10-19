@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "features/tasks/status/StatusLabel.tsx",
+  "exports": [
+    {
+      "name": "StatusLabel",
+      "stories": [
+        {
+          "id": "task-status-statuslabel--card-todo",
+          "states": ["card todo"],
+          "interaction": false
+        },
+        {
+          "id": "task-status-statuslabel--card-doing",
+          "states": ["card doing"],
+          "interaction": false
+        },
+        {
+          "id": "task-status-statuslabel--card-done",
+          "states": ["card done"],
+          "interaction": false
+        },
+        {
+          "id": "task-status-statuslabel--agent-idle",
+          "states": ["agent idle"],
+          "interaction": false
+        },
+        {
+          "id": "task-status-statuslabel--agent-running",
+          "states": ["agent running"],
+          "interaction": false
+        },
+        {
+          "id": "task-status-statuslabel--agent-pending",
+          "states": ["agent pending"],
+          "interaction": false
+        },
+        {
+          "id": "task-status-statuslabel--monitor-running",
+          "states": ["monitor wording"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

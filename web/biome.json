@@ -49,7 +49,14 @@
   },
   "overrides": [
     {
-      "includes": ["src/**/*.ts", "src/**/*.tsx"],
+      "includes": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "!**/*.stories.ts",
+        "!**/*.stories.tsx",
+        "!**/*.test.ts",
+        "!**/*.test.tsx"
+      ],
       "linter": {
         "rules": {
           "style": {

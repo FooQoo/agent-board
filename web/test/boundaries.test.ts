@@ -87,7 +87,7 @@ describe('import scan', () => {
 
 describe('web/src', () => {
   it('has no layer violation and no import cycle', () => {
-    expect(analyze(sourcesOf('src'))).toEqual([]);
+    expect(analyze(sourcesOf('src', sourcesOf('.storybook')))).toEqual([]);
   });
 
   it('keeps none of the old folders', () => {
