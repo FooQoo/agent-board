@@ -5,9 +5,10 @@ import type { AppControllerModel } from './contracts';
 import { AppDialogs } from './AppDialogs';
 
 const project = makeProject();
-const task = makeTask({ id: 31, title: 'Prepare the release' });
+const taskTitle = 'Prepare the release';
+const task = makeTask({ id: 31, title: taskTitle });
 const meta = {
-  title: 'App/AppDialogs',
+  title: 'App/App Dialogs',
   component: AppDialogs,
   parameters: { layout: 'fullscreen' },
   args: {
@@ -36,7 +37,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Create: Story = {
-  play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('dialog')).toBeInTheDocument();
+  play: async () => {
+    await expect(within(document.body).findByRole('dialog')).resolves.toBeInTheDocument();
   },
 };

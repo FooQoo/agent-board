@@ -6,7 +6,8 @@ import type { AppControllerModel } from './contracts';
 import { BoardWorkspace } from './BoardWorkspace';
 
 const project = makeProject();
-const task = makeTask({ id: 21, title: 'Prepare the release', taskStatus: 'doing' });
+const taskTitle = 'Prepare the release';
+const task = makeTask({ id: 21, title: taskTitle, taskStatus: 'doing' });
 const epic = makeEpic({ id: 'release', name: 'Release' });
 const boardData = {
   tasks: [task],
@@ -95,7 +96,7 @@ function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppContro
 }
 
 const meta = {
-  title: 'App/BoardWorkspace',
+  title: 'App/Board Workspace',
   component: BoardWorkspace,
   parameters: { layout: 'fullscreen' },
   args: { model: makeModel(), actions: {} as never },
@@ -105,7 +106,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Board: Story = {
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText('Prepare the release')).toBeInTheDocument();
+    await expect(within(canvasElement).getAllByText('Prepare the release').length).toBeGreaterThan(
+      0,
+    );
   },
 };
 export const Archive: Story = { args: { model: makeModel('archive') } };

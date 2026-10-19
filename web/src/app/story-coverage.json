@@ -7,6 +7,7 @@
       "exports": [
         {
           "name": "App",
+          "stories": [],
           "exclusion": "App is a URL/session integration wrapper verified by App tests and product E2E."
         }
       ]
