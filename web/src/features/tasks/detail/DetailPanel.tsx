@@ -215,7 +215,7 @@ function DetailBody({
           </div>
         ) : (
           <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
-            {tab === 'description' && task.isDraft && (
+            {task.isDraft && (
               <button
                 type="button"
                 className="detail__tool"

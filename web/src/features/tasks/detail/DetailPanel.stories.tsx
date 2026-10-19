@@ -129,9 +129,16 @@ export const CardPhone: Story = {
 
 /** A draft: the banner says agents cannot work on it until it is finalized. */
 export const Draft: Story = {
-  args: { task: sampleCard({ id: 8, isDraft: true }) },
-  play: async ({ canvasElement }) => {
+  args: { task: sampleCard({ id: 8, isDraft: true }), onEdit: fn() },
+  play: async ({ canvasElement, args }) => {
+    const view = within(canvasElement);
     expect(canvasElement.querySelector('.detail__draft')).not.toBeNull();
+
+    for (const tab of [/^Description/, /^Conditions/, /^History/, /^Epic/]) {
+      await userEvent.click(view.getByRole('tab', { name: tab }));
+      await userEvent.click(view.getByRole('button', { name: 'Edit task' }));
+      expect(args.onEdit).toHaveBeenLastCalledWith(args.task);
+    }
   },
 };
 

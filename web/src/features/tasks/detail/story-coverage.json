@@ -41,8 +41,8 @@
             },
             {
               "id": "task-detail-detailpanel--draft",
-              "states": ["draft"],
-              "interaction": false
+              "states": ["draft", "edit action on all four tabs"],
+              "interaction": true
             },
             {
               "id": "task-detail-detailpanel--archived-restore-failed",
