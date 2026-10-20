@@ -20,4 +20,4 @@
 
 ## Decisions
 
-(Decisions that changed this plan, with the date and the task where each was made.)
+(Decisions that changed this epic, with the date and the task where each was made.)

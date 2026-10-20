@@ -71,9 +71,21 @@ For longer Markdown, use a file rather than a command-line string:
 agboard --project "My project" edit 1 --desc-file task.md
 ```
 
-Descriptions and epic plans allow up to 50,000 characters, and the file must follow the [Markdown file format](./file-format). Use `--desc -` to read a description from standard input.
+Descriptions and epic details (`EPIC.md`) allow up to 50,000 characters, and the file must follow the [Markdown file format](./file-format). Use `--desc -` to read a description from standard input.
 
 `edit --desc-file` replaces the body and acceptance conditions and keeps the latest history from `TASK.md`; history in the input file is ignored. Moves, state changes, and other operations from the CLI or the UI append history to `TASK.md`, and `show`, `snapshot`, and the browser read that same history.
+
+## Edit epic details
+
+An epic's details are the whole `EPIC.md` text, frontmatter included. Pass the text directly, or read it from a file or standard input:
+
+```sh
+agboard --project "My project" epic edit LAUNCH --document-file epic.md
+agboard --project "My project" epic edit LAUNCH --document -
+agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
+```
+
+`--document` and `--document-file` cannot be given together, and each accepts up to 50,000 characters. The earlier `--plan` and `--plan-file` options were removed; see [Data and backups](../operations/data) for the new names.
 
 ## Filter and list
 
@@ -109,7 +121,7 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 On success, task mode prints one JSON object and exits 0:
 
 ```json
-{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","planPath":null}
+{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":null}
 ```
 
 When there has been no eligible task for the full interval, it prints `{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}` and exits 0. This is a normal idle completion; it does not say that previous work succeeded. `board_unavailable`, `project_not_found`, invalid board data, and invalid arguments remain errors with non-zero exit codes. `--timeout` applies only to `--after` mode; it reports `wait_timeout` as an error and does not answer a Pending question.

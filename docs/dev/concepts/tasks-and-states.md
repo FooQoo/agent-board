@@ -34,7 +34,7 @@ How operations move a task between states:
 - **Create** puts the task in Todo, Idle, at the end of the lane, and records a creation entry. Without a body, the product writes an empty `acceptance` and an empty body; a supplied body must pass frontmatter validation.
 - **Lane move** requires `actor`; `reason` is optional. The task goes to the end of the target lane. A real move resets the run state to Idle, withdraws any open request (a withdrawal is not an answer), appends history, and updates `taskStatusChangedAt`. Moving to the same lane changes nothing.
 - **Run state change** requires `actor` and keeps the lane. AI Todo allows Idle↔Pending; AI Doing allows changes among Idle, Running, and Pending. Re-reporting the same state is not a change.
-- **Edit** changes only the title, body, and acceptance conditions; the assignee never changes. CLI `--desc`/`--desc-file` take the whole file but keep the history of the latest stored `TASK.md`. `epic edit --plan-file` replaces the whole `PLAN.md`. The web UI sends `body` and `acceptance`, applied to the latest file under the lock.
+- **Edit** changes only the title, body, and acceptance conditions; the assignee never changes. CLI `--desc`/`--desc-file` take the whole file but keep the history of the latest stored `TASK.md`. `epic edit --document-file` replaces the whole `EPIC.md` text. The web UI sends `body` and `acceptance`, applied to the latest file under the lock.
 - **Epic membership** sets or clears `epicId`; only real changes append history. People can change it on draft and archived tasks.
 - **Delete** removes the task folder. The web UI deletes only archived tasks; the CLI asks for terminal confirmation.
 
@@ -42,22 +42,22 @@ Ordinary updates are last-write-wins: there is no content check or edit lock. On
 
 ## Epics and priority
 
-An epic is a plan (`PLAN.md`) that groups tasks. A task belongs to at most one epic.
+An epic is a management unit that groups tasks and sets their work order. Its details (`EPIC.md`) are Markdown notes on its goal, scope, and decisions. A task belongs to at most one epic. The task's `epicId` is the only record of membership; the epic keeps no list of its tasks.
 
 | Field | Rule |
 | --- | --- |
 | `id` | EPIC-ID: 1 to 64 characters matching `[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`. Lowercase input is uppercased. Immutable. |
 | `name` | 1 to 100 characters after trimming, one line. |
 | `color` | `#RRGGBB`, uppercased. Random at creation when omitted. |
-| `isDraft` | Marks a plan in preparation; member tasks are not affected. |
-| `plan`, `body` | The whole `PLAN.md` (0 to 50,000 characters) and the body without frontmatter. |
+| `isDraft` | Marks an epic that is still being prepared; member tasks are not affected. |
+| `document`, `body` | The whole `EPIC.md` text, frontmatter included (0 to 50,000 characters), and the body without frontmatter. |
 | `priority`, `priorityError` | Member task IDs in work order, and whether reading them failed. |
 
 - Tasks store only `epicId`; the label color and name are resolved when read.
 - An epic referenced by any task, archived ones included, cannot be deleted (`epic_in_use`). The web UI deletes an epic from the epic editor through `DELETE .../epics/{epicId}`; the CLI uses `epic rm`.
 - A new project starts with the default epics `BUG` and `ENHANCEMENT`. They are ordinary epics: they can be edited and deleted. `defaultEpicsSeeded` in `project.json` is set once the project has been offered them, so a deleted default epic is not created again. `serve` offers them once to a project that does not have the flag yet.
 - Epics have no managed acceptance conditions. Reference conditions are ordinary Markdown in the body; the API rejects `acceptance` input for epics.
-- `priority` is a list of task IDs in the `PLAN.md` frontmatter, for example `priority: [24, 26, 25]`. Duplicates or invalid types are save errors. IDs that are no longer members are hidden and dropped on the next save; unlisted members follow in creation order. Changing priority does not count as editing a Done task. Lane positions never carry priority.
+- `priority` is a list of task IDs in the `EPIC.md` frontmatter, for example `priority: [24, 26, 25]`. Duplicates or invalid types are save errors. IDs that are no longer members are hidden and dropped on the next save; unlisted members follow in creation order. Changing priority does not count as editing a Done task. Lane positions never carry priority.
 
 ## Drafts
 

@@ -38,7 +38,7 @@ features:
       width: 28
       height: 28
     title: Local Markdown for plans, results, and evidence
-    details: Keep epic plans in PLAN.md, tasks in TASK.md, and evidence alongside them. Edit the files directly or use the rich Markdown editor. No account or hosted service required.
+    details: Keep epic details in EPIC.md, tasks in TASK.md, and evidence alongside them. Edit the files directly or use the rich Markdown editor. No account or hosted service required.
 ---
 
 <script setup>
@@ -61,7 +61,7 @@ When an agent works for a long time, you need to see what is moving, what is wai
 
 Epics order the tasks, and the progress table shows which work can advance next.
 
-![Epic editor with a scrollable task progress panel and a full-height Markdown plan](./images/epic.png){.screenshot}
+![Epic editor with a scrollable task progress panel and a full-height Markdown editor for the details](./images/epic.png){.screenshot}
 
 ## On your phone
 

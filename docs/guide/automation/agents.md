@@ -30,7 +30,7 @@ Hooks and the agent skill run `agboard` from your `PATH`, so they use the instal
 
 ### What agents may edit
 
-- Agents may edit only a non-draft task's `TASK.md` and an epic's `PLAN.md`, as the project's `README.md` allows.
+- Agents may edit only a non-draft task's `TASK.md` and an epic's `EPIC.md`, as the project's `README.md` allows.
 - `task.json` holds metadata and is changed through the CLI. `TASK.md` holds the body, the acceptance conditions, and the history.
 - Task operations add history automatically; agents use `history add` for meaningful progress, and keep plans, verification results, and evidence references in the body.
 - Agents never edit `epic.json` or `project.json`, never delete task or epic folders, and never put machine-specific absolute paths in shared files.
@@ -43,7 +43,7 @@ Agents write history in the same language as the task body. Generated notes from
 
 ```mermaid
 flowchart TD
-    P["Read progress"] --> R["Read the plan and task files"]
+    P["Read progress"] --> R["Read the epic and task files"]
     R --> D["Move to Doing, report Running"]
     D --> L["Record work and evidence"]
     L --> Q{"Decision needed?"}
@@ -57,7 +57,7 @@ flowchart TD
     W --> P
 ```
 
-1. **Choose.** Read `agboard progress --json` and select a ready AI-owned task, following its epic's saved task order. Read only the selected epic's `PLAN.md` and the task's `TASK.md`; use `show` when you need its history or an open question.
+1. **Choose.** Read `agboard progress --json` and select a ready AI-owned task, following its epic's saved task order. Read only the selected epic's `EPIC.md` and the task's `TASK.md`; use `show` when you need its history or an open question.
 2. **Start.** Move the task to Doing with a reason, then report Running. Review a user-owned task only when it affects the work.
 3. **Work and record.** Record meaningful progress with `history add`, with concise reasons based on actual work and verification. Keep the plan, results, and evidence references in the body and full logs in evidence files. Moves and state changes already add history, so do not duplicate them.
 4. **Ask when blocked.** Ask a question with Pending when you need a decision (see [Decisions](../use/decisions)).
@@ -93,7 +93,7 @@ You can keep one already-open Codex or Claude Code session working through AI ta
 agboard --project "My project" wait --until task --idle-timeout 300 --json
 ```
 
-The timeout is required and must be from 1 to 86,400 seconds; there is no default. A task already in Todo is returned immediately, so tasks created before listening are included. An AI task already in Doing is also eligible when its `agentStatus` is `idle`. Before starting or resuming the listener, inspect AI tasks by `agentStatus`: if any task is `running` or `pending`, resolve that work first. A Doing lane by itself does not block the listener. Each successful call returns one task. Finish or pause that task, then call `wait` again in the same session to take the next one. The selector follows the same order as the progress table: epics sorted by ID, each epic's saved task priority and then task ID, followed by ungrouped tasks by ID. It selects only AI-owned Todo/Doing tasks with `agentStatus: idle` that are non-draft and non-archived. It does not claim or edit the task; read its plan, body, attachments, and current state before deciding whether its work is approved and ready to start. Keep ordinary manual task creation available; it creates the same kind of task the listener can later pick up.
+The timeout is required and must be from 1 to 86,400 seconds; there is no default. A task already in Todo is returned immediately, so tasks created before listening are included. An AI task already in Doing is also eligible when its `agentStatus` is `idle`. Before starting or resuming the listener, inspect AI tasks by `agentStatus`: if any task is `running` or `pending`, resolve that work first. A Doing lane by itself does not block the listener. Each successful call returns one task. Finish or pause that task, then call `wait` again in the same session to take the next one. The selector follows the same order as the progress table: epics sorted by ID, each epic's saved task priority and then task ID, followed by ungrouped tasks by ID. It selects only AI-owned Todo/Doing tasks with `agentStatus: idle` that are non-draft and non-archived. It does not claim or edit the task; read its epic's `EPIC.md` when it has one, its body, attachments, and current state before deciding whether its work is approved and ready to start. Keep ordinary manual task creation available; it creates the same kind of task the listener can later pick up.
 
 Use the [listener procedure in the agent-board skill](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md) for the full loop, including pending decisions and recovery after a session is interrupted. A Pending task keeps the same session waiting for the answer; it is not another task to skip to, and its time does not count toward idle timeout. After the answer, read it and resume that task before listening again.
 

@@ -6,7 +6,7 @@ Several agents, the CLI, the web server, and text editors may touch the same fil
 
 | Lock | Scope | Used for |
 | --- | --- | --- |
-| `.internal/write.lock` | One project | Every CLI and web write: `task.json`, `epic.json`, `project.json`, and `TASK.md`. |
+| `.internal/write.lock` | One project | Every CLI and web write: `task.json`, `epic.json`, `project.json`, `TASK.md`, and `EPIC.md`. |
 | `shared/.internal/catalog.lock` | All projects | Project create, rename, and delete, after checking name uniqueness. |
 | `lifecycle.lock` | The data area | Held by `serve` from start to exit so only one server runs (see [Server and web UI](./server-and-ui.md#starting-and-stopping-serve)). |
 
@@ -14,7 +14,7 @@ Several agents, the CLI, the web server, and text editors may touch the same fil
 - Under the lock a writer re-reads the latest files, changes only what it needs, and replaces each file by renaming a temporary file written in the same folder.
 - A task's lock is held from reading the latest JSON and Markdown until the pair is committed and any recovery is finished. Public task reads, snapshots, and version computation read the pair under the same lock, so they never see a half-written pair. Internal reads during a state update do not take the lock again.
 - When the server index is involved, locks are taken in the order index, then project. State updates release the project lock before updating the index and notifying.
-- **Direct edits take no lock.** An editor that saves `TASK.md` or `PLAN.md` is not coordinated with the CLI; the last save wins. There is no revision-number conflict detection anywhere.
+- **Direct edits take no lock.** An editor that saves `TASK.md` or `EPIC.md` is not coordinated with the CLI; the last save wins. There is no revision-number conflict detection anywhere.
 
 ## Saving a task
 
@@ -36,7 +36,7 @@ Recovery follows from the commit point:
 
 Everything that changes a task goes through this path: state changes, answers, draft toggles, epic changes, archive, restore, automatic Done, and `history add`. Each keeps the latest body, acceptance, and unknown frontmatter keys. `history add` checks the AI guards (Done, draft, archive) under the lock and refuses invalid history without changing anything.
 
-Only the `TASK.md`/`task.json` pair is atomic. Images, `PLAN.md`, and `epic.json` are saved separately; if a task save fails after its images were saved, the response states what was saved and the UI keeps the input. A web save of a task composes the whole `TASK.md` from frontmatter and body, validates it, and writes it once; if validation fails nothing is written. Unknown keys are preserved, key order follows the YAML writer, and comments are not preserved.
+Only the `TASK.md`/`task.json` pair is atomic. Images, `EPIC.md`, and `epic.json` are saved separately; if a task save fails after its images were saved, the response states what was saved and the UI keeps the input. A web save of a task composes the whole `TASK.md` from frontmatter and body, validates it, and writes it once; if validation fails nothing is written. Unknown keys are preserved, key order follows the YAML writer, and comments are not preserved.
 
 ## Creating and deleting
 

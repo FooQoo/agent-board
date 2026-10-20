@@ -33,7 +33,7 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
         evidence/
       epics/<EPIC-ID>/
         epic.json
-        PLAN.md
+        EPIC.md
         assets/
 ```
 
@@ -95,6 +95,33 @@ Setup keeps every existing setting and changes only the array above. Before it c
 Setup refuses to write Codex settings unless `sandbox_mode` is `"workspace-write"`. Only that mode is supported, and permission profiles (`default_permissions`, `permissions`, `profile`, or `profiles`) are refused as well. Setup never changes `sandbox_mode` itself. If it refuses, set `sandbox_mode = "workspace-write"` in `config.toml` yourself, then run setup again. A refusal writes nothing, and with the default `--agent all`, a refused Codex target also blocks the Claude Code change. If you do not use Codex, run `agboard setup --agent claude`.
 
 Setup does not install the hooks or the `agent-board` skill. Those remain separate manual steps (see [Working with agents](../automation/agents)). Setup is a one-time step that you run; do not ask an agent to run it during normal work. Project or managed settings can still limit access to the folder, so confirm it in a new session.
+
+## Upgrading from PLAN.md
+
+Earlier versions stored each epic's details in `PLAN.md`. This version stores them in `EPIC.md`. The change is automatic and one-way: earlier versions cannot read `EPIC.md`.
+
+Before the first run, stop `agboard serve`, agents, and editors, and back up the whole `shared/` folder (see the next section).
+
+The first time a project is read, Agent Board renames each epic's `PLAN.md` to `EPIC.md` in the same folder. The file's bytes do not change, so the frontmatter, `priority`, body, images, attachments, and task membership stay as they were. Each rename is made under the project's write lock, so an interrupted run is finished by the next read. An epic that already has `EPIC.md` is not changed.
+
+Two situations need your attention:
+
+- **Both files exist.** Agent Board changes neither file. Every read of that project fails with `file_invalid`, and the message names the epic and both paths. Compare the two files, keep the content you want in `EPIC.md`, and delete the other file by hand.
+- **Neither file exists.** The epic is still listed, but its details are empty, and `snapshot` reports the missing file in `problems`. Restore the file from your backup.
+
+To return to an earlier version, restore the backup you made before the upgrade. Earlier versions do not see details written to `EPIC.md` after the upgrade. A backup that still contains `PLAN.md` is migrated again the first time this version reads it.
+
+Scripts and integrations also use new names:
+
+| Earlier | Now |
+| --- | --- |
+| `epic edit --plan` | `epic edit --document` |
+| `epic edit --plan-file` | `epic edit --document-file` |
+| `plan` in epic JSON | `document` |
+| `planPath` in hook, progress, and wait output | `documentPath` |
+| `PLAN.md` | `EPIC.md` |
+
+The earlier names are not accepted or produced. Update hook scripts, agent instructions, and any script that reads these fields.
 
 ## Back up and restore
 

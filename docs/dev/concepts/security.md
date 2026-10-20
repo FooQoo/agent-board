@@ -73,13 +73,13 @@ Titles, descriptions, reasons, and answers are written by agents and users, so t
 
 - Shared files are created with the OS default permissions and hold no secrets.
 - Owned paths are built only after validating ProjectId (32 hexadecimal characters), task ID, EPIC-ID, image ID, and evidence ID. Names and body text never become paths or shell code.
-- The absolute path of the shared area is returned only by `workspace --json`. Hooks, snapshots, and errors show relative paths only. Folder bindings stay in the machine-local data area, and `PLAN.md`/`TASK.md` paths appear only in local CLI and hook output, never in remote JSON.
+- The absolute path of the shared area is returned only by `workspace --json`. Hooks, snapshots, and errors show relative paths only. Folder bindings stay in the machine-local data area, and `EPIC.md`/`TASK.md` paths appear only in local CLI and hook output, never in remote JSON.
 - Board text is work data: it is never used as hook configuration, command arguments, or shell code. The hook and `wait` only read. Session tokens, environment variables, and settings contents never appear in snapshots.
 
 ## Project boundaries
 
 - Naming the target every time and the immutable ProjectId keep cooperative agents from confusing projects, task numbers, or names. They are not per-project authentication or authorization.
-- The task-wait selector is a mechanical filter, not an approval or authorization check. It returns a single eligible task but does not claim it or prevent a second listener from returning the same task. Agents must read the current plan and task, honor their existing approval boundaries, and re-check state before acting. The shared files remain writable by programs running as the same OS user.
+- The task-wait selector is a mechanical filter, not an approval or authorization check. It returns a single eligible task but does not claim it or prevent a second listener from returning the same task. Agents must read the current `EPIC.md` and `TASK.md`, honor their existing approval boundaries, and re-check state before acting. The shared files remain writable by programs running as the same OS user.
 - Project names and IDs in URLs are never treated as identity or permission, and there is no HTTP API for managing projects.
 - `ls --all-projects` is read-only and returns every project's tasks and history; with everything running as the same OS user, it does not narrow what it reads. Writes, the hook, and `wait` still target exactly one explicit project.
 - The hook gives only the progress table of the project bound to its `cwd` and never selects all projects implicitly. Templates and the generic skill never embed a project name or absolute path.

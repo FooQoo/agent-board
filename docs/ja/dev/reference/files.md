@@ -42,7 +42,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
       <project-id>/
         project.json
         README.md
-        epics/<EPIC-ID>/{epic.json, PLAN.md, assets/<attachment-id>.<ext>}
+        epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
         tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>, evidence/<evidence-id>.log}
         .internal/write.lock
         .internal/transactions/<transaction-id>.json
@@ -57,7 +57,11 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 - 画像は所有者の`assets/`に、証跡はタスクの`evidence/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
 - `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`（`{"pid":41235,"port":7420,"started_at":"..."}`）は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。
 
-`project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`defaultEpicsSeeded`を持ちます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。`task.json`は次のような形です。
+`project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`defaultEpicsSeeded`を持ちます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。
+
+`EPIC.md`には、エピックの詳細をMarkdownで保存します。frontmatterを含み、frontmatterには作業順の`priority`（タスクIDのリスト）を置けます。APIと`epic show --json`は、全文を`document`、frontmatterを除いた本文を`body`、解析した作業順を`priority`として返します。以前のバージョンでは、このファイルを`PLAN.md`と呼んでいました。プロジェクトを初めて読み込むと、`EPIC.md`へ名前が変わります（[データとバックアップ](../../guide/operations/data.md)を参照）。
+
+`task.json`は次のような形です。
 
 ```json
 {

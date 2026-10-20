@@ -4,12 +4,12 @@ title: Markdown file format
 
 # Markdown file format
 
-Each task is a `TASK.md` file and each epic is a `PLAN.md` file. Agents and people may edit them directly; the board follows the changes. This page describes what the files must contain. To find them, see [Edit the files directly](../use/editing#edit-the-files-directly).
+Each task is a `TASK.md` file and each epic's details are an `EPIC.md` file. Agents and people may edit them directly; the board follows the changes. This page describes what the files must contain. To find them, see [Edit the files directly](../use/editing#edit-the-files-directly).
 
 | File | Holds | Edit it? |
 | --- | --- | --- |
 | `TASK.md` | The task's body, acceptance conditions, and history. | Yes, unless the task is a draft. |
-| `PLAN.md` | The epic's plan and the order of its tasks. | Yes. |
+| `EPIC.md` | The epic's details and the order of its tasks. | Yes. |
 | `task.json`, `epic.json`, `project.json` | State and metadata. | No. Use the CLI. |
 
 ## TASK.md
@@ -77,9 +77,9 @@ While `agboard serve` is running, a task finishes by itself when it is:
 
 The server also checks existing tasks when it starts. Pending tasks wait until they are answered. User-owned tasks, drafts, tasks with invalid conditions, and tasks with no conditions do not finish automatically. A Done task is read-only for agents and never reopens by itself. If you reopen one without unchecking a condition, it can finish again.
 
-## PLAN.md
+## EPIC.md
 
-A `PLAN.md` is the epic's plan in free Markdown. Write the epic's reference completion conditions directly in the body as ordinary Markdown; they are not parsed as acceptance data, and an epic has no history.
+An `EPIC.md` holds the epic's details in free Markdown. Earlier versions named this file `PLAN.md`; it is renamed on the first read of its project (see [Data and backups](../operations/data.md)). Write the epic's reference completion conditions directly in the body as ordinary Markdown; they are not parsed as acceptance data, and an epic has no history.
 
 Its frontmatter may hold a `priority` list of distinct positive task IDs. It sets the order in the epic's progress panel and in the CLI progress table, independently of the board columns:
 
@@ -87,7 +87,7 @@ Its frontmatter may hold a `priority` list of distinct positive task IDs. It set
 priority: [3, 1, 2]
 ```
 
-A `PLAN.md` without frontmatter is entirely body text. Save the order from the CLI with `epic edit --priority`, in the progress panel, or by editing the file. Legacy `acceptance` keys in a `PLAN.md` are kept as opaque metadata and are not converted.
+An `EPIC.md` without frontmatter is entirely body text. Save the order from the CLI with `epic edit --priority`, in the progress panel, or by editing the file. Legacy `acceptance` keys in an `EPIC.md` are kept as opaque metadata and are not converted.
 
 ## When a file is invalid
 
