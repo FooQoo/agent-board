@@ -38,8 +38,7 @@ impl FileStore {
     }
 
     /// Ask a question of the user. The task goes to pending with a new request
-    /// ID. An empty choice list makes a reason-only request. A task that is
-    /// already pending is not changed.
+    /// ID and 2 to 10 choices. A task that is already pending is not changed.
     pub fn request_decision(
         &self,
         project: &ProjectId,
