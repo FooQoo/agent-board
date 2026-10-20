@@ -57,7 +57,7 @@ export function makeEpic(overrides: Partial<Epic> = {}): Epic {
     name: 'Sample epic',
     color: '#3b82f6',
     isDraft: false,
-    plan: '# Sample epic\n\nA synthetic epic for Stories.',
+    document: '# Sample epic\n\nA synthetic epic for Stories.',
     body: '# Sample epic\n\nA synthetic epic for Stories.',
     priority: [],
     priorityError: false,
