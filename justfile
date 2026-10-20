@@ -5,6 +5,16 @@ dev port="5173":
     pnpm --dir web install --frozen-lockfile
     pnpm --dir web dev --mode mock --port {{port}}
 
+# Run the VitePress documentation site locally.
+docs port="8662":
+    pnpm --dir docs install --frozen-lockfile
+    pnpm --dir docs dev --host 127.0.0.1 --port {{port}}
+
+# Run Storybook locally.
+storybook:
+    pnpm --dir web install --frozen-lockfile
+    pnpm --dir web storybook
+
 # Build the web UI before the Rust CLI, which embeds the UI assets.
 build:
     pnpm --dir web install --frozen-lockfile

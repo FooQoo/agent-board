@@ -34,11 +34,15 @@ Common workflows use `just`:
 
 ```sh
 just dev          # sample board with Vite HMR (port 5173)
+just docs         # VitePress documentation site (port 8662)
+just storybook    # Storybook (port 8610)
 just build        # build the web UI, then the CLI
 just serve        # saved board with Vite HMR and Rust watch (port 7420)
 ```
 
 - `just dev` serves sample data and updates the browser through HMR when web files change.
+- `just docs` serves the documentation site at `http://127.0.0.1:8662/agent-board/`. Pass another port as an argument when needed, for example `just docs 8663`.
+- `just storybook` serves the component and page Stories at `http://127.0.0.1:8610/`.
 - `just serve` uses the real API. It restarts the Rust server when Rust files change and serves the UI through Vite with HMR. Open `http://127.0.0.1:7420/`; the Rust API uses port 7421. The board comes from the normal location, or from `AGBOARD_HOME` if set. A Rust restart reloads the page to refresh its write token.
 - Pass other ports as arguments, for example `just dev 5174` or `just serve 7500 7501` (web port, then Rust API port).
 
@@ -64,7 +68,7 @@ The data area holds `shared/` (the projects as plain files), `serve.json` while 
 Storybook shows UI parts and complete pages with synthetic data. Its toolbar switches the language, light or dark mode, accent color, and width. Stories sit beside the parts they show, as `web/src/**/*.stories.tsx`; page-level Stories compose the same parts used by the application. The shared fixtures, decorators, and test adapters are in `web/.storybook/`.
 
 ```sh
-pnpm --dir web storybook
+just storybook
 pnpm --dir web build-storybook
 pnpm --dir web typecheck:storybook
 TZ=UTC pnpm --dir web test:storybook

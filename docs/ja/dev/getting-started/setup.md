@@ -34,11 +34,15 @@ cargo build
 
 ```sh
 just dev          # サンプルのボードとViteのHMR(ポート5173)
+just docs         # VitePressのドキュメントサイト(ポート8662)
+just storybook    # Storybook(ポート8610)
 just build        # Web画面とCLIを順にビルド
 just serve        # 保存されたボードとViteのHMR、Rustの監視(ポート7420)
 ```
 
 - `just dev`はサンプルデータを配信し、Webのファイルが変わるとHMRでブラウザを更新します。
+- `just docs`はドキュメントサイトを`http://127.0.0.1:8662/agent-board/`で配信します。必要なら`just docs 8663`のように別のポートを指定できます。
+- `just storybook`は部品とページのStoryを`http://127.0.0.1:8610/`で配信します。
 - `just serve`は実際のAPIに接続します。Rustのファイルが変わるとRustのサーバーを起動し直し、画面はViteのHMRで配信します。`http://127.0.0.1:7420/`を開きます。RustのAPIはポート7421を使います。ボードは通常の場所、または設定されていれば`AGBOARD_HOME`から読みます。Rustが起動し直すと、書き込み用トークンを更新するためにページが再読み込みされます。
 - ほかのポートは引数で渡します。例: `just dev 5174`、`just serve 7500 7501`（Webのポート、RustのAPIのポートの順）。
 
@@ -64,7 +68,7 @@ cargo run -- serve --port <port>
 Storybookでは、UI部品とページ全体を架空のデータで表示できます。ツールバーで表示言語、ライト・ダークモード、アクセントの色、表示幅を切り替えられます。Storyは対象部品と同じ場所に`web/src/**/*.stories.tsx`として置きます。ページStoryは、アプリと同じ部品を組み合わせて画面全体を確認します。共通のfixture、decorator、テスト用の部品は`web/.storybook/`にあります。
 
 ```sh
-pnpm --dir web storybook
+just storybook
 pnpm --dir web build-storybook
 pnpm --dir web typecheck:storybook
 TZ=UTC pnpm --dir web test:storybook
