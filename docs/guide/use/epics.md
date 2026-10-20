@@ -36,7 +36,7 @@ Open **Epics** in the header to see every epic in the project, in ID order, incl
 
 ![Epic list showing each epic's task counts, with the details of the selected epic beside it](../../images/guide/epic-list.png){.screenshot}
 
-Select an epic to read its name, details, and images in the details column beside the list. The column stays in place, as it does in the archive, and reads "Select an epic to see its details." until you select one. The edit button in the detail header (**Edit epic**) opens the same editor as the epic label. The trash button next to it (**Delete epic**) asks for confirmation and then deletes the epic under the same rules as the editor's **Delete epic**, described below. The edit, delete, and close icons use the same style and spacing as task and archive details. Close the details or select the row again to return to the prompt. **Back to board** returns to the board.
+Select an epic to read its name, details, and images in the details column beside the list. The column stays in place, as it does in the archive, and reads "Select an epic to see its cards and details." until you select one. The edit button in the detail header (**Edit epic**) opens the same editor as the epic label. The trash button next to it (**Delete epic**) asks for confirmation and then deletes the epic under the same rules as the editor's **Delete epic**, described below. The edit, delete, and close icons use the same style and spacing as task and archive details. Close the details or select the row again to return to the prompt. **Back to board** returns to the board.
 
 ## Order the work
 
@@ -54,7 +54,7 @@ Open an epic from its label to edit its name, color, details, and task order.
 
 ![Epic editor with a scrollable task progress panel and a full-height Markdown editor for the details](../../images/epic.png){.screenshot}
 
-The epic editor shows the outline on the left, the name and details in the middle, and the label, task progress list, and attachments on the right. Reference completion conditions are written directly in the details; there is no separate conditions panel.
+The epic editor shows the outline on the left, the name and the "Epic details (Markdown)" field in the middle, and the label, task progress list, and attachments on the right. Reference completion conditions are written directly in the details; there is no separate conditions panel.
 
 - The right column starts with progress expanded and attachments folded. Opening either panel folds the other.
 - The progress list scrolls on its own, so a long list stays inside the dialog and includes finished tasks for review.
