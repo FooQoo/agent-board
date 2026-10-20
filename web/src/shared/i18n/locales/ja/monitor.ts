@@ -18,7 +18,6 @@ export const monitorJa = {
     epicPartial: 'エピックの一部を読み込めませんでした。',
     retry: '再試行',
     drawer: { dismiss: '下にスワイプして詳細を閉じる' },
-    evidence: '証跡',
     staleDrafts: '未送信の回答',
     staleDraft: '{{project}} #{{id}}の質問は現在利用できません。回答は保持され、送信されません。',
     staleChoice: '選択中: {{choice}}',

@@ -19,7 +19,6 @@ const wireTask = (overrides: Record<string, unknown> = {}) =>
     pendingChoices: [{ id: 'a', label: 'Option A' }],
     archivedAt: null,
     attachments: [],
-    evidence: [],
     createdAt: '2026-10-02T00:00:00Z',
     updatedAt: '2026-10-02T00:00:00Z',
     agentStatusChangedAt: '2026-10-02T00:00:00Z',

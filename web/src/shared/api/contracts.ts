@@ -22,14 +22,6 @@ export interface Attachment {
   createdAt: string;
 }
 
-/** A text file kept as evidence of a card. */
-export interface EvidenceRecord {
-  id: string;
-  name: string;
-  size: number;
-  createdAt: string;
-}
-
 /** The epic a card belongs to, as the board shows it. */
 export interface EpicRef {
   id: string;
@@ -104,7 +96,6 @@ export interface Task {
   /** TASK.md frontmatter history, read from the canonical Markdown file. */
   history: HistoryEvent[];
   attachments: Attachment[];
-  evidence: EvidenceRecord[];
 }
 
 /** Response body of `GET /api/projects`. */

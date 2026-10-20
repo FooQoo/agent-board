@@ -30,7 +30,7 @@ export class MonitorClientError extends Error {
 }
 
 const projectIdPattern = /^[0-9a-f]{32}$/;
-const evidenceIdPattern = /^[0-9a-f]{32}$/;
+const attachmentIdPattern = /^[0-9a-f]{32}$/;
 const epicIdPattern = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
 
 function projectSegment(value: ProjectId): string {
@@ -50,12 +50,7 @@ function taskSegment(value: number): string {
 }
 
 function attachmentSegment(value: string): string {
-  if (!evidenceIdPattern.test(value)) throw new TypeError('Invalid monitor attachment ID.');
-  return encodeURIComponent(value);
-}
-
-function evidenceSegment(value: string): string {
-  if (!evidenceIdPattern.test(value)) throw new TypeError('Invalid monitor evidence ID.');
+  if (!attachmentIdPattern.test(value)) throw new TypeError('Invalid monitor attachment ID.');
   return encodeURIComponent(value);
 }
 
@@ -210,8 +205,6 @@ export const monitorClient = {
 export const monitorReadResolvers: MonitorReadResolvers = {
   attachmentUrl: (projectId, taskId, attachmentId) =>
     `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/attachments/${attachmentSegment(attachmentId)}`,
-  evidenceUrl: (projectId, taskId, evidenceId) =>
-    `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/evidence/${evidenceSegment(evidenceId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
     `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/epics/${epicSegment(epicId)}/attachments/${attachmentSegment(attachmentId)}`,
   getEpics: (projectId, signal) => monitorClient.fetchEpics(projectId, { signal }),

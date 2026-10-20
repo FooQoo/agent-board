@@ -21,7 +21,6 @@ export interface TaskDetailViewProps {
   onTabChange(tab: DetailTab): void;
   onClose(): void;
   attachmentUrl?: (id: string) => string;
-  evidenceUrl?: (id: string) => string;
   problems?: readonly Problem[];
   /** The epics of the project, when they are read. Undefined while they load. */
   epics?: readonly Epic[];
@@ -43,7 +42,6 @@ export function TaskDetailView({
   onTabChange,
   onClose,
   attachmentUrl = (id) => `/api/projects/${projectId}/tasks/${task.id}/attachments/${id}`,
-  evidenceUrl,
   problems = [],
   epics,
   epicsFailed = false,
@@ -116,11 +114,9 @@ export function TaskDetailView({
           acceptanceError={task.acceptanceError}
           problems={ownProblems}
           attachments={task.attachments ?? []}
-          evidence={task.evidence ?? []}
           projectId={projectId}
           taskId={task.id}
           attachmentUrl={attachmentUrl}
-          evidenceUrl={evidenceUrl}
         />
       </div>
       <div

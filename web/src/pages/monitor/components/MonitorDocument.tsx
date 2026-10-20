@@ -2,24 +2,20 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownView } from '../../../shared/markdown/MarkdownView';
 import { Lightbox } from '../../../shared/ui/lightbox/Lightbox';
-import type { Attachment, EvidenceRecord, Problem } from '../../../shared/api/contracts';
+import type { Attachment, Problem } from '../../../shared/api/contracts';
 
 /** Mobile reading content, independent of the desktop detail layout. */
 export function MonitorDocument({
   body,
   acceptanceError,
   attachments,
-  evidence,
   attachmentUrl,
-  evidenceUrl,
   problems = [],
 }: {
   body: string;
   acceptanceError: boolean;
   attachments: readonly Attachment[];
-  evidence: readonly EvidenceRecord[];
   attachmentUrl(id: string): string;
-  evidenceUrl?: (id: string) => string;
   problems?: readonly Problem[];
 }) {
   const { t } = useTranslation();
@@ -64,24 +60,6 @@ export function MonitorDocument({
               </button>
             ))}
           </div>
-        </section>
-      )}
-      {evidence.length > 0 && (
-        <section aria-label={t('monitor.evidence')}>
-          <h3>{t('monitor.evidence')}</h3>
-          <ul>
-            {evidence.map((item) => (
-              <li key={item.id}>
-                {evidenceUrl ? (
-                  <a href={evidenceUrl(item.id)} target="_blank" rel="noreferrer">
-                    {item.name}
-                  </a>
-                ) : (
-                  item.name
-                )}
-              </li>
-            ))}
-          </ul>
         </section>
       )}
       {preview && (

@@ -111,7 +111,6 @@ impl FileStore {
             agent_status_changed_at: at,
             task_status_changed_at: at,
             attachments: stored_attachments,
-            evidence: Vec::new(),
             // `simpleRequest` remains readable for compatibility with records
             // created by older versions, but new tasks no longer store it.
             simple_request: None,

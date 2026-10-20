@@ -1,4 +1,4 @@
-//! The CLI for epics, epic membership, text evidence, and task images (AC-2
+//! The CLI for epics, epic membership, and task images (AC-2
 //! and AC-5's CLI side, U6-1, U6-5, U6-6, and the draft rule of U6-8). Each
 //! test runs the real binary against a temporary data area.
 
@@ -265,73 +265,6 @@ fn epic_rm_without_a_terminal_is_refused_and_changes_nothing() {
 }
 
 #[test]
-fn evidence_is_added_shown_and_its_removal_needs_a_person_at_a_terminal() {
-    let home = tempfile::tempdir().unwrap();
-    demo_project(home.path());
-    let log = home.path().join("run.log");
-    std::fs::write(&log, "step 1 ok\nstep 2 ok\n").unwrap();
-
-    let added = json_ok(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "evidence",
-            "add",
-            "1",
-            log.to_str().unwrap(),
-            "--name",
-            "run.log",
-            "--json",
-        ],
-    );
-    let evidence_id = added["evidence"]["id"].as_str().unwrap().to_string();
-    assert_eq!(
-        added["path"],
-        format!("evidence/{evidence_id}.log").as_str()
-    );
-
-    let (code, out, err) = agboard(
-        home.path(),
-        &["--project", "Demo", "evidence", "show", "1", &evidence_id],
-    );
-    assert_eq!(code, 0, "{err}");
-    assert_eq!(out, "step 1 ok\nstep 2 ok\n");
-
-    let (code, code_name) = json_error(
-        home.path(),
-        &["--project", "Demo", "evidence", "rm", "1", &evidence_id],
-    );
-    assert_eq!((code, code_name.as_str()), (1, "confirmation_required"));
-    let (code, out, _) = agboard(
-        home.path(),
-        &["--project", "Demo", "evidence", "show", "1", &evidence_id],
-    );
-    assert_eq!(code, 0);
-    assert_eq!(out, "step 1 ok\nstep 2 ok\n", "the evidence is kept");
-}
-
-#[test]
-fn evidence_must_be_utf8_text() {
-    let home = tempfile::tempdir().unwrap();
-    demo_project(home.path());
-    let bin = home.path().join("bin.dat");
-    std::fs::write(&bin, [0xff, 0xfe, 0x00]).unwrap();
-    let (code, code_name) = json_error(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "evidence",
-            "add",
-            "1",
-            bin.to_str().unwrap(),
-        ],
-    );
-    assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
-}
-
-#[test]
 fn an_image_added_from_the_cli_returns_its_asset_path_and_can_be_read_back() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
@@ -381,27 +314,12 @@ fn an_image_added_from_the_cli_returns_its_asset_path_and_can_be_read_back() {
 }
 
 #[test]
-fn a_draft_task_refuses_cli_image_evidence_and_epic_changes_but_reads_still_work() {
+fn a_draft_task_refuses_cli_image_and_epic_changes_but_reads_still_work() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     epic_add(home.path(), "FILE-SHARE", "File share", Some("#111111"));
-    let log = home.path().join("run.log");
-    std::fs::write(&log, "ok").unwrap();
     let shot = home.path().join("shot.png");
     std::fs::write(&shot, png()).unwrap();
-    let evidence = json_ok(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "evidence",
-            "add",
-            "1",
-            log.to_str().unwrap(),
-            "--json",
-        ],
-    );
-    let evidence_id = evidence["evidence"]["id"].as_str().unwrap().to_string();
 
     // A person marks the task as a draft through the Web path (the store API).
     let store = FileStore::open(&home.path().join("shared"));
@@ -429,30 +347,7 @@ fn a_draft_task_refuses_cli_image_evidence_and_epic_changes_but_reads_still_work
         ],
     );
     assert_eq!((code, code_name.as_str()), (1, "task_is_draft"));
-    let (code, code_name) = json_error(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "evidence",
-            "add",
-            "1",
-            log.to_str().unwrap(),
-        ],
-    );
-    assert_eq!((code, code_name.as_str()), (1, "task_is_draft"));
-    let (code, code_name) = json_error(
-        home.path(),
-        &["--project", "Demo", "evidence", "rm", "1", &evidence_id],
-    );
-    assert_eq!((code, code_name.as_str()), (1, "task_is_draft"));
-
     let shown = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
     assert_eq!(shown["task"]["isDraft"], true);
     assert_eq!(shown["task"]["epicId"], Value::Null);
-    let (code, _, err) = agboard(
-        home.path(),
-        &["--project", "Demo", "evidence", "show", "1", &evidence_id],
-    );
-    assert_eq!(code, 0, "{err}");
 }

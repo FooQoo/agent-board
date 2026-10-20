@@ -12,7 +12,6 @@ mod answer;
 mod attachment;
 mod completion;
 mod epic;
-mod evidence;
 mod request_create;
 mod task;
 

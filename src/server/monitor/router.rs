@@ -64,10 +64,6 @@ pub(crate) fn router(state: Arc<MonitorState>) -> Router {
             get(task_attachment).head(task_attachment),
         )
         .route(
-            "/monitor/api/projects/{project_id}/tasks/{id}/evidence/{evidence_id}",
-            get(task_evidence).head(task_evidence),
-        )
-        .route(
             "/monitor/api/projects/{project_id}/epics",
             get(epics).head(epics),
         )
@@ -245,30 +241,6 @@ async fn task_attachment(
     .await;
     match result {
         Ok(Ok((mime, bytes))) => file_response(&mime, bytes),
-        Ok(Err(error)) => agboard_error_response(&error),
-        Err(error) => agboard_error_response(&AgboardError::DatabaseError {
-            reason: error.to_string(),
-        }),
-    }
-}
-
-async fn task_evidence(
-    State(state): State<Arc<MonitorState>>,
-    Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    let Ok(id) = raw_id.parse::<i64>() else {
-        return StatusCode::NOT_FOUND.into_response();
-    };
-    let result = tokio::task::spawn_blocking(move || {
-        FileStore::open(&state.shared).read_evidence(&project_id, id, &evidence_id)
-    })
-    .await;
-    match result {
-        Ok(Ok(data)) => file_response("text/plain; charset=utf-8", data.bytes),
         Ok(Err(error)) => agboard_error_response(&error),
         Err(error) => agboard_error_response(&AgboardError::DatabaseError {
             reason: error.to_string(),

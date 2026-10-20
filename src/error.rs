@@ -48,9 +48,6 @@ pub enum AgboardError {
         id: String,
     },
     AttachmentLimitExceeded,
-    EvidenceNotFound {
-        id: String,
-    },
     EpicIdTaken {
         id: String,
     },
@@ -168,7 +165,6 @@ impl AgboardError {
             AgboardError::ArchiveTargetsChanged => "archive_targets_changed",
             AgboardError::AttachmentNotFound { .. } => "attachment_not_found",
             AgboardError::AttachmentLimitExceeded => "attachment_limit_exceeded",
-            AgboardError::EvidenceNotFound { .. } => "evidence_not_found",
             AgboardError::EpicIdTaken { .. } => "epic_id_taken",
             AgboardError::EpicNotFound { .. } => "epic_not_found",
             AgboardError::EpicInUse { .. } => "epic_in_use",
@@ -236,7 +232,6 @@ impl AgboardError {
             AgboardError::ArchiveTargetsChanged => "archive targets changed.".into(),
             AgboardError::AttachmentNotFound { id } => format!("attachment {id} not found."),
             AgboardError::AttachmentLimitExceeded => "attachment limits were exceeded.".into(),
-            AgboardError::EvidenceNotFound { id } => format!("evidence {id} not found."),
             AgboardError::EpicIdTaken { id } => format!("epic {id} already exists."),
             AgboardError::EpicNotFound { id } => format!("epic {id} not found."),
             AgboardError::EpicInUse { id } => format!("epic {id} is used by tasks."),
@@ -312,7 +307,6 @@ impl AgboardError {
             AgboardError::ArchiveTargetsChanged => "Read the latest Done tasks and confirm the archive again.".into(),
             AgboardError::AttachmentNotFound { .. } => "The attachment does not belong to this task.".into(),
             AgboardError::AttachmentLimitExceeded => "A task may contain at most 20 images and 50 MiB in total.".into(),
-            AgboardError::EvidenceNotFound { .. } => "The evidence does not belong to this task.".into(),
             AgboardError::EpicIdTaken { .. } => "Choose another EPIC-ID.".into(),
             AgboardError::EpicNotFound { .. } => "No epic has this EPIC-ID in the project.".into(),
             AgboardError::EpicInUse { .. } => "Move or clear the tasks that belong to this epic first.".into(),

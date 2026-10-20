@@ -448,7 +448,6 @@ pub(crate) fn task_view(
         pending_choices,
         archived_at: task.archived_at,
         attachments: task.attachments,
-        evidence: task.evidence,
         created_at: task.created_at,
         updated_at,
         agent_status_changed_at: task.agent_status_changed_at,

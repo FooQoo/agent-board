@@ -32,7 +32,7 @@ export const LongReason: Story = {
       {
         at: '2026-10-03T07:15:00.000Z',
         reason:
-          'Moved to Done after the acceptance conditions were confirmed and the evidence was attached to the task description for review.',
+          'Moved to Done after the acceptance conditions were confirmed and the verification result was recorded in the task body.',
       },
     ],
   },

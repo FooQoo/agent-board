@@ -20,8 +20,7 @@
                 "chapters",
                 "table",
                 "mermaid drawn",
-                "attachment missing",
-                "evidence"
+                "attachment missing"
               ],
               "interaction": false
             },
@@ -142,21 +141,6 @@
             },
             {
               "id": "task-detail-detailpanel--attachment-available",
-              "states": ["composite rendering"],
-              "interaction": false
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "file": "features/tasks/detail/DetailEvidence.tsx",
-      "exports": [
-        {
-          "name": "DetailEvidence",
-          "stories": [
-            {
-              "id": "task-detail-detailpanel--card",
               "states": ["composite rendering"],
               "interaction": false
             }

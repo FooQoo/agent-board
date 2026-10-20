@@ -81,9 +81,7 @@ export function MonitorDrawerPanels({
                   problem.file.startsWith(`projects/${item.projectId}/tasks/${task.id}/`),
               )}
               attachments={task.attachments ?? []}
-              evidence={task.evidence ?? []}
               attachmentUrl={(id) => resolvers.attachmentUrl(item.projectId, task.id, id)}
-              evidenceUrl={(id) => resolvers.evidenceUrl(item.projectId, task.id, id)}
             />
           </div>
           <div

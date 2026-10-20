@@ -22,9 +22,6 @@ describe('monitor read client', () => {
     expect(monitorReadResolvers.attachmentUrl(PROJECT_ID, 4, 'b'.repeat(32))).toBe(
       `/monitor/api/projects/${PROJECT_ID}/tasks/4/attachments/${'b'.repeat(32)}`,
     );
-    expect(monitorReadResolvers.evidenceUrl(PROJECT_ID, 4, 'c'.repeat(32))).toBe(
-      `/monitor/api/projects/${PROJECT_ID}/tasks/4/evidence/${'c'.repeat(32)}`,
-    );
     expect(monitorReadResolvers.epicAttachmentUrl(PROJECT_ID, 'ABC-1', 'b'.repeat(32))).toBe(
       `/monitor/api/projects/${PROJECT_ID}/epics/ABC-1/attachments/${'b'.repeat(32)}`,
     );
@@ -41,7 +38,6 @@ describe('monitor read client', () => {
     const { monitorClient, monitorReadResolvers } = await import('../../src/pages/monitor/client');
     expect(() => monitorClient.fetchBoard('../api')).toThrow(/project/i);
     expect(() => monitorReadResolvers.attachmentUrl(PROJECT_ID, 0, 'x')).toThrow(/task/i);
-    expect(() => monitorReadResolvers.evidenceUrl(PROJECT_ID, 1, '../')).toThrow(/evidence/i);
     expect(() => monitorReadResolvers.epicAttachmentUrl(PROJECT_ID, '../', 'b'.repeat(32))).toThrow(
       /epic/i,
     );

@@ -5,7 +5,6 @@ pub mod add;
 pub mod attachment;
 pub mod edit;
 pub mod epic;
-pub mod evidence;
 pub mod init;
 pub mod ls;
 pub mod mv;

@@ -76,17 +76,6 @@ pub struct RequestAnswer {
     pub at: DateTime<Utc>,
 }
 
-/// Metadata of a file attached to a task as evidence.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct EvidenceRecord {
-    pub id: String,
-    pub name: String,
-    pub size: i64,
-    #[serde(with = "crate::clock::serde_utc")]
-    pub created_at: DateTime<Utc>,
-}
-
 /// In-memory task aggregate. Metadata is in `task.json`; text and history are in TASK.md.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -114,7 +103,6 @@ pub struct TaskFile {
     #[serde(with = "crate::clock::serde_utc")]
     pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
-    pub evidence: Vec<EvidenceRecord>,
     /// Legacy request metadata retained when reading existing task files.
     /// New simple requests do not write or use this field.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -165,7 +153,6 @@ pub struct TaskMetadata {
     #[serde(with = "crate::clock::serde_utc")]
     pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
-    pub evidence: Vec<EvidenceRecord>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub simple_request: Option<SimpleRequestMetadata>,
 }
@@ -191,7 +178,6 @@ impl From<&TaskFile> for TaskMetadata {
             agent_status_changed_at: task.agent_status_changed_at,
             task_status_changed_at: task.task_status_changed_at,
             attachments: task.attachments.clone(),
-            evidence: task.evidence.clone(),
             simple_request: task.simple_request.clone(),
         }
     }
@@ -219,7 +205,6 @@ impl TaskMetadata {
             agent_status_changed_at: self.agent_status_changed_at,
             task_status_changed_at: self.task_status_changed_at,
             attachments: self.attachments,
-            evidence: self.evidence,
             simple_request: self.simple_request,
             history,
         }
@@ -267,7 +252,6 @@ pub struct TaskView {
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub archived_at: Option<DateTime<Utc>>,
     pub attachments: Vec<Attachment>,
-    pub evidence: Vec<EvidenceRecord>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
@@ -350,13 +334,6 @@ pub enum AttachmentOwner {
 pub struct StoredAttachment {
     pub metadata: Attachment,
     pub path: PathBuf,
-}
-
-/// A text evidence record with its bytes.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EvidenceData {
-    pub record: EvidenceRecord,
-    pub bytes: Vec<u8>,
 }
 
 /// A format defect in a file that was read anyway. `file` is relative to the

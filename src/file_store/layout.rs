@@ -151,18 +151,6 @@ fn asset_file(owner_dir: &Path, attachment_id: &str, ext: &str) -> Result<PathBu
     Ok(assets_dir(owner_dir).join(format!("{attachment_id}.{ext}")))
 }
 
-/// `tasks/<task-id>/evidence/<evidence-id>.log`. The ID is checked first.
-pub fn evidence_path(
-    project_dir: &Path,
-    task_id: i64,
-    evidence_id: &str,
-) -> Result<PathBuf, AgboardError> {
-    check_task_id(task_id)?;
-    validate::check_object_id(evidence_id, "evidenceId")?;
-    let dir = task_dir(project_dir, task_id).join("evidence");
-    Ok(dir.join(format!("{evidence_id}.log")))
-}
-
 fn check_task_id(task_id: i64) -> Result<(), AgboardError> {
     if task_id < 1 {
         return Err(AgboardError::InvalidValue {

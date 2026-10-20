@@ -117,14 +117,6 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
             get(get_task_attachment).delete(delete_task_attachment),
         )
         .route(
-            "/api/projects/{project_id}/tasks/{id}/evidence",
-            post(add_task_evidence),
-        )
-        .route(
-            "/api/projects/{project_id}/tasks/{id}/evidence/{evidence_id}",
-            get(get_task_evidence).delete(delete_task_evidence),
-        )
-        .route(
             "/api/projects/{project_id}/tasks/{id}/epic",
             put(set_task_epic),
         )

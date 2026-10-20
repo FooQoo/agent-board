@@ -4,9 +4,7 @@
 use std::ffi::OsString;
 use std::io::Write;
 
-use crate::cli::args::{
-    self, Cli, Command, EpicCommand, EvidenceCommand, Parsed, ProjectCommand, SetupAgentArg,
-};
+use crate::cli::args::{self, Cli, Command, EpicCommand, Parsed, ProjectCommand, SetupAgentArg};
 use crate::cli::{Context, Env, Outcome, Target, commands, errors, output};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
@@ -201,10 +199,6 @@ fn access(command: &Command) -> Access {
                 Access::ChangeProject
             }
         },
-        Command::Evidence(args) => match args.command {
-            EvidenceCommand::Show(_) => Access::ReadProject,
-            EvidenceCommand::Add(_) | EvidenceCommand::Rm(_) => Access::ChangeProject,
-        },
         Command::Project(args) => match args.command {
             ProjectCommand::Ls => Access::ReadCatalog,
             ProjectCommand::Create(_) | ProjectCommand::Bind(_) => Access::Catalog,
@@ -272,7 +266,6 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Add(args) => commands::add::run(ctx, args),
         Command::Attachment(args) => commands::attachment::run(ctx, args),
         Command::Epic(args) => commands::epic::run(ctx, args),
-        Command::Evidence(args) => commands::evidence::run(ctx, args),
         Command::Edit(args) => commands::edit::run(ctx, args),
         Command::Mv(args) => commands::mv::run(ctx, args),
         Command::State(args) => commands::state::run(ctx, args),

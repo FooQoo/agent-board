@@ -346,38 +346,6 @@ body {
 .monitor-freshness--compact .monitor-freshness__time {
   display: none;
 }
-.detail-evidence {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 14px;
-  color: var(--r-text2);
-  font-size: 12px;
-}
-.detail-evidence h3 {
-  font-weight: 600;
-}
-.detail-evidence ul {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.detail-evidence li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.detail-evidence li svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-.detail-evidence a {
-  overflow-wrap: anywhere;
-  color: var(--r-accent);
-  text-decoration: underline;
-}
 @media (max-width: 350px) {
   .monitor-shell {
     gap: 6px;

@@ -1,9 +1,8 @@
 import { DetailAttachments } from './DetailAttachments';
-import { DetailEvidence } from './DetailEvidence';
 import { LazyMarkdownSections } from '../../../shared/markdown/LazyMarkdownSections';
 import { ProblemNotice } from './ProblemNotice';
 import { useTranslation } from 'react-i18next';
-import type { Attachment, EvidenceRecord, Problem, ProjectId } from '../../../shared/api/contracts';
+import type { Attachment, Problem, ProjectId } from '../../../shared/api/contracts';
 import './detail.css';
 
 export function BodyDocumentView({
@@ -11,9 +10,7 @@ export function BodyDocumentView({
   acceptanceError,
   problems = [],
   attachments,
-  evidence,
   attachmentUrl,
-  evidenceUrl,
   projectId,
   taskId,
 }: {
@@ -21,9 +18,7 @@ export function BodyDocumentView({
   acceptanceError: boolean;
   problems?: readonly Problem[];
   attachments: readonly Attachment[];
-  evidence: readonly EvidenceRecord[];
   attachmentUrl: (id: string) => string;
-  evidenceUrl?: (id: string) => string;
   projectId?: ProjectId;
   taskId?: number;
 }) {
@@ -60,7 +55,6 @@ export function BodyDocumentView({
           attachmentUrl={attachmentUrl}
         />
       ) : null}
-      <DetailEvidence evidence={[...evidence]} evidenceUrl={evidenceUrl} />
     </>
   );
 }

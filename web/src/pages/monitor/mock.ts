@@ -68,7 +68,6 @@ function task(id: number, status: ColumnName, long: boolean): Task {
     isDraft: pending,
     history,
     attachments: [],
-    evidence: [],
   };
 }
 

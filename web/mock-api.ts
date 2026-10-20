@@ -619,7 +619,6 @@ export function mockApi(): Plugin {
                 archivedAt: null,
                 history: [event],
                 attachments: [],
-                evidence: [],
               };
               update(projectId, (board) => [...board.tasks, task]);
               return sendJson(res, 201, { task });

@@ -54,7 +54,6 @@ function setup({
   const item = { projectId: PROJECT_A.id, projectName: PROJECT_A.name, task };
   const readResolvers: MonitorReadResolvers = {
     attachmentUrl: (_project, _task, id) => `/owned/task/${id}`,
-    evidenceUrl: (_project, _task, id) => `/owned/evidence/${id}`,
     epicAttachmentUrl: (_project, _epic, id) => `/owned/epic/${id}`,
     getEpics,
   };

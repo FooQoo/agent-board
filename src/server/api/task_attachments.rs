@@ -1,4 +1,4 @@
-//! The images and the text evidence of a task. The owner is checked with the
+//! The images of a task. The owner is checked with the
 //! project and the ID, so another task's file is not found.
 
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use axum::extract::{Multipart, Path, State};
 use axum::http::StatusCode;
 use axum::response::Response;
 
-use super::multipart::{multipart_too_large, parse_multipart, parse_single_file};
+use super::multipart::{multipart_too_large, parse_multipart};
 use super::parse_task_id;
 use crate::file_store::model::AttachmentOwner;
 use crate::server::AppState;
@@ -38,7 +38,6 @@ pub(super) async fn list_task_attachments(
         Err(error) => agboard_error_response(&error),
     }
 }
-
 pub(super) async fn add_task_attachment(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
@@ -92,7 +91,6 @@ pub(super) async fn add_task_attachment(
         Err(error) => agboard_error_response(&error),
     }
 }
-
 pub(super) async fn get_task_attachment(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
@@ -137,90 +135,6 @@ pub(super) async fn delete_task_attachment(
             &attachment_id,
             chrono::Utc::now(),
         )?;
-        store.task(&project_id, id)
-    })
-    .await;
-    match result {
-        Ok(task) => {
-            refresh_index(&state);
-            json_response(StatusCode::OK, &serde_json::json!({"task": task}))
-        }
-        Err(error) => agboard_error_response(&error),
-    }
-}
-
-/// Add a text evidence to a task. A person may do this on a draft.
-pub(super) async fn add_task_evidence(
-    State(state): State<Arc<AppState>>,
-    Path((raw_project, raw_id)): Path<(String, String)>,
-    multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    let id = match parse_task_id(&raw_id) {
-        Ok(id) => id,
-        Err(response) => return *response,
-    };
-    let Ok(multipart) = multipart else {
-        return multipart_too_large();
-    };
-    let (name, bytes) = match parse_single_file(multipart).await {
-        Ok(value) => value,
-        Err(response) => return response,
-    };
-    let result = with_files(&state, move |store| {
-        store.add_evidence_for_user(&project_id, id, &name, &bytes, chrono::Utc::now())?;
-        store.task(&project_id, id)
-    })
-    .await;
-    match result {
-        Ok(task) => {
-            refresh_index(&state);
-            json_response(StatusCode::CREATED, &serde_json::json!({"task": task}))
-        }
-        Err(error) => agboard_error_response(&error),
-    }
-}
-
-/// The text of a task's evidence, as plain text that a browser shows without sniffing.
-pub(super) async fn get_task_evidence(
-    State(state): State<Arc<AppState>>,
-    Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    let id = match parse_task_id(&raw_id) {
-        Ok(id) => id,
-        Err(response) => return *response,
-    };
-    match with_files(&state, move |store| {
-        store.read_evidence(&project_id, id, &evidence_id)
-    })
-    .await
-    {
-        Ok(data) => file_response("text/plain; charset=utf-8", data.bytes),
-        Err(error) => agboard_error_response(&error),
-    }
-}
-
-pub(super) async fn delete_task_evidence(
-    State(state): State<Arc<AppState>>,
-    Path((raw_project, raw_id, evidence_id)): Path<(String, String, String)>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    let id = match parse_task_id(&raw_id) {
-        Ok(id) => id,
-        Err(response) => return *response,
-    };
-    let result = with_files(&state, move |store| {
-        store.delete_evidence_for_user(&project_id, id, &evidence_id, chrono::Utc::now())?;
         store.task(&project_id, id)
     })
     .await;

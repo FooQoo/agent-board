@@ -1,6 +1,5 @@
-//! The HTTP surface of task and epic images and of text evidence: registration,
-//! delivery only to the owner (AC-10), the draft rule of U6-8, and the
-//! headers that keep a text file from being sniffed. Servers listen on port 0.
+//! The HTTP surface of task and epic images, including rejection of the retired
+//! task text-evidence routes. Servers listen on port 0.
 
 mod common;
 
@@ -176,7 +175,7 @@ fn an_epic_image_is_served_only_through_its_own_epic() {
 }
 
 #[test]
-fn a_person_may_add_images_and_evidence_to_a_draft_but_the_cli_may_not() {
+fn a_person_may_add_images_to_a_draft_but_the_cli_may_not() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let pid = project_id(home.path());
@@ -201,17 +200,6 @@ fn a_person_may_add_images_and_evidence_to_a_draft_but_the_cli_may_not() {
         image.status, 201,
         "a person may add an image to a draft: {}",
         image.body
-    );
-    let evidence = server.write_multipart(
-        "POST",
-        &format!("/api/projects/{pid}/tasks/1/evidence"),
-        multipart(BOUNDARY, &[], &[("file", "run.log", b"draft run\n")]),
-        BOUNDARY,
-    );
-    assert_eq!(
-        evidence.status, 201,
-        "a person may add evidence to a draft: {}",
-        evidence.body
     );
     server.stop();
 
@@ -239,69 +227,29 @@ fn a_person_may_add_images_and_evidence_to_a_draft_but_the_cli_may_not() {
 }
 
 #[test]
-fn evidence_is_served_as_plain_text_only_to_the_task_that_owns_it() {
+fn task_text_evidence_routes_are_removed() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    add_second_task(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
-    let text = "step 1 ok\n<script>alert(1)</script>\n";
-
-    let added = server.write_multipart(
+    let add = server.write_multipart(
         "POST",
         &format!("/api/projects/{pid}/tasks/1/evidence"),
-        multipart(BOUNDARY, &[], &[("file", "run.log", text.as_bytes())]),
+        multipart(BOUNDARY, &[], &[("file", "run.log", b"removed")]),
         BOUNDARY,
     );
-    assert_eq!(added.status, 201, "{}", added.body);
-    let evidence_id = added.json()["task"]["evidence"][0]["id"]
-        .as_str()
-        .unwrap()
-        .to_string();
-
-    let served = server.get(&format!(
-        "/api/projects/{pid}/tasks/1/evidence/{evidence_id}"
-    ));
-    assert_eq!(served.status, 200);
-    assert_eq!(
-        served.header("content-type"),
-        Some("text/plain; charset=utf-8")
-    );
-    assert_eq!(served.header("x-content-type-options"), Some("nosniff"));
-    assert_eq!(
-        served.bytes,
-        text.as_bytes(),
-        "the bytes come back as they were saved"
-    );
-
-    let other = server.get(&format!(
-        "/api/projects/{pid}/tasks/2/evidence/{evidence_id}"
-    ));
-    assert_eq!(other.status, 404);
-    assert_eq!(other.code(), "evidence_not_found");
-
-    let binary = server.write_multipart(
-        "POST",
-        &format!("/api/projects/{pid}/tasks/1/evidence"),
-        multipart(BOUNDARY, &[], &[("file", "bin.log", &[0xff, 0xfe, 0x00])]),
-        BOUNDARY,
-    );
-    assert_eq!(binary.status, 422, "{}", binary.body);
-
-    let deleted = server.write(
-        "DELETE",
-        &format!("/api/projects/{pid}/tasks/1/evidence/{evidence_id}"),
-        None,
-    );
-    assert_eq!(deleted.status, 200, "{}", deleted.body);
+    assert_eq!(add.status, 404);
     assert_eq!(
         server
             .get(&format!(
-                "/api/projects/{pid}/tasks/1/evidence/{evidence_id}"
+                "/api/projects/{pid}/tasks/1/evidence/{}",
+                "a".repeat(32)
             ))
             .status,
         404
     );
+    let board = server.get(&format!("/api/projects/{pid}/board"));
+    assert!(board.json().to_string().find("evidence").is_none());
     server.stop();
 }
 

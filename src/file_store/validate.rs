@@ -139,7 +139,7 @@ pub fn normalize_document(text: &str) -> Result<String, AgboardError> {
     Ok(normalized)
 }
 
-/// Check that an attachment or evidence ID has the stored form (32 lowercase
+/// Check that an attachment ID has the stored form (32 lowercase
 /// hexadecimal characters). This is the check before a path is built from it.
 pub fn check_object_id(text: &str, field: &str) -> Result<(), AgboardError> {
     if is_hex32(text) {

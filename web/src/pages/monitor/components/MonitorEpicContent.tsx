@@ -66,7 +66,6 @@ function EpicDocument({
       body={epic.body}
       acceptanceError={false}
       attachments={epic.attachments ?? []}
-      evidence={[]}
       attachmentUrl={(id) => resolvers.epicAttachmentUrl(projectId, epic.id, id)}
     />
   );

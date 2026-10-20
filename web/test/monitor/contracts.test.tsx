@@ -21,9 +21,6 @@ describe('monitor contracts and view', () => {
     expect(unconnectedMonitorReadResolvers.attachmentUrl('abc', 7, 'image-id')).toMatch(
       /^\/monitor\/api\//,
     );
-    expect(unconnectedMonitorReadResolvers.evidenceUrl('abc', 7, 'proof-id')).toMatch(
-      /^\/monitor\/api\//,
-    );
     expect(unconnectedMonitorReadResolvers.epicAttachmentUrl('abc', 'epic-id', 'image-id')).toMatch(
       /^\/monitor\/api\//,
     );

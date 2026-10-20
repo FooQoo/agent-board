@@ -33,7 +33,6 @@ Commands:
   ls      List tasks
   show    Show a task and its history
   epic    Create, list, show, edit, or delete epics and their documents
-  evidence Add, show, or delete a task's text evidence
   attachment Add, list, or read image attachments
   snapshot Fetch the complete board and history
   progress Show active work in epic priority order
@@ -123,8 +122,6 @@ pub enum Command {
     Attachment(AttachmentArgs),
     /// Create, list, show, edit, or delete epics
     Epic(EpicArgs),
-    /// Add, show, or delete a task's text evidence
-    Evidence(EvidenceArgs),
     /// Fetch the complete board and history without modifying it
     Snapshot(SnapshotArgs),
     /// Add the current progress table to an agent hook
@@ -160,7 +157,6 @@ impl Command {
             Command::Show(_) => "show",
             Command::Attachment(_) => "attachment",
             Command::Epic(_) => "epic",
-            Command::Evidence(_) => "evidence",
             Command::Snapshot(_) => "snapshot",
             Command::Hook(_) => "hook",
             Command::Wait(_) => "wait",
@@ -172,7 +168,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 20] = [
+pub const SUBCOMMAND_NAMES: [&str; 19] = [
     "project",
     "init",
     "add",
@@ -185,7 +181,6 @@ pub const SUBCOMMAND_NAMES: [&str; 20] = [
     "show",
     "attachment",
     "epic",
-    "evidence",
     "snapshot",
     "serve",
     "hook",
@@ -647,44 +642,6 @@ impl DocumentArgs {
         }
         Ok(None)
     }
-}
-
-#[derive(Args, Debug)]
-pub struct EvidenceArgs {
-    #[command(subcommand)]
-    pub command: EvidenceCommand,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum EvidenceCommand {
-    /// Add a UTF-8 text file to a task as evidence
-    Add(EvidenceAddArgs),
-    /// Print a task's evidence text
-    Show(EvidenceIdArgs),
-    /// Delete a task's evidence (humans only; asks for confirmation)
-    Rm(EvidenceIdArgs),
-}
-
-#[derive(Args, Debug)]
-#[command(
-    after_help = "Examples:\n  agboard --project demo evidence add 12 run.log\n  agboard --project demo evidence show 12 <evidence-id>"
-)]
-pub struct EvidenceAddArgs {
-    /// ID of the task
-    pub task_id: i64,
-    /// UTF-8 text file to add
-    pub path: PathBuf,
-    /// Name to show for the evidence; the file name when omitted
-    #[arg(long, value_name = "NAME")]
-    pub name: Option<String>,
-}
-
-#[derive(Args, Debug)]
-pub struct EvidenceIdArgs {
-    /// ID of the task
-    pub task_id: i64,
-    /// Evidence ID
-    pub evidence_id: String,
 }
 
 #[derive(Args, Debug)]

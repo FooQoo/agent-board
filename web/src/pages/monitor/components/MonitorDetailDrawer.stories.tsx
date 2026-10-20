@@ -31,7 +31,6 @@ const epic: Epic = {
 
 const resolvers: MonitorReadResolvers = {
   attachmentUrl: (_projectId, _taskId, id) => `/task/${id}`,
-  evidenceUrl: (_projectId, _taskId, id) => `/evidence/${id}`,
   epicAttachmentUrl: (_projectId, _epicId, id) => `/epic/${id}`,
   getEpics: async () => [epic],
 };

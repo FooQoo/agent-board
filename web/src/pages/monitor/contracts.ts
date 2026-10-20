@@ -27,7 +27,6 @@ export interface MonitorFreshness {
 
 export interface MonitorReadResolvers {
   attachmentUrl(projectId: ProjectId, taskId: number, attachmentId: string): string;
-  evidenceUrl(projectId: ProjectId, taskId: number, evidenceId: string): string;
   epicAttachmentUrl(projectId: ProjectId, epicId: string, attachmentId: string): string;
   getEpics(projectId: ProjectId, signal?: AbortSignal): Promise<Epic[]>;
 }
@@ -36,8 +35,6 @@ export interface MonitorReadResolvers {
 export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
   attachmentUrl: (projectId, taskId, attachmentId) =>
     `/monitor/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/attachments/${encodeURIComponent(attachmentId)}`,
-  evidenceUrl: (projectId, taskId, evidenceId) =>
-    `/monitor/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/evidence/${encodeURIComponent(evidenceId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
     `/monitor/api/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/attachments/${encodeURIComponent(attachmentId)}`,
   getEpics: async () => {

@@ -59,7 +59,6 @@ function sampleCard(overrides: Parameters<typeof makeTask>[0] = { id: 7 }) {
         createdAt: FIXED_NOW,
       },
     ],
-    evidence: [{ id: 'e0', name: 'run-log.txt', size: 120, createdAt: FIXED_NOW }],
     ...overrides,
   });
 }
@@ -85,7 +84,7 @@ export const NoCard: Story = {
   },
 };
 
-/** A card as the board shows it: header, status, the description as chapters, attachments and evidence. */
+/** A card as the board shows it: header, status, the description as chapters and image attachments. */
 export const Card: Story = {
   play: async ({ canvasElement }) => {
     const view = within(canvasElement);
@@ -99,7 +98,7 @@ export const Card: Story = {
     });
     expect(canvasElement.querySelector('.md-scroll table')).not.toBeNull();
     expect(canvasElement.querySelector('.detail-attachments')).not.toBeNull();
-    expect(canvasElement.querySelector('.detail-evidence')?.textContent).toContain('run-log.txt');
+    expect(canvasElement.querySelector('.detail-evidence')).toBeNull();
   },
 };
 

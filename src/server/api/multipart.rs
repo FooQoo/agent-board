@@ -1,5 +1,4 @@
-//! Multipart bodies: the metadata and images of a task edit, and the single
-//! file of a text upload.
+//! Multipart bodies for task creation and edits, including image attachments.
 
 use axum::extract::Multipart;
 use axum::http::StatusCode;
@@ -175,32 +174,4 @@ pub(super) fn multipart_too_large() -> Response {
         "request body is invalid.",
         "Multipart bodies are limited to 52 MiB.",
     )
-}
-
-/// The one file of a text upload: its `file` part and the file name sent with it.
-pub(super) async fn parse_single_file(
-    mut multipart: Multipart,
-) -> Result<(String, Vec<u8>), Response> {
-    let mut file = None;
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|_| invalid_multipart("The multipart body could not be read."))?
-    {
-        if field.name() != Some("file") {
-            return Err(invalid_multipart(
-                "The multipart body contains an unknown part.",
-            ));
-        }
-        if file.is_some() {
-            return Err(invalid_multipart("Send exactly one file part."));
-        }
-        let name = field.file_name().unwrap_or_default().to_owned();
-        let bytes = field
-            .bytes()
-            .await
-            .map_err(|_| invalid_multipart("The file part could not be read."))?;
-        file = Some((name, bytes.to_vec()));
-    }
-    file.ok_or_else(|| invalid_multipart("A file part is required."))
 }

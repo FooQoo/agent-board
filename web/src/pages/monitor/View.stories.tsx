@@ -40,7 +40,6 @@ function MonitorPageStory({ epicReadFails = false }: { epicReadFails?: boolean }
   }
   const readResolvers: NonNullable<MonitorViewProps['readResolvers']> = {
     attachmentUrl: (projectId, taskId, id) => `/monitor/${projectId}/tasks/${taskId}/${id}`,
-    evidenceUrl: (projectId, taskId, id) => `/monitor/${projectId}/tasks/${taskId}/evidence/${id}`,
     epicAttachmentUrl: (projectId, epicId, id) => `/monitor/${projectId}/epics/${epicId}/${id}`,
     getEpics: async () => {
       if (epicReadFails) throw new Error('offline');

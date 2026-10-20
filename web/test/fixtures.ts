@@ -60,7 +60,6 @@ export function makeTask(overrides: Partial<Task> & Pick<Task, 'id'>): Task {
     isDraft: false,
     history: [{ at: at, reason: 'Created task in Todo.' }],
     attachments: [],
-    evidence: [],
     ...overrides,
   };
 }
