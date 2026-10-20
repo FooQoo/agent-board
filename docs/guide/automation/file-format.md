@@ -33,7 +33,7 @@ history: []
 Any headings and text you need.
 ```
 
-- **Body.** The body holds the task plan, the results of checking each acceptance condition, and references to artifacts and evidence. No heading is required. Do not put a chronological log in the body; the history belongs in the frontmatter, and full logs belong in [evidence files](../use/editing#add-evidence).
+- **Body.** The body holds the task plan, the results of checking each acceptance condition, and artifact references. No heading is required. Do not put a chronological log in the body; the history belongs in the frontmatter. Attach images when visual proof is useful.
 - **New tasks.** When you create a task, `history` may be omitted or empty; Agent Board adds the first history entry. A stored `TASK.md` must have a valid top-level `history` list, even when `acceptance` is empty.
 
 ### Acceptance conditions
@@ -55,7 +55,7 @@ Add a condition with the next free number; do not renumber. Other keys in the fr
 ```yaml
 history:
   - at: "2026-10-15T01:30:00Z"
-    reason: "Verified the setup guide links and saved the build output as evidence."
+    reason: "Verified the setup guide links and recorded the result in the task body."
 ```
 
 - `at` is a UTC string in the exact form `YYYY-MM-DDTHH:MM:SSZ`, with whole seconds and an uppercase `Z`. Offsets (including `+00:00`) and fractional seconds are rejected.
@@ -68,7 +68,7 @@ Agents add meaningful progress with [`history add`](./cli#report-work), without 
 
 ### Check conditions and finish
 
-Mark a condition `done: true` only after you have verified it. Keep the result and the evidence references in the body, and record the verification in the history before you save the last completed condition.
+Mark a condition `done: true` only after you have verified it. Keep a concise result in the body, and record the verification in the history before you save the last completed condition.
 
 While `agboard serve` is running, a task finishes by itself when it is:
 

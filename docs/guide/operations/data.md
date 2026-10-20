@@ -30,7 +30,6 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
         task.json
         TASK.md
         assets/
-        evidence/
       epics/<EPIC-ID>/
         epic.json
         EPIC.md

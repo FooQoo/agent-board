@@ -39,7 +39,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `epic_not_found` | The EPIC-ID does not exist. | 1 | 404 |
 | `epic_id_taken` | An epic with the same EPIC-ID exists. | 1 | 409 |
 | `epic_in_use` | A task still refers to the epic. | 1 | 409 |
-| `attachment_not_found`, `evidence_not_found` | The image or evidence ID does not exist. | 1 | 404 |
+| `attachment_not_found` | The image ID does not exist. | 1 | 404 |
 | `attachment_limit_exceeded` | An image is too large, or the owner has too many images. | 1 | 422 |
 
 ## Input and files

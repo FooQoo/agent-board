@@ -30,7 +30,6 @@ Agent Boardのデータは、すべて手元のマシンの一つのフォルダ
         task.json
         TASK.md
         assets/
-        evidence/
       epics/<EPIC-ID>/
         epic.json
         EPIC.md

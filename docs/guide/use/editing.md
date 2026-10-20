@@ -1,10 +1,10 @@
 ---
-title: Editing and evidence
+title: Editing and image attachments
 ---
 
-# Editing and evidence
+# Editing and image attachments
 
-Tasks and epics are written in a Markdown editor. A task's completion conditions sit in a panel below the text, and you can attach images and text evidence to a task. Agents edit the same content as plain files in the project's shared folder. This page covers the editor, images, and evidence; the file format is in [Markdown file format](../automation/file-format).
+Tasks and epics are written in a Markdown editor. A task's completion conditions sit in a panel below the text, and tasks accept image attachments. Record verification results in the task body or history. Agents edit the same content as plain files in the project's shared folder. This page covers the editor and images; the file format is in [Markdown file format](../automation/file-format).
 
 ## Write tasks and epic details in the editor
 
@@ -44,17 +44,6 @@ agboard --project "My project" attachment get 1 "<attachment-id>" --output diagr
 ```
 
 Images are referenced in the Markdown as `attachment:<attachment-id>`, and the image bytes stay in local files. Snapshots include the image metadata; the progress table and hooks leave it out. `attachment get` never overwrites an existing output file.
-
-## Add evidence
-
-Evidence is a UTF-8 log or other text that proves a result, such as test output. Add it, then use the returned evidence ID to read it:
-
-```sh
-agboard --project "My project" evidence add 1 test-output.log
-agboard --project "My project" evidence show 1 "<evidence-id>"
-```
-
-Reference the evidence ID in the task's body so that a reader can find it.
 
 ## Edit the files directly
 

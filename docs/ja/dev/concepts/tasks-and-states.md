@@ -72,7 +72,7 @@
 
 - アーカイブでは、レーン・`isDraft`・`epicId`・positionを保ち、稼働状態をIdleに戻し、依頼を取り下げ、`updatedAt`を更新します。レーンと`taskStatusChangedAt`は変わりません。Web画面のアーカイブと復元は、固定の理由`Archived by user.`と`Restored by user.`を記録します。
 - 復元したタスクは元のレーンの末尾に置きます。
-- 通常のスナップショット・`ls`・Hookは未アーカイブのタスクだけを返し、`show ID`はアーカイブ済みも表示します。アーカイブ済みへの書き込みは`task_archived`で失敗しますが、画像と証跡は読めます。アーカイブ一覧は`archivedAt`の新しい順です。
+- 通常のスナップショット・`ls`・Hookは未アーカイブのタスクだけを返し、`show ID`はアーカイブ済みも表示します。アーカイブ済みへの書き込みは`task_archived`で失敗しますが、画像は読めます。アーカイブ一覧は`archivedAt`の新しい順です。
 
 ## 並び順と日時
 

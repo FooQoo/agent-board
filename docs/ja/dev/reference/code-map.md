@@ -34,7 +34,7 @@
 | `frontmatter`<br>`history`<br>`validate` | 本文とfrontmatterの分割、受入条件と履歴の解析、未知のキーを保ったファイルの検証。 |
 | `transaction` | `task.json`と`TASK.md`の組を、永続ジャーナルで保存・復旧する。 |
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
-| `ops/` | タスク・稼働状態・回答・エピック・画像・証跡・自動完了の操作。 |
+| `ops/` | タスク・稼働状態・回答・エピック・画像・自動完了の操作。 |
 | `io`・`lock` | renameによる置き換え保存と、`write.lock`・`lifecycle.lock`。 |
 | `project`・`bindings` | プロジェクトの一覧と、フォルダの紐付け。 |
 | `index`・`watch` | `serve`内のメモリ上の索引と、OSイベントの監視。 |
@@ -43,7 +43,7 @@
 
 | モジュール | 責務 |
 | --- | --- |
-| `api/` | ボードのルーター、Hostのガードと書き込みのガード、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、multipart、アーカイブ、タスクの画像と証跡、エピック、エピックの画像）。 |
+| `api/` | ボードのルーター、Hostのガードと書き込みのガード、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、multipart、アーカイブ、タスクの画像、エピック、エピックの画像）。 |
 | `monitor/`<br>`remote` | モニターの読み取り用ルーターと回答のエンドポイント、それらをボードのルーターと組み合わせるHTTPSのリモート用リスナー。 |
 | `guard` | ローカルとリモートの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認と、HTTPSのoriginの正規化。 |
 | `response`<br>`request` | JSONのエラー本文、`AgboardError`からHTTPステータスへの対応、そのほかの共有の応答と、失敗時にそのエラー本文を返すJSONの本文。 |

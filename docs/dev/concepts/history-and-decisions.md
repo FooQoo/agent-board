@@ -44,13 +44,13 @@ acceptance:
 history: []
 ---
 
-(Task plan, verification results, references to artifacts and evidence)
+(Task plan, verification results, references to artifacts)
 ```
 
 - `acceptance` is a list; omitted, `null`, and empty all mean zero items. Each item has exactly `id` (`AC-<positive integer>`, no leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (boolean). Numbers are never reassigned.
 - Other top-level keys are preserved on save (YAML formatting may be normalized). A file without frontmatter, or with old heading-based `- [ ] AC-n.` lines, has zero conditions; old formats are not migrated.
-- The body holds the plan, verification results, and references; full logs go to evidence files. Chronological progress goes only to `history`.
+- The body holds the plan, concise verification results, and artifact references. Chronological progress goes only to `history`.
 
 **Automatic Done.** An AI-owned, non-draft, unarchived Todo or Doing task with at least one valid condition, all `done: true`, moves to Done by itself. One history entry records it and `taskStatusChangedAt` is updated. Pending tasks wait until they are answered and are then re-evaluated. Tasks with no or invalid conditions, human tasks, and drafts are excluded. `serve` also evaluates existing tasks at startup.
 
-Done tasks refuse AI changes (edit, state, epic, history, evidence, images) and never reopen automatically; people can still edit and reopen them. An AI lane move to Done is refused with `acceptance_unmet` while a condition is unmet or the frontmatter is invalid. Tasks with zero conditions, and moves by people, are not blocked. How this is evaluated is described in [Agent integration](./agents.md#automatic-done).
+Done tasks refuse AI changes (edit, state, epic, history, and images) and never reopen automatically; people can still edit and reopen them. An AI lane move to Done is refused with `acceptance_unmet` while a condition is unmet or the frontmatter is invalid. Tasks with zero conditions, and moves by people, are not blocked. How this is evaluated is described in [Agent integration](./agents.md#automatic-done).

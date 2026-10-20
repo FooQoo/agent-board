@@ -282,7 +282,6 @@ function taskFilesFor(item: FixtureTask): { task: Record<string, unknown>; markd
     updatedAt: item.updatedAt,
     agentStatusChangedAt: item.agentStatusChangedAt,
     attachments: [],
-    evidence: [],
   };
   return { task: taskJson, markdown: taskMarkdown(item.description, history) };
 }

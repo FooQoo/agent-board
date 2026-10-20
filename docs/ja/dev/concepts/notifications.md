@@ -4,7 +4,7 @@
 
 ## versionと更新通知
 
-プロジェクトの`version`は、正本ファイル（`project.json`・`epic.json`・`EPIC.md`・`task.json`・`TASK.md`）の相対パスと内容、`assets/`・`evidence/`のファイル名から計算したSHA-256ハッシュです。同じ内容を保存しても変わらず、以前の内容に戻すと以前のversionが再び現れることもあります。利用側はversionの大小や順序ではなく、一致するかどうかだけを比較します。
+プロジェクトの`version`は、正本ファイル（`project.json`・`epic.json`・`EPIC.md`・`task.json`・`TASK.md`）の相対パスと内容、`assets/`のファイル名から計算したSHA-256ハッシュです。同じ内容を保存しても変わらず、以前の内容に戻すと以前のversionが再び現れることもあります。利用側はversionの大小や順序ではなく、一致するかどうかだけを比較します。
 
 ```mermaid
 flowchart LR

@@ -14,7 +14,7 @@ A project is one board. It has its own tasks, epics, and history, and nothing is
 
 A task is one piece of work. It has:
 
-- a **title** and a **body** (free Markdown: the plan, the results, links to evidence);
+- a **title** and a **body** (free Markdown: the plan, the results, and artifact links);
 - an **owner**: **AI** for work an agent does, **User** for work you do. The owner is fixed when the task is created;
 - **acceptance conditions**: a checklist that says when the task is finished;
 - a **history**: a time-ordered list of what happened, each entry with a time and a reason.

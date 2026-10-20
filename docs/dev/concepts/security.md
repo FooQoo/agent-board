@@ -45,16 +45,16 @@ These checks prove that a request came from the page in a browser. They do not s
 
 ## Deletion is for people
 
-- `rm`, `project rm`, `epic rm`, `evidence rm`, and `init` on a non-empty project require a human y/N confirmation in a terminal (see the [CLI guide](../../guide/automation/cli.md#output-and-confirmation)). Without a terminal, or with `--json`, they fail instead of asking. There is no option to skip confirmation.
+- `rm`, `project rm`, `epic rm`, and `init` on a non-empty project require a human y/N confirmation in a terminal (see the [CLI guide](../../guide/automation/cli.md#output-and-confirmation)). Without a terminal, or with `--json`, they fail instead of asking. There is no option to skip confirmation.
 - Deleting a project shows the name and that every task and its history will be deleted.
-- The web UI physically deletes only archived tasks, after the write guard. Archiving keeps data; physical deletion removes the task folder (body, state, history, images, evidence). Copies the user made elsewhere are never touched.
+- The web UI physically deletes only archived tasks, after the write guard. Archiving keeps data; physical deletion removes the task folder (body, state, history, and images). Copies the user made elsewhere are never touched.
 - Breaking changes are allowed before the first release for development-time format changes only; they never waive these confirmations.
 
 ## Drafts and Done tasks
 
 - CLI `edit`, `mv`, `state`, and `history add` refuse draft tasks, so a cooperative agent does not overwrite a task a person is writing.
-- AI changes to Done tasks (edit, state, epic, history, evidence, images) are refused.
-- Writes to archived tasks (edit, draft change, move, state, answer, attachments) are refused under the write lock; images and evidence stay readable.
+- AI changes to Done tasks (edit, state, epic, history, and images) are refused.
+- Writes to archived tasks (edit, draft change, move, state, answer, and attachments) are refused under the write lock; images stay readable.
 - The draft toggle and edit APIs accept only requests that pass the browser write guard.
 - `actor` (`ai` or `human`) classifies an operation; it is not authentication. It comes from explicit CLI input or the web side's fixed `human`, never from the assignee.
 
@@ -67,12 +67,11 @@ Titles, descriptions, reasons, and answers are written by agents and users, so t
 - Body images resolve only to `assets/<id>.<ext>` (or `attachment:<id>`) owned by the same task or epic, through the image API that checks ProjectId, owner, and image ID. `../`, absolute paths, `file:`, `data:`, `javascript:`, other owners, other projects, and symbolic links are not shown. External images load only from `http` and `https` URLs, without a Referer.
 - As defense in depth, HTML responses carry a `Content-Security-Policy` (scripts and connections from self only; images from self, `data:`, `http`, `https`), so a rendering bug cannot run external scripts. Split scripts load from the server's own `/assets/`.
 - Mermaid renders with `securityLevel: 'strict'`, disabling HTML, click handlers, and scripts in diagrams.
-- Evidence is served as `text/plain; charset=utf-8` with `X-Content-Type-Options: nosniff`.
 
 ## Files and paths
 
 - Shared files are created with the OS default permissions and hold no secrets.
-- Owned paths are built only after validating ProjectId (32 hexadecimal characters), task ID, EPIC-ID, image ID, and evidence ID. Names and body text never become paths or shell code.
+- Owned paths are built only after validating ProjectId (32 hexadecimal characters), task ID, EPIC-ID, and image ID. Names and body text never become paths or shell code.
 - The absolute path of the shared area is returned only by `workspace --json`. Hooks, snapshots, and errors show relative paths only. Folder bindings stay in the machine-local data area, and `EPIC.md`/`TASK.md` paths appear only in local CLI and hook output, never in remote JSON.
 - Board text is work data: it is never used as hook configuration, command arguments, or shell code. The hook and `wait` only read. Session tokens, environment variables, and settings contents never appear in snapshots.
 

@@ -32,7 +32,7 @@ Hooks and the agent skill run `agboard` from your `PATH`, so they use the instal
 
 - Agents may edit only a non-draft task's `TASK.md` and an epic's `EPIC.md`, as the project's `README.md` allows.
 - `task.json` holds metadata and is changed through the CLI. `TASK.md` holds the body, the acceptance conditions, and the history.
-- Task operations add history automatically; agents use `history add` for meaningful progress, and keep plans, verification results, and evidence references in the body.
+- Task operations add history automatically; agents use `history add` for meaningful progress, and keep plans and concise verification results in the body.
 - Agents never edit `epic.json` or `project.json`, never delete task or epic folders, and never put machine-specific absolute paths in shared files.
 
 The format is in [Markdown file format](./file-format).
@@ -45,7 +45,7 @@ Agents write history in the same language as the task body. Generated notes from
 flowchart TD
     P["Read progress"] --> R["Read the epic and task files"]
     R --> D["Move to Doing, report Running"]
-    D --> L["Record work and evidence"]
+    D --> L["Record work and verification results"]
     L --> Q{"Decision needed?"}
     Q -- yes --> PE["Ask: Pending with choices"]
     PE --> A["You answer on the task"]
@@ -59,7 +59,7 @@ flowchart TD
 
 1. **Choose.** Read `agboard progress --json` and select a ready AI-owned task, following its epic's saved task order. Read only the selected epic's `EPIC.md` and the task's `TASK.md`; use `show` when you need its history or an open question.
 2. **Start.** Move the task to Doing with a reason, then report Running. Review a user-owned task only when it affects the work.
-3. **Work and record.** Record meaningful progress with `history add`, with concise reasons based on actual work and verification. Keep the plan, results, and evidence references in the body and full logs in evidence files. Moves and state changes already add history, so do not duplicate them.
+3. **Work and record.** Record meaningful progress with `history add`, with concise reasons based on actual work and verification. Keep the plan and concise results in the body; attach images when visual proof is useful. Moves and state changes already add history, so do not duplicate them.
 4. **Ask when blocked.** Ask a question with Pending when you need a decision (see [Decisions](../use/decisions)).
 5. **Resume.** After an answer, read the task and history, reconsider the plan, and resume with a reason.
 6. **Finish.** Mark acceptance conditions done only after verifying them. Eligible AI tasks move to Done automatically when all conditions are complete.

@@ -16,7 +16,6 @@ The routes served by the remote listener, including the mobile monitor. How the 
 | GET `/monitor/api/events` | Dedicated SSE with `ready` (carrying the monitor's build ID), `changed`, and `heartbeat`. |
 | POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | Answers the current request only. |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/attachments/{attachmentId}` | Owned images only. |
-| GET `/monitor/api/projects/{projectId}/tasks/{id}/evidence/{evidenceId}` | Owned text evidence only. |
 | GET `/monitor/api/projects/{projectId}/epics/{epicId}` and its attachments | Owned epic data and images only. |
 
 - `/monitor/api/` is split into a read router and an answer-only write router and is never merged into the desktop API. There is no fallback to the desktop router, no prefix-stripping redirect, no method override, and no alias from monitor paths to desktop assets.

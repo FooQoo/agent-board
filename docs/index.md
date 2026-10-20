@@ -37,8 +37,8 @@ features:
       alt: ''
       width: 28
       height: 28
-    title: Local Markdown for plans, results, and evidence
-    details: Keep epic details in EPIC.md, tasks in TASK.md, and evidence alongside them. Edit the files directly or use the rich Markdown editor. No account or hosted service required.
+    title: Local Markdown for plans and results
+    details: Keep epic details in EPIC.md and tasks in TASK.md. Edit the files directly or use the rich Markdown editor. No account or hosted service required.
 ---
 
 <script setup>

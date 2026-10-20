@@ -11,7 +11,7 @@ The board is where you add tasks, follow what agents are doing, and review the r
 1. Select a project in the header and choose **Add task**.
 2. Enter a short request and submit it. This creates an AI-owned task; the first non-empty line becomes its title.
 
-To set the title, owner, acceptance conditions, or draft state yourself, choose **Create manually** in the request form and use the full editor. See [Editing and evidence](./editing#send-a-task-request). The owner cannot be changed after the task is created.
+To set the title, owner, acceptance conditions, or draft state yourself, choose **Create manually** in the request form and use the full editor. See [Editing and image attachments](./editing#send-a-task-request). The owner cannot be changed after the task is created.
 
 The new task appears at the end of Todo.
 
@@ -44,7 +44,7 @@ AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks c
 
 ## Change a task
 
-To edit a task or put it in an epic, choose **Make draft** in the details panel, edit the text, and choose **Finalize** when it is ready. See [Editing and evidence](./editing) for the editor.
+To edit a task or put it in an epic, choose **Make draft** in the details panel, edit the text, and choose **Finalize** when it is ready. See [Editing and image attachments](./editing) for the editor.
 
 ## Drafts
 

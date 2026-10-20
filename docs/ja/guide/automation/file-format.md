@@ -33,7 +33,7 @@ history: []
 Any headings and text you need.
 ```
 
-- **本文:** 本文には、タスクの計画、各受入条件の確認結果、成果物や証跡への参照を書きます。決まった見出しはありません。時系列のログは本文に書きません。履歴はfrontmatterに、全文のログは[証跡ファイル](../use/editing#証跡を追加する)に置きます。
+- **本文:** 本文には、タスクの計画、各受入条件の確認結果、成果物への参照を書きます。決まった見出しはありません。時系列のログは本文に書かず、履歴をfrontmatterに記録します。画面の見た目を確認できる画像は添付できます。
 - **新しいタスク:** タスクを作るときは、`history`を省略するか空にでき、最初の履歴の項目はAgent Boardが加えます。保存済みの`TASK.md`には、`acceptance`が空でも、有効なトップレベルの`history`リストが必要です。
 
 ### 受入条件
@@ -55,7 +55,7 @@ Any headings and text you need.
 ```yaml
 history:
   - at: "2026-10-15T01:30:00Z"
-    reason: "Verified the setup guide links and saved the build output as evidence."
+    reason: "Verified the setup guide links and recorded the result in the task body."
 ```
 
 - `at`は、厳密に`YYYY-MM-DDTHH:MM:SSZ`の形のUTC文字列で、秒は整数、`Z`は大文字です。時差表記（`+00:00`を含む）と小数秒は拒否します。
@@ -68,7 +68,7 @@ history:
 
 ### 条件を達成にして終える
 
-条件は、検証が済んでから`done: true`にします。結果と証跡への参照は本文に残し、最後の未達成条件を達成済みにして保存する前に、検証を履歴に記録します。
+条件は、検証が済んでから`done: true`にします。簡潔な結果を本文に残し、最後の未達成条件を達成済みにして保存する前に、検証を履歴に記録します。
 
 `agboard serve`が動いている間、次のタスクは自動で完了に移ります。
 

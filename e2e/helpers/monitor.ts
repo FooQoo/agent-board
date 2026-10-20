@@ -67,9 +67,7 @@ export function createMonitorHome(): string {
     'base64',
   );
   const image = path.join(home, 'monitor.png');
-  const evidenceFile = path.join(home, 'run.log');
   writeFileSync(image, png);
-  writeFileSync(evidenceFile, 'monitor evidence fixture\n', 'utf8');
   const attachment = JSON.parse(
     run(home, ['--project', 'Alpha', 'attachment', 'add', '4', '--file', image, '--actor', 'ai', '--json']),
   ) as { attachment: { id: string } };
@@ -78,7 +76,6 @@ export function createMonitorHome(): string {
       `A shared read-only detail with an owned image and Mermaid diagram.\n\n![monitor.png](attachment:${attachment.attachment.id})\n\n\`\`\`mermaid\ngraph TD\n  A[Monitor] --> B[Shared files]\n\`\`\``,
     ), '--json',
   ]);
-  run(home, ['--project', 'Alpha', 'evidence', 'add', '4', evidenceFile, '--name', 'run.log', '--json']);
   move(home, 'Alpha', firstCompleted, 'done', 'Complete work');
   for (let index = 1; index < 8; index++) {
     const id = task(home, 'Alpha', `Alpha completed ${index + 1}`, `Completed detail ${index + 1}.`);

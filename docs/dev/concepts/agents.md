@@ -13,9 +13,9 @@ Agents use Agent Board through three pieces: the skill that tells them how to wo
 
 The skill is named `agent-board`; the executable is `agboard`. A typical loop: the hook shows the progress table → the agent reads only the `EPIC.md` and `TASK.md` it needs → it clarifies an unclear title through `agboard edit --title`, preserving the original request → it moves the task to Doing and Running → it records progress with `history add` → it asks a decision with `"wait": {}` when blocked → it checks conditions off, and automatic Done finishes the task. Title refinement is a skill instruction shared by the ordinary loop and listener, not a server-side summarization feature.
 
-Agents append progress at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without per-entry approval, and never duplicate entries that operations already appended. The body keeps the plan, results, and evidence references; full logs go to evidence files.
+Agents append progress at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without per-entry approval, and never duplicate entries that operations already appended. The body keeps the plan and concise verification results. Images can be attached when visual proof is useful.
 
-The skill gives `BUG` and `ENHANCEMENT` a fixed-body exception: they are ongoing classification epics, not per-feature plans. Their canonical bodies live in `assets/BUG-EPIC.md` and `assets/ENHANCEMENT-EPIC.md` beside the skill. After one-time initialization in the board’s language, normal work and listener runs record plans and outcomes only on tasks. An explicit user request is required to replace existing non-empty content, with useful old content preserved as task evidence. Priority frontmatter remains editable. This is not a server-side edit restriction.
+The skill gives `BUG` and `ENHANCEMENT` a fixed-body exception: they are ongoing classification epics, not per-feature plans. Their canonical bodies live in `assets/BUG-EPIC.md` and `assets/ENHANCEMENT-EPIC.md` beside the skill. After one-time initialization in the board’s language, normal work and listener runs record plans and outcomes only on tasks. An explicit user request is required to replace existing non-empty content, with useful old content retained in relevant task bodies. Priority frontmatter remains editable. This is not a server-side edit restriction.
 
 ## The progress table and the hook
 
@@ -64,7 +64,7 @@ The rule is defined in [Data model](./history-and-decisions.md#acceptance-condit
 - `serve` evaluates existing tasks at startup, before publishing the first snapshot. During operation it evaluates after FileStore saves and after atomic file updates seen by the watcher. It never re-triggers from its own notification, and re-evaluating the same task never duplicates history.
 - A CLI edit that also changes the epic is evaluated after all changes apply. AI-facing CLI and FileStore entry points apply the Done guard.
 - Pending tasks are skipped and re-evaluated after the answer. Done tasks never reopen automatically.
-- Agents record verification in history, put results and evidence references in the body, and only then set the last condition to `done: true`.
+- Agents record verification in history, put concise results in the body, and only then set the last condition to `done: true`.
 - Starting a new version of `serve` completes existing eligible tasks. Before adopting it for normal use, list those tasks and take a backup.
 
 This restrains cooperative agents; it does not authenticate against direct file edits or a spoofed actor.

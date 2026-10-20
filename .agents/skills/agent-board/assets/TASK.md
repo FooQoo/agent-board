@@ -9,4 +9,4 @@ acceptance:
 history: []
 ---
 
-(Write the task plan in free Markdown. There are no required headings. Add verified acceptance results and artifact or evidence references here. Store full logs in evidence files. Automatically record progress and all operation history only in the history frontmatter; do not add an execution-history section to this body.)
+(Write the task plan in free Markdown. There are no required headings. Add concise verified acceptance results and artifact references here. Automatically record progress and all operation history only in the history frontmatter; do not add an execution-history section to this body.)

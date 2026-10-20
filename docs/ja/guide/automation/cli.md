@@ -15,12 +15,12 @@ title: CLIリファレンス
 | タスクを移す、エージェントの状態を報告する | `mv`、`state` |
 | 進捗を記録する | `history add` |
 | タスクの本文を編集する | `edit` |
-| 画像やログを添付する | `attachment`、`evidence` |
+| 画像を添付する | `attachment` |
 | タスクをまとめて順序づける | `epic`、`progress` |
 | 変更を待つ | `wait` |
 | プロジェクトとフォルダを管理する | `project`、`workspace` |
 | サーバーを起動し、エージェント連携を設定する | `serve`、`setup`、`hook` |
-| 削除する（人だけ） | `rm`、`project rm`、`epic rm`、`evidence rm`、`init` |
+| 削除する（人だけ） | `rm`、`project rm`、`epic rm`、`init` |
 
 ## タスクを追加して確認する
 
@@ -49,7 +49,7 @@ agboard --project "My project" state 1 running --actor ai --reason "Writing and 
 列や状態を変えない、意味のある進捗を記録します。
 
 ```sh
-agboard --project "My project" history add 1 --reason "Checked the installation links and saved the build output as evidence"
+agboard --project "My project" history add 1 --reason "Checked the installation links and recorded the result in the task body"
 agboard --project "My project" history add 1 --reason-file progress.txt
 ```
 
@@ -141,7 +141,7 @@ agboard setup --agent claude --json
 
 JSON形式の出力が必要なときは`--json`を付けます。helpのテキスト・エラー・JSONの値は、ブラウザの言語に関わらず、常に英語です。
 
-タスク・エピック・証跡・プロジェクトの削除と、`init`によるプロジェクトの初期化には、端末での人の確認が必要です。エージェントは、人に頼まなければなりません。
+タスク・エピック・プロジェクトの削除と、`init`によるプロジェクトの初期化には、端末での人の確認が必要です。エージェントは、人に頼まなければなりません。
 
 ## 次に読む
 

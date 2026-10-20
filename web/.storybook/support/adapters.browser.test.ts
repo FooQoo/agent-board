@@ -95,9 +95,6 @@ describe('monitor read resolvers fake (MonitorView contract)', () => {
     expect(resolvers.attachmentUrl(...args)).toBe(
       unconnectedMonitorReadResolvers.attachmentUrl(...args),
     );
-    expect(resolvers.evidenceUrl(PROJECT.id, 7, 'ev 2')).toBe(
-      `/monitor/api/projects/${PROJECT.id}/tasks/7/evidence/ev%202`,
-    );
     expect(resolvers.epicAttachmentUrl(PROJECT.id, EPIC.id, 'img')).toBe(
       `/monitor/api/projects/${PROJECT.id}/epics/${EPIC.id}/attachments/img`,
     );

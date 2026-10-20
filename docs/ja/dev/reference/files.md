@@ -22,7 +22,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `pendingRequestId`・`pendingRequest` | Pendingの間の未回答の判断依頼。それ以外は`null`。 |
 | `requestAnswers` | 再起動後も依頼IDで引けるよう保存する回答。 |
 | `archivedAt` | `null`、またはアーカイブ日時。 |
-| `attachments`・`evidence` | 各ファイルのID・名前・サイズ・作成日時（画像はMIME型も）。 |
+| `attachments` | 画像のID・名前・サイズ・MIME型・作成日時。 |
 | `simpleRequest` | 過去の簡易依頼フォームが保存した任意のメタデータ`{requestId, payloadHash}`。新規タスクでは保存・利用しない。 |
 | `createdAt`・`updatedAt` | 作成日時と、取得時に`task.json`と`TASK.md`の更新日時の新しい方。 |
 | `agentStatusChangedAt`・`taskStatusChangedAt` | 稼働状態の最後の変更と、レーンの最後の実際の変更。本文の編集・進捗の記録・同じレーンへの操作では`taskStatusChangedAt`は変わらない。 |
@@ -43,7 +43,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
         project.json
         README.md
         epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
-        tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>, evidence/<evidence-id>.log}
+        tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>}
         .internal/write.lock
         .internal/transactions/<transaction-id>.json
   bindings.json
@@ -54,7 +54,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 - JSONはUTF-8・camelCase・2スペースのインデントで、末尾に改行を一つ付けます。未知の項目は拒否します。
 - `workspace.json`は`{"format":"agboard-files","formatVersion":1}`です。`project.json`と`epic.json`は`formatVersion: 1`、`task.json`も`formatVersion: 1`を持ちます。対応するバージョンは1だけです。それ以外は`format_unsupported`を報告し、変更せずに残します。移行もフォールバックもしません。
 - `.`で始まる名前は正本ではありません。`README.md`はフォルダと編集の規則の案内で、製品が作成時に書きます。
-- 画像は所有者の`assets/`に、証跡はタスクの`evidence/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
+- 画像は所有者の`assets/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
 - `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`（`{"pid":41235,"port":7420,"started_at":"..."}`）は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。
 
 `project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`defaultEpicsSeeded`を持ちます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。
@@ -82,8 +82,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   "updatedAt": "2026-10-10T00:00:00Z",
   "agentStatusChangedAt": "2026-10-10T00:00:00Z",
   "taskStatusChangedAt": "2026-10-10T00:00:00Z",
-  "attachments": [],
-  "evidence": []
+  "attachments": []
 }
 ```
 
@@ -98,7 +97,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 acceptance: []
 history:
   - at: "2026-10-15T01:30:00Z"
-    reason: "Verified the setup guide links and saved the build output as evidence."
+    reason: "Verified the setup guide links and recorded the result in the task body."
 ---
 ```
 

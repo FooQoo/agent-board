@@ -42,7 +42,7 @@ Only the `TASK.md`/`task.json` pair is atomic. Images, `EPIC.md`, and `epic.json
 
 - Creating a task reserves `nextTaskId` under the lock, writes `task.json` and `TASK.md` (with its generated creation entry) into `tasks/.new-<random>/`, and renames the folder to `tasks/<task-id>/`. Epics work the same way. A failure never exposes a half-created task; the reserved number stays unused.
 - `init` renames the project's `tasks/` and `epics/` to temporary names before deleting them, keeping the ID, name, and `nextTaskId`.
-- `init` and `project rm` delete the named project's data, including archived tasks, images, and evidence, and nothing else.
+- `init` and `project rm` delete the named project's data, including archived tasks and images, and nothing else.
 - Bulk archive commits task by task; there is no rollback across tasks.
 
 ### Creating a task from a short request

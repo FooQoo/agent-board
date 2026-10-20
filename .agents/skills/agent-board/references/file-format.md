@@ -2,7 +2,7 @@
 
 **All task progress and operation history lives only in the top-level `history` YAML frontmatter of `TASK.md`.** Each entry has exactly two keys: `at` (timestamp) and `reason` (content). Do not store chronological history in the Markdown body, an execution log section, or `task.json`.
 
-The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact or evidence references; no heading is required. Full logs belong in evidence files. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use priority frontmatter for task order.
+The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact references; no heading is required. Record concise chronological progress in history. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use priority frontmatter for task order.
 
 Start from [assets/TASK.md](../assets/TASK.md) or [assets/EPIC.md](../assets/EPIC.md).
 
@@ -36,7 +36,7 @@ The following is an illustrative stored entry, not a note to copy into a new tas
 ```yaml
 history:
   - at: "2026-10-15T01:30:00Z"
-    reason: "Verified the setup guide links and saved the build output as evidence."
+    reason: "Verified the setup guide links and recorded the result in the task body."
 ```
 
 `at` must be a UTC string in the exact `YYYY-MM-DDTHH:MM:SSZ` format, with whole seconds and uppercase `Z`. Timezone offsets (including `+00:00`) and fractional seconds are rejected. `reason` is concise content (up to 10,000 Unicode characters, including surrounding whitespace). A supplied nonblank reason is preserved verbatim; questions and answer text retain their separate 2,000-character limits. Entries have no ID, kind, actor, or transition fields. API and CLI responses return history in this same two-field shape. Question and answer lookup data is separate from history.
@@ -62,7 +62,7 @@ If frontmatter cannot be read, the board reports the file, item, and reason as a
 
 ## Rules
 
-- Set `done: true` only after verification succeeds. Keep the result and evidence references in the body, and record the verification in history before saving the final completed condition.
+- Set `done: true` only after verification succeeds. Keep the result in the task body and record the verification in history before saving the final completed condition. Attach images when a visual result is useful.
 - Add a condition with the next free number. Do not renumber items.
 - When every condition is `done: true`, the board automatically moves an eligible AI-owned, non-draft Todo/Doing task to Done. Pending questions remain open until answered. Do not manually move an AI task to Done in the normal work loop; people can still move tasks themselves.
 - Keep task plans, verified results, and references in the body; keep all chronological progress and operation history only in the `history` frontmatter.

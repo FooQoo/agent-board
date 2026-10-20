@@ -25,7 +25,7 @@ const guideGroups: Group[] = [
       { file: 'use/board', en: 'The board', ja: 'ボード' },
       { file: 'use/decisions', en: 'Decisions', ja: '判断依頼' },
       { file: 'use/epics', en: 'Epics and progress', ja: 'エピックと進行表' },
-      { file: 'use/editing', en: 'Editing and evidence', ja: '編集と証跡' },
+      { file: 'use/editing', en: 'Editing and image attachments', ja: '編集と画像添付' },
     ],
   },
   {

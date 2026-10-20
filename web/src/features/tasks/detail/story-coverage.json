@@ -15,13 +15,7 @@
             },
             {
               "id": "task-detail-detailpanel--card",
-              "states": [
-                "card",
-                "chapters",
-                "table",
-                "mermaid drawn",
-                "attachment missing"
-              ],
+              "states": ["card", "chapters", "table", "mermaid drawn", "attachment missing"],
               "interaction": false
             },
             {

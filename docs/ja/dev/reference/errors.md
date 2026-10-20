@@ -39,7 +39,7 @@
 | `epic_not_found` | EPIC-IDがない。 | 1 | 404 |
 | `epic_id_taken` | 同じEPIC-IDのエピックがある。 | 1 | 409 |
 | `epic_in_use` | まだタスクがエピックを参照している。 | 1 | 409 |
-| `attachment_not_found`・`evidence_not_found` | 画像や証跡のIDがない。 | 1 | 404 |
+| `attachment_not_found` | 画像のIDがない。 | 1 | 404 |
 | `attachment_limit_exceeded` | 画像が大きすぎる、または添付先の画像件数や合計サイズが上限を超える。 | 1 | 422 |
 
 ## 入力とファイル

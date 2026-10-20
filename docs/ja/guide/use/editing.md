@@ -1,10 +1,10 @@
 ---
-title: 編集と証跡
+title: 編集と画像添付
 ---
 
-# 編集と証跡
+# 編集と画像添付
 
-タスクとエピックは、Markdownのエディターで書きます。タスクの完了条件は本文の下のパネルにあり、タスクには画像とテキストの証跡を添付できます。エージェントも、共有フォルダに保存された同じファイルを編集します。このページはエディター・画像・証跡を扱い、ファイルの形式は[Markdownファイルの形式](../automation/file-format)にあります。
+タスクとエピックは、Markdownのエディターで書きます。タスクの完了条件は本文の下のパネルにあり、タスクには画像を添付できます。検証結果はタスクの本文や履歴に記録します。エージェントも、共有フォルダに保存された同じファイルを編集します。このページはエディターと画像を扱い、ファイルの形式は[Markdownファイルの形式](../automation/file-format)にあります。
 
 ## エディターでタスクとエピックの詳細を書く
 
@@ -44,17 +44,6 @@ agboard --project "My project" attachment get 1 "<attachment-id>" --output diagr
 ```
 
 画像は、Markdownでは`attachment:<attachment-id>`として参照し、画像データはローカルのファイルに保存されます。スナップショットには画像のメタデータが含まれ、進行表とHookには含まれません。`attachment get`は、既存の出力ファイルを上書きしません。
-
-## 証跡を追加する
-
-証跡は、テストの出力など、結果を裏づけるUTF-8のログやテキストです。追加時に返される証跡IDを使って、内容を確認できます。
-
-```sh
-agboard --project "My project" evidence add 1 test-output.log
-agboard --project "My project" evidence show 1 "<evidence-id>"
-```
-
-読む人が見つけられるよう、証跡IDをタスクの本文に書いておきます。
 
 ## ファイルを直接編集する
 

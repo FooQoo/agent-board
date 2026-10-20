@@ -15,12 +15,12 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Move a task or report what an agent is doing | `mv`, `state` |
 | Record progress | `history add` |
 | Change a task's text | `edit` |
-| Attach images and logs | `attachment`, `evidence` |
+| Attach images | `attachment` |
 | Group and order tasks | `epic`, `progress` |
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
 | Run the server and agent access | `serve`, `setup`, `hook` |
-| Delete things (people only) | `rm`, `project rm`, `epic rm`, `evidence rm`, `init` |
+| Delete things (people only) | `rm`, `project rm`, `epic rm`, `init` |
 
 ## Add and inspect tasks
 
@@ -49,7 +49,7 @@ Moves and non-Pending state changes accept an optional `--reason` of up to 10,00
 Record meaningful progress that does not change the column or state:
 
 ```sh
-agboard --project "My project" history add 1 --reason "Checked the installation links and saved the build output as evidence"
+agboard --project "My project" history add 1 --reason "Checked the installation links and recorded the result in the task body"
 agboard --project "My project" history add 1 --reason-file progress.txt
 ```
 
@@ -141,7 +141,7 @@ agboard setup --agent claude --json
 
 Add `--json` for machine-readable output. The help text, errors, and JSON values are always in English, whatever language the browser uses.
 
-Deleting a task, epic, evidence, or project, and emptying a project with `init`, needs a person's confirmation in a terminal. Agents must ask a person to do it.
+Deleting a task, epic, or project, and emptying a project with `init`, needs a person's confirmation in a terminal. Agents must ask a person to do it.
 
 ## Next
 

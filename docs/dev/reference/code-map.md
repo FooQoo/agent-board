@@ -34,7 +34,7 @@ Inside `file_store`, the pieces you will touch most often are:
 | `frontmatter`<br>`history`<br>`validate` | Split body and frontmatter, parse acceptance and history, and validate files while keeping unknown keys. |
 | `transaction` | Saves and recovers the `task.json`/`TASK.md` pair with a durable journal. |
 | `reader` | Combines JSON and Markdown into snapshots and `problems`. |
-| `ops/` | Task, run state, answer, epic, image, evidence, and automatic completion operations. |
+| `ops/` | Task, run state, answer, epic, image, and automatic completion operations. |
 | `io`, `lock` | Replace-by-rename saves; `write.lock` and `lifecycle.lock`. |
 | `project`, `bindings` | The project catalog and folder bindings. |
 | `index`, `watch` | The in-memory index inside `serve`, and OS event watching. |
@@ -43,7 +43,7 @@ Inside `server`, routers depend on shared modules rather than on each other:
 
 | Module | Responsibility |
 | --- | --- |
-| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images and evidence, epics, and epic images. |
+| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, and epic images. |
 | `monitor/`<br>`remote` | The monitor's read router and its answer endpoint, and the HTTPS remote listener that combines them with the board router. |
 | `guard` | Host, Origin, Sec-Fetch-Site and token checks for local and remote writes, and canonical HTTPS origins. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |

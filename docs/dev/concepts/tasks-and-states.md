@@ -72,7 +72,7 @@ A draft is a task a person is still writing.
 
 - Archiving keeps the lane, `isDraft`, `epicId`, and position; resets the run state to Idle; withdraws the request; and updates `updatedAt`. The lane and `taskStatusChangedAt` do not change. Web archive and restore record the fixed reasons `Archived by user.` and `Restored by user.`
 - Restoring places the task at the end of its original lane.
-- Normal snapshots, `ls`, and the hook return unarchived tasks only; `show ID` also shows archived ones. Writes to archived tasks fail with `task_archived`, but their images and evidence remain readable. The archive list is sorted by `archivedAt`, newest first.
+- Normal snapshots, `ls`, and the hook return unarchived tasks only; `show ID` also shows archived ones. Writes to archived tasks fail with `task_archived`, but their images remain readable. The archive list is sorted by `archivedAt`, newest first.
 
 ## Ordering and time
 

@@ -21,7 +21,6 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | Changes the run state within the state rules. The UI has no entry point for it. |
 | `DELETE /api/projects/{projectId}/tasks/{id}` | Deletes archived tasks only; others are 409 `task_not_archived`. 204, or 404 when already gone. |
 | `…/tasks/{id}/attachments`, `…/attachments/{attachmentId}` | Task images (GET, POST, DELETE), matched by ProjectId, task ID, and attachment ID. |
-| `GET …/tasks/{id}/evidence/{evidenceId}` | Task evidence as `text/plain; charset=utf-8`. |
 | `GET`/`POST /api/projects/{projectId}/epics` | List and create epics (id, name, color, isDraft, document or body). No `acceptance` input. 201. |
 | `GET`/`PATCH`/`DELETE /api/projects/{projectId}/epics/{epicId}` | Read, or update name, color, isDraft, document or body, and priority. Keeps the body and unknown metadata. Saves `EPIC.md` before `epic.json`. `DELETE` answers 204; it is refused with 409 `epic_in_use` while any task, archived ones included, names the epic. |
 | `…/epics/{epicId}/attachments`, `…/{attachmentId}` | Epic images. |
