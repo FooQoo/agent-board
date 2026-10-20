@@ -104,6 +104,10 @@
       "agentStatus": "pending",
       "pendingReason": "Waiting for confirmation on how to replace a board.",
       "pendingRequestId": "0123456789abcdef0123456789abcdef",
+      "pendingChoices": [
+        { "id": "compat", "label": "Keep compatibility (recommended)" },
+        { "id": "break", "label": "Allow breaking changes" }
+      ],
       "createdAt": "2026-10-02T00:20:00Z",
       "updatedAt": "2026-10-02T10:36:00Z",
       "agentStatusChangedAt": "2026-10-02T10:36:00Z",
