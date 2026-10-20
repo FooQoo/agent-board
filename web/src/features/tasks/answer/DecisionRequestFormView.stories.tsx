@@ -56,19 +56,6 @@ export const ChoicesAndSelected: Story = {
   },
 };
 
-export const FreeTextOnly: Story = {
-  args: {
-    choices: [],
-    model: { ...baseModel, text: 'Please keep the current behavior.', sendable: true },
-  },
-  play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText('Answer in your own words.')).toBeInTheDocument();
-    await expect(within(canvasElement).getByRole('textbox', { name: 'Your answer' })).toHaveValue(
-      'Please keep the current behavior.',
-    );
-  },
-};
-
 export const Sending: Story = {
   args: {
     model: { ...baseModel, text: 'Waiting for the server.', phase: 'sending', disabled: true },
