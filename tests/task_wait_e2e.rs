@@ -135,7 +135,7 @@ fn wait_cli_returns_a_task_created_in_the_same_session_without_claiming_it() {
     assert_eq!(selected["task"]["taskStatus"], "todo");
     assert_eq!(selected["task"]["agentStatus"], "idle");
     assert!(selected["taskPath"].as_str().unwrap().ends_with("/TASK.md"));
-    assert!(selected["planPath"].is_null());
+    assert!(selected["documentPath"].is_null());
 
     let after = run(
         home.path(),

@@ -1,5 +1,5 @@
 //! The progress table: which tasks an agent can pick up, in what order, and
-//! how an epic's priority list is stored in its PLAN.md. Runs the real CLI on
+//! how an epic's priority list is stored in its EPIC.md. Runs the real CLI on
 //! a temporary data area.
 
 use std::fs;
@@ -96,9 +96,9 @@ fn epic_task_ids(table: &Value, epic: &str) -> Vec<i64> {
         .unwrap_or_default()
 }
 
-fn plan_path(home: &Path) -> PathBuf {
+fn document_path(home: &Path) -> PathBuf {
     let table = progress(home);
-    PathBuf::from(table["epics"][0]["planPath"].as_str().unwrap())
+    PathBuf::from(table["epics"][0]["documentPath"].as_str().unwrap())
 }
 
 #[test]
@@ -325,7 +325,7 @@ fn the_json_has_paths_and_counts_but_no_body_or_history() {
         );
     }
     assert!(Path::new(listed["taskPath"].as_str().unwrap()).exists());
-    assert!(plan_path(home.path()).exists());
+    assert!(document_path(home.path()).exists());
 }
 
 #[test]
@@ -341,8 +341,8 @@ fn epic_edit_stores_the_order_without_the_body_drops_tasks_that_left_and_refuses
             "epic",
             "edit",
             "ALPHA",
-            "--plan",
-            "# Plan\n\nKeep this text.\n",
+            "--document",
+            "# Document\n\nKeep this text.\n",
         ],
     ));
     ok(agboard(
@@ -368,7 +368,7 @@ fn epic_edit_stores_the_order_without_the_body_drops_tasks_that_left_and_refuses
         ],
     ));
 
-    let stored = fs::read_to_string(plan_path(home.path())).unwrap();
+    let stored = fs::read_to_string(document_path(home.path())).unwrap();
     assert!(stored.contains("Keep this text."));
     // 99 belongs to no task and is dropped on save. The task that left keeps its place
     // in the stored order, but the table no longer shows it.

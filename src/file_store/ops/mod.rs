@@ -63,6 +63,7 @@ pub(crate) fn lock_project(
     let dir = reader::project_dir_checked(shared, project)?;
     let lock = WriteLock::acquire(&layout::write_lock(&dir))?;
     transaction::recover_locked(&dir)?;
+    super::migrate::migrate_epic_documents(shared, &dir)?;
     Ok((dir, lock))
 }
 

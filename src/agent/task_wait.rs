@@ -50,7 +50,7 @@ struct TaskOutput {
     cursor: crate::domain::ChangeCursor,
     task: TaskView,
     task_path: std::path::PathBuf,
-    plan_path: Option<std::path::PathBuf>,
+    document_path: Option<std::path::PathBuf>,
 }
 
 #[derive(Debug, Serialize)]
@@ -138,12 +138,12 @@ fn render_task(
     task: &TaskView,
 ) -> Result<String, AgboardError> {
     let project_dir = layout::project_dir(shared, project_id);
-    let plan_path = task.epic_id.as_deref().and_then(|epic_id| {
+    let document_path = task.epic_id.as_deref().and_then(|epic_id| {
         snapshot
             .epics
             .iter()
             .find(|epic| epic.id.as_str() == epic_id)
-            .map(|epic| layout::epic_plan(&layout::epic_dir(&project_dir, &epic.id)))
+            .map(|epic| layout::epic_document(&layout::epic_dir(&project_dir, &epic.id)))
     });
     let output = TaskOutput {
         kind: "task",
@@ -151,7 +151,7 @@ fn render_task(
         cursor: snapshot.cursor.clone(),
         task: task.clone(),
         task_path: layout::task_md(&layout::task_dir(&project_dir, task.id)),
-        plan_path,
+        document_path,
     };
     serde_json::to_string(&output).map_err(|error| AgboardError::BoardUnavailable {
         reason: error.to_string(),

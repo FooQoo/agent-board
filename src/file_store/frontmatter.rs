@@ -1,9 +1,9 @@
 // file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
-//! TASK.md acceptance frontmatter and PLAN.md priority metadata:
+//! TASK.md acceptance frontmatter and EPIC.md priority metadata:
 //! the body that follows it, and the composition that writes both back.
 //!
 //! A file starts with a `---` line, YAML, and a closing `---` line. TASK.md reads
-//! `acceptance`; PLAN.md interprets `priority`. Other keys are kept as they are. A file without
+//! `acceptance`; EPIC.md interprets `priority`. Other keys are kept as they are. A file without
 //! the opening line is a body with no conditions. Defects are reported with the
 //! item they concern, and the product never rewrites a file to fix them.
 
@@ -33,28 +33,28 @@ pub struct Parsed {
     pub defects: Vec<Defect>,
 }
 
-/// A plan's Markdown and metadata syntax. Epic completion conditions are
-/// ordinary body text; only `priority` is interpreted as plan metadata.
-pub struct ParsedPlan {
+/// A document's Markdown and metadata syntax. Epic completion conditions are
+/// ordinary body text; only `priority` is interpreted as document metadata.
+pub struct ParsedDocument {
     pub body: String,
     pub defects: Vec<Defect>,
 }
 
-pub fn parse_plan(text: &str) -> ParsedPlan {
+pub fn parse_document(text: &str) -> ParsedDocument {
     let text = text.replace("\r\n", "\n");
     match split(&text) {
-        Split::None => ParsedPlan {
+        Split::None => ParsedDocument {
             body: text,
             defects: Vec::new(),
         },
-        Split::Unclosed => ParsedPlan {
+        Split::Unclosed => ParsedDocument {
             body: text,
             defects: vec![defect(
                 "frontmatter",
                 "The frontmatter has no closing --- line.",
             )],
         },
-        Split::Found { yaml, body } => ParsedPlan {
+        Split::Found { yaml, body } => ParsedDocument {
             body: body.to_string(),
             defects: read_yaml(yaml).err().into_iter().collect(),
         },

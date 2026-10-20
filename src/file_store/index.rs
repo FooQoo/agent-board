@@ -175,7 +175,7 @@ pub fn scan_ids(shared: &Path) -> Result<Vec<ProjectId>, AgboardError> {
 }
 
 /// The content version of one project folder: 32 lowercase hexadecimal
-/// digits. It covers `project.json`, every epic's `epic.json` and `PLAN.md`,
+/// digits. It covers `project.json`, every epic's `epic.json` and `EPIC.md`,
 /// every task's `task.json` and `TASK.md`, and the names (not the contents)
 /// of the files in `assets/` and `evidence/`. Dot-prefixed names are skipped.
 pub fn project_version(project_dir: &Path) -> String {
@@ -187,7 +187,7 @@ pub fn project_version(project_dir: &Path) -> String {
     for (dir, files) in [
         (
             layout::epics_dir(project_dir),
-            &["epic.json", "PLAN.md"][..],
+            &["epic.json", "EPIC.md"][..],
         ),
         (
             layout::tasks_dir(project_dir),

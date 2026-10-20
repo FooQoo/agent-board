@@ -220,7 +220,7 @@ fn an_epic_is_saved_as_plain_markdown_without_condition_input() {
     let epic = &created.json()["epic"];
     assert_eq!(epic["body"], body);
     assert!(epic.get("acceptance").is_none());
-    assert!(!epic["plan"].as_str().unwrap().contains("acceptance:"));
+    assert!(!epic["document"].as_str().unwrap().contains("acceptance:"));
     let patched = server.write(
         "PATCH",
         &format!("{epics}/PLAN-1"),

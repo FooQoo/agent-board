@@ -60,7 +60,7 @@ impl Fixture {
                 name: "File share".into(),
                 color: Some("#7c3aed".into()),
                 is_draft: false,
-                plan: None,
+                document: None,
             },
             at(4),
         )
@@ -90,33 +90,33 @@ fn bytes_of(path: PathBuf) -> Vec<u8> {
 #[test]
 fn epic_conditions_are_body_text_and_not_managed_frontmatter() {
     let f = fixture();
-    let plan = "---\npriority: []\nacceptance: no-longer-managed\n---\n\n## Completion conditions\n\n- [ ] Reference condition.\n";
+    let document = "---\npriority: []\nacceptance: no-longer-managed\n---\n\n## Completion conditions\n\n- [ ] Reference condition.\n";
     let epic = f
         .store
         .create_epic(
             &f.project,
             NewEpic {
                 id: "PLAIN".into(),
-                name: "Plain plan".into(),
+                name: "Plain document".into(),
                 color: None,
                 is_draft: false,
-                plan: Some(plan.into()),
+                document: Some(document.into()),
             },
             at(4),
         )
         .unwrap();
-    assert_eq!(epic.plan, plan);
+    assert_eq!(epic.document, document);
     assert!(epic.body.contains("- [ ] Reference condition."));
     let view = serde_json::to_value(&epic).unwrap();
     assert!(view.get("acceptance").is_none());
     assert!(view.get("acceptanceError").is_none());
     assert!(f.store.snapshot(&f.project).unwrap().problems.is_empty());
     let default = f.new_epic("DEFAULT").unwrap();
-    assert!(!default.plan.contains("acceptance:"));
+    assert!(!default.document.contains("acceptance:"));
 }
 
 #[test]
-fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_plan() {
+fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_document() {
     let f = fixture();
     let view = f.new_epic("file-share").unwrap();
     assert_eq!(view.id.as_str(), "FILE-SHARE");
@@ -133,8 +133,8 @@ fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_plan() {
     assert_eq!(json["createdAt"], "2026-10-04T00:00:00Z");
     assert_eq!(json["updatedAt"], "2026-10-04T00:00:00Z");
 
-    let plan = fs::read_to_string(dir.join("PLAN.md")).unwrap();
-    assert_eq!(plan, "");
+    let document = fs::read_to_string(dir.join("EPIC.md")).unwrap();
+    assert_eq!(document, "");
     let leftovers: Vec<String> = fs::read_dir(f.project_dir().join("epics"))
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
@@ -217,7 +217,7 @@ fn colors_are_stored_as_uppercase_hex_and_other_colors_are_refused() {
                     name: "Bad".into(),
                     color: Some(bad.into()),
                     is_draft: false,
-                    plan: None,
+                    document: None,
                 },
                 at(4),
             )
@@ -249,7 +249,7 @@ fn an_epic_used_by_a_task_cannot_be_deleted_even_when_the_task_is_archived() {
         bytes_of(f.epic_dir("FILE-SHARE").join("epic.json")),
         json_before
     );
-    assert!(f.epic_dir("FILE-SHARE").join("PLAN.md").is_file());
+    assert!(f.epic_dir("FILE-SHARE").join("EPIC.md").is_file());
 }
 
 #[test]
@@ -379,7 +379,7 @@ fn an_agent_cannot_change_the_epic_of_an_archived_or_draft_task_but_a_human_can(
 }
 
 #[test]
-fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
+fn update_changes_name_color_draft_and_document_and_refuses_a_broken_document() {
     let f = fixture();
     f.new_epic("FILE-SHARE").unwrap();
     let id = epic_id("FILE-SHARE");
@@ -393,7 +393,7 @@ fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
                 name: Some("Renamed".into()),
                 color: Some("#ff0000".into()),
                 is_draft: Some(true),
-                plan: Some(valid_plan("Updated goal")),
+                document: Some(valid_document("Updated goal")),
             },
             at(5),
         )
@@ -402,7 +402,7 @@ fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
     assert_eq!(changed.value.name, "Renamed");
     assert_eq!(changed.value.color, "#FF0000");
     assert!(changed.value.is_draft);
-    assert!(changed.value.plan.contains("Updated goal"));
+    assert!(changed.value.document.contains("Updated goal"));
     assert_eq!(changed.value.updated_at, at(5));
 
     let same = f
@@ -421,7 +421,7 @@ fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
     assert_eq!(same.value.updated_at, at(5));
 
     let json_before = bytes_of(f.epic_dir("FILE-SHARE").join("epic.json"));
-    let plan_before = bytes_of(f.epic_dir("FILE-SHARE").join("PLAN.md"));
+    let document_before = bytes_of(f.epic_dir("FILE-SHARE").join("EPIC.md"));
     let broken = "---\npriority: [\n---\n\n目的だけ\n";
     let err = f
         .store
@@ -430,7 +430,7 @@ fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
             &id,
             EpicUpdate {
                 name: Some("Other".into()),
-                plan: Some(broken.into()),
+                document: Some(broken.into()),
                 ..EpicUpdate::default()
             },
             at(7),
@@ -444,8 +444,8 @@ fn update_changes_name_color_draft_and_plan_and_refuses_a_broken_plan() {
         "{err:?}"
     );
     assert_eq!(
-        bytes_of(f.epic_dir("FILE-SHARE").join("PLAN.md")),
-        plan_before
+        bytes_of(f.epic_dir("FILE-SHARE").join("EPIC.md")),
+        document_before
     );
     assert_eq!(
         bytes_of(f.epic_dir("FILE-SHARE").join("epic.json")),
@@ -501,7 +501,7 @@ fn an_epic_id_cannot_name_a_path_outside_the_epics_folder() {
     );
 }
 
-fn valid_plan(goal: &str) -> String {
+fn valid_document(goal: &str) -> String {
     format!("---\nacceptance:\n  - id: AC-1\n    text: 条件\n    done: false\n---\n\n{goal}\n")
 }
 

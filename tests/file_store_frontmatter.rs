@@ -1,4 +1,4 @@
-//! The frontmatter of TASK.md and PLAN.md: the acceptance conditions it holds,
+//! The frontmatter of TASK.md and EPIC.md: the acceptance conditions it holds,
 //! the body it leaves, and the defects that make the conditions unreadable.
 
 use agent_board::file_store::frontmatter::{AcceptanceItem, compose, parse};

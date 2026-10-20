@@ -97,9 +97,9 @@ pub fn epic_file(epic_dir: &Path) -> PathBuf {
     epic_dir.join("epic.json")
 }
 
-/// `PLAN.md` inside an epic folder.
-pub fn epic_plan(epic_dir: &Path) -> PathBuf {
-    epic_dir.join("PLAN.md")
+/// `EPIC.md` inside an epic folder.
+pub fn epic_document(epic_dir: &Path) -> PathBuf {
+    epic_dir.join("EPIC.md")
 }
 
 /// The `assets/` folder of an owner (a task folder or an epic folder).

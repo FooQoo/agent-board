@@ -144,7 +144,7 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
                 name: "Language".into(),
                 color: None,
                 is_draft: false,
-                plan: None,
+                document: None,
             },
             Utc::now(),
         )

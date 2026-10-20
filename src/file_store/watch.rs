@@ -243,7 +243,7 @@ mod tests {
         let epic = shared()
             .join("projects")
             .join(ID)
-            .join("epics/EPIC-1/PLAN.md");
+            .join("epics/EPIC-1/EPIC.md");
         assert_eq!(classify(&shared(), &epic), Some(Target::Project(id)));
     }
 

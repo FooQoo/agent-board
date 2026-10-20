@@ -32,7 +32,7 @@ Commands:
   rm      Delete a task (humans only; asks for confirmation)
   ls      List tasks
   show    Show a task and its history
-  epic    Create, list, show, edit, or delete epics and their plans
+  epic    Create, list, show, edit, or delete epics and their documents
   evidence Add, show, or delete a task's text evidence
   attachment Add, list, or read image attachments
   snapshot Fetch the complete board and history
@@ -71,7 +71,7 @@ Descriptions and drafts:
     --desc-file PATH (or --desc - on standard input), not --desc TEXT.
   - Snapshots, `show`, and `wait` return descriptions in full. Progress and hooks
     return metadata only. If the hook's progress table exceeds 256 KiB, it reports AGBOARD_ERROR
-    (context_too_large) instead; read only the needed PLAN.md and TASK.md files.
+    (context_too_large) instead; read only the needed EPIC.md and TASK.md files.
   - A task with \"isDraft\": true is a draft the user is still writing. It is
     read-only for you: `edit`, `mv`, and `state` fail with task_is_draft
     (exit code 1) and change nothing. Do not retry. Wait for the user to
@@ -547,7 +547,7 @@ pub fn read_reason(
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo epic add file-share --name \"File share\" --actor human\n  agboard --project demo epic add file-share --name \"File share\" --color '#7C3AED' --actor human\n  agboard --project demo epic ls --json\n  agboard --project demo epic show FILE-SHARE\n  agboard --project demo epic edit FILE-SHARE --plan-file plan.md\n  agboard --project demo epic rm FILE-SHARE"
+    after_help = "Examples:\n  agboard --project demo epic add file-share --name \"File share\" --actor human\n  agboard --project demo epic add file-share --name \"File share\" --color '#7C3AED' --actor human\n  agboard --project demo epic ls --json\n  agboard --project demo epic show FILE-SHARE\n  agboard --project demo epic edit FILE-SHARE --document-file epic.md\n  agboard --project demo epic rm FILE-SHARE"
 )]
 pub struct EpicArgs {
     #[command(subcommand)]
@@ -556,13 +556,13 @@ pub struct EpicArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum EpicCommand {
-    /// Create an epic with a plan template (EPIC-ID, name, and an optional color)
+    /// Create an epic with an empty document (EPIC-ID, name, and an optional color)
     Add(EpicAddArgs),
     /// List the epics in EPIC-ID order
     Ls,
-    /// Show an epic, its color, and its full plan
+    /// Show an epic, its color, and its full document
     Show(EpicIdArgs),
-    /// Change an epic's name, color, or plan
+    /// Change an epic's name, color, or document
     Edit(EpicEditArgs),
     /// Delete an epic (humans only; asks for confirmation)
     Rm(EpicIdArgs),
@@ -603,25 +603,25 @@ pub struct EpicEditArgs {
     #[arg(long, value_name = "IDS", allow_hyphen_values = true)]
     pub priority: Option<String>,
     #[command(flatten)]
-    pub plan: PlanArgs,
+    pub document: DocumentArgs,
 }
 
-/// The two ways to give a plan: the text itself, or a file. `-` reads standard input.
+/// The two ways to give an epic document: the text itself, or a file. `-` reads standard input.
 #[derive(Args, Debug, Clone, Default)]
-#[group(id = "plan_source", multiple = false)]
-pub struct PlanArgs {
-    /// Whole PLAN.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
+#[group(id = "document_source", multiple = false)]
+pub struct DocumentArgs {
+    /// Whole EPIC.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
-    pub plan: Option<String>,
-    /// Read the whole PLAN.md text, frontmatter included (up to 50,000 characters), from a file
+    pub document: Option<String>,
+    /// Read the whole EPIC.md text, frontmatter included (up to 50,000 characters), from a file
     #[arg(long, value_name = "PATH")]
-    pub plan_file: Option<PathBuf>,
+    pub document_file: Option<PathBuf>,
 }
 
-impl PlanArgs {
-    /// The plan the user asked for, or `None` when neither option was given.
+impl DocumentArgs {
+    /// The document the user asked for, or `None` when neither option was given.
     pub fn resolve(&self, stdin: &mut dyn Read) -> Result<Option<String>, AgboardError> {
-        if let Some(text) = &self.plan
+        if let Some(text) = &self.document
             && text == "-"
         {
             let mut buffer = String::new();
@@ -634,10 +634,10 @@ impl PlanArgs {
                 })?;
             return Ok(Some(strip_final_newline(buffer)));
         }
-        if let Some(text) = &self.plan {
+        if let Some(text) = &self.document {
             return Ok(Some(text.clone()));
         }
-        if let Some(path) = &self.plan_file {
+        if let Some(path) = &self.document_file {
             let text = std::fs::read_to_string(path).map_err(|e| AgboardError::FileError {
                 action: FileAction::Read,
                 file: path.display().to_string(),
@@ -982,11 +982,11 @@ impl Cli {
             }) if args.name.is_none()
                 && args.color.is_none()
                 && args.priority.is_none()
-                && args.plan.plan.is_none()
-                && args.plan.plan_file.is_none() =>
+                && args.document.document.is_none()
+                && args.document.document_file.is_none() =>
             {
                 Err(AgboardError::InvalidArgument {
-                    message: "nothing to change; give --name, --color, --priority, --plan, or --plan-file.".to_string(),
+                    message: "nothing to change; give --name, --color, --priority, --document, or --document-file.".to_string(),
                     command: Some("epic edit".to_string()),
                 })
             }

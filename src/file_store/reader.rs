@@ -23,6 +23,7 @@ use super::index;
 use super::io;
 use super::layout;
 use super::lock::WriteLock;
+use super::migrate;
 use super::model::{
     EpicFile, EpicView, Problem, ProjectFile, TaskEpic, TaskFile, TaskMetadata, TaskView,
     WorkspaceFile, current_request,
@@ -49,7 +50,7 @@ pub struct ProjectSnapshot {
 
 /// Read every epic folder. An epic whose `epic.json` is defective is left out
 /// and reported in `problems`; its folder is never changed. A defect in
-/// PLAN.md is reported while the plan text is still returned.
+/// EPIC.md is reported while the document text is still returned.
 pub(super) fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, Vec<Problem>) {
     let mut epics = Vec::new();
     let mut problems = Vec::new();
@@ -85,27 +86,26 @@ pub(super) fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, V
             }));
             continue;
         }
-        let plan_path = folder.join("PLAN.md");
-        let plan_label = layout::shared_label(shared, &plan_path);
-        let plan =
-            match io::read_text(&plan_path, &plan_label) {
-                Ok(text) => {
-                    problems.extend(validate::check_plan_body(&text).into_iter().map(|d| {
-                        Problem {
-                            file: plan_label.clone(),
-                            field: d.field,
-                            reason: d.reason,
-                        }
-                    }));
-                    text
-                }
-                Err(error) => {
-                    problems.push(problem_of(error));
-                    String::new()
-                }
-            };
-        let parts = frontmatter::parse_plan(&plan);
-        let (priority, priority_error) = match frontmatter::priority_of(&plan) {
+        let document_path = folder.join("EPIC.md");
+        let document_label = layout::shared_label(shared, &document_path);
+        let document = match io::read_text(&document_path, &document_label) {
+            Ok(text) => {
+                problems.extend(validate::check_document_body(&text).into_iter().map(|d| {
+                    Problem {
+                        file: document_label.clone(),
+                        field: d.field,
+                        reason: d.reason,
+                    }
+                }));
+                text
+            }
+            Err(error) => {
+                problems.push(problem_of(error));
+                String::new()
+            }
+        };
+        let parts = frontmatter::parse_document(&document);
+        let (priority, priority_error) = match frontmatter::priority_of(&document) {
             Ok(order) => (order, false),
             Err(_) => (Vec::new(), true),
         };
@@ -114,7 +114,7 @@ pub(super) fn read_epics(shared: &Path, project_dir: &Path) -> (Vec<EpicView>, V
             name: file.name,
             color: file.color,
             is_draft: file.is_draft,
-            plan,
+            document,
             body: parts.body,
             priority,
             priority_error,
@@ -546,6 +546,7 @@ pub fn read_task(
     let project_dir = project_dir_checked(shared, project_id)?;
     let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
     transaction::recover_locked(&project_dir)?;
+    migrate::migrate_epic_documents(shared, &project_dir)?;
     read_task_locked(shared, project_id, task_id)
 }
 
@@ -573,6 +574,7 @@ pub fn read_snapshot(
     let project_dir = project_dir_checked(shared, project_id)?;
     let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
     transaction::recover_locked(&project_dir)?;
+    migrate::migrate_epic_documents(shared, &project_dir)?;
     read_snapshot_locked(shared, project_id)
 }
 

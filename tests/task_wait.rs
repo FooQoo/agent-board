@@ -323,7 +323,12 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
     assert_ne!(selected["task"]["id"], beta);
     assert_eq!(selected["cursor"], before["cursor"]);
     assert!(selected["taskPath"].as_str().unwrap().ends_with("/TASK.md"));
-    assert!(selected["planPath"].as_str().unwrap().ends_with("/PLAN.md"));
+    assert!(
+        selected["documentPath"]
+            .as_str()
+            .unwrap()
+            .ends_with("/EPIC.md")
+    );
     assert_eq!(before["version"], after["version"]);
     assert!(loose > second);
 
@@ -374,7 +379,7 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
         );
         selected_ids.push(next["task"]["id"].as_i64().unwrap());
         if next["task"]["id"] == loose {
-            assert!(next["planPath"].is_null());
+            assert!(next["documentPath"].is_null());
         }
     }
     assert_eq!(selected_ids, vec![second, first, doing, beta, loose]);

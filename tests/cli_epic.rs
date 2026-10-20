@@ -39,7 +39,7 @@ fn epic_add(home: &Path, id: &str, name: &str, color: Option<&str>) {
 }
 
 #[test]
-fn epic_add_writes_the_epic_and_a_template_plan() {
+fn epic_add_writes_the_epic_and_an_empty_document() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     epic_add(home.path(), "file-share", "File share", Some("#7c3aed"));
@@ -52,8 +52,8 @@ fn epic_add_writes_the_epic_and_a_template_plan() {
     assert_eq!(shown["epic"]["name"], "File share");
     assert_eq!(shown["epic"]["color"], "#7C3AED");
     assert_eq!(shown["epic"]["isDraft"], false);
-    let plan = shown["epic"]["plan"].as_str().unwrap();
-    assert_eq!(plan, "", "plan lacks the template");
+    let document = shown["epic"]["document"].as_str().unwrap();
+    assert_eq!(document, "", "the new document is empty");
 }
 
 #[test]
@@ -118,13 +118,13 @@ fn an_epic_id_that_is_taken_is_refused_and_nothing_changes() {
 }
 
 #[test]
-fn epic_edit_changes_the_name_the_color_and_the_plan_from_a_file() {
+fn epic_edit_changes_the_name_the_color_and_the_document_from_a_file() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     epic_add(home.path(), "FILE-SHARE", "File share", Some("#111111"));
-    let plan = home.path().join("plan.md");
+    let document = home.path().join("document.md");
     std::fs::write(
-        &plan,
+        &document,
         "---\nacceptance:\n  - id: AC-1\n    text: Works\n    done: false\n---\n\nShare files.\n\nThe board.\n\nStep one.\n",
     )
     .unwrap();
@@ -140,8 +140,8 @@ fn epic_edit_changes_the_name_the_color_and_the_plan_from_a_file() {
             "Shared files",
             "--color",
             "#22aa33",
-            "--plan-file",
-            plan.to_str().unwrap(),
+            "--document-file",
+            document.to_str().unwrap(),
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -152,7 +152,7 @@ fn epic_edit_changes_the_name_the_color_and_the_plan_from_a_file() {
     assert_eq!(shown["epic"]["name"], "Shared files");
     assert_eq!(shown["epic"]["color"], "#22AA33");
     assert!(
-        shown["epic"]["plan"]
+        shown["epic"]["document"]
             .as_str()
             .unwrap()
             .contains("Step one.")

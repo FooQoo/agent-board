@@ -41,7 +41,7 @@ fn add(ctx: &mut Context, args: &EpicAddArgs) -> Result<Outcome, AgboardError> {
             name: args.name.clone(),
             color: args.color.clone(),
             is_draft: false,
-            plan: None,
+            document: None,
         },
         ctx.clock.now(),
     )?;
@@ -57,7 +57,7 @@ fn add(ctx: &mut Context, args: &EpicAddArgs) -> Result<Outcome, AgboardError> {
 fn summary(epic: &EpicView, task_count: usize) -> Value {
     let mut value = serde_json::to_value(epic).expect("epics serialize");
     if let Value::Object(map) = &mut value {
-        map.remove("plan");
+        map.remove("document");
         map.insert("taskCount".into(), json!(task_count));
     }
     value
@@ -116,7 +116,7 @@ fn show(ctx: &mut Context, args: &EpicIdArgs) -> Result<Outcome, AgboardError> {
         epic.color,
         if epic.is_draft { "yes" } else { "no" },
         tasks,
-        epic.plan
+        epic.document
     );
     if !human.ends_with('\n') {
         human.push('\n');
@@ -131,11 +131,11 @@ fn show(ctx: &mut Context, args: &EpicIdArgs) -> Result<Outcome, AgboardError> {
 fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError> {
     let id = EpicId::normalize(&args.id)?;
     let mut stdin = std::io::stdin();
-    let plan = args.plan.resolve(&mut stdin)?;
+    let document = args.document.resolve(&mut stdin)?;
     let project = ctx.project_id()?;
     let mut changed = false;
     let mut epic = None;
-    if args.name.is_some() || args.color.is_some() || plan.is_some() {
+    if args.name.is_some() || args.color.is_some() || document.is_some() {
         let result = ctx.files.update_epic(
             project,
             &id,
@@ -143,7 +143,7 @@ fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError>
                 name: args.name.clone(),
                 color: args.color.clone(),
                 is_draft: None,
-                plan,
+                document,
             },
             ctx.clock.now(),
         )?;

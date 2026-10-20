@@ -27,9 +27,9 @@ pub(super) struct CreateEpicInput {
     color: Option<String>,
     #[serde(default)]
     is_draft: bool,
-    /// The whole PLAN.md text, frontmatter included. Not combined with `body`.
+    /// The whole EPIC.md text, frontmatter included. Not combined with `body`.
     #[serde(default)]
-    plan: Option<String>,
+    document: Option<String>,
     #[serde(default)]
     body: Option<String>,
 }
@@ -44,7 +44,7 @@ pub(super) struct EpicPatchInput {
     #[serde(default)]
     is_draft: Option<bool>,
     #[serde(default)]
-    plan: Option<String>,
+    document: Option<String>,
     #[serde(default)]
     body: Option<String>,
     /// The task order of the epic. Replaces the stored order.
@@ -139,8 +139,13 @@ pub(super) async fn create_epic(
         Ok(id) => id,
         Err(error) => return agboard_error_response(&error),
     };
-    let plan = match whole_text(input.plan, input.body, None, validate::plan_template) {
-        Ok(plan) => plan,
+    let document = match whole_text(
+        input.document,
+        input.body,
+        None,
+        validate::document_template,
+    ) {
+        Ok(document) => document,
         Err(error) => return agboard_error_response(&error),
     };
     let new = NewEpic {
@@ -148,7 +153,7 @@ pub(super) async fn create_epic(
         name: input.name,
         color: input.color,
         is_draft: input.is_draft,
-        plan,
+        document,
     };
     match with_files(&state, move |store| {
         store.create_epic(&project_id, new, chrono::Utc::now())
@@ -205,25 +210,25 @@ pub(super) async fn update_epic(
     };
     match with_files(&state, move |store| {
         let priority = input.priority.clone();
-        let plan = if input.body.is_some() {
-            if input.plan.is_some() {
+        let document = if input.body.is_some() {
+            if input.document.is_some() {
                 return Err(whole_or_parts());
             }
             let current = store.epic(&project_id, &epic_id)?;
             Some(compose_text(
-                &current.plan,
+                &current.document,
                 &current.body,
                 input.body,
                 None,
             )?)
         } else {
-            input.plan
+            input.document
         };
         let update = EpicUpdate {
             name: input.name,
             color: input.color,
             is_draft: input.is_draft,
-            plan,
+            document,
         };
         let now = chrono::Utc::now();
         let mut result = store.update_epic(&project_id, &epic_id, update, now)?;
