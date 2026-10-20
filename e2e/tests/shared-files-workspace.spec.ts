@@ -72,9 +72,9 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
   expect(JSON.parse(readFileSync(path.join(folder, 'project.json'), 'utf8'))).toMatchObject({ id, name, nextTaskId: 1 });
   expect(readFileSync(path.join(folder, 'README.md'), 'utf8')).toContain('TASK.md');
 
-  // An epic with a plan template and a colour; a card in it.
+  // An epic with an empty document and a colour; a card in it.
   agboardOk(name, ['epic', 'add', 'FILE-SHARE', '--name', 'File share', '--color', '#7C3AED', '--actor', 'human']);
-  expect(readFileSync(path.join(folder, 'epics', 'FILE-SHARE', 'PLAN.md'), 'utf8')).toBe('');
+  expect(readFileSync(path.join(folder, 'epics', 'FILE-SHARE', 'EPIC.md'), 'utf8')).toBe('');
   const taskId = JSON.parse(agboardOk(name, ['add', 'Upload a picture', '--epic', 'FILE-SHARE', '--json']).stdout).task.id as number;
   expect(JSON.parse(agboardOk(name, ['ls', '--json']).stdout).tasks.find((c: { id: number }) => c.id === taskId)).toMatchObject({
     epic: { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED' },

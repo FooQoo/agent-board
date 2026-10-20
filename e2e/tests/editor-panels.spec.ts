@@ -12,7 +12,7 @@ for (const mode of ['light', 'dark'] as const) {
       resetBoard(mainProject);
       agboardOk(mainProject, ['epic', 'add', 'PANELS', '--name', 'Panel layout', '--color', '#7C3AED', '--actor', 'human']);
       const folder = workspace(mainProject).folder;
-      replaceFileAtomically(path.join(folder, 'epics', 'PANELS', 'PLAN.md'), body);
+      replaceFileAtomically(path.join(folder, 'epics', 'PANELS', 'EPIC.md'), body);
       for (let i = 1; i <= 16; i++) {
         agboardOk(mainProject, ['add', `Work item ${i}`, '--assignee', 'human', '--actor', 'human', '--epic', 'PANELS', '--desc', '---\nacceptance:\n  - id: AC-1\n    text: First check\n    done: true\n  - id: AC-2\n    text: Second check\n    done: false\n---\n\nTask body.']);
       }

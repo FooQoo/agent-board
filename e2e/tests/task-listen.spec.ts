@@ -58,7 +58,7 @@ test('a submitted request with an epic and image is returned by task wait as an 
     kind: string;
     task: { id: number; title: string; taskStatus: string; agentStatus: string };
     taskPath: string;
-    planPath: string | null;
+    documentPath: string | null;
   };
   expect(selected.kind).toBe('task');
   expect(selected.task).toMatchObject({
@@ -69,7 +69,7 @@ test('a submitted request with an epic and image is returned by task wait as an 
   });
   expect(selected.taskPath).toContain('/tasks/');
   expect(selected.taskPath.endsWith('/TASK.md')).toBe(true);
-  expect(selected.planPath).not.toBeNull();
+  expect(selected.documentPath).not.toBeNull();
 
   const taskMarkdown = readFileSync(selected.taskPath, 'utf8');
   expect(taskMarkdown).toContain('## 元の依頼');

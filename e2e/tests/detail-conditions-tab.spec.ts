@@ -11,7 +11,7 @@ function markdown(source: string, count: number) {
 function seed(project: string, home?: string) {
   agboardOk(project, ['epic', 'add', 'CONDITION-TABS', '--name', 'Conditions epic', '--color', '#7C3AED', '--actor', 'human'], home);
   const folder = workspace(project, home).folder;
-  replaceFileAtomically(path.join(folder, 'epics', 'CONDITION-TABS', 'PLAN.md'), 'Epic body.\n\n## Reference conditions\n\n- [ ] Epic reference check.\n');
+  replaceFileAtomically(path.join(folder, 'epics', 'CONDITION-TABS', 'EPIC.md'), 'Epic body.\n\n## Reference conditions\n\n- [ ] Epic reference check.\n');
   return JSON.parse(agboardOk(project, ['add', 'Conditions detail', '--desc', markdown('Task', 24), '--assignee', 'human', '--actor', 'human', '--epic', 'CONDITION-TABS', '--json'], home).stdout).task.id as number;
 }
 

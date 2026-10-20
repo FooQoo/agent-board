@@ -286,7 +286,7 @@ test('the bottom drawer follows a downward handle drag and dismisses', async ({ 
       epicReads++;
       await route.fulfill({ json: { epics: [{
         id: 'SWIPE', name: 'Loaded swipe epic', color: '#4466aa', isDraft: false,
-        body: 'Fresh epic content', plan: 'Fresh epic content', acceptance: [],
+        body: 'Fresh epic content', document: 'Fresh epic content', acceptance: [],
         acceptanceError: false, attachments: [],
         createdAt: '2026-10-12T00:00:00Z', updatedAt: '2026-10-12T00:00:00Z',
       }] } });

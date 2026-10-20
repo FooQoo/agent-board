@@ -312,7 +312,7 @@ test('epic reference conditions stay in the Markdown body without a conditions d
   agboardOk(mainProject, ['epic', 'add', 'PLAN-CHK', '--name', 'Checked plan', '--color', '#7C3AED', '--actor', 'human']);
   const text = '## Goal\n\nGoal.\n\n## Reference conditions\n\n- [x] Planned\n- [ ] Open\n';
   replaceFileAtomically(plan, text);
-  agboardOk(mainProject, ['epic', 'edit', 'PLAN-CHK', '--plan-file', plan]);
+  agboardOk(mainProject, ['epic', 'edit', 'PLAN-CHK', '--document-file', plan]);
   const stored = JSON.parse(agboardOk(mainProject, ['epic', 'show', 'PLAN-CHK', '--json']).stdout).epic;
   expect(stored).not.toHaveProperty('acceptance');
   expect(stored.body).toBe(text.trimEnd());
@@ -324,7 +324,7 @@ test('epic reference conditions stay in the Markdown body without a conditions d
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.conditions-dock')).toHaveCount(0);
-  expect(await editorValue(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }))).toContain('Planned');
+  expect(await editorValue(dialog.getByRole('textbox', { name: 'Epic details (Markdown)' }))).toContain('Planned');
 });
 
 test('task conditions fold in their own dock and a long body scrolls alone', async ({ page }) => {
