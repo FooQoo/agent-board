@@ -12,6 +12,12 @@ mod events;
 pub mod guard;
 mod instance;
 pub mod monitor;
+pub mod monitor_auth {
+    pub mod contracts;
+}
+pub mod monitor_connection {
+    pub mod contracts;
+}
 pub mod remote;
 mod request;
 mod response;
