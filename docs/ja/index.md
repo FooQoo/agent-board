@@ -38,7 +38,7 @@ features:
       width: 28
       height: 28
     title: 計画・結果・証跡をローカルのMarkdownで管理する
-    details: エピックの計画はPLAN.md、タスクはTASK.mdに保存し、証跡も隣に置きます。ファイルの直接編集とMarkdownエディターの両方に対応し、アカウントやクラウドサービスは不要です。
+    details: エピックの詳細はEPIC.md、タスクはTASK.mdに保存し、証跡も隣に置きます。ファイルの直接編集とMarkdownエディターの両方に対応し、アカウントやクラウドサービスは不要です。
 ---
 
 <script setup>

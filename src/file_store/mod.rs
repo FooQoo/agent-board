@@ -13,6 +13,7 @@ pub mod index;
 pub mod io;
 pub mod layout;
 pub mod lock;
+mod migrate;
 pub mod model;
 mod ops;
 pub mod project;

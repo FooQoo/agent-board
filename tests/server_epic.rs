@@ -109,7 +109,7 @@ fn an_epic_is_created_listed_read_and_changed_over_http() {
         color.starts_with('#') && color.len() == 7,
         "a color is chosen when none is given: {color}"
     );
-    assert_eq!(epic["plan"], "");
+    assert_eq!(epic["document"], "");
     assert!(epic.get("acceptance").is_none());
 
     let listed = server.get(&epics);

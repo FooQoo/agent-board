@@ -12,11 +12,16 @@
               "id": "epic-editor-epicdialog--unchanged",
               "states": [
                 "unchanged",
-                "plan",
+                "epic details",
                 "image attachment",
                 "progress order",
                 "save disabled"
               ],
+              "interaction": false
+            },
+            {
+              "id": "epic-editor-epicdialog--japanese-label",
+              "states": ["japanese locale", "title label"],
               "interaction": false
             },
             {

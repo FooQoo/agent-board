@@ -184,7 +184,7 @@ fn invalid_field(value: &Value) -> Option<String> {
 }
 
 /// Replace the events while preserving all other frontmatter keys. Body and
-/// acceptance use the same rules as PLAN.md's existing composer. This codec
+/// acceptance use the same rules as EPIC.md's existing composer. This codec
 /// validates supplied history; stored-file validation is the caller's duty.
 pub fn compose_task(
     original: &str,

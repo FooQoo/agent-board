@@ -75,8 +75,8 @@ export function seed(home, text) {
   // This is a disposable human-owned sample; AI card #6 completes automatically at server startup.
   run('mv', '8', 'done', '--actor', 'human', '--reason', 'Sample mobile review completed');
   const plan = (priority) => `---\npriority: ${JSON.stringify(priority)}\n---\n\n${text.plan}\n\n## ${text === copy.ja ? '参考条件' : 'Reference conditions'}\n\n${text.epicChecks.map((check, i) => `- [${i === 0 ? 'x' : ' '}] ${check}`).join('\n')}\n`;
-  run('epic', 'edit', 'LAUNCH', '--plan', plan([3, 4, 7, 5, 6]));
-  run('epic', 'edit', 'DESIGN', '--plan', plan([1, 2, 8]));
+  run('epic', 'edit', 'LAUNCH', '--document', plan([3, 4, 7, 5, 6]));
+  run('epic', 'edit', 'DESIGN', '--document', plan([1, 2, 8]));
   return meta.id;
 }
 

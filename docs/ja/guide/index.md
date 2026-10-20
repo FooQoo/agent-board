@@ -51,7 +51,7 @@ flowchart LR
 | タスクを書き、画像やログを添付する | [編集と証跡](./use/editing) |
 | Claude CodeやCodexをつなぐ | [エージェントとの連携](./automation/agents) |
 | コマンドを調べる | [CLIリファレンス](./automation/cli) |
-| `TASK.md`や`PLAN.md`を手で編集する | [Markdownファイルの形式](./automation/file-format) |
+| `TASK.md`や`EPIC.md`を手で編集する | [Markdownファイルの形式](./automation/file-format) |
 | スマホからボードを確認する | [モバイルモニター](./operations/mobile-monitor) |
 | ファイルの場所を知る、バックアップを取る | [データとバックアップ](./operations/data) |
 | うまくいかないことを直す | [トラブルシューティング](./operations/troubleshooting) |

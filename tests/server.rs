@@ -733,7 +733,7 @@ fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
                 name: "Archived epic".into(),
                 color: Some("#3366cc".into()),
                 is_draft: false,
-                plan: None,
+                document: None,
             },
             t(12),
         )
@@ -746,7 +746,7 @@ fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
                 name: "Live epic".into(),
                 color: Some("#cc3366".into()),
                 is_draft: false,
-                plan: None,
+                document: None,
             },
             t(13),
         )
@@ -1770,7 +1770,7 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
 }
 
 #[test]
-fn the_board_lists_each_epic_with_its_fields_and_plan() {
+fn the_board_lists_each_epic_with_its_fields_and_document() {
     use agent_board::file_store::model::NewEpic;
     let home = board_home();
     let project = main_id(home.path());
@@ -1782,7 +1782,7 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
                 name: "First epic".into(),
                 color: Some("#3366cc".into()),
                 is_draft: false,
-                plan: None,
+                document: None,
             },
             t(12),
         )
@@ -1799,8 +1799,8 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
     assert_eq!(epic["color"], "#3366CC");
     assert_eq!(epic["isDraft"], false);
     assert_eq!(
-        epic["plan"],
-        agent_board::file_store::validate::plan_template()
+        epic["document"],
+        agent_board::file_store::validate::document_template()
     );
     assert_eq!(epic["attachments"], serde_json::json!([]));
     assert!(epic["createdAt"].is_string() && epic["updatedAt"].is_string());
@@ -1818,10 +1818,10 @@ fn the_board_lists_each_epic_with_its_fields_and_plan() {
             "body",
             "color",
             "createdAt",
+            "document",
             "id",
             "isDraft",
             "name",
-            "plan",
             "priority",
             "priorityError",
             "updatedAt"
@@ -1965,7 +1965,7 @@ fn the_board_counts_each_epic_tasks_by_lane_with_archived_counted_once() {
                     name: name.into(),
                     color: Some("#3366cc".into()),
                     is_draft: false,
-                    plan: None,
+                    document: None,
                 },
                 t(minute),
             )

@@ -6,6 +6,7 @@ import {
   updateEpic,
   WriteError,
 } from '../src/app/api';
+import { epicApi } from '../src/features/epics/editor/epicApi';
 import type { EditorAttachment } from '../src/shared/ui/editor/attachmentTypes';
 
 const PROJECT = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
@@ -24,12 +25,24 @@ afterEach(() => vi.unstubAllGlobals());
 describe('epic writes', () => {
   it('patches only the given fields of the epic', async () => {
     const fetchMock = stubFetch(200, { epic: EPIC, changed: true });
-    const result = await updateEpic(PROJECT, 'FILE-SHARE', { plan: '## Goal' });
+    const result = await updateEpic(PROJECT, 'FILE-SHARE', { document: '## Goal' });
     expect(result.epic).toEqual(EPIC);
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(url).toBe(`/api/projects/${PROJECT}/epics/FILE-SHARE`);
     expect(init?.method).toBe('PATCH');
-    expect(JSON.parse(String(init?.body))).toEqual({ plan: '## Goal' });
+    expect(JSON.parse(String(init?.body))).toEqual({ document: '## Goal' });
+  });
+
+  it('saves the whole epic document as document, and its body as body', async () => {
+    const fetchMock = stubFetch(200, { epic: EPIC, changed: true });
+    const api = epicApi(PROJECT, 'FILE-SHARE', () => {});
+    await api.saveDocument({ document: '---\npriority: [1]\n---\n## Goal' });
+    await api.saveDocument({ body: '## Goal' });
+    const [first, second] = fetchMock.mock.calls;
+    expect(JSON.parse(String(first?.[1]?.body))).toEqual({
+      document: '---\npriority: [1]\n---\n## Goal',
+    });
+    expect(JSON.parse(String(second?.[1]?.body))).toEqual({ body: '## Goal' });
   });
 
   it('puts a task into an epic and takes it out with null', async () => {

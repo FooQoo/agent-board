@@ -1,6 +1,6 @@
 ---
 name: agent-board
-description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed plans and tasks, report AI progress, ask the user for decisions with choices, wait for their answers, and automatically record work progress in task history.
+description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed epic details and tasks, report AI progress, ask the user for decisions with choices, wait for their answers, and automatically record work progress in task history.
 compatibility: Requires the agboard CLI on PATH and a local Agent Board data area. Waiting for user answers requires a running agboard serve.
 ---
 
@@ -10,14 +10,14 @@ Agent Board is a local work board shared by the user and AI agents. Each project
 
 How the board is used:
 
-- An **epic** is a plan. Its `PLAN.md` states the goal, the scope, the completion conditions, and how the work proceeds.
+- An **epic** is a management unit that groups tasks and sets their order. Its `EPIC.md` states the goal, the scope, the completion conditions, and how the work proceeds. A task's `epicId` is the only record of its membership.
 - A **task** is the plan for one piece of work. Its `TASK.md` states what to do, its completion conditions, and verification results.
 - The **shared folder** of the project is the source of truth for both. Do not keep a separate plan document elsewhere and copy it onto the board.
-- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`. Every entry has exactly `at` (timestamp) and `reason` (content). Task operations append automatically; agents also append meaningful work progress automatically. Keep task plans, acceptance verification results, and artifact or evidence references in the body; never keep a chronological execution log there or duplicate history in `task.json`. `PLAN.md` has no history.
+- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`. Every entry has exactly `at` (timestamp) and `reason` (content). Task operations append automatically; agents also append meaningful work progress automatically. Keep task plans, acceptance verification results, and artifact or evidence references in the body; never keep a chronological execution log there or duplicate history in `task.json`. `EPIC.md` has no history.
 
 ## Language of board content
 
-Write everything you put on the board in the language the user speaks with you: task and epic titles, `PLAN.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing tasks and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `at`, `reason`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
+Write everything you put on the board in the language the user speaks with you: task and epic titles, `EPIC.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing tasks and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `at`, `reason`, `id`, `text`, `done`; see [references/file-format.md](references/file-format.md)), commands, EPIC-IDs, choice `id`s, and code.
 
 For every history reason you author, read the task body first and use the same language as that body, including lane/state reasons, progress, verification, and resumption notes. This takes precedence over the conversation language and the language of repository code or comments. If the body has no usable prose, follow the task title and existing project content. Always supply a nonblank `--reason` (or `--reason-file`) for these notes rather than relying on a generated default. Keep command names and other technical identifiers unchanged.
 
@@ -45,7 +45,7 @@ Before choosing, starting, or resuming work, read the progress table:
 agboard progress --json
 ```
 
-It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes task IDs, titles, owners, statuses, acceptance counts, and relevant `planPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's PLAN and task's TASK before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
+It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes task IDs, titles, owners, statuses, acceptance counts, and relevant `documentPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's `EPIC.md` and task's `TASK.md` before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
 
 - `AGBOARD_PROGRESS` is followed by the progress table for the nearest bound folder or explicit project.
 - `AGBOARD_ERROR` (`folder_unbound`, `bound_project_missing`, `project_not_found`, `board_unavailable`, ...) means there is no usable table. Resolve the correct folder or report the problem; do not guess.
@@ -54,7 +54,7 @@ After context compaction, read a fresh progress table before any board-dependent
 
 ### Explicit listen mode
 
-The normal work loop selects a task and finishes that turn. Start the serial listener loop only when the user explicitly asks to listen for tasks. In that mode, follow [the listener procedure](references/listening.md): establish one project and a positive idle timeout with the user, use `wait --until task --idle-timeout <seconds> --json`, process one task at a time in this same session, and start the next wait after resolving the current task. The wait command is not a background agent or a task claim. Do not treat a wait result as approval to implement; read the current plan and task first. The full idle interval with no eligible task exits normally; connection, project, data, and argument failures remain errors.
+The normal work loop selects a task and finishes that turn. Start the serial listener loop only when the user explicitly asks to listen for tasks. In that mode, follow [the listener procedure](references/listening.md): establish one project and a positive idle timeout with the user, use `wait --until task --idle-timeout <seconds> --json`, process one task at a time in this same session, and start the next wait after resolving the current task. The wait command is not a background agent or a task claim. Do not treat a wait result as approval to implement; read the current epic details and task first. The full idle interval with no eligible task exits normally; connection, project, data, and argument failures remain errors.
 
 ## 3. Find and edit the shared files
 
@@ -66,29 +66,29 @@ agboard --project "<name>" workspace --json
 
 Read the `README.md` in the returned `folder` before editing. Then:
 
-- Edit only `epics/<EPIC-ID>/PLAN.md` and the `tasks/<task-id>/TASK.md` of tasks that are not drafts.
-- For direct plan, body, or acceptance edits, write a temporary file in the same folder and rename it over the original. Preserve the current history and all unknown frontmatter metadata. The board picks up the change automatically. Use `history add` for progress instead of replacing the file just to append history.
+- Edit only `epics/<EPIC-ID>/EPIC.md` and the `tasks/<task-id>/TASK.md` of tasks that are not drafts.
+- For direct edits of `EPIC.md`, task bodies, or acceptance conditions, write a temporary file in the same folder and rename it over the original. Preserve the current history and all unknown frontmatter metadata. The board picks up the change automatically. Use `history add` for progress instead of replacing the file just to append history.
 - Never edit `project.json`, `epic.json`, `task.json`, or `.internal/`. Never delete a task or epic folder.
 - Keep machine-specific absolute paths out of shared files.
 - The user prepares agent access to the data folder once with `agboard setup`. If a write to the shared folder is refused by the sandbox or by permissions, report it to the user. Do not run `agboard setup` or edit Codex or Claude Code settings yourself.
 
-`edit --desc-file` replaces a task body and acceptance conditions while preserving its latest history; it cannot append history. `epic edit --plan-file` replaces an epic plan. Bodies are limited to 50,000 characters; if a plan would exceed that, split it into more tasks after asking the user.
+`edit --desc-file` replaces a task body and acceptance conditions while preserving its latest history; it cannot append history. `epic edit --document-file` replaces the whole `EPIC.md` text. Bodies and `EPIC.md` text are limited to 50,000 characters; if a task plan would exceed that, split it into more tasks after asking the user.
 
-A task's completion conditions live in its frontmatter (`acceptance`), and the board reads them. Epic reference conditions belong in the free Markdown body of PLAN.md and are not managed by the app. Start from [assets/PLAN.md](assets/PLAN.md) and [assets/TASK.md](assets/TASK.md), and read [references/file-format.md](references/file-format.md) before writing either file.
+A task's completion conditions live in its frontmatter (`acceptance`), and the board reads them. Epic reference conditions belong in the free Markdown body of `EPIC.md` and are not managed by the app. Start from [assets/EPIC.md](assets/EPIC.md) and [assets/TASK.md](assets/TASK.md), and read [references/file-format.md](references/file-format.md) before writing either file.
 
 ## 4. Plan with epics and tasks
 
 ### Fixed bodies for BUG and ENHANCEMENT
 
-The epics whose IDs are exactly `BUG` and `ENHANCEMENT` are ongoing classification buckets, even if their display names change. They are exceptions to epic planning and closure below. Initialize an empty body once from [BUG-PLAN.md](assets/BUG-PLAN.md) or [ENHANCEMENT-PLAN.md](assets/ENHANCEMENT-PLAN.md), using the board's language with the same meaning and structure. After initialization, treat the body as read-only unless the user explicitly requests changing its fixed content. Do not replace a non-empty body silently; an explicitly requested replacement must preserve any useful existing records as task evidence first.
+The epics whose IDs are exactly `BUG` and `ENHANCEMENT` are ongoing classification buckets, even if their display names change. They are exceptions to epic planning and closure below. Initialize an empty body once from [BUG-EPIC.md](assets/BUG-EPIC.md) or [ENHANCEMENT-EPIC.md](assets/ENHANCEMENT-EPIC.md), using the board's language with the same meaning and structure. After initialization, treat the body as read-only unless the user explicitly requests changing its fixed content. Do not replace a non-empty body silently; an explicitly requested replacement must preserve any useful existing records as task evidence first.
 
-For these two epics, keep per-task plans, decisions, verification, and results in each `TASK.md`, history, and evidence. Do not append task lists or progress to `PLAN.md`, and do not close the epic or add an overall completion summary when its current tasks finish. This rule applies to ordinary work, listening, and resumption. Task order remains configurable through priority frontmatter; preserve it and all other metadata when initializing or explicitly replacing the body. Names, colors, and task membership are unaffected. Other epics keep the normal planning workflow.
+For these two epics, keep per-task plans, decisions, verification, and results in each `TASK.md`, history, and evidence. Do not append task lists or progress to `EPIC.md`, and do not close the epic or add an overall completion summary when its current tasks finish. This rule applies to ordinary work, listening, and resumption. Task order remains configurable through priority frontmatter; preserve it and all other metadata when initializing or explicitly replacing the body. Names, colors, and task membership are unaffected. Other epics keep the normal planning workflow.
 
-1. Create an epic for a body of work, then write its plan from [assets/PLAN.md](assets/PLAN.md):
+1. Create an epic for a body of work, then write its `EPIC.md` from [assets/EPIC.md](assets/EPIC.md):
 
    ```sh
    agboard --project "<name>" epic add <EPIC-ID> --name "<formal name>" --actor ai
-   agboard --project "<name>" epic edit <EPIC-ID> --plan-file <path>
+   agboard --project "<name>" epic edit <EPIC-ID> --document-file <path>
    ```
 
 2. Create one task per task, assigned to `ai` or `human`, in the epic, with its task plan from [assets/TASK.md](assets/TASK.md) as the body:
@@ -131,7 +131,7 @@ The CLI assigns the timestamp and applies AI write permissions; no event ID, kin
 
 Lane and run-state operations already append their own history. Do not add a second entry for the same operation or use `edit --desc-file` to append it. After writing progress, inspect a fresh `show <id> --json` when confirmation is needed.
 
-1. **Choose.** From the progress table, pick a ready AI task in `todo`, respecting the epic's task order, or plan new work (section 4). Read the selected PLAN and TASK from their returned paths; inspect history with `show` only when needed. Before starting an editable AI task, review its title. If it is a pasted request or does not make the work clear, use `edit <id> --title "<concise title>"` to state the affected area and requested change in the task's language. Preserve the original request in the body and keep its image attachments; do not expand scope or invent a resolution. Keep an already clear title. If the request is ambiguous, resolve that ambiguity before giving it a more specific title. Record a meaningful title change in history. This applies to the ordinary loop and listener; drafts, archived tasks, Done tasks, and human-owned tasks remain outside this step.
+1. **Choose.** From the progress table, pick a ready AI task in `todo`, respecting the epic's task order, or plan new work (section 4). Read the selected `EPIC.md` and `TASK.md` from their returned paths; inspect history with `show` only when needed. Before starting an editable AI task, review its title. If it is a pasted request or does not make the work clear, use `edit <id> --title "<concise title>"` to state the affected area and requested change in the task's language. Preserve the original request in the body and keep its image attachments; do not expand scope or invent a resolution. Keep an already clear title. If the request is ambiguous, resolve that ambiguity before giving it a more specific title. Record a meaningful title change in history. This applies to the ordinary loop and listener; drafts, archived tasks, Done tasks, and human-owned tasks remain outside this step.
 2. **Start.** Move the task and report the work with concise reasons. These operations record the start automatically:
 
    ```sh
@@ -143,7 +143,7 @@ Lane and run-state operations already append their own history. Do not add a sec
 4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded. Before saving the last completed condition, record the verification in history and keep its result and evidence reference in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI task automatically. Do not manually move a task to Done during the normal work loop. If the task does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
 5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
 6. **Finish or interrupt.** Automatic completion removes the task from progress. Done tasks are read-only for agents: do not edit their task files, append history, add evidence or attachments, or change their lane or run state. A user can reopen them when needed. If work stops before completion, record why through the corresponding state or lane operation, or `history add` if the state remains accurate. When work resumes, record the resumed work the same way.
-7. **Close the epic.** When all of an epic's task tasks are done, verify the epic's reference conditions written in the PLAN.md body and record the outcome there. Skip this step for `BUG` and `ENHANCEMENT`: their bodies stay fixed and the classification epics stay open. The app does not manage epic acceptance frontmatter or epic history.
+7. **Close the epic.** When all of an epic's task tasks are done, verify the epic's reference conditions written in the `EPIC.md` body and record the outcome there. Skip this step for `BUG` and `ENHANCEMENT`: their bodies stay fixed and the classification epics stay open. The app does not manage epic acceptance frontmatter or epic history.
 
 Keep history reasons concise and useful. Keep detailed logs in evidence files; the TASK body holds the plan, verification results, and references without a chronological execution log.
 
@@ -192,7 +192,7 @@ After `wait` returns, read the complete snapshot and history, including the user
 agboard --project "<name>" state <id> running --actor ai --reason "<how the answer changes the work>"
 ```
 
-If the answer changes the scope or completion conditions, update `TASK.md` (and `PLAN.md` if affected) before resuming. If new information still conflicts, ask again.
+If the answer changes the scope or completion conditions, update `TASK.md` (and `EPIC.md` if affected) before resuming. If new information still conflicts, ask again.
 
 For an explicitly requested serial listener, use [`references/listening.md`](references/listening.md) and `wait --until task --idle-timeout <seconds> --json`. That mode returns one eligible task or a successful `idle_timeout`; it is distinct from waiting for a change or a Pending answer. Do not start it implicitly as part of the ordinary work loop.
 

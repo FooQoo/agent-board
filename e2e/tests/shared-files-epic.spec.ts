@@ -2,13 +2,13 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboardOk, mainProject, projectId, resetBoard, type TaskJson } from '../helpers/agboard';
 import { pasteMarkdown, waitForSync } from '../helpers/ui';
 
-// The epic dialog on the real page: its name, colour, plan, tasks, and images are saved together; a task opened from
+// The epic dialog on the real page: its name, colour, document, tasks, and images are saved together; a task opened from
 // the list asks first when the epic has unsaved changes.
 
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
-function epicOf(id: string): { id: string; name: string; color: string; plan: string } {
+function epicOf(id: string): { id: string; name: string; color: string; document: string } {
   return JSON.parse(agboardOk(mainProject, ['epic', 'show', id, '--json']).stdout).epic;
 }
 
@@ -16,8 +16,8 @@ function taskOf(id: number): TaskJson & { epicId: string | null } {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
-/** The plan body as a person pastes it into the body editor: free Markdown, no frontmatter. */
-const PLAN = [
+/** The document body as a person pastes it into the body editor: free Markdown, no frontmatter. */
+const DOCUMENT = [
   '## Goal',
   '',
   'Share files between the tasks of one epic.',
@@ -28,7 +28,7 @@ const PLAN = [
   '',
   '## Approach',
   '',
-  'Write the plan first, then the tasks.',
+  'Write the document first, then the tasks.',
   '',
 ].join('\n');
 
@@ -45,27 +45,27 @@ test.beforeEach(() => {
   agboardOk(mainProject, ['edit', '14', '--epic', 'FILE-SHARE']);
 });
 
-test('the epic dialog saves its name, colour, and plan together, and its contents are read back by the CLI', async ({ page }) => {
+test('the epic dialog saves its name, colour, and document together, and its contents are read back by the CLI', async ({ page }) => {
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   const dialog = await openEpic(page, 'FILE-SHARE');
 
-  // Name, colour, and plan; nothing is stored until Save.
+  // Name, colour, and document; nothing is stored until Save.
   await dialog.getByRole('textbox', { name: 'Title' }).fill('File sharing');
   await dialog.getByRole('button', { name: 'Choose a label color' }).click();
   await page.getByLabel('HEX', { exact: true }).fill('#2563eb');
   await page.getByLabel('HEX', { exact: true }).press('Escape');
-  await pasteMarkdown(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }), PLAN);
+  await pasteMarkdown(dialog.getByRole('textbox', { name: 'Epic details (Markdown)' }), DOCUMENT);
   expect(epicOf('FILE-SHARE').name).toBe('File share');
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
 
-  // The CLI reads the same epic: the name, the colour, and the plan.
+  // The CLI reads the same epic: the name, the colour, and the document.
   const stored = epicOf('FILE-SHARE');
   expect(stored).toMatchObject({ name: 'File sharing', color: '#2563EB' });
-  expect(stored.plan).toContain('## Approach');
-  expect(stored.plan).not.toContain('acceptance:');
+  expect(stored.document).toContain('## Approach');
+  expect(stored.document).not.toContain('acceptance:');
   expect(taskOf(14).epicId).toBe('FILE-SHARE');
 
   // The label and the card frame show the new name and colour.

@@ -1,7 +1,7 @@
 // file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Checks that decide whether shared-file content is accepted.
 //!
-//! The JSON checks return every defect of a file. The TASK.md and PLAN.md checks
+//! The JSON checks return every defect of a file. The TASK.md and EPIC.md checks
 //! look only at the frontmatter's acceptance conditions, and never rewrite the text. Errors name the file and item; reasons are in English.
 
 use std::collections::HashSet;
@@ -123,17 +123,17 @@ pub fn validate_epic_name(text: &str) -> Result<String, AgboardError> {
     Ok(trimmed.to_string())
 }
 
-/// A plan text with CRLF folded to LF, and at most 50,000 characters of
+/// A document text with CRLF folded to LF, and at most 50,000 characters of
 /// Markdown body. The frontmatter is not counted, because the editor counts only
 /// the body.
-pub fn normalize_plan(text: &str) -> Result<String, AgboardError> {
+pub fn normalize_document(text: &str) -> Result<String, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
-    let body = super::frontmatter::parse_plan(&normalized).body;
+    let body = super::frontmatter::parse_document(&normalized).body;
     let count = body.chars().count();
     if count > 50_000 {
         return Err(AgboardError::InvalidValue {
-            field: "plan".into(),
-            reason: "Plans must be 50,000 characters or fewer.".into(),
+            field: "document".into(),
+            reason: "Documents must be 50,000 characters or fewer.".into(),
         });
     }
     Ok(normalized)
@@ -177,8 +177,8 @@ pub fn is_hex32(text: &str) -> bool {
     text.len() == 32 && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
-/// The PLAN.md written when an epic is created without a plan.
-pub fn plan_template() -> String {
+/// The EPIC.md written when an epic is created without a document.
+pub fn document_template() -> String {
     String::new()
 }
 
@@ -187,9 +187,9 @@ pub fn check_task_body(text: &str) -> Vec<Defect> {
     frontmatter::parse(text).defects
 }
 
-/// Check a PLAN.md text's metadata syntax, without interpreting conditions.
-pub fn check_plan_body(text: &str) -> Vec<Defect> {
-    frontmatter::parse_plan(text).defects
+/// Check an EPIC.md text's metadata syntax, without interpreting conditions.
+pub fn check_document_body(text: &str) -> Vec<Defect> {
+    frontmatter::parse_document(text).defects
 }
 
 /// Turn the first defect of a TASK.md text into a `file_invalid` error.
@@ -198,9 +198,9 @@ pub fn ensure_task_body(text: &str, file: &str) -> Result<(), AgboardError> {
     first_defect_error(check_task_body(text), file)
 }
 
-/// The PLAN.md form of `ensure_task_body`.
-pub fn ensure_plan_body(text: &str, file: &str) -> Result<(), AgboardError> {
-    first_defect_error(check_plan_body(text), file)
+/// The EPIC.md form of `ensure_task_body`.
+pub fn ensure_document_body(text: &str, file: &str) -> Result<(), AgboardError> {
+    first_defect_error(check_document_body(text), file)
 }
 
 fn first_defect_error(defects: Vec<Defect>, file: &str) -> Result<(), AgboardError> {

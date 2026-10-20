@@ -159,7 +159,7 @@ impl Fixture {
                     name: "Epic".into(),
                     color: Some("#7C3AED".into()),
                     is_draft: false,
-                    plan: None,
+                    document: None,
                 },
                 at(4),
             )

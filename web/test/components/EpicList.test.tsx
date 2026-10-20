@@ -16,7 +16,7 @@ function epic(id: string, overrides: Partial<Epic> = {}): Epic {
     name: `${id} name`,
     color: '#3366CC',
     isDraft: false,
-    plan: '',
+    document: '',
     body: '',
     priority: [],
     priorityError: false,
@@ -195,7 +195,7 @@ describe('EpicList', () => {
 });
 
 describe('EpicDetailPanel', () => {
-  it('shows the label, name, and plan, and offers edit and close', async () => {
+  it('shows the label, name, and details, and offers edit and close', async () => {
     const onEdit = vi.fn();
     const onClose = vi.fn();
     render(
@@ -209,7 +209,7 @@ describe('EpicDetailPanel', () => {
     );
     expect(screen.getByRole('heading', { level: 2, name: 'Bugs' })).toBeTruthy();
     expect(screen.getByText('Fix it.')).toBeTruthy();
-    expect(screen.queryByText('No plan yet')).toBeNull();
+    expect(screen.queryByText('No epic details yet')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Edit epic' }));
     expect(onEdit).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
@@ -235,7 +235,7 @@ describe('EpicDetailPanel', () => {
     expect(screen.getByText('Draft')).toBeTruthy();
   });
 
-  it('says there is no plan yet when the body is empty', () => {
+  it('says there are no epic details yet when the body is empty', () => {
     render(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
@@ -245,8 +245,22 @@ describe('EpicDetailPanel', () => {
         onClose={() => {}}
       />,
     );
-    expect(screen.getByText('No plan yet')).toBeTruthy();
-    // The plan is the only placeholder: the Markdown view's own "No description." is not shown too.
+    expect(screen.getByText('No epic details yet')).toBeTruthy();
+    // The details are the only placeholder: the Markdown view's own "No description." is not shown too.
     expect(screen.queryByText('No description.')).toBeNull();
+  });
+
+  it('says in Japanese that there are no epic details yet', () => {
+    selectLocale('ja');
+    render(
+      <EpicDetailPanel
+        projectId={PROJECT_A.id}
+        epic={epic('BUG', { body: '' })}
+        onEdit={() => {}}
+        onDelete={async () => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByText('エピックの詳細はまだありません')).toBeTruthy();
   });
 });

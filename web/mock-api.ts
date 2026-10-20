@@ -23,7 +23,7 @@ interface MockBoard {
 }
 
 /** An epic the sample board shows: its label and frame on a few cards. */
-const SAMPLE_PLAN = `## 目的
+const SAMPLE_DOCUMENT = `## 目的
 
 共有ファイルの画面を整える。
 
@@ -41,8 +41,8 @@ const SAMPLE_EPIC: Epic = {
   name: 'File share',
   color: '#7C3AED',
   isDraft: false,
-  plan: SAMPLE_PLAN,
-  body: SAMPLE_PLAN,
+  document: SAMPLE_DOCUMENT,
+  body: SAMPLE_DOCUMENT,
   priority: [],
   priorityError: false,
   attachments: [],
@@ -305,7 +305,7 @@ export function mockApi(): Plugin {
                 name: typeof patch.name === 'string' ? patch.name : epic.name,
                 color: typeof patch.color === 'string' ? patch.color : epic.color,
                 isDraft: typeof patch.isDraft === 'boolean' ? patch.isDraft : epic.isDraft,
-                plan: typeof patch.plan === 'string' ? patch.plan : epic.plan,
+                document: typeof patch.document === 'string' ? patch.document : epic.document,
               };
               boards = {
                 ...boards,

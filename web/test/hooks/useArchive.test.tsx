@@ -54,7 +54,7 @@ describe('useArchive', () => {
           name: 'Archived epic',
           color: '#3366CC',
           isDraft: false,
-          plan: '',
+          document: '',
           body: '',
           priority: [],
           priorityError: false,

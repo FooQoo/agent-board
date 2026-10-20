@@ -4,7 +4,7 @@ How a change in the files reaches browsers and waiting agents: versions, file wa
 
 ## Versions and change notifications
 
-A project's `version` is a SHA-256 over the relative paths and contents of its source files (`project.json`, `epic.json`, `PLAN.md`, `task.json`, `TASK.md`) and the file names under `assets/` and `evidence/`. Saving identical content leaves it unchanged, and returning to earlier content can reproduce an earlier version. That is fine because consumers only ask whether the version differs.
+A project's `version` is a SHA-256 over the relative paths and contents of its source files (`project.json`, `epic.json`, `EPIC.md`, `task.json`, `TASK.md`) and the file names under `assets/` and `evidence/`. Saving identical content leaves it unchanged, and returning to earlier content can reproduce an earlier version. That is fine because consumers only ask whether the version differs.
 
 ```mermaid
 flowchart LR

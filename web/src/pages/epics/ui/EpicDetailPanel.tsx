@@ -33,7 +33,7 @@ export function EpicDetailPlaceholder() {
   );
 }
 
-/** The read-only details of the selected epic: its label, name, plan, and images, with edit, delete, and close. */
+/** The read-only details of the selected epic: its label, name, details, and images, with edit, delete, and close. */
 export function EpicDetailPanel({
   projectId,
   epic,
@@ -121,9 +121,9 @@ export function EpicDetailPanel({
         {epic.name}
       </h2>
       {epic.body.trim() === '' ? (
-        // An empty plan has one placeholder; the Markdown view would add its own, so only the images follow it.
+        // Empty epic details have one placeholder; the Markdown view would add its own, so only the images follow it.
         <>
-          <p className="detail__empty">{t('epics.noPlan')}</p>
+          <p className="detail__empty">{t('epics.noDocument')}</p>
           <DetailAttachments
             projectId={projectId}
             taskId={0}

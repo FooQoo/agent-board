@@ -7,7 +7,7 @@ import { DetailAttachments } from './DetailAttachments';
 export type EpicTabStatus = 'none' | 'loading' | 'failed' | 'ready';
 
 /**
- * The epic a card belongs to, read-only: its plan and its images. Conditions written in the plan are ordinary Markdown. A card without an epic, an epic still loading, and an epic that could not be read
+ * The epic a card belongs to, read-only: its epic details and its images. Conditions written in the epic details are ordinary Markdown. A card without an epic, an epic still loading, and an epic that could not be read
  * each say so, and a failure can be tried again.
  */
 export function EpicTabView({

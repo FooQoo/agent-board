@@ -43,8 +43,8 @@ pub struct Count {
 pub struct ProgressEpic {
     pub id: String,
     pub name: String,
-    pub plan_path: PathBuf,
-    /// The `priority` list of PLAN.md cannot be read; the tasks keep ID order.
+    pub document_path: PathBuf,
+    /// The `priority` list of EPIC.md cannot be read; the tasks keep ID order.
     pub priority_error: bool,
     pub tasks: Vec<ProgressTask>,
 }
@@ -77,7 +77,7 @@ pub fn build(
     epics.sort_by(|a, b| a.id.as_str().cmp(b.id.as_str()));
     let mut groups = Vec::new();
     for epic in epics {
-        let priority_error = frontmatter::priority_of(&epic.plan).is_err();
+        let priority_error = frontmatter::priority_of(&epic.document).is_err();
         let tasks: Vec<&TaskView> = listed
             .iter()
             .copied()
@@ -90,7 +90,7 @@ pub fn build(
         groups.push(ProgressEpic {
             id: epic.id.as_str().to_string(),
             name: epic.name.clone(),
-            plan_path: layout::epic_plan(&epic_dir),
+            document_path: layout::epic_document(&epic_dir),
             priority_error,
             tasks: tasks
                 .into_iter()
@@ -123,7 +123,7 @@ pub fn build(
 }
 
 /// Tasks in the same order shown by the progress table. Task selection uses
-/// this list too, so epic ordering, PLAN priority and the unassigned tail stay
+/// this list too, so epic ordering, EPIC.md priority and the unassigned tail stay
 /// one contract. This intentionally keeps progress' existing visibility
 /// rules; callers apply any narrower selection predicate afterwards.
 pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
@@ -136,7 +136,7 @@ pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
         .collect();
     let mut ordered = Vec::new();
     for epic in epics {
-        let priority = frontmatter::priority_of(&epic.plan).unwrap_or_default();
+        let priority = frontmatter::priority_of(&epic.document).unwrap_or_default();
         let mut tasks: Vec<&TaskView> = listed
             .iter()
             .copied()

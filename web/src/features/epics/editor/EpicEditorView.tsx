@@ -36,8 +36,8 @@ export function EpicEditorView({
     setName,
     color,
     setColor,
-    plan,
-    setPlan,
+    epicDocument,
+    setEpicDocument,
     rows,
     dirty,
     overLimit,
@@ -96,9 +96,9 @@ export function EpicEditorView({
         onTitleChange={setName}
         titleLabel={t('epic.nameLabel')}
         titleInvalid={!validName}
-        description={plan}
-        onDescriptionChange={setPlan}
-        bodyLabel={t('epic.planLabel')}
+        description={epicDocument}
+        onDescriptionChange={setEpicDocument}
+        bodyLabel={t('epic.documentLabel')}
         editorRef={editor}
         disabled={saving}
         asideTop={

@@ -22,7 +22,7 @@ export interface EditorBodyProps {
   titleLabel?: string;
   titlePlaceholder?: string;
   titleInvalid?: boolean;
-  /** The Markdown body: a card's description or an epic's plan. */
+  /** The Markdown body: a card's description or an epic's details. */
   description: string;
   onDescriptionChange: (description: string) => void;
   /** The accessible name of the body. */

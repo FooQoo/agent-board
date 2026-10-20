@@ -163,10 +163,10 @@ describe('toolbar', () => {
     expect(names()).toEqual(['Make draft', 'Archive task']);
   });
 
-  it('shows only Delete in the History tab', async () => {
+  it('keeps the draft edit and Delete in the History tab', async () => {
     renderPanel({ ...fixtureTask(8), isDraft: true });
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    expect(names()).toEqual(['Archive task']);
+    expect(names()).toEqual(['Edit task', 'Archive task']);
   });
 
   it('calls onEdit with the task when the edit icon is pressed', async () => {
@@ -266,7 +266,7 @@ describe('epic tab', () => {
     name: 'File share',
     color: '#7C3AED',
     isDraft: false,
-    plan: '## Plan\n\nEpic plan text.',
+    document: '## Plan\n\nEpic plan text.',
     body: '## Plan\n\nEpic plan text.',
     acceptance: [{ id: 'AC-1', text: 'Epic condition', done: true }],
     acceptanceError: false,

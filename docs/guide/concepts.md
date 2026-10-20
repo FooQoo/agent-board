@@ -51,7 +51,7 @@ Acceptance conditions are a checklist on each task. An agent marks a condition d
 
 ## Epics
 
-An epic groups tasks under one plan. It has a name, a color, a plan written in Markdown, and an order for its tasks. A task belongs to at most one epic. Agents read the order to choose what to do next. See [Epics and progress](./use/epics).
+An epic is a management unit that groups tasks. It has a name, a color, details written in Markdown, and an order for its tasks. A task belongs to at most one epic. Agents read the order to choose what to do next. See [Epics and progress](./use/epics).
 
 ## Drafts
 

@@ -40,11 +40,11 @@ export interface EpicRef {
 
 export interface Epic extends EpicRef {
   isDraft: boolean;
-  /** The whole PLAN.md text, frontmatter included. */
-  plan: string;
-  /** PLAN.md without its frontmatter. The whole file when the frontmatter has a defect. */
+  /** The whole EPIC.md text, frontmatter included. */
+  document: string;
+  /** EPIC.md without its frontmatter. The whole file when the frontmatter has a defect. */
   body: string;
-  /** The card order of the epic (PLAN.md `priority`); empty when none is stored. */
+  /** The card order of the epic (EPIC.md `priority`); empty when none is stored. */
   priority: number[];
   /** The stored order cannot be read; it is then ignored. */
   priorityError: boolean;

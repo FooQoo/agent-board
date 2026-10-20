@@ -1,10 +1,10 @@
-# TASK.md and PLAN.md format
+# TASK.md and EPIC.md format
 
 **All task progress and operation history lives only in the top-level `history` YAML frontmatter of `TASK.md`.** Each entry has exactly two keys: `at` (timestamp) and `reason` (content). Do not store chronological history in the Markdown body, an execution log section, or `task.json`.
 
-The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact or evidence references; no heading is required. Full logs belong in evidence files. `PLAN.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use priority frontmatter for task order.
+The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact or evidence references; no heading is required. Full logs belong in evidence files. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use priority frontmatter for task order.
 
-Start from [assets/TASK.md](../assets/TASK.md) or [assets/PLAN.md](../assets/PLAN.md).
+Start from [assets/TASK.md](../assets/TASK.md) or [assets/EPIC.md](../assets/EPIC.md).
 
 ## The frontmatter
 
@@ -25,8 +25,9 @@ history: []
   - `text`: one to 2,000 characters after trimming. Write it so that it can be verified.
   - `done`: `true` or `false`.
 - `history`: a required top-level list in stored `TASK.md` files. An empty list is valid, even when `acceptance` is empty. New-task input may omit it or supply `history: []`; created tasks get a generated initial entry.
-- A `PLAN.md` may have `priority: [3, 1, 2]`: distinct positive task IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing PLAN.md. This is independent of lane order.
-- Other frontmatter keys are preserved when the board writes the file. A `PLAN.md` without frontmatter is entirely body text; its reference conditions are not parsed by the app.
+- An `EPIC.md` may have `priority: [3, 1, 2]`: distinct positive task IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing `EPIC.md`. This is independent of lane order.
+- Other frontmatter keys are preserved when the board writes the file. An `EPIC.md` without frontmatter is entirely body text; its reference conditions are not parsed by the app.
+- Earlier versions named this file `PLAN.md`; Agent Board renames it to `EPIC.md` on the first read of the project. If an epic folder has both files, do not choose between them yourself; report the conflict to the user.
 
 ## Task history
 
@@ -55,7 +56,7 @@ Ordinary body and acceptance edits preserve the latest history; `edit --desc-fil
 
 ## Format versions
 
-Every shared JSON file uses `formatVersion: 1`. `task.json` stores task metadata such as the lane and owner, without history. A file with any other version is reported as unsupported and left unchanged. There is no migration, fallback, or automatic deletion. Legacy acceptance keys in `PLAN.md` remain opaque metadata, without conversion or managed condition behavior.
+Every shared JSON file uses `formatVersion: 1`. `task.json` stores task metadata such as the lane and owner, without history. A file with any other version is reported as unsupported and left unchanged. There is no migration, fallback, or automatic deletion. Legacy acceptance keys in `EPIC.md` remain opaque metadata, without conversion or managed condition behavior.
 
 If frontmatter cannot be read, the board reports the file, item, and reason as a problem. The task then shows no progress and its whole text is the body. Fix the file by hand; the board does not rewrite it.
 

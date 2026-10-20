@@ -1,6 +1,6 @@
 // file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Epic operations: creation under a temporary folder, the update of the
-//! metadata and the plan, deletion refused while tasks refer to the epic, and
+//! metadata and the document, deletion refused while tasks refer to the epic, and
 //! the epic of a task. Every write holds the project's write lock.
 
 use std::fs;
@@ -48,14 +48,14 @@ pub(super) fn read_epic_file(
     }
 }
 
-fn read_plan(shared: &Path, dir: &Path) -> Result<String, AgboardError> {
-    let path = layout::epic_plan(dir);
+fn read_document(shared: &Path, dir: &Path) -> Result<String, AgboardError> {
+    let path = layout::epic_document(dir);
     io::read_text(&path, &layout::shared_label(shared, &path))
 }
 
-fn view_of(file: EpicFile, plan: String) -> EpicView {
-    let parts = frontmatter::parse_plan(&plan);
-    let (priority, priority_error) = match frontmatter::priority_of(&plan) {
+fn view_of(file: EpicFile, document: String) -> EpicView {
+    let parts = frontmatter::parse_document(&document);
+    let (priority, priority_error) = match frontmatter::priority_of(&document) {
         Ok(order) => (order, false),
         Err(_) => (Vec::new(), true),
     };
@@ -64,7 +64,7 @@ fn view_of(file: EpicFile, plan: String) -> EpicView {
         name: file.name,
         color: file.color,
         is_draft: file.is_draft,
-        plan,
+        document,
         body: parts.body,
         priority,
         priority_error,
@@ -74,15 +74,15 @@ fn view_of(file: EpicFile, plan: String) -> EpicView {
     }
 }
 
-/// An epic as it is stored: `epic.json` and PLAN.md read together.
+/// An epic as it is stored: `epic.json` and EPIC.md read together.
 pub(super) fn epic_view(
     shared: &Path,
     project: &ProjectId,
     id: &EpicId,
 ) -> Result<EpicView, AgboardError> {
     let (dir, file) = read_epic_file(shared, project, id)?;
-    let plan = read_plan(shared, &dir)?;
-    Ok(view_of(file, plan))
+    let document = read_document(shared, &dir)?;
+    Ok(view_of(file, document))
 }
 
 /// A `#RRGGBB` color that none of `used` has. The color is random; a collision
@@ -103,17 +103,17 @@ fn save_epic(shared: &Path, dir: &Path, file: &EpicFile) -> Result<(), AgboardEr
     io::write_json(&path, file, &layout::shared_label(shared, &path))
 }
 
-fn save_plan(shared: &Path, dir: &Path, text: &str) -> Result<(), AgboardError> {
-    let path = layout::epic_plan(dir);
+fn save_document(shared: &Path, dir: &Path, text: &str) -> Result<(), AgboardError> {
+    let path = layout::epic_document(dir);
     io::write_atomic(&path, text.as_bytes(), &layout::shared_label(shared, &path))
 }
 
-/// The plan to store: the given text with CRLF folded, or the template when
+/// The document to store: the given text with CRLF folded, or the template when
 /// no text (or only whitespace) is given.
-fn plan_to_store(plan: Option<String>) -> Result<String, AgboardError> {
-    match plan {
-        Some(text) if !text.trim().is_empty() => validate::normalize_plan(&text),
-        _ => Ok(validate::plan_template()),
+fn document_to_store(document: Option<String>) -> Result<String, AgboardError> {
+    match document {
+        Some(text) if !text.trim().is_empty() => validate::normalize_document(&text),
+        _ => Ok(validate::document_template()),
     }
 }
 
@@ -129,7 +129,7 @@ impl FileStore {
     ) -> Result<EpicView, AgboardError> {
         let id = EpicId::normalize(&new.id)?;
         let name = validate::validate_epic_name(&new.name)?;
-        let plan = plan_to_store(new.plan)?;
+        let document = document_to_store(new.document)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let color = match new.color.as_deref() {
@@ -145,8 +145,8 @@ impl FileStore {
             return Err(AgboardError::EpicIdTaken { id: id.to_string() });
         }
         let label = layout::shared_label(shared, &target);
-        let plan_label = format!("{label}/PLAN.md");
-        validate::ensure_plan_body(&plan, &plan_label)?;
+        let document_label = format!("{label}/EPIC.md");
+        validate::ensure_document_body(&document, &document_label)?;
 
         let epics = layout::epics_dir(&project_dir);
         fs::create_dir_all(&epics).map_err(|e| io::write_error(&label, e))?;
@@ -168,7 +168,11 @@ impl FileStore {
         let result = (|| -> Result<(), AgboardError> {
             fs::create_dir(&temp).map_err(|e| io::write_error(&label, e))?;
             save_epic(shared, &temp, &file)?;
-            io::write_atomic(&layout::epic_plan(&temp), plan.as_bytes(), &plan_label)?;
+            io::write_atomic(
+                &layout::epic_document(&temp),
+                document.as_bytes(),
+                &document_label,
+            )?;
             fs::rename(&temp, &target).map_err(|e| io::write_error(&label, e))?;
             io::sync_dir(&epics).map_err(|e| io::write_error(&label, e))
         })();
@@ -179,13 +183,15 @@ impl FileStore {
         epic_view(shared, project, &id)
     }
 
-    /// Read one epic with its plan.
+    /// Read one epic with its document.
     pub fn epic(&self, project: &ProjectId, id: &EpicId) -> Result<EpicView, AgboardError> {
+        // The lock also finishes the one-time move to EPIC.md before the read.
+        let (_dir, _lock) = lock_project(self.shared_dir(), project)?;
         epic_view(self.shared_dir(), project, id)
     }
 
-    /// Change an epic's name, color, draft flag, and/or plan. The plan is
-    /// checked before anything is written; PLAN.md is saved before epic.json.
+    /// Change an epic's name, color, draft flag, and/or document. The document is
+    /// checked before anything is written; EPIC.md is saved before epic.json.
     /// A value that does not change writes nothing.
     pub fn update_epic(
         &self,
@@ -204,10 +210,10 @@ impl FileStore {
             .as_deref()
             .map(validate::normalize_color)
             .transpose()?;
-        let plan = update
-            .plan
+        let document = update
+            .document
             .as_deref()
-            .map(validate::normalize_plan)
+            .map(validate::normalize_document)
             .transpose()?;
         let shared = self.shared_dir();
         let (_project_dir, _lock) = lock_project(shared, project)?;
@@ -232,13 +238,13 @@ impl FileStore {
             file.is_draft = is_draft;
             changed = true;
         }
-        let current_plan = read_plan(shared, &dir)?;
-        let next_plan = plan.unwrap_or_else(|| current_plan.clone());
-        let plan_changed = next_plan != current_plan;
-        if plan_changed {
-            let label = layout::shared_label(shared, &layout::epic_plan(&dir));
-            validate::ensure_plan_body(&next_plan, &label)?;
-            save_plan(shared, &dir, &next_plan)?;
+        let current_document = read_document(shared, &dir)?;
+        let next_document = document.unwrap_or_else(|| current_document.clone());
+        let document_changed = next_document != current_document;
+        if document_changed {
+            let label = layout::shared_label(shared, &layout::epic_document(&dir));
+            validate::ensure_document_body(&next_document, &label)?;
+            save_document(shared, &dir, &next_document)?;
             changed = true;
         }
         if changed {
@@ -246,12 +252,12 @@ impl FileStore {
             save_epic(shared, &dir, &file)?;
         }
         Ok(Changed {
-            value: view_of(file, next_plan),
+            value: view_of(file, next_document),
             changed,
         })
     }
 
-    /// Replace an epic's task order, the `priority` list of its PLAN.md. The
+    /// Replace an epic's task order, the `priority` list of its EPIC.md. The
     /// list is checked first (positive IDs, no repeats). IDs that no task of
     /// the epic holds any more are dropped, so the stored order is the order of
     /// the tasks that exist. Other frontmatter keys and the body stay. A list
@@ -282,24 +288,25 @@ impl FileStore {
             .filter(|task| members.contains(task))
             .collect();
 
-        let current_plan = read_plan(shared, &dir)?;
-        let plan_label = layout::shared_label(shared, &layout::epic_plan(&dir));
-        let next_plan = frontmatter::compose_priority(&current_plan, &kept).map_err(|d| {
-            AgboardError::FileInvalid {
-                file: plan_label.clone(),
-                field: d.field,
-                reason: d.reason,
-            }
-        })?;
-        let changed = next_plan != current_plan;
+        let current_document = read_document(shared, &dir)?;
+        let document_label = layout::shared_label(shared, &layout::epic_document(&dir));
+        let next_document =
+            frontmatter::compose_priority(&current_document, &kept).map_err(|d| {
+                AgboardError::FileInvalid {
+                    file: document_label.clone(),
+                    field: d.field,
+                    reason: d.reason,
+                }
+            })?;
+        let changed = next_document != current_document;
         if changed {
-            validate::ensure_plan_body(&next_plan, &plan_label)?;
-            save_plan(shared, &dir, &next_plan)?;
+            validate::ensure_document_body(&next_document, &document_label)?;
+            save_document(shared, &dir, &next_document)?;
             file.updated_at = stamp(now);
             save_epic(shared, &dir, &file)?;
         }
         Ok(Changed {
-            value: view_of(file, next_plan),
+            value: view_of(file, next_document),
             changed,
         })
     }
@@ -423,7 +430,7 @@ impl FileStore {
                 name: name.into(),
                 color: Some(color.into()),
                 is_draft: false,
-                plan: None,
+                document: None,
             };
             match self.create_epic(project, new, now) {
                 Ok(_) | Err(AgboardError::EpicIdTaken { .. }) => {}
