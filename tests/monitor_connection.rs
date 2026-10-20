@@ -13,6 +13,9 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use agent_board::cli::args::{
+    Command as CliCommand, NgrokRequest, Parsed, parse, validate_monitor_args,
+};
 use agent_board::error::AgboardError;
 use agent_board::server::monitor_connection::config::ConfigStore;
 use agent_board::server::monitor_connection::contracts::{
@@ -187,6 +190,58 @@ fn bad_command_lines_exit_with_2_and_never_print_the_token() {
     );
     assert_eq!(code, 2);
     assert!(!text.contains(TOKEN) || text.contains("--ngrok-token"));
+}
+
+#[test]
+fn a_valid_ngrok_command_line_is_accepted_and_normalized() {
+    let argv: Vec<std::ffi::OsString> = [
+        "agboard",
+        "serve",
+        "--monitor",
+        "ngrok",
+        "--ngrok-allow-email",
+        "Me@Example.com",
+        "--ngrok-allow-email",
+        "me@example.com",
+        "--ngrok-domain",
+        "cli.ngrok.app",
+        "--ngrok-oauth-app",
+        "custom",
+    ]
+    .iter()
+    .map(Into::into)
+    .collect();
+    let Ok(Parsed::Run(cli)) = parse(&argv) else {
+        panic!("the command line must parse");
+    };
+    // `validate` reads the real environment; the pure check below takes it as a parameter.
+    let CliCommand::Serve(args) = &cli.command else {
+        panic!("serve expected");
+    };
+    let env = |name: &str| match name {
+        "NGROK_AUTHTOKEN" | "AGBOARD_GOOGLE_CLIENT_ID" | "AGBOARD_GOOGLE_CLIENT_SECRET" => {
+            Some("set".to_string())
+        }
+        _ => None,
+    };
+    let request = validate_monitor_args(args, &env).unwrap().unwrap();
+    assert_eq!(
+        request,
+        NgrokRequest {
+            allow_emails: vec!["me@example.com".into()],
+            domain: Some("cli.ngrok.app".into()),
+            oauth_app: Some(agent_board::server::monitor_connection::contracts::OauthApp::Custom),
+        }
+    );
+    // Without --monitor, plain serve has no monitor request.
+    let plain: Vec<std::ffi::OsString> = ["agboard", "serve"].iter().map(Into::into).collect();
+    let Ok(Parsed::Run(cli)) = parse(&plain) else {
+        panic!("serve must parse");
+    };
+    let CliCommand::Serve(args) = &cli.command else {
+        panic!("serve expected");
+    };
+    assert_eq!(validate_monitor_args(args, &env).unwrap(), None);
 }
 
 // ------------------------------------------------------------- the harness
@@ -472,7 +527,6 @@ fn get_returns_only_non_secret_state_and_only_to_the_local_page() {
         keys,
         [
             "failure",
-            "mode",
             "revision",
             "settings",
             "status",
@@ -861,8 +915,75 @@ fn an_unreadable_settings_file_keeps_the_pc_entrance_and_can_be_replaced() {
         request(s.local, "GET", "/api/projects", &[], "").status,
         200
     );
+    assert_eq!(s.start_ngrok(json!({})).status, 409);
     assert_eq!(s.put(false, &[], 0).status, 200);
     assert_eq!(s.get()["status"], "disabled");
+}
+
+#[test]
+fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
+    let home = home();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(false, &["me@example.com"], 0).status, 200);
+    assert!(!ConfigStore::new(home.path()).load().unwrap().enabled);
+    // Without an allowed email the start is refused and nothing is saved.
+    assert_eq!(s.put(false, &[], 1).status, 200);
+    assert_eq!(s.start_ngrok(json!({})).status, 422);
+    assert!(!ConfigStore::new(home.path()).load().unwrap().enabled);
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    // With one, the start saves enabled under the next revision.
+    assert_eq!(s.put(false, &["me@example.com"], 2).status, 200);
+    let r = s.start_ngrok(json!({}));
+    assert_eq!(r.status, 202, "{}", r.body);
+    assert_eq!(r.json()["revision"], 4);
+    s.wait_status("ready");
+    let saved = ConfigStore::new(home.path()).load().unwrap();
+    assert!(saved.enabled);
+    assert_eq!(saved.revision, 4);
+    // The enabled setting survives a restart and the connection is restored.
+    drop(s);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.wait_status("ready")["url"], PUBLIC);
+}
+
+#[test]
+fn a_legacy_remote_run_does_not_restore_the_ngrok_connection() {
+    let home = home();
+    ConfigStore::new(home.path())
+        .save(&ConnectionConfig {
+            enabled: true,
+            allow_emails: vec!["me@example.com".into()],
+            domain: None,
+            oauth_app: OauthApp::Managed,
+            revision: 1,
+        })
+        .unwrap();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            remote: true,
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    let v = s.get();
+    assert_eq!(v["status"], "disabled");
+    assert_eq!(v["url"], Value::Null);
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    // Its saved setting is untouched.
+    assert!(ConfigStore::new(home.path()).load().unwrap().enabled);
 }
 
 #[test]

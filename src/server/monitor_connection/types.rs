@@ -72,6 +72,7 @@ pub enum FailureCode {
     PublicUrlInvalid,
     Internal,
     ConfigUnreadable,
+    ConfigInvalid,
 }
 
 impl FailureCode {
@@ -82,6 +83,7 @@ impl FailureCode {
             Self::PublicUrlInvalid => "public_url_invalid",
             Self::Internal => "internal",
             Self::ConfigUnreadable => "config_unreadable",
+            Self::ConfigInvalid => "config_invalid",
         }
     }
 }
@@ -174,7 +176,6 @@ pub struct MonitorReady {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
-    pub mode: &'static str,
     pub status: ConnectionStatus,
     pub url: Option<String>,
     pub revision: u64,
@@ -213,6 +214,10 @@ pub enum UpdateError {
 pub enum StartError {
     /// No ngrok token is held and none was given.
     TokenRequired,
+    /// The saved settings file could not be read; save the settings first.
+    SettingsUnreadable,
+    /// The enabled setting could not be saved, so nothing was started.
+    SaveFailed,
     Invalid(ContractError),
     Internal,
 }

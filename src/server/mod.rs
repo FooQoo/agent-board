@@ -195,7 +195,12 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
         // A command-line monitor must be up before the board announces itself;
         // on failure nothing has been written yet, so the run just ends.
         let explicit = monitor.explicit.is_some();
-        let monitor_ready = match state.monitor.startup(monitor.explicit.clone()).await {
+        let restore = remote.is_none();
+        let monitor_ready = match state
+            .monitor
+            .startup(monitor.explicit.clone(), restore)
+            .await
+        {
             Ok(url) => url.filter(|_| explicit).map(|url| MonitorReady { url }),
             Err(code) => {
                 state.monitor.shutdown();

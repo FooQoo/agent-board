@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use tokio::task::AbortHandle;
 
 use super::config::{ConfigError, ConfigStore};
-use super::contracts::{ConnectionConfig, ConnectionStatus, ContractError};
+use super::contracts::{ConnectionConfig, ConnectionStatus, ContractError, OauthApp};
 pub use super::types::*;
 
 pub(super) struct Run {
@@ -91,6 +91,7 @@ impl MonitorConnections {
     pub async fn startup(
         self: &Arc<Self>,
         explicit: Option<Overrides>,
+        restore: bool,
     ) -> Result<Option<String>, FailureCode> {
         let waiting = {
             let mut inner = self.lock();
@@ -104,12 +105,16 @@ impl MonitorConnections {
                     inner.config.oauth_app = app;
                 }
                 inner.failure = None;
-                Some(self.begin(&mut inner).map_err(|_| FailureCode::Internal)?)
+                Some(self.begin(&mut inner).map_err(|e| failure_of(&e))?)
             } else {
-                if inner.config.enabled && inner.failure.is_none() {
+                // A legacy remote run never restores the ngrok connection.
+                if restore && inner.config.enabled && inner.failure.is_none() {
                     if inner.token.is_some() {
                         // Restoring: a failure is shown on the PC, not fatal.
-                        let _ = self.begin(&mut inner);
+                        if let Err(e) = self.begin(&mut inner) {
+                            inner.status = ConnectionStatus::Failed;
+                            inner.failure = Some(failure_of(&e));
+                        }
                     } else {
                         inner.status = ConnectionStatus::NeedsConfig;
                     }
@@ -167,9 +172,9 @@ impl MonitorConnections {
         } else if active && changed {
             // A new allow list means a new tunnel and a new proof; the old
             // tunnel stops being served before the new one is requested.
-            if self.begin(&mut inner).is_err() {
+            if let Err(e) = self.begin(&mut inner) {
                 inner.status = ConnectionStatus::Failed;
-                inner.failure = Some(FailureCode::Internal);
+                inner.failure = Some(failure_of(&e));
             }
         } else if inner.run.is_none() && inner.failure.is_none() {
             inner.status = idle_status(&inner.config, inner.token.is_some());
@@ -177,14 +182,33 @@ impl MonitorConnections {
         Ok(snapshot_of(&inner))
     }
 
-    /// Start with the saved settings. `token`, if given, replaces the one held in memory.
+    /// Start the connection. `token`, if given, replaces the one held in memory.
+    /// A start is an explicit request to stay on, so a disabled setting is saved
+    /// as enabled first; nothing starts if that save fails.
     pub fn start(self: &Arc<Self>, token: Option<Secret>) -> Result<Snapshot, StartError> {
         let mut inner = self.lock();
+        if inner.failure == Some(FailureCode::ConfigUnreadable) {
+            return Err(StartError::SettingsUnreadable);
+        }
         if let Some(token) = token {
             inner.token = Some(token);
         }
-        if inner.failure == Some(FailureCode::ConfigUnreadable) {
-            return Err(StartError::Invalid(ContractError::NoAllowedEmail));
+        if inner.token.is_none() {
+            return Err(StartError::TokenRequired);
+        }
+        if inner.config.oauth_app == OauthApp::Custom && self.google.is_none() {
+            return Err(StartError::Invalid(ContractError::MissingOauthCredentials));
+        }
+        if !inner.config.enabled {
+            let next = ConnectionConfig {
+                enabled: true,
+                revision: inner.config.revision + 1,
+                ..inner.config.clone()
+            }
+            .validated()
+            .map_err(StartError::Invalid)?;
+            self.store.save(&next).map_err(|_| StartError::SaveFailed)?;
+            inner.config = next;
         }
         // The receiver is dropped: the caller polls the status instead.
         drop(self.begin(&mut inner)?);
@@ -233,9 +257,16 @@ pub(super) fn idle_status(config: &ConnectionConfig, has_token: bool) -> Connect
     }
 }
 
+/// The fixed failure reason for a start that could not begin.
+fn failure_of(error: &StartError) -> FailureCode {
+    match error {
+        StartError::Invalid(_) | StartError::TokenRequired => FailureCode::ConfigInvalid,
+        _ => FailureCode::Internal,
+    }
+}
+
 fn snapshot_of(inner: &Inner) -> Snapshot {
     Snapshot {
-        mode: "ngrok",
         status: inner.status,
         url: inner.url.clone(),
         revision: inner.config.revision,

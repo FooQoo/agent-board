@@ -141,6 +141,18 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
             "an ngrok token is required.",
             "Enter the token to start the connection.",
         ),
+        Err(StartError::SettingsUnreadable) => error_response(
+            StatusCode::CONFLICT,
+            "settings_unreadable",
+            "the saved settings could not be read.",
+            "Save the settings again before starting.",
+        ),
+        Err(StartError::SaveFailed) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "save_failed",
+            "the settings could not be saved.",
+            "Nothing was changed and the connection was not started.",
+        ),
         Err(StartError::Invalid(e)) => invalid(&contract_reason(&e)),
         Err(StartError::Internal) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
