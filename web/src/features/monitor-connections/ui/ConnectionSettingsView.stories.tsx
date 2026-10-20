@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
+import { ConnectionEntryRow } from './ConnectionEntryRow';
 import {
-  ConnectionEntryRow,
   ConnectionSettingsView,
   type ConnectionDraft,
   type ConnectionQr,
@@ -88,7 +89,12 @@ export const Failed: Story = {
 export const Reconnecting: Story = { args: { status: 'reconnecting' } };
 
 /** Stop was requested and is finishing. */
-export const Stopping: Story = { args: { status: 'stopping', saving: true } };
+export const Stopping: Story = {
+  args: { status: 'stopping', saving: true },
+  play: async () => {
+    await expect(within(document.body).getByRole('button', { name: 'Stopping…' })).toBeDisabled();
+  },
+};
 
 /** The connection is up: the URL, the QR code and the stop and edit actions. */
 export const Connected: Story = {
@@ -126,5 +132,25 @@ export const SettingsEntry: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Set up' })).toBeEnabled();
+  },
+};
+
+/** A parent that re-renders with an equal draft must not wipe what the person typed. */
+export const KeepsInputOnRerender: Story = {
+  render: function Render(args) {
+    const [, setTick] = useState(0);
+    useEffect(() => {
+      const rerender = () => setTick((n) => n + 1);
+      window.addEventListener('story-rerender', rerender);
+      return () => window.removeEventListener('story-rerender', rerender);
+    }, []);
+    return <ConnectionSettingsView {...args} draft={{ ...filledDraft }} />;
+  },
+  play: async () => {
+    const view = within(document.body);
+    await userEvent.type(view.getByLabelText('ngrok domain (optional)'), 'my.ngrok.app');
+    window.dispatchEvent(new Event('story-rerender'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await expect(view.getByLabelText('ngrok domain (optional)')).toHaveValue('my.ngrok.app');
   },
 };

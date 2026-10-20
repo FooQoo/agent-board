@@ -41,7 +41,7 @@
             {
               "id": "monitor-connections-connectionsettingsview--stopping",
               "states": ["stopping"],
-              "interaction": false
+              "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettingsview--connected",
@@ -52,9 +52,19 @@
               "id": "monitor-connections-connectionsettingsview--connected-stopping",
               "states": ["connected", "actions disabled"],
               "interaction": false
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--keeps-input-on-rerender",
+              "states": ["equal draft on re-render keeps input"],
+              "interaction": true
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "file": "features/monitor-connections/ui/ConnectionEntryRow.tsx",
+      "exports": [
         {
           "name": "ConnectionEntryRow",
           "stories": [

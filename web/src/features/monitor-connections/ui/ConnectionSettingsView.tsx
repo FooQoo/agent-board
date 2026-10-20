@@ -7,16 +7,9 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import '../../../shared/styles/modal.css';
 import './connection.css';
+import { progressText, type ConnectionStatus } from './connectionProgress';
 
-/** How far the ngrok connection has come. The server decides it; this view only shows it. */
-export type ConnectionStatus =
-  | 'disabled'
-  | 'needs_config'
-  | 'starting'
-  | 'ready'
-  | 'reconnecting'
-  | 'failed'
-  | 'stopping';
+export type { ConnectionStatus };
 
 /** What the person types: the token is held in memory only and never shown again. */
 export interface ConnectionDraft {
@@ -81,7 +74,11 @@ export function ConnectionSettingsView({
   const [copied, setCopied] = useState(false);
   const ids = { token: useId(), email: useId(), domain: useId(), url: useId() };
 
-  useEffect(() => setValues(draft), [draft]);
+  // Reset only when the values differ, so an equal draft from a re-render keeps what was typed.
+  useEffect(
+    () => setValues({ token: draft.token, email: draft.email, domain: draft.domain }),
+    [draft.token, draft.email, draft.domain],
+  );
   useEffect(() => {
     if (!copied) return;
     const timer = window.setTimeout(() => setCopied(false), 2000);
@@ -254,11 +251,13 @@ export function ConnectionSettingsView({
               )}
               <div className="connection-dialog__submit">
                 <Button type="submit" disabled={busy}>
-                  {busy
-                    ? t('monitorConnection.connecting')
-                    : status === 'failed'
-                      ? t('monitorConnection.retry')
-                      : t('monitorConnection.save')}
+                  {status === 'stopping'
+                    ? t('monitorConnection.stopping')
+                    : busy
+                      ? t('monitorConnection.connecting')
+                      : status === 'failed'
+                        ? t('monitorConnection.retry')
+                        : t('monitorConnection.save')}
                 </Button>
               </div>
             </form>
@@ -266,48 +265,5 @@ export function ConnectionSettingsView({
         )}
       </DialogContent>
     </Dialog>
-  );
-}
-
-function progressText(
-  status: ConnectionStatus,
-  t: (key: string) => string,
-): { title: string; body: string } | null {
-  switch (status) {
-    case 'starting':
-      return {
-        title: t('monitorConnection.startingTitle'),
-        body: t('monitorConnection.startingBody'),
-      };
-    case 'reconnecting':
-      return {
-        title: t('monitorConnection.reconnectingTitle'),
-        body: t('monitorConnection.reconnectingBody'),
-      };
-    case 'stopping':
-      return {
-        title: t('monitorConnection.stoppingTitle'),
-        body: t('monitorConnection.stoppingBody'),
-      };
-    default:
-      return null;
-  }
-}
-
-/** The row the settings dialog shows to open the connection dialog. */
-export function ConnectionEntryRow({ onOpen }: { onOpen: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <section className="connection-entry" aria-labelledby="connection-entry-title">
-      <div className="connection-entry__copy">
-        <h3 id="connection-entry-title" className="connection-entry__title">
-          {t('monitorConnection.entryTitle')}
-        </h3>
-        <p className="connection-entry__body">{t('monitorConnection.entryBody')}</p>
-      </div>
-      <Button type="button" variant="outline" onClick={onOpen}>
-        {t('monitorConnection.entryAction')}
-      </Button>
-    </section>
   );
 }
