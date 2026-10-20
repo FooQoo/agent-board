@@ -47,7 +47,7 @@ export const NeedsConfig: Story = {
   play: async ({ args }) => {
     const view = within(document.body);
     await expect(view.getByRole('dialog')).toBeInTheDocument();
-    await expect(view.getByRole('dialog').getBoundingClientRect().width).toBe(680);
+    await expect((view.getByRole('dialog') as HTMLElement).offsetWidth).toBe(680);
     await userEvent.type(view.getByLabelText('ngrok auth token'), 'secret-token');
     await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
     await expect(args.onConnect).toHaveBeenCalledWith({
@@ -102,7 +102,7 @@ export const Connected: Story = {
   args: { status: 'ready', url: phoneUrl, qr: sampleQr },
   play: async ({ args }) => {
     const view = within(document.body);
-    await expect(view.getByRole('dialog').getBoundingClientRect().width).toBe(680);
+    await expect((view.getByRole('dialog') as HTMLElement).offsetWidth).toBe(680);
     await expect(view.getByRole('status')).toHaveTextContent('Connected');
     await expect(view.getByLabelText('URL for your phone')).toHaveValue(phoneUrl);
     await userEvent.click(view.getByRole('button', { name: 'Change connection settings' }));
