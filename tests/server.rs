@@ -642,10 +642,11 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
         r#"{"agentStatus":"pending","actor":"ai","reason":"A question with no choices"}"#,
         Some(&token),
     );
-    assert_eq!(no_choices.status, 200, "{}", no_choices.body);
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&no_choices.body).unwrap()["changed"],
-        false
+    assert_eq!(no_choices.status, 422, "{}", no_choices.body);
+    assert!(
+        no_choices.body.contains("2 to 10 choices"),
+        "{}",
+        no_choices.body
     );
     let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
     let request_id = request["task"]["pendingRequestId"].as_str().unwrap();

@@ -38,6 +38,10 @@
       "agentStatus": "pending",
       "pendingReason": "Which database should Beta use?",
       "pendingRequestId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "pendingChoices": [
+        { "id": "compat", "label": "Keep compatibility (recommended)" },
+        { "id": "break", "label": "Allow breaking changes" }
+      ],
       "createdAt": "2026-10-01T09:15:00Z",
       "updatedAt": "2026-10-01T10:15:00Z",
       "agentStatusChangedAt": "2026-10-01T10:15:00Z",

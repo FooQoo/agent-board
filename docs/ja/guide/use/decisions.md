@@ -45,7 +45,7 @@ sequenceDiagram
     A->>B: 理由つきでstate running
 ```
 
-AI担当のタスクは、未着手でも進行中でも質問できますが、稼働中にできるのは進行中だけです。エージェントのスキルは、2〜10件の選択肢で尋ねます。CLIは、質問と0〜10件の選択肢を、`--request-json`でJSONとして受け取ります。引数に直接書くことも、標準入力から`-`で読むこともできます。
+AI担当のタスクは、未着手でも進行中でも質問できますが、稼働中にできるのは進行中だけです。エージェントは、2〜10件の選択肢で尋ねます。CLIは、質問と2〜10件の選択肢を、`--request-json`でJSONとして受け取ります。引数に直接書くことも、標準入力から`-`で読むこともできます。
 
 ```json
 {
@@ -69,7 +69,7 @@ agboard --project "My project" state 1 pending --actor ai --request-json '{"ques
 cat question.json | agboard --project "My project" state 1 pending --actor ai --request-json -
 ```
 
-`choices`は0〜10件で、11件以上や、`--request-json`のない待機中の指定は拒否します。依頼にはIDが付き、`show`や`snapshot`で読めます。
+`choices`は2〜10件で、1件以下や11件以上、`--request-json`のない待機中の指定は拒否します。依頼にはIDが付き、`show`や`snapshot`で読めます。
 
 ### 質問と待機を一つのコマンドで
 

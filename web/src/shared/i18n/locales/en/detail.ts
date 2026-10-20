@@ -40,7 +40,6 @@ export const detailEn = {
     placeholder: 'Write your answer…',
     choices: 'Choices',
     guideChoice: 'Choose an option, or answer in your own words.',
-    guideText: 'Answer in your own words.',
     saveHint: 'Saved to the history. The coordinator reviews it and resumes the work.',
     resumed: 'Saved. The coordinator resumes the work.',
     send: 'Send',
