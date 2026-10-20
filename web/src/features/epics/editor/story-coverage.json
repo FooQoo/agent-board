@@ -20,6 +20,11 @@
               "interaction": false
             },
             {
+              "id": "epic-editor-epicdialog--japanese-label",
+              "states": ["japanese locale", "title label"],
+              "interaction": false
+            },
+            {
               "id": "epic-editor-epicdialog--details-save-retry",
               "states": ["editing", "saving", "failed save", "input retained", "retry"],
               "interaction": true
