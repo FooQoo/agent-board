@@ -4,7 +4,7 @@ import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes
 export interface ActionDialogData {
   requestId?: string;
   title?: string;
-  /** The whole TASK.md or PLAN.md text, frontmatter included (a file that cannot be read is edited this way). */
+  /** The whole TASK.md or EPIC.md text, frontmatter included (a file that cannot be read is edited this way). */
   description?: string;
   /** The body without its frontmatter, saved with `acceptance`. */
   body?: string;
