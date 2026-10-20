@@ -19,11 +19,6 @@
               "interaction": false
             },
             {
-              "id": "task-answer-decisionrequestformview--free-text-only",
-              "states": ["free text"],
-              "interaction": false
-            },
-            {
               "id": "task-answer-decisionrequestformview--sending",
               "states": ["sending", "disabled input"],
               "interaction": false

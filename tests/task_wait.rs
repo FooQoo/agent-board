@@ -228,7 +228,7 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
             "--actor",
             "ai",
             "--request-json",
-            r#"{"question":"Wait?","choices":[]}"#,
+            r#"{"question":"Wait?","choices":[{"id":"yes","label":"Yes"},{"id":"no","label":"No"}]}"#,
         ],
     );
     success(

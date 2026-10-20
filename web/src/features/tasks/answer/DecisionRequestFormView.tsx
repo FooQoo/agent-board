@@ -56,26 +56,24 @@ export function DecisionRequestFormView({
         </>
       )}
       <form className="detail__answer" onSubmit={onSubmit} aria-describedby={messageId}>
-        {choices.length > 0 && (
-          <RadioGroup
-            className="detail__choices"
-            aria-label={t('request.choices')}
-            value={model.choiceId ?? ''}
-            disabled={model.disabled}
-            onValueChange={(value) => onChoiceChange(value === '' ? null : value)}
-          >
-            {choices.map((choice) => (
-              <div className="detail__choice" key={choice.id}>
-                <RadioGroupItem value={choice.id} id={`${textareaId}-${choice.id}`} />
-                <Label htmlFor={`${textareaId}-${choice.id}`} className="detail__choice-label">
-                  {choice.label}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        )}
+        <RadioGroup
+          className="detail__choices"
+          aria-label={t('request.choices')}
+          value={model.choiceId ?? ''}
+          disabled={model.disabled}
+          onValueChange={(value) => onChoiceChange(value === '' ? null : value)}
+        >
+          {choices.map((choice) => (
+            <div className="detail__choice" key={choice.id}>
+              <RadioGroupItem value={choice.id} id={`${textareaId}-${choice.id}`} />
+              <Label htmlFor={`${textareaId}-${choice.id}`} className="detail__choice-label">
+                {choice.label}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
         <p className="detail__guide">
-          {choices.length > 0 ? t('request.guideChoice') : t('request.guideText')}
+          {t('request.guideChoice')}
         </p>
         <Label htmlFor={textareaId} className="visually-hidden">
           {t('request.label')}

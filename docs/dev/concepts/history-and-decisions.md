@@ -6,7 +6,7 @@ How Agent Board records what happened (history), asks people for decisions (Pend
 
 When an agent needs a person's decision, it moves the task to Pending with a question and choices:
 
-- The CLI takes `--request-json` with a question (1 to 2,000 characters) and 0 to 10 choices. Each choice has an ID unique within the request (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. The agent skill asks for 2 to 10 choices; that is policy, not an input constraint.
+- The CLI takes `--request-json` with a question (1 to 2,000 characters) and 2 to 10 choices. Each choice has an ID unique within the request (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. A request with fewer than two or more than ten choices is refused, so every decision offers a real choice; the free-text answer is still available.
 - A new `pendingRequestId` is generated, and `pendingRequest` stores `{question, choices}`. History gets an entry describing the request.
 - An answer must name the current request ID; otherwise it fails with `request_changed`. It accepts a `choiceId`, a `text`, or both, but not neither; an unknown choice is `request_choice_unknown`. The answer is stored in `requestAnswers` with the label at the time of selection, the request is cleared, the task returns to Idle in the same lane, and history gets an entry. Resuming Running is a separate change.
 - Question and answer texts are trimmed, with CRLF and lone CR normalized to LF.

@@ -4,8 +4,9 @@ pub const MAX_ATTACHMENT_BYTES: usize = 10 * 1024 * 1024;
 pub const MAX_TASK_ATTACHMENTS: usize = 20;
 pub const MAX_TASK_ATTACHMENT_BYTES: usize = 50 * 1024 * 1024;
 
-/// Decision requests: at most this many choices, each with a label of at most
+/// Decision requests require 2 to 10 choices, each with a label of at most
 /// `MAX_CHOICE_LABEL_CHARS` and an ID of at most `MAX_CHOICE_ID_CHARS`.
+pub const MIN_CHOICES: usize = 2;
 pub const MAX_CHOICES: usize = 10;
 pub const MAX_CHOICE_ID_CHARS: usize = 64;
 pub const MAX_CHOICE_LABEL_CHARS: usize = 200;

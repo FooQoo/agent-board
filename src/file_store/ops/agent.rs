@@ -15,9 +15,7 @@ use super::{
     HistoryKind, Transition, ensure_ai_task_not_done, lane_end, lock_project, new_id, save_task,
     stamp, transition_event,
 };
-use crate::domain::{
-    Actor, ChangeContext, Changed, Column, MAX_CHOICES, ProjectId, RunState, check_work_state,
-};
+use crate::domain::{Actor, ChangeContext, Changed, Column, ProjectId, RunState, check_work_state};
 use crate::error::AgboardError;
 
 /// An agent may move a task to Done only when its frontmatter reads and every
@@ -171,10 +169,12 @@ impl FileStore {
         choices: Vec<Choice>,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        if state == RunState::Pending && choices.len() > MAX_CHOICES {
+        if state == RunState::Pending
+            && let Some(defect) = super::super::validate::choice_defect(&choices)
+        {
             return Err(AgboardError::InvalidValue {
-                field: "choices".into(),
-                reason: "A pending request needs a question and up to 10 choices.".into(),
+                field: defect.field,
+                reason: defect.reason,
             });
         }
         let shared = self.shared_dir();
@@ -217,22 +217,8 @@ impl FileStore {
                 .map(|choice| format!("{}: {}", choice.id, choice.label))
                 .collect::<Vec<_>>()
                 .join("; ");
-            let english = format!(
-                "Requested decision: {reason}{}",
-                if options.is_empty() {
-                    String::new()
-                } else {
-                    format!(" Options: {options}")
-                }
-            );
-            let japanese = format!(
-                "判断を依頼しました: {reason}{}",
-                if options.is_empty() {
-                    String::new()
-                } else {
-                    format!(" 選択肢: {options}")
-                }
-            );
+            let english = format!("Requested decision: {reason} Options: {options}");
+            let japanese = format!("判断を依頼しました: {reason} 選択肢: {options}");
             language.text(&english, &japanese).to_owned()
         } else {
             reason.to_owned()

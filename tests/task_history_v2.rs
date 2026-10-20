@@ -182,7 +182,16 @@ fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
             id,
             Actor::Ai,
             "Continue?",
-            vec![],
+            vec![
+                Choice {
+                    id: "yes".into(),
+                    label: "Proceed".into(),
+                },
+                Choice {
+                    id: "other".into(),
+                    label: "Other".into(),
+                },
+            ],
             Utc.with_ymd_and_hms(2026, 10, 14, 0, 2, 0).unwrap(),
         )
         .unwrap();
@@ -195,10 +204,16 @@ fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
             id,
             Actor::Ai,
             "A different question",
-            vec![Choice {
-                id: "choice".into(),
-                label: "Choice".into(),
-            }],
+            vec![
+                Choice {
+                    id: "choice".into(),
+                    label: "Choice".into(),
+                },
+                Choice {
+                    id: "other".into(),
+                    label: "Other".into(),
+                },
+            ],
             Utc.with_ymd_and_hms(2026, 10, 14, 0, 3, 0).unwrap(),
         )
         .unwrap();
@@ -209,7 +224,7 @@ fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
     let pending = reopened.task(&fx.project, id).unwrap();
     assert_eq!(pending.agent_status, RunState::Pending);
     assert_eq!(pending.pending_reason.as_deref(), Some("Continue?"));
-    assert!(pending.pending_choices.is_empty());
+    assert_eq!(pending.pending_choices.len(), 2);
     let request_id = pending.pending_request_id.unwrap();
     let answered = reopened
         .answer_request(

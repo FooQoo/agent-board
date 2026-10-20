@@ -69,7 +69,7 @@ Or read it from standard input:
 cat question.json | agboard --project "My project" state 1 pending --actor ai --request-json -
 ```
 
-`choices` takes 0 to 10 options; more than 10 is refused, and so is a pending state without `--request-json`. The request gets an ID, which you can read with `show` or `snapshot`.
+`choices` takes 2 to 10 options; a request with fewer than 2 or more than 10 is refused, and so is a pending state without `--request-json`. The request gets an ID, which you can read with `show` or `snapshot`.
 
 ### Ask and wait in one command
 

@@ -38,6 +38,10 @@
       "agentStatus": "pending",
       "pendingReason": "Which license should Alpha use?",
       "pendingRequestId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "pendingChoices": [
+        { "id": "compat", "label": "Keep compatibility (recommended)" },
+        { "id": "break", "label": "Allow breaking changes" }
+      ],
       "createdAt": "2026-10-01T09:00:00Z",
       "updatedAt": "2026-10-01T10:00:00Z",
       "agentStatusChangedAt": "2026-10-01T10:00:00Z",

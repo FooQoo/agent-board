@@ -16,7 +16,8 @@ use super::layout::FORMAT_NAME;
 use super::model::{Choice, EpicFile, HistoryRecord, ProjectFile, TaskFile, WorkspaceFile};
 use crate::domain::{
     MAX_ANSWER_TEXT_CHARS, MAX_CHOICE_ID_CHARS, MAX_CHOICE_LABEL_CHARS, MAX_CHOICES,
-    MAX_QUESTION_CHARS, RunState, check_work_state, validate_project_name, validate_title,
+    MAX_QUESTION_CHARS, MIN_CHOICES, RunState, check_work_state, validate_project_name,
+    validate_title,
 };
 
 /// An EPIC-ID in canonical form: `[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`, 1 to 64
@@ -246,9 +247,15 @@ pub fn check_epic(file: &EpicFile, folder_id: &str) -> Vec<Defect> {
 /// The first defect of a decision request's choices, if any. Field names are
 /// relative: `choices`, `choices.id`, or `choices.label`.
 pub fn choice_defect(choices: &[Choice]) -> Option<Defect> {
-    if choices.len() > MAX_CHOICES {
-        return Some(defect("choices", "A request can have at most 10 choices."));
+    if !(MIN_CHOICES..=MAX_CHOICES).contains(&choices.len()) {
+        return Some(defect("choices", "A request must have 2 to 10 choices."));
     }
+    choice_items_defect(choices)
+}
+
+/// Validate choice contents independently of request cardinality, including a
+/// single selection retained in a resolved answer.
+fn choice_items_defect(choices: &[Choice]) -> Option<Defect> {
     let mut ids = HashSet::new();
     for choice in choices {
         let id_ok = (1..=MAX_CHOICE_ID_CHARS).contains(&choice.id.len())
@@ -477,7 +484,7 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
             ));
         }
         if let (Some(id), Some(label)) = (&answer.choice_id, &answer.choice_label)
-            && let Some(d) = choice_defect(&[Choice {
+            && let Some(d) = choice_items_defect(&[Choice {
                 id: id.clone(),
                 label: label.clone(),
             }])
