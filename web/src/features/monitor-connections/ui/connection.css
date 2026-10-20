@@ -1,0 +1,260 @@
+/*
+ * The ngrok connection dialog and its entry row. Lengths follow the approved design (a 680px dialog
+ * with 28px padding measured from the outer edge); colors come from the shared semantic tokens.
+ * The rules are unlayered on purpose so they sit above the Tailwind utilities of the shared parts.
+ */
+.connection-dialog {
+  width: 680px;
+  gap: 16px;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 13%);
+}
+
+:root[data-mode="dark"] .connection-dialog {
+  box-shadow: 0 12px 32px rgb(15 23 42 / 20%);
+}
+
+.connection-dialog .modal__header {
+  min-height: 36px;
+}
+
+.connection-dialog .connection-dialog__close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+}
+
+.connection-dialog__intro,
+.connection-dialog__hint,
+.connection-dialog__meta {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.connection-dialog__intro {
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.connection-dialog__hint,
+.connection-dialog__meta {
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.connection-dialog__hint--body {
+  font-size: 13px;
+}
+
+.connection-dialog__form,
+.connection-dialog__connected {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.connection-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.connection-dialog__field label {
+  line-height: 16px;
+}
+
+.connection-dialog .button-tall,
+.connection-dialog [data-slot="button"]:not(.connection-dialog__close) {
+  height: 40px;
+}
+
+.connection-dialog__progress h3,
+.connection-dialog__status {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.connection-dialog__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.connection-dialog__progress h3 {
+  color: var(--r-text);
+  font-size: 16px;
+}
+
+.connection-dialog__progress p {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.connection-dialog__status {
+  color: var(--r-done);
+}
+
+.connection-dialog__error {
+  margin: 0;
+  color: var(--r-danger);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.connection-dialog__failure {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.connection-dialog__note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-bg);
+}
+
+.connection-dialog__note h3 {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.connection-dialog__note p {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.connection-dialog__submit,
+.connection-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.connection-dialog__qr {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+}
+
+.connection-dialog__qr-figure {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 140px;
+  height: 140px;
+  margin: 0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.connection-dialog__qr-figure img {
+  width: 92px;
+  height: 92px;
+}
+
+.connection-dialog__qr-note {
+  color: #566274;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.connection-dialog__qr-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+}
+
+.connection-dialog__qr-title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.connection-dialog__qr-body {
+  margin: 8px 0 20px;
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.connection-dialog__copied {
+  color: var(--r-done);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@media (max-width: 520px) {
+  .connection-dialog__qr {
+    flex-direction: column;
+  }
+}
+
+.connection-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 57px;
+  padding-top: 20px;
+  border-top: 1px solid var(--r-border);
+}
+
+.connection-entry__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.connection-entry__title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.connection-entry__body {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.connection-entry [data-slot="button"] {
+  flex: none;
+  height: 40px;
+}
+
+.connection-dialog__field:has(input:disabled) label {
+  color: var(--r-muted);
+}
