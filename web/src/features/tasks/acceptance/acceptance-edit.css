@@ -114,20 +114,6 @@
   color: var(--r-muted);
 }
 
-/* The link to the conditions at the top of an edit dialog's outline. */
-.acceptance-outline-link {
-  display: block;
-  padding: 6px 8px;
-  border-radius: 6px;
-  color: var(--r-accent);
-  font-size: 13px;
-  text-decoration: none;
-}
-
-.acceptance-outline-link:hover {
-  background: var(--r-accent-soft);
-}
-
 /* A narrow dialog: the controls and the remove button share the first row, the text takes the second. */
 @container (max-width: 400px) {
   .acceptance-edit__row {

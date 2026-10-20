@@ -67,6 +67,11 @@
   color: var(--r-text);
 }
 
+.detail__empty {
+  font-size: 13px;
+  line-height: 20px;
+}
+
 .detail__tab-count {
   margin-left: 0;
   font-size: 11px;

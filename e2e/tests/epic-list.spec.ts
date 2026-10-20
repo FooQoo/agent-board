@@ -73,13 +73,13 @@ test('the header lists the epics with their counts, and selecting one shows its 
 
 	// The existing editor opens from the details; cancelling keeps the same list and selection.
 	await page.getByRole('button', { name: 'Edit epic' }).click();
-	await expect(page.getByLabel('Formal name')).toHaveValue('Epic list flow');
+	await expect(page.getByLabel('Title')).toHaveValue('Epic list flow');
 	await page.getByRole('button', { name: 'Cancel' }).click();
 	await expect(page.getByRole('heading', { level: 2, name: 'Epic list flow' })).toBeVisible();
 
 	// Saving renames the epic in the list and in the details.
 	await page.getByRole('button', { name: 'Edit epic' }).click();
-	await page.getByLabel('Formal name').fill('Epic list renamed');
+	await page.getByLabel('Title').fill('Epic list renamed');
 	await page.getByRole('button', { name: 'Save' }).click();
 	await expect(page.getByRole('heading', { level: 2, name: 'Epic list renamed' })).toBeVisible();
 	await expect(row(page, 'Epic list renamed')).toBeVisible();

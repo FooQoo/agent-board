@@ -86,7 +86,7 @@
             },
             {
               "id": "task-detail-detailpanel--tab-epic-none",
-              "states": ["epic tab", "no epic"],
+              "states": ["epic tab", "no epic", "body-sized notice"],
               "interaction": true
             }
           ]

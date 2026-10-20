@@ -106,7 +106,7 @@ test('runs the dialog failure-and-retry Story and preserves its saved input', as
   });
   await openStory(page, 'epic-editor-epicdialog--details-save-retry');
 
-  const name = page.getByLabel('Formal name');
+  const name = page.getByLabel('Title');
   await expect(name).toHaveValue('Updated plan');
   await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
   await expect(page.getByRole('alert')).toHaveCount(0);

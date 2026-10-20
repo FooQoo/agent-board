@@ -291,8 +291,8 @@ export const TabEpicFailed: Story = {
 export const TabEpicNone: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('tab', { name: 'Epic' }));
-    expect(canvasElement.querySelector('.detail__viewport:not([hidden])')?.textContent).toContain(
-      'This task belongs to no epic.',
-    );
+    const notice = canvasElement.querySelector('.detail__viewport:not([hidden]) .detail__empty');
+    expect(notice?.textContent).toContain('This task belongs to no epic.');
+    expect(notice && getComputedStyle(notice).fontSize).toBe('13px');
   },
 };

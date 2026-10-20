@@ -321,7 +321,7 @@ test('epic reference conditions stay in the Markdown body without a conditions d
   await page.reload();
   await waitForSync(page);
   await page.locator('[data-epic-label="PLAN-CHK"]').first().click();
-  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.conditions-dock')).toHaveCount(0);
   expect(await editorValue(dialog.getByRole('textbox', { name: 'Plan (Markdown)' }))).toContain('Planned');

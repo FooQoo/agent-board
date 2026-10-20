@@ -13,7 +13,7 @@ Tasks and epics are written in a Markdown editor. A task's completion conditions
 The editor shows the outline on the left, the Markdown body in the middle, and the epic and image attachments on the right.
 
 - **Formatting.** The editor supports headings, task lists, tables, code blocks, Mermaid diagrams, and images. Click an image or a diagram to enlarge it.
-- **Outline.** Use the outline to jump to a heading in the body or to open the conditions panel.
+- **Outline.** Use the outline to jump to a heading in the body. Edit acceptance conditions in the panel below the body.
 - **Saving.** Save or cancel the dialog's changes together. Record verification before you check off a completion condition.
 - **Conditions.** When you create or edit a task, its acceptance conditions sit in a panel below the body, which starts folded. Expand it to edit them; a long list scrolls inside the panel. Conditions have stable IDs and cannot be reordered. To read conditions on an existing task, use its **Conditions** tab. An epic has no conditions panel: its reference conditions are ordinary Markdown in the plan.
 

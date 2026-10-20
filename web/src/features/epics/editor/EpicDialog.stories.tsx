@@ -82,10 +82,19 @@ type Story = StoryObj<typeof meta>;
 export const Unchanged: Story = {
   play: async () => {
     const view = within(document.body);
-    await expect(view.getByLabelText('Formal name')).toHaveValue('Planning');
+    await expect(view.getByLabelText('Title')).toHaveValue('Planning');
     await expect(view.getByText('Keep the board predictable.')).toBeInTheDocument();
     await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
     await expect(view.getByRole('button', { name: /Review the plan/ })).toBeInTheDocument();
+  },
+};
+
+/** Japanese epic editing uses the same title field with its localized label. */
+export const JapaneseLabel: Story = {
+  globals: { locale: 'ja' },
+  play: async () => {
+    const view = within(document.body);
+    await expect(view.getByLabelText('タイトル')).toHaveValue('Planning');
   },
 };
 
@@ -103,7 +112,7 @@ export const DetailsSaveRetry: Story = {
   },
   play: async ({ args }) => {
     const view = within(document.body);
-    const name = view.getByLabelText('Formal name');
+    const name = view.getByLabelText('Title');
     await userEvent.clear(name);
     await userEvent.type(name, 'Updated plan');
     await userEvent.click(view.getByRole('button', { name: 'Save' }));

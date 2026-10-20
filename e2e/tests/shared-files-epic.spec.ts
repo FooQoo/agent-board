@@ -34,7 +34,7 @@ const PLAN = [
 
 async function openEpic(page: Page, epicId: string): Promise<Locator> {
   await page.locator(`[data-epic-label="${epicId}"]`).first().click();
-  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -51,7 +51,7 @@ test('the epic dialog saves its name, colour, and plan together, and its content
   const dialog = await openEpic(page, 'FILE-SHARE');
 
   // Name, colour, and plan; nothing is stored until Save.
-  await dialog.getByRole('textbox', { name: 'Formal name' }).fill('File sharing');
+  await dialog.getByRole('textbox', { name: 'Title' }).fill('File sharing');
   await dialog.getByRole('button', { name: 'Choose a label color' }).click();
   await page.getByLabel('HEX', { exact: true }).fill('#2563eb');
   await page.getByLabel('HEX', { exact: true }).press('Escape');
@@ -77,7 +77,7 @@ test('a task opened from the progress table asks first when the epic has unsaved
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   const dialog = await openEpic(page, 'FILE-SHARE');
-  await dialog.getByRole('textbox', { name: 'Formal name' }).fill('Unsaved name');
+  await dialog.getByRole('textbox', { name: 'Title' }).fill('Unsaved name');
 
   // The task name in the list asks before the dialog closes.
   await dialog.locator('.epic-progress__name', { hasText: 'Prepare the Windows build' }).click();
@@ -86,7 +86,7 @@ test('a task opened from the progress table asks first when the epic has unsaved
   // Back returns to the epic with the text kept.
   await ask.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(ask).toHaveCount(0);
-  await expect(dialog.getByRole('textbox', { name: 'Formal name' })).toHaveValue('Unsaved name');
+  await expect(dialog.getByRole('textbox', { name: 'Title' })).toHaveValue('Unsaved name');
 
   // Moving discards the epic's change and shows the task.
   await dialog.locator('.epic-progress__name', { hasText: 'Prepare the Windows build' }).click();

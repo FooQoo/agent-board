@@ -5,7 +5,6 @@ import type { ActionDialogData } from '../model/actionData';
 import type { AcceptanceItem, EpicRef, Task } from '../../../shared/api/contracts';
 import { acceptanceProblem } from '../acceptance/model/acceptance';
 import { ConditionsDock } from '../acceptance/ConditionsDock';
-import { ConditionsLink } from '../acceptance/ConditionsLink';
 import { EditorBody, useOverLimit } from '../../../shared/ui/editor/EditorBody';
 import { EditorShell } from '../../../shared/ui/editor/EditorShell';
 import {
@@ -157,7 +156,6 @@ export function EditDialog({
             />
           )
         }
-        outlineTop={whole ? undefined : <ConditionsLink id={conditionsId} items={conditions} />}
         asideTop={
           task.epic ? (
             <div className="editor__epic-row">

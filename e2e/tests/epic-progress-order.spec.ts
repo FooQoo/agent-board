@@ -29,7 +29,7 @@ test('a task moved in the progress table by keyboard is saved with the epic and 
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   await page.locator('[data-epic-label="ORDER"]').first().click();
-  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
 
   // Pick the third task up by its grip, move it up twice, and drop it at the top.
@@ -54,7 +54,7 @@ test('cancelling after a move in the progress table discards the new order', asy
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   await page.locator('[data-epic-label="ORDER"]').first().click();
-  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
 
   const grip = task(dialog, 'Third step').locator('.epic-progress__grip');
@@ -78,7 +78,7 @@ test('a failed save keeps the new order in the progress table, and trying again 
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   await page.locator('[data-epic-label="ORDER"]').first().click();
-  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Formal name' }) });
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
 
   const grip = task(dialog, 'Third step').locator('.epic-progress__grip');

@@ -84,7 +84,7 @@ export const editEn = {
     stepOrder: 'the progress order',
     editTitle: 'Edit epic',
     label: 'Label',
-    nameLabel: 'Formal name',
+    nameLabel: 'Title',
     nameInvalid: 'Enter a name up to 100 characters on one line.',
     colorLabel: 'Label color',
     colorPick: 'Choose a label color',
@@ -120,6 +120,5 @@ export const editEn = {
     emptyText: 'Enter the condition text',
     placeholder: 'Describe a condition that can be verified',
     numberNote: 'Numbers are not reused after a removal.',
-    sectionLink: 'Acceptance conditions {{done}} / {{total}}',
   },
 } as const;

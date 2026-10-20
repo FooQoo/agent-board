@@ -122,21 +122,6 @@
           ]
         }
       ]
-    },
-    {
-      "file": "features/tasks/acceptance/ConditionsLink.tsx",
-      "exports": [
-        {
-          "name": "ConditionsLink",
-          "stories": [
-            {
-              "id": "task-acceptance-acceptanceeditor--edit-conditions",
-              "states": ["composite rendering"],
-              "interaction": false
-            }
-          ]
-        }
-      ]
     }
   ],
   "owner": "U13"

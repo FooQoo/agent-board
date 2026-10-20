@@ -44,8 +44,6 @@ export interface EditorBodyProps {
   /** When set, the images panel folds; the dialog says whether it is open. */
   attachmentsOpen?: boolean;
   onAttachmentsOpenChange?: (open: boolean) => void;
-  /** Shown first in the outline: the link to the completion conditions. */
-  outlineTop?: ReactNode;
   attachments?: readonly EditorAttachment[];
   /** Why the last picture was refused; the side panel shows it. */
   attachmentNotice?: AttachmentNotice | null;
@@ -91,7 +89,6 @@ export function EditorBody({
   dock,
   attachmentsOpen,
   onAttachmentsOpenChange,
-  outlineTop,
   attachments = [],
   attachmentNotice = null,
   onFiles,
@@ -147,7 +144,6 @@ export function EditorBody({
       <div className="editor__side">
         <nav className="editor__outline" aria-label={t('editor.outlineName')}>
           <p className="editor__outline-label">{t('editor.outlineLabel')}</p>
-          {outlineTop}
           {outline.length === 0 ? (
             <p className="editor__outline-empty">{t('editor.outlineEmpty')}</p>
           ) : (

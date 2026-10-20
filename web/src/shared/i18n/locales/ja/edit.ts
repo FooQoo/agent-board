@@ -85,7 +85,7 @@ export const editJa = {
     stepOrder: '進行順',
     editTitle: 'エピックを編集',
     label: 'ラベル',
-    nameLabel: '正式名称',
+    nameLabel: 'タイトル',
     nameInvalid: '名称は1行で100文字までです。',
     colorLabel: 'ラベル色',
     colorPick: 'ラベル色を選ぶ',
@@ -122,6 +122,5 @@ export const editJa = {
     emptyText: '条件の文章を入力してください',
     placeholder: '達成を確かめられる条件を入力',
     numberNote: '番号は削除しても振り直しません。',
-    sectionLink: '受入条件 {{done}} / {{total}}',
   },
 } as const;
