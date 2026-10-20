@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "owner": "U0",
+  "files": [
+    {
+      "file": "pages/monitor/connection/ConnectionStateView.tsx",
+      "exports": [
+        {
+          "name": "ConnectionStateView",
+          "stories": [
+            {
+              "id": "pages-monitor-connection-state--google-reconnect",
+              "states": ["Google reconnect", "action"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--opening-google",
+              "states": ["action disabled while opening"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--google-failed",
+              "states": ["error message"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--waiting-for-recovery",
+              "states": ["waiting", "no action"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--narrow-phone",
+              "states": ["320px wide"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

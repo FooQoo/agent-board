@@ -1,0 +1,52 @@
+/*
+ * The phone screen shown while the monitor has no connection. Lengths follow the approved design:
+ * a centred icon, heading, text and one full-width action in the space below the header.
+ */
+.connection-state {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 0 8px 28px;
+  text-align: center;
+}
+
+.connection-state__icon {
+  width: 44px;
+  height: 44px;
+  color: var(--r-text2);
+}
+
+.connection-state__title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.connection-state__body {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.connection-state__error {
+  margin: 0;
+  color: var(--r-danger);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.connection-state__action {
+  width: 100%;
+  height: 44px;
+}

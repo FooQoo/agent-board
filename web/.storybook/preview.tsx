@@ -51,6 +51,8 @@ const preview: Preview = {
         icon: 'mobile',
         items: [
           { value: 'desktop', title: 'Desktop (1280px)' },
+          { value: 'desktop-900', title: 'Desktop (900px)' },
+          { value: 'phone-320', title: 'Phone (320px)' },
           { value: 'phone-375', title: 'Phone (375px)' },
           { value: 'phone-390', title: 'Phone (390px)' },
         ],
