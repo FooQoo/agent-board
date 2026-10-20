@@ -169,7 +169,7 @@ agboard --project "<name>" state <id> pending --actor ai --request-json '<json>'
 cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-json -
 ```
 
-- `question`: 1 to 2,000 characters. `choices`: 2 to 10 items under this skill's policy (the CLI accepts 0 to 10); each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
+- `question`: 1 to 2,000 characters. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
 - Include `"wait": {}` in every decision request by default, to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). Omit it only when the user explicitly asks for a non-blocking request. Continue independent work while the command waits; dependent work must wait for the actual answer. You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a task move withdrew the question.
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
 - The task must be an AI task in `todo` or `doing`. Only `doing` may become `running`.
