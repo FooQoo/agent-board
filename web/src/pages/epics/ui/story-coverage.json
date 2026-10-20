@@ -51,7 +51,7 @@
               "interaction": true
             },
             {
-              "id": "pages-epics-epicdetailpanel--with-plan",
+              "id": "pages-epics-epicdetailpanel--with-document",
               "states": ["epic details markdown"],
               "interaction": false
             }

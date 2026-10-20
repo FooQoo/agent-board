@@ -27,7 +27,7 @@ export const Selected: Story = {
     await expect(args.onClose).toHaveBeenCalledOnce();
   },
 };
-export const WithPlan: Story = {
+export const WithDocument: Story = {
   args: {
     epic: makeEpic({ id: 'EPIC-PLAN', name: 'Epic with plan', body: '# Plan\n\nA short plan.' }),
   },
