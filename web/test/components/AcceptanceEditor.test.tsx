@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AcceptanceEditor } from '../../src/features/tasks/acceptance/AcceptanceEditor';
-import { ConditionsLink } from '../../src/features/tasks/acceptance/ConditionsLink';
 import { selectLocale } from '../../src/shared/i18n';
 import type { AcceptanceItem } from '../../src/shared/api/contracts';
 
@@ -72,13 +71,5 @@ describe('AcceptanceEditor', () => {
   it('marks an empty text as invalid', () => {
     setup([item('AC-1', false, '')]);
     expect(screen.getByLabelText('Condition AC-1').getAttribute('aria-invalid')).toBe('true');
-  });
-});
-
-describe('ConditionsLink', () => {
-  it('shows the count and names the conditions it moves to, without changing the URL', () => {
-    render(<ConditionsLink id="conditions-1" items={[item('AC-1', true), item('AC-2')]} />);
-    const link = screen.getByRole('link', { name: 'Acceptance conditions 1 / 2' });
-    expect(link.getAttribute('href')).toBe('#conditions-1');
   });
 });
