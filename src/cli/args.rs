@@ -767,6 +767,18 @@ pub struct ServeArgs {
     /// Public HTTPS origin accepted by the remote listener; repeat for each origin
     #[arg(long = "remote-origin", value_name = "HTTPS_ORIGIN", action = clap::ArgAction::Append)]
     pub remote_origins: Vec<String>,
+    /// Built-in mobile monitor connection; ngrok is the only mode
+    #[arg(long, value_name = "MODE")]
+    pub monitor: Option<String>,
+    /// Google account email allowed through ngrok; repeat for each email
+    #[arg(long = "ngrok-allow-email", value_name = "EMAIL", action = clap::ArgAction::Append)]
+    pub ngrok_allow_emails: Vec<String>,
+    /// Reserved ngrok domain to use (a bare host name)
+    #[arg(long = "ngrok-domain", value_name = "HOST")]
+    pub ngrok_domain: Option<String>,
+    /// Google OAuth app: managed (default) or custom (AGBOARD_GOOGLE_CLIENT_ID and AGBOARD_GOOGLE_CLIENT_SECRET)
+    #[arg(long = "ngrok-oauth-app", value_name = "APP")]
+    pub ngrok_oauth_app: Option<String>,
 }
 
 /// What parsing the command line produced.
@@ -957,7 +969,10 @@ impl Cli {
                 message: "--output PATH is required.".into(),
                 command: Some("attachment get".into()),
             }),
-            Command::Serve(args) => validate_remote_args(args),
+            Command::Serve(args) => {
+                validate_remote_args(args)?;
+                validate_monitor_args(args, &|name| std::env::var(name).ok()).map(|_| ())
+            }
             Command::Wait(args) if args.until.is_none() && args.after.is_none() => {
                 Err(AgboardError::InvalidArgument {
                     message: "wait requires --after CURSOR or --until task --idle-timeout SECONDS.".into(),
@@ -981,6 +996,86 @@ impl Cli {
             _ => Ok(()),
         }
     }
+}
+
+/// What `--monitor ngrok` asks for, after validation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NgrokRequest {
+    pub allow_emails: Vec<String>,
+    pub domain: Option<String>,
+    pub oauth_app: Option<crate::server::monitor_connection::contracts::OauthApp>,
+}
+
+/// Check the monitor options of `serve`. `env` reads one environment variable.
+/// `Ok(None)` means no monitor option was given. Every failure is an
+/// invalid-argument error (exit code 2) that never repeats a secret value.
+pub fn validate_monitor_args(
+    args: &ServeArgs,
+    env: &dyn Fn(&str) -> Option<String>,
+) -> Result<Option<NgrokRequest>, AgboardError> {
+    use crate::server::monitor_connection::contracts::{
+        OauthApp, normalize_domain, normalize_emails,
+    };
+    let invalid = |message: &str| AgboardError::InvalidArgument {
+        message: message.to_string(),
+        command: Some("serve".into()),
+    };
+    let has_ngrok_options = !args.ngrok_allow_emails.is_empty()
+        || args.ngrok_domain.is_some()
+        || args.ngrok_oauth_app.is_some();
+    match args.monitor.as_deref() {
+        None => {
+            if has_ngrok_options {
+                return Err(invalid("--ngrok-* options require --monitor ngrok."));
+            }
+            return Ok(None);
+        }
+        Some("ngrok") => {}
+        Some(_) => return Err(invalid("--monitor accepts only ngrok.")),
+    }
+    if args.remote_port.is_some() || !args.remote_origins.is_empty() {
+        return Err(invalid(
+            "--monitor cannot be combined with --remote-port or --remote-origin.",
+        ));
+    }
+    let allow_emails = normalize_emails(&args.ngrok_allow_emails).map_err(|e| {
+        invalid(&match e {
+            crate::server::monitor_connection::contracts::ContractError::NoAllowedEmail => {
+                "--monitor ngrok requires at least one --ngrok-allow-email.".to_string()
+            }
+            _ => format!("--ngrok-allow-email: {e}."),
+        })
+    })?;
+    let domain = args
+        .ngrok_domain
+        .as_deref()
+        .map(normalize_domain)
+        .transpose()
+        .map_err(|_| invalid("--ngrok-domain must be a bare host name."))?;
+    let oauth_app = match args.ngrok_oauth_app.as_deref() {
+        None => None,
+        Some("managed") => Some(OauthApp::Managed),
+        Some("custom") => Some(OauthApp::Custom),
+        Some(_) => return Err(invalid("--ngrok-oauth-app must be managed or custom.")),
+    };
+    let present = |name: &str| env(name).is_some_and(|v| !v.is_empty());
+    if oauth_app == Some(OauthApp::Custom)
+        && !(present("AGBOARD_GOOGLE_CLIENT_ID") && present("AGBOARD_GOOGLE_CLIENT_SECRET"))
+    {
+        return Err(invalid(
+            "--ngrok-oauth-app custom requires AGBOARD_GOOGLE_CLIENT_ID and AGBOARD_GOOGLE_CLIENT_SECRET.",
+        ));
+    }
+    if !present("NGROK_AUTHTOKEN") {
+        return Err(invalid(
+            "--monitor ngrok requires NGROK_AUTHTOKEN in the environment.",
+        ));
+    }
+    Ok(Some(NgrokRequest {
+        allow_emails,
+        domain,
+        oauth_app,
+    }))
 }
 
 fn validate_remote_args(args: &ServeArgs) -> Result<(), AgboardError> {

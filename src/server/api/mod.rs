@@ -4,6 +4,7 @@
 mod archive;
 mod epic_attachments;
 mod epics;
+mod monitor_connections;
 mod multipart;
 mod pages;
 mod projects;
@@ -33,6 +34,7 @@ use crate::file_store::model::TaskView;
 use archive::*;
 use epic_attachments::*;
 use epics::*;
+use monitor_connections::*;
 use pages::*;
 use projects::*;
 use task_attachments::*;
@@ -158,6 +160,19 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
         );
     if remote.is_none() {
         router = router
+            .route("/api/monitor-connections", get(get_connections))
+            .route(
+                "/api/monitor-connections/settings/ngrok",
+                put(put_ngrok_settings),
+            )
+            .route(
+                "/api/monitor-connections/transports/ngrok/start",
+                post(start_ngrok),
+            )
+            .route(
+                "/api/monitor-connections/transports/ngrok/stop",
+                post(stop_ngrok),
+            )
             .route("/api/notify", post(notify))
             .route("/api/health", get(health));
     }
