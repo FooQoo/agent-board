@@ -14,7 +14,7 @@ vi.mock(
   () => import('../editor/fakeRichEditor'),
 );
 
-const PLAN = '## Goal\n\nShare the plan.\n\n## Steps\n\nDo it.';
+const DOCUMENT = '## Goal\n\nShare the plan.\n\n## Steps\n\nDo it.';
 const IMAGE = 'c'.repeat(32);
 
 const EPIC: Epic = {
@@ -22,8 +22,8 @@ const EPIC: Epic = {
   name: 'File share',
   color: '#7C3AED',
   isDraft: false,
-  plan: PLAN,
-  body: PLAN,
+  document: DOCUMENT,
+  body: DOCUMENT,
   priority: [],
   priorityError: false,
   attachments: [
@@ -65,8 +65,8 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
     removeImage: vi.fn(async (id: string) => {
       calls.push(`removeImage:${id.slice(0, 4)}`);
     }),
-    savePlan: vi.fn(async () => {
-      calls.push('savePlan');
+    saveDocument: vi.fn(async () => {
+      calls.push('saveDocument');
     }),
     saveDetails: vi.fn(async () => {
       calls.push('saveDetails');
@@ -124,14 +124,14 @@ const button = (root: HTMLElement, name: string) =>
   within(root).getByRole('button', { name }) as HTMLButtonElement;
 
 const bodyOf = (root: HTMLElement) =>
-  within(root).getByRole('textbox', { name: 'Plan (Markdown)' }) as HTMLTextAreaElement;
+  within(root).getByRole('textbox', { name: 'Epic details (Markdown)' }) as HTMLTextAreaElement;
 
-function setPlan(text: string, root: HTMLElement) {
+function setDocument(text: string, root: HTMLElement) {
   fireEvent.change(bodyOf(root), { target: { value: text } });
 }
 
 function setName(text: string, root: HTMLElement) {
-  fireEvent.change(within(root).getByLabelText('Formal name'), { target: { value: text } });
+  fireEvent.change(within(root).getByLabelText('Title'), { target: { value: text } });
 }
 
 function setColor(text: string, root: HTMLElement) {
@@ -181,9 +181,7 @@ describe('epic dialog layout', () => {
     expect(within(row).getByLabelText('Choose a label color')).toBeTruthy();
     const main = dialog.querySelector('.editor__main') as HTMLElement;
     expect(main.contains(row)).toBe(false);
-    expect(
-      within(main.firstElementChild as HTMLElement).getByLabelText('Formal name'),
-    ).toBeTruthy();
+    expect(within(main.firstElementChild as HTMLElement).getByLabelText('Title')).toBeTruthy();
   });
 
   it('previews the color from the palette HEX field on the label', async () => {
@@ -198,15 +196,13 @@ describe('epic dialog layout', () => {
     expect(row.querySelector('.epic-label-row__error')).toBeNull();
   });
 
-  it('shows the epic ID, the title, the outline, the task list, the name, color, plan and images', async () => {
+  it('shows the epic ID, the title, the outline, the task list, the name, color, epic details and images', async () => {
     const { api } = fakeApi();
     const { dialog } = await openEpic(api);
     expect(within(dialog).getAllByText('FILE-SHARE').length).toBeGreaterThan(0);
     expect(within(dialog).getByText('Edit epic')).toBeTruthy();
     expect(within(dialog).queryByText('Draft', { selector: '.editor__badge' })).toBeNull();
-    expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).value).toBe(
-      'File share',
-    );
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('File share');
     expect(
       (within(dialog).getByLabelText('Choose a label color') as HTMLButtonElement).style.background,
     ).toBe('rgb(124, 58, 237)');
@@ -260,14 +256,14 @@ describe('saving', () => {
     const { api } = fakeApi();
     const { dialog, onClosed } = await openEpic(api);
     expect(within(dialog).queryByRole('button', { name: /^Acceptance conditions/ })).toBeNull();
-    const text = `${PLAN}\n\n## Completion conditions\n\n- [ ] The plan is saved.`;
-    setPlan(text, dialog);
+    const text = `${DOCUMENT}\n\n## Completion conditions\n\n- [ ] The plan is saved.`;
+    setDocument(text, dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(api.savePlan).toHaveBeenCalledWith({ body: text });
+    expect(api.saveDocument).toHaveBeenCalledWith({ body: text });
   });
 
-  it('saves images, then the plan, then the name and color', async () => {
+  it('saves images, then the epic details, then the name and color', async () => {
     const { api, calls } = fakeApi();
     const { dialog, onClosed } = await openEpic(api);
     await openImages(dialog);
@@ -277,7 +273,7 @@ describe('saving', () => {
       .querySelector('input[type="file"]') as HTMLInputElement;
     await userEvent.upload(input, file);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove shot.png' }));
-    setPlan('## Goal\n\nChanged.', dialog);
+    setDocument('## Goal\n\nChanged.', dialog);
     setName('Renamed epic', dialog);
     setColor('#00ff00', dialog);
     await userEvent.click(button(dialog, 'Save'));
@@ -285,10 +281,10 @@ describe('saving', () => {
     expect(calls).toEqual([
       `removeImage:${IMAGE.slice(0, 4)}`,
       'addImages',
-      'savePlan',
+      'saveDocument',
       'saveDetails',
     ]);
-    expect(api.savePlan).toHaveBeenCalledWith({ body: '## Goal\n\nChanged.' });
+    expect(api.saveDocument).toHaveBeenCalledWith({ body: '## Goal\n\nChanged.' });
     expect(api.saveDetails).toHaveBeenCalledWith({
       name: 'Renamed epic',
       color: '#00FF00',
@@ -315,13 +311,13 @@ describe('saving', () => {
     const pending = new Promise<void>((resolve) => {
       finish = resolve;
     });
-    const { api } = fakeApi({ savePlan: vi.fn(() => pending) });
+    const { api } = fakeApi({ saveDocument: vi.fn(() => pending) });
     const { dialog, onClosed } = await openEpic(api);
-    setPlan('slow', dialog);
+    setDocument('slow', dialog);
     await userEvent.click(button(dialog, 'Save'));
     expect(button(dialog, 'Saving…').disabled).toBe(true);
     expect(button(dialog, 'Cancel').disabled).toBe(true);
-    expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).disabled).toBe(true);
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).disabled).toBe(true);
     expect(bodyOf(dialog).disabled).toBe(true);
     expect(rowName(dialog, 24).disabled).toBe(true);
     await userEvent.keyboard('{Escape}');
@@ -343,7 +339,7 @@ describe('save failures', () => {
       }
     });
     const { dialog, onClosed } = await openEpic(api);
-    setPlan('kept plan', dialog);
+    setDocument('kept plan', dialog);
     setName('Renamed epic', dialog);
     await userEvent.click(button(dialog, 'Save'));
 
@@ -352,29 +348,61 @@ describe('save failures', () => {
     expect(alert.textContent).toContain('Earlier changes were saved');
     expect(onClosed).not.toHaveBeenCalled();
     expect(bodyOf(dialog).value).toBe('kept plan');
-    expect((within(dialog).getByLabelText('Formal name') as HTMLInputElement).value).toBe(
-      'Renamed epic',
-    );
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('Renamed epic');
 
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(calls).toEqual(['savePlan', 'saveDetails', 'saveDetails']);
+    expect(calls).toEqual(['saveDocument', 'saveDetails', 'saveDetails']);
   });
 
-  it('stops at the image step and does not save the plan', async () => {
+  it('stops at the image step and does not save the epic details', async () => {
     const { api, calls } = fakeApi({
       removeImage: vi.fn(async () => {
         throw new TypeError('Failed to fetch');
       }),
     });
     const { dialog } = await openEpic(api);
-    setPlan('kept', dialog);
+    setDocument('kept', dialog);
     await openImages(dialog);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove shot.png' }));
     await userEvent.click(button(dialog, 'Save'));
     expect((await within(dialog).findByRole('alert')).textContent).toContain('the images');
     expect(calls).toEqual([]);
     expect(bodyOf(dialog).value).toBe('kept');
+  });
+});
+
+describe('epic details document', () => {
+  it('labels the details editor in Japanese when the locale is Japanese', async () => {
+    selectLocale('ja');
+    const { api } = fakeApi();
+    const { dialog } = await openEpic(api);
+    expect(within(dialog).getByRole('textbox', { name: 'エピックの詳細 (Markdown)' })).toBeTruthy();
+  });
+
+  it('saves the whole document as document when the stored order cannot be read', async () => {
+    const broken = '---\npriority: [\n---\n## Goal\n\nKeep.';
+    const changed = '---\npriority: [\n---\n## Goal\n\nChanged.';
+    const { api } = fakeApi();
+    const { dialog, onClosed } = await openEpic(api, {
+      epic: { ...EPIC, document: broken, body: broken, priorityError: true },
+    });
+    setDocument(changed, dialog);
+    await userEvent.click(button(dialog, 'Save'));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(api.saveDocument).toHaveBeenCalledWith({ document: changed });
+  });
+
+  it('names the epic details in the failure message when they cannot be saved', async () => {
+    const { api } = fakeApi({
+      saveDocument: vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    });
+    const { dialog } = await openEpic(api);
+    setDocument('## Goal\n\nChanged.', dialog);
+    await userEvent.click(button(dialog, 'Save'));
+    expect((await within(dialog).findByRole('alert')).textContent).toContain('the epic details');
   });
 });
 
@@ -385,7 +413,7 @@ describe('deleting the epic', () => {
     await userEvent.click(button(dialog, 'Delete epic'));
 
     const confirm = await screen.findByRole('dialog', { name: 'Delete this epic?' });
-    expect(within(confirm).getByText(/The plan and images of FILE-SHARE/)).toBeTruthy();
+    expect(within(confirm).getByText(/The epic details and images of FILE-SHARE/)).toBeTruthy();
     await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'Delete this epic?' })).toBeNull(),
@@ -439,7 +467,7 @@ describe('task names and unsaved changes', () => {
     const { api } = fakeApi();
     const onOpenTask = vi.fn();
     const { dialog } = await openEpic(api, { onOpenTask });
-    setPlan('edited', dialog);
+    setDocument('edited', dialog);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save shared doc' }));
     const confirm = await screen.findByRole('dialog', { name: 'Discard changes?' });
     expect(onOpenTask).not.toHaveBeenCalled();

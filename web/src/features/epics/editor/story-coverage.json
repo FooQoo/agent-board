@@ -12,7 +12,7 @@
               "id": "epic-editor-epicdialog--unchanged",
               "states": [
                 "unchanged",
-                "plan",
+                "epic details",
                 "image attachment",
                 "progress order",
                 "save disabled"

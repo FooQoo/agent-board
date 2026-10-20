@@ -52,7 +52,7 @@
             },
             {
               "id": "pages-epics-epicdetailpanel--with-plan",
-              "states": ["plan markdown"],
+              "states": ["epic details markdown"],
               "interaction": false
             }
           ]

@@ -19,7 +19,7 @@ const meta: Meta<typeof ActionDialog> = {
     epicApi: {
       addImages: fn(async () => {}),
       removeImage: fn(async () => {}),
-      savePlan: fn(async () => {}),
+      saveDocument: fn(async () => {}),
       saveDetails: fn(async () => {}),
       savePriority: fn(async () => {}),
       remove: fn(async () => {}),

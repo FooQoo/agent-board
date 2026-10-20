@@ -50,7 +50,7 @@ export async function deleteEpic(projectId: ProjectId, epicId: string): Promise<
   );
 }
 
-/** The name, color, draft flag or plan of an epic. Only the given fields change. */
+/** The name, color, draft flag or document of an epic. Only the given fields change. */
 export function updateEpic(
   projectId: ProjectId,
   epicId: string,
@@ -58,7 +58,7 @@ export function updateEpic(
     name?: string;
     color?: string;
     isDraft?: boolean;
-    plan?: string;
+    document?: string;
     body?: string;
     /** The card order of the epic: card IDs, first is first. */
     priority?: number[];

@@ -266,7 +266,7 @@ describe('epic tab', () => {
     name: 'File share',
     color: '#7C3AED',
     isDraft: false,
-    plan: '## Plan\n\nEpic plan text.',
+    document: '## Plan\n\nEpic plan text.',
     body: '## Plan\n\nEpic plan text.',
     acceptance: [{ id: 'AC-1', text: 'Epic condition', done: true }],
     acceptanceError: false,

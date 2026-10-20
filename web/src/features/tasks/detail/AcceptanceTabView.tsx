@@ -5,7 +5,7 @@ import { AcceptanceList } from '../acceptance/AcceptanceList';
 import { progressOf } from '../acceptance/model/acceptance';
 import './acceptance-tab.css';
 
-/** Read-only completion conditions of the task. Epic references stay in the plan body. */
+/** Read-only completion conditions of the task. Epic references stay in the epic details. */
 export function AcceptanceTabView({
   task,
 }: {

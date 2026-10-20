@@ -16,7 +16,7 @@ const epic = makeEpic({
   name: 'Planning',
   color: '#7c3aed',
   body: '## Goal\n\nKeep the board predictable.\n\n## Steps\n\nReview and ship.',
-  plan: '## Goal\n\nKeep the board predictable.\n\n## Steps\n\nReview and ship.',
+  document: '## Goal\n\nKeep the board predictable.\n\n## Steps\n\nReview and ship.',
   priority: [12, 10],
   attachments: [
     {
@@ -66,7 +66,7 @@ meta.args = {
   api: {
     addImages: fn(async () => {}),
     removeImage: fn(async () => {}),
-    savePlan: fn(async () => {}),
+    saveDocument: fn(async () => {}),
     saveDetails: fn(async () => {}),
     savePriority: fn(async () => {}),
     remove: fn(async () => {}),
@@ -78,7 +78,7 @@ meta.args = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The untouched epic uses its stored name, plan, image and task order. */
+/** The untouched epic uses its stored name, epic details, image and task order. */
 export const Unchanged: Story = {
   play: async () => {
     const view = within(document.body);
@@ -104,7 +104,7 @@ export const DetailsSaveRetry: Story = {
     api: {
       addImages: fn(async () => {}),
       removeImage: fn(async () => {}),
-      savePlan: fn(async () => {}),
+      saveDocument: fn(async () => {}),
       saveDetails: saveDetailsFailsOnce(),
       savePriority: fn(async () => {}),
       remove: fn(async () => {}),

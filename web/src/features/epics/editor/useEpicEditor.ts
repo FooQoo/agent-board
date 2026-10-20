@@ -42,7 +42,7 @@ export function useEpicEditor({
     name: epic.name,
     color: epic.color.toUpperCase(),
     isDraft: epic.isDraft,
-    plan: normalizeNewlines(epic.priorityError ? epic.plan : epic.body),
+    document: normalizeNewlines(epic.priorityError ? epic.document : epic.body),
     order: orderOf(epic.priority, members),
   }));
   const [order, setOrder] = useState<number[]>(() => saved.order);
@@ -50,7 +50,7 @@ export function useEpicEditor({
   const [name, setName] = useState(epic.name);
   const [color, setColor] = useState(epic.color.toUpperCase());
   const whole = epic.priorityError;
-  const [plan, setPlan] = useState(saved.plan);
+  const [epicDocument, setEpicDocument] = useState(saved.document);
   const [removed, setRemoved] = useState<string[]>([]);
   const [pendingTask, setPendingTask] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -70,24 +70,24 @@ export function useEpicEditor({
 
   const localAdded = attachmentState.attachments.filter((a) => a.source === 'local');
   const imagesChanged = localAdded.length > 0 || removed.length > 0;
-  const planChanged = plan !== saved.plan;
+  const documentChanged = epicDocument !== saved.document;
   const detailsChanged = name.trim() !== saved.name || color.toUpperCase() !== saved.color;
   const rowIds = orderOf(order, members);
   const rows = rowIds
     .map((id) => members.find((task) => task.id === id))
     .filter((task): task is Task => task !== undefined);
   const orderChanged = JSON.stringify(order) !== JSON.stringify(saved.order);
-  const dirty = imagesChanged || planChanged || detailsChanged || orderChanged;
-  const overLimit = useOverLimit(plan);
+  const dirty = imagesChanged || documentChanged || detailsChanged || orderChanged;
+  const overLimit = useOverLimit(epicDocument);
   const validName = nameIsValid(name);
   const valid = validName && overLimit === null;
-  const currentPlan = () => normalizeNewlines(editor.current?.markdown() ?? plan);
+  const currentDocument = () => normalizeNewlines(editor.current?.markdown() ?? epicDocument);
 
   const stepName = (step: EpicSaveStep): string =>
     step === 'images'
       ? t('epic.stepImages')
-      : step === 'plan'
-        ? t('epic.stepPlan')
+      : step === 'document'
+        ? t('epic.stepDocument')
         : step === 'details'
           ? t('epic.stepDetails')
           : t('epic.stepOrder');
@@ -113,12 +113,12 @@ export function useEpicEditor({
         attachmentState.reset(attachmentState.attachments.map(storedOf));
         setRemoved([]);
       }
-      step = 'plan';
-      const text = currentPlan();
-      if (text !== saved.plan) {
-        await api.savePlan(whole ? { plan: text } : { body: text });
+      step = 'document';
+      const text = currentDocument();
+      if (text !== saved.document) {
+        await api.saveDocument(whole ? { document: text } : { body: text });
         somethingSaved.current = true;
-        setSaved((current) => ({ ...current, plan: text }));
+        setSaved((current) => ({ ...current, document: text }));
       }
       step = 'details';
       const details = { name: name.trim(), color: color.toUpperCase(), isDraft: saved.isDraft };
@@ -208,8 +208,8 @@ export function useEpicEditor({
     setName,
     color,
     setColor,
-    plan,
-    setPlan,
+    epicDocument,
+    setEpicDocument,
     rows,
     dirty,
     overLimit,

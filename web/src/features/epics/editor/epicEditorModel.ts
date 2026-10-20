@@ -1,7 +1,7 @@
 import type { EditorAttachment, StoredAttachment } from '../../../shared/ui/editor/attachmentTypes';
 import type { Task } from '../../../shared/api/contracts';
 
-export type EpicSaveStep = 'images' | 'plan' | 'details' | 'order';
+export type EpicSaveStep = 'images' | 'document' | 'details' | 'order';
 export type EpicEditorPanel = 'progress' | 'images';
 
 const NAME_LIMIT = 100;

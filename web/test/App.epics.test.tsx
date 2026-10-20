@@ -23,7 +23,7 @@ function epic(id: string, name: string): Epic {
     name,
     color: '#3366CC',
     isDraft: false,
-    plan: `# ${name}\n\nThe plan of ${name}.`,
+    document: `# ${name}\n\nThe plan of ${name}.`,
     body: `# ${name}\n\nThe plan of ${name}.`,
     priority: [],
     priorityError: false,
@@ -100,8 +100,8 @@ describe('the epic list in the app shell', () => {
     expect(screen.getByRole('button', { name: 'Edit epic' })).toBeTruthy();
 
     await userEvent.click(screen.getByRole('button', { name: 'Edit epic' }));
-    expect((await screen.findByLabelText('Formal name')) as HTMLInputElement).toBeTruthy();
-    expect((screen.getByLabelText('Formal name') as HTMLInputElement).value).toBe('Alpha epic');
+    expect((await screen.findByLabelText('Title')) as HTMLInputElement).toBeTruthy();
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Alpha epic');
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByRole('heading', { level: 2, name: 'Alpha epic' })).toBeTruthy();
 

@@ -20,7 +20,7 @@ const epic: Epic = {
   name: 'Mobile work',
   color: '#4466aa',
   isDraft: false,
-  plan: '---\nname: Mobile work\n---\nEpic body text',
+  document: '---\nname: Mobile work\n---\nEpic body text',
   body: 'Epic body text',
   priority: [],
   priorityError: false,
