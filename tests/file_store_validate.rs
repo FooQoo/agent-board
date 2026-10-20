@@ -109,8 +109,16 @@ fn choices_are_limited_to_ten_unique_ascii_ids_with_short_labels() {
             "{bad:?}"
         );
     }
-    let trimmed = normalize_choices(vec![choice("ok-1_x", "  Proceed  ")]).unwrap();
+    let trimmed = normalize_choices(vec![
+        choice("ok-1_x", "  Proceed  "),
+        choice("stop", "Stop"),
+    ])
+    .unwrap();
     assert_eq!(trimmed[0].label, "Proceed");
+    assert!(matches!(
+        normalize_choices(vec![choice("ok-1_x", "Proceed")]),
+        Err(AgboardError::InvalidValue { .. })
+    ));
 }
 
 #[test]

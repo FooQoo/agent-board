@@ -103,11 +103,21 @@ impl Fixture {
             .join("task.json")
     }
 
-    /// A pending request with no choices.
-    fn legacy_reason_only(&self, id: i64, question: &str) -> String {
+    /// A pending request with two choices.
+    fn two_choice_request(&self, id: i64, question: &str) -> String {
+        let choices = vec![
+            Choice {
+                id: "proceed".into(),
+                label: "Proceed".into(),
+            },
+            Choice {
+                id: "stop".into(),
+                label: "Stop".into(),
+            },
+        ];
         let asked = self
             .store
-            .request_decision(&self.project, id, Actor::Ai, question, vec![], later())
+            .request_decision(&self.project, id, Actor::Ai, question, choices, later())
             .unwrap();
         asked.value.pending_request_id.unwrap()
     }
@@ -214,13 +224,13 @@ fn a_choice_only_answer_returns_the_task_to_idle_and_records_the_choice() {
 }
 
 #[test]
-fn a_text_answer_works_for_a_reason_only_request() {
+fn a_text_answer_works_for_a_two_choice_request() {
     let fx = fixture();
     let id = fx.working_task();
-    let request = fx.legacy_reason_only(id, "Which way?");
+    let request = fx.two_choice_request(id, "Which way?");
     let asked = fx.store.task(&fx.project, id).unwrap();
     assert_eq!(asked.pending_reason.as_deref(), Some("Which way?"));
-    assert!(asked.pending_choices.is_empty());
+    assert_eq!(asked.pending_choices.len(), 2);
 
     let task = fx
         .store
@@ -359,17 +369,17 @@ fn an_unknown_choice_is_refused_and_changes_nothing() {
 }
 
 #[test]
-fn a_choice_is_unknown_for_a_reason_only_request() {
+fn a_choice_must_be_one_of_the_request_choices() {
     let fx = fixture();
     let id = fx.working_task();
-    let request = fx.legacy_reason_only(id, "Which way?");
+    let request = fx.two_choice_request(id, "Which way?");
     let err = fx
         .store
         .answer_request(
             &fx.project,
             id,
             &request,
-            answer(Some("proceed"), None),
+            answer(Some("unknown"), None),
             later(),
         )
         .unwrap_err();

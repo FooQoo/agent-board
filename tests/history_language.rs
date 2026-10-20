@@ -73,10 +73,16 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
             id,
             Actor::Ai,
             "進めますか？",
-            vec![Choice {
-                id: "yes".into(),
-                label: "進める".into(),
-            }],
+            vec![
+                Choice {
+                    id: "yes".into(),
+                    label: "進める".into(),
+                },
+                Choice {
+                    id: "no".into(),
+                    label: "止める".into(),
+                },
+            ],
             Utc::now(),
         )
         .unwrap()

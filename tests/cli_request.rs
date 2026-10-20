@@ -71,10 +71,14 @@ fn a_request_file_keeps_the_question_and_its_choices() {
 }
 
 #[test]
-fn a_reason_only_request_with_zero_choices_is_saved_in_task_history() {
+fn a_request_with_two_choices_is_saved_in_task_history() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
-    let request = json!({"question": "Which database?", "choices": []}).to_string();
+    let request = json!({"question": "Which database?", "choices": [
+        {"id": "pg", "label": "PostgreSQL"},
+        {"id": "sqlite", "label": "SQLite"}
+    ]})
+    .to_string();
 
     let asked = json_ok(
         home.path(),
@@ -93,9 +97,14 @@ fn a_reason_only_request_with_zero_choices_is_saved_in_task_history() {
     );
     assert_eq!(asked["task"]["agentStatus"], "pending");
     assert_eq!(asked["task"]["pendingReason"], "Which database?");
-    assert_eq!(asked["task"]["pendingChoices"], json!([]));
+    assert_eq!(asked["task"]["pendingChoices"].as_array().unwrap().len(), 2);
     let agent_event = asked["task"]["history"].as_array().unwrap().last().unwrap();
-    assert_eq!(agent_event["reason"], "Requested decision: Which database?");
+    assert!(
+        agent_event["reason"]
+            .as_str()
+            .unwrap()
+            .starts_with("Requested decision: Which database?")
+    );
     assert_eq!(agent_event.as_object().unwrap().len(), 2);
 }
 
@@ -470,11 +479,11 @@ fn a_request_file_is_checked_against_the_limits() {
 }
 
 #[test]
-fn a_request_without_choices_is_saved_as_a_reason_only_request() {
+fn a_request_without_choices_is_refused_and_nothing_changes() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let value = json!({"question": "Just a question?", "choices": []}).to_string();
-    let (code, _, err) = agboard(
+    let (code, _, _) = agboard(
         home.path(),
         &[
             "--project",
@@ -488,9 +497,8 @@ fn a_request_without_choices_is_saved_as_a_reason_only_request() {
             &value,
         ],
     );
-    assert_eq!(code, 0, "{err}");
-    assert_eq!(task(home.path())["agentStatus"], "pending");
-    assert_eq!(task(home.path())["pendingChoices"], json!([]));
+    assert_ne!(code, 0);
+    assert_eq!(task(home.path())["agentStatus"], "idle");
 }
 
 #[test]

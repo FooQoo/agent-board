@@ -72,10 +72,16 @@ fn workflow_responses_survive_later_requests_restart_and_empty_history() {
             task.id,
             Actor::Ai,
             "First question?",
-            vec![Choice {
-                id: "yes".into(),
-                label: "Proceed".into(),
-            }],
+            vec![
+                Choice {
+                    id: "yes".into(),
+                    label: "Proceed".into(),
+                },
+                Choice {
+                    id: "other".into(),
+                    label: "Other".into(),
+                },
+            ],
             Utc::now(),
         )
         .unwrap()
@@ -101,7 +107,16 @@ fn workflow_responses_survive_later_requests_restart_and_empty_history() {
             task.id,
             Actor::Ai,
             "Second question?",
-            vec![],
+            vec![
+                Choice {
+                    id: "yes".into(),
+                    label: "Proceed".into(),
+                },
+                Choice {
+                    id: "other".into(),
+                    label: "Other".into(),
+                },
+            ],
             Utc::now(),
         )
         .unwrap()
