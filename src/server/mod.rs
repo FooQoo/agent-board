@@ -15,9 +15,7 @@ pub mod monitor;
 pub mod monitor_auth {
     pub mod contracts;
 }
-pub mod monitor_connection {
-    pub mod contracts;
-}
+pub mod monitor_connection;
 pub mod remote;
 mod request;
 mod response;
@@ -36,6 +34,9 @@ use crate::error::AgboardError;
 use crate::file_store::index::ProjectIndex;
 use crate::file_store::watch::{Reloader, Watch};
 use crate::paths::{self, ServeInfo};
+use monitor_connection::config::ConfigStore;
+use monitor_connection::lifecycle::{MonitorConnections, MonitorEnv};
+pub use monitor_connection::lifecycle::{MonitorOptions, MonitorReady};
 
 /// How the web server is started.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,6 +65,8 @@ pub(crate) struct AppState {
     pub reloader: Reloader,
     /// Sends one unit when the catalog version changes; each SSE connection subscribes.
     pub changed: broadcast::Sender<()>,
+    /// The ngrok monitor connection: saved settings, memory-only secrets, supervisor.
+    pub monitor: Arc<MonitorConnections>,
 }
 
 /// Serve until Ctrl+C (or SIGTERM on Unix).
@@ -92,6 +95,24 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
     remote: Option<RemoteServeConfig>,
     shutdown: F,
     on_ready: impl FnOnce(SocketAddr, Option<SocketAddr>),
+) -> Result<(), AgboardError> {
+    run_until_with_monitor(
+        config,
+        remote,
+        MonitorOptions::new(MonitorEnv::default(), None),
+        shutdown,
+        |addr, remote_addr, _| on_ready(addr, remote_addr),
+    )
+}
+
+/// [`run_until_with_remote`] plus the ngrok monitor connection. With explicit
+/// settings the connection is up (or the run has failed) before `on_ready`.
+pub fn run_until_with_monitor<F: Future<Output = ()>>(
+    config: ServeConfig,
+    remote: Option<RemoteServeConfig>,
+    monitor: MonitorOptions,
+    shutdown: F,
+    on_ready: impl FnOnce(SocketAddr, Option<SocketAddr>, Option<MonitorReady>),
 ) -> Result<(), AgboardError> {
     // Resolve the process environment once. Another embedded caller can change
     // AGBOARD_HOME while startup is awaiting file locks or filesystem watches.
@@ -149,6 +170,11 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
             index,
             reloader,
             changed,
+            monitor: MonitorConnections::new(
+                ConfigStore::new(&data_dir),
+                monitor.connector.clone(),
+                monitor.env.clone(),
+            ),
         });
         let app = api::router(state.clone());
         let remote_app = match (&remote, remote_listener.as_ref(), remote_addr) {
@@ -166,6 +192,20 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
             }
         };
 
+        // A command-line monitor must be up before the board announces itself;
+        // on failure nothing has been written yet, so the run just ends.
+        let explicit = monitor.explicit.is_some();
+        let monitor_ready = match state.monitor.startup(monitor.explicit.clone()).await {
+            Ok(url) => url.filter(|_| explicit).map(|url| MonitorReady { url }),
+            Err(code) => {
+                state.monitor.shutdown();
+                return Err(internal(format!(
+                    "The ngrok connection could not be started ({}).",
+                    code.as_str()
+                )));
+            }
+        };
+
         let pid = std::process::id();
         paths::write_serve_info_in(
             &data_dir,
@@ -175,7 +215,7 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
                 started_at: format_utc(chrono::Utc::now()),
             },
         );
-        on_ready(addr, remote_addr);
+        on_ready(addr, remote_addr, monitor_ready);
         let result = tokio::select! {
             served = async { axum::serve(listener, app).await } => {
                 served.map_err(|e| internal(format!("The server stopped: {e}")))
@@ -190,6 +230,7 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
             } => served,
             () = shutdown => Ok(()),
         };
+        state.monitor.shutdown();
         instance::remove_serve_info_of(&serve_path, pid);
         result
     })

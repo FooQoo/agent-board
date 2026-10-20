@@ -1,0 +1,987 @@
+//! The ngrok monitor connection: command line, saved settings, the PC-only API
+//! and the start/stop supervision, over real HTTP on loopback.
+//!
+//! No test connects to ngrok: the endpoint is opened by a fake connector, so a
+//! "ready" status here proves the supervision, not a real tunnel.
+
+#[path = "support/mobile_monitor.rs"]
+mod support;
+
+use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
+
+use agent_board::error::AgboardError;
+use agent_board::server::monitor_connection::config::ConfigStore;
+use agent_board::server::monitor_connection::contracts::{
+    ConnectionConfig, OauthApp, PublicOrigin,
+};
+use agent_board::server::monitor_connection::lifecycle::{
+    Connector, FailureCode, MonitorEnv, OpenFailure, OpenFuture, OpenRequest, OpenedTunnel,
+    Overrides, Secret,
+};
+use agent_board::server::{
+    MonitorOptions, MonitorReady, RemoteServeConfig, ServeConfig, run_until_with_monitor,
+};
+use assert_cmd::Command;
+use serde_json::{Value, json};
+use support::{ORIGIN, home, token};
+
+const TOKEN: &str = "tok-SECRET-0123456789";
+const PUBLIC: &str = "https://fake-abc.ngrok.app";
+static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+// ------------------------------------------------------------- command line
+
+fn agboard(home: &Path) -> Command {
+    let mut cmd = Command::cargo_bin("agboard").unwrap();
+    cmd.env("AGBOARD_HOME", home)
+        .env("TZ", "UTC")
+        .env_remove("NGROK_AUTHTOKEN")
+        .env_remove("AGBOARD_GOOGLE_CLIENT_ID")
+        .env_remove("AGBOARD_GOOGLE_CLIENT_SECRET")
+        .current_dir(home);
+    cmd
+}
+
+fn exit_of(args: &[&str], envs: &[(&str, &str)]) -> (i32, String) {
+    let home = tempfile::tempdir().unwrap();
+    let mut cmd = agboard(home.path());
+    // A port that would be used if parsing wrongly succeeded; never 7420.
+    cmd.args(["serve", "--port", "8811"]).args(args);
+    for (k, v) in envs {
+        cmd.env(k, v);
+    }
+    let out = cmd.timeout(Duration::from_secs(20)).output().unwrap();
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (out.status.code().unwrap_or(-1), text)
+}
+
+#[test]
+fn bad_command_lines_exit_with_2_and_never_print_the_token() {
+    let env = [("NGROK_AUTHTOKEN", TOKEN)];
+    let ok_email = ["--ngrok-allow-email", "me@example.com"];
+    let cases: Vec<Vec<&str>> = vec![
+        vec!["--monitor", "lan"],
+        vec!["--monitor", "both"],
+        vec!["--monitor", "lan", "--ngrok-allow-email", "me@example.com"],
+        vec!["--monitor", "ngrok", "--lan-port", "8812"],
+        vec!["--monitor", "ngrok", "--lan-host", "0.0.0.0"],
+        vec!["--monitor", "ngrok"],
+        vec!["--monitor", "ngrok", "--ngrok-allow-email", ""],
+        vec!["--monitor", "ngrok", "--ngrok-allow-email", "not-an-email"],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "a b@example.com",
+        ],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "a\u{7}@example.com",
+        ],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "a'b@example.com",
+        ],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "me@example.com",
+            "--ngrok-allow-email",
+            "x",
+        ],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "me@example.com",
+            "--ngrok-domain",
+            "https://a.ngrok.app",
+        ],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "me@example.com",
+            "--ngrok-domain",
+            "a.ngrok.app:443",
+        ],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "me@example.com",
+            "--ngrok-oauth-app",
+            "other",
+        ],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "me@example.com",
+            "--ngrok-oauth-app",
+            "custom",
+        ],
+        vec![
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "me@example.com",
+            "--remote-port",
+            "8813",
+            "--remote-origin",
+            "https://x.example",
+        ],
+        vec!["--ngrok-allow-email", "me@example.com"],
+        vec!["--ngrok-domain", "a.ngrok.app"],
+    ];
+    for case in cases {
+        let (code, text) = exit_of(&case, &env);
+        assert_eq!(code, 2, "{case:?}: {text}");
+        assert!(!text.contains(TOKEN), "{case:?} printed the token");
+    }
+    // custom needs both Google values
+    for envs in [
+        vec![
+            ("NGROK_AUTHTOKEN", TOKEN),
+            ("AGBOARD_GOOGLE_CLIENT_ID", "id"),
+        ],
+        vec![
+            ("NGROK_AUTHTOKEN", TOKEN),
+            ("AGBOARD_GOOGLE_CLIENT_SECRET", "gsecret"),
+        ],
+    ] {
+        let mut args = vec!["--monitor", "ngrok", "--ngrok-oauth-app", "custom"];
+        args.extend(ok_email);
+        let (code, text) = exit_of(&args, &envs);
+        assert_eq!(code, 2, "{text}");
+        assert!(!text.contains("gsecret") && !text.contains(TOKEN));
+    }
+    // the token must come from the environment
+    let mut args = vec!["--monitor", "ngrok"];
+    args.extend(ok_email);
+    let (code, _) = exit_of(&args, &[]);
+    assert_eq!(code, 2);
+    let (code, text) = exit_of(
+        &[
+            "--monitor",
+            "ngrok",
+            "--ngrok-allow-email",
+            "me@example.com",
+            "--ngrok-token",
+            TOKEN,
+        ],
+        &[],
+    );
+    assert_eq!(code, 2);
+    assert!(!text.contains(TOKEN) || text.contains("--ngrok-token"));
+}
+
+// ------------------------------------------------------------- the harness
+
+struct Call {
+    token: String,
+    policy: String,
+    backend: String,
+}
+
+#[derive(Default)]
+struct Fake {
+    calls: Mutex<Vec<Call>>,
+    opens: AtomicUsize,
+    fail: Mutex<bool>,
+    /// When set, `open` waits for a message before it answers.
+    hold: Mutex<Option<mpsc::Receiver<()>>>,
+}
+
+impl Connector for Fake {
+    fn open(&self, request: OpenRequest) -> OpenFuture {
+        self.opens.fetch_add(1, Ordering::SeqCst);
+        self.calls.lock().unwrap().push(Call {
+            token: request.token.expose().to_string(),
+            policy: request.policy.expose().to_string(),
+            backend: request.backend.to_string(),
+        });
+        let fail = *self.fail.lock().unwrap();
+        let hold = self.hold.lock().unwrap().take();
+        Box::pin(async move {
+            if let Some(rx) = hold {
+                tokio::task::spawn_blocking(move || {
+                    let _ = rx.recv_timeout(Duration::from_secs(20));
+                })
+                .await
+                .unwrap();
+            }
+            if fail {
+                return Err(OpenFailure {
+                    code: FailureCode::ConnectFailed,
+                });
+            }
+            Ok(OpenedTunnel {
+                public: PublicOrigin::parse(PUBLIC).unwrap(),
+                keep_alive: Box::new(()),
+            })
+        })
+    }
+}
+
+struct Reply {
+    status: u16,
+    body: String,
+}
+
+impl Reply {
+    fn json(&self) -> Value {
+        serde_json::from_str(&self.body).unwrap_or(Value::Null)
+    }
+}
+
+fn request(
+    addr: std::net::SocketAddr,
+    method: &str,
+    path: &str,
+    headers: &[(&str, &str)],
+    body: &str,
+) -> Reply {
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .timeout_global(Some(Duration::from_secs(5)))
+        .build()
+        .into();
+    let mut req = ureq::http::Request::builder()
+        .method(method)
+        .uri(format!("http://{addr}{path}"));
+    for (k, v) in headers {
+        req = req.header(*k, *v);
+    }
+    let mut response = agent.run(req.body(body.to_owned()).unwrap()).unwrap();
+    let status = response.status().as_u16();
+    let body = response.body_mut().read_to_string().unwrap_or_default();
+    Reply { status, body }
+}
+
+struct Server {
+    local: std::net::SocketAddr,
+    remote: Option<std::net::SocketAddr>,
+    token: String,
+    fake: Arc<Fake>,
+    ready: Option<MonitorReady>,
+    stop: Option<tokio::sync::oneshot::Sender<()>>,
+    handle: Option<JoinHandle<Result<(), AgboardError>>>,
+}
+
+struct Opts {
+    remote: bool,
+    env_token: bool,
+    explicit: Option<Overrides>,
+    fake: Arc<Fake>,
+}
+
+impl Default for Opts {
+    fn default() -> Self {
+        Self {
+            remote: false,
+            env_token: false,
+            explicit: None,
+            fake: Arc::new(Fake::default()),
+        }
+    }
+}
+
+impl Server {
+    fn try_start(home: &Path, opts: Opts) -> Result<Self, AgboardError> {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // SAFETY: startup holds ENV_LOCK and the path is read once at startup.
+        unsafe { std::env::set_var("AGBOARD_HOME", home) };
+        let (tx, rx) = mpsc::channel();
+        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
+        let monitor = MonitorOptions {
+            env: MonitorEnv {
+                token: opts.env_token.then(|| Secret::new(TOKEN)),
+                google: None,
+            },
+            explicit: opts.explicit,
+            connector: opts.fake.clone(),
+        };
+        let remote = opts.remote.then(|| RemoteServeConfig {
+            port: 0,
+            origins: vec![ORIGIN.into()],
+        });
+        let handle = std::thread::spawn(move || {
+            run_until_with_monitor(
+                ServeConfig { port: 0 },
+                remote,
+                monitor,
+                async move {
+                    let _ = stop_rx.await;
+                },
+                move |local, remote, ready| {
+                    let _ = tx.send((local, remote, ready));
+                },
+            )
+        });
+        let got = rx.recv_timeout(Duration::from_secs(15));
+        // SAFETY: same lock; the server has captured the path.
+        unsafe { std::env::remove_var("AGBOARD_HOME") };
+        match got {
+            Ok((local, remote, ready)) => {
+                let page = request(local, "GET", "/", &[], "").body;
+                Ok(Self {
+                    local,
+                    remote,
+                    token: token(&page),
+                    fake: opts.fake,
+                    ready,
+                    stop: Some(stop_tx),
+                    handle: Some(handle),
+                })
+            }
+            Err(_) => {
+                let _ = stop_tx.send(());
+                handle
+                    .join()
+                    .unwrap()
+                    .map(|()| unreachable!("server never became ready"))
+            }
+        }
+    }
+
+    fn start(home: &Path, opts: Opts) -> Self {
+        Self::try_start(home, opts).unwrap_or_else(|e| panic!("did not start: {e}"))
+    }
+
+    /// A write that passes the page guard.
+    fn write(&self, method: &str, path: &str, body: &Value) -> Reply {
+        let origin = format!("http://127.0.0.1:{}", self.local.port());
+        request(
+            self.local,
+            method,
+            path,
+            &[
+                ("Origin", &origin),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Token", &self.token),
+                ("Content-Type", "application/json"),
+            ],
+            &body.to_string(),
+        )
+    }
+
+    fn get(&self) -> Value {
+        let r = request(self.local, "GET", "/api/monitor-connections", &[], "");
+        assert_eq!(r.status, 200, "{}", r.body);
+        r.json()
+    }
+
+    fn put(&self, enabled: bool, emails: &[&str], revision: u64) -> Reply {
+        self.write(
+            "PUT",
+            "/api/monitor-connections/settings/ngrok",
+            &json!({"enabled": enabled, "allowEmails": emails, "domain": null, "oauthApp": "managed", "revision": revision}),
+        )
+    }
+
+    fn start_ngrok(&self, body: Value) -> Reply {
+        self.write(
+            "POST",
+            "/api/monitor-connections/transports/ngrok/start",
+            &body,
+        )
+    }
+
+    fn stop_ngrok(&self) -> Reply {
+        self.write(
+            "POST",
+            "/api/monitor-connections/transports/ngrok/stop",
+            &json!({}),
+        )
+    }
+
+    fn wait_status(&self, want: &str) -> Value {
+        let end = Instant::now() + Duration::from_secs(10);
+        loop {
+            let v = self.get();
+            if v["status"] == want {
+                return v;
+            }
+            assert!(
+                Instant::now() < end,
+                "status stayed {} (wanted {want})",
+                v["status"]
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        if let Some(stop) = self.stop.take() {
+            let _ = stop.send(());
+        }
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
+fn backend_addr(call: &Call) -> std::net::SocketAddr {
+    call.backend
+        .trim_start_matches("http://")
+        .trim_end_matches('/')
+        .parse()
+        .unwrap()
+}
+
+fn all_files_text(dir: &Path) -> String {
+    let mut out = String::new();
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            out.push_str(&all_files_text(&path));
+        } else if let Ok(bytes) = std::fs::read(&path) {
+            out.push_str(&String::from_utf8_lossy(&bytes));
+        }
+        out.push_str(&path.to_string_lossy());
+    }
+    out
+}
+
+// ------------------------------------------------------------- the local API
+
+#[test]
+fn get_returns_only_non_secret_state_and_only_to_the_local_page() {
+    let home = home();
+    let s = Server::start(home.path(), Opts::default());
+    let v = s.get();
+    let mut keys: Vec<&str> = v.as_object().unwrap().keys().map(String::as_str).collect();
+    keys.sort();
+    assert_eq!(
+        keys,
+        [
+            "failure",
+            "mode",
+            "revision",
+            "settings",
+            "status",
+            "tokenConfigured",
+            "url"
+        ]
+    );
+    assert_eq!(v["status"], "disabled");
+    assert_eq!(v["tokenConfigured"], false);
+    assert_eq!(v["settings"]["enabled"], false);
+    let path = "/api/monitor-connections";
+    assert_eq!(
+        request(s.local, "GET", path, &[("Host", "evil.example")], "").status,
+        403
+    );
+    assert_eq!(
+        request(
+            s.local,
+            "GET",
+            path,
+            &[("Sec-Fetch-Site", "cross-site")],
+            ""
+        )
+        .status,
+        403
+    );
+    assert_eq!(
+        request(
+            s.local,
+            "GET",
+            path,
+            &[("Origin", "http://evil.example")],
+            ""
+        )
+        .status,
+        403
+    );
+    // A write without the page's proof is refused before anything is looked at.
+    let bare = request(
+        s.local,
+        "PUT",
+        "/api/monitor-connections/settings/ngrok",
+        &[],
+        "{}",
+    );
+    assert_eq!(bare.status, 403);
+    let bare = request(
+        s.local,
+        "POST",
+        "/api/monitor-connections/transports/ngrok/start",
+        &[],
+        "{}",
+    );
+    assert_eq!(bare.status, 403);
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn settings_use_revisions_validate_input_and_are_saved_privately() {
+    let home = home();
+    let s = Server::start(home.path(), Opts::default());
+    let r = s.put(true, &["Me@Example.com"], 0);
+    assert_eq!(r.status, 200, "{}", r.body);
+    assert_eq!(r.json()["revision"], 1);
+    assert_eq!(
+        r.json()["settings"]["allowEmails"],
+        json!(["me@example.com"])
+    );
+    assert_eq!(r.json()["status"], "needs_config");
+    // a stale revision conflicts and changes nothing
+    let r = s.put(false, &["other@example.com"], 0);
+    assert_eq!(r.status, 409);
+    assert_eq!(r.json()["error"]["code"], "revision_conflict");
+    assert_eq!(
+        s.get()["settings"]["allowEmails"],
+        json!(["me@example.com"])
+    );
+    // invalid input
+    for (enabled, emails) in [
+        (true, vec![]),
+        (true, vec!["a b@x.com"]),
+        (false, vec!["bad"]),
+    ] {
+        let r = s.put(enabled, &emails, 1);
+        assert_eq!(r.status, 422, "{emails:?}");
+    }
+    assert_eq!(s.get()["revision"], 1);
+    let saved = ConfigStore::new(home.path()).load().unwrap();
+    assert_eq!(saved.revision, 1);
+    assert!(saved.enabled);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(home.path().join("monitor/config.json"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0o600);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_failed_save_changes_nothing_and_starts_nothing() {
+    use std::os::unix::fs::PermissionsExt;
+    let home = home();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(false, &[], 0).status, 200);
+    let dir = home.path().join("monitor");
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o500)).unwrap();
+    let r = s.put(true, &["me@example.com"], 1);
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(r.status, 500, "{}", r.body);
+    assert_eq!(r.json()["error"]["code"], "save_failed");
+    let v = s.get();
+    assert_eq!(v["revision"], 1);
+    assert_eq!(v["settings"]["enabled"], false);
+    assert_eq!(v["status"], "disabled");
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert!(!ConfigStore::new(home.path()).load().unwrap().enabled);
+}
+
+// ------------------------------------------------------- start, stop, secrets
+
+#[test]
+fn start_keeps_the_token_in_memory_and_serves_nothing_on_the_backend() {
+    let home = home();
+    let s = Server::start(home.path(), Opts::default());
+    // no token held and none given
+    assert_eq!(s.put(true, &["me@example.com"], 0).status, 200);
+    let r = s.start_ngrok(json!({}));
+    assert_eq!(r.status, 422);
+    assert_eq!(r.json()["error"]["code"], "token_required");
+    // a token that cannot be one
+    assert_eq!(s.start_ngrok(json!({"token": "a b"})).status, 422);
+    assert_eq!(s.start_ngrok(json!({"token": ""})).status, 422);
+    assert_eq!(
+        s.start_ngrok(json!({"token": TOKEN, "extra": 1})).status,
+        422
+    );
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+
+    let (release, hold) = mpsc::channel();
+    *s.fake.hold.lock().unwrap() = Some(hold);
+    let r = s.start_ngrok(json!({"token": TOKEN}));
+    assert_eq!(r.status, 202, "{}", r.body);
+    assert!(!r.body.contains(TOKEN));
+    assert_eq!(r.json()["status"], "starting");
+    let start = s.wait_status("starting");
+    assert_eq!(start["tokenConfigured"], true);
+    assert_eq!(start["url"], Value::Null);
+
+    // While the policy is not known the backend refuses everything.
+    let (backend, policy) = {
+        let calls = s.fake.calls.lock().unwrap();
+        let call = calls.last().unwrap();
+        assert_eq!(call.token, TOKEN);
+        (backend_addr(call), call.policy.clone())
+    };
+    assert_eq!(request(backend, "GET", "/", &[], "").status, 403);
+    release.send(()).unwrap();
+    let ready = s.wait_status("ready");
+    assert_eq!(ready["url"], PUBLIC);
+
+    // Even the right Host and the real proof are not admitted: the external
+    // session layer does not exist yet.
+    let proof = serde_json::from_str::<Value>(&policy).unwrap()["on_http_request"][3]["actions"][0]
+        ["config"]["headers"]["x-agboard-tunnel-proof"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let host = PUBLIC.trim_start_matches("https://");
+    for (path, headers) in [
+        ("/", vec![]),
+        (
+            "/monitor/",
+            vec![("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
+        ),
+        (
+            "/monitor/api/session",
+            vec![("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
+        ),
+        (
+            "/api/projects",
+            vec![("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
+        ),
+        (
+            "/api/monitor-connections",
+            vec![("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
+        ),
+        ("/", vec![("Host", host)]),
+        (
+            "/",
+            vec![
+                ("Host", "127.0.0.1"),
+                ("x-agboard-tunnel-proof", proof.as_str()),
+            ],
+        ),
+        (
+            "/",
+            vec![
+                ("x-agboard-tunnel-proof", "forged"),
+                ("ngrok-auth-user-email", "me@example.com"),
+            ],
+        ),
+    ] {
+        let r = request(backend, "GET", path, &headers, "");
+        assert_eq!(r.status, 403, "{path} {headers:?}");
+        assert!(!r.body.contains(&proof));
+    }
+    assert_eq!(
+        request(
+            backend,
+            "POST",
+            "/monitor/api/answer",
+            &[("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
+            "{}"
+        )
+        .status,
+        403
+    );
+
+    // The token is nowhere on disk and not in any API answer.
+    let disk = all_files_text(home.path());
+    assert!(!disk.contains(TOKEN) && !disk.contains(&proof));
+    assert!(!s.get().to_string().contains(TOKEN));
+    assert!(!s.put(true, &["me@example.com"], 1).body.contains(TOKEN));
+
+    // Stopping closes the backend, forgets the URL and saves enabled: false.
+    let r = s.stop_ngrok();
+    assert_eq!(r.status, 200);
+    assert_eq!(r.json()["status"], "disabled");
+    assert_eq!(r.json()["url"], Value::Null);
+    assert_eq!(r.json()["settings"]["enabled"], false);
+    std::thread::sleep(Duration::from_millis(100));
+    assert!(std::net::TcpStream::connect_timeout(&backend, Duration::from_millis(500)).is_err());
+    assert!(!ConfigStore::new(home.path()).load().unwrap().enabled);
+    assert!(!all_files_text(home.path()).contains(TOKEN));
+}
+
+#[test]
+fn stopping_while_connecting_never_publishes_the_old_tunnel() {
+    let home = home();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(true, &["me@example.com"], 0).status, 200);
+    let (release, hold) = mpsc::channel();
+    *s.fake.hold.lock().unwrap() = Some(hold);
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    s.wait_status("starting");
+    let backend = backend_addr(s.fake.calls.lock().unwrap().last().unwrap());
+    assert_eq!(s.stop_ngrok().json()["status"], "disabled");
+    let _ = release.send(());
+    std::thread::sleep(Duration::from_millis(300));
+    let v = s.get();
+    assert_eq!(v["status"], "disabled");
+    assert_eq!(v["url"], Value::Null);
+    assert!(std::net::TcpStream::connect_timeout(&backend, Duration::from_millis(500)).is_err());
+}
+
+#[test]
+fn a_failed_start_is_reported_without_a_secret_and_can_be_retried() {
+    let home = home();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(true, &["me@example.com"], 0).status, 200);
+    *s.fake.fail.lock().unwrap() = true;
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    let v = s.wait_status("failed");
+    assert_eq!(v["failure"], "connect_failed");
+    assert_eq!(v["url"], Value::Null);
+    assert!(!v.to_string().contains(TOKEN));
+    // the PC entrance still works
+    assert_eq!(
+        request(s.local, "GET", "/api/projects", &[], "").status,
+        200
+    );
+    *s.fake.fail.lock().unwrap() = false;
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    assert_eq!(s.wait_status("ready")["url"], PUBLIC);
+}
+
+#[test]
+fn changing_the_allow_list_replaces_the_tunnel_and_the_proof() {
+    let home = home();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(true, &["me@example.com"], 0).status, 200);
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    s.wait_status("ready");
+    let first = backend_addr(s.fake.calls.lock().unwrap().last().unwrap());
+    assert_eq!(
+        s.put(true, &["me@example.com", "you@example.com"], 1)
+            .status,
+        200
+    );
+    let end = Instant::now() + Duration::from_secs(5);
+    while s.fake.opens.load(Ordering::SeqCst) < 2 {
+        assert!(Instant::now() < end);
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    s.wait_status("ready");
+    let calls = s.fake.calls.lock().unwrap();
+    assert_ne!(calls[0].policy, calls[1].policy);
+    assert!(calls[1].policy.contains("you@example.com"));
+    drop(calls);
+    std::thread::sleep(Duration::from_millis(100));
+    assert!(std::net::TcpStream::connect_timeout(&first, Duration::from_millis(500)).is_err());
+    // disabling stops it
+    assert_eq!(
+        s.put(false, &["me@example.com", "you@example.com"], 2)
+            .json()["status"],
+        "disabled"
+    );
+}
+
+// ------------------------------------------------------- startup and restore
+
+#[test]
+fn a_saved_enabled_setting_is_restored_only_with_a_token() {
+    let home = home();
+    ConfigStore::new(home.path())
+        .save(&ConnectionConfig {
+            enabled: true,
+            allow_emails: vec!["me@example.com".into()],
+            domain: None,
+            oauth_app: OauthApp::Managed,
+            revision: 4,
+        })
+        .unwrap();
+    {
+        let s = Server::start(home.path(), Opts::default());
+        let v = s.get();
+        assert_eq!(v["status"], "needs_config");
+        assert_eq!(v["revision"], 4);
+        assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    }
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.wait_status("ready")["url"], PUBLIC);
+}
+
+#[test]
+fn an_unreadable_settings_file_keeps_the_pc_entrance_and_can_be_replaced() {
+    let home = home();
+    std::fs::create_dir_all(home.path().join("monitor")).unwrap();
+    std::fs::write(home.path().join("monitor/config.json"), "{ not json").unwrap();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    let v = s.get();
+    assert_eq!(v["status"], "failed");
+    assert_eq!(v["failure"], "config_unreadable");
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(
+        request(s.local, "GET", "/api/projects", &[], "").status,
+        200
+    );
+    assert_eq!(s.put(false, &[], 0).status, 200);
+    assert_eq!(s.get()["status"], "disabled");
+}
+
+#[test]
+fn an_explicit_start_announces_after_it_is_up_and_overrides_saved_settings() {
+    let home = home();
+    ConfigStore::new(home.path())
+        .save(&ConnectionConfig {
+            enabled: false,
+            allow_emails: vec!["saved@example.com".into()],
+            domain: None,
+            oauth_app: OauthApp::Managed,
+            revision: 2,
+        })
+        .unwrap();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            env_token: true,
+            explicit: Some(Overrides {
+                allow_emails: vec!["cli@example.com".into()],
+                domain: Some("cli.ngrok.app".into()),
+                oauth_app: None,
+            }),
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.ready, Some(MonitorReady { url: PUBLIC.into() }));
+    let calls = s.fake.calls.lock().unwrap();
+    assert!(calls[0].policy.contains("cli@example.com"));
+    assert!(!calls[0].policy.contains("saved@example.com"));
+    drop(calls);
+    let v = s.get();
+    assert_eq!(v["status"], "ready");
+    assert_eq!(v["settings"]["allowEmails"], json!(["cli@example.com"]));
+    assert_eq!(v["settings"]["domain"], "cli.ngrok.app");
+    assert_eq!(v["revision"], 2);
+    // the command line is not written back
+    assert_eq!(
+        ConfigStore::new(home.path()).load().unwrap().allow_emails,
+        vec!["saved@example.com".to_string()]
+    );
+}
+
+#[test]
+fn a_failed_explicit_start_ends_the_run_and_leaves_no_serve_file() {
+    let home = home();
+    let fake = Arc::new(Fake::default());
+    *fake.fail.lock().unwrap() = true;
+    let result = Server::try_start(
+        home.path(),
+        Opts {
+            env_token: true,
+            fake,
+            explicit: Some(Overrides {
+                allow_emails: vec!["me@example.com".into()],
+                domain: None,
+                oauth_app: None,
+            }),
+            ..Opts::default()
+        },
+    );
+    let error = result.err().expect("the run must fail");
+    assert_eq!(error.exit_code(), 1);
+    assert!(!error.message().contains(TOKEN));
+    assert!(!home.path().join("serve.json").exists());
+}
+
+// ------------------------------------------------------- other entrances
+
+#[test]
+fn the_remote_entrance_has_no_management_api() {
+    let home = home();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            remote: true,
+            ..Opts::default()
+        },
+    );
+    let remote = s.remote.unwrap();
+    let origin = ORIGIN;
+    let host = ORIGIN.trim_start_matches("https://");
+    let calls = [
+        ("GET", "/api/monitor-connections"),
+        ("PUT", "/api/monitor-connections/settings/ngrok"),
+        ("POST", "/api/monitor-connections/transports/ngrok/start"),
+        ("POST", "/api/monitor-connections/transports/ngrok/stop"),
+        ("GET", "/monitor/api/monitor-connections"),
+        ("GET", "/monitor/api/pairings"),
+        ("GET", "/monitor/api/devices"),
+    ];
+    for (method, path) in calls {
+        let r = request(
+            remote,
+            method,
+            path,
+            &[
+                ("Host", host),
+                ("Origin", origin),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Token", &s.token),
+            ],
+            "{}",
+        );
+        assert!(
+            (403..=405).contains(&r.status),
+            "{method} {path} -> {}",
+            r.status
+        );
+        assert!(!r.body.contains("tokenConfigured") && !r.body.contains("allowEmails"));
+    }
+    // the local entrance does not serve the pairing/device routes either
+    for path in [
+        "/api/pairings",
+        "/api/devices",
+        "/api/monitor-connections/transports/lan/start",
+    ] {
+        let r = request(s.local, "GET", path, &[], "");
+        assert!(matches!(r.status, 404 | 405), "{path} -> {}", r.status);
+    }
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+}
