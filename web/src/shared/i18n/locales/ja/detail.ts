@@ -39,7 +39,6 @@ export const detailJa = {
     placeholder: '回答を書く…',
     choices: '選択肢',
     guideChoice: '選択肢を選ぶか、自由記述で回答できます。',
-    guideText: '自由記述で回答できます。',
     saveHint: '回答は履歴に保存されます。調整役が確認して作業を再開します。',
     resumed: '回答を保存しました。調整役が作業を再開します。',
     send: '送信',

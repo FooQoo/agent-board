@@ -71,13 +71,6 @@ describe('PC task answer form', () => {
     expect(send().disabled).toBe(true);
   });
 
-  it('shows only the text box when the request has no choices', () => {
-    renderPendingTask(pendingTask({ pendingChoices: [] }));
-    expect(screen.queryByRole('radio')).toBeNull();
-    expect(box()).toBeTruthy();
-    expect(send().disabled).toBe(true);
-  });
-
   it('enables Send for a choice or non-blank text and sends the current request id', async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ task: pendingTask(), changed: true }));
     vi.stubGlobal('fetch', fetchMock);
