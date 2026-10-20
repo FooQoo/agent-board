@@ -16,7 +16,7 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
     {
       "id": "SPEC-MIGRATION",
       "name": "Move the specifications into the repository",
-      "planPath": "…/epics/SPEC-MIGRATION/PLAN.md",
+      "documentPath": "…/epics/SPEC-MIGRATION/EPIC.md",
       "priorityError": false,
       "tasks": [
         {
@@ -38,9 +38,10 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 ```
 
 - Only non-Pending Todo and Doing tasks appear. Tasks are grouped by epic in `priority` order; tasks without an epic are in `unassigned`.
-- There are no bodies and no history. Agents read the `planPath` and `taskPath` files they need.
+- There are no bodies and no history. Agents read the `documentPath` and `taskPath` files they need.
 - `cursor` is what `wait --after` takes.
 - The paths appear only in local CLI and hook output, never in remote JSON.
+- The earlier `planPath` field is no longer produced or accepted. See the [data guide](../../guide/operations/data.md).
 
 ## Hook output
 
@@ -60,12 +61,12 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 
 `wait` blocks until the project's version differs from the cursor. It exits with an error instead of a snapshot for `wait_timeout`, `board_unavailable`, `cursor_invalid`, and `project_not_found`; none of them means "answered". See [Error codes](./errors.md).
 
-`wait --until task --idle-timeout <seconds> --json` selects one eligible AI-owned Todo or Doing task with an Idle run state, including tasks that existed before listening began. The selection order matches the progress table. The result includes the task and local paths for its `TASK.md` and, when assigned to an epic, `PLAN.md`. Selection does not claim or edit the task.
+`wait --until task --idle-timeout <seconds> --json` selects one eligible AI-owned Todo or Doing task with an Idle run state, including tasks that existed before listening began. The selection order matches the progress table. The result includes the task and local paths for its `TASK.md` and, when assigned to an epic, `documentPath` for its `EPIC.md`. Selection does not claim or edit the task.
 
 Abbreviated example; task fields are omitted.
 
 ```json
-{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","planPath":"…/epics/DESIGN/PLAN.md"}
+{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":"…/epics/DESIGN/EPIC.md"}
 ```
 
 If the requested interval passes with no eligible task, the command returns a successful result (exit code 0):

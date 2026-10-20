@@ -71,9 +71,21 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 agboard --project "My project" edit 1 --desc-file task.md
 ```
 
-説明とエピックの計画は、50,000文字まで使えます。ファイルは[Markdownファイルの形式](./file-format)に従う必要があります。標準入力から説明を読むには、`--desc -`を使います。
+説明とエピックの詳細（`EPIC.md`）は、50,000文字まで使えます。ファイルは[Markdownファイルの形式](./file-format)に従う必要があります。標準入力から説明を読むには、`--desc -`を使います。
 
 `edit --desc-file`は、本文と受入条件を置き換え、`TASK.md`の最新の履歴を保ちます。入力ファイルの履歴は無視されます。CLIや画面からの移動・状態の変更などの操作は、`TASK.md`に履歴を追加し、`show`・`snapshot`・ブラウザは同じ履歴を読みます。
+
+## エピックの詳細を編集する
+
+エピックの詳細は、frontmatterを含む`EPIC.md`の全文です。文字列で直接渡すか、ファイルや標準入力から読み込みます。
+
+```sh
+agboard --project "My project" epic edit LAUNCH --document-file epic.md
+agboard --project "My project" epic edit LAUNCH --document -
+agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
+```
+
+`--document`と`--document-file`は同時に指定できません。どちらも50,000文字まで受け付けます。以前の`--plan`と`--plan-file`は削除されました。新しい名前は[データとバックアップ](../operations/data)の移行の節を参照してください。
 
 ## 一覧を絞り込む
 
@@ -109,7 +121,7 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 取得成功時は、一つのJSONオブジェクトを出力して終了コード0を返します。
 
 ```json
-{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","planPath":null}
+{"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":null}
 ```
 
 指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。Pendingの質問への回答にはなりません。

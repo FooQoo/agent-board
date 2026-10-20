@@ -51,7 +51,7 @@ New here? Read the first three pages in order.
 | Write a task, attach images and logs | [Editing and evidence](./use/editing) |
 | Connect Claude Code or Codex | [Working with agents](./automation/agents) |
 | Look up a command | [CLI reference](./automation/cli) |
-| Edit `TASK.md` or `PLAN.md` by hand | [Markdown file format](./automation/file-format) |
+| Edit `TASK.md` or `EPIC.md` by hand | [Markdown file format](./automation/file-format) |
 | Check on the board from my phone | [Mobile monitor](./operations/mobile-monitor) |
 | Know where files live, back them up | [Data and backups](./operations/data) |
 | Fix something that does not work | [Troubleshooting](./operations/troubleshooting) |

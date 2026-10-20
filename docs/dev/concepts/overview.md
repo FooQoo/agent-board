@@ -6,11 +6,11 @@ Start here. This page gives you the mental model: what runs, where the data live
 
 Agent Board is a single Rust executable, `agboard`. The same binary is the CLI that agents and people run, and the web server (`agboard serve`) that shows the board in a browser.
 
-There is no database. Every project lives as plain files in the shared area, `.agent-board/shared/` in the user's home directory (or under `AGBOARD_HOME`). Markdown holds what people and agents write: task bodies, acceptance conditions, history, and epic plans. JSON holds the operational state: lanes, run states, and open questions. Because the files are the source of truth, agents may also edit `TASK.md` and `PLAN.md` directly, and the server notices.
+There is no database. Every project lives as plain files in the shared area, `.agent-board/shared/` in the user's home directory (or under `AGBOARD_HOME`). Markdown holds what people and agents write: task bodies, acceptance conditions, history, and epic details. JSON holds the operational state: lanes, run states, and open questions. Because the files are the source of truth, agents may also edit `TASK.md` and `EPIC.md` directly, and the server notices.
 
 ### Reading and writing data
 
-The CLI and browser read and write the same local files. Task state is stored in `task.json`, bodies, acceptance conditions, and history in `TASK.md`, and epic plans in `PLAN.md`.
+The CLI and browser read and write the same local files. Task state is stored in `task.json`, bodies, acceptance conditions, and history in `TASK.md`, and epic details in `EPIC.md`.
 
 ```mermaid
 flowchart LR
@@ -19,7 +19,7 @@ flowchart LR
     Serve <--> Browser["Browser"]
 ```
 
-Agents use commands such as `agboard add`, `mv`, and `state`; users work in the browser. Users run `rm` and `init` in the CLI for deletion and resets. `TASK.md` and `PLAN.md` can also be edited directly, and the server detects the changes. CLI saves use locks and temporary-file renames.
+Agents use commands such as `agboard add`, `mv`, and `state`; users work in the browser. Users run `rm` and `init` in the CLI for deletion and resets. `TASK.md` and `EPIC.md` can also be edited directly, and the server detects the changes. CLI saves use locks and temporary-file renames.
 
 ### Change notifications
 

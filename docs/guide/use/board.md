@@ -24,11 +24,11 @@ Select a task to open its details on the right. The tabs show:
 | **Description** | The task's body. |
 | **Conditions** | The task's own acceptance conditions and its progress. |
 | **History** | What happened, newest first, each entry with its time and reason. |
-| **Epic** | The plan of the epic the task belongs to, if any. |
+| **Epic** | The details of the epic the task belongs to, if any. |
 
 ![Task details panel with the Conditions tab showing the task's acceptance conditions](../../images/guide/card-detail.png){.screenshot}
 
-The panel on the right shows the selected task. The Conditions tab lists the task's own acceptance conditions with a progress bar. An epic's own reference conditions stay in its Markdown plan.
+The panel on the right shows the selected task. The Conditions tab lists the task's own acceptance conditions with a progress bar. An epic's own reference conditions stay in its Markdown details.
 
 ## Move a task
 
