@@ -3,13 +3,14 @@
  * with 28px padding measured from the outer edge); colors come from the shared semantic tokens.
  * The rules are unlayered on purpose so they sit above the Tailwind utilities of the shared parts.
  */
-.connection-dialog {
+/* Two classes, so the width wins over .modal whichever stylesheet loads first. */
+.modal.connection-dialog {
   width: 680px;
   gap: 16px;
   box-shadow: 0 12px 32px rgb(15 23 42 / 13%);
 }
 
-:root[data-mode="dark"] .connection-dialog {
+:root[data-mode="dark"] .modal.connection-dialog {
   box-shadow: 0 12px 32px rgb(15 23 42 / 20%);
 }
 
