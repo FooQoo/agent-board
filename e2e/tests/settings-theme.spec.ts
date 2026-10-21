@@ -445,7 +445,8 @@ test('the settings dialog takes the focus, keeps it inside, and gives it back', 
   // The focus goes to the chosen language, and the board behind is not reachable.
   await expect(dialog.getByRole('radio', { name: 'English' })).toBeFocused();
   await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
-  await expect(page.getByRole('region')).toHaveCount(0);
+  // The lanes of the board are hidden from the page; the dialog's own sections are not the board.
+  await expect(page.locator('main').getByRole('region')).toHaveCount(0);
 
   // Tab and Shift+Tab wrap around inside the dialog.
   for (const key of ['Tab', 'Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
