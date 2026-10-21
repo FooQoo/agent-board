@@ -5,8 +5,9 @@
 // network) over a data area the caller filled, and puts a small proxy in front
 // of it. The proxy stands in for the ngrok Edge, which runs without a Traffic
 // Policy: it names the public Host on every request and the public Origin on
-// writes, and drops the forwarding and identity headers a client could write. The app asks for the 4-digit passcode of the run
-// and issues the session cookie and the CSRF token itself, exactly as it does
+// writes, and drops the forwarding and identity headers a client could write.
+// The app asks for the 4-digit passcode of the run and issues the session cookie
+// and the CSRF token itself, exactly as it does
 // behind the real Edge. The backend announces the passcode the way the PC would
 // show it; `passcode` and `unlockPage` hand it to a test.
 //
@@ -41,7 +42,7 @@ export function buildPhoneBackend() {
   return executable;
 }
 
-// ngrok's warning page (free plan), as observed on Safari. A browser without the warning
+// ngrok's warning page (free plan). A browser without the warning
 // cookie gets this page for a document, a script, a stylesheet, or an image. "Visit Site" posts
 // back to the same address, and the response sets the cookie on the directory that address is
 // in (Path=/monitor for /monitor/). The browser then sends the cookie only for files under that
@@ -60,12 +61,15 @@ function needsWarning(req) {
   // The browser sends the cookie only where its path covers the request, so this check is enough.
   if (req.headers.cookie?.includes(`${WARNING_COOKIE}=`)) return false;
   const dest = req.headers['sec-fetch-dest'];
-  return dest === undefined ? (req.headers.accept ?? '').includes('text/html') : WARNED_DESTINATIONS.has(dest);
+  if (dest === undefined) return (req.headers.accept ?? '').includes('text/html');
+  return WARNED_DESTINATIONS.has(dest);
 }
 
 function warningPage(host) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ERR_NGROK_6024 - You are about to visit ${host}</title></head>`
-    + `<body><p>You are about to visit: ${host}</p><form method="post"><button type="submit">Visit Site</button></form></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">`
+    + `<title>ERR_NGROK_6024 - You are about to visit ${host}</title></head>`
+    + `<body><p>You are about to visit: ${host}</p>`
+    + `<form method="post"><button type="submit">Visit Site</button></form></body></html>`;
 }
 
 // Headers a real Edge would never pass on as the caller's own.

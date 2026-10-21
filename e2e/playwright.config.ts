@@ -26,8 +26,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
-    // Safari's engine, for the phone monitor only. Its cookie and loading rules are the ones that
-    // left the monitor blank on a real iPhone.
+    // The WebKit engine (Safari's), for the phone monitor's address checks.
     { name: 'webkit-iphone', testMatch: /monitor-address\.spec\.ts$/, use: { ...devices['iPhone 13'] } },
   ],
 });
