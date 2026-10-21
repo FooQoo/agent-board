@@ -517,7 +517,7 @@ fn changing_the_domain_or_the_public_origin_ends_the_old_session_and_stream() {
     *t.s.fake.public.lock().unwrap() = Some(OTHER_PUBLIC.into());
     t.replace_tunnel("other-xyz.ngrok.app");
     assert_eq!(t.public, OTHER_PUBLIC);
-    assert_eq!(t.s.get()["url"], OTHER_PUBLIC);
+    assert_eq!(t.s.get()["url"], format!("{OTHER_PUBLIC}/monitor/"));
     assert!(
         stream_ends(stream, Duration::from_secs(5)),
         "the stream outlived its tunnel"

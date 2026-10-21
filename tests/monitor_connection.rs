@@ -373,7 +373,7 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
     );
     release.send(()).unwrap();
     let ready = s.wait_status("ready");
-    assert_eq!(ready["url"], PUBLIC);
+    assert_eq!(ready["url"], format!("{PUBLIC}/monitor/"));
     // Once up, the PC is shown the four-digit passcode of this start.
     let code = ready["passcode"].as_str().unwrap();
     assert!(
@@ -485,7 +485,7 @@ fn a_failed_start_is_reported_without_a_secret_and_can_be_retried() {
     );
     *s.fake.fail.lock().unwrap() = false;
     assert_eq!(s.start_ngrok(json!({})).status, 202);
-    assert_eq!(s.wait_status("ready")["url"], PUBLIC);
+    assert_eq!(s.wait_status("ready")["url"], format!("{PUBLIC}/monitor/"));
 }
 
 #[test]
@@ -555,7 +555,7 @@ fn a_saved_enabled_setting_is_restored_only_with_a_token() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.wait_status("ready")["url"], PUBLIC);
+    assert_eq!(s.wait_status("ready")["url"], format!("{PUBLIC}/monitor/"));
 }
 
 #[test]
@@ -625,7 +625,7 @@ fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.wait_status("ready")["url"], PUBLIC);
+    assert_eq!(s.wait_status("ready")["url"], format!("{PUBLIC}/monitor/"));
 }
 
 #[test]
@@ -650,7 +650,7 @@ fn an_explicit_start_announces_after_it_is_up_and_overrides_saved_settings() {
     );
     // The startup announces the URL together with the passcode the PC shows.
     let ready = s.ready.clone().expect("an explicit start announces itself");
-    assert_eq!(ready.url, PUBLIC);
+    assert_eq!(ready.url, format!("{PUBLIC}/monitor/"));
     assert_eq!(ready.passcode.expose().len(), 4);
     assert!(ready.passcode.expose().bytes().all(|b| b.is_ascii_digit()));
     assert_eq!(s.get()["passcode"], ready.passcode.expose());
