@@ -15,6 +15,7 @@ pub mod layout;
 pub mod lock;
 mod migrate;
 pub mod model;
+pub mod onboarding_model;
 mod ops;
 pub mod project;
 pub mod reader;

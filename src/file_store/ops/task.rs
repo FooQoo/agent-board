@@ -187,6 +187,7 @@ impl FileStore {
             task_status_changed_at: at,
             attachments: Vec::new(),
             simple_request: None,
+            onboarding_sample: None,
             history: vec![transition_event(Transition {
                 language,
                 kind: HistoryKind::Created,
