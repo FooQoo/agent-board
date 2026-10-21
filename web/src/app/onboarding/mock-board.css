@@ -8,3 +8,16 @@
   font-size: 18px;
   line-height: 29px;
 }
+
+/* The status bar is 40px tall at the foot of the mock, as the approved screens show it. */
+.mock-board__status {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 40px;
+}
+
+.mock-board__status > .status-bar {
+  height: 100%;
+}

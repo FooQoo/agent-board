@@ -41,7 +41,7 @@ function SampleAnswerForm() {
         message: null,
         tooLong: false,
         sendable: false,
-        disabled: true,
+        disabled: false,
       }}
       onChoiceChange={noop}
       onTextChange={noop}
