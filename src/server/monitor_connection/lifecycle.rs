@@ -5,29 +5,13 @@
 //! memory only and are never part of a snapshot, a log line or an error message.
 //! Methods that start something must run inside the server's Tokio runtime.
 
-use std::any::Any;
 use std::sync::{Arc, Mutex};
-
-use tokio::task::AbortHandle;
 
 use super::config::{ConfigError, ConfigStore};
 use super::contracts::{ConnectionConfig, ConnectionStatus, ContractError, OauthApp};
 use super::keychain::TokenVault;
+use super::run::Run;
 pub use super::types::*;
-
-pub(super) struct Run {
-    pub(super) backend: AbortHandle,
-    pub(super) opener: AbortHandle,
-    pub(super) tunnel: Option<Box<dyn Any + Send>>,
-}
-
-impl Run {
-    pub(super) fn close(self) {
-        self.opener.abort();
-        self.backend.abort();
-        drop(self.tunnel);
-    }
-}
 
 pub(super) struct Inner {
     pub(super) config: ConnectionConfig,
@@ -47,6 +31,8 @@ pub struct MonitorConnections {
     pub(super) connector: Arc<dyn Connector>,
     pub(super) vault: Arc<dyn TokenVault>,
     pub(super) google: Option<(Secret, Secret)>,
+    /// The server's state, given once it exists; the monitor routes read it.
+    pub(super) app: std::sync::OnceLock<std::sync::Weak<crate::server::AppState>>,
     pub(super) inner: Mutex<Inner>,
 }
 
@@ -76,6 +62,7 @@ impl MonitorConnections {
             connector,
             vault,
             google: env.google,
+            app: std::sync::OnceLock::new(),
             inner: Mutex::new(Inner {
                 config,
                 status,
@@ -88,6 +75,11 @@ impl MonitorConnections {
                 run: None,
             }),
         })
+    }
+
+    /// Give the supervisor the server's state. Called once, before any start.
+    pub(crate) fn attach(&self, app: &Arc<crate::server::AppState>) {
+        let _ = self.app.set(Arc::downgrade(app));
     }
 
     pub(super) fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {

@@ -42,6 +42,36 @@ export const GoogleFailed: Story = {
   },
 };
 
+/** The app session ended and could not be renewed: the message says so above the action. */
+export const SessionExpired: Story = {
+  args: { error: 'The connection has ended. Reconnect with Google.' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('alert')).toHaveTextContent('The connection has ended');
+    await expect(canvas.getByRole('button', { name: 'Reconnect with Google' })).toBeEnabled();
+  },
+};
+
+/** The connection is stopped, or the allowed account or address changed. */
+export const ConnectionStopped: Story = {
+  args: { error: 'The connection is stopped or no longer allowed.\nCheck the PC.' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole('alert')).toHaveTextContent(
+      'stopped or no longer allowed',
+    );
+  },
+};
+
+/** The monitor could not be reached and the cause is unknown: the action stays available. */
+export const MonitorUnreachable: Story = {
+  args: { error: 'Could not reach the monitor.\nCheck the connection and try again.' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Could not reach the monitor');
+    await expect(canvas.getByRole('button', { name: 'Reconnect with Google' })).toBeVisible();
+  },
+};
+
 /** The PC connection dropped; there is no action, the phone waits. */
 export const WaitingForRecovery: Story = {
   args: { status: 'reconnecting' },

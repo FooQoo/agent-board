@@ -14,6 +14,8 @@ mod instance;
 pub mod monitor;
 pub mod monitor_auth {
     pub mod contracts;
+    pub mod guard;
+    pub mod session;
 }
 pub mod monitor_connection;
 pub mod remote;
@@ -177,6 +179,7 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
                 monitor.env.clone(),
             ),
         });
+        state.monitor.attach(&state);
         let app = api::router(state.clone());
         let remote_app = match (&remote, remote_listener.as_ref(), remote_addr) {
             (Some(config), Some(_), Some(remote_addr)) => Some(remote::router(

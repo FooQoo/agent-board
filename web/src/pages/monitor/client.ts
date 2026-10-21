@@ -3,30 +3,32 @@ import type { MonitorReadResolvers } from './contracts';
 import type { Board, Task, Epic, ProjectId, ProjectList } from '../../shared/api/contracts';
 import type { AnswerInput, AnswerResult } from '../../features/tasks/answer/model/answer';
 import { writeFailure } from '../../shared/api/writeErrors';
+import {
+  MONITOR_API_BASE,
+  MONITOR_REQUEST_TIMEOUT_MS,
+  MonitorClientError,
+  openSession,
+  readMonitorToken,
+  reportAuthLoss,
+  currentCsrf,
+  forgetCsrf,
+  usesMonitorSession,
+  type MonitorRequestOptions,
+} from './session';
 
-export const MONITOR_API_BASE = '/monitor/api/';
-export const MONITOR_REQUEST_TIMEOUT_MS = 10_000;
-const MONITOR_TOKEN_META = 'agboard-monitor-token';
-
-export interface MonitorRequestOptions {
-  signal?: AbortSignal;
-  timeoutMs?: number;
-}
+export {
+  MONITOR_API_BASE,
+  MONITOR_REQUEST_TIMEOUT_MS,
+  MonitorClientError,
+  onMonitorAuthLoss,
+  usesMonitorSession,
+  type MonitorAuthLoss,
+  type MonitorRequestOptions,
+  type MonitorSession,
+} from './session';
 
 interface ErrorBody {
   error?: { code?: string; message?: string; reason?: string };
-}
-
-export class MonitorClientError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code: string | null,
-    readonly reason: string | null = null,
-  ) {
-    super(message);
-    this.name = 'MonitorClientError';
-  }
 }
 
 const projectIdPattern = /^[0-9a-f]{32}$/;
@@ -75,6 +77,7 @@ async function readJson<T>(path: string, options: MonitorRequestOptions = {}): P
       response = await fetch(path, {
         headers: { Accept: 'application/json' },
         cache: 'no-store',
+        redirect: 'manual',
         signal: controller.signal,
       });
     } catch (cause) {
@@ -89,6 +92,11 @@ async function readJson<T>(path: string, options: MonitorRequestOptions = {}): P
       );
     }
 
+    if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+      if (usesMonitorSession()) reportAuthLoss('auth_redirect');
+      throw new MonitorClientError(`GET ${path} was redirected.`, 0, 'auth_redirect');
+    }
+
     if (!response.ok) {
       let body: ErrorBody = {};
       try {
@@ -97,6 +105,12 @@ async function readJson<T>(path: string, options: MonitorRequestOptions = {}): P
         // Error responses may not contain JSON.
       }
       const error = body.error;
+      if (usesMonitorSession()) {
+        if (response.status === 401 && error?.code === 'session_required')
+          reportAuthLoss('session_required');
+        else if (response.status === 403 && error?.code === 'forbidden')
+          reportAuthLoss('unavailable');
+      }
       throw new MonitorClientError(
         error?.message ?? `GET ${path} failed with status ${response.status}.`,
         response.status,
@@ -104,17 +118,18 @@ async function readJson<T>(path: string, options: MonitorRequestOptions = {}): P
         error?.reason ?? null,
       );
     }
-    return (await response.json()) as T;
+    try {
+      return (await response.json()) as T;
+    } catch (cause) {
+      // A 200 that is not JSON is the Edge's sign-in page, not monitor data.
+      if (!usesMonitorSession()) throw cause;
+      reportAuthLoss('auth_redirect');
+      throw new MonitorClientError(`GET ${path} did not return JSON.`, 200, 'auth_redirect');
+    }
   } finally {
     clearTimeout(timeout);
     externalSignal?.removeEventListener('abort', abortFromCaller);
   }
-}
-
-function readMonitorToken(): string {
-  return (
-    document.querySelector<HTMLMetaElement>(`meta[name="${MONITOR_TOKEN_META}"]`)?.content ?? ''
-  );
 }
 
 async function answerRequest(
@@ -124,6 +139,20 @@ async function answerRequest(
   options: MonitorRequestOptions = {},
 ): Promise<AnswerResult> {
   const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/answer`;
+  const session = usesMonitorSession();
+  if (session && currentCsrf() === null) {
+    try {
+      await openSession(options);
+    } catch (cause) {
+      if (cause instanceof MonitorClientError)
+        throw writeFailure(
+          'The monitor answer request failed.',
+          cause.status,
+          cause.code === 'auth_redirect' ? 'session_required' : cause.code,
+        );
+      throw cause;
+    }
+  }
   const controller = new AbortController();
   const externalSignal = options.signal;
   if (externalSignal?.aborted)
@@ -144,10 +173,13 @@ async function answerRequest(
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          'X-Agboard-Token': readMonitorToken(),
+          ...(session
+            ? { 'X-Agboard-Csrf': currentCsrf() ?? '' }
+            : { 'X-Agboard-Token': readMonitorToken() }),
           'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
         },
         cache: 'no-store',
+        redirect: 'manual',
         body: JSON.stringify(input),
         signal: controller.signal,
       });
@@ -160,6 +192,10 @@ async function answerRequest(
       );
     }
 
+    if (session && (response.type === 'opaqueredirect' || response.status === 401)) {
+      reportAuthLoss(response.status === 401 ? 'session_required' : 'auth_redirect');
+      throw writeFailure('The monitor answer request failed.', response.status, 'session_required');
+    }
     let body: {
       task?: Task & { epicId?: string | null };
       changed?: boolean;
@@ -171,6 +207,8 @@ async function answerRequest(
       // Error responses may not contain JSON.
     }
     if (!response.ok || body.task === undefined) {
+      // A refused write may mean the CSRF token is stale; fetch a new one before the next try.
+      if (session && response.status === 403) forgetCsrf();
       throw writeFailure(
         body.error?.reason ?? `The monitor answer request failed (${response.status}).`,
         response.status,
@@ -188,6 +226,7 @@ async function answerRequest(
 
 export const monitorClient = {
   answerRequest,
+  openSession,
   fetchCatalog(options?: MonitorRequestOptions): Promise<ProjectList> {
     return readJson(`${MONITOR_API_BASE}projects`, options);
   },

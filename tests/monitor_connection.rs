@@ -8,34 +8,20 @@
 mod support;
 
 use std::path::Path;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread::JoinHandle;
+use std::sync::atomic::Ordering;
+use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
 use agent_board::cli::args::{
     Command as CliCommand, NgrokRequest, Parsed, parse, validate_monitor_args,
 };
-use agent_board::error::AgboardError;
+use agent_board::server::MonitorReady;
 use agent_board::server::monitor_connection::config::ConfigStore;
-use agent_board::server::monitor_connection::contracts::{
-    ConnectionConfig, OauthApp, PublicOrigin,
-};
-use agent_board::server::monitor_connection::keychain::{TokenVault, VaultError};
-use agent_board::server::monitor_connection::lifecycle::{
-    Connector, FailureCode, MonitorEnv, OpenFailure, OpenFuture, OpenRequest, OpenedTunnel,
-    Overrides, Secret,
-};
-use agent_board::server::{
-    MonitorOptions, MonitorReady, RemoteServeConfig, ServeConfig, run_until_with_monitor,
-};
+use agent_board::server::monitor_connection::contracts::{ConnectionConfig, OauthApp};
+use agent_board::server::monitor_connection::lifecycle::Overrides;
 use assert_cmd::Command;
 use serde_json::{Value, json};
-use support::{ORIGIN, home, token};
-
-const TOKEN: &str = "tok-SECRET-0123456789";
-const PUBLIC: &str = "https://fake-abc.ngrok.app";
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use support::{ORIGIN, home};
 
 // ------------------------------------------------------------- command line
 
@@ -245,326 +231,9 @@ fn a_valid_ngrok_command_line_is_accepted_and_normalized() {
     assert_eq!(validate_monitor_args(args, &env).unwrap(), None);
 }
 
-// ------------------------------------------------------------- the harness
-
-struct Call {
-    token: String,
-    policy: String,
-    backend: String,
-}
-
-#[derive(Default)]
-struct Fake {
-    calls: Mutex<Vec<Call>>,
-    opens: AtomicUsize,
-    fail: Mutex<bool>,
-    /// When set, `open` waits for a message before it answers.
-    hold: Mutex<Option<mpsc::Receiver<()>>>,
-}
-
-impl Connector for Fake {
-    fn open(&self, request: OpenRequest) -> OpenFuture {
-        self.opens.fetch_add(1, Ordering::SeqCst);
-        self.calls.lock().unwrap().push(Call {
-            token: request.token.expose().to_string(),
-            policy: request.policy.expose().to_string(),
-            backend: request.backend.to_string(),
-        });
-        let fail = *self.fail.lock().unwrap();
-        let hold = self.hold.lock().unwrap().take();
-        Box::pin(async move {
-            if let Some(rx) = hold {
-                tokio::task::spawn_blocking(move || {
-                    let _ = rx.recv_timeout(Duration::from_secs(20));
-                })
-                .await
-                .unwrap();
-            }
-            if fail {
-                return Err(OpenFailure {
-                    code: FailureCode::ConnectFailed,
-                });
-            }
-            Ok(OpenedTunnel {
-                public: PublicOrigin::parse(PUBLIC).unwrap(),
-                keep_alive: Box::new(()),
-            })
-        })
-    }
-}
-
-struct Reply {
-    status: u16,
-    body: String,
-}
-
-impl Reply {
-    fn json(&self) -> Value {
-        serde_json::from_str(&self.body).unwrap_or(Value::Null)
-    }
-}
-
-fn request(
-    addr: std::net::SocketAddr,
-    method: &str,
-    path: &str,
-    headers: &[(&str, &str)],
-    body: &str,
-) -> Reply {
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        .http_status_as_error(false)
-        .timeout_global(Some(Duration::from_secs(5)))
-        .build()
-        .into();
-    let mut req = ureq::http::Request::builder()
-        .method(method)
-        .uri(format!("http://{addr}{path}"));
-    for (k, v) in headers {
-        req = req.header(*k, *v);
-    }
-    let mut response = agent.run(req.body(body.to_owned()).unwrap()).unwrap();
-    let status = response.status().as_u16();
-    let body = response.body_mut().read_to_string().unwrap_or_default();
-    Reply { status, body }
-}
-
-struct Server {
-    local: std::net::SocketAddr,
-    remote: Option<std::net::SocketAddr>,
-    token: String,
-    fake: Arc<Fake>,
-    ready: Option<MonitorReady>,
-    stop: Option<tokio::sync::oneshot::Sender<()>>,
-    handle: Option<JoinHandle<Result<(), AgboardError>>>,
-}
-
-/// A keychain in memory: saved tokens, a switch to make it unusable, and a count
-/// of reads so a test can show the keychain was left alone.
-struct FakeVault {
-    saved: Mutex<Option<String>>,
-    usable: bool,
-    loads: AtomicUsize,
-}
-
-impl FakeVault {
-    fn new(saved: Option<&str>, usable: bool) -> Arc<Self> {
-        Arc::new(Self {
-            saved: Mutex::new(saved.map(str::to_owned)),
-            usable,
-            loads: AtomicUsize::new(0),
-        })
-    }
-    fn saved(&self) -> Option<String> {
-        self.saved.lock().unwrap().clone()
-    }
-}
-
-impl TokenVault for FakeVault {
-    fn available(&self) -> bool {
-        self.usable
-    }
-    fn load(&self) -> Result<Option<Secret>, VaultError> {
-        self.loads.fetch_add(1, Ordering::SeqCst);
-        if !self.usable {
-            return Err(VaultError::Unavailable);
-        }
-        Ok(self.saved().map(Secret::new))
-    }
-    fn save(&self, token: &Secret) -> Result<(), VaultError> {
-        if !self.usable {
-            return Err(VaultError::Unavailable);
-        }
-        *self.saved.lock().unwrap() = Some(token.expose().to_owned());
-        Ok(())
-    }
-    fn delete(&self) -> Result<(), VaultError> {
-        if !self.usable {
-            return Err(VaultError::Unavailable);
-        }
-        *self.saved.lock().unwrap() = None;
-        Ok(())
-    }
-}
-
-struct Opts {
-    vault: Arc<FakeVault>,
-    remote: bool,
-    env_token: bool,
-    explicit: Option<Overrides>,
-    fake: Arc<Fake>,
-}
-
-impl Default for Opts {
-    fn default() -> Self {
-        Self {
-            vault: FakeVault::new(None, true),
-            remote: false,
-            env_token: false,
-            explicit: None,
-            fake: Arc::new(Fake::default()),
-        }
-    }
-}
-
-impl Server {
-    fn try_start(home: &Path, opts: Opts) -> Result<Self, AgboardError> {
-        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        // SAFETY: startup holds ENV_LOCK and the path is read once at startup.
-        unsafe { std::env::set_var("AGBOARD_HOME", home) };
-        let (tx, rx) = mpsc::channel();
-        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
-        let monitor = MonitorOptions {
-            env: MonitorEnv {
-                token: opts.env_token.then(|| Secret::new(TOKEN)),
-                google: None,
-            },
-            explicit: opts.explicit,
-            connector: opts.fake.clone(),
-            vault: opts.vault.clone(),
-        };
-        let remote = opts.remote.then(|| RemoteServeConfig {
-            port: 0,
-            origins: vec![ORIGIN.into()],
-        });
-        let handle = std::thread::spawn(move || {
-            run_until_with_monitor(
-                ServeConfig { port: 0 },
-                remote,
-                monitor,
-                async move {
-                    let _ = stop_rx.await;
-                },
-                move |local, remote, ready| {
-                    let _ = tx.send((local, remote, ready));
-                },
-            )
-        });
-        let got = rx.recv_timeout(Duration::from_secs(15));
-        // SAFETY: same lock; the server has captured the path.
-        unsafe { std::env::remove_var("AGBOARD_HOME") };
-        match got {
-            Ok((local, remote, ready)) => {
-                let page = request(local, "GET", "/", &[], "").body;
-                Ok(Self {
-                    local,
-                    remote,
-                    token: token(&page),
-                    fake: opts.fake,
-                    ready,
-                    stop: Some(stop_tx),
-                    handle: Some(handle),
-                })
-            }
-            Err(_) => {
-                let _ = stop_tx.send(());
-                handle
-                    .join()
-                    .unwrap()
-                    .map(|()| unreachable!("server never became ready"))
-            }
-        }
-    }
-
-    fn start(home: &Path, opts: Opts) -> Self {
-        Self::try_start(home, opts).unwrap_or_else(|e| panic!("did not start: {e}"))
-    }
-
-    /// A write that passes the page guard.
-    fn write(&self, method: &str, path: &str, body: &Value) -> Reply {
-        let origin = format!("http://127.0.0.1:{}", self.local.port());
-        request(
-            self.local,
-            method,
-            path,
-            &[
-                ("Origin", &origin),
-                ("Sec-Fetch-Site", "same-origin"),
-                ("X-Agboard-Token", &self.token),
-                ("Content-Type", "application/json"),
-            ],
-            &body.to_string(),
-        )
-    }
-
-    fn get(&self) -> Value {
-        let r = request(self.local, "GET", "/api/monitor-connections", &[], "");
-        assert_eq!(r.status, 200, "{}", r.body);
-        r.json()
-    }
-
-    fn put(&self, enabled: bool, emails: &[&str], revision: u64) -> Reply {
-        self.write(
-            "PUT",
-            "/api/monitor-connections/settings/ngrok",
-            &json!({"enabled": enabled, "allowEmails": emails, "domain": null, "oauthApp": "managed", "revision": revision}),
-        )
-    }
-
-    fn start_ngrok(&self, body: Value) -> Reply {
-        self.write(
-            "POST",
-            "/api/monitor-connections/transports/ngrok/start",
-            &body,
-        )
-    }
-
-    fn stop_ngrok(&self) -> Reply {
-        self.write(
-            "POST",
-            "/api/monitor-connections/transports/ngrok/stop",
-            &json!({}),
-        )
-    }
-
-    fn wait_status(&self, want: &str) -> Value {
-        let end = Instant::now() + Duration::from_secs(10);
-        loop {
-            let v = self.get();
-            if v["status"] == want {
-                return v;
-            }
-            assert!(
-                Instant::now() < end,
-                "status stayed {} (wanted {want})",
-                v["status"]
-            );
-            std::thread::sleep(Duration::from_millis(20));
-        }
-    }
-}
-
-impl Drop for Server {
-    fn drop(&mut self) {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
-        if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
-        }
-    }
-}
-
-fn backend_addr(call: &Call) -> std::net::SocketAddr {
-    call.backend
-        .trim_start_matches("http://")
-        .trim_end_matches('/')
-        .parse()
-        .unwrap()
-}
-
-fn all_files_text(dir: &Path) -> String {
-    let mut out = String::new();
-    for entry in std::fs::read_dir(dir).unwrap() {
-        let path = entry.unwrap().path();
-        if path.is_dir() {
-            out.push_str(&all_files_text(&path));
-        } else if let Ok(bytes) = std::fs::read(&path) {
-            out.push_str(&String::from_utf8_lossy(&bytes));
-        }
-        out.push_str(&path.to_string_lossy());
-    }
-    out
-}
+#[path = "support/ngrok_harness.rs"]
+mod harness;
+use harness::*;
 
 // ------------------------------------------------------------- the local API
 
@@ -716,7 +385,7 @@ fn a_failed_save_changes_nothing_and_starts_nothing() {
 // ------------------------------------------------------- start, stop, secrets
 
 #[test]
-fn start_keeps_the_token_in_memory_and_serves_nothing_on_the_backend() {
+fn start_keeps_the_token_in_memory_and_guards_the_backend() {
     let home = home();
     let s = Server::start(home.path(), Opts::default());
     // no token held and none given
@@ -755,32 +424,28 @@ fn start_keeps_the_token_in_memory_and_serves_nothing_on_the_backend() {
     let ready = s.wait_status("ready");
     assert_eq!(ready["url"], PUBLIC);
 
-    // Even the right Host and the real proof are not admitted: the external
-    // session layer does not exist yet.
+    // With the right Host and the real proof the entrance admits only the
+    // monitor's own routes; everything else is unknown to it. Sessions, CSRF
+    // and the rest are covered in monitor_ngrok.rs.
     let proof = serde_json::from_str::<Value>(&policy).unwrap()["on_http_request"][3]["actions"][0]
         ["config"]["headers"]["x-agboard-tunnel-proof"]
         .as_str()
         .unwrap()
         .to_string();
     let host = PUBLIC.trim_start_matches("https://");
+    let admitted = [("Host", host), ("x-agboard-tunnel-proof", proof.as_str())];
+    for (path, want) in [
+        ("/monitor/", 200),
+        ("/monitor/api/session", 200),
+        ("/", 404),
+        ("/api/projects", 404),
+        ("/api/monitor-connections", 404),
+    ] {
+        let r = request(backend, "GET", path, &admitted, "");
+        assert_eq!(r.status, want, "{path}");
+        assert!(!r.body.contains(&proof));
+    }
     for (path, headers) in [
-        ("/", vec![]),
-        (
-            "/monitor/",
-            vec![("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
-        ),
-        (
-            "/monitor/api/session",
-            vec![("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
-        ),
-        (
-            "/api/projects",
-            vec![("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
-        ),
-        (
-            "/api/monitor-connections",
-            vec![("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
-        ),
         ("/", vec![("Host", host)]),
         (
             "/",
@@ -790,7 +455,7 @@ fn start_keeps_the_token_in_memory_and_serves_nothing_on_the_backend() {
             ],
         ),
         (
-            "/",
+            "/monitor/",
             vec![
                 ("x-agboard-tunnel-proof", "forged"),
                 ("ngrok-auth-user-email", "me@example.com"),
@@ -799,18 +464,10 @@ fn start_keeps_the_token_in_memory_and_serves_nothing_on_the_backend() {
     ] {
         let r = request(backend, "GET", path, &headers, "");
         assert_eq!(r.status, 403, "{path} {headers:?}");
-        assert!(!r.body.contains(&proof));
     }
     assert_eq!(
-        request(
-            backend,
-            "POST",
-            "/monitor/api/answer",
-            &[("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
-            "{}"
-        )
-        .status,
-        403
+        request(backend, "POST", "/monitor/api/answer", &admitted, "{}").status,
+        401
     );
 
     // The token is nowhere on disk and not in any API answer.

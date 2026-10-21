@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { monitorReadResolvers } from './client';
 import type { MonitorViewProps } from './contracts';
 import { MonitorView } from './View';
@@ -9,6 +10,8 @@ import { useMonitorUrl } from './hooks/useMonitorUrl';
 import { selectMonitorTasks } from './model/select';
 import { useMonitorInteractions } from './hooks/useMonitorInteractions';
 import { monitorClient } from './client';
+import { ConnectionStateView } from './connection/ConnectionStateView';
+import { useMonitorConnection } from './hooks/useMonitorConnection';
 
 /** A hook that reloads the page for a newer build (`served`), unless the page is `busy`. The entry supplies it. */
 export type BuildReloadHook = (served: string | null, busy: boolean) => void;
@@ -25,9 +28,37 @@ function MonitorFixtureApp() {
   return <MonitorView {...createMonitorFixtureProps()} />;
 }
 
+/**
+ * Confirms the phone's access before the monitor reads anything. While the session is missing,
+ * expired or stopped, no list, event stream or answer runs and no board data is shown.
+ */
 function MonitorConnectedApp({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
+  const { t } = useTranslation();
+  const connection = useMonitorConnection();
+  const { state } = connection;
+  if (state.status === 'checking') return null;
+  if (state.status === 'reconnecting')
+    return <ConnectionStateView status="reconnecting" onConnect={connection.connect} />;
+  if (state.status === 'needs_google') {
+    const error =
+      state.failure === null ? null : t(`monitorConnection.phone.failure.${state.failure}`);
+    return (
+      <ConnectionStateView
+        status="needs_google"
+        error={error}
+        saving={connection.opening}
+        onConnect={connection.connect}
+      />
+    );
+  }
+  return <MonitorReadyApp useBuildReload={useBuildReload} />;
+}
+
+function MonitorReadyApp({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
   const monitor = useMonitor();
-  const answers = useMonitorInteractions({ writeAnswer: monitorClient.answerRequest });
+  const answers = useMonitorInteractions({
+    writeAnswer: monitorClient.answerRequest,
+  });
   const refresh = useCallback(() => monitor.refresh(), [monitor.refresh]);
   const events = useMonitorEvents({
     onRefresh: refresh,

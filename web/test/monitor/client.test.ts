@@ -134,3 +134,58 @@ describe('monitor answer client', () => {
     ).rejects.toMatchObject({ status: 403, code: 'page_out_of_date' });
   });
 });
+
+describe('monitor session client', () => {
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  it('sends the CSRF token, not a monitor token, once the page has no token', async () => {
+    document.head.innerHTML = '<meta name="agboard-monitor-token" content="">';
+    const task = { id: 7, title: 'Decision', pendingRequestId: null };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) =>
+      String(input).endsWith('/session')
+        ? json({ csrfToken: 'csrf-1', expiresAt: 10, expiresInSeconds: 5 })
+        : json({ task, changed: true }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { monitorClient } = await import('../../src/pages/monitor/client');
+    await monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'r', choiceId: 'yes' });
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+      '/monitor/api/session',
+      `/monitor/api/projects/${PROJECT_ID}/tasks/7/answer`,
+    ]);
+    const headers = fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>;
+    expect(headers['X-Agboard-Csrf']).toBe('csrf-1');
+    expect(headers).not.toHaveProperty('X-Agboard-Token');
+  });
+
+  it('reports a session_required read and a sign-in page as a lost connection', async () => {
+    document.head.innerHTML = '<meta name="agboard-monitor-token" content="">';
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ error: { code: 'session_required' } }, 401))
+      .mockResolvedValueOnce(new Response('<html>Sign in</html>', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { monitorClient, onMonitorAuthLoss } = await import('../../src/pages/monitor/client');
+    const seen: string[] = [];
+    const off = onMonitorAuthLoss((loss) => seen.push(loss));
+    await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({ code: 'session_required' });
+    await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({ code: 'auth_redirect' });
+    off();
+    expect(seen).toEqual(['session_required', 'auth_redirect']);
+  });
+
+  it('does not report a lost connection for a page that has a token', async () => {
+    document.head.innerHTML = '<meta name="agboard-monitor-token" content="t">';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json({ error: { code: 'session_required' } }, 401)),
+    );
+    const { monitorClient, onMonitorAuthLoss } = await import('../../src/pages/monitor/client');
+    const listener = vi.fn();
+    const off = onMonitorAuthLoss(listener);
+    await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({ status: 401 });
+    off();
+    expect(listener).not.toHaveBeenCalled();
+  });
+});
