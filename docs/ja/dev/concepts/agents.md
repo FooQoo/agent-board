@@ -21,6 +21,8 @@
 
 進行表は、Pending以外のTodoとDoingのタスクを、エピックごとに`priority`の順で並べた一覧です。各タスクのID・タイトル・担当・状態・受入条件の件数と、`EPIC.md`と`TASK.md`のパスを含み、本文や履歴は含みません。優先するタスクがPendingでも、後続のタスクは進められます。回答を受け取り、まだ完了していないタスクは一覧に戻ります。
 
+`src/progress.rs`は、`Include`に応じて任意の`pending`節と`done`節を作ります。`agboard progress`と`agboard hook`が`--include-pending`と`--include-done`から`Include`を作ります。既定の`Include`は何も追加しないため、既定の表は変わりません。オプションは[エピックと進行表](../../guide/use/epics.md#進行表を読む)を参照してください。
+
 Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐付け済みの祖先からプロジェクトを識別します。セッションIDは使わず、紐付けがないときに全プロジェクトを選ぶこともありません。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`folder_unbound`などの`AGBOARD_ERROR`を返します。
 
 - **Claude Code。** `integrations/claude-code/`のテンプレートが、プロジェクト名を固定せずに`agboard hook`をPostToolUseに、失敗の後はPostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。スキルは最初の読み込み時にスナップショットを読み、コンテキスト圧縮後（SessionStartの`compact`）か次のツールの完了時に一覧を取り直します。

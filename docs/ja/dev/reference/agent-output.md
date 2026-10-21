@@ -37,7 +37,8 @@
 }
 ```
 
-- Pending以外のTodoとDoingのタスクだけが載ります。タスクはエピックごとに`priority`の順で並び、エピックのないタスクは`unassigned`に入ります。
+- `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちのTodo・Doingのタスクを ID順に並べ、それぞれに200文字までの`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象は未着手または進行中のタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
+- 既定では、Pending以外のTodoとDoingのタスクだけが載ります。タスクはエピックごとに`priority`の順で並び、エピックのないタスクは`unassigned`に入ります。
 - 本文も履歴もありません。エージェントは、必要な`documentPath`と`taskPath`のファイルを読みます。
 - `cursor`は`wait --after`に渡す値です。
 - パスはローカルのCLIとHookの出力にだけ現れ、リモート向けのJSONには出ません。

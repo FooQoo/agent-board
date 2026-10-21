@@ -96,9 +96,16 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             args::AgentArg::Codex => "codex",
         };
         let mut stdin = std::io::stdin().lock();
-        if let Some(output) =
-            crate::agent::hook::run(agent, &mut stdin, &env.shared_dir, cli.project())
-        {
+        if let Some(output) = crate::agent::hook::run_with(
+            agent,
+            &mut stdin,
+            &env.shared_dir,
+            cli.project(),
+            crate::progress::Include {
+                pending: args.progress.include_pending,
+                done: args.progress.include_done,
+            },
+        ) {
             write_text(env.stdout, &output);
         }
         return 0;
@@ -212,7 +219,7 @@ fn access(command: &Command) -> Access {
         | Command::State(_)
         | Command::History(_)
         | Command::Rm(_) => Access::ChangeProject,
-        Command::Progress => Access::ReadBoundProject,
+        Command::Progress(_) => Access::ReadBoundProject,
         Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Wait(_) => {
             Access::Catalog
         }
@@ -275,7 +282,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Show(args) => commands::show::run(ctx, args),
         Command::Snapshot(_) => commands::snapshot::run(ctx),
         Command::Workspace(_) => commands::workspace::run(ctx),
-        Command::Progress => commands::progress::run(ctx),
+        Command::Progress(args) => commands::progress::run(ctx, args),
         Command::Hook(_) | Command::Wait(_) | Command::Serve(_) | Command::Setup(_) => {
             unreachable!("serve, setup, and the agent commands are handled before store setup")
         }

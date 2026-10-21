@@ -74,6 +74,16 @@ agboard --project "My project" progress --json
 
 各項目には、タスクID、タイトル、担当、列、エージェントの状態、受入条件の件数、`TASK.md`のパスが並びます。エピックの項目には`EPIC.md`のパス（JSONでは`documentPath`）も含みます。本文・履歴・画像は含まれず、エージェントは選んだ作業に必要なファイルだけを読みます。Hookは、エージェントにこの同じ表を渡します。
 
+既定では、判断待ちのタスクと完了したタスクは表に含まれません。全体を見たいときは、次のように追加します。
+
+```sh
+agboard progress --include-pending --include-done 5
+```
+
+- `--include-pending`は「Waiting for a decision」の節を追加します。各タスクに質問の冒頭が付きます（JSONでは`question`）。
+- `--include-done COUNT`は「Recently done」の節を追加し、直近に完了したタスクを新しい順に出します。対象は、未着手または進行中のタスクがまだあるエピックのタスクだけです。完了済みのエピックやエピックのないタスクは含みません。アーカイブ済みのタスクも含みません。
+- 指定しなければ、出力はこれまでと同じです。エージェントにこれらの節を渡すには、Hookのコマンドに同じオプションを付けます（例: `agboard hook --agent claude --include-pending --include-done 5`）。
+
 エピックはIDの昇順に並びます。エピック内のタスクの順序は`priority`で決まり、記載のないタスクはIDの昇順で後に続きます。エピックのない作業もIDで並べます。表に載るタスクのないエピックは含まれません。
 
 ## 次に読む
