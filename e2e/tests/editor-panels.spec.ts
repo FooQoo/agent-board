@@ -1,10 +1,14 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import { agboardOk, mainProject, nextTaskId, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { openManualCreateDialog, waitForSync } from '../helpers/ui';
 
 const conditions = Array.from({ length: 40 }, (_, i) => `- [ ] Condition ${i + 1}`).join('\n');
 const body = `# 進行表と自動完了によるAIの操作削減\n\n## 目的・背景\n\nAIがプロジェクト全体の進行表から作業を選び、必要なエピック計画と作業記録だけを読んで進める。完了更新とプロジェクト指定の操作を減らす。\n\n## スコープ\n\n進行表、プロジェクトとフォルダの登録、エピックの進行順、Hook、自動Doneを扱う。\n\n### プロジェクトの識別\n\nフォルダの登録では \`agboard project bind NAME\` を使い、最も近い祖先の登録を参照する。\n\n${'More body text.\n\n'.repeat(60)}\n\n## Reference conditions\n\n${conditions}`;
+
+test.beforeEach(() => resetPreferences());
+test.afterEach(() => resetPreferences());
 
 for (const mode of ['light', 'dark'] as const) {
   for (const locale of ['en', 'ja'] as const) {
@@ -17,10 +21,7 @@ for (const mode of ['light', 'dark'] as const) {
         agboardOk(mainProject, ['add', `Work item ${i}`, '--assignee', 'human', '--actor', 'human', '--epic', 'PANELS', '--desc', '---\nacceptance:\n  - id: AC-1\n    text: First check\n    done: true\n  - id: AC-2\n    text: Second check\n    done: false\n---\n\nTask body.']);
       }
       await page.setViewportSize({ width: locale === 'ja' ? 1600 : 1024, height: locale === 'ja' ? 1100 : 900 });
-      await page.addInitScript(({ mode, locale }) => {
-        localStorage.setItem('agboard.locale', locale);
-        localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' }));
-      }, { mode, locale });
+      await setPreferences({ locale, theme: { mode, accent: 'blue' } });
       await page.goto(`/?project=${projectId(mainProject)}`);
       await waitForSync(page);
       await page.locator('[data-epic-label="PANELS"]').first().click();

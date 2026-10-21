@@ -5,12 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect } from '@playwright/test';
+import { setPreferences } from '../helpers/preferences.mjs';
 
 // Records the English and Japanese demo videos from the real UI.
 // Build web/ and the CLI first. Needs ffmpeg and ffprobe. Only disposable data is used.
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const binary = process.env.AGBOARD_E2E_BINARY ?? path.join(repo, 'target/debug/agboard');
-const output = path.join(repo, 'docs/public/videos');
+// AGBOARD_MEDIA_OUT points the videos at another folder, so a check run does not touch the repository's files.
+const output = process.env.AGBOARD_MEDIA_OUT ? path.resolve(process.env.AGBOARD_MEDIA_OUT, 'videos') : path.join(repo, 'docs/public/videos');
 const project = 'release-demo';
 const heroId = 3;
 const maxBytes = 6 * 1024 * 1024;
@@ -182,10 +184,8 @@ async function record(browser, locale, tmp) {
     context = await browser.newContext({
       viewport: size, timezoneId: 'UTC', recordVideo: { dir: videoDir, size },
     });
-    await context.addInitScript((lang) => {
-      localStorage.setItem('agboard.locale', lang);
-      localStorage.setItem('agboard.theme', JSON.stringify({ mode: 'light', accent: 'blue' }));
-    }, locale);
+    // The language and theme are saved on the board, as the settings screen does.
+    await setPreferences(origin, { locale, theme: { mode: 'light', accent: 'blue' } });
     const created = Date.now();
     const page = await context.newPage();
     const errors = [];

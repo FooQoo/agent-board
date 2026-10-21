@@ -2,10 +2,12 @@ import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium, expect } from '@playwright/test';
+import { setPreferences } from '../helpers/preferences.mjs';
 import { cli, copy, project, repo, seed, settle, startServer, stop } from './lib/sample-board.mjs';
 
 // Build web/ and the CLI first. Only disposable sample data is used.
-const output = path.join(repo, 'docs/images');
+// AGBOARD_MEDIA_OUT points the images at another folder, so a check run does not touch the repository's files.
+const output = process.env.AGBOARD_MEDIA_OUT ? path.resolve(process.env.AGBOARD_MEDIA_OUT, 'readme') : path.join(repo, 'docs/images');
 mkdirSync(output, { recursive: true });
 
 const browser = await chromium.launch();
@@ -26,10 +28,8 @@ try {
       expect(progress.epics.find((epic) => epic.id === 'LAUNCH').tasks.map((task) => task.id))
         .toEqual([4, 7, 5]);
       context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, timezoneId: 'UTC' });
-      await context.addInitScript((lang) => {
-        localStorage.setItem('agboard.locale', lang);
-        localStorage.setItem('agboard.theme', JSON.stringify({ mode: 'light', accent: 'blue' }));
-      }, locale);
+      // The language and theme are saved on the board, as the settings screen does.
+      await setPreferences(origin, { locale, theme: { mode: 'light', accent: 'blue' } });
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));

@@ -1,14 +1,18 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { resetBoard, agboardOk, mainProject, projectId } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 
 // Headless Chromium hides scrollbars by default; the scroll cue needs the real ones.
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 
 const STORAGE_KEY = 'agboard.detailWidth';
 
-test.beforeEach(() => {
+test.beforeEach(async () => {
   resetBoard(mainProject);
+  await resetPreferences();
 });
+
+test.afterEach(() => resetPreferences());
 
 async function open(page: Page, width: number, height = 900): Promise<void> {
   await page.setViewportSize({ width, height });
@@ -69,10 +73,10 @@ function fillDone(extra = 14): void {
 for (const locale of ['en', 'ja']) {
   for (const detailWidth of [280, 360, 560]) {
     test(`${locale}: tabs and draft actions fit a ${detailWidth}px detail column`, async ({ page }, testInfo) => {
-      await page.addInitScript(({ locale, detailWidth }) => {
-        localStorage.setItem('agboard.locale', locale);
+      await setPreferences({ locale: locale as 'en' | 'ja' });
+      await page.addInitScript((detailWidth) => {
         localStorage.setItem('agboard.detailWidth', String(detailWidth));
-      }, { locale, detailWidth });
+      }, detailWidth);
       await page.setViewportSize({ width: 1920, height: 900 });
       await page.goto(`/?project=${projectId(mainProject)}`);
       await task(page, 8).click();
