@@ -12,9 +12,11 @@ use tokio::task::AbortHandle;
 
 use super::config::{ConfigError, ConfigStore};
 use super::contracts::{ConnectionConfig, ConnectionStatus, ContractError, OauthApp};
+use super::router::{Gate, close_gate};
 pub use super::types::*;
 
 pub(super) struct Run {
+    pub(super) gate: Gate,
     pub(super) backend: AbortHandle,
     pub(super) opener: AbortHandle,
     pub(super) tunnel: Option<Box<dyn Any + Send>>,
@@ -22,6 +24,8 @@ pub(super) struct Run {
 
 impl Run {
     pub(super) fn close(self) {
+        // First, so nothing more is admitted and open streams end.
+        close_gate(&self.gate);
         self.opener.abort();
         self.backend.abort();
         drop(self.tunnel);
@@ -42,6 +46,8 @@ pub struct MonitorConnections {
     pub(super) store: ConfigStore,
     pub(super) connector: Arc<dyn Connector>,
     pub(super) google: Option<(Secret, Secret)>,
+    /// The server's state, given once it exists; the monitor routes read it.
+    pub(super) app: std::sync::OnceLock<std::sync::Weak<crate::server::AppState>>,
     pub(super) inner: Mutex<Inner>,
 }
 
@@ -65,6 +71,7 @@ impl MonitorConnections {
             store,
             connector,
             google: env.google,
+            app: std::sync::OnceLock::new(),
             inner: Mutex::new(Inner {
                 config,
                 status,
@@ -75,6 +82,11 @@ impl MonitorConnections {
                 run: None,
             }),
         })
+    }
+
+    /// Give the supervisor the server's state. Called once, before any start.
+    pub(crate) fn attach(&self, app: &Arc<crate::server::AppState>) {
+        let _ = self.app.set(Arc::downgrade(app));
     }
 
     pub(super) fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
