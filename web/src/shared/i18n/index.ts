@@ -52,12 +52,30 @@ export type LocaleSelectionResult =
   | { locale: Locale; persisted: true }
   | { locale: Locale; persisted: false; error: unknown };
 
+/** Shows a locale on the page now. Nothing is saved; see `selectLocale` and `cacheLocale`. */
+export function applyLocale(locale: Locale): void {
+  void i18n.changeLanguage(locale);
+  if (typeof document !== 'undefined') document.documentElement.lang = locale;
+}
+
+/** Writes the browser's copy of the locale, which the first paint uses. Returns false when the write fails. */
+export function cacheLocale(
+  locale: Locale,
+  storageProvider: LocaleStorageProvider = browserStorage,
+): boolean {
+  try {
+    storageProvider().setItem(LOCALE_STORAGE_KEY, locale);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function selectLocale(
   locale: Locale,
   storageProvider: LocaleStorageProvider = browserStorage,
 ): LocaleSelectionResult {
-  void i18n.changeLanguage(locale);
-  if (typeof document !== 'undefined') document.documentElement.lang = locale;
+  applyLocale(locale);
 
   try {
     storageProvider().setItem(LOCALE_STORAGE_KEY, locale);
