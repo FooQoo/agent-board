@@ -173,6 +173,7 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
                 "/api/monitor-connections/transports/ngrok/stop",
                 post(stop_ngrok),
             )
+            .route("/api/monitor-connections/token", delete(delete_saved_token))
             .route("/api/notify", post(notify))
             .route("/api/health", get(health));
     }

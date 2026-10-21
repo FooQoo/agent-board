@@ -18,7 +18,7 @@ use crate::server::AppState;
 use crate::server::guard::{header_text, origin_allowed};
 use crate::server::monitor_connection::contracts::{ContractError, OauthApp};
 use crate::server::monitor_connection::lifecycle::{
-    Secret, SettingsUpdate, Snapshot, StartError, UpdateError,
+    ForgetError, Secret, SettingsUpdate, Snapshot, StartError, UpdateError,
 };
 use crate::server::response::{error_response, forbidden, json_response};
 
@@ -106,6 +106,9 @@ pub(super) async fn put_ngrok_settings(
 struct StartBody {
     #[serde(default)]
     token: Option<String>,
+    /// Also keep the token in the OS keychain. Off unless asked for.
+    #[serde(default)]
+    save: bool,
 }
 
 pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
@@ -113,13 +116,20 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
         return invalid("request body is too large.");
     }
     let parsed = if body.is_empty() {
-        StartBody { token: None }
+        StartBody {
+            token: None,
+            save: false,
+        }
     } else {
         match serde_json::from_slice::<StartBody>(&body) {
             Ok(parsed) => parsed,
             Err(_) => return invalid("the request is malformed."),
         }
     };
+    if parsed.save && parsed.token.is_none() {
+        return invalid("save needs a token to save.");
+    }
+    let save = parsed.save;
     let token = match parsed.token {
         None => None,
         Some(token) => {
@@ -133,7 +143,7 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
             Some(Secret::new(token))
         }
     };
-    match state.monitor.start(token) {
+    match state.monitor.start(token, save) {
         Ok(snapshot) => snapshot_response(StatusCode::ACCEPTED, &snapshot),
         Err(StartError::TokenRequired) => error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -141,6 +151,7 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
             "an ngrok token is required.",
             "Enter the token to start the connection.",
         ),
+        Err(StartError::KeychainUnavailable) => keychain_unavailable(),
         Err(StartError::SettingsUnreadable) => error_response(
             StatusCode::CONFLICT,
             "settings_unreadable",
@@ -161,6 +172,23 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
             "Try again.",
         ),
     }
+}
+
+/// Remove the token saved in the OS keychain.
+pub(super) async fn delete_saved_token(State(state): State<Arc<AppState>>) -> Response {
+    match state.monitor.forget_token() {
+        Ok(snapshot) => snapshot_response(StatusCode::OK, &snapshot),
+        Err(ForgetError::KeychainUnavailable) => keychain_unavailable(),
+    }
+}
+
+fn keychain_unavailable() -> Response {
+    error_response(
+        StatusCode::CONFLICT,
+        "keychain_unavailable",
+        "the OS keychain is not available.",
+        "Enter the token each time instead; nothing was saved or changed.",
+    )
 }
 
 pub(super) async fn stop_ngrok(State(state): State<Arc<AppState>>) -> Response {

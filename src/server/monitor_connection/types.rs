@@ -13,6 +13,7 @@ use url::Url;
 use super::contracts::{
     ConnectionStatus, ContractError, EndpointError, OauthApp, PublicOrigin, open_endpoint,
 };
+use super::keychain::{NoKeychain, OsKeychain, TokenVault};
 
 /// A value that must never be printed.
 #[derive(Clone)]
@@ -153,15 +154,26 @@ pub struct MonitorOptions {
     pub explicit: Option<Overrides>,
     /// Opens the public endpoint. Tests replace it so nothing reaches the network.
     pub connector: Arc<dyn Connector>,
+    /// Where a saved token lives. Tests replace it so the real keychain is untouched.
+    pub vault: Arc<dyn TokenVault>,
 }
 
 impl MonitorOptions {
-    /// Real SDK connector and the given environment.
+    /// Real SDK connector, the OS keychain and the given environment.
     pub fn new(env: MonitorEnv, explicit: Option<Overrides>) -> Self {
         Self {
             env,
             explicit,
             connector: Arc::new(SdkConnector),
+            vault: Arc::new(OsKeychain),
+        }
+    }
+
+    /// Like [`MonitorOptions::new`] but with no keychain: nothing is read or saved.
+    pub fn without_keychain(env: MonitorEnv, explicit: Option<Overrides>) -> Self {
+        Self {
+            vault: Arc::new(NoKeychain),
+            ..Self::new(env, explicit)
         }
     }
 }
@@ -181,7 +193,25 @@ pub struct Snapshot {
     pub revision: u64,
     pub settings: Settings,
     pub token_configured: bool,
+    /// Which token a start would use; `None` when there is none. Never the value.
+    pub token_source: Option<TokenSource>,
+    /// Whether a token can be saved in the OS keychain here.
+    pub keychain_available: bool,
+    /// Whether a token is saved in the keychain (even if another one wins).
+    pub keychain_token_saved: bool,
     pub failure: Option<FailureCode>,
+}
+
+/// Where the token in use came from.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TokenSource {
+    /// `NGROK_AUTHTOKEN`.
+    Env,
+    /// The OS keychain.
+    Keychain,
+    /// Typed on the PC for this run only.
+    Session,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -218,6 +248,14 @@ pub enum StartError {
     SettingsUnreadable,
     /// The enabled setting could not be saved, so nothing was started.
     SaveFailed,
+    /// Saving the token was asked for but the keychain cannot take it; nothing was started.
+    KeychainUnavailable,
     Invalid(ContractError),
     Internal,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ForgetError {
+    /// The keychain is not usable, so the saved token cannot be removed.
+    KeychainUnavailable,
 }

@@ -21,6 +21,7 @@ use agent_board::server::monitor_connection::config::ConfigStore;
 use agent_board::server::monitor_connection::contracts::{
     ConnectionConfig, OauthApp, PublicOrigin,
 };
+use agent_board::server::monitor_connection::keychain::{TokenVault, VaultError};
 use agent_board::server::monitor_connection::lifecycle::{
     Connector, FailureCode, MonitorEnv, OpenFailure, OpenFuture, OpenRequest, OpenedTunnel,
     Overrides, Secret,
@@ -337,7 +338,56 @@ struct Server {
     handle: Option<JoinHandle<Result<(), AgboardError>>>,
 }
 
+/// A keychain in memory: saved tokens, a switch to make it unusable, and a count
+/// of reads so a test can show the keychain was left alone.
+struct FakeVault {
+    saved: Mutex<Option<String>>,
+    usable: bool,
+    loads: AtomicUsize,
+}
+
+impl FakeVault {
+    fn new(saved: Option<&str>, usable: bool) -> Arc<Self> {
+        Arc::new(Self {
+            saved: Mutex::new(saved.map(str::to_owned)),
+            usable,
+            loads: AtomicUsize::new(0),
+        })
+    }
+    fn saved(&self) -> Option<String> {
+        self.saved.lock().unwrap().clone()
+    }
+}
+
+impl TokenVault for FakeVault {
+    fn available(&self) -> bool {
+        self.usable
+    }
+    fn load(&self) -> Result<Option<Secret>, VaultError> {
+        self.loads.fetch_add(1, Ordering::SeqCst);
+        if !self.usable {
+            return Err(VaultError::Unavailable);
+        }
+        Ok(self.saved().map(Secret::new))
+    }
+    fn save(&self, token: &Secret) -> Result<(), VaultError> {
+        if !self.usable {
+            return Err(VaultError::Unavailable);
+        }
+        *self.saved.lock().unwrap() = Some(token.expose().to_owned());
+        Ok(())
+    }
+    fn delete(&self) -> Result<(), VaultError> {
+        if !self.usable {
+            return Err(VaultError::Unavailable);
+        }
+        *self.saved.lock().unwrap() = None;
+        Ok(())
+    }
+}
+
 struct Opts {
+    vault: Arc<FakeVault>,
     remote: bool,
     env_token: bool,
     explicit: Option<Overrides>,
@@ -347,6 +397,7 @@ struct Opts {
 impl Default for Opts {
     fn default() -> Self {
         Self {
+            vault: FakeVault::new(None, true),
             remote: false,
             env_token: false,
             explicit: None,
@@ -369,6 +420,7 @@ impl Server {
             },
             explicit: opts.explicit,
             connector: opts.fake.clone(),
+            vault: opts.vault.clone(),
         };
         let remote = opts.remote.then(|| RemoteServeConfig {
             port: 0,
@@ -527,15 +579,21 @@ fn get_returns_only_non_secret_state_and_only_to_the_local_page() {
         keys,
         [
             "failure",
+            "keychainAvailable",
+            "keychainTokenSaved",
             "revision",
             "settings",
             "status",
             "tokenConfigured",
+            "tokenSource",
             "url"
         ]
     );
     assert_eq!(v["status"], "disabled");
     assert_eq!(v["tokenConfigured"], false);
+    assert_eq!(v["tokenSource"], Value::Null);
+    assert_eq!(v["keychainAvailable"], true);
+    assert_eq!(v["keychainTokenSaved"], false);
     assert_eq!(v["settings"]["enabled"], false);
     let path = "/api/monitor-connections";
     assert_eq!(
@@ -620,7 +678,7 @@ fn settings_use_revisions_validate_input_and_are_saved_privately() {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mode = std::fs::metadata(home.path().join("monitor/config.json"))
+        let mode = std::fs::metadata(home.path().join(".internal/monitor-connection.json"))
             .unwrap()
             .permissions()
             .mode();
@@ -641,7 +699,7 @@ fn a_failed_save_changes_nothing_and_starts_nothing() {
         },
     );
     assert_eq!(s.put(false, &[], 0).status, 200);
-    let dir = home.path().join("monitor");
+    let dir = home.path().join(".internal");
     std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o500)).unwrap();
     let r = s.put(true, &["me@example.com"], 1);
     std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
@@ -898,8 +956,12 @@ fn a_saved_enabled_setting_is_restored_only_with_a_token() {
 #[test]
 fn an_unreadable_settings_file_keeps_the_pc_entrance_and_can_be_replaced() {
     let home = home();
-    std::fs::create_dir_all(home.path().join("monitor")).unwrap();
-    std::fs::write(home.path().join("monitor/config.json"), "{ not json").unwrap();
+    std::fs::create_dir_all(home.path().join(".internal")).unwrap();
+    std::fs::write(
+        home.path().join(".internal/monitor-connection.json"),
+        "{ not json",
+    )
+    .unwrap();
     let s = Server::start(
         home.path(),
         Opts {
@@ -1105,4 +1167,228 @@ fn the_remote_entrance_has_no_management_api() {
         assert!(matches!(r.status, 404 | 405), "{path} -> {}", r.status);
     }
     assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+}
+
+// ------------------------------------------------- internal area and keychain
+
+const SAVED: &str = "tok-KEYCHAIN-9876543210";
+
+#[test]
+fn allowed_emails_live_in_the_internal_area_and_no_settings_file_is_made() {
+    let home = home();
+    let s = Server::start(home.path(), Opts::default());
+    assert_eq!(s.put(true, &["me@example.com"], 0).status, 200);
+    let file = home.path().join(".internal/monitor-connection.json");
+    assert!(file.is_file());
+    assert!(!home.path().join("monitor").exists());
+    assert_eq!(
+        ConfigStore::new(home.path()).load().unwrap().allow_emails,
+        ["me@example.com"]
+    );
+    // the old location is not read: a file there changes nothing
+    drop(s);
+    let other = self::home();
+    std::fs::create_dir_all(other.path().join("monitor")).unwrap();
+    std::fs::write(
+        other.path().join("monitor/config.json"),
+        r#"{"formatVersion":1,"revision":5,"enabled":true,"allowEmails":["old@example.com"],"domain":null,"oauthApp":"managed"}"#,
+    )
+    .unwrap();
+    let s = Server::start(other.path(), Opts::default());
+    assert_eq!(s.get()["revision"], 0);
+    assert_eq!(s.get()["settings"]["allowEmails"], json!([]));
+}
+
+#[test]
+fn a_token_is_saved_to_the_keychain_only_when_asked() {
+    let home = home();
+    let vault = FakeVault::new(None, true);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(true, &["me@example.com"], 0).status, 200);
+    // default: not saved
+    assert_eq!(s.start_ngrok(json!({"token": TOKEN})).status, 202);
+    assert_eq!(vault.saved(), None);
+    let v = s.wait_status("ready");
+    assert_eq!(v["tokenSource"], "session");
+    assert_eq!(v["keychainTokenSaved"], false);
+    assert_eq!(s.stop_ngrok().status, 200);
+    // save: true stores it and reports the keychain as the source
+    let r = s.start_ngrok(json!({"token": TOKEN, "save": true}));
+    assert_eq!(r.status, 202, "{}", r.body);
+    assert_eq!(vault.saved().as_deref(), Some(TOKEN));
+    assert_eq!(r.json()["tokenSource"], "keychain");
+    assert_eq!(r.json()["keychainTokenSaved"], true);
+    assert!(!r.body.contains(TOKEN));
+    s.wait_status("ready");
+    // never on disk, in GET or in PUT
+    assert!(!all_files_text(home.path()).contains(TOKEN));
+    assert!(!s.get().to_string().contains(TOKEN));
+    assert!(!s.put(true, &["me@example.com"], 2).body.contains(TOKEN));
+    // save without a token is a bad request
+    assert_eq!(s.start_ngrok(json!({"save": true})).status, 422);
+}
+
+#[test]
+fn a_saved_token_is_found_at_the_next_run_and_the_environment_wins() {
+    // keychain only
+    let home1 = home();
+    let vault = FakeVault::new(Some(SAVED), true);
+    let s = Server::start(
+        home1.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    let v = s.get();
+    assert_eq!(v["tokenConfigured"], true);
+    assert_eq!(v["tokenSource"], "keychain");
+    assert_eq!(v["keychainTokenSaved"], true);
+    assert_eq!(s.put(false, &["me@example.com"], 0).status, 200);
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    s.wait_status("ready");
+    assert_eq!(s.fake.calls.lock().unwrap()[0].token, SAVED);
+    drop(s);
+    // environment and keychain both: the environment is used
+    let home2 = home();
+    let s = Server::start(
+        home2.path(),
+        Opts {
+            vault: FakeVault::new(Some(SAVED), true),
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    let v = s.get();
+    assert_eq!(v["tokenSource"], "env");
+    assert_eq!(v["keychainTokenSaved"], true);
+    assert_eq!(s.put(false, &["me@example.com"], 0).status, 200);
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    s.wait_status("ready");
+    assert_eq!(s.fake.calls.lock().unwrap()[0].token, TOKEN);
+}
+
+#[test]
+fn a_saved_token_restores_an_enabled_connection_at_startup() {
+    let home = home();
+    ConfigStore::new(home.path())
+        .save(&ConnectionConfig {
+            enabled: true,
+            allow_emails: vec!["me@example.com".into()],
+            domain: None,
+            oauth_app: OauthApp::Managed,
+            revision: 1,
+        })
+        .unwrap();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: FakeVault::new(Some(SAVED), true),
+            ..Opts::default()
+        },
+    );
+    s.wait_status("ready");
+    assert_eq!(s.fake.calls.lock().unwrap()[0].token, SAVED);
+}
+
+#[test]
+fn a_saved_token_can_be_deleted_and_is_then_forgotten() {
+    let home = home();
+    let vault = FakeVault::new(Some(SAVED), true);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.get()["tokenSource"], "keychain");
+    let r = s.write("DELETE", "/api/monitor-connections/token", &json!({}));
+    assert_eq!(r.status, 200, "{}", r.body);
+    assert_eq!(vault.saved(), None);
+    assert_eq!(r.json()["tokenConfigured"], false);
+    assert_eq!(r.json()["tokenSource"], Value::Null);
+    assert_eq!(r.json()["keychainTokenSaved"], false);
+    assert_eq!(s.start_ngrok(json!({})).status, 422);
+    // deleting again is fine; a delete is a guarded write
+    assert_eq!(
+        s.write("DELETE", "/api/monitor-connections/token", &json!({}))
+            .status,
+        200
+    );
+    assert_eq!(
+        request(s.local, "DELETE", "/api/monitor-connections/token", &[], "").status,
+        403
+    );
+}
+
+#[test]
+fn deleting_keeps_the_environment_token() {
+    let home = home();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: FakeVault::new(Some(SAVED), true),
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    let r = s.write("DELETE", "/api/monitor-connections/token", &json!({}));
+    assert_eq!(r.status, 200);
+    assert_eq!(r.json()["tokenSource"], "env");
+    assert_eq!(r.json()["keychainTokenSaved"], false);
+}
+
+#[test]
+fn without_a_keychain_saving_is_refused_with_a_fixed_code_and_nothing_starts() {
+    let home = home();
+    let vault = FakeVault::new(None, false);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(true, &["me@example.com"], 0).status, 200);
+    let v = s.get();
+    assert_eq!(v["keychainAvailable"], false);
+    let r = s.start_ngrok(json!({"token": TOKEN, "save": true}));
+    assert_eq!(r.status, 409, "{}", r.body);
+    assert_eq!(r.json()["error"]["code"], "keychain_unavailable");
+    assert!(!r.body.contains(TOKEN));
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.get()["tokenConfigured"], false);
+    assert_eq!(s.get()["revision"], 1);
+    // entering the token each time still works
+    assert_eq!(s.start_ngrok(json!({"token": TOKEN})).status, 202);
+    s.wait_status("ready");
+    // and a delete says the keychain is not there
+    let r = s.write("DELETE", "/api/monitor-connections/token", &json!({}));
+    assert_eq!(r.status, 409);
+    assert_eq!(r.json()["error"]["code"], "keychain_unavailable");
+}
+
+#[test]
+fn a_run_that_never_needs_a_token_does_not_read_the_keychain() {
+    let home = home();
+    let vault = FakeVault::new(Some(SAVED), true);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    assert_eq!(
+        request(s.local, "GET", "/api/projects", &[], "").status,
+        200
+    );
+    assert_eq!(vault.loads.load(Ordering::SeqCst), 0);
 }

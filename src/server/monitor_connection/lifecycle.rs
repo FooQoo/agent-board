@@ -12,6 +12,7 @@ use tokio::task::AbortHandle;
 
 use super::config::{ConfigError, ConfigStore};
 use super::contracts::{ConnectionConfig, ConnectionStatus, ContractError, OauthApp};
+use super::keychain::TokenVault;
 pub use super::types::*;
 
 pub(super) struct Run {
@@ -34,6 +35,9 @@ pub(super) struct Inner {
     pub(super) url: Option<String>,
     pub(super) failure: Option<FailureCode>,
     pub(super) token: Option<Secret>,
+    pub(super) token_source: Option<TokenSource>,
+    /// Whether the keychain holds a token; `None` until it was first looked at.
+    pub(super) keychain_saved: Option<bool>,
     pub(super) generation: u64,
     pub(super) run: Option<Run>,
 }
@@ -41,6 +45,7 @@ pub(super) struct Inner {
 pub struct MonitorConnections {
     pub(super) store: ConfigStore,
     pub(super) connector: Arc<dyn Connector>,
+    pub(super) vault: Arc<dyn TokenVault>,
     pub(super) google: Option<(Secret, Secret)>,
     pub(super) inner: Mutex<Inner>,
 }
@@ -48,7 +53,12 @@ pub struct MonitorConnections {
 impl MonitorConnections {
     /// Read the saved settings. An unreadable file leaves the defaults and a
     /// `config_unreadable` failure; the PC can save new settings over it.
-    pub fn new(store: ConfigStore, connector: Arc<dyn Connector>, env: MonitorEnv) -> Arc<Self> {
+    pub fn new(
+        store: ConfigStore,
+        connector: Arc<dyn Connector>,
+        vault: Arc<dyn TokenVault>,
+        env: MonitorEnv,
+    ) -> Arc<Self> {
         let (config, failure) = match store.load() {
             Ok(config) => (config, None),
             Err(_) => (
@@ -64,13 +74,16 @@ impl MonitorConnections {
         Arc::new(Self {
             store,
             connector,
+            vault,
             google: env.google,
             inner: Mutex::new(Inner {
                 config,
                 status,
                 url: None,
                 failure,
+                token_source: env.token.is_some().then_some(TokenSource::Env),
                 token: env.token,
+                keychain_saved: None,
                 generation: 0,
                 run: None,
             }),
@@ -79,10 +92,6 @@ impl MonitorConnections {
 
     pub(super) fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    pub fn snapshot(&self) -> Snapshot {
-        snapshot_of(&self.lock())
     }
 
     /// Startup. With `explicit` settings, start now and wait for the result so
@@ -109,6 +118,7 @@ impl MonitorConnections {
             } else {
                 // A legacy remote run never restores the ngrok connection.
                 if restore && inner.config.enabled && inner.failure.is_none() {
+                    self.probe_keychain(&mut inner);
                     if inner.token.is_some() {
                         // Restoring: a failure is shown on the PC, not fatal.
                         if let Err(e) = self.begin(&mut inner) {
@@ -179,19 +189,37 @@ impl MonitorConnections {
         } else if inner.run.is_none() && inner.failure.is_none() {
             inner.status = idle_status(&inner.config, inner.token.is_some());
         }
-        Ok(snapshot_of(&inner))
+        Ok(self.snapshot_now(&inner))
     }
 
     /// Start the connection. `token`, if given, replaces the one held in memory.
-    /// A start is an explicit request to stay on, so a disabled setting is saved
-    /// as enabled first; nothing starts if that save fails.
-    pub fn start(self: &Arc<Self>, token: Option<Secret>) -> Result<Snapshot, StartError> {
+    /// With `save`, that token is also put in the OS keychain; if the keychain
+    /// cannot take it nothing is started and nothing is changed. A start is an
+    /// explicit request to stay on, so a disabled setting is saved as enabled
+    /// first; nothing starts if that save fails.
+    pub fn start(
+        self: &Arc<Self>,
+        token: Option<Secret>,
+        save: bool,
+    ) -> Result<Snapshot, StartError> {
         let mut inner = self.lock();
         if inner.failure == Some(FailureCode::ConfigUnreadable) {
             return Err(StartError::SettingsUnreadable);
         }
+        self.probe_keychain(&mut inner);
+        if save && let Some(token) = &token {
+            self.vault
+                .save(token)
+                .map_err(|_| StartError::KeychainUnavailable)?;
+            inner.keychain_saved = Some(true);
+        }
         if let Some(token) = token {
             inner.token = Some(token);
+            inner.token_source = Some(if save {
+                TokenSource::Keychain
+            } else {
+                TokenSource::Session
+            });
         }
         if inner.token.is_none() {
             return Err(StartError::TokenRequired);
@@ -212,7 +240,7 @@ impl MonitorConnections {
         }
         // The receiver is dropped: the caller polls the status instead.
         drop(self.begin(&mut inner)?);
-        Ok(snapshot_of(&inner))
+        Ok(self.snapshot_now(&inner))
     }
 
     /// Stop the connection, forget any pending start, and save `enabled: false`.
@@ -228,7 +256,7 @@ impl MonitorConnections {
             }
         }
         inner.status = idle_status(&inner.config, inner.token.is_some());
-        snapshot_of(&inner)
+        self.snapshot_now(&inner)
     }
 
     /// Close everything without touching the saved settings (server exit, rollback).
@@ -262,21 +290,5 @@ fn failure_of(error: &StartError) -> FailureCode {
     match error {
         StartError::Invalid(_) | StartError::TokenRequired => FailureCode::ConfigInvalid,
         _ => FailureCode::Internal,
-    }
-}
-
-fn snapshot_of(inner: &Inner) -> Snapshot {
-    Snapshot {
-        status: inner.status,
-        url: inner.url.clone(),
-        revision: inner.config.revision,
-        settings: Settings {
-            enabled: inner.config.enabled,
-            allow_emails: inner.config.allow_emails.clone(),
-            domain: inner.config.domain.clone(),
-            oauth_app: inner.config.oauth_app,
-        },
-        token_configured: inner.token.is_some(),
-        failure: inner.failure,
     }
 }

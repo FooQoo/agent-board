@@ -99,7 +99,7 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
     run_until_with_monitor(
         config,
         remote,
-        MonitorOptions::new(MonitorEnv::default(), None),
+        MonitorOptions::without_keychain(MonitorEnv::default(), None),
         shutdown,
         |addr, remote_addr, _| on_ready(addr, remote_addr),
     )
@@ -173,6 +173,7 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
             monitor: MonitorConnections::new(
                 ConfigStore::new(&data_dir),
                 monitor.connector.clone(),
+                monitor.vault.clone(),
                 monitor.env.clone(),
             ),
         });

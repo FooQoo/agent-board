@@ -1,7 +1,9 @@
-//! The saved, non-secret settings: `<data_dir>/monitor/config.json`.
+//! The saved, non-secret settings, kept in the app's internal area:
+//! `<data_dir>/.internal/monitor-connection.json`.
 //!
-//! The file holds only what the contract allows on disk. Tokens, proofs and
-//! sessions are never written here.
+//! The file is the app's own state, not something a person edits. It holds
+//! only what the contract allows on disk. Tokens, proofs and sessions are
+//! never written here.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -12,6 +14,10 @@ use super::contracts::{ConnectionConfig, OauthApp};
 
 /// The only file format this build reads and writes.
 pub const FORMAT_VERSION: u32 = 1;
+
+/// The data area's internal folder, next to the project `.internal/` folders in name.
+const INTERNAL_DIR: &str = ".internal";
+const FILE_NAME: &str = "monitor-connection.json";
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -42,7 +48,7 @@ pub struct ConfigStore {
 impl ConfigStore {
     pub fn new(data_dir: &Path) -> Self {
         Self {
-            path: data_dir.join("monitor").join("config.json"),
+            path: data_dir.join(INTERNAL_DIR).join(FILE_NAME),
         }
     }
 
@@ -98,7 +104,7 @@ fn write_private_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let mut nonce = [0u8; 8];
     getrandom::fill(&mut nonce).map_err(|e| std::io::Error::other(e.to_string()))?;
     let suffix: String = nonce.iter().map(|b| format!("{b:02x}")).collect();
-    let temp = dir.join(format!(".config.json.tmp-{suffix}"));
+    let temp = dir.join(format!(".{FILE_NAME}.tmp-{suffix}"));
     let result = (|| -> std::io::Result<()> {
         let mut options = std::fs::OpenOptions::new();
         options.write(true).create_new(true);
@@ -167,12 +173,13 @@ mod tests {
         let store = ConfigStore::new(dir.path());
         store.save(&sample()).unwrap();
         assert_eq!(store.load().unwrap(), sample());
-        let text = std::fs::read_to_string(dir.path().join("monitor/config.json")).unwrap();
+        let text =
+            std::fs::read_to_string(dir.path().join(".internal/monitor-connection.json")).unwrap();
         assert!(text.contains("\"formatVersion\": 1"));
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mode = std::fs::metadata(dir.path().join("monitor/config.json"))
+            let mode = std::fs::metadata(dir.path().join(".internal/monitor-connection.json"))
                 .unwrap()
                 .permissions()
                 .mode();
@@ -185,7 +192,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let store = ConfigStore::new(dir.path());
         store.save(&sample()).unwrap();
-        let path = dir.path().join("monitor/config.json");
+        let path = dir.path().join(".internal/monitor-connection.json");
         let text = std::fs::read_to_string(&path).unwrap();
         std::fs::write(
             &path,

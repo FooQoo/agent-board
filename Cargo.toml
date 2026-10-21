@@ -24,6 +24,7 @@ libc = "0.2"
 getrandom = "0.4.3"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
 notify = "8.2"
+keyring = "=4.2.0"
 ngrok = { version = "0.19.0", default-features = false, features = ["ring"] }
 reqwest = { version = "0.12", default-features = false, features = ["stream", "json", "rustls-tls"] }
 serde = { version = "1.0.229", features = ["derive"] }
