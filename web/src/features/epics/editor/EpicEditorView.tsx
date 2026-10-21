@@ -9,7 +9,7 @@ import { EditorShell } from '../../../shared/ui/editor/EditorShell';
 import { CollapsibleSection } from '../../../shared/ui/editor/CollapsibleSection';
 import { EpicProgressList, type ProgressTaskRenderer } from './EpicProgressList';
 import { EpicColorPicker } from './EpicColorPicker';
-import { ListOrderedIcon } from 'lucide-react';
+import { ListOrderedIcon, Trash2Icon } from 'lucide-react';
 import type { useEpicEditor } from './useEpicEditor';
 
 type EpicEditorState = ReturnType<typeof useEpicEditor>;
@@ -76,15 +76,16 @@ export function EpicEditorView({
       status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
       actions={
         <>
-          <Button
+          <button
             type="button"
-            variant="outline"
-            className="epic-delete-button"
+            className="detail__tool detail__tool--delete"
+            aria-label={t('epic.deleteButton')}
+            title={t('epic.deleteButton')}
             disabled={saving || deleting}
             onClick={requestDelete}
           >
-            {t('epic.deleteButton')}
-          </Button>
+            <Trash2Icon aria-hidden="true" />
+          </button>
           <Button type="button" disabled={saving || !valid || !dirty} onClick={() => void run()}>
             {saving ? t('dialog.saving') : t('editor.save')}
           </Button>
