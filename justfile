@@ -61,3 +61,18 @@ serve port="7420" backend_port="7421": build
         exit 1
     fi
     AGBOARD_BACKEND_PORT="{{backend_port}}" AGBOARD_WEB_PORT="{{port}}" pnpm --dir web dev --mode live --host 127.0.0.1 --port "{{port}}" --strictPort
+
+# Run a development board with a temporary data area and the ngrok monitor.
+# Usage: just serve-ngrok <allowed-google-email> [port]. The authtoken comes from NGROK_AUTHTOKEN, or is asked once without echo.
+serve-ngrok email port="7450": build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export AGBOARD_HOME="$(mktemp -d)"
+    if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
+        read -rs -p "ngrok authtoken: " NGROK_AUTHTOKEN
+        echo
+        export NGROK_AUTHTOKEN
+    fi
+    echo "Temporary data area: $AGBOARD_HOME"
+    ./target/debug/agboard project create dev
+    ./target/debug/agboard serve --port "{{port}}" --monitor ngrok --ngrok-allow-email "{{email}}"
