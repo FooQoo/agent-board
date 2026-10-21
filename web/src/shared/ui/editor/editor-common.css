@@ -531,10 +531,6 @@
   margin-top: 0;
 }
 
-.epic-delete-button {
-  color: var(--r-danger);
-}
-
 .editor-confirm__error {
   margin: 0;
   color: var(--r-danger);
