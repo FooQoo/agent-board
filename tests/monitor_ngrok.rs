@@ -964,6 +964,106 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
 }
 
 #[test]
+fn a_preference_save_needs_the_session_origin_fetch_metadata_csrf_and_json() {
+    let t = Tunnel::up();
+    let path = "/monitor/api/preferences";
+    // Without a session the route is closed, also for reading.
+    assert_eq!(t.call("GET", path, &[], "").status, 401);
+    let (value, csrf) = t.session();
+    let cookie = cookie_header(&value);
+    let read = |t: &Tunnel| -> Value {
+        let r = t.call("GET", path, &[("Cookie", &cookie)], "");
+        assert_eq!(r.status, 200, "{}", r.body);
+        r.json()
+    };
+    let fresh = read(&t);
+    assert_eq!(fresh["locale"], "en", "{fresh}");
+    assert_eq!(fresh["revision"], 0, "{fresh}");
+
+    let body = json!({"locale": "ja"}).to_string();
+    let good = write_headers(&cookie, &csrf);
+    let without = |name: &str| -> Vec<(&str, &str)> {
+        good.iter()
+            .filter(|(k, _)| !k.eq_ignore_ascii_case(name))
+            .cloned()
+            .collect()
+    };
+    let (_other, other_csrf) = t.session();
+    let cases: Vec<(&str, Headers, u16)> = vec![
+        ("no cookie", without("Cookie"), 401),
+        ("no csrf", without("X-Agboard-Csrf"), 403),
+        ("no origin", without("Origin"), 403),
+        ("no fetch metadata", without("Sec-Fetch-Site"), 403),
+        (
+            "not json",
+            {
+                let mut h = without("Content-Type");
+                h.push(("Content-Type", "text/plain"));
+                h
+            },
+            415,
+        ),
+        (
+            "wrong csrf",
+            {
+                let mut h = without("X-Agboard-Csrf");
+                h.push(("X-Agboard-Csrf", "0".repeat(64).leak()));
+                h
+            },
+            403,
+        ),
+        (
+            "another session's csrf",
+            {
+                let mut h = without("X-Agboard-Csrf");
+                h.push(("X-Agboard-Csrf", other_csrf.as_str()));
+                h
+            },
+            403,
+        ),
+        (
+            "foreign origin",
+            {
+                let mut h = without("Origin");
+                h.push(("Origin", "https://evil.example"));
+                h
+            },
+            403,
+        ),
+        (
+            "method override",
+            {
+                let mut h = good.clone();
+                h.push(("X-HTTP-Method-Override", "DELETE"));
+                h
+            },
+            403,
+        ),
+    ];
+    for (name, headers, want) in cases {
+        let r = t.call("PUT", path, &headers, &body);
+        assert_eq!(r.status, want, "{name}: {}", r.body);
+        assert_eq!(read(&t), fresh, "{name} changed the saved value");
+    }
+
+    // An invalid value is refused by the store, not saved.
+    let bad = t.call("PUT", path, &good, &json!({"locale": "fr"}).to_string());
+    assert_eq!(bad.status, 422, "{}", bad.body);
+    assert_eq!(
+        bad.json()["error"]["code"],
+        "invalid_preferences",
+        "{}",
+        bad.body
+    );
+    assert_eq!(read(&t), fresh);
+
+    // The good request saves, and the next read shows it.
+    let r = t.call("PUT", path, &good, &body);
+    assert_eq!(r.status, 200, "{}", r.body);
+    assert_eq!(read(&t)["locale"], "ja");
+}
+
+#[test]
 fn disconnect_ends_the_session_and_leaves_no_logout_path() {
     let t = Tunnel::up();
     let (value, csrf) = t.session();

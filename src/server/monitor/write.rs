@@ -31,6 +31,10 @@ pub(crate) fn router(app: Arc<AppState>, guard: BoardWriteGuard) -> Router {
             "/monitor/api/projects/{project_id}/tasks/{id}/answer",
             axum::routing::post(answer),
         )
+        .route(
+            "/monitor/api/preferences",
+            get(get_preferences).put(put_preferences),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), write_guard))
         .layer(middleware::from_fn_with_state(state.clone(), host_guard))
         .layer(middleware::from_fn(security_headers))
@@ -66,6 +70,23 @@ async fn answer(
     answer_project_task(headers, state.app.clone(), project_id, id, input).await
 }
 
+/// The saved language and theme. Only the monitor's own preference write is
+/// allowed here, and the entrance has already checked the session and CSRF.
+async fn get_preferences(State(state): State<Arc<WriteState>>) -> Response {
+    crate::server::preferences::http::read(&state.app.preferences)
+}
+
+async fn put_preferences(
+    State(state): State<Arc<WriteState>>,
+    ApiJson(body): ApiJson<serde_json::Value>,
+) -> Response {
+    crate::server::preferences::http::save(
+        &state.app.preferences,
+        &state.app.preferences_changed,
+        body,
+    )
+}
+
 async fn host_guard(
     State(state): State<Arc<WriteState>>,
     request: Request,
@@ -88,6 +109,16 @@ async fn write_guard(
     next: Next,
 ) -> Response {
     let path = request.uri().path();
+    if path == "/monitor/api/preferences" {
+        return match *request.method() {
+            Method::GET | Method::HEAD => next.run(request).await,
+            Method::PUT if guard::board_write_allowed(request.headers(), &state.guard) => {
+                next.run(request).await
+            }
+            Method::PUT => forbidden("Changes can only be made from the current monitor page."),
+            _ => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+        };
+    }
     let page_path = matches!(path, "/monitor" | "/monitor/");
     let answer_path = path.starts_with("/monitor/api/projects/") && path.ends_with("/answer");
     if !page_path && !answer_path {
@@ -201,6 +232,8 @@ mod tests {
             index,
             reloader,
             changed,
+            preferences: crate::server::preferences::PreferencesStore::new(home.path()),
+            preferences_changed: broadcast::channel(4).0,
             monitor: MonitorConnections::new(
                 ConfigStore::new(home.path()),
                 options.connector,
@@ -305,5 +338,72 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status().as_u16(), 405);
+    }
+
+    async fn put_preferences_request(
+        base: &str,
+        headers: &[(&str, &str)],
+        body: &str,
+    ) -> (u16, String) {
+        let mut request = reqwest::Client::new()
+            .put(format!("{base}/monitor/api/preferences"))
+            .header("Content-Type", "application/json")
+            .body(body.to_string());
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+        let response = request.send().await.unwrap();
+        (response.status().as_u16(), response.text().await.unwrap())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_preference_save_needs_the_same_guards_as_an_answer() {
+        let (base, home, _watch) = serve().await;
+        let good = [
+            ("Host", HOST),
+            ("Origin", ORIGIN),
+            ("Sec-Fetch-Site", "same-origin"),
+            ("X-Agboard-Token", TOKEN),
+        ];
+        let body = r#"{"locale":"ja"}"#;
+
+        // Without one of the guards nothing is saved.
+        for missing in ["Origin", "Sec-Fetch-Site", "X-Agboard-Token"] {
+            let headers: Vec<_> = good
+                .iter()
+                .copied()
+                .filter(|(n, _)| *n != missing)
+                .collect();
+            let (status, body_text) = put_preferences_request(&base, &headers, body).await;
+            assert!(
+                status == 403 || status == 405,
+                "{missing}: {status} {body_text}"
+            );
+        }
+        assert_eq!(
+            crate::server::preferences::PreferencesStore::new(home.path())
+                .load()
+                .locale,
+            "en"
+        );
+
+        // With every guard the save goes through and reads back.
+        let (status, body_text) = put_preferences_request(&base, &good, body).await;
+        assert_eq!(status, 200, "{body_text}");
+        let read = reqwest::Client::new()
+            .get(format!("{base}/monitor/api/preferences"))
+            .header("Host", HOST)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(read.status().as_u16(), 200);
+        let json: serde_json::Value = read.json().await.unwrap();
+        assert_eq!(json["locale"], "ja");
+        assert_eq!(json["revision"], 1);
+
+        // A value outside the choices is refused and changes nothing.
+        let (status, body_text) = put_preferences_request(&base, &good, r#"{"locale":"fr"}"#).await;
+        assert_eq!(status, 422, "{body_text}");
+        assert!(body_text.contains("invalid_preferences"), "{body_text}");
     }
 }

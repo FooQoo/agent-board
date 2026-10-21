@@ -6,6 +6,8 @@
 //! replaces the whole file in one step, and a failed save leaves the old file
 //! as it was.
 
+pub(crate) mod http;
+
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};

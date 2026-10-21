@@ -157,7 +157,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/monitor-connections/token", delete(delete_saved_token))
         .route("/api/notify", post(notify))
         .route("/api/health", get(health))
-        .route("/api/preferences", get(get_preferences).put(put_preferences))
+        .route(
+            "/api/preferences",
+            get(get_preferences).put(put_preferences),
+        )
         .layer(DefaultBodyLimit::max(MAX_MULTIPART_BODY))
         .layer(middleware::from_fn_with_state(
             guard_context.clone(),

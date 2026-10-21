@@ -22,6 +22,7 @@ use crate::file_store::FileStore;
 use crate::file_store::index::ProjectIndex;
 use crate::file_store::model::AttachmentOwner;
 use crate::file_store::validate::EpicId;
+use crate::server::preferences::{Preferences, PreferencesStore};
 use crate::server::response::{agboard_error_response, file_response, json_response};
 use crate::server::store::{indexed_view_in, parse_project_id, read_checked};
 use crate::server::web_assets::{self, MONITOR_BUILD_ID};
@@ -31,6 +32,8 @@ pub(crate) struct MonitorState {
     shared: PathBuf,
     index: Arc<RwLock<ProjectIndex>>,
     changed: broadcast::Sender<()>,
+    preferences: PreferencesStore,
+    preferences_changed: broadcast::Sender<Preferences>,
     allowed_authorities: Arc<HashSet<String>>,
 }
 
@@ -39,12 +42,16 @@ impl MonitorState {
         shared: PathBuf,
         index: Arc<RwLock<ProjectIndex>>,
         changed: broadcast::Sender<()>,
+        preferences: PreferencesStore,
+        preferences_changed: broadcast::Sender<Preferences>,
         allowed_authorities: HashSet<String>,
     ) -> Self {
         Self {
             shared,
             index,
             changed,
+            preferences,
+            preferences_changed,
             allowed_authorities: Arc::new(allowed_authorities),
         }
     }
@@ -323,13 +330,19 @@ async fn epic_attachment(
 async fn events(
     State(state): State<Arc<MonitorState>>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    Sse::new(event_stream(state.changed.subscribe()).map(|event| Ok(event.into_sse())))
+    let stream = event_stream(
+        state.changed.subscribe(),
+        state.preferences_changed.subscribe(),
+        state.preferences.clone(),
+    );
+    Sse::new(stream.map(|event| Ok(event.into_sse())))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum MonitorEvent {
     Ready,
     Changed,
+    Preferences(Preferences),
     Heartbeat,
 }
 
@@ -340,25 +353,40 @@ impl MonitorEvent {
                 .event("ready")
                 .data(format!(r#"{{"build":"{MONITOR_BUILD_ID}"}}"#)),
             Self::Changed => Event::default().event("changed").data("{}"),
+            Self::Preferences(prefs) => Event::default()
+                .event("preferences")
+                .data(serde_json::to_string(&prefs).unwrap_or_else(|_| "{}".to_string())),
             Self::Heartbeat => Event::default().event("heartbeat").data("{}"),
         }
     }
 }
 
-fn event_stream(receiver: broadcast::Receiver<()>) -> impl Stream<Item = MonitorEvent> {
+fn event_stream(
+    receiver: broadcast::Receiver<()>,
+    saved: broadcast::Receiver<Preferences>,
+    store: PreferencesStore,
+) -> impl Stream<Item = MonitorEvent> {
     let first_heartbeat = tokio::time::Instant::now() + Duration::from_secs(15);
     let changes = stream::unfold(
         (
             receiver,
+            saved,
+            store,
             tokio::time::interval_at(first_heartbeat, Duration::from_secs(15)),
         ),
-        |(mut rx, mut timer)| async move {
+        |(mut rx, mut saved, store, mut timer)| async move {
             tokio::select! {
                 changed = rx.recv() => Some((match changed {
                     Ok(()) | Err(broadcast::error::RecvError::Lagged(_)) => MonitorEvent::Changed,
                     Err(broadcast::error::RecvError::Closed) => return None,
-                }, (rx, timer))),
-                _ = timer.tick() => Some((MonitorEvent::Heartbeat, (rx, timer))),
+                }, (rx, saved, store, timer))),
+                prefs = saved.recv() => Some((match prefs {
+                    Ok(prefs) => MonitorEvent::Preferences(prefs),
+                    // A lagged notice is replaced by the value that is saved now.
+                    Err(broadcast::error::RecvError::Lagged(_)) => MonitorEvent::Preferences(store.load()),
+                    Err(broadcast::error::RecvError::Closed) => return None,
+                }, (rx, saved, store, timer))),
+                _ = timer.tick() => Some((MonitorEvent::Heartbeat, (rx, saved, store, timer))),
             }
         },
     );
@@ -370,9 +398,31 @@ mod tests {
     use super::*;
 
     #[tokio::test(start_paused = true)]
+    async fn a_saved_preference_is_sent_as_a_preferences_event_not_changed() {
+        use crate::server::preferences::Theme;
+        let (changed, _) = broadcast::channel(4);
+        let (saved, _) = broadcast::channel(4);
+        let store = PreferencesStore::new(std::path::Path::new("."));
+        let mut events = Box::pin(event_stream(changed.subscribe(), saved.subscribe(), store));
+        assert_eq!(events.next().await, Some(MonitorEvent::Ready));
+        let prefs = Preferences {
+            locale: "ja".to_string(),
+            theme: Theme {
+                mode: "dark".to_string(),
+                accent: "teal".to_string(),
+            },
+            revision: 1,
+        };
+        saved.send(prefs.clone()).unwrap();
+        assert_eq!(events.next().await, Some(MonitorEvent::Preferences(prefs)));
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn monitor_sse_sends_ready_then_a_fifteen_second_heartbeat() {
         let (changed, _) = broadcast::channel(4);
-        let mut events = Box::pin(event_stream(changed.subscribe()));
+        let (saved, _) = broadcast::channel(4);
+        let store = PreferencesStore::new(std::path::Path::new("."));
+        let mut events = Box::pin(event_stream(changed.subscribe(), saved.subscribe(), store));
         assert_eq!(events.next().await.unwrap(), MonitorEvent::Ready);
         tokio::time::advance(Duration::from_secs(14)).await;
         assert!(

@@ -67,6 +67,8 @@ pub(super) fn external_app(
         app.shared.clone(),
         app.index.clone(),
         app.changed.clone(),
+        app.preferences.clone(),
+        app.preferences_changed.clone(),
         authorities.clone(),
     ));
     let guard = BoardWriteGuard {

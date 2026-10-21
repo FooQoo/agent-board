@@ -28,8 +28,13 @@ pub(crate) async fn events(
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let changes = BroadcastStream::new(state.changed.subscribe())
         .map(|_| Ok(Event::default().event("changed").data("{}")));
-    let preferences = BroadcastStream::new(state.preferences_changed.subscribe())
-        .filter_map(|saved| saved.ok().map(|prefs| Ok(preference_event(&prefs))));
+    let store = state.preferences.clone();
+    let preferences =
+        BroadcastStream::new(state.preferences_changed.subscribe()).map(move |saved| {
+            // A lagged notice is replaced by the value that is saved now.
+            let prefs = saved.unwrap_or_else(|_| store.load());
+            Ok(preference_event(&prefs))
+        });
     let stream = tokio_stream::once(Ok(Event::default()
         .event("ready")
         .data(format!(r#"{{"build":"{APP_BUILD_ID}"}}"#))))
