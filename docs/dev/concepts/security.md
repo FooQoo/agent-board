@@ -53,7 +53,7 @@ Anyone who can open the ngrok address reaches ngrok's Edge first, not the board.
 The language and color theme are saved on the PC in `<data root>/.internal/preferences.json`. Two routes write them: the PC's `PUT /api/preferences`, which passes the write guard below, and the monitor's `PUT /monitor/api/preferences`, which passes the entrance checks above.
 
 - The monitor's save needs the same checks as an answer: the Host check, a live passcode session, the exact public Origin, `Sec-Fetch-Site: same-origin`, and the CSRF token.
-- The route accepts only `locale` and `theme`. Any other field, or a value that is not allowed, is refused with `invalid_preferences`, and nothing is saved.
+- The route accepts only `locale` and `theme`. In a well-formed JSON object, any other field or a value that is not allowed is refused with `invalid_preferences`. Malformed JSON is refused with 400 `invalid_json`, and a body that is not JSON content is refused with 415. Nothing is saved in any of these cases.
 - The saved values are not secret: a language and a color. The file is owner-only, and it holds no token, passcode, or session.
 - What is protected is the limit itself. The monitor can change these two settings and nothing else.
 - What is not protected: a phone that is allowed in, or someone who takes over its session, can change the PC's language and theme, and every open page then shows the new choice. Tasks, projects, and connection settings stay out of reach.

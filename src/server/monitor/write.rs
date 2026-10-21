@@ -399,7 +399,11 @@ mod tests {
         assert_eq!(read.status().as_u16(), 200);
         let json: serde_json::Value = read.json().await.unwrap();
         assert_eq!(json["locale"], "ja");
-        assert_eq!(json["revision"], 1);
+        let now_millis = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        assert!(json["revision"].as_u64().unwrap() >= now_millis - 60_000);
 
         // A value outside the choices is refused and changes nothing.
         let (status, body_text) = put_preferences_request(&base, &good, r#"{"locale":"fr"}"#).await;

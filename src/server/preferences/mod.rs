@@ -111,7 +111,16 @@ impl PreferencesStore {
         if patch.locale.is_none() && patch.theme.is_none() {
             return Err(UpdateError::Invalid);
         }
-        let current = self.read_file();
+        let saved = self.read_saved();
+        // A valid file continues its own count. A save that starts from the
+        // defaults (missing or invalid file) takes the current time in
+        // milliseconds when that is larger, so the revision stays above any
+        // revision an open page may already have shown.
+        let revision = match &saved {
+            Some(file) => file.revision + 1,
+            None => (Preferences::default().revision + 1).max(unix_millis()),
+        };
+        let current = saved.unwrap_or_default();
         let next = Preferences {
             locale: match patch.locale {
                 Some(locale) if LOCALES.contains(&locale.as_str()) => locale,
@@ -123,7 +132,7 @@ impl PreferencesStore {
                 Some(_) => return Err(UpdateError::Invalid),
                 None => current.theme,
             },
-            revision: current.revision + 1,
+            revision,
         };
         self.write_file(&next)?;
         Ok(next)
@@ -131,23 +140,24 @@ impl PreferencesStore {
 
     /// Reads the file. A missing, invalid, or unreadable file is the default.
     fn read_file(&self) -> Preferences {
-        let Ok(bytes) = std::fs::read(&self.path) else {
-            return Preferences::default();
-        };
-        let Ok(stored) = serde_json::from_slice::<StoredFile>(&bytes) else {
-            return Preferences::default();
-        };
+        self.read_saved().unwrap_or_default()
+    }
+
+    /// The saved preferences, or `None` when the file cannot be used.
+    fn read_saved(&self) -> Option<Preferences> {
+        let bytes = std::fs::read(&self.path).ok()?;
+        let stored = serde_json::from_slice::<StoredFile>(&bytes).ok()?;
         let valid = stored.format_version == FORMAT_VERSION
             && LOCALES.contains(&stored.locale.as_str())
             && valid_theme(&stored.theme);
         if !valid {
-            return Preferences::default();
+            return None;
         }
-        Preferences {
+        Some(Preferences {
             locale: stored.locale,
             theme: stored.theme,
             revision: stored.revision,
-        }
+        })
     }
 
     /// Writes a temporary file beside the target and renames it over the
@@ -161,15 +171,62 @@ impl PreferencesStore {
         };
         let bytes = serde_json::to_vec_pretty(&stored).map_err(|_| UpdateError::Unavailable)?;
         let dir = self.path.parent().ok_or(UpdateError::Unavailable)?;
-        std::fs::create_dir_all(dir).map_err(|_| UpdateError::Unavailable)?;
+        create_private_dir(dir).map_err(|_| UpdateError::Unavailable)?;
+        remove_stale_temporaries(dir);
         let temporary = dir.join(format!("{FILE_NAME}.{}.tmp", std::process::id()));
         let result = write_owner_only(&temporary, &bytes)
             .and_then(|()| std::fs::rename(&temporary, &self.path));
         if result.is_err() {
             let _ = std::fs::remove_file(&temporary);
+        } else {
+            sync_dir(dir);
         }
         result.map_err(|_| UpdateError::Unavailable)
     }
+}
+
+fn unix_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Creates the folder (and missing parents) with owner-only access on unix.
+/// An existing folder keeps its mode.
+fn create_private_dir(dir: &Path) -> std::io::Result<()> {
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(dir)
+}
+
+/// Removes temporary files that an earlier crashed save may have left.
+fn remove_stale_temporaries(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let prefix = format!("{FILE_NAME}.");
+    for entry in entries.filter_map(Result::ok) {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with(&prefix) && name.ends_with(".tmp") {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
+
+/// Makes the rename durable. Errors are ignored; the file itself is synced.
+fn sync_dir(dir: &Path) {
+    #[cfg(unix)]
+    if let Ok(handle) = std::fs::File::open(dir) {
+        let _ = handle.sync_all();
+    }
+    #[cfg(not(unix))]
+    let _ = dir;
 }
 
 fn valid_theme(theme: &Theme) -> bool {
@@ -220,7 +277,7 @@ mod tests {
                 theme: Some(theme("dark", "teal")),
             })
             .unwrap();
-        assert_eq!(saved.revision, 1);
+        assert!(saved.revision >= unix_millis().saturating_sub(60_000));
         assert_eq!(s.load(), saved);
         assert!(
             tmp.path()
@@ -234,11 +291,13 @@ mod tests {
     fn a_partial_save_keeps_the_other_field() {
         let tmp = tempfile::tempdir().unwrap();
         let s = store(tmp.path());
-        s.update(Patch {
-            locale: Some("ja".to_string()),
-            theme: Some(theme("dark", "teal")),
-        })
-        .unwrap();
+        let first = s
+            .update(Patch {
+                locale: Some("ja".to_string()),
+                theme: Some(theme("dark", "teal")),
+            })
+            .unwrap();
+        assert!(first.revision > 0);
         let next = s
             .update(Patch {
                 locale: None,
@@ -247,7 +306,7 @@ mod tests {
             .unwrap();
         assert_eq!(next.locale, "ja");
         assert_eq!(next.theme, theme("light", "red"));
-        assert_eq!(next.revision, 2);
+        assert_eq!(next.revision, first.revision + 1);
     }
 
     #[test]
@@ -299,6 +358,39 @@ mod tests {
             .unwrap();
         assert_eq!(saved.theme, Preferences::default().theme);
         assert_eq!(s.load(), saved);
+    }
+
+    #[test]
+    fn a_save_after_an_invalid_file_gets_a_timestamp_revision_then_counts_up() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join(".internal");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("preferences.json"), b"{ not json").unwrap();
+        let s = store(tmp.path());
+        let patch = || Patch {
+            locale: Some("ja".to_string()),
+            theme: None,
+        };
+        let first = s.update(patch()).unwrap();
+        assert!(first.revision > 1_000_000_000_000, "{}", first.revision);
+        let second = s.update(patch()).unwrap();
+        assert_eq!(second.revision, first.revision + 1);
+    }
+
+    #[test]
+    fn a_leftover_temporary_file_is_removed_by_a_save() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join(".internal");
+        std::fs::create_dir_all(&dir).unwrap();
+        let stale = dir.join("preferences.json.123.tmp");
+        std::fs::write(&stale, b"half").unwrap();
+        store(tmp.path())
+            .update(Patch {
+                locale: Some("ja".to_string()),
+                theme: None,
+            })
+            .unwrap();
+        assert!(!stale.exists());
     }
 
     #[test]

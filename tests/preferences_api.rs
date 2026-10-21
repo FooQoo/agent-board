@@ -43,9 +43,15 @@ fn a_save_is_read_back_and_kept_across_a_restart() {
     let body = json!({"locale": "ja", "theme": {"mode": "dark", "accent": "teal"}});
     let saved = put(&server, &body);
     assert_eq!(saved.status, 200, "{}", saved.body);
+    let now_millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    let revision = saved.json()["revision"].as_u64().unwrap();
+    assert!(revision >= now_millis - 60_000, "{revision}");
     assert_eq!(
         saved.json(),
-        json!({"locale": "ja", "theme": {"mode": "dark", "accent": "teal"}, "revision": 1})
+        json!({"locale": "ja", "theme": {"mode": "dark", "accent": "teal"}, "revision": revision})
     );
     assert_eq!(saved_preferences(&server), saved.json());
     server.stop();
@@ -60,14 +66,16 @@ fn a_partial_save_keeps_the_field_that_was_not_sent() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let server = Running::start(home.path());
-    put(&server, &json!({"locale": "ja"}));
+    let first = put(&server, &json!({"locale": "ja"}));
+    let first_revision = first.json()["revision"].as_u64().unwrap();
+    assert!(first_revision > 0);
     let reply = put(
         &server,
         &json!({"theme": {"mode": "dark", "accent": "gray"}}),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(reply.json()["locale"], "ja");
-    assert_eq!(reply.json()["revision"], 2);
+    assert_eq!(reply.json()["revision"], first_revision + 1);
     server.stop();
 }
 
