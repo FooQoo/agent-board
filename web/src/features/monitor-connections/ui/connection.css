@@ -22,8 +22,6 @@
 
 .connection-dialog .connection-dialog__close {
   flex: none;
-  width: 36px;
-  height: 36px;
 }
 
 /* The status line: a dot and a word, gray until the connection is up. */
@@ -169,8 +167,6 @@
 }
 
 .connection-dialog .connection-dialog__token-link {
-  height: 38px;
-  padding: 0 18px;
   text-decoration: none;
 }
 
@@ -332,12 +328,6 @@
   gap: 12px;
 }
 
-.connection-dialog .connection-dialog__submit,
-.connection-dialog__actions [data-slot="button"]:not(.connection-dialog__stop),
-.connection-dialog__copy [data-slot="button"] {
-  height: 40px;
-}
-
 /* 保存して接続 and 再接続 share one width (the English save label sets it), so they match. */
 .connection-dialog .connection-dialog__submit,
 .connection-dialog .connection-dialog__reconnect {
@@ -345,8 +335,6 @@
 }
 
 .connection-dialog .connection-dialog__stop {
-  height: 40px;
-  padding: 0 18px;
   border-color: var(--r-danger);
   color: var(--r-danger);
 }
@@ -420,5 +408,4 @@
 
 .connection-entry [data-slot="button"] {
   flex: none;
-  height: 40px;
 }

@@ -45,15 +45,8 @@ body {
   gap: 8px;
   font-size: 14px;
 }
-.monitor-shell > .header .header__settings {
-  width: 44px;
-  height: 44px;
-}
 .monitor-refresh {
   flex: none;
-  width: 44px;
-  height: 44px;
-  padding: 0;
 }
 .monitor-controls {
   display: flex;

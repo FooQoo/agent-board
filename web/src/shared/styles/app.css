@@ -142,15 +142,11 @@ ol {
 
 .header__add {
   flex: none;
-  height: 34px;
-  padding: 0 14px;
   gap: 6px;
 }
 
 .header__epics,
 .header__archive {
-  height: 36px;
-  padding-inline: 8px;
   gap: 6px;
 }
 
@@ -167,8 +163,6 @@ ol {
 
 .header__settings {
   flex: none;
-  width: 36px;
-  height: 36px;
 }
 
 .header__settings svg {
@@ -589,8 +583,8 @@ ol {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 27px;
-  height: 25px;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-h);
   padding: 0;
   border: 0;
   background: transparent;
@@ -894,8 +888,6 @@ ol {
 }
 
 .board-message__retry {
-  height: 34px;
-  padding: 0 14px;
   font-weight: 400;
 }
 

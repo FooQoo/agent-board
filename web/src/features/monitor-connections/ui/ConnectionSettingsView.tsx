@@ -114,7 +114,8 @@ export function ConnectionSettingsView({
           <Button
             type="button"
             variant="outline"
-            size="icon"
+            size="m"
+            iconOnly
             className="connection-dialog__close"
             aria-label={t('dialog.close')}
             onClick={() => onOpenChange(false)}

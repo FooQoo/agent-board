@@ -115,7 +115,8 @@ export function EditorShell({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="s"
+            iconOnly
             className="editor__close"
             aria-label={t('dialog.close')}
             disabled={saving}
@@ -133,7 +134,7 @@ export function EditorShell({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="s"
                 className="editor__retry"
                 disabled={saving}
                 onClick={onRetry}

@@ -120,7 +120,7 @@ export function ConnectionSetupSteps({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="s"
               disabled={busy}
               onClick={onDeleteToken}
             >

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon } from 'lucide-react';
-import { Button } from './button';
+import { BUTTON_SIZES, Button } from './button';
 
 const meta = {
   title: 'Shared/UI/Button',
@@ -10,7 +10,8 @@ const meta = {
   args: { children: 'Save', onClick: fn() },
   argTypes: {
     variant: { control: 'select', options: ['default', 'outline', 'destructive', 'ghost'] },
-    size: { control: 'select', options: ['default', 'sm', 'icon'] },
+    size: { control: 'select', options: ['s', 'm', 'l', 'xl', '2xl'] },
+    iconOnly: { control: 'boolean' },
     disabled: { control: 'boolean' },
   },
 } satisfies Meta<typeof Button>;
@@ -26,7 +27,38 @@ export const Destructive: Story = { args: { variant: 'destructive', children: 'D
 
 export const Ghost: Story = { args: { variant: 'ghost', children: 'Cancel' } };
 
-export const Small: Story = { args: { size: 'sm' } };
+export const SizeS: Story = { args: { size: 's', children: 'Size S' } };
+
+export const SizeM: Story = { args: { size: 'm', children: 'Size M' } };
+
+export const SizeL: Story = { args: { size: 'l', children: 'Size L' } };
+
+export const SizeXL: Story = { args: { size: 'xl', children: 'Size XL' } };
+
+export const Size2XL: Story = { args: { size: '2xl', children: 'Size 2XL' } };
+
+/** The five fixed sizes side by side, with and without a label, so the scale can be compared. */
+export const AllSizes: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      {BUTTON_SIZES.map((size) => (
+        <div key={size} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button size={size}>{size.toUpperCase()}</Button>
+          <Button size={size} variant="outline" iconOnly aria-label={`Add ${size}`}>
+            <PlusIcon />
+          </Button>
+        </div>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    for (const size of BUTTON_SIZES) {
+      await expect(
+        within(canvasElement).getByRole('button', { name: size.toUpperCase() }),
+      ).toHaveAttribute('data-size', size);
+    }
+  },
+};
 
 export const Disabled: Story = { args: { disabled: true } };
 
@@ -37,8 +69,8 @@ export const AllVariants: Story = {
       {(['default', 'outline', 'destructive', 'ghost'] as const).map((variant) => (
         <div key={variant} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Button variant={variant}>{variant}</Button>
-          <Button variant={variant} size="sm">
-            sm
+          <Button variant={variant} size="s">
+            s
           </Button>
         </div>
       ))}
@@ -48,10 +80,16 @@ export const AllVariants: Story = {
 
 /** The icon size is a square with the icon in it, and the accessible name comes from aria-label. */
 export const IconSize: Story = {
-  args: { size: 'icon', variant: 'outline', 'aria-label': 'Add task', children: <PlusIcon /> },
+  args: {
+    size: 'm',
+    iconOnly: true,
+    variant: 'outline',
+    'aria-label': 'Add task',
+    children: <PlusIcon />,
+  },
   play: async ({ canvasElement }) => {
     const button = within(canvasElement).getByRole('button', { name: 'Add task' });
-    await expect(button).toHaveAttribute('data-size', 'icon');
+    await expect(button).toHaveAttribute('data-icon-only');
   },
 };
 

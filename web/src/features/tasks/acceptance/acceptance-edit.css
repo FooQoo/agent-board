@@ -86,10 +86,6 @@
 }
 
 /* The icon buttons are the shared ghost buttons, sized to the row. */
-.acceptance-edit__icon {
-  width: 28px;
-  height: 28px;
-}
 
 .acceptance-edit__error {
   grid-column: 2 / -1;
