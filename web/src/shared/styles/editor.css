@@ -101,10 +101,7 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
   margin-top: 3px;
-  padding: 0;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -238,9 +235,6 @@
   justify-content: center;
   align-items: center;
   margin-left: auto;
-  padding: 0;
-  width: 24px;
-  height: 24px;
   border: 0;
   background: transparent;
   color: var(--r-muted);
@@ -257,12 +251,10 @@
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 9px 12px;
   border: 1px solid var(--r-border);
   border-radius: 6px;
   background: transparent;
   color: var(--r-text2);
-  font-size: 12px;
   cursor: pointer;
 }
 .editor-attachments__add svg {
@@ -369,12 +361,10 @@
 }
 .editor-attachments__insert {
   width: 100%;
-  padding: 7px 8px;
   border: 1px solid var(--r-border);
   border-radius: 6px;
   background: transparent;
   color: var(--r-text2);
-  font-size: 12px;
   cursor: pointer;
 }
 .editor-attachments__remove {
@@ -384,9 +374,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
   border: 1px solid var(--r-border);
   border-radius: 6px;
   background: var(--r-surface);
@@ -642,15 +629,12 @@
 
 .editor__retry {
   flex: none;
-  padding: 4px 10px;
   border: 1px solid var(--r-danger);
   border-radius: 6px;
   background: transparent;
   color: var(--r-danger);
   font: inherit;
-  font-size: 12px;
   font-weight: 600;
-  line-height: 17px;
   cursor: pointer;
 }
 

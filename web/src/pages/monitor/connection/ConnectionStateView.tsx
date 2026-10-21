@@ -51,7 +51,7 @@ export function ConnectionStateView({
 
   return (
     <main className="monitor-shell">
-      <Header logoSrc={monitorLogo} />
+      <Header logoSrc={monitorLogo} settingsSize="l" />
       <section className="connection-state" aria-live="polite">
         <Icon className="connection-state__icon" aria-hidden="true" strokeWidth={1.5} />
         <h2 className="connection-state__title">

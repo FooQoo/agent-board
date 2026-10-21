@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArchiveIcon, ArrowLeftIcon, LayersIcon, PlusIcon, SettingsIcon } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
+import { Button, type ButtonSize } from '@/shared/ui/button';
 import type { Project, ProjectId } from '../../api/contracts';
 
 export type ViewMode = 'board' | 'archive' | 'epics';
@@ -40,6 +40,8 @@ export interface HeaderProps {
   settings?: HeaderSettings;
   /** The logo the header shows. The monitor passes its own copy, so the logo loads with the page. */
   logoSrc?: string;
+  /** The size of the settings button; the monitor uses a larger one for a thumb. */
+  settingsSize?: ButtonSize;
 }
 
 export function Header({
@@ -55,6 +57,7 @@ export function Header({
   projectSwitcher = null,
   settings,
   logoSrc = '/logo-white.png',
+  settingsSize = 'm',
 }: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -133,7 +136,8 @@ export function Header({
         ref={settingsButtonRef}
         type="button"
         variant="outline"
-        size="icon"
+        size={settingsSize}
+        iconOnly
         className="header__settings"
         aria-label={t('settings.title')}
         aria-haspopup="dialog"

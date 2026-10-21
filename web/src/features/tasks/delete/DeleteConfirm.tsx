@@ -68,6 +68,7 @@ export function DeleteConfirm({
         <Button
           type="button"
           variant="destructive"
+          size="s"
           className="detail-btn"
           disabled={busy || saving}
           onClick={() => void confirm()}
@@ -78,6 +79,7 @@ export function DeleteConfirm({
           ref={cancelRef}
           type="button"
           variant="outline"
+          size="s"
           className="detail-btn detail-btn--plain"
           disabled={busy || saving}
           onClick={onCancel}

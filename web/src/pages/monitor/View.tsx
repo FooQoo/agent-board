@@ -61,7 +61,7 @@ export function MonitorView(props: MonitorViewProps) {
   };
   return (
     <main className="monitor-shell">
-      <Header settings={monitorSettingsSlot} logoSrc={monitorLogo} />
+      <Header settings={monitorSettingsSlot} logoSrc={monitorLogo} settingsSize="l" />
       <div className="monitor-controls">
         <ProjectSwitcher
           projects={projects}
@@ -74,7 +74,8 @@ export function MonitorView(props: MonitorViewProps) {
         <Button
           type="button"
           variant="outline"
-          size="icon"
+          size="l"
+          iconOnly
           className="monitor-refresh"
           aria-label={t('monitor.refresh')}
           onClick={props.onRefresh}

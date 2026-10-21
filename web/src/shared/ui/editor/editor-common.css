@@ -44,9 +44,6 @@
 }
 
 .epic-label-row__swatch {
-  width: 20px;
-  height: 20px;
-  padding: 0;
   border: 1px solid var(--r-border);
   border-radius: 6px;
   background: transparent;

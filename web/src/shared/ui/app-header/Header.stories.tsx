@@ -62,7 +62,7 @@ function HeaderDemo({
       switchDisabled={switchDisabled}
       projectSwitcher={
         active ? (
-          <Button variant="ghost" size="sm" disabled={switchDisabled}>
+          <Button variant="ghost" size="s" disabled={switchDisabled}>
             {active.name}
           </Button>
         ) : null

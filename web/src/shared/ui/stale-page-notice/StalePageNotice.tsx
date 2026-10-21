@@ -16,7 +16,7 @@ export function StalePageNotice() {
         <strong>{t('stalePage.title')}</strong>
         <span>{t('stalePage.body')}</span>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>
+      <Button type="button" variant="outline" size="s" onClick={() => window.location.reload()}>
         {t('stalePage.reload')}
       </Button>
     </div>,

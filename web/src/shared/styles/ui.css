@@ -8,6 +8,34 @@
 @import "tw-animate-css";
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Button sizes: the one place that fixes S / M / L / XL / 2XL. Height, horizontal padding, font
+ * size and the icon-only square width of each size. The shared Button reads these; the raw
+ * buttons that cannot use it (the detail toolbar) read the same tokens.
+ */
+:root {
+  --btn-s-h: 30px;
+  --btn-s-px: 12px;
+  --btn-s-fs: 12px;
+  --btn-s-icon: 30px;
+  --btn-m-h: 38px;
+  --btn-m-px: 18px;
+  --btn-m-fs: 13px;
+  --btn-m-icon: 38px;
+  --btn-l-h: 44px;
+  --btn-l-px: 22px;
+  --btn-l-fs: 14px;
+  --btn-l-icon: 44px;
+  --btn-xl-h: 50px;
+  --btn-xl-px: 26px;
+  --btn-xl-fs: 15px;
+  --btn-xl-icon: 50px;
+  --btn-2xl-h: 56px;
+  --btn-2xl-px: 30px;
+  --btn-2xl-fs: 16px;
+  --btn-2xl-icon: 56px;
+}
+
 /* Minimal base for the shadcn/ui sources, replacing the Tailwind preflight that is not imported. */
 @layer base {
   [data-slot] {

@@ -52,7 +52,8 @@ export function Freshness({
         <Button
           type="button"
           variant="outline"
-          size="icon"
+          size="l"
+          iconOnly
           className="monitor-refresh"
           aria-label={t('monitor.refresh')}
           onClick={onRefresh}
