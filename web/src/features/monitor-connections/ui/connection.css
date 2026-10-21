@@ -125,24 +125,13 @@
 
 .connection-dialog__note {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 11px;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
   border: 1px solid var(--r-border);
   border-radius: 8px;
   background: var(--r-bg);
-}
-
-.connection-dialog__note h3 {
-  margin: 0;
-  color: var(--r-text);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.6;
-}
-
-.connection-dialog__note p {
-  margin: 0;
   color: var(--r-text2);
   font-size: 12px;
   line-height: 1.6;

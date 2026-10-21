@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { XIcon } from 'lucide-react';
+import { InfoIcon, XIcon } from 'lucide-react';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Button } from '@/shared/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
@@ -223,10 +223,10 @@ export function ConnectionSettingsView({
                 {saving ? t('monitorConnection.stopping') : t('monitorConnection.stop')}
               </Button>
             </div>
-            <aside className="connection-dialog__note">
-              <h3>{t('monitorConnection.protectTitle')}</h3>
-              <p>{t('monitorConnection.protectBody')}</p>
-            </aside>
+            <p className="connection-dialog__note" role="note">
+              <InfoIcon aria-hidden="true" />
+              {t('monitorConnection.protectNotice')}
+            </p>
           </div>
         ) : (
           FORM_STATUSES.includes(status) && (

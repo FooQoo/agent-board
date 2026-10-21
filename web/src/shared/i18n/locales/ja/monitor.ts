@@ -87,9 +87,7 @@ export const monitorJa = {
     edit: '接続設定を変更',
     stop: '停止',
     stopping: '停止しています…',
-    protectTitle: 'URLと合言葉は他の人に教えないでください',
-    protectBody:
-      '4桁の合言葉は10,000通りしかなく、アカウント認証より弱い守りです。続けて5回間違えると、接続を止めて開始し直すまで合言葉を受け付けません。HTTPSはngrokで終端され、ngrokは通信内容を扱えます。使い終わったら接続を停止してください。',
+    protectNotice: 'URLと合言葉は他の人に教えないでください',
     entryTitle: 'モバイル接続',
     entryBody: 'ngrokと合言葉で外出先から確認',
     entryAction: '設定する',

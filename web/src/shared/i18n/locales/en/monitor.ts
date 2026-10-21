@@ -90,9 +90,7 @@ export const monitorEn = {
     edit: 'Change connection settings',
     stop: 'Stop',
     stopping: 'Stopping…',
-    protectTitle: 'Keep the URL and the passcode to yourself',
-    protectBody:
-      'A 4-digit passcode has only 10,000 possibilities, so it is weaker than an account sign-in. After 5 wrong passcodes in a row the monitor stops accepting any until you stop and start the connection again. ngrok ends the HTTPS connection and can see the traffic. Stop the connection when you are done.',
+    protectNotice: 'Do not share the URL or the passcode with others.',
     entryTitle: 'Mobile connection',
     entryBody: 'Check from outside with ngrok and a passcode',
     entryAction: 'Set up',
