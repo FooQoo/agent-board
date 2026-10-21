@@ -89,8 +89,10 @@ pub struct Env<'a> {
 /// Entry point of the command line interface. Returns the process exit code.
 pub fn run() -> i32 {
     let args: Vec<OsString> = std::env::args_os().collect();
-    let mut stdout = std::io::stdout().lock();
-    let mut stderr = std::io::stderr().lock();
+    // Unlocked handles: a long-running `serve` writes diagnostics to stderr from
+    // worker threads, and a lock held here for the whole command would block them.
+    let mut stdout = std::io::stdout();
+    let mut stderr = std::io::stderr();
     let shared_dir = match crate::paths::shared_dir() {
         Ok(dir) => dir,
         Err(error) => {

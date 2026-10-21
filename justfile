@@ -63,8 +63,9 @@ serve port="7420" backend_port="7421": build
     AGBOARD_BACKEND_PORT="{{backend_port}}" AGBOARD_WEB_PORT="{{port}}" pnpm --dir web dev --mode live --host 127.0.0.1 --port "{{port}}" --strictPort
 
 # Run a development board with a temporary data area and the ngrok monitor.
-# Usage: just serve-ngrok <allowed-google-email> [port]. The authtoken comes from NGROK_AUTHTOKEN, or is asked once without echo.
-serve-ngrok email port="7450": build
+# Usage: just serve-ngrok [port]. The authtoken comes from NGROK_AUTHTOKEN, or is asked once without echo.
+# The startup line prints the phone URL and its 4-digit passcode; the passcode is also in Settings -> Mobile connection.
+serve-ngrok port="7450": build
     #!/usr/bin/env bash
     set -euo pipefail
     export AGBOARD_HOME="$(mktemp -d)"
@@ -75,4 +76,5 @@ serve-ngrok email port="7450": build
     fi
     echo "Temporary data area: $AGBOARD_HOME"
     ./target/debug/agboard project create dev
-    ./target/debug/agboard serve --port "{{port}}" --monitor ngrok --ngrok-allow-email "{{email}}"
+    echo "The startup line shows the phone URL and its 4-digit passcode."
+    ./target/debug/agboard serve --port "{{port}}" --monitor ngrok

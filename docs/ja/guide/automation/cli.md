@@ -133,11 +133,11 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 | オプション | 意味 |
 | --- | --- |
 | `--monitor ngrok` | モバイルモニターの接続を始めます。指定できるのは`ngrok`だけです。環境変数`NGROK_AUTHTOKEN`が必要で、トークンを引数で渡すことはできません。 |
-| `--ngrok-allow-email EMAIL` | 接続を許可するGoogleアカウントです。`--monitor ngrok`では必須で、アカウントごとに繰り返します。 |
 | `--ngrok-domain HOST` | 予約済みのngrokドメインです。スキーム・パス・ポートのないホスト名で指定します。省略できます。 |
-| `--ngrok-oauth-app managed\|custom` | サインインに使うGoogleアプリです。既定は`managed`です。`custom`では、環境変数`AGBOARD_GOOGLE_CLIENT_ID`と`AGBOARD_GOOGLE_CLIENT_SECRET`が必要です。 |
 
-`--monitor ngrok`なしでngrokのオプションを指定した場合や、値が不正な場合は、終了コード2で終了します。接続を開始できなければ、`serve`は起動せず終了コード1で終了します。`--json`では、起動時の行にボードの`url`が入り、接続の準備ができていれば`monitor`も入ります（`mode: "ngrok"`と、`ngrok`のスマホ用`url`）。許可アカウント・トークン・ポリシーは出力しません。ボードの**設定**からも接続を設定できます。詳しくは[モバイルモニターのガイド](../operations/mobile-monitor)を参照してください。
+スマホは、起動ごとに作る4桁の合言葉で守られます。サインイン用のオプションはありません。`--monitor ngrok`なしの`--ngrok-domain`、不正な値、未知のオプションは、終了コード2で終了します。接続を開始できなければ、`serve`は起動せず終了コード1で終了します。
+
+接続の準備ができると、起動行にスマホ用のアドレスと合言葉が表示されます: `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`。`--json`では、起動時の行にボードの`url`と`monitor`が入ります（`mode: "ngrok"`と、`ngrok`のスマホ用`url`・`passcode`）。合言葉を出力するのはここと、ボードの接続ダイアログだけです。トークンとポリシーは出力しません。ボードの**設定**からも接続を設定できます。詳しくは[モバイルモニターのガイド](../operations/mobile-monitor)を参照してください。
 
 ## 共有フォルダをセットアップする
 

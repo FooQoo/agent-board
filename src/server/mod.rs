@@ -15,6 +15,7 @@ pub mod monitor;
 pub mod monitor_auth {
     pub mod contracts;
     pub mod guard;
+    pub mod passcode;
     pub mod session;
 }
 pub mod monitor_connection;
@@ -150,7 +151,7 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
         // on failure nothing has been written yet, so the run just ends.
         let explicit = monitor.explicit.is_some();
         let monitor_ready = match state.monitor.startup(monitor.explicit.clone()).await {
-            Ok(url) => url.filter(|_| explicit).map(|url| MonitorReady { url }),
+            Ok(ready) => ready.filter(|_| explicit),
             Err(code) => {
                 state.monitor.shutdown();
                 return Err(internal(format!(

@@ -20,27 +20,42 @@ After you install a new version and restart `agboard serve`, an open monitor rel
 
 ## Before you start
 
-You need:
-
-- An ngrok account and its authtoken. Copy the token from your ngrok dashboard.
-- The Google account you will sign in with on the phone. Agent Board connects only the accounts you list.
+You need an ngrok account and its authtoken. Copy the token from your ngrok dashboard. Agent Board opens the address without any of ngrok's Traffic Policy features, including its Google sign-in (OAuth), which a free ngrok account cannot use. A free account can therefore run the monitor; the other limits and terms of your ngrok plan still apply.
 
 Agent Board uses ngrok to open a public HTTPS address that leads to the monitor only. The full board stays on `127.0.0.1`. Never expose the board to the public Internet and never use router port forwarding. ngrok ends the HTTPS connection, so ngrok can process the traffic; the connection is not end-to-end encrypted between your PC and your phone.
+
+## How the passcode protects the monitor
+
+The monitor is guarded by a 4-digit passcode. Agent Board does not use Google authentication or ngrok's sign-in, and it keeps no list of allowed accounts.
+
+- Each time the connection starts, Agent Board makes a new passcode from the operating system's random source, from `0000` to `9999`. It is kept in memory only: it is not saved to a file, logged, or put in the monitor page.
+- You see it on the PC only: in the **Connected** dialog next to the address, and on the startup line of `agboard serve --monitor ngrok`.
+- The phone opens the address, asks for the passcode, and shows nothing of the board until the passcode is right. The connection then lasts up to 12 hours, after which the phone asks for the passcode again.
+- After 5 wrong passcodes in a row, the monitor stops accepting any passcode, even the right one. Stop the connection and connect again (or restart `serve`) to get a new passcode and a fresh count.
+
+A 4-digit passcode has only 10,000 possibilities, so it is weaker than signing in with an account. The 5-attempt limit, the random address that ngrok chooses, and a new passcode at every start make guessing hard, but they are not a substitute for keeping the address private. Treat the address and the passcode like a password pair:
+
+- Do not share the address or the QR code in public places.
+- Stop the connection when you are not using it.
+- Leave **ngrok domain (optional)** empty unless you need a fixed address. An address that ngrok chooses at random is harder to find, though it is not a secret you can rely on.
+
+Because ngrok adds nothing for Agent Board to check, the monitor checks two things itself: the request names exactly the public address, and the passcode. ngrok ends the HTTPS connection and can see the traffic, and anyone who manages your ngrok account can change how the address is served. The passcode does not protect against them.
+
+A program that is already running on your PC can send requests straight to the monitor's local port without going through ngrok. It still needs the passcode to read anything, but it can use up the 5 tries, which closes the monitor to the phone until you stop and connect again. Agent Board trusts the person who uses the PC, so it adds no further protection against this. Run the connection only on a PC you trust.
 
 ## Connect from the PC
 
 1. Open the board, then open **Settings**. In **Mobile connection**, choose **Set up**.
 2. Enter your ngrok authtoken in **ngrok auth token**.
 3. Decide whether to keep the token (see [Where the token is kept](#where-the-token-is-kept)).
-4. In **Google email allowed to connect**, enter the Google account you will use on the phone. To allow more than one account, separate the addresses with commas, semicolons, or spaces. At least one is required, and nobody else can connect.
-5. Leave **ngrok domain (optional)** empty to let ngrok choose the address, or enter a reserved ngrok host name such as `your-name.ngrok.app` to keep the same address.
-6. Choose **Save and connect**.
+4. Leave **ngrok domain (optional)** empty to let ngrok choose the address, or enter a reserved ngrok host name such as `your-name.ngrok.app` to keep the same address.
+5. Choose **Save and connect**.
 
-While it connects, the dialog shows **Connecting to ngrok…**. When it is ready, the dialog shows **Connected**, the **URL for your phone**, and a QR code. **Copy URL** copies the address. The QR code only carries the address: signing in with Google is still required, and the PC does not ask you to approve a device.
+While it connects, the dialog shows **Connecting to ngrok…**. When it is ready, the dialog shows **Connected**, the **URL for your phone**, the **Passcode for your phone**, and a QR code. **Copy URL** copies the address. The QR code only carries the address: the phone still has to enter the passcode, and the PC does not ask you to approve a device.
+
+The passcode is shown only while the connection is running. It is new every time the connection starts, so a stopped or failed connection has none.
 
 If ngrok cannot be reached, the dialog says the settings were saved but ngrok could not be reached. Check the token and the internet connection, then choose **Save and try again**. The board on the PC keeps working.
-
-The Google sign-in uses ngrok's managed Google app by default. Your own Google app can be selected only from the command line (see [Start it from the command line](#start-it-from-the-command-line)).
 
 ## Where the token is kept
 
@@ -50,21 +65,21 @@ The Google sign-in uses ngrok's managed Google app by default. Your own Google a
 - A saved token is shown as saved in the keychain. Choose **Delete the saved token** to remove it.
 - If the PC has no usable keychain, the dialog says **This PC cannot save the token. Enter it each time.** and the save option is unavailable. Enter the token each time you connect.
 
-The allowed Google accounts and the domain are stored in Agent Board's internal area. You do not edit a file for them.
+The domain is stored in Agent Board's internal area. You do not edit a file for it. The passcode is not stored anywhere.
 
 ## Open it on the phone
 
 1. On the phone, open the URL or scan the QR code.
-2. Sign in with Google using an allowed account. The account must be signed in on the phone you connect with.
-3. The monitor opens. The connection lasts up to 12 hours; after that, or when the sign-in expires, the page shows **Reconnect with Google**. Choose it and sign in again.
+2. The page shows **Enter the passcode**. Type the 4-digit passcode shown on the PC and choose **Connect**.
+3. The monitor opens. The connection lasts up to 12 hours; after that, or when the connection was stopped and started again on the PC, the page asks for the passcode again.
 
-A Google account that is not on the list is refused by ngrok before the monitor loads. Knowing the address is not enough to read the board. If the page says the connection is stopped or no longer allowed, check the PC.
+Knowing the address is not enough to read the board. A wrong passcode is refused without saying how many tries are left. After 5 wrong passcodes in a row the page says **Too many wrong passcodes** and takes no more; stop the connection on the PC and connect again to get a new passcode. If the page says the connection is stopped, check the PC.
 
 ## Stop and connect again
 
 Choose **Stop** in the connected dialog to close the connection. The phone can no longer read the board or send answers, and the connection stays off the next time Agent Board starts. To connect again, open **Mobile connection**, check the fields, and choose **Save and connect**.
 
-If the connection drops, for example because the PC slept or the network changed, stop it and connect again. Changing the allowed accounts or the domain with **Change connection settings** and **Save and connect** also replaces the connection, so the phone has to sign in again.
+If the connection drops, for example because the PC slept or the network changed, stop it and connect again. Changing the domain with **Change connection settings** and **Save and connect** also replaces the connection, so the phone has to enter the new passcode.
 
 When the connection was left on, it starts again the next time Agent Board starts, as long as a token is available from the environment or the keychain. Without one, the dialog asks for the token.
 
@@ -74,14 +89,14 @@ ngrok's Traffic Inspector can keep request details if **Full Capture** is turned
 
 ## Start it from the command line
 
-To start the connection with the server, set the token in the environment and add the allowed accounts:
+To start the connection with the server, set the token in the environment:
 
 ```sh
 export NGROK_AUTHTOKEN=<your authtoken>
-agboard serve --monitor ngrok --ngrok-allow-email you@example.com
+agboard serve --monitor ngrok
 ```
 
-Repeat `--ngrok-allow-email` for each account. Add `--ngrok-domain your-name.ngrok.app` for a reserved domain. `--ngrok-oauth-app custom` uses your own Google app and needs `AGBOARD_GOOGLE_CLIENT_ID` and `AGBOARD_GOOGLE_CLIENT_SECRET` in the environment; the default is `managed`. The command prints the phone address with the local address, or in the `monitor` field with `--json`. If the connection cannot start, `serve` stops with exit code 1. The other options are in the [CLI guide](../automation/cli).
+Add `--ngrok-domain your-name.ngrok.app` for a reserved domain. The command prints the phone address and the passcode with the local address, for example `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`, or in the `monitor` field with `--json`. The passcode changes each time the server starts. If the connection cannot start, `serve` stops with exit code 1. The other options are in the [CLI guide](../automation/cli).
 
 When the computer sleeps or the server stops, the monitor is unavailable until the server and the connection run again.
 

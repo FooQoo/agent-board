@@ -29,8 +29,8 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 pub struct Call {
     pub token: String,
-    pub policy: String,
     pub backend: String,
+    pub domain: Option<String>,
 }
 
 #[derive(Default)]
@@ -49,8 +49,8 @@ impl Connector for Fake {
         self.opens.fetch_add(1, Ordering::SeqCst);
         self.calls.lock().unwrap().push(Call {
             token: request.token.expose().to_string(),
-            policy: request.policy.expose().to_string(),
             backend: request.backend.to_string(),
+            domain: request.domain.clone(),
         });
         let fail = *self.fail.lock().unwrap();
         let hold = self.hold.lock().unwrap().take();
@@ -213,7 +213,6 @@ impl Server {
         let monitor = MonitorOptions {
             env: MonitorEnv {
                 token: opts.env_token.then(|| Secret::new(TOKEN)),
-                google: None,
             },
             explicit: opts.explicit,
             connector: opts.fake.clone(),
@@ -283,12 +282,20 @@ impl Server {
         r.json()
     }
 
-    pub fn put(&self, enabled: bool, emails: &[&str], revision: u64) -> Reply {
+    pub fn put(&self, enabled: bool, domain: Option<&str>, revision: u64) -> Reply {
         self.write(
             "PUT",
             "/api/monitor-connections/settings/ngrok",
-            &json!({"enabled": enabled, "allowEmails": emails, "domain": null, "oauthApp": "managed", "revision": revision}),
+            &json!({"enabled": enabled, "domain": domain, "revision": revision}),
         )
+    }
+
+    /// The passcode the PC shows for the running connection.
+    pub fn passcode(&self) -> String {
+        self.get()["passcode"]
+            .as_str()
+            .expect("a ready connection shows its passcode")
+            .to_string()
     }
 
     pub fn start_ngrok(&self, body: Value) -> Reply {

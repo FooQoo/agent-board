@@ -15,7 +15,6 @@ export type { ConnectionStatus };
 /** What the person types: the token is held in memory only and never shown again. */
 export interface ConnectionDraft {
   token: string;
-  email: string;
   domain: string;
   /** Keep the typed token in the OS keychain. Off unless the person turns it on. */
   save: boolean;
@@ -45,6 +44,8 @@ export interface ConnectionSettingsViewProps {
   draft: ConnectionDraft;
   /** The public phone URL, known once the connection is ready. */
   url?: string | null;
+  /** The 4-digit passcode the phone enters, known once the connection is ready. */
+  passcode?: string | null;
   qr?: ConnectionQr | null;
   tokenInfo?: TokenInfo;
   /** Delete the token saved in the keychain. */
@@ -76,6 +77,7 @@ export function ConnectionSettingsView({
   status,
   draft,
   url = null,
+  passcode = null,
   qr = null,
   tokenInfo = { source: null, keychainAvailable: true, saved: false },
   onDeleteToken,
@@ -88,18 +90,23 @@ export function ConnectionSettingsView({
   const { t } = useTranslation();
   const [values, setValues] = useState<ConnectionDraft>(draft);
   const [copied, setCopied] = useState(false);
-  const ids = { token: useId(), email: useId(), domain: useId(), url: useId(), save: useId() };
+  const ids = {
+    token: useId(),
+    domain: useId(),
+    url: useId(),
+    passcode: useId(),
+    save: useId(),
+  };
 
   // Reset only when the values differ, so an equal draft from a re-render keeps what was typed.
   useEffect(
     () =>
       setValues({
         token: draft.token,
-        email: draft.email,
         domain: draft.domain,
         save: draft.save,
       }),
-    [draft.token, draft.email, draft.domain, draft.save],
+    [draft.token, draft.domain, draft.save],
   );
   useEffect(() => {
     if (!copied) return;
@@ -121,12 +128,15 @@ export function ConnectionSettingsView({
         : tokenInfo.source === 'session'
           ? t('monitorConnection.tokenThisRun')
           : t('monitorConnection.tokenNote');
-  const set = (field: 'token' | 'email' | 'domain') => (event: { target: { value: string } }) =>
+  const set = (field: 'token' | 'domain') => (event: { target: { value: string } }) =>
     setValues((current) => ({ ...current, [field]: event.target.value }));
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!busy) onConnect(values);
+    if (busy) return;
+    onConnect(values);
+    // The token has gone to the start request; the form does not keep showing it.
+    setValues((current) => ({ ...current, token: '' }));
   };
 
   const copyUrl = () => {
@@ -169,10 +179,19 @@ export function ConnectionSettingsView({
               <Label htmlFor={ids.url}>{t('monitorConnection.url')}</Label>
               <Input id={ids.url} value={url ?? ''} readOnly />
             </div>
-            {values.email && (
-              <p className="connection-dialog__meta">
-                {t('monitorConnection.allowedEmail', { email: values.email })}
-              </p>
+            {passcode && (
+              <div className="connection-dialog__field">
+                <Label htmlFor={ids.passcode}>{t('monitorConnection.passcode')}</Label>
+                <Input
+                  id={ids.passcode}
+                  className="connection-dialog__passcode"
+                  value={passcode}
+                  readOnly
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <p className="connection-dialog__hint">{t('monitorConnection.passcodeNote')}</p>
+              </div>
             )}
             <div className="connection-dialog__qr">
               <figure className="connection-dialog__qr-figure">
@@ -252,19 +271,6 @@ export function ConnectionSettingsView({
                   </Button>
                 </div>
               )}
-              <div className="connection-dialog__field">
-                <Label htmlFor={ids.email}>{t('monitorConnection.email')}</Label>
-                <Input
-                  id={ids.email}
-                  type="email"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={t('monitorConnection.emailPlaceholder')}
-                  value={values.email}
-                  disabled={busy}
-                  onChange={set('email')}
-                />
-              </div>
               <div className="connection-dialog__field">
                 <Label htmlFor={ids.domain}>{t('monitorConnection.domain')}</Label>
                 <Input

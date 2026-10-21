@@ -21,6 +21,7 @@ export function ConnectionSettings() {
         tokenInfo={controller.tokenInfo}
         onDeleteToken={() => void controller.removeToken()}
         url={controller.url}
+        passcode={controller.passcode}
         qr={controller.qr}
         error={controller.error}
         saving={controller.saving}

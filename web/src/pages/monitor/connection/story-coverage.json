@@ -9,43 +9,58 @@
           "name": "ConnectionStateView",
           "stories": [
             {
-              "id": "pages-monitor-connection-state--google-reconnect",
-              "states": ["Google reconnect", "action"],
+              "id": "pages-monitor-connection-state--enter-passcode",
+              "states": ["passcode needed", "digits only", "action"],
               "interaction": true
             },
             {
-              "id": "pages-monitor-connection-state--opening-google",
-              "states": ["action disabled while opening"],
+              "id": "pages-monitor-connection-state--numeric-keyboard",
+              "states": ["numeric keyboard", "no autofill"],
               "interaction": true
             },
             {
-              "id": "pages-monitor-connection-state--google-failed",
-              "states": ["error message"],
+              "id": "pages-monitor-connection-state--checking",
+              "states": ["form disabled while checking"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--passcode-refused",
+              "states": ["passcode refused", "error message"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--locked",
+              "states": ["locked after too many wrong passcodes", "form closed"],
               "interaction": true
             },
             {
               "id": "pages-monitor-connection-state--session-expired",
-              "states": ["session ended", "action"],
+              "states": ["session ended", "form open"],
               "interaction": true
             },
             {
               "id": "pages-monitor-connection-state--connection-stopped",
-              "states": ["stopped or not allowed"],
+              "states": ["stopped"],
               "interaction": true
             },
             {
               "id": "pages-monitor-connection-state--monitor-unreachable",
-              "states": ["unreachable", "action"],
+              "states": ["unreachable", "form open"],
               "interaction": true
             },
             {
               "id": "pages-monitor-connection-state--waiting-for-recovery",
-              "states": ["waiting", "no action"],
+              "states": ["waiting", "no form"],
               "interaction": true
             },
             {
               "id": "pages-monitor-connection-state--narrow-phone",
               "states": ["320px wide"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--keeps-typed-digits",
+              "states": ["digits kept after a refusal"],
               "interaction": true
             }
           ]

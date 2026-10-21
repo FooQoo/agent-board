@@ -3,7 +3,8 @@
 //! Run only by `web/test/monitor/phone-live.test.ts`, which starts this test with
 //! `--ignored`, reads the line that starts with `READY`, and sends commands on
 //! stdin. No test here reaches ngrok: a fake connector opens the "tunnel", so
-//! the Edge (Google sign-in, allow list, header removal) is not exercised.
+//! the Edge (adding the public Host, header removal) is not exercised. The READY line
+//! carries the passcode of the start, as the PC would show it.
 //!
 //! The same backend serves the Playwright specs (`e2e/helpers/monitor.ts`),
 //! which stand in for the Edge with a small proxy. Those specs set
@@ -25,25 +26,18 @@ use agent_board::domain::Actor;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::Choice;
 use harness::*;
-use serde_json::{Value, json};
+use serde_json::json;
 use support::home;
 
-fn proof_of(policy: &str) -> String {
-    serde_json::from_str::<Value>(policy).unwrap()["on_http_request"][3]["actions"][0]["config"]
-        ["headers"]["x-agboard-tunnel-proof"]
-        .as_str()
-        .unwrap()
-        .to_string()
-}
-
 fn announce(s: &Server) {
+    let passcode = s.passcode();
     let calls = s.fake.calls.lock().unwrap();
     let call = calls.last().unwrap();
     println!(
         "READY {}",
         json!({
             "addr": backend_addr(call).to_string(),
-            "proof": proof_of(&call.policy),
+            "passcode": passcode,
             "host": PUBLIC.trim_start_matches("https://"),
             "origin": PUBLIC,
             "local": s.local.to_string(),
@@ -51,8 +45,8 @@ fn announce(s: &Server) {
     );
 }
 
-/// Commands on stdin: `rotate` replaces the tunnel (old sessions end), `stop`
-/// stops it, `quit` ends the test.
+/// Commands on stdin: `rotate` replaces the tunnel (old sessions end and the
+/// passcode changes), `stop` stops it, `quit` ends the test.
 #[test]
 #[ignore = "started by web/test/monitor/phone-live.test.ts"]
 fn serve_the_phone_backend_until_told_to_quit() {
@@ -96,7 +90,7 @@ fn serve_the_phone_backend_until_told_to_quit() {
     let status = s.get()["status"].clone();
     if status != "ready" && status != "starting" {
         let revision = s.get()["revision"].as_u64().unwrap();
-        assert_eq!(s.put(true, &["owner@example.com"], revision).status, 200);
+        assert_eq!(s.put(true, None, revision).status, 200);
         assert_eq!(s.start_ngrok(json!({})).status, 202);
     }
     s.wait_status("ready");
@@ -106,9 +100,10 @@ fn serve_the_phone_backend_until_told_to_quit() {
     for line in std::io::stdin().lock().lines() {
         match line.unwrap().trim() {
             "rotate" => {
-                let email = format!("owner{revision}@example.com");
+                // A new domain is a new tunnel, which is a new passcode.
+                let domain = format!("rotate-{revision}.ngrok.app");
                 let before = s.fake.opens.load(std::sync::atomic::Ordering::SeqCst);
-                assert_eq!(s.put(true, &[&email], revision).status, 200);
+                assert_eq!(s.put(true, Some(&domain), revision).status, 200);
                 revision += 1;
                 let end = std::time::Instant::now() + std::time::Duration::from_secs(5);
                 while s.fake.opens.load(std::sync::atomic::Ordering::SeqCst) <= before {

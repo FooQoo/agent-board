@@ -6,7 +6,7 @@ use url::Url;
 
 use super::PublicOrigin;
 
-/// Errors from opening the endpoint. Messages never include the token or policy.
+/// Errors from opening the endpoint. Messages never include the token.
 #[derive(Debug, Error)]
 pub enum EndpointError {
     #[error("could not connect to ngrok: {0}")]
@@ -26,12 +26,13 @@ pub struct OpenEndpoint {
 
 /// Connect a session and open an HTTP endpoint that forwards to `backend`.
 ///
-/// Runs on the caller's Tokio runtime and starts no child process. The Host
-/// header is not rewritten, so the backend sees the public authority.
+/// Runs on the caller's Tokio runtime and starts no child process. No Traffic
+/// Policy is set: the endpoint is opened with the domain, if any, and nothing
+/// else, so a plan without Traffic Policy can run it. The Host header is not
+/// rewritten, so the backend sees the public authority.
 /// `server_addr` overrides the ngrok server address (used only by tests).
 pub async fn open_endpoint(
     authtoken: &str,
-    policy: &str,
     backend: Url,
     domain: Option<&str>,
     server_addr: Option<&str>,
@@ -48,7 +49,7 @@ pub async fn open_endpoint(
         .await
         .map_err(|e| EndpointError::Connect(e.to_string()))?;
     let mut endpoint = session.http_endpoint();
-    endpoint.host_header_rewrite(false).traffic_policy(policy);
+    endpoint.host_header_rewrite(false);
     if let Some(domain) = domain {
         endpoint.domain(domain);
     }

@@ -79,11 +79,11 @@ These are returned by the `/api/monitor-connections` routes (see [Web API](./web
 | `keychain_unavailable` | Saving or deleting the token was asked for but the OS keychain cannot do it. Nothing was saved or changed. | n/a | 409 |
 | `settings_unreadable` | A start while the saved settings file cannot be read. Save the settings again first. | n/a | 409 |
 | `start_failed` | The connection could not be started for an internal reason. | n/a | 500 |
-| `invalid_value` | An email, the domain, the token, or the body breaks a rule (for example `save` without a token, an unknown field, or an empty allow list). | n/a | 422 |
+| `invalid_value` | The domain, the token, or the body breaks a rule (for example `save` without a token, or an unknown field). | n/a | 422 |
 
 On the command line, `serve --monitor ngrok` with a missing or invalid option exits 2 with `invalid_argument`; a connection that cannot start exits 1. The failure codes in the state object (`failure`) are listed in [Web API](./web-api.md#mobile-connection).
 
-On the monitor entry, a request that fails the Host or proof check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`.
+On the monitor entry, a request that fails the Host check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`. `POST /monitor/api/unlock` answers a wrong passcode with 403 `unlock_failed` and, after five wrong ones in a row, every attempt with 429 `unlock_locked`; neither says how many tries are left.
 
 ## Exit codes
 

@@ -11,9 +11,10 @@ use serde::Serialize;
 use url::Url;
 
 use super::contracts::{
-    ConnectionStatus, ContractError, EndpointError, OauthApp, PublicOrigin, open_endpoint,
+    ConnectionStatus, ContractError, EndpointError, PublicOrigin, open_endpoint,
 };
 use super::keychain::{NoKeychain, OsKeychain, TokenVault};
+use crate::server::monitor_auth::passcode::Passcode;
 
 /// A value that must never be printed.
 #[derive(Clone)]
@@ -40,8 +41,6 @@ impl fmt::Debug for Secret {
 pub struct MonitorEnv {
     /// `NGROK_AUTHTOKEN`.
     pub token: Option<Secret>,
-    /// `AGBOARD_GOOGLE_CLIENT_ID` and `AGBOARD_GOOGLE_CLIENT_SECRET`, both present.
-    pub google: Option<(Secret, Secret)>,
 }
 
 impl MonitorEnv {
@@ -49,9 +48,6 @@ impl MonitorEnv {
         let get = |name: &str| std::env::var(name).ok().filter(|v| !v.is_empty());
         Self {
             token: get("NGROK_AUTHTOKEN").map(Secret::new),
-            google: get("AGBOARD_GOOGLE_CLIENT_ID")
-                .zip(get("AGBOARD_GOOGLE_CLIENT_SECRET"))
-                .map(|(id, secret)| (Secret::new(id), Secret::new(secret))),
         }
     }
 }
@@ -59,9 +55,7 @@ impl MonitorEnv {
 /// Settings given on the command line; they win over the saved ones for this run.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Overrides {
-    pub allow_emails: Vec<String>,
     pub domain: Option<String>,
-    pub oauth_app: Option<OauthApp>,
 }
 
 /// Short, fixed reasons a start can fail. Safe to show and to log.
@@ -89,10 +83,9 @@ impl FailureCode {
     }
 }
 
-/// What the connector needs. `token` and `policy` are secrets.
+/// What the connector needs. `token` is a secret. There is no Traffic Policy to send.
 pub struct OpenRequest {
     pub token: Secret,
-    pub policy: Secret,
     pub backend: Url,
     pub domain: Option<String>,
 }
@@ -123,14 +116,13 @@ impl Connector for SdkConnector {
         Box::pin(async move {
             let endpoint = open_endpoint(
                 request.token.expose(),
-                request.policy.expose(),
                 request.backend,
                 request.domain.as_deref(),
                 None,
             )
             .await
             .map_err(|e| {
-                // Diagnostic only: the reason ngrok gave. The error text never holds the token or policy.
+                // Diagnostic only: the reason ngrok gave. The error text never holds the token.
                 eprintln!("agboard: ngrok did not open the tunnel: {e}");
                 OpenFailure {
                     code: match e {
@@ -151,7 +143,7 @@ impl Connector for SdkConnector {
 /// How the built-in ngrok monitor connection is set up for one run.
 #[derive(Clone)]
 pub struct MonitorOptions {
-    /// Values from the process environment (token, Google app).
+    /// Values from the process environment (the ngrok token).
     pub env: MonitorEnv,
     /// Settings from the command line. When present the run must start the
     /// connection before it announces itself and fails if it cannot.
@@ -182,10 +174,12 @@ impl MonitorOptions {
     }
 }
 
-/// What a monitor started on the command line reports once it is ready.
+/// What a monitor started on the command line reports once it is ready: the
+/// public URL and the passcode of this start, for the PC to show.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MonitorReady {
     pub url: String,
+    pub passcode: Passcode,
 }
 
 /// What `GET /api/monitor-connections` returns: nothing secret.
@@ -204,6 +198,10 @@ pub struct Snapshot {
     /// Whether a token is saved in the keychain (even if another one wins).
     pub keychain_token_saved: bool,
     pub failure: Option<FailureCode>,
+    /// The passcode of the running connection, for the PC to show. Present only
+    /// while the status is `ready`; a stopped or failed connection has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub passcode: Option<Passcode>,
 }
 
 /// Where the token in use came from.
@@ -222,18 +220,14 @@ pub enum TokenSource {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub enabled: bool,
-    pub allow_emails: Vec<String>,
     pub domain: Option<String>,
-    pub oauth_app: OauthApp,
 }
 
 /// A settings change from the PC. `revision` is the one the PC last saw.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SettingsUpdate {
     pub enabled: bool,
-    pub allow_emails: Vec<String>,
     pub domain: Option<String>,
-    pub oauth_app: OauthApp,
     pub revision: u64,
 }
 

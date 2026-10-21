@@ -133,11 +133,11 @@ When there has been no eligible task for the full interval, it prints `{"kind":"
 | Option | Meaning |
 | --- | --- |
 | `--monitor ngrok` | Starts the mobile monitor connection. `ngrok` is the only mode. Needs `NGROK_AUTHTOKEN` in the environment; the token is never passed as an argument. |
-| `--ngrok-allow-email EMAIL` | A Google account allowed to connect. Required with `--monitor ngrok`; repeat it for each account. |
 | `--ngrok-domain HOST` | A reserved ngrok domain, as a bare host name without a scheme, path, or port. Optional. |
-| `--ngrok-oauth-app managed\|custom` | The Google app for sign-in. `managed` is the default; `custom` needs `AGBOARD_GOOGLE_CLIENT_ID` and `AGBOARD_GOOGLE_CLIENT_SECRET` in the environment. |
 
-The ngrok options without `--monitor ngrok`, or an invalid value, exit with code 2. If the connection cannot start, `serve` exits with code 1 and does not start. With `--json`, the startup line has the `url` of the board and, when the connection is ready, `monitor` with `mode: "ngrok"` and the phone `url` in `ngrok`. Allowed accounts, tokens, and policies are never printed. You can also set up the connection from the board's **Settings**; see the [mobile monitor guide](../operations/mobile-monitor).
+The phone is guarded by a 4-digit passcode that is made for each start; there is no sign-in option. `--ngrok-domain` without `--monitor ngrok`, an invalid value, or an unknown option exits with code 2. If the connection cannot start, `serve` exits with code 1 and does not start.
+
+When the connection is ready, the startup line shows the phone address and the passcode: `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`. With `--json`, the startup line has the `url` of the board and `monitor` with `mode: "ngrok"`, and the phone `url` and `passcode` in `ngrok`. The passcode is printed only here and in the board's connection dialog; tokens and policies are never printed. You can also set up the connection from the board's **Settings**; see the [mobile monitor guide](../operations/mobile-monitor).
 
 ## Set up the shared folder
 

@@ -19,7 +19,6 @@ use serde_json::Value;
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 /// The public origin the fake tunnel reports.
 pub const ORIGIN: &str = "https://fixture-run.ngrok.app";
-const EMAIL: &str = "owner@example.com";
 
 pub fn home() -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
@@ -41,7 +40,7 @@ pub fn home() -> tempfile::TempDir {
 /// Records the newest tunnel request instead of opening a tunnel.
 #[derive(Default)]
 struct RecordingConnector {
-    last: Mutex<Option<(SocketAddr, String)>>,
+    last: Mutex<Option<SocketAddr>>,
 }
 
 impl Connector for RecordingConnector {
@@ -53,12 +52,7 @@ impl Connector for RecordingConnector {
             .trim_end_matches('/')
             .parse()
             .unwrap();
-        let proof = serde_json::from_str::<Value>(request.policy.expose()).unwrap()
-            ["on_http_request"][3]["actions"][0]["config"]["headers"]["x-agboard-tunnel-proof"]
-            .as_str()
-            .unwrap()
-            .to_string();
-        *self.last.lock().unwrap() = Some((addr, proof));
+        *self.last.lock().unwrap() = Some(addr);
         Box::pin(async {
             Ok(OpenedTunnel {
                 public: PublicOrigin::parse(ORIGIN).unwrap(),
@@ -75,12 +69,13 @@ pub struct Session {
 }
 
 /// A real server on loopback whose tunnel is opened by a fake connector. The
-/// monitor is reached the way the Edge forwards it: the public Host, the proof
-/// and, for data, a session.
+/// monitor is reached the way the Edge forwards it: the public Host and,
+/// for data, a session that the passcode of this start opens.
 pub struct Running {
     pub local: SocketAddr,
     pub backend: SocketAddr,
-    proof: String,
+    /// The passcode the start announced, as the PC would show it.
+    pub passcode: String,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
     handle: Option<JoinHandle<Result<(), AgboardError>>>,
 }
@@ -100,13 +95,8 @@ impl Running {
             let mut options = MonitorOptions::without_keychain(
                 MonitorEnv {
                     token: Some(Secret::new("tok-fixture-0123456789")),
-                    google: None,
                 },
-                Some(Overrides {
-                    allow_emails: vec![EMAIL.into()],
-                    domain: None,
-                    oauth_app: None,
-                }),
+                Some(Overrides { domain: None }),
             );
             options.connector = connector;
             run_until_with_monitor(
@@ -115,8 +105,8 @@ impl Running {
                 async move {
                     let _ = stop_rx.await;
                 },
-                move |local, _| {
-                    let _ = ready_tx.send(local);
+                move |local, ready| {
+                    let _ = ready_tx.send((local, ready));
                 },
             )
         });
@@ -129,8 +119,8 @@ impl Running {
                 None => std::env::remove_var("AGBOARD_HOME"),
             }
         }
-        let local = match ready {
-            Ok(local) => local,
+        let (local, announced) = match ready {
+            Ok(ready) => ready,
             Err(error) => {
                 let _ = stop_tx.send(());
                 panic!(
@@ -139,16 +129,15 @@ impl Running {
                 );
             }
         };
-        let (backend, proof) = seen
-            .last
-            .lock()
-            .unwrap()
-            .clone()
-            .expect("a tunnel was opened");
+        let backend = (*seen.last.lock().unwrap()).expect("a tunnel was opened");
         Self {
             local,
             backend,
-            proof,
+            passcode: announced
+                .expect("an explicit start announces itself")
+                .passcode
+                .expose()
+                .to_string(),
             stop: Some(stop_tx),
             handle: Some(handle),
         }
@@ -178,17 +167,13 @@ impl Running {
         format!("http://{}{path}", self.backend)
     }
 
-    /// The headers every request through the Edge carries: the public Host and
-    /// the tunnel proof.
-    pub fn edge_headers(&self) -> [(&'static str, String); 2] {
-        [
-            ("Host", self.host().to_string()),
-            ("x-agboard-tunnel-proof", self.proof.clone()),
-        ]
+    /// The header every request through the Edge carries: the public Host.
+    pub fn edge_headers(&self) -> [(&'static str, String); 1] {
+        [("Host", self.host().to_string())]
     }
 
     /// A request as the Edge forwards it. A `Host` in `headers` replaces the
-    /// public one; the proof is always added.
+    /// public one.
     pub fn request(&self, method: &str, path: &str, headers: &[(&str, &str)], body: &str) -> Reply {
         let agent: ureq::Agent = ureq::Agent::config_builder()
             .http_status_as_error(false)
@@ -204,7 +189,6 @@ impl Running {
         {
             req = req.header("Host", self.host());
         }
-        req = req.header("x-agboard-tunnel-proof", &self.proof);
         for (name, value) in headers {
             req = req.header(*name, *value);
         }
@@ -219,13 +203,23 @@ impl Running {
         }
     }
 
+    /// Enter a passcode the way the phone's page does.
+    pub fn unlock(&self, code: &str) -> Reply {
+        self.request(
+            "POST",
+            "/monitor/api/unlock",
+            &[
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("Content-Type", "application/json"),
+            ],
+            &format!(r#"{{"code":"{code}"}}"#),
+        )
+    }
+
+    /// A session opened with the passcode of this start.
     pub fn session(&self) -> Session {
-        let reply = self.request(
-            "GET",
-            "/monitor/api/session",
-            &[("Sec-Fetch-Site", "same-origin")],
-            "",
-        );
+        let reply = self.unlock(&self.passcode);
         assert_eq!(reply.status, 200, "{}", reply.body);
         let set = reply
             .header("set-cookie")

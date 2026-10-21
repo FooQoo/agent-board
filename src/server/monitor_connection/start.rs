@@ -6,15 +6,13 @@ use tokio::sync::oneshot;
 use url::Url;
 
 use super::backend::{SharedListener, external_app, internal_token, serve};
-use super::contracts::{
-    ConnectionConfig, ConnectionStatus, ContractError, OauthApp, PolicyOauth, TunnelProof,
-    build_traffic_policy,
-};
+use super::contracts::{ConnectionConfig, ConnectionStatus};
 use super::lifecycle::{Inner, MonitorConnections};
 use super::router::{BackendPolicy, Gate, backend_router};
 use super::run::Run;
-use super::types::{FailureCode, OpenRequest, Secret, StartError};
+use super::types::{FailureCode, MonitorReady, OpenRequest, StartError};
 use crate::server::monitor_auth::contracts::SESSION_MAX_AGE_SECS;
+use crate::server::monitor_auth::passcode::{Passcode, UnlockGate};
 use crate::server::monitor_auth::session::{SessionStore, system_clock};
 
 impl MonitorConnections {
@@ -24,7 +22,7 @@ impl MonitorConnections {
     pub(super) fn begin(
         self: &Arc<Self>,
         inner: &mut Inner,
-    ) -> Result<oneshot::Receiver<Result<String, FailureCode>>, StartError> {
+    ) -> Result<oneshot::Receiver<Result<MonitorReady, FailureCode>>, StartError> {
         let config = ConnectionConfig {
             enabled: true,
             ..inner.config.clone()
@@ -32,26 +30,13 @@ impl MonitorConnections {
         .validated()
         .map_err(StartError::Invalid)?;
         let token = inner.token.clone().ok_or(StartError::TokenRequired)?;
-        let oauth = match config.oauth_app {
-            OauthApp::Managed => PolicyOauth::Managed,
-            OauthApp::Custom => match &self.google {
-                Some((id, secret)) => PolicyOauth::Custom {
-                    client_id: id.expose().to_string(),
-                    client_secret: secret.expose().to_string(),
-                },
-                None => {
-                    return Err(StartError::Invalid(ContractError::MissingOauthCredentials));
-                }
-            },
-        };
         let app = self
             .app
             .get()
             .and_then(std::sync::Weak::upgrade)
             .ok_or(StartError::Internal)?;
-        let proof = TunnelProof::generate().map_err(|_| StartError::Internal)?;
-        let policy = build_traffic_policy(&config.allow_emails, &proof, &oauth)
-            .map_err(StartError::Invalid)?;
+        // Each start has its own passcode, which does not outlive the run.
+        let passcode = Passcode::generate().map_err(|_| StartError::Internal)?;
 
         self.teardown(inner);
         let listener = std::net::TcpListener::bind(("127.0.0.1", 0))
@@ -75,9 +60,9 @@ impl MonitorConnections {
         inner.status = ConnectionStatus::Starting;
         inner.url = None;
         inner.failure = None;
+        inner.passcode = None;
         let request = OpenRequest {
             token,
-            policy: Secret::new(policy),
             backend: backend_url,
             domain: config.domain.clone(),
         };
@@ -108,6 +93,7 @@ impl MonitorConnections {
                         };
                         let sessions =
                             Arc::new(SessionStore::new(system_clock(), SESSION_MAX_AGE_SECS));
+                        let unlock = Arc::new(UnlockGate::new(passcode.clone()));
                         let app = external_app(&app, &opened.public, token.clone(), gate.clone());
                         if let Some(run) = inner.run.as_mut() {
                             // The refusing router hands the socket to the real one.
@@ -116,11 +102,12 @@ impl MonitorConnections {
                             run.tunnel = Some(opened.keep_alive);
                         }
                         *gate.write().unwrap_or_else(|e| e.into_inner()) = Some(
-                            BackendPolicy::new(proof, opened.public, generation, sessions, token),
+                            BackendPolicy::new(opened.public, generation, sessions, token, unlock),
                         );
                         inner.status = ConnectionStatus::Ready;
                         inner.url = Some(url.clone());
-                        let _ = tx.send(Ok(url));
+                        inner.passcode = Some(passcode.clone());
+                        let _ = tx.send(Ok(MonitorReady { url, passcode }));
                     }
                     Err(failure) => {
                         if let Some(run) = inner.run.take() {

@@ -5,8 +5,14 @@ export interface PhoneEntrance {
   readonly pcOrigin: string;
   /** The project of the built-in fixture; empty when the caller supplied the data area. */
   readonly projectId: string;
-  /** The loopback address, public host, proof and origin the Edge stand-in forwards with. */
-  readonly target: { addr: string; proof: string; host: string; origin: string; local: string };
+  /** The loopback address, public host, passcode and origin the Edge stand-in forwards with. */
+  readonly target: { addr: string; passcode: string; host: string; origin: string; local: string };
+  /** The passcode of the run, as the PC shows it; it changes whenever the tunnel is replaced. */
+  readonly passcode: string;
+  /** Type the passcode into the phone page that is asking for it and send it. */
+  unlockPage(page: import('@playwright/test').Page): Promise<void>;
+  /** Open a phone monitor URL and enter the passcode. */
+  open(page: import('@playwright/test').Page, url: string): Promise<import('@playwright/test').Response | null>;
   rotate(): Promise<void>;
   stopTunnel(): Promise<void>;
   restart(): Promise<void>;

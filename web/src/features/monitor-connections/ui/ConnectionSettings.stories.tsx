@@ -7,11 +7,14 @@ import { ConnectionSettings } from './ConnectionSettings';
 /** The scheme is joined here so the source keeps no literal remote address. */
 const phoneUrl = `${'https'}://your-name.ngrok.app/monitor/`;
 
+/** The passcode the simulated server makes for a ready connection. */
+const passcode = '4821';
+
 const idle: ConnectionSnapshot = {
   status: 'disabled',
   url: null,
   revision: 3,
-  settings: { enabled: false, allowEmails: [], domain: null, oauthApp: 'managed' },
+  settings: { enabled: false, domain: null },
   tokenConfigured: false,
   tokenSource: null,
   keychainAvailable: true,
@@ -67,12 +70,7 @@ function mockApi(
       snapshot = {
         ...snapshot,
         revision: snapshot.revision + 1,
-        settings: {
-          enabled: body.enabled,
-          allowEmails: body.allowEmails,
-          domain: body.domain,
-          oauthApp: body.oauthApp,
-        },
+        settings: { enabled: body.enabled, domain: body.domain },
       };
       return reply(200, snapshot);
     }
@@ -100,12 +98,20 @@ function mockApi(
           ? null
           : options.outcome === 'failed'
             ? { ...snapshot, status: 'failed', failure: 'connect_failed', tokenConfigured: true }
-            : { ...snapshot, status: 'ready', url: phoneUrl, tokenConfigured: true };
+            : {
+                ...snapshot,
+                status: 'ready',
+                url: phoneUrl,
+                tokenConfigured: true,
+                passcode,
+              };
       snapshot = { ...snapshot, status: 'starting', tokenConfigured: true };
       if (stored) snapshot = { ...snapshot, tokenSource: 'session' };
       return reply(202, snapshot);
     }
-    snapshot = { ...snapshot, status: 'disabled', url: null, failure: null };
+    // A stopped connection has no passcode: the server stops sending it.
+    const { passcode: _gone, ...stopped } = snapshot;
+    snapshot = { ...stopped, status: 'disabled', url: null, failure: null };
     return reply(200, snapshot);
   };
   return {
@@ -137,11 +143,11 @@ export const SaveAndConnect: Story = {
     const view = within(document.body);
     await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
     await userEvent.type(await view.findByLabelText('ngrok auth token'), 'story-token');
-    await userEvent.type(view.getByLabelText('Google email allowed to connect'), 'a@example.com');
     await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
     await expect(
       await view.findByLabelText('URL for your phone', {}, { timeout: 5000 }),
     ).toHaveValue(phoneUrl);
+    await expect(view.getByLabelText('Passcode for your phone')).toHaveValue(passcode);
     const image = view.getByRole('img', { name: 'QR code for the phone URL' });
     await expect(image.getAttribute('src')).toMatch(/^data:image\/svg\+xml/);
     await expect(view.queryByText('Sample · not scannable')).toBeNull();
@@ -152,6 +158,8 @@ export const SaveAndConnect: Story = {
     await expect(start?.body).toEqual({ token: 'story-token' });
     const save = mock?.calls.find((call) => call.line.startsWith('PUT'));
     await expect(JSON.stringify(save?.body)).not.toContain('story-token');
+    // Only the domain is saved with the settings: no email and no Google app.
+    await expect(save?.body).toEqual({ enabled: true, domain: null, revision: 3 });
   },
 };
 
@@ -160,16 +168,18 @@ const connected: ConnectionSnapshot = {
   status: 'ready',
   url: phoneUrl,
   tokenConfigured: true,
-  settings: { enabled: true, allowEmails: ['a@example.com'], domain: null, oauthApp: 'managed' },
+  settings: { enabled: true, domain: 'a.ngrok.app' },
+  passcode,
 };
 
-/** The connection is already up when the dialog opens: the URL and a scannable QR image. */
+/** The connection is already up when the dialog opens: the URL, the passcode and a scannable QR image. */
 export const AlreadyConnected: Story = {
   beforeEach: install(connected),
   play: async () => {
     const view = within(document.body);
     await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
     await expect(await view.findByLabelText('URL for your phone')).toHaveValue(phoneUrl);
+    await expect(view.getByLabelText('Passcode for your phone')).toHaveValue(passcode);
     await waitFor(() =>
       expect(view.getByRole('img', { name: 'QR code for the phone URL' })).toBeVisible(),
     );
@@ -184,9 +194,9 @@ export const StopConnection: Story = {
     await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
     await userEvent.click(await view.findByRole('button', { name: 'Stop' }));
     await waitFor(() => expect(view.getByLabelText('ngrok auth token')).toBeInTheDocument());
-    await expect(view.getByLabelText('Google email allowed to connect')).toHaveValue(
-      'a@example.com',
-    );
+    await expect(view.getByLabelText('ngrok domain (optional)')).toHaveValue('a.ngrok.app');
+    // The passcode belonged to the connection that ended and is not shown any more.
+    await expect(view.queryByLabelText('Passcode for your phone')).toBeNull();
     await expect(mock?.calls.map((call) => call.line)).toContain(
       'POST /api/monitor-connections/transports/ngrok/stop',
     );
@@ -200,7 +210,6 @@ export const Starting: Story = {
     const view = within(document.body);
     await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
     await userEvent.type(await view.findByLabelText('ngrok auth token'), 'story-token');
-    await userEvent.type(view.getByLabelText('Google email allowed to connect'), 'a@example.com');
     await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
     await waitFor(() => expect(view.getByRole('button', { name: 'Connecting…' })).toBeDisabled());
     await expect(view.getByLabelText('ngrok auth token')).toBeDisabled();
@@ -214,7 +223,6 @@ export const StartFails: Story = {
     const view = within(document.body);
     await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
     await userEvent.type(await view.findByLabelText('ngrok auth token'), 'story-token');
-    await userEvent.type(view.getByLabelText('Google email allowed to connect'), 'a@example.com');
     await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
     await expect(await view.findByRole('alert', {}, { timeout: 5000 })).toHaveTextContent(
       'Could not connect to ngrok',
@@ -230,33 +238,15 @@ export const SettingsConflict: Story = {
     const view = within(document.body);
     await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
     await userEvent.type(await view.findByLabelText('ngrok auth token'), 'story-token');
-    await userEvent.type(view.getByLabelText('Google email allowed to connect'), 'a@example.com');
     await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
     await expect(await view.findByRole('alert')).toHaveTextContent('settings changed');
     await expect(mock?.calls.some((call) => call.line.includes('/start'))).toBe(false);
   },
 };
 
-/** Without an email nothing is sent. */
-export const EmailRequired: Story = {
-  beforeEach: install(idle),
-  play: async () => {
-    const view = within(document.body);
-    await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
-    await userEvent.type(await view.findByLabelText('ngrok auth token'), 'story-token');
-    await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
-    await expect(await view.findByRole('alert')).toHaveTextContent('at least one Google email');
-    await expect(mock?.calls.some((call) => call.line.startsWith('PUT'))).toBe(false);
-  },
-};
-
 const typeAndSubmit = async (view: ReturnType<typeof within>, token: string) => {
   await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
   if (token) await userEvent.type(await view.findByLabelText('ngrok auth token'), token);
-  await userEvent.type(
-    await view.findByLabelText('Google email allowed to connect'),
-    'a@example.com',
-  );
 };
 
 /** The save box is off by default: a plain connect sends only the token. */
@@ -302,7 +292,7 @@ const savedToken: ConnectionSnapshot = {
   tokenConfigured: true,
   tokenSource: 'keychain',
   keychainTokenSaved: true,
-  settings: { enabled: true, allowEmails: ['a@example.com'], domain: null, oauthApp: 'managed' },
+  settings: { enabled: true, domain: null },
 };
 
 /** A token saved in the keychain is announced and can be deleted; the form then asks for one again. */

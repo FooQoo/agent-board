@@ -30,24 +30,25 @@ function MonitorFixtureApp() {
 
 /**
  * Confirms the phone's access before the monitor reads anything. While the session is missing,
- * expired or stopped, no list, event stream or answer runs and no board data is shown.
+ * expired or stopped, no list, event stream or answer runs and no board data is shown: the phone
+ * is asked for the passcode instead.
  */
 function MonitorConnectedApp({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
   const { t } = useTranslation();
   const connection = useMonitorConnection();
-  const { state } = connection;
+  const { state, unlockFailure } = connection;
   if (state.status === 'checking') return null;
-  if (state.status === 'reconnecting')
-    return <ConnectionStateView status="reconnecting" onConnect={connection.connect} />;
-  if (state.status === 'needs_google') {
-    const error =
-      state.failure === null ? null : t(`monitorConnection.phone.failure.${state.failure}`);
+  if (state.status === 'reconnecting') return <ConnectionStateView status="reconnecting" />;
+  if (state.status === 'needs_passcode') {
+    // What the last passcode got wins over why the screen was shown.
+    const message = unlockFailure ?? state.failure;
     return (
       <ConnectionStateView
-        status="needs_google"
-        error={error}
-        saving={connection.opening}
-        onConnect={connection.connect}
+        status="needs_passcode"
+        error={message === null ? null : t(`monitorConnection.phone.failure.${message}`)}
+        locked={unlockFailure === 'locked'}
+        checking={connection.unlocking}
+        onSubmit={(code) => void connection.unlock(code)}
       />
     );
   }

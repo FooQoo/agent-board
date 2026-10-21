@@ -15,11 +15,6 @@ import { qrDataUrl } from './qr';
 
 const POLL_MS = 1500;
 
-/** The allowed emails typed in one field, separated by commas, semicolons or spaces. */
-export function parseEmails(text: string): string[] {
-  return text.split(/[\s,;]+/).filter(Boolean);
-}
-
 /**
  * The state behind the connection dialog: it reads the status from the local API, saves the
  * settings, starts and stops. The token goes straight to the start request and is kept nowhere.
@@ -90,11 +85,6 @@ export function useConnectionController(open: boolean) {
         setError(t('monitorConnectionPc.error.unreachable'));
         return;
       }
-      const emails = parseEmails(draft.email);
-      if (emails.length === 0) {
-        setError(t('monitorConnectionPc.error.emailRequired'));
-        return;
-      }
       const token = draft.token.trim();
       // An environment or keychain token is enough; the server answers token_required otherwise.
       if (!token && !snapshot.tokenConfigured) {
@@ -107,9 +97,7 @@ export function useConnectionController(open: boolean) {
       try {
         let next = await saveSettings({
           enabled: true,
-          allowEmails: emails,
           domain: draft.domain.trim() || null,
-          oauthApp: snapshot.settings.oauthApp,
           revision: snapshot.revision,
         });
         setSnapshot(next);
@@ -167,11 +155,10 @@ export function useConnectionController(open: boolean) {
     }
   }, [messageOf]);
 
-  const savedEmail = snapshot?.settings.allowEmails.join(', ') ?? '';
   const savedDomain = snapshot?.settings.domain ?? '';
   const draft = useMemo<ConnectionDraft>(
-    () => ({ token: '', email: savedEmail, domain: savedDomain, save: false }),
-    [savedEmail, savedDomain],
+    () => ({ token: '', domain: savedDomain, save: false }),
+    [savedDomain],
   );
   const tokenInfo = useMemo<TokenInfo>(
     () => ({
@@ -182,6 +169,8 @@ export function useConnectionController(open: boolean) {
     [snapshot],
   );
   const url = snapshot?.status === 'ready' ? snapshot.url : null;
+  // The server sends the passcode only while the connection is ready; show nothing otherwise.
+  const passcode = snapshot?.status === 'ready' ? (snapshot.passcode ?? null) : null;
   const qr: ConnectionQr | null = useMemo(() => (url ? { src: qrDataUrl(url) } : null), [url]);
 
   // The failure reason is a fixed code, never a message from the network.
@@ -202,6 +191,7 @@ export function useConnectionController(open: boolean) {
     tokenInfo,
     removeToken,
     url,
+    passcode,
     qr,
     error: error ?? failure ?? (loadFailed ? t('monitorConnectionPc.error.unreachable') : null),
     saving,

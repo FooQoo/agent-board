@@ -25,8 +25,7 @@
 }
 
 .connection-dialog__intro,
-.connection-dialog__hint,
-.connection-dialog__meta {
+.connection-dialog__hint {
   margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-line;
@@ -38,8 +37,7 @@
   line-height: 1.6;
 }
 
-.connection-dialog__hint,
-.connection-dialog__meta {
+.connection-dialog__hint {
   color: var(--r-text2);
   font-size: 12px;
   line-height: 1.6;
@@ -64,6 +62,15 @@
 
 .connection-dialog__field label {
   line-height: 16px;
+}
+
+/* The passcode the phone types: large, evenly spaced digits in the same field shape as the URL. */
+.connection-dialog .connection-dialog__passcode {
+  height: 52px;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.4em;
 }
 
 .connection-dialog .button-tall,

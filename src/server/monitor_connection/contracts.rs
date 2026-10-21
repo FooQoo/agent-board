@@ -1,29 +1,12 @@
 //! Contracts for the built-in ngrok monitor connection: configuration and status
-//! types, input validation, the Traffic Policy generator, the per-start tunnel
-//! proof, public Origin/Host checks, and the SDK entry point.
+//! types, input validation, public Origin/Host checks, and the SDK entry point.
+//! The endpoint is opened without a Traffic Policy.
 //!
 //! Nothing here starts a tunnel on its own. The HTTP stack that serves the
 //! monitor builds on these types.
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-/// Header the Edge policy sets after authentication and authorization.
-pub const PROOF_HEADER: &str = "x-agboard-tunnel-proof";
-
-/// Upper bound on allowed emails, to keep the policy small.
-pub const MAX_ALLOWED_EMAILS: usize = 50;
-
-/// Which Google OAuth app the Edge uses.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OauthApp {
-    /// ngrok's managed Google app.
-    #[default]
-    Managed,
-    /// An app owned by the user; the client id and secret come from the environment.
-    Custom,
-}
 
 /// Lifecycle state of the connection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,59 +26,21 @@ pub enum ConnectionStatus {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ConnectionConfig {
     pub enabled: bool,
-    pub allow_emails: Vec<String>,
     pub domain: Option<String>,
-    pub oauth_app: OauthApp,
     pub revision: u64,
 }
 
 /// Why an input or request was refused. Messages never include secret values.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ContractError {
-    #[error("at least one allowed email is required")]
-    NoAllowedEmail,
-    #[error("too many allowed emails (maximum {MAX_ALLOWED_EMAILS})")]
-    TooManyEmails,
-    #[error("invalid allowed email")]
-    InvalidEmail,
     #[error("invalid domain")]
     InvalidDomain,
     #[error("the public URL must be a plain https origin")]
     InvalidPublicUrl,
-    #[error("custom OAuth app requires a client id and secret")]
-    MissingOauthCredentials,
-    #[error("the tunnel proof header is missing")]
-    ProofMissing,
-    #[error("the tunnel proof header is repeated")]
-    ProofDuplicate,
-    #[error("the tunnel proof does not match")]
-    ProofMismatch,
     #[error("the Host header does not match the public origin")]
     HostMismatch,
     #[error("the Origin header does not match the public origin")]
     OriginMismatch,
-}
-
-/// Validate one allowed email and return its canonical (lowercase) form.
-///
-/// Only a conservative ASCII subset is accepted. Quotes, backslashes, spaces and
-/// control characters are rejected rather than escaped.
-pub fn normalize_email(raw: &str) -> Result<String, ContractError> {
-    let email = raw.to_ascii_lowercase();
-    if email.is_empty() || email.len() > 254 {
-        return Err(ContractError::InvalidEmail);
-    }
-    let ok_char = |c: char| c.is_ascii_alphanumeric() || "._%+-".contains(c);
-    let (local, domain) = email.split_once('@').ok_or(ContractError::InvalidEmail)?;
-    if local.is_empty()
-        || local.len() > 64
-        || !local.chars().all(ok_char)
-        || domain.contains('@')
-        || !valid_hostname(domain)
-    {
-        return Err(ContractError::InvalidEmail);
-    }
-    Ok(email)
 }
 
 fn valid_hostname(host: &str) -> bool {
@@ -123,35 +68,10 @@ pub fn normalize_domain(raw: &str) -> Result<String, ContractError> {
     }
 }
 
-/// Validate and deduplicate the allow list, preserving first-seen order.
-pub fn normalize_emails(raw: &[String]) -> Result<Vec<String>, ContractError> {
-    if raw.is_empty() {
-        return Err(ContractError::NoAllowedEmail);
-    }
-    let mut out: Vec<String> = Vec::new();
-    for item in raw {
-        let email = normalize_email(item)?;
-        if !out.contains(&email) {
-            out.push(email);
-        }
-    }
-    if out.len() > MAX_ALLOWED_EMAILS {
-        return Err(ContractError::TooManyEmails);
-    }
-    Ok(out)
-}
-
 impl ConnectionConfig {
-    /// Validate the config and return its canonical form.
-    ///
-    /// A disabled config may have an empty allow list. An enabled one may not:
-    /// "any Google account" is never allowed.
+    /// Validate the config and return its canonical form. A blank domain means
+    /// "let ngrok choose one".
     pub fn validated(&self) -> Result<Self, ContractError> {
-        let allow_emails = if self.enabled || !self.allow_emails.is_empty() {
-            normalize_emails(&self.allow_emails)?
-        } else {
-            Vec::new()
-        };
         let domain = self
             .domain
             .as_deref()
@@ -160,9 +80,7 @@ impl ConnectionConfig {
             .transpose()?;
         Ok(Self {
             enabled: self.enabled,
-            allow_emails,
             domain,
-            oauth_app: self.oauth_app,
             revision: self.revision,
         })
     }
@@ -170,26 +88,15 @@ impl ConnectionConfig {
 
 mod access;
 mod endpoint;
-mod policy;
 
-pub use access::{PublicOrigin, TunnelProof};
+pub use access::PublicOrigin;
 pub use endpoint::{EndpointError, OpenEndpoint, open_endpoint};
-pub use policy::{PolicyOauth, build_traffic_policy};
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use axum::http::{HeaderMap, HeaderName, HeaderValue};
-    use serde_json::{Value, json};
     use url::Url;
-
-    fn proof() -> TunnelProof {
-        TunnelProof::from_bytes(&[7u8; 32])
-    }
-
-    fn emails(list: &[&str]) -> Vec<String> {
-        list.iter().map(|s| s.to_string()).collect()
-    }
 
     #[test]
     fn status_and_config_serialize_to_the_contract_names() {
@@ -226,57 +133,15 @@ mod tests {
         let v = serde_json::to_value(ConnectionConfig::default()).unwrap();
         let mut keys: Vec<&str> = v.as_object().unwrap().keys().map(String::as_str).collect();
         keys.sort();
-        assert_eq!(
-            keys,
-            ["allowEmails", "domain", "enabled", "oauthApp", "revision"]
-        );
-        assert!(
-            serde_json::from_str::<ConnectionConfig>(
-                r#"{"enabled":false,"allowEmails":[],"domain":null,"oauthApp":"managed","revision":0,"deviceStore":1}"#
-            )
-            .is_err()
-        );
-    }
-
-    #[test]
-    fn emails_are_validated_and_canonicalized() {
-        assert_eq!(
-            normalize_email("Owner@Example.COM").unwrap(),
-            "owner@example.com"
-        );
-        for bad in [
-            "",
-            "a",
-            "@x.com",
-            "a@",
-            "a@b",
-            "a@@b.com",
-            "a b@x.com",
-            "a'b@x.com",
-            "a\"b@x.com",
-            "a\\b@x.com",
-            "a@x.com\n",
-            "a\u{0}@x.com",
-            "a@x.com,b@x.com",
-            "a@-x.com",
-            "日本@x.com",
-            "a@x..com",
+        assert_eq!(keys, ["domain", "enabled", "revision"]);
+        // The Google settings are gone: a saved file that still has them is not read.
+        for stale in [
+            r#"{"enabled":false,"domain":null,"revision":0,"allowEmails":[]}"#,
+            r#"{"enabled":false,"domain":null,"revision":0,"oauthApp":"managed"}"#,
+            r#"{"enabled":false,"domain":null,"revision":0,"deviceStore":1}"#,
         ] {
-            assert_eq!(
-                normalize_email(bad),
-                Err(ContractError::InvalidEmail),
-                "{bad:?}"
-            );
+            assert!(serde_json::from_str::<ConnectionConfig>(stale).is_err());
         }
-        assert_eq!(normalize_emails(&[]), Err(ContractError::NoAllowedEmail));
-        assert_eq!(
-            normalize_emails(&emails(&["A@x.com", "a@x.com", "b@x.com"])).unwrap(),
-            ["a@x.com", "b@x.com"]
-        );
-        let many: Vec<String> = (0..=MAX_ALLOWED_EMAILS)
-            .map(|i| format!("u{i}@x.com"))
-            .collect();
-        assert_eq!(normalize_emails(&many), Err(ContractError::TooManyEmails));
     }
 
     #[test]
@@ -303,75 +168,22 @@ mod tests {
     }
 
     #[test]
-    fn enabled_config_needs_an_allow_list() {
+    fn an_enabled_config_needs_nothing_but_a_valid_or_blank_domain() {
         let mut c = ConnectionConfig {
             enabled: true,
             ..Default::default()
         };
-        assert_eq!(c.validated(), Err(ContractError::NoAllowedEmail));
-        c.allow_emails = emails(&["Me@x.com"]);
+        assert_eq!(c.validated().unwrap().domain, None);
         c.domain = Some(" ".into());
-        let v = c.validated().unwrap();
-        assert_eq!(v.allow_emails, ["me@x.com"]);
-        assert_eq!(v.domain, None);
-        assert!(ConnectionConfig::default().validated().is_ok());
-    }
-
-    #[test]
-    fn policy_snapshot_has_deny_by_default_order() {
-        let p = build_traffic_policy(
-            &emails(&["owner@example.com", "b@x.org"]),
-            &proof(),
-            &PolicyOauth::Managed,
-        )
-        .unwrap();
-        let expected = json!({
-            "on_http_request": [
-                {"actions": [{"type": "oauth", "config": {"provider": "google"}}]},
-                {
-                    "expressions": ["!(actions.ngrok.oauth.identity.email in [\"owner@example.com\",\"b@x.org\"])"],
-                    "actions": [{"type": "deny", "config": {"status_code": 403}}]
-                },
-                {"actions": [{"type": "remove-headers", "config": {"headers": ["x-agboard-tunnel-proof"]}}]},
-                {"actions": [{"type": "add-headers", "config": {"headers": {
-                    "x-agboard-tunnel-proof": "07".repeat(32)
-                }}}]}
-            ]
-        });
-        assert_eq!(serde_json::from_str::<Value>(&p).unwrap(), expected);
-        // Remove Headers must come before Add Headers, and auth before both.
-        let pos = |needle: &str| p.find(needle).unwrap();
-        assert!(pos("\"oauth\"") < pos("\"deny\""));
-        assert!(pos("\"deny\"") < pos("\"remove-headers\""));
-        assert!(pos("\"remove-headers\"") < pos("\"add-headers\""));
-    }
-
-    #[test]
-    fn policy_refuses_unsafe_or_empty_allow_lists() {
-        for bad in [
-            emails(&[]),
-            emails(&["a'] || true || ['b@x.com"]),
-            emails(&["a\"@x.com"]),
-        ] {
-            assert!(build_traffic_policy(&bad, &proof(), &PolicyOauth::Managed).is_err());
-        }
-    }
-
-    #[test]
-    fn custom_oauth_needs_both_values_and_is_redacted() {
-        let custom = |id: &str, s: &str| PolicyOauth::Custom {
-            client_id: id.into(),
-            client_secret: s.into(),
-        };
-        let e = emails(&["a@x.com"]);
+        assert_eq!(c.validated().unwrap().domain, None);
+        c.domain = Some("Me.Ngrok.App".into());
         assert_eq!(
-            build_traffic_policy(&e, &proof(), &custom("id", "")),
-            Err(ContractError::MissingOauthCredentials)
+            c.validated().unwrap().domain.as_deref(),
+            Some("me.ngrok.app")
         );
-        let p = build_traffic_policy(&e, &proof(), &custom("id", "s3cret")).unwrap();
-        assert!(p.contains("\"client_id\":\"id\""));
-        assert!(!format!("{:?}", custom("id", "s3cret")).contains("s3cret"));
-        assert!(!format!("{:?}", proof()).contains("0707"));
+        c.domain = Some("not a host".into());
+        assert_eq!(c.validated(), Err(ContractError::InvalidDomain));
+        assert!(ConnectionConfig::default().validated().is_ok());
     }
 
     fn headers(pairs: &[(&str, &str)]) -> HeaderMap {
@@ -383,39 +195,6 @@ mod tests {
             );
         }
         h
-    }
-
-    #[test]
-    fn proof_must_be_present_single_and_equal() {
-        let p = proof();
-        let good = "07".repeat(32);
-        assert_eq!(
-            p.verify(&headers(&[("x-agboard-tunnel-proof", &good)])),
-            Ok(())
-        );
-        assert_eq!(p.verify(&headers(&[])), Err(ContractError::ProofMissing));
-        assert_eq!(
-            p.verify(&headers(&[
-                ("x-agboard-tunnel-proof", &good),
-                ("X-Agboard-Tunnel-Proof", &good)
-            ])),
-            Err(ContractError::ProofDuplicate)
-        );
-        for bad in ["", "07", &"08".repeat(32), &format!("{good}0")] {
-            assert_eq!(
-                p.verify(&headers(&[("x-agboard-tunnel-proof", bad)])),
-                Err(ContractError::ProofMismatch),
-                "{bad}"
-            );
-        }
-    }
-
-    #[test]
-    fn generated_proofs_are_256_bit_and_unique() {
-        let a = TunnelProof::generate().unwrap();
-        let b = TunnelProof::generate().unwrap();
-        assert_eq!(a.expose().len(), 64);
-        assert_ne!(a, b);
     }
 
     #[test]
@@ -477,7 +256,6 @@ mod tests {
         drop(listener);
         let result = open_endpoint(
             "test-token",
-            "{}",
             Url::parse("http://127.0.0.1:1").unwrap(),
             None,
             Some(&addr),

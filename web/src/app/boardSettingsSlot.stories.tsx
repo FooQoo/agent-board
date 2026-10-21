@@ -25,7 +25,7 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
             status: 'disabled',
             url: null,
             revision: 1,
-            settings: { enabled: false, allowEmails: [], domain: null, oauthApp: 'managed' },
+            settings: { enabled: false, domain: null },
             tokenConfigured: false,
             tokenSource: null,
             keychainAvailable: true,

@@ -15,7 +15,7 @@ Everything below serves one of these two goals. When a protection only restrains
 
 | Risk | Protection | Details |
 | --- | --- | --- |
-| Someone on the network opens the board | `serve` listens only on `127.0.0.1`; the phone connection starts only on request and is guarded by ngrok's Google sign-in and allow list. | [Exposure](#exposure), [The ngrok entrance](#the-ngrok-entrance) |
+| Someone on the network opens the board | `serve` listens only on `127.0.0.1`; the phone connection starts only on request and is guarded by a 4-digit passcode made for each start, with a limit on wrong guesses. | [Exposure](#exposure), [The ngrok entrance](#the-ngrok-entrance) |
 | A website makes the browser write to the board | Host, Origin, `Sec-Fetch-Site`, and a per-start token on every write. | [Writes from the browser](#writes-from-the-browser) |
 | An agent deletes data | Deletion commands require a human y/N in a terminal; the web UI deletes only archived tasks. | [Deletion is for people](#deletion-is-for-people) |
 | An agent overwrites a draft or a finished task | The CLI refuses AI writes to drafts and Done tasks. | [Drafts and Done tasks](#drafts-and-done-tasks) |
@@ -33,17 +33,17 @@ Everything below serves one of these two goals. When a protection only restrains
 
 ## The ngrok entrance
 
-Anyone who can open the ngrok address reaches ngrok's Edge first, not the board. A request must pass every layer below, in order. The layers and the lifecycle are described in [The mobile monitor](./remote-access.md#authentication-and-write-protection).
+Anyone who can open the ngrok address reaches ngrok's Edge first, not the board. The endpoint is opened without a Traffic Policy, because the free ngrok plan rejects one, so the Edge does no sign-in and adds nothing. A request must pass every layer below, in order. The layers and the lifecycle are described in [The mobile monitor](./remote-access.md#authentication-and-write-protection).
 
 | Layer | What it checks | What it stops |
 | --- | --- | --- |
-| Edge sign-in and allow list | Google OAuth on every path, then a deny unless the signed-in email is in the allow list. An empty list never starts the tunnel. | Anyone who is not an allowed Google account. |
-| Proof and Host | A 256-bit proof made for each start, set by the Edge after the checks above and compared in constant time; the Host must equal the public HTTPS address. Anything else gets the same 403. | A direct request to the loopback port, a forged `ngrok-auth-user-*` or proof header, and a request for another Host. |
-| Session | An in-memory application session (`agboard_ngrok_session`, `Secure; HttpOnly; SameSite=Lax; Path=/monitor/`, at most 12 hours) bound to this start and address. | Reading the monitor API without a live session; reusing a session after a stop, a restart, or a change of the allow list. |
+| Host | The endpoint is opened without a Traffic Policy, so the Edge adds nothing. The `Host` header must be exactly the public HTTPS address; anything else gets the same 403. | A browser or a website that reaches the loopback port (its `Host` is the loopback address or another name), a request for another Host, and a forged `ngrok-auth-user-*` or `X-Forwarded-*` header. |
+| Passcode and session | A 4-digit passcode made for each start opens an in-memory application session (`agboard_ngrok_session`, `Secure; HttpOnly; SameSite=Lax; Path=/monitor/`, at most 12 hours) bound to this start and address. The passcode is compared in constant time; five wrong ones in a row end all attempts until the next start. | Reading the monitor API without having been given the passcode; guessing more than five times per start; reusing a session after a stop or a restart. |
 | CSRF and Origin | For an answer or disconnect: the exact public Origin, `Sec-Fetch-Site: same-origin`, and a CSRF token derived from the session. | A website that makes the phone's browser send an answer. |
 
-- The Google password and tokens are never seen by Agent Board. The app does not accept the Edge's identity headers, `Forwarded`, or `X-Forwarded-*` as proof of anything; they are removed after the proof check.
-- The proof, sessions, CSRF tokens, and the ngrok token live only in memory. Stopping, changing the allow list or domain, or restarting the server drops them and ends open event streams.
+- The monitor is not guarded by Google or any account. The passcode is a shared secret between the PC's screen and the phone, so it is weaker than a sign-in: 10,000 possibilities, protected by the guess limit and its short life. The app does not accept the Edge's identity headers, `Forwarded`, or `X-Forwarded-*` as proof of anything; they are removed after the Host check.
+- The passcode is shown to the PC only: in the local status answer while the connection is `ready`, in the connection dialog, and on the `serve` startup line. It is never written to a file, a log, `serve.json`, the page, or an error; the failed-guess count is never reported.
+- The passcode, sessions, CSRF tokens, and the ngrok token live only in memory. Stopping, changing the domain, or restarting the server drops them, ends open event streams, and makes a new passcode with a clean count.
 - The ngrok token is accepted only in the body of the local start request, is never returned or written to the settings file, and, when the user chooses to keep it, is stored in the OS keychain. The `NGROK_AUTHTOKEN` environment variable takes priority over a saved token.
 - **Traffic Inspector.** ngrok ends the HTTPS connection, so it can process traffic, and its Traffic Inspector keeps request and response details when **Full Capture** is enabled for the account. Agent Board cannot turn that off; the user checks that it is disabled in the ngrok dashboard under **Settings** → **Observability**.
 - The monitor serves no desktop route, no edit or archive route, and no file listing. Unknown routes are 404 and disallowed methods are 405, and authentication is evaluated before the target is looked up.
@@ -114,8 +114,9 @@ Titles, descriptions, reasons, and answers are written by agents and users, so t
 
 These limits are deliberate. Keep them in mind when someone asks for "just one more check".
 
-- **ngrok and its account owner.** The tunnel is not end-to-end encrypted: ngrok ends the HTTPS connection, and an administrator of the ngrok account can change the policy that guards it. The proof does not protect against an attacker who already runs as the same OS user on the PC.
-- **A signed-in allowed account.** Whoever uses an allowed Google account on a phone can read every project's monitor data and answer the current question of a Todo or Doing task.
+- **ngrok and its account owner.** The tunnel is not end-to-end encrypted: ngrok ends the HTTPS connection, so ngrok can see the traffic, and an administrator of the ngrok account can change how the address is served.
+- **A local process that sends HTTP straight to the monitor's loopback port.** The monitor's entry listens on `127.0.0.1` on a random port, and nothing proves that a request came through ngrok: a program on the PC that sends `Host: <the public address>` to that port is admitted past the Host check. Its only way on is the passcode and the session behind it, so the board's data stays unreadable without the passcode, but such a program can guess (five tries per start) and can spend those tries, which locks the phone out until the connection is started again. The user who runs the PC is trusted: the same programs can read the shared files directly, so no further defence is added for this path. A website cannot do it, because a browser cannot send another `Host`.
+- **Anyone who has the address and the passcode.** Whoever enters the passcode can read every project's monitor data and answer the current question of a Todo or Doing task for up to 12 hours. A 4-digit passcode has 10,000 possibilities; the limit of five wrong guesses in a row and the new passcode at each start make guessing hard, but not impossible: an attacker who finds the address gets five guesses per start, and one right guess opens it. Someone who sees the passcode on the PC's screen or the startup line can use it. Keep the address private and stop the connection when it is not needed.
 - **Programs running as the same OS user** can read, write, and delete the shared files directly, bypassing every CLI and web check. Folder write access does not physically protect `task.json`.
 - **Direct edits of a draft's `TASK.md`** cannot be stopped; the README and the agent skill tell agents not to. The same applies to deleting task or epic folders and editing `task.json`, `epic.json`, or `project.json`.
 - **Forged browser requests from a local program** that scrapes the token can pass the write guard.

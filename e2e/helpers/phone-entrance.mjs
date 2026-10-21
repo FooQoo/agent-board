@@ -3,14 +3,16 @@
 // It starts the dedicated ngrok monitor backend on loopback (the Rust test
 // `monitor_phone_serve`, whose fake connector opens the "tunnel" without any
 // network) over a data area the caller filled, and puts a small proxy in front
-// of it. The proxy stands in for the ngrok Edge: it adds the public Host and the
-// per-run proof to every request and the public Origin to writes, and drops any
-// header an Edge would remove. The app issues the session cookie and the CSRF
-// token itself, exactly as it does behind the real Edge.
+// of it. The proxy stands in for the ngrok Edge, which runs without a Traffic
+// Policy: it names the public Host on every request and the public Origin on
+// writes, and drops the forwarding and identity headers a client could write. The app asks for the 4-digit passcode of the run
+// and issues the session cookie and the CSRF token itself, exactly as it does
+// behind the real Edge. The backend announces the passcode the way the PC would
+// show it; `passcode` and `unlockPage` hand it to a test.
 //
-// NOT exercised here: Google sign-in, the allow list, the proof being added or
-// header removal by a real Edge, and any real ngrok connection. A pass shows
-// what the application side admits and refuses, not that an Edge enforces it.
+// NOT exercised here: how a real Edge forwards a request, and any real ngrok
+// connection. A pass shows what the application side admits
+// and refuses, not that an Edge enforces it.
 import { spawn, spawnSync } from 'node:child_process';
 import http from 'node:http';
 import path from 'node:path';
@@ -40,7 +42,7 @@ export function buildPhoneBackend() {
 }
 
 // Headers a real Edge would never pass on as the caller's own.
-const EDGE_OWNED = /^(ngrok-|x-forwarded-|x-agboard-tunnel-proof$|forwarded$)/i;
+const EDGE_OWNED = /^(ngrok-|x-forwarded-|forwarded$)/i;
 
 function listen(server) {
   return new Promise((resolve, reject) => {
@@ -57,7 +59,7 @@ function listen(server) {
  */
 export async function startPhoneEntrance(home, { timeoutMs = 120_000 } = {}) {
   const binary = buildPhoneBackend();
-  const target = { addr: '', proof: '', host: '', origin: '' };
+  const target = { addr: '', passcode: '', host: '', origin: '' };
   const lines = [];
   const waiters = [];
   let stderr = '';
@@ -72,7 +74,6 @@ export async function startPhoneEntrance(home, { timeoutMs = 120_000 } = {}) {
       if (!EDGE_OWNED.test(name)) headers[name] = value;
     }
     headers.host = target.host;
-    headers['x-agboard-tunnel-proof'] = target.proof;
     if (headers.origin !== undefined) headers.origin = target.origin;
     const upstream = http.request(
       { hostname, port: Number(port), path: req.url, method: req.method, headers },
@@ -149,6 +150,12 @@ export async function startPhoneEntrance(home, { timeoutMs = 120_000 } = {}) {
     clearTimeout(timer);
   }
 
+  async function unlockPage(page) {
+    const field = page.locator('#monitor-passcode');
+    await field.fill(target.passcode);
+    await field.press('Enter');
+  }
+
   await launch();
 
   return {
@@ -156,9 +163,19 @@ export async function startPhoneEntrance(home, { timeoutMs = 120_000 } = {}) {
     get pcOrigin() { return pcOrigin; },
     /** The project of the built-in fixture; empty when the caller supplied the data area. */
     get projectId() { return projectId; },
-    /** The public host, proof and loopback address the Edge stand-in forwards to. */
+    /** The public host, passcode and loopback address the Edge stand-in forwards to. */
     get target() { return { ...target }; },
-    /** Replace the tunnel: every phone session ends and a new proof is issued. */
+    /** The passcode of the run, as the PC shows it. It changes whenever the tunnel is replaced. */
+    get passcode() { return target.passcode; },
+    /** Type the passcode into the phone page that is asking for it and send it. */
+    unlockPage,
+    /** Open a phone monitor URL and enter the passcode, as a person with the PC beside them would. */
+    async open(page, url) {
+      const response = await page.goto(url);
+      await unlockPage(page);
+      return response;
+    },
+    /** Replace the tunnel: every phone session ends, and a new passcode is issued. */
     async rotate() {
       const since = lines.length;
       child.stdin.write('rotate\n');

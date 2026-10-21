@@ -46,8 +46,8 @@ pub fn has_method_override(headers: &HeaderMap) -> bool {
 }
 
 /// Remove what the ngrok Edge or a client adds and the app must never trust:
-/// forwarding and identity headers, the proof, a client-chosen token, and
-/// authorization. Call it only after the proof has been verified.
+/// forwarding and identity headers, a client-chosen token, and authorization.
+/// Call it only after the Host has been checked.
 pub fn strip_untrusted(headers: &mut HeaderMap) {
     let names: Vec<HeaderName> = headers
         .keys()
@@ -61,7 +61,6 @@ pub fn strip_untrusted(headers: &mut HeaderMap) {
                         | "x-original-host"
                         | "x-real-ip"
                         | "x-agboard-token"
-                        | "x-agboard-tunnel-proof"
                         | "authorization"
                         | "proxy-authorization"
                 )
@@ -81,6 +80,30 @@ pub enum WriteRefusal {
     Csrf,
 }
 
+/// A request that changes something must come from the monitor page itself:
+/// the public Origin and `same-origin` fetch metadata.
+pub fn check_same_origin(headers: &HeaderMap, origin: &PublicOrigin) -> Result<(), WriteRefusal> {
+    origin.check_origin(headers).map_err(WriteRefusal::Origin)?;
+    let mut site = headers.get_all("sec-fetch-site").iter();
+    match (site.next(), site.next()) {
+        (Some(v), None) if v.as_bytes() == b"same-origin" => Ok(()),
+        _ => Err(WriteRefusal::FetchSite),
+    }
+}
+
+/// Whether the body is declared as JSON (`application/json`, parameters allowed).
+pub fn is_json(headers: &HeaderMap) -> bool {
+    let mut values = headers.get_all(header::CONTENT_TYPE).iter();
+    match (values.next(), values.next()) {
+        (Some(v), None) => v.to_str().is_ok_and(|text| {
+            text.split(';')
+                .next()
+                .is_some_and(|kind| kind.trim().eq_ignore_ascii_case("application/json"))
+        }),
+        _ => false,
+    }
+}
+
 /// A state-changing request needs the public Origin, `same-origin` fetch
 /// metadata and the session's CSRF token.
 pub fn check_write(
@@ -88,12 +111,7 @@ pub fn check_write(
     origin: &PublicOrigin,
     session: &super::contracts::AuthSession,
 ) -> Result<(), WriteRefusal> {
-    origin.check_origin(headers).map_err(WriteRefusal::Origin)?;
-    let mut site = headers.get_all("sec-fetch-site").iter();
-    match (site.next(), site.next()) {
-        (Some(v), None) if v.as_bytes() == b"same-origin" => {}
-        _ => return Err(WriteRefusal::FetchSite),
-    }
+    check_same_origin(headers, origin)?;
     match csrf_token(headers) {
         Some(token) if session.csrf_matches(token) => Ok(()),
         _ => Err(WriteRefusal::Csrf),
@@ -151,7 +169,6 @@ mod tests {
             ("x-forwarded-for", "1.2.3.4"),
             ("ngrok-auth-user-email", "me@example.com"),
             ("x-agboard-token", "client"),
-            ("x-agboard-tunnel-proof", "p"),
             ("authorization", "Bearer x"),
             ("x-agboard-language", "ja"),
             ("host", "a.ngrok.app"),
@@ -201,5 +218,48 @@ mod tests {
             "x-method-override",
             "DELETE"
         )])));
+    }
+
+    #[test]
+    fn the_page_itself_is_the_origin_and_fetch_site_without_a_session() {
+        let origin = PublicOrigin::parse("https://a.ngrok.app").unwrap();
+        let good = [
+            ("origin", "https://a.ngrok.app"),
+            ("sec-fetch-site", "same-origin"),
+        ];
+        assert_eq!(check_same_origin(&map(&good), &origin), Ok(()));
+        assert!(matches!(
+            check_same_origin(&map(&good[1..]), &origin),
+            Err(WriteRefusal::Origin(_))
+        ));
+        for site in ["cross-site", "same-site", "none"] {
+            assert_eq!(
+                check_same_origin(
+                    &map(&[("origin", "https://a.ngrok.app"), ("sec-fetch-site", site)]),
+                    &origin
+                ),
+                Err(WriteRefusal::FetchSite)
+            );
+        }
+        assert_eq!(
+            check_same_origin(&map(&good[..1]), &origin),
+            Err(WriteRefusal::FetchSite)
+        );
+    }
+
+    #[test]
+    fn a_json_body_is_declared_once_as_application_json() {
+        assert!(is_json(&map(&[("content-type", "application/json")])));
+        assert!(is_json(&map(&[(
+            "content-type",
+            "Application/JSON; charset=utf-8"
+        )])));
+        assert!(!is_json(&map(&[])));
+        assert!(!is_json(&map(&[("content-type", "text/plain")])));
+        assert!(!is_json(&map(&[("content-type", "application/jsonx")])));
+        assert!(!is_json(&map(&[
+            ("content-type", "application/json"),
+            ("content-type", "application/json")
+        ])));
     }
 }

@@ -2,7 +2,7 @@
 //! `<data_dir>/.internal/monitor-connection.json`.
 //!
 //! The file is the app's own state, not something a person edits. It holds
-//! only what the contract allows on disk. Tokens, proofs and sessions are
+//! only what the contract allows on disk. Tokens, passcodes and sessions are
 //! never written here.
 
 use std::io::Write;
@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::contracts::{ConnectionConfig, OauthApp};
+use super::contracts::ConnectionConfig;
 
 /// The only file format this build reads and writes.
 pub const FORMAT_VERSION: u32 = 1;
@@ -25,9 +25,7 @@ struct StoredFile {
     format_version: u32,
     revision: u64,
     enabled: bool,
-    allow_emails: Vec<String>,
     domain: Option<String>,
-    oauth_app: OauthApp,
 }
 
 /// Why the saved settings could not be read or written. Never carries file contents.
@@ -68,9 +66,7 @@ impl ConfigStore {
         }
         ConnectionConfig {
             enabled: stored.enabled,
-            allow_emails: stored.allow_emails,
             domain: stored.domain,
-            oauth_app: stored.oauth_app,
             revision: stored.revision,
         }
         .validated()
@@ -84,9 +80,7 @@ impl ConfigStore {
             format_version: FORMAT_VERSION,
             revision: config.revision,
             enabled: config.enabled,
-            allow_emails: config.allow_emails.clone(),
             domain: config.domain.clone(),
-            oauth_app: config.oauth_app,
         };
         let mut text =
             serde_json::to_string_pretty(&stored).map_err(|e| ConfigError::Io(e.to_string()))?;
@@ -151,9 +145,7 @@ mod tests {
     fn sample() -> ConnectionConfig {
         ConnectionConfig {
             enabled: true,
-            allow_emails: vec!["me@example.com".into()],
             domain: Some("a.ngrok.app".into()),
-            oauth_app: OauthApp::Custom,
             revision: 3,
         }
     }
@@ -202,5 +194,30 @@ mod tests {
         assert_eq!(store.load(), Err(ConfigError::Invalid));
         std::fs::write(&path, "not json").unwrap();
         assert_eq!(store.load(), Err(ConfigError::Invalid));
+        // A file written for the Google sign-in carries fields this build does not know.
+        std::fs::write(
+            &path,
+            r#"{"formatVersion":1,"revision":1,"enabled":true,"allowEmails":["a@x.com"],"domain":null,"oauthApp":"managed"}"#,
+        )
+        .unwrap();
+        assert_eq!(store.load(), Err(ConfigError::Invalid));
+    }
+
+    #[test]
+    fn the_saved_file_holds_only_the_non_secret_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new(dir.path());
+        store.save(&sample()).unwrap();
+        let text =
+            std::fs::read_to_string(dir.path().join(".internal/monitor-connection.json")).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let mut keys: Vec<&str> = value
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort();
+        assert_eq!(keys, ["domain", "enabled", "formatVersion", "revision"]);
     }
 }

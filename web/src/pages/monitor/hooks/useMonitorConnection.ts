@@ -7,72 +7,93 @@ import {
   type MonitorAuthLoss,
 } from '../client';
 
-/** Why the phone is shown the connection screen instead of the monitor. */
+/** Why the phone is asked for the passcode again instead of being shown the monitor. */
 export type MonitorConnectionFailure = 'expired' | 'unavailable' | 'unreachable';
 
 export type MonitorConnectionState =
   | { status: 'checking' }
   | { status: 'ready' }
   | { status: 'reconnecting' }
-  | { status: 'needs_google'; failure: MonitorConnectionFailure | null };
+  | { status: 'needs_passcode'; failure: MonitorConnectionFailure | null };
+
+/**
+ * Why the last passcode was not taken. `wrong` and `locked` come from the monitor; the monitor
+ * never says how many tries are left. `unavailable` and `unreachable` mean it was not asked at all.
+ */
+export type UnlockFailure = 'wrong' | 'locked' | 'unavailable' | 'unreachable';
 
 export interface UseMonitorConnectionOptions {
-  /** Ask for the app session. Defaults to the monitor client. */
+  /** Ask whether the app session is live. Defaults to the monitor client. */
   openSession?: () => Promise<unknown>;
+  /** Trade a passcode for the app session. Defaults to the monitor client. */
+  unlock?: (code: string) => Promise<unknown>;
   /** Whether this page uses the app session at all. */
   usesSession?: () => boolean;
-  /** Leave for the Google sign-in. Defaults to the top-level move to /monitor/. */
-  navigate?: () => void;
 }
 
 export interface UseMonitorConnectionResult {
   state: MonitorConnectionState;
-  /** The page is moving to the Google sign-in. */
-  opening: boolean;
-  /** Leave the page for the Google sign-in. A person starts it; it never runs by itself. */
-  connect(): void;
+  /** A passcode is being checked. */
+  unlocking: boolean;
+  /** Why the last passcode was not taken; cleared when the next one is sent. */
+  unlockFailure: UnlockFailure | null;
+  /** Send the passcode. A person starts it; it never runs by itself. True when it was taken. */
+  unlock(code: string): Promise<boolean>;
 }
 
 const RETRY_DELAYS_MS = [1_000, 2_000, 5_000, 10_000, 30_000] as const;
-/** Failed attempts before a network failure is shown with its own action. */
+/** Failed attempts before a network failure is shown on the passcode screen. */
 const UNREACHABLE_AFTER = 3;
-/** A session that is lost again this many times in a minute is not silently renewed. */
+/** A session that is lost again this many times in a minute is not checked again by itself. */
 const LOSS_LIMIT = 3;
 const LOSS_WINDOW_MS = 60_000;
 
-function classify(cause: unknown): 'sign_in' | 'unavailable' | 'network' {
+function classify(cause: unknown): 'passcode' | 'unavailable' | 'network' {
   if (cause instanceof MonitorClientError) {
-    if (cause.code === 'auth_redirect' || cause.code === 'session_required') return 'sign_in';
+    if (cause.code === 'session_required') return 'passcode';
     if (cause.code === 'unavailable') return 'unavailable';
   }
   return 'network';
 }
 
-/** Where the Edge starts or resumes the Google sign-in: the top level of the monitor. */
-export function goToGoogle(): void {
-  window.location.assign('/monitor/');
+function unlockFailureOf(cause: unknown): UnlockFailure {
+  if (cause instanceof MonitorClientError) {
+    if (cause.code === 'unlock_failed') return 'wrong';
+    if (cause.code === 'unlock_locked') return 'locked';
+    if (cause.code === 'unavailable') return 'unavailable';
+  }
+  return 'unreachable';
 }
 
 /**
  * Owns the phone's access to the monitor. It confirms the app session before any list or event
- * stream starts, renews a lost session once the Edge still accepts the phone, and otherwise shows
- * the connection screen. It never signs in on its own: only `connect` moves the page to Google.
+ * stream starts. Without a live session it asks for the passcode and shows the monitor only after
+ * the monitor has taken it. Nothing is read, streamed or answered before that, and a lost session
+ * (expired, replaced by a restart) brings the passcode screen back. It never sends a passcode
+ * on its own: only `unlock` does, when a person submits one.
  */
 export function useMonitorConnection({
   openSession = () => monitorClient.openSession(),
+  unlock: unlockWith = (code) => monitorClient.unlock(code),
   usesSession = usesMonitorSession,
-  navigate = goToGoogle,
 }: UseMonitorConnectionOptions = {}): UseMonitorConnectionResult {
   const session = usesSession();
   const [state, setState] = useState<MonitorConnectionState>(
     session ? { status: 'checking' } : { status: 'ready' },
   );
-  const [opening, setOpening] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockFailure, setUnlockFailure] = useState<UnlockFailure | null>(null);
   const openRef = useRef(openSession);
   openRef.current = openSession;
-  const readyRef = useRef(!session);
-  const navigateRef = useRef(navigate);
-  navigateRef.current = navigate;
+  const unlockRef = useRef(unlockWith);
+  unlockRef.current = unlockWith;
+  const stateRef = useRef<MonitorConnectionState>(state);
+  const unlockingRef = useRef(false);
+
+  const show = useCallback((next: MonitorConnectionState) => {
+    stateRef.current = next;
+    setState(next);
+  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -86,10 +107,7 @@ export function useMonitorConnection({
       if (timer !== null) clearTimeout(timer);
       timer = null;
     };
-    const show = (next: MonitorConnectionState) => {
-      readyRef.current = next.status === 'ready';
-      setState(next);
-    };
+    const ready = () => stateRef.current.status === 'ready';
 
     const attempt = (silent: boolean): Promise<void> => {
       if (inFlight) return inFlight;
@@ -99,22 +117,26 @@ export function useMonitorConnection({
           await openRef.current();
           if (disposed) return;
           failures = 0;
-          if (!readyRef.current) show({ status: 'ready' });
+          if (!ready()) show({ status: 'ready' });
         } catch (cause) {
           if (disposed) return;
           const kind = classify(cause);
-          if (kind === 'sign_in') {
-            show({
-              status: 'needs_google',
-              failure: silent ? 'expired' : null,
-            });
+          if (kind === 'passcode') {
+            // Keep the message of a passcode that was just refused; replace a network one.
+            const shown = stateRef.current;
+            if (
+              shown.status !== 'needs_passcode' ||
+              shown.failure === 'unreachable' ||
+              shown.failure === 'unavailable'
+            )
+              show({ status: 'needs_passcode', failure: silent ? 'expired' : null });
           } else if (kind === 'unavailable') {
-            show({ status: 'needs_google', failure: 'unavailable' });
+            show({ status: 'needs_passcode', failure: 'unavailable' });
           } else {
             failures += 1;
             show(
               failures >= UNREACHABLE_AFTER
-                ? { status: 'needs_google', failure: 'unreachable' }
+                ? { status: 'needs_passcode', failure: 'unreachable' }
                 : { status: 'reconnecting' },
             );
             const delay =
@@ -130,12 +152,12 @@ export function useMonitorConnection({
     };
 
     const onLoss = (_loss: MonitorAuthLoss) => {
-      if (!readyRef.current) return;
+      if (!ready()) return;
       const now = Date.now();
       losses.push(now);
       while (losses.length > 0 && now - (losses[0] ?? now) > LOSS_WINDOW_MS) losses.shift();
       if (losses.length >= LOSS_LIMIT) {
-        show({ status: 'needs_google', failure: 'expired' });
+        show({ status: 'needs_passcode', failure: 'expired' });
         return;
       }
       void attempt(true);
@@ -145,13 +167,13 @@ export function useMonitorConnection({
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
         clearTimer();
-      } else if (!readyRef.current) {
+      } else if (!ready()) {
         failures = 0;
         void attempt(true);
       }
     };
     const onOnline = () => {
-      if (!readyRef.current) void attempt(true);
+      if (!ready()) void attempt(true);
     };
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('online', onOnline);
@@ -164,12 +186,28 @@ export function useMonitorConnection({
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('online', onOnline);
     };
-  }, [session]);
+  }, [session, show]);
 
-  const connect = useCallback(() => {
-    setOpening(true);
-    navigateRef.current();
-  }, []);
+  const unlock = useCallback(
+    async (code: string): Promise<boolean> => {
+      if (unlockingRef.current) return false;
+      unlockingRef.current = true;
+      setUnlocking(true);
+      setUnlockFailure(null);
+      try {
+        await unlockRef.current(code);
+        show({ status: 'ready' });
+        return true;
+      } catch (cause) {
+        setUnlockFailure(unlockFailureOf(cause));
+        return false;
+      } finally {
+        unlockingRef.current = false;
+        setUnlocking(false);
+      }
+    },
+    [show],
+  );
 
-  return { state, opening, connect };
+  return { state, unlocking, unlockFailure, unlock };
 }

@@ -1,6 +1,7 @@
 /*
  * The phone screen shown while the monitor has no connection. Lengths follow the approved design:
- * a centred icon, heading, text and one full-width action in the space below the header.
+ * a centred icon, heading, text and one full-width action in the space below the header. The
+ * passcode field sits between the text and the action.
  */
 .connection-state {
   display: flex;
@@ -44,9 +45,35 @@
   font-weight: 600;
   line-height: 1.6;
   overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .connection-state__action {
   width: 100%;
   height: 44px;
+}
+
+.connection-state__form {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.connection-state__label {
+  justify-content: center;
+}
+
+.connection-state__code {
+  width: 10em;
+  max-width: 100%;
+  height: 56px;
+  padding-inline: 0;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-align: center;
+  text-indent: 0.4em;
 }

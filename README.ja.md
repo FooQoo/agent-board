@@ -73,11 +73,11 @@ agboard serve --port 7420
 
 [http://127.0.0.1:7420/](http://127.0.0.1:7420/)を開き、プロジェクトを選んでタスクを追加します。`agboard progress`とHookはカレントフォルダに最も近い登録済みプロジェクトを使います。別プロジェクトを対象にする場合は`--project NAME`で指定します。
 
-スマホから進捗の確認や質問への回答をするには、**設定** → **モバイル接続**を開き、ngrokのauthtokenと許可するGoogleアカウントで接続します。モニターを開けるのは許可したGoogleアカウントだけで、ボード全体はあなたのコンピューターに残ります。環境変数`NGROK_AUTHTOKEN`を設定して、`agboard serve --monitor ngrok --ngrok-allow-email you@example.com`で起動することもできます。
+スマホから進捗の確認や質問への回答をするには、**設定** → **モバイル接続**を開き、ngrokのauthtokenで接続します。スマホでは、ボードがコンピューターに表示する4桁の合言葉（接続を開始するたびに変わります）を入力します。ボード全体はあなたのコンピューターに残ります。環境変数`NGROK_AUTHTOKEN`を設定して`agboard serve --monitor ngrok`で起動することもでき、その場合は合言葉が表示されます。4桁の合言葉はアカウント認証より弱いため、URLは他の人に教えないでください。制限は[モバイルモニターのガイド](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor)で説明しています。
 
 ## ドキュメント
 
 - [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
-- [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor) — ngrokとGoogleサインインによるスマホの接続、モニターの表示内容、確認方法。
+- [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
 - [Claude Code・Codexとの連携（英語）](integrations/README.md) — Hookとエージェントの設定。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

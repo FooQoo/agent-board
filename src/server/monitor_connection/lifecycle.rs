@@ -1,17 +1,19 @@
 //! The supervisor of the ngrok connection: what is saved, what is in memory,
 //! and the start, change and stop transitions.
 //!
-//! Secrets (the ngrok token, the Google client secret, the tunnel proof) live in
-//! memory only and are never part of a snapshot, a log line or an error message.
+//! Secrets (the ngrok token and the phone passcode) live in memory
+//! only and are never written to disk, logged or put in an error message. The
+//! passcode alone is shown to the PC, in a snapshot, while the connection is ready.
 //! Methods that start something must run inside the server's Tokio runtime.
 
 use std::sync::{Arc, Mutex};
 
 use super::config::{ConfigError, ConfigStore};
-use super::contracts::{ConnectionConfig, ConnectionStatus, ContractError, OauthApp};
+use super::contracts::{ConnectionConfig, ConnectionStatus};
 use super::keychain::TokenVault;
 use super::run::Run;
 pub use super::types::*;
+use crate::server::monitor_auth::passcode::Passcode;
 
 pub(super) struct Inner {
     pub(super) config: ConnectionConfig,
@@ -24,13 +26,14 @@ pub(super) struct Inner {
     pub(super) keychain_saved: Option<bool>,
     pub(super) generation: u64,
     pub(super) run: Option<Run>,
+    /// The passcode of the running connection; set once it is ready.
+    pub(super) passcode: Option<Passcode>,
 }
 
 pub struct MonitorConnections {
     pub(super) store: ConfigStore,
     pub(super) connector: Arc<dyn Connector>,
     pub(super) vault: Arc<dyn TokenVault>,
-    pub(super) google: Option<(Secret, Secret)>,
     /// The server's state, given once it exists; the monitor routes read it.
     pub(super) app: std::sync::OnceLock<std::sync::Weak<crate::server::AppState>>,
     pub(super) inner: Mutex<Inner>,
@@ -61,7 +64,6 @@ impl MonitorConnections {
             store,
             connector,
             vault,
-            google: env.google,
             app: std::sync::OnceLock::new(),
             inner: Mutex::new(Inner {
                 config,
@@ -73,6 +75,7 @@ impl MonitorConnections {
                 keychain_saved: None,
                 generation: 0,
                 run: None,
+                passcode: None,
             }),
         })
     }
@@ -92,17 +95,13 @@ impl MonitorConnections {
     pub async fn startup(
         self: &Arc<Self>,
         explicit: Option<Overrides>,
-    ) -> Result<Option<String>, FailureCode> {
+    ) -> Result<Option<MonitorReady>, FailureCode> {
         let waiting = {
             let mut inner = self.lock();
             if let Some(over) = explicit {
                 inner.config.enabled = true;
-                inner.config.allow_emails = over.allow_emails;
                 if over.domain.is_some() {
                     inner.config.domain = over.domain;
-                }
-                if let Some(app) = over.oauth_app {
-                    inner.config.oauth_app = app;
                 }
                 inner.failure = None;
                 Some(self.begin(&mut inner).map_err(|e| failure_of(&e))?)
@@ -124,7 +123,7 @@ impl MonitorConnections {
         };
         match waiting {
             Some(rx) => match rx.await {
-                Ok(Ok(url)) => Ok(Some(url)),
+                Ok(Ok(ready)) => Ok(Some(ready)),
                 Ok(Err(code)) => Err(code),
                 Err(_) => Err(FailureCode::Internal),
             },
@@ -140,9 +139,7 @@ impl MonitorConnections {
         }
         let candidate = ConnectionConfig {
             enabled: update.enabled,
-            allow_emails: update.allow_emails,
             domain: update.domain,
-            oauth_app: update.oauth_app,
             revision: inner.config.revision + 1,
         }
         .validated()
@@ -150,12 +147,7 @@ impl MonitorConnections {
         self.store
             .save(&candidate)
             .map_err(|_: ConfigError| UpdateError::SaveFailed)?;
-        let changed = {
-            let old = &inner.config;
-            old.allow_emails != candidate.allow_emails
-                || old.domain != candidate.domain
-                || old.oauth_app != candidate.oauth_app
-        };
+        let changed = inner.config.domain != candidate.domain;
         inner.config = candidate;
         if inner.failure == Some(FailureCode::ConfigUnreadable) {
             inner.failure = None;
@@ -170,8 +162,8 @@ impl MonitorConnections {
         if active && !inner.config.enabled {
             self.teardown(&mut inner);
         } else if active && changed {
-            // A new allow list means a new tunnel and a new proof; the old
-            // tunnel stops being served before the new one is requested.
+            // A new domain means a new tunnel and a new passcode; the
+            // old tunnel stops being served before the new one is requested.
             if let Err(e) = self.begin(&mut inner) {
                 inner.status = ConnectionStatus::Failed;
                 inner.failure = Some(failure_of(&e));
@@ -213,9 +205,6 @@ impl MonitorConnections {
         }
         if inner.token.is_none() {
             return Err(StartError::TokenRequired);
-        }
-        if inner.config.oauth_app == OauthApp::Custom && self.google.is_none() {
-            return Err(StartError::Invalid(ContractError::MissingOauthCredentials));
         }
         if !inner.config.enabled {
             let next = ConnectionConfig {
@@ -261,6 +250,7 @@ impl MonitorConnections {
         if let Some(run) = inner.run.take() {
             run.close();
         }
+        inner.passcode = None;
         inner.url = None;
         inner.failure = None;
         inner.status = ConnectionStatus::Disabled;

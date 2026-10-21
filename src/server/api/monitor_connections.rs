@@ -4,7 +4,8 @@
 //! entry never gets them. Reads must come from the local page (loopback Host
 //! is checked by the router for every request); writes also pass the router's
 //! write guard (Origin, Fetch Metadata and the page token). The ngrok token is
-//! accepted in the body of `start` only and is never returned.
+//! accepted in the body of `start` only and is never returned. The status carries
+//! the phone passcode while the connection is ready, so that the PC can show it.
 
 use std::sync::Arc;
 
@@ -16,7 +17,7 @@ use serde::Deserialize;
 
 use crate::server::AppState;
 use crate::server::guard::{header_text, origin_allowed};
-use crate::server::monitor_connection::contracts::{ContractError, OauthApp};
+use crate::server::monitor_connection::contracts::ContractError;
 use crate::server::monitor_connection::lifecycle::{
     ForgetError, Secret, SettingsUpdate, Snapshot, StartError, UpdateError,
 };
@@ -59,10 +60,8 @@ pub(super) async fn get_connections(
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SettingsBody {
     enabled: bool,
-    allow_emails: Vec<String>,
     #[serde(default)]
     domain: Option<String>,
-    oauth_app: OauthApp,
     revision: u64,
 }
 
@@ -78,9 +77,7 @@ pub(super) async fn put_ngrok_settings(
     };
     let result = state.monitor.update(SettingsUpdate {
         enabled: body.enabled,
-        allow_emails: body.allow_emails,
         domain: body.domain,
-        oauth_app: body.oauth_app,
         revision: body.revision,
     });
     match result {

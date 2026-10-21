@@ -2,6 +2,7 @@
 //! lookup, deleting a saved token, and the snapshot that reports all of that
 //! without the value.
 
+use super::contracts::ConnectionStatus;
 use super::lifecycle::{Inner, MonitorConnections, idle_status};
 use super::types::Settings;
 use super::types::{ForgetError, Snapshot, TokenSource};
@@ -68,14 +69,17 @@ fn snapshot_of(inner: &Inner, keychain_available: bool) -> Snapshot {
         revision: inner.config.revision,
         settings: Settings {
             enabled: inner.config.enabled,
-            allow_emails: inner.config.allow_emails.clone(),
             domain: inner.config.domain.clone(),
-            oauth_app: inner.config.oauth_app,
         },
         token_configured: inner.token.is_some(),
         token_source: inner.token_source,
         keychain_available,
         keychain_token_saved: inner.keychain_saved == Some(true),
         failure: inner.failure,
+        // Only a connection that is up has a passcode worth showing.
+        passcode: inner
+            .passcode
+            .clone()
+            .filter(|_| inner.status == ConnectionStatus::Ready && inner.run.is_some()),
     }
 }

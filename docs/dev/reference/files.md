@@ -113,9 +113,7 @@ The ngrok mobile connection keeps its non-secret settings in `<data-root>/.inter
   "formatVersion": 1,
   "revision": 3,
   "enabled": true,
-  "allowEmails": ["owner@example.com"],
-  "domain": null,
-  "oauthApp": "managed"
+  "domain": null
 }
 ```
 
@@ -124,11 +122,9 @@ The ngrok mobile connection keeps its non-secret settings in `<data-root>/.inter
 | `formatVersion` | Always `1`. Any other value, an unknown field, or a malformed file makes the settings unreadable (`config_unreadable`); the PC entrance keeps working and saving new settings replaces the file. |
 | `revision` | Increases with each save. The settings API uses it to detect a change made on another screen. |
 | `enabled` | Whether the connection starts again with the next `serve`. A stop saves `false`. |
-| `allowEmails` | The Google accounts allowed to connect, normalized to lowercase. At least one when enabled, at most 50. |
 | `domain` | A bare reserved ngrok host name, or `null`. |
-| `oauthApp` | `managed` (ngrok's Google app) or `custom` (the credentials come from `AGBOARD_GOOGLE_CLIENT_ID` and `AGBOARD_GOOGLE_CLIENT_SECRET`, never from the file). |
 
-The file never holds the ngrok token, the tunnel proof, a session, a CSRF token, or a Google credential. A token the user chooses to save lives in the OS keychain instead (service `agent-board`, account `ngrok-authtoken`). There is no `monitor/config.json`.
+The file never holds the ngrok token, the phone passcode, a session, or a CSRF token. A token the user chooses to save lives in the OS keychain instead (service `agent-board`, account `ngrok-authtoken`). There is no `monitor/config.json`.
 
 ## Task JSON and snapshots
 

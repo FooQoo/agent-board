@@ -1,17 +1,19 @@
-//! The ngrok monitor entrance over real HTTP on loopback: the Edge policy that
-//! is handed to the connector, and what the dedicated backend admits.
+//! The ngrok monitor entrance over real HTTP on loopback: what the dedicated
+//! backend admits.
 //!
 //! No test reaches ngrok. A fake connector opens the "tunnel", and the tests
-//! speak to the backend as the Edge would (public Host plus the proof header).
-//! Google sign-in, the allow list and header removal are enforced by the Edge
-//! and are not exercised here: a passing test shows the policy that would ask
-//! for them and the backend's refusals, not that a real Edge enforces them.
+//! speak to the backend as the Edge would (the public Host). The Edge is opened
+//! without a Traffic Policy and sets no header the app relies on: the entrance is
+//! the exact public Host and the passcode of the start, which opens a session
+//! and is exercised here end to end. A passing test shows the backend's
+//! refusals, not that a real Edge forwards anything.
 
 #[path = "support/mobile_monitor.rs"]
 mod support;
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use agent_board::domain::{Actor, Assignee, NewTask};
@@ -27,6 +29,7 @@ use harness::*;
 type Headers<'a> = Vec<(&'a str, &'a str)>;
 
 const EMAIL: &str = "owner@example.com";
+const WRONG_CODE: &str = "0000";
 const COOKIE: &str = "agboard_ngrok_session";
 
 fn fixture() -> tempfile::TempDir {
@@ -73,15 +76,7 @@ struct Tunnel {
     s: Server,
     home: tempfile::TempDir,
     backend: SocketAddr,
-    proof: String,
-}
-
-fn proof_of(policy: &str) -> String {
-    serde_json::from_str::<Value>(policy).unwrap()["on_http_request"][3]["actions"][0]["config"]
-        ["headers"]["x-agboard-tunnel-proof"]
-        .as_str()
-        .unwrap()
-        .to_string()
+    passcode: String,
 }
 
 impl Tunnel {
@@ -94,46 +89,52 @@ impl Tunnel {
                 ..Opts::default()
             },
         );
-        assert_eq!(s.put(true, &[EMAIL], 0).status, 200);
+        assert_eq!(s.put(true, None, 0).status, 200);
         assert_eq!(s.start_ngrok(json!({})).status, 202);
         s.wait_status("ready");
-        let (backend, proof) = Self::current(&s);
+        let backend = Self::current(&s);
+        let passcode = s.passcode();
         Self {
             s,
             home,
             backend,
-            proof,
+            passcode,
         }
     }
 
-    fn current(s: &Server) -> (SocketAddr, String) {
+    fn current(s: &Server) -> SocketAddr {
         let calls = s.fake.calls.lock().unwrap();
-        let call = calls.last().unwrap();
-        (backend_addr(call), proof_of(&call.policy))
+        backend_addr(calls.last().unwrap())
     }
 
     fn host() -> &'static str {
         PUBLIC.trim_start_matches("https://")
     }
 
-    /// A request as the Edge forwards it: public Host and the proof.
+    /// A request as the Edge forwards it: the public Host.
     fn call(&self, method: &str, path: &str, extra: &[(&str, &str)], body: &str) -> Reply {
-        let mut headers = vec![
-            ("Host", Self::host()),
-            ("x-agboard-tunnel-proof", &self.proof),
-        ];
+        let mut headers = vec![("Host", Self::host())];
         headers.extend_from_slice(extra);
         request(self.backend, method, path, &headers, body)
     }
 
-    /// Start a session: the cookie value and the CSRF token.
+    /// Enter a passcode the way the phone's page does.
+    fn unlock(&self, code: &str) -> Reply {
+        self.call(
+            "POST",
+            "/monitor/api/unlock",
+            &[
+                ("Origin", PUBLIC),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("Content-Type", "application/json"),
+            ],
+            &json!({"code": code}).to_string(),
+        )
+    }
+
+    /// Start a session with the passcode of this start: the cookie value and the CSRF token.
     fn session(&self) -> (String, String) {
-        let r = self.call(
-            "GET",
-            "/monitor/api/session",
-            &[("Sec-Fetch-Site", "same-origin")],
-            "",
-        );
+        let r = self.unlock(&self.passcode);
         assert_eq!(r.status, 200, "{}", r.body);
         let cookie = r.header("set-cookie").expect("a new session sets a cookie");
         let value = cookie
@@ -170,13 +171,13 @@ fn write_headers<'a>(cookie: &'a str, csrf: &'a str) -> Vec<(&'a str, &'a str)> 
 }
 
 /// Open the event stream by hand so that its end can be observed.
-fn open_events(addr: SocketAddr, proof: &str, cookie: &str) -> (TcpStream, String) {
+fn open_events(addr: SocketAddr, cookie: &str) -> (TcpStream, String) {
     let mut stream = TcpStream::connect(addr).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
     let head = format!(
-        "GET /monitor/api/events HTTP/1.1\r\nHost: {}\r\nx-agboard-tunnel-proof: {proof}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
+        "GET /monitor/api/events HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
         Tunnel::host()
     );
     stream.write_all(head.as_bytes()).unwrap();
@@ -218,81 +219,102 @@ fn stream_ends(mut stream: TcpStream, wait: Duration) -> bool {
     false
 }
 
-// ------------------------------------------------------------------ policy
+// ------------------------------------------------------- no Traffic Policy
 
 #[test]
-fn the_edge_policy_asks_for_google_then_the_allow_list_then_one_proof() {
+fn the_endpoint_is_opened_without_a_traffic_policy_and_nothing_checks_a_proof_header() {
+    // The connector is handed the token, the loopback backend and the optional
+    // domain, and nothing else: there is no policy to send, so a plan without
+    // Traffic Policy can run it.
     let t = Tunnel::up();
-    let policy: Value = {
+    {
         let calls = t.s.fake.calls.lock().unwrap();
-        serde_json::from_str(&calls.last().unwrap().policy).unwrap()
-    };
-    let phases = policy["on_http_request"].as_array().unwrap();
-    assert_eq!(phases.len(), 4);
-    assert_eq!(phases[0]["actions"][0]["type"], "oauth");
-    assert_eq!(phases[0]["actions"][0]["config"]["provider"], "google");
-    assert!(
-        phases[0].get("expressions").is_none(),
-        "no path is excluded"
-    );
-    let expression = phases[1]["expressions"][0].as_str().unwrap();
-    assert_eq!(
-        expression,
-        format!("!(actions.ngrok.oauth.identity.email in [\"{EMAIL}\"])")
-    );
-    assert_eq!(phases[1]["actions"][0]["type"], "deny");
-    assert_eq!(phases[2]["actions"][0]["type"], "remove-headers");
-    assert_eq!(
-        phases[2]["actions"][0]["config"]["headers"],
-        json!(["x-agboard-tunnel-proof"])
-    );
-    assert_eq!(phases[3]["actions"][0]["type"], "add-headers");
-    assert_eq!(t.proof.len(), 64);
+        let call = calls.last().unwrap();
+        assert_eq!(call.token, TOKEN);
+        assert_eq!(call.domain, None);
+        assert!(call.backend.starts_with("http://127.0.0.1:"));
+    }
+    // The source has no `.traffic_policy(` call and names no proof header, so a plan
+    // that rejects Traffic Policy keeps working. (A source scan is the only way to
+    // see the SDK call without a network.)
+    let mut stack = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                let text = std::fs::read_to_string(&path).unwrap();
+                assert!(!text.contains(".traffic_policy("), "{}", path.display());
+                assert!(!text.contains("tunnel-proof"), "{}", path.display());
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------- entrance
 
 #[test]
-fn only_the_public_host_with_exactly_one_correct_proof_is_admitted() {
+fn only_the_exact_public_host_is_admitted() {
     let t = Tunnel::up();
-    let p = t.proof.as_str();
-    let wrong = "00".repeat(32);
+    let with_port = format!("{}:443", Tunnel::host());
     let hostile: Vec<Vec<(&str, &str)>> = vec![
+        // No Host of its own: the client library names the loopback address.
         vec![],
-        vec![("Host", Tunnel::host())],
-        vec![("x-agboard-tunnel-proof", p)],
-        vec![("Host", "127.0.0.1"), ("x-agboard-tunnel-proof", p)],
-        vec![("Host", "evil.ngrok.app"), ("x-agboard-tunnel-proof", p)],
+        vec![("Host", "127.0.0.1")],
+        vec![("Host", "localhost")],
+        vec![("Host", "evil.ngrok.app")],
+        vec![("Host", with_port.as_str())],
+        // Headers a client can write are not an identity, and not a Host.
         vec![
-            ("Host", Tunnel::host()),
-            ("x-agboard-tunnel-proof", wrong.as_str()),
-        ],
-        vec![("Host", Tunnel::host()), ("x-agboard-tunnel-proof", "")],
-        vec![
-            ("Host", Tunnel::host()),
-            ("x-agboard-tunnel-proof", p),
-            ("x-agboard-tunnel-proof", p),
-        ],
-        vec![
-            ("Host", Tunnel::host()),
-            ("x-agboard-tunnel-proof", wrong.as_str()),
-            ("x-agboard-tunnel-proof", p),
-        ],
-        // Headers a client can write are not an identity.
-        vec![
-            ("Host", Tunnel::host()),
             ("ngrok-auth-user-email", EMAIL),
             ("x-forwarded-host", Tunnel::host()),
             ("Authorization", "Bearer x"),
+        ],
+        vec![
+            ("Host", "127.0.0.1"),
+            ("x-forwarded-host", Tunnel::host()),
+            ("forwarded", "host=fake-abc.ngrok.app"),
+            ("x-original-host", Tunnel::host()),
         ],
     ];
     for headers in &hostile {
         for path in ["/monitor/", "/monitor/api/session", "/monitor/api/projects"] {
             let r = request(t.backend, "GET", path, headers, "");
             assert_eq!(r.status, 403, "{path} {headers:?}");
-            assert!(!r.body.contains(p));
+            assert!(r.body.contains("not available"));
         }
+        // Not even the right passcode gets a session from there.
+        let unlock = request(
+            t.backend,
+            "POST",
+            "/monitor/api/unlock",
+            &[
+                headers.as_slice(),
+                &[
+                    ("Origin", PUBLIC),
+                    ("Sec-Fetch-Site", "same-origin"),
+                    ("Content-Type", "application/json"),
+                ],
+            ]
+            .concat(),
+            &json!({"code": t.passcode}).to_string(),
+        );
+        assert_eq!(unlock.status, 403, "{headers:?}");
+        assert!(unlock.header("set-cookie").is_none());
     }
+    // Two Host headers, even both right, are not "the" Host. (Sent by hand: a client
+    // library will not send two.)
+    let mut raw = TcpStream::connect(t.backend).unwrap();
+    raw.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    let head = format!(
+        "GET /monitor/ HTTP/1.1\r\nHost: {0}\r\nHost: {0}\r\nConnection: close\r\n\r\n",
+        Tunnel::host()
+    );
+    raw.write_all(head.as_bytes()).unwrap();
+    let mut answer = String::new();
+    let _ = raw.read_to_string(&mut answer);
+    assert!(answer.starts_with("HTTP/1.1 403"), "{answer}");
     // Method overrides are refused even when everything else is right.
     let r = t.call(
         "GET",
@@ -301,8 +323,22 @@ fn only_the_public_host_with_exactly_one_correct_proof_is_admitted() {
         "",
     );
     assert_eq!(r.status, 403);
-    // The right Host and proof admit the page.
+    // The public Host admits the page; an extra header changes nothing either way.
     assert_eq!(t.call("GET", "/monitor/", &[], "").status, 200);
+    assert_eq!(
+        t.call("GET", "/monitor/", &[("x-agboard-tunnel-proof", "x")], "")
+            .status,
+        200
+    );
+    // The local entrance's address is no public Host.
+    let local = request(
+        t.backend,
+        "GET",
+        "/monitor/",
+        &[("Host", &t.s.local.to_string())],
+        "",
+    );
+    assert_eq!(local.status, 403);
 }
 
 #[test]
@@ -343,18 +379,34 @@ fn forged_identity_headers_never_stand_in_for_a_session() {
 // ----------------------------------------------------------------- session
 
 #[test]
-fn a_session_starts_only_at_the_verified_entrance_with_a_scoped_cookie() {
+fn a_session_starts_only_with_the_passcode_and_gets_a_scoped_cookie() {
     let t = Tunnel::up();
-    // Not at the entrance: nothing is issued.
-    let direct = request(t.backend, "GET", "/monitor/api/session", &[], "");
+    // Not at the entrance: nothing is issued, with or without the right passcode.
+    let direct = request(
+        t.backend,
+        "POST",
+        "/monitor/api/unlock",
+        &[
+            ("Origin", PUBLIC),
+            ("Sec-Fetch-Site", "same-origin"),
+            ("Content-Type", "application/json"),
+        ],
+        &json!({"code": t.passcode}).to_string(),
+    );
     assert_eq!(direct.status, 403);
     assert!(direct.header("set-cookie").is_none());
-    let r = t.call(
+    // At the entrance but without a session, nothing is issued by merely asking.
+    let ask = t.call(
         "GET",
         "/monitor/api/session",
         &[("Sec-Fetch-Site", "same-origin")],
         "",
     );
+    assert_eq!(ask.status, 401);
+    assert_eq!(ask.json()["error"]["code"], "session_required");
+    assert!(ask.header("set-cookie").is_none());
+
+    let r = t.unlock(&t.passcode);
     assert_eq!(r.status, 200);
     assert_eq!(r.header("cache-control").as_deref(), Some("no-store"));
     let cookie = r.header("set-cookie").unwrap();
@@ -371,17 +423,14 @@ fn a_session_starts_only_at_the_verified_entrance_with_a_scoped_cookie() {
     let body = r.json();
     assert_eq!(body["csrfToken"].as_str().unwrap().len(), 64);
     assert_eq!(body["expiresInSeconds"], 12 * 60 * 60);
-    assert!(
-        !r.body
-            .contains(&cookie[COOKIE.len() + 1..COOKIE.len() + 65])
-    );
-
-    // A page that asks again with its cookie keeps the session and its token.
     let value = cookie[COOKIE.len() + 1..]
         .split(';')
         .next()
         .unwrap()
         .to_string();
+    assert!(!r.body.contains(&value));
+
+    // A page that asks again with its cookie keeps the session and its token.
     let again = t.call(
         "GET",
         "/monitor/api/session",
@@ -392,7 +441,7 @@ fn a_session_starts_only_at_the_verified_entrance_with_a_scoped_cookie() {
     assert!(again.header("set-cookie").is_none());
     assert_eq!(again.json()["csrfToken"], body["csrfToken"]);
 
-    // Only GET, and not from another site.
+    // Asking for a session takes GET only, and not from another site.
     assert_eq!(
         t.call("POST", "/monitor/api/session", &[], "{}").status,
         405
@@ -408,6 +457,180 @@ fn a_session_starts_only_at_the_verified_entrance_with_a_scoped_cookie() {
         .status,
         403
     );
+    // Opening one takes POST only.
+    assert_eq!(t.call("GET", "/monitor/api/unlock", &[], "").status, 405);
+}
+
+#[test]
+fn unlock_wants_the_page_itself_and_a_small_json_body_and_a_wrong_code_gets_nothing() {
+    let t = Tunnel::up();
+    let good = json!({"code": t.passcode}).to_string();
+    let page = [
+        ("Origin", PUBLIC),
+        ("Sec-Fetch-Site", "same-origin"),
+        ("Content-Type", "application/json"),
+    ];
+    let without = |name: &str| -> Vec<(&str, &str)> {
+        page.iter()
+            .filter(|(k, _)| !k.eq_ignore_ascii_case(name))
+            .cloned()
+            .collect()
+    };
+    let mut cases: Vec<(&str, Headers, u16)> = vec![
+        ("no origin", without("Origin"), 403),
+        ("no fetch metadata", without("Sec-Fetch-Site"), 403),
+        (
+            "foreign origin",
+            vec![
+                ("Origin", "https://evil.example"),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("Content-Type", "application/json"),
+            ],
+            403,
+        ),
+        (
+            "http origin",
+            vec![
+                ("Origin", "http://fake-abc.ngrok.app"),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("Content-Type", "application/json"),
+            ],
+            403,
+        ),
+        (
+            "cross-site",
+            vec![
+                ("Origin", PUBLIC),
+                ("Sec-Fetch-Site", "cross-site"),
+                ("Content-Type", "application/json"),
+            ],
+            403,
+        ),
+        (
+            "not json",
+            vec![
+                ("Origin", PUBLIC),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("Content-Type", "text/plain"),
+            ],
+            415,
+        ),
+    ];
+    let mut with_override = page.to_vec();
+    with_override.push(("X-HTTP-Method-Override", "DELETE"));
+    cases.push(("method override", with_override, 403));
+    // Whatever the page forges, the identity headers of an Edge are not read.
+    for (name, headers, want) in cases {
+        let r = t.call("POST", "/monitor/api/unlock", &headers, &good);
+        assert_eq!(r.status, want, "{name}: {}", r.body);
+        assert!(r.header("set-cookie").is_none(), "{name}");
+    }
+    for body in [
+        "not json",
+        "{}",
+        r#"{"code":1234}"#,
+        r#"{"code":"1","x":1}"#,
+    ] {
+        let r = t.call("POST", "/monitor/api/unlock", &page, body);
+        assert_eq!(r.status, 400, "{body}: {}", r.body);
+    }
+    let big = json!({"code": "1".repeat(10_000)}).to_string();
+    assert_eq!(
+        t.call("POST", "/monitor/api/unlock", &page, &big).status,
+        413
+    );
+    // Header forgeries and refusals counted for nothing: the passcode still opens.
+    for forged in [
+        ("ngrok-auth-user-email", EMAIL),
+        ("X-Forwarded-For", "127.0.0.1"),
+        ("Authorization", "Bearer x"),
+    ] {
+        let mut headers = page.to_vec();
+        headers.push(forged);
+        let r = t.call("POST", "/monitor/api/unlock", &headers, &good);
+        assert_eq!(r.status, 200, "{forged:?}: {}", r.body);
+    }
+
+    // A wrong code gets no cookie and no hint at all.
+    let wrong = if t.passcode == WRONG_CODE {
+        "0001"
+    } else {
+        WRONG_CODE
+    };
+    let r = t.unlock(wrong);
+    assert_eq!(r.status, 403);
+    assert!(r.header("set-cookie").is_none());
+    assert_eq!(r.json()["error"]["code"], "unlock_failed");
+    assert!(!r.body.contains(&t.passcode));
+    // A guess that is not even four digits is answered the same way (two more of the five).
+    let odd = t.unlock("12345");
+    assert_eq!(odd.status, 403);
+    assert_eq!(odd.body, r.body, "the answer must not vary");
+    assert_eq!(t.unlock("").body, r.body);
+}
+
+#[test]
+fn five_wrong_passcodes_in_a_row_stop_the_run_and_a_new_start_makes_a_new_passcode() {
+    let mut t = Tunnel::up();
+    let right = t.passcode.clone();
+    let wrong = if right == WRONG_CODE {
+        "0001"
+    } else {
+        WRONG_CODE
+    };
+    // Four wrong ones and then the right one: it opens, and the count starts again.
+    for _ in 0..4 {
+        assert_eq!(t.unlock(wrong).status, 403);
+    }
+    assert_eq!(t.unlock(&right).status, 200);
+    for _ in 0..4 {
+        assert_eq!(t.unlock(wrong).status, 403);
+    }
+    // The fifth wrong one in a row is still just wrong; every attempt after it is refused,
+    // the right passcode too, and nothing is issued.
+    assert_eq!(t.unlock(wrong).status, 403);
+    for code in [wrong, right.as_str(), right.as_str()] {
+        let r = t.unlock(code);
+        assert_eq!(r.status, 429, "{code}: {}", r.body);
+        assert_eq!(r.json()["error"]["code"], "unlock_locked");
+        assert!(r.header("set-cookie").is_none());
+        assert!(!r.body.contains(&right));
+    }
+    // The PC still shows the passcode and the status, but never the count.
+    let status = t.s.get();
+    assert_eq!(status["status"], "ready");
+    let mut keys: Vec<&str> = status
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort();
+    assert_eq!(
+        keys,
+        [
+            "failure",
+            "keychainAvailable",
+            "keychainTokenSaved",
+            "passcode",
+            "revision",
+            "settings",
+            "status",
+            "tokenConfigured",
+            "tokenSource",
+            "url"
+        ]
+    );
+
+    // Starting the connection again is a new passcode and a clean count.
+    t.s.stop_ngrok();
+    t.s.wait_status("disabled");
+    assert_eq!(t.s.start_ngrok(json!({})).status, 202);
+    t.s.wait_status("ready");
+    t.backend = Tunnel::current(&t.s);
+    t.passcode = t.s.passcode();
+    let r = t.unlock(&t.passcode);
+    assert_eq!(r.status, 200, "{}", r.body);
 }
 
 #[test]
@@ -417,11 +640,11 @@ fn the_cookie_alone_cannot_reach_the_backend() {
     let cookie = cookie_header(&value);
     for headers in [
         vec![("Cookie", cookie.as_str())],
-        vec![("Cookie", cookie.as_str()), ("Host", Tunnel::host())],
         vec![("Cookie", cookie.as_str()), ("Host", "127.0.0.1")],
+        vec![("Cookie", cookie.as_str()), ("Host", "evil.ngrok.app")],
         vec![
             ("Cookie", cookie.as_str()),
-            ("x-agboard-tunnel-proof", t.proof.as_str()),
+            ("X-Forwarded-Host", Tunnel::host()),
         ],
     ] {
         let r = request(t.backend, "GET", "/monitor/api/projects", &headers, "");
@@ -445,46 +668,44 @@ fn a_session_dies_with_the_run_that_issued_it() {
         200
     );
     let old_backend = t.backend;
-    let old_proof = t.proof.clone();
+    let opens = t.s.fake.opens.load(Ordering::SeqCst);
 
-    // A new allow list means a new tunnel, proof and session store.
+    // A new domain means a new tunnel, passcode and session store.
     let revision = t.s.get()["revision"].as_u64().unwrap();
     assert_eq!(
-        t.s.put(true, &[EMAIL, "friend@example.com"], revision)
-            .status,
+        t.s.put(true, Some("friend-xyz.ngrok.app"), revision).status,
         200
     );
     let end = Instant::now() + Duration::from_secs(10);
-    let (backend, proof) = loop {
-        let (b, p) = Tunnel::current(&t.s);
-        if p != old_proof {
-            break (b, p);
-        }
+    while t.s.fake.opens.load(Ordering::SeqCst) <= opens {
         assert!(Instant::now() < end, "the tunnel was not replaced");
         std::thread::sleep(Duration::from_millis(20));
-    };
+    }
     t.s.wait_status("ready");
+    let backend = Tunnel::current(&t.s);
     std::thread::sleep(Duration::from_millis(100));
     assert!(TcpStream::connect_timeout(&old_backend, Duration::from_millis(300)).is_err());
-    let headers = [
-        ("Host", Tunnel::host()),
-        ("x-agboard-tunnel-proof", proof.as_str()),
-        ("Cookie", cookie.as_str()),
-    ];
+    // The old cookie is no session of the new run, though the Host is the same.
+    let headers = [("Host", Tunnel::host()), ("Cookie", cookie.as_str())];
     assert_eq!(
         request(backend, "GET", "/monitor/api/projects", &headers, "").status,
         401
     );
-    // The old proof does not open the new backend either.
-    let stale = [
-        ("Host", Tunnel::host()),
-        ("x-agboard-tunnel-proof", old_proof.as_str()),
-        ("Cookie", cookie.as_str()),
-    ];
-    assert_eq!(
-        request(backend, "GET", "/monitor/api/projects", &stale, "").status,
-        403
+    // The new run has its own passcode, and that one opens a session there.
+    let fresh = t.s.passcode();
+    let unlock = request(
+        backend,
+        "POST",
+        "/monitor/api/unlock",
+        &[
+            ("Host", Tunnel::host()),
+            ("Origin", PUBLIC),
+            ("Sec-Fetch-Site", "same-origin"),
+            ("Content-Type", "application/json"),
+        ],
+        &json!({"code": fresh}).to_string(),
     );
+    assert_eq!(unlock.status, 200, "{}", unlock.body);
 }
 
 // ------------------------------------------------------------- the monitor
@@ -582,7 +803,6 @@ fn the_page_and_its_assets_hold_no_secret_and_need_the_entrance() {
         Some("no-referrer")
     );
     assert!(page.body.contains("agboard-monitor-token\" content=\"\""));
-    assert!(!page.body.contains(&t.proof));
     assert!(!page.body.contains("Choose the first path"));
     // Its assets are served to the entrance without a session, and not otherwise.
     let start = page.body.find("/assets/monitor/").unwrap();
@@ -748,7 +968,7 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
 }
 
 #[test]
-fn disconnect_ends_the_session_and_points_at_the_edge_logout() {
+fn disconnect_ends_the_session_and_leaves_no_logout_path() {
     let t = Tunnel::up();
     let (value, csrf) = t.session();
     let cookie = cookie_header(&value);
@@ -772,7 +992,9 @@ fn disconnect_ends_the_session_and_points_at_the_edge_logout() {
     );
     let r = t.call("POST", "/monitor/api/disconnect", &w, "{}");
     assert_eq!(r.status, 200, "{}", r.body);
-    assert_eq!(r.json()["logoutPath"], "/ngrok/logout");
+    // The answer is only that the session ended: there is no Edge sign-in to leave.
+    assert_eq!(r.json(), json!({"disconnected": true}));
+    assert!(!r.body.contains("logout"));
     let cleared = r.header("set-cookie").unwrap();
     assert!(cleared.contains("Max-Age=0") && cleared.contains("Path=/monitor/"));
     for p in [format!("{base}/board"), "/monitor/api/events".to_string()] {
@@ -783,6 +1005,8 @@ fn disconnect_ends_the_session_and_points_at_the_edge_logout() {
             .status,
         401
     );
+    // The passcode of the run still works: the same phone can open a new session.
+    assert_eq!(t.unlock(&t.passcode).status, 200);
 }
 
 // --------------------------------------------------------------------- SSE
@@ -790,11 +1014,11 @@ fn disconnect_ends_the_session_and_points_at_the_edge_logout() {
 #[test]
 fn the_event_stream_needs_a_session_and_ends_when_the_run_stops() {
     let t = Tunnel::up();
-    let (_, denied) = open_events(t.backend, &t.proof, "");
+    let (_, denied) = open_events(t.backend, "");
     assert!(denied.starts_with("HTTP/1.1 401"), "{denied}");
     assert!(!denied.contains("event: ready"));
     let (value, _) = t.session();
-    let (stream, seen) = open_events(t.backend, &t.proof, &cookie_header(&value));
+    let (stream, seen) = open_events(t.backend, &cookie_header(&value));
     assert!(seen.starts_with("HTTP/1.1 200"), "{seen}");
     assert!(seen.contains("event: ready"), "{seen}");
     // No token travels in the URL.
@@ -813,7 +1037,7 @@ fn the_event_stream_ends_when_its_session_is_disconnected() {
     let t = Tunnel::up();
     let (value, csrf) = t.session();
     let cookie = cookie_header(&value);
-    let (stream, seen) = open_events(t.backend, &t.proof, &cookie);
+    let (stream, seen) = open_events(t.backend, &cookie);
     assert!(seen.contains("event: ready"), "{seen}");
     assert_eq!(
         t.call(
@@ -826,7 +1050,7 @@ fn the_event_stream_ends_when_its_session_is_disconnected() {
         200
     );
     // The session is gone for new streams at once; an open one stops at its next event.
-    let (_, again) = open_events(t.backend, &t.proof, &cookie);
+    let (_, again) = open_events(t.backend, &cookie);
     assert!(again.starts_with("HTTP/1.1 401"), "{again}");
     let store = FileStore::open(&t.home.path().join("shared"));
     let project = store.project_by_name("monitor").unwrap().id;
@@ -852,7 +1076,7 @@ fn the_event_stream_ends_when_its_session_is_disconnected() {
 // ----------------------------------------------------------------- secrets
 
 #[test]
-fn no_session_value_or_proof_reaches_the_disk_or_the_pc_api() {
+fn no_session_value_reaches_the_disk_or_the_pc_api() {
     let t = Tunnel::up();
     let (value, csrf) = t.session();
     let _ = t.call(
@@ -862,8 +1086,54 @@ fn no_session_value_or_proof_reaches_the_disk_or_the_pc_api() {
         "",
     );
     let disk = all_files_text(t.home.path());
-    for secret in [value.as_str(), csrf.as_str(), t.proof.as_str(), TOKEN] {
+    for secret in [value.as_str(), csrf.as_str(), TOKEN] {
         assert!(!disk.contains(secret));
         assert!(!t.s.get().to_string().contains(secret));
     }
+}
+
+#[test]
+fn the_passcode_is_four_digits_for_the_pc_only_while_ready_and_is_never_written_down() {
+    let t = Tunnel::up();
+    let status = t.s.get();
+    let code = status["passcode"].as_str().unwrap().to_string();
+    assert_eq!(code.len(), 4);
+    assert!(code.bytes().all(|b| b.is_ascii_digit()), "{code}");
+    assert_eq!(code, t.passcode);
+
+    // What the phone is served never names a passcode, and the run's own
+    // answers (the session, an error, a refusal) never repeat it.
+    let (value, csrf) = t.session();
+    let cookie = cookie_header(&value);
+    let page = t.call("GET", "/monitor/", &[], "");
+    let session = t.call("GET", "/monitor/api/session", &[("Cookie", &cookie)], "");
+    let wrong = t.unlock(if code == WRONG_CODE {
+        "0001"
+    } else {
+        WRONG_CODE
+    });
+    for reply in [&page, &session, &wrong] {
+        assert!(
+            !reply.body.to_lowercase().contains("passcode\":\"")
+                && !reply.body.contains(&format!("\"{code}\""))
+        );
+    }
+    assert!(!page.body.contains(&csrf));
+
+    // On disk there is no passcode, in any file, under any name. A 4-digit value
+    // is compared as a JSON string, since a plain search would match ids and times.
+    let disk = all_files_text(t.home.path()).to_lowercase();
+    assert!(!disk.contains("passcode"));
+    for file in ["serve.json", ".internal/monitor-connection.json"] {
+        let text = std::fs::read_to_string(t.home.path().join(file)).unwrap();
+        let value: Value = serde_json::from_str(&text).unwrap();
+        for (key, field) in value.as_object().unwrap() {
+            assert_ne!(field.as_str(), Some(code.as_str()), "{file} {key}");
+        }
+    }
+
+    // Stopped, the PC is not told the passcode any more.
+    let stopped = t.s.stop_ngrok().json();
+    assert!(stopped.get("passcode").is_none(), "{stopped}");
+    assert!(t.s.get().get("passcode").is_none());
 }

@@ -12,6 +12,7 @@ import {
   reportAuthLoss,
   currentCsrf,
   forgetCsrf,
+  unlock,
   usesMonitorSession,
   type MonitorRequestOptions,
 } from './session';
@@ -93,8 +94,8 @@ async function readJson<T>(path: string, options: MonitorRequestOptions = {}): P
     }
 
     if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
-      if (usesMonitorSession()) reportAuthLoss('auth_redirect');
-      throw new MonitorClientError(`GET ${path} was redirected.`, 0, 'auth_redirect');
+      if (usesMonitorSession()) reportAuthLoss('unexpected_response');
+      throw new MonitorClientError(`GET ${path} was redirected.`, 0, 'unexpected_response');
     }
 
     if (!response.ok) {
@@ -121,10 +122,10 @@ async function readJson<T>(path: string, options: MonitorRequestOptions = {}): P
     try {
       return (await response.json()) as T;
     } catch (cause) {
-      // A 200 that is not JSON is the Edge's sign-in page, not monitor data.
+      // A 200 that is not JSON is some other page, not monitor data.
       if (!usesMonitorSession()) throw cause;
-      reportAuthLoss('auth_redirect');
-      throw new MonitorClientError(`GET ${path} did not return JSON.`, 200, 'auth_redirect');
+      reportAuthLoss('unexpected_response');
+      throw new MonitorClientError(`GET ${path} did not return JSON.`, 200, 'unexpected_response');
     }
   } finally {
     clearTimeout(timeout);
@@ -144,12 +145,15 @@ async function answerRequest(
     try {
       await openSession(options);
     } catch (cause) {
-      if (cause instanceof MonitorClientError)
+      if (cause instanceof MonitorClientError) {
+        // Without a live session the page asks for the passcode again.
+        if (cause.code === 'session_required') reportAuthLoss('session_required');
         throw writeFailure(
           'The monitor answer request failed.',
           cause.status,
-          cause.code === 'auth_redirect' ? 'session_required' : cause.code,
+          cause.code === 'unexpected_response' ? 'session_required' : cause.code,
         );
+      }
       throw cause;
     }
   }
@@ -193,7 +197,7 @@ async function answerRequest(
     }
 
     if (session && (response.type === 'opaqueredirect' || response.status === 401)) {
-      reportAuthLoss(response.status === 401 ? 'session_required' : 'auth_redirect');
+      reportAuthLoss(response.status === 401 ? 'session_required' : 'unexpected_response');
       throw writeFailure('The monitor answer request failed.', response.status, 'session_required');
     }
     let body: {
@@ -227,6 +231,7 @@ async function answerRequest(
 export const monitorClient = {
   answerRequest,
   openSession,
+  unlock,
   fetchCatalog(options?: MonitorRequestOptions): Promise<ProjectList> {
     return readJson(`${MONITOR_API_BASE}projects`, options);
   },

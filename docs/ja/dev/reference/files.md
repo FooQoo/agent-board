@@ -113,9 +113,7 @@ ngrokのモバイル接続は、秘密ではない設定を`<データ領域>/.i
   "formatVersion": 1,
   "revision": 3,
   "enabled": true,
-  "allowEmails": ["owner@example.com"],
-  "domain": null,
-  "oauthApp": "managed"
+  "domain": null
 }
 ```
 
@@ -124,11 +122,9 @@ ngrokのモバイル接続は、秘密ではない設定を`<データ領域>/.i
 | `formatVersion` | 常に`1`。ほかの値、未知のフィールド、壊れたファイルは、設定を読めない（`config_unreadable`）扱いになる。PCの入口は動き続け、新しい設定を保存するとファイルが置き換わる。 |
 | `revision` | 保存のたびに増える。設定APIが、別の画面での変更を検出するために使う。 |
 | `enabled` | 次の`serve`で接続を再び始めるか。停止すると`false`で保存する。 |
-| `allowEmails` | 接続を許可するGoogleアカウント。小文字に正規化する。有効なときは1件以上、最大50件。 |
 | `domain` | スキームなしの予約済みngrokホスト名、または`null`。 |
-| `oauthApp` | `managed`（ngrokのGoogleアプリ）か`custom`（認証情報は`AGBOARD_GOOGLE_CLIENT_ID`と`AGBOARD_GOOGLE_CLIENT_SECRET`から読み、ファイルには入れない）。 |
 
-ファイルには、ngrokのトークン、トンネルのproof、session、CSRFトークン、Googleの認証情報を入れません。利用者が保存を選んだトークンは、代わりにOSのキーチェーン（service `agent-board`、account `ngrok-authtoken`）に置きます。`monitor/config.json`はありません。
+ファイルには、ngrokのトークン、スマホの合言葉、session、CSRFトークンを入れません。利用者が保存を選んだトークンは、代わりにOSのキーチェーン（service `agent-board`、account `ngrok-authtoken`）に置きます。`monitor/config.json`はありません。
 
 ## タスクのJSONとスナップショット
 

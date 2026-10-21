@@ -79,11 +79,11 @@
 | `keychain_unavailable` | トークンの保存か削除を求められたが、OSのキーチェーンでは行えない。何も保存・変更していない。 | なし | 409 |
 | `settings_unreadable` | 保存した設定ファイルを読めないまま開始した。先に設定を保存し直す。 | なし | 409 |
 | `start_failed` | 内部の理由で接続を開始できなかった。 | なし | 500 |
-| `invalid_value` | メール・ドメイン・トークン・本文が規則に反する（例: トークンなしの`save`、未知のフィールド、許可リストが空）。 | なし | 422 |
+| `invalid_value` | ドメイン・トークン・本文が規則に反する（例: トークンなしの`save`、未知のフィールド）。 | なし | 422 |
 
 コマンドラインでは、`serve --monitor ngrok`のオプションが足りない、または不正な場合は`invalid_argument`で終了コード2、接続を開始できない場合は終了コード1です。状態の`failure`のコードは[Web API](./web-api.md#モバイル接続)に一覧があります。
 
-モニターの入口では、Hostかproofの確認に失敗した要求は理由`not available`の403 `forbidden`、sessionがない・期限切れなら401 `session_required`、公開Origin・同一オリジンのメタデータ・CSRFトークンのない書き込みは403 `forbidden`です。
+モニターの入口では、Hostの確認に失敗した要求は理由`not available`の403 `forbidden`、sessionがない・期限切れなら401 `session_required`、公開Origin・同一オリジンのメタデータ・CSRFトークンのない書き込みは403 `forbidden`です。`POST /monitor/api/unlock`は、間違った合言葉に403 `unlock_failed`を返し、連続5回間違えたあとはすべての試行に429 `unlock_locked`を返します。どちらも残りの回数は示しません。
 
 ## 終了コード
 

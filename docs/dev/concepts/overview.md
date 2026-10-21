@@ -33,7 +33,7 @@ flowchart LR
 
 ### Mobile monitor
 
-A phone browser reaches the read-mostly monitor through an ngrok tunnel that runs inside `serve`. You start it from **Settings** or with `agboard serve --monitor ngrok`; ngrok's Google sign-in and an allow list guard it. The tunnel forwards to a dedicated loopback entry. That entry uses the same FileStore, file watcher, and notifications as local access. See [The mobile monitor](./remote-access.md).
+A phone browser reaches the read-mostly monitor through an ngrok tunnel that runs inside `serve`. You start it from **Settings** or with `agboard serve --monitor ngrok`; the exact public Host and a 4-digit passcode made for each start guard it. The tunnel forwards to a dedicated loopback entry. That entry uses the same FileStore, file watcher, and notifications as local access. See [The mobile monitor](./remote-access.md).
 
 ```mermaid
 flowchart LR

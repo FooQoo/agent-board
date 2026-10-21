@@ -96,7 +96,6 @@ fn monitor_events_emit_ready_and_react_to_the_shared_change_broadcast() {
     let mut response = agent
         .get(server.url("/monitor/api/events"))
         .header("Host", server.host())
-        .header("x-agboard-tunnel-proof", &server.edge_headers()[1].1)
         .header("Cookie", &session.cookie)
         .call()
         .unwrap();

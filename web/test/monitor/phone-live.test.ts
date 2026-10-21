@@ -2,9 +2,10 @@
  * The phone client against the real ngrok monitor backend on loopback.
  *
  * The backend comes from `tests/monitor_phone_serve.rs` (a fake connector opens the "tunnel").
- * The test stands in for the browser and the Edge: it adds the public Host and the proof, keeps
- * the cookie, and adds Origin and Sec-Fetch-Site to writes. The Edge itself (Google sign-in, the
- * allow list, header removal) is NOT exercised; an Edge sign-in redirect is simulated.
+ * The test stands in for the browser and the Edge: it adds the public Host, keeps the cookie, and
+ * adds Origin and Sec-Fetch-Site to writes. How a real Edge forwards a request is NOT exercised;
+ * a page that is not the monitor is simulated. The passcode is
+ * the one the backend announces for each start, as the PC would show it.
  *
  * It starts cargo, so it runs only with AGBOARD_PHONE_LIVE=1.
  */
@@ -26,7 +27,7 @@ const live = process.env.AGBOARD_PHONE_LIVE === '1';
 
 interface Backend {
   addr: string;
-  proof: string;
+  passcode: string;
   host: string;
   origin: string;
 }
@@ -36,7 +37,7 @@ let backend: Backend;
 let projectId = '';
 const lines: string[] = [];
 const pending: Array<() => void> = [];
-const browser = { cookie: new Map<string, string>(), edgeSignedOut: false, wrote: 0 };
+const browser = { cookie: new Map<string, string>(), notTheMonitor: false, wrote: 0 };
 
 function waitForLine(prefix: string, since: number): Promise<string> {
   return new Promise((resolveLine, reject) => {
@@ -78,7 +79,6 @@ function send(path: string, init: RequestInit = {}, stream = false): Promise<htt
   const method = init.method ?? 'GET';
   const headers: Record<string, string> = {
     Host: backend.host,
-    'x-agboard-tunnel-proof': backend.proof,
     'Sec-Fetch-Site': 'same-origin',
     ...(browser.cookie.size > 0 ? { Cookie: cookieHeader() } : {}),
     ...(method === 'GET' ? {} : { Origin: backend.origin }),
@@ -96,9 +96,9 @@ function send(path: string, init: RequestInit = {}, stream = false): Promise<htt
   });
 }
 
-/** What the browser's fetch would return for a page behind the Edge. */
+/** What the browser's fetch would return for the page behind the Edge. */
 async function browserFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  if (browser.edgeSignedOut) {
+  if (browser.notTheMonitor) {
     const redirect = new Response(null, { status: 200 });
     Object.defineProperty(redirect, 'type', { value: 'opaqueredirect' });
     return redirect;
@@ -142,7 +142,7 @@ class BridgeEventSource {
   private async run() {
     try {
       const res = await send(this.url, {}, true);
-      if (res.statusCode !== 200 || browser.edgeSignedOut) {
+      if (res.statusCode !== 200 || browser.notTheMonitor) {
         this.emit('error');
         res.destroy();
         return;
@@ -214,7 +214,7 @@ afterAll(() => {
 
 afterEach(() => {
   browser.cookie.clear();
-  browser.edgeSignedOut = false;
+  browser.notTheMonitor = false;
   browser.wrote = 0;
   losses.length = 0;
   for (const source of BridgeEventSource.all) source.close();
@@ -222,14 +222,17 @@ afterEach(() => {
 });
 
 describe.skipIf(!live)('the phone client against the real backend', () => {
-  it('reads nothing without a session, then opens one and reads', async () => {
+  it('reads nothing without a session, then the passcode opens one and reads', async () => {
     document.head.innerHTML = '';
     await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({
       status: 401,
       code: 'session_required',
     });
     expect(losses).toEqual(['session_required']);
-    const session = await monitorClient.openSession();
+    // Asking for the session starts none.
+    await expect(monitorClient.openSession()).rejects.toMatchObject({ code: 'session_required' });
+    expect(browser.cookie.size).toBe(0);
+    const session = await monitorClient.unlock(backend.passcode);
     expect(session.csrfToken.length).toBeGreaterThan(8);
     expect(browser.cookie.size).toBe(1);
     const catalog = await monitorClient.fetchCatalog();
@@ -237,7 +240,7 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
   });
 
   it('answers with the CSRF token, and never resends a refused answer', async () => {
-    await monitorClient.openSession();
+    await monitorClient.unlock(backend.passcode);
     const pendingRequest = await firstPendingRequest();
     // The same write without the token is refused by the real guard.
     const bare = await send(
@@ -259,17 +262,18 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
       choiceId: pendingRequest.choice,
     });
     expect(result.task.pendingRequestId).toBeNull();
-    expect(browser.wrote).toBe(1);
+    expect(browser.wrote).toBe(2); // the unlock and the answer
   });
 
   it('an answer after the session ended is refused once, tells the app, and is not resent', async () => {
-    await monitorClient.openSession();
+    await monitorClient.unlock(backend.passcode);
     const pendingRequest = await firstPendingRequest().catch(() => ({
       taskId: 1,
       requestId: 'r',
       choice: 'keep',
     }));
     await command('rotate', 'READY'); // the old session no longer counts
+    browser.wrote = 0;
     await expect(
       monitorClient.answerRequest(projectId, pendingRequest.taskId, {
         requestId: pendingRequest.requestId,
@@ -280,30 +284,61 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
     expect(losses).toContain('session_required');
   }, 30_000);
 
-  it('treats the Edge sign-in page as a lost connection and never signs in on its own', async () => {
-    browser.edgeSignedOut = true;
-    await expect(monitorClient.openSession()).rejects.toMatchObject({ code: 'auth_redirect' });
+  it('does not take a wrong passcode, and five in a row close the run to the right one', async () => {
+    const wrong = backend.passcode === '0000' ? '0001' : '0000';
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(monitorClient.unlock(wrong)).rejects.toMatchObject({
+        status: 403,
+        code: 'unlock_failed',
+      });
+    }
+    expect(browser.cookie.size).toBe(0);
+    await expect(monitorClient.unlock(backend.passcode)).rejects.toMatchObject({
+      status: 429,
+      code: 'unlock_locked',
+    });
+    expect(browser.cookie.size).toBe(0);
+    await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({ code: 'session_required' });
+    // Starting the connection again is a new run with a new passcode and a clean count.
+    await command('rotate', 'READY');
+    await expect(monitorClient.unlock(backend.passcode)).resolves.toBeTruthy();
+    await expect(monitorClient.fetchCatalog()).resolves.toBeTruthy();
+  }, 30_000);
+
+  it('treats a page that is not the monitor as a lost connection and never asks for a passcode', async () => {
+    browser.notTheMonitor = true;
+    await expect(monitorClient.openSession()).rejects.toMatchObject({
+      code: 'unexpected_response',
+    });
     await expect(monitorClient.fetchCatalog()).rejects.toBeInstanceOf(MonitorClientError);
-    expect(losses).toEqual(['auth_redirect']);
-    const hook = renderHook(() => useMonitorConnection({ navigate: () => {} }));
-    await waitFor(() =>
-      expect(hook.result.current.state).toEqual({ status: 'needs_google', failure: null }),
-    );
+    expect(losses).toEqual(['unexpected_response']);
+    const hook = renderHook(() => useMonitorConnection());
+    await waitFor(() => expect(hook.result.current.state).toEqual({ status: 'reconnecting' }));
   });
 
-  it('renews a lost session quietly while the Edge still accepts the phone', async () => {
-    const hook = renderHook(() => useMonitorConnection({ navigate: () => {} }));
-    await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
+  it('asks for the passcode again when the tunnel is replaced, and the new passcode opens it', async () => {
+    const hook = renderHook(() => useMonitorConnection());
+    await waitFor(() =>
+      expect(hook.result.current.state).toEqual({ status: 'needs_passcode', failure: null }),
+    );
+    await act(async () => {
+      await hook.result.current.unlock(backend.passcode);
+    });
+    expect(hook.result.current.state.status).toBe('ready');
     await command('rotate', 'READY');
     await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({ code: 'session_required' });
-    await waitFor(async () => {
-      expect(hook.result.current.state.status).toBe('ready');
-      await expect(monitorClient.fetchCatalog()).resolves.toBeTruthy();
+    await waitFor(() =>
+      expect(hook.result.current.state).toEqual({ status: 'needs_passcode', failure: 'expired' }),
+    );
+    await act(async () => {
+      await hook.result.current.unlock(backend.passcode);
     });
+    await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
+    await expect(monitorClient.fetchCatalog()).resolves.toBeTruthy();
   }, 30_000);
 
   it('drops the event stream when the session ends, then reconnects once a session is back', async () => {
-    await monitorClient.openSession();
+    await monitorClient.unlock(backend.passcode);
     const hook = renderHook(() => useMonitorEvents({ onRefresh: () => {} }));
     await waitFor(() => expect(hook.result.current.state).toBe('connected'), { timeout: 10_000 });
     await command('rotate', 'READY');
@@ -311,21 +346,21 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
       timeout: 10_000,
     });
     await act(async () => {
-      await monitorClient.openSession();
+      await monitorClient.unlock(backend.passcode);
     });
     await waitFor(() => expect(hook.result.current.state).toBe('connected'), { timeout: 20_000 });
   }, 60_000);
 
-  it('shows an unreachable monitor as reconnecting, then as a failure with the action', async () => {
+  it('shows an unreachable monitor as reconnecting, then as a failure on the passcode screen', async () => {
     await command('stop', 'STOPPED');
-    const hook = renderHook(() => useMonitorConnection({ navigate: () => {} }));
+    const hook = renderHook(() => useMonitorConnection());
     await waitFor(() => expect(hook.result.current.state.status).toBe('reconnecting'), {
       timeout: 5_000,
     });
     await waitFor(
       () =>
         expect(hook.result.current.state).toEqual({
-          status: 'needs_google',
+          status: 'needs_passcode',
           failure: 'unreachable',
         }),
       { timeout: 15_000 },

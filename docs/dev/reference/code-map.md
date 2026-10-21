@@ -45,8 +45,8 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | --- | --- |
 | `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, epic images, and the mobile connection (`monitor_connections`). |
 | `monitor/` | The monitor's read router, its answer endpoint, and its assets. |
-| `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `start`, `run`), the saved settings (`config`), the token and its OS keychain storage (`token`, `keychain`), the Traffic Policy, proof, and public-address contracts (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`). |
-| `monitor_auth/` | The monitor's application sessions and CSRF tokens (`session`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
+| `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `start`, `run`), the saved settings (`config`), the token and its OS keychain storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`, with its `session` routes for the passcode unlock). |
+| `monitor_auth/` | The monitor's application sessions and CSRF tokens (`session`), the 4-digit passcode and its limit on wrong guesses (`passcode`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
 | `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes and monitor writes, and canonical HTTPS origins. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
 | `store`<br>`answer` | Blocking file access, the index, and URL IDs for every router; saving an answer, shared by the board and the monitor. |

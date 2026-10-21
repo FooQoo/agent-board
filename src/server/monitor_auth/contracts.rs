@@ -1,6 +1,6 @@
 //! Types for the temporary, in-memory session that the ngrok monitor entrance issues.
 //!
-//! Sessions, CSRF tokens and the tunnel proof are never written to disk. Only
+//! Sessions and CSRF tokens are never written to disk. Only
 //! their SHA-256 digests are kept in memory so a memory dump of the store does
 //! not reveal a usable cookie.
 

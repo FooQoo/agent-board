@@ -2,8 +2,8 @@
 //!
 //! Until the tunnel's policy and public origin are known the gate is empty and
 //! every request is refused. Once they are known a request must still carry the
-//! public Host and exactly one correct proof ([`admit`]); what happens after
-//! that (the session, CSRF and routing) is in [`super::entry`].
+//! public Host ([`admit`]); what happens after that (the passcode, the session,
+//! CSRF and routing) is in [`super::entry`].
 
 use std::sync::{Arc, RwLock};
 
@@ -13,18 +13,20 @@ use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::Response;
 use tokio::sync::watch;
 
-use super::contracts::{ContractError, PublicOrigin, TunnelProof};
+use super::contracts::{ContractError, PublicOrigin};
+use crate::server::monitor_auth::passcode::UnlockGate;
 use crate::server::monitor_auth::session::SessionStore;
 
 /// What the backend needs to know about the running tunnel.
 #[derive(Clone)]
 pub struct BackendPolicy {
-    pub proof: TunnelProof,
     pub origin: PublicOrigin,
     /// The start generation that issued this policy; sessions are bound to it.
     pub epoch: u64,
     /// Application sessions of this run. Dropped with the policy.
     pub sessions: Arc<SessionStore>,
+    /// The passcode of this run and the count of wrong guesses against it.
+    pub unlock: Arc<UnlockGate>,
     /// Added to a request that has passed every check, for the existing write guard.
     pub internal_token: Arc<str>,
     revoked: Arc<watch::Sender<bool>>,
@@ -32,17 +34,17 @@ pub struct BackendPolicy {
 
 impl BackendPolicy {
     pub fn new(
-        proof: TunnelProof,
         origin: PublicOrigin,
         epoch: u64,
         sessions: Arc<SessionStore>,
         internal_token: String,
+        unlock: Arc<UnlockGate>,
     ) -> Self {
         Self {
-            proof,
             origin,
             epoch,
             sessions,
+            unlock,
             internal_token: internal_token.into(),
             revoked: Arc::new(watch::channel(false).0),
         }
@@ -67,18 +69,16 @@ pub type Gate = Arc<RwLock<Option<BackendPolicy>>>;
 pub enum Refusal {
     /// No tunnel policy yet: the backend admits nothing.
     NotReady,
-    /// The Host or proof check failed.
+    /// The Host check failed.
     Contract(ContractError),
 }
 
-/// The Host and proof checks every request must pass first.
+/// The Host check every request must pass first: `Host` equals the public
+/// address ngrok returned, exactly. The Edge adds nothing for the app to check;
+/// who may read is decided by the passcode and the session behind this.
 pub fn admit(policy: Option<&BackendPolicy>, headers: &HeaderMap) -> Result<(), Refusal> {
     let policy = policy.ok_or(Refusal::NotReady)?;
-    policy
-        .origin
-        .check_host(headers)
-        .map_err(Refusal::Contract)?;
-    policy.proof.verify(headers).map_err(Refusal::Contract)
+    policy.origin.check_host(headers).map_err(Refusal::Contract)
 }
 
 /// Remove the policy of a closed run: nothing is admitted afterwards and open
@@ -118,16 +118,17 @@ async fn refuse_all(State(gate): State<Gate>, request: Request) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::server::monitor_auth::passcode::Passcode;
     use crate::server::monitor_auth::session::system_clock;
     use axum::http::{HeaderName, HeaderValue};
 
     fn policy() -> BackendPolicy {
         BackendPolicy::new(
-            TunnelProof::from_bytes(&[9u8; 32]),
             PublicOrigin::parse("https://abc.ngrok.app").unwrap(),
             1,
             Arc::new(SessionStore::new(system_clock(), 60)),
             "internal".into(),
+            Arc::new(UnlockGate::new(Passcode::from_number(1234))),
         )
     }
 
@@ -143,28 +144,26 @@ mod tests {
     }
 
     #[test]
-    fn the_host_and_exactly_one_proof_are_required() {
+    fn only_the_exact_public_host_is_admitted() {
         let p = policy();
-        let good = headers(&[
-            ("host", "abc.ngrok.app"),
-            ("x-agboard-tunnel-proof", &"09".repeat(32)),
-        ]);
+        let good = headers(&[("host", "abc.ngrok.app")]);
+        // Before the tunnel's address is known nothing is admitted.
         assert_eq!(admit(None, &good), Err(Refusal::NotReady));
         assert_eq!(admit(Some(&p), &good), Ok(()));
-        assert_eq!(
-            admit(Some(&p), &headers(&[("host", "abc.ngrok.app")])),
-            Err(Refusal::Contract(ContractError::ProofMissing))
-        );
-        assert_eq!(
-            admit(
-                Some(&p),
-                &headers(&[
-                    ("host", "127.0.0.1:1"),
-                    ("x-agboard-tunnel-proof", &"09".repeat(32))
-                ])
-            ),
-            Err(Refusal::Contract(ContractError::HostMismatch))
-        );
+        for bad in [
+            headers(&[]),
+            headers(&[("host", "127.0.0.1:1")]),
+            headers(&[("host", "localhost")]),
+            headers(&[("host", "abc.ngrok.app:443")]),
+            headers(&[("host", "evil.ngrok.app")]),
+            headers(&[("host", "abc.ngrok.app"), ("host", "abc.ngrok.app")]),
+        ] {
+            assert_eq!(
+                admit(Some(&p), &bad),
+                Err(Refusal::Contract(ContractError::HostMismatch)),
+                "{bad:?}"
+            );
+        }
     }
 
     #[test]

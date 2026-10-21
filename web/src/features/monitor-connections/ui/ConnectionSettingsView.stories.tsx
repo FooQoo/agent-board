@@ -11,13 +11,8 @@ import {
 
 /** The scheme is joined here so the source keeps no literal remote address. */
 const phoneUrl = `${'https'}://your-name.ngrok.app/monitor/`;
-const emptyDraft: ConnectionDraft = { token: '', email: '', domain: '', save: false };
-const filledDraft: ConnectionDraft = {
-  token: '',
-  email: 'owner@example.com',
-  domain: '',
-  save: false,
-};
+const emptyDraft: ConnectionDraft = { token: '', domain: '', save: false };
+const filledDraft: ConnectionDraft = { token: '', domain: 'your-name.ngrok.app', save: false };
 
 /** A layout sample of a QR code: three finder squares and a few modules. It cannot be scanned. */
 const sampleQr: ConnectionQr = {
@@ -47,7 +42,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Nothing is configured yet: the three inputs, the access note and the connect action. */
+/** Nothing is configured yet: the token and domain inputs, the passcode note and the connect action. */
 export const NeedsConfig: Story = {
   play: async ({ args }) => {
     const view = within(document.body);
@@ -57,10 +52,11 @@ export const NeedsConfig: Story = {
     await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
     await expect(args.onConnect).toHaveBeenCalledWith({
       token: 'secret-token',
-      email: 'owner@example.com',
-      domain: '',
+      domain: 'your-name.ngrok.app',
       save: false,
     });
+    await expect(view.getByText('Protected by a passcode')).toBeInTheDocument();
+    await expect(view.queryByLabelText(/Google/)).toBeNull();
     await expect(view.getByLabelText('ngrok auth token')).toHaveAttribute('type', 'password');
   },
 };
@@ -103,14 +99,18 @@ export const Stopping: Story = {
   },
 };
 
-/** The connection is up: the URL, the QR code and the stop and edit actions. */
+/** The connection is up: the URL, the passcode, the QR code and the stop and edit actions. */
 export const Connected: Story = {
-  args: { status: 'ready', url: phoneUrl, qr: sampleQr },
+  args: { status: 'ready', url: phoneUrl, passcode: '4821', qr: sampleQr },
   play: async ({ args }) => {
     const view = within(document.body);
     await expect((view.getByRole('dialog') as HTMLElement).offsetWidth).toBe(680);
     await expect(view.getByRole('status')).toHaveTextContent('Connected');
     await expect(view.getByLabelText('URL for your phone')).toHaveValue(phoneUrl);
+    await expect(view.getByLabelText('Passcode for your phone')).toHaveValue('4821');
+    await expect(view.getByLabelText('Passcode for your phone')).toHaveAttribute('readonly');
+    // The limits of a 4-digit passcode are said on the screen, not only in the guide.
+    await expect(view.getByText(/10,000 possibilities/)).toBeInTheDocument();
     await userEvent.click(view.getByRole('button', { name: 'Change connection settings' }));
     await expect(args.onEdit).toHaveBeenCalled();
     await userEvent.click(view.getByRole('button', { name: 'Stop' }));
@@ -124,7 +124,16 @@ export const ConnectedStopping: Story = {
     status: 'ready',
     saving: true,
     url: phoneUrl,
+    passcode: '4821',
     qr: sampleQr,
+  },
+};
+
+/** Before the server has sent a passcode nothing is shown in its place. */
+export const ConnectedWithoutPasscode: Story = {
+  args: { status: 'ready', url: phoneUrl, passcode: null, qr: sampleQr },
+  play: async () => {
+    await expect(within(document.body).queryByLabelText('Passcode for your phone')).toBeNull();
   },
 };
 
@@ -152,7 +161,7 @@ export const KeepsInputOnRerender: Story = {
       window.addEventListener('story-rerender', rerender);
       return () => window.removeEventListener('story-rerender', rerender);
     }, []);
-    return <ConnectionSettingsView {...args} draft={{ ...filledDraft }} />;
+    return <ConnectionSettingsView {...args} draft={{ ...emptyDraft }} />;
   },
   play: async () => {
     const view = within(document.body);

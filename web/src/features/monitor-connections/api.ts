@@ -13,16 +13,17 @@ export type FailureCode =
 
 export type TokenSource = 'env' | 'keychain' | 'session';
 
-/** What `GET /api/monitor-connections` returns. Nothing in it is secret. */
+/**
+ * What `GET /api/monitor-connections` returns. The ngrok token is never in it. The passcode is,
+ * for the PC to show, while the connection is ready.
+ */
 export interface ConnectionSnapshot {
   status: ConnectionStatus;
   url: string | null;
   revision: number;
   settings: {
     enabled: boolean;
-    allowEmails: string[];
     domain: string | null;
-    oauthApp: 'managed' | 'custom';
   };
   /** Whether a token is available: from the environment, the keychain or this run. */
   tokenConfigured: boolean;
@@ -33,6 +34,8 @@ export interface ConnectionSnapshot {
   /** Whether a token is saved in the keychain. */
   keychainTokenSaved: boolean;
   failure: FailureCode | null;
+  /** The 4-digit passcode of the running connection; absent unless the status is `ready`. */
+  passcode?: string;
 }
 
 /** A request the server refused, or one that never got an answer (`status` 0). */
@@ -87,9 +90,7 @@ export const getConnection = () => request(BASE, { method: 'GET' });
 
 export interface SettingsInput {
   enabled: boolean;
-  allowEmails: string[];
   domain: string | null;
-  oauthApp: 'managed' | 'custom';
   revision: number;
 }
 
