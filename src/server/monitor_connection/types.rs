@@ -129,12 +129,16 @@ impl Connector for SdkConnector {
                 None,
             )
             .await
-            .map_err(|e| OpenFailure {
-                code: match e {
-                    EndpointError::Connect(_) => FailureCode::ConnectFailed,
-                    EndpointError::Listen(_) => FailureCode::EndpointFailed,
-                    EndpointError::PublicUrl => FailureCode::PublicUrlInvalid,
-                },
+            .map_err(|e| {
+                // Diagnostic only: the reason ngrok gave. The error text never holds the token or policy.
+                eprintln!("agboard: ngrok did not open the tunnel: {e}");
+                OpenFailure {
+                    code: match e {
+                        EndpointError::Connect(_) => FailureCode::ConnectFailed,
+                        EndpointError::Listen(_) => FailureCode::EndpointFailed,
+                        EndpointError::PublicUrl => FailureCode::PublicUrlInvalid,
+                    },
+                }
             })?;
             Ok(OpenedTunnel {
                 public: endpoint.public.clone(),
