@@ -115,7 +115,7 @@
 .detail__answer-input.detail__answer-input {
   min-height: 124px;
   padding: 10px 12px;
-  border-color: var(--r-border);
+  border-color: var(--r-input);
   border-radius: 6px;
   background: var(--r-surface);
   font-size: 13px;

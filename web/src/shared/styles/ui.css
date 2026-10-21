@@ -81,6 +81,6 @@
   --color-accent-foreground: var(--r-text);
   --color-destructive: var(--r-danger);
   --color-border: var(--r-border);
-  --color-input: var(--r-border);
+  --color-input: var(--r-input);
   --color-ring: var(--r-accent);
 }

@@ -2,9 +2,13 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailPanel } from '../../features/tasks/detail/DetailPanel';
 import { ProjectSwitcher } from '../../features/projects/switcher/ProjectSwitcher';
+import { StatusBar } from '../../shared/ui/status-bar/StatusBar';
 import './mock-board.css';
 import { Header } from '../../shared/ui/app-header/Header';
 import { SAMPLE_PROJECT } from './mock-data';
+
+/** The time the mock's status bar shows as synced. */
+const SYNCED_AT = new Date(2026, 9, 22, 10, 42);
 
 /** The mock's controls do nothing; the stories show their state, not their behaviour. */
 const noop = () => {};
@@ -15,8 +19,8 @@ export const LANE_WIDTH = 280;
 export const LANE_HEIGHT = 756;
 export const CARD_LEFT = 12;
 export const CARD_WIDTH = 256;
-export const CARD_PITCH = 101;
-export const CARD_TOP = 50;
+export const CARD_PITCH = 102;
+export const CARD_TOP = 51;
 
 const RESULT_LANE_NAMES = {
   en: ['To do', 'In progress', 'Done'],
@@ -79,7 +83,7 @@ export function MockBoard({
             style={{
               position: 'absolute',
               left: 18,
-              top: 16,
+              top: 13,
               color: 'var(--r-text2)',
               fontSize: 13,
               fontWeight: 600,
@@ -119,25 +123,8 @@ export function MockBoard({
           {emptyHint}
         </p>
       ) : null}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: 40,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 24px',
-          background: 'var(--r-surface)',
-          borderTop: '1px solid var(--r-border)',
-          color: 'var(--r-muted)',
-          fontSize: 12,
-        }}
-      >
-        <span>{i18n.language === 'ja' ? `${count}件` : `${count} items`}</span>
-        <span>{i18n.language === 'ja' ? '同期済み 10:42' : 'Synced 10:42'}</span>
+      <div className="mock-board__status">
+        <StatusBar status="ready" taskCount={count} connected lastSyncedAt={SYNCED_AT} />
       </div>
     </div>
   );
@@ -147,7 +134,7 @@ export function MockBoard({
 export function MockStageCards({
   cards,
   left = 6,
-  top = 4,
+  top = 5,
 }: {
   cards: ReactNode[];
   left?: number;

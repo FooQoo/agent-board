@@ -11,6 +11,8 @@
   --r-surface: #ffffff;
   --r-lane: #eef0f4;
   --r-border: #e1e5eb;
+  /* Control outlines (radios, inputs): at least 3:1 against the surfaces they sit on. */
+  --r-input: #8590a1;
   --r-text: #1b2430;
   --r-text2: #566274;
   --r-muted: #8590a1;
@@ -27,6 +29,7 @@
   --r-surface: #171c23;
   --r-lane: #12171d;
   --r-border: #262d37;
+  --r-input: #7d8796;
   --r-text: #e7eaee;
   --r-text2: #a3acb9;
   --r-muted: #7d8796;
