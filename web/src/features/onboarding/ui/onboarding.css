@@ -78,7 +78,8 @@
 .onboarding-panel {
   position: absolute;
   left: 50%;
-  bottom: 59px;
+  /* 650px from the top on the 900px-high mock; a shorter stage keeps the panel 59px above its bottom. */
+  top: min(650px, calc(100% - 250px));
   display: flex;
   flex-direction: column;
   width: min(760px, calc(100% - 48px));

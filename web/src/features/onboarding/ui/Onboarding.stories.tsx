@@ -26,7 +26,7 @@ type ScreenKind =
 
 const TARGET_SAMPLES: SpotlightRect = { x: 30, y: 126, width: 390, height: 220 };
 const TARGET_RUNNING: SpotlightRect = { x: 442, y: 126, width: 396, height: 118 };
-const TARGET_PENDING: SpotlightRect = { x: 442, y: 126, width: 396, height: 432 };
+const TARGET_PENDING: SpotlightRect = { x: 442, y: 126, width: 396, height: 496 };
 
 /** A stand-in card with the mock's size and spacing, so the guide's spotlight has something to frame. */
 function StandInCard({ title }: { title: string }) {

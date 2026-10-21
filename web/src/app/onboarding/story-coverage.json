@@ -29,6 +29,11 @@
               "interaction": false
             },
             {
+              "id": "app-onboarding-mock-screens--decision-needed-dark",
+              "states": ["08 pending card in the dark theme", "waiting badge, step 3 of 4"],
+              "interaction": false
+            },
+            {
               "id": "app-onboarding-mock-screens--resumed-after-answer",
               "states": ["05 resumed card running again", "step 4 of 4"],
               "interaction": false
