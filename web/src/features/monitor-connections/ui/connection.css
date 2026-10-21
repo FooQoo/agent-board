@@ -47,11 +47,11 @@
 }
 
 .connection-dialog__state--on {
-  color: var(--r-done);
+  color: var(--r-accent);
 }
 
 .connection-dialog__state--on .connection-dialog__dot {
-  background: var(--r-done);
+  background: var(--r-accent);
 }
 
 .connection-dialog__intro {
@@ -123,8 +123,8 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--r-done);
-  color: var(--r-bg);
+  background: var(--r-accent);
+  color: var(--r-on-accent);
   font-size: 13px;
   font-weight: 600;
 }
@@ -214,7 +214,7 @@
 }
 
 .connection-dialog__copied {
-  color: var(--r-done);
+  color: var(--r-accent);
   font-size: 12px;
   line-height: 1.6;
 }
