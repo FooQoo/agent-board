@@ -99,7 +99,6 @@ export const editJa = {
     stepDetails: '名称・色・下書き',
     saveFailedAt: '{{step}}を保存できませんでした。先に保存した変更は残り、入力も残っています。',
     saveFailedFirst: '{{step}}を保存できませんでした。入力は残っています。',
-    deleteButton: 'エピックを削除',
     deleteTitle: 'このエピックを削除しますか？',
     deleteBody: '{{id}}のエピックの詳細と画像も削除されます。この操作は元に戻せません。',
     deleteDirty: 'このダイアログで保存していない変更も破棄されます。',
