@@ -9,7 +9,7 @@ use crate::{
     domain::validate_project_name,
     error::AgboardError,
     file_store::FileStore,
-    progress,
+    progress::{self, Include},
 };
 
 /// Largest hook input read, in UTF-8 bytes.
@@ -44,6 +44,17 @@ pub fn run(
     input: &mut dyn Read,
     shared: &Path,
     project: Option<&str>,
+) -> Option<String> {
+    run_with(agent, input, shared, project, Include::default())
+}
+
+/// [`run`] with the extra progress sections named by `include`.
+pub fn run_with(
+    agent: &str,
+    input: &mut dyn Read,
+    shared: &Path,
+    project: Option<&str>,
+    include: Include,
 ) -> Option<String> {
     let mut bytes = Vec::new();
     if input
@@ -87,7 +98,8 @@ pub fn run(
         .and_then(serde_json::Value::as_str)
         .map(PathBuf::from);
     let cwd = input_cwd.as_deref().or(process_cwd.as_deref());
-    let context = progress_context(shared, project, cwd).unwrap_or_else(|f| error_context(&f));
+    let context =
+        progress_context(shared, project, cwd, include).unwrap_or_else(|f| error_context(&f));
     Some(output(event, &context))
 }
 
@@ -96,6 +108,7 @@ fn progress_context(
     shared: &Path,
     project: Option<&str>,
     cwd: Option<&Path>,
+    include: Include,
 ) -> Result<String, Failure> {
     let store = FileStore::open(shared);
     let meta = if let Some(name) = project {
@@ -112,7 +125,7 @@ fn progress_context(
     let snapshot = store
         .board(&meta.id)
         .map_err(|error| Failure::new(error.code(), error.reason()))?;
-    let value = progress::build(&snapshot, store.shared_dir(), SystemClock.now());
+    let value = progress::build_with(&snapshot, store.shared_dir(), SystemClock.now(), include);
     let json = serde_json::to_string(&value)
         .map_err(|error| Failure::new("board_unavailable", error.to_string()))?;
     progress_text(&json)

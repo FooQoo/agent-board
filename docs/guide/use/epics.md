@@ -74,6 +74,16 @@ The progress table is what agents read to choose their next task. It groups Todo
 
 Each entry lists the task ID, title, owner, column, agent state, acceptance counts, and the path of its `TASK.md`. Epic entries include the path of `EPIC.md` (`documentPath` in JSON). Bodies, history, and images are not included: the agent reads only the files it needs for the work it chose. Hooks give agents this same table.
 
+By default the table leaves out tasks waiting for a decision and finished tasks. Add them when you need the whole picture:
+
+```sh
+agboard progress --include-pending --include-done 5
+```
+
+- `--include-pending` adds a "Waiting for a decision" section. Each task shows the start of its question (`question` in JSON).
+- `--include-done COUNT` adds a "Recently done" section with the most recently completed tasks, newest first. Only tasks of epics that still have Todo or Doing work are included, so finished epics and tasks without an epic stay out. Archived tasks are never included.
+- Without these options the output is the same as before. To give agents these sections, add the same options to the hook command, for example `agboard hook --agent claude --include-pending --include-done 5`.
+
 Epics appear in ID order. Within an epic, the `priority` list decides the order of its tasks, and tasks not listed follow in ascending ID order. Work without an epic is also sorted by ID. Epics with no listed tasks are left out.
 
 ## Next

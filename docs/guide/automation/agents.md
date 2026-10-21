@@ -26,7 +26,7 @@ Hooks and the agent skill run `agboard` from your `PATH`, so they use the instal
 ### What the hook does
 
 - **Folder resolution.** The hook command is fixed, `agboard hook --agent claude`, with no project name or session ID. It reads `cwd` from its input and uses the nearest registered ancestor folder; an explicit `--project NAME` overrides the binding. A missing or broken binding returns `AGBOARD_ERROR`; the hook never guesses another project.
-- **Progress table.** The hook supplies the same concise table as `agboard progress`. Done, archived, and Pending tasks are left out. If the table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes.
+- **Progress table.** The hook supplies the same concise table as `agboard progress`. Done, archived, and Pending tasks are left out unless you add `--include-pending` or `--include-done COUNT` to the hook command (see [Epics and progress](../use/epics)). If the table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes.
 
 ### What agents may edit
 

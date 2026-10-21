@@ -38,6 +38,7 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 ```
 
 - Only non-Pending Todo and Doing tasks appear. Tasks are grouped by epic in `priority` order; tasks without an epic are in `unassigned`.
+- With `--include-pending` and `--include-done COUNT` (on `progress` and `hook`), the table also has a `pending` array and a `done` array. `pending` holds Todo and Doing tasks waiting for a decision, in ID order, each with a `question` of up to 200 characters. `done` holds the `COUNT` most recently completed tasks, newest first, limited to epics that still have a Todo or Doing task. Without the options neither field is present.
 - There are no bodies and no history. Agents read the `documentPath` and `taskPath` files they need.
 - `cursor` is what `wait --after` takes.
 - The paths appear only in local CLI and hook output, never in remote JSON.
