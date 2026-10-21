@@ -1,6 +1,6 @@
 //! Local web server: API, SSE, delete protection, embedded assets.
 //!
-//! `run` builds its own tokio runtime; the rest of the CLI never starts one.
+//! `run_until_with_monitor` builds its own tokio runtime; the rest of the CLI never starts one.
 //! The server listens on 127.0.0.1 only and reads the shared files per request.
 
 mod answer;
@@ -68,11 +68,6 @@ pub(crate) struct AppState {
     pub preferences: preferences::PreferencesStore,
     /// Sends each saved preference set; the events streams forward it as `preferences`.
     pub preferences_changed: broadcast::Sender<preferences::Preferences>,
-}
-
-/// Serve until Ctrl+C (or SIGTERM on Unix).
-pub fn run(config: ServeConfig) -> Result<(), AgboardError> {
-    run_until(config, termination_signal(), |_| {})
 }
 
 pub fn is_serving(info: &crate::paths::ServeInfo) -> bool {
@@ -205,27 +200,4 @@ const STALE_TEMPORARY_AGE: std::time::Duration = std::time::Duration::from_secs(
 /// Bind 127.0.0.1:`port`. Any failure to bind is reported as `PortInUse`.
 fn bind(port: u16) -> Result<TcpListener, AgboardError> {
     TcpListener::bind(("127.0.0.1", port)).map_err(|_| port_in_use(port))
-}
-
-/// Completes on Ctrl+C, or on SIGTERM where the platform has it.
-async fn termination_signal() {
-    #[cfg(unix)]
-    {
-        use tokio::signal::unix::{SignalKind, signal};
-        match signal(SignalKind::terminate()) {
-            Ok(mut term) => {
-                tokio::select! {
-                    _ = tokio::signal::ctrl_c() => {}
-                    _ = term.recv() => {}
-                }
-            }
-            Err(_) => {
-                let _ = tokio::signal::ctrl_c().await;
-            }
-        }
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = tokio::signal::ctrl_c().await;
-    }
 }
