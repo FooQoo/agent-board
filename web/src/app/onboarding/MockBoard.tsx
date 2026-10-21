@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailPanel } from '../../features/tasks/detail/DetailPanel';
+import { ProjectSwitcher } from '../../features/projects/switcher/ProjectSwitcher';
+import './mock-board.css';
 import { Header } from '../../shared/ui/app-header/Header';
 import { SAMPLE_PROJECT } from './mock-data';
 
@@ -26,10 +28,16 @@ export function MockBoard({
   todo = [],
   doing = [],
   done = [],
+  count = 0,
+  emptyHint,
 }: {
   todo?: ReactNode[];
   doing?: ReactNode[];
   done?: ReactNode[];
+  /** The number of cards the footer reports, as the mock shows it. */
+  count?: number;
+  /** The board's empty message, shown where the mock places it. */
+  emptyHint?: string;
 }) {
   const { i18n } = useTranslation();
   const names = i18n.language === 'ja' ? RESULT_LANE_NAMES.ja : RESULT_LANE_NAMES.en;
@@ -46,7 +54,13 @@ export function MockBoard({
         onAdd={noop}
         onArchive={noop}
         onEpics={noop}
-        projectSwitcher={<span>{SAMPLE_PROJECT.name}</span>}
+        projectSwitcher={
+          <ProjectSwitcher
+            projects={[SAMPLE_PROJECT]}
+            activeProjectId={SAMPLE_PROJECT.id}
+            onSelect={noop}
+          />
+        }
       />
       {lanes.map((cards, index) => (
         <div
@@ -91,9 +105,20 @@ export function MockBoard({
           ))}
         </div>
       ))}
-      <div style={{ position: 'absolute', left: 920, top: 56, width: 360, height: 804 }}>
+      <div
+        className="mock-board__detail"
+        style={{ position: 'absolute', left: 920, top: 56, width: 360, height: 804 }}
+      >
         <DetailPanel projectId={null} task={null} onClose={noop} onRemove={async () => false} />
       </div>
+      {emptyHint ? (
+        <p
+          className="mock-board__empty"
+          style={{ position: 'absolute', left: 390, top: 420, margin: 0 }}
+        >
+          {emptyHint}
+        </p>
+      ) : null}
       <div
         style={{
           position: 'absolute',
@@ -111,7 +136,7 @@ export function MockBoard({
           fontSize: 12,
         }}
       >
-        <span>{i18n.language === 'ja' ? '2件' : '2 items'}</span>
+        <span>{i18n.language === 'ja' ? `${count}件` : `${count} items`}</span>
         <span>{i18n.language === 'ja' ? '同期済み 10:42' : 'Synced 10:42'}</span>
       </div>
     </div>

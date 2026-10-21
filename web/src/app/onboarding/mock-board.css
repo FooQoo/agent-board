@@ -1,0 +1,10 @@
+/* The mock board's detail pane fills the column, as the product's pane does. */
+.mock-board__detail > aside {
+  height: 100%;
+}
+
+.mock-board__empty {
+  color: var(--r-text2);
+  font-size: 18px;
+  line-height: 29px;
+}

@@ -48,6 +48,9 @@ export const onboardingEn = {
       finish: 'Finish and get started',
     },
     archived: 'The two sample tasks have been archived.',
+    mock: {
+      emptyHint: 'Add your first task to get started.',
+    },
     sample: {
       follow: 'Sample: follow a task',
       guideStyle: 'Sample: choose the guide style',
