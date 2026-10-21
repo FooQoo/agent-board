@@ -48,6 +48,9 @@ export const onboardingJa = {
       finish: '完了して始める',
     },
     archived: 'サンプル2枚をアーカイブしました。',
+    mock: {
+      emptyHint: 'さっそく、最初の作業を追加してみましょう。',
+    },
     sample: {
       follow: 'サンプル：使い方を確認する',
       guideStyle: 'サンプル：案内の見せ方を選ぶ',

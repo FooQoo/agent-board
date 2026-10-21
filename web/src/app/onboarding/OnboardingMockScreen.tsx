@@ -62,7 +62,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
     case 'welcome':
       return (
         <>
-          <MockBoard />
+          <MockBoard count={0} />
           <OnboardingWelcome busy={false} error={null} onStart={noop} onSkip={noop} />
         </>
       );
@@ -70,6 +70,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
       return (
         <>
           <MockBoard
+            count={2}
             todo={[
               <TaskCardView key="a" task={samples.follow} selected={false} onSelect={noop} />,
               <TaskCardView key="b" task={samples.style} selected={false} onSelect={noop} />,
@@ -107,6 +108,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
       return (
         <>
           <MockBoard
+            count={2}
             todo={[<TaskCardView key="b" task={samples.style} selected={false} onSelect={noop} />]}
             doing={[<TaskCardView key="a" task={runningSample} selected={false} onSelect={noop} />]}
           />
@@ -141,6 +143,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
       return (
         <>
           <MockBoard
+            count={2}
             doing={[
               <TaskCardView
                 key="p"
@@ -194,6 +197,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
       return (
         <>
           <MockBoard
+            count={2}
             doing={[<TaskCardView key="r" task={resumedSample} selected={false} onSelect={noop} />]}
             done={[<TaskCardView key="a" task={doneSample} selected={false} onSelect={noop} />]}
           />
@@ -228,6 +232,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
       return (
         <>
           <MockBoard
+            count={2}
             done={[
               <TaskCardView key="a" task={doneSample} selected={false} onSelect={noop} />,
               <TaskCardView
@@ -244,7 +249,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
     case 'archived':
       return (
         <>
-          <MockBoard />
+          <MockBoard count={0} emptyHint={t('onboarding.mock.emptyHint')} />
           <OnboardingNotice message={t('onboarding.archived')} />
         </>
       );
