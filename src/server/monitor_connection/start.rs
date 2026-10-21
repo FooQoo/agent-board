@@ -81,9 +81,7 @@ impl MonitorConnections {
                 }
                 match result {
                     Ok(opened) => {
-                        // The phone opens the monitor page, so the printed address and the QR code
-                        // point at it. The bare origin stays the Host and Origin check.
-                        let url = format!("{}/monitor/", opened.public.origin());
+                        let url = opened.public.origin().to_string();
                         let Ok(token) = internal_token() else {
                             if let Some(run) = inner.run.take() {
                                 run.close();

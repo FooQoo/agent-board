@@ -767,7 +767,6 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
         404
     );
     for p in [
-        "/",
         "/board/",
         "/api/projects",
         "/api/monitor-connections",
@@ -776,6 +775,8 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     ] {
         assert_eq!(t.call("GET", p, &with, "").status, 404, "{p}");
     }
+    // The bare origin forwards to the monitor page (the ngrok warning page ends there).
+    assert_eq!(t.call("GET", "/", &with, "").status, 308);
     // Wrong methods are 405, also with a full set of write headers.
     let w = write_headers(&cookie, &csrf);
     for (m, p) in [

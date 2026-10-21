@@ -6,6 +6,7 @@ The routes served behind the ngrok monitor entry, including the mobile monitor. 
 
 | Route | Content |
 | --- | --- |
+| GET/HEAD `/` | Forwards to `/monitor/` with 308. The ngrok warning page ends on this address after **Visit Site**, so it must lead to the monitor. |
 | GET/HEAD `/monitor/` | Monitor HTML. It holds no token, session, or board data. `/monitor` redirects to `/monitor/`. |
 | GET `/monitor/api/session` | Shows the live session of the cookie: `csrfToken`, `expiresAt`, and `expiresInSeconds`. Without a live session it is 401 `session_required`; it never starts one. A cross-site `Sec-Fetch-Site` is 403. |
 | POST `/monitor/api/unlock` | Trades the passcode for a session. The body is JSON, `{"code":"1234"}`, at most 256 bytes; it needs the public Origin and `Sec-Fetch-Site: same-origin` but no CSRF token. A right code sets the `agboard_ngrok_session` cookie and returns `csrfToken`, `expiresAt`, and `expiresInSeconds`. A wrong code is 403 `unlock_failed` with no hint. After five wrong codes in a row, every attempt, the right one too, is 429 `unlock_locked` until the connection is started again. A bad Origin or fetch site is 403 `forbidden`, a body that is not declared as JSON is 415, a body over 256 bytes is 413, and a body that does not parse is 400 (none of these count as a guess). |

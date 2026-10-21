@@ -106,8 +106,11 @@ pub fn request(
     headers: &[(&str, &str)],
     body: &str,
 ) -> Reply {
+    // A redirect is the answer, not something to follow: the bare origin must show a 308.
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .http_status_as_error(false)
+        .max_redirects(0)
+        .max_redirects_will_error(false)
         .timeout_global(Some(Duration::from_secs(5)))
         .build()
         .into();

@@ -73,6 +73,8 @@ The domain is stored in Agent Board's internal area. You do not edit a file for 
 2. The page shows **Enter the passcode**. Type the 4-digit passcode shown on the PC and choose **Connect**.
 3. The monitor opens. The connection lasts up to 12 hours; after that, or when the connection was stopped and started again on the PC, the page asks for the passcode again.
 
+On ngrok's free plan, the first visit from a phone shows ngrok's warning page. Choose **Visit Site**, and the monitor opens. The first time, open the address **without** a path such as `/monitor/`: the warning page then returns to the address, and the monitor opens from there. A direct link to `/monitor/` can stay blank until the warning has been passed in that browser.
+
 Knowing the address is not enough to read the board. A wrong passcode is refused without saying how many tries are left. After 5 wrong passcodes in a row the page says **Too many wrong passcodes** and takes no more; stop the connection on the PC and connect again to get a new passcode. If the page says the connection is stopped, check the PC.
 
 ## Stop and connect again

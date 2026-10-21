@@ -2,8 +2,8 @@
 //!
 //! 1. the tunnel is up and the Host is exactly the public one;
 //! 2. untrusted headers are removed;
-//! 3. a route that is not part of the monitor is a 404; the page and its
-//!    assets need nothing more; `POST /monitor/api/unlock` trades the passcode
+//! 3. the bare origin forwards to `/monitor/`; a route that is not part of the
+//!    monitor is a 404; the page and its assets need nothing more; `POST /monitor/api/unlock` trades the passcode
 //!    for a session;
 //! 4. every other API route needs a live session, and a change also needs the
 //!    public Origin, same-origin fetch metadata and the CSRF token.
@@ -69,6 +69,9 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
         SESSION_PATH => return open_session(&policy, request.method(), request.headers()),
         UNLOCK_PATH => return unlock(&policy, request).await,
         DISCONNECT_PATH => return disconnect(&policy, &request),
+        "/" if matches!(*request.method(), Method::GET | Method::HEAD) => {
+            return monitor_redirect();
+        }
         "/monitor" | "/monitor/" => return page(&request),
         _ => {}
     }
@@ -108,12 +111,7 @@ fn page(request: &Request) -> Response {
         return method_not_allowed("GET, HEAD");
     }
     if request.uri().path() == "/monitor" {
-        return Response::builder()
-            .status(StatusCode::PERMANENT_REDIRECT)
-            .header(header::LOCATION, "/monitor/")
-            .header(header::CACHE_CONTROL, "no-store")
-            .body(Body::empty())
-            .unwrap_or_default();
+        return monitor_redirect();
     }
     let mut response = Response::new(Body::from(assets::render_monitor("")));
     let headers = response.headers_mut();
@@ -123,6 +121,18 @@ fn page(request: &Request) -> Response {
     );
     apply_security_headers("/monitor/", headers);
     response
+}
+
+/// The page address without the slash, and the bare origin: both go to `/monitor/`.
+/// The ngrok warning page ends on the bare origin after "Visit Site", so that
+/// address has to forward too. Nothing here reveals anything.
+fn monitor_redirect() -> Response {
+    Response::builder()
+        .status(StatusCode::PERMANENT_REDIRECT)
+        .header(header::LOCATION, "/monitor/")
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(Body::empty())
+        .unwrap_or_default()
 }
 
 /// Keep an event stream no longer than [`EVENTS_MAX`], the session, or the run.
