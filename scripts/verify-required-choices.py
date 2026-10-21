@@ -86,7 +86,7 @@ def main():
             for count, answer in ((2, {"choiceId": "option-0"}),
                                   (10, {"text": "A custom answer"}),
                                   (2, {"choiceId": "option-1", "text": "With context"})):
-                project("state", task_id, "pending", "--actor", "ai", "--request-json",
+                project("state", task_id, "pending", "--actor", "ai", "--no-wait", "--request-json",
                         json.dumps({"question": "Choose a plan", "choices": choices(count)}))
                 requested = project("show", task_id)["task"]
                 assert len(requested["pendingChoices"]) == count

@@ -112,7 +112,7 @@ test('agboard state updates the run state and reason without reloading', async (
   agboardOk(mainProject, ['state', '13', 'running']);
   await expect(doing.getByRole('button', { name: /^#13 AI Running Check the board display / })).toBeVisible();
 
-  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--request-json', decisionJson('Waiting for a review')]);
+  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Waiting for a review')]);
   const pending = doing.getByRole('button', { name: /^#13 AI Pending Check the board display / });
   await expect(pending).toBeVisible();
   await expect(doing.locator('.card__answer[data-task-id="13"]')).toContainText('Waiting for a review');

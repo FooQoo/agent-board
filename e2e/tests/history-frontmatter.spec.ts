@@ -171,7 +171,7 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 		question: 'Which release should ship?',
 		choices: [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }],
 	};
-	cliOk(['state', String(id), 'pending', '--actor', 'ai', '--request-json', JSON.stringify(request)]);
+	cliOk(['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify(request)]);
 	const pending = show(id);
 	const requestId = pending.pendingRequestId;
 	expect(requestId).toBeTruthy();

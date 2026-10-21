@@ -214,7 +214,7 @@ async function record(browser, locale, tmp) {
     // 2. The agent asks a question.
     await caption(page, text.captions[1]);
     await page.waitForTimeout(1400);
-    run('state', String(heroId), 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
+    run('state', String(heroId), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({
       question: text.question, choices: text.choices.map(([id, label]) => ({ id, label })),
     }));
     const answer = page.locator(`.card__answer[data-task-id="${heroId}"]`);
