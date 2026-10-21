@@ -2,11 +2,13 @@ import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium, expect } from '@playwright/test';
+import { setPreferences } from '../helpers/preferences.mjs';
 import { cli, copy, markdown, project, repo, seed, settle, startServer, stop } from './lib/sample-board.mjs';
 
 // Captures the screenshots used by the guide pages into docs/images/guide.
 // Build web/ and the CLI first. Only disposable sample data and free loopback ports are used.
-const output = path.join(repo, 'docs/images/guide');
+// AGBOARD_MEDIA_OUT points the images at another folder, so a check run does not touch the repository's files.
+const output = process.env.AGBOARD_MEDIA_OUT ? path.resolve(process.env.AGBOARD_MEDIA_OUT, 'guide') : path.join(repo, 'docs/images/guide');
 mkdirSync(output, { recursive: true });
 
 // Texts that only the guide screenshots need, in both languages. UI labels come from the app itself.
@@ -60,14 +62,12 @@ try {
       server = started.server;
       const { origin } = started;
       const open = async (mode) => {
+        // The language and theme are saved on the board, as the settings screen does. Every open page follows.
+        await setPreferences(origin, { locale, theme: { mode, accent: 'blue' } });
         const ctx = await browser.newContext({
           viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, timezoneId: 'UTC',
         });
         contexts.push(ctx);
-        await ctx.addInitScript(([lang, value]) => {
-          localStorage.setItem('agboard.locale', lang);
-          localStorage.setItem('agboard.theme', JSON.stringify({ mode: value, accent: 'blue' }));
-        }, [locale, mode]);
         const tab = await ctx.newPage();
         tab.on('pageerror', (error) => errors.push(error.message));
         await tab.goto(`${origin}/?project=${id}`);
@@ -129,6 +129,9 @@ try {
       await expect(dark.getByRole('button', { name: /^#3(?!\d)/ })).toBeVisible();
       await expect(dark.locator('html')).toHaveAttribute('data-mode', 'dark');
       await shot('board-dark', dark, dark);
+      // The saved theme reaches every open page, so the light page needs the light theme back.
+      await setPreferences(origin, { theme: { mode: 'light', accent: 'blue' } });
+      await expect(page.locator('html')).toHaveAttribute('data-mode', 'light');
 
       // settings: the language and theme choices.
       await page.getByRole('button', { name: more.settings, exact: true }).click();

@@ -17,6 +17,7 @@ import {
   type Serve,
 } from '../helpers/agboard';
 import { spawn, spawnSync } from 'node:child_process';
+import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
 import { openManualCreateDialog } from '../helpers/ui';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
@@ -26,6 +27,7 @@ import { openManualCreateDialog } from '../helpers/ui';
 
 test.describe.configure({ mode: 'serial' });
 test.use({ baseURL: `http://127.0.0.1:${statesPort}/` });
+const statesOrigin = `http://127.0.0.1:${statesPort}`;
 
 const synced = (page: Page) => page.getByRole('contentinfo').getByRole('status');
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
@@ -174,11 +176,13 @@ test.describe('two projects with the same task numbers', () => {
     await stopServe(serve);
     removeHome(home);
   });
-  test.beforeEach(() => {
+  test.beforeEach(async () => {
     resetAlphaBeta(home);
     alpha = projectId('Alpha', home);
     beta = projectId('Beta', home);
+    await resetPreferences(statesOrigin);
   });
+  test.afterEach(() => resetPreferences(statesOrigin));
 
   test('task #1 and #2 of each project show their own content, and acting in one never changes the other', async ({
     page,
@@ -836,13 +840,7 @@ test.describe('two projects with the same task numbers', () => {
   });
 
   test('existing screens work in every project: Japanese and the detail width', async ({ page }) => {
-    await page.addInitScript(() => {
-      try {
-        if (!localStorage.getItem('agboard.locale')) localStorage.setItem('agboard.locale', 'ja');
-      } catch {
-        // storage is not available
-      }
-    });
+    await setPreferences({ locale: 'ja' }, statesOrigin);
     await open(page, alpha);
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
     await expect(page.getByRole('button', { name: 'タスク追加' })).toBeVisible();
@@ -888,10 +886,7 @@ test.describe('two projects with the same task numbers', () => {
     await open(page, alpha);
     for (const mode of ['dark', 'light']) {
       for (const accent of accents) {
-        await page.evaluate(
-          ([m, a]) => localStorage.setItem('agboard.theme', JSON.stringify({ mode: m, accent: a })),
-          [mode, accent],
-        );
+        await setPreferences({ theme: { mode: mode as Mode, accent: accent as Accent } }, statesOrigin);
         await page.reload();
         await expect(synced(page)).toHaveText(/^Synced/);
         const root = page.locator('html');
@@ -935,6 +930,8 @@ test.describe('long names and many projects', () => {
     await stopServe(serve);
     removeHome(home);
   });
+  test.beforeEach(() => resetPreferences(statesOrigin));
+  test.afterEach(() => resetPreferences(statesOrigin));
 
   async function headerFits(page: Page): Promise<void> {
     const width = page.viewportSize()!.width;
@@ -1049,7 +1046,7 @@ test.describe('long names and many projects', () => {
   }
 
   test('in Japanese the header controls fit with the 50-character name as well', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('agboard.locale', 'ja'));
+    await setPreferences({ locale: 'ja' }, statesOrigin);
     await page.setViewportSize({ width: 1024, height: 768 });
     await open(page, projectId(longName, home));
     await expect(page.getByRole('button', { name: 'タスク追加' })).toBeVisible();

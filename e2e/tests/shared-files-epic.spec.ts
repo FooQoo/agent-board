@@ -1,9 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboardOk, mainProject, projectId, resetBoard, type TaskJson } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { pasteMarkdown, waitForSync } from '../helpers/ui';
 
 // The epic dialog on the real page: its name, colour, document, tasks, and images are saved together; a task opened from
 // the list asks first when the epic has unsaved changes.
+
+test.beforeEach(() => resetPreferences());
+test.afterEach(() => resetPreferences());
 
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
@@ -100,10 +104,7 @@ for (const locale of ['en', 'ja'] as const) {
   for (const mode of ['light', 'dark'] as const) {
     test(`epic palette matches the design in ${locale}, ${mode}`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width: locale === 'ja' ? 960 : 1280, height: 900 });
-      await page.addInitScript(({ locale, mode }) => {
-        localStorage.setItem('agboard.locale', locale);
-        localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' }));
-      }, { locale, mode });
+      await setPreferences({ locale, theme: { mode, accent: 'blue' } });
       await page.goto(`/?project=${projectId(mainProject)}`);
       await waitForSync(page);
       const epicLabel = page.locator('[data-epic-label="FILE-SHARE"]').first();
@@ -142,7 +143,7 @@ for (const locale of ['en', 'ja'] as const) {
 for (const [mode, width, height] of [['light', 1280, 800], ['dark', 960, 640]] as const) {
   test(`epic image list scrolls independently with fixed controls in ${mode}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height });
-    await page.addInitScript((mode) => localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' })), mode);
+    await setPreferences({ theme: { mode, accent: 'blue' } });
     await page.goto(`/?project=${projectId(mainProject)}`);
     await waitForSync(page);
     const dialog = await openEpic(page, 'FILE-SHARE');

@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
+
+test.beforeEach(() => resetPreferences());
+test.afterEach(() => resetPreferences());
 
 const png = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -43,10 +47,7 @@ test('real archive detail preserves content, restores the lane, and permanently 
 	agboardOk(mainProject, ['mv', String(deleteId), 'done', '--actor', 'ai', '--reason', 'Prepare delete E2E']);
 
 	await page.setViewportSize({ width: 1280, height: 900 });
-	await page.addInitScript(() => {
-		localStorage.setItem('agboard.theme', JSON.stringify({ mode: 'light', accent: 'blue' }));
-		localStorage.setItem('agboard.locale', 'ja');
-	});
+	await setPreferences({ locale: 'ja', theme: { mode: 'light', accent: 'blue' } });
 	await page.goto('/');
 	await waitForSync(page);
 

@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 import { mainProject, resetBoard } from "../helpers/agboard";
+import { resetPreferences, setPreferences } from "../helpers/preferences";
+
+test.beforeEach(() => resetPreferences());
+test.afterEach(() => resetPreferences());
 
 for (const mode of ["light", "dark"] as const) {
 	for (const locale of ["en", "ja"] as const) {
@@ -10,16 +14,7 @@ for (const mode of ["light", "dark"] as const) {
 			}, testInfo) => {
 				resetBoard(mainProject);
 				await page.setViewportSize({ width, height: 900 });
-				await page.addInitScript(
-					({ mode, locale }) => {
-						localStorage.setItem(
-							"agboard.theme",
-							JSON.stringify({ mode, accent: "blue" }),
-						);
-						localStorage.setItem("agboard.locale", locale);
-					},
-					{ mode, locale },
-				);
+				await setPreferences({ locale, theme: { mode, accent: "blue" } });
 
 				// Keep layout checks independent of writes; all cards are temporary response fixtures.
 				await page.route("**/api/projects/*/board", async (route) => {
@@ -239,16 +234,7 @@ for (const mode of ["light", "dark"] as const) {
 		}, testInfo) => {
 			resetBoard(mainProject);
 			await page.setViewportSize({ width: 360, height: 800 });
-			await page.addInitScript(
-				({ mode, locale }) => {
-					localStorage.setItem(
-						"agboard.theme",
-						JSON.stringify({ mode, accent: "blue" }),
-					);
-					localStorage.setItem("agboard.locale", locale);
-				},
-				{ mode, locale },
-			);
+			await setPreferences({ locale, theme: { mode, accent: "blue" } });
 			await page.route("**/api/projects/*/board", async (route) => {
 				const response = await route.fetch();
 				const board = await response.json();
@@ -342,13 +328,7 @@ test("bulk archive Pen baseline shows two fixed tasks and retention copy", async
 }, testInfo) => {
 	resetBoard(mainProject);
 	await page.setViewportSize({ width: 1280, height: 900 });
-	await page.addInitScript(() => {
-		localStorage.setItem(
-			"agboard.theme",
-			JSON.stringify({ mode: "light", accent: "blue" }),
-		);
-		localStorage.setItem("agboard.locale", "ja");
-	});
+	await setPreferences({ locale: "ja", theme: { mode: "light", accent: "blue" } });
 	await page.goto("/");
 	await page.getByRole("button", { name: /Initialize the board/ }).click();
 	const trigger = page.locator(".lane-header__archive");
@@ -386,13 +366,7 @@ test("archive empty state matches the Pen guidance and shared detail placeholder
 }, testInfo) => {
 	resetBoard(mainProject);
 	await page.setViewportSize({ width: 1280, height: 900 });
-	await page.addInitScript(() => {
-		localStorage.setItem(
-			"agboard.theme",
-			JSON.stringify({ mode: "light", accent: "blue" }),
-		);
-		localStorage.setItem("agboard.locale", "ja");
-	});
+	await setPreferences({ locale: "ja", theme: { mode: "light", accent: "blue" } });
 	await page.route("**/api/projects/*/archive", async (route) => {
 		const response = await route.fetch();
 		await route.fulfill({

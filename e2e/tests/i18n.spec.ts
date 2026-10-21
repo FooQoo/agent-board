@@ -2,12 +2,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { listTasks, mainHome, resetBoard, mainProject } from '../helpers/agboard';
+import { getPreferences, resetPreferences } from '../helpers/preferences';
 import { openManualCreateDialog } from '../helpers/ui';
 
 test.use({ locale: 'ja-JP' });
 
+test.afterEach(() => resetPreferences());
+
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
+  await resetPreferences();
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
 });
@@ -24,7 +28,8 @@ test('starts in English in a Japanese browser, switches and persists without tra
   expect(home).toContain('agent-board-e2e-main-');
   expect(home).not.toMatch(/Library\/Application Support\/agboard$/);
   expect(await page.evaluate(() => navigator.language)).toBe('ja-JP');
-  expect(await page.evaluate(() => localStorage.getItem('agboard.locale'))).toBeNull();
+  // Nothing was saved, so the page is English whatever the browser's language is.
+  expect((await getPreferences()).locale).toBe('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('banner')).toContainText('Agent Board');
   await expect(lane(page, 'Todo')).toBeVisible();
@@ -89,6 +94,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
     pendingReason: 'Waiting for confirmation on how to replace a board.',
   });
 
+  expect((await getPreferences()).locale).toBe('ja');
   await expect(page.evaluate(() => localStorage.getItem('agboard.locale'))).resolves.toBe('ja');
   await page.reload();
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^同期済み/);

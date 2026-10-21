@@ -16,6 +16,7 @@ import {
   workspace,
   type Serve,
 } from '../helpers/agboard';
+import { setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
 
 // Existing data written with the earlier epic document name (PLAN.md) is migrated to EPIC.md when the real
@@ -380,7 +381,8 @@ test('the page shows the epic details with its cards in order and the Markdown i
 });
 
 test('the Japanese page uses the new labels for the epic details', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('agboard.locale', 'ja'));
+  // This serve and its data area belong to this spec only, so the saved language needs no reset.
+  await setPreferences({ locale: 'ja' }, `http://127.0.0.1:${port}`);
   await page.goto(`http://127.0.0.1:${port}/?project=${projectId(PROJECT, legacy.home)}`);
   await page.locator('[data-epic-label="ALPHA"]').first().waitFor();
   await page.locator('[data-epic-label="ALPHA"]').first().click();

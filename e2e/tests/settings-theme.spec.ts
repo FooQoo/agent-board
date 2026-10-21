@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The Rust serve on 7631 is real; only the browser storage and a few request
@@ -86,12 +87,14 @@ let fresh = 0;
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
+  await resetPreferences();
   fresh = nextTaskId(mainProject);
   pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 });
 
-test.afterEach(() => {
+test.afterEach(async () => {
+  await resetPreferences();
   expect(pageErrors).toEqual([]);
 });
 
@@ -107,10 +110,10 @@ const addButtonBehindDialog = (page: Page) => page.locator('header button', { ha
 async function openFresh(page: Page): Promise<void> {
   await page.goto('/');
   await expect(synced(page)).toHaveText(/^Synced/);
-  expect(await page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), [THEME_KEY, LOCALE_KEY])).toEqual([
-    null,
-    null,
-  ]);
+  // The browser starts empty; its copy then follows what the server saved (the defaults after the reset).
+  await expect
+    .poll(() => page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), [THEME_KEY, LOCALE_KEY]))
+    .toEqual(['{"mode":"light","accent":"blue"}', 'en']);
 }
 
 /** Opens the board after `script` has run before the page (it prepares the storage boundary). */
@@ -299,7 +302,7 @@ test.describe('the first theme in an OS dark browser', () => {
   }
 
   test('a saved theme is used even though the OS is dark', async ({ page }) => {
-    await page.addInitScript((key) => localStorage.setItem(key, '{"mode":"light","accent":"yellow"}'), THEME_KEY);
+    await setPreferences({ theme: { mode: 'light', accent: 'yellow' } });
     await page.goto('/');
     await expect(synced(page)).toHaveText(/^Synced/);
     await expectTheme(page, 'Light', 'Yellow');
@@ -310,7 +313,7 @@ test.describe('the first theme in an OS light browser', () => {
   test.use({ colorScheme: 'light' });
 
   test('a saved dark theme is used', async ({ page }) => {
-    await page.addInitScript((key) => localStorage.setItem(key, '{"mode":"dark","accent":"red"}'), THEME_KEY);
+    await setPreferences({ theme: { mode: 'dark', accent: 'red' } });
     await page.goto('/');
     await expect(synced(page)).toHaveText(/^Synced/);
     await expectTheme(page, 'Dark', 'Red');
@@ -333,7 +336,7 @@ test.describe('a storage that fails', () => {
     await expect(task(page, 12)).toBeVisible();
   });
 
-  test('saving the theme throws: the choice still applies to this page and the next page falls back', async ({
+  test('saving the browser copy throws: the choice still applies and the next page shows the saved choice', async ({
     page,
   }) => {
     await openWith(page, () => {
@@ -362,7 +365,8 @@ test.describe('a storage that fails', () => {
 
     await page.reload();
     await expect(synced(page)).toHaveText(/^同期済み/);
-    await expectTheme(page, 'Light', 'Blue');
+    // The server holds the choice, so a browser whose copy cannot be written still opens with it.
+    await expectTheme(page, 'Dark', 'Purple');
   });
 
   test('the whole storage is unavailable: theme and language still apply while the page is open', async ({ page }) => {

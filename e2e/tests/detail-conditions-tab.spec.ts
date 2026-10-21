@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import { agboardOk, mainProject, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
+
+test.beforeEach(() => resetPreferences());
+test.afterEach(() => resetPreferences());
 
 function markdown(source: string, count: number) {
   return `---\nacceptance:\n${Array.from({ length: count }, (_, i) => `  - id: AC-${i + 1}\n    text: ${source} check ${i + 1}\n    done: ${i === 0}`).join('\n')}\n---\n\n${source} body.\n\n${'Body paragraph.\n\n'.repeat(40)}`;
@@ -21,11 +25,8 @@ test.describe('PC condition tab', () => {
         resetBoard(mainProject);
         const id = seed(mainProject);
         await page.setViewportSize({ width: locale === 'en' ? 1024 : 1280, height: 900 });
-        await page.addInitScript(({ locale, mode }) => {
-          localStorage.setItem('agboard.locale', locale);
-          localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' }));
-          localStorage.setItem('agboard.detailWidth', '320');
-        }, { locale, mode });
+        await setPreferences({ locale, theme: { mode, accent: 'blue' } });
+        await page.addInitScript(() => localStorage.setItem('agboard.detailWidth', '320'));
         await page.goto(`/?project=${projectId(mainProject)}`);
         await waitForSync(page);
         await page

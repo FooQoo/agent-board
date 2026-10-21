@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
+import { resetPreferences } from '../helpers/preferences';
 import { openManualCreateDialog, pasteMarkdown, waitForSync } from '../helpers/ui';
+
+test.beforeEach(() => resetPreferences());
+test.afterEach(() => resetPreferences());
 
 test('selected UI language is saved in new history and does not rewrite existing entries', async ({ page }) => {
   resetBoard(mainProject);
