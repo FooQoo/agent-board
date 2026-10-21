@@ -1,0 +1,188 @@
+/*
+ * Onboarding guide parts that are plain elements. The dialog containers and their titles are
+ * styled with utility classes at the call site, so the shared Dialog's own classes are merged
+ * rather than overridden by source order.
+ *
+ * The sizes follow the approved PC mock at 1280 x 900: the dialogs are 520px wide, and the guide
+ * panel is 760px wide and sits 59px above the bottom edge of the stage.
+ */
+.onboarding-dialog__icon {
+  width: 30px;
+  height: 30px;
+  color: var(--r-accent);
+  flex-shrink: 0;
+}
+
+.onboarding-dialog__icon--done {
+  color: var(--r-done);
+}
+
+/*
+ * The app resets the margins and padding of headings, paragraphs and lists with element selectors,
+ * which are unlayered and so beat the utility classes. Spacing on those elements is set here.
+ */
+.onboarding-dialog__title {
+  margin: 20px 0 0;
+  line-height: 38px;
+}
+
+.onboarding-dialog__body {
+  margin: 20px 0 0;
+  color: var(--r-text2);
+  font-size: 15px;
+  line-height: 23px;
+}
+
+.onboarding-dialog__points {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--r-lane);
+  color: var(--r-text);
+  font-size: 14px;
+  line-height: 22px;
+  list-style: none;
+}
+
+.onboarding-dialog__note {
+  margin-top: 20px;
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.onboarding-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.onboarding-dialog__error {
+  margin-top: 12px;
+}
+
+.onboarding-panel__error {
+  margin-top: 8px;
+}
+
+.onboarding-dialog__error,
+.onboarding-panel__error {
+  color: var(--r-danger);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.onboarding-panel {
+  position: absolute;
+  left: 50%;
+  /* 650px from the top on the 900px-high mock; a shorter stage keeps the panel 59px above its bottom. */
+  top: min(650px, calc(100% - 250px));
+  display: flex;
+  flex-direction: column;
+  width: min(760px, calc(100% - 48px));
+  padding: 24px;
+  transform: translateX(-50%);
+  border-radius: 12px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  box-shadow: 0 12px 32px rgb(15 23 42 / 0.2);
+}
+
+.onboarding-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.onboarding-panel__step {
+  color: var(--r-accent);
+  font-weight: 600;
+}
+
+.onboarding-panel__exit {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--r-text2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.onboarding-panel__exit:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.onboarding-panel__title {
+  margin: 10px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.onboarding-panel__body {
+  margin: 10px 0 0;
+  color: var(--r-text2);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.onboarding-panel__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* The action row is 40px tall in the approved mock, which holds the button and the hint. */
+.onboarding-panel__foot--action {
+  min-height: 40px;
+}
+
+.onboarding-panel__hint {
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.onboarding-panel__badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.onboarding-notice {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(500px, calc(100% - 48px));
+  height: 58px;
+  padding: 0 18px;
+  transform: translateX(-50%);
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  font-size: 14px;
+  box-shadow: 0 6px 18px rgb(15 23 42 / 0.12);
+}
+
+.onboarding-notice__icon {
+  width: 20px;
+  height: 20px;
+  color: var(--r-done);
+  flex-shrink: 0;
+}

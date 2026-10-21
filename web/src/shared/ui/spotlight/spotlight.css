@@ -1,0 +1,13 @@
+/*
+ * The spotlight frames one region of a stage. The frame is a 3px accent ring just outside the
+ * region; the veil is the region's own shadow, which dims the stage outside the region.
+ */
+.spotlight {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--r-lane);
+  box-shadow:
+    0 0 0 3px var(--r-accent),
+    0 0 0 9999px rgb(15 23 42 / 0.66);
+}
