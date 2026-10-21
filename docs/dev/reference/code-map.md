@@ -10,7 +10,7 @@ Where things live in the repository. For how the parts work together, read [How 
 | `cli` | Arguments, commands, output formatting, and error display. |
 | `file_store` | The shared-area format and everything that reads or writes it: paths, saving, locking, validation, operations, the index, and watching. |
 | `domain` | Tasks, lanes, run states, epics, decision requests, input limits, and rules.<br>No I/O. |
-| `server` | The axum app, API, SSE, write guards, embedded web assets, and the remote and monitor listeners. |
+| `server` | The axum app, API, SSE, write guards, embedded web assets, and the monitor entry. |
 | `agent` | The hook and `wait`. |
 | `progress` | Builds the progress table shared by `agboard progress` and the hook. |
 | `interact` | Human confirmation (terminal detection, y/N) and the notify client. |
@@ -43,9 +43,11 @@ Inside `server`, routers depend on shared modules rather than on each other:
 
 | Module | Responsibility |
 | --- | --- |
-| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, and epic images. |
-| `monitor/`<br>`remote` | The monitor's read router and its answer endpoint, and the HTTPS remote listener that combines them with the board router. |
-| `guard` | Host, Origin, Sec-Fetch-Site and token checks for local and remote writes, and canonical HTTPS origins. |
+| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, epic images, and the mobile connection (`monitor_connections`). |
+| `monitor/` | The monitor's read router, its answer endpoint, and its assets. |
+| `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `start`, `run`), the saved settings (`config`), the token and its secure storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`, with its `session` routes for the passcode unlock). |
+| `monitor_auth/` | The monitor's application sessions and CSRF tokens (`session`), the 4-digit passcode and its limit on wrong guesses (`passcode`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
+| `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes and monitor writes, and canonical HTTPS origins. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
 | `store`<br>`answer` | Blocking file access, the index, and URL IDs for every router; saving an answer, shared by the board and the monitor. |
 | `web_assets` | The embedded scripts and stylesheets of the board and the monitor, their build IDs, and the cacheable gzip or plain response. |
@@ -73,7 +75,7 @@ The main files and directories outside `src/` are:
 | File watching | notify 8.2 | FSEvents on macOS and ReadDirectoryChangesW on Windows. Events are coalesced on tokio without a separate debouncer. |
 | Frontmatter | serde_yaml_ng 0.10 | `serde_yaml` is deprecated and `serde_yml` unmaintained. Unknown keys are kept as `Value`. |
 | JSON, time, hashing | serde / serde_json<br>chrono<br>sha2 | Shared types for output and the API; UTC storage; content versions. |
-| Other Rust crates | dirs<br>thiserror<br>getrandom<br>reqwest + eventsource-stream<br>toml_edit | Home directory, typed errors, random IDs and tokens, SSE for `wait`, comment-preserving TOML edits in `setup`. |
+| Other Rust crates | dirs<br>thiserror<br>getrandom<br>reqwest + eventsource-stream<br>toml_edit<br>ngrok<br>keyring | Home directory, typed errors, random IDs and tokens, SSE for `wait`, comment-preserving TOML edits in `setup`, the in-process ngrok tunnel for the mobile monitor, and the OS credential store for a saved ngrok token. |
 | UI | TypeScript<br>Vite<br>React | Typed UI state and API shapes. The build is embedded in the binary. |
 | UI libraries | nuqs<br>shadcn/ui (Radix)<br>Tailwind CSS<br>lucide-react<br>i18next<br>@dnd-kit/react | URL state, accessible primitives, styling, icons, English and Japanese strings, drag and drop. |
 | Markdown | react-markdown + remark-gfm<br>Milkdown Crepe 7.22<br>mermaid 12 | Rendering without raw HTML, WYSIWYG editing that round-trips to Markdown, strict-mode diagrams. |

@@ -126,6 +126,18 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 
 指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。Pendingの質問への回答にはなりません。
 
+## サーバーを起動する
+
+`agboard serve`は、`127.0.0.1`でボードを起動します。`--port`でポートを選べます（既定は7420）。サーバーの起動と同時にngrokでスマホを接続するには、`--monitor ngrok`を付けます。
+
+| オプション | 意味 |
+| --- | --- |
+| `--monitor ngrok` | モバイルモニターの接続を始めます。指定できるのは`ngrok`だけです。環境変数`NGROK_AUTHTOKEN`が必要で、トークンを引数で渡すことはできません。 |
+
+スマホは、起動ごとに作る4桁の合言葉で守られます。サインイン用のオプションはありません。`--monitor`の不正な値、`NGROK_AUTHTOKEN`がないこと、未知のオプションは、終了コード2で終了します。接続を開始できなければ、`serve`は起動せず終了コード1で終了します。
+
+接続の準備ができると、起動行にスマホ用のアドレスと合言葉が表示されます: `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`。`--json`では、起動時の行にボードの`url`と`monitor`が入ります（`mode: "ngrok"`と、`ngrok`のスマホ用`url`・`passcode`）。合言葉を出力するのはここと、ボードの接続ダイアログだけです。トークンとポリシーは出力しません。ボードの**設定**からも接続を設定できます。詳しくは[モバイルモニターのガイド](../operations/mobile-monitor)を参照してください。
+
 ## 共有フォルダをセットアップする
 
 `agboard setup`は、データフォルダとその`shared/`フォルダを作り、エージェントがそこへ書けるよう、CodexとClaude Codeのユーザー設定にデータフォルダを加えます。プロジェクトは要らず、あなた自身が実行します。Hookやエージェントのスキルはインストールしません。

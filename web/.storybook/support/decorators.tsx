@@ -16,7 +16,7 @@ import modalCss from '../../src/shared/styles/modal.css?inline';
 import monitorCss from '../../src/pages/monitor/monitor.css?inline';
 
 export type StoryLocale = 'en' | 'ja';
-export type StoryWidth = 'desktop' | 'phone-375' | 'phone-390';
+export type StoryWidth = 'desktop' | 'desktop-900' | 'phone-320' | 'phone-375' | 'phone-390';
 export type StoryFrame = 'board' | 'monitor';
 
 /** The toolbar values a Story reads. The toolbar itself is declared in preview.tsx. */
@@ -30,6 +30,8 @@ export interface StoryGlobals {
 /** Widths a Story is checked at: the desktop board, and the phone monitor at two phone widths. */
 export const STORY_WIDTHS: Record<StoryWidth, number> = {
   desktop: 1280,
+  'desktop-900': 900,
+  'phone-320': 320,
   'phone-375': 375,
   'phone-390': 390,
 };

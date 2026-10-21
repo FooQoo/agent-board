@@ -67,6 +67,24 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change. It is not a Pending answer. | 1 | n/a |
 | `forbidden` | A web write failed the guard (Host, Origin, `Sec-Fetch-Site`, or token). | n/a | 403 |
 
+## Mobile connection
+
+These are returned by the `/api/monitor-connections` routes (see [Web API](./web-api.md#mobile-connection)) and carry no secret value.
+
+| Code | When | Exit | HTTP |
+| --- | --- | --- | --- |
+| `revision_conflict` | The settings changed since the page read them. | n/a | 409 |
+| `save_failed` | The settings could not be saved. Nothing changed and nothing started. | n/a | 500 |
+| `token_required` | A start found no token in the request, the environment, or the secure storage. | n/a | 422 |
+| `keychain_unavailable` | Saving or deleting the token was asked for but the PC's secure storage cannot do it. Nothing was saved or changed. | n/a | 409 |
+| `settings_unreadable` | A start while the saved settings file cannot be read. Save the settings again first. | n/a | 409 |
+| `start_failed` | The connection could not be started for an internal reason. | n/a | 500 |
+| `invalid_value` | The token or the body breaks a rule (for example `save` without a token, or an unknown field). | n/a | 422 |
+
+On the command line, `serve --monitor ngrok` with a missing or invalid option exits 2 with `invalid_argument`; a connection that cannot start exits 1. The failure codes in the state object (`failure`) are listed in [Web API](./web-api.md#mobile-connection).
+
+On the monitor entry, a request that fails the Host check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`. `POST /monitor/api/unlock` answers a wrong passcode with 403 `unlock_failed` and, after five wrong ones in a row, every attempt with 429 `unlock_locked`; neither says how many tries are left.
+
 ## Exit codes
 
 | Exit | Meaning |

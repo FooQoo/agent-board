@@ -11,11 +11,11 @@ Read the page for the area you are about to change. Start with [docs/dev/index.m
 | Versions, file watching, and live updates | [docs/dev/concepts/notifications.md](docs/dev/concepts/notifications.md) |
 | Request handling, the web UI, and its failure behavior | [docs/dev/concepts/server-and-ui.md](docs/dev/concepts/server-and-ui.md) |
 | The skill, the hook, `wait`, and `setup` | [docs/dev/concepts/agents.md](docs/dev/concepts/agents.md) |
-| Remote access and the mobile monitor | [docs/dev/concepts/remote-access.md](docs/dev/concepts/remote-access.md) |
+| The mobile monitor | [docs/dev/concepts/remote-access.md](docs/dev/concepts/remote-access.md) |
 | What is protected and what is not | [docs/dev/concepts/security.md](docs/dev/concepts/security.md) |
 | Every stored file and its fields | [docs/dev/reference/files.md](docs/dev/reference/files.md) |
 | Endpoints, error codes, and the JSON agents receive | [web-api](docs/dev/reference/web-api.md), [errors](docs/dev/reference/errors.md), [agent-output](docs/dev/reference/agent-output.md) |
-| Remote routes and the code map | [remote-routes](docs/dev/reference/remote-routes.md), [code-map](docs/dev/reference/code-map.md) |
+| Monitor routes and the code map | [monitor routes](docs/dev/reference/remote-routes.md), [code-map](docs/dev/reference/code-map.md) |
 | A failure you cannot explain | [docs/dev/troubleshooting.md](docs/dev/troubleshooting.md) |
 | Board, cards, and decisions as users see them | [board](docs/guide/use/board.md), [decisions](docs/guide/use/decisions.md), [editing](docs/guide/use/editing.md), [epics](docs/guide/use/epics.md) |
 | CLI commands, data area, and mobile monitor for users | [cli](docs/guide/automation/cli.md), [data](docs/guide/operations/data.md), [mobile-monitor](docs/guide/operations/mobile-monitor.md) |

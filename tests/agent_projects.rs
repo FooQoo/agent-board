@@ -188,6 +188,21 @@ fn spawn_wait(home: &Path, project: &str, after: &str, timeout: Option<&str>) ->
     if let Some(timeout) = timeout {
         command.args(["--timeout", timeout]);
     }
+    // A child inherits an ignored SIGINT from a parent that was started in the
+    // background (a non-interactive shell's `&`, nohup, some runners). The wait
+    // must be tested with the default disposition a terminal user has, or an
+    // interrupt would depend on how the whole test run was launched.
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // SAFETY: the hook only calls the async-signal-safe `signal`.
+        unsafe {
+            command.pre_exec(|| {
+                libc::signal(libc::SIGINT, libc::SIG_DFL);
+                Ok(())
+            });
+        }
+    }
     command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

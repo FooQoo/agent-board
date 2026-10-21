@@ -1,18 +1,12 @@
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { agboardBinary, agboardCatalogOk, projectId, taskBody, decisionJson, workspace } from './agboard';
 
-export const monitorPort = Number(process.env.AGBOARD_MONITOR_PORT ?? 8060);
-export const remotePort = Number(process.env.AGBOARD_REMOTE_PORT ?? 8061);
-export const monitorOrigin = `http://127.0.0.1:${remotePort}`;
-export const remoteOrigin = `http://127.0.0.1:${remotePort}`;
-
-export interface MonitorServe {
-  process: ChildProcess;
-}
+// The phone monitor is reached through the ngrok entrance: the dedicated loopback
+// backend behind an Edge stand-in. See phone-entrance.mjs for what is and is not covered.
+export { startPhoneEntrance, type PhoneEntrance } from './phone-entrance.mjs';
 
 function run(home: string, args: string[]): string {
   const result = spawnSync(agboardBinary(), args, {
@@ -106,132 +100,10 @@ export function createMonitorHome(): string {
   return home;
 }
 
-async function portIsFree(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.once('error', () => resolve(false));
-    server.once('listening', () => server.close(() => resolve(true)));
-    server.listen(port, '127.0.0.1');
-  });
-}
-
-async function waitForMonitor(port: number, child: ChildProcess): Promise<void> {
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`agboard serve exited with ${child.exitCode}`);
-    try {
-      const response = await fetch(`http://127.0.0.1:${port}/monitor/api/projects`);
-      if (response.ok) return;
-    } catch {
-      // The process is still binding its listener.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error(`monitor API did not answer on port ${port}`);
-}
-
-async function waitForListener(port: number, child: ChildProcess): Promise<void> {
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`agboard serve exited with ${child.exitCode}`);
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const socket = net.connect(port, '127.0.0.1', () => socket.end(() => resolve()));
-        socket.once('error', reject);
-      });
-      return;
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  }
-  throw new Error(`serve listener did not answer on port ${port}`);
-}
-
-export async function startMonitorServe(
-  home: string,
-  ports: { monitorPort?: number; remotePort?: number } = {},
-): Promise<MonitorServe> {
-  const localPort = ports.monitorPort ?? monitorPort;
-  const proxyPort = ports.remotePort ?? remotePort;
-  for (const port of [localPort, proxyPort]) {
-    if (!(await portIsFree(port))) throw new Error(`port ${port} is already in use`);
-  }
-  const child = spawn(
-    agboardBinary(),
-    [
-      'serve', '--port', String(localPort), '--remote-port', String(proxyPort),
-      '--remote-origin', 'https://monitor.e2e.invalid',
-    ],
-    {
-      cwd: home,
-      env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' },
-      stdio: ['ignore', 'ignore', 'pipe'],
-    },
-  );
-  let stderr = '';
-  child.stderr?.setEncoding('utf8');
-  child.stderr?.on('data', (chunk: string) => { stderr += chunk; });
-  try {
-    await waitForListener(localPort, child);
-    await waitForMonitor(proxyPort, child);
-  } catch (error) {
-    if (child.exitCode === null && child.signalCode === null) {
-      const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
-      child.kill('SIGTERM');
-      await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5_000))]);
-    }
-    throw new Error(`${String(error)}${stderr ? `; serve stderr: ${stderr}` : ''}`);
-  }
-  return { process: child };
-}
-
-export async function stopMonitorServe(serve: MonitorServe | undefined): Promise<void> {
-  const child = serve?.process;
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
-  child.kill('SIGTERM');
-  await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5_000))]);
-  if (child.exitCode === null && child.signalCode === null) {
-    child.kill('SIGKILL');
-    await exited;
-  }
-}
-
 export function removeMonitorHome(home: string): void {
   rmSync(home, { recursive: true, force: true });
 }
 
 export function monitorProjectId(home: string, name: string): string {
   return projectId(name, home);
-}
-
-/** Add a 100-card shared-file fixture and a project/card/body at their documented length limits. */
-export function addDenseMonitorFixture(home: string): string {
-  const longProject = 'Project ' + 'P'.repeat(42);
-  const tail = '\n\nLong body tail marker.';
-  agboardCatalogOk(['project', 'create', longProject], home);
-  for (let id = 15; id <= 100; id++) {
-    const prefix = `Task ${id} `;
-    const title = prefix + 'L'.repeat(100 - prefix.length);
-    const longBodyStart = `Long body start ${id}.\n\n`;
-    const bodyText = id === 100
-      ? `${longBodyStart}${'x'.repeat(50_000 - taskBody(`${longBodyStart}${tail}`).length)}${tail}`
-      : `Dense task ${id}.`;
-    const created = task(home, 'Alpha', title, bodyText);
-    if (created !== id) throw new Error(`expected dense fixture task ${id}, got ${created}`);
-    move(home, 'Alpha', id, 'doing', 'Start dense fixture task');
-    move(home, 'Alpha', id, 'done', 'Complete dense fixture task');
-  }
-
-  const longTitle = 'T'.repeat(100);
-  const longFile = path.join(home, 'long-description.md');
-  const longBodyStart = 'Long body start\n\n';
-  const longText = `${longBodyStart}${'x'.repeat(50_000 - taskBody(`${longBodyStart}${tail}`).length)}${tail}`;
-  writeFileSync(longFile, taskBody(longText), 'utf8');
-  const added = JSON.parse(run(home, [
-    '--project', longProject, 'add', longTitle, '--desc-file', longFile, '--assignee', 'ai', '--actor', 'ai', '--json',
-  ])) as { task: { id: number } };
-  move(home, longProject, added.task.id, 'doing', 'Start long-title fixture');
-  state(home, longProject, added.task.id, 'running', 'Check long-title visibility');
-  return longProject;
 }

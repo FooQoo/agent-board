@@ -2,6 +2,7 @@ import { Suspense, useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { Header } from '../../shared/ui/app-header/Header';
+import { monitorLogo } from './logo';
 import { settingsSlot } from '../../features/settings/ui/settingsSlot';
 import { ProjectSwitcher } from '../../features/projects/switcher/ProjectSwitcher';
 import type { MonitorViewProps } from './contracts';
@@ -55,7 +56,7 @@ export function MonitorView(props: MonitorViewProps) {
   };
   return (
     <main className="monitor-shell">
-      <Header settings={settingsSlot} />
+      <Header settings={settingsSlot} logoSrc={monitorLogo} />
       <div className="monitor-controls">
         <ProjectSwitcher
           projects={projects}

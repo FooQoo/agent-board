@@ -52,7 +52,7 @@ try {
       await page.screenshot({ path: path.join(output, `epic${suffix}.png`) });
 
       await page.setViewportSize({ width: 390, height: 844 });
-      await page.goto(`${remote}/monitor/?project=${id}`);
+      await server.open(page, `${remote}/monitor/?project=${id}`);
       await expect(page.getByRole('status')).toContainText(text.ready);
       await page.getByRole('article', { name: /^#3(?!\d)/ }).getByRole('button', { name: text.titles[2], exact: true }).click();
       await expect(page.getByRole('tab')).toHaveCount(4);

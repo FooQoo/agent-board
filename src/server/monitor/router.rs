@@ -52,7 +52,7 @@ impl MonitorState {
 
 pub(crate) fn router(state: Arc<MonitorState>) -> Router {
     Router::new()
-        .route("/assets/monitor/{name}", get(asset))
+        .route("/monitor/assets/monitor/{name}", get(asset))
         .route("/monitor/api/projects", get(projects).head(projects))
         .route(
             "/monitor/api/projects/{project_id}/board",
@@ -103,7 +103,7 @@ async fn host_guard(
     next: Next,
 ) -> Response {
     let path = request.uri().path();
-    if !path.starts_with("/monitor") && !path.starts_with("/assets/monitor/") {
+    if !path.starts_with("/monitor") && !path.starts_with("/monitor/assets/monitor/") {
         return next.run(request).await;
     }
     let allowed = request
@@ -124,9 +124,14 @@ async fn host_guard(
 
 async fn security_headers(request: Request, next: Next) -> Response {
     let path = request.uri().path().to_owned();
-    let is_html = path == "/monitor/";
     let mut response = next.run(request).await;
-    let headers = response.headers_mut();
+    apply_security_headers(&path, response.headers_mut());
+    response
+}
+
+/// The headers every monitor response carries; the page and the API are never cached.
+pub(crate) fn apply_security_headers(path: &str, headers: &mut HeaderMap) {
+    let is_html = path == "/monitor/";
     headers.insert(
         header::REFERRER_POLICY,
         header::HeaderValue::from_static("no-referrer"),
@@ -149,7 +154,6 @@ async fn security_headers(request: Request, next: Next) -> Response {
             header::HeaderValue::from_static("no-store"),
         );
     }
-    response
 }
 
 async fn not_found() -> Response {

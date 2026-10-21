@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import { agboardOk, mainProject, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
-import { createMonitorHome, monitorOrigin, startMonitorServe, stopMonitorServe, removeMonitorHome, type MonitorServe } from '../helpers/monitor';
 import { waitForSync } from '../helpers/ui';
 
 function markdown(source: string, count: number) {
@@ -55,68 +54,5 @@ test.describe('PC condition tab', () => {
         await page.screenshot({ path: testInfo.outputPath('pc-conditions.png') });
       });
     }
-  }
-});
-
-test.describe('mobile condition tab', () => {
-  let home: string;
-  let serve: MonitorServe;
-  let project: string;
-  test.beforeAll(async () => {
-    home = createMonitorHome();
-    project = projectId('Alpha', home);
-    seed('Alpha', home);
-    serve = await startMonitorServe(home);
-  });
-  test.afterAll(async () => {
-    await stopMonitorServe(serve);
-    removeMonitorHome(home);
-  });
-  for (const width of [320, 375, 430]) {
-    test(`${width}px: swipe follows all four tabs and the epic tab uses the existing cache`, async ({ page }, testInfo) => {
-      await page.setViewportSize({ width, height: 812 });
-      await page.addInitScript(() => {
-        localStorage.setItem('agboard.locale', 'ja');
-        localStorage.setItem('agboard.theme', JSON.stringify({ mode: 'dark', accent: 'blue' }));
-      });
-      let epicReads = 0;
-      page.on('request', (request) => { if (new URL(request.url()).pathname.endsWith('/epics')) epicReads++; });
-      await page.goto(`${monitorOrigin}/monitor/?project=${project}`);
-      await page.getByRole('button', { name: 'Conditions detail', exact: true }).click();
-      const drawer = page.getByRole('dialog');
-      await expect(drawer.getByRole('tab')).toHaveCount(4);
-      await expect.poll(() => drawer.evaluate((el) => el.getAnimations().length)).toBe(0);
-      await expect(drawer.getByText('Task body.')).toBeInViewport();
-      await expect(drawer.locator('.monitor-conditions-dock')).toHaveCount(0);
-      const viewport = drawer.locator('.monitor-drawer__panels');
-      const bounds = (await viewport.boundingBox())!;
-      await page.mouse.move(bounds.x + bounds.width * 0.85, bounds.y + 80);
-      await page.mouse.down();
-      await page.mouse.move(bounds.x + bounds.width * 0.15, bounds.y + 80, { steps: 16 });
-      await page.mouse.up();
-      await expect(drawer.getByRole('tab', { name: '受入条件', exact: true })).toHaveAttribute('aria-selected', 'true');
-      const panel = drawer.getByRole('tabpanel', { name: '受入条件', exact: true });
-      await expect(panel.getByRole('checkbox')).toHaveCount(24);
-      const reads = epicReads;
-      await panel.hover();
-      await page.mouse.wheel(0, 2500);
-      await expect(panel.getByText('Task check 24', { exact: true })).toBeInViewport();
-      await expect(panel.getByText('Epic reference check.', { exact: true })).toHaveCount(0);
-      await drawer.getByRole('tab', { name: 'エピック', exact: true }).click();
-      await expect(drawer.getByRole('tabpanel', { name: 'エピック', exact: true }).getByText('Epic body.')).toBeVisible();
-      await drawer.getByRole('tab', { name: '受入条件', exact: true }).click();
-      expect(epicReads).toBe(reads);
-      const tabBounds = (await drawer.getByRole('tablist').boundingBox())!;
-      const indicator = await drawer.locator('.monitor-drawer__tabs').evaluate((el) => {
-        const style = getComputedStyle(el, '::after');
-        return { width: parseFloat(style.width), x: new DOMMatrixReadOnly(style.transform).m41 };
-      });
-      expect(indicator.width).toBeCloseTo(tabBounds.width / 4, 0);
-      await expect.poll(async () => drawer.locator('.monitor-drawer__tabs').evaluate((el) => {
-        const style = getComputedStyle(el, '::after');
-        return Math.abs(new DOMMatrixReadOnly(style.transform).m41 - el.clientWidth / 4);
-      })).toBeLessThan(1);
-      await page.screenshot({ path: testInfo.outputPath('mobile-conditions.png') });
-    });
   }
 });

@@ -72,9 +72,7 @@ export function DecisionRequestFormView({
             </div>
           ))}
         </RadioGroup>
-        <p className="detail__guide">
-          {t('request.guideChoice')}
-        </p>
+        <p className="detail__guide">{t('request.guideChoice')}</p>
         <Label htmlFor={textareaId} className="visually-hidden">
           {t('request.label')}
         </Label>

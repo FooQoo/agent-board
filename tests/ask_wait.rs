@@ -74,9 +74,31 @@ fn wait_for_request(home: &Path) -> String {
     }
 }
 
+/// Spawns a wait with the default SIGINT disposition a terminal user has. A child of a
+/// background run (a non-interactive shell's `&`, nohup) inherits an ignored SIGINT, and then the
+/// interrupt test would never end; the same fix as the wait tests in `agent_projects.rs`.
+fn spawn_wait(mut command: Command) -> Child {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // SAFETY: the hook only calls the async-signal-safe `signal`.
+        unsafe {
+            command.pre_exec(|| {
+                libc::signal(libc::SIGINT, libc::SIG_DFL);
+                Ok(())
+            });
+        }
+    }
+    command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap()
+}
+
 fn ask_and_wait(home: &Path, timeout_seconds: u64) -> Child {
     let wait = format!(r#"{{"timeoutSeconds":{timeout_seconds}}}"#);
-    command(
+    spawn_wait(command(
         home,
         &[
             "--json",
@@ -88,15 +110,11 @@ fn ask_and_wait(home: &Path, timeout_seconds: u64) -> Child {
             "--request-json",
             &question(Some(&wait)),
         ],
-    )
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped())
-    .spawn()
-    .unwrap()
+    ))
 }
 
 fn ask_and_wait_forever(home: &Path) -> Child {
-    command(
+    spawn_wait(command(
         home,
         &[
             "--json",
@@ -108,11 +126,7 @@ fn ask_and_wait_forever(home: &Path) -> Child {
             "--request-json",
             &question(Some("{}")),
         ],
-    )
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped())
-    .spawn()
-    .unwrap()
+    ))
 }
 
 fn stop(mut server: Child) {

@@ -64,14 +64,9 @@ fn fake_build(extra: &[(&str, &[u8])]) -> tempfile::TempDir {
     write(
         root,
         "monitor/index.html",
-        br#"<script src="/assets/monitor/monitor-M1.js"></script><link href="/assets/monitor/monitor-M2.css">"#,
+        br#"<script src="/monitor/assets/monitor/monitor-M1.js"></script><link href="/monitor/assets/monitor/monitor-M2.css">"#,
     );
-    for rel in [
-        "logo.png",
-        "logo-white.png",
-        "access/index.html",
-        "access/entry.js",
-    ] {
+    for rel in ["logo.png", "logo-white.png"] {
         write(root, rel, b"x");
     }
     for name in [
@@ -105,7 +100,7 @@ fn the_build_rejects_missing_isolated_assets_with_an_actionable_message() {
     }
     let stderr = failure(dir.path());
     assert!(
-        stderr.contains("the access web assets are not built"),
+        stderr.contains("the monitor web assets are not built"),
         "{stderr}"
     );
 }

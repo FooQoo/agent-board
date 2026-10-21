@@ -41,9 +41,12 @@ Find what you see, read the cause, and do what the last column says. The command
 
 | What you see | Cause | What to do |
 | --- | --- | --- |
-| The page does not load | The server or the proxy is not running, or the computer is asleep. | Start both again and keep the computer awake. |
-| The browser warns about the certificate | The phone does not trust Caddy's local certificate. | Install only Caddy's public root certificate on the phone. See [LAN with Caddy](./mobile-monitor#lan-with-caddy). |
-| The page loads but answers are refused | The address you opened is not one of the `--remote-origin` values. | Start the server with the exact HTTPS address you open. |
+| The page does not load | The server or the ngrok connection is not running, or the computer is asleep. | Start the server and the connection again and keep the computer awake. |
+| The phone shows **Enter the passcode** again, or says the connection is stopped | The session ended (a connection lasts up to 12 hours), or the connection was stopped and started again, which makes a new passcode. | Type the passcode now shown on the PC (in **Settings** → **Mobile connection**, or on the `serve` startup line). If the connection is stopped, start it again there. |
+| The phone says **Too many wrong passcodes** | 5 wrong passcodes were entered in a row, so the monitor stopped accepting any, even the right one. | On the PC, choose **Stop** and connect again (or restart `serve`). The new passcode starts with a fresh count. |
+| The phone says the passcode was not accepted | The digits do not match the passcode of the current connection. The passcode changes whenever the connection starts. | Read the passcode on the PC again. A passcode from an earlier start does not work. |
+| The dialog says the settings were saved but ngrok could not be reached | The ngrok authtoken is wrong, or there is no internet connection. | Check the token and the connection, then choose **Save and try again**. |
+| The page loads but answers are refused | The address you opened is not the public address of the current connection. | Open the address the connection reports. Restarting the connection issues a new session. |
 | The monitor says the data is out of date | Auto-update stopped, or some projects could not be read. | Reload or reopen the page. The monitor re-fetches when it becomes visible again. |
 
 ## Still stuck?

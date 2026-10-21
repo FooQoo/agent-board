@@ -38,6 +38,8 @@ export interface HeaderProps {
   projectSwitcher?: ReactNode;
   /** The settings dialog; without it the settings button opens nothing. */
   settings?: HeaderSettings;
+  /** The logo the header shows. The monitor passes its own copy, so the logo loads with the page. */
+  logoSrc?: string;
 }
 
 export function Header({
@@ -52,6 +54,7 @@ export function Header({
   onBack = () => {},
   projectSwitcher = null,
   settings,
+  logoSrc = '/logo-white.png',
 }: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -65,7 +68,7 @@ export function Header({
     <header className="header">
       <h1 className="header__app">
         <span className="header__logo">
-          <img src="/logo-white.png" alt="" width="24" height="24" />
+          <img src={logoSrc} alt="" width="24" height="24" />
         </span>
         <span>Agent Board</span>
       </h1>

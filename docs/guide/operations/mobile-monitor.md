@@ -4,7 +4,7 @@ title: Mobile monitor
 
 # Mobile monitor
 
-The mobile monitor is a phone-sized view of the board. Use it to check progress and to answer an agent's question when you are away from your desk. This page explains what the monitor shows, how to make the board reachable from your phone, and how to check that it works.
+The mobile monitor is a phone-sized view of the board. Use it to check progress and to answer an agent's question when you are away from your desk. This page explains what the monitor shows, how to connect it from your phone with ngrok, and how to check that it works.
 
 ## What the monitor shows
 
@@ -18,80 +18,89 @@ The monitor HTML and API responses are never cached. The browser keeps the monit
 
 After you install a new version and restart `agboard serve`, an open monitor reloads itself to show the new UI. If you are writing an answer, it waits until you send or clear it. When disconnected, the page reports the connection state.
 
-## Choose how to reach it
+## Before you start
 
-The board listens only on your computer by default. To reach it from a phone you put a trusted HTTPS proxy in front of a separate listener. Pick one route:
+You need an ngrok account and its authtoken. The **Mobile connection** dialog has a button that opens the ngrok page where you copy the token. Agent Board opens the address without any of ngrok's Traffic Policy features, including its Google sign-in (OAuth), which a free ngrok account cannot use. A free account can therefore run the monitor; the other limits and terms of your ngrok plan still apply.
 
-| Route | Use it when | Section |
-| --- | --- | --- |
-| **LAN with Caddy** | The phone and the computer are on the same trusted network, and you accept a local certificate. | [LAN with Caddy](#lan-with-caddy) |
-| **Tailscale Serve** | The phone and the computer are in your tailnet, and you want no public exposure. | [Tailscale Serve](#tailscale-serve) |
+Agent Board uses ngrok to open a public HTTPS address that leads to the monitor only. The full board stays on `127.0.0.1`. Never expose the board to the public Internet and never use router port forwarding. ngrok ends the HTTPS connection, so ngrok can process the traffic; the connection is not end-to-end encrypted between your PC and your phone.
 
-Never expose the board to the public Internet and never use router port forwarding.
+## How the passcode protects the monitor
 
-## Turn on remote access
+The monitor is guarded by a 4-digit passcode. Agent Board does not use Google authentication or ngrok's sign-in, and it keeps no list of allowed accounts.
 
-Run the commands on this page from the repository root, after [installing Agent Board](../getting-started).
+- Each time the connection starts, Agent Board makes a new passcode from the operating system's random source, from `0000` to `9999`. It is kept in memory only: it is not saved to a file, logged, or put in the monitor page.
+- You see it on the PC only: in the **Mobile connection** dialog, in step 2 **Enter the passcode**, and on the startup line of `agboard serve --monitor ngrok`.
+- The phone opens the address, asks for the passcode, and shows nothing of the board until the passcode is right. The connection then lasts up to 12 hours, after which the phone asks for the passcode again.
+- After 5 wrong passcodes in a row, the monitor stops accepting any passcode, even the right one. Stop the connection and connect again (or restart `serve`) to get a new passcode and a fresh count.
 
-`agboard serve` keeps the ordinary PC listener on loopback. Add a separate remote listener only when you put it behind a trusted HTTPS proxy:
+A 4-digit passcode has only 10,000 possibilities, so it is weaker than signing in with an account. The 5-attempt limit, the random address that ngrok chooses, and a new passcode at every start make guessing hard, but they are not a substitute for keeping the address private. Treat the address and the passcode like a password pair:
+
+- Do not share the address or the QR code in public places.
+- Stop the connection when you are not using it.
+- The address is one that ngrok chooses at random. It is harder to find, though it is not a secret you can rely on.
+
+Because ngrok adds nothing for Agent Board to check, the monitor checks two things itself: the request names exactly the public address, and the passcode. ngrok ends the HTTPS connection and can see the traffic, and anyone who manages your ngrok account can change how the address is served. The passcode does not protect against them.
+
+A program that is already running on your PC can send requests straight to the monitor's local port without going through ngrok. It still needs the passcode to read anything, but it can use up the 5 tries, which closes the monitor to the phone until you stop and connect again. Agent Board trusts the person who uses the PC, so it adds no further protection against this. Run the connection only on a PC you trust.
+
+## Connect from the PC
+
+1. Open the board, then open **Settings**. In **Mobile connection**, choose **Set up**. The settings dialog closes and the **Mobile connection** dialog opens with **Not connected**.
+2. In step 1, **Get a token**, choose **Open the token page**. Sign in to ngrok and copy the authtoken.
+3. In step 2, **Paste and connect**, paste the token into **ngrok auth token**.
+4. Decide whether to keep the token with **Save the token on this PC** (see [Where the token is kept](#where-the-token-is-kept)).
+5. Choose **Save and connect**.
+
+While it connects, the dialog shows **Connecting to ngrok…** in place of the two steps. When it is ready, the dialog shows **Accepting connections**. Step 1, **Scan the QR code**, has the QR code and **Copy URL**, which copies the address. Step 2, **Enter the passcode**, shows the 4-digit passcode. The QR code only carries the address: the phone still has to enter the passcode, and the PC does not ask you to approve a device.
+
+The passcode is shown only while the connection is running. It is new every time the connection starts, so a stopped or failed connection has none.
+
+If ngrok cannot be reached, the dialog says so and gives the reason. Check the token and the internet connection, then choose **Save and connect** again. The board on the PC keeps working.
+
+## Where the token is kept
+
+- A token you type is used only while Agent Board is running and is not saved.
+- To keep it, select **Save the token on this PC** before you connect. The token is stored in this PC's secure storage, the one your operating system provides. It is never written to the data folder.
+- If the `NGROK_AUTHTOKEN` environment variable is set, it takes priority over a saved token. The dialog then says it is using the environment variable, and you can leave the token field empty.
+- A saved token is shown as saved in this PC's secure storage. Choose **Delete the saved token** to remove it.
+- If the PC has no usable secure storage, the dialog says **This PC cannot save the token. Enter it each time.** and the save option is unavailable. Enter the token each time you connect.
+
+Whether the connection stays on is stored in Agent Board's internal area. You do not edit a file for it. The passcode is not stored anywhere.
+
+## Open it on the phone
+
+1. On the phone, open the URL or scan the QR code.
+2. The page shows **Enter the passcode**. Type the 4-digit passcode shown on the PC and choose **Connect**.
+3. The monitor opens. The connection lasts up to 12 hours; after that, or when the connection was stopped and started again on the PC, the page asks for the passcode again.
+
+On ngrok's free plan, the first visit from a phone shows ngrok's warning page. Choose **Visit Site**, and the monitor opens. ngrok shows the warning to each visitor only once.
+
+Knowing the address is not enough to read the board. A wrong passcode is refused without saying how many tries are left. After 5 wrong passcodes in a row the page says **Too many wrong passcodes** and takes no more; stop the connection on the PC and connect again to get a new passcode. If the page says the connection is stopped, check the PC.
+
+## Stop and connect again
+
+Choose **Stop connection** in the dialog to close the connection. The dialog shows **Stopped**, and the saved token stays on this PC. The phone can no longer read the board or send answers, and the connection stays off the next time Agent Board starts. To connect again with the saved token, choose **Reconnect**. To use another token, choose **Change connection settings**, paste the token, and choose **Save and connect**.
+
+If the connection drops, for example because the PC slept or the network changed, stop it and connect again. To use another token while connected, choose **Reset token**, which shows the setup again, enter the new token, and choose **Save and connect**. This replaces the connection, so the phone has to enter the new passcode. Closing the dialog instead leaves the connection as it was.
+
+When the connection was left on, it starts again the next time Agent Board starts, as long as a token is available from the environment or this PC's secure storage. Without one, the dialog asks for the token.
+
+## Check that ngrok keeps no traffic content
+
+ngrok's Traffic Inspector can keep request details if **Full Capture** is turned on for your account. Agent Board cannot turn it off for you. In the ngrok dashboard, open **Settings** → **Observability** and confirm that Full Capture is disabled. Do this before you use the monitor.
+
+## Start it from the command line
+
+To start the connection with the server, set the token in the environment:
 
 ```sh
-agboard serve --port 7420 --remote-port 8040 \
-  --remote-origin https://192.168.1.20:8443 \
-  --remote-origin https://my-mac.example-tailnet.ts.net
+export NGROK_AUTHTOKEN=<your authtoken>
+agboard serve --monitor ngrok
 ```
 
-Use only the origins you will actually publish. The remote port is a second loopback listener for the proxy; never proxy the local PC port. Opening the common URL selects the monitor below 768 CSS pixels and the PC board at wider sizes. Direct `/monitor/` and `/board/` URLs remain available regardless of width. The PC board retains its remote write guard. The monitor API allows only its dedicated answer request and token; other write routes remain unavailable.
+The command prints the phone address and the passcode with the local address, for example `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`, or in the `monitor` field with `--json`. The passcode changes each time the server starts. If the connection cannot start, `serve` stops with exit code 1. The other options are in the [CLI guide](../automation/cli).
 
-## LAN with Caddy
-
-Install Caddy 2.8 or newer from the [official Caddy downloads and installation guide](https://caddyserver.com/docs/install). The standard build is enough. The Caddyfile at [`examples/monitor/Caddyfile`](https://github.com/FooQoo/agent-board/blob/main/examples/monitor/Caddyfile) binds to the chosen LAN IP, uses Caddy's internal HTTPS authority, and requires [Basic authentication](https://caddyserver.com/docs/caddyfile/directives/basic_auth) on every route. It forwards only to the dedicated remote port, preserves the browser's Host and Origin for Agent Board's guard, strips Authorization and `X-Forwarded-Host`, and [flushes SSE promptly](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#streaming). The example disables Caddy's admin API and automatic root-certificate installation; the local test reads the temporary public root directly.
-
-Set the values for your machine and create a password hash. Keep the plaintext password out of shell history and the Caddyfile:
-
-```sh
-export LAN_IP=192.168.1.20
-export HTTPS_PORT=8443
-export REMOTE_PORT=8040
-export BASIC_AUTH_USER=board-reader
-export BASIC_AUTH_HASH="$(caddy hash-password)"
-```
-
-In one terminal, start Agent Board with the exact public HTTPS origin:
-
-```sh
-agboard serve --port 7420 --remote-port "$REMOTE_PORT" \
-  --remote-origin "https://${LAN_IP}:${HTTPS_PORT}"
-```
-
-In another terminal, validate and run the proxy in the foreground:
-
-```sh
-caddy validate --config examples/monitor/Caddyfile --adapter caddyfile
-caddy run --config examples/monitor/Caddyfile --adapter caddyfile
-```
-
-Open `https://<LAN_IP>:<HTTPS_PORT>/` on a device on the same trusted LAN and enter the Basic-auth credentials. Caddy's `tls internal` certificate is signed by its local CA, which phones do not trust by default. The public root certificate is `<Caddy data directory>/pki/authorities/local/root.crt` (for example, `$XDG_DATA_HOME/caddy/pki/authorities/local/root.crt` when `XDG_DATA_HOME` is set; see [Caddy's data-directory conventions](https://caddyserver.com/docs/conventions#data-directory)). Copy only that public certificate to the phone through a trusted channel and follow the phone OS's steps to trust it. Never copy or distribute Caddy's CA private key. Caddy's data directory is persistent; keep it private and back it up. Do not enable router port forwarding or expose this listener to the public Internet.
-
-Stop both foreground processes with Ctrl+C. When the computer sleeps or either process stops, the remote service is unavailable until Agent Board and Caddy are running again.
-
-## Tailscale Serve
-
-Install the [Tailscale standalone app for your OS](https://tailscale.com/download) and use Tailscale CLI 1.52 or newer; the [current Serve CLI syntax](https://tailscale.com/docs/reference/tailscale-cli/serve) changed in 1.52. Add the computer and phone to your existing tailnet. In the tailnet admin controls, restrict access to your own account and the specific devices that should reach this board. Serve requires HTTPS certificates to be enabled for the tailnet; invoking Serve may ask you to approve that change. Review the consent page before accepting. [Tailnet access rules apply to Serve](https://tailscale.com/docs/features/tailscale-serve).
-
-Start Agent Board on a dedicated remote port, then start Serve for that loopback port:
-
-```sh
-agboard serve --port 7420 --remote-port 8040 \
-  --remote-origin https://<origin-shown-by-tailscale>
-tailscale serve --bg http://127.0.0.1:8040
-tailscale serve status
-tailscale funnel status
-```
-
-Use the exact HTTPS origin shown by `tailscale serve status` as `--remote-origin` before starting Agent Board. Confirm Serve is active only within your tailnet and Funnel is not exposing the service publicly. Do not add a custom proxy that rewrites Host or Origin. Tailscale access rules apply to Serve, and Agent Board still checks the remote PC write token and same-origin request headers.
-
-Stop Agent Board with Ctrl+C. To remove only this Serve route, use `tailscale serve --bg http://127.0.0.1:8040 off`; inspect `tailscale serve status` before changing an existing shared Serve configuration. The background Serve setting can resume after a reboot, but the board itself remains unavailable while the computer sleeps or its server is stopped.
+When the computer sleeps or the server stops, the monitor is unavailable until the server and the connection run again.
 
 ## Check on a phone
 

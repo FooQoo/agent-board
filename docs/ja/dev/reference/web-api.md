@@ -31,6 +31,36 @@
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、versionの変化で`changed`、15秒ごとに接続維持のコメント。 |
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
+| `GET /api/monitor-connections`とその配下の経路 | ngrokのモバイル接続。[モバイル接続](#モバイル接続)を参照。 |
+
+### モバイル接続
+
+これらの経路はローカルのリスナー（`127.0.0.1`）にだけあり、ngrokの入口は配信しません。読み取りはローカルのページからでなければならず、別のHost、クロスサイトの`Sec-Fetch-Site`、別のOriginは403です。書き込みは、ほかの書き込みと同じブラウザの書き込みガードを通ります。
+
+| API | 契約 |
+| --- | --- |
+| `GET /api/monitor-connections` | 現在の状態（下記）。秘密の値は含まない。 |
+| `PUT /api/monitor-connections/settings/ngrok` | `{enabled, revision}`を保存し、状態を返す。`revision`は最後に読んだ値でなければならない。未知のフィールドは422 `invalid_value`、古いrevisionは409 `revision_conflict`、保存の失敗は500 `save_failed`で何も変えない。トンネルが動いている間に保存しても作り直さない。作り直すのは開始だけ。 |
+| `POST /api/monitor-connections/transports/ngrok/start` | 接続を開始し、202で状態（通常は`starting`）を返す。任意の本文は`{token, save}`。`token`はメモリーだけに保持する。`save: true`はこのPCの安全な保管場所（OSの資格情報ストア）にも保存し、`token`が必要。無効な設定は、先に有効として保存する。トンネルが動いている間の開始は、トンネルを作り直す（合言葉も新しくなる）。 |
+| `POST /api/monitor-connections/transports/ngrok/stop` | 接続を停止して無効として保存し、200で状態を返す。 |
+| `DELETE /api/monitor-connections/token` | 安全な保管場所に保存したトークンを削除し、200で状態を返す。何も保存していなくてもエラーにしない。 |
+
+状態のオブジェクトは次のフィールドを持ちます。
+
+| フィールド | 意味 |
+| --- | --- |
+| `status` | `disabled`・`needs_config`・`starting`・`ready`・`reconnecting`・`failed`・`stopping`のいずれか。 |
+| `url` | `ready`のときの公開HTTPSアドレス。それ以外は`null`。 |
+| `revision` | `PUT`に使う設定のrevision。 |
+| `settings` | `enabled`。 |
+| `tokenConfigured` | 開始したときにトークンが見つかるか。 |
+| `tokenSource` | `env`（`NGROK_AUTHTOKEN`）、`keychain`（安全な保管場所）、`session`（今回の起動だけ入力）、`null`のいずれか。値は返さない。 |
+| `keychainAvailable` | このPCに、トークンを保存できる安全な保管場所（OSの資格情報ストア）があるか。 |
+| `keychainTokenSaved` | 別の取得元が使われていても、安全な保管場所にトークンが保存されているか。 |
+| `failure` | `null`、または`connect_failed`・`endpoint_failed`・`public_url_invalid`・`internal`・`config_unreadable`・`config_invalid`のいずれか。 |
+| `passcode` | 動いている接続の4桁の合言葉。PCが表示するために返す。`status`が`ready`の間だけ含まれ、開始中・停止中・失敗のときは含まれない。このAPIが返す唯一の秘密。 |
+
+開始の進み具合はこの状態で報告されます。`status`が`starting`でなくなるまで`GET`で確認してください。トークン、間違いの回数、sessionが、応答や設定ファイルに現れることはなく、合言葉が現れるのはここと`serve`の起動行だけです。設定の保存先は[共有ファイル](./files.md#モニター接続の設定)、エラーのコードは[エラーコード](./errors.md#モバイル接続)にあります。
 
 ### multipartでタスクを作成する
 

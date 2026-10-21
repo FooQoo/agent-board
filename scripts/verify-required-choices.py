@@ -1,4 +1,4 @@
-"""Verify decision limits across CLI, files, board API, and monitor API.
+"""Verify decision limits across CLI, files, and the board API.
 
 Run after building: python3 scripts/verify-required-choices.py
 Uses only a temporary data area and loopback ports. This script is a local
@@ -27,7 +27,6 @@ def main():
     parser.add_argument("--binary", type=Path,
                         default=Path(__file__).resolve().parents[1] / "target/debug/agboard")
     parser.add_argument("--port", type=int, default=8940)
-    parser.add_argument("--remote-port", type=int, default=8941)
     args = parser.parse_args()
     binary = args.binary.resolve()
     with tempfile.TemporaryDirectory(prefix="agboard-choice-verification-") as area:
@@ -48,28 +47,22 @@ def main():
         project_id = cli("project", "ls")["projects"][0]["id"]
         task_id = project("add", "Decision limits", "--assignee", "ai", "--actor", "ai")["task"]["id"]
         task_api = f"/api/projects/{project_id}/tasks/{task_id}"
-        with serve(binary, home, args.port, args.remote_port):
+        with serve(binary, home, args.port):
             origin = f"http://127.0.0.1:{args.port}"
-            remote = f"http://127.0.0.1:{args.remote_port}"
 
-            def token(base, path, name):
-                with urlopen(base + path) as response:
-                    html = response.read().decode()
-                match = re.search(r'<meta\s+name="' + name + r'"\s+content="([^"]+)"', html)
-                assert match, f"Missing {name}"
-                return match[1]
+            with urlopen(origin + "/") as response:
+                html = response.read().decode()
+            match = re.search(r'<meta\s+name="agboard-token"\s+content="([^"]+)"', html)
+            assert match, "Missing agboard-token"
+            board_token = match[1]
 
-            board_token = token(origin, "/", "agboard-token")
-            monitor_token = token(remote, "/monitor/", "agboard-monitor-token")
-
-            def post(path, data, monitor=False, status=200):
-                base = remote if monitor else origin
-                request = Request(base + path, data=json.dumps(data).encode(), method="POST",
+            def post(path, data, status=200):
+                request = Request(origin + path, data=json.dumps(data).encode(), method="POST",
                                   headers={"Content-Type": "application/json",
-                                           "Origin": "https://verify.invalid" if monitor else origin,
-                                           "Host": "verify.invalid" if monitor else f"127.0.0.1:{args.port}",
+                                           "Origin": origin,
+                                           "Host": f"127.0.0.1:{args.port}",
                                            "Sec-Fetch-Site": "same-origin",
-                                           "X-Agboard-Token": monitor_token if monitor else board_token})
+                                           "X-Agboard-Token": board_token})
                 try:
                     response = urlopen(request)
                 except HTTPError as error:
@@ -90,26 +83,24 @@ def main():
                 assert rejected["error"]["code"] == "invalid_value", rejected
                 assert project("show", task_id)["task"]["agentStatus"] == "idle"
 
-            for monitor in (False, True):
-                for count, answer in ((2, {"choiceId": "option-0"}),
-                                      (10, {"text": "A custom answer"}),
-                                      (2, {"choiceId": "option-1", "text": "With context"})):
-                    project("state", task_id, "pending", "--actor", "ai", "--request-json",
-                            json.dumps({"question": "Choose a plan", "choices": choices(count)}))
-                    requested = project("show", task_id)["task"]
-                    assert len(requested["pendingChoices"]) == count
-                    endpoint = "/monitor" + task_api if monitor else task_api
-                    answered = post(endpoint + "/answer", {"requestId": requested["pendingRequestId"], **answer}) if not monitor else post(endpoint + "/answer", {"requestId": requested["pendingRequestId"], **answer}, monitor=True)
-                    assert answered["task"]["agentStatus"] == "idle", answered
-                    stored = project("show", task_id)["task"]
-                    assert stored["pendingRequestId"] is None
-                    assert stored["pendingChoices"] == []
-                    note = stored["history"][-1]["reason"]
-                    assert "Choose a plan" in note
-                    if "choiceId" in answer:
-                        assert choices(count)[int(answer["choiceId"].split("-")[-1])]["label"] in note
-                    if "text" in answer:
-                        assert answer["text"] in note
+            for count, answer in ((2, {"choiceId": "option-0"}),
+                                  (10, {"text": "A custom answer"}),
+                                  (2, {"choiceId": "option-1", "text": "With context"})):
+                project("state", task_id, "pending", "--actor", "ai", "--request-json",
+                        json.dumps({"question": "Choose a plan", "choices": choices(count)}))
+                requested = project("show", task_id)["task"]
+                assert len(requested["pendingChoices"]) == count
+                answered = post(task_api + "/answer", {"requestId": requested["pendingRequestId"], **answer})
+                assert answered["task"]["agentStatus"] == "idle", answered
+                stored = project("show", task_id)["task"]
+                assert stored["pendingRequestId"] is None
+                assert stored["pendingChoices"] == []
+                note = stored["history"][-1]["reason"]
+                assert "Choose a plan" in note
+                if "choiceId" in answer:
+                    assert choices(count)[int(answer["choiceId"].split("-")[-1])]["label"] in note
+                if "text" in answer:
+                    assert answer["text"] in note
 
             folder = Path(project("workspace")["folder"])
             file = folder / "tasks" / str(task_id) / "task.json"
@@ -126,7 +117,7 @@ def main():
                 assert not any(item["id"] == task_id for item in result["tasks"]), result
                 temporary.write_text(original)
                 temporary.replace(file)
-        print("PASS: CLI/API reject 0/1/11; files reject invalid requests; board and monitor preserve all three answer modes with 2/10 choices")
+        print("PASS: CLI/API reject 0/1/11; files reject invalid requests; the board preserves all three answer modes with 2/10 choices")
 
 
 if __name__ == "__main__":

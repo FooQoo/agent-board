@@ -49,6 +49,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   bindings.json
   serve.json
   lifecycle.lock
+  .internal/monitor-connection.json
 ```
 
 - JSONはUTF-8・camelCase・2スペースのインデントで、末尾に改行を一つ付けます。未知の項目は拒否します。
@@ -102,6 +103,26 @@ history:
 ```
 
 プロジェクトは`shared/projects/<project-id>/`を複製してバックアップし、`serve`を止めてフォルダを戻して復元します。エクスポートやインポートのコマンドはありません。[データのガイド](../../guide/operations/data.md)を参照してください。
+
+## モニター接続の設定
+
+ngrokのモバイル接続は、秘密ではない設定を`<データ領域>/.internal/monitor-connection.json`に保存します。このファイルはアプリのもので、PCの設定画面と`serve`だけが書き、手で編集するものではありません。共有領域には含まれないため、プロジェクトのバックアップには入りません。所有者だけが読み書きできる権限（OSにある場合は`0600`）でatomicに置き換えます。
+
+```json
+{
+  "formatVersion": 1,
+  "revision": 3,
+  "enabled": true
+}
+```
+
+| フィールド | 規則 |
+| --- | --- |
+| `formatVersion` | 常に`1`。ほかの値、未知のフィールド、壊れたファイルは、設定を読めない（`config_unreadable`）扱いになる。PCの入口は動き続け、新しい設定を保存するとファイルが置き換わる。 |
+| `revision` | 保存のたびに増える。設定APIが、別の画面での変更を検出するために使う。 |
+| `enabled` | 次の`serve`で接続を再び始めるか。停止すると`false`で保存する。 |
+
+ファイルには、ngrokのトークン、スマホの合言葉、session、CSRFトークンを入れません。利用者が保存を選んだトークンは、代わりにこのPCの安全な保管場所（OSの資格情報ストア。service `agent-board`、account `ngrok-authtoken`）に置きます。`monitor/config.json`はありません。
 
 ## タスクのJSONとスナップショット
 

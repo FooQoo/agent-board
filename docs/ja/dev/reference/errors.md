@@ -67,6 +67,24 @@
 | `wait_timeout` | 変更待ちモード（`wait --after`）で任意の`--timeout`に達しても変更がなかった。Pendingへの回答ではない。 | 1 | なし |
 | `forbidden` | Webの書き込みが保護に失敗した（Host・Origin・`Sec-Fetch-Site`・トークン）。 | なし | 403 |
 
+## モバイル接続
+
+`/api/monitor-connections`の経路（[Web API](./web-api.md#モバイル接続)を参照）が返すコードです。秘密の値は含みません。
+
+| コード | 発生する場面 | 終了コード | HTTP |
+| --- | --- | --- | --- |
+| `revision_conflict` | ページが読んだあとに設定が変わった。 | なし | 409 |
+| `save_failed` | 設定を保存できなかった。何も変わらず、何も開始していない。 | なし | 500 |
+| `token_required` | 開始したが、要求・環境変数・安全な保管場所のいずれにもトークンがなかった。 | なし | 422 |
+| `keychain_unavailable` | トークンの保存か削除を求められたが、このPCの安全な保管場所では行えない。何も保存・変更していない。 | なし | 409 |
+| `settings_unreadable` | 保存した設定ファイルを読めないまま開始した。先に設定を保存し直す。 | なし | 409 |
+| `start_failed` | 内部の理由で接続を開始できなかった。 | なし | 500 |
+| `invalid_value` | トークン・本文が規則に反する（例: トークンなしの`save`、未知のフィールド）。 | なし | 422 |
+
+コマンドラインでは、`serve --monitor ngrok`のオプションが足りない、または不正な場合は`invalid_argument`で終了コード2、接続を開始できない場合は終了コード1です。状態の`failure`のコードは[Web API](./web-api.md#モバイル接続)に一覧があります。
+
+モニターの入口では、Hostの確認に失敗した要求は理由`not available`の403 `forbidden`、sessionがない・期限切れなら401 `session_required`、公開Origin・同一オリジンのメタデータ・CSRFトークンのない書き込みは403 `forbidden`です。`POST /monitor/api/unlock`は、間違った合言葉に403 `unlock_failed`を返し、連続5回間違えたあとはすべての試行に429 `unlock_locked`を返します。どちらも残りの回数は示しません。
+
 ## 終了コード
 
 | 終了コード | 意味 |

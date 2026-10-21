@@ -101,6 +101,26 @@
           ]
         }
       ]
+    },
+    {
+      "file": "app/BoardSettings.tsx",
+      "exports": [
+        {
+          "name": "BoardSettings",
+          "stories": [
+            {
+              "id": "app-board-settings-slot--with-connection-entry",
+              "states": [
+                "connection entry below language and theme",
+                "settings dialog closes before the connection dialog opens",
+                "escape closes the connection dialog",
+                "focus returns to the settings button"
+              ],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }

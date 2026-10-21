@@ -11,7 +11,7 @@ use axum::routing::get;
 
 use crate::server::AppState;
 use crate::server::answer::{AnswerInput, answer_project_task};
-use crate::server::guard::{self, RemoteGuard};
+use crate::server::guard::{self, BoardWriteGuard};
 use crate::server::monitor::assets;
 use crate::server::request::ApiJson;
 use crate::server::response::{forbidden, page_out_of_date};
@@ -19,10 +19,10 @@ use crate::server::response::{forbidden, page_out_of_date};
 #[derive(Clone)]
 struct WriteState {
     app: Arc<AppState>,
-    guard: RemoteGuard,
+    guard: BoardWriteGuard,
 }
 
-pub(crate) fn router(app: Arc<AppState>, guard: RemoteGuard) -> Router {
+pub(crate) fn router(app: Arc<AppState>, guard: BoardWriteGuard) -> Router {
     let state = Arc::new(WriteState { app, guard });
     Router::new()
         .route("/monitor", get(redirect_monitor).head(redirect_monitor))
@@ -98,7 +98,7 @@ async fn write_guard(
     }
     if answer_path
         && matches!(*request.method(), Method::POST)
-        && guard::remote_write_allowed(request.headers(), &state.guard)
+        && guard::board_write_allowed(request.headers(), &state.guard)
     {
         return next.run(request).await;
     }
@@ -112,7 +112,7 @@ async fn write_guard(
     }
 }
 
-fn monitor_request_except_token_is_allowed(headers: &HeaderMap, guard: &RemoteGuard) -> bool {
+fn monitor_request_except_token_is_allowed(headers: &HeaderMap, guard: &BoardWriteGuard) -> bool {
     if [
         "forwarded",
         "x-forwarded-host",
@@ -165,4 +165,145 @@ async fn security_headers(request: Request, next: Next) -> Response {
         );
     }
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+    use std::sync::RwLock;
+
+    use tokio::sync::broadcast;
+
+    use super::*;
+    use crate::file_store::index::ProjectIndex;
+    use crate::file_store::watch::Watch;
+    use crate::server::MonitorOptions;
+    use crate::server::monitor_connection::config::ConfigStore;
+    use crate::server::monitor_connection::lifecycle::{MonitorConnections, MonitorEnv};
+
+    const ORIGIN: &str = "https://m.ngrok.app";
+    const HOST: &str = "m.ngrok.app";
+    const TOKEN: &str = "0123456789abcdef";
+    const PATH: &str = "/monitor/api/projects/p/tasks/1/answer";
+
+    /// The write router on a loopback port, behind a guard with a known token.
+    async fn serve() -> (String, tempfile::TempDir, Watch) {
+        let home = tempfile::tempdir().unwrap();
+        let shared = home.path().join("shared");
+        let index = Arc::new(RwLock::new(ProjectIndex::default()));
+        let (changed, _) = broadcast::channel(4);
+        let (watch, reloader) = Watch::start(&shared, index.clone(), changed.clone()).unwrap();
+        let options = MonitorOptions::without_keychain(MonitorEnv::default(), false);
+        let app = Arc::new(AppState {
+            port: 0,
+            token: "page".into(),
+            shared,
+            index,
+            reloader,
+            changed,
+            monitor: MonitorConnections::new(
+                ConfigStore::new(home.path()),
+                options.connector,
+                options.vault,
+                options.env,
+            ),
+        });
+        let guard = BoardWriteGuard {
+            origins: Arc::new(HashSet::from([ORIGIN.to_string()])),
+            authorities: Arc::new(HashSet::from([HOST.to_string()])),
+            token: TOKEN.into(),
+        };
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move { axum::serve(listener, router(app, guard)).await });
+        (format!("http://{addr}"), home, watch)
+    }
+
+    async fn post(base: &str, headers: &[(&str, &str)]) -> (u16, String) {
+        let mut request = reqwest::Client::new()
+            .post(format!("{base}{PATH}"))
+            .header("Content-Type", "application/json")
+            .body(r#"{"requestId":"stale","text":"answer"}"#);
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+        let response = request.send().await.unwrap();
+        (response.status().as_u16(), response.text().await.unwrap())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn an_answer_needs_the_host_origin_fetch_site_and_the_guards_token() {
+        let (base, _home, _watch) = serve().await;
+        let good = [
+            ("Host", HOST),
+            ("Origin", ORIGIN),
+            ("Sec-Fetch-Site", "same-origin"),
+        ];
+        let with = |extra: &[(&'static str, &'static str)]| {
+            let mut all = good.to_vec();
+            all.extend_from_slice(extra);
+            all
+        };
+
+        // Everything but the token is right: the page is out of date.
+        for token in [None, Some("wrong"), Some("old-monitor-token")] {
+            let headers = match token {
+                Some(token) => with(&[("X-Agboard-Token", token)]),
+                None => with(&[]),
+            };
+            let (status, body) = post(&base, &headers).await;
+            assert_eq!(status, 403, "{token:?}: {body}");
+            assert!(body.contains("page_out_of_date"), "{token:?}: {body}");
+        }
+
+        // Any other condition missing is a plain refusal, even with the token.
+        for headers in [
+            vec![
+                ("Host", HOST),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Token", TOKEN),
+            ],
+            vec![
+                ("Host", HOST),
+                ("Origin", "https://evil.example"),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Token", TOKEN),
+            ],
+            vec![
+                ("Host", "other.example"),
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Token", TOKEN),
+            ],
+            vec![
+                ("Host", HOST),
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-site"),
+                ("X-Agboard-Token", TOKEN),
+            ],
+            with(&[
+                ("X-Agboard-Token", TOKEN),
+                ("X-HTTP-Method-Override", "DELETE"),
+            ]),
+        ] {
+            let (status, body) = post(&base, &headers).await;
+            assert_eq!(status, 403, "{headers:?}: {body}");
+            assert!(!body.contains("page_out_of_date"), "{headers:?}: {body}");
+        }
+
+        // With every condition met the guard lets the request through.
+        let (status, body) = post(&base, &with(&[("X-Agboard-Token", TOKEN)])).await;
+        assert_ne!(status, 403, "{body}");
+
+        // Only POST reaches the answer route.
+        let response = reqwest::Client::new()
+            .get(format!("{base}{PATH}"))
+            .header("Host", HOST)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 405);
+    }
 }

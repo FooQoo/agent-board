@@ -31,15 +31,15 @@ flowchart LR
     Serve --> Browser["Browser re-fetches data"]
 ```
 
-### Remote access
+### Mobile monitor
 
-Desktop and phone browsers connect through an HTTPS proxy (Caddy or Tailscale Serve) to a dedicated remote listener. The proxy forwards to a dedicated loopback port. That listener uses the same FileStore, file watcher, and notifications as local access.
+A phone browser reaches the read-mostly monitor through an ngrok tunnel that runs inside `serve`. You start it from **Settings** or with `agboard serve --monitor ngrok`; the exact public Host and a 4-digit passcode made for each start guard it. The tunnel forwards to a dedicated loopback entry. That entry uses the same FileStore, file watcher, and notifications as local access. See [The mobile monitor](./remote-access.md).
 
 ```mermaid
 flowchart LR
-    Browser["Browser"] --> Proxy["Proxy"]
-    Proxy --> Remote["Remote<br/>listener"]
-    Remote --> Shared["FileStore"]
+    Browser["Phone browser"] --> Tunnel["ngrok<br/>tunnel"]
+    Tunnel --> Entry["Monitor<br/>entry"]
+    Entry --> Shared["FileStore"]
 ```
 
 ### Design principles
@@ -83,5 +83,5 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 - [History and decisions](./history-and-decisions.md): history, Pending, and automatic Done.
 - [Saving and recovery](./saving-and-recovery.md): locks, atomic saves, and failures.
 - [Change notifications](./notifications.md): how a change reaches browsers and waiting agents.
-- [Server and web UI](./server-and-ui.md), [Agent integration](./agents.md), [Remote access](./remote-access.md), and [Security model](./security.md).
+- [Server and web UI](./server-and-ui.md), [Agent integration](./agents.md), [The mobile monitor](./remote-access.md), and [Security model](./security.md).
 - [Code map](../reference/code-map.md) when you need to find a file.
