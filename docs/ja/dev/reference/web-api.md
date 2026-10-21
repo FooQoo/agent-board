@@ -28,7 +28,9 @@
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
 | `GET /api/projects/{projectId}/archive` | 本文・全履歴・添付のメタデータを持つアーカイブ済みのタスクと、同じスナップショットの`epics`。各タスクの`epicId`は同じ応答の`epics`で解決する。エピックがないタスク、または存在しないエピックのタスクにはラベルを付けない。 |
 | `GET /assets/{name}` | `build.rs`が生成した表にある、内容から名前を付けたスクリプトとスタイルシートだけ。ほかは404。immutableでキャッシュする。`Accept-Encoding`が許せばgzipで送り、`Vary: Accept-Encoding`を付ける。 |
-| `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、versionの変化で`changed`、15秒ごとに接続維持のコメント。 |
+| `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、versionの変化で`changed`、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
+| `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
+| `PUT /api/preferences` | JSONの本文で`locale`・`theme`・両方のいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。未知の項目と不正な値は422 `invalid_preferences`、書き込みの失敗は500 `preferences_unavailable`。拒否・失敗のときは保存済みの値を変えない。 |
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
 | `GET /api/monitor-connections`とその配下の経路 | ngrokのモバイル接続。[モバイル接続](#モバイル接続)を参照。 |
@@ -61,6 +63,20 @@
 | `passcode` | 動いている接続の4桁の合言葉。PCが表示するために返す。`status`が`ready`の間だけ含まれ、開始中・停止中・失敗のときは含まれない。このAPIが返す唯一の秘密。 |
 
 開始の進み具合はこの状態で報告されます。`status`が`starting`でなくなるまで`GET`で確認してください。トークン、間違いの回数、sessionが、応答や設定ファイルに現れることはなく、合言葉が現れるのはここと`serve`の起動行だけです。設定の保存先は[共有ファイル](./files.md#モニター接続の設定)、エラーのコードは[エラーコード](./errors.md#モバイル接続)にあります。
+
+### 表示設定
+
+`GET`と`PUT /api/preferences`はローカルのリスナーにあります。ngrokのモニターには、同じ組が`/monitor/api/preferences`にあります（[モニターのルート](./remote-routes.md)を参照）。保存先のファイルは[共有ファイル](./files.md#表示設定)で説明しています。
+
+`PUT`は、`locale`（`en`か`ja`）・`theme`（`{"mode": "light" | "dark", "accent": <12色のいずれか>}`）・両方のいずれかをJSONで受け取ります。送らなかった項目は、保存済みの値を保ちます。
+
+```json
+{"locale": "ja", "theme": {"mode": "dark", "accent": "teal"}}
+```
+
+保存に成功すると保存した内容を返し、開いているイベントストリームすべてに`preferences`イベントを送ります。対象は、ボードの`/api/events`と、モニターの`/monitor/api/events`です。イベントのデータは`GET`と同じJSONです。PCの`PUT`は、ほかのPCの書き込みと同じ書き込みの保護（Host・Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Token`）を通ります。モニターの`PUT`は、回答と同じくモニターのsessionとCSRFトークンが必要です。
+
+JSONとして読めない本文は、ほかの書き込みと同じく400です。`locale`と`theme`のどちらもない本文、それ以外の項目を含む本文、許可されない値は422 `invalid_preferences`です。revisionの確認はなく、後から保存した内容が優先されます。
 
 ### multipartでタスクを作成する
 

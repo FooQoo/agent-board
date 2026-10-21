@@ -85,6 +85,15 @@ On the command line, `serve --monitor ngrok` with a missing or invalid option ex
 
 On the monitor entry, a request that fails the Host check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`. `POST /monitor/api/unlock` answers a wrong passcode with 403 `unlock_failed` and, after five wrong ones in a row, every attempt with 429 `unlock_locked`; neither says how many tries are left.
 
+## Display preferences
+
+These are returned by the `/api/preferences` and `/monitor/api/preferences` routes (see [Web API](./web-api.md#display-preferences)). They are not CLI errors, so they have no exit code. A preferences file that cannot be read is not an error: the defaults are used.
+
+| Code | When | Exit | HTTP |
+| --- | --- | --- | --- |
+| `invalid_preferences` | The body has an unknown field, a value that is not allowed, or neither `locale` nor `theme`. Nothing is saved. | n/a | 422 |
+| `preferences_unavailable` | The preferences file could not be written. The saved value is unchanged. | n/a | 500 |
+
 ## Exit codes
 
 | Exit | Meaning |

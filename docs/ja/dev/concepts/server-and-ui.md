@@ -39,7 +39,7 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 
 **エディター。** `RichMarkdownEditor`（Milkdown Crepe）は`MarkdownEditor`と同じ契約を保ちます。`value`・`onChange`・`onCursorChange`・`disabled`と、`goTo`・`focus`・`insert`を持つrefです。遅延読み込みで、その間は`MarkdownView`を表示します。有効にするのはCodeMirror・ListItem・ImageBlock・Cursor・Placeholder・LinkTooltip・Toolbar・Tableだけで、Crepeのテーマは使いません。初期値はマウント時に一度だけ渡し、`onChange`は利用者の編集でだけ呼びます。編集していない文書は元の文字列のまま保存するので、変えていないMarkdownの書式は崩れません。アップロードは保留中の添付になり、`assets/<id>.<ext>`で参照します。Mermaidのプレビューと閲覧は`renderMermaid`を共有します。`web/src/shared/rich-editor/`の中では、`RichMarkdownEditor.impl.tsx`は外部の値でセッションを作り直す境界だけを持ち、`useRichEditorSession.ts`がセッション（元の文章・編集済みかどうか・初期化前のコマンド・見出し位置・後始末）、`createEditor.ts`が機能の組み合わせ、`editorCommands.ts`が`goTo`・`focus`・`insert`・`markdown`のハンドル、`MermaidPreviews.ts`が図のプレビューを受け持ちます。図のエラー文は画面の翻訳を受け取って作ります。
 
-**テーマ。** `web/src/shared/theme/index.ts`が、テーマの型・一覧・検証・DOMの属性・保存を受け持ちます。テーマはモード（lightかdark）と12色のアクセントの一つです。Reactの描画前に`data-mode`・`data-accent`・`dark`クラス・`color-scheme`を同期して適用し、`localStorage`の`agboard.theme`に保存します。テーマの変更はAPIにもタスクの履歴にも届きません。
+**テーマ。** `web/src/shared/theme/index.ts`が、テーマの型・一覧・検証・DOMの属性を受け持ちます。テーマはモード（lightかdark）と12色のアクセントの一つです。Reactの描画前に`data-mode`・`data-accent`・`dark`クラス・`color-scheme`を同期して適用します。保存した値はPCの`preferences.json`にあり、`web/src/shared/preferences/index.ts`が`GET`・`PUT /api/preferences`で読み書きします（[共有ファイル](../reference/files.md#表示設定)を参照）。ブラウザは最初の描画のためだけに、`localStorage`の`agboard.theme`と`agboard.locale`に控えを持ちます。テーマの変更がタスクの履歴に届くことはありません。
 
 エピック一覧は、ボードの応答の`epics`と`epicTaskCounts`を読みます。件数はサーバーが`epics`と同じスナップショットから集計するので、一覧が二つの読み込みを混ぜることはありません。モバイルモニターも同じ件数を応答に含みますが、エピック一覧の画面はありません。一覧はアーカイブと`ListPane`で外枠を共有し、読み込み中・読み込み失敗・再取得失敗・空の各状態はプロジェクトのresourceから決まります。再取得に失敗しても直前に読めた行を残します。
 
@@ -90,10 +90,13 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 - ブラウザは成功まで確認を開いたままにし、ネットワークの失敗の後は再試行できるようにします。保存中は二重送信・閉じる・切り替えを止め、開始時のIDや要求番号が違う遅れた応答を捨てます。
 - 削除での404は再取得して、タスクがすでにないことを示します。ネットワークの失敗を削除の成功として扱うことはありません。空・読み込み中・一覧の失敗と再試行・切断の状態は、アーカイブの画面にも適用します。
 
-**ブラウザの設定**
+**設定**
 
-- 言語・テーマ・詳細欄の幅は、ブラウザごとに別のキーで保存します。値がない・不正・読めないときは既定（英語、既定のテーマと幅）に戻し、ブラウザやOSの言語や配色は使いません。
-- 保存に失敗しても、選んだ設定は今のページに反映します。日本語の翻訳キーがなければ英語の文言を表示します。設定の失敗でボードのデータが変わることはなく、一つのキーが不正でもほかのキーは戻りません。
+- 言語とカラーテーマは、ブラウザではなくPCの一つのファイルに保存し、このPCのすべてのブラウザとモバイルモニターがその値を使います。ファイルがない・不正・読めない場合は既定（英語とライトブルー）に戻し、ブラウザやOSの言語や配色は使いません。
+- 起動時、ページはブラウザの控えで描画してから、`GET /api/preferences`を読みます。PCの値と違えば、ページはPCの値に切り替えます。正しいのはPCの値で、ブラウザの控えは表示が一瞬ずれるのを防ぐためだけに使います。
+- `preferences`イベントは、開いているすべてのページに変更をすぐに反映します。再読み込みは要りません。ページは、すでに新しい版を表示していれば、遅れて届いた古い応答やイベントを無視します。
+- 保存に失敗した場合（`invalid_preferences`・`preferences_unavailable`、または接続できない場合）も、選んだ設定は今のページに反映します。設定のダイアログには保存の失敗を表示し、PCの値は変えません。日本語の翻訳キーがなければ英語の文言を表示します。設定の失敗でボードのデータが変わることはありません。
+- 詳細欄の幅は、保存する設定には含みません。`agboard.detailWidth`の別のキーでブラウザごとに保存し、値がない・不正なときは既定の幅に戻します。
 
 ## プロジェクトをまたぐ読み込み
 

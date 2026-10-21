@@ -39,7 +39,7 @@ JSON and HTML responses are `no-store`. Scripts and stylesheets are named by the
 
 **The editor.** `RichMarkdownEditor` (Milkdown Crepe) keeps the `MarkdownEditor` contract: `value`, `onChange`, `onCursorChange`, `disabled`, and a ref with `goTo`, `focus`, and `insert`. It loads lazily and shows `MarkdownView` meanwhile. Only CodeMirror, ListItem, ImageBlock, Cursor, Placeholder, LinkTooltip, Toolbar, and Table are enabled, without Crepe's theme. The initial value is passed once on mount; `onChange` fires only for user edits, and an untouched document is saved as the original string so unchanged Markdown is not reformatted. Uploads become pending attachments referenced as `assets/<id>.<ext>`. Mermaid previews and the viewer share `renderMermaid`. Inside `web/src/shared/rich-editor/`, `RichMarkdownEditor.impl.tsx` only keys a session by the external value; `useRichEditorSession.ts` owns the session (original, edited, pending commands, heading offsets, cleanup), `createEditor.ts` the feature set, `editorCommands.ts` the `goTo`, `focus`, `insert`, and `markdown` handle, and `MermaidPreviews.ts` the diagram previews, which take the page's translation for the error line.
 
-**Themes.** `web/src/shared/theme/index.ts` owns theme types, the list, validation, DOM attributes, and storage. A theme is a mode (light or dark) and one of 12 accents. It is applied before React renders by syncing `data-mode`, `data-accent`, the `dark` class, and `color-scheme`, and saved as `agboard.theme` in `localStorage`. Theme changes never reach the API or task history.
+**Themes.** `web/src/shared/theme/index.ts` owns theme types, the list, validation, and DOM attributes. A theme is a mode (light or dark) and one of 12 accents. It is applied before React renders by syncing `data-mode`, `data-accent`, the `dark` class, and `color-scheme`. The saved value is the PC's `preferences.json`, read and written by `web/src/shared/preferences/index.ts` through `GET` and `PUT /api/preferences` (see [Shared files](../reference/files.md#display-preferences)). The browser keeps a copy in `localStorage` (`agboard.theme` and `agboard.locale`) only for the first paint. Theme changes never reach the task history.
 
 The epic list reads `epics` and `epicTaskCounts` from the board response. The server computes the counts from the same snapshot as the epics, so the list never mixes two reads. The mobile monitor carries the same counts in its board response, but it has no epic list screen. The list shares its frame with the archive through `ListPane`, and each state (loading, load failure, refresh failure, empty) comes from the project resource, so a failed refresh keeps the last good rows.
 
@@ -90,10 +90,13 @@ Keep a UI part's Stories, focused tests, dedicated CSS, and coverage ledger besi
 - The browser keeps the confirmation open until success and allows a retry after a network failure. While saving, it blocks double submission, closing, and switching, and drops late responses whose start ID or request number differ.
 - A 404 on delete re-fetches and shows that the task is already gone; a network failure is never treated as a successful delete. Empty, loading, list-failure-with-retry, and disconnected states apply to the archive view too.
 
-**Browser preferences**
+**Preferences**
 
-- Language, theme, and detail panel width are stored per browser under separate keys. Missing, invalid, or unreadable values fall back to the defaults (English and the default theme and width); the browser or OS language and color scheme are never used.
-- If saving fails, the choice still applies to the current page. A missing Japanese translation key shows the English string. Preference failures never change board data, and one invalid key never resets another.
+- The language and color theme are saved on the PC, in one file, and every browser on the PC and the mobile monitor use that value. A missing, invalid, or unreadable file falls back to the defaults (English and light blue); the browser or OS language and color scheme are never used.
+- On startup the page paints from its browser copy, then loads `GET /api/preferences`. If the PC value differs, the page changes to it. The PC value is the one that counts; the browser copy only avoids a flash of the wrong theme.
+- A `preferences` event applies a change to every open page at once, without a reload. A page ignores an older response or event when it already shows a newer revision.
+- A failed save (`invalid_preferences`, `preferences_unavailable`, or no connection) still applies the choice to the current page, shows a save error in the settings dialog, and leaves the PC value unchanged. A missing Japanese translation key shows the English string. Preference failures never change board data.
+- The detail panel width is not a saved preference. It stays per browser under its own key (`agboard.detailWidth`), and a missing or invalid width falls back to the default.
 
 ## Reading across projects
 

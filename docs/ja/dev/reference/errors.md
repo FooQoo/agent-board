@@ -85,6 +85,15 @@
 
 モニターの入口では、Hostの確認に失敗した要求は理由`not available`の403 `forbidden`、sessionがない・期限切れなら401 `session_required`、公開Origin・同一オリジンのメタデータ・CSRFトークンのない書き込みは403 `forbidden`です。`POST /monitor/api/unlock`は、間違った合言葉に403 `unlock_failed`を返し、連続5回間違えたあとはすべての試行に429 `unlock_locked`を返します。どちらも残りの回数は示しません。
 
+## 表示設定
+
+`/api/preferences`と`/monitor/api/preferences`の経路が返します（[Web API](./web-api.md#表示設定)を参照）。CLIのエラーではないため、終了コードはありません。読めないファイルはエラーにならず、既定値を使います。
+
+| コード | 発生条件 | 終了コード | HTTP |
+| --- | --- | --- | --- |
+| `invalid_preferences` | 本文に未知の項目、許可されない値、`locale`も`theme`もないものがある。何も保存しない。 | なし | 422 |
+| `preferences_unavailable` | 表示設定のファイルに書けなかった。保存済みの値は変わらない。 | なし | 500 |
+
 ## 終了コード
 
 | 終了コード | 意味 |

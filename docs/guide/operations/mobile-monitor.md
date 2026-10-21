@@ -8,7 +8,7 @@ The mobile monitor is a phone-sized view of the board. Use it to check progress 
 
 ## What the monitor shows
 
-The monitor groups tasks into Todo, Doing, and Done. AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an answer form on the task. Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top handle, and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, but its only write operation is that answer.
+The monitor groups tasks into Todo, Doing, and Done. AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an answer form on the task. Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top handle, and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question and change the language and color theme. It cannot change tasks, projects, or connection settings.
 
 ![Mobile monitor with a task drawer open on the Body tab, showing the four tabs](../../images/mobile.png){.screenshot--narrow}
 
@@ -72,6 +72,8 @@ Whether the connection stays on is stored in Agent Board's internal area. You do
 1. On the phone, open the URL or scan the QR code.
 2. The page shows **Enter the passcode**. Type the 4-digit passcode shown on the PC and choose **Connect**.
 3. The monitor opens. The connection lasts up to 12 hours; after that, or when the connection was stopped and started again on the PC, the page asks for the passcode again.
+
+The monitor opens in the language and color theme saved on the PC. If you change them on the phone, from the settings in the monitor header, the new choice is saved on the PC too, so the board and every other browser or phone show it. A change made on the PC appears on an open monitor at once.
 
 On ngrok's free plan, the first visit from a phone shows ngrok's warning page. Choose **Visit Site**, and the monitor opens. ngrok shows the warning to each visitor only once.
 

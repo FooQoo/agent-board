@@ -50,6 +50,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   serve.json
   lifecycle.lock
   .internal/monitor-connection.json
+  .internal/preferences.json
 ```
 
 - JSON is UTF-8, camelCase, two-space indented, with one trailing newline. Unknown fields are rejected.
@@ -123,6 +124,32 @@ The ngrok mobile connection keeps its non-secret settings in `<data-root>/.inter
 | `enabled` | Whether the connection starts again with the next `serve`. A stop saves `false`. |
 
 The file never holds the ngrok token, the phone passcode, a session, or a CSRF token. A token the user chooses to save lives in the PC's secure storage (the OS credential store) instead (service `agent-board`, account `ngrok-authtoken`). There is no `monitor/config.json`.
+
+## Display preferences
+
+The saved language and color theme live in `<data-root>/.internal/preferences.json`. The file belongs to the application: it is written only by `PUT /api/preferences` on the PC and by the monitor's save route, never by hand. It is not in `shared/`, so a project backup does not include it. It is replaced atomically with owner-only permissions (`0600` where the OS has them), and a failed write leaves the old file as it was.
+
+```json
+{
+  "formatVersion": 1,
+  "revision": 4,
+  "locale": "ja",
+  "theme": {
+    "mode": "dark",
+    "accent": "teal"
+  }
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `formatVersion` | Always `1`. Any other value, an unknown field, or a malformed file is read as the defaults, and the next save replaces the file. |
+| `revision` | `0` when nothing is saved, and goes up by one with each save. |
+| `locale` | `en` or `ja`. The default is `en`. |
+| `theme.mode` | `light` or `dark`. The default is `light`. |
+| `theme.accent` | One of the 12 accents: `blue`, `sky`, `cyan`, `teal`, `green`, `lime`, `yellow`, `orange`, `red`, `pink`, `purple`, `gray`. The default is `blue`. |
+
+A save changes only the fields it sends; the others keep their saved values. The last save wins, and there is no conflict check. The preferences hold no secret, and the file never holds a token, a passcode, or a session.
 
 ## Task JSON and snapshots
 

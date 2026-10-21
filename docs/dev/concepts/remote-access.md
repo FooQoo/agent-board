@@ -21,8 +21,8 @@ Two kinds of state keep the surfaces apart:
 
 | State | Holds | Never holds |
 | --- | --- | --- |
-| `MonitorState` | A read-only reader, a `changed` subscription, allowed hosts, and its own assets. | Any board token or write service. |
-| Monitor answer router | The single answer endpoint and its write guard. | The desktop board token. |
+| `MonitorState` | A reader, the `changed` and `preferences` subscriptions, allowed hosts, and its own assets. | Any board token. |
+| Monitor write router | The answer endpoint, the preferences save, and their write guard. | The desktop board token. |
 
 ## The connection
 
@@ -50,6 +50,7 @@ The connection is one supervisor, `MonitorConnections`, owned by the server stat
 | `enabled`, `revision` | `<data root>/.internal/monitor-connection.json`, an app-internal file with owner-only permissions. See [Shared files](../reference/files.md#monitor-connection-settings). |
 | ngrok token | Only in memory, unless the user saves it. A saved token lives in the PC's secure storage, the OS credential store (service `agent-board`, account `ngrok-authtoken`). |
 | Phone passcode and its count of wrong guesses, application sessions, CSRF tokens | Only in memory, for one start. |
+| Language and color theme | `<data root>/.internal/preferences.json`, written by the PC or a monitor save. See [Shared files](../reference/files.md#display-preferences). |
 
 `NGROK_AUTHTOKEN` and the secure storage are read lazily, so a run that never needs a token never touches the secure storage. When the secure storage is missing or refuses, `keychainAvailable` is false, saving is refused with `keychain_unavailable`, and the user enters the token each time.
 
@@ -63,11 +64,13 @@ The Edge does nothing for the app to rely on: the endpoint is opened without a T
    - *Unlock.* The body is `{"code":"1234"}` as JSON, with the exact public Origin and `Sec-Fetch-Site: same-origin`; no CSRF token is needed because there is no session yet. The code is compared in constant time. A right code issues the cookie `agboard_ngrok_session` (`Secure; HttpOnly; SameSite=Lax; Path=/monitor/`, up to 12 hours) bound to this start and public address, resets the count, and returns a CSRF token. A wrong code is a 403 `unlock_failed` that does not say how close it was or how many tries are left.
    - *The limit.* The fifth wrong code in a row is still a 403. From then on every attempt, the right passcode included, is a 429 `unlock_locked` and issues nothing. Only a new start makes a new passcode and a clean count. Requests refused for their headers or body (a missing Origin, a body that is not JSON) are not guesses and are not counted.
    - *Session.* `GET /monitor/api/session` only reports a live session and its CSRF token, or answers 401 `session_required`; it starts nothing. Every other `/monitor/api/` route needs a live session, or answers 401 `session_required`. Event streams end with the session, when the run closes, and after five minutes (the page reconnects).
-3. **Write guard.** An answer or `POST /monitor/api/disconnect` also needs the exact public Origin, `Sec-Fetch-Site: same-origin`, and the CSRF token in `X-Agboard-Csrf`.
+3. **Write guard.** An answer, a preferences save (`PUT /monitor/api/preferences`), or `POST /monitor/api/disconnect` also needs the exact public Origin, `Sec-Fetch-Site: same-origin`, and the CSRF token in `X-Agboard-Csrf`.
 
 A 4-digit passcode is a deliberately small secret: it has 10,000 possibilities and is guarded by the five-guess limit and by a new passcode at every start. It is weaker than an account sign-in. The [Security model](./security.md#what-is-not-prevented) lists what it does not stop.
 
-**Monitor answers** then pass the write guard of the answer router. The entry adds the guard's internal token only after its own checks succeed, so the page never holds it. FileStore re-checks Pending, the request ID, and the choice under its lock. Only the current request of a Todo or Doing task is accepted; Done, answered, archived, and other requests are refused.
+**Monitor answers** then pass the write guard of the monitor's write router. The entry adds the guard's internal token only after its own checks succeed, so the page never holds it. FileStore re-checks Pending, the request ID, and the choice under its lock. Only the current request of a Todo or Doing task is accepted; Done, answered, archived, and other requests are refused.
+
+**Preference saves** pass the same entry checks and the same write guard, then reach the shared preferences handler. The handler accepts only `locale` and `theme`, writes `preferences.json` on the PC, and sends a `preferences` event to every open board and monitor stream. No other monitor route changes the data or the settings.
 
 No token, passcode, or session secret appears in static JS or CSS, manifests, API responses, `serve.json`, or logs. All HTML and sensitive APIs send `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, and a CSP limiting scripts and connections to self with `frame-ancestors 'none'`. Scripts and stylesheets, which are named by their content and hold no token, are cached as immutable instead.
 
@@ -75,7 +78,7 @@ No token, passcode, or session secret appears in static JS or CSS, manifests, AP
 
 - The monitor (`web/monitor.html`, `web/src/app/entry/monitor.tsx`, `web/vite.monitor.config.ts`) starts from `web/src/pages/monitor/App.tsx` only. It never imports the desktop `App.tsx`, `DetailPanel`, the editor, or the general write client. It builds into `web/dist/monitor/` with its own manifest, which `src/server/monitor/assets.rs` serves exclusively. For Mermaid it reuses the board build's `chunk-mermaid.core` chunk and every chunk it imports: they are copied into `web/dist/monitor/` unchanged, the build fails if any of them holds a module from `web/src/`, and the executable embeds the identical bytes once.
 - Shared presentation components (header, task content, status labels, project switcher, theme, i18n, read-only Markdown, conditions, and history) are reused. A task heading opens a read-only drawer with Body, Conditions, History, and Epic tabs; the answer form lives on the task. The drawer and its Markdown view are a separate chunk fetched right after the list is shown, so the first load holds only the list and the answer form.
-- The monitor client has catalog, board, events, owned image, and epic readers, one answer POST, and the session calls. The page holds no token: on load it asks `GET /monitor/api/session` whether it has a session. Without one the page shows **Enter the passcode** and reads nothing; it sends the passcode only when a person submits it, to `POST /monitor/api/unlock`, and keeps the returned CSRF token in memory to send in `X-Agboard-Csrf` with its one answer POST. If the session later ends (expired, or the connection started again), the passcode screen comes back. A wrong passcode keeps the digits typed and shows no count; after the fifth, the form closes. If the answer is not the monitor's JSON, the page treats the connection as unreachable and retries instead of asking for a passcode. There are no PATCH, PUT, or DELETE functions.
+- The monitor client has catalog, board, events, owned image, and epic readers, one answer POST, one preferences read and save, and the session calls. The page holds no token: on load it asks `GET /monitor/api/session` whether it has a session. Without one the page shows **Enter the passcode** and reads nothing; it sends the passcode only when a person submits it, to `POST /monitor/api/unlock`, and keeps the returned CSRF token in memory to send in `X-Agboard-Csrf` with its one answer POST. If the session later ends (expired, or the connection started again), the passcode screen comes back. A wrong passcode keeps the digits typed and shows no count; after the fifth, the form closes. If the answer is not the monitor's JSON, the page treats the connection as unreachable and retries instead of asking for a passcode. The preferences save sends the CSRF token the same way as an answer. Apart from that save and the answer, there are no PATCH, PUT, or DELETE functions.
 - Desktop and monitor answers share one FileStore save path: request matching under the lock, `requestAnswers` plus a history entry, index update, and notification. A successful answer leaves the task Idle in its lane.
 - The drawer fixes its target by projectId, taskId, epicId, and a generation number. It reads task body and history from the snapshot and the epic body from `getEpic`, keeps each tab's scroll position, and ignores late or out-of-scope responses. A failed epic read can be retried without blocking the list or answers.
 

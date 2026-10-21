@@ -27,8 +27,8 @@ Everything below serves one of these two goals. When a protection only restrains
 ## Exposure
 
 - By default `agboard serve` listens only on `127.0.0.1`, and every request must carry `Host: 127.0.0.1:<port>` or `localhost:<port>`. Users on the same machine are not authenticated.
-- Only when the ngrok monitor connection is started does the server add a separate loopback entry for the monitor, which ngrok forwards to. The local port is never forwarded. The entry serves only the monitor, its assets, and its read and answer routes; it never serves the desktop board.
-- The monitor is limited to reading and answering. The checks in front of it are described in [The ngrok entrance](#the-ngrok-entrance).
+- Only when the ngrok monitor connection is started does the server add a separate loopback entry for the monitor, which ngrok forwards to. The local port is never forwarded. The entry serves only the monitor, its assets, and its read, answer, and preferences routes; it never serves the desktop board.
+- The monitor is limited to reading, answering, and saving the language and color theme. It cannot change tasks, projects, or connection settings. The checks in front of it are described in [The ngrok entrance](#the-ngrok-entrance).
 - The connection settings API (`/api/monitor-connections`) is on the local listener only. A phone can never start, stop, or reconfigure the connection.
 
 ## The ngrok entrance
@@ -39,7 +39,7 @@ Anyone who can open the ngrok address reaches ngrok's Edge first, not the board.
 | --- | --- | --- |
 | Host | The endpoint is opened without a Traffic Policy, so the Edge adds nothing. The `Host` header must be exactly the public HTTPS address; anything else gets the same 403. | A browser or a website that reaches the loopback port (its `Host` is the loopback address or another name), a request for another Host, and a forged `ngrok-auth-user-*` or `X-Forwarded-*` header. |
 | Passcode and session | A 4-digit passcode made for each start opens an in-memory application session (`agboard_ngrok_session`, `Secure; HttpOnly; SameSite=Lax; Path=/monitor/`, at most 12 hours) bound to this start and address. The passcode is compared in constant time; five wrong ones in a row end all attempts until the next start. | Reading the monitor API without having been given the passcode; guessing more than five times per start; reusing a session after a stop or a restart. |
-| CSRF and Origin | For an answer or disconnect: the exact public Origin, `Sec-Fetch-Site: same-origin`, and a CSRF token derived from the session. | A website that makes the phone's browser send an answer. |
+| CSRF and Origin | For an answer, a preferences save, or disconnect: the exact public Origin, `Sec-Fetch-Site: same-origin`, and a CSRF token derived from the session. | A website that makes the phone's browser send an answer or a preferences save. |
 
 - The monitor is not guarded by Google or any account. The passcode is a shared secret between the PC's screen and the phone, so it is weaker than a sign-in: 10,000 possibilities, protected by the guess limit and its short life. The app does not accept the Edge's identity headers, `Forwarded`, or `X-Forwarded-*` as proof of anything; they are removed after the Host check.
 - The passcode is shown to the PC only: in the local status answer while the connection is `ready`, in the connection dialog, and on the `serve` startup line. It is never written to a file, a log, `serve.json`, the page, or an error; the failed-guess count is never reported.
@@ -48,9 +48,19 @@ Anyone who can open the ngrok address reaches ngrok's Edge first, not the board.
 - **Traffic Inspector.** ngrok ends the HTTPS connection, so it can process traffic, and its Traffic Inspector keeps request and response details when **Full Capture** is enabled for the account. Agent Board cannot turn that off; the user checks that it is disabled in the ngrok dashboard under **Settings** → **Observability**.
 - The monitor serves no desktop route, no edit or archive route, and no file listing. Unknown routes are 404 and disallowed methods are 405, and authentication is evaluated before the target is looked up.
 
+## Saved language and color theme
+
+The language and color theme are saved on the PC in `<data root>/.internal/preferences.json`. Two routes write them: the PC's `PUT /api/preferences`, which passes the write guard below, and the monitor's `PUT /monitor/api/preferences`, which passes the entrance checks above.
+
+- The monitor's save needs the same checks as an answer: the Host check, a live passcode session, the exact public Origin, `Sec-Fetch-Site: same-origin`, and the CSRF token.
+- The route accepts only `locale` and `theme`. Any other field, or a value that is not allowed, is refused with `invalid_preferences`, and nothing is saved.
+- The saved values are not secret: a language and a color. The file is owner-only, and it holds no token, passcode, or session.
+- What is protected is the limit itself. The monitor can change these two settings and nothing else.
+- What is not protected: a phone that is allowed in, or someone who takes over its session, can change the PC's language and theme, and every open page then shows the new choice. Tasks, projects, and connection settings stay out of reach.
+
 ## Writes from the browser
 
-The local listener accepts a write (create, edit, draft toggle, epic create and update, epic membership, image upload and delete, move, answer, archive, restore, delete) only when **all** of these hold; otherwise it returns 403 and changes nothing:
+The local listener accepts a write (create, edit, draft toggle, epic create and update, epic membership, image upload and delete, move, answer, archive, restore, delete, and the saved language and theme) only when **all** of these hold; otherwise it returns 403 and changes nothing:
 
 1. `Host` meets the local loopback condition.
 2. `Origin` is `http://127.0.0.1:<port>` or `http://localhost:<port>`.
@@ -116,7 +126,8 @@ These limits are deliberate. Keep them in mind when someone asks for "just one m
 
 - **ngrok and its account owner.** The tunnel is not end-to-end encrypted: ngrok ends the HTTPS connection, so ngrok can see the traffic, and an administrator of the ngrok account can change how the address is served.
 - **A local process that sends HTTP straight to the monitor's loopback port.** The monitor's entry listens on `127.0.0.1` on a random port, and nothing proves that a request came through ngrok: a program on the PC that sends `Host: <the public address>` to that port is admitted past the Host check. Its only way on is the passcode and the session behind it, so the board's data stays unreadable without the passcode, but such a program can guess (five tries per start) and can spend those tries, which locks the phone out until the connection is started again. The user who runs the PC is trusted: the same programs can read the shared files directly, so no further defence is added for this path. A website cannot do it, because a browser cannot send another `Host`.
-- **Anyone who has the address and the passcode.** Whoever enters the passcode can read every project's monitor data and answer the current question of a Todo or Doing task for up to 12 hours. A 4-digit passcode has 10,000 possibilities; the limit of five wrong guesses in a row and the new passcode at each start make guessing hard, but not impossible: an attacker who finds the address gets five guesses per start, and one right guess opens it. Someone who sees the passcode on the PC's screen or the startup line can use it. Keep the address private and stop the connection when it is not needed.
+- **A phone that is allowed in, or someone who takes over its session.** Such a person can change the PC's language and color theme through the monitor. This is the only setting the monitor can change; tasks, projects, and connection settings stay out of reach.
+- **Anyone who has the address and the passcode.** Whoever enters the passcode can read every project's monitor data, answer the current question of a Todo or Doing task, and change the language and color theme, for up to 12 hours. A 4-digit passcode has 10,000 possibilities; the limit of five wrong guesses in a row and the new passcode at each start make guessing hard, but not impossible: an attacker who finds the address gets five guesses per start, and one right guess opens it. Someone who sees the passcode on the PC's screen or the startup line can use it. Keep the address private and stop the connection when it is not needed.
 - **Programs running as the same OS user** can read, write, and delete the shared files directly, bypassing every CLI and web check. Folder write access does not physically protect `task.json`.
 - **Direct edits of a draft's `TASK.md`** cannot be stopped; the README and the agent skill tell agents not to. The same applies to deleting task or epic folders and editing `task.json`, `epic.json`, or `project.json`.
 - **Forged browser requests from a local program** that scrapes the token can pass the write guard.

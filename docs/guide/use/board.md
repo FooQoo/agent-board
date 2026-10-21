@@ -71,7 +71,11 @@ The details of an archived task use the same layout as an active task. **Restore
 
 ## Settings
 
-Open **Settings** to choose the language (English or Japanese) and one of 24 themes (12 colors, each in light and dark). Changes apply immediately and are saved in your browser. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
+Open **Settings** to choose the language (English or Japanese) and one of 24 themes (12 colors, each in light and dark).
+
+The choice is saved on this PC, so every browser on this PC shows the same language and theme. Changes apply at once to the other open pages, including other browser windows and the mobile monitor, without a reload. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
+
+The width of the detail panel is not part of these settings. Each browser keeps its own width.
 
 **Mobile connection** in the same dialog opens the setup for checking the board from a phone with ngrok; see the [mobile monitor guide](../operations/mobile-monitor).
 

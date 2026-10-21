@@ -46,6 +46,7 @@
 | `api/` | ボードのルーター、Hostのガードと書き込みのガード、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、モバイル接続の`monitor_connections`）。 |
 | `monitor/` | モニターの読み取り用ルーター、回答のエンドポイント、資産。 |
 | `monitor_connection/` | ngrokのモバイル接続。監督役と状態（`lifecycle`・`start`・`run`）、保存する設定（`config`）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
+| `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、PCとモニターで共有する`GET`・`PUT`の処理、変更の通知。 |
 | `monitor_auth/` | モニターのアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
 | `guard` | ローカルとモニターの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認と、HTTPSのoriginの正規化。 |
 | `response`<br>`request` | JSONのエラー本文、`AgboardError`からHTTPステータスへの対応、そのほかの共有の応答と、失敗時にそのエラー本文を返すJSONの本文。 |
@@ -56,6 +57,7 @@
 
 - `build.rs`: ビルドしたWeb画面を埋め込み、資産の表とビルドIDを書き出します。
 - `web/`: Viteのアプリです。`web/src/`のソースは`app/`・`pages/`・`features/`・`shared/`に分けています（[Webコードの置き場所](../concepts/server-and-ui.md#webコードの置き場所)）。
+- `web/src/shared/preferences/`: ブラウザ側の保存した言語とカラーテーマ。読み取りと保存、ブラウザの最初の描画用の控え、`preferences`イベントを扱います。[サーバーと画面](../concepts/server-and-ui.md)を参照してください。
 - `web/.storybook/`: Storybookの設定、架空のfixture、decorator、通信ガード、共通部分のテストを置きます。UIのStoryと対応台帳は、説明するソースの近くに置きます。詳しくは[Storybookのセットアップと台帳](../getting-started/setup.md#storybook)を参照してください。
 - `tests/`: Rustの結合テストとCLIのテストを置きます。
 - `e2e/`: Playwrightのテストと、スクリーンショット・動画の生成スクリプトを置きます。

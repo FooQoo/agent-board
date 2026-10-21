@@ -14,12 +14,14 @@ ngrokのモニター入口の背後で配信する経路です（モバイルモ
 | GET/HEAD `/monitor/assets/monitor/{name}` | モニターのmanifestにある、内容から名前を付けたスクリプトとスタイルシートだけ。immutableでキャッシュさせ、受け付ける場合はgzipで送る。ほかの名前は`no-store`の404。 |
 | GET/HEAD `/logo-white.png` | ヘッダーのロゴ。入口の検査は必要だが、sessionは要らない。 |
 | GET `/monitor/api/projects`、`/monitor/api/projects/{projectId}/board` | 本文・全履歴・problemsを持つ読み取り専用のAPI。 |
-| GET `/monitor/api/events` | `ready`（モニターのビルドIDを含む）・`changed`・`heartbeat`の専用SSE。 |
+| GET `/monitor/api/events` | `ready`（モニターのビルドIDを含む）・`changed`・`heartbeat`・`preferences`（保存した言語とテーマ。変更のあとに送る）の専用SSE。 |
+| GET `/monitor/api/preferences` | 保存した言語とカラーテーマ。PCの`GET /api/preferences`と同じJSON。 |
+| PUT `/monitor/api/preferences` | 言語とテーマだけを保存する。`locale`・`theme`・両方のいずれか。回答と同じく、公開Origin・`Sec-Fetch-Site: same-origin`・CSRFトークンが必要。未知の項目と不正な値は422 `invalid_preferences`。 |
 | POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | 現在の依頼への回答だけ。 |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/attachments/{attachmentId}` | 所有する画像だけ。 |
 | GET `/monitor/api/projects/{projectId}/epics/{epicId}`とその添付 | 所有するエピックの情報と画像だけ。 |
 
-- `/monitor/api/`は読み取りのrouterと回答だけの書き込みrouterに分け、PCのAPIには合流させません。PCのrouterへのfallback、prefixを外すリダイレクト、メソッドの上書き、モニターの経路からPCの資産への別名はありません。
+- `/monitor/api/`は読み取りのrouterと、回答と言語・テーマの保存だけの書き込みrouterに分け、PCのAPIには合流させません。PCのrouterへのfallback、prefixを外すリダイレクト、メソッドの上書き、モニターの経路からPCの資産への別名はありません。
 - HEADは許可したJSONと画像のGETと同じ範囲で、SSEには設けません。未知の経路はHTMLへのfallbackなしの404、許可した経路で許可しないメソッドは405です。モニターの経路では、health・notify・archive、ほかの書き込み、ファイルの一覧を配信しません。
 - PCのボードとそのAPIは、モニターの入口では配信しません。
-- すべての要求は、まずHostの検査を通ります（失敗は理由を示さない403）。`session`と`unlock`を除く`/monitor/api/`の経路は、そのうえで有効なsessionが必要で（なければ401 `session_required`）、変更にはさらに公開Origin・同一オリジンのメタデータ・CSRFトークンが必要です。一覧にないパスは404です。
+- すべての要求は、まずHostの検査を通ります（失敗は理由を示さない403）。`session`と`unlock`を除く`/monitor/api/`の経路は、そのうえで有効なsessionが必要で（なければ401 `session_required`）、変更にはさらに公開Origin・同一オリジンのメタデータ・CSRFトークンが必要です。このエントリで受け付ける書き込みは、回答・言語とテーマの保存・切断の三つだけです。一覧にないパスは404です。

@@ -50,6 +50,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   serve.json
   lifecycle.lock
   .internal/monitor-connection.json
+  .internal/preferences.json
 ```
 
 - JSONはUTF-8・camelCase・2スペースのインデントで、末尾に改行を一つ付けます。未知の項目は拒否します。
@@ -123,6 +124,32 @@ ngrokのモバイル接続は、秘密ではない設定を`<データ領域>/.i
 | `enabled` | 次の`serve`で接続を再び始めるか。停止すると`false`で保存する。 |
 
 ファイルには、ngrokのトークン、スマホの合言葉、session、CSRFトークンを入れません。利用者が保存を選んだトークンは、代わりにこのPCの安全な保管場所（OSの資格情報ストア。service `agent-board`、account `ngrok-authtoken`）に置きます。`monitor/config.json`はありません。
+
+## 表示設定
+
+保存した言語とカラーテーマは、`<データ領域>/.internal/preferences.json`にあります。このファイルはアプリのもので、PCの`PUT /api/preferences`とモニターの保存の経路だけが書き、手で書くことはありません。`shared/`にはないため、プロジェクトのバックアップには含まれません。所有者だけが読み書きできる権限（OSにある場合は`0600`）で、原子的に置き換えます。書き込みに失敗した場合は、以前のファイルをそのまま残します。
+
+```json
+{
+  "formatVersion": 1,
+  "revision": 4,
+  "locale": "ja",
+  "theme": {
+    "mode": "dark",
+    "accent": "teal"
+  }
+}
+```
+
+| 項目 | 規則 |
+| --- | --- |
+| `formatVersion` | 常に`1`。ほかの値、未知の項目、壊れたファイルは既定値として読み、次の保存でファイルを置き換える。 |
+| `revision` | 何も保存していなければ`0`。保存するたびに1増える。 |
+| `locale` | `en`か`ja`。既定は`en`。 |
+| `theme.mode` | `light`か`dark`。既定は`light`。 |
+| `theme.accent` | 12色のいずれか: `blue`・`sky`・`cyan`・`teal`・`green`・`lime`・`yellow`・`orange`・`red`・`pink`・`purple`・`gray`。既定は`blue`。 |
+
+保存では、送った項目だけを変えます。ほかの項目は保存済みの値を保ちます。後から保存した内容が優先され、競合の確認はありません。このファイルには秘密の値を含みません。トークン、合言葉、sessionは入りません。
 
 ## タスクのJSONとスナップショット
 
