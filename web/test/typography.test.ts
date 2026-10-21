@@ -25,7 +25,7 @@ describe('typography', () => {
       list.map((name) => readFileSync(join(SRC, name), 'utf8')).join('\n');
     // The one allowed size: the phone monitor's drawer title is 17px by design. Only this
     // selector's declaration is set aside; any other rule with a listed size still fails.
-    const drawerTitle = /(\.mobile-drawer__title \{[^}]*?)\n  font-size: 17px;/;
+    const drawerTitle = /(\.mobile-drawer__title \{[^}]*?)\n {2}font-size: 17px;/;
     const css = read(files);
     expect(css.match(new RegExp(drawerTitle, 'g'))).toHaveLength(1);
     const checked = css.replace(drawerTitle, '$1');
