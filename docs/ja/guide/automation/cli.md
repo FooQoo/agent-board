@@ -61,7 +61,7 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 
 ### 質問する
 
-判断を求めるには、`state ... pending`に`--request-json`を付けます。[判断依頼](../use/decisions)を参照してください。エピックと進行表は[エピックと進行表](../use/epics)を参照してください。
+判断を求めるには、`state ... pending --request-json`を使います。回答まで待つのが既定です。質問を登録してすぐに戻るよう明示された場合だけ`--no-wait`を付けます。待機には`agboard serve`が必要ですが、`--no-wait`には不要です。`--no-wait`と整数の`wait.timeoutSeconds`は併用できず、`invalid_argument`（終了コード2）で終わり、質問やタスクは変更されません。3つのコマンド例は[判断依頼](../use/decisions)を参照してください。エピックと進行表は[エピックと進行表](../use/epics)を参照してください。
 
 ## ファイルを使って本文を編集する
 

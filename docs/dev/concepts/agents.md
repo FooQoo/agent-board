@@ -11,7 +11,7 @@ Agents use Agent Board through three pieces: the skill that tells them how to wo
 | Progress table | `src/progress.rs` | The list of workable tasks, shared by `agboard progress` and the hook. |
 | `wait` | `src/agent/wait.rs` | Block until the project changes or a decision is answered. |
 
-The skill is named `agent-board`; the executable is `agboard`. A typical loop: the hook shows the progress table → the agent reads only the `EPIC.md` and `TASK.md` it needs → it clarifies an unclear title through `agboard edit --title`, preserving the original request → it moves the task to Doing and Running → it records progress with `history add` → it asks a decision with `"wait": {}` when blocked → it checks conditions off, and automatic Done finishes the task. Title refinement is a skill instruction shared by the ordinary loop and listener, not a server-side summarization feature.
+The skill is named `agent-board`; the executable is `agboard`. A typical loop: the hook shows the progress table → the agent reads only the `EPIC.md` and `TASK.md` it needs → it clarifies an unclear title through `agboard edit --title`, preserving the original request → it moves the task to Doing and Running → it records progress with `history add` → it asks a decision and waits by default when blocked → it checks conditions off, and automatic Done finishes the task. Title refinement is a skill instruction shared by the ordinary loop and listener, not a server-side summarization feature.
 
 Agents append progress at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without per-entry approval, and never duplicate entries that operations already appended. The body keeps the plan and concise verification results. Images can be attached when visual proof is useful.
 
@@ -32,7 +32,7 @@ The hook identifies the project from the nearest bound ancestor of the input `cw
 
 Agents make no board-dependent changes until the table can be read, and they read a fresh table after context compaction.
 
-The skill requires all task-related questions to use board decision requests, with choices and `"wait": {}` by default. It forbids substituting chat or native agent question tools, including when the board is unavailable. The CLI still supports non-waiting requests; only an explicit user instruction opts out of waiting in the skill workflow.
+The skill requires all task-related questions to use board decision requests with choices. `pending --request-json` waits indefinitely by default, even when `wait` is omitted; `wait: {}` remains compatible. The skill uses `--no-wait` only when the user explicitly asks to register a question and return immediately. It forbids substituting chat or native agent question tools, including when the board is unavailable.
 
 ## Waiting for changes
 
@@ -48,7 +48,9 @@ The skill requires all task-related questions to use board decision requests, wi
 - Disconnects, timeouts, and Ctrl+C never change tasks or history, never count as "no change", and never restart a finished agent.
 - Because CLI notifications are best effort, a missed one is caught on the next connection, a real `changed`, or the final read at a timeout.
 
-**Decision requests with `"wait": {}`** ask and wait in one command. The question stays Pending until it is answered or a lane move withdraws it (`request_changed`); ending or interrupting the wait never expires it. The waiting command returns the resolved answer as `answer`. The local wait client does not follow HTTP redirects and connects only to the same `serve` on 127.0.0.1.
+**Decision requests** are saved before the CLI notifies `serve` and waits on the existing SSE event stream. The default wait needs a running `serve`; a preflight check runs before the save, so an unavailable server does not create the question. Omitting `wait` and using `wait: {}` both wait indefinitely; an integer `timeoutSeconds` from 1 to 86,400 limits only that CLI process. `wait: null` and `timeoutSeconds: null` mean no timeout. The wait settings are not saved with the task.
+
+On success, the waiting command returns `{task, answer}`; `--no-wait` returns `{task}` after saving and notifying and does not need `serve`. It can be combined with `wait: {}`, but not an integer timeout. A timeout, interruption, or lost connection leaves the question Pending; `request_changed` means it was withdrawn. After a browser answer the task becomes Idle; the agent reads the answer and history, then explicitly resumes Running with a reason. See [Decision requests](../../guide/use/decisions.md) for the user workflow.
 
 ### Waiting for the next task
 

@@ -24,7 +24,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `request_changed` | The answer names a request that is no longer the current one. | 1 | 409 |
+| `request_changed` | The answer names a request that is no longer current, or a waiting request was withdrawn by a task move. | 1 | 409 |
 | `request_choice_unknown` | The answer names a choice that is not in the request. | 2 | 422 |
 
 ## Projects, epics, and attachments
@@ -46,7 +46,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `invalid_argument` | A command argument is missing or malformed. | 2 | 422 |
+| `invalid_argument` | A command argument is missing or malformed; for example, `--no-wait` with an integer `timeoutSeconds`. | 2 | 422 |
 | `invalid_value` | A value breaks a rule (length, format, and so on). | 2 | 422 |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | 1 | n/a |
 | `file_invalid` | A shared file is malformed or breaks the format. | 1 | 422 |
@@ -62,9 +62,9 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | --- | --- | --- | --- |
 | `already_serving` | Another `serve` already runs on this data area. | 1 | n/a |
 | `port_in_use` | The port is taken. | 1 | n/a |
-| `board_unavailable` | `wait` or the hook cannot reach the server. | 1 | n/a |
+| `board_unavailable` | A waiting Pending request, `wait`, or the hook cannot reach the server. A Pending request checks the server before saving, so an unavailable server leaves no question. | 1 | n/a |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | 1 | n/a |
-| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change. It is not a Pending answer. | 1 | n/a |
+| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, or a Pending request reached its integer `wait.timeoutSeconds`. It is not an answer; the question stays Pending. | 1 | n/a |
 | `forbidden` | A web write failed the guard (Host, Origin, `Sec-Fetch-Site`, or token). | n/a | 403 |
 
 ## Mobile connection

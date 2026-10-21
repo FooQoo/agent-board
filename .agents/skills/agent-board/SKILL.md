@@ -155,7 +155,6 @@ Before asking, update the task plan if needed with the facts, impact, options, a
 
 ```json
 {
-  "wait": {},
   "question": "Should existing records be deleted or kept?",
   "choices": [
     { "id": "delete", "label": "Delete them and start clean" },
@@ -170,7 +169,7 @@ cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-
 ```
 
 - `question`: 1 to 2,000 characters. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
-- Include `"wait": {}` in every decision request by default, to ask and wait indefinitely for the answer in one command (it needs `agboard serve`). Omit it only when the user explicitly asks for a non-blocking request. Continue independent work while the command waits; dependent work must wait for the actual answer. You may add `"timeoutSeconds": <1 to 86400>` to limit this wait command. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a task move withdrew the question.
+- A `pending --request-json` command waits indefinitely for the answer by default, even when the JSON omits `wait`. Existing requests containing `"wait": {}` remain valid. Use `--no-wait` only when the user explicitly asks to register a question and return immediately; it needs no running `agboard serve`. Continue independent work while a waiting command is open; dependent work must wait for the actual answer. Add `"wait":{"timeoutSeconds":<1 to 86400>}` to limit the wait. `--no-wait` cannot be combined with an integer timeout. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a task move withdrew the question.
 - Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
 - The task must be an AI task in `todo` or `doing`. Only `doing` may become `running`.
 
