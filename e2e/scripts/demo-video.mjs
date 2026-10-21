@@ -164,11 +164,9 @@ async function record(browser, locale, tmp) {
   try {
     const projectId = seed(home, text);
     const port = await freePort(Number(process.env.AGBOARD_MEDIA_PORT ?? 0));
-    const remotePort = await freePort(Number(process.env.AGBOARD_MEDIA_REMOTE_PORT ?? 0));
     const origin = `http://127.0.0.1:${port}`;
     let stderr = '';
-    server = spawn(binary, ['serve', '--port', String(port), '--remote-port', String(remotePort),
-      '--remote-origin', 'https://demo.invalid'], {
+    server = spawn(binary, ['serve', '--port', String(port)], {
       cwd: home, env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' }, stdio: ['ignore', 'ignore', 'pipe'],
     });
     server.stderr.on('data', (chunk) => { stderr += chunk; });

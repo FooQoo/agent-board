@@ -11,23 +11,17 @@ import {
 	replaceTaskBodyPreservingFrontmatter,
 	workspace,
 } from '../helpers/agboard';
-import {
-	removeMonitorHome,
-	startMonitorServe,
-	stopMonitorServe,
-	type MonitorServe,
-} from '../helpers/monitor';
+import { removeMonitorHome, startPhoneEntrance, type PhoneEntrance } from '../helpers/monitor';
 import { waitForSync } from '../helpers/ui';
 
 test.describe.configure({ mode: 'serial' });
 test.use({ viewport: { width: 1280, height: 900 }, timezoneId: 'UTC', locale: 'en-US' });
 
 const project = 'History Frontmatter E2E';
-const localPort = Number(process.env.AGBOARD_E2E_HISTORY_LOCAL_PORT ?? 8550);
-const remotePort = Number(process.env.AGBOARD_E2E_HISTORY_REMOTE_PORT ?? 8551);
 let home: string;
 let pid: string;
-let serve: MonitorServe | undefined;
+// The PC board and the phone monitor of one backend: the phone goes through the ngrok entrance stand-in.
+let serve: PhoneEntrance;
 
 interface HistoryEvent { at: string; reason: string; }
 
@@ -99,7 +93,7 @@ function details(page: Page) {
 
 async function openPc(page: Page): Promise<void> {
 	await page.setViewportSize({ width: 1280, height: 900 });
-	await page.goto(`http://127.0.0.1:${localPort}/?project=${pid}`);
+	await page.goto(`${serve.pcOrigin}/?project=${pid}`);
 	await waitForSync(page);
 }
 
@@ -120,37 +114,21 @@ function beginWait(cursor: string): { child: ChildProcess; result: Promise<{ cod
 	return { child, result };
 }
 
-async function routeMonitorAnswer(page: Page): Promise<void> {
-	await page.route('**/monitor/api/projects/*/tasks/*/answer', async (route) => {
-		const target = route.request().url();
-		const token = await page.locator('meta[name="agboard-monitor-token"]').getAttribute('content');
-		const upstream = await page.request.post(target, {
-			headers: {
-				Host: 'monitor.e2e.invalid',
-				Origin: 'https://monitor.e2e.invalid',
-				'Sec-Fetch-Site': 'same-origin',
-				'X-Agboard-Token': token ?? '',
-			},
-			data: route.request().postDataJSON(),
-		});
-		await route.fulfill({ response: upstream });
-	});
-}
-
 function hash(file: string): string {
 	return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
 
 test.beforeAll(async () => {
+	test.setTimeout(240_000);
 	home = makeHome('history-frontmatter');
 	const created = catalog(['project', 'create', project, '--json']);
 	if (created.code !== 0) throw new Error(`project create failed: ${created.stderr}`);
 	pid = (JSON.parse(created.stdout) as { project: { id: string } }).project.id;
-	serve = await startMonitorServe(home, { monitorPort: localPort, remotePort });
+	serve = await startPhoneEntrance(home);
 });
 
 test.afterAll(async () => {
-	await stopMonitorServe(serve);
+	await serve?.stop();
 	if (home) removeMonitorHome(home);
 });
 
@@ -168,8 +146,7 @@ test('new task history survives restart and appears in PC and mobile details', a
 	expect(metadata).not.toHaveProperty('history');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('history:');
 
-	await stopMonitorServe(serve);
-	serve = await startMonitorServe(home, { monitorPort: localPort, remotePort });
+	await serve.restart();
 	await openPc(page);
 	await page.getByRole('button', { name: new RegExp(`^#${id} .*History after restart`) }).click();
 	const pc = details(page);
@@ -177,7 +154,7 @@ test('new task history survives restart and appears in PC and mobile details', a
 	await expect(pc.getByRole('tabpanel')).toContainText('Start the real task');
 
 	await page.setViewportSize({ width: 375, height: 812 });
-	await page.goto(`http://127.0.0.1:${remotePort}/monitor/`);
+	await page.goto(`${serve.phoneOrigin}/monitor/`);
 	const monitorTask = page.getByRole('article', { name: new RegExp(`History after restart`) });
 	await monitorTask.getByRole('button', { name: 'History after restart', exact: true }).click();
 	const drawer = page.getByRole('dialog', { name: 'History after restart' });
@@ -201,9 +178,8 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	const pendingCursor = snapshot().cursor;
 	const waiting = beginWait(pendingCursor);
 	await new Promise((resolve) => setTimeout(resolve, 150));
-	await routeMonitorAnswer(page);
 	await page.setViewportSize({ width: 375, height: 812 });
-	await page.goto(`http://127.0.0.1:${remotePort}/monitor/`);
+	await page.goto(`${serve.phoneOrigin}/monitor/`);
 	const article = page.getByRole('article', { name: new RegExp(`Pending history answer`) });
 	await expect(article.getByRole('region', { name: 'The agent is waiting for your answer' })).toBeVisible();
 	await article.getByRole('radio', { name: 'Plan B' }).check();

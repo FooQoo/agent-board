@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
-import { agboardOk, mainProject, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
+import { agboardOk, mainProject, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
 function markdown(source: string, count: number) {

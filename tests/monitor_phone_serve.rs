@@ -4,6 +4,12 @@
 //! `--ignored`, reads the line that starts with `READY`, and sends commands on
 //! stdin. No test here reaches ngrok: a fake connector opens the "tunnel", so
 //! the Edge (Google sign-in, allow list, header removal) is not exercised.
+//!
+//! The same backend serves the Playwright specs (`e2e/helpers/monitor.ts`),
+//! which stand in for the Edge with a small proxy. Those specs set
+//! `AGBOARD_PHONE_HOME` to serve a data area they filled through the CLI; the
+//! decision request below is then left to them. The data area may already hold
+//! the saved setting of an earlier run.
 
 #![allow(dead_code)]
 
@@ -40,6 +46,7 @@ fn announce(s: &Server) {
             "proof": proof_of(&call.policy),
             "host": PUBLIC.trim_start_matches("https://"),
             "origin": PUBLIC,
+            "local": s.local.to_string(),
         })
     );
 }
@@ -49,41 +56,53 @@ fn announce(s: &Server) {
 #[test]
 #[ignore = "started by web/test/monitor/phone-live.test.ts"]
 fn serve_the_phone_backend_until_told_to_quit() {
-    let home = home();
-    let store = FileStore::open(&home.path().join("shared"));
-    let project = store.project_by_name("monitor").unwrap().id;
-    store
-        .request_decision(
-            &project,
-            1,
-            Actor::Ai,
-            "Choose the first path",
-            vec![
-                Choice {
-                    id: "keep".into(),
-                    label: "Keep".into(),
-                },
-                Choice {
-                    id: "reset".into(),
-                    label: "Reset".into(),
-                },
-            ],
-            chrono::Utc::now(),
-        )
-        .unwrap();
+    let external = std::env::var_os("AGBOARD_PHONE_HOME").map(std::path::PathBuf::from);
+    let temp = external.is_none().then(home);
+    let path = external
+        .clone()
+        .unwrap_or_else(|| temp.as_ref().unwrap().path().to_path_buf());
+    if temp.is_some() {
+        let store = FileStore::open(&path.join("shared"));
+        let project = store.project_by_name("monitor").unwrap().id;
+        store
+            .request_decision(
+                &project,
+                1,
+                Actor::Ai,
+                "Choose the first path",
+                vec![
+                    Choice {
+                        id: "keep".into(),
+                        label: "Keep".into(),
+                    },
+                    Choice {
+                        id: "reset".into(),
+                        label: "Reset".into(),
+                    },
+                ],
+                chrono::Utc::now(),
+            )
+            .unwrap();
+        println!("PROJECT {project}");
+    }
     let s = Server::start(
-        home.path(),
+        &path,
         Opts {
             env_token: true,
             ..Opts::default()
         },
     );
-    assert_eq!(s.put(true, &["owner@example.com"], 0).status, 200);
-    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    // A saved, enabled setting is restored by the start itself.
+    let status = s.get()["status"].clone();
+    if status != "ready" && status != "starting" {
+        let revision = s.get()["revision"].as_u64().unwrap();
+        assert_eq!(s.put(true, &["owner@example.com"], revision).status, 200);
+        assert_eq!(s.start_ngrok(json!({})).status, 202);
+    }
     s.wait_status("ready");
-    println!("PROJECT {project}");
+    println!("LOCAL http://{}", s.local);
     announce(&s);
-    let mut revision = 1;
+    let mut revision = s.get()["revision"].as_u64().unwrap();
     for line in std::io::stdin().lock().lines() {
         match line.unwrap().trim() {
             "rotate" => {
