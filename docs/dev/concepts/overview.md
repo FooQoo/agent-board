@@ -68,7 +68,7 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 1. The browser sends `POST /api/projects/{projectId}/tasks/{id}/answer` with the request ID and the chosen option, plus the write token embedded in the page.
 2. The server checks Host, Origin, `Sec-Fetch-Site`, and the token before it even looks up the task.
 3. Under the write lock it confirms that the task still has the same open request, stores the answer in `requestAnswers`, clears the request, appends history, and commits the pair.
-4. The version changes, browsers update through SSE, and an agent blocked in `agboard wait` (or in a request sent with `"wait": {}`) wakes up and reads the answer.
+4. The version changes, browsers update through SSE, and a default-waiting `state ... pending --request-json` command wakes on the same SSE stream and reads the answer. The command saves the request, notifies the server, then waits; its wait settings are process-local. `--no-wait` returns after saving and notifying.
 
 ### An agent edits TASK.md directly
 

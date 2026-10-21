@@ -24,7 +24,7 @@
 
 | コード | 発生条件 | 終了コード | HTTP |
 | --- | --- | --- | --- |
-| `request_changed` | 回答対象の依頼が、すでに現在の依頼ではない。 | 1 | 409 |
+| `request_changed` | 回答対象の依頼がすでに現在のものではない、または待機中の依頼がタスクの移動で取り下げられた。 | 1 | 409 |
 | `request_choice_unknown` | 回答が、依頼にない選択肢を指している。 | 2 | 422 |
 
 ## プロジェクト・エピック・添付
@@ -46,7 +46,7 @@
 
 | コード | 発生条件 | 終了コード | HTTP |
 | --- | --- | --- | --- |
-| `invalid_argument` | コマンドの引数がない、または形式が誤っている。 | 2 | 422 |
+| `invalid_argument` | コマンドの引数がない、または形式が誤っている（例: `--no-wait`と整数の`timeoutSeconds`の併用）。 | 2 | 422 |
 | `invalid_value` | 値が規則（長さ、形式など）に違反している。 | 2 | 422 |
 | `confirmation_required` | 削除に、端末での人のy/Nが必要。 | 1 | なし |
 | `file_invalid` | 共有ファイルが壊れている、または形式に違反している。 | 1 | 422 |
@@ -62,9 +62,9 @@
 | --- | --- | --- | --- |
 | `already_serving` | このデータ領域で、すでに別の`serve`が動いている。 | 1 | なし |
 | `port_in_use` | ポートが使われている。 | 1 | なし |
-| `board_unavailable` | `wait`やHookがサーバーに届かない。 | 1 | なし |
+| `board_unavailable` | 回答待機中のPending依頼、`wait`、Hookがサーバーに届かない。Pending依頼は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。 | 1 | なし |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 1 | なし |
-| `wait_timeout` | 変更待ちモード（`wait --after`）で任意の`--timeout`に達しても変更がなかった。Pendingへの回答ではない。 | 1 | なし |
+| `wait_timeout` | 変更待ち（`wait --after`）が任意の`--timeout`に達した、またはPending依頼の`wait.timeoutSeconds`に達した。回答ではなく、質問はPendingのまま。 | 1 | なし |
 | `forbidden` | Webの書き込みが保護に失敗した（Host・Origin・`Sec-Fetch-Site`・トークン）。 | なし | 403 |
 
 ## モバイル接続

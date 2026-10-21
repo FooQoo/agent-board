@@ -61,7 +61,7 @@ To finish, record the verification in `TASK.md` and set each verified acceptance
 
 ### Ask a question
 
-Use `state ... pending` with `--request-json` to ask a decision; see [Decisions](../use/decisions). For epics and the progress table, see [Epics and progress](../use/epics).
+Use `state ... pending --request-json` to ask a decision. The command waits for an answer by default; use `--no-wait` only when you explicitly want to register the question and return immediately. Waiting requires a running `agboard serve`; `--no-wait` does not. Do not combine `--no-wait` with an integer `wait.timeoutSeconds`: it returns `invalid_argument` (exit 2) without changing the question or task. See [Decisions](../use/decisions) for the three command forms. For epics and the progress table, see [Epics and progress](../use/epics).
 
 ## Edit long text from a file
 
