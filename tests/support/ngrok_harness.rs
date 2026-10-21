@@ -42,6 +42,8 @@ pub struct Fake {
     pub fail: Mutex<bool>,
     /// When set, `open` waits for a message before it answers.
     pub hold: Mutex<Option<mpsc::Receiver<()>>>,
+    /// The public origin the next tunnel reports; `PUBLIC` when unset.
+    pub public: Mutex<Option<String>>,
 }
 
 impl Connector for Fake {
@@ -54,6 +56,12 @@ impl Connector for Fake {
         });
         let fail = *self.fail.lock().unwrap();
         let hold = self.hold.lock().unwrap().take();
+        let public = self
+            .public
+            .lock()
+            .unwrap()
+            .clone()
+            .unwrap_or_else(|| PUBLIC.to_string());
         Box::pin(async move {
             if let Some(rx) = hold {
                 tokio::task::spawn_blocking(move || {
@@ -68,7 +76,7 @@ impl Connector for Fake {
                 });
             }
             Ok(OpenedTunnel {
-                public: PublicOrigin::parse(PUBLIC).unwrap(),
+                public: PublicOrigin::parse(&public).unwrap(),
                 keep_alive: Box::new(()),
             })
         })
