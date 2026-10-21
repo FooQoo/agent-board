@@ -727,13 +727,13 @@
   justify-content: center;
   gap: 6px;
   min-width: 0;
-  height: 34px;
+  height: var(--btn-m-h);
   padding: 0;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
   color: var(--r-text2);
-  font-size: 13px;
+  font-size: var(--btn-m-fs);
   cursor: pointer;
   line-height: 19px;
 }
@@ -833,8 +833,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-icon);
   padding: 0;
   border: 1px solid var(--r-border);
   border-radius: 8px;
