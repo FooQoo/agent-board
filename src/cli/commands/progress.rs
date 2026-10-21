@@ -5,14 +5,23 @@ use std::fmt::Write as _;
 
 use serde_json::json;
 
+use crate::cli::args::ProgressArgs;
 use crate::cli::{Context, Outcome};
 use crate::domain::{Assignee, Column, RunState};
 use crate::error::AgboardError;
-use crate::progress::{self, Progress, ProgressTask};
+use crate::progress::{self, Include, Progress, ProgressTask};
 
-pub fn run(ctx: &Context) -> Result<Outcome, AgboardError> {
+pub fn run(ctx: &Context, args: &ProgressArgs) -> Result<Outcome, AgboardError> {
     let snapshot = ctx.files.board(ctx.project_id()?)?;
-    let table = progress::build(&snapshot, ctx.files.shared_dir(), ctx.clock.now());
+    let table = progress::build_with(
+        &snapshot,
+        ctx.files.shared_dir(),
+        ctx.clock.now(),
+        Include {
+            pending: args.include_pending,
+            done: args.include_done,
+        },
+    );
     Ok(Outcome {
         changed: false,
         human: render(&table),
@@ -35,6 +44,20 @@ pub fn render(table: &Progress) -> String {
         for task in &table.unassigned {
             write_task(&mut out, task);
         }
+    }
+    if let Some(pending) = &table.pending {
+        out.push_str("Waiting for a decision\n");
+        for task in pending {
+            write_task(&mut out, task);
+        }
+        out.push('\n');
+    }
+    if let Some(done) = &table.done {
+        out.push_str("Recently done\n");
+        for task in done {
+            write_task(&mut out, task);
+        }
+        out.push('\n');
     }
     if out.is_empty() {
         out.push_str("No tasks to pick up.\n");
@@ -63,4 +86,7 @@ fn write_task(out: &mut String, task: &ProgressTask) {
         "  #{} {} [{assignee}, {column}, {state}{draft}] acceptance {}/{}",
         task.id, task.title, task.acceptance.done, task.acceptance.total
     );
+    if let Some(question) = &task.question {
+        let _ = writeln!(out, "    question: {question}");
+    }
 }

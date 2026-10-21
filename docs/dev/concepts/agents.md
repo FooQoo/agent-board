@@ -21,6 +21,8 @@ The skill gives `BUG` and `ENHANCEMENT` a fixed-body exception: they are ongoing
 
 The progress table lists non-Pending Todo and Doing tasks, grouped by epic in `priority` order, with each task's ID, title, owner, status, acceptance counts, and the paths of its `EPIC.md` and `TASK.md`. It never includes bodies or history. A Pending task higher in the order does not block lower tasks, and an answered task that is still unfinished returns to the table.
 
+`src/progress.rs` builds the optional `pending` and `done` sections from `Include`, which `agboard progress` and `agboard hook` fill from `--include-pending` and `--include-done`. The default `Include` adds nothing, so the default table is unchanged. See [Epics and progress](../../guide/use/epics.md#read-the-progress-table) for the options.
+
 The hook identifies the project from the nearest bound ancestor of the input `cwd` (or the process cwd), never from a session ID, and never selects all projects when the folder is unbound. It returns the table as `AGBOARD_PROGRESS` JSON in `hookSpecificOutput.additionalContext`, or an `AGBOARD_ERROR` such as `folder_unbound`.
 
 - **Claude Code.** The template in `integrations/claude-code/` registers `agboard hook` on PostToolUse, and on PostToolUseFailure after failures, without a fixed project name. Generic skill frontmatter hooks are not used. The skill reads a snapshot when first loaded; the table is fetched again after compaction (SessionStart `compact`) or on the next tool completion.

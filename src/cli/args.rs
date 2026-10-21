@@ -136,9 +136,9 @@ pub enum Command {
     Workspace(WorkspaceArgs),
     /// Show the tasks an agent can pick up, by epic in priority order
     #[command(
-        after_help = "Examples:\n  agboard progress\n  agboard progress --json\n  agboard --project \"My project\" progress --json"
+        after_help = "Examples:\n  agboard progress\n  agboard progress --json\n  agboard progress --include-pending --include-done 5\n  agboard --project \"My project\" progress --json"
     )]
-    Progress,
+    Progress(ProgressArgs),
 }
 
 impl Command {
@@ -163,7 +163,7 @@ impl Command {
             Command::Serve(_) => "serve",
             Command::Setup(_) => "setup",
             Command::Workspace(_) => "workspace",
-            Command::Progress => "progress",
+            Command::Progress(_) => "progress",
         }
     }
 }
@@ -249,6 +249,17 @@ pub enum AgentArg {
     Codex,
 }
 
+/// Extra sections for the progress table, shared by `progress` and `hook`.
+#[derive(Args, Debug, Clone, Copy, Default)]
+pub struct ProgressArgs {
+    /// Also list the tasks waiting for a decision, with their questions
+    #[arg(long)]
+    pub include_pending: bool,
+    /// Also list this many of the most recently completed tasks
+    #[arg(long, value_name = "COUNT", default_value_t = 0)]
+    pub include_done: usize,
+}
+
 #[derive(Args, Debug)]
 #[command(
     after_help = "Examples:\n  agboard hook --agent claude\n  agboard hook --agent codex\n  agboard --project demo hook --agent claude"
@@ -256,6 +267,8 @@ pub enum AgentArg {
 pub struct HookArgs {
     #[arg(long, value_enum)]
     pub agent: AgentArg,
+    #[command(flatten)]
+    pub progress: ProgressArgs,
 }
 
 #[derive(Args, Debug)]
@@ -916,7 +929,7 @@ impl Cli {
                 None,
             ) => {}
             (
-                Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Progress,
+                Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Progress(_),
                 None,
             ) => {}
             (_, None) => {
