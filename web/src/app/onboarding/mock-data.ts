@@ -1,7 +1,8 @@
 import type { Project, ProjectId, Task } from '../../shared/api/contracts';
 
 /** Sample data in the shape the board reads. The guide's samples are real cards, so the defaults match the product's. */
-const RECENT_ISO = new Date().toISOString();
+/** A fixed time, so the cards read the same on every run: 10/22 08:15, as the approved mock shows. */
+const RECENT_ISO = new Date(2026, 9, 22, 8, 15).toISOString();
 
 export function sampleProject(overrides: { name: string }): Project {
   return {
