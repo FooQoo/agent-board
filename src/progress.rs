@@ -18,6 +18,7 @@ use crate::domain::{Assignee, ChangeCursor, Column, ProjectMeta, RunState};
 use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::layout;
 use crate::file_store::model::{EpicView, TaskView};
+use crate::file_store::onboarding_model::is_onboarding_sample;
 use crate::file_store::reader::ProjectSnapshot;
 
 /// The table as the CLI and the hook give it.
@@ -151,6 +152,7 @@ pub fn build_with(
     let open_epics: std::collections::HashSet<&str> = snapshot
         .tasks
         .iter()
+        .filter(|task| !is_sample(task))
         .filter(|task| matches!(task.task_status, Column::Todo | Column::Doing))
         .filter_map(|task| task.epic_id.as_deref())
         .collect();
@@ -182,6 +184,7 @@ pub fn build_with(
                 .tasks
                 .iter()
                 .filter(|task| task.task_status == Column::Done)
+                .filter(|task| !is_sample(task))
                 .filter(|task| {
                     task.epic_id
                         .as_deref()
@@ -235,14 +238,22 @@ pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
     ordered
 }
 
+/// The guide's sample cards are never work for the agents: progress, hooks, and wait leave
+/// them out whatever their lane or run state.
+fn is_sample(task: &TaskView) -> bool {
+    is_onboarding_sample(task.onboarding_sample.as_ref())
+}
+
 fn is_listed(task: &TaskView) -> bool {
     matches!(task.task_status, Column::Todo | Column::Doing)
         && task.agent_status != RunState::Pending
+        && !is_sample(task)
 }
 
 fn is_waiting(task: &TaskView) -> bool {
     matches!(task.task_status, Column::Todo | Column::Doing)
         && task.agent_status == RunState::Pending
+        && !is_sample(task)
 }
 
 /// The question on one line, cut to `QUESTION_LIMIT` characters with an

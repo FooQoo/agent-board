@@ -11,6 +11,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::frontmatter::AcceptanceItem;
+use super::onboarding_model::OnboardingSample;
 use super::validate::EpicId;
 use crate::domain::{Actor, Assignee, Attachment, AttachmentInput, Column, ProjectId, RunState};
 
@@ -107,6 +108,9 @@ pub struct TaskFile {
     /// New simple requests do not write or use this field.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub simple_request: Option<SimpleRequestMetadata>,
+    /// The guide's sample identity; absent for every ordinary card.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub onboarding_sample: Option<OnboardingSample>,
     pub history: Vec<HistoryRecord>,
 }
 
@@ -155,6 +159,8 @@ pub struct TaskMetadata {
     pub attachments: Vec<Attachment>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub simple_request: Option<SimpleRequestMetadata>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub onboarding_sample: Option<OnboardingSample>,
 }
 
 impl From<&TaskFile> for TaskMetadata {
@@ -179,6 +185,7 @@ impl From<&TaskFile> for TaskMetadata {
             task_status_changed_at: task.task_status_changed_at,
             attachments: task.attachments.clone(),
             simple_request: task.simple_request.clone(),
+            onboarding_sample: task.onboarding_sample.clone(),
         }
     }
 }
@@ -206,6 +213,7 @@ impl TaskMetadata {
             task_status_changed_at: self.task_status_changed_at,
             attachments: self.attachments,
             simple_request: self.simple_request,
+            onboarding_sample: self.onboarding_sample,
             history,
         }
     }
@@ -260,6 +268,9 @@ pub struct TaskView {
     pub agent_status_changed_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
     pub task_status_changed_at: DateTime<Utc>,
+    /// The guide's sample identity; absent for every ordinary card.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub onboarding_sample: Option<OnboardingSample>,
     pub history: Vec<HistoryRecord>,
 }
 
