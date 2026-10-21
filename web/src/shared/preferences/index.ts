@@ -88,9 +88,15 @@ async function failure(response: Response): Promise<PreferencesError> {
 
 // Ordering rules. `shownRevision` is the newest server revision this page shows: an older result
 // is ignored. `choiceSeq` counts the user's own choices: a choice is shown at once and wins over
-// any read or save that started before it.
+// any read that started before it. Saves go out one at a time in the order they were chosen;
+// while one is pending, server events wait in `pendingEvent` so they do not override the choice.
+// `saved` is the newest server value known (shown or not); a failed save goes back to it.
 let shownRevision = -1;
 let choiceSeq = 0;
+let saved: Preferences | null = null;
+let pendingSaves = 0;
+let pendingEvent: Preferences | null = null;
+let saveQueue: Promise<unknown> = Promise.resolve();
 
 /** Notes a choice of the user (already shown on the page). Returns its sequence number. */
 export function markLocalChoice(): number {
@@ -102,6 +108,14 @@ export function markLocalChoice(): number {
 export function resetPreferenceOrdering(): void {
   shownRevision = -1;
   choiceSeq = 0;
+  saved = null;
+  pendingSaves = 0;
+  pendingEvent = null;
+  saveQueue = Promise.resolve();
+}
+
+function remember(prefs: Preferences): void {
+  if (!saved || prefs.revision >= saved.revision) saved = prefs;
 }
 
 /** Shows server preferences unless the page already shows a newer revision. */
@@ -109,6 +123,25 @@ function showIfNewer(prefs: Preferences): boolean {
   if (prefs.revision < shownRevision) return false;
   applyPreferences(prefs);
   return true;
+}
+
+/** A server value from a read or an event: shown now, or held while a save is pending. */
+function receive(prefs: Preferences): void {
+  remember(prefs);
+  if (pendingSaves === 0) {
+    showIfNewer(prefs);
+  } else if (!pendingEvent || prefs.revision >= pendingEvent.revision) {
+    pendingEvent = prefs;
+  }
+}
+
+/** A save has settled. When none is left, shows the event held meanwhile if it is newer. */
+function settleSave(): void {
+  pendingSaves = Math.max(0, pendingSaves - 1);
+  if (pendingSaves > 0) return;
+  const held = pendingEvent;
+  pendingEvent = null;
+  if (held && held.revision > shownRevision) applyPreferences(held);
 }
 
 export async function loadPreferences(
@@ -130,12 +163,11 @@ export async function loadPreferences(
   return parsed;
 }
 
-export async function savePreferences(
+async function putPreferences(
   endpoint: PreferencesEndpoint,
   patch: PreferencesPatch,
-  fetcher: typeof fetch = fetch,
+  fetcher: typeof fetch,
 ): Promise<Preferences> {
-  const seq = markLocalChoice();
   const token = endpoint.token?.() ?? '';
   let response: Response;
   try {
@@ -159,9 +191,36 @@ export async function savePreferences(
   }
   const parsed = parsePreferences(await response.json().catch(() => null));
   if (!parsed) throw new PreferencesError('invalid response', response.status, null);
-  // An older save must not replace a newer choice that is on screen.
-  if (seq === choiceSeq) showIfNewer(parsed);
   return parsed;
+}
+
+/**
+ * Saves one choice (already shown on the page). Saves are sent one at a time in the order they
+ * were chosen, each with its own patch. Only the latest save's answer is shown; when the latest
+ * save fails, the page goes back to the saved value.
+ */
+export function savePreferences(
+  endpoint: PreferencesEndpoint,
+  patch: PreferencesPatch,
+  fetcher: typeof fetch = fetch,
+): Promise<Preferences> {
+  const seq = markLocalChoice();
+  pendingSaves += 1;
+  const run = saveQueue.then(() => putPreferences(endpoint, patch, fetcher));
+  saveQueue = run.catch(() => undefined);
+  return run.then(
+    (parsed) => {
+      remember(parsed);
+      if (seq === choiceSeq) showIfNewer(parsed);
+      settleSave();
+      return parsed;
+    },
+    (error: unknown) => {
+      if (seq === choiceSeq && saved) applyPreferences(saved);
+      settleSave();
+      throw error;
+    },
+  );
 }
 
 /**
@@ -170,6 +229,7 @@ export async function savePreferences(
  */
 export function applyPreferences(prefs: Preferences): boolean {
   shownRevision = Math.max(shownRevision, prefs.revision);
+  remember(prefs);
   applyTheme(prefs.theme);
   applyLocale(prefs.locale);
   const themeCached = cacheTheme(prefs.theme);
@@ -189,7 +249,8 @@ export async function syncPreferences(
   try {
     const prefs = await loadPreferences(endpoint, fetcher);
     // The user chose something while this read was in flight: the choice wins.
-    if (seq === choiceSeq) showIfNewer(prefs);
+    if (seq === choiceSeq) receive(prefs);
+    else remember(prefs);
     return prefs;
   } catch {
     return null;
@@ -201,5 +262,5 @@ export function applyPreferenceEvent(event: Event): void {
   const data = (event as MessageEvent).data;
   if (typeof data !== 'string') return;
   const prefs = parsePreferenceEvent(data);
-  if (prefs) showIfNewer(prefs);
+  if (prefs) receive(prefs);
 }

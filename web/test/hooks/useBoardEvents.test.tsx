@@ -1,7 +1,8 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useBoardEvents } from '../../src/app/model/useBoardEvents';
+import { resetPreferenceOrdering } from '../../src/shared/preferences';
 import { FakeEventSource } from '../fakes';
 
 beforeEach(() => {
@@ -79,5 +80,25 @@ describe('useBoardEvents', () => {
     document.documentElement.removeAttribute('data-mode');
     document.documentElement.removeAttribute('data-accent');
     window.localStorage.clear();
+  });
+
+  it('re-syncs the saved value on a stream ready event after reconnect', async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ locale: 'ja', theme: { mode: 'dark', accent: 'teal' }, revision: 4 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    renderHook(() => useBoardEvents(() => {}));
+    act(() => FakeEventSource.latest.emit('ready'));
+    await waitFor(() => expect(document.documentElement.dataset.accent).toBe('teal'));
+    expect(fetcher).toHaveBeenCalledWith('/api/preferences', expect.anything());
+    document.documentElement.removeAttribute('data-mode');
+    document.documentElement.removeAttribute('data-accent');
+    document.documentElement.removeAttribute('lang');
+    window.localStorage.clear();
+    resetPreferenceOrdering();
   });
 });

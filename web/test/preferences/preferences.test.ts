@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   applyPreferenceEvent,
   applyPreferences,
@@ -275,12 +275,104 @@ describe('ordering of results', () => {
     const endpoint = { url: '/api/preferences' };
     const one = savePreferences(endpoint, { locale: 'ja' }, fetcher);
     const two = savePreferences(endpoint, { theme: light.theme }, fetcher);
-    second.resolve(jsonResponse(200, light));
-    await two;
-    expect(document.documentElement.dataset.mode).toBe('light');
     first.resolve(jsonResponse(200, { ...saved, revision: 6 }));
     await one;
+    // The first answer is not the latest choice's: the page keeps what it shows.
+    expect(document.documentElement.dataset.mode).toBeUndefined();
+    second.resolve(jsonResponse(200, { ...light, revision: 7 }));
+    await two;
     expect(document.documentElement.dataset.mode).toBe('light');
     expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('serializes two saves so the second response cannot restore an older value', async () => {
+    const bodies: unknown[] = [];
+    const first = deferred();
+    const second = deferred();
+    const queue = [first, second];
+    const fetcher = (async (_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return queue.shift()?.promise;
+    }) as typeof fetch;
+    const endpoint = { url: '/api/preferences' };
+    const one = savePreferences(endpoint, { theme: light.theme }, fetcher);
+    const two = savePreferences(endpoint, { locale: 'ja' }, fetcher);
+    await Promise.resolve();
+    await Promise.resolve();
+    // Only one request is in flight; the second waits for the first.
+    expect(bodies).toEqual([{ theme: light.theme }]);
+    first.resolve(jsonResponse(200, { ...saved, theme: light.theme, locale: 'en', revision: 6 }));
+    await one;
+    await vi.waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).toEqual({ locale: 'ja' });
+    second.resolve(jsonResponse(200, { ...saved, theme: light.theme, locale: 'ja', revision: 7 }));
+    await two;
+    expect(document.documentElement.dataset.mode).toBe('light');
+    expect(document.documentElement.lang).toBe('ja');
+    expect(JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) ?? '{}')).toEqual(light.theme);
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('ja');
+  });
+
+  it('holds a server event while a save is pending and applies it only if it is newer', async () => {
+    const event = (prefs: Preferences) =>
+      applyPreferenceEvent(new MessageEvent('preferences', { data: JSON.stringify(prefs) }));
+    const pendingSave = deferred();
+    const fetcher = (async () => pendingSave.promise) as typeof fetch;
+    const endpoint = { url: '/api/preferences' };
+    applyPreferences({ ...light, revision: 5 });
+    const save = savePreferences(endpoint, { locale: 'ja' }, fetcher);
+    document.documentElement.lang = 'ja';
+    event({ ...saved, revision: 7 });
+    event({ ...saved, theme: { mode: 'dark', accent: 'pink' }, revision: 6 });
+    // Nothing from the stream is shown yet; the later lower-revision event does not replace it.
+    expect(document.documentElement.dataset.mode).toBe('light');
+    pendingSave.resolve(jsonResponse(200, { ...light, locale: 'ja', revision: 6 }));
+    await save;
+    // Revision 7 is newer than the answer, so it is applied once the queue is empty.
+    expect(document.documentElement.dataset.accent).toBe('teal');
+
+    // An event older than the save's answer is dropped.
+    const second = deferred();
+    const save2 = savePreferences(
+      endpoint,
+      { locale: 'en' },
+      (async () => second.promise) as typeof fetch,
+    );
+    event({ ...saved, theme: { mode: 'dark', accent: 'pink' }, revision: 8 });
+    second.resolve(jsonResponse(200, { ...light, revision: 9 }));
+    await save2;
+    expect(document.documentElement.dataset.mode).toBe('light');
+    expect(document.documentElement.dataset.accent).toBe('blue');
+  });
+
+  it('reverts the on-screen choice to the saved value when the save fails', async () => {
+    applyPreferences({ ...light, revision: 5 });
+    document.documentElement.dataset.accent = 'pink';
+    const fetcher = (async () => jsonResponse(500, {})) as typeof fetch;
+    await expect(
+      savePreferences(
+        { url: '/api/preferences' },
+        { theme: { mode: 'light', accent: 'pink' } },
+        fetcher,
+      ),
+    ).rejects.toMatchObject({ status: 500 });
+    expect(document.documentElement.dataset.accent).toBe('blue');
+    expect(JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) ?? '{}')).toEqual(light.theme);
+  });
+
+  it('keeps a newer queued choice when an earlier save fails', async () => {
+    applyPreferences({ ...light, revision: 5 });
+    const answers = [
+      jsonResponse(500, {}),
+      jsonResponse(200, { ...light, locale: 'ja', revision: 6 }),
+    ];
+    const fetcher = (async () => answers.shift()) as typeof fetch;
+    const endpoint = { url: '/api/preferences' };
+    const one = savePreferences(endpoint, { theme: { mode: 'dark', accent: 'pink' } }, fetcher);
+    const two = savePreferences(endpoint, { locale: 'ja' }, fetcher);
+    await expect(one).rejects.toMatchObject({ status: 500 });
+    await two;
+    expect(document.documentElement.lang).toBe('ja');
+    expect(document.documentElement.dataset.accent).toBe('blue');
   });
 });
