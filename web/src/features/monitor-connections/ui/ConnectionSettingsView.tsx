@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { XIcon } from 'lucide-react';
+import { Checkbox } from '@/shared/ui/checkbox';
 import { Button } from '@/shared/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';
@@ -16,6 +17,16 @@ export interface ConnectionDraft {
   token: string;
   email: string;
   domain: string;
+  /** Keep the typed token in the OS keychain. Off unless the person turns it on. */
+  save: boolean;
+}
+
+/** Where the token comes from and whether this PC can keep one. Never the token itself. */
+export interface TokenInfo {
+  source: 'env' | 'keychain' | 'session' | null;
+  keychainAvailable: boolean;
+  /** A token is saved in the keychain and can be deleted. */
+  saved: boolean;
 }
 
 /** The QR code of the phone URL, as an image the caller already rendered. */
@@ -35,6 +46,9 @@ export interface ConnectionSettingsViewProps {
   /** The public phone URL, known once the connection is ready. */
   url?: string | null;
   qr?: ConnectionQr | null;
+  tokenInfo?: TokenInfo;
+  /** Delete the token saved in the keychain. */
+  onDeleteToken?: () => void;
   /** A message about the last start or save, shown with the form. */
   error?: string | null;
   /** A save or stop request is in flight. */
@@ -63,6 +77,8 @@ export function ConnectionSettingsView({
   draft,
   url = null,
   qr = null,
+  tokenInfo = { source: null, keychainAvailable: true, saved: false },
+  onDeleteToken,
   error = null,
   saving = false,
   onConnect,
@@ -72,12 +88,18 @@ export function ConnectionSettingsView({
   const { t } = useTranslation();
   const [values, setValues] = useState<ConnectionDraft>(draft);
   const [copied, setCopied] = useState(false);
-  const ids = { token: useId(), email: useId(), domain: useId(), url: useId() };
+  const ids = { token: useId(), email: useId(), domain: useId(), url: useId(), save: useId() };
 
   // Reset only when the values differ, so an equal draft from a re-render keeps what was typed.
   useEffect(
-    () => setValues({ token: draft.token, email: draft.email, domain: draft.domain }),
-    [draft.token, draft.email, draft.domain],
+    () =>
+      setValues({
+        token: draft.token,
+        email: draft.email,
+        domain: draft.domain,
+        save: draft.save,
+      }),
+    [draft.token, draft.email, draft.domain, draft.save],
   );
   useEffect(() => {
     if (!copied) return;
@@ -89,7 +111,17 @@ export function ConnectionSettingsView({
   const busy =
     saving || status === 'starting' || status === 'reconnecting' || status === 'stopping';
   const progress = progressText(status, t);
-  const set = (field: keyof ConnectionDraft) => (event: { target: { value: string } }) =>
+  const canSave = tokenInfo.keychainAvailable;
+  const tokenNote = !canSave
+    ? t('monitorConnection.tokenNoKeychain')
+    : tokenInfo.source === 'env'
+      ? t('monitorConnection.tokenFromEnv')
+      : tokenInfo.source === 'keychain'
+        ? t('monitorConnection.tokenInKeychain')
+        : tokenInfo.source === 'session'
+          ? t('monitorConnection.tokenThisRun')
+          : t('monitorConnection.tokenNote');
+  const set = (field: 'token' | 'email' | 'domain') => (event: { target: { value: string } }) =>
     setValues((current) => ({ ...current, [field]: event.target.value }));
 
   const submit = (event: FormEvent) => {
@@ -199,7 +231,27 @@ export function ConnectionSettingsView({
                   onChange={set('token')}
                 />
               </div>
-              <p className="connection-dialog__hint">{t('monitorConnection.tokenNote')}</p>
+              <div className="connection-dialog__save">
+                <Checkbox
+                  id={ids.save}
+                  checked={canSave && values.save}
+                  disabled={busy || !canSave}
+                  onCheckedChange={(checked) =>
+                    setValues((current) => ({ ...current, save: checked === true }))
+                  }
+                />
+                <Label htmlFor={ids.save}>{t('monitorConnection.saveToken')}</Label>
+              </div>
+              <p className="connection-dialog__hint" data-testid="token-note">
+                {tokenNote}
+              </p>
+              {tokenInfo.saved && (
+                <div>
+                  <Button type="button" variant="outline" disabled={busy} onClick={onDeleteToken}>
+                    {t('monitorConnection.deleteToken')}
+                  </Button>
+                </div>
+              )}
               <div className="connection-dialog__field">
                 <Label htmlFor={ids.email}>{t('monitorConnection.email')}</Label>
                 <Input

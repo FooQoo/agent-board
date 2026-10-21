@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
-import { settingsSlot } from '../features/settings/ui/settingsSlot';
+import { boardSettingsSlot } from './boardSettingsSlot';
 import { Board } from '../pages/board/ui/Board';
 import { ArchiveList } from '../pages/archive/ui/ArchiveList';
 import { EpicList } from '../pages/epics/ui/EpicList';
@@ -70,7 +70,7 @@ export function BoardWorkspace({
         activeProjectId={known ? activeId : null}
         switchDisabled={operation !== null}
         projectSwitcher={projectSwitcher}
-        settings={settingsSlot}
+        settings={boardSettingsSlot}
         canAdd={session.viewMode === 'board' && model.view === 'board'}
         viewMode={session.viewMode}
         onBack={actions.onBack}

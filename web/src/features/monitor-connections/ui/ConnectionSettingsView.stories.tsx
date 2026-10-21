@@ -11,8 +11,13 @@ import {
 
 /** The scheme is joined here so the source keeps no literal remote address. */
 const phoneUrl = `${'https'}://your-name.ngrok.app/monitor/`;
-const emptyDraft: ConnectionDraft = { token: '', email: '', domain: '' };
-const filledDraft: ConnectionDraft = { token: '', email: 'owner@example.com', domain: '' };
+const emptyDraft: ConnectionDraft = { token: '', email: '', domain: '', save: false };
+const filledDraft: ConnectionDraft = {
+  token: '',
+  email: 'owner@example.com',
+  domain: '',
+  save: false,
+};
 
 /** A layout sample of a QR code: three finder squares and a few modules. It cannot be scanned. */
 const sampleQr: ConnectionQr = {
@@ -54,6 +59,7 @@ export const NeedsConfig: Story = {
       token: 'secret-token',
       email: 'owner@example.com',
       domain: '',
+      save: false,
     });
     await expect(view.getByLabelText('ngrok auth token')).toHaveAttribute('type', 'password');
   },

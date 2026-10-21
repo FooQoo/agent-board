@@ -259,3 +259,9 @@
 .connection-dialog__field:has(input:disabled) label {
   color: var(--r-muted);
 }
+
+.connection-dialog__save {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

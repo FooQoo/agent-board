@@ -76,6 +76,106 @@
           ]
         }
       ]
+    },
+    {
+      "file": "features/monitor-connections/ui/ConnectionSettings.tsx",
+      "exports": [
+        {
+          "name": "ConnectionSettings",
+          "stories": [
+            {
+              "id": "monitor-connections-connectionsettings--save-and-connect",
+              "states": [
+                "save then start",
+                "token only in start body",
+                "QR image",
+                "connected view"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--already-connected",
+              "states": ["connected on open", "QR image"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--stop-connection",
+              "states": ["stop", "settings kept"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--starting",
+              "states": ["starting", "form locked"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--start-fails",
+              "states": ["failed with fixed reason", "token cleared"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--settings-conflict",
+              "states": ["revision conflict", "not started"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--email-required",
+              "states": ["empty email refused"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--save-box-off-by-default",
+              "states": ["save off by default", "token only body"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--save-token-to-keychain",
+              "states": ["save true in start body", "token not in settings"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--delete-saved-token",
+              "states": ["saved in keychain note", "delete saved token"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--connect-with-saved-token",
+              "states": ["empty field connects", "no token body"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--keychain-unavailable",
+              "states": ["cannot save note", "save disabled"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--keychain-save-refused",
+              "states": ["keychain error message", "not started"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--token-from-environment",
+              "states": ["environment note", "no delete", "save off"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--token-required",
+              "states": ["empty token refused"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--save-box-on",
+              "states": ["save box on", "nothing sent yet"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--saved-token-form",
+              "states": ["keychain note", "delete offered"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }

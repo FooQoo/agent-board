@@ -101,6 +101,25 @@
           ]
         }
       ]
+    },
+    {
+      "file": "app/boardSettingsSlot.tsx",
+      "exports": [
+        {
+          "name": "boardSettingsSlot",
+          "stories": [
+            {
+              "id": "app-board-settings-slot--with-connection-entry",
+              "states": [
+                "connection entry below language and theme",
+                "nested dialog",
+                "escape closes inner"
+              ],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }

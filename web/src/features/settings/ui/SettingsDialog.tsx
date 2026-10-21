@@ -1,4 +1,12 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckIcon, XIcon } from 'lucide-react';
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
@@ -101,6 +109,7 @@ export function SettingsDialog({
   restoreFocusRef,
   localeStorageProvider,
   themeStorageProvider,
+  extra,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -109,6 +118,8 @@ export function SettingsDialog({
   /** Optional persistence boundary for isolated stories and deterministic tests. */
   localeStorageProvider?: LocaleStorageProvider;
   themeStorageProvider?: ThemeStorageProvider;
+  /** Further settings the page adds below the theme, such as the mobile connection. */
+  extra?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const [theme, setTheme] = useState<Theme>(currentTheme);
@@ -241,6 +252,8 @@ export function SettingsDialog({
             ))}
           </RadioGroup>
         </section>
+
+        {extra}
 
         {saveError && (
           <p className="modal__error" role="alert">

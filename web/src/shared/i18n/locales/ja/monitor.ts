@@ -50,7 +50,13 @@ export const monitorJa = {
     intro: 'ngrokを使って、外出先からGoogle認証で接続します。',
     token: 'ngrok認証トークン',
     tokenPlaceholder: '認証トークンを入力',
-    tokenNote: '入力したトークンは今回の起動中だけ使用します。',
+    tokenNote: '入力したトークンは、保存しない限り今回の起動中だけ使用します。',
+    saveToken: 'トークンをこのPCのキーチェーンに保存する',
+    tokenFromEnv: '環境変数 NGROK_AUTHTOKEN を使います。空のままならこれを使います。',
+    tokenInKeychain: 'このPCのキーチェーンに保存済みです。空のままならこれを使います。',
+    tokenThisRun: '今回だけ入力されています（保存されません）。',
+    tokenNoKeychain: 'このPCでは保存できません（都度入力）。',
+    deleteToken: '保存したトークンを削除',
     email: '接続を許可するGoogleメール',
     emailPlaceholder: 'owner@example.com',
     domain: 'ngrokドメイン（任意）',
@@ -100,6 +106,30 @@ export const monitorJa = {
         unavailable: '接続が停止中か、許可されていません。\nPCを確認してください。',
         unreachable: 'モニターに接続できません。\n通信を確認してもう一度お試しください。',
       },
+    },
+  },
+  monitorConnectionPc: {
+    error: {
+      emailRequired: '許可するGoogleメールを1件以上入力してください。',
+      tokenRequired: 'ngrokの認証トークンを入力してください。',
+      conflict: '別の画面で設定が変更されました。内容を確認してもう一度お試しください。',
+      saveFailed: '設定を保存できませんでした。接続は開始していません。',
+      invalid: 'メールアドレスとドメインを確認してください。',
+      unreadable: '保存済みの設定を読み込めませんでした。保存し直してから続けてください。',
+      startFailed: '接続を開始できませんでした。もう一度お試しください。',
+      keychainUnavailable: 'このPCでは保存できません（都度入力）。',
+      unreachable: 'このPCのボードに接続できませんでした。もう一度お試しください。',
+    },
+    failure: {
+      connect_failed:
+        'ngrokに接続できませんでした。認証トークンとインターネット接続を確認してください。',
+      endpoint_failed:
+        'ngrokが公開アドレスを開けませんでした。ドメインとngrokアカウントを確認してください。',
+      public_url_invalid: 'ngrokから使えないアドレスが返されました。もう一度お試しください。',
+      internal: '内部エラーのため接続が止まりました。もう一度お試しください。',
+      config_unreadable: '保存済みの設定を読み込めませんでした。保存し直してから続けてください。',
+      config_invalid:
+        '保存済みの設定が正しくありません。メールアドレスとドメインを確認してください。',
     },
   },
 } as const;
