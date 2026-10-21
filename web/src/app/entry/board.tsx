@@ -5,6 +5,8 @@ import '../../shared/i18n';
 import { App } from '../App';
 import { readMockInitial } from '../development/mock';
 import { initializeTheme } from '../../shared/theme';
+import { syncPreferences } from '../../shared/preferences';
+import { readToken } from '../../shared/api/http';
 import '../../shared/styles/tokens.css';
 import '../../shared/styles/app.css';
 import '../../shared/styles/resize.css';
@@ -12,6 +14,9 @@ import '../../shared/styles/ui.css';
 import '../../shared/styles/theme.css';
 
 initializeTheme();
+// The browser copy painted the first screen; the board's saved value replaces it when it differs.
+if (import.meta.env.MODE !== 'mock')
+  void syncPreferences({ url: '/api/preferences', token: readToken });
 
 const initial =
   import.meta.env.MODE === 'mock' ? readMockInitial(window.location.search) : undefined;

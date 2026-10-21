@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  applyPreferenceEvent,
   applyPreferences,
   loadPreferences,
+  markLocalChoice,
   parsePreferenceEvent,
   parsePreferences,
   PreferencesError,
+  resetPreferenceOrdering,
   type Preferences,
   savePreferences,
+  syncPreferences,
 } from '../../src/shared/preferences';
 import { LOCALE_STORAGE_KEY } from '../../src/shared/i18n';
 import { THEME_STORAGE_KEY } from '../../src/shared/theme';
@@ -25,6 +29,7 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 afterEach(() => {
+  resetPreferenceOrdering();
   localStorage.clear();
   document.documentElement.removeAttribute('data-mode');
   document.documentElement.removeAttribute('data-accent');
@@ -155,5 +160,127 @@ describe('applyPreferences', () => {
     } finally {
       Storage.prototype.setItem = original;
     }
+  });
+});
+
+describe('savePreferences with extra headers', () => {
+  it('sends the headers the endpoint adds, such as the monitor CSRF header', async () => {
+    let sent: Headers | undefined;
+    const fetcher = (async (_url: string, init?: RequestInit) => {
+      sent = new Headers(init?.headers);
+      return jsonResponse(200, saved);
+    }) as typeof fetch;
+    await savePreferences(
+      { url: '/monitor/api/preferences', headers: async () => ({ 'X-Agboard-Csrf': 'csrf-1' }) },
+      { locale: 'ja' },
+      fetcher,
+    );
+    expect(sent?.get('X-Agboard-Csrf')).toBe('csrf-1');
+    expect(sent?.get('X-Agboard-Token')).toBeNull();
+  });
+
+  it('reports a failing headers step as a failed save', async () => {
+    const fetcher = (async () => jsonResponse(200, saved)) as typeof fetch;
+    await expect(
+      savePreferences(
+        {
+          url: '/x',
+          headers: async () => {
+            throw new Error('no session');
+          },
+        },
+        { locale: 'ja' },
+        fetcher,
+      ),
+    ).rejects.toMatchObject({ status: 0 });
+  });
+});
+
+describe('syncPreferences', () => {
+  it('applies a saved value that differs from the browser copy and updates the copy', async () => {
+    const fetcher = (async () => jsonResponse(200, saved)) as typeof fetch;
+    await expect(syncPreferences({ url: '/api/preferences' }, fetcher)).resolves.toEqual(saved);
+    expect(document.documentElement.dataset.mode).toBe('dark');
+    expect(document.documentElement.dataset.accent).toBe('teal');
+    expect(document.documentElement.lang).toBe('ja');
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('ja');
+    expect(JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) ?? '{}')).toEqual(saved.theme);
+  });
+
+  it('keeps the page as it is when the read fails', async () => {
+    document.documentElement.dataset.mode = 'light';
+    const fetcher = (async () => jsonResponse(500, {})) as typeof fetch;
+    await expect(syncPreferences({ url: '/api/preferences' }, fetcher)).resolves.toBeNull();
+    expect(document.documentElement.dataset.mode).toBe('light');
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('applyPreferenceEvent', () => {
+  it('applies the data of a preferences event', () => {
+    applyPreferenceEvent(new MessageEvent('preferences', { data: JSON.stringify(saved) }));
+    expect(document.documentElement.dataset.accent).toBe('teal');
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('ja');
+  });
+
+  it('ignores data that is not preferences', () => {
+    applyPreferenceEvent(new MessageEvent('preferences', { data: '{"locale":"fr"}' }));
+    expect(document.documentElement.dataset.accent).toBeUndefined();
+  });
+});
+
+describe('ordering of results', () => {
+  const light: Preferences = {
+    locale: 'en',
+    theme: { mode: 'light', accent: 'blue' },
+    revision: 5,
+  };
+
+  function deferred() {
+    let resolve!: (response: Response) => void;
+    const promise = new Promise<Response>((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
+  it('does not let a sync that resolves after a local choice overwrite it', async () => {
+    const read = deferred();
+    const fetcher = (async () => read.promise) as typeof fetch;
+    const pending = syncPreferences({ url: '/api/preferences' }, fetcher);
+    markLocalChoice();
+    document.documentElement.dataset.accent = 'pink';
+    read.resolve(jsonResponse(200, saved));
+    await pending;
+    expect(document.documentElement.dataset.accent).toBe('pink');
+  });
+
+  it('ignores an event with a lower revision than the one shown', () => {
+    applyPreferenceEvent(new MessageEvent('preferences', { data: JSON.stringify(light) }));
+    applyPreferenceEvent(
+      new MessageEvent('preferences', { data: JSON.stringify({ ...saved, revision: 4 }) }),
+    );
+    expect(document.documentElement.dataset.mode).toBe('light');
+    expect(document.documentElement.dataset.accent).toBe('blue');
+    // An equal revision may be applied again.
+    applyPreferenceEvent(new MessageEvent('preferences', { data: JSON.stringify(light) }));
+    expect(document.documentElement.dataset.mode).toBe('light');
+  });
+
+  it('does not let a save that resolves after a newer choice overwrite that choice', async () => {
+    const first = deferred();
+    const second = deferred();
+    const queue = [first, second];
+    const fetcher = (async () => queue.shift()?.promise) as typeof fetch;
+    const endpoint = { url: '/api/preferences' };
+    const one = savePreferences(endpoint, { locale: 'ja' }, fetcher);
+    const two = savePreferences(endpoint, { theme: light.theme }, fetcher);
+    second.resolve(jsonResponse(200, light));
+    await two;
+    expect(document.documentElement.dataset.mode).toBe('light');
+    first.resolve(jsonResponse(200, { ...saved, revision: 6 }));
+    await one;
+    expect(document.documentElement.dataset.mode).toBe('light');
+    expect(document.documentElement.lang).toBe('en');
   });
 });

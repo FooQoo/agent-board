@@ -64,4 +64,20 @@ describe('useBoardEvents', () => {
     unmount();
     expect(FakeEventSource.instances.every((source) => source.closed)).toBe(true);
   });
+
+  it('applies a preferences event at once and does not refresh the board', () => {
+    const onRefresh = vi.fn();
+    renderHook(() => useBoardEvents(onRefresh));
+    act(() =>
+      FakeEventSource.latest.emit(
+        'preferences',
+        JSON.stringify({ locale: 'en', theme: { mode: 'dark', accent: 'red' }, revision: 2 }),
+      ),
+    );
+    expect(document.documentElement.dataset.accent).toBe('red');
+    expect(onRefresh).not.toHaveBeenCalled();
+    document.documentElement.removeAttribute('data-mode');
+    document.documentElement.removeAttribute('data-accent');
+    window.localStorage.clear();
+  });
 });

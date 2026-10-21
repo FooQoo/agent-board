@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { resetPreferenceOrdering } from '../../src/shared/preferences';
 import { join, resolve } from 'node:path';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsDialog, THEME_SWATCHES } from '../../src/features/settings/ui/SettingsDialog';
 import { selectLocale } from '../../src/shared/i18n';
 import { ACCENTS, MODES, selectTheme } from '../../src/shared/theme';
@@ -36,6 +37,7 @@ function Harness({ initiallyOpen = true }: { initiallyOpen?: boolean }) {
 }
 
 function reset() {
+  resetPreferenceOrdering();
   window.localStorage.clear();
   selectLocale('en');
   selectTheme({ mode: 'light', accent: 'blue' });
@@ -260,5 +262,87 @@ describe('SettingsDialog keyboard and focus', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(opener);
+  });
+});
+
+describe('SettingsDialog saving', () => {
+  const saved = { locale: 'ja', theme: { mode: 'light', accent: 'blue' }, revision: 1 };
+
+  function stubFetch(status: number) {
+    const fetcher = vi.fn(
+      async (_url: string, init?: RequestInit) =>
+        // Like the server, answer with the saved value after the patch.
+        new Response(
+          JSON.stringify(
+            status === 200
+              ? { ...saved, ...JSON.parse(String(init?.body ?? '{}')) }
+              : { code: 'preferences_unavailable' },
+          ),
+          { status, headers: { 'Content-Type': 'application/json' } },
+        ),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    return fetcher;
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('applies a choice at once and saves it through the endpoint', async () => {
+    const fetcher = stubFetch(200);
+    render(
+      <SettingsDialog
+        open
+        onOpenChange={() => {}}
+        preferencesEndpoint={{ url: '/api/preferences', token: () => 't' }}
+      />,
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Dark Purple' }));
+    expect(document.documentElement.dataset.mode).toBe('dark');
+    expect(document.documentElement.dataset.accent).toBe('purple');
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    const [url, init] = fetcher.mock.calls[0] ?? [];
+    expect(url).toBe('/api/preferences');
+    expect(init?.method).toBe('PUT');
+    expect(JSON.parse(String(init?.body))).toEqual({ theme: { mode: 'dark', accent: 'purple' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('saves a language choice as locale only', async () => {
+    const fetcher = stubFetch(200);
+    render(
+      <SettingsDialog
+        open
+        onOpenChange={() => {}}
+        preferencesEndpoint={{ url: '/api/preferences' }}
+      />,
+    );
+    await userEvent.click(screen.getByRole('radio', { name: '日本語' }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({ locale: 'ja' });
+  });
+
+  it('keeps the choice on the page and shows the save error when the save fails', async () => {
+    stubFetch(500);
+    render(
+      <SettingsDialog
+        open
+        onOpenChange={() => {}}
+        preferencesEndpoint={{ url: '/api/preferences' }}
+      />,
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Light Red' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(document.documentElement.dataset.accent).toBe('red');
+  });
+
+  it('follows a preferences event that changes the page while it is open', async () => {
+    render(<SettingsDialog open onOpenChange={() => {}} />);
+    document.documentElement.dataset.mode = 'dark';
+    document.documentElement.dataset.accent = 'pink';
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'Dark Pink' }).getAttribute('aria-checked')).toBe(
+        'true',
+      ),
+    );
   });
 });

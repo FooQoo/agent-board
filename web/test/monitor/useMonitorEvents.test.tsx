@@ -94,4 +94,23 @@ describe('useMonitorEvents', () => {
     act(() => FakeEventSource.latest.emit('error'));
     expect(refresh).toHaveBeenLastCalledWith('disconnected');
   });
+
+  it('applies a preferences event without refreshing the monitor', async () => {
+    const onRefresh = vi.fn();
+    const { useMonitorEvents } = await import('../../src/pages/monitor/hooks/useMonitorEvents');
+    renderHook(() => useMonitorEvents({ onRefresh }));
+    act(() => FakeEventSource.latest.emit('ready', '{"build":"0123456789abcdef"}'));
+    onRefresh.mockClear();
+    act(() =>
+      FakeEventSource.latest.emit(
+        'preferences',
+        JSON.stringify({ locale: 'en', theme: { mode: 'dark', accent: 'pink' }, revision: 2 }),
+      ),
+    );
+    expect(document.documentElement.dataset.accent).toBe('pink');
+    expect(onRefresh).not.toHaveBeenCalled();
+    document.documentElement.removeAttribute('data-mode');
+    document.documentElement.removeAttribute('data-accent');
+    window.localStorage.clear();
+  });
 });

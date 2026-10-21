@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { applyPreferenceEvent } from '../../shared/preferences';
 import { readyBuildId } from '../../shared/lib/build/buildId';
 
 /**
@@ -28,6 +29,8 @@ export function useBoardEvents(onRefresh: () => void): {
       changed();
     });
     source.addEventListener('changed', changed);
+    // The saved language and theme are shown at once; the board is not read again for them.
+    source.addEventListener('preferences', applyPreferenceEvent);
     source.addEventListener('error', lost);
     return () => source.close();
   }, []);
