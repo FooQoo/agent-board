@@ -13,7 +13,11 @@ import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { RadioGroup } from '@/shared/ui/radio-group';
 import '../../../shared/styles/modal.css';
-import { savePreferences, type PreferencesEndpoint } from '../../../shared/preferences';
+import {
+  markLocalChoice,
+  savePreferences,
+  type PreferencesEndpoint,
+} from '../../../shared/preferences';
 import { selectLocale, type Locale, type LocaleStorageProvider } from '../../../shared/i18n';
 import {
   ACCENTS,
@@ -155,6 +159,7 @@ export function SettingsDialog({
   /** Shows the choice at once, then saves it; a failed save is shown in the dialog. */
   const save = (cached: boolean, patch: { locale?: Locale; theme?: Theme }) => {
     if (!preferencesEndpoint) {
+      markLocalChoice();
       setSaveError(!cached);
       return;
     }

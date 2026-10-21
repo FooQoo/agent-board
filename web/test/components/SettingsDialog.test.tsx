@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { resetPreferenceOrdering } from '../../src/shared/preferences';
 import { join, resolve } from 'node:path';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -36,6 +37,7 @@ function Harness({ initiallyOpen = true }: { initiallyOpen?: boolean }) {
 }
 
 function reset() {
+  resetPreferenceOrdering();
   window.localStorage.clear();
   selectLocale('en');
   selectTheme({ mode: 'light', accent: 'blue' });
@@ -268,11 +270,16 @@ describe('SettingsDialog saving', () => {
 
   function stubFetch(status: number) {
     const fetcher = vi.fn(
-      async (_url: string, _init?: RequestInit) =>
-        new Response(JSON.stringify(status === 200 ? saved : { code: 'preferences_unavailable' }), {
-          status,
-          headers: { 'Content-Type': 'application/json' },
-        }),
+      async (_url: string, init?: RequestInit) =>
+        // Like the server, answer with the saved value after the patch.
+        new Response(
+          JSON.stringify(
+            status === 200
+              ? { ...saved, ...JSON.parse(String(init?.body ?? '{}')) }
+              : { code: 'preferences_unavailable' },
+          ),
+          { status, headers: { 'Content-Type': 'application/json' } },
+        ),
     );
     vi.stubGlobal('fetch', fetcher);
     return fetcher;

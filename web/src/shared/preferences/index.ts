@@ -31,6 +31,8 @@ export interface PreferencesEndpoint {
   token?: () => string;
   /** Further headers a save sends, such as the monitor's CSRF header. It may open a session first. */
   headers?: () => Record<string, string> | Promise<Record<string, string>>;
+  /** Called with the status when a save is refused, so the endpoint can drop a stale credential. */
+  onRefused?: (status: number) => void;
 }
 
 /** A failed read or save. `status` is 0 when the request never got an answer. */
@@ -84,6 +86,31 @@ async function failure(response: Response): Promise<PreferencesError> {
   return new PreferencesError(`request failed with ${response.status}`, response.status, code);
 }
 
+// Ordering rules. `shownRevision` is the newest server revision this page shows: an older result
+// is ignored. `choiceSeq` counts the user's own choices: a choice is shown at once and wins over
+// any read or save that started before it.
+let shownRevision = -1;
+let choiceSeq = 0;
+
+/** Notes a choice of the user (already shown on the page). Returns its sequence number. */
+export function markLocalChoice(): number {
+  choiceSeq += 1;
+  return choiceSeq;
+}
+
+/** Forgets the ordering state. For tests. */
+export function resetPreferenceOrdering(): void {
+  shownRevision = -1;
+  choiceSeq = 0;
+}
+
+/** Shows server preferences unless the page already shows a newer revision. */
+function showIfNewer(prefs: Preferences): boolean {
+  if (prefs.revision < shownRevision) return false;
+  applyPreferences(prefs);
+  return true;
+}
+
 export async function loadPreferences(
   endpoint: PreferencesEndpoint,
   fetcher: typeof fetch = fetch,
@@ -108,6 +135,7 @@ export async function savePreferences(
   patch: PreferencesPatch,
   fetcher: typeof fetch = fetch,
 ): Promise<Preferences> {
+  const seq = markLocalChoice();
   const token = endpoint.token?.() ?? '';
   let response: Response;
   try {
@@ -125,9 +153,14 @@ export async function savePreferences(
   } catch {
     throw new PreferencesError('network', 0, null);
   }
-  if (!response.ok) throw await failure(response);
+  if (!response.ok) {
+    endpoint.onRefused?.(response.status);
+    throw await failure(response);
+  }
   const parsed = parsePreferences(await response.json().catch(() => null));
   if (!parsed) throw new PreferencesError('invalid response', response.status, null);
+  // An older save must not replace a newer choice that is on screen.
+  if (seq === choiceSeq) showIfNewer(parsed);
   return parsed;
 }
 
@@ -136,6 +169,7 @@ export async function savePreferences(
  * Returns false when the copy could not be written; the page still shows them.
  */
 export function applyPreferences(prefs: Preferences): boolean {
+  shownRevision = Math.max(shownRevision, prefs.revision);
   applyTheme(prefs.theme);
   applyLocale(prefs.locale);
   const themeCached = cacheTheme(prefs.theme);
@@ -151,9 +185,11 @@ export async function syncPreferences(
   endpoint: PreferencesEndpoint,
   fetcher: typeof fetch = fetch,
 ): Promise<Preferences | null> {
+  const seq = choiceSeq;
   try {
     const prefs = await loadPreferences(endpoint, fetcher);
-    applyPreferences(prefs);
+    // The user chose something while this read was in flight: the choice wins.
+    if (seq === choiceSeq) showIfNewer(prefs);
     return prefs;
   } catch {
     return null;
@@ -165,5 +201,5 @@ export function applyPreferenceEvent(event: Event): void {
   const data = (event as MessageEvent).data;
   if (typeof data !== 'string') return;
   const prefs = parsePreferenceEvent(data);
-  if (prefs) applyPreferences(prefs);
+  if (prefs) showIfNewer(prefs);
 }

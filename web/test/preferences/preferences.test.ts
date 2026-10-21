@@ -3,9 +3,11 @@ import {
   applyPreferenceEvent,
   applyPreferences,
   loadPreferences,
+  markLocalChoice,
   parsePreferenceEvent,
   parsePreferences,
   PreferencesError,
+  resetPreferenceOrdering,
   type Preferences,
   savePreferences,
   syncPreferences,
@@ -27,6 +29,7 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 afterEach(() => {
+  resetPreferenceOrdering();
   localStorage.clear();
   document.documentElement.removeAttribute('data-mode');
   document.documentElement.removeAttribute('data-accent');
@@ -223,5 +226,61 @@ describe('applyPreferenceEvent', () => {
   it('ignores data that is not preferences', () => {
     applyPreferenceEvent(new MessageEvent('preferences', { data: '{"locale":"fr"}' }));
     expect(document.documentElement.dataset.accent).toBeUndefined();
+  });
+});
+
+describe('ordering of results', () => {
+  const light: Preferences = {
+    locale: 'en',
+    theme: { mode: 'light', accent: 'blue' },
+    revision: 5,
+  };
+
+  function deferred() {
+    let resolve!: (response: Response) => void;
+    const promise = new Promise<Response>((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
+  it('does not let a sync that resolves after a local choice overwrite it', async () => {
+    const read = deferred();
+    const fetcher = (async () => read.promise) as typeof fetch;
+    const pending = syncPreferences({ url: '/api/preferences' }, fetcher);
+    markLocalChoice();
+    document.documentElement.dataset.accent = 'pink';
+    read.resolve(jsonResponse(200, saved));
+    await pending;
+    expect(document.documentElement.dataset.accent).toBe('pink');
+  });
+
+  it('ignores an event with a lower revision than the one shown', () => {
+    applyPreferenceEvent(new MessageEvent('preferences', { data: JSON.stringify(light) }));
+    applyPreferenceEvent(
+      new MessageEvent('preferences', { data: JSON.stringify({ ...saved, revision: 4 }) }),
+    );
+    expect(document.documentElement.dataset.mode).toBe('light');
+    expect(document.documentElement.dataset.accent).toBe('blue');
+    // An equal revision may be applied again.
+    applyPreferenceEvent(new MessageEvent('preferences', { data: JSON.stringify(light) }));
+    expect(document.documentElement.dataset.mode).toBe('light');
+  });
+
+  it('does not let a save that resolves after a newer choice overwrite that choice', async () => {
+    const first = deferred();
+    const second = deferred();
+    const queue = [first, second];
+    const fetcher = (async () => queue.shift()?.promise) as typeof fetch;
+    const endpoint = { url: '/api/preferences' };
+    const one = savePreferences(endpoint, { locale: 'ja' }, fetcher);
+    const two = savePreferences(endpoint, { theme: light.theme }, fetcher);
+    second.resolve(jsonResponse(200, light));
+    await two;
+    expect(document.documentElement.dataset.mode).toBe('light');
+    first.resolve(jsonResponse(200, { ...saved, revision: 6 }));
+    await one;
+    expect(document.documentElement.dataset.mode).toBe('light');
+    expect(document.documentElement.lang).toBe('en');
   });
 });

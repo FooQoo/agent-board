@@ -4,6 +4,7 @@ import type { PreferencesEndpoint } from '../../shared/preferences';
 import {
   MONITOR_API_BASE,
   currentCsrf,
+  forgetCsrf,
   openSession,
   readMonitorToken,
   usesMonitorSession,
@@ -19,5 +20,9 @@ export const monitorPreferences: PreferencesEndpoint = {
     if (!usesMonitorSession()) return { 'X-Agboard-Token': readMonitorToken() };
     if (currentCsrf() === null) await openSession();
     return { 'X-Agboard-Csrf': currentCsrf() ?? '' };
+  },
+  // A refused save may mean the CSRF token is stale; the next save fetches a new one.
+  onRefused: (status) => {
+    if (status === 403 && usesMonitorSession()) forgetCsrf();
   },
 };
