@@ -133,7 +133,7 @@
 }
 
 /* Outline. */
-/* The outline stays fixed; only the task list below it scrolls. */
+/* The column scrolls on its own, so a long outline can reach its last chapter. */
 .editor__side {
   display: flex;
   flex: none;
@@ -142,7 +142,8 @@
   width: 220px;
   min-height: 0;
   padding: 24px 16px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-right: 1px solid var(--r-border);
   background: var(--r-surface);
 }
