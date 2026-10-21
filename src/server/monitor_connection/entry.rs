@@ -75,7 +75,7 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
         "/monitor" | "/monitor/" => return page(&request),
         _ => {}
     }
-    if path.starts_with("/assets/monitor/") || path == LOGO_PATH {
+    if path.starts_with("/monitor/assets/monitor/") || path == LOGO_PATH {
         return next.run(request).await;
     }
     if !path.starts_with("/monitor/api/") {

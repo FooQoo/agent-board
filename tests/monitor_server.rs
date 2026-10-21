@@ -60,7 +60,7 @@ fn monitor_assets_are_cached_by_content_name_and_missing_files_are_not() {
         serde_json::from_str(include_str!("../web/dist/monitor/manifest.json")).unwrap();
     for asset in manifest["assets"].as_array().unwrap() {
         let name = asset["name"].as_str().unwrap();
-        let path = format!("/assets/monitor/{name}");
+        let path = format!("/monitor/assets/monitor/{name}");
         for method in ["GET", "HEAD"] {
             let response = server.request(method, &path, &[], "");
             assert_eq!(response.status, 200, "{method} {path}");
@@ -73,7 +73,12 @@ fn monitor_assets_are_cached_by_content_name_and_missing_files_are_not() {
         }
     }
     for missing in ["missing.js", "index.html", "monitor.js", "manifest.json"] {
-        let response = server.request("GET", &format!("/assets/monitor/{missing}"), &[], "");
+        let response = server.request(
+            "GET",
+            &format!("/monitor/assets/monitor/{missing}"),
+            &[],
+            "",
+        );
         assert_eq!(response.status, 404, "{missing}");
         assert_eq!(
             response.header("cache-control"),

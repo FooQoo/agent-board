@@ -14,7 +14,7 @@ async function finalizeMonitor() {
   const entries = files.filter((name) => MONITOR_ENTRY.test(name));
   for (const extension of ['js', 'css']) {
     const entry = entries.find((name) => name.endsWith(`.${extension}`));
-    if (!entry || !html.includes(`/assets/monitor/${entry}`))
+    if (!entry || !html.includes(`/monitor/assets/monitor/${entry}`))
       throw new Error(`${source.pathname} must reference the content-named monitor .${extension}`);
   }
   if (FORBIDDEN.test(html))

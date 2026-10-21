@@ -806,7 +806,7 @@ fn the_page_and_its_assets_hold_no_secret_and_need_the_entrance() {
     assert!(page.body.contains("agboard-monitor-token\" content=\"\""));
     assert!(!page.body.contains("Choose the first path"));
     // Its assets are served to the entrance without a session, and not otherwise.
-    let start = page.body.find("/assets/monitor/").unwrap();
+    let start = page.body.find("/monitor/assets/monitor/").unwrap();
     let asset: String = page.body[start..]
         .chars()
         .take_while(|c| *c != '"' && *c != '\'')
@@ -814,7 +814,7 @@ fn the_page_and_its_assets_hold_no_secret_and_need_the_entrance() {
     assert_eq!(t.call("GET", &asset, &[], "").status, 200);
     assert_eq!(request(t.backend, "GET", &asset, &[], "").status, 403);
     assert_eq!(
-        t.call("GET", "/assets/monitor/not-there.js", &[], "")
+        t.call("GET", "/monitor/assets/monitor/not-there.js", &[], "")
             .status,
         404
     );

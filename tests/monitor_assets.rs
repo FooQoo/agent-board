@@ -34,5 +34,5 @@ fn monitor_html_contains_only_runtime_placeholders() {
     assert!(html.contains("name=\"agboard-build\" content=\"{{AGBOARD_BUILD_ID}}\""));
     assert!(!html.contains("name=\"agboard-token\""));
     assert!(!html.contains("/assets/app"));
-    assert!(html.contains("/assets/monitor/monitor-"));
+    assert!(html.contains("/monitor/assets/monitor/monitor-"));
 }

@@ -64,7 +64,7 @@ fn fake_build(extra: &[(&str, &[u8])]) -> tempfile::TempDir {
     write(
         root,
         "monitor/index.html",
-        br#"<script src="/assets/monitor/monitor-M1.js"></script><link href="/assets/monitor/monitor-M2.css">"#,
+        br#"<script src="/monitor/assets/monitor/monitor-M1.js"></script><link href="/monitor/assets/monitor/monitor-M2.css">"#,
     );
     for rel in ["logo.png", "logo-white.png"] {
         write(root, rel, b"x");

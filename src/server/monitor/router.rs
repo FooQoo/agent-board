@@ -52,7 +52,7 @@ impl MonitorState {
 
 pub(crate) fn router(state: Arc<MonitorState>) -> Router {
     Router::new()
-        .route("/assets/monitor/{name}", get(asset))
+        .route("/monitor/assets/monitor/{name}", get(asset))
         .route("/monitor/api/projects", get(projects).head(projects))
         .route(
             "/monitor/api/projects/{project_id}/board",
@@ -103,7 +103,7 @@ async fn host_guard(
     next: Next,
 ) -> Response {
     let path = request.uri().path();
-    if !path.starts_with("/monitor") && !path.starts_with("/assets/monitor/") {
+    if !path.starts_with("/monitor") && !path.starts_with("/monitor/assets/monitor/") {
         return next.run(request).await;
     }
     let allowed = request

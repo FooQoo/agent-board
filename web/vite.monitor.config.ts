@@ -25,12 +25,12 @@ const dependencyGraph: Plugin = {
 };
 
 export default defineConfig({
-  base: '/assets/monitor/',
+  base: '/monitor/assets/monitor/',
   plugins: [
     react(),
     tailwindcss(),
     dependencyGraph,
-    sharedMermaid(fileURLToPath(new URL('.', import.meta.url)), '/assets/monitor/'),
+    sharedMermaid(fileURLToPath(new URL('.', import.meta.url)), '/monitor/assets/monitor/'),
   ],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: {

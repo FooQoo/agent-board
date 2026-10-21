@@ -364,7 +364,7 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
     let live = t.session();
     let request_id = t.request_id(&live);
     let page = t.call("GET", "/monitor/", &[], "");
-    let start = page.body.find("/assets/monitor/").unwrap();
+    let start = page.body.find("/monitor/assets/monitor/").unwrap();
     let asset: String = page.body[start..]
         .chars()
         .take_while(|c| *c != '"' && *c != '\'')

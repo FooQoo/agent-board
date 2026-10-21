@@ -71,7 +71,8 @@ impl Page {
         } else {
             (
                 dist.join(folder).join("index.html"),
-                format!("/assets/{folder}/"),
+                // The monitor is addressed under /monitor/: the ngrok warning cookie is scoped to it.
+                format!("/monitor/assets/{folder}/"),
             )
         };
         let html = std::fs::read_to_string(&html_path).expect("the HTML template is readable");

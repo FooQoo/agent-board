@@ -96,7 +96,7 @@ fn build_script_passes_and_watches_the_dist_directory_when_built() {
     .unwrap();
     std::fs::write(
         dist.join("monitor/index.html"),
-        r#"<script src="/assets/monitor/monitor-M.js">"#,
+        r#"<script src="/monitor/assets/monitor/monitor-M.js">"#,
     )
     .unwrap();
     let out = run_build_script(dir.path());
