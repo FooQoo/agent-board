@@ -33,6 +33,9 @@ use crate::server::monitor_auth::guard::{
 const SESSION_PATH: &str = "/monitor/api/session";
 const DISCONNECT_PATH: &str = "/monitor/api/disconnect";
 const EVENTS_PATH: &str = "/monitor/api/events";
+/// The header logo of the page. It is as public as the page's own assets and
+/// passes the same entrance checks, but needs no session.
+pub(super) const LOGO_PATH: &str = "/logo-white.png";
 /// The longest one event stream is kept open; the page reconnects after it.
 pub const EVENTS_MAX: Duration = Duration::from_secs(5 * 60);
 /// Where the Edge ends its own sign-in. The page goes there after `disconnect`.
@@ -67,7 +70,7 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
         "/monitor" | "/monitor/" => return page(&request),
         _ => {}
     }
-    if path.starts_with("/assets/monitor/") {
+    if path.starts_with("/assets/monitor/") || path == LOGO_PATH {
         return next.run(request).await;
     }
     if !path.starts_with("/monitor/api/") {

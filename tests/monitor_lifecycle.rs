@@ -378,6 +378,7 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
     let kinds: Vec<(&str, String)> = vec![
         ("GET", "/monitor/".into()),
         ("GET", asset.clone()),
+        ("GET", "/logo-white.png".into()),
         ("GET", "/monitor/api/session".into()),
         ("GET", format!("{base}/board")),
         ("GET", format!("{base}/epics")),
@@ -435,12 +436,21 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
     for (method, path) in &kinds {
         let r = t.call(method, path, &[("Sec-Fetch-Site", "same-origin")], &body);
         let want = match path {
-            p if p == "/monitor/" || *p == asset || p == "/monitor/api/session" => 200,
+            p if p == "/monitor/"
+                || *p == asset
+                || p == "/logo-white.png"
+                || p == "/monitor/api/session" =>
+            {
+                200
+            }
             _ => 401,
         };
         assert_eq!(r.status, want, "{method} {path}");
     }
     assert!(t.still_waiting());
+    // The page's header logo is a PNG, served to the Edge's entrance only.
+    let logo = t.call("GET", "/logo-white.png", &[], "");
+    assert_eq!(logo.header("content-type").as_deref(), Some("image/png"));
     assert_eq!(t.answer(&live, &t.public, &request_id).status, 200);
 }
 

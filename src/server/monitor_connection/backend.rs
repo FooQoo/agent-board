@@ -7,12 +7,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::Router;
+use axum::http::header;
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
 use axum::serve::Listener;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::AbortHandle;
 
 use super::contracts::PublicOrigin;
-use super::entry::external_router;
+use super::entry::{LOGO_PATH, external_router};
 use super::router::Gate;
 use crate::error::AgboardError;
 use crate::server::AppState;
@@ -71,8 +74,23 @@ pub(super) fn external_app(
         authorities: Arc::new(authorities),
         token: internal_token,
     };
-    let inner = monitor_router(monitor).merge(write_router(app.clone(), guard));
+    let inner = monitor_router(monitor)
+        .merge(write_router(app.clone(), guard))
+        .route(LOGO_PATH, get(logo));
     external_router(gate, inner)
+}
+
+/// The header logo the page asks for, from the build already embedded in the binary.
+async fn logo() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "no-store"),
+            (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
+        ],
+        crate::server::assets::LOGO_WHITE_PNG,
+    )
+        .into_response()
 }
 
 /// A fresh random token, for the guard that sits behind the entry.
