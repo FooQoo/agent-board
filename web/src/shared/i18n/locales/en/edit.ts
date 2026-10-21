@@ -98,7 +98,6 @@ export const editEn = {
     stepDetails: 'the name, color or draft',
     saveFailedAt: 'Could not save {{step}}. Earlier changes were saved. Your input is kept.',
     saveFailedFirst: 'Could not save {{step}}. Your input is kept.',
-    deleteButton: 'Delete epic',
     deleteTitle: 'Delete this epic?',
     deleteBody: 'The epic details and images of {{id}} are deleted too. This cannot be undone.',
     deleteDirty: 'Changes you have not saved in this dialog are discarded as well.',
