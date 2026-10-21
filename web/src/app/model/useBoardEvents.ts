@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { applyPreferenceEvent } from '../../shared/preferences';
+import { applyPreferenceEvent, syncPreferences } from '../../shared/preferences';
 import { readyBuildId } from '../../shared/lib/build/buildId';
 
 /**
@@ -26,6 +26,8 @@ export function useBoardEvents(onRefresh: () => void): {
     const lost = () => setStreamDown(true);
     source.addEventListener('ready', (event) => {
       setServerBuild(readyBuildId(event));
+      // A save made while the stream was down is read again.
+      if (import.meta.env.MODE !== 'mock') void syncPreferences({ url: '/api/preferences' });
       changed();
     });
     source.addEventListener('changed', changed);

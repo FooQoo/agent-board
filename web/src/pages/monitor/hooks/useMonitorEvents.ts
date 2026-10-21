@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { applyPreferenceEvent } from '../../../shared/preferences';
+import { applyPreferenceEvent, syncPreferences } from '../../../shared/preferences';
 import { readyBuildId } from '../../../shared/lib/build/buildId';
+import { monitorPreferences } from '../preferences';
 
 export type MonitorRefreshReason = 'ready' | 'changed' | 'disconnected' | 'visible' | 'manual';
 export type MonitorStreamState = 'connecting' | 'connected' | 'disconnected' | 'hidden';
@@ -99,6 +100,7 @@ export function useMonitorEvents({
         if (source !== candidate || disposed) return;
         readySeen = true;
         setBuild(readyBuildId(event));
+        void syncPreferences(monitorPreferences);
         setState('connected');
         armHeartbeatDeadline(candidate);
         if (skipNextReadyRefresh) skipNextReadyRefresh = false;
