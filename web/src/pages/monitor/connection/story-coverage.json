@@ -24,6 +24,21 @@
               "interaction": true
             },
             {
+              "id": "pages-monitor-connection-state--session-expired",
+              "states": ["session ended", "action"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--connection-stopped",
+              "states": ["stopped or not allowed"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-connection-state--monitor-unreachable",
+              "states": ["unreachable", "action"],
+              "interaction": true
+            },
+            {
               "id": "pages-monitor-connection-state--waiting-for-recovery",
               "states": ["waiting", "no action"],
               "interaction": true

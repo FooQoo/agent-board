@@ -24,7 +24,13 @@ export const monitorJa = {
     clearStaleDraft: '回答を破棄',
     completedUnknown: '完了日時不明',
     lastFetched: '最終取得 {{time}}',
-    status: { todo: '未着手', doing: '進行中', pending: '待機中', running: '稼働中', done: '完了' },
+    status: {
+      todo: '未着手',
+      doing: '進行中',
+      pending: '待機中',
+      running: '稼働中',
+      done: '完了',
+    },
     empty: {
       todo: '未着手の作業はありません。',
       doing: '進行中の作業はありません。',
@@ -89,6 +95,11 @@ export const monitorJa = {
       waitingTitle: '接続し直しています',
       waitingBody:
         'PCの起動とインターネット接続を\n確認してください。\n再接続中は回答を送信できません。',
+      failure: {
+        expired: '接続が切れました。\nGoogleで再接続してください。',
+        unavailable: '接続が停止中か、許可されていません。\nPCを確認してください。',
+        unreachable: 'モニターに接続できません。\n通信を確認してもう一度お試しください。',
+      },
     },
   },
 } as const;

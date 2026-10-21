@@ -25,7 +25,13 @@ export const monitorEn = {
     clearStaleDraft: 'Discard answer draft',
     completedUnknown: 'Completion time unknown',
     lastFetched: 'Last updated {{time}}',
-    status: { todo: 'Todo', doing: 'Doing', pending: 'Pending', running: 'Running', done: 'Done' },
+    status: {
+      todo: 'Todo',
+      doing: 'Doing',
+      pending: 'Pending',
+      running: 'Running',
+      done: 'Done',
+    },
     empty: {
       todo: 'No work to start.',
       doing: 'No work in progress.',
@@ -92,6 +98,11 @@ export const monitorEn = {
       waitingTitle: 'Reconnecting',
       waitingBody:
         'Check that your PC is on and connected to the internet.\nYou cannot send answers while reconnecting.',
+      failure: {
+        expired: 'The connection has ended. Reconnect with Google.',
+        unavailable: 'The connection is stopped or no longer allowed.\nCheck the PC.',
+        unreachable: 'Could not reach the monitor.\nCheck the connection and try again.',
+      },
     },
   },
 } as const;
