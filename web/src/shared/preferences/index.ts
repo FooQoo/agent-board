@@ -29,6 +29,8 @@ export interface PreferencesPatch {
 export interface PreferencesEndpoint {
   url: string;
   token?: () => string;
+  /** Further headers a save sends, such as the monitor's CSRF header. It may open a session first. */
+  headers?: () => Record<string, string> | Promise<Record<string, string>>;
 }
 
 /** A failed read or save. `status` is 0 when the request never got an answer. */
@@ -109,12 +111,14 @@ export async function savePreferences(
   const token = endpoint.token?.() ?? '';
   let response: Response;
   try {
+    const extra = (await endpoint.headers?.()) ?? {};
     response = await fetcher(endpoint.url, {
       method: 'PUT',
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
         ...(token ? { 'X-Agboard-Token': token } : {}),
+        ...extra,
       },
       body: JSON.stringify(patch),
     });
@@ -137,4 +141,29 @@ export function applyPreferences(prefs: Preferences): boolean {
   const themeCached = cacheTheme(prefs.theme);
   const localeCached = cacheLocale(prefs.locale);
   return themeCached && localeCached;
+}
+
+/**
+ * Startup: reads the saved preferences and shows them when they are there. A failed read keeps
+ * the page as the browser copy painted it. Returns the saved value, or null when none was read.
+ */
+export async function syncPreferences(
+  endpoint: PreferencesEndpoint,
+  fetcher: typeof fetch = fetch,
+): Promise<Preferences | null> {
+  try {
+    const prefs = await loadPreferences(endpoint, fetcher);
+    applyPreferences(prefs);
+    return prefs;
+  } catch {
+    return null;
+  }
+}
+
+/** Applies a `preferences` event from an event stream. Data that is not preferences is ignored. */
+export function applyPreferenceEvent(event: Event): void {
+  const data = (event as MessageEvent).data;
+  if (typeof data !== 'string') return;
+  const prefs = parsePreferenceEvent(data);
+  if (prefs) applyPreferences(prefs);
 }

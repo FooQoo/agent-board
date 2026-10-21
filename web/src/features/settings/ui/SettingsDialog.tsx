@@ -13,6 +13,7 @@ import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { RadioGroup } from '@/shared/ui/radio-group';
 import '../../../shared/styles/modal.css';
+import { savePreferences, type PreferencesEndpoint } from '../../../shared/preferences';
 import { selectLocale, type Locale, type LocaleStorageProvider } from '../../../shared/i18n';
 import {
   ACCENTS,
@@ -110,6 +111,7 @@ export function SettingsDialog({
   localeStorageProvider,
   themeStorageProvider,
   extra,
+  preferencesEndpoint,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -120,6 +122,8 @@ export function SettingsDialog({
   themeStorageProvider?: ThemeStorageProvider;
   /** Further settings the page adds below the theme, such as the mobile connection. */
   extra?: ReactNode;
+  /** Where the choice is saved. Without it the choice stays in the browser copy only. */
+  preferencesEndpoint?: PreferencesEndpoint;
 }) {
   const { t, i18n } = useTranslation();
   const [theme, setTheme] = useState<Theme>(currentTheme);
@@ -138,18 +142,41 @@ export function SettingsDialog({
     if (open) setTheme(currentTheme());
   }, [open]);
 
+  // A `preferences` event changes the page while the dialog is open; keep the tiles in step.
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(currentTheme()));
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-mode', 'data-accent'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  /** Shows the choice at once, then saves it; a failed save is shown in the dialog. */
+  const save = (cached: boolean, patch: { locale?: Locale; theme?: Theme }) => {
+    if (!preferencesEndpoint) {
+      setSaveError(!cached);
+      return;
+    }
+    savePreferences(preferencesEndpoint, patch).then(
+      () => setSaveError(false),
+      () => setSaveError(true),
+    );
+  };
+
   const chooseTheme = (value: string) => {
     const [mode, accent] = value.split('-');
     if (!isMode(mode) || !isAccent(accent)) return;
     const nextTheme = { mode, accent };
     const result = selectTheme(nextTheme, themeStorageProvider);
     setTheme(nextTheme);
-    setSaveError(!result.persisted);
+    save(result.persisted, { theme: nextTheme });
   };
 
   const chooseLocale = (value: string) => {
-    const result = selectLocale(value === 'ja' ? 'ja' : 'en', localeStorageProvider);
-    setSaveError(!result.persisted);
+    const next: Locale = value === 'ja' ? 'ja' : 'en';
+    const result = selectLocale(next, localeStorageProvider);
+    save(result.persisted, { locale: next });
   };
 
   return (

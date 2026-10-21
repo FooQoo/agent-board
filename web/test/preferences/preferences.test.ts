@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  applyPreferenceEvent,
   applyPreferences,
   loadPreferences,
   parsePreferenceEvent,
@@ -7,6 +8,7 @@ import {
   PreferencesError,
   type Preferences,
   savePreferences,
+  syncPreferences,
 } from '../../src/shared/preferences';
 import { LOCALE_STORAGE_KEY } from '../../src/shared/i18n';
 import { THEME_STORAGE_KEY } from '../../src/shared/theme';
@@ -155,5 +157,71 @@ describe('applyPreferences', () => {
     } finally {
       Storage.prototype.setItem = original;
     }
+  });
+});
+
+describe('savePreferences with extra headers', () => {
+  it('sends the headers the endpoint adds, such as the monitor CSRF header', async () => {
+    let sent: Headers | undefined;
+    const fetcher = (async (_url: string, init?: RequestInit) => {
+      sent = new Headers(init?.headers);
+      return jsonResponse(200, saved);
+    }) as typeof fetch;
+    await savePreferences(
+      { url: '/monitor/api/preferences', headers: async () => ({ 'X-Agboard-Csrf': 'csrf-1' }) },
+      { locale: 'ja' },
+      fetcher,
+    );
+    expect(sent?.get('X-Agboard-Csrf')).toBe('csrf-1');
+    expect(sent?.get('X-Agboard-Token')).toBeNull();
+  });
+
+  it('reports a failing headers step as a failed save', async () => {
+    const fetcher = (async () => jsonResponse(200, saved)) as typeof fetch;
+    await expect(
+      savePreferences(
+        {
+          url: '/x',
+          headers: async () => {
+            throw new Error('no session');
+          },
+        },
+        { locale: 'ja' },
+        fetcher,
+      ),
+    ).rejects.toMatchObject({ status: 0 });
+  });
+});
+
+describe('syncPreferences', () => {
+  it('applies a saved value that differs from the browser copy and updates the copy', async () => {
+    const fetcher = (async () => jsonResponse(200, saved)) as typeof fetch;
+    await expect(syncPreferences({ url: '/api/preferences' }, fetcher)).resolves.toEqual(saved);
+    expect(document.documentElement.dataset.mode).toBe('dark');
+    expect(document.documentElement.dataset.accent).toBe('teal');
+    expect(document.documentElement.lang).toBe('ja');
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('ja');
+    expect(JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) ?? '{}')).toEqual(saved.theme);
+  });
+
+  it('keeps the page as it is when the read fails', async () => {
+    document.documentElement.dataset.mode = 'light';
+    const fetcher = (async () => jsonResponse(500, {})) as typeof fetch;
+    await expect(syncPreferences({ url: '/api/preferences' }, fetcher)).resolves.toBeNull();
+    expect(document.documentElement.dataset.mode).toBe('light');
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('applyPreferenceEvent', () => {
+  it('applies the data of a preferences event', () => {
+    applyPreferenceEvent(new MessageEvent('preferences', { data: JSON.stringify(saved) }));
+    expect(document.documentElement.dataset.accent).toBe('teal');
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('ja');
+  });
+
+  it('ignores data that is not preferences', () => {
+    applyPreferenceEvent(new MessageEvent('preferences', { data: '{"locale":"fr"}' }));
+    expect(document.documentElement.dataset.accent).toBeUndefined();
   });
 });

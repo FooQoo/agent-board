@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { ConnectionEntryRow } from '../features/monitor-connections/ui/ConnectionEntryRow';
 import { ConnectionSettings } from '../features/monitor-connections/ui/ConnectionSettings';
 import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
+import { readToken } from '../shared/api/http';
+import type { PreferencesEndpoint } from '../shared/preferences';
 import type { SettingsSlotState } from '../shared/ui/app-header/Header';
+
+/** The board saves the language and theme on its own server; the sample-data mode has none. */
+const boardPreferences: PreferencesEndpoint | undefined =
+  import.meta.env.MODE === 'mock' ? undefined : { url: '/api/preferences', token: readToken };
 
 /**
  * The settings dialog of the PC board and the mobile connection dialog its entry row opens.
@@ -17,6 +23,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
         open={open}
         onOpenChange={onOpenChange}
         restoreFocusRef={restoreFocusRef}
+        preferencesEndpoint={boardPreferences}
         extra={
           <ConnectionEntryRow
             onOpen={() => {

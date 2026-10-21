@@ -10,6 +10,8 @@ import { useMonitorUrl } from './hooks/useMonitorUrl';
 import { selectMonitorTasks } from './model/select';
 import { useMonitorInteractions } from './hooks/useMonitorInteractions';
 import { monitorClient } from './client';
+import { monitorPreferences } from './preferences';
+import { syncPreferences } from '../../shared/preferences';
 import { ConnectionStateView } from './connection/ConnectionStateView';
 import { useMonitorConnection } from './hooks/useMonitorConnection';
 
@@ -57,6 +59,10 @@ function MonitorConnectedApp({ useBuildReload }: { useBuildReload: BuildReloadHo
 
 function MonitorReadyApp({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
   const monitor = useMonitor();
+  // The session is live here: show the language and theme saved on the PC (the copy painted first).
+  useEffect(() => {
+    void syncPreferences(monitorPreferences);
+  }, []);
   const answers = useMonitorInteractions({
     writeAnswer: monitorClient.answerRequest,
   });

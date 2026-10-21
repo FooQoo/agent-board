@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { Header } from '../../shared/ui/app-header/Header';
 import { monitorLogo } from './logo';
-import { settingsSlot } from '../../features/settings/ui/settingsSlot';
+import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
+import { monitorPreferences } from './preferences';
 import { ProjectSwitcher } from '../../features/projects/switcher/ProjectSwitcher';
 import type { MonitorViewProps } from './contracts';
 import { TaskList } from './components/TaskList';
@@ -14,6 +15,10 @@ import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 
 /** The drawer, with the Markdown view, history and swipe code, loads after the list is shown. */
+/** The monitor saves the language and theme on the PC's board; the sample-data mode has no board. */
+const monitorSettingsSlot =
+  import.meta.env.MODE === 'mock' ? settingsSlot : savingSettingsSlot(monitorPreferences);
+
 const detailDrawer = preloadable(() =>
   import('./components/MonitorDetailDrawer').then((module) => module.MonitorDetailDrawer),
 );
@@ -56,7 +61,7 @@ export function MonitorView(props: MonitorViewProps) {
   };
   return (
     <main className="monitor-shell">
-      <Header settings={settingsSlot} logoSrc={monitorLogo} />
+      <Header settings={monitorSettingsSlot} logoSrc={monitorLogo} />
       <div className="monitor-controls">
         <ProjectSwitcher
           projects={projects}

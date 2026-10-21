@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { applyPreferenceEvent } from '../../../shared/preferences';
 import { readyBuildId } from '../../../shared/lib/build/buildId';
 
 export type MonitorRefreshReason = 'ready' | 'changed' | 'disconnected' | 'visible' | 'manual';
@@ -105,6 +106,9 @@ export function useMonitorEvents({
       });
       candidate.addEventListener('changed', () => {
         if (source === candidate && !disposed) refreshRef.current('changed');
+      });
+      candidate.addEventListener('preferences', (event) => {
+        if (source === candidate && !disposed) applyPreferenceEvent(event);
       });
       candidate.addEventListener('heartbeat', () => {
         if (source !== candidate || disposed) return;
