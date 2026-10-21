@@ -12,6 +12,7 @@ mod events;
 pub mod guard;
 mod instance;
 pub mod monitor;
+mod preferences;
 pub mod remote;
 mod request;
 mod response;
@@ -58,6 +59,10 @@ pub(crate) struct AppState {
     pub reloader: Reloader,
     /// Sends one unit when the catalog version changes; each SSE connection subscribes.
     pub changed: broadcast::Sender<()>,
+    /// The saved language and theme, read and written by `/api/preferences`.
+    pub preferences: preferences::PreferencesStore,
+    /// Sends each saved preference set; the events stream forwards it as `preferences`.
+    pub preferences_changed: broadcast::Sender<preferences::Preferences>,
 }
 
 /// Serve until Ctrl+C (or SIGTERM on Unix).
@@ -135,6 +140,7 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
         // read is queued and read again.
         let index = Arc::new(RwLock::new(ProjectIndex::default()));
         let (changed, _) = broadcast::channel(16);
+        let (preferences_changed, _) = broadcast::channel(16);
         let (_watch, reloader) = Watch::start(&shared, index.clone(), changed.clone())?;
         let state = Arc::new(AppState {
             port: addr.port(),
@@ -143,6 +149,8 @@ pub fn run_until_with_remote<F: Future<Output = ()>>(
             index,
             reloader,
             changed,
+            preferences: preferences::PreferencesStore::new(&data_dir),
+            preferences_changed,
         });
         let app = api::router(state.clone());
         let remote_app = match (&remote, remote_listener.as_ref(), remote_addr) {

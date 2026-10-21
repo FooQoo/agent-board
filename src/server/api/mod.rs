@@ -6,6 +6,7 @@ mod epic_attachments;
 mod epics;
 mod multipart;
 mod pages;
+mod preferences;
 mod projects;
 mod task_attachments;
 mod task_edit;
@@ -34,6 +35,7 @@ use archive::*;
 use epic_attachments::*;
 use epics::*;
 use pages::*;
+use preferences::*;
 use projects::*;
 use task_attachments::*;
 use task_edit::*;
@@ -159,7 +161,11 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
     if remote.is_none() {
         router = router
             .route("/api/notify", post(notify))
-            .route("/api/health", get(health));
+            .route("/api/health", get(health))
+            .route(
+                "/api/preferences",
+                get(get_preferences).put(put_preferences),
+            );
     }
     router
         .layer(DefaultBodyLimit::max(MAX_MULTIPART_BODY))
