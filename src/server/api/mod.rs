@@ -22,7 +22,7 @@ use axum::middleware::{self, Next};
 use axum::response::Response;
 use axum::routing::{delete, get, patch, post, put};
 
-use super::guard::{self, RemoteGuard, header_text};
+use super::guard::{self, header_text};
 use super::response::{
     agboard_error_response, error_response, forbidden, json_response, page_out_of_date,
 };
@@ -48,34 +48,15 @@ const MAX_MULTIPART_BODY: usize = 52 * 1024 * 1024;
 struct GuardContext {
     port: u16,
     token: String,
-    remote: Option<RemoteGuard>,
 }
 
 pub(crate) fn router(state: Arc<AppState>) -> Router {
-    routes(state, None)
-}
-
-pub(crate) fn remote_router(state: Arc<AppState>, guard: RemoteGuard) -> Router {
-    routes(state, Some(guard))
-}
-
-fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
     let guard_context = GuardContext {
-        port: remote.as_ref().map_or(state.port, |g| g.port),
+        port: state.port,
         token: state.token.clone(),
-        remote: remote.clone(),
     };
-    let mut router = Router::new();
-    if remote.is_none() {
-        router = router.route("/", get(index));
-    } else {
-        router = router
-            .route("/", get(access_index))
-            .route("/board", get(board_redirect))
-            .route("/board/", get(index))
-            .route("/assets/access/entry.js", get(access_js));
-    }
-    router = router
+    Router::new()
+        .route("/", get(index))
         .route("/assets/{name}", get(asset))
         .route("/logo.png", get(logo_png))
         .route("/logo-white.png", get(logo_white_png))
@@ -157,27 +138,23 @@ fn routes(state: Arc<AppState>, remote: Option<RemoteGuard>) -> Router {
         .route(
             "/api/projects/{project_id}/tasks/{id}/answer",
             post(answer_request),
-        );
-    if remote.is_none() {
-        router = router
-            .route("/api/monitor-connections", get(get_connections))
-            .route(
-                "/api/monitor-connections/settings/ngrok",
-                put(put_ngrok_settings),
-            )
-            .route(
-                "/api/monitor-connections/transports/ngrok/start",
-                post(start_ngrok),
-            )
-            .route(
-                "/api/monitor-connections/transports/ngrok/stop",
-                post(stop_ngrok),
-            )
-            .route("/api/monitor-connections/token", delete(delete_saved_token))
-            .route("/api/notify", post(notify))
-            .route("/api/health", get(health));
-    }
-    router
+        )
+        .route("/api/monitor-connections", get(get_connections))
+        .route(
+            "/api/monitor-connections/settings/ngrok",
+            put(put_ngrok_settings),
+        )
+        .route(
+            "/api/monitor-connections/transports/ngrok/start",
+            post(start_ngrok),
+        )
+        .route(
+            "/api/monitor-connections/transports/ngrok/stop",
+            post(stop_ngrok),
+        )
+        .route("/api/monitor-connections/token", delete(delete_saved_token))
+        .route("/api/notify", post(notify))
+        .route("/api/health", get(health))
         .layer(DefaultBodyLimit::max(MAX_MULTIPART_BODY))
         .layer(middleware::from_fn_with_state(
             guard_context.clone(),
@@ -208,20 +185,7 @@ async fn no_referrer(request: Request, next: Next) -> Response {
 /// Every request, whatever the path, needs an accepted `Host`.
 async fn host_guard(State(context): State<GuardContext>, request: Request, next: Next) -> Response {
     let host = header_text(request.headers(), "host");
-    let allowed = match &context.remote {
-        Some(remote) => host.is_some_and(|h| {
-            remote.authorities.contains(&h.to_ascii_lowercase())
-                || h.eq_ignore_ascii_case(&format!("127.0.0.1:{}", remote.port))
-        }),
-        None => guard::host_allowed(host, context.port),
-    };
-    if allowed {
-        let mut request = request;
-        if let Some(remote) = &context.remote {
-            request
-                .extensions_mut()
-                .insert(RemotePageToken(remote.token.clone()));
-        }
+    if guard::host_allowed(host, context.port) {
         next.run(request).await
     } else {
         forbidden("Open the board at http://127.0.0.1:<port>/ as printed by agboard serve.")
@@ -241,18 +205,10 @@ async fn write_guard(
         *request.method(),
         Method::GET | Method::HEAD | Method::OPTIONS
     );
-    let protected_path = context.remote.is_none()
-        || request.uri().path() == "/api/projects"
-        || request.uri().path().starts_with("/api/projects/");
-    let allowed = match &context.remote {
-        Some(remote) if protected_path => guard::remote_write_allowed(request.headers(), remote),
-        Some(_) => true,
-        None => guard::write_allowed(request.headers(), context.port, &context.token),
-    };
-    if reads || (context.remote.is_none() && request.uri().path() == "/api/notify") || allowed {
+    let allowed = guard::write_allowed(request.headers(), context.port, &context.token);
+    if reads || request.uri().path() == "/api/notify" || allowed {
         next.run(request).await
-    } else if context.remote.is_none()
-        && request.headers().contains_key("x-agboard-token")
+    } else if request.headers().contains_key("x-agboard-token")
         && matches!(
             guard::write_refusal(request.headers(), context.port, &context.token),
             Some(guard::Denial::Token)

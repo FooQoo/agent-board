@@ -1,7 +1,7 @@
 //! The PC-only API for the ngrok monitor connection.
 //!
-//! These routes are on the local board router only; the remote and ngrok
-//! entries never get them. Reads must come from the local page (loopback Host
+//! These routes are on the local board router only; the ngrok
+//! entry never gets them. Reads must come from the local page (loopback Host
 //! is checked by the router for every request); writes also pass the router's
 //! write guard (Origin, Fetch Metadata and the page token). The ngrok token is
 //! accepted in the body of `start` only and is never returned.

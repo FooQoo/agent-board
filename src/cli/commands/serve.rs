@@ -15,10 +15,6 @@ use crate::server::{self, MonitorOptions, MonitorReady, ServeConfig};
 /// afterwards. The command works on the whole data area, never on one project
 /// or task, and changes nothing that needs a notification.
 pub fn run(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
-    let remote = args.remote_port.map(|port| server::RemoteServeConfig {
-        port,
-        origins: args.remote_origins.clone(),
-    });
     let explicit =
         validate_monitor_args(args, &|name| std::env::var(name).ok())?.map(|request| Overrides {
             allow_emails: request.allow_emails,
@@ -27,28 +23,18 @@ pub fn run(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
         });
     server::run_until_with_monitor(
         ServeConfig { port: args.port },
-        remote,
         MonitorOptions::new(MonitorEnv::from_process(), explicit),
         shutdown_signal(),
-        |addr, remote_addr, monitor| announce(addr, remote_addr, monitor, json),
+        |addr, monitor| announce(addr, monitor, json),
     )
 }
 
 /// Write the startup line (or, with `--json`, the URL object) and flush, so a
 /// reader on a pipe sees it before the server starts waiting.
-fn announce(
-    addr: SocketAddr,
-    remote_addr: Option<SocketAddr>,
-    monitor: Option<MonitorReady>,
-    json: bool,
-) {
+fn announce(addr: SocketAddr, monitor: Option<MonitorReady>, json: bool) {
     let url = format!("http://127.0.0.1:{}/", addr.port());
-    let remote_url = remote_addr.map(|addr| format!("http://127.0.0.1:{}/", addr.port()));
     let line = if json {
-        let mut value = match remote_url {
-            Some(remote_url) => json!({ "url": url, "remoteUrl": remote_url }),
-            None => json!({ "url": url }),
-        };
+        let mut value = json!({ "url": url });
         if let Some(monitor) = &monitor {
             value["monitor"] = json!({
                 "mode": "ngrok",
@@ -57,12 +43,7 @@ fn announce(
         }
         value.to_string()
     } else {
-        let mut line = match remote_url {
-            Some(remote_url) => {
-                format!("Serving at {url}; remote proxy entry at {remote_url}")
-            }
-            None => format!("Serving at {url}"),
-        };
+        let mut line = format!("Serving at {url}");
         if let Some(monitor) = &monitor {
             line.push_str(&format!("; mobile monitor at {}", monitor.url));
         }

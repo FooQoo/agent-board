@@ -21,7 +21,7 @@ use agent_board::server::monitor_connection::contracts::{ConnectionConfig, Oauth
 use agent_board::server::monitor_connection::lifecycle::Overrides;
 use assert_cmd::Command;
 use serde_json::{Value, json};
-use support::{ORIGIN, home};
+use support::home;
 
 // ------------------------------------------------------------- command line
 
@@ -678,34 +678,6 @@ fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
 }
 
 #[test]
-fn a_legacy_remote_run_does_not_restore_the_ngrok_connection() {
-    let home = home();
-    ConfigStore::new(home.path())
-        .save(&ConnectionConfig {
-            enabled: true,
-            allow_emails: vec!["me@example.com".into()],
-            domain: None,
-            oauth_app: OauthApp::Managed,
-            revision: 1,
-        })
-        .unwrap();
-    let s = Server::start(
-        home.path(),
-        Opts {
-            remote: true,
-            env_token: true,
-            ..Opts::default()
-        },
-    );
-    let v = s.get();
-    assert_eq!(v["status"], "disabled");
-    assert_eq!(v["url"], Value::Null);
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
-    // Its saved setting is untouched.
-    assert!(ConfigStore::new(home.path()).load().unwrap().enabled);
-}
-
-#[test]
 fn an_explicit_start_announces_after_it_is_up_and_overrides_saved_settings() {
     let home = home();
     ConfigStore::new(home.path())
@@ -773,48 +745,9 @@ fn a_failed_explicit_start_ends_the_run_and_leaves_no_serve_file() {
 // ------------------------------------------------------- other entrances
 
 #[test]
-fn the_remote_entrance_has_no_management_api() {
+fn the_local_entrance_serves_no_pairing_or_device_routes() {
     let home = home();
-    let s = Server::start(
-        home.path(),
-        Opts {
-            remote: true,
-            ..Opts::default()
-        },
-    );
-    let remote = s.remote.unwrap();
-    let origin = ORIGIN;
-    let host = ORIGIN.trim_start_matches("https://");
-    let calls = [
-        ("GET", "/api/monitor-connections"),
-        ("PUT", "/api/monitor-connections/settings/ngrok"),
-        ("POST", "/api/monitor-connections/transports/ngrok/start"),
-        ("POST", "/api/monitor-connections/transports/ngrok/stop"),
-        ("GET", "/monitor/api/monitor-connections"),
-        ("GET", "/monitor/api/pairings"),
-        ("GET", "/monitor/api/devices"),
-    ];
-    for (method, path) in calls {
-        let r = request(
-            remote,
-            method,
-            path,
-            &[
-                ("Host", host),
-                ("Origin", origin),
-                ("Sec-Fetch-Site", "same-origin"),
-                ("X-Agboard-Token", &s.token),
-            ],
-            "{}",
-        );
-        assert!(
-            (403..=405).contains(&r.status),
-            "{method} {path} -> {}",
-            r.status
-        );
-        assert!(!r.body.contains("tokenConfigured") && !r.body.contains("allowEmails"));
-    }
-    // the local entrance does not serve the pairing/device routes either
+    let s = Server::start(home.path(), Opts::default());
     for path in [
         "/api/pairings",
         "/api/devices",

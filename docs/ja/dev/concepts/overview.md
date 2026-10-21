@@ -31,15 +31,15 @@ flowchart LR
     Serve --> Browser["ブラウザが再取得"]
 ```
 
-### リモート接続
+### モバイルモニター
 
-PCやスマホから接続する場合は、HTTPSプロキシ（CaddyまたはTailscale Serve）を通して専用のリモート用リスナーへ接続します。プロキシの転送先は専用のループバックポートです。リモート用リスナーは、ローカルと同じFileStore・ファイル監視・更新通知を使います。
+スマホのブラウザは、ngrokのモニター接続を通して、読み取り中心のモニターに接続します。トンネルの転送先は専用のループバックの入口です。その入口は、ローカルと同じFileStore・ファイル監視・更新通知を使います。
 
 ```mermaid
 flowchart LR
-    Browser["ブラウザ"] --> Proxy["Proxy"]
-    Proxy --> Remote["リモート<br/>リスナー"]
-    Remote --> Shared["FileStore"]
+    Browser["スマホのブラウザ"] --> Tunnel["ngrok<br/>トンネル"]
+    Tunnel --> Entry["モニターの<br/>入口"]
+    Entry --> Shared["FileStore"]
 ```
 
 ### 基本方針
@@ -83,5 +83,5 @@ flowchart LR
 - [履歴と判断依頼](./history-and-decisions.md): 履歴、Pending、自動Done。
 - [保存と復旧](./saving-and-recovery.md): ロック、原子的な保存、失敗。
 - [変更の通知](./notifications.md): 変更がブラウザと待機中のエージェントにどう届くか。
-- [サーバーと画面](./server-and-ui.md)、[エージェント連携](./agents.md)、[リモートアクセス](./remote-access.md)、[セキュリティモデル](./security.md)。
+- [サーバーと画面](./server-and-ui.md)、[エージェント連携](./agents.md)、[モバイルモニター](./remote-access.md)、[セキュリティモデル](./security.md)。
 - ファイルを探すときは[コード構成](../reference/code-map.md)。

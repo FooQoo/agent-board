@@ -74,6 +74,6 @@ Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/), select your project, and 
 ## Documentation
 
 - [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
-- [Mobile monitor](https://fooqoo.github.io/agent-board/guide/mobile-monitor) — LAN and Tailscale access, HTTPS, and phone certificate setup.
+- [Mobile monitor](https://fooqoo.github.io/agent-board/guide/mobile-monitor) — what the monitor shows and how to check it on a phone.
 - [Claude Code and Codex integration](integrations/README.md) — hooks and agent setup.
 - [Contributing](CONTRIBUTING.md) — development and verification.

@@ -5,7 +5,6 @@
 //!   as the gzip files the web build writes beside them, with a build ID for
 //!   each page. Files are named by their content, and a file both builds
 //!   contain is embedded once.
-//! - `access_assets_table.rs`: the remote access page's files, as they are.
 //!
 //! The script uses the standard library only: the tests compile it alone.
 
@@ -26,14 +25,9 @@ fn main() {
     if !missing.is_empty() {
         fail(&dist::error_message(&missing));
     }
-    for (namespace, required) in [
-        ("access", dist::ACCESS_REQUIRED_FILES.as_slice()),
-        ("monitor", dist::MONITOR_REQUIRED_FILES.as_slice()),
-    ] {
-        let absent = dist::missing_namespace_files(&dist_dir, namespace, required);
-        if !absent.is_empty() {
-            fail(&dist::namespace_error_message(namespace, &absent));
-        }
+    let absent = dist::missing_namespace_files(&dist_dir, "monitor", &dist::MONITOR_REQUIRED_FILES);
+    if !absent.is_empty() {
+        fail(&dist::namespace_error_message("monitor", &absent));
     }
 
     let mut blobs = Blobs::default();
@@ -47,15 +41,9 @@ fn main() {
     std::fs::write(out_dir.join("web_assets.rs"), source)
         .expect("the build script can write to OUT_DIR");
 
-    std::fs::write(
-        out_dir.join("access_assets_table.rs"),
-        access_table(&dist::ACCESS_REQUIRED_FILES),
-    )
-    .expect("the build script can write to OUT_DIR");
-
     // Rerun when a folder gains or loses a file; every listed file is also
     // watched, so the tables never outlive the files they name.
-    for folder in ["", "/assets", "/access", "/monitor"] {
+    for folder in ["", "/assets", "/monitor"] {
         println!("cargo:rerun-if-changed=web/dist{folder}");
     }
 }
@@ -224,23 +212,4 @@ fn mime_of(name: &str) -> Option<&'static str> {
         Some("css") => Some("text/css; charset=utf-8"),
         _ => None,
     }
-}
-
-/// Rust source for the access page's manifest: exact name, MIME and bytes.
-fn access_table(names: &[&str]) -> String {
-    let mut source = String::from("pub static ASSETS: &[(&str, &str, &[u8])] = &[\n");
-    for name in names {
-        let mime = match Path::new(name).extension().and_then(|ext| ext.to_str()) {
-            Some("html") => "text/html; charset=utf-8",
-            _ => mime_of(name).unwrap_or("application/octet-stream"),
-        };
-        writeln!(
-            source,
-            "    ({name:?}, {mime:?}, include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/web/dist/access/{name}\")) as &[u8]),"
-        )
-        .unwrap();
-        println!("cargo:rerun-if-changed=web/dist/access/{name}");
-    }
-    source.push_str("];\n");
-    source
 }

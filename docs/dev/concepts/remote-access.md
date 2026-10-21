@@ -1,51 +1,36 @@
-# Remote access and the mobile monitor
+# The mobile monitor
 
-By default the board is reachable only from the same machine. Remote access adds a second, opt-in listener so a phone or another computer can reach the board through an HTTPS proxy. The mobile monitor is a separate, read-mostly app served on that listener. Setup steps for users are in the [mobile monitor guide](../../guide/operations/mobile-monitor.md); the routes are in [Remote and monitor routes](../reference/remote-routes.md).
+By default the board is reachable only from the same machine. The mobile monitor is a separate, read-mostly app that a phone reaches through the ngrok monitor connection. Setup steps for users are in the [mobile monitor guide](../../guide/operations/mobile-monitor.md); the routes are in [Monitor routes](../reference/remote-routes.md).
 
 ## How it is put together
 
 ```mermaid
 flowchart LR
-    Phone["Phone or PC browser"] -->|HTTPS + Basic auth| Caddy["Caddy on a LAN IP"]
-    Phone -->|HTTPS + tailnet rules| TS["Tailscale Serve"]
-    Caddy --> RL["Remote listener (127.0.0.1, e.g. 7422)"]
-    TS --> RL
-    RL --> Shared["Shared FileStore index, watcher, changed broadcast"]
+    Phone["Phone browser"] -->|HTTPS| Tunnel["ngrok tunnel"]
+    Tunnel --> Entry["Monitor entry (127.0.0.1)"]
+    Entry --> Shared["Shared FileStore index, watcher, changed broadcast"]
     LL["Local listener (127.0.0.1)"] --> Shared
 ```
 
-- The remote listener starts only when `--remote-port` and at least one `--remote-origin` are given. It runs in the same `serve` process as the local listener; both bind only to 127.0.0.1 and share the lifecycle guard, the FileStore index and reader, the watcher, and the `changed` broadcast.
-- Both binds must succeed before either serves, and a failure or stop ends both. If the remote listener fails to start, the local listener stops too and no `serve.json` is left. `serve.json` keeps only the local port, so the CLI, hook, and `wait` are unaffected.
-- All external authentication is done by the proxy. Agent Board itself adds Host, Origin, and token checks on every write.
+- The monitor entry is a dedicated loopback listener that the connection starts and stops. It runs in the same `serve` process as the local listener and shares the lifecycle guard, the FileStore index and reader, the watcher, and the `changed` broadcast. `serve.json` keeps only the local port, so the CLI, hook, and `wait` are unaffected.
+- The local listener and the monitor entry are separate surfaces. The local listener keeps its own Host, Origin, and token checks; the monitor entry never serves the desktop board.
 
-Three kinds of state keep the surfaces apart:
+Two kinds of state keep the surfaces apart:
 
 | State | Holds | Never holds |
 | --- | --- | --- |
-| `RemoteBoardState` | The reader, write service, `changed`, registered HTTPS origins, and its own session token. Reuses the desktop handlers without duplicating write logic. | The local token. |
 | `MonitorState` | A read-only reader, a `changed` subscription, allowed hosts, and its own assets. | Any board token or write service. |
-| Monitor answer router | The single answer endpoint and its own token. | Desktop or remote board tokens. |
+| Monitor answer router | The single answer endpoint and its write guard. | The desktop board token. |
 
 ## Authentication and write protection
 
-**Remote board writes** require all of the following, checked before the target lookup; otherwise 403 with no change:
+**Monitor answers** pass the write guard of the answer router. The entry in front of it adds the guard's token only after its own checks succeed, so the page never holds it. An answer requires an exact Host and Origin for the connection's public HTTPS origin, `Sec-Fetch-Site: same-origin`, no forwarding or method-override header, and a constant-time token match before the target lookup. FileStore then re-checks Pending, the request ID, and the choice under its lock. Only the current request of a Todo or Doing task is accepted; Done, answered, archived, and other requests are refused.
 
-- `Host` exactly matches the bound loopback authority or a registered remote origin. `Forwarded` and `X-Forwarded-Host` are never trusted, and CORS is not opened.
-- `Host` and `Origin` match the same registered HTTPS origin, and `Sec-Fetch-Site` is `same-origin`.
-- `X-Agboard-Token` equals the remote session token in constant-time comparison. Missing, `null`, foreign-origin, and local tokens are refused.
-
-The remote token is generated per start from 32 random bytes, separate from the local token, and embedded only in the remote `/board/` HTML.
-
-**Monitor answers** use a third token, also 32 random bytes per start and not interchangeable with either board token. It is injected into `/monitor/` HTML only when served. An answer requires an exact Host and Origin for a registered HTTPS origin, `Sec-Fetch-Site: same-origin`, and a constant-time token match before the target lookup. FileStore then re-checks Pending, the request ID, and the choice under its lock. Only the current request of a Todo or Doing task is accepted; Done, answered, archived, and other requests are refused.
-
-No token ever appears in the common entry, static JS or CSS, manifests, API responses, `serve.json`, or logs. All HTML and sensitive APIs send `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, and a CSP limiting scripts and connections to self with `frame-ancestors 'none'`. Scripts and stylesheets, which are named by their content and hold no token, are cached as immutable instead.
-
-**Proxies.** Caddy listens only on the HTTPS port of the chosen LAN IP, applies `tls internal` and `basic_auth` to every route (unauthenticated requests get 401), proxies only to the dedicated port, does not forward `Authorization`, and does not buffer SSE. Tailscale Serve targets the same port, keeps a Host and Origin matching the registered origin, relies on tailnet access rules, and never uses Funnel. A proxy must not rewrite Host or Origin to get around the local guard. Password hashes, private keys, and real LAN IPs belong in the user's configuration, never in the repository; shared examples use environment variables.
+No token ever appears in static JS or CSS, manifests, API responses, `serve.json`, or logs. All HTML and sensitive APIs send `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, and a CSP limiting scripts and connections to self with `frame-ancestors 'none'`. Scripts and stylesheets, which are named by their content and hold no token, are cached as immutable instead.
 
 ## The monitor app
 
-- The common entry (`web/access.html`, `web/src/app/access/entry.ts`, `web/vite.access.config.ts`) builds into `web/dist/access/` and uses only DOM and Web APIs: no React, app code, API client, or token.
-- The monitor (`web/monitor.html`, `web/src/app/entry/monitor.tsx`, `web/vite.monitor.config.ts`) starts from `web/src/pages/monitor/App.tsx` only. It never imports the desktop `App.tsx`, `DetailPanel`, the editor, or the general write client. It builds into `web/dist/monitor/` with its own manifest, which `src/server/monitor/assets.rs` serves exclusively. For Mermaid it reuses the board build's `chunk-mermaid.core` chunk and every chunk it imports: they are copied into `web/dist/monitor/` unchanged, the build fails if any of them holds a module from `web/src/`, and the executable embeds the identical bytes once. The automatic redirect on phones never preloads desktop HTML, tokens, or the editor.
+- The monitor (`web/monitor.html`, `web/src/app/entry/monitor.tsx`, `web/vite.monitor.config.ts`) starts from `web/src/pages/monitor/App.tsx` only. It never imports the desktop `App.tsx`, `DetailPanel`, the editor, or the general write client. It builds into `web/dist/monitor/` with its own manifest, which `src/server/monitor/assets.rs` serves exclusively. For Mermaid it reuses the board build's `chunk-mermaid.core` chunk and every chunk it imports: they are copied into `web/dist/monitor/` unchanged, the build fails if any of them holds a module from `web/src/`, and the executable embeds the identical bytes once.
 - Shared presentation components (header, task content, status labels, project switcher, theme, i18n, read-only Markdown, conditions, and history) are reused. A task heading opens a read-only drawer with Body, Conditions, History, and Epic tabs; the answer form lives on the task. The drawer and its Markdown view are a separate chunk fetched right after the list is shown, so the first load holds only the list and the answer form.
 - The monitor client has catalog, board, events, owned image, and epic readers, and one answer POST. The token is read from the served HTML at runtime. There are no PATCH, PUT, or DELETE functions.
 - Desktop and monitor answers share one FileStore save path: request matching under the lock, `requestAnswers` plus a history entry, index update, and notification. A successful answer leaves the task Idle in its lane.

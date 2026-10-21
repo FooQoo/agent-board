@@ -15,7 +15,7 @@ Everything below serves one of these two goals. When a protection only restrains
 
 | Risk | Protection | Details |
 | --- | --- | --- |
-| Someone on the network opens the board | `serve` listens only on `127.0.0.1`; remote access needs an explicit flag and an authenticating HTTPS proxy. | [Exposure](#exposure), [Remote access](./remote-access.md#authentication-and-write-protection) |
+| Someone on the network opens the board | `serve` listens only on `127.0.0.1`; the phone connection starts only on request and is guarded by ngrok's sign-in and allow list. | [Exposure](#exposure), [The mobile monitor](./remote-access.md#authentication-and-write-protection) |
 | A website makes the browser write to the board | Host, Origin, `Sec-Fetch-Site`, and a per-start token on every write. | [Writes from the browser](#writes-from-the-browser) |
 | An agent deletes data | Deletion commands require a human y/N in a terminal; the web UI deletes only archived tasks. | [Deletion is for people](#deletion-is-for-people) |
 | An agent overwrites a draft or a finished task | The CLI refuses AI writes to drafts and Done tasks. | [Drafts and Done tasks](#drafts-and-done-tasks) |
@@ -27,8 +27,8 @@ Everything below serves one of these two goals. When a protection only restrains
 ## Exposure
 
 - By default `agboard serve` listens only on `127.0.0.1`, and every request must carry `Host: 127.0.0.1:<port>` or `localhost:<port>`. Users on the same machine are not authenticated.
-- Only with `--remote-port` and at least one `--remote-origin` does `serve` add a listener for the common HTTPS entry, on a separate 127.0.0.1 port. Caddy (LAN, HTTPS with Basic authentication) or Tailscale Serve (HTTPS with tailnet rules) connects to that port; the local port is never forwarded, and Funnel is not used. Authentication covers the board, monitor, assets, API, SSE, and images.
-- Screen width is not authorization. An authenticated user can use the full board on any device; the monitor is limited to reading and answering. How remote writes are guarded is described in [Remote access](./remote-access.md#authentication-and-write-protection).
+- Only when the ngrok monitor connection is started does the server add a separate loopback entry for the monitor, which ngrok forwards to. The local port is never forwarded. The entry serves only the monitor, its assets, and its read and answer routes; it never serves the desktop board.
+- The monitor is limited to reading and answering. How monitor writes are guarded is described in [The mobile monitor](./remote-access.md#authentication-and-write-protection).
 
 ## Writes from the browser
 

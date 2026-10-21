@@ -2,18 +2,24 @@
 
 use std::net::SocketAddr;
 use std::path::Path;
-use std::sync::{Mutex, mpsc};
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use agent_board::domain::{Actor, Assignee, NewTask};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
-use agent_board::server::{RemoteServeConfig, ServeConfig, run_until_with_remote};
+use agent_board::server::monitor_connection::contracts::PublicOrigin;
+use agent_board::server::monitor_connection::lifecycle::{
+    Connector, MonitorEnv, OpenFuture, OpenRequest, OpenedTunnel, Overrides, Secret,
+};
+use agent_board::server::{MonitorOptions, ServeConfig, run_until_with_monitor};
+use serde_json::Value;
 
 static ENV_LOCK: Mutex<()> = Mutex::new(());
-pub const ORIGIN: &str = "https://monitor.example";
-pub const ORIGIN2: &str = "https://tail.example:8443";
+/// The public origin the fake tunnel reports.
+pub const ORIGIN: &str = "https://fixture-run.ngrok.app";
+const EMAIL: &str = "owner@example.com";
 
 pub fn home() -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
@@ -32,9 +38,49 @@ pub fn home() -> tempfile::TempDir {
     home
 }
 
+/// Records the newest tunnel request instead of opening a tunnel.
+#[derive(Default)]
+struct RecordingConnector {
+    last: Mutex<Option<(SocketAddr, String)>>,
+}
+
+impl Connector for RecordingConnector {
+    fn open(&self, request: OpenRequest) -> OpenFuture {
+        let addr = request
+            .backend
+            .as_str()
+            .trim_start_matches("http://")
+            .trim_end_matches('/')
+            .parse()
+            .unwrap();
+        let proof = serde_json::from_str::<Value>(request.policy.expose()).unwrap()
+            ["on_http_request"][3]["actions"][0]["config"]["headers"]["x-agboard-tunnel-proof"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        *self.last.lock().unwrap() = Some((addr, proof));
+        Box::pin(async {
+            Ok(OpenedTunnel {
+                public: PublicOrigin::parse(ORIGIN).unwrap(),
+                keep_alive: Box::new(()),
+            })
+        })
+    }
+}
+
+/// A session at the tunnel: the cookie header value and the CSRF token.
+pub struct Session {
+    pub cookie: String,
+    pub csrf: String,
+}
+
+/// A real server on loopback whose tunnel is opened by a fake connector. The
+/// monitor is reached the way the Edge forwards it: the public Host, the proof
+/// and, for data, a session.
 pub struct Running {
     pub local: SocketAddr,
-    pub remote: SocketAddr,
+    pub backend: SocketAddr,
+    proof: String,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
     handle: Option<JoinHandle<Result<(), AgboardError>>>,
 }
@@ -48,18 +94,29 @@ impl Running {
         unsafe { std::env::set_var("AGBOARD_HOME", home) };
         let (ready_tx, ready_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
+        let connector = Arc::new(RecordingConnector::default());
+        let seen = connector.clone();
         let handle = std::thread::spawn(move || {
-            run_until_with_remote(
-                ServeConfig { port: 0 },
-                Some(RemoteServeConfig {
-                    port: 0,
-                    origins: vec![ORIGIN.into(), ORIGIN2.into()],
+            let mut options = MonitorOptions::without_keychain(
+                MonitorEnv {
+                    token: Some(Secret::new("tok-fixture-0123456789")),
+                    google: None,
+                },
+                Some(Overrides {
+                    allow_emails: vec![EMAIL.into()],
+                    domain: None,
+                    oauth_app: None,
                 }),
+            );
+            options.connector = connector;
+            run_until_with_monitor(
+                ServeConfig { port: 0 },
+                options,
                 async move {
                     let _ = stop_rx.await;
                 },
-                move |local, remote| {
-                    let _ = ready_tx.send((local, remote.unwrap()));
+                move |local, _| {
+                    let _ = ready_tx.send(local);
                 },
             )
         });
@@ -72,8 +129,8 @@ impl Running {
                 None => std::env::remove_var("AGBOARD_HOME"),
             }
         }
-        let (local, remote) = match ready {
-            Ok(addresses) => addresses,
+        let local = match ready {
+            Ok(local) => local,
             Err(error) => {
                 let _ = stop_tx.send(());
                 panic!(
@@ -82,9 +139,16 @@ impl Running {
                 );
             }
         };
+        let (backend, proof) = seen
+            .last
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("a tunnel was opened");
         Self {
             local,
-            remote,
+            backend,
+            proof,
             stop: Some(stop_tx),
             handle: Some(handle),
         }
@@ -106,10 +170,25 @@ impl Running {
         format!("/monitor/api/projects/{id}")
     }
 
-    pub fn url(&self, path: &str) -> String {
-        format!("http://127.0.0.1:{}{path}", self.remote.port())
+    pub fn host(&self) -> &'static str {
+        ORIGIN.trim_start_matches("https://")
     }
 
+    pub fn url(&self, path: &str) -> String {
+        format!("http://{}{path}", self.backend)
+    }
+
+    /// The headers every request through the Edge carries: the public Host and
+    /// the tunnel proof.
+    pub fn edge_headers(&self) -> [(&'static str, String); 2] {
+        [
+            ("Host", self.host().to_string()),
+            ("x-agboard-tunnel-proof", self.proof.clone()),
+        ]
+    }
+
+    /// A request as the Edge forwards it. A `Host` in `headers` replaces the
+    /// public one; the proof is always added.
     pub fn request(&self, method: &str, path: &str, headers: &[(&str, &str)], body: &str) -> Reply {
         let agent: ureq::Agent = ureq::Agent::config_builder()
             .http_status_as_error(false)
@@ -119,6 +198,13 @@ impl Running {
         let mut req = ureq::http::Request::builder()
             .method(method)
             .uri(self.url(path));
+        if !headers
+            .iter()
+            .any(|(name, _)| name.eq_ignore_ascii_case("host"))
+        {
+            req = req.header("Host", self.host());
+        }
+        req = req.header("x-agboard-tunnel-proof", &self.proof);
         for (name, value) in headers {
             req = req.header(*name, *value);
         }
@@ -133,8 +219,44 @@ impl Running {
         }
     }
 
-    pub fn monitor_headers(&self) -> [(&'static str, &'static str); 1] {
-        [("Host", "monitor.example")]
+    pub fn session(&self) -> Session {
+        let reply = self.request(
+            "GET",
+            "/monitor/api/session",
+            &[("Sec-Fetch-Site", "same-origin")],
+            "",
+        );
+        assert_eq!(reply.status, 200, "{}", reply.body);
+        let set = reply
+            .header("set-cookie")
+            .expect("a new session sets a cookie");
+        let cookie = set.split(';').next().unwrap().to_string();
+        let csrf = serde_json::from_str::<Value>(&reply.body).unwrap()["csrfToken"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        Session { cookie, csrf }
+    }
+
+    /// A read with a session.
+    pub fn get(&self, session: &Session, path: &str) -> Reply {
+        self.request("GET", path, &[("Cookie", &session.cookie)], "")
+    }
+
+    /// A change that meets every condition of the entrance.
+    pub fn write(&self, session: &Session, method: &str, path: &str, body: &str) -> Reply {
+        self.request(
+            method,
+            path,
+            &[
+                ("Cookie", &session.cookie),
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Csrf", &session.csrf),
+                ("Content-Type", "application/json"),
+            ],
+            body,
+        )
     }
 }
 
@@ -165,11 +287,4 @@ pub fn token(html: &str) -> String {
     let marker = "name=\"agboard-token\" content=\"";
     let start = html.find(marker).expect("remote PC token meta") + marker.len();
     html[start..start + 64].to_string()
-}
-
-pub fn monitor_token(html: &str) -> String {
-    let marker = "name=\"agboard-monitor-token\" content=\"";
-    let start = html.find(marker).expect("monitor answer token meta") + marker.len();
-    let end = html[start..].find('"').unwrap() + start;
-    html[start..end].to_string()
 }

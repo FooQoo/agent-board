@@ -10,7 +10,7 @@ Where things live in the repository. For how the parts work together, read [How 
 | `cli` | Arguments, commands, output formatting, and error display. |
 | `file_store` | The shared-area format and everything that reads or writes it: paths, saving, locking, validation, operations, the index, and watching. |
 | `domain` | Tasks, lanes, run states, epics, decision requests, input limits, and rules.<br>No I/O. |
-| `server` | The axum app, API, SSE, write guards, embedded web assets, and the remote and monitor listeners. |
+| `server` | The axum app, API, SSE, write guards, embedded web assets, and the monitor entry. |
 | `agent` | The hook and `wait`. |
 | `progress` | Builds the progress table shared by `agboard progress` and the hook. |
 | `interact` | Human confirmation (terminal detection, y/N) and the notify client. |
@@ -44,8 +44,8 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | Module | Responsibility |
 | --- | --- |
 | `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, and epic images. |
-| `monitor/`<br>`remote` | The monitor's read router and its answer endpoint, and the HTTPS remote listener that combines them with the board router. |
-| `guard` | Host, Origin, Sec-Fetch-Site and token checks for local and remote writes, and canonical HTTPS origins. |
+| `monitor/` | The monitor's read router, its answer endpoint, and its assets. |
+| `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes and monitor writes, and canonical HTTPS origins. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
 | `store`<br>`answer` | Blocking file access, the index, and URL IDs for every router; saving an answer, shared by the board and the monitor. |
 | `web_assets` | The embedded scripts and stylesheets of the board and the monitor, their build IDs, and the cacheable gzip or plain response. |

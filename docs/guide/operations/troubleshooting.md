@@ -41,9 +41,8 @@ Find what you see, read the cause, and do what the last column says. The command
 
 | What you see | Cause | What to do |
 | --- | --- | --- |
-| The page does not load | The server or the proxy is not running, or the computer is asleep. | Start both again and keep the computer awake. |
-| The browser warns about the certificate | The phone does not trust Caddy's local certificate. | Install only Caddy's public root certificate on the phone. See [LAN with Caddy](./mobile-monitor#lan-with-caddy). |
-| The page loads but answers are refused | The address you opened is not one of the `--remote-origin` values. | Start the server with the exact HTTPS address you open. |
+| The page does not load | The server or the ngrok connection is not running, or the computer is asleep. | Start the server and the connection again and keep the computer awake. |
+| The page loads but answers are refused | The address you opened is not the public address of the current connection. | Open the address the connection reports. Restarting the connection issues a new session. |
 | The monitor says the data is out of date | Auto-update stopped, or some projects could not be read. | Reload or reopen the page. The monitor re-fetches when it becomes visible again. |
 
 ## Still stuck?

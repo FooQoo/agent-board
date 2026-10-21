@@ -4,7 +4,7 @@ mod support;
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask};
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::Choice;
-use support::{ORIGIN, Running, home, monitor_token, token};
+use support::{ORIGIN, Running, Session, home};
 
 fn pending_fixture() -> tempfile::TempDir {
     let home = home();
@@ -76,12 +76,13 @@ fn pending_fixture() -> tempfile::TempDir {
     home
 }
 
-fn answer_headers(token: &str) -> [(&'static str, &str); 4] {
+fn answer_headers(session: &Session) -> [(&'static str, &str); 5] {
     [
-        ("Host", "monitor.example"),
+        ("Cookie", &session.cookie),
         ("Origin", ORIGIN),
         ("Sec-Fetch-Site", "same-origin"),
-        ("X-Agboard-Token", token),
+        ("X-Agboard-Csrf", &session.csrf),
+        ("Content-Type", "application/json"),
     ]
 }
 
@@ -89,15 +90,9 @@ fn answer_headers(token: &str) -> [(&'static str, &str); 4] {
 fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
     let home = pending_fixture();
     let server = Running::start(home.path());
-    let page = server.request("GET", "/monitor/", &[("Host", "monitor.example")], "");
-    let token = monitor_token(&page.body);
+    let session = server.session();
     let base = server.monitor_base(home.path());
-    let board = server.request(
-        "GET",
-        &format!("{base}/board"),
-        &[("Host", "monitor.example")],
-        "",
-    );
+    let board = server.get(&session, &format!("{base}/board"));
     let board: serde_json::Value = serde_json::from_str(&board.body).unwrap();
     let todo_request = board["tasks"]
         .as_array()
@@ -108,16 +103,10 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
         .as_str()
         .unwrap();
 
-    let todo = server.request(
+    let todo = server.write(
+        &session,
         "POST",
         &format!("{base}/tasks/1/answer"),
-        &[
-            ("Host", "monitor.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-origin"),
-            ("X-Agboard-Token", &token),
-            ("Content-Type", "application/json"),
-        ],
         &format!(r#"{{"requestId":"{todo_request}","choiceId":"keep","text":"Keep it"}}"#),
     );
     assert_eq!(todo.status, 200, "{}", todo.body);
@@ -137,12 +126,7 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
     assert_eq!(todo_answer.as_object().unwrap().len(), 2);
     assert!(todo_answer["reason"].as_str().unwrap().contains("Keep it"));
 
-    let board = server.request(
-        "GET",
-        &format!("{base}/board"),
-        &[("Host", "monitor.example")],
-        "",
-    );
+    let board = server.get(&session, &format!("{base}/board"));
     let board: serde_json::Value = serde_json::from_str(&board.body).unwrap();
     let doing = board["tasks"]
         .as_array()
@@ -152,16 +136,10 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
         .unwrap();
     let doing_id = doing["id"].as_i64().unwrap();
     let request_id = doing["pendingRequestId"].as_str().unwrap();
-    let response = server.request(
+    let response = server.write(
+        &session,
         "POST",
         &format!("{base}/tasks/{doing_id}/answer"),
-        &[
-            ("Host", "monitor.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-origin"),
-            ("X-Agboard-Token", &token),
-            ("Content-Type", "application/json"),
-        ],
         &format!(r#"{{"requestId":"{request_id}","text":"Continue"}}"#),
     );
     assert_eq!(response.status, 200, "{}", response.body);
@@ -180,94 +158,109 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
 }
 
 #[test]
-fn monitor_answer_requires_its_page_origin_host_and_token_and_only_allows_post() {
+fn monitor_answer_requires_its_session_origin_host_and_csrf_and_only_allows_post() {
     let home = pending_fixture();
     let server = Running::start(home.path());
-    let page = server.request("GET", "/monitor/", &[("Host", "monitor.example")], "");
-    let monitor_token = monitor_token(&page.body);
-    let pc_page = server.request("GET", "/board/", &[("Host", "monitor.example")], "");
-    let pc_token = token(&pc_page.body);
+    let session = server.session();
     let path = format!("{}/tasks/1/answer", server.monitor_base(home.path()));
     let body = r#"{"requestId":"stale","text":"answer"}"#;
+    let cookie = session.cookie.as_str();
+    let csrf = session.csrf.as_str();
 
-    for headers in [
-        vec![],
-        vec![
-            ("Host", "monitor.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-origin"),
-        ],
-        vec![
-            ("Host", "monitor.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-origin"),
-            ("X-Agboard-Token", "wrong"),
-        ],
-        vec![
-            ("Host", "monitor.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-origin"),
-            ("X-Agboard-Token", &pc_token),
-        ],
-        vec![
-            ("Host", "monitor.example"),
-            ("Origin", "https://evil.example"),
-            ("Sec-Fetch-Site", "same-origin"),
-            ("X-Agboard-Token", &monitor_token),
-        ],
-        vec![
-            ("Host", "other.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-origin"),
-            ("X-Agboard-Token", &monitor_token),
-        ],
-        vec![
-            ("Host", "monitor.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-site"),
-            ("X-Agboard-Token", &monitor_token),
-        ],
-        vec![
-            ("Host", "monitor.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-origin"),
-            ("X-Agboard-Token", &monitor_token),
-            ("X-HTTP-Method-Override", "DELETE"),
-        ],
+    for (name, headers, status) in [
+        ("no session", vec![], 401),
+        (
+            "no origin",
+            vec![
+                ("Cookie", cookie),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Csrf", csrf),
+            ],
+            403,
+        ),
+        (
+            "no csrf",
+            vec![
+                ("Cookie", cookie),
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-origin"),
+            ],
+            403,
+        ),
+        (
+            "wrong csrf",
+            vec![
+                ("Cookie", cookie),
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Csrf", "wrong"),
+            ],
+            403,
+        ),
+        (
+            "other origin",
+            vec![
+                ("Cookie", cookie),
+                ("Origin", "https://evil.example"),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Csrf", csrf),
+            ],
+            403,
+        ),
+        (
+            "other host",
+            vec![
+                ("Host", "other.example"),
+                ("Cookie", cookie),
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Csrf", csrf),
+            ],
+            403,
+        ),
+        (
+            "same-site fetch",
+            vec![
+                ("Cookie", cookie),
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-site"),
+                ("X-Agboard-Csrf", csrf),
+            ],
+            403,
+        ),
+        (
+            "method override",
+            vec![
+                ("Cookie", cookie),
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Csrf", csrf),
+                ("X-HTTP-Method-Override", "DELETE"),
+            ],
+            403,
+        ),
     ] {
         let result = server.request("POST", &path, &headers, body);
-        assert_eq!(result.status, 403, "headers={headers:?}; {}", result.body);
+        assert_eq!(
+            result.status, status,
+            "{name}: headers={headers:?}; {}",
+            result.body
+        );
     }
 
-    let stale = server.request(
-        "POST",
-        &path,
-        &[
-            ("Host", "monitor.example"),
-            ("Origin", ORIGIN),
-            ("Sec-Fetch-Site", "same-origin"),
-            ("X-Agboard-Token", "old-monitor-token"),
-        ],
-        body,
-    );
-    assert_eq!(stale.status, 403);
-    assert!(stale.body.contains("page_out_of_date"));
-
-    let method = server.request("GET", &path, &answer_headers(&monitor_token), "");
+    let method = server.request("GET", &path, &answer_headers(&session), "");
     assert_eq!(method.status, 405);
     let generic_write = server.request(
         "POST",
         &format!("{}/tasks/1/move", server.monitor_base(home.path())),
-        &answer_headers(&monitor_token),
+        &answer_headers(&session),
         "{}",
     );
     assert_eq!(generic_write.status, 405);
 
-    let board = server.request(
-        "GET",
+    let board = server.get(
+        &session,
         &format!("{}/board", server.monitor_base(home.path())),
-        &[("Host", "monitor.example")],
-        "",
     );
     let board: serde_json::Value = serde_json::from_str(&board.body).unwrap();
     let todo = board["tasks"]

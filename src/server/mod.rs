@@ -18,7 +18,6 @@ pub mod monitor_auth {
     pub mod session;
 }
 pub mod monitor_connection;
-pub mod remote;
 mod request;
 mod response;
 mod store;
@@ -45,12 +44,6 @@ pub use monitor_connection::lifecycle::{MonitorOptions, MonitorReady};
 pub struct ServeConfig {
     /// Port on 127.0.0.1. 0 lets the OS pick a free one.
     pub port: u16,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RemoteServeConfig {
-    pub port: u16,
-    pub origins: Vec<String>,
 }
 
 /// State shared by all request handlers.
@@ -87,34 +80,21 @@ pub fn run_until<F: Future<Output = ()>>(
     shutdown: F,
     on_ready: impl FnOnce(SocketAddr),
 ) -> Result<(), AgboardError> {
-    run_until_with_remote(config, None, shutdown, |addr, _| on_ready(addr))
-}
-
-/// Start the local board and, when configured, the dedicated reverse-proxy
-/// listener. Both sockets are bound before the watcher or serve.json is started.
-pub fn run_until_with_remote<F: Future<Output = ()>>(
-    config: ServeConfig,
-    remote: Option<RemoteServeConfig>,
-    shutdown: F,
-    on_ready: impl FnOnce(SocketAddr, Option<SocketAddr>),
-) -> Result<(), AgboardError> {
     run_until_with_monitor(
         config,
-        remote,
         MonitorOptions::without_keychain(MonitorEnv::default(), None),
         shutdown,
-        |addr, remote_addr, _| on_ready(addr, remote_addr),
+        |addr, _| on_ready(addr),
     )
 }
 
-/// [`run_until_with_remote`] plus the ngrok monitor connection. With explicit
-/// settings the connection is up (or the run has failed) before `on_ready`.
+/// [`run_until`] plus the ngrok monitor connection. With explicit settings the
+/// connection is up (or the run has failed) before `on_ready`.
 pub fn run_until_with_monitor<F: Future<Output = ()>>(
     config: ServeConfig,
-    remote: Option<RemoteServeConfig>,
     monitor: MonitorOptions,
     shutdown: F,
-    on_ready: impl FnOnce(SocketAddr, Option<SocketAddr>, Option<MonitorReady>),
+    on_ready: impl FnOnce(SocketAddr, Option<MonitorReady>),
 ) -> Result<(), AgboardError> {
     // Resolve the process environment once. Another embedded caller can change
     // AGBOARD_HOME while startup is awaiting file locks or filesystem watches.
@@ -133,13 +113,6 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
     let addr = listener
         .local_addr()
         .map_err(|_| port_in_use(config.port))?;
-    let remote_listener = remote
-        .as_ref()
-        .map(|config| bind(config.port))
-        .transpose()?;
-    let remote_addr = remote_listener
-        .as_ref()
-        .and_then(|listener| listener.local_addr().ok());
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -150,15 +123,6 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
             .set_nonblocking(true)
             .and_then(|()| tokio::net::TcpListener::from_std(listener))
             .map_err(|e| internal(format!("Cannot listen on {addr}: {e}")))?;
-        let remote_listener = remote_listener
-            .map(|listener| {
-                listener.set_nonblocking(true).map_err(|e| {
-                    internal(format!("Cannot listen on remote {remote_addr:?}: {e}"))
-                })?;
-                tokio::net::TcpListener::from_std(listener)
-                    .map_err(|e| internal(format!("Cannot listen on remote {remote_addr:?}: {e}")))
-            })
-            .transpose()?;
 
         // The watch exists before the first read, so a change made during the
         // read is queued and read again.
@@ -181,30 +145,11 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
         });
         state.monitor.attach(&state);
         let app = api::router(state.clone());
-        let remote_app = match (&remote, remote_listener.as_ref(), remote_addr) {
-            (Some(config), Some(_), Some(remote_addr)) => Some(remote::router(
-                state.clone(),
-                remote_addr.port(),
-                &config.origins,
-                assets::new_token()?,
-            )?),
-            (None, None, None) => None,
-            _ => {
-                return Err(internal(
-                    "The remote listener address is unavailable.".into(),
-                ));
-            }
-        };
 
         // A command-line monitor must be up before the board announces itself;
         // on failure nothing has been written yet, so the run just ends.
         let explicit = monitor.explicit.is_some();
-        let restore = remote.is_none();
-        let monitor_ready = match state
-            .monitor
-            .startup(monitor.explicit.clone(), restore)
-            .await
-        {
+        let monitor_ready = match state.monitor.startup(monitor.explicit.clone()).await {
             Ok(url) => url.filter(|_| explicit).map(|url| MonitorReady { url }),
             Err(code) => {
                 state.monitor.shutdown();
@@ -224,19 +169,11 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
                 started_at: format_utc(chrono::Utc::now()),
             },
         );
-        on_ready(addr, remote_addr, monitor_ready);
+        on_ready(addr, monitor_ready);
         let result = tokio::select! {
             served = async { axum::serve(listener, app).await } => {
                 served.map_err(|e| internal(format!("The server stopped: {e}")))
             }
-            served = async {
-                match (remote_listener, remote_app) {
-                    (Some(listener), Some(app)) => axum::serve(listener, app).await
-                        .map_err(|e| internal(format!("The remote server stopped: {e}"))),
-                    (None, None) => std::future::pending::<Result<(), AgboardError>>().await,
-                    _ => Err(internal("The remote listener is incomplete.".into())),
-                }
-            } => served,
             () = shutdown => Ok(()),
         };
         state.monitor.shutdown();

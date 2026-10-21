@@ -76,6 +76,6 @@ agboard serve --port 7420
 ## ドキュメント
 
 - [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
-- [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor) — LAN・Tailscale接続、HTTPS、スマホの証明書設定。
+- [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor) — モニターの表示内容と、スマホでの確認方法。
 - [Claude Code・Codexとの連携（英語）](integrations/README.md) — Hookとエージェントの設定。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

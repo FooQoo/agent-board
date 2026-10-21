@@ -1,14 +1,11 @@
-# Remote and monitor routes
+# Monitor routes
 
-The routes served by the remote listener, including the mobile monitor. How the listeners, tokens, and proxies fit together is in [Remote access](../concepts/remote-access.md).
+The routes served behind the ngrok monitor entry, including the mobile monitor. How the entry, tokens, and the tunnel fit together is in [The mobile monitor](../concepts/remote-access.md).
 
-## Routes on the remote listener
+## Routes on the monitor entry
 
 | Route | Content |
 | --- | --- |
-| GET/HEAD `/`, `/assets/access/entry.js` | Token-free common entry and its first-run script. |
-| GET/HEAD `/board/` and desktop assets | The normal desktop HTML and assets, with the remote token in the HTML. |
-| Desktop API under `/api/projects`, GET `/api/events` | The normal board; every write goes through the remote guard. CLI-only `notify` and `health` are not served. |
 | GET/HEAD `/monitor/` | Monitor HTML; the answer token is injected only when served. |
 | GET/HEAD `/assets/monitor/{name}` | Only the content-named scripts and stylesheets in the monitor manifest, cached as immutable and gzip-compressed when accepted. Other names are 404 with `no-store`. |
 | GET/HEAD `/logo.png`, `/logo-white.png` | Logos. |
@@ -20,4 +17,4 @@ The routes served by the remote listener, including the mobile monitor. How the 
 
 - `/monitor/api/` is split into a read router and an answer-only write router and is never merged into the desktop API. There is no fallback to the desktop router, no prefix-stripping redirect, no method override, and no alias from monitor paths to desktop assets.
 - HEAD mirrors the allowed JSON and image GETs and is not offered for SSE. Unknown routes are 404 with no HTML fallback; disallowed methods on allowed routes are 405. Health, notify, archive, other writes, and file listings are not served on monitor routes.
-- Reaching `/board/` and desktop assets after authentication is part of the normal board contract. Screen width is not authorization.
+- The desktop board and its API are not served on the monitor entry.

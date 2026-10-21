@@ -75,8 +75,8 @@ impl TokenVault for OsKeychain {
     }
 }
 
-/// No keychain at all. Used by runs that never offer saving (the legacy
-/// `--remote-port` run) and by tests that must not touch the real keychain.
+/// No keychain at all. Used by runs that never offer saving (`run_until`) and
+/// by tests that must not touch the real keychain.
 pub struct NoKeychain;
 
 impl TokenVault for NoKeychain {

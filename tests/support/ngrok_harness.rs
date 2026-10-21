@@ -16,12 +16,10 @@ use agent_board::server::monitor_connection::lifecycle::{
     Connector, FailureCode, MonitorEnv, OpenFailure, OpenFuture, OpenRequest, OpenedTunnel,
     Overrides, Secret,
 };
-use agent_board::server::{
-    MonitorOptions, MonitorReady, RemoteServeConfig, ServeConfig, run_until_with_monitor,
-};
+use agent_board::server::{MonitorOptions, MonitorReady, ServeConfig, run_until_with_monitor};
 use serde_json::{Value, json};
 
-use super::support::{ORIGIN, token};
+use super::support::token;
 
 pub const TOKEN: &str = "tok-SECRET-0123456789";
 pub const PUBLIC: &str = "https://fake-abc.ngrok.app";
@@ -132,7 +130,6 @@ pub fn request(
 
 pub struct Server {
     pub local: std::net::SocketAddr,
-    pub remote: Option<std::net::SocketAddr>,
     pub token: String,
     pub fake: Arc<Fake>,
     pub ready: Option<MonitorReady>,
@@ -190,7 +187,6 @@ impl TokenVault for FakeVault {
 
 pub struct Opts {
     pub vault: Arc<FakeVault>,
-    pub remote: bool,
     pub env_token: bool,
     pub explicit: Option<Overrides>,
     pub fake: Arc<Fake>,
@@ -200,7 +196,6 @@ impl Default for Opts {
     fn default() -> Self {
         Self {
             vault: FakeVault::new(None, true),
-            remote: false,
             env_token: false,
             explicit: None,
             fake: Arc::new(Fake::default()),
@@ -224,20 +219,15 @@ impl Server {
             connector: opts.fake.clone(),
             vault: opts.vault.clone(),
         };
-        let remote = opts.remote.then(|| RemoteServeConfig {
-            port: 0,
-            origins: vec![ORIGIN.into()],
-        });
         let handle = std::thread::spawn(move || {
             run_until_with_monitor(
                 ServeConfig { port: 0 },
-                remote,
                 monitor,
                 async move {
                     let _ = stop_rx.await;
                 },
-                move |local, remote, ready| {
-                    let _ = tx.send((local, remote, ready));
+                move |local, ready| {
+                    let _ = tx.send((local, ready));
                 },
             )
         });
@@ -245,11 +235,10 @@ impl Server {
         // SAFETY: same lock; the server has captured the path.
         unsafe { std::env::remove_var("AGBOARD_HOME") };
         match got {
-            Ok((local, remote, ready)) => {
+            Ok((local, ready)) => {
                 let page = request(local, "GET", "/", &[], "").body;
                 Ok(Self {
                     local,
-                    remote,
                     token: token(&page),
                     fake: opts.fake,
                     ready,

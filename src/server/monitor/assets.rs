@@ -1,4 +1,4 @@
-//! Build-time embedded monitor and access assets. The monitor's scripts and
+//! Build-time embedded monitor assets. The monitor's scripts and
 //! stylesheets are in [`crate::server::web_assets`], in a table of their own.
 
 use crate::server::web_assets::{
@@ -9,16 +9,6 @@ use crate::server::web_assets::{
 pub const MONITOR_HTML: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/web/dist/monitor/index.html"
-));
-/// Shared access entry HTML.
-pub const ACCESS_HTML: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/web/dist/access/index.html"
-));
-/// Shared access redirect script.
-pub const ACCESS_JS: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/web/dist/access/entry.js"
 ));
 
 /// The monitor page with its token and the monitor's build ID filled in.
@@ -32,28 +22,6 @@ pub fn render_monitor(token: &str) -> String {
 /// there, except chunks the monitor build reuses byte for byte.
 pub fn monitor_lookup(name: &str) -> Option<&'static EmbeddedAsset> {
     web_assets::find(MONITOR_ASSETS, name)
-}
-
-/// Exact-name lookup for the independent access manifest.
-pub fn access_lookup(name: &str) -> Option<(&'static [u8], &'static str)> {
-    lookup(access_manifest::ASSETS, name)
-}
-
-fn lookup(
-    assets: &'static [(&'static str, &'static str, &'static [u8])],
-    name: &str,
-) -> Option<(&'static [u8], &'static str)> {
-    if name.is_empty() || name.contains('/') || name.contains('\\') || name.contains("..") {
-        return None;
-    }
-    assets
-        .iter()
-        .find(|(known, _, _)| *known == name)
-        .map(|(_, mime, bytes)| (*bytes, *mime))
-}
-
-mod access_manifest {
-    include!(concat!(env!("OUT_DIR"), "/access_assets_table.rs"));
 }
 
 #[cfg(test)]
@@ -85,7 +53,5 @@ mod tests {
         assert!(monitor_lookup(&format!("../{}", entry.name)).is_none());
         assert!(monitor_lookup("index.html").is_none());
         assert!(monitor_lookup("app.js").is_none());
-        assert!(access_lookup("entry.js").is_some());
-        assert!(access_lookup("folder/entry.js").is_none());
     }
 }

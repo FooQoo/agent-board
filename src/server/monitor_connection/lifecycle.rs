@@ -92,7 +92,6 @@ impl MonitorConnections {
     pub async fn startup(
         self: &Arc<Self>,
         explicit: Option<Overrides>,
-        restore: bool,
     ) -> Result<Option<String>, FailureCode> {
         let waiting = {
             let mut inner = self.lock();
@@ -108,8 +107,7 @@ impl MonitorConnections {
                 inner.failure = None;
                 Some(self.begin(&mut inner).map_err(|e| failure_of(&e))?)
             } else {
-                // A legacy remote run never restores the ngrok connection.
-                if restore && inner.config.enabled && inner.failure.is_none() {
+                if inner.config.enabled && inner.failure.is_none() {
                     self.probe_keychain(&mut inner);
                     if inner.token.is_some() {
                         // Restoring: a failure is shown on the PC, not fatal.

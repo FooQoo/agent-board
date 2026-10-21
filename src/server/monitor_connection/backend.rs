@@ -16,7 +16,7 @@ use super::entry::external_router;
 use super::router::Gate;
 use crate::error::AgboardError;
 use crate::server::AppState;
-use crate::server::guard::RemoteGuard;
+use crate::server::guard::BoardWriteGuard;
 use crate::server::monitor::{MonitorState, router as monitor_router, write_router};
 
 /// One bound socket that two `axum::serve` calls take in turn.
@@ -66,8 +66,7 @@ pub(super) fn external_app(
         app.changed.clone(),
         authorities.clone(),
     ));
-    let guard = RemoteGuard {
-        port: 0,
+    let guard = BoardWriteGuard {
         origins: Arc::new(HashSet::from([origin.origin().to_string()])),
         authorities: Arc::new(authorities),
         token: internal_token,

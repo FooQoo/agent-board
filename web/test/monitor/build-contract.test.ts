@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -9,26 +8,15 @@ const read = (relative: string) => readFileSync(join(dist, relative), 'utf8');
 const files = (folder: string) => readdirSync(join(dist, folder)).sort();
 
 describe('isolated monitor build', () => {
-  it('emits an access entry without a token and a monitor entry with only its runtime placeholders', () => {
-    const access = read('access/index.html');
+  it('emits a monitor entry with only its runtime placeholders', () => {
     const monitor = read('monitor/index.html');
-    expect(access).toMatch(/\/assets\/access\/entry\.js\?v=[a-f0-9]{16}/);
     expect(monitor).toMatch(/src="\/assets\/monitor\/monitor-[\w-]+\.js"/);
     expect(monitor).toMatch(/href="\/assets\/monitor\/monitor-[\w-]+\.css"/);
-    expect(access).not.toContain('agboard-token');
     expect(monitor).toContain('name="agboard-monitor-token" content="{{AGBOARD_MONITOR_TOKEN}}"');
     expect(monitor).toContain('name="agboard-build" content="{{AGBOARD_BUILD_ID}}"');
     expect(monitor).not.toContain('name="agboard-token"');
     expect(monitor).not.toMatch(/name="agboard-monitor-token" content="[a-f0-9]{64}"/);
-    expect(`${access}\n${monitor}`).not.toMatch(/\/assets\/app[-.]/);
-  });
-
-  it('bypasses the access entry saved under the previous long-lived cache policy', () => {
-    const previousVersion = createHash('sha256')
-      .update(read('access/entry.js'))
-      .digest('hex')
-      .slice(0, 16);
-    expect(read('access/index.html')).not.toContain(`entry.js?v=${previousVersion}`);
+    expect(monitor).not.toMatch(/\/assets\/app[-.]/);
   });
 
   it('names every monitor script and stylesheet by content and lists them in its manifest', () => {
@@ -41,10 +29,6 @@ describe('isolated monitor build', () => {
     );
     expect([...monitorAssets].sort()).toEqual(embedded);
     expect(read('monitor/manifest.json')).not.toMatch(/"app[-.]/);
-    const accessAssets = JSON.parse(read('access/manifest.json')).assets.map(
-      (asset: { name: string }) => asset.name,
-    );
-    expect(accessAssets).toEqual(['index.html', 'entry.js']);
   });
 
   it("reuses the board build's diagram chunks byte for byte", () => {

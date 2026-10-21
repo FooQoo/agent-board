@@ -1,51 +1,36 @@
-# リモートアクセスとモバイルモニター
+# モバイルモニター
 
-既定では、ボードに接続できるのは同じマシンからだけです。リモートアクセスを有効にすると、専用のリスナーが追加され、スマホや別のコンピューターからHTTPSプロキシ経由で接続できるようになります。モバイルモニターは、そのリスナーで配信する、読み取り中心の別のアプリです。利用者向けの設定手順は[モバイルモニターのガイド](../../guide/operations/mobile-monitor.md)、経路は[リモート・モニターのルート](../reference/remote-routes.md)にあります。
+既定では、ボードに接続できるのは同じマシンからだけです。モバイルモニターは、スマホがngrokのモニター接続を通して開く、読み取り中心の別のアプリです。利用者向けの設定手順は[モバイルモニターのガイド](../../guide/operations/mobile-monitor.md)、経路は[モニターのルート](../reference/remote-routes.md)にあります。
 
 ## 全体の構成
 
 ```mermaid
 flowchart LR
-    Phone["スマホ・PCのブラウザ"] -->|HTTPS + Basic認証| Caddy["LAN IP上のCaddy"]
-    Phone -->|HTTPS + tailnetの規則| TS["Tailscale Serve"]
-    Caddy --> RL["リモート用リスナー（127.0.0.1、例: 7422）"]
-    TS --> RL
-    RL --> Shared["共通のFileStoreの索引・監視・changedのbroadcast"]
+    Phone["スマホのブラウザ"] -->|HTTPS| Tunnel["ngrokのトンネル"]
+    Tunnel --> Entry["モニターの入口（127.0.0.1）"]
+    Entry --> Shared["共通のFileStoreの索引・監視・changedのbroadcast"]
     LL["ローカルのリスナー（127.0.0.1）"] --> Shared
 ```
 
-- リモート用リスナーは、`--remote-port`と一つ以上の`--remote-origin`を指定したときだけ起動します。ローカルのリスナーと同じ`serve`プロセスで動き、どちらも127.0.0.1だけでbindし、ライフサイクルのガード、FileStoreの索引とreader、監視、`changed`のbroadcastを共有します。
-- 両方のbindが成功してから配信を始め、失敗や停止では両方を終えます。リモート用リスナーの起動に失敗したら、ローカルのリスナーも止め、`serve.json`を残しません。`serve.json`にはローカルのポートだけを残すので、CLI・Hook・`wait`は影響を受けません。
-- 外部の認証はすべてプロキシが担います。Agent Board自身は、すべての書き込みでHost・Origin・トークンを確かめます。
+- モニターの入口は、接続が起動と停止を行う専用のループバックのリスナーです。ローカルのリスナーと同じ`serve`プロセスで動き、ライフサイクルのガード、FileStoreの索引とreader、監視、`changed`のbroadcastを共有します。`serve.json`にはローカルのポートだけを残すので、CLI・Hook・`wait`は影響を受けません。
+- ローカルのリスナーとモニターの入口は別の面です。ローカルのリスナーは自身のHost・Origin・トークンの確認を保ち、モニターの入口がPCのボードを配信することはありません。
 
-用途ごとに三種類の状態を持ち、アクセス範囲を分離しています。
+用途ごとに二種類の状態を持ち、アクセス範囲を分離しています。
 
 | 状態 | 含むもの | 含まないもの |
 | --- | --- | --- |
-| `RemoteBoardState` | reader・書き込みサービス・`changed`・登録したHTTPSのorigin・独自のセッショントークン。書き込みの処理を複製せずにPCの処理を再利用する。 | ローカルのトークン。 |
 | `MonitorState` | 読み取り専用のreader・`changed`の購読・許可するHost・独自の資産。 | ボードのトークンや書き込みサービス。 |
-| モニターの回答router | 回答の経路一つと、独自のトークン。 | PCやリモートのボードのトークン。 |
+| モニターの回答router | 回答の経路一つと、その書き込みのガード。 | PCのボードのトークン。 |
 
 ## 認証と書き込みの保護
 
-**リモートのボードへの書き込み**には、対象の確認より前に次のすべてが必要です。満たさなければ、何も変えずに403です。
+**モニターの回答**は、回答routerの書き込みのガードを通ります。前段の入口が自身の確認をすべて通ったときにだけガードのトークンを加えるので、ページがそれを持つことはありません。回答には、対象の確認より前に、接続の公開HTTPSのoriginに完全に一致するHostとOrigin、`Sec-Fetch-Site: same-origin`、転送やメソッド上書きのヘッダーがないこと、定数時間の比較でのトークンの一致が必要です。そのうえでFileStoreが、ロックの中でPending・依頼ID・選択肢を確かめ直します。受け付けるのはTodoかDoingのタスクの現在の依頼だけで、Done・回答済み・アーカイブ済み・別の依頼は拒否します。
 
-- `Host`が、bindしたループバックのauthorityか登録したリモート用オリジンと完全に一致すること。`Forwarded`と`X-Forwarded-Host`は信用せず、CORSは開きません。
-- `Host`と`Origin`が同じ登録済みのHTTPSのoriginに一致し、`Sec-Fetch-Site`が`same-origin`であること。
-- `X-Agboard-Token`が、リモート用セッショントークンと定数時間の比較で一致すること。欠落・`null`・別のorigin・ローカルのトークンは拒否します。
-
-リモート用トークンは起動ごとに32バイトの乱数から、ローカルのトークンとは別に生成し、リモート用の`/board/`のHTMLにだけ埋め込みます。
-
-**モニターの回答**は三つ目のトークンを使います。これも起動ごとに32バイトの乱数から生成し、どちらのボードのトークンとも相互に使えません。配信時にだけ`/monitor/`のHTMLに差し込みます。回答には、対象の確認より前に、登録したHTTPSのoriginに完全に一致するHostとOrigin、`Sec-Fetch-Site: same-origin`、定数時間の比較でのトークンの一致が必要です。そのうえでFileStoreが、ロックの中でPending・依頼ID・選択肢を確かめ直します。受け付けるのはTodoかDoingのタスクの現在の依頼だけで、Done・回答済み・アーカイブ済み・別の依頼は拒否します。
-
-トークンが、共通の入口・静的なJSやCSS・manifest・APIの応答・`serve.json`・ログに現れることはありません。すべてのHTMLと機密のAPIは`Cache-Control: no-store`・`Referrer-Policy: no-referrer`・`X-Content-Type-Options: nosniff`と、スクリプトと接続を自分自身に限り`frame-ancestors 'none'`とするCSPを送ります。スクリプトとスタイルシートは内容から名前を付けており、トークンも含まないため、immutableでキャッシュさせます。
-
-**プロキシ。** Caddyは選んだLAN IPのHTTPSポートだけで待ち受け、すべての経路に`tls internal`と`basic_auth`を適用し（認証されていない要求には401）、専用のポートだけに転送し、`Authorization`は転送せず、SSEをバッファしません。Tailscale Serveも同じポートに転送し、登録したoriginに一致するHostとOriginを保ち、tailnetのアクセス規則に頼り、Funnelは使いません。プロキシがHostやOriginを書き換えて、ローカルのガードを回避してはいけません。パスワードのハッシュ・秘密鍵・実際のLAN IPは利用者の設定に置き、リポジトリには置きません。共有の設定例は環境変数を使います。
+トークンが、静的なJSやCSS・manifest・APIの応答・`serve.json`・ログに現れることはありません。すべてのHTMLと機密のAPIは`Cache-Control: no-store`・`Referrer-Policy: no-referrer`・`X-Content-Type-Options: nosniff`と、スクリプトと接続を自分自身に限り`frame-ancestors 'none'`とするCSPを送ります。スクリプトとスタイルシートは内容から名前を付けており、トークンも含まないため、immutableでキャッシュさせます。
 
 ## モニターのアプリ
 
-- 共通の入口（`web/access.html`・`web/src/app/access/entry.ts`・`web/vite.access.config.ts`）は`web/dist/access/`にビルドし、DOMとWeb APIだけを使います。React・アプリのコード・APIクライアント・トークンは含みません。
-- モニター（`web/monitor.html`・`web/src/app/entry/monitor.tsx`・`web/vite.monitor.config.ts`）は`web/src/pages/monitor/App.tsx`だけを起点にします。PCの`App.tsx`・`DetailPanel`・エディター・汎用の書き込みクライアントはimportしません。独自のmanifestとともに`web/dist/monitor/`にビルドし、`src/server/monitor/assets.rs`はそのmanifestだけを配信します。Mermaidには、ボードのビルドの`chunk-mermaid.core`チャンクと、そこからimportされるすべてのチャンクを使います。これらは`web/dist/monitor/`にそのままコピーし、一つでも`web/src/`のモジュールを含めばビルドを止めます。実行ファイルには同じバイト列を一度だけ埋め込みます。スマホでの自動の移動で、PCのHTML・トークン・エディターを先読みすることはありません。
+- モニター（`web/monitor.html`・`web/src/app/entry/monitor.tsx`・`web/vite.monitor.config.ts`）は`web/src/pages/monitor/App.tsx`だけを起点にします。PCの`App.tsx`・`DetailPanel`・エディター・汎用の書き込みクライアントはimportしません。独自のmanifestとともに`web/dist/monitor/`にビルドし、`src/server/monitor/assets.rs`はそのmanifestだけを配信します。Mermaidには、ボードのビルドの`chunk-mermaid.core`チャンクと、そこからimportされるすべてのチャンクを使います。これらは`web/dist/monitor/`にそのままコピーし、一つでも`web/src/`のモジュールを含めばビルドを止めます。実行ファイルには同じバイト列を一度だけ埋め込みます。
 - 共通の表示部品（ヘッダー、タスクの内容、状態のラベル、プロジェクトの切り替え、テーマ、i18n、閲覧専用のMarkdown・受入条件・履歴）は再利用します。タスクの見出しから、本文・受入条件・履歴・エピックのタブを持つ閲覧専用のドロワーを開き、回答フォームはタスク上に置きます。ドロワーとそのMarkdown表示は別のチャンクに分け、一覧を表示した直後に取得します。そのため、初回の読み込みは一覧と回答フォームだけで済みます。
 - モニターのクライアントは、カタログ・ボード・イベント、所有する画像・エピックの読み取り、回答のPOST一つだけを持ちます。トークンは実行時に配信されたHTMLから読みます。PATCH・PUT・DELETEの関数はありません。
 - PCとモニターの回答は、FileStoreの一つの保存処理を共有します。ロックの中での依頼の照合、`requestAnswers`と履歴の項目、索引の更新、通知です。回答に成功したタスクは、そのレーンのIdleになります。

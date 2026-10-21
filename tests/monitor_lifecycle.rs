@@ -20,7 +20,7 @@ use agent_board::domain::Actor;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::Choice;
 use serde_json::{Value, json};
-use support::{ORIGIN, home};
+use support::home;
 
 #[path = "support/ngrok_harness.rs"]
 mod harness;
@@ -321,15 +321,8 @@ fn the_tunnel_starts_only_when_asked_or_restored_and_every_listener_is_loopback(
     // A plain run with a token and nothing saved never opens a tunnel.
     let home = fixture();
     {
-        let s = Server::start(
-            home.path(),
-            Opts {
-                remote: true,
-                ..env_opts()
-            },
-        );
+        let s = Server::start(home.path(), env_opts());
         assert!(s.local.ip().is_loopback());
-        assert!(s.remote.unwrap().ip().is_loopback());
         assert_eq!(s.get()["status"], "disabled");
         assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
         // Saving the setting, even as enabled, is not a start.
@@ -706,49 +699,4 @@ fn the_entrance_exposes_no_desktop_editing_and_the_pc_entrance_is_unchanged() {
     );
     assert_eq!(r.status, 403);
     assert!(!r.body.contains("allowEmails"));
-}
-
-#[test]
-fn the_legacy_remote_run_keeps_its_boundary_when_the_tunnel_is_started_by_hand() {
-    let home = fixture();
-    let s = Server::start(
-        home.path(),
-        Opts {
-            remote: true,
-            ..env_opts()
-        },
-    );
-    let remote = s.remote.unwrap();
-    assert!(remote.ip().is_loopback());
-    assert_eq!(s.put(true, &[EMAIL], 0).status, 200);
-    assert_eq!(s.start_ngrok(json!({})).status, 202);
-    s.wait_status("ready");
-    // The tunnel's backend is its own listener; the legacy entrance gains no
-    // session of the ngrok connection and does not take its proof.
-    let backend = backend_addr(s.fake.calls.lock().unwrap().last().unwrap());
-    assert_ne!(backend, remote);
-    assert_ne!(backend, s.local);
-    let proof = proof_of(&s.fake.calls.lock().unwrap().last().unwrap().policy);
-    let host = ORIGIN.trim_start_matches("https://");
-    let r = request(
-        remote,
-        "GET",
-        "/monitor/api/session",
-        &[
-            ("Host", host),
-            ("x-agboard-tunnel-proof", proof.as_str()),
-            ("Sec-Fetch-Site", "same-origin"),
-        ],
-        "",
-    );
-    assert!(!r.header("set-cookie").unwrap_or_default().contains(COOKIE));
-    // The backend does not answer to the legacy host either.
-    let r = request(
-        backend,
-        "GET",
-        "/monitor/",
-        &[("Host", host), ("x-agboard-tunnel-proof", proof.as_str())],
-        "",
-    );
-    assert_eq!(r.status, 403);
 }

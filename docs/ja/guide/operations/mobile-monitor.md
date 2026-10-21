@@ -22,80 +22,11 @@ title: モバイルモニター
 
 新しいバージョンをインストールして`agboard serve`を再起動すると、開いているモニターは自動で再読み込みし、新しい画面に切り替わります。回答を入力している間は、送信するか入力を消すまで待ちます。切断中は接続状態を画面に表示します。
 
-## 接続方法を選ぶ
+## スマホから接続する
 
-ボードは、既定ではあなたのコンピューターだけで待ち受けます。スマホから接続するには、リモート用の待ち受けポート（リスナー）を追加し、その手前に信頼できるHTTPSプロキシを置きます。次のいずれかの方法を選んでください。
+ボードは、既定ではあなたのコンピューターだけで待ち受けます。スマホは、`agboard serve --monitor ngrok`で起動するngrokのモニター接続を通してモニターに接続します。この接続が配信するのはモニターだけで、ボード全体は配信しません。ボードをインターネットに公開したり、ルーターのポート転送を使ったりしてはいけません。
 
-| 経路 | 使うとき | 節 |
-| --- | --- | --- |
-| **CaddyでLANに公開する** | スマホとコンピューターが同じ信頼できるネットワークにあり、ローカルの証明書を受け入れられる。 | [CaddyでLANに公開する](#caddyでlanに公開する) |
-| **Tailscale Serve** | スマホとコンピューターがtailnetにあり、外部に公開したくない。 | [Tailscale Serve](#tailscale-serve) |
-
-ボードをインターネットに公開したり、ルーターのポート転送を使ったりしてはいけません。
-
-## リモートアクセスを有効にする
-
-このページのコマンドは、[Agent Boardをインストール](../getting-started)したあと、リポジトリのルートで実行します。
-
-`agboard serve`は通常のPC用リスナーをループバックに保ちます。信頼できるHTTPSプロキシの背後に置くときだけ、別のリモート用リスナーを追加してください。
-
-```sh
-agboard serve --port 7420 --remote-port 8040 \
-  --remote-origin https://192.168.1.20:8443 \
-  --remote-origin https://my-mac.example-tailnet.ts.net
-```
-
-実際に公開するオリジンだけを指定してください。リモート用ポートはプロキシのための2つ目のループバックのリスナーです。PC用のローカルポートをプロキシしてはいけません。共通の入口となるURLを開くと、768 CSSピクセル未満ではモニター、それより広いとPC用のボードが選ばれます。`/monitor/`と`/board/`を直接開くURLは、幅にかかわらず使えます。PC用のボードにも、リモートからの書き込みに対する保護が適用されます。モニターのAPIが許すのは、専用の回答リクエストとトークンだけで、ほかの書き込みルートは使えません。
-
-## CaddyでLANに公開する
-
-[Caddy公式のインストールガイド](https://caddyserver.com/docs/install)から、Caddy 2.8以降をインストールします。標準ビルドを使用できます。[`examples/monitor/Caddyfile`](https://github.com/FooQoo/agent-board/blob/main/examples/monitor/Caddyfile)のCaddyfileは、選んだLANのIPにバインドし、Caddyの内部HTTPS認証局を使い、すべてのルートで[Basic認証](https://caddyserver.com/docs/caddyfile/directives/basic_auth)を要求します。専用のリモート用ポートへだけ転送し、Agent Boardのガードのためにブラウザのホストとオリジンを保ち、Authorizationと`X-Forwarded-Host`を取り除き、[SSEをすぐにフラッシュ](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#streaming)します。この例はCaddyの管理APIとルート証明書の自動インストールを無効にしており、ローカルのテストは一時的な公開ルートを直接読みます。
-
-お使いのマシンの値を設定し、パスワードのハッシュを作ります。平文のパスワードをシェルの履歴やCaddyfileに残さないでください。
-
-```sh
-export LAN_IP=192.168.1.20
-export HTTPS_PORT=8443
-export REMOTE_PORT=8040
-export BASIC_AUTH_USER=board-reader
-export BASIC_AUTH_HASH="$(caddy hash-password)"
-```
-
-1つ目のターミナルで、公開するHTTPSオリジンを正確に指定してAgent Boardを起動します。
-
-```sh
-agboard serve --port 7420 --remote-port "$REMOTE_PORT" \
-  --remote-origin "https://${LAN_IP}:${HTTPS_PORT}"
-```
-
-別のターミナルで、プロキシを検証し、フォアグラウンドで実行します。
-
-```sh
-caddy validate --config examples/monitor/Caddyfile --adapter caddyfile
-caddy run --config examples/monitor/Caddyfile --adapter caddyfile
-```
-
-信頼できる同じLAN上の端末で`https://<LAN_IP>:<HTTPS_PORT>/`を開き、Basic認証の資格情報を入力します。Caddyの`tls internal`の証明書は、Caddyのローカル認証局が署名したもので、スマートフォンは既定ではこれを信頼しません。ルート証明書（公開証明書）は`<Caddy data directory>/pki/authorities/local/root.crt`にあります(たとえば`XDG_DATA_HOME`を設定していれば`$XDG_DATA_HOME/caddy/pki/authorities/local/root.crt`。[Caddyのデータディレクトリの規約](https://caddyserver.com/docs/conventions#data-directory)を参照)。その公開証明書だけを信頼できる経路でスマートフォンへコピーし、スマートフォンOSの手順で信頼させてください。Caddyの認証局の秘密鍵は、コピーも配布もしないでください。Caddyのデータディレクトリは永続的です。非公開にし、バックアップしてください。ルーターのポート転送を有効にしたり、このリスナーを公開インターネットに出したりしないでください。
-
-2つのフォアグラウンドのプロセスはCtrl+Cで止めます。コンピューターがスリープしたり、どちらかのプロセスが止まったりすると、Agent BoardとCaddyが再び動くまでリモートのサービスは使えません。
-
-## Tailscale Serve
-
-[お使いのOS用のTailscaleスタンドアロンアプリ](https://tailscale.com/download)をインストールし、Tailscale CLI 1.52以降を使います。[現在のServe CLIの構文](https://tailscale.com/docs/reference/tailscale-cli/serve)は1.52で変わりました。コンピューターとスマートフォンを既存のtailnetに追加します。tailnetの管理画面で、アクセスを自分のアカウントと、このボードへのアクセスを許可する端末だけに制限してください。ServeにはtailnetでHTTPS証明書が有効である必要があり、Serveを呼び出すとその変更の承認を求められることがあります。同意のページを確認してから承認してください。[tailnetのアクセスルールはServeにも適用されます](https://tailscale.com/docs/features/tailscale-serve)。
-
-Agent Boardを専用のリモート用ポートで起動し、そのループバックのポートに対してServeを開始します。
-
-```sh
-agboard serve --port 7420 --remote-port 8040 \
-  --remote-origin https://<origin-shown-by-tailscale>
-tailscale serve --bg http://127.0.0.1:8040
-tailscale serve status
-tailscale funnel status
-```
-
-Agent Boardを起動する前に、`tailscale serve status`が表示する正確なHTTPSオリジンを`--remote-origin`に指定してください。Serveがtailnetの中だけで有効で、Funnelがサービスを公開していないことを確認します。HostやOriginを書き換える独自のプロキシは追加しないでください。tailnetのアクセスルールはServeにも適用され、Agent Boardはそのうえでリモート用のPC書き込みトークンと同一オリジンのリクエストヘッダーも確認します。
-
-Agent BoardはCtrl+Cで止めます。このServeのルートだけを外すには`tailscale serve --bg http://127.0.0.1:8040 off`を使います。既存の共有されたServeの設定を変える前に、`tailscale serve status`を確認してください。バックグラウンドのServeの設定は再起動後に再開することがありますが、コンピューターがスリープしている間やサーバーが止まっている間は、ボード自体は使えません。
+コンピューターがスリープしたりサーバーが止まったりすると、サーバーと接続が再び動くまで、モニターは使えません。
 
 ## スマホで確認する
 
