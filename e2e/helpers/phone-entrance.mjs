@@ -41,6 +41,33 @@ export function buildPhoneBackend() {
   return executable;
 }
 
+// ngrok's warning page (free plan), as observed on Safari. A browser without the warning
+// cookie gets this page for a document, a script, a stylesheet, or an image. "Visit Site" posts
+// back to the same address, and the response sets the cookie on the directory that address is
+// in (Path=/monitor for /monitor/). The browser then sends the cookie only for files under that
+// path, so a file outside it comes back as this page again. fetch() calls are not interrupted.
+const WARNING_COOKIE = 'abuse_interstitial';
+const WARNED_DESTINATIONS = new Set(['document', 'script', 'style', 'image', 'font']);
+
+function cookieDirectory(url) {
+  const path = url.split('?')[0];
+  const at = path.lastIndexOf('/');
+  return at <= 0 ? '/' : path.slice(0, at);
+}
+
+function needsWarning(req) {
+  if (req.headers['ngrok-skip-browser-warning'] !== undefined) return false;
+  // The browser sends the cookie only where its path covers the request, so this check is enough.
+  if (req.headers.cookie?.includes(`${WARNING_COOKIE}=`)) return false;
+  const dest = req.headers['sec-fetch-dest'];
+  return dest === undefined ? (req.headers.accept ?? '').includes('text/html') : WARNED_DESTINATIONS.has(dest);
+}
+
+function warningPage(host) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ERR_NGROK_6024 - You are about to visit ${host}</title></head>`
+    + `<body><p>You are about to visit: ${host}</p><form method="post"><button type="submit">Visit Site</button></form></body></html>`;
+}
+
 // Headers a real Edge would never pass on as the caller's own.
 const EDGE_OWNED = /^(ngrok-|x-forwarded-|forwarded$)/i;
 
@@ -57,7 +84,7 @@ function listen(server) {
  * `phoneOrigin` is what the phone's browser opens (`<phoneOrigin>/monitor/`);
  * `pcOrigin` is the backend's own PC entrance on loopback, with the normal board.
  */
-export async function startPhoneEntrance(home, { timeoutMs = 120_000 } = {}) {
+export async function startPhoneEntrance(home, { timeoutMs = 120_000, warning = false } = {}) {
   const binary = buildPhoneBackend();
   const target = { addr: '', passcode: '', host: '', origin: '' };
   const lines = [];
@@ -68,6 +95,22 @@ export async function startPhoneEntrance(home, { timeoutMs = 120_000 } = {}) {
   let projectId = '';
 
   const proxy = http.createServer((req, res) => {
+    if (warning && needsWarning(req)) {
+      if (req.method === 'POST') {
+        // "Visit Site": the cookie goes on the directory of this address, and the browser comes back to it.
+        req.resume();
+        res.writeHead(303, {
+          location: req.url,
+          'set-cookie': `${WARNING_COOKIE}=1; Path=${cookieDirectory(req.url)}; SameSite=Lax`,
+          'cache-control': 'no-store',
+        });
+        res.end();
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(warningPage(target.host));
+      return;
+    }
     const [hostname, port] = target.addr.split(':');
     const headers = {};
     for (const [name, value] of Object.entries(req.headers)) {

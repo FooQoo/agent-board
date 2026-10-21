@@ -88,10 +88,14 @@ test('the phone lists the board through the entrance and exposes nothing of the 
 
   // The PC board, its API and the desktop write routes are not behind the entrance.
   const direct = await playwrightRequest.newContext();
-  for (const path of ['/', '/api/projects', `/api/projects/${alpha}/tasks/1/move`]) {
+  for (const path of ['/api/projects', `/api/projects/${alpha}/tasks/1/move`]) {
     const response = await direct.fetch(`${entrance.phoneOrigin}${path}`, { method: path.endsWith('/move') ? 'POST' : 'GET' });
     expect(response.status(), path).toBe(404);
   }
+  // The bare origin only forwards to the monitor page; it shows no board.
+  const root = await direct.fetch(`${entrance.phoneOrigin}/`, { maxRedirects: 0 });
+  expect(root.status()).toBe(308);
+  expect(root.headers()['location']).toBe('/monitor/');
   await direct.dispose();
 });
 

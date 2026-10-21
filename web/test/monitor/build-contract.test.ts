@@ -10,8 +10,8 @@ const files = (folder: string) => readdirSync(join(dist, folder)).sort();
 describe('isolated monitor build', () => {
   it('emits a monitor entry with only its runtime placeholders', () => {
     const monitor = read('monitor/index.html');
-    expect(monitor).toMatch(/src="\/assets\/monitor\/monitor-[\w-]+\.js"/);
-    expect(monitor).toMatch(/href="\/assets\/monitor\/monitor-[\w-]+\.css"/);
+    expect(monitor).toMatch(/src="\/monitor\/assets\/monitor\/monitor-[\w-]+\.js"/);
+    expect(monitor).toMatch(/href="\/monitor\/assets\/monitor\/monitor-[\w-]+\.css"/);
     expect(monitor).toContain('name="agboard-monitor-token" content="{{AGBOARD_MONITOR_TOKEN}}"');
     expect(monitor).toContain('name="agboard-build" content="{{AGBOARD_BUILD_ID}}"');
     expect(monitor).not.toContain('name="agboard-token"');
@@ -138,7 +138,8 @@ const bytes = (folder: string, names: string[]) =>
 
 // Budgets for the scripts a page needs before its first screen, a little above their size today.
 // Raise one only with a reason: the first load is what a phone waits for on every new build.
-const FIRST_LOAD_BUDGET = { board: 660_000, monitor: 500_000 };
+// The monitor's budget is 520 KB: the header logo (about 14 KB in base64) is inlined so it loads with the page.
+const FIRST_LOAD_BUDGET = { board: 660_000, monitor: 520_000 };
 const LAZY_ONLY_ABOVE = 500_000;
 
 describe('script size', () => {

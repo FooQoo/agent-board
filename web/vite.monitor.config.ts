@@ -38,7 +38,9 @@ export default defineConfig({
     emptyOutDir: true,
     cssCodeSplit: false,
     modulePreload: false,
-    assetsInlineLimit: 0,
+    // Only the header logo is inlined, so it loads with the page (see src/pages/monitor/logo.ts).
+    // Every other file stays a separate, content-named asset.
+    assetsInlineLimit: (filePath: string) => filePath.endsWith('logo-white.png'),
     manifest: true,
     rollupOptions: {
       input: 'monitor.html',

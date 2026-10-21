@@ -20,4 +20,7 @@ export interface PhoneEntrance {
 }
 
 export function buildPhoneBackend(): string;
-export function startPhoneEntrance(home: string, options?: { timeoutMs?: number }): Promise<PhoneEntrance>;
+export function startPhoneEntrance(
+  home: string,
+  options?: { timeoutMs?: number; warning?: boolean },
+): Promise<PhoneEntrance>;
