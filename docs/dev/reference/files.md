@@ -49,6 +49,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   bindings.json
   serve.json
   lifecycle.lock
+  .internal/monitor-connection.json
 ```
 
 - JSON is UTF-8, camelCase, two-space indented, with one trailing newline. Unknown fields are rejected.
@@ -102,6 +103,32 @@ history:
 ```
 
 Back up a project by copying `shared/projects/<project-id>/`; restore it by stopping `serve` and putting the folder back. There are no export or import commands. See the [data guide](../../guide/operations/data.md).
+
+## Monitor connection settings
+
+The ngrok mobile connection keeps its non-secret settings in `<data-root>/.internal/monitor-connection.json`. The file belongs to the application: it is written only by the PC settings screen and `serve`, not by hand, and it is not part of the shared area, so it is not backed up with a project. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
+
+```json
+{
+  "formatVersion": 1,
+  "revision": 3,
+  "enabled": true,
+  "allowEmails": ["owner@example.com"],
+  "domain": null,
+  "oauthApp": "managed"
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `formatVersion` | Always `1`. Any other value, an unknown field, or a malformed file makes the settings unreadable (`config_unreadable`); the PC entrance keeps working and saving new settings replaces the file. |
+| `revision` | Increases with each save. The settings API uses it to detect a change made on another screen. |
+| `enabled` | Whether the connection starts again with the next `serve`. A stop saves `false`. |
+| `allowEmails` | The Google accounts allowed to connect, normalized to lowercase. At least one when enabled, at most 50. |
+| `domain` | A bare reserved ngrok host name, or `null`. |
+| `oauthApp` | `managed` (ngrok's Google app) or `custom` (the credentials come from `AGBOARD_GOOGLE_CLIENT_ID` and `AGBOARD_GOOGLE_CLIENT_SECRET`, never from the file). |
+
+The file never holds the ngrok token, the tunnel proof, a session, a CSRF token, or a Google credential. A token the user chooses to save lives in the OS keychain instead (service `agent-board`, account `ngrok-authtoken`). There is no `monitor/config.json`.
 
 ## Task JSON and snapshots
 

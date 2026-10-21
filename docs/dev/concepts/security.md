@@ -15,7 +15,7 @@ Everything below serves one of these two goals. When a protection only restrains
 
 | Risk | Protection | Details |
 | --- | --- | --- |
-| Someone on the network opens the board | `serve` listens only on `127.0.0.1`; the phone connection starts only on request and is guarded by ngrok's sign-in and allow list. | [Exposure](#exposure), [The mobile monitor](./remote-access.md#authentication-and-write-protection) |
+| Someone on the network opens the board | `serve` listens only on `127.0.0.1`; the phone connection starts only on request and is guarded by ngrok's Google sign-in and allow list. | [Exposure](#exposure), [The ngrok entrance](#the-ngrok-entrance) |
 | A website makes the browser write to the board | Host, Origin, `Sec-Fetch-Site`, and a per-start token on every write. | [Writes from the browser](#writes-from-the-browser) |
 | An agent deletes data | Deletion commands require a human y/N in a terminal; the web UI deletes only archived tasks. | [Deletion is for people](#deletion-is-for-people) |
 | An agent overwrites a draft or a finished task | The CLI refuses AI writes to drafts and Done tasks. | [Drafts and Done tasks](#drafts-and-done-tasks) |
@@ -28,7 +28,25 @@ Everything below serves one of these two goals. When a protection only restrains
 
 - By default `agboard serve` listens only on `127.0.0.1`, and every request must carry `Host: 127.0.0.1:<port>` or `localhost:<port>`. Users on the same machine are not authenticated.
 - Only when the ngrok monitor connection is started does the server add a separate loopback entry for the monitor, which ngrok forwards to. The local port is never forwarded. The entry serves only the monitor, its assets, and its read and answer routes; it never serves the desktop board.
-- The monitor is limited to reading and answering. How monitor writes are guarded is described in [The mobile monitor](./remote-access.md#authentication-and-write-protection).
+- The monitor is limited to reading and answering. The checks in front of it are described in [The ngrok entrance](#the-ngrok-entrance).
+- The connection settings API (`/api/monitor-connections`) is on the local listener only. A phone can never start, stop, or reconfigure the connection.
+
+## The ngrok entrance
+
+Anyone who can open the ngrok address reaches ngrok's Edge first, not the board. A request must pass every layer below, in order. The layers and the lifecycle are described in [The mobile monitor](./remote-access.md#authentication-and-write-protection).
+
+| Layer | What it checks | What it stops |
+| --- | --- | --- |
+| Edge sign-in and allow list | Google OAuth on every path, then a deny unless the signed-in email is in the allow list. An empty list never starts the tunnel. | Anyone who is not an allowed Google account. |
+| Proof and Host | A 256-bit proof made for each start, set by the Edge after the checks above and compared in constant time; the Host must equal the public HTTPS address. Anything else gets the same 403. | A direct request to the loopback port, a forged `ngrok-auth-user-*` or proof header, and a request for another Host. |
+| Session | An in-memory application session (`agboard_ngrok_session`, `Secure; HttpOnly; SameSite=Lax; Path=/monitor/`, at most 12 hours) bound to this start and address. | Reading the monitor API without a live session; reusing a session after a stop, a restart, or a change of the allow list. |
+| CSRF and Origin | For an answer or disconnect: the exact public Origin, `Sec-Fetch-Site: same-origin`, and a CSRF token derived from the session. | A website that makes the phone's browser send an answer. |
+
+- The Google password and tokens are never seen by Agent Board. The app does not accept the Edge's identity headers, `Forwarded`, or `X-Forwarded-*` as proof of anything; they are removed after the proof check.
+- The proof, sessions, CSRF tokens, and the ngrok token live only in memory. Stopping, changing the allow list or domain, or restarting the server drops them and ends open event streams.
+- The ngrok token is accepted only in the body of the local start request, is never returned or written to the settings file, and, when the user chooses to keep it, is stored in the OS keychain. The `NGROK_AUTHTOKEN` environment variable takes priority over a saved token.
+- **Traffic Inspector.** ngrok ends the HTTPS connection, so it can process traffic, and its Traffic Inspector keeps request and response details when **Full Capture** is enabled for the account. Agent Board cannot turn that off; the user checks that it is disabled in the ngrok dashboard under **Settings** → **Observability**.
+- The monitor serves no desktop route, no edit or archive route, and no file listing. Unknown routes are 404 and disallowed methods are 405, and authentication is evaluated before the target is looked up.
 
 ## Writes from the browser
 
@@ -96,6 +114,8 @@ Titles, descriptions, reasons, and answers are written by agents and users, so t
 
 These limits are deliberate. Keep them in mind when someone asks for "just one more check".
 
+- **ngrok and its account owner.** The tunnel is not end-to-end encrypted: ngrok ends the HTTPS connection, and an administrator of the ngrok account can change the policy that guards it. The proof does not protect against an attacker who already runs as the same OS user on the PC.
+- **A signed-in allowed account.** Whoever uses an allowed Google account on a phone can read every project's monitor data and answer the current question of a Todo or Doing task.
 - **Programs running as the same OS user** can read, write, and delete the shared files directly, bypassing every CLI and web check. Folder write access does not physically protect `task.json`.
 - **Direct edits of a draft's `TASK.md`** cannot be stopped; the README and the agent skill tell agents not to. The same applies to deleting task or epic folders and editing `task.json`, `epic.json`, or `project.json`.
 - **Forged browser requests from a local program** that scrapes the token can pass the write guard.

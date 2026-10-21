@@ -42,6 +42,8 @@ Find what you see, read the cause, and do what the last column says. The command
 | What you see | Cause | What to do |
 | --- | --- | --- |
 | The page does not load | The server or the ngrok connection is not running, or the computer is asleep. | Start the server and the connection again and keep the computer awake. |
+| The phone shows **Reconnect with Google**, or says the connection is stopped or not allowed | The sign-in expired (a connection lasts up to 12 hours), the connection was stopped, or the Google account is not on the allowed list. | Choose **Reconnect with Google** and sign in with an allowed account. If the connection is stopped, start it again in **Settings** → **Mobile connection**. |
+| The dialog says the settings were saved but ngrok could not be reached | The ngrok authtoken is wrong, or there is no internet connection. | Check the token and the connection, then choose **Save and try again**. |
 | The page loads but answers are refused | The address you opened is not the public address of the current connection. | Open the address the connection reports. Restarting the connection issues a new session. |
 | The monitor says the data is out of date | Auto-update stopped, or some projects could not be read. | Reload or reopen the page. The monitor re-fetches when it becomes visible again. |
 

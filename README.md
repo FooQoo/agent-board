@@ -71,9 +71,11 @@ agboard serve --port 7420
 
 Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/), select your project, and add a task. Most board commands use `--project NAME`; `agboard progress` and hooks resolve the project from the current folder unless explicitly overridden.
 
+To check progress and answer questions from your phone, open **Settings** → **Mobile connection** and connect with your ngrok authtoken and an allowed Google account. Only the Google accounts you allow can open the monitor; the full board stays on your computer. You can also start it with `NGROK_AUTHTOKEN` set and `agboard serve --monitor ngrok --ngrok-allow-email you@example.com`.
+
 ## Documentation
 
 - [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
-- [Mobile monitor](https://fooqoo.github.io/agent-board/guide/mobile-monitor) — what the monitor shows and how to check it on a phone.
+- [Mobile monitor](https://fooqoo.github.io/agent-board/guide/mobile-monitor) — connect a phone with ngrok and Google sign-in, what the monitor shows, and how to check it.
 - [Claude Code and Codex integration](integrations/README.md) — hooks and agent setup.
 - [Contributing](CONTRIBUTING.md) — development and verification.

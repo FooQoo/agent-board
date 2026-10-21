@@ -31,6 +31,35 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | `GET /api/events` | SSE: `ready` after subscribing with the board's build ID (`{"build":"<16 hex>"}`), `changed` on version changes, a keep-alive comment every 15 seconds. |
 | `POST /api/notify` | Asks every client to re-fetch. Changes no data and needs no token. 204. |
 | `GET /api/health` | `ok` and `pid`. |
+| `GET /api/monitor-connections` and the routes under it | The ngrok mobile connection. See [Mobile connection](#mobile-connection). |
+
+### Mobile connection
+
+These routes exist only on the local listener (`127.0.0.1`); the ngrok entry never serves them. A read must come from the local page: a foreign Host, cross-site `Sec-Fetch-Site`, or foreign Origin is 403. The writes pass the same browser write guard as other writes.
+
+| API | Contract |
+| --- | --- |
+| `GET /api/monitor-connections` | The current state, described below. Never holds a secret. |
+| `PUT /api/monitor-connections/settings/ngrok` | Saves `{enabled, allowEmails, domain, oauthApp, revision}` and returns the state. `domain` may be omitted or `null`; `oauthApp` is `managed` or `custom`; `revision` must be the one last read. Unknown fields are 422 `invalid_value`; a stale revision is 409 `revision_conflict`; a failed save is 500 `save_failed` and changes nothing. Saving while the tunnel runs replaces it. |
+| `POST /api/monitor-connections/transports/ngrok/start` | Starts the connection and answers 202 with the state (usually `starting`). The optional body is `{token, save}`. `token` is held in memory only; `save: true` also stores it in the OS keychain and needs a `token`. A disabled setting is saved as enabled first. |
+| `POST /api/monitor-connections/transports/ngrok/stop` | Stops the connection, saves it as disabled, and answers 200 with the state. |
+| `DELETE /api/monitor-connections/token` | Removes the token saved in the keychain and answers 200 with the state. Removing nothing is not an error. |
+
+The state object has these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `status` | `disabled`, `needs_config`, `starting`, `ready`, `reconnecting`, `failed`, or `stopping`. |
+| `url` | The public HTTPS address once `ready`; otherwise `null`. |
+| `revision` | The settings revision, for `PUT`. |
+| `settings` | `enabled`, `allowEmails`, `domain`, `oauthApp`. |
+| `tokenConfigured` | Whether a start would find a token. |
+| `tokenSource` | `env` (`NGROK_AUTHTOKEN`), `keychain`, `session` (typed for this run), or `null`. Never the value. |
+| `keychainAvailable` | Whether this PC can save a token in the OS keychain. |
+| `keychainTokenSaved` | Whether a token is saved in the keychain, even if another source is used. |
+| `failure` | `null`, or one of `connect_failed`, `endpoint_failed`, `public_url_invalid`, `internal`, `config_unreadable`, `config_invalid`. |
+
+A start reports its progress through this state; poll `GET` until `status` leaves `starting`. The token, the allow list policy, the proof, and sessions never appear in any response or in the settings file. The settings are stored as described in [Shared files](./files.md#monitor-connection-settings). The error codes are in [Error codes](./errors.md#mobile-connection).
 
 ### Multipart task creation
 

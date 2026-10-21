@@ -43,8 +43,10 @@
 
 | モジュール | 責務 |
 | --- | --- |
-| `api/` | ボードのルーター、Hostのガードと書き込みのガード、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、multipart、アーカイブ、タスクの画像、エピック、エピックの画像）。 |
+| `api/` | ボードのルーター、Hostのガードと書き込みのガード、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、モバイル接続の`monitor_connections`）。 |
 | `monitor/` | モニターの読み取り用ルーター、回答のエンドポイント、資産。 |
+| `monitor_connection/` | ngrokのモバイル接続。監督役と状態（`lifecycle`・`start`・`run`）、保存する設定（`config`）、トークンとOSキーチェーンへの保存（`token`・`keychain`）、Traffic Policy・proof・公開アドレスの契約（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`）。 |
+| `monitor_auth/` | モニターのアプリsessionとCSRFトークン（`session`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
 | `guard` | ローカルとモニターの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認と、HTTPSのoriginの正規化。 |
 | `response`<br>`request` | JSONのエラー本文、`AgboardError`からHTTPステータスへの対応、そのほかの共有の応答と、失敗時にそのエラー本文を返すJSONの本文。 |
 | `store`<br>`answer` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、ボードとモニターが共有する回答の保存。 |
@@ -73,7 +75,7 @@
 | ファイルの監視 | notify 8.2 | macOSのFSEventsとWindowsのReadDirectoryChangesW。イベントは別のdebouncerなしでtokio上で集約する。 |
 | frontmatter | serde_yaml_ng 0.10 | `serde_yaml`は非推奨、`serde_yml`は保守終了。未知のキーは`Value`として保持する。 |
 | JSON・日時・ハッシュ | serde / serde_json<br>chrono<br>sha2 | 出力とAPIで共通の型、UTCでの保存、内容のversion。 |
-| ほかのRustのクレート | dirs<br>thiserror<br>getrandom<br>reqwest + eventsource-stream<br>toml_edit | ホームディレクトリ、型付きのエラー、乱数のIDとトークン、`wait`のSSE、`setup`でのコメントを保つTOMLの編集。 |
+| ほかのRustのクレート | dirs<br>thiserror<br>getrandom<br>reqwest + eventsource-stream<br>toml_edit<br>ngrok<br>keyring | ホームディレクトリ、型付きのエラー、乱数のIDとトークン、`wait`のSSE、`setup`でのコメントを保つTOMLの編集、モバイルモニター用のプロセス内ngrokトンネル、保存したngrokトークンのためのOSキーチェーン。 |
 | 画面 | TypeScript<br>Vite<br>React | 画面の状態とAPIの形を型で固定する。ビルドはバイナリに埋め込む。 |
 | 画面のライブラリ | nuqs<br>shadcn/ui（Radix）<br>Tailwind CSS<br>lucide-react<br>i18next<br>@dnd-kit/react | URLの状態、アクセシブルな部品、スタイル、アイコン、英語と日本語の文言、ドラッグ＆ドロップ。 |
 | Markdown | react-markdown + remark-gfm<br>Milkdown Crepe 7.22<br>mermaid 12 | 生のHTMLなしの表示、Markdownとの相互変換に対応するWYSIWYG編集、strictモードの図。 |

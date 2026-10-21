@@ -43,8 +43,10 @@ Inside `server`, routers depend on shared modules rather than on each other:
 
 | Module | Responsibility |
 | --- | --- |
-| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, and epic images. |
+| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, epic images, and the mobile connection (`monitor_connections`). |
 | `monitor/` | The monitor's read router, its answer endpoint, and its assets. |
+| `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `start`, `run`), the saved settings (`config`), the token and its OS keychain storage (`token`, `keychain`), the Traffic Policy, proof, and public-address contracts (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`). |
+| `monitor_auth/` | The monitor's application sessions and CSRF tokens (`session`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
 | `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes and monitor writes, and canonical HTTPS origins. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
 | `store`<br>`answer` | Blocking file access, the index, and URL IDs for every router; saving an answer, shared by the board and the monitor. |
@@ -73,7 +75,7 @@ The main files and directories outside `src/` are:
 | File watching | notify 8.2 | FSEvents on macOS and ReadDirectoryChangesW on Windows. Events are coalesced on tokio without a separate debouncer. |
 | Frontmatter | serde_yaml_ng 0.10 | `serde_yaml` is deprecated and `serde_yml` unmaintained. Unknown keys are kept as `Value`. |
 | JSON, time, hashing | serde / serde_json<br>chrono<br>sha2 | Shared types for output and the API; UTC storage; content versions. |
-| Other Rust crates | dirs<br>thiserror<br>getrandom<br>reqwest + eventsource-stream<br>toml_edit | Home directory, typed errors, random IDs and tokens, SSE for `wait`, comment-preserving TOML edits in `setup`. |
+| Other Rust crates | dirs<br>thiserror<br>getrandom<br>reqwest + eventsource-stream<br>toml_edit<br>ngrok<br>keyring | Home directory, typed errors, random IDs and tokens, SSE for `wait`, comment-preserving TOML edits in `setup`, the in-process ngrok tunnel for the mobile monitor, and the OS keychain for a saved ngrok token. |
 | UI | TypeScript<br>Vite<br>React | Typed UI state and API shapes. The build is embedded in the binary. |
 | UI libraries | nuqs<br>shadcn/ui (Radix)<br>Tailwind CSS<br>lucide-react<br>i18next<br>@dnd-kit/react | URL state, accessible primitives, styling, icons, English and Japanese strings, drag and drop. |
 | Markdown | react-markdown + remark-gfm<br>Milkdown Crepe 7.22<br>mermaid 12 | Rendering without raw HTML, WYSIWYG editing that round-trips to Markdown, strict-mode diagrams. |

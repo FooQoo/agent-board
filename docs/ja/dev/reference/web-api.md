@@ -31,6 +31,35 @@
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、versionの変化で`changed`、15秒ごとに接続維持のコメント。 |
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
+| `GET /api/monitor-connections`とその配下の経路 | ngrokのモバイル接続。[モバイル接続](#モバイル接続)を参照。 |
+
+### モバイル接続
+
+これらの経路はローカルのリスナー（`127.0.0.1`）にだけあり、ngrokの入口は配信しません。読み取りはローカルのページからでなければならず、別のHost、クロスサイトの`Sec-Fetch-Site`、別のOriginは403です。書き込みは、ほかの書き込みと同じブラウザの書き込みガードを通ります。
+
+| API | 契約 |
+| --- | --- |
+| `GET /api/monitor-connections` | 現在の状態（下記）。秘密の値は含まない。 |
+| `PUT /api/monitor-connections/settings/ngrok` | `{enabled, allowEmails, domain, oauthApp, revision}`を保存し、状態を返す。`domain`は省略か`null`でよく、`oauthApp`は`managed`か`custom`、`revision`は最後に読んだ値でなければならない。未知のフィールドは422 `invalid_value`、古いrevisionは409 `revision_conflict`、保存の失敗は500 `save_failed`で何も変えない。トンネルが動いている間の保存は、トンネルを作り直す。 |
+| `POST /api/monitor-connections/transports/ngrok/start` | 接続を開始し、202で状態（通常は`starting`）を返す。任意の本文は`{token, save}`。`token`はメモリーだけに保持する。`save: true`はOSのキーチェーンにも保存し、`token`が必要。無効な設定は、先に有効として保存する。 |
+| `POST /api/monitor-connections/transports/ngrok/stop` | 接続を停止して無効として保存し、200で状態を返す。 |
+| `DELETE /api/monitor-connections/token` | キーチェーンに保存したトークンを削除し、200で状態を返す。何も保存していなくてもエラーにしない。 |
+
+状態のオブジェクトは次のフィールドを持ちます。
+
+| フィールド | 意味 |
+| --- | --- |
+| `status` | `disabled`・`needs_config`・`starting`・`ready`・`reconnecting`・`failed`・`stopping`のいずれか。 |
+| `url` | `ready`のときの公開HTTPSアドレス。それ以外は`null`。 |
+| `revision` | `PUT`に使う設定のrevision。 |
+| `settings` | `enabled`・`allowEmails`・`domain`・`oauthApp`。 |
+| `tokenConfigured` | 開始したときにトークンが見つかるか。 |
+| `tokenSource` | `env`（`NGROK_AUTHTOKEN`）、`keychain`、`session`（今回の起動だけ入力）、`null`のいずれか。値は返さない。 |
+| `keychainAvailable` | このPCのOSキーチェーンにトークンを保存できるか。 |
+| `keychainTokenSaved` | 別の取得元が使われていても、キーチェーンにトークンが保存されているか。 |
+| `failure` | `null`、または`connect_failed`・`endpoint_failed`・`public_url_invalid`・`internal`・`config_unreadable`・`config_invalid`のいずれか。 |
+
+開始の進み具合はこの状態で報告されます。`status`が`starting`でなくなるまで`GET`で確認してください。トークン、許可リストのポリシー、proof、sessionが、応答や設定ファイルに現れることはありません。設定の保存先は[共有ファイル](./files.md#モニター接続の設定)、エラーのコードは[エラーコード](./errors.md#モバイル接続)にあります。
 
 ### multipartでタスクを作成する
 
