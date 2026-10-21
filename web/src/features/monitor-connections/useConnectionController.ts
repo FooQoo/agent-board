@@ -9,8 +9,12 @@ import {
   stopConnection,
   type ConnectionSnapshot,
 } from './api';
-import type { ConnectionDraft, ConnectionQr, TokenInfo } from './ui/ConnectionSettingsView';
-import type { ConnectionStatus } from './ui/connectionProgress';
+import type {
+  ConnectionDraft,
+  ConnectionQr,
+  ConnectionStatus,
+  TokenInfo,
+} from './ui/connectionTypes';
 import { qrDataUrl } from './qr';
 
 const POLL_MS = 1500;
@@ -86,7 +90,7 @@ export function useConnectionController(open: boolean) {
         return;
       }
       const token = draft.token.trim();
-      // An environment or keychain token is enough; the server answers token_required otherwise.
+      // An environment or saved token is enough; the server answers token_required otherwise.
       if (!token && !snapshot.tokenConfigured) {
         setError(t('monitorConnectionPc.error.tokenRequired'));
         return;
@@ -97,7 +101,6 @@ export function useConnectionController(open: boolean) {
       try {
         let next = await saveSettings({
           enabled: true,
-          domain: draft.domain.trim() || null,
           revision: snapshot.revision,
         });
         setSnapshot(next);
@@ -155,11 +158,7 @@ export function useConnectionController(open: boolean) {
     }
   }, [messageOf]);
 
-  const savedDomain = snapshot?.settings.domain ?? '';
-  const draft = useMemo<ConnectionDraft>(
-    () => ({ token: '', domain: savedDomain, save: false }),
-    [savedDomain],
-  );
+  const draft = useMemo<ConnectionDraft>(() => ({ token: '', save: false }), []);
   const tokenInfo = useMemo<TokenInfo>(
     () => ({
       source: snapshot?.tokenSource ?? null,
@@ -179,9 +178,12 @@ export function useConnectionController(open: boolean) {
       ? t(`monitorConnectionPc.failure.${snapshot.failure}`)
       : null;
 
-  // Editing a live connection shows the form again; the saved status returns after Save.
+  // Changing the token of a live or stopped connection shows the setup again; the live or stopped
+  // view returns after Save and connect, or when the dialog is closed.
   const shown: ConnectionStatus =
-    status === 'ready' && editing ? 'needs_config' : (status ?? 'disabled');
+    editing && (status === 'ready' || status === 'disabled')
+      ? 'needs_config'
+      : (status ?? 'disabled');
 
   return {
     ready: snapshot !== null,
@@ -197,7 +199,7 @@ export function useConnectionController(open: boolean) {
     saving,
     connect,
     stop,
-    edit: () => setEditing(true),
+    resetToken: () => setEditing(true),
     cancelEdit: () => setEditing(false),
   };
 }

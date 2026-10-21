@@ -75,11 +75,11 @@ These are returned by the `/api/monitor-connections` routes (see [Web API](./web
 | --- | --- | --- | --- |
 | `revision_conflict` | The settings changed since the page read them. | n/a | 409 |
 | `save_failed` | The settings could not be saved. Nothing changed and nothing started. | n/a | 500 |
-| `token_required` | A start found no token in the request, the environment, or the keychain. | n/a | 422 |
-| `keychain_unavailable` | Saving or deleting the token was asked for but the OS keychain cannot do it. Nothing was saved or changed. | n/a | 409 |
+| `token_required` | A start found no token in the request, the environment, or the secure storage. | n/a | 422 |
+| `keychain_unavailable` | Saving or deleting the token was asked for but the PC's secure storage cannot do it. Nothing was saved or changed. | n/a | 409 |
 | `settings_unreadable` | A start while the saved settings file cannot be read. Save the settings again first. | n/a | 409 |
 | `start_failed` | The connection could not be started for an internal reason. | n/a | 500 |
-| `invalid_value` | The domain, the token, or the body breaks a rule (for example `save` without a token, or an unknown field). | n/a | 422 |
+| `invalid_value` | The token or the body breaks a rule (for example `save` without a token, or an unknown field). | n/a | 422 |
 
 On the command line, `serve --monitor ngrok` with a missing or invalid option exits 2 with `invalid_argument`; a connection that cannot start exits 1. The failure codes in the state object (`failure`) are listed in [Web API](./web-api.md#mobile-connection).
 

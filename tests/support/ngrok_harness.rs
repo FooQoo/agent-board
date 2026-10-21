@@ -13,8 +13,7 @@ use agent_board::error::AgboardError;
 use agent_board::server::monitor_connection::contracts::PublicOrigin;
 use agent_board::server::monitor_connection::keychain::{TokenVault, VaultError};
 use agent_board::server::monitor_connection::lifecycle::{
-    Connector, FailureCode, MonitorEnv, OpenFailure, OpenFuture, OpenRequest, OpenedTunnel,
-    Overrides, Secret,
+    Connector, FailureCode, MonitorEnv, OpenFailure, OpenFuture, OpenRequest, OpenedTunnel, Secret,
 };
 use agent_board::server::{MonitorOptions, MonitorReady, ServeConfig, run_until_with_monitor};
 use serde_json::{Value, json};
@@ -30,7 +29,6 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 pub struct Call {
     pub token: String,
     pub backend: String,
-    pub domain: Option<String>,
 }
 
 #[derive(Default)]
@@ -50,7 +48,6 @@ impl Connector for Fake {
         self.calls.lock().unwrap().push(Call {
             token: request.token.expose().to_string(),
             backend: request.backend.to_string(),
-            domain: request.domain.clone(),
         });
         let fail = *self.fail.lock().unwrap();
         let hold = self.hold.lock().unwrap().take();
@@ -191,7 +188,7 @@ impl TokenVault for FakeVault {
 pub struct Opts {
     pub vault: Arc<FakeVault>,
     pub env_token: bool,
-    pub explicit: Option<Overrides>,
+    pub explicit: bool,
     pub fake: Arc<Fake>,
 }
 
@@ -200,7 +197,7 @@ impl Default for Opts {
         Self {
             vault: FakeVault::new(None, true),
             env_token: false,
-            explicit: None,
+            explicit: false,
             fake: Arc::new(Fake::default()),
         }
     }
@@ -285,11 +282,11 @@ impl Server {
         r.json()
     }
 
-    pub fn put(&self, enabled: bool, domain: Option<&str>, revision: u64) -> Reply {
+    pub fn put(&self, enabled: bool, revision: u64) -> Reply {
         self.write(
             "PUT",
             "/api/monitor-connections/settings/ngrok",
-            &json!({"enabled": enabled, "domain": domain, "revision": revision}),
+            &json!({"enabled": enabled, "revision": revision}),
         )
     }
 

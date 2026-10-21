@@ -11,7 +11,7 @@ use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::server::monitor_connection::contracts::PublicOrigin;
 use agent_board::server::monitor_connection::lifecycle::{
-    Connector, MonitorEnv, OpenFuture, OpenRequest, OpenedTunnel, Overrides, Secret,
+    Connector, MonitorEnv, OpenFuture, OpenRequest, OpenedTunnel, Secret,
 };
 use agent_board::server::{MonitorOptions, ServeConfig, run_until_with_monitor};
 use serde_json::Value;
@@ -96,7 +96,7 @@ impl Running {
                 MonitorEnv {
                     token: Some(Secret::new("tok-fixture-0123456789")),
                 },
-                Some(Overrides { domain: None }),
+                true,
             );
             options.connector = connector;
             run_until_with_monitor(

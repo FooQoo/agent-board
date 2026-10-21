@@ -5,7 +5,7 @@ use serde_json::json;
 
 use crate::cli::args::{ServeArgs, validate_monitor_args};
 use crate::error::AgboardError;
-use crate::server::monitor_connection::lifecycle::{MonitorEnv, Overrides};
+use crate::server::monitor_connection::lifecycle::MonitorEnv;
 use crate::server::{self, MonitorOptions, MonitorReady, ServeConfig};
 
 /// Serve the board until Ctrl+C (or SIGTERM), then return.
@@ -15,10 +15,7 @@ use crate::server::{self, MonitorOptions, MonitorReady, ServeConfig};
 /// afterwards. The command works on the whole data area, never on one project
 /// or task, and changes nothing that needs a notification.
 pub fn run(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
-    let explicit =
-        validate_monitor_args(args, &|name| std::env::var(name).ok())?.map(|request| Overrides {
-            domain: request.domain,
-        });
+    let explicit = validate_monitor_args(args, &|name| std::env::var(name).ok())?;
     server::run_until_with_monitor(
         ServeConfig { port: args.port },
         MonitorOptions::new(MonitorEnv::from_process(), explicit),

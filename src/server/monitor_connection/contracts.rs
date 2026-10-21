@@ -1,5 +1,5 @@
 //! Contracts for the built-in ngrok monitor connection: configuration and status
-//! types, input validation, public Origin/Host checks, and the SDK entry point.
+//! types, public Origin/Host checks, and the SDK entry point.
 //! The endpoint is opened without a Traffic Policy.
 //!
 //! Nothing here starts a tunnel on its own. The HTTP stack that serves the
@@ -26,64 +26,18 @@ pub enum ConnectionStatus {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ConnectionConfig {
     pub enabled: bool,
-    pub domain: Option<String>,
     pub revision: u64,
 }
 
 /// Why an input or request was refused. Messages never include secret values.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ContractError {
-    #[error("invalid domain")]
-    InvalidDomain,
     #[error("the public URL must be a plain https origin")]
     InvalidPublicUrl,
     #[error("the Host header does not match the public origin")]
     HostMismatch,
     #[error("the Origin header does not match the public origin")]
     OriginMismatch,
-}
-
-fn valid_hostname(host: &str) -> bool {
-    if host.is_empty() || host.len() > 253 || !host.contains('.') {
-        return false;
-    }
-    host.split('.').all(|label| {
-        !label.is_empty()
-            && label.len() <= 63
-            && !label.starts_with('-')
-            && !label.ends_with('-')
-            && label
-                .chars()
-                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-    })
-}
-
-/// Validate an optional ngrok domain: a bare host with no scheme, path, port or userinfo.
-pub fn normalize_domain(raw: &str) -> Result<String, ContractError> {
-    let domain = raw.to_ascii_lowercase();
-    if valid_hostname(&domain) {
-        Ok(domain)
-    } else {
-        Err(ContractError::InvalidDomain)
-    }
-}
-
-impl ConnectionConfig {
-    /// Validate the config and return its canonical form. A blank domain means
-    /// "let ngrok choose one".
-    pub fn validated(&self) -> Result<Self, ContractError> {
-        let domain = self
-            .domain
-            .as_deref()
-            .filter(|d| !d.trim().is_empty())
-            .map(normalize_domain)
-            .transpose()?;
-        Ok(Self {
-            enabled: self.enabled,
-            domain,
-            revision: self.revision,
-        })
-    }
 }
 
 mod access;
@@ -133,57 +87,16 @@ mod tests {
         let v = serde_json::to_value(ConnectionConfig::default()).unwrap();
         let mut keys: Vec<&str> = v.as_object().unwrap().keys().map(String::as_str).collect();
         keys.sort();
-        assert_eq!(keys, ["domain", "enabled", "revision"]);
-        // The Google settings are gone: a saved file that still has them is not read.
+        assert_eq!(keys, ["enabled", "revision"]);
+        // Only the enabled flag and the revision are settings: a file with any other field is not read.
         for stale in [
-            r#"{"enabled":false,"domain":null,"revision":0,"allowEmails":[]}"#,
-            r#"{"enabled":false,"domain":null,"revision":0,"oauthApp":"managed"}"#,
-            r#"{"enabled":false,"domain":null,"revision":0,"deviceStore":1}"#,
+            r#"{"enabled":false,"revision":0,"domain":null}"#,
+            r#"{"enabled":false,"revision":0,"allowEmails":[]}"#,
+            r#"{"enabled":false,"revision":0,"oauthApp":"managed"}"#,
+            r#"{"enabled":false,"revision":0,"deviceStore":1}"#,
         ] {
             assert!(serde_json::from_str::<ConnectionConfig>(stale).is_err());
         }
-    }
-
-    #[test]
-    fn domains_are_bare_hosts() {
-        assert_eq!(
-            normalize_domain("Example.ngrok.app").unwrap(),
-            "example.ngrok.app"
-        );
-        for bad in [
-            "https://a.ngrok.app",
-            "a.ngrok.app/x",
-            "a.ngrok.app:443",
-            "u@a.ngrok.app",
-            "localhost",
-            "",
-            "a b.com",
-        ] {
-            assert_eq!(
-                normalize_domain(bad),
-                Err(ContractError::InvalidDomain),
-                "{bad}"
-            );
-        }
-    }
-
-    #[test]
-    fn an_enabled_config_needs_nothing_but_a_valid_or_blank_domain() {
-        let mut c = ConnectionConfig {
-            enabled: true,
-            ..Default::default()
-        };
-        assert_eq!(c.validated().unwrap().domain, None);
-        c.domain = Some(" ".into());
-        assert_eq!(c.validated().unwrap().domain, None);
-        c.domain = Some("Me.Ngrok.App".into());
-        assert_eq!(
-            c.validated().unwrap().domain.as_deref(),
-            Some("me.ngrok.app")
-        );
-        c.domain = Some("not a host".into());
-        assert_eq!(c.validated(), Err(ContractError::InvalidDomain));
-        assert!(ConnectionConfig::default().validated().is_ok());
     }
 
     fn headers(pairs: &[(&str, &str)]) -> HeaderMap {
@@ -257,7 +170,6 @@ mod tests {
         let result = open_endpoint(
             "test-token",
             Url::parse("http://127.0.0.1:1").unwrap(),
-            None,
             Some(&addr),
         )
         .await;

@@ -83,13 +83,13 @@ pub fn run_until<F: Future<Output = ()>>(
 ) -> Result<(), AgboardError> {
     run_until_with_monitor(
         config,
-        MonitorOptions::without_keychain(MonitorEnv::default(), None),
+        MonitorOptions::without_keychain(MonitorEnv::default(), false),
         shutdown,
         |addr, _| on_ready(addr),
     )
 }
 
-/// [`run_until`] plus the ngrok monitor connection. With explicit settings the
+/// [`run_until`] plus the ngrok monitor connection. With `--monitor ngrok` the
 /// connection is up (or the run has failed) before `on_ready`.
 pub fn run_until_with_monitor<F: Future<Output = ()>>(
     config: ServeConfig,
@@ -149,8 +149,8 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
 
         // A command-line monitor must be up before the board announces itself;
         // on failure nothing has been written yet, so the run just ends.
-        let explicit = monitor.explicit.is_some();
-        let monitor_ready = match state.monitor.startup(monitor.explicit.clone()).await {
+        let explicit = monitor.explicit;
+        let monitor_ready = match state.monitor.startup(explicit).await {
             Ok(ready) => ready.filter(|_| explicit),
             Err(code) => {
                 state.monitor.shutdown();

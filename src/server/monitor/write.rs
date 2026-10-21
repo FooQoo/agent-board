@@ -193,7 +193,7 @@ mod tests {
         let index = Arc::new(RwLock::new(ProjectIndex::default()));
         let (changed, _) = broadcast::channel(4);
         let (watch, reloader) = Watch::start(&shared, index.clone(), changed.clone()).unwrap();
-        let options = MonitorOptions::without_keychain(MonitorEnv::default(), None);
+        let options = MonitorOptions::without_keychain(MonitorEnv::default(), false);
         let app = Arc::new(AppState {
             port: 0,
             token: "page".into(),

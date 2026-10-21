@@ -90,21 +90,18 @@ fn serve_the_phone_backend_until_told_to_quit() {
     let status = s.get()["status"].clone();
     if status != "ready" && status != "starting" {
         let revision = s.get()["revision"].as_u64().unwrap();
-        assert_eq!(s.put(true, None, revision).status, 200);
+        assert_eq!(s.put(true, revision).status, 200);
         assert_eq!(s.start_ngrok(json!({})).status, 202);
     }
     s.wait_status("ready");
     println!("LOCAL http://{}", s.local);
     announce(&s);
-    let mut revision = s.get()["revision"].as_u64().unwrap();
     for line in std::io::stdin().lock().lines() {
         match line.unwrap().trim() {
             "rotate" => {
-                // A new domain is a new tunnel, which is a new passcode.
-                let domain = format!("rotate-{revision}.ngrok.app");
+                // A new start is a new tunnel, which is a new passcode.
                 let before = s.fake.opens.load(std::sync::atomic::Ordering::SeqCst);
-                assert_eq!(s.put(true, Some(&domain), revision).status, 200);
-                revision += 1;
+                assert_eq!(s.start_ngrok(json!({})).status, 202);
                 let end = std::time::Instant::now() + std::time::Duration::from_secs(5);
                 while s.fake.opens.load(std::sync::atomic::Ordering::SeqCst) <= before {
                     assert!(std::time::Instant::now() < end);

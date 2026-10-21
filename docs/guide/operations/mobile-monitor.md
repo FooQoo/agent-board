@@ -20,7 +20,7 @@ After you install a new version and restart `agboard serve`, an open monitor rel
 
 ## Before you start
 
-You need an ngrok account and its authtoken. Copy the token from your ngrok dashboard. Agent Board opens the address without any of ngrok's Traffic Policy features, including its Google sign-in (OAuth), which a free ngrok account cannot use. A free account can therefore run the monitor; the other limits and terms of your ngrok plan still apply.
+You need an ngrok account and its authtoken. The **Mobile connection** dialog has a button that opens the ngrok page where you copy the token. Agent Board opens the address without any of ngrok's Traffic Policy features, including its Google sign-in (OAuth), which a free ngrok account cannot use. A free account can therefore run the monitor; the other limits and terms of your ngrok plan still apply.
 
 Agent Board uses ngrok to open a public HTTPS address that leads to the monitor only. The full board stays on `127.0.0.1`. Never expose the board to the public Internet and never use router port forwarding. ngrok ends the HTTPS connection, so ngrok can process the traffic; the connection is not end-to-end encrypted between your PC and your phone.
 
@@ -29,7 +29,7 @@ Agent Board uses ngrok to open a public HTTPS address that leads to the monitor 
 The monitor is guarded by a 4-digit passcode. Agent Board does not use Google authentication or ngrok's sign-in, and it keeps no list of allowed accounts.
 
 - Each time the connection starts, Agent Board makes a new passcode from the operating system's random source, from `0000` to `9999`. It is kept in memory only: it is not saved to a file, logged, or put in the monitor page.
-- You see it on the PC only: in the **Connected** dialog next to the address, and on the startup line of `agboard serve --monitor ngrok`.
+- You see it on the PC only: in the **Mobile connection** dialog, in step 2 **Enter the passcode**, and on the startup line of `agboard serve --monitor ngrok`.
 - The phone opens the address, asks for the passcode, and shows nothing of the board until the passcode is right. The connection then lasts up to 12 hours, after which the phone asks for the passcode again.
 - After 5 wrong passcodes in a row, the monitor stops accepting any passcode, even the right one. Stop the connection and connect again (or restart `serve`) to get a new passcode and a fresh count.
 
@@ -37,7 +37,7 @@ A 4-digit passcode has only 10,000 possibilities, so it is weaker than signing i
 
 - Do not share the address or the QR code in public places.
 - Stop the connection when you are not using it.
-- Leave **ngrok domain (optional)** empty unless you need a fixed address. An address that ngrok chooses at random is harder to find, though it is not a secret you can rely on.
+- The address is one that ngrok chooses at random. It is harder to find, though it is not a secret you can rely on.
 
 Because ngrok adds nothing for Agent Board to check, the monitor checks two things itself: the request names exactly the public address, and the passcode. ngrok ends the HTTPS connection and can see the traffic, and anyone who manages your ngrok account can change how the address is served. The passcode does not protect against them.
 
@@ -45,27 +45,27 @@ A program that is already running on your PC can send requests straight to the m
 
 ## Connect from the PC
 
-1. Open the board, then open **Settings**. In **Mobile connection**, choose **Set up**.
-2. Enter your ngrok authtoken in **ngrok auth token**.
-3. Decide whether to keep the token (see [Where the token is kept](#where-the-token-is-kept)).
-4. Leave **ngrok domain (optional)** empty to let ngrok choose the address, or enter a reserved ngrok host name such as `your-name.ngrok.app` to keep the same address.
+1. Open the board, then open **Settings**. In **Mobile connection**, choose **Set up**. The settings dialog closes and the **Mobile connection** dialog opens with **Not connected**.
+2. In step 1, **Get a token**, choose **Open the token page**. Sign in to ngrok and copy the authtoken.
+3. In step 2, **Paste and connect**, paste the token into **ngrok auth token**.
+4. Decide whether to keep the token with **Save the token on this PC** (see [Where the token is kept](#where-the-token-is-kept)).
 5. Choose **Save and connect**.
 
-While it connects, the dialog shows **Connecting to ngrok…**. When it is ready, the dialog shows **Connected**, the **URL for your phone**, the **Passcode for your phone**, and a QR code. **Copy URL** copies the address. The QR code only carries the address: the phone still has to enter the passcode, and the PC does not ask you to approve a device.
+While it connects, the dialog shows **Connecting to ngrok…** in place of the two steps. When it is ready, the dialog shows **Accepting connections**. Step 1, **Scan the QR code**, has the QR code and **Copy URL**, which copies the address. Step 2, **Enter the passcode**, shows the 4-digit passcode. The QR code only carries the address: the phone still has to enter the passcode, and the PC does not ask you to approve a device.
 
 The passcode is shown only while the connection is running. It is new every time the connection starts, so a stopped or failed connection has none.
 
-If ngrok cannot be reached, the dialog says the settings were saved but ngrok could not be reached. Check the token and the internet connection, then choose **Save and try again**. The board on the PC keeps working.
+If ngrok cannot be reached, the dialog says so and gives the reason. Check the token and the internet connection, then choose **Save and connect** again. The board on the PC keeps working.
 
 ## Where the token is kept
 
 - A token you type is used only while Agent Board is running and is not saved.
-- To keep it, select **Save the token in this PC's keychain** before you connect. The token is stored in the operating system's keychain: Keychain on macOS, Credential Manager on Windows, and the Secret Service on Linux. It is never written to the data folder.
+- To keep it, select **Save the token on this PC** before you connect. The token is stored in this PC's secure storage, the one your operating system provides. It is never written to the data folder.
 - If the `NGROK_AUTHTOKEN` environment variable is set, it takes priority over a saved token. The dialog then says it is using the environment variable, and you can leave the token field empty.
-- A saved token is shown as saved in the keychain. Choose **Delete the saved token** to remove it.
-- If the PC has no usable keychain, the dialog says **This PC cannot save the token. Enter it each time.** and the save option is unavailable. Enter the token each time you connect.
+- A saved token is shown as saved in this PC's secure storage. Choose **Delete the saved token** to remove it.
+- If the PC has no usable secure storage, the dialog says **This PC cannot save the token. Enter it each time.** and the save option is unavailable. Enter the token each time you connect.
 
-The domain is stored in Agent Board's internal area. You do not edit a file for it. The passcode is not stored anywhere.
+Whether the connection stays on is stored in Agent Board's internal area. You do not edit a file for it. The passcode is not stored anywhere.
 
 ## Open it on the phone
 
@@ -79,11 +79,11 @@ Knowing the address is not enough to read the board. A wrong passcode is refused
 
 ## Stop and connect again
 
-Choose **Stop** in the connected dialog to close the connection. The phone can no longer read the board or send answers, and the connection stays off the next time Agent Board starts. To connect again, open **Mobile connection**, check the fields, and choose **Save and connect**.
+Choose **Stop connection** in the dialog to close the connection. The dialog shows **Stopped**, and the saved token stays on this PC. The phone can no longer read the board or send answers, and the connection stays off the next time Agent Board starts. To connect again with the saved token, choose **Reconnect**. To use another token, choose **Change connection settings**, paste the token, and choose **Save and connect**.
 
-If the connection drops, for example because the PC slept or the network changed, stop it and connect again. Changing the domain with **Change connection settings** and **Save and connect** also replaces the connection, so the phone has to enter the new passcode.
+If the connection drops, for example because the PC slept or the network changed, stop it and connect again. To use another token while connected, choose **Reset token**, which shows the setup again, enter the new token, and choose **Save and connect**. This replaces the connection, so the phone has to enter the new passcode. Closing the dialog instead leaves the connection as it was.
 
-When the connection was left on, it starts again the next time Agent Board starts, as long as a token is available from the environment or the keychain. Without one, the dialog asks for the token.
+When the connection was left on, it starts again the next time Agent Board starts, as long as a token is available from the environment or this PC's secure storage. Without one, the dialog asks for the token.
 
 ## Check that ngrok keeps no traffic content
 
@@ -98,7 +98,7 @@ export NGROK_AUTHTOKEN=<your authtoken>
 agboard serve --monitor ngrok
 ```
 
-Add `--ngrok-domain your-name.ngrok.app` for a reserved domain. The command prints the phone address and the passcode with the local address, for example `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`, or in the `monitor` field with `--json`. The passcode changes each time the server starts. If the connection cannot start, `serve` stops with exit code 1. The other options are in the [CLI guide](../automation/cli).
+The command prints the phone address and the passcode with the local address, for example `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`, or in the `monitor` field with `--json`. The passcode changes each time the server starts. If the connection cannot start, `serve` stops with exit code 1. The other options are in the [CLI guide](../automation/cli).
 
 When the computer sleeps or the server stops, the monitor is unavailable until the server and the connection run again.
 

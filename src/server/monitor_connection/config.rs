@@ -25,7 +25,6 @@ struct StoredFile {
     format_version: u32,
     revision: u64,
     enabled: bool,
-    domain: Option<String>,
 }
 
 /// Why the saved settings could not be read or written. Never carries file contents.
@@ -64,13 +63,10 @@ impl ConfigStore {
         if stored.format_version != FORMAT_VERSION {
             return Err(ConfigError::Invalid);
         }
-        ConnectionConfig {
+        Ok(ConnectionConfig {
             enabled: stored.enabled,
-            domain: stored.domain,
             revision: stored.revision,
-        }
-        .validated()
-        .map_err(|_| ConfigError::Invalid)
+        })
     }
 
     /// Replace the file in one step with owner-only permissions. On failure the
@@ -80,7 +76,6 @@ impl ConfigStore {
             format_version: FORMAT_VERSION,
             revision: config.revision,
             enabled: config.enabled,
-            domain: config.domain.clone(),
         };
         let mut text =
             serde_json::to_string_pretty(&stored).map_err(|e| ConfigError::Io(e.to_string()))?;
@@ -145,7 +140,6 @@ mod tests {
     fn sample() -> ConnectionConfig {
         ConnectionConfig {
             enabled: true,
-            domain: Some("a.ngrok.app".into()),
             revision: 3,
         }
     }
@@ -194,13 +188,15 @@ mod tests {
         assert_eq!(store.load(), Err(ConfigError::Invalid));
         std::fs::write(&path, "not json").unwrap();
         assert_eq!(store.load(), Err(ConfigError::Invalid));
-        // A file written for the Google sign-in carries fields this build does not know.
-        std::fs::write(
-            &path,
-            r#"{"formatVersion":1,"revision":1,"enabled":true,"allowEmails":["a@x.com"],"domain":null,"oauthApp":"managed"}"#,
-        )
-        .unwrap();
-        assert_eq!(store.load(), Err(ConfigError::Invalid));
+        // A file with fields this build does not know (a domain, the Google sign-in) is not read.
+        for stale in [
+            r#"{"formatVersion":1,"revision":1,"enabled":true,"domain":"a.ngrok.app"}"#,
+            r#"{"formatVersion":1,"revision":1,"enabled":true,"domain":null}"#,
+            r#"{"formatVersion":1,"revision":1,"enabled":true,"allowEmails":["a@x.com"],"oauthApp":"managed"}"#,
+        ] {
+            std::fs::write(&path, stale).unwrap();
+            assert_eq!(store.load(), Err(ConfigError::Invalid), "{stale}");
+        }
     }
 
     #[test]
@@ -218,6 +214,6 @@ mod tests {
             .map(String::as_str)
             .collect();
         keys.sort();
-        assert_eq!(keys, ["domain", "enabled", "formatVersion", "revision"]);
+        assert_eq!(keys, ["enabled", "formatVersion", "revision"]);
     }
 }

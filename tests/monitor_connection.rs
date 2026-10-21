@@ -12,12 +12,9 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
-use agent_board::cli::args::{
-    Command as CliCommand, NgrokRequest, Parsed, parse, validate_monitor_args,
-};
+use agent_board::cli::args::{Command as CliCommand, Parsed, parse, validate_monitor_args};
 use agent_board::server::monitor_connection::config::ConfigStore;
 use agent_board::server::monitor_connection::contracts::ConnectionConfig;
-use agent_board::server::monitor_connection::lifecycle::Overrides;
 use assert_cmd::Command;
 use serde_json::{Value, json};
 use support::home;
@@ -58,17 +55,8 @@ fn bad_command_lines_exit_with_2_and_never_print_the_token() {
     let cases: Vec<Vec<&str>> = vec![
         vec!["--monitor", "lan"],
         vec!["--monitor", "both"],
-        vec!["--monitor", "lan", "--ngrok-domain", "a.ngrok.app"],
         vec!["--monitor", "ngrok", "--lan-port", "8812"],
         vec!["--monitor", "ngrok", "--lan-host", "0.0.0.0"],
-        vec![
-            "--monitor",
-            "ngrok",
-            "--ngrok-domain",
-            "https://a.ngrok.app",
-        ],
-        vec!["--monitor", "ngrok", "--ngrok-domain", "a.ngrok.app:443"],
-        vec!["--monitor", "ngrok", "--ngrok-domain", "a b.ngrok.app"],
         vec![
             "--monitor",
             "ngrok",
@@ -87,8 +75,6 @@ fn bad_command_lines_exit_with_2_and_never_print_the_token() {
         vec!["--ngrok-allow-email", "me@example.com"],
         vec!["--monitor", "ngrok", "--ngrok-oauth-app", "managed"],
         vec!["--monitor", "ngrok", "--ngrok-oauth-app", "custom"],
-        // Options for the monitor need the monitor.
-        vec!["--ngrok-domain", "a.ngrok.app"],
     ];
     for case in cases {
         let (code, text) = exit_of(&case, &env);
@@ -114,7 +100,7 @@ fn bad_command_lines_exit_with_2_and_never_print_the_token() {
 }
 
 #[test]
-fn a_valid_ngrok_command_line_is_accepted_and_normalized() {
+fn a_valid_ngrok_command_line_is_accepted() {
     let parse_serve = |extra: &[&str]| {
         let mut argv: Vec<std::ffi::OsString> =
             ["agboard", "serve"].iter().map(Into::into).collect();
@@ -136,19 +122,10 @@ fn a_valid_ngrok_command_line_is_accepted_and_normalized() {
         };
         validate_monitor_args(args, &env).unwrap()
     };
-    // The monitor needs no email and no Google app; the domain is optional.
-    assert_eq!(
-        check(&["--monitor", "ngrok"]),
-        Some(NgrokRequest { domain: None })
-    );
-    assert_eq!(
-        check(&["--monitor", "ngrok", "--ngrok-domain", "Cli.Ngrok.App"]),
-        Some(NgrokRequest {
-            domain: Some("cli.ngrok.app".into())
-        })
-    );
+    // The monitor needs no email, no Google app and nothing else on the command line.
+    assert!(check(&["--monitor", "ngrok"]));
     // Without --monitor, plain serve has no monitor request.
-    assert_eq!(check(&[]), None);
+    assert!(!check(&[]));
     // The token alone is not enough without the environment variable.
     let cli = parse_serve(&["--monitor", "ngrok"]);
     let CliCommand::Serve(args) = &cli.command else {
@@ -241,39 +218,25 @@ fn get_returns_only_non_secret_state_and_only_to_the_local_page() {
 fn settings_use_revisions_validate_input_and_are_saved_privately() {
     let home = home();
     let s = Server::start(home.path(), Opts::default());
-    let r = s.put(true, Some("Me.Ngrok.App"), 0);
+    let r = s.put(true, 0);
     assert_eq!(r.status, 200, "{}", r.body);
     assert_eq!(r.json()["revision"], 1);
-    assert_eq!(
-        r.json()["settings"],
-        json!({"enabled": true, "domain": "me.ngrok.app"})
-    );
+    assert_eq!(r.json()["settings"], json!({"enabled": true}));
     assert_eq!(r.json()["status"], "needs_config");
     // a stale revision conflicts and changes nothing
-    let r = s.put(false, Some("other.ngrok.app"), 0);
+    let r = s.put(false, 0);
     assert_eq!(r.status, 409);
     assert_eq!(r.json()["error"]["code"], "revision_conflict");
-    assert_eq!(s.get()["settings"]["domain"], "me.ngrok.app");
-    // invalid input
-    for domain in [
-        "not a host",
-        "https://a.ngrok.app",
-        "a.ngrok.app:443",
-        "localhost",
-    ] {
-        let r = s.put(true, Some(domain), 1);
-        assert_eq!(r.status, 422, "{domain}");
-    }
-    // A blank domain means "let ngrok choose"; no email is needed to enable.
-    let r = s.put(true, Some(" "), 1);
+    assert_eq!(s.get()["settings"]["enabled"], true);
+    // no email is needed to enable, and an equal save is still a new revision
+    let r = s.put(true, 1);
     assert_eq!(r.status, 200, "{}", r.body);
-    assert_eq!(r.json()["settings"]["domain"], Value::Null);
     // The Google settings are no longer part of the contract.
     for extra in [
         json!({"allowEmails": ["me@example.com"]}),
         json!({"oauthApp": "managed"}),
     ] {
-        let mut body = json!({"enabled": true, "domain": null, "revision": 2});
+        let mut body = json!({"enabled": true, "revision": 2});
         body.as_object_mut()
             .unwrap()
             .extend(extra.as_object().unwrap().clone());
@@ -281,7 +244,7 @@ fn settings_use_revisions_validate_input_and_are_saved_privately() {
         assert_eq!(r.status, 422, "{body}");
     }
     let settings = s.get()["settings"].clone();
-    assert_eq!(settings.as_object().unwrap().len(), 2);
+    assert_eq!(settings.as_object().unwrap().len(), 1);
     assert_eq!(s.get()["revision"], 2);
     let saved = ConfigStore::new(home.path()).load().unwrap();
     assert_eq!(saved.revision, 2);
@@ -309,10 +272,10 @@ fn a_failed_save_changes_nothing_and_starts_nothing() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.put(false, None, 0).status, 200);
+    assert_eq!(s.put(false, 0).status, 200);
     let dir = home.path().join(".internal");
     std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o500)).unwrap();
-    let r = s.put(true, None, 1);
+    let r = s.put(true, 1);
     std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
     assert_eq!(r.status, 500, "{}", r.body);
     assert_eq!(r.json()["error"]["code"], "save_failed");
@@ -331,7 +294,7 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
     let home = home();
     let s = Server::start(home.path(), Opts::default());
     // no token held and none given
-    assert_eq!(s.put(true, None, 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     let r = s.start_ngrok(json!({}));
     assert_eq!(r.status, 422);
     assert_eq!(r.json()["error"]["code"], "token_required");
@@ -419,7 +382,7 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
     let disk = all_files_text(home.path());
     assert!(!disk.contains(TOKEN));
     assert!(!s.get().to_string().contains(TOKEN));
-    assert!(!s.put(true, None, 1).body.contains(TOKEN));
+    assert!(!s.put(true, 1).body.contains(TOKEN));
 
     // Stopping closes the backend, forgets the URL and the passcode, and saves enabled: false.
     let r = s.stop_ngrok();
@@ -444,7 +407,7 @@ fn stopping_while_connecting_never_publishes_the_old_tunnel() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.put(true, None, 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     let (release, hold) = mpsc::channel();
     *s.fake.hold.lock().unwrap() = Some(hold);
     assert_eq!(s.start_ngrok(json!({})).status, 202);
@@ -469,7 +432,7 @@ fn a_failed_start_is_reported_without_a_secret_and_can_be_retried() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.put(true, None, 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     *s.fake.fail.lock().unwrap() = true;
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     let v = s.wait_status("failed");
@@ -489,7 +452,7 @@ fn a_failed_start_is_reported_without_a_secret_and_can_be_retried() {
 }
 
 #[test]
-fn changing_the_domain_replaces_the_tunnel_and_an_equal_save_does_not() {
+fn a_new_token_replaces_the_tunnel_and_an_equal_save_does_not() {
     let home = home();
     let s = Server::start(
         home.path(),
@@ -498,18 +461,21 @@ fn changing_the_domain_replaces_the_tunnel_and_an_equal_save_does_not() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.put(true, None, 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     s.wait_status("ready");
     let first = backend_addr(s.fake.calls.lock().unwrap().last().unwrap());
     // Saving what is already saved keeps the tunnel (and so the passcode).
     let before = s.passcode();
-    assert_eq!(s.put(true, None, 1).status, 200);
+    assert_eq!(s.put(true, 1).status, 200);
     std::thread::sleep(Duration::from_millis(200));
     assert_eq!(s.fake.opens.load(Ordering::SeqCst), 1);
     assert_eq!(s.passcode(), before);
-    // A different domain is a new tunnel.
-    assert_eq!(s.put(true, Some("you.ngrok.app"), 2).status, 200);
+    // A start with a new token is a new tunnel.
+    assert_eq!(
+        s.start_ngrok(json!({"token": "tok-NEW-9876543210"})).status,
+        202
+    );
     let end = Instant::now() + Duration::from_secs(5);
     while s.fake.opens.load(Ordering::SeqCst) < 2 {
         assert!(Instant::now() < end);
@@ -518,13 +484,12 @@ fn changing_the_domain_replaces_the_tunnel_and_an_equal_save_does_not() {
     s.wait_status("ready");
     let calls = s.fake.calls.lock().unwrap();
     assert_ne!(calls[0].backend, calls[1].backend);
-    assert_eq!(calls[0].domain, None);
-    assert_eq!(calls[1].domain.as_deref(), Some("you.ngrok.app"));
+    assert_eq!(calls[1].token, "tok-NEW-9876543210");
     drop(calls);
     std::thread::sleep(Duration::from_millis(100));
     assert!(std::net::TcpStream::connect_timeout(&first, Duration::from_millis(500)).is_err());
     // disabling stops it
-    let off = s.put(false, Some("you.ngrok.app"), 3);
+    let off = s.put(false, 2);
     assert_eq!(off.json()["status"], "disabled");
     assert!(off.json().get("passcode").is_none());
 }
@@ -537,7 +502,6 @@ fn a_saved_enabled_setting_is_restored_only_with_a_token() {
     ConfigStore::new(home.path())
         .save(&ConnectionConfig {
             enabled: true,
-            domain: None,
             revision: 4,
         })
         .unwrap();
@@ -583,7 +547,7 @@ fn an_unreadable_settings_file_keeps_the_pc_entrance_and_can_be_replaced() {
         200
     );
     assert_eq!(s.start_ngrok(json!({})).status, 409);
-    assert_eq!(s.put(false, None, 0).status, 200);
+    assert_eq!(s.put(false, 0).status, 200);
     assert_eq!(s.get()["status"], "disabled");
 }
 
@@ -597,12 +561,12 @@ fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.put(false, Some("saved.ngrok.app"), 0).status, 200);
+    assert_eq!(s.put(false, 0).status, 200);
     assert!(!ConfigStore::new(home.path()).load().unwrap().enabled);
     // Without a token the start is refused and nothing is saved.
     let bare = self::home();
     let t = Server::start(bare.path(), Opts::default());
-    assert_eq!(t.put(false, None, 0).status, 200);
+    assert_eq!(t.put(false, 0).status, 200);
     assert_eq!(t.start_ngrok(json!({})).status, 422);
     assert!(!ConfigStore::new(bare.path()).load().unwrap().enabled);
     assert_eq!(t.fake.opens.load(Ordering::SeqCst), 0);
@@ -615,7 +579,6 @@ fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
     let saved = ConfigStore::new(home.path()).load().unwrap();
     assert!(saved.enabled);
     assert_eq!(saved.revision, 2);
-    assert_eq!(saved.domain.as_deref(), Some("saved.ngrok.app"));
     // The enabled setting survives a restart and the connection is restored.
     drop(s);
     let s = Server::start(
@@ -629,12 +592,11 @@ fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
 }
 
 #[test]
-fn an_explicit_start_announces_after_it_is_up_and_overrides_saved_settings() {
+fn an_explicit_start_announces_after_it_is_up_and_overrides_a_saved_off_setting() {
     let home = home();
     ConfigStore::new(home.path())
         .save(&ConnectionConfig {
             enabled: false,
-            domain: Some("saved.ngrok.app".into()),
             revision: 2,
         })
         .unwrap();
@@ -642,9 +604,7 @@ fn an_explicit_start_announces_after_it_is_up_and_overrides_saved_settings() {
         home.path(),
         Opts {
             env_token: true,
-            explicit: Some(Overrides {
-                domain: Some("cli.ngrok.app".into()),
-            }),
+            explicit: true,
             ..Opts::default()
         },
     );
@@ -655,22 +615,12 @@ fn an_explicit_start_announces_after_it_is_up_and_overrides_saved_settings() {
     assert!(ready.passcode.expose().bytes().all(|b| b.is_ascii_digit()));
     assert_eq!(s.get()["passcode"], ready.passcode.expose());
     assert!(!format!("{ready:?}").contains(ready.passcode.expose()));
-    let calls = s.fake.calls.lock().unwrap();
-    assert_eq!(calls[0].domain.as_deref(), Some("cli.ngrok.app"));
-    drop(calls);
     let v = s.get();
     assert_eq!(v["status"], "ready");
-    assert_eq!(v["settings"]["domain"], "cli.ngrok.app");
+    assert_eq!(v["settings"]["enabled"], true);
     assert_eq!(v["revision"], 2);
     // the command line is not written back
-    assert_eq!(
-        ConfigStore::new(home.path())
-            .load()
-            .unwrap()
-            .domain
-            .as_deref(),
-        Some("saved.ngrok.app")
-    );
+    assert!(!ConfigStore::new(home.path()).load().unwrap().enabled);
     // and the passcode is not written anywhere
     assert!(
         !all_files_text(home.path())
@@ -689,7 +639,7 @@ fn a_failed_explicit_start_ends_the_run_and_leaves_no_serve_file() {
         Opts {
             env_token: true,
             fake,
-            explicit: Some(Overrides { domain: None }),
+            explicit: true,
             ..Opts::default()
         },
     );
@@ -724,30 +674,23 @@ const SAVED: &str = "tok-KEYCHAIN-9876543210";
 fn settings_live_in_the_internal_area_and_no_settings_file_is_made() {
     let home = home();
     let s = Server::start(home.path(), Opts::default());
-    assert_eq!(s.put(true, Some("me.ngrok.app"), 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     let file = home.path().join(".internal/monitor-connection.json");
     assert!(file.is_file());
     assert!(!home.path().join("monitor").exists());
-    assert_eq!(
-        ConfigStore::new(home.path())
-            .load()
-            .unwrap()
-            .domain
-            .as_deref(),
-        Some("me.ngrok.app")
-    );
+    assert!(ConfigStore::new(home.path()).load().unwrap().enabled);
     // the old location is not read: a file there changes nothing
     drop(s);
     let other = self::home();
     std::fs::create_dir_all(other.path().join("monitor")).unwrap();
     std::fs::write(
         other.path().join("monitor/config.json"),
-        r#"{"formatVersion":1,"revision":5,"enabled":true,"domain":"old.ngrok.app"}"#,
+        r#"{"formatVersion":1,"revision":5,"enabled":true}"#,
     )
     .unwrap();
     let s = Server::start(other.path(), Opts::default());
     assert_eq!(s.get()["revision"], 0);
-    assert_eq!(s.get()["settings"]["domain"], Value::Null);
+    assert_eq!(s.get()["settings"]["enabled"], false);
 }
 
 #[test]
@@ -756,7 +699,7 @@ fn a_settings_file_written_for_the_google_sign_in_is_unreadable_and_can_be_repla
     std::fs::create_dir_all(home.path().join(".internal")).unwrap();
     std::fs::write(
         home.path().join(".internal/monitor-connection.json"),
-        r#"{"formatVersion":1,"revision":3,"enabled":true,"allowEmails":["a@x.com"],"domain":null,"oauthApp":"managed"}"#,
+        r#"{"formatVersion":1,"revision":3,"enabled":true,"allowEmails":["a@x.com"],"oauthApp":"managed"}"#,
     )
     .unwrap();
     let s = Server::start(
@@ -771,7 +714,7 @@ fn a_settings_file_written_for_the_google_sign_in_is_unreadable_and_can_be_repla
     assert_eq!(v["status"], "failed");
     assert_eq!(v["failure"], "config_unreadable");
     assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
-    assert_eq!(s.put(true, None, 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     assert_eq!(s.get()["failure"], Value::Null);
 }
 
@@ -786,7 +729,7 @@ fn a_token_is_saved_to_the_keychain_only_when_asked() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.put(true, None, 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     // default: not saved
     assert_eq!(s.start_ngrok(json!({"token": TOKEN})).status, 202);
     assert_eq!(vault.saved(), None);
@@ -805,7 +748,7 @@ fn a_token_is_saved_to_the_keychain_only_when_asked() {
     // never on disk, in GET or in PUT
     assert!(!all_files_text(home.path()).contains(TOKEN));
     assert!(!s.get().to_string().contains(TOKEN));
-    assert!(!s.put(true, None, 2).body.contains(TOKEN));
+    assert!(!s.put(true, 2).body.contains(TOKEN));
     // save without a token is a bad request
     assert_eq!(s.start_ngrok(json!({"save": true})).status, 422);
 }
@@ -826,7 +769,7 @@ fn a_saved_token_is_found_at_the_next_run_and_the_environment_wins() {
     assert_eq!(v["tokenConfigured"], true);
     assert_eq!(v["tokenSource"], "keychain");
     assert_eq!(v["keychainTokenSaved"], true);
-    assert_eq!(s.put(false, None, 0).status, 200);
+    assert_eq!(s.put(false, 0).status, 200);
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     s.wait_status("ready");
     assert_eq!(s.fake.calls.lock().unwrap()[0].token, SAVED);
@@ -844,7 +787,7 @@ fn a_saved_token_is_found_at_the_next_run_and_the_environment_wins() {
     let v = s.get();
     assert_eq!(v["tokenSource"], "env");
     assert_eq!(v["keychainTokenSaved"], true);
-    assert_eq!(s.put(false, None, 0).status, 200);
+    assert_eq!(s.put(false, 0).status, 200);
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     s.wait_status("ready");
     assert_eq!(s.fake.calls.lock().unwrap()[0].token, TOKEN);
@@ -856,7 +799,6 @@ fn a_saved_token_restores_an_enabled_connection_at_startup() {
     ConfigStore::new(home.path())
         .save(&ConnectionConfig {
             enabled: true,
-            domain: None,
             revision: 1,
         })
         .unwrap();
@@ -930,7 +872,7 @@ fn without_a_keychain_saving_is_refused_with_a_fixed_code_and_nothing_starts() {
             ..Opts::default()
         },
     );
-    assert_eq!(s.put(true, None, 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     let v = s.get();
     assert_eq!(v["keychainAvailable"], false);
     let r = s.start_ngrok(json!({"token": TOKEN, "save": true}));

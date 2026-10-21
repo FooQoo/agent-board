@@ -1,44 +1,21 @@
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { InfoIcon, XIcon } from 'lucide-react';
-import { Checkbox } from '@/shared/ui/checkbox';
+import { LockIcon, XIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
-import { Input } from '@/shared/ui/input';
-import { Label } from '@/shared/ui/label';
 import '../../../shared/styles/modal.css';
 import './connection.css';
-import { progressText, type ConnectionStatus } from './connectionProgress';
+import { progressText } from './connectionProgress';
+import type { ConnectionDraft, ConnectionQr, ConnectionStatus, TokenInfo } from './connectionTypes';
+import { ConnectionReadySteps, ConnectionSetupSteps } from './ConnectionSteps';
 
-export type { ConnectionStatus };
-
-/** What the person types: the token is held in memory only and never shown again. */
-export interface ConnectionDraft {
-  token: string;
-  domain: string;
-  /** Keep the typed token in the OS keychain. Off unless the person turns it on. */
-  save: boolean;
-}
-
-/** Where the token comes from and whether this PC can keep one. Never the token itself. */
-export interface TokenInfo {
-  source: 'env' | 'keychain' | 'session' | null;
-  keychainAvailable: boolean;
-  /** A token is saved in the keychain and can be deleted. */
-  saved: boolean;
-}
-
-/** The QR code of the phone URL, as an image the caller already rendered. */
-export interface ConnectionQr {
-  /** An image URL (a data URL is fine). */
-  src: string;
-  /** The picture is a layout sample and cannot be scanned. */
-  sample?: boolean;
-}
+export type { ConnectionDraft, ConnectionQr, ConnectionStatus, TokenInfo };
 
 export interface ConnectionSettingsViewProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Where the focus goes when the dialog closes (the settings button of the header). */
+  restoreFocusRef?: { current: HTMLElement | null };
   status: ConnectionStatus;
   /** The values the form starts from; the form keeps its own copy while it is edited. */
   draft: ConnectionDraft;
@@ -48,7 +25,7 @@ export interface ConnectionSettingsViewProps {
   passcode?: string | null;
   qr?: ConnectionQr | null;
   tokenInfo?: TokenInfo;
-  /** Delete the token saved in the keychain. */
+  /** Delete the token saved in this PC's secure storage. */
   onDeleteToken?: () => void;
   /** A message about the last start or save, shown with the form. */
   error?: string | null;
@@ -57,23 +34,19 @@ export interface ConnectionSettingsViewProps {
   /** Save the draft and start. */
   onConnect: (draft: ConnectionDraft) => void;
   onStop: () => void;
-  /** Go back from the connected view to the form. */
-  onEdit: () => void;
+  /** Go back from the connected view to the setup, to enter the token again. */
+  onResetToken: () => void;
 }
 
-const FORM_STATUSES: readonly ConnectionStatus[] = [
-  'disabled',
-  'needs_config',
-  'starting',
-  'reconnecting',
-  'failed',
-  'stopping',
-];
-
-/** The PC dialog that sets up, shows and stops the ngrok phone connection. */
+/**
+ * The PC dialog that sets up, shows and stops the ngrok phone connection. Only a ready connection
+ * shows the connected view; every other status shows the setup, with the progress text in the
+ * place of the two steps while a start or a stop is under way.
+ */
 export function ConnectionSettingsView({
   open,
   onOpenChange,
+  restoreFocusRef,
   status,
   draft,
   url = null,
@@ -85,29 +58,14 @@ export function ConnectionSettingsView({
   saving = false,
   onConnect,
   onStop,
-  onEdit,
+  onResetToken,
 }: ConnectionSettingsViewProps) {
   const { t } = useTranslation();
   const [values, setValues] = useState<ConnectionDraft>(draft);
   const [copied, setCopied] = useState(false);
-  const ids = {
-    token: useId(),
-    domain: useId(),
-    url: useId(),
-    passcode: useId(),
-    save: useId(),
-  };
 
   // Reset only when the values differ, so an equal draft from a re-render keeps what was typed.
-  useEffect(
-    () =>
-      setValues({
-        token: draft.token,
-        domain: draft.domain,
-        save: draft.save,
-      }),
-    [draft.token, draft.domain, draft.save],
-  );
+  useEffect(() => setValues({ token: draft.token, save: draft.save }), [draft.token, draft.save]);
   useEffect(() => {
     if (!copied) return;
     const timer = window.setTimeout(() => setCopied(false), 2000);
@@ -115,21 +73,12 @@ export function ConnectionSettingsView({
   }, [copied]);
 
   const connected = status === 'ready';
+  // Stopped with a token saved: the dialog offers to connect again with it, without typing it.
+  const stopped = status === 'disabled' && tokenInfo.saved;
   const busy =
     saving || status === 'starting' || status === 'reconnecting' || status === 'stopping';
   const progress = progressText(status, t);
-  const canSave = tokenInfo.keychainAvailable;
-  const tokenNote = !canSave
-    ? t('monitorConnection.tokenNoKeychain')
-    : tokenInfo.source === 'env'
-      ? t('monitorConnection.tokenFromEnv')
-      : tokenInfo.source === 'keychain'
-        ? t('monitorConnection.tokenInKeychain')
-        : tokenInfo.source === 'session'
-          ? t('monitorConnection.tokenThisRun')
-          : t('monitorConnection.tokenNote');
-  const set = (field: 'token' | 'domain') => (event: { target: { value: string } }) =>
-    setValues((current) => ({ ...current, [field]: event.target.value }));
+  const message = status === 'failed' ? (error ?? t('monitorConnection.failedTitle')) : error;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -153,6 +102,12 @@ export function ConnectionSettingsView({
         className="modal connection-dialog"
         showCloseButton={false}
         aria-describedby={undefined}
+        onCloseAutoFocus={(event) => {
+          const target = restoreFocusRef?.current;
+          if (!target?.isConnected) return;
+          event.preventDefault();
+          target.focus();
+        }}
       >
         <div className="modal__header">
           <DialogTitle className="modal__title">{t('monitorConnection.title')}</DialogTitle>
@@ -168,158 +123,108 @@ export function ConnectionSettingsView({
           </Button>
         </div>
 
-        <p className="connection-dialog__intro">{t('monitorConnection.intro')}</p>
+        <p
+          className={`connection-dialog__state${connected ? ' connection-dialog__state--on' : ''}`}
+          role={connected ? 'status' : undefined}
+        >
+          <span className="connection-dialog__dot" aria-hidden="true" />
+          {connected
+            ? t('monitorConnection.statusOn')
+            : stopped
+              ? t('monitorConnection.statusStopped')
+              : t('monitorConnection.statusOff')}
+        </p>
+        {!stopped && <p className="connection-dialog__intro">{t('monitorConnection.intro')}</p>}
 
         {connected ? (
-          <div className="connection-dialog__connected">
-            <p className="connection-dialog__status" role="status">
-              {t('monitorConnection.connected')}
-            </p>
-            <div className="connection-dialog__field">
-              <Label htmlFor={ids.url}>{t('monitorConnection.url')}</Label>
-              <Input id={ids.url} value={url ?? ''} readOnly />
+          <div className="connection-dialog__main">
+            <div className="connection-dialog__body">
+              <ConnectionReadySteps qr={qr} passcode={passcode} copied={copied} onCopy={copyUrl} />
             </div>
-            {passcode && (
-              <div className="connection-dialog__field">
-                <Label htmlFor={ids.passcode}>{t('monitorConnection.passcode')}</Label>
-                <Input
-                  id={ids.passcode}
-                  className="connection-dialog__passcode"
-                  value={passcode}
-                  readOnly
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <p className="connection-dialog__hint">{t('monitorConnection.passcodeNote')}</p>
-              </div>
-            )}
-            <div className="connection-dialog__qr">
-              <figure className="connection-dialog__qr-figure">
-                {qr && <img src={qr.src} alt={t('monitorConnection.qrAlt')} />}
-                {qr?.sample && (
-                  <figcaption className="connection-dialog__qr-note">
-                    {t('monitorConnection.qrSample')}
-                  </figcaption>
-                )}
-              </figure>
-              <div className="connection-dialog__qr-copy">
-                <h3 className="connection-dialog__qr-title">{t('monitorConnection.qrTitle')}</h3>
-                <p className="connection-dialog__qr-body">{t('monitorConnection.qrBody')}</p>
-                <Button type="button" variant="outline" onClick={copyUrl}>
-                  {t('monitorConnection.copy')}
+            <div className="connection-dialog__footer">
+              <p className="connection-dialog__notice">
+                <LockIcon aria-hidden="true" />
+                {t('monitorConnection.protectNotice')}
+              </p>
+              <div className="connection-dialog__actions">
+                <Button type="button" variant="outline" disabled={busy} onClick={onResetToken}>
+                  {t('monitorConnection.resetToken')}
                 </Button>
-                {copied && (
-                  <span className="connection-dialog__copied" role="status">
-                    {t('monitorConnection.copied')}
-                  </span>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="connection-dialog__stop"
+                  disabled={busy}
+                  onClick={onStop}
+                >
+                  {saving ? t('monitorConnection.stopping') : t('monitorConnection.stop')}
+                </Button>
               </div>
             </div>
-            <div className="connection-dialog__actions">
-              <Button type="button" variant="outline" disabled={busy} onClick={onEdit}>
-                {t('monitorConnection.edit')}
-              </Button>
-              <Button type="button" variant="outline" disabled={busy} onClick={onStop}>
-                {saving ? t('monitorConnection.stopping') : t('monitorConnection.stop')}
-              </Button>
+          </div>
+        ) : stopped ? (
+          <div className="connection-dialog__main">
+            <div className="connection-dialog__body">
+              <div className="connection-dialog__stopped">
+                <h3>{t('monitorConnection.stoppedTitle')}</h3>
+                <p>{t('monitorConnection.stoppedToken')}</p>
+                <p>{t('monitorConnection.stoppedNext')}</p>
+              </div>
             </div>
-            <p className="connection-dialog__note" role="note">
-              <InfoIcon aria-hidden="true" />
-              {t('monitorConnection.protectNotice')}
-            </p>
+            <div className="connection-dialog__footer">
+              {message && (
+                <p className="connection-dialog__error" role="alert">
+                  {message}
+                </p>
+              )}
+              <div className="connection-dialog__actions">
+                <Button type="button" variant="outline" disabled={busy} onClick={onResetToken}>
+                  {t('monitorConnection.changeSettings')}
+                </Button>
+                <Button
+                  type="button"
+                  className="connection-dialog__reconnect"
+                  disabled={busy}
+                  onClick={() => onConnect({ token: '', save: false })}
+                >
+                  {t('monitorConnection.reconnect')}
+                </Button>
+              </div>
+            </div>
           </div>
         ) : (
-          FORM_STATUSES.includes(status) && (
-            <form className="connection-dialog__form" onSubmit={submit} noValidate>
-              {progress && (
+          <form className="connection-dialog__main" onSubmit={submit} noValidate>
+            <div className="connection-dialog__body">
+              {progress ? (
                 <div className="connection-dialog__progress" role="status">
                   <h3>{progress.title}</h3>
                   <p>{progress.body}</p>
                 </div>
-              )}
-              <div className="connection-dialog__field">
-                <Label htmlFor={ids.token}>{t('monitorConnection.token')}</Label>
-                <Input
-                  id={ids.token}
-                  type="password"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={t('monitorConnection.tokenPlaceholder')}
-                  value={values.token}
-                  disabled={busy}
-                  onChange={set('token')}
-                />
-              </div>
-              <div className="connection-dialog__save">
-                <Checkbox
-                  id={ids.save}
-                  checked={canSave && values.save}
-                  disabled={busy || !canSave}
-                  onCheckedChange={(checked) =>
-                    setValues((current) => ({ ...current, save: checked === true }))
-                  }
-                />
-                <Label htmlFor={ids.save}>{t('monitorConnection.saveToken')}</Label>
-              </div>
-              <p className="connection-dialog__hint" data-testid="token-note">
-                {tokenNote}
-              </p>
-              {tokenInfo.saved && (
-                <div>
-                  <Button type="button" variant="outline" disabled={busy} onClick={onDeleteToken}>
-                    {t('monitorConnection.deleteToken')}
-                  </Button>
-                </div>
-              )}
-              <div className="connection-dialog__field">
-                <Label htmlFor={ids.domain}>{t('monitorConnection.domain')}</Label>
-                <Input
-                  id={ids.domain}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={t('monitorConnection.domainPlaceholder')}
-                  value={values.domain}
-                  disabled={busy}
-                  onChange={set('domain')}
-                />
-              </div>
-              {status === 'failed' ? (
-                <div className="connection-dialog__failure" role="alert">
-                  <p className="connection-dialog__error">
-                    {error ?? t('monitorConnection.failedTitle')}
-                  </p>
-                  <p className="connection-dialog__hint connection-dialog__hint--body">
-                    {t('monitorConnection.failedBody')}
-                  </p>
-                </div>
               ) : (
-                <>
-                  {error && (
-                    <p className="connection-dialog__error" role="alert">
-                      {error}
-                    </p>
-                  )}
-                  {!progress && (
-                    <aside className="connection-dialog__note">
-                      <h3>{t('monitorConnection.restrictTitle')}</h3>
-                      <p>{t('monitorConnection.restrictBody')}</p>
-                    </aside>
-                  )}
-                </>
+                <ConnectionSetupSteps
+                  values={values}
+                  onChange={setValues}
+                  tokenInfo={tokenInfo}
+                  busy={busy}
+                  onDeleteToken={onDeleteToken}
+                />
               )}
-              <div className="connection-dialog__submit">
-                <Button type="submit" disabled={busy}>
-                  {status === 'stopping'
-                    ? t('monitorConnection.stopping')
-                    : busy
-                      ? t('monitorConnection.connecting')
-                      : status === 'failed'
-                        ? t('monitorConnection.retry')
-                        : t('monitorConnection.save')}
-                </Button>
-              </div>
-            </form>
-          )
+            </div>
+            <div className="connection-dialog__footer connection-dialog__footer--end">
+              {message && (
+                <p className="connection-dialog__error" role="alert">
+                  {message}
+                </p>
+              )}
+              <Button type="submit" className="connection-dialog__submit" disabled={busy}>
+                {status === 'stopping'
+                  ? t('monitorConnection.stopping')
+                  : busy
+                    ? t('monitorConnection.connecting')
+                    : t('monitorConnection.save')}
+              </Button>
+            </div>
+          </form>
         )}
       </DialogContent>
     </Dialog>

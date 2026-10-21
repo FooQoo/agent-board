@@ -91,7 +91,7 @@ impl Tunnel {
     fn up() -> Self {
         let home = fixture();
         let s = Server::start(home.path(), env_opts());
-        assert_eq!(s.put(true, None, 0).status, 200);
+        assert_eq!(s.put(true, 0).status, 200);
         let mut t = Self::new(s, home.path().to_path_buf(), Some(home));
         t.start();
         t
@@ -231,11 +231,10 @@ impl Tunnel {
         }
     }
 
-    /// Change the domain, which replaces the tunnel, and wait for the new one.
-    fn replace_tunnel(&mut self, domain: &str) {
+    /// Start the connection again, which replaces the tunnel, and wait for the new one.
+    fn replace_tunnel(&mut self) {
         let before = self.s.fake.opens.load(Ordering::SeqCst);
-        let revision = self.s.get()["revision"].as_u64().unwrap();
-        assert_eq!(self.s.put(true, Some(domain), revision).status, 200);
+        assert_eq!(self.s.start_ngrok(json!({})).status, 202);
         let end = Instant::now() + Duration::from_secs(10);
         while self.s.fake.opens.load(Ordering::SeqCst) <= before {
             assert!(Instant::now() < end, "the tunnel was not replaced");
@@ -323,7 +322,7 @@ fn the_tunnel_starts_only_when_asked_or_restored_and_every_listener_is_loopback(
         assert_eq!(s.get()["status"], "disabled");
         assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
         // Saving the setting, even as enabled, is not a start.
-        assert_eq!(s.put(true, None, 0).status, 200);
+        assert_eq!(s.put(true, 0).status, 200);
         std::thread::sleep(Duration::from_millis(200));
         assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
         assert_ne!(s.get()["status"], "ready");
@@ -349,7 +348,7 @@ fn the_tunnel_starts_only_when_asked_or_restored_and_every_listener_is_loopback(
     let s = Server::start(home.path(), env_opts());
     s.wait_status("ready");
     let revision = s.get()["revision"].as_u64().unwrap();
-    assert_eq!(s.put(false, None, revision).status, 200);
+    assert_eq!(s.put(false, revision).status, 200);
     drop(s);
     let s = Server::start(home.path(), env_opts());
     assert_eq!(s.get()["status"], "disabled");
@@ -505,7 +504,7 @@ fn stopping_ends_reads_events_and_answers_and_a_restart_starts_clean() {
 }
 
 #[test]
-fn changing_the_domain_or_the_public_origin_ends_the_old_session_and_stream() {
+fn starting_again_or_changing_the_public_origin_ends_the_old_session_and_stream() {
     let mut t = Tunnel::up();
     let old = t.session();
     let request_id = t.request_id(&old);
@@ -513,9 +512,9 @@ fn changing_the_domain_or_the_public_origin_ends_the_old_session_and_stream() {
     assert!(seen.contains("event: ready"), "{seen}");
     let (old_backend, old_host, old_origin) = (t.backend, t.host(), t.public.clone());
 
-    // A new domain and, with the new tunnel, a new public origin.
+    // A new start and, with the new tunnel, a new public origin.
     *t.s.fake.public.lock().unwrap() = Some(OTHER_PUBLIC.into());
-    t.replace_tunnel("other-xyz.ngrok.app");
+    t.replace_tunnel();
     assert_eq!(t.public, OTHER_PUBLIC);
     assert_eq!(t.s.get()["url"], OTHER_PUBLIC);
     assert!(
@@ -548,7 +547,7 @@ fn changing_the_domain_or_the_public_origin_ends_the_old_session_and_stream() {
 fn a_failed_start_leaves_no_listener_or_secret_and_the_pc_and_writes_keep_working() {
     let home = fixture();
     let s = Server::start(home.path(), env_opts());
-    assert_eq!(s.put(true, None, 0).status, 200);
+    assert_eq!(s.put(true, 0).status, 200);
     *s.fake.fail.lock().unwrap() = true;
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     let v = s.wait_status("failed");
@@ -585,7 +584,7 @@ fn a_restart_never_revives_an_old_session_and_keeps_no_secret() {
     let home = fixture();
     let (old, old_backend) = {
         let s = Server::start(home.path(), env_opts());
-        assert_eq!(s.put(true, None, 0).status, 200);
+        assert_eq!(s.put(true, 0).status, 200);
         let mut t = Tunnel::new(s, home.path().to_path_buf(), None);
         t.start();
         let session = t.session();

@@ -6,7 +6,7 @@ use tokio::sync::oneshot;
 use url::Url;
 
 use super::backend::{SharedListener, external_app, internal_token, serve};
-use super::contracts::{ConnectionConfig, ConnectionStatus};
+use super::contracts::ConnectionStatus;
 use super::lifecycle::{Inner, MonitorConnections};
 use super::router::{BackendPolicy, Gate, backend_router};
 use super::run::Run;
@@ -23,12 +23,6 @@ impl MonitorConnections {
         self: &Arc<Self>,
         inner: &mut Inner,
     ) -> Result<oneshot::Receiver<Result<MonitorReady, FailureCode>>, StartError> {
-        let config = ConnectionConfig {
-            enabled: true,
-            ..inner.config.clone()
-        }
-        .validated()
-        .map_err(StartError::Invalid)?;
         let token = inner.token.clone().ok_or(StartError::TokenRequired)?;
         let app = self
             .app
@@ -64,7 +58,6 @@ impl MonitorConnections {
         let request = OpenRequest {
             token,
             backend: backend_url,
-            domain: config.domain.clone(),
         };
         let run_gate = gate.clone();
         let (tx, rx) = oneshot::channel();

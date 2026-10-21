@@ -69,7 +69,6 @@ fn snapshot_of(inner: &Inner, keychain_available: bool) -> Snapshot {
         revision: inner.config.revision,
         settings: Settings {
             enabled: inner.config.enabled,
-            domain: inner.config.domain.clone(),
         },
         token_configured: inner.token.is_some(),
         token_source: inner.token_source,

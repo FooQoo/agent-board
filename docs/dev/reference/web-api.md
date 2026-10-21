@@ -40,10 +40,10 @@ These routes exist only on the local listener (`127.0.0.1`); the ngrok entry nev
 | API | Contract |
 | --- | --- |
 | `GET /api/monitor-connections` | The current state, described below. Never holds a secret. |
-| `PUT /api/monitor-connections/settings/ngrok` | Saves `{enabled, domain, revision}` and returns the state. `domain` may be omitted or `null`; `revision` must be the one last read. Unknown fields are 422 `invalid_value`; a stale revision is 409 `revision_conflict`; a failed save is 500 `save_failed` and changes nothing. Saving a different domain while the tunnel runs replaces it (and makes a new passcode). |
-| `POST /api/monitor-connections/transports/ngrok/start` | Starts the connection and answers 202 with the state (usually `starting`). The optional body is `{token, save}`. `token` is held in memory only; `save: true` also stores it in the OS keychain and needs a `token`. A disabled setting is saved as enabled first. |
+| `PUT /api/monitor-connections/settings/ngrok` | Saves `{enabled, revision}` and returns the state. `revision` must be the one last read. Unknown fields are 422 `invalid_value`; a stale revision is 409 `revision_conflict`; a failed save is 500 `save_failed` and changes nothing. Saving while the tunnel runs does not replace it; only a start does. |
+| `POST /api/monitor-connections/transports/ngrok/start` | Starts the connection and answers 202 with the state (usually `starting`). The optional body is `{token, save}`. `token` is held in memory only; `save: true` also stores it in the PC's secure storage (the OS credential store) and needs a `token`. A disabled setting is saved as enabled first. A start while the tunnel runs replaces it and makes a new passcode. |
 | `POST /api/monitor-connections/transports/ngrok/stop` | Stops the connection, saves it as disabled, and answers 200 with the state. |
-| `DELETE /api/monitor-connections/token` | Removes the token saved in the keychain and answers 200 with the state. Removing nothing is not an error. |
+| `DELETE /api/monitor-connections/token` | Removes the token saved in the secure storage and answers 200 with the state. Removing nothing is not an error. |
 
 The state object has these fields:
 
@@ -52,11 +52,11 @@ The state object has these fields:
 | `status` | `disabled`, `needs_config`, `starting`, `ready`, `reconnecting`, `failed`, or `stopping`. |
 | `url` | The public HTTPS address once `ready`; otherwise `null`. |
 | `revision` | The settings revision, for `PUT`. |
-| `settings` | `enabled` and `domain`. |
+| `settings` | `enabled`. |
 | `tokenConfigured` | Whether a start would find a token. |
-| `tokenSource` | `env` (`NGROK_AUTHTOKEN`), `keychain`, `session` (typed for this run), or `null`. Never the value. |
-| `keychainAvailable` | Whether this PC can save a token in the OS keychain. |
-| `keychainTokenSaved` | Whether a token is saved in the keychain, even if another source is used. |
+| `tokenSource` | `env` (`NGROK_AUTHTOKEN`), `keychain` (the secure storage), `session` (typed for this run), or `null`. Never the value. |
+| `keychainAvailable` | Whether this PC has a secure storage (the OS credential store) that can hold a token. |
+| `keychainTokenSaved` | Whether a token is saved in the secure storage, even if another source is used. |
 | `failure` | `null`, or one of `connect_failed`, `endpoint_failed`, `public_url_invalid`, `internal`, `config_unreadable`, `config_invalid`. |
 | `passcode` | The 4-digit passcode of the running connection, for the PC to show. Present only while `status` is `ready`; omitted when the connection is starting, stopped, or failed. It is the one secret this API returns. |
 

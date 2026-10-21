@@ -10,32 +10,49 @@
           "stories": [
             {
               "id": "monitor-connections-connectionsettingsview--needs-config",
-              "states": ["form with domain", "passcode note", "connect action", "token masked"],
+              "states": [
+                "two setup steps",
+                "token page link",
+                "token masked",
+                "connect action",
+                "design size"
+              ],
               "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettingsview--empty",
-              "states": ["empty form", "placeholders"],
+              "states": ["empty token field", "placeholder"],
               "interaction": false
             },
             {
+              "id": "monitor-connections-connectionsettingsview--stopped",
+              "states": [
+                "stopped wording",
+                "saved token kept",
+                "reconnect and change settings actions",
+                "reconnect as wide as save",
+                "design size"
+              ],
+              "interaction": true
+            },
+            {
               "id": "monitor-connections-connectionsettingsview--starting",
-              "states": ["connecting", "form disabled"],
+              "states": ["progress in place of the steps", "connect action waits"],
               "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettingsview--saving",
-              "states": ["save in flight"],
-              "interaction": false
+              "states": ["save in flight", "fields locked"],
+              "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettingsview--failed",
-              "states": ["start failed", "retry"],
+              "states": ["start failed", "retry with the connect action"],
               "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettingsview--reconnecting",
-              "states": ["reconnecting"],
+              "states": ["reconnecting progress"],
               "interaction": false
             },
             {
@@ -45,17 +62,90 @@
             },
             {
               "id": "monitor-connections-connectionsettingsview--connected",
-              "states": ["URL", "passcode", "QR code", "stop and edit"],
+              "states": [
+                "QR code",
+                "passcode",
+                "sharing notice",
+                "reset token and stop actions",
+                "design size"
+              ],
               "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettingsview--connected-stopping",
               "states": ["connected", "actions disabled"],
-              "interaction": false
+              "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettingsview--connected-without-passcode",
               "states": ["connected", "no passcode sent yet"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--keeps-input-on-rerender",
+              "states": ["equal draft on re-render keeps input"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/monitor-connections/ui/ConnectionSteps.tsx",
+      "exports": [
+        {
+          "name": "ConnectionReadySteps",
+          "stories": [
+            {
+              "id": "monitor-connections-connectionsettingsview--connected",
+              "states": [
+                "QR code",
+                "passcode",
+                "sharing notice",
+                "reset token and stop actions",
+                "design size"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-stopping",
+              "states": ["connected", "actions disabled"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-without-passcode",
+              "states": ["connected", "no passcode sent yet"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "ConnectionSetupSteps",
+          "stories": [
+            {
+              "id": "monitor-connections-connectionsettingsview--needs-config",
+              "states": [
+                "two setup steps",
+                "token page link",
+                "token masked",
+                "connect action",
+                "design size"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--empty",
+              "states": ["empty token field", "placeholder"],
+              "interaction": false
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--saving",
+              "states": ["save in flight", "fields locked"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--failed",
+              "states": ["start failed", "retry with the connect action"],
               "interaction": true
             },
             {
@@ -105,12 +195,17 @@
             },
             {
               "id": "monitor-connections-connectionsettings--stop-connection",
-              "states": ["stop", "settings kept", "passcode gone"],
+              "states": ["stop", "stopped view with saved token", "passcode gone", "token kept"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--reset-token",
+              "states": ["setup shown again", "new token starts again", "not stopped"],
               "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettings--starting",
-              "states": ["starting", "form locked"],
+              "states": ["starting", "progress shown"],
               "interaction": true
             },
             {
@@ -129,28 +224,32 @@
               "interaction": true
             },
             {
-              "id": "monitor-connections-connectionsettings--save-token-to-keychain",
+              "id": "monitor-connections-connectionsettings--save-token-to-secure-storage",
               "states": ["save true in start body", "token not in settings"],
               "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettings--delete-saved-token",
-              "states": ["saved in keychain note", "delete saved token"],
+              "states": [
+                "change settings opens setup",
+                "saved in secure storage note",
+                "delete saved token"
+              ],
               "interaction": true
             },
             {
               "id": "monitor-connections-connectionsettings--connect-with-saved-token",
-              "states": ["empty field connects", "no token body"],
+              "states": ["reconnect with saved token", "no token body"],
               "interaction": true
             },
             {
-              "id": "monitor-connections-connectionsettings--keychain-unavailable",
+              "id": "monitor-connections-connectionsettings--secure-storage-unavailable",
               "states": ["cannot save note", "save disabled"],
               "interaction": true
             },
             {
-              "id": "monitor-connections-connectionsettings--keychain-save-refused",
-              "states": ["keychain error message", "not started"],
+              "id": "monitor-connections-connectionsettings--secure-storage-save-refused",
+              "states": ["secure storage error message", "not started"],
               "interaction": true
             },
             {
@@ -170,7 +269,7 @@
             },
             {
               "id": "monitor-connections-connectionsettings--saved-token-form",
-              "states": ["keychain note", "delete offered"],
+              "states": ["change settings opens setup", "secure storage note", "delete offered"],
               "interaction": true
             }
           ]

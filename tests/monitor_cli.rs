@@ -70,17 +70,9 @@ fn the_google_sign_in_arguments_are_rejected_as_unknown_arguments() {
             Ok(_) => panic!("accepted a removed argument: {argv:?}"),
         }
     }
-    // The domain stays an option, and the monitor needs nothing else on the command line.
-    for argv in [
-        vec!["serve", "--monitor", "ngrok"],
-        vec![
-            "serve",
-            "--monitor",
-            "ngrok",
-            "--ngrok-domain",
-            "a.ngrok.app",
-        ],
-    ] {
-        assert!(matches!(parse_args(&argv), Ok(Parsed::Run(_))), "{argv:?}");
-    }
+    // The monitor needs nothing else on the command line.
+    assert!(matches!(
+        parse_args(&["serve", "--monitor", "ngrok"]),
+        Ok(Parsed::Run(_))
+    ));
 }

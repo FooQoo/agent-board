@@ -23,15 +23,14 @@ export interface ConnectionSnapshot {
   revision: number;
   settings: {
     enabled: boolean;
-    domain: string | null;
   };
-  /** Whether a token is available: from the environment, the keychain or this run. */
+  /** Whether a token is available: from the environment, this PC's secure storage or this run. */
   tokenConfigured: boolean;
   /** Where the token in use comes from; the value itself is never sent. */
   tokenSource: TokenSource | null;
-  /** Whether the OS keychain can hold a token on this PC. */
+  /** Whether this PC has a secure storage (the OS keychain) that can hold a token. */
   keychainAvailable: boolean;
-  /** Whether a token is saved in the keychain. */
+  /** Whether a token is saved in this PC's secure storage. */
   keychainTokenSaved: boolean;
   failure: FailureCode | null;
   /** The 4-digit passcode of the running connection; absent unless the status is `ready`. */
@@ -90,7 +89,6 @@ export const getConnection = () => request(BASE, { method: 'GET' });
 
 export interface SettingsInput {
   enabled: boolean;
-  domain: string | null;
   revision: number;
 }
 
@@ -99,7 +97,7 @@ export const saveSettings = (input: SettingsInput) =>
 
 /**
  * The token goes in the body of this one request and is never stored by the page. `save` asks
- * the server to keep it in the OS keychain; it is sent only together with a token.
+ * the server to keep it in this PC's secure storage; it is sent only together with a token.
  */
 export const startConnection = (token: string | null, save = false) =>
   request(`${BASE}/transports/ngrok/start`, {
@@ -109,5 +107,5 @@ export const startConnection = (token: string | null, save = false) =>
 
 export const stopConnection = () => request(`${BASE}/transports/ngrok/stop`, { method: 'POST' });
 
-/** Deletes the token saved in the keychain; a connection that is running is not touched. */
+/** Deletes the token saved in the secure storage; a connection that is running is not touched. */
 export const deleteSavedToken = () => request(`${BASE}/token`, { method: 'DELETE', body: {} });

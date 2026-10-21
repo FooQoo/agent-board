@@ -13,7 +13,7 @@ flowchart LR
     LL["Local listener (127.0.0.1)"] --> Shared
 ```
 
-- The ngrok Rust SDK is linked into `agboard`. There is no external `ngrok` program and no sidecar. The supervisor in `src/server/monitor_connection/` opens one HTTP endpoint, with only the optional domain and no Traffic Policy, and forwards it to the monitor entry. The free ngrok plan rejects Traffic Policy actions, so none is sent.
+- The ngrok Rust SDK is linked into `agboard`. There is no external `ngrok` program and no sidecar. The supervisor in `src/server/monitor_connection/` opens one HTTP endpoint, with no domain and no Traffic Policy, and forwards it to the monitor entry. ngrok chooses the public address. The free ngrok plan rejects Traffic Policy actions, so none is sent.
 - The monitor entry is a dedicated loopback listener that the connection starts and stops. It runs in the same `serve` process as the local listener and shares the lifecycle guard, the FileStore index and reader, the watcher, and the `changed` broadcast. `serve.json` keeps only the local port, so the CLI, hook, and `wait` are unaffected.
 - The local listener and the monitor entry are separate surfaces. The local listener keeps its own Host, Origin, and token checks; the monitor entry never serves the desktop board, and the connection settings API exists only on the local listener.
 
@@ -38,20 +38,20 @@ The connection is one supervisor, `MonitorConnections`, owned by the server stat
 | `failed` | The last start failed; `failure` holds the code. |
 | `stopping` | Closing the tunnel and its sessions. |
 
-- **Starting.** Only an explicit start (the PC dialog's **Save and connect**, or `--monitor ngrok`) opens a tunnel. Opening the dialog or saving a draft never does. A start saves the settings as enabled first; if that fails, nothing starts. A token typed in the start request wins; otherwise `NGROK_AUTHTOKEN` is used; a keychain token is used only when neither is present.
-- **Restoring.** When `serve` starts and the saved settings are enabled, the supervisor starts the tunnel only if a token is available from the environment or the keychain; otherwise it reports `needs_config` and waits for the PC. An unreadable settings file reports `failed` with `config_unreadable` and keeps the PC entrance. A start from the command line takes priority over the saved settings; when it fails, `serve` exits with code 1.
-- **Changing the domain.** Saving a different domain while the tunnel runs closes the old tunnel, generates a new passcode, and ends the old sessions and event streams before the new tunnel is reported ready. Saving the same settings again changes nothing.
+- **Starting.** Only an explicit start (the PC dialog's **Save and connect**, or `--monitor ngrok`) opens a tunnel. Opening the dialog or saving a draft never does. A start saves the settings as enabled first; if that fails, nothing starts. A token typed in the start request wins; otherwise `NGROK_AUTHTOKEN` is used; a token saved in the PC's secure storage is used only when neither is present.
+- **Restoring.** When `serve` starts and the saved settings are enabled, the supervisor starts the tunnel only if a token is available from the environment or the secure storage; otherwise it reports `needs_config` and waits for the PC. An unreadable settings file reports `failed` with `config_unreadable` and keeps the PC entrance. A start from the command line takes priority over the saved settings; when it fails, `serve` exits with code 1.
+- **Starting again.** A start while the tunnel runs (the PC dialog's **Save and connect** after **Reset token**, or any other start) closes the old tunnel, generates a new passcode, and ends the old sessions and event streams before the new tunnel is reported ready. Saving the same settings again changes nothing.
 - **Stopping.** Stop closes the tunnel, closes the entry so open event streams end, refuses new answers, and saves the settings as disabled. The settings file is written atomically; passcodes, sessions, and tokens are never written to disk.
 
 ## Where things are stored
 
 | What | Where |
 | --- | --- |
-| Domain, `enabled`, `revision` | `<data root>/.internal/monitor-connection.json`, an app-internal file with owner-only permissions. See [Shared files](../reference/files.md#monitor-connection-settings). |
-| ngrok token | Only in memory, unless the user saves it. A saved token lives in the OS keychain (service `agent-board`, account `ngrok-authtoken`). |
+| `enabled`, `revision` | `<data root>/.internal/monitor-connection.json`, an app-internal file with owner-only permissions. See [Shared files](../reference/files.md#monitor-connection-settings). |
+| ngrok token | Only in memory, unless the user saves it. A saved token lives in the PC's secure storage, the OS credential store (service `agent-board`, account `ngrok-authtoken`). |
 | Phone passcode and its count of wrong guesses, application sessions, CSRF tokens | Only in memory, for one start. |
 
-`NGROK_AUTHTOKEN` and the keychain are read lazily, so a run that never needs a token never touches the keychain. When the keychain is missing or refuses, `keychainAvailable` is false, saving is refused with `keychain_unavailable`, and the user enters the token each time.
+`NGROK_AUTHTOKEN` and the secure storage are read lazily, so a run that never needs a token never touches the secure storage. When the secure storage is missing or refuses, `keychainAvailable` is false, saving is refused with `keychain_unavailable`, and the user enters the token each time.
 
 ## Authentication and write protection
 

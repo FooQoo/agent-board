@@ -779,9 +779,6 @@ pub struct ServeArgs {
     /// Built-in mobile monitor connection; ngrok is the only mode (a 4-digit passcode is printed at startup)
     #[arg(long, value_name = "MODE")]
     pub monitor: Option<String>,
-    /// Reserved ngrok domain to use (a bare host name)
-    #[arg(long = "ngrok-domain", value_name = "HOST")]
-    pub ngrok_domain: Option<String>,
 }
 
 /// What parsing the command line produced.
@@ -1000,46 +997,29 @@ impl Cli {
     }
 }
 
-/// What `--monitor ngrok` asks for, after validation.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NgrokRequest {
-    pub domain: Option<String>,
-}
-
 /// Check the monitor options of `serve`. `env` reads one environment variable.
-/// `Ok(None)` means no monitor option was given. Every failure is an
-/// invalid-argument error (exit code 2) that never repeats a secret value.
+/// `Ok(false)` means no monitor option was given; `Ok(true)` means `--monitor ngrok`
+/// is valid. Every failure is an invalid-argument error (exit code 2) that never
+/// repeats a secret value.
 pub fn validate_monitor_args(
     args: &ServeArgs,
     env: &dyn Fn(&str) -> Option<String>,
-) -> Result<Option<NgrokRequest>, AgboardError> {
-    use crate::server::monitor_connection::contracts::normalize_domain;
+) -> Result<bool, AgboardError> {
     let invalid = |message: &str| AgboardError::InvalidArgument {
         message: message.to_string(),
         command: Some("serve".into()),
     };
     match args.monitor.as_deref() {
-        None => {
-            if args.ngrok_domain.is_some() {
-                return Err(invalid("--ngrok-domain requires --monitor ngrok."));
-            }
-            return Ok(None);
-        }
+        None => return Ok(false),
         Some("ngrok") => {}
         Some(_) => return Err(invalid("--monitor accepts only ngrok.")),
     }
-    let domain = args
-        .ngrok_domain
-        .as_deref()
-        .map(normalize_domain)
-        .transpose()
-        .map_err(|_| invalid("--ngrok-domain must be a bare host name."))?;
     if env("NGROK_AUTHTOKEN").is_none_or(|v| v.is_empty()) {
         return Err(invalid(
             "--monitor ngrok requires NGROK_AUTHTOKEN in the environment.",
         ));
     }
-    Ok(Some(NgrokRequest { domain }))
+    Ok(true)
 }
 
 impl Cli {

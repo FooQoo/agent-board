@@ -17,7 +17,6 @@ use serde::Deserialize;
 
 use crate::server::AppState;
 use crate::server::guard::{header_text, origin_allowed};
-use crate::server::monitor_connection::contracts::ContractError;
 use crate::server::monitor_connection::lifecycle::{
     ForgetError, Secret, SettingsUpdate, Snapshot, StartError, UpdateError,
 };
@@ -60,8 +59,6 @@ pub(super) async fn get_connections(
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SettingsBody {
     enabled: bool,
-    #[serde(default)]
-    domain: Option<String>,
     revision: u64,
 }
 
@@ -77,7 +74,6 @@ pub(super) async fn put_ngrok_settings(
     };
     let result = state.monitor.update(SettingsUpdate {
         enabled: body.enabled,
-        domain: body.domain,
         revision: body.revision,
     });
     match result {
@@ -88,7 +84,6 @@ pub(super) async fn put_ngrok_settings(
             "the settings changed.",
             "Reload the settings and try again.",
         ),
-        Err(UpdateError::Invalid(e)) => invalid(&contract_reason(&e)),
         Err(UpdateError::SaveFailed) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "save_failed",
@@ -103,7 +98,7 @@ pub(super) async fn put_ngrok_settings(
 struct StartBody {
     #[serde(default)]
     token: Option<String>,
-    /// Also keep the token in the OS keychain. Off unless asked for.
+    /// Also keep the token in this PC's secure storage (the OS keychain). Off unless asked for.
     #[serde(default)]
     save: bool,
 }
@@ -161,7 +156,6 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
             "the settings could not be saved.",
             "Nothing was changed and the connection was not started.",
         ),
-        Err(StartError::Invalid(e)) => invalid(&contract_reason(&e)),
         Err(StartError::Internal) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "start_failed",
@@ -183,7 +177,7 @@ fn keychain_unavailable() -> Response {
     error_response(
         StatusCode::CONFLICT,
         "keychain_unavailable",
-        "the OS keychain is not available.",
+        "secure storage on this PC is not available.",
         "Enter the token each time instead; nothing was saved or changed.",
     )
 }
@@ -199,9 +193,4 @@ fn invalid(reason: &str) -> Response {
         "the value is invalid.",
         reason,
     )
-}
-
-/// The contract's messages never include a secret value.
-fn contract_reason(e: &ContractError) -> String {
-    e.to_string()
 }

@@ -56,7 +56,7 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 | `features/` | `tasks/`・`epics/`・`projects/`・`settings/`・`monitor-connections/`（モバイル接続のPC用ダイアログ）: 一つの主題の表示、フック、計算、リクエスト。 |
 | `shared/` | `ui/`の基盤部品と汎用の枠、`markdown/`、`rich-editor/`、`api/`（HTTPの共通処理とサーバーのやり取りの型）、`lib/`、`styles/`、`theme/`、`i18n/`。 |
 
-ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`RequestDialog`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。モニターの`useBuildReload`も、入口から同じように渡します。
+ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`RequestDialog`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。ボードの設定スロット（`app/BoardSettings.tsx`）もこうした組み合わせの一つで、設定ダイアログにモバイル接続の入口を置き、隣にある接続ダイアログを持ちます。そのため、設定ダイアログを閉じてから接続ダイアログが開きます。モニターの`useBuildReload`も、入口から同じように渡します。
 
 `pnpm --dir web check`は、Biomeの後に`web/scripts/check-boundaries.mjs`を実行します。静的import、`import type`、再エクスポート、`import()`をたどり、規則に反するimport、解決できないimport、循環importがあると失敗します。許可リストで黙らせず、共通部分を下の層へ移すか、ページで組み合わせてください。機能全体を一つのファイルから再エクスポートしないでください。エディターやMarkdown表示のような重いモジュールが最初のスクリプトに入ってしまいます。遅延importは実装ファイルを指します。
 

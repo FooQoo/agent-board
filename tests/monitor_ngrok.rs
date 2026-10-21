@@ -89,7 +89,7 @@ impl Tunnel {
                 ..Opts::default()
             },
         );
-        assert_eq!(s.put(true, None, 0).status, 200);
+        assert_eq!(s.put(true, 0).status, 200);
         assert_eq!(s.start_ngrok(json!({})).status, 202);
         s.wait_status("ready");
         let backend = Self::current(&s);
@@ -223,15 +223,14 @@ fn stream_ends(mut stream: TcpStream, wait: Duration) -> bool {
 
 #[test]
 fn the_endpoint_is_opened_without_a_traffic_policy_and_nothing_checks_a_proof_header() {
-    // The connector is handed the token, the loopback backend and the optional
-    // domain, and nothing else: there is no policy to send, so a plan without
-    // Traffic Policy can run it.
+    // The connector is handed the token and the loopback backend, and nothing else:
+    // there is no policy and no domain to send, so a plan without Traffic Policy
+    // can run it.
     let t = Tunnel::up();
     {
         let calls = t.s.fake.calls.lock().unwrap();
         let call = calls.last().unwrap();
         assert_eq!(call.token, TOKEN);
-        assert_eq!(call.domain, None);
         assert!(call.backend.starts_with("http://127.0.0.1:"));
     }
     // The source has no `.traffic_policy(` call and names no proof header, so a plan
@@ -670,12 +669,8 @@ fn a_session_dies_with_the_run_that_issued_it() {
     let old_backend = t.backend;
     let opens = t.s.fake.opens.load(Ordering::SeqCst);
 
-    // A new domain means a new tunnel, passcode and session store.
-    let revision = t.s.get()["revision"].as_u64().unwrap();
-    assert_eq!(
-        t.s.put(true, Some("friend-xyz.ngrok.app"), revision).status,
-        200
-    );
+    // A new start means a new tunnel, passcode and session store.
+    assert_eq!(t.s.start_ngrok(json!({})).status, 202);
     let end = Instant::now() + Duration::from_secs(10);
     while t.s.fake.opens.load(Ordering::SeqCst) <= opens {
         assert!(Instant::now() < end, "the tunnel was not replaced");

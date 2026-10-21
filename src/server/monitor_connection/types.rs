@@ -10,9 +10,7 @@ use std::sync::Arc;
 use serde::Serialize;
 use url::Url;
 
-use super::contracts::{
-    ConnectionStatus, ContractError, EndpointError, PublicOrigin, open_endpoint,
-};
+use super::contracts::{ConnectionStatus, EndpointError, PublicOrigin, open_endpoint};
 use super::keychain::{NoKeychain, OsKeychain, TokenVault};
 use crate::server::monitor_auth::passcode::Passcode;
 
@@ -52,12 +50,6 @@ impl MonitorEnv {
     }
 }
 
-/// Settings given on the command line; they win over the saved ones for this run.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Overrides {
-    pub domain: Option<String>,
-}
-
 /// Short, fixed reasons a start can fail. Safe to show and to log.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -83,11 +75,11 @@ impl FailureCode {
     }
 }
 
-/// What the connector needs. `token` is a secret. There is no Traffic Policy to send.
+/// What the connector needs. `token` is a secret. There is no Traffic Policy and no
+/// domain to send: ngrok chooses the public address.
 pub struct OpenRequest {
     pub token: Secret,
     pub backend: Url,
-    pub domain: Option<String>,
 }
 
 /// An open tunnel. Dropping `keep_alive` closes it.
@@ -114,24 +106,19 @@ pub struct SdkConnector;
 impl Connector for SdkConnector {
     fn open(&self, request: OpenRequest) -> OpenFuture {
         Box::pin(async move {
-            let endpoint = open_endpoint(
-                request.token.expose(),
-                request.backend,
-                request.domain.as_deref(),
-                None,
-            )
-            .await
-            .map_err(|e| {
-                // Diagnostic only: the reason ngrok gave. The error text never holds the token.
-                eprintln!("agboard: ngrok did not open the tunnel: {e}");
-                OpenFailure {
-                    code: match e {
-                        EndpointError::Connect(_) => FailureCode::ConnectFailed,
-                        EndpointError::Listen(_) => FailureCode::EndpointFailed,
-                        EndpointError::PublicUrl => FailureCode::PublicUrlInvalid,
-                    },
-                }
-            })?;
+            let endpoint = open_endpoint(request.token.expose(), request.backend, None)
+                .await
+                .map_err(|e| {
+                    // Diagnostic only: the reason ngrok gave. The error text never holds the token.
+                    eprintln!("agboard: ngrok did not open the tunnel: {e}");
+                    OpenFailure {
+                        code: match e {
+                            EndpointError::Connect(_) => FailureCode::ConnectFailed,
+                            EndpointError::Listen(_) => FailureCode::EndpointFailed,
+                            EndpointError::PublicUrl => FailureCode::PublicUrlInvalid,
+                        },
+                    }
+                })?;
             Ok(OpenedTunnel {
                 public: endpoint.public.clone(),
                 keep_alive: Box::new(endpoint),
@@ -145,9 +132,9 @@ impl Connector for SdkConnector {
 pub struct MonitorOptions {
     /// Values from the process environment (the ngrok token).
     pub env: MonitorEnv,
-    /// Settings from the command line. When present the run must start the
+    /// `--monitor ngrok` was given on the command line. The run must then start the
     /// connection before it announces itself and fails if it cannot.
-    pub explicit: Option<Overrides>,
+    pub explicit: bool,
     /// Opens the public endpoint. Tests replace it so nothing reaches the network.
     pub connector: Arc<dyn Connector>,
     /// Where a saved token lives. Tests replace it so the real keychain is untouched.
@@ -156,7 +143,7 @@ pub struct MonitorOptions {
 
 impl MonitorOptions {
     /// Real SDK connector, the OS keychain and the given environment.
-    pub fn new(env: MonitorEnv, explicit: Option<Overrides>) -> Self {
+    pub fn new(env: MonitorEnv, explicit: bool) -> Self {
         Self {
             env,
             explicit,
@@ -166,7 +153,7 @@ impl MonitorOptions {
     }
 
     /// Like [`MonitorOptions::new`] but with no keychain: nothing is read or saved.
-    pub fn without_keychain(env: MonitorEnv, explicit: Option<Overrides>) -> Self {
+    pub fn without_keychain(env: MonitorEnv, explicit: bool) -> Self {
         Self {
             vault: Arc::new(NoKeychain),
             ..Self::new(env, explicit)
@@ -220,21 +207,18 @@ pub enum TokenSource {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub enabled: bool,
-    pub domain: Option<String>,
 }
 
 /// A settings change from the PC. `revision` is the one the PC last saw.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SettingsUpdate {
     pub enabled: bool,
-    pub domain: Option<String>,
     pub revision: u64,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum UpdateError {
     Conflict,
-    Invalid(ContractError),
     SaveFailed,
 }
 
@@ -248,7 +232,6 @@ pub enum StartError {
     SaveFailed,
     /// Saving the token was asked for but the keychain cannot take it; nothing was started.
     KeychainUnavailable,
-    Invalid(ContractError),
     Internal,
 }
 

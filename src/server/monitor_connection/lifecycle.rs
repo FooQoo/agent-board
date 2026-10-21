@@ -89,20 +89,17 @@ impl MonitorConnections {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Startup. With `explicit` settings, start now and wait for the result so
-    /// that a failure can end the process; otherwise restore a saved enabled
-    /// setting in the background, or wait for the PC when no token is held.
+    /// Startup. When `explicit` (`--monitor ngrok`), start now and wait for the
+    /// result so that a failure can end the process; otherwise restore a saved
+    /// enabled setting in the background, or wait for the PC when no token is held.
     pub async fn startup(
         self: &Arc<Self>,
-        explicit: Option<Overrides>,
+        explicit: bool,
     ) -> Result<Option<MonitorReady>, FailureCode> {
         let waiting = {
             let mut inner = self.lock();
-            if let Some(over) = explicit {
+            if explicit {
                 inner.config.enabled = true;
-                if over.domain.is_some() {
-                    inner.config.domain = over.domain;
-                }
                 inner.failure = None;
                 Some(self.begin(&mut inner).map_err(|e| failure_of(&e))?)
             } else {
@@ -139,15 +136,11 @@ impl MonitorConnections {
         }
         let candidate = ConnectionConfig {
             enabled: update.enabled,
-            domain: update.domain,
             revision: inner.config.revision + 1,
-        }
-        .validated()
-        .map_err(UpdateError::Invalid)?;
+        };
         self.store
             .save(&candidate)
             .map_err(|_: ConfigError| UpdateError::SaveFailed)?;
-        let changed = inner.config.domain != candidate.domain;
         inner.config = candidate;
         if inner.failure == Some(FailureCode::ConfigUnreadable) {
             inner.failure = None;
@@ -161,13 +154,6 @@ impl MonitorConnections {
             );
         if active && !inner.config.enabled {
             self.teardown(&mut inner);
-        } else if active && changed {
-            // A new domain means a new tunnel and a new passcode; the
-            // old tunnel stops being served before the new one is requested.
-            if let Err(e) = self.begin(&mut inner) {
-                inner.status = ConnectionStatus::Failed;
-                inner.failure = Some(failure_of(&e));
-            }
         } else if inner.run.is_none() && inner.failure.is_none() {
             inner.status = idle_status(&inner.config, inner.token.is_some());
         }
@@ -210,10 +196,7 @@ impl MonitorConnections {
             let next = ConnectionConfig {
                 enabled: true,
                 revision: inner.config.revision + 1,
-                ..inner.config.clone()
-            }
-            .validated()
-            .map_err(StartError::Invalid)?;
+            };
             self.store.save(&next).map_err(|_| StartError::SaveFailed)?;
             inner.config = next;
         }
@@ -268,7 +251,7 @@ pub(super) fn idle_status(config: &ConnectionConfig, has_token: bool) -> Connect
 /// The fixed failure reason for a start that could not begin.
 fn failure_of(error: &StartError) -> FailureCode {
     match error {
-        StartError::Invalid(_) | StartError::TokenRequired => FailureCode::ConfigInvalid,
+        StartError::TokenRequired => FailureCode::ConfigInvalid,
         _ => FailureCode::Internal,
     }
 }

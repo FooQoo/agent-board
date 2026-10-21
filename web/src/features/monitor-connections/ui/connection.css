@@ -1,11 +1,13 @@
 /*
- * The ngrok connection dialog and its entry row. Lengths follow the approved design (a 680px dialog
- * with 28px padding measured from the outer edge); colors come from the shared semantic tokens.
- * The rules are unlayered on purpose so they sit above the Tailwind utilities of the shared parts.
+ * The ngrok connection dialog and its entry row. Lengths follow the approved design (a 680x560
+ * dialog with 28px padding measured from the outer edge, two steps of 280px with a divider
+ * between them); colors come from the shared semantic tokens. The rules are unlayered on purpose
+ * so they sit above the Tailwind utilities of the shared parts.
  */
-/* Two classes, so the width wins over .modal whichever stylesheet loads first. */
+/* Two classes, so the size wins over .modal whichever stylesheet loads first. */
 .modal.connection-dialog {
   width: 680px;
+  height: 560px;
   gap: 16px;
   box-shadow: 0 12px 32px rgb(15 23 42 / 13%);
 }
@@ -24,38 +26,126 @@
   height: 36px;
 }
 
-.connection-dialog__intro,
-.connection-dialog__hint {
+/* The status line: a dot and a word, gray until the connection is up. */
+.connection-dialog__state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
+  color: var(--r-text2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.connection-dialog__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--r-muted);
+}
+
+.connection-dialog__state--on {
+  color: var(--r-done);
+}
+
+.connection-dialog__state--on .connection-dialog__dot {
+  background: var(--r-done);
+}
+
+.connection-dialog__intro {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* The form (or the connected view) takes what the header leaves; the footer sits at the bottom. */
+.connection-dialog__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.connection-dialog__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The two steps: 280px high, side by side, with a 1px divider as long as the row. */
+.connection-dialog__steps {
+  display: flex;
+  flex: 0 1 280px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.connection-dialog__step {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding-right: 24px;
+}
+
+.connection-dialog__step + .connection-dialog__step {
+  padding-right: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--r-border);
+}
+
+.connection-dialog__step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--r-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.connection-dialog__step-number {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--r-done);
+  color: var(--r-bg);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.connection-dialog__step-text {
+  align-self: stretch;
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 1.3;
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
 
-.connection-dialog__intro {
-  color: var(--r-text2);
-  font-size: 13px;
+.connection-dialog__step-text--note {
   line-height: 1.6;
-}
-
-.connection-dialog__hint {
-  color: var(--r-text2);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.connection-dialog__hint--body {
-  font-size: 13px;
-}
-
-.connection-dialog__form,
-.connection-dialog__connected {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
 .connection-dialog__field {
   display: flex;
+  align-self: stretch;
   flex-direction: column;
   gap: 8px;
 }
@@ -64,101 +154,40 @@
   line-height: 16px;
 }
 
-/* The passcode the phone types: large, evenly spaced digits in the same field shape as the URL. */
-.connection-dialog .connection-dialog__passcode {
-  height: 52px;
-  font-size: 26px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  letter-spacing: 0.4em;
+.connection-dialog__save label {
+  line-height: 1.4;
 }
 
-.connection-dialog .button-tall,
-.connection-dialog [data-slot="button"]:not(.connection-dialog__close) {
-  height: 40px;
+.connection-dialog__field:has(input:disabled) label {
+  color: var(--r-muted);
 }
 
-.connection-dialog__progress h3,
-.connection-dialog__status {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.6;
-}
-
-.connection-dialog__progress {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.connection-dialog__progress h3 {
-  color: var(--r-text);
-  font-size: 16px;
-}
-
-.connection-dialog__progress p {
-  margin: 0;
-  color: var(--r-text2);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.connection-dialog__status {
-  color: var(--r-done);
-}
-
-.connection-dialog__error {
-  margin: 0;
-  color: var(--r-danger);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-
-.connection-dialog__failure {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.connection-dialog__note {
+.connection-dialog__save {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: var(--r-bg);
-  color: var(--r-text2);
-  font-size: 12px;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-  white-space: pre-line;
 }
 
-.connection-dialog__submit,
-.connection-dialog__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+.connection-dialog .connection-dialog__token-link {
+  height: 38px;
+  padding: 0 18px;
+  text-decoration: none;
 }
 
+.connection-dialog .connection-dialog__token-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The QR code sits on a white tile that stays white in both themes, so a scanner can read it. */
 .connection-dialog__qr {
-  display: flex;
-  align-items: stretch;
-  gap: 20px;
-}
-
-.connection-dialog__qr-figure {
   display: flex;
   flex: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  align-self: center;
   width: 140px;
   height: 140px;
   margin: 0;
@@ -166,7 +195,7 @@
   background: #ffffff;
 }
 
-.connection-dialog__qr-figure img {
+.connection-dialog__qr img {
   width: 92px;
   height: 92px;
 }
@@ -177,29 +206,11 @@
   line-height: 1.6;
 }
 
-.connection-dialog__qr-copy {
+.connection-dialog__copy {
   display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0;
-}
-
-.connection-dialog__qr-title {
-  margin: 0;
-  color: var(--r-text);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.6;
-}
-
-.connection-dialog__qr-body {
-  margin: 8px 0 20px;
-  color: var(--r-text2);
-  font-size: 12px;
-  line-height: 1.6;
-  white-space: pre-line;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
 .connection-dialog__copied {
@@ -208,9 +219,169 @@
   line-height: 1.6;
 }
 
-@media (max-width: 520px) {
-  .connection-dialog__qr {
+/* The passcode the phone types: large, evenly spaced digits in a box. */
+.connection-dialog__passcode {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  justify-content: center;
+  height: 84px;
+  padding-left: 0.3em;
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-bg);
+  color: var(--r-text);
+  font-size: 36px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+}
+
+.connection-dialog__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.connection-dialog__progress h3 {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.connection-dialog__progress p {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+/* The stopped view: the heading, then what the saved token and the next step mean. */
+.connection-dialog__stopped {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.connection-dialog__stopped h3 {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.connection-dialog__stopped p {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* A rule, then the actions: the connect button alone, or the notice and the two actions. */
+.connection-dialog__footer {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--r-border);
+}
+
+.connection-dialog__footer--end {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.connection-dialog__error {
+  flex: 1;
+  margin: 0;
+  color: var(--r-danger);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.connection-dialog__notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--r-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.connection-dialog .connection-dialog__notice svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.connection-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.connection-dialog .connection-dialog__submit,
+.connection-dialog__actions [data-slot="button"]:not(.connection-dialog__stop),
+.connection-dialog__copy [data-slot="button"] {
+  height: 40px;
+}
+
+/* 保存して接続 and 再接続 share one width (the English save label sets it), so they match. */
+.connection-dialog .connection-dialog__submit,
+.connection-dialog .connection-dialog__reconnect {
+  min-width: 146px;
+}
+
+.connection-dialog .connection-dialog__stop {
+  height: 40px;
+  padding: 0 18px;
+  border-color: var(--r-danger);
+  color: var(--r-danger);
+}
+
+.connection-dialog .connection-dialog__stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--r-danger) 8%, transparent);
+}
+
+/* A short or narrow window cannot hold the fixed size: the dialog grows and the steps stack. */
+@media (max-height: 640px), (max-width: 720px) {
+  .modal.connection-dialog {
+    height: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .connection-dialog__steps {
+    flex: none;
     flex-direction: column;
+    gap: 20px;
+  }
+
+  .connection-dialog__step,
+  .connection-dialog__step + .connection-dialog__step {
+    padding: 0;
+    border-left: 0;
+  }
+
+  .connection-dialog__step + .connection-dialog__step {
+    padding-top: 20px;
+    border-top: 1px solid var(--r-border);
+  }
+
+  .connection-dialog__actions {
+    flex-wrap: wrap;
   }
 }
 
@@ -250,14 +421,4 @@
 .connection-entry [data-slot="button"] {
   flex: none;
   height: 40px;
-}
-
-.connection-dialog__field:has(input:disabled) label {
-  color: var(--r-muted);
-}
-
-.connection-dialog__save {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
