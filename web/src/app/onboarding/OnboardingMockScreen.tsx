@@ -22,10 +22,10 @@ export type ScreenKind =
 
 const noop = () => {};
 
-const TARGET_SAMPLES: SpotlightRect = { x: 30, y: 126, width: 390, height: 220 };
-const TARGET_RUNNING: SpotlightRect = { x: 442, y: 126, width: 396, height: 118 };
-const TARGET_PENDING: SpotlightRect = { x: 442, y: 126, width: 396, height: 496 };
-const TARGET_RESUMED: SpotlightRect = { x: 442, y: 126, width: 396, height: 118 };
+const TARGET_SAMPLES: SpotlightRect = { x: 30, y: 126, width: 268, height: 220 };
+const TARGET_RUNNING: SpotlightRect = { x: 326, y: 126, width: 268, height: 118 };
+const TARGET_PENDING: SpotlightRect = { x: 326, y: 126, width: 268, height: 496 };
+const TARGET_RESUMED: SpotlightRect = { x: 326, y: 126, width: 268, height: 118 };
 
 /** The sample answer form inside the pending card, with the controls of the approved mock. */
 function SampleAnswerForm() {
@@ -115,7 +115,6 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
             onExit={noop}
             renderTarget={
               <MockStageCards
-                left={10}
                 cards={[
                   <TaskCardView key="a" task={runningSample} selected={false} onSelect={noop} />,
                 ]}
@@ -160,7 +159,6 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
             onExit={noop}
             renderTarget={
               <MockStageCards
-                left={10}
                 cards={[
                   <TaskCardView
                     key="p"
@@ -204,7 +202,6 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
             onExit={noop}
             renderTarget={
               <MockStageCards
-                left={10}
                 cards={[
                   <TaskCardView key="r" task={resumedSample} selected={false} onSelect={noop} />,
                 ]}

@@ -1,19 +1,20 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DetailPanel } from '../../features/tasks/detail/DetailPanel';
 import { Header } from '../../shared/ui/app-header/Header';
 import { SAMPLE_PROJECT } from './mock-data';
 
 /** The mock's controls do nothing; the stories show their state, not their behaviour. */
 const noop = () => {};
 
-export const LANE_X = [24, 440, 856] as const;
+export const LANE_X = [24, 320, 616] as const;
 export const LANE_TOP = 80;
-export const LANE_WIDTH = 400;
+export const LANE_WIDTH = 280;
 export const LANE_HEIGHT = 756;
 export const CARD_LEFT = 12;
-export const CARD_WIDTH = 376;
-export const CARD_PITCH = 102;
-export const CARD_TOP = 55;
+export const CARD_WIDTH = 256;
+export const CARD_PITCH = 101;
+export const CARD_TOP = 50;
 
 const RESULT_LANE_NAMES = {
   en: ['To do', 'In progress', 'Done'],
@@ -90,6 +91,9 @@ export function MockBoard({
           ))}
         </div>
       ))}
+      <div style={{ position: 'absolute', left: 920, top: 56, width: 360, height: 804 }}>
+        <DetailPanel projectId={null} task={null} onClose={noop} onRemove={async () => false} />
+      </div>
       <div
         style={{
           position: 'absolute',
@@ -118,7 +122,7 @@ export function MockBoard({
 export function MockStageCards({
   cards,
   left = 6,
-  top = 9,
+  top = 4,
 }: {
   cards: ReactNode[];
   left?: number;
@@ -133,7 +137,7 @@ export function MockStageCards({
             position: 'absolute',
             left,
             top: top + index * CARD_PITCH,
-            width: 375,
+            width: CARD_WIDTH,
           }}
         >
           {card}
