@@ -46,31 +46,32 @@ describe('summary', () => {
   });
 
   it('refuses a task or epic without the new fields, or with a wrong type', () => {
-    const base = JSON.parse(read('summary.json'));
-    const without = (pick: (s: any) => any, key: string) => {
+    type Entry = Record<string, unknown>;
+    type Doc = { tasks: Entry[]; epics: Entry[] };
+    const base = JSON.parse(read('summary.json')) as Doc;
+    const task = (doc: Doc) => doc.tasks[0] as Entry;
+    const epic = (doc: Doc) => doc.epics[0] as Entry;
+    for (const [pick, key] of [
+      [task, 'acceptanceError'],
+      [task, 'createdAt'],
+      [epic, 'priority'],
+      [epic, 'priorityError'],
+    ] as const) {
       const copy = structuredClone(base);
       delete pick(copy)[key];
-      return copy;
-    };
-    for (const [pick, key] of [
-      [(s: any) => s.tasks[0], 'acceptanceError'],
-      [(s: any) => s.tasks[0], 'createdAt'],
-      [(s: any) => s.epics[0], 'priority'],
-      [(s: any) => s.epics[0], 'priorityError'],
-    ] as const) {
-      expect(() => parseSummary(without(pick, key)), key).toThrow(ContractError);
+      expect(() => parseSummary(copy), key).toThrow(ContractError);
     }
-    for (const change of [
-      (s: any) => (s.tasks[0].acceptanceError = 'yes'),
-      (s: any) => (s.tasks[0].createdAt = 5),
-      (s: any) => (s.epics[0].priority = [1.5]),
-      (s: any) => (s.epics[0].priority = [0]),
-      (s: any) => (s.epics[0].priority = '303'),
-      (s: any) => (s.epics[0].priorityError = 1),
-    ]) {
+    for (const [pick, key, value] of [
+      [task, 'acceptanceError', 'yes'],
+      [task, 'createdAt', 5],
+      [epic, 'priority', [1.5]],
+      [epic, 'priority', [0]],
+      [epic, 'priority', '303'],
+      [epic, 'priorityError', 1],
+    ] as const) {
       const copy = structuredClone(base);
-      change(copy);
-      expect(() => parseSummary(copy)).toThrow(ContractError);
+      pick(copy)[key] = value;
+      expect(() => parseSummary(copy), `${key}=${JSON.stringify(value)}`).toThrow(ContractError);
     }
   });
 
