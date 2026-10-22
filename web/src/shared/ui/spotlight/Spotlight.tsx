@@ -7,7 +7,10 @@ export interface SpotlightRect {
   x: number;
   y: number;
   width: number;
-  height: number;
+  /** Omit to let the frame follow its content, up to `maxHeight`. */
+  height?: number;
+  /** The tallest the frame may grow; a taller region scrolls inside it. */
+  maxHeight?: number;
 }
 
 /**
@@ -29,6 +32,7 @@ export function Spotlight({
     top: target.y,
     width: target.width,
     height: target.height,
+    maxHeight: target.maxHeight,
   };
   return (
     <div data-slot="spotlight" className={cn('spotlight', className)} style={style}>

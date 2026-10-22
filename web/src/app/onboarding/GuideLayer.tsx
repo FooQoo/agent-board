@@ -50,7 +50,8 @@ function useLaneRect(column: Column | null): SpotlightRect | null {
       x: box.left + 6,
       y: top,
       width: box.width - 12,
-      height: Math.max(0, Math.min(box.height - 52, 500, panelTop - PANEL_GAP - top)),
+      // The frame follows its cards. It is capped here, and taller cards scroll inside it.
+      maxHeight: Math.max(0, Math.min(box.height - 52, panelTop - PANEL_GAP - top)),
     });
   }, [column]);
   useLayoutEffect(() => {

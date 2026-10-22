@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { i18n } from '../../shared/i18n';
 import type { ProjectId, Task } from '../../shared/api/contracts';
 import { type GuideScreen, NOTICE_MS, RUNNING_MIN_MS } from './guideTiming';
+import { openGuide } from './openGuide';
 import { useGuideLease } from './useGuideLease';
 import { useTutorialReplay } from './useTutorialReplay';
 import {
@@ -14,11 +15,8 @@ import {
   abortGuide,
   phaseOf,
   advanceGuide,
-  claimGuide,
   finishGuide,
   newId,
-  readGuide,
-  recoverGuide,
   skipGuide,
   startGuide,
   GuideError,
@@ -69,11 +67,14 @@ export function useGuide({
   const bound = useRef<ProjectId | null>(null);
   const pending = useRef<PendingCommand | null>(null);
   const attempt = useRef<string | null>(null);
-  const checked = useRef(false);
+  // The last project whose guide was read, so the first read and the offer run once per project.
+  const checked = useRef<ProjectId | null>(null);
   // The run whose second question has been seen pending on its card.
   const askedRun = useRef<string | null>(null);
   const stateRef = useRef<GuideState | null>(null);
   stateRef.current = state;
+  // Every command goes to the project on screen, even after the user switches projects.
+  if (projectId) bound.current = projectId;
 
   const apply = useCallback((next: GuideState) => {
     setState(next);
@@ -83,24 +84,20 @@ export function useGuide({
 
   const fail = useCallback((cause: unknown) => {
     setBusy(false);
-    const network = i18n.t('onboarding.guide.networkError');
-    setError(cause instanceof GuideError ? (cause.reason ?? cause.message) : network);
+    // A server fault carries only a generic English text, so it shows the translated network text.
+    const refusal = cause instanceof GuideError && cause.status < 500 ? cause : null;
+    setError(
+      refusal ? (refusal.reason ?? refusal.message) : i18n.t('onboarding.guide.networkError'),
+    );
   }, []);
 
   // Read the guide once the board is ready, and offer it when the data area has not seen it.
   useEffect(() => {
-    if (!eligible || !projectId || checked.current) return;
-    checked.current = true;
-    bound.current = projectId;
+    if (!eligible || !projectId || checked.current === projectId) return;
+    checked.current = projectId;
     void (async () => {
       try {
-        let current = await readGuide();
-        if (current.status === 'active' && !current.owner) {
-          current = await recoverGuide();
-        }
-        if (current.status === 'unseen' || current.status === 'interrupted') {
-          current = await claimGuide(clientId, current.revision);
-        }
+        const current = await openGuide(clientId);
         if (current.status === 'offered' && current.owner?.clientId === clientId) {
           apply(current);
           setScreen({ kind: 'welcome' });

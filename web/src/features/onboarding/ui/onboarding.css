@@ -86,9 +86,15 @@
   padding: 24px;
   transform: translateX(-50%);
   border-radius: 12px;
+  border: 1px solid var(--r-border);
   background: var(--r-surface);
   color: var(--r-text);
   box-shadow: 0 12px 32px rgb(15 23 42 / 0.2);
+}
+
+/* The panel takes focus when no button can; the ring belongs to the buttons, not the caption. */
+.onboarding-panel:focus {
+  outline: none;
 }
 
 .onboarding-panel__head {
@@ -188,17 +194,18 @@
 }
 
 /*
- * The live cards inside the spotlight keep the mock's spacing: 5px from the top edge, 6px from the
- * sides, and 12px between cards. The padding also leaves room for their focus rings. On a short
- * stage the cards scroll inside the frame, so an answer form below the fold can still be reached.
+ * The live cards inside the spotlight keep the mock's spacing: 9px from the top edge, 6px from the
+ * sides, and 12px between cards. The padding also leaves room for their focus rings. The frame is as
+ * tall as its cards, up to the cap the app sets on the frame; the cards inherit that cap, so on a
+ * short stage they scroll inside the frame and an answer form below the fold can still be reached.
  */
 .onboarding-stage__cards {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: 100%;
-  padding: 5px 6px;
+  max-height: inherit;
+  padding: 9px 6px;
   overflow-y: auto;
 }
 
@@ -208,7 +215,7 @@
  * and the stage is transparent because the spotlight does the dimming.
  */
 [data-slot="dialog-overlay"].onboarding-overlay {
-  background: rgb(15 23 42 / 66%);
+  background: rgb(15 23 42 / 62%);
 }
 
 [data-slot="dialog-overlay"].onboarding-overlay--stage {

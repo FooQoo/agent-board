@@ -1,7 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectId, Task } from '../../shared/api/contracts';
-import type { GuideRunState, GuideState } from './api';
+import { i18n } from '../../shared/i18n';
+import '../../shared/i18n/onboarding-strings';
+import { GuideError, type GuideRunState, type GuideState } from './api';
 
 const api = vi.hoisted(() => ({
   readGuide: vi.fn(),
@@ -26,6 +28,7 @@ import { requestTutorial } from './tutorialRequest';
 import { useGuide } from './useGuide';
 
 const PROJECT = 'a'.repeat(32) as ProjectId;
+const OTHER_PROJECT = 'c'.repeat(32) as ProjectId;
 
 function guide(patch: Partial<GuideState>): GuideState {
   return {
@@ -218,5 +221,138 @@ describe('useGuide', () => {
     rerender({ eligible: true });
     await waitFor(() => expect(result.current.screen.kind).toBe('welcome'));
     expect(api.replayGuide).toHaveBeenCalledTimes(1);
+  });
+
+  describe('a guide left active by a closed or reloaded tab', () => {
+    const OFFERED = guide({ status: 'offered', revision: 7, owner: OWNER });
+
+    it('takes back a run whose lease has expired, then offers the guide again', async () => {
+      api.readGuide.mockResolvedValue(
+        guide({
+          status: 'active',
+          revision: 5,
+          owner: { clientId: 'old-tab', leaseUntil: '2000-01-01T00:00:00Z' },
+          run: questionRun(),
+        }),
+      );
+      api.recoverGuide.mockResolvedValue(guide({ status: 'interrupted', revision: 6 }));
+      api.claimGuide.mockResolvedValue(OFFERED);
+      const { result } = renderHook(() =>
+        useGuide({ projectId: PROJECT, eligible: true, tasks: [], clientId: 'tab' }),
+      );
+      await waitFor(() => expect(result.current.screen.kind).toBe('welcome'));
+      expect(api.recoverGuide).toHaveBeenCalledTimes(1);
+      expect(api.claimGuide).toHaveBeenCalledWith('tab', 6);
+      expect(api.recoverGuide.mock.invocationCallOrder[0]).toBeLessThan(
+        api.claimGuide.mock.invocationCallOrder[0] ?? 0,
+      );
+    });
+
+    it('takes back a run that no tab holds', async () => {
+      api.readGuide.mockResolvedValue(
+        guide({ status: 'active', revision: 5, owner: null, run: questionRun() }),
+      );
+      api.recoverGuide.mockResolvedValue(guide({ status: 'interrupted', revision: 6 }));
+      api.claimGuide.mockResolvedValue(OFFERED);
+      const { result } = renderHook(() =>
+        useGuide({ projectId: PROJECT, eligible: true, tasks: [], clientId: 'tab' }),
+      );
+      await waitFor(() => expect(result.current.screen.kind).toBe('welcome'));
+      expect(api.recoverGuide).toHaveBeenCalledTimes(1);
+      expect(api.claimGuide).toHaveBeenCalledWith('tab', 6);
+    });
+
+    it('leaves a run alone while another tab holds a live lease', async () => {
+      api.readGuide.mockResolvedValue(
+        guide({
+          status: 'active',
+          revision: 5,
+          owner: { clientId: 'other-tab', leaseUntil: '2099-01-01T00:00:00Z' },
+          run: questionRun(),
+        }),
+      );
+      const { result } = renderHook(() =>
+        useGuide({ projectId: PROJECT, eligible: true, tasks: [], clientId: 'tab' }),
+      );
+      await waitFor(() => expect(api.readGuide).toHaveBeenCalled());
+      await act(async () => {});
+      expect(api.recoverGuide).not.toHaveBeenCalled();
+      expect(api.claimGuide).not.toHaveBeenCalled();
+      expect(result.current.screen.kind).toBe('hidden');
+    });
+  });
+
+  describe('a failed request', () => {
+    async function welcomeThenStart(failure: Error) {
+      api.readGuide.mockResolvedValue(guide({ status: 'offered', revision: 1, owner: OWNER }));
+      api.startGuide.mockRejectedValue(failure);
+      const hook = renderHook(() =>
+        useGuide({ projectId: PROJECT, eligible: true, tasks: [], clientId: 'tab' }),
+      );
+      await waitFor(() => expect(hook.result.current.screen.kind).toBe('welcome'));
+      await act(async () => hook.result.current.start());
+      await waitFor(() => expect(hook.result.current.error).not.toBeNull());
+      return hook.result.current.error;
+    }
+
+    it('shows the translated text for a server fault instead of its English text', async () => {
+      const error = await welcomeThenStart(
+        new GuideError(500, 'request_failed', 'Request failed (500)'),
+      );
+      expect(error).toBe(i18n.t('onboarding.guide.networkError'));
+      expect(error).not.toContain('Request failed');
+    });
+
+    it('keeps the reason of a refused request', async () => {
+      const error = await welcomeThenStart(
+        new GuideError(409, 'stale_revision', 'The guide changed in another tab.'),
+      );
+      expect(error).toBe('The guide changed in another tab.');
+    });
+  });
+
+  describe('when the user switches to another project', () => {
+    function render() {
+      return renderHook(
+        ({ projectId }: { projectId: ProjectId }) =>
+          useGuide({ projectId, eligible: true, tasks: [], clientId: 'tab' }),
+        { initialProps: { projectId: PROJECT } },
+      );
+    }
+
+    it('starts a replayed guide in the project on screen, not the first one', async () => {
+      api.readGuide.mockResolvedValue(guide({ status: 'completed', revision: 9 }));
+      api.replayGuide.mockResolvedValue(guide({ status: 'offered', revision: 10, owner: OWNER }));
+      api.startGuide.mockResolvedValue(
+        guide({ status: 'active', revision: 11, owner: OWNER, run: questionRun() }),
+      );
+      const { result, rerender } = render();
+      await waitFor(() => expect(api.readGuide).toHaveBeenCalledTimes(1));
+      rerender({ projectId: OTHER_PROJECT });
+      await waitFor(() => expect(api.readGuide).toHaveBeenCalledTimes(2));
+      act(() => requestTutorial());
+      await waitFor(() => expect(result.current.screen.kind).toBe('welcome'));
+      await act(async () => result.current.start());
+      expect(api.startGuide).toHaveBeenCalledWith(
+        OTHER_PROJECT,
+        expect.objectContaining({ clientId: 'tab', expectedRevision: 10 }),
+      );
+    });
+
+    it('offers an interrupted guide on the next project, and reads each project once', async () => {
+      api.readGuide
+        .mockResolvedValueOnce(guide({ status: 'completed', revision: 9 }))
+        .mockResolvedValue(guide({ status: 'interrupted', revision: 12 }));
+      api.claimGuide.mockResolvedValue(guide({ status: 'offered', revision: 13, owner: OWNER }));
+      const { result, rerender } = render();
+      await waitFor(() => expect(api.readGuide).toHaveBeenCalledTimes(1));
+      expect(result.current.screen.kind).toBe('hidden');
+      rerender({ projectId: OTHER_PROJECT });
+      await waitFor(() => expect(result.current.screen.kind).toBe('welcome'));
+      expect(api.claimGuide).toHaveBeenCalledWith('tab', 12);
+      rerender({ projectId: OTHER_PROJECT });
+      await act(async () => {});
+      expect(api.readGuide).toHaveBeenCalledTimes(2);
+    });
   });
 });

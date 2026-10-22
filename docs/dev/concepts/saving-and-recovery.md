@@ -74,7 +74,7 @@ The guide keeps one file for the whole shared directory, `shared/.internal/onboa
 
 Each operation takes the guide lock and then the project lock. A command that changes the state saves the file atomically with a new revision. A request names the revision it read and a command ID. A repeated command returns the current state without repeating the step, and a request that names an old revision is refused.
 
-A tab holds the lease for 30 seconds and renews it with a heartbeat every 10 seconds. A heartbeat extends the lease without changing the revision. When the server starts, and when a recovery request arrives, a run whose lease has expired is ended: its cards are archived, and the guide becomes `interrupted`.
+A tab holds the lease for 30 seconds and renews it with a heartbeat every 10 seconds. A heartbeat extends the lease without changing the revision. When the server starts, and when a recovery request arrives, a run whose lease has expired is ended: its cards are archived, and the guide becomes `interrupted`. The board also sends a recovery request when its first read finds an `active` guide whose lease has expired or has no owner, which is what a closed or reloaded tab leaves behind. A lease that is still live belongs to another tab and is left alone.
 
 ## Failure behavior at a glance
 
