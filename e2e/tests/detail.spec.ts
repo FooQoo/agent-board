@@ -168,6 +168,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
   expect(visited).toEqual([
     'BUTTON agent-board',
     'BUTTON Add task',
+    'BUTTON Docs',
     'BUTTON Epics',
     'BUTTON Archive',
     'BUTTON Settings',
@@ -181,7 +182,6 @@ test('the task grips never take keyboard focus', async ({ page }) => {
     'BUTTON Cancel',
     'DIV #13',
     'BUTTON Archive completed tasks',
-    'DIV #9',
   ]);
 
   // The detail panel exposes its header actions, close, and the selected tab; the grip itself never receives focus.
@@ -203,7 +203,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions (switcher, Add task, Epics, Archive, Settings), eight cards, the Pending form (two choices, the note, Cancel, Send), four detail controls.
-  expect(focusable).toHaveLength(1 + 1 + 1 + 1 + 1 + 1 + 8 + 4 + 4);
+  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), eight cards, the Pending form (two choices, the note, Cancel, Send), four detail controls.
+  expect(focusable).toHaveLength(1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 4 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });
