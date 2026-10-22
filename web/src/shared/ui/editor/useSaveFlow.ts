@@ -4,13 +4,16 @@ import { WriteError } from '../../api/writeErrors';
 
 /**
  * Runs a save once at a time. While it runs the dialog cannot be closed; when it fails the input
- * stays and `error` says why; when it succeeds the dialog closes.
+ * stays and `error` says why; when it succeeds the dialog closes, unless `closeOnSuccess` is false
+ * (a surface that keeps editing after a save).
  */
 export function useSaveFlow({
   onClose,
   onSavingChange,
+  closeOnSuccess = true,
 }: {
   onClose: () => void;
+  closeOnSuccess?: boolean;
   onSavingChange?: (saving: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -29,7 +32,8 @@ export function useSaveFlow({
       try {
         await save();
         busy.current = false;
-        onClose();
+        if (closeOnSuccess) onClose();
+        else onSavingChange?.(false);
       } catch (cause) {
         busy.current = false;
         onSavingChange?.(false);
@@ -44,7 +48,7 @@ export function useSaveFlow({
         setSaving(false);
       }
     },
-    [onClose, onSavingChange, t],
+    [onClose, onSavingChange, closeOnSuccess, t],
   );
 
   return { saving, error, busy, run };
