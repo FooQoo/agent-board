@@ -18,7 +18,7 @@ export interface EditorShellProps {
   idLabel?: string;
   /** The label the focus returns to when the dialog closes, if the opener is gone. */
   returnFocusSelector?: string;
-  title: string;
+  title: ReactNode;
   badge: string;
   variant: 'edit' | 'create';
   /** There are unsaved changes: closing asks first. */

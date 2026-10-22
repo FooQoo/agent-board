@@ -71,9 +71,21 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
         dirty={editor.dirty}
         saving={editor.saving}
         error={editor.error}
-        footerStatus={editor.dirty ? t('editor.unsaved') : t('editor.noChanges')}
+        footerStatus={
+          editor.conflict
+            ? t('docs.notSaved')
+            : editor.dirty
+              ? t('editor.unsaved')
+              : t('editor.noChanges')
+        }
+        footerWarn={editor.conflict || editor.dirty}
         actions={
-          <Button type="button" disabled={!editor.canSave} onClick={() => void editor.save()}>
+          <Button
+            type="button"
+            className="docs-dialog__save"
+            disabled={!editor.canSave}
+            onClick={() => void editor.save()}
+          >
             {t('editor.save')}
           </Button>
         }
