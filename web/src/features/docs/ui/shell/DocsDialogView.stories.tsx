@@ -219,13 +219,31 @@ export const PhoneFileList: Story = {
   },
 };
 
-/** Phone width, a file chosen: the body fills the screen and the list is hidden. */
+/** Phone width, a file chosen: the body fills the screen, the footer has Files and Save, and Files goes back to the list. */
 export const PhoneBody: Story = {
-  args: { compact: true, selectedPath: 'Product/Tasks.md', children: body },
+  args: {
+    compact: true,
+    selectedPath: 'Product/Tasks.md',
+    children: body,
+    actions: (
+      <Button className="docs-dialog__save" disabled>
+        Save
+      </Button>
+    ),
+  },
   globals: { width: 'phone-390' },
   play: async () => {
     const view = await opened();
     await expect(view.getByRole('heading', { name: 'Tasks' })).toBeVisible();
     await expect(view.queryByRole('tree')).toBeNull();
+    await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
+    // Only the header's close button remains; the footer's is hidden on the phone.
+    await expect(view.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+    await userEvent.click(view.getByRole('button', { name: 'Files' }));
+    await expect(await view.findByRole('tree')).toBeVisible();
+    await expect(view.queryByRole('heading', { name: 'Tasks' })).toBeNull();
+    await userEvent.click(view.getAllByRole('treeitem', { name: /Tasks\.md/ })[0] as HTMLElement);
+    await waitFor(() => expect(view.queryByRole('tree')).toBeNull());
+    await expect(view.getByRole('heading', { name: 'Tasks' })).toBeVisible();
   },
 };

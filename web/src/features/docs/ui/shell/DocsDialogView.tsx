@@ -1,3 +1,4 @@
+import { FolderTreeIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
@@ -112,7 +113,9 @@ export function DocsDialogView({
   const phone = compact ?? windowCompact;
   const empty = status === 'ready' && tree.length === 0;
   const hasFile = selectedPath !== null && !empty;
-  const pane = phonePane ?? (hasFile || empty ? 'body' : 'list');
+  // The phone's Files button asks for the list while a file is open; choosing a file ends it.
+  const [listRequested, setListRequested] = useState(false);
+  const pane = phonePane ?? (listRequested ? 'list' : hasFile || empty ? 'body' : 'list');
   const drag = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const clamp = (width: number) =>
@@ -141,7 +144,17 @@ export function DocsDialogView({
         )}
       </div>
     );
-  else list = <DocsFileTree nodes={tree} selectedPath={selectedPath} onSelectFile={onSelectFile} />;
+  else
+    list = (
+      <DocsFileTree
+        nodes={tree}
+        selectedPath={selectedPath}
+        onSelectFile={(path) => {
+          setListRequested(false);
+          onSelectFile(path);
+        }}
+      />
+    );
 
   let center: ReactNode;
   if (empty) center = <DocsPlaceholder kind="noDocs" rootPath={rootPath} />;
@@ -150,7 +163,7 @@ export function DocsDialogView({
 
   return (
     <EditorShell
-      title={<DocsTitle path={hasFile ? selectedPath : null} />}
+      title={<DocsTitle path={hasFile && pane === 'body' ? selectedPath : null} />}
       badge=""
       variant="edit"
       className="docs-dialog"
@@ -165,7 +178,24 @@ export function DocsDialogView({
       error={error}
       onClose={onClose}
       status={footerStatus ?? t('editor.noChanges')}
-      actions={hasFile ? actions : null}
+      actions={
+        hasFile ? (
+          <>
+            {phone && (
+              <Button
+                type="button"
+                variant="outline"
+                className="docs-dialog__files"
+                onClick={() => setListRequested(true)}
+              >
+                <FolderTreeIcon aria-hidden="true" />
+                {t('docs.files')}
+              </Button>
+            )}
+            {actions}
+          </>
+        ) : null
+      }
     >
       <div className="docs-dialog__body">
         <div

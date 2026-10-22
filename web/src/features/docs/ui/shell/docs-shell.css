@@ -377,3 +377,39 @@
 .docs-dialog[data-compact="true"] .docs-dialog__rule {
   margin-bottom: 14px;
 }
+
+/* The phone's footer is the two buttons Files and Save; the header's close button closes. */
+.docs-dialog[data-compact="true"] .editor__footer .dialog-actions {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.docs-dialog[data-compact="true"] .editor__footer .dialog-actions > button {
+  min-width: 0;
+}
+
+.docs-dialog[data-compact="true"]
+  .editor__footer
+  .dialog-actions
+  > button:not(.docs-dialog__files, .docs-dialog__save) {
+  display: none;
+}
+
+.docs-dialog[data-compact="true"] .editor__status {
+  display: none;
+}
+
+.docs-dialog[data-compact="true"][data-warn="true"] .editor__status {
+  display: flex;
+  flex: none;
+}
+
+/* The list screen has no footer, and the title leaves out "Docs" to fit the path. */
+.docs-dialog[data-compact="true"][data-pane="list"] .editor__footer {
+  display: none;
+}
+
+.docs-dialog[data-compact="true"] .docs-crumbs__root,
+.docs-dialog[data-compact="true"] .docs-crumbs__root + .docs-crumbs__item .docs-crumbs__sep {
+  display: none;
+}
