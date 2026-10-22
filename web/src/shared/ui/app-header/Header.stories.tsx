@@ -40,6 +40,7 @@ interface HeaderDemoProps {
   onAdd?: () => void;
   onArchive?: () => void;
   onEpics?: () => void;
+  onDocs?: () => void;
   onBack?: () => void;
 }
 
@@ -83,6 +84,7 @@ const meta = {
     onAdd: fn(),
     onArchive: fn(),
     onEpics: fn(),
+    onDocs: fn(),
     onBack: fn(),
   },
 } satisfies Meta<typeof HeaderDemo>;
@@ -97,6 +99,7 @@ export const Board: Story = {
     await expect(canvas.getByRole('heading', { name: 'Agent Board' })).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'alpha' })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: /add task/i })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: /docs/i })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: /epics/i })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: /archive/i })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: 'Settings' })).toBeEnabled();
@@ -110,6 +113,7 @@ export const BoardNotReady: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.queryByRole('button', { name: /add task/i })).toBeNull();
     await expect(canvas.queryByRole('button', { name: /archive/i })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: /docs/i })).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   },
 };
@@ -121,6 +125,7 @@ export const SwitchDisabled: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'alpha' })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: /add task/i })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: /docs/i })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: /epics/i })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: /archive/i })).toBeDisabled();
   },
@@ -164,6 +169,7 @@ export const JapaneseBoard: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: /タスク追加/ })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: /ドキュメント/ })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: '設定' })).toBeEnabled();
   },
 };
@@ -174,6 +180,8 @@ export const ActionCallbacks: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /add task/i }));
     await expect(args.onAdd).toHaveBeenCalledTimes(1);
+    await userEvent.click(canvas.getByRole('button', { name: /docs/i }));
+    await expect(args.onDocs).toHaveBeenCalledTimes(1);
     await userEvent.click(canvas.getByRole('button', { name: /epics/i }));
     await expect(args.onEpics).toHaveBeenCalledTimes(1);
     await userEvent.click(canvas.getByRole('button', { name: /archive/i }));

@@ -145,11 +145,13 @@ ol {
   gap: 6px;
 }
 
+.header__docs,
 .header__epics,
 .header__archive {
   gap: 6px;
 }
 
+.header__docs svg,
 .header__epics svg,
 .header__archive svg {
   width: 14px;

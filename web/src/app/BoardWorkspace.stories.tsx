@@ -161,6 +161,8 @@ function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppContro
     setRestoreFailure: () => {},
     projectName: () => project.name,
     viewMode,
+    docsProjectId: null,
+    setDocsProjectId: () => {},
   } as unknown as AppControllerModel;
 }
 

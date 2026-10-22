@@ -39,6 +39,9 @@ export function useAppActions(model: AppControllerModel) {
     onBack: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'board' }),
     onAdd: () => model.openDialog({ kind: 'request' }),
     onArchive: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'archive' }),
+    onDocs: () => {
+      if (isProjectId(activeId)) model.setDocsProjectId(activeId);
+    },
     onEpics: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'epics' }),
     onSelectEpic: (id) => dispatch({ type: 'SELECT_EPIC', id }),
     onSelectArchiveCard: (id) => dispatch({ type: 'SELECT_ARCHIVE_CARD', id }),

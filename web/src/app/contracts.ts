@@ -71,6 +71,9 @@ export interface AppControllerModel {
   setRestoreFailure: (value: { projectId: ProjectId; taskId: number } | null) => void;
   projectName: (projectId: ProjectId) => string | undefined;
   viewMode: ViewMode;
+  /** The project whose docs dialog is open, or null. */
+  docsProjectId: ProjectId | null;
+  setDocsProjectId: (projectId: ProjectId | null) => void;
 }
 
 export interface AppWorkspaceActions {
@@ -79,6 +82,7 @@ export interface AppWorkspaceActions {
   onAdd: () => void;
   onArchive: () => void;
   onEpics: () => void;
+  onDocs: () => void;
   onSelectEpic: (id: string | null) => void;
   onSelectArchiveCard: (id: number | null) => void;
   onSelectCard: (id: number | null) => void;

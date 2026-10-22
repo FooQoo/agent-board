@@ -159,6 +159,7 @@
  */
 .header__add,
 .header__back,
+.header__docs,
 .header__epics,
 .header__archive {
   min-width: var(--header-action-w);

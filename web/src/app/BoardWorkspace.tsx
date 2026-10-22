@@ -82,6 +82,7 @@ export function BoardWorkspace({
         onAdd={actions.onAdd}
         onArchive={actions.onArchive}
         onEpics={actions.onEpics}
+        onDocs={actions.onDocs}
       />
       <div
         className="app__body"
