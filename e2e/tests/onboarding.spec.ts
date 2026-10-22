@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ensureProject, makeHome, removeHome, startServe, statesPort, type Serve } from '../helpers/agboard';
+import { ensureProject, makeHome, projectId, removeHome, startServe, statesPort, type Serve } from '../helpers/agboard';
 
 // The first-run guide on a data area that has never shown it. Each test starts its own
 // serve on the states port, with its own data area, so the board tests are not affected.
@@ -122,4 +122,60 @@ test('OB-04: the settings start the tutorial again, and ending it archives its s
 	await expect(page.getByText('Guide 1 / 4')).toBeHidden();
 	expect(await sampleCardTitles(page)).toEqual([]);
 	expect((await guideState(url)).status).toBe('interrupted');
+});
+
+/** The titles of the cards the server holds for a project, from the board (open cards) or the archive. */
+async function serverTitles(url: string, id: string, list: 'board' | 'archive'): Promise<string[]> {
+	const response = await fetch(`${url}api/projects/${id}/${list}`);
+	expect(response.ok).toBe(true);
+	const body = (await response.json()) as { tasks: { title: string }[] };
+	return body.tasks.map((task) => task.title).sort();
+}
+
+test('OB-05: a tutorial started in a second project puts its samples on that project', async ({ page }) => {
+	home = makeHome('onboarding-switch', 'skipped');
+	ensureProject('first', home);
+	ensureProject('second', home);
+	serve = await startServe(statesPort, home);
+	const url = serve.url;
+	await page.goto(url);
+
+	// Whichever project opens first, the other one is the second project the user switches to.
+	const switcher = page.locator('header .project-switcher');
+	await expect(switcher).toHaveText(/^(first|second)$/);
+	const opened = (await switcher.innerText()).trim();
+	const target = opened === 'first' ? 'second' : 'first';
+	const openedId = projectId(opened, home);
+	const targetId = projectId(target, home);
+	await switcher.click();
+	await page.getByRole('menuitemradio', { name: target, exact: true }).click();
+	await expect(switcher).toHaveText(target);
+	await expect.poll(() => new URL(page.url()).searchParams.get('project')).toBe(targetId);
+	await expect(page.getByText('Try Agent Board')).toBeHidden();
+
+	await page.getByRole('button', { name: 'Settings' }).click();
+	await page.getByRole('button', { name: 'Try the tutorial' }).click();
+	await expect(page.getByText('Try Agent Board')).toBeVisible();
+	await page.getByRole('button', { name: 'Start guide' }).click();
+	await expect(page.getByText('Guide 1 / 4')).toBeVisible();
+
+	// The board behind the guide shows exactly the two cards of the run (the guide's spotlight shows copies of them).
+	const samples = ['Sample: choose the guide style', 'Sample: follow a task'];
+	const boardCards = page.locator('main .card').filter({ hasText: 'Sample:' });
+	await expect(boardCards).toHaveCount(2);
+	await expect(boardCards.filter({ hasText: samples[0] })).toHaveCount(1);
+	await expect(boardCards.filter({ hasText: samples[1] })).toHaveCount(1);
+	expect(new URL(page.url()).searchParams.get('project')).toBe(targetId);
+
+	// The server agrees: the cards belong to the project on screen, and the project opened first has none.
+	expect(await serverTitles(url, targetId, 'board')).toEqual(samples);
+	expect(await serverTitles(url, openedId, 'board')).toEqual([]);
+
+	await page.getByRole('button', { name: 'End guide' }).click();
+	await expect(page.getByText('Guide 1 / 4')).toBeHidden();
+	await expect.poll(async () => sampleCardTitles(page)).toEqual([]);
+	expect((await guideState(url)).status).toBe('interrupted');
+	expect(await serverTitles(url, targetId, 'board')).toEqual([]);
+	expect(await serverTitles(url, targetId, 'archive')).toEqual(samples);
+	expect(await serverTitles(url, openedId, 'archive')).toEqual([]);
 });
