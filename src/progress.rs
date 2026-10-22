@@ -152,8 +152,7 @@ pub fn build_with(
     let open_epics: std::collections::HashSet<&str> = snapshot
         .tasks
         .iter()
-        .filter(|task| !is_sample(task))
-        .filter(|task| matches!(task.task_status, Column::Todo | Column::Doing))
+        .filter(|task| !is_sample(task) && matches!(task.task_status, Column::Todo | Column::Doing))
         .filter_map(|task| task.epic_id.as_deref())
         .collect();
 
@@ -183,8 +182,7 @@ pub fn build_with(
             let mut tasks: Vec<&TaskView> = snapshot
                 .tasks
                 .iter()
-                .filter(|task| task.task_status == Column::Done)
-                .filter(|task| !is_sample(task))
+                .filter(|task| task.task_status == Column::Done && !is_sample(task))
                 .filter(|task| {
                     task.epic_id
                         .as_deref()
@@ -238,8 +236,7 @@ pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
     ordered
 }
 
-/// The guide's sample cards are never work for the agents: progress, hooks, and wait leave
-/// them out whatever their lane or run state.
+/// Guide sample cards are never work for agents, whatever their lane or run state.
 fn is_sample(task: &TaskView) -> bool {
     is_onboarding_sample(task.onboarding_sample.as_ref())
 }
