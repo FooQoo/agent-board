@@ -19,7 +19,7 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Group and order tasks | `epic`, `progress` |
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
-| Run the server and agent access | `serve`, `setup`, `hook` |
+| Run the server and agent access | `serve`, `stop`, `setup`, `hook` |
 | Delete things (people only) | `rm`, `project rm`, `epic rm`, `init` |
 
 ## Add and inspect tasks
@@ -137,6 +137,19 @@ When there has been no eligible task for the full interval, it prints `{"kind":"
 The phone is guarded by a 4-digit passcode that is made for each start; there is no sign-in option. An invalid `--monitor` value, a missing `NGROK_AUTHTOKEN`, or an unknown option exits with code 2. If the connection cannot start, `serve` exits with code 1 and does not start.
 
 When the connection is ready, the startup line shows the phone address and the passcode: `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`. With `--json`, the startup line has the `url` of the board and `monitor` with `mode: "ngrok"`, and the phone `url` and `passcode` in `ngrok`. The passcode is printed only here and in the board's connection dialog; tokens and policies are never printed. You can also set up the connection from the board's **Settings**; see the [mobile monitor guide](../operations/mobile-monitor).
+
+### Run in the background
+
+`agboard serve -d` (or `--daemon`) starts the server in the background and returns once it is ready, so the terminal is free and closing it does not stop the server. It prints the same address (and, with `--monitor ngrok`, the phone address and passcode) plus the process ID and the log file. `--port` and `--monitor` work as usual; with `--json`, the startup object also has `pid` and `log`.
+
+```sh
+agboard serve -d
+agboard stop
+```
+
+`agboard stop` shuts down the running server and returns when it has exited. It stops a server started with `serve` or `serve -d`. If no server is running, it says so and exits with code 0. `stop` takes no `--project`.
+
+The background server writes its output to `serve.log` in the data folder. The file is readable only by you, because it holds the phone passcode, and it is replaced at every `serve -d`. If a server is already running, `serve -d` exits with code 1 (`already_serving`). If the background server cannot start (for example the port is in use), `serve -d` exits with code 1 and shows the reason. The server does not restart by itself after a reboot.
 
 ## Set up the shared folder
 

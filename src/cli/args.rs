@@ -39,7 +39,8 @@ Commands:
   hook    Add the current progress table to an agent hook
   wait    Wait for a board change or the next task
   workspace Show the project's shared folder and where its files are
-  serve   Show the board in your browser
+  serve   Show the board in your browser (-d runs it in the background)
+  stop    Stop the running server
   setup   Add the shared folder to Codex and Claude Code settings
 
 Workflow for agents:
@@ -130,6 +131,9 @@ pub enum Command {
     Wait(WaitArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
+    /// Stop the running server (the one started with serve, or serve -d)
+    #[command(after_help = "Examples:\n  agboard stop\n  agboard stop --json")]
+    Stop(StopArgs),
     /// Create the data folder and add it to Codex and Claude Code settings
     Setup(SetupArgs),
     /// Show the project's shared folder and where its files are
@@ -161,6 +165,7 @@ impl Command {
             Command::Hook(_) => "hook",
             Command::Wait(_) => "wait",
             Command::Serve(_) => "serve",
+            Command::Stop(_) => "stop",
             Command::Setup(_) => "setup",
             Command::Workspace(_) => "workspace",
             Command::Progress(_) => "progress",
@@ -168,7 +173,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 19] = [
+pub const SUBCOMMAND_NAMES: [&str; 20] = [
     "project",
     "init",
     "add",
@@ -183,6 +188,7 @@ pub const SUBCOMMAND_NAMES: [&str; 19] = [
     "epic",
     "snapshot",
     "serve",
+    "stop",
     "hook",
     "wait",
     "workspace",
@@ -773,7 +779,7 @@ pub struct SetupArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard serve\n  agboard serve --port 7500\n  NGROK_AUTHTOKEN=... agboard serve --monitor ngrok"
+    after_help = "Examples:\n  agboard serve\n  agboard serve --port 7500\n  agboard serve -d\n  agboard stop\n  NGROK_AUTHTOKEN=... agboard serve --monitor ngrok"
 )]
 pub struct ServeArgs {
     /// Port to listen on (127.0.0.1 only)
@@ -782,7 +788,13 @@ pub struct ServeArgs {
     /// Built-in mobile monitor connection; ngrok is the only mode (a 4-digit passcode is printed at startup)
     #[arg(long, value_name = "MODE")]
     pub monitor: Option<String>,
+    /// Run in the background and return once the server is ready; stop it with `agboard stop`. Output goes to serve.log in the data directory
+    #[arg(short = 'd', long)]
+    pub daemon: bool,
 }
+
+#[derive(Args, Debug)]
+pub struct StopArgs {}
 
 /// What parsing the command line produced.
 #[derive(Debug)]
@@ -893,7 +905,7 @@ impl Cli {
             }
             (Command::Ls(args), None) if args.all_projects => {}
             // `serve` shows every project, so naming one is a mistake.
-            (Command::Serve(_) | Command::Setup(_), Some(_)) => {
+            (Command::Serve(_) | Command::Stop(_) | Command::Setup(_), Some(_)) => {
                 return Err(AgboardError::InvalidArgument {
                     message: format!("{command} does not take --project."),
                     command: Some(command.to_string()),
@@ -925,7 +937,11 @@ impl Cli {
                 None,
             ) => {}
             (
-                Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Progress(_),
+                Command::Serve(_)
+                | Command::Stop(_)
+                | Command::Setup(_)
+                | Command::Hook(_)
+                | Command::Progress(_),
                 None,
             ) => {}
             (_, None) => {

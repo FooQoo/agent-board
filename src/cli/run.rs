@@ -153,6 +153,15 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, cli.json),
         };
     }
+    if let Command::Stop(_) = &cli.command {
+        return match commands::stop::run(cli.json) {
+            Ok(text) => {
+                write_text(env.stdout, &text);
+                0
+            }
+            Err(error) => fail(env, &error, cli.json),
+        };
+    }
     match prepare_and_run(&cli, env) {
         Ok((ctx, outcome)) => {
             let text = if cli.json {
@@ -220,9 +229,11 @@ fn access(command: &Command) -> Access {
         | Command::History(_)
         | Command::Rm(_) => Access::ChangeProject,
         Command::Progress(_) => Access::ReadBoundProject,
-        Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Wait(_) => {
-            Access::Catalog
-        }
+        Command::Serve(_)
+        | Command::Stop(_)
+        | Command::Setup(_)
+        | Command::Hook(_)
+        | Command::Wait(_) => Access::Catalog,
     }
 }
 
@@ -283,7 +294,11 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Snapshot(_) => commands::snapshot::run(ctx),
         Command::Workspace(_) => commands::workspace::run(ctx),
         Command::Progress(args) => commands::progress::run(ctx, args),
-        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) | Command::Setup(_) => {
+        Command::Hook(_)
+        | Command::Wait(_)
+        | Command::Serve(_)
+        | Command::Stop(_)
+        | Command::Setup(_) => {
             unreachable!("serve, setup, and the agent commands are handled before store setup")
         }
     }

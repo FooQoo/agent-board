@@ -48,6 +48,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
         .internal/transactions/<transaction-id>.json
   bindings.json
   serve.json
+  serve.log
   lifecycle.lock
   .internal/monitor-connection.json
   .internal/preferences.json
@@ -57,7 +58,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 - `workspace.json`は`{"format":"agboard-files","formatVersion":1}`です。`project.json`と`epic.json`は`formatVersion: 1`、`task.json`も`formatVersion: 1`を持ちます。対応するバージョンは1だけです。それ以外は`format_unsupported`を報告し、変更せずに残します。移行もフォールバックもしません。
 - `.`で始まる名前は正本ではありません。`README.md`はフォルダと編集の規則の案内で、製品が作成時に書きます。
 - 画像は所有者の`assets/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
-- `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`（`{"pid":41235,"port":7420,"started_at":"..."}`）は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。
+- `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`（`{"pid":41235,"port":7420,"started_at":"..."}`）は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。`serve.log`は`serve -d`で起動したサーバーの出力です（所有者のみ読み取り可、起動のたびに作り直し）。`agboard stop`は`serve.json`からサーバーを見つけます。
 
 `project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`defaultEpicsSeeded`を持ちます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。
 

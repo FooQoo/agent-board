@@ -48,6 +48,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
         .internal/transactions/<transaction-id>.json
   bindings.json
   serve.json
+  serve.log
   lifecycle.lock
   .internal/monitor-connection.json
   .internal/preferences.json
@@ -57,7 +58,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 - `workspace.json` is `{"format":"agboard-files","formatVersion":1}`. `project.json` and `epic.json` have `formatVersion: 1`; `task.json` has `formatVersion: 1` too. Every file uses version 1; any other version is rejected with `format_unsupported`, reported, and left untouched. There is no migration or fallback.
 - Names starting with `.` are not source files. `README.md` describes the folder and its editing rules; the product writes it at creation.
 - Images live in the owner's `assets/`. Bodies reference images as `assets/<attachment-id>.<ext>` (or the older `attachment:<id>`). Images are PNG, JPEG, WebP, or GIF; at most 10 MiB each, 20 per owner, and 50 MiB in total.
-- `bindings.json` and `serve.json` are machine-local. `serve.json` (`{"pid":41235,"port":7420,"started_at":"..."}`) tells the CLI where to notify and `wait` where to connect; it never holds a token.
+- `bindings.json` and `serve.json` are machine-local. `serve.json` (`{"pid":41235,"port":7420,"started_at":"..."}`) tells the CLI where to notify and `wait` where to connect; it never holds a token. `serve.log` is the output of a server started with `serve -d` (owner-only, replaced at every start); `agboard stop` finds the server through `serve.json`.
 
 `project.json` holds `formatVersion`, `id`, `name`, `createdAt`, `nextTaskId`, and `defaultEpicsSeeded`. The last one is `true` once the project has been offered the default epics `BUG` and `ENHANCEMENT`; it is written once, so a default epic that was deleted is not created again. A file without it is read as `false`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`.
 
