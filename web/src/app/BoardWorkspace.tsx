@@ -10,6 +10,8 @@ import { DetailPanel } from '../features/tasks/detail/DetailPanel';
 import { ResizeHandle } from '../shared/ui/resize-handle/ResizeHandle';
 import { StatusBar } from '../shared/ui/status-bar/StatusBar';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
+import { GuideLayer } from './onboarding/GuideLayer';
+import { isProjectId } from './model/projectSession';
 import type { ProjectId } from '../shared/api/contracts';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 
@@ -181,6 +183,22 @@ export function BoardWorkspace({
           </>
         ) : null}
       </div>
+      <GuideLayer
+        projectId={known && isProjectId(activeId) ? activeId : null}
+        eligible={
+          known &&
+          model.view === 'board' &&
+          operation === null &&
+          session.answerLeases.length === 0 &&
+          !epicsVisible &&
+          !archiveVisible &&
+          !isMockTask
+        }
+        tasks={tasks}
+        answers={model.answerSession}
+        syncedAt={board.lastSyncedAt}
+        onAnswerChanged={actions.onAnswerChanged}
+      />
       <StatusBar
         status={archiveVisible ? archive.status : epicsVisible ? board.status : barStatus}
         taskCount={

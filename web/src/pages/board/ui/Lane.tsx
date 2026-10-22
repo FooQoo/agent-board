@@ -52,6 +52,7 @@ export function Lane({
     <section
       ref={ref}
       className="lane"
+      data-column={column}
       data-drop-target={isDropTarget ? 'true' : 'false'}
       aria-label={columnLabel(column, t)}
     >

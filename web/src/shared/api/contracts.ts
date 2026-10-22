@@ -85,6 +85,8 @@ export interface Task {
   agentStatus: RunState;
   pendingReason: string | null;
   pendingRequestId: string | null;
+  /** The first-run guide's sample cards carry this; ordinary cards do not. */
+  onboardingSample?: { runId: string; ordinal: 1 | 2 } | null;
   pendingChoices: Choice[];
   epic: EpicRef | null;
   createdAt: string;

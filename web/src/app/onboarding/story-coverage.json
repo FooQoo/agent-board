@@ -66,6 +66,16 @@
           "exclusion": "MockStageCards only places the cards of a spotlighted lane; the framed lanes are covered by OnboardingMockScreen Stories."
         }
       ]
+    },
+    {
+      "file": "app/onboarding/GuideLayer.tsx",
+      "exports": [
+        {
+          "name": "GuideLayer",
+          "stories": [],
+          "exclusion": "GuideLayer joins the guide's view parts to the live board and the controller; its parts are covered by the mock screen stories and its controller by the hook tests, and the whole run by the board's end-to-end tests."
+        }
+      ]
     }
   ]
 }
