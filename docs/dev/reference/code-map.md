@@ -34,6 +34,8 @@ Inside `file_store`, the pieces you will touch most often are:
 | `frontmatter`<br>`history`<br>`validate` | Split body and frontmatter, parse acceptance and history, and validate files while keeping unknown keys. |
 | `transaction` | Saves and recovers the `task.json`/`TASK.md` pair with a durable journal. |
 | `reader` | Combines JSON and Markdown into snapshots and `problems`. |
+| `projection` | The Summary of a project, built from a parsed snapshot, and the change sets between two projections. It holds the versions of each task and epic. |
+| `detail` | The data of one Detail stream, copied from a snapshot, and the NDJSON events built from it. Only the image headers are read from files. |
 | `ops/` | Task, run state, answer, epic, image, and automatic completion operations. |
 | `io`, `lock` | Replace-by-rename saves; `write.lock` and `lifecycle.lock`. |
 | `project`, `bindings` | The project catalog and folder bindings. |
@@ -52,11 +54,17 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
 | `store`<br>`answer` | Blocking file access, the index, and URL IDs for every router; saving an answer, shared by the board and the monitor. |
 | `web_assets` | The embedded scripts and stylesheets of the board and the monitor, their build IDs, and the cacheable gzip or plain response. |
+| `contracts/` | The data layer's wire types: the Summary, the Detail NDJSON lines, and the `changed` event. The golden examples in `tests/fixtures/data-layer/` pin their shapes. |
+| `change_feed.rs` | Numbers each change set of this server run (`seq`, with an `instanceId` for the run) and holds the events a stream has not yet sent. A stream that falls too far behind gets `resync`. |
+| `summary_response.rs`<br>`api/summary.rs`, `api/detail.rs`, `monitor/data.rs` | The Summary response with its `ETag`, and the Detail streams. The board and the monitor share the same builders. |
 
 The main files and directories outside `src/` are:
 
 - `build.rs`: embeds the built web UI and writes the asset tables and build IDs.
 - `web/`: the Vite app. Its source in `web/src/` is split into `app/`, `pages/`, `features/`, and `shared/` (see [Where the web code lives](../concepts/server-and-ui.md#where-the-web-code-lives)).
+- `src/domain/markdown_blocks.rs`: splits a body into top-level Markdown blocks for the Detail stream. It does no I/O.
+- `web/src/shared/data/`: the data layer. `api/` holds the contract types and the Detail parser, `core/` the framework-free cache, scheduler, and event connection, and `react/` the hooks the screens use. See [Reading and updating data](../concepts/server-and-ui.md#reading-and-updating-data).
+- `web/src/shared/markdown/`: the Markdown renderer. `MarkdownBlocks` draws the blocks of a body and virtualizes a large one (`VirtualMarkdown.tsx`).
 - `web/src/shared/preferences/`: the saved language and color theme on the web side: the reads and saves, the browser's first-paint copy, and the `preferences` event. See [Server and web UI](../concepts/server-and-ui.md).
 - `web/.storybook/`: Storybook configuration, synthetic fixtures, decorators, network guards, and support tests. UI Stories and coverage ledgers live beside the source they describe; see [Storybook setup and coverage](../getting-started/setup.md#storybook).
 - `tests/`: Rust integration and CLI tests.

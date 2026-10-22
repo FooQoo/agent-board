@@ -34,6 +34,8 @@
 | `frontmatter`<br>`history`<br>`validate` | 本文とfrontmatterの分割、受入条件と履歴の解析、未知のキーを保ったファイルの検証。 |
 | `transaction` | `task.json`と`TASK.md`の組を、永続ジャーナルで保存・復旧する。 |
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
+| `projection` | 解析済みのスナップショットから作るプロジェクトのSummaryと、2つの投影の間の変更の組。タスクとエピックごとのversionを持つ。 |
+| `detail` | 1つのDetailストリームのデータ。スナップショットからコピーし、そこからNDJSONのイベントを作る。読むのは画像のヘッダーだけ。 |
 | `ops/` | タスク・稼働状態・回答・エピック・画像・自動完了の操作。 |
 | `io`・`lock` | renameによる置き換え保存と、`write.lock`・`lifecycle.lock`。 |
 | `project`・`bindings` | プロジェクトの一覧と、フォルダの紐付け。 |
@@ -52,11 +54,17 @@
 | `response`<br>`request` | JSONのエラー本文、`AgboardError`からHTTPステータスへの対応、そのほかの共有の応答と、失敗時にそのエラー本文を返すJSONの本文。 |
 | `store`<br>`answer` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、ボードとモニターが共有する回答の保存。 |
 | `web_assets` | 埋め込んだボードとモニターのスクリプトとスタイルシート、それぞれのビルドID、キャッシュできるgzipまたは非圧縮の応答。 |
+| `contracts/` | データ層の通信の型。Summary、DetailのNDJSONの各行、`changed`イベント。`tests/fixtures/data-layer/`の例が形を固定します。 |
+| `change_feed.rs` | このサーバーの実行で変更の組に番号（`seq`、実行ごとの`instanceId`）を付け、まだ送っていないイベントを保持する。遅れすぎたストリームには`resync`を送る。 |
+| `summary_response.rs`<br>`api/summary.rs`・`api/detail.rs`・`monitor/data.rs` | `ETag`付きのSummaryの応答と、Detailのストリーム。ボードとモニターは同じ組み立て処理を使う。 |
 
 `src/`以外の主なファイルとディレクトリは次のとおりです。
 
 - `build.rs`: ビルドしたWeb画面を埋め込み、資産の表とビルドIDを書き出します。
 - `web/`: Viteのアプリです。`web/src/`のソースは`app/`・`pages/`・`features/`・`shared/`に分けています（[Webコードの置き場所](../concepts/server-and-ui.md#webコードの置き場所)）。
+- `src/domain/markdown_blocks.rs`: 本文をトップレベルのMarkdownブロックに分けます。I/Oは行いません。
+- `web/src/shared/data/`: データ層です。`api/`は契約の型とDetailの解析、`core/`はReactに依存しないキャッシュ・スケジューラー・イベント接続、`react/`は画面が使うフックを置きます。[データの読み取りと更新](../concepts/server-and-ui.md#データの読み取りと更新)を参照してください。
+- `web/src/shared/markdown/`: Markdownの描画部です。`MarkdownBlocks`は本文のブロックを描き、大きい本文を仮想化します（`VirtualMarkdown.tsx`）。
 - `web/src/shared/preferences/`: ブラウザ側の保存した言語とカラーテーマ。読み取りと保存、ブラウザの最初の描画用の控え、`preferences`イベントを扱います。[サーバーと画面](../concepts/server-and-ui.md)を参照してください。
 - `web/.storybook/`: Storybookの設定、架空のfixture、decorator、通信ガード、共通部分のテストを置きます。UIのStoryと対応台帳は、説明するソースの近くに置きます。詳しくは[Storybookのセットアップと台帳](../getting-started/setup.md#storybook)を参照してください。
 - `tests/`: Rustの結合テストとCLIのテストを置きます。
