@@ -20,6 +20,7 @@ export const onboardingEn = {
       readFirst: 'Read the note, then continue.',
       waitingHint: 'Waiting for your answer on the card',
       waitingBadge: 'Waiting for you',
+      networkError: 'The guide could not reach the server. Try again.',
     },
     steps: {
       samples: {
@@ -29,6 +30,10 @@ export const onboardingEn = {
       running: {
         title: 'AI is making progress',
         body: 'Running means AI is working on this card. When the work ends, the card moves to Done.',
+      },
+      done: {
+        title: 'The first card is done',
+        body: 'Press Next, and AI asks you a question on the second card.',
       },
       pending: {
         title: 'AI needs your decision',

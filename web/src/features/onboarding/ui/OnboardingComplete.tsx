@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleCheckIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
@@ -9,13 +10,18 @@ import './onboarding.css';
 /** The last screen: what the user has tried, and the finish action that archives the two samples. */
 export function OnboardingComplete({ busy, error, onFinish }: OnboardingCompleteProps) {
   const { t } = useTranslation();
+  const finishRef = useRef<HTMLButtonElement>(null);
   return (
     <Dialog open>
       <DialogContent
         showCloseButton={false}
-        overlayClassName="bg-[rgb(15_23_42/0.62)]"
-        className={WELCOME_DIALOG_CLASS}
+        overlayClassName="onboarding-overlay"
+        className={`onboarding-dialog ${WELCOME_DIALOG_CLASS}`}
         aria-busy={busy}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          finishRef.current?.focus();
+        }}
       >
         <CircleCheckIcon
           className="onboarding-dialog__icon onboarding-dialog__icon--done"
@@ -38,7 +44,7 @@ export function OnboardingComplete({ busy, error, onFinish }: OnboardingComplete
           </p>
         ) : null}
         <div className="onboarding-dialog__actions mt-5">
-          <Button size="m" disabled={busy} onClick={onFinish}>
+          <Button ref={finishRef} size="m" disabled={busy} onClick={onFinish}>
             {error ? t('onboarding.guide.retry') : t('onboarding.complete.finish')}
           </Button>
         </div>

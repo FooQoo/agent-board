@@ -1,3 +1,4 @@
+import '../../shared/i18n/onboarding-strings';
 import { useTranslation } from 'react-i18next';
 import { DecisionRequestFormView } from '../../features/tasks/answer/DecisionRequestFormView';
 import { TaskCardView } from '../../features/tasks/card/TaskCard';

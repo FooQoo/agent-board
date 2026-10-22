@@ -20,6 +20,7 @@ export const onboardingJa = {
       readFirst: '説明を読んでから進められます',
       waitingHint: 'カードの回答を待っています',
       waitingBadge: '回答待ち',
+      networkError: 'サーバーに接続できませんでした。もう一度お試しください。',
     },
     steps: {
       samples: {
@@ -29,6 +30,10 @@ export const onboardingJa = {
       running: {
         title: 'AIが作業を進めています',
         body: '「稼働中」は、AIが作業している印です。作業が終わると、このカードは「完了」へ移動します。',
+      },
+      done: {
+        title: '1枚目が完了しました',
+        body: '次へを押すと、AIが2枚目のカードで質問します。',
       },
       pending: {
         title: 'あなたの判断が必要になりました',

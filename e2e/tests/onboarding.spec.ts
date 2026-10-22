@@ -44,8 +44,10 @@ test('OB-01: the guide runs both samples, takes the answer, and archives them', 
 	await expect(page.getByText('Guide 1 / 4')).toBeVisible();
 	await page.getByRole('button', { name: 'Watch it move' }).click();
 
-	// The first card runs, and finishes on its own after the running minimum.
+	// The first card runs. Next is enabled once the running minimum has passed, and the card is then Done.
 	await expect(page.getByText('Guide 2 / 4')).toBeVisible({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Next' }).click();
+	await expect(page.getByText('The first card is done')).toBeVisible();
 	await page.getByRole('button', { name: 'Next' }).click();
 
 	// The second card asks its question and waits for the user.

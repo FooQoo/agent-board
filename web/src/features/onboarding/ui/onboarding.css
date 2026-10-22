@@ -146,7 +146,7 @@
 }
 
 .onboarding-panel__hint {
-  color: var(--r-muted);
+  color: var(--r-text2);
   font-size: 12px;
   line-height: 19px;
 }
@@ -185,4 +185,41 @@
   height: 20px;
   color: var(--r-done);
   flex-shrink: 0;
+}
+
+/*
+ * The live cards inside the spotlight keep the mock's spacing: 5px from the top edge, 6px from the
+ * sides, and 12px between cards. The padding also leaves room for their focus rings. On a short
+ * stage the cards scroll inside the frame, so an answer form below the fold can still be reached.
+ */
+.onboarding-stage__cards {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 5px 6px;
+  overflow-y: auto;
+}
+
+/*
+ * The shared dialog overlay has its own unlayered rule, which beats the utility classes. The guide's
+ * overlays are styled here with a longer selector: the welcome and complete dialogs dim the board,
+ * and the stage is transparent because the spotlight does the dimming.
+ */
+[data-slot="dialog-overlay"].onboarding-overlay {
+  background: rgb(15 23 42 / 66%);
+}
+
+[data-slot="dialog-overlay"].onboarding-overlay--stage {
+  background: transparent;
+}
+
+/* Reduced motion: the guide's dialogs and overlays appear without a fade or a zoom. */
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-dialog,
+  .onboarding-overlay,
+  .onboarding-overlay--stage {
+    animation: none;
+  }
 }

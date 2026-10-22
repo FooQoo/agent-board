@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SparklesIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
@@ -9,13 +10,18 @@ import './onboarding.css';
 /** The first screen: what the guide does, what it creates, and the choice to start or skip. */
 export function OnboardingWelcome({ busy, error, onStart, onSkip }: OnboardingWelcomeProps) {
   const { t } = useTranslation();
+  const startRef = useRef<HTMLButtonElement>(null);
   return (
     <Dialog open>
       <DialogContent
         showCloseButton={false}
-        overlayClassName="bg-[rgb(15_23_42/0.62)]"
-        className={WELCOME_DIALOG_CLASS}
+        overlayClassName="onboarding-overlay"
+        className={`onboarding-dialog ${WELCOME_DIALOG_CLASS}`}
         aria-busy={busy}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          startRef.current?.focus();
+        }}
         onEscapeKeyDown={(event) => {
           event.preventDefault();
           if (!busy) onSkip();
@@ -48,7 +54,7 @@ export function OnboardingWelcome({ busy, error, onStart, onSkip }: OnboardingWe
           <Button variant="outline" size="m" disabled={busy} onClick={onSkip}>
             {t('onboarding.welcome.skip')}
           </Button>
-          <Button size="m" disabled={busy} onClick={onStart}>
+          <Button ref={startRef} size="m" disabled={busy} onClick={onStart}>
             {error ? t('onboarding.guide.retry') : t('onboarding.welcome.start')}
           </Button>
         </div>

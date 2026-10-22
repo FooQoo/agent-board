@@ -27,6 +27,8 @@ export interface GuideController {
   state: GuideState | null;
   busy: boolean;
   error: string | null;
+  /** True once a running card has been on screen for the minimum time, so its step can move on. */
+  ready: boolean;
   start(): void;
   skip(): void;
   next(): void;
@@ -65,11 +67,13 @@ export function useGuide({
   const [screen, setScreen] = useState<GuideScreen>({ kind: 'hidden' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const bound = useRef<ProjectId | null>(null);
   const pending = useRef<PendingCommand | null>(null);
   const attempt = useRef<string | null>(null);
-  const phaseEnteredAt = useRef<number>(0);
   const checked = useRef(false);
+  // The run whose second question has been seen pending on its card.
+  const askedRun = useRef<string | null>(null);
   const stateRef = useRef<GuideState | null>(null);
   stateRef.current = state;
 
@@ -81,8 +85,8 @@ export function useGuide({
 
   const fail = useCallback((cause: unknown) => {
     setBusy(false);
-    const reason = cause instanceof GuideError ? (cause.reason ?? cause.message) : String(cause);
-    setError(reason);
+    const network = i18n.t('onboarding.guide.networkError');
+    setError(cause instanceof GuideError ? (cause.reason ?? cause.message) : network);
   }, []);
 
   // Read the guide once the board is ready, and offer it when the data area has not seen it.
@@ -142,7 +146,6 @@ export function useGuide({
           transition,
         });
         pending.current = null;
-        phaseEnteredAt.current = Date.now();
         apply(next);
         setBusy(false);
       } catch (cause) {
@@ -152,31 +155,34 @@ export function useGuide({
     [apply, clientId, fail],
   );
 
-  // Steps the server finishes on its own: a running card waits at least RUNNING_MIN_MS.
   const phase = phaseOf(state);
   const runId = state?.run?.runId ?? null;
-  const questionAnswered =
-    runId !== null &&
-    tasks.some(
-      (task) =>
-        task.onboardingSample?.runId === runId &&
-        task.onboardingSample.ordinal === 2 &&
-        task.pendingRequestId === null,
-    );
+  const secondCard = tasks.find(
+    (task) => task.onboardingSample?.runId === runId && task.onboardingSample?.ordinal === 2,
+  );
+  const questionPending = secondCard !== undefined && secondCard.pendingRequestId !== null;
+  // The board's cards can lag behind the server. The question counts as asked only once this
+  // run's card has shown it pending, so a card that has not been asked yet never looks answered.
   useEffect(() => {
-    if (screen.kind === 'hidden' || busy) return undefined;
-    let transition: GuideTransition | null = null;
-    if (phase === 'first-running') transition = 'first-done';
-    if (phase === 'question' && questionAnswered) transition = 'resume-second';
-    if (!transition) return undefined;
-    const wait =
-      transition === 'resume-second' ? 0 : RUNNING_MIN_MS - (Date.now() - phaseEnteredAt.current);
-    const timer = window.setTimeout(
-      () => void run(transition as GuideTransition),
-      Math.max(0, wait),
-    );
+    if (runId !== null && questionPending) askedRun.current = runId;
+  }, [runId, questionPending]);
+  const questionAnswered = runId !== null && askedRun.current === runId && !questionPending;
+
+  // The second card's answer has reached the board: the guide resumes at once. After a failure
+  // the guide waits for the user's Retry, so a failing request is not sent again on its own.
+  useEffect(() => {
+    if (screen.kind === 'hidden' || busy || error) return undefined;
+    if (phase === 'question' && questionAnswered) void run('resume-second');
+    return undefined;
+  }, [phase, questionAnswered, screen.kind, busy, error, run]);
+
+  // A running card stays on screen for at least RUNNING_MIN_MS before its step can move on.
+  useEffect(() => {
+    setReady(false);
+    if (phase !== 'first-running' && phase !== 'second-running') return undefined;
+    const timer = window.setTimeout(() => setReady(true), RUNNING_MIN_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, questionAnswered, screen.kind, busy, run]);
+  }, [phase]);
 
   // Show the screen that matches the server's phase.
   useEffect(() => {
@@ -199,7 +205,6 @@ export function useGuide({
       locale,
     })
       .then((next) => {
-        phaseEnteredAt.current = Date.now();
         apply(next);
         setBusy(false);
         setScreen({ kind: 'step' });
@@ -277,15 +282,13 @@ export function useGuide({
     }
   }, [apply, clientId, fail]);
 
-  // The explanation's "次へ": the step waits until the running card has been on screen long enough.
+  // The explanation's "次へ". A running card's step is enabled only once the card has been on screen long enough.
   const next = useCallback(() => {
     if (phase === 'samples') void run('first-running');
+    else if (phase === 'first-running' && ready) void run('first-done');
     else if (phase === 'first-done') void run('ask-question');
-    else if (phase === 'second-running') {
-      const wait = RUNNING_MIN_MS - (Date.now() - phaseEnteredAt.current);
-      window.setTimeout(() => void run('second-done'), Math.max(0, wait));
-    }
-  }, [phase, run]);
+    else if (phase === 'second-running' && ready) void run('second-done');
+  }, [phase, ready, run]);
 
   const retry = useCallback(() => {
     setError(null);
@@ -295,5 +298,5 @@ export function useGuide({
     else next();
   }, [finish, next, run, screen.kind, start]);
 
-  return { screen, state, busy, error, start, skip, next, exit, finish, retry };
+  return { screen, state, busy, error, ready, start, skip, next, exit, finish, retry };
 }

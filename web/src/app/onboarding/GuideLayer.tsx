@@ -13,6 +13,7 @@ import { OnboardingNotice } from '../../features/onboarding/ui/OnboardingNotice'
 import { OnboardingStage } from '../../features/onboarding/ui/OnboardingStage';
 import { OnboardingWelcome } from '../../features/onboarding/ui/OnboardingWelcome';
 import type { SpotlightRect } from '../../shared/ui/spotlight/Spotlight';
+import '../../shared/i18n/onboarding-strings';
 import { newId } from './api';
 import type { GuidePhase } from './api';
 import { useGuide } from './useGuide';
@@ -20,6 +21,11 @@ import { useGuide } from './useGuide';
 type Column = 'todo' | 'doing' | 'done';
 
 const noop = () => {};
+
+/** The gap between the frame and the guide panel, in pixels. */
+const PANEL_GAP = 24;
+/** Where the guide panel sits from the bottom of the stage, as in onboarding.css. */
+const PANEL_SPACE = 250;
 
 /** The lane's frame in viewport pixels, measured from the board's own element. */
 function useLaneRect(column: Column | null): SpotlightRect | null {
@@ -36,11 +42,15 @@ function useLaneRect(column: Column | null): SpotlightRect | null {
     }
     const box = lane.getBoundingClientRect();
     // The frame keeps the mock's inset: 6px at the sides, and below the lane's header.
+    const top = box.top + 46;
+    // The frame ends above the guide panel, so the panel never covers the card or the answer form.
+    const panel = document.querySelector<HTMLElement>('.onboarding-panel');
+    const panelTop = panel ? panel.getBoundingClientRect().top : window.innerHeight - PANEL_SPACE;
     setRect({
       x: box.left + 6,
-      y: box.top + 46,
+      y: top,
       width: box.width - 12,
-      height: Math.min(box.height - 52, 500),
+      height: Math.max(0, Math.min(box.height - 52, 500, panelTop - PANEL_GAP - top)),
     });
   }, [column]);
   useLayoutEffect(() => {
@@ -60,7 +70,7 @@ function useLaneRect(column: Column | null): SpotlightRect | null {
 
 const PANEL_INDEX: Record<GuidePhase, number> = {
   samples: 1,
-  'first-running': 1,
+  'first-running': 2,
   'first-done': 2,
   question: 3,
   'second-running': 4,
@@ -86,7 +96,7 @@ export function GuideLayer({
   const { t } = useTranslation();
   const [clientId] = useState(newId);
   const guide = useGuide({ projectId, eligible, tasks, clientId });
-  const { screen, state, busy, error } = guide;
+  const { screen, state, busy, error, ready } = guide;
   const run = state?.run ?? null;
   const samples = run
     ? tasks
@@ -132,7 +142,10 @@ export function GuideLayer({
   const phase: GuidePhase = run?.phase ?? 'samples';
   const index = PANEL_INDEX[phase];
   const copy = panelCopy(phase);
-  const onAction = phase === 'question' ? noop : guide.next;
+  // A failed step offers Retry in place of its action. A question waits on the card instead.
+  const failed = error !== null;
+  const waiting = phase === 'question' && !failed;
+  const holding = (phase === 'first-running' || phase === 'second-running') && !ready;
   return (
     <OnboardingStage
       target={rect}
@@ -146,14 +159,13 @@ export function GuideLayer({
           total={4}
           title={t(copy.title)}
           body={t(copy.body)}
-          hint={t(
-            phase === 'question' ? 'onboarding.guide.waitingHint' : 'onboarding.guide.readFirst',
-          )}
-          waitingBadge={phase === 'question' ? t('onboarding.guide.waitingBadge') : undefined}
-          actionLabel={t(phase === 'samples' ? 'onboarding.guide.watch' : 'onboarding.guide.next')}
+          hint={t(waiting ? 'onboarding.guide.waitingHint' : 'onboarding.guide.readFirst')}
+          waitingBadge={waiting ? t('onboarding.guide.waitingBadge') : undefined}
+          actionLabel={t(actionKey(phase, failed))}
+          actionDisabled={holding}
           busy={busy}
           error={error}
-          onAction={onAction}
+          onAction={failed ? guide.retry : guide.next}
           onExit={guide.exit}
         />
       }
@@ -161,10 +173,17 @@ export function GuideLayer({
   );
 }
 
+function actionKey(phase: GuidePhase, failed: boolean): string {
+  if (failed) return 'onboarding.guide.retry';
+  return phase === 'samples' ? 'onboarding.guide.watch' : 'onboarding.guide.next';
+}
+
 function panelCopy(phase: GuidePhase): { title: string; body: string } {
   switch (phase) {
-    case 'first-done':
+    case 'first-running':
       return { title: 'onboarding.steps.running.title', body: 'onboarding.steps.running.body' };
+    case 'first-done':
+      return { title: 'onboarding.steps.done.title', body: 'onboarding.steps.done.body' };
     case 'question':
       return { title: 'onboarding.steps.pending.title', body: 'onboarding.steps.pending.body' };
     case 'second-running':

@@ -1,3 +1,4 @@
+import '../../../shared/i18n/onboarding-strings';
 import type { ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, within } from 'storybook/test';

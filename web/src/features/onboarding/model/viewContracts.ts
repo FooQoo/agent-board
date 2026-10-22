@@ -27,6 +27,8 @@ export interface OnboardingGuidePanelProps extends OnboardingActionState {
   /** Shown instead of the action while the card waits for the user's answer. */
   waitingBadge?: string;
   actionLabel: string;
+  /** The action waits for the running card to be on screen long enough; busy also disables it. */
+  actionDisabled?: boolean;
   onAction: () => void;
   onExit: () => void;
 }

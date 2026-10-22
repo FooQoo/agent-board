@@ -15,7 +15,7 @@ To keep your own board untouched while you try this, run `export AGBOARD_HOME="$
 The first time you open a board in this data area, Agent Board offers a short guide. Choose **Start guide** to see how an AI agent works on a card and asks you for a decision. The guide creates two sample cards and simulates the AI's progress on them. No AI agent or API key is needed. You answer the second card's question on the card itself. When you finish, the two samples are archived.
 
 - **Skip** closes the guide without creating anything. The guide is not shown again in this data area.
-- **End guide**, or Escape, ends the run early. Its two cards are archived. The next time you open a board, the guide is offered again with two new cards.
+- **End guide** ends the run early, and so does Escape, unless you are typing in an answer field. Its two cards are archived. The next time you open a board, the guide is offered again with two new cards.
 
 ## 1. Start the board
 
