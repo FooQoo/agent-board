@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   createMonitorHome,
+  monitorProjectId,
   removeMonitorHome,
   startPhoneEntrance,
   type PhoneEntrance,
@@ -40,7 +41,8 @@ async function openConnection(page: Page) {
 }
 
 test('the settings dialog closes and the connected dialog shows the QR code and the passcode', async ({ page }) => {
-  await page.goto(`${entrance.pcOrigin}/`);
+  // The QR code and the copied URL name the selected project, so the board opens on one.
+  await page.goto(`${entrance.pcOrigin}/?project=${monitorProjectId(home, 'Alpha')}`);
   await openConnection(page);
   const dialog = page.getByRole('dialog', { name: 'Mobile connection' });
   await expect(dialog.getByText('Accepting connections')).toBeVisible();
@@ -54,6 +56,8 @@ test('the settings dialog closes and the connected dialog shows the QR code and 
   // Neither a domain field nor the old advanced settings exist.
   await expect(dialog.getByLabel(/domain/i)).toHaveCount(0);
   await expect(dialog.getByText(/advanced|Protected by a passcode/i)).toHaveCount(0);
+  // The copy action is on: it copies the same address as the QR code.
+  await expect(dialog.getByRole('button', { name: 'Copy URL' })).toBeEnabled();
 });
 
 test('Reset token shows the setup without stopping, and closing the dialog keeps the connection', async ({ page }) => {

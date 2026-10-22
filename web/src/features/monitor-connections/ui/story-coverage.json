@@ -85,6 +85,22 @@
               "id": "monitor-connections-connectionsettingsview--keeps-input-on-rerender",
               "states": ["equal draft on re-render keeps input"],
               "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-without-project",
+              "states": [
+                "connected",
+                "no project selected",
+                "no QR code",
+                "copy action off",
+                "note in place of the QR code"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-without-project-ja",
+              "states": ["japanese wording of the no-project state"],
+              "interaction": true
             }
           ]
         }
@@ -115,6 +131,22 @@
             {
               "id": "monitor-connections-connectionsettingsview--connected-without-passcode",
               "states": ["connected", "no passcode sent yet"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-without-project",
+              "states": [
+                "connected",
+                "no project selected",
+                "no QR code",
+                "copy action off",
+                "note in place of the QR code"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-without-project-ja",
+              "states": ["japanese wording of the no-project state"],
               "interaction": true
             }
           ]
@@ -270,6 +302,16 @@
             {
               "id": "monitor-connections-connectionsettings--saved-token-form",
               "states": ["change settings opens setup", "secure storage note", "delete offered"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--no-project-selected",
+              "states": [
+                "connection running without a project",
+                "no QR image",
+                "copy action off",
+                "note in place of the QR code"
+              ],
               "interaction": true
             }
           ]

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { parseAsString, useQueryState } from 'nuqs';
 import { ConnectionEntryRow } from '../features/monitor-connections/ui/ConnectionEntryRow';
 import { ConnectionSettings } from '../features/monitor-connections/ui/ConnectionSettings';
 import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
@@ -19,6 +20,8 @@ const boardPreferences: PreferencesEndpoint | undefined =
  */
 export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsSlotState) {
   const [connectionOpen, setConnectionOpen] = useState(false);
+  // The project the board shows, from the same `project` query the board reads.
+  const [projectId] = useQueryState('project', parseAsString);
   return (
     <>
       <SettingsDialog
@@ -47,6 +50,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
         open={connectionOpen}
         onOpenChange={setConnectionOpen}
         restoreFocusRef={restoreFocusRef}
+        projectId={projectId}
       />
     </>
   );

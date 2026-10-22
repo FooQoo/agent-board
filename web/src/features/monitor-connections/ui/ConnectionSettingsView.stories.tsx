@@ -171,6 +171,8 @@ export const Connected: Story = {
     const passcode = view.getByRole('group', { name: 'Enter the passcode' });
     await expect(passcode).toHaveTextContent('4821');
     await expect((passcode as HTMLElement).offsetHeight).toBe(84);
+    // The copy action is on, because the address of the selected project is there.
+    await expect(view.getByRole('button', { name: 'Copy URL' })).toBeEnabled();
     await expect(
       view.getByText('The passcode changes every time the connection starts.'),
     ).toBeInTheDocument();
@@ -244,4 +246,33 @@ export const KeepsInputOnRerender: Story = {
     await new Promise((resolve) => setTimeout(resolve, 50));
     await expect(view.getByLabelText('ngrok auth token')).toHaveValue('my-token');
   },
+};
+
+/** A connection without a selected project: no QR code and no copied URL. The note says why. */
+const noProjectPlay = (locale: 'en' | 'ja') => async () => {
+  const view = within(document.body);
+  await expect(view.getByRole('status')).toBeInTheDocument();
+  await expect(view.getByTestId('project-needed')).toHaveTextContent(
+    locale === 'ja'
+      ? 'ボードでプロジェクトを選ぶと、QRコードとURLが表示されます。'
+      : 'Select a project on the board to show its QR code and URL.',
+  );
+  await expect(view.queryByRole('img', { name: /QR code/ })).toBeNull();
+  await expect(
+    view.getByRole('button', { name: locale === 'ja' ? 'URLをコピー' : 'Copy URL' }),
+  ).toBeDisabled();
+  // The passcode of the running connection is still shown.
+  await expect(view.getByTestId('passcode')).toHaveTextContent('4821');
+};
+
+export const ConnectedWithoutProject: Story = {
+  args: { status: 'ready', url: null, projectSelected: false, passcode: '4821', qr: null },
+  play: noProjectPlay('en'),
+};
+
+/** The same state in Japanese. */
+export const ConnectedWithoutProjectJa: Story = {
+  args: { status: 'ready', url: null, projectSelected: false, passcode: '4821', qr: null },
+  globals: { locale: 'ja' },
+  play: noProjectPlay('ja'),
 };
