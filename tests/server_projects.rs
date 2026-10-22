@@ -5,6 +5,9 @@
 //! Servers listen on port 0 in a temporary data directory. The CLI is run as
 //! the real `agboard` binary against the same `AGBOARD_HOME`.
 
+#[path = "support/detail_lines.rs"]
+mod detail_lines;
+
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::Path;
@@ -433,10 +436,15 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
     replace_task_body_preserving_history(&task_path(existing.id), complete);
 
     let server = Running::start(home.path());
-    let board_path = format!("/api/projects/{project}/board");
+    let board_path = format!("/api/projects/{project}/summary");
     let board = server.get(&board_path).json();
     assert_eq!(board["tasks"][0]["taskStatus"], "done");
-    assert_eq!(board["tasks"][0]["history"].as_array().unwrap().len(), 2);
+    let detail = server.get(&format!(
+        "/api/projects/{project}/tasks/{}/detail?sections=history",
+        existing.id
+    ));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert_eq!(detail_lines::history(&detail.body).len(), 2);
 
     replace_task_body_preserving_history(&task_path(edited.id), complete);
     let notified = server.request("POST", "/api/notify", None, &[], None);
@@ -455,7 +463,12 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
         .find(|task| task["id"] == edited.id)
         .unwrap();
     assert_eq!(edited_json["taskStatus"], "done");
-    assert_eq!(edited_json["history"].as_array().unwrap().len(), 2);
+    let detail = server.get(&format!(
+        "/api/projects/{project}/tasks/{}/detail?sections=history",
+        edited.id
+    ));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert_eq!(detail_lines::history(&detail.body).len(), 2);
 
     replace_task_body_preserving_history(&task_path(pending_task.id), complete);
     let answer = server.write(
@@ -581,21 +594,26 @@ fn the_list_needs_an_accepted_host() {
 // ---------------------------------------------------------------- board
 
 #[test]
-fn the_board_has_the_full_history_the_cursor_and_no_next_task_id() {
+fn the_summary_lists_the_tasks_and_the_detail_has_the_full_history_and_no_next_task_id() {
     let (home, a, _) = two_projects();
     store(home.path())
         .move_work_task(&a, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
     let server = Running::start(home.path());
-    let reply = server.get(&format!("/api/projects/{a}/board"));
+    let reply = server.get(&format!("/api/projects/{a}/summary"));
     assert_eq!(reply.status, 200, "{}", reply.body);
     let body = reply.json();
     assert!(!reply.body.contains("nextTaskId"));
     assert_eq!(body["project"]["id"], a.to_string());
-    let version = body["version"].as_str().unwrap();
-    assert_eq!(body["cursor"], format!("f1:{a}:{version}"));
+    assert_eq!(body["version"].as_str().unwrap().len(), 32);
     assert_eq!(body["tasks"].as_array().unwrap().len(), 2);
-    assert_eq!(body["tasks"][1]["history"].as_array().unwrap().len(), 2);
+    assert_eq!(body["tasks"][1]["id"], 2);
+    let detail = server.get(&format!(
+        "/api/projects/{a}/tasks/2/detail?sections=history"
+    ));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert!(!detail.body.contains("nextTaskId"));
+    assert_eq!(detail_lines::history(&detail.body).len(), 2);
 }
 
 #[test]
@@ -605,11 +623,11 @@ fn the_same_task_number_is_read_separately_per_project() {
         .move_work_task(&a, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
     let server = Running::start(home.path());
-    let alpha = server.get(&format!("/api/projects/{a}/board")).json();
-    let beta = server.get(&format!("/api/projects/{b}/board")).json();
+    let alpha = server.get(&format!("/api/projects/{a}/summary")).json();
+    let beta = server.get(&format!("/api/projects/{b}/summary")).json();
     assert_eq!(alpha["tasks"][1]["taskStatus"], "doing");
     assert_eq!(beta["tasks"][1]["taskStatus"], "todo");
-    assert_ne!(alpha["cursor"], beta["cursor"]);
+    assert_ne!(alpha["project"]["id"], beta["project"]["id"]);
 }
 
 #[test]
@@ -617,11 +635,11 @@ fn a_missing_or_malformed_project_and_the_old_routes_are_not_found_or_invalid() 
     let (home, _, _) = two_projects();
     let server = Running::start(home.path());
     let ghost = ProjectId::generate().unwrap();
-    let reply = server.get(&format!("/api/projects/{ghost}/board"));
+    let reply = server.get(&format!("/api/projects/{ghost}/summary"));
     assert_eq!(reply.status, 404);
     assert_eq!(reply.code(), "project_not_found");
     for bad in ["not-an-id", "ABCDEF0123456789ABCDEF0123456789", "alpha"] {
-        let reply = server.get(&format!("/api/projects/{bad}/board"));
+        let reply = server.get(&format!("/api/projects/{bad}/summary"));
         assert_eq!(reply.status, 422, "{bad}: {}", reply.body);
         assert_eq!(reply.code(), "invalid_value");
     }
@@ -803,7 +821,7 @@ fn deleting_in_one_project_leaves_the_other_untouched() {
 fn a_write_to_a_project_that_was_deleted_is_404_and_never_lands_in_another() {
     let (home, a, b) = two_projects();
     let server = Running::start(home.path());
-    let _ = server.get(&format!("/api/projects/{a}/board"));
+    let _ = server.get(&format!("/api/projects/{a}/summary"));
     // Deleted by the CLI while the page still shows it. The same name comes
     // back as a different project.
     store(home.path()).delete_project(&a).unwrap();
@@ -828,7 +846,10 @@ fn a_write_to_a_project_that_was_deleted_is_404_and_never_lands_in_another() {
         assert_eq!(reply.status, 404, "{method} {path}: {}", reply.body);
         assert_eq!(reply.code(), "project_not_found");
     }
-    assert_eq!(server.get(&format!("/api/projects/{a}/board")).status, 404);
+    assert_eq!(
+        server.get(&format!("/api/projects/{a}/summary")).status,
+        404
+    );
     assert_eq!(snapshot_json(home.path(), &again), before_again);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 }
@@ -842,7 +863,7 @@ fn renaming_a_project_keeps_the_same_id_working() {
         &["--project", "alpha", "project", "rename", "renamed"],
     );
     assert_eq!(code, 0, "{err}");
-    let board = read_until(&server, &format!("/api/projects/{a}/board"), |b| {
+    let board = read_until(&server, &format!("/api/projects/{a}/summary"), |b| {
         b["project"]["name"] == "renamed"
     });
     assert_eq!(board["project"]["name"], "renamed");
@@ -1040,7 +1061,7 @@ fn a_cli_change_reaches_an_open_event_stream_after_ready() {
     // The viewer can now read the change from the list and the board.
     let list = server.get("/api/projects").json();
     let alpha = list["projects"][0]["id"].as_str().unwrap().to_string();
-    let board = server.get(&format!("/api/projects/{alpha}/board")).json();
+    let board = server.get(&format!("/api/projects/{alpha}/summary")).json();
     assert_eq!(board["tasks"].as_array().unwrap().len(), 3);
 }
 

@@ -72,7 +72,6 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/logo-white.png", get(logo_white_png))
         .route("/api/events", get(events::events))
         .route("/api/projects", get(projects))
-        .route("/api/projects/{project_id}/board", get(board))
         .route("/api/projects/{project_id}/archive", get(archive))
         .route("/api/projects/{project_id}/summary", get(summary))
         .route(

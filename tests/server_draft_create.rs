@@ -29,7 +29,7 @@ fn created(reply: &Reply) -> Value {
 }
 
 fn board_tasks(server: &Running, pid: &str) -> Vec<Value> {
-    let reply = server.get(&format!("/api/projects/{pid}/board"));
+    let reply = server.get(&format!("/api/projects/{pid}/summary"));
     assert_eq!(reply.status, 200, "{}", reply.body);
     serde_json::from_str::<Value>(&reply.body).unwrap()["tasks"]
         .as_array()
@@ -41,7 +41,7 @@ fn task_in_board(server: &Running, pid: &str, id: i64) -> Value {
     board_tasks(server, pid)
         .into_iter()
         .find(|task| task["id"] == id)
-        .expect("the created task is on the board")
+        .expect("the created task is in the summary")
 }
 
 #[test]

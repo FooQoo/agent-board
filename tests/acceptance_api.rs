@@ -138,8 +138,11 @@ fn a_refused_conditions_list_saves_nothing() {
             .status,
         200
     );
+    // The whole Detail stream of task 1: its document, acceptance conditions, and history.
     let description_of_task_one = |server: &Running| {
-        server.get(&format!("/api/projects/{pid}/board")).json()["tasks"][0]["description"].clone()
+        let reply = server.get(&format!("/api/projects/{pid}/tasks/1/detail"));
+        assert_eq!(reply.status, 200, "{}", reply.body);
+        reply.body
     };
     let before = description_of_task_one(&server);
     let duplicate = json!({
