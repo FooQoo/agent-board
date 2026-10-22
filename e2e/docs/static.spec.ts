@@ -187,10 +187,10 @@ test.describe('site sources', () => {
       const sections = (text: string) => text.split('\n').filter((line) => /^##+ /.test(line)).length;
       expect(sections(ja), `dev/${file}: headings`).toBe(sections(en));
     }
-    expect(allPages).toHaveLength(72);
+    expect(allPages).toHaveLength(74);
   });
 
-  test('the sixteen guide screenshots exist as readable PNGs', () => {
+  test('the twenty guide screenshots exist as readable PNGs', () => {
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     for (const name of Object.keys(guideScreenshots)) {
       for (const suffix of ['.png', '.ja.png']) {
@@ -201,7 +201,7 @@ test.describe('site sources', () => {
         expect(data.readUInt32BE(20), `${name}${suffix} height`).toBeGreaterThan(0);
       }
     }
-    expect(fs.readdirSync(path.join(repoRoot, 'docs', 'images', 'guide')).filter((f) => f.endsWith('.png'))).toHaveLength(16);
+    expect(fs.readdirSync(path.join(repoRoot, 'docs', 'images', 'guide')).filter((f) => f.endsWith('.png'))).toHaveLength(20);
   });
 
   test('demo videos and posters are committed and the videos are small enough', () => {

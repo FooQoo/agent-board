@@ -21,6 +21,7 @@ Everything below serves one of these two goals. When a protection only restrains
 | An agent overwrites a draft or a finished task | The CLI refuses AI writes to drafts and Done tasks. | [Drafts and Done tasks](#drafts-and-done-tasks) |
 | Task text runs as code in the browser | React escaping, no raw HTML, link and image allowlists, CSP, strict Mermaid. | [Rendering untrusted text](#rendering-untrusted-text) |
 | Paths or text escape their folder | IDs are validated before paths are built; text never becomes a path or shell code. | [Files and paths](#files-and-paths) |
+| A docs path reaches outside `docs/` | Paths are checked element by element, symbolic links are refused, and only `.md` files and four image types are served. | [Project docs](#project-docs) |
 | An agent confuses projects | Every write names one project by an immutable ProjectId. | [Project boundaries](#project-boundaries) |
 | Setup grants too much | Only the data area is added; existing restrictions are kept. | [Agent access setup](#agent-access-setup) |
 
@@ -103,6 +104,20 @@ Titles, descriptions, reasons, and answers are written by agents and users, so t
 - The absolute path of the shared area is returned only by `workspace --json`. Hooks, snapshots, and errors show relative paths only. Folder bindings stay in the machine-local data area, and `EPIC.md`/`TASK.md` paths appear only in local CLI and hook output, never in remote JSON.
 - Board text is work data: it is never used as hook configuration, command arguments, or shell code. The hook and `wait` only read. Session tokens, environment variables, and settings contents never appear in snapshots.
 
+## Project docs
+
+The docs routes read and write files chosen by a path in the request, so they check the path before any file is touched (`src/docs/paths.rs`).
+
+What is refused:
+
+- **Path text.** An empty path, an absolute path, an empty part (`a//b`), any part that starts with a dot (`..`, `.git`), a backslash, a control character such as NUL, a part over 255 bytes, a path over 1,024 bytes, and more than 17 parts are `docs_path_invalid`. The file routes also require the last part to end in `.md` (`docs_not_markdown`).
+- **Symbolic links.** The path is resolved one part at a time under the project's `docs/`, and a symbolic link at any step, the file or a folder above it, is refused. The file is then opened with `O_NOFOLLOW` on Unix, and the opened handle must be a regular file. The tree leaves symbolic links out, so the page never offers one.
+- **Content types.** The file routes read only UTF-8 text up to 2 MiB. The image route serves only PNG, JPEG, WebP, and GIF up to 10 MiB, with a `Content-Type` fixed by the extension and `X-Content-Type-Options: nosniff`, so an SVG or HTML file is never served as something a browser could run.
+- **Writes.** The save passes the same write guard as every board write (Host, Origin, `Sec-Fetch-Site`, and the token). It only replaces an existing `.md` file; it cannot create, rename, or delete anything.
+- **Exposure.** The routes are on the board router only. The monitor entry that ngrok forwards to has no docs routes, so a phone cannot read or change the docs.
+
+The root folder comes from the server's own data area and the ProjectId in the URL, never from the request body. The folder is the user's: Agent Board writes the README when it creates the folder and otherwise changes a file only when the user saves it.
+
 ## Project boundaries
 
 - Naming the target every time and the immutable ProjectId keep cooperative agents from confusing projects, task numbers, or names. They are not per-project authentication or authorization.
@@ -134,4 +149,7 @@ These limits are deliberate. Keep them in mind when someone asks for "just one m
 - **External images leak views.** Every view of an external image contacts that server and reveals the view and the IP address. An image URL can also carry task content to an outside server, including when written by a malicious or hijacked agent. A person can only notice unfamiliar image URLs when opening the task.
 - **Refusing AI changes to Done tasks, drafts, and archived tasks** restrains cooperative agents; it does not authenticate against direct file edits or a spoofed actor.
 - **Writes based on cross-project reads** cannot be prevented by requiring `--project`, because the agent writes the name itself.
+- **A docs folder swapped between the check and the open.** The path check and the open are separate steps, and only the standard library is used. A program that replaces a folder inside `docs/` with a symbolic link after the check and before the open can make the server read or write through that link. The final `O_NOFOLLOW` protects only the last part of the path. Such a program already runs as the same user and can change the files directly.
+- **Docs saves against other programs.** The revision check and the save are ordered by a mutex inside `serve`. An editor, `git`, or an agent does not take it, so a write made between the server's comparison and its rename is lost without a conflict. See [Saving and recovery](./saving-and-recovery.md#project-docs).
+- **The `docs/` folder itself.** The checks start below `docs/`. The data area, the project folder, and `docs/` itself are trusted, as for every other shared file.
 - **The lifecycle lock** prevents a second `serve` among cooperative processes; it does not authorize anything.

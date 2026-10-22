@@ -42,6 +42,17 @@ flowchart LR
     Entry --> Shared["FileStore"]
 ```
 
+### Project docs
+
+Each project also has a `docs/` folder for the user's own Markdown documents. It sits inside the project's folder but is kept apart from the board: the watcher ignores it, it is not part of the `version`, and saving a document sends no `changed`. The browser reads and saves these files through four routes of their own, and a save is refused when the file changed since it was read. See [Saving and recovery](./saving-and-recovery.md#project-docs) and [Security model](./security.md#project-docs).
+
+```mermaid
+flowchart LR
+    Browser["Docs dialog"] <--> Routes["Docs routes"]
+    Routes <--> Docs[("docs/ folder")]
+    Others["Editors, git, agents"] --> Docs
+```
+
 ### Design principles
 
 Three ideas run through the whole design:

@@ -85,6 +85,21 @@
 
 モニターの入口では、Hostの確認に失敗した要求は理由`not available`の403 `forbidden`、sessionがない・期限切れなら401 `session_required`、公開Origin・同一オリジンのメタデータ・CSRFトークンのない書き込みは403 `forbidden`です。`POST /monitor/api/unlock`は、間違った合言葉に403 `unlock_failed`を返し、連続5回間違えたあとはすべての試行に429 `unlock_locked`を返します。どちらも残りの回数は示しません。
 
+## プロジェクトのドキュメント
+
+`/api/projects/{projectId}/docs/…`のルートが返します（[Web API](./web-api.md#プロジェクトのドキュメント)を参照）。CLIのエラーではないため、終了コードはありません。
+
+| コード | 発生する場面 | 終了 | HTTP |
+| --- | --- | --- | --- |
+| `docs_path_invalid` | パスが空、絶対パス、長すぎる（全体で1,024バイト、1つの要素で255バイト）、17要素より深い、または空の要素・ドットで始まる要素（`..`など）・バックスラッシュ・制御文字を含む。あるいは、途中のファイルやフォルダがシンボリックリンク。どれに当たるかは`reason`に出る。 | n/a | 400 |
+| `docs_not_found` | `docs/`の下にそのファイルがない、またはパスがフォルダを指す。保存はファイルを作らないので、新しいパスへの保存もこのエラーになる。 | n/a | 404 |
+| `docs_not_markdown` | ファイルのルートに、`.md`で終わらない名前を渡した。 | n/a | 415 |
+| `docs_asset_type` | 画像のルートに、PNG・JPEG・WebP・GIF以外（SVGなど）を渡した。 | n/a | 415 |
+| `docs_too_large` | 2 MiBを超えるファイルや保存する内容、または10 MiBを超える画像。 | n/a | 413 |
+| `docs_not_utf8` | ファイルが正しいUTF-8のテキストでない。ファイルは変更しない。 | n/a | 422 |
+| `docs_revision_conflict` | 画面が読んだ後にファイルが変わった。何も書かず、本文に`currentRevision`を加える。 | n/a | 409 |
+| `docs_read_only` | ファイルが読み取り専用で、保存できない。 | n/a | 403 |
+
 ## 表示設定
 
 `/api/preferences`と`/monitor/api/preferences`の経路が返します（[Web API](./web-api.md#表示設定)を参照）。CLIのエラーではないため、終了コードはありません。読めないファイルはエラーにならず、既定値を使います。

@@ -42,6 +42,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
       <project-id>/
         project.json
         README.md
+        docs/<任意のフォルダ>/<名前>.md
         epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
         tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>}
         .internal/write.lock
@@ -59,6 +60,8 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 - `.`で始まる名前は正本ではありません。`README.md`はフォルダと編集の規則の案内で、製品が作成時に書きます。
 - 画像は所有者の`assets/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
 - `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`（`{"pid":41235,"port":7420,"started_at":"..."}`）は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。`serve.log`は`serve -d`で起動したサーバーの出力です（所有者のみ読み取り可、起動のたびに作り直し）。`agboard stop`は`serve.json`からサーバーを見つけます。
+
+`docs/`には、プロジェクトのMarkdown文書を置きます。ドキュメントのダイアログが読み書きします（[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照）。
 
 `project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`defaultEpicsSeeded`を持ちます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。
 
@@ -170,3 +173,14 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 ## フォルダの紐付け
 
 フォルダの紐付けは、実フォルダとProjectIdを対応づけ、Hookと`agboard progress`が作業フォルダが属するプロジェクトを識別できるようにします。端末ローカルのデータ領域にだけ保存し、共有領域や追跡ファイルには保存しません。ProjectIdを保存するので、名前変更に追従し、同じ名前で作り直したプロジェクトへは移りません。最も近い紐付け済みの祖先フォルダを使います。存在しないフォルダ・壊れた紐付け・削除済みのProjectIdは、説明つきのエラーにします。
+
+## プロジェクトのドキュメント
+
+`shared/projects/<project-id>/docs/`は、プロジェクトの文書のフォルダです。ボードではなく利用者のものです。ファイルには形式も`formatVersion`も項目もなく、Agent Boardは検証しません。
+
+- **プロジェクトと一緒に作る。** `project create`と、プロジェクトを作るときの`init`は、新しいプロジェクトの一時フォルダの中に`docs/`と`README.md`を作り、それからフォルダを正式な名前に変えます。READMEは英語か日本語で、`.internal/preferences.json`のアプリの言語に合わせます（`ja`なら日本語、それ以外は英語）。文面は`src/docs/templates/`にあります。
+- **起動時に補う。** `serve`は、`docs/`がないプロジェクトに`docs/`とREADMEを作ります。すでにあるフォルダには触れないので、利用者が消したREADMEは消えたままです。ここでの失敗は無視します。フォルダがなければ空のツリーとして読むためです。
+- **プロジェクトと一緒に消える。** `project rm`はプロジェクトのフォルダを丸ごと削除し、`docs/`も消えます。退避はしません。既存のプロジェクトに対する`init`は`tasks/`と`epics/`だけを初期化するので、`docs/`は残ります。
+- **ボードのデータではない。** 監視は`docs/`の下をすべて無視し、ファイルはプロジェクトの`version`に含まれません（[変更の通知](../concepts/notifications.md)を参照）。編集しても`changed`は送られません。
+- **ドキュメントのルートからだけ読み書きする。** ツリーはフォルダと`.md`ファイルを一覧にし、ファイルのルートは2 MiB以下のUTF-8の`.md`ファイルを読み、保存します。画像のルートは10 MiB以下のPNG・JPEG・WebP・GIFを返します。[Web API](./web-api.md#プロジェクトのドキュメント)を参照してください。
+- **送られたとおりに保存する。** 保存は受け取ったバイト列をそのまま書きます。改行コード、BOM、末尾の改行、フロントマターは変えません。保存で指定する`revision`は、`sha256:`とそのバイト列のSHA-256（16進数）です。

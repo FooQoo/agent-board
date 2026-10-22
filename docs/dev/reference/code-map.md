@@ -9,6 +9,7 @@ Where things live in the repository. For how the parts work together, read [How 
 | `main.rs` | Calls `cli::run()`. |
 | `cli` | Arguments, commands, output formatting, and error display. |
 | `file_store` | The shared-area format and everything that reads or writes it: paths, saving, locking, validation, operations, the index, and watching. |
+| `docs` | The project docs: path rules (`paths`), the shared types (`model`), the tree, file and image reads (`reader`), the revision-checked save (`writer`), the revision (`revision`), and the README placed in a new `docs/` folder (`templates`). |
 | `domain` | Tasks, lanes, run states, epics, decision requests, input limits, and rules.<br>No I/O. |
 | `server` | The axum app, API, SSE, write guards, embedded web assets, and the monitor entry. |
 | `agent` | The hook and `wait`. |
@@ -19,7 +20,7 @@ Where things live in the repository. For how the parts work together, read [How 
 
 Dependencies point one way.
 
-`cli` uses `agent`, `interact`, `server`, `setup`, and `progress`. `agent` uses `progress`; `agent`, `progress`, and `server` use `file_store`, which uses `domain`. 
+`cli` uses `agent`, `interact`, `server`, `setup`, and `progress`. `agent` uses `progress`; `agent`, `progress`, and `server` use `file_store`, which uses `domain`. `server` uses `docs`, which uses `file_store`'s `layout` and `io` for its paths and saves; `file_store` takes only `DocsLocale` from `docs`, to choose the README of a new `docs/` folder. 
 
 `interact` and `setup` use only `paths` and `error`. Nothing depends on `cli`, and `server` does not depend on `cli`, `agent`, or `progress`. 
 
@@ -43,7 +44,7 @@ Inside `server`, routers depend on shared modules rather than on each other:
 
 | Module | Responsibility |
 | --- | --- |
-| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, epic images, and the mobile connection (`monitor_connections`). |
+| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, epic images, project docs (`docs/`: `tree`, `file_get`, `file_put`, `assets`), and the mobile connection (`monitor_connections`). |
 | `monitor/` | The monitor's read router, its answer endpoint, and its assets. |
 | `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `start`, `run`), the saved settings (`config`), the token and its secure storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`, with its `session` routes for the passcode unlock). |
 | `preferences/` | The saved language and color theme: `preferences.json` in the internal area (`PreferencesStore`), the `GET` and `PUT` handling shared by the PC and the monitor, and the change notice. |
@@ -64,6 +65,15 @@ The main files and directories outside `src/` are:
 - `docs/`: this documentation site.
 - `integrations/`: hook templates.
 - `.agents/skills/agent-board/`: the agent skill.
+
+### Project docs
+
+- `src/docs/`: paths, reads, the save, and the README templates (`templates/README.en.md`, `templates/README.ja.md`).
+- `src/server/api/docs/`: the four routes on the board router.
+- `src/file_store/project.rs`: creates `docs/` with a new project (`create_project_with_docs`) and fills it in at startup (`ensure_docs_dirs`).
+- `web/src/features/docs/`: the request client (`api/docsApi.ts`), the tree, file and edit state (`model/`), and the dialog (`ui/DocsDialogContainer.tsx`, `ui/shell/` for the frame and file list, `ui/document/` for the body pane, front matter and conflict banner).
+- `web/src/shared/markdown/frontmatter.ts` and `resolveRelativeImage.ts`: the front matter split and the relative image paths the dialog uses.
+- `tests/docs_*.rs`: the Rust tests of the routes, reads, saves, README, and monitor boundary.
 
 ### First-run guide
 

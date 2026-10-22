@@ -42,6 +42,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
       <project-id>/
         project.json
         README.md
+        docs/<any folders>/<name>.md
         epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
         tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>}
         .internal/write.lock
@@ -59,6 +60,8 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 - Names starting with `.` are not source files. `README.md` describes the folder and its editing rules; the product writes it at creation.
 - Images live in the owner's `assets/`. Bodies reference images as `assets/<attachment-id>.<ext>` (or the older `attachment:<id>`). Images are PNG, JPEG, WebP, or GIF; at most 10 MiB each, 20 per owner, and 50 MiB in total.
 - `bindings.json` and `serve.json` are machine-local. `serve.json` (`{"pid":41235,"port":7420,"started_at":"..."}`) tells the CLI where to notify and `wait` where to connect; it never holds a token. `serve.log` is the output of a server started with `serve -d` (owner-only, replaced at every start); `agboard stop` finds the server through `serve.json`.
+
+`docs/` holds the project's own Markdown documents, which the Docs dialog reads and edits (see [Project docs](#project-docs)).
 
 `project.json` holds `formatVersion`, `id`, `name`, `createdAt`, `nextTaskId`, and `defaultEpicsSeeded`. The last one is `true` once the project has been offered the default epics `BUG` and `ENHANCEMENT`; it is written once, so a default epic that was deleted is not created again. A file without it is read as `false`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`.
 
@@ -170,3 +173,14 @@ The CLI, web API, and hook share one camelCase task representation: the `task.js
 ## Folder bindings
 
 A folder binding maps a real folder to a ProjectId so the hook and `agboard progress` know which project a working folder belongs to. It is stored only in the machine-local data area, never in the shared area or tracked files. Because it stores the ProjectId, it follows renames and never moves to a re-created project with the same name. The nearest bound ancestor folder wins. Missing folders, broken bindings, and deleted ProjectIds are explained errors.
+
+## Project docs
+
+`shared/projects/<project-id>/docs/` is the project's document folder. It belongs to the user, not to the board: its files have no format, no `formatVersion`, and no fields, and Agent Board never validates them.
+
+- **Created with the project.** `project create`, and `init` when it creates the project, build `docs/` inside the new project's temporary folder, with a `README.md`, before the folder is renamed into place. The README is English or Japanese, following the app's language in `.internal/preferences.json` (`ja` gives Japanese; anything else, English). Its text is in `src/docs/templates/`.
+- **Filled in at startup.** `serve` creates `docs/` and its README for every project that has no `docs/` folder. A folder that exists is left alone, so a README the user deleted stays deleted. A failure here is skipped, because a missing folder reads as an empty tree.
+- **Deleted with the project.** `project rm` removes the whole project folder, `docs/` included. Nothing is kept aside. `init` on an existing project resets only `tasks/` and `epics/`, so `docs/` stays.
+- **Not board data.** The watcher ignores everything under `docs/`, and the files are not part of the project's `version` (see [Change notifications](../concepts/notifications.md)). Editing them never sends `changed`.
+- **Read and written only through the Docs routes.** The tree lists folders and `.md` files; the file routes read and save `.md` files of at most 2 MiB in UTF-8; the image route serves PNG, JPEG, WebP, and GIF up to 10 MiB. See [Web API](./web-api.md#project-docs).
+- **Saved as sent.** A save writes the bytes it receives, with no change to line endings, a BOM, the final newline, or the front matter. The revision a save names is `sha256:` and the hex SHA-256 of those bytes.

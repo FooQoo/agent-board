@@ -19,6 +19,8 @@
 
 書き込みの対象は、常にURLのProjectIdです。Webの`actor`は常に`human`で、要求から受け取ることはありません。`/api/board`のような対象のない経路、互換の別名、プロジェクトを作成・名前変更・削除するHTTP APIはありません。
 
+[プロジェクトのドキュメント](../reference/web-api.md#プロジェクトのドキュメント)のルートは、手順3の例外です。索引、プロジェクトの書き込みロック、通知を使わず、プロジェクトの`docs/`のファイルを直接読み書きします。保存の順番は専用のミューテックスでそろえ、ファイルの`revision`と照合します（[保存と復旧](./saving-and-recovery.md#プロジェクトのドキュメント)を参照）。ミューテックスを待ち、ファイルを操作するため、ブロッキング用のスレッドで動きます。
+
 JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシートは内容から名前を付け、`Cache-Control: public, max-age=31536000, immutable`で送ります。ブラウザがgzipを受け付ける場合はgzipで圧縮して送ります。新しいビルドではHTMLが読み込む名前が変わるため、再読み込みすれば常に最新の画面になります。HTMLの応答には`Referrer-Policy: no-referrer`と`Content-Security-Policy`を付けます。スクリプトと接続は自分自身だけ、スタイルは自分自身と`'unsafe-inline'`（エディターが実行時に`<style>`を挿入するため）、画像は自分自身・`data:`・`http`・`https`です。
 
 ## Web画面の作り
@@ -55,7 +57,7 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 | --- | --- |
 | `app/` | 2つの入口（`entry/board.tsx`・`entry/monitor.tsx`）、ボードの`App`、プロジェクトのセッション、集約する`api.ts`、遅延ダイアログの接続、サンプルデータのモード。 |
 | `pages/` | 画面ごとのフォルダー: `board/`・`archive/`・`epics/`・`monitor/`。 |
-| `features/` | `tasks/`・`epics/`・`projects/`・`settings/`・`monitor-connections/`（モバイル接続のPC用ダイアログ）: 一つの主題の表示、フック、計算、リクエスト。 |
+| `features/` | `tasks/`・`epics/`・`projects/`・`settings/`・`docs/`（プロジェクトのドキュメントのダイアログ）・`monitor-connections/`（モバイル接続のPC用ダイアログ）: 一つの主題の表示、フック、計算、リクエスト。 |
 | `shared/` | `ui/`の基盤部品と汎用の枠、`markdown/`、`rich-editor/`、`api/`（HTTPの共通処理とサーバーのやり取りの型）、`lib/`、`styles/`、`theme/`、`i18n/`。 |
 
 ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`RequestDialog`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。ボードの設定スロット（`app/BoardSettings.tsx`）もこうした組み合わせの一つで、設定ダイアログにチュートリアルとモバイル接続の行を置き、隣にある接続ダイアログを持ちます。そのため、設定ダイアログを閉じてから接続ダイアログが開きます。2つの行は、`shared/ui`の`SettingsEntryRow`を呼ぶ薄い部品（`TutorialEntryRow`・`ConnectionEntryRow`）で、アイコンのタイル、文言、ボタンは`SettingsEntryRow`が描きます。モニターの`useBuildReload`も、入口から同じように渡します。
@@ -99,6 +101,16 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 - `preferences`イベントは、開いているすべてのページに変更をすぐに反映します。再読み込みは要りません。ページは、すでに新しい版を表示していれば、遅れて届いた古い応答やイベントを無視します。
 - 保存に失敗した場合（`invalid_preferences`・`preferences_unavailable`、または接続できない場合）も、選んだ設定は今のページに反映します。設定のダイアログには保存の失敗を表示し、PCの値は変えません。日本語の翻訳キーがなければ英語の文言を表示します。設定の失敗でボードのデータが変わることはありません。
 - 詳細欄の幅は、保存する設定には含みません。`agboard.detailWidth`の別のキーでブラウザごとに保存し、値がない・不正なときは既定の幅に戻します。
+
+### ドキュメントのダイアログ
+
+ダイアログのデータは`DocsDialogContainer`（`web/src/features/docs/ui/`）が持ちます。画面と状態は[利用者ガイド](../../guide/use/docs.md)で説明しています。
+
+- `useDocsTree`は、ダイアログを開いたときにツリーを1回取得します。ドキュメントのライブ更新はありません。`useDocument`は、ファイルを選んだときにそのファイルを取得します。読み込みごとにIDを付けてエディタのキーにするので、新しいファイルでは新しいエディタが作られます。
+- `useDocumentEditor`は`splitFrontmatter`（`shared/markdown/frontmatter.ts`）でフロントマターを分け、本文だけを`RichMarkdownEditor`に渡します。エディタが変更を知らせるまで未保存にならないので、開いて閉じるだけでは何も書きません。保存では、元のフロントマターと編集した本文を続けた内容を、最後に読んだか保存した`revision`と一緒に送ります。`useSaveFlow`を`closeOnSuccess: false`で使うので、ダイアログは閉じません。
+- 409を受けると競合の状態にし、入力を残します。**最新を再読み込み**は確認してから読み込み直します。**自分の内容で上書き**は、409の`currentRevision`（ないときは、読み直したファイルの`revision`）でもう一度保存します。
+- 相対パスの画像は`resolveRelativeImage`（`shared/markdown/resolveRelativeImage.ts`）がファイルのフォルダを基準に解決し、画像のルートへつなぎます。自分の添付や安全でないスキームは、ここに届きません。
+- ヘッダーの**ドキュメント**は、ボードにだけ表示します。ボードは`app/`でコンテナをプロジェクトをキーにして組み立てるので、プロジェクトを切り替えると最初からになります。ダイアログは初めて使うときに読み込みます。
 
 ## プロジェクトをまたぐ読み込み
 

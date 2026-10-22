@@ -143,7 +143,7 @@ for (const { lang, file, path: urlPath } of allPages.filter((p) => p.file !== 'h
   });
 }
 
-test('the sidebar lists the fourteen guide pages in four groups, in the same order in both languages', async ({ page }) => {
+test('the sidebar lists the fifteen guide pages in four groups, in the same order in both languages', async ({ page }) => {
   const hrefs: Record<Lang, string[]> = { en: [], ja: [] };
   for (const lang of langs) {
     await page.goto(pagePath(lang, 'index'));
@@ -197,7 +197,7 @@ async function docImageSources(page: Page): Promise<string[]> {
   return page.locator('.vp-doc img').evaluateAll((els) => els.map((el) => el.getAttribute('src') ?? ''));
 }
 
-// AC-4, AC-5: the fourteen guide screenshots are shown, in the right language
+// AC-4, AC-5: the eighteen guide screenshots are shown, in the right language
 test('every guide screenshot appears on its page in English and Japanese', async ({ page }) => {
   const seen = new Set<string>();
   for (const lang of langs) {
@@ -218,7 +218,7 @@ test('every guide screenshot appears on its page in English and Japanese', async
       seen.add(screenshotFile(name, lang));
     }
   }
-  expect(seen.size).toBe(14);
+  expect(seen.size).toBe(18);
 });
 
 // AC-5: the existing board / epic / mobile images are still used
