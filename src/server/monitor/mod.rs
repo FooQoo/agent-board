@@ -1,6 +1,7 @@
 //! The independently built, read-only monitor web assets.
 
 pub mod assets;
+mod data;
 mod router;
 mod write;
 

@@ -66,6 +66,8 @@
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 1 | なし |
 | `wait_timeout` | 変更待ち（`wait --after`）が任意の`--timeout`に達した、またはPending依頼の`wait.timeoutSeconds`に達した。回答ではなく、質問はPendingのまま。 | 1 | なし |
 | `forbidden` | Webの書き込みが保護に失敗した（Host・Origin・`Sec-Fetch-Site`・トークン）。 | なし | 403 |
+| `invalid_sections` | Detail経路の`sections`クエリが`document`・`history`・`document,history`のいずれでもない。[Web API](./web-api.md#summaryとdetail)を参照。 | なし | 400 |
+| `not_implemented` | SummaryまたはDetailの経路はあるが、ハンドラーがまだ書かれていない。 | なし | 501 |
 
 ## モバイル接続
 

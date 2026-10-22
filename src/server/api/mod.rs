@@ -2,6 +2,7 @@
 //! handlers live in the submodules, grouped as the routes are.
 
 mod archive;
+mod detail;
 mod epic_attachments;
 mod epics;
 mod monitor_connections;
@@ -10,6 +11,7 @@ mod onboarding;
 mod pages;
 mod preferences;
 mod projects;
+mod summary;
 mod task_attachments;
 mod task_edit;
 mod task_multipart;
@@ -24,6 +26,8 @@ use axum::middleware::{self, Next};
 use axum::response::Response;
 use axum::routing::{delete, get, patch, post, put};
 
+pub(crate) use detail::detail_stub;
+
 use super::guard::{self, header_text};
 use super::response::{
     agboard_error_response, error_response, forbidden, json_response, page_out_of_date,
@@ -34,6 +38,7 @@ use crate::domain::Changed;
 use crate::error::AgboardError;
 use crate::file_store::model::TaskView;
 use archive::*;
+use detail::{epic_detail, task_detail};
 use epic_attachments::*;
 use epics::*;
 use monitor_connections::*;
@@ -41,6 +46,7 @@ use onboarding::*;
 use pages::*;
 use preferences::*;
 use projects::*;
+use summary::summary;
 use task_attachments::*;
 use task_edit::*;
 use task_multipart::*;
@@ -68,6 +74,15 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/projects", get(projects))
         .route("/api/projects/{project_id}/board", get(board))
         .route("/api/projects/{project_id}/archive", get(archive))
+        .route("/api/projects/{project_id}/summary", get(summary))
+        .route(
+            "/api/projects/{project_id}/tasks/{id}/detail",
+            get(task_detail),
+        )
+        .route(
+            "/api/projects/{project_id}/epics/{epic_id}/detail",
+            get(epic_detail),
+        )
         .route("/api/projects/{project_id}/tasks", post(create_task))
         .route(
             "/api/projects/{project_id}/tasks/multipart",

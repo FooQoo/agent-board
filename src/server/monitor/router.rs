@@ -17,6 +17,7 @@ use axum::routing::{any, get};
 use futures_util::stream::{self, Stream, StreamExt};
 use tokio::sync::broadcast;
 
+use super::data;
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::index::ProjectIndex;
@@ -64,6 +65,18 @@ pub(crate) fn router(state: Arc<MonitorState>) -> Router {
         .route(
             "/monitor/api/projects/{project_id}/board",
             get(board).head(board),
+        )
+        .route(
+            "/monitor/api/projects/{project_id}/summary",
+            get(data::summary).head(data::summary),
+        )
+        .route(
+            "/monitor/api/projects/{project_id}/tasks/{id}/detail",
+            get(data::task_detail).head(data::task_detail),
+        )
+        .route(
+            "/monitor/api/projects/{project_id}/epics/{epic_id}/detail",
+            get(data::epic_detail).head(data::epic_detail),
         )
         .route("/monitor/api/events", get(events))
         .route(

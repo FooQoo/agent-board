@@ -1,0 +1,4 @@
+{"type":"start","resource":"task","id":302,"projectId":"0123456789abcdef0123456789abcdef","sections":["history"],"versions":{"history":"8091a2b3c4d5e6f7"}}
+{"type":"section-start","section":"history"}
+{"type":"section-end","section":"history","count":0}
+{"type":"complete","versions":{"history":"8091a2b3c4d5e6f7"}}

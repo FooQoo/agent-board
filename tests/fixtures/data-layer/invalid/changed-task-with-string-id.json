@@ -1,0 +1,37 @@
+{
+  "instanceId": "inst-5f3a",
+  "seq": 42,
+  "projectId": "0123456789abcdef0123456789abcdef",
+  "changes": [
+    {
+      "resource": "task",
+      "id": "302",
+      "facets": [
+        "summary",
+        "history"
+      ]
+    },
+    {
+      "resource": "task",
+      "id": 77,
+      "facets": [
+        "deleted"
+      ]
+    },
+    {
+      "resource": "epic",
+      "id": "EPIC-1",
+      "facets": [
+        "summary",
+        "document"
+      ]
+    },
+    {
+      "resource": "project",
+      "id": "0123456789abcdef0123456789abcdef",
+      "facets": [
+        "summary"
+      ]
+    }
+  ]
+}

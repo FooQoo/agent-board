@@ -6,6 +6,7 @@
 mod answer;
 mod api;
 pub mod assets;
+pub mod contracts;
 pub mod dist;
 mod epic_counts;
 mod events;
