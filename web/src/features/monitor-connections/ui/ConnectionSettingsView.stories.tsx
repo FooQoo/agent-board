@@ -55,8 +55,10 @@ export const NeedsConfig: Story = {
     await expect(steps).toHaveLength(2);
     await expect((steps[1] as HTMLElement).offsetHeight).toBe(280);
     await expect(view.getByRole('heading', { name: 'Get a token' })).toBeInTheDocument();
-    // Save and connect is 146px wide: the same width as Reconnect in the stopped view.
-    await expect(view.getByRole('button', { name: 'Save and connect' }).offsetWidth).toBe(146);
+    // Save and connect is about 146px wide, the same as Reconnect in the stopped view. The width
+    // follows the text, so a font that measures one pixel apart must not fail the story.
+    const connectWidth = view.getByRole('button', { name: 'Save and connect' }).offsetWidth;
+    await expect(Math.abs(connectWidth - 146)).toBeLessThanOrEqual(2);
     await expect(view.getByRole('heading', { name: 'Paste and connect' })).toBeInTheDocument();
     // The token page opens in a new tab, without handing the PC page to ngrok.
     const link = view.getByRole('link', { name: 'Open the token page' });
