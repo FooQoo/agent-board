@@ -32,19 +32,29 @@ for (const mode of ["light", "dark"] as const) {
 					await route.fulfill({ json: summary });
 				});
 				await page.route("**/api/projects/*/archive", async (route) => {
-					const boardUrl = route
+					// The archive lists whole cards with their conditions; the Summary only counts them, so the
+					// conditions are rebuilt from the counts.
+					const summaryUrl = route
 						.request()
 						.url()
-						.replace(/\/archive$/, "/board");
-					const board = await (await page.request.get(boardUrl)).json();
+						.replace(/\/archive$/, "/summary");
+					const summary = await (await page.request.get(summaryUrl)).json();
 					await route.fulfill({
 						json: {
-							...board,
-							tasks: board.tasks.slice(0, 3).map((task: object) => ({
-								...task,
-								archivedAt: "2026-10-08T00:00:00Z",
-								attachments: [],
-							})),
+							...summary,
+							cursor: summary.version,
+							tasks: summary.tasks.slice(0, 3).map(
+								(task: { acceptance: { done: number; total: number } }) => ({
+									...task,
+									archivedAt: "2026-10-08T00:00:00Z",
+									attachments: [],
+									acceptance: Array.from({ length: task.acceptance.total }, (_, index) => ({
+										id: String(index + 1),
+										text: "",
+										done: index < task.acceptance.done,
+									})),
+								}),
+							),
 						},
 					});
 				});
