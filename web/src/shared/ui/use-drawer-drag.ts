@@ -12,6 +12,9 @@ const DISMISS_SHARE = 0.25;
 const FLICK_PX_PER_MS = 0.5;
 const FLICK_MIN_PX = 24;
 
+/** Controls inside the draggable area that must receive their own taps. */
+const NO_DRAG_SELECTOR = '.mobile-drawer__close';
+
 const OFFSET_VAR = '--drawer-drag-y';
 const PROGRESS_VAR = '--drawer-swipe-progress';
 
@@ -29,7 +32,7 @@ interface Drag {
 }
 
 /**
- * Drives the swipe-down gesture of the sheet's handle without React state: the pointer only records
+ * Drives the swipe-down gesture of the sheet's top area (handle and header, above the tabs) without React state: the pointer only records
  * the latest position, and one animation frame writes it to the `--drawer-drag-y` property of the
  * sheet and the `--drawer-swipe-progress` property of the backdrop. The stylesheet turns those into
  * `translate` and `opacity`, so a drag renders nothing in React and reads the height once.
@@ -110,8 +113,10 @@ export function useDrawerDrag({
     paint(0, 1);
   };
 
-  const start = (event: PointerEvent<HTMLButtonElement>) => {
+  const start = (event: PointerEvent<HTMLElement>) => {
     if (event.button !== 0 || event.isPrimary === false || drag.current) return;
+    // The close button keeps its own tap target inside the draggable top area.
+    if (event.target instanceof Element && event.target.closest(NO_DRAG_SELECTOR)) return;
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
@@ -144,7 +149,7 @@ export function useDrawerDrag({
       onResize,
     };
   };
-  const move = (event: PointerEvent<HTMLButtonElement>) => {
+  const move = (event: PointerEvent<HTMLElement>) => {
     const current = drag.current;
     if (!current || current.pointerId !== event.pointerId) return;
     current.offset = Math.max(0, current.startOffset + event.clientY - current.startY);
@@ -154,7 +159,7 @@ export function useDrawerDrag({
       paint(current.offset, current.height);
     });
   };
-  const end = (event: PointerEvent<HTMLButtonElement>, cancelled: boolean) => {
+  const end = (event: PointerEvent<HTMLElement>, cancelled: boolean) => {
     const current = drag.current;
     if (!current || current.pointerId !== event.pointerId) return;
     stop();
@@ -179,8 +184,8 @@ export function useDrawerDrag({
   return {
     onPointerDown: start,
     onPointerMove: move,
-    onPointerUp: (event: PointerEvent<HTMLButtonElement>) => end(event, false),
-    onPointerCancel: (event: PointerEvent<HTMLButtonElement>) => end(event, true),
-    onLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => end(event, true),
+    onPointerUp: (event: PointerEvent<HTMLElement>) => end(event, false),
+    onPointerCancel: (event: PointerEvent<HTMLElement>) => end(event, true),
+    onLostPointerCapture: (event: PointerEvent<HTMLElement>) => end(event, true),
   };
 }

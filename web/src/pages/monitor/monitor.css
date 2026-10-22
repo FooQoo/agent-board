@@ -464,10 +464,11 @@ body {
 .mobile-drawer__overlay[data-state="open"][data-settling] {
   transition: opacity 280ms ease;
 }
-.mobile-drawer__handle {
+.mobile-drawer__top {
+  flex: none;
   touch-action: none;
 }
-.mobile-drawer__handle:active {
+.mobile-drawer__top:active {
   cursor: grabbing;
 }
 .mobile-drawer__header {

@@ -58,12 +58,16 @@ const overlay = () => document.querySelector<HTMLElement>('[data-slot="drawer-ba
 const pull = () => popup()?.style.getPropertyValue('--drawer-drag-y') ?? '';
 
 /** jsdom has no PointerEvent: a mouse event with the pointer fields stands in for it. */
-function firePointer(type: string, init: { clientY?: number; timeStamp?: number }) {
+function firePointer(
+  type: string,
+  init: { clientY?: number; timeStamp?: number },
+  target: Element = handle(),
+) {
   const event = new MouseEvent(type, { bubbles: true, button: 0, clientY: init.clientY ?? 0 });
   Object.assign(event, { pointerId: 1, isPrimary: true });
   if (init.timeStamp !== undefined)
     Object.defineProperty(event, 'timeStamp', { value: init.timeStamp });
-  fireEvent(handle(), event);
+  fireEvent(target, event);
 }
 // React reports a zero timeStamp as the current time, so the fake clock starts well above zero.
 const down = (y: number, time = 1000) =>
@@ -99,6 +103,22 @@ const finishExit = () =>
   );
 
 describe('Drawer drag', () => {
+  it('drags from the header but leaves the close button to taps', () => {
+    render(<Demo />);
+    const title = screen.getByText('Task');
+    firePointer('pointerdown', { clientY: 100, timeStamp: 1000 }, title);
+    firePointer('pointermove', { clientY: 140 }, title);
+    runFrames();
+    expect(pull()).toBe('40px');
+    firePointer('pointercancel', { clientY: 140 }, title);
+
+    const close = screen.getByRole('button', { name: 'Close details' });
+    firePointer('pointerdown', { clientY: 100, timeStamp: 3000 }, close);
+    firePointer('pointermove', { clientY: 160 }, close);
+    runFrames();
+    expect(popup()?.hasAttribute('data-swiping')).toBe(false);
+  });
+
   it('follows the pointer once per frame without rendering the body again', () => {
     const onBody = vi.fn();
     render(<Demo onBody={onBody} />);
