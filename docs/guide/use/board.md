@@ -30,6 +30,8 @@ Select a task to open its details on the right. The tabs show:
 
 The panel on the right shows the selected task. The Conditions tab lists the task's own acceptance conditions with a progress bar. An epic's own reference conditions stay in its Markdown details.
 
+Each tab loads its text when you open it. The number on the **History** tab appears after the history has loaded.
+
 ## Move a task
 
 Drag a task to another column and confirm the move. The reason field is optional; if you leave it empty, a reason is generated from the move. The columns mean:
@@ -68,6 +70,12 @@ Archive finished tasks to clear the board without deleting anything.
 The Archive screen lists archived tasks with their ID, title, owner, date, and the epic they belonged to, if any. Select a task to see its details.
 
 The details of an archived task use the same layout as an active task. **Restore** and the trash icon for permanent deletion sit at the top right, next to the close button. Permanent deletion asks for confirmation first.
+
+## Refresh the board
+
+The board updates itself when a change is saved, whether an agent made it or another browser on this PC did. To read the latest data at once, choose **Refresh** in the header. It is the round arrow button between **Archive** and **Settings**. It works even while a panel is open.
+
+While a details panel, an editor, or a dialog is open, automatic updates wait, so the text you are reading or editing does not move. They are applied about three seconds after you close it.
 
 ## Settings
 

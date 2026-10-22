@@ -43,7 +43,7 @@ JSON and HTML responses are `no-store`. Scripts and stylesheets are named by the
 
 **Themes.** `web/src/shared/theme/index.ts` owns theme types, the list, validation, and DOM attributes. A theme is a mode (light or dark) and one of 12 accents. It is applied before React renders by syncing `data-mode`, `data-accent`, the `dark` class, and `color-scheme`. The saved value is the PC's `preferences.json`, read and written by `web/src/shared/preferences/index.ts` through `GET` and `PUT /api/preferences` (see [Shared files](../reference/files.md#display-preferences)). The browser keeps a copy in `localStorage` (`agboard.theme` and `agboard.locale`) only for the first paint. Theme changes never reach the task history.
 
-The epic list reads `epics` and `epicTaskCounts` from the board response. The server computes the counts from the same snapshot as the epics, so the list never mixes two reads. The mobile monitor carries the same counts in its board response, but it has no epic list screen. The list shares its frame with the archive through `ListPane`, and each state (loading, load failure, refresh failure, empty) comes from the project resource, so a failed refresh keeps the last good rows.
+The epic list reads the epics and their progress from the project's Summary. The server computes the progress from the same snapshot as the epics, so the list never mixes two reads. The mobile monitor has no epic list screen. The list shares its frame with the archive through `ListPane`, and each state (loading, load failure, refresh failure, empty) comes from the project resource, so a failed refresh keeps the last good rows.
 
 Task details (including the archive and monitor) and epic details share `DetailHeader` in `web/src/features/tasks/detail/DetailHeader.tsx`. It places the identity, action toolbar, and close control in one common layout so the close control keeps the same spacing. Each host supplies its own actions.
 
@@ -63,6 +63,24 @@ A file may import its own feature or page and the layers below it. `shared/` imp
 `pnpm --dir web check` runs `web/scripts/check-boundaries.mjs` after Biome. It follows static imports, `import type`, re-exports, and `import()`, and fails on an import that breaks these rules, one it cannot resolve, or an import cycle. Do not silence it with an allowlist; move the shared piece down or compose it in the page. Do not re-export a whole feature from one file, because a heavy module such as the editor or the Markdown renderer would then reach the first script. Lazy imports name the implementation file.
 
 Keep a UI part's Stories, focused tests, dedicated CSS, and coverage ledger beside its source. The ledger connects each exported part to its Story IDs and visible states. A page-level Story documents the composed screen; a part-level Story documents the states and interactions owned by that part. See [Storybook](../getting-started/setup.md#storybook) for the commands and the current coverage limits.
+
+## Reading and updating data
+
+The board and the monitor read a project in two steps. The Summary (`GET .../summary`) holds what every card and list row shows. The server builds it from the index, so reading it reads no file. A Detail (`GET .../tasks/{id}/detail` or `.../epics/{epicId}/detail`) holds a body, its acceptance text, and its history. The UI reads a Detail only when someone opens that card or epic. The mobile monitor uses the same contract under `/monitor/api/projects/{projectId}/`. The wire shapes are in [Web API](../reference/web-api.md#summary-and-detail).
+
+The data layer in `web/src/shared/data/` keeps these reads in one place, in three parts:
+
+- `api/`: the contract types and the parser for the Detail NDJSON stream. A stream is accepted only after its `complete` line.
+- `core/`: code that does not depend on React. `ResourceStore` holds the Summaries and the Details, one entry per section. `RefreshScheduler` collects the notifications of a 150 ms window, joins requests for one resource into one fetch, runs at most two background fetches at once, and fetches only the sections a notification named. `ChangeInvalidator` turns a `changed` event into the smallest invalidation that is still safe. `EventConnection` opens and closes the event stream.
+- `react/`: the hooks that the screens use, such as `useSummary`, `useTaskDetail`, `useEpicDetail`, and `usePresentationHold`.
+
+The cache has fixed limits and no time-based expiry. It keeps the Summary of the last four projects, one for each project. It keeps up to 60 task Details within 8 MiB and up to 20 epic Details within 4 MiB, and drops the least recently used entries above those limits. The limits are in `web/src/shared/data/core/limits.ts`.
+
+**Holding updates.** Automatic updates do not change the screen while a drawer or a dialog is open. The data core holds them while the panel is open, and it applies them together 3 seconds after the last panel closes. The event stream stays open during the hold, but nothing is fetched. Manual refresh, saving, and answering skip the hold and apply at once.
+
+**Rendering Markdown.** The server splits a body into top-level Markdown blocks. It joins small neighbours up to about 2,000 characters, and it never cuts a list, a table, a code fence, or a quote. A Mermaid fence is a block of its own. The UI renders the blocks in order. A document with 40 blocks or more, or with 5,000 characters or more, is virtualized: only the blocks near the viewport are mounted. The virtual list is a separate chunk that loads when such a document is shown.
+
+**Detail tabs on the board.** The detail panel reads only what its active tab shows. The Description and Conditions tabs read the `document` section, the History tab reads `history`, and the Epic tab reads the epic's document the first time it is opened. The count on the History tab appears after the history has been read.
 
 ## Behavior on failure in the UI
 

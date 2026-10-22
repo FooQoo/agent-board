@@ -23,13 +23,31 @@ Agents use commands such as `agboard add`, `mv`, and `state`; users work in the 
 
 ### Change notifications
 
-The CLI notifies the server through `POST /api/notify`; direct file edits are detected through OS change events. The server sends `SSE: changed` so browsers reload the data.
+The CLI notifies the server through `POST /api/notify`; direct file edits are detected through OS change events. The server reloads the changed project, and when the data a screen shows has changed, it sends `SSE: changed` with the changed resources. Browsers then read the Summary again and only the open details that changed.
 
 ```mermaid
 flowchart LR
-    Edit["CLI or direct edit"] --> Serve["Server"]
-    Serve --> Browser["Browser re-fetches data"]
+    Edit["CLI or direct edit"] --> Serve["Server<br/>reload and compare"]
+    Serve -->|"SSE changed"| Core["Browser data core"]
+    Core -->|"GET summary"| Serve
+    Core -->|"GET detail (NDJSON)"| Serve
 ```
+
+### From a change to the screen
+
+The server never sends the data itself in the notification. It sends the names of what changed. The browser then reads what it needs, and keeps the result in a cache.
+
+```mermaid
+flowchart LR
+    Files[("Shared files")] --> Index["Index projection<br/>Summary and versions"]
+    Index --> Cache[("Browser cache<br/>Summary, Detail")]
+    Cache --> Screen["Board, monitor,<br/>detail panels"]
+```
+
+- **Summary.** Every card and list row is drawn from the project's Summary. It holds no body text, so the board loads quickly, and a change to one task does not re-read the bodies of the other tasks.
+- **Detail.** The body, acceptance text, and history are read only when a card or an epic is opened. The browser stores each section by its version.
+- **SSE.** One `changed` event names the tasks, epics, and facets that changed, with an `instanceId` and a `seq`. A gap in `seq`, or a new `instanceId`, tells the browser to drop its cache and read the Summary again.
+- **Cache.** The browser holds the Summary of the last four projects and a limited number of Details, least recently used first. A change never updates the cache from the notification alone: the browser reads the data again.
 
 ### Mobile monitor
 
@@ -61,7 +79,7 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 3. Under the lock it re-reads the latest `task.json` and `TASK.md`, checks the rules (for example, that an AI may not move this task to Done while conditions are unmet), and computes the new state and a history entry.
 4. It saves both files as one pair through a journal, then releases the lock.
 5. If something actually changed, it reads `serve.json` and sends `POST /api/notify` to the running server. If no server runs, that is fine.
-6. The server reloads the project, sees that its `version` changed, and sends SSE `changed` to every browser, which re-fetches the board.
+6. The server reloads the project, sees that the data changed, and sends SSE `changed` with the changed tasks and facets to every browser. Each browser reads the project's Summary again and re-fetches only the open details that changed.
 
 ### A person answers a question in the browser
 
@@ -74,7 +92,7 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 
 1. The editor writes the file. No lock is involved; the last save wins.
 2. The server's file watcher receives an OS event and waits 200 ms for related events.
-3. It reloads the project, re-evaluates automatic Done for eligible tasks, and, if the version changed, notifies browsers and waiting agents.
+3. It reloads the project, re-evaluates automatic Done for eligible tasks, and, if the data changed, notifies browsers and waiting agents.
 
 ## Where to go next
 
