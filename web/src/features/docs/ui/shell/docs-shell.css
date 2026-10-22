@@ -41,6 +41,11 @@
 }
 
 /* The save button is gray while there is nothing to save (the mock), not a faded accent. */
+/* The footer buttons are as wide as their labels (the mock's), not the shared 144px. */
+.docs-dialog .editor__footer .dialog-actions > button {
+  min-width: 0;
+}
+
 .docs-dialog__save:disabled {
   border: 1px solid var(--r-border);
   background: var(--r-surface);
@@ -412,4 +417,11 @@
 .docs-dialog[data-compact="true"] .docs-crumbs__root,
 .docs-dialog[data-compact="true"] .docs-crumbs__root + .docs-crumbs__item .docs-crumbs__sep {
   display: none;
+}
+
+/* The phone's disabled Save is the mock's pale accent fill, not the desktop's white. */
+.docs-dialog[data-compact="true"] .docs-dialog__save:disabled {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--r-accent) 40%, var(--r-surface));
+  color: var(--r-on-accent, #fff);
 }
