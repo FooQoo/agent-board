@@ -100,6 +100,10 @@ describe('board build', () => {
       'src/shared/rich-editor/outline.ts',
       'src/shared/markdown/MarkdownSections.tsx',
       'src/shared/markdown/MarkdownView.tsx',
+      'src/shared/markdown/MarkdownBlocks.tsx',
+      'src/shared/markdown/MarkdownBlock.tsx',
+      'src/shared/markdown/MarkdownContent.tsx',
+      'src/shared/markdown/VirtualMarkdown.tsx',
       'src/features/settings/ui/SettingsDialog.tsx',
     ])
       expect(sources).not.toContain(later);
@@ -108,6 +112,38 @@ describe('board build', () => {
         /^(@codemirror\/|@lezer\/|micromark|mdast-|react-markdown)/.test(name),
       ),
     ).toEqual([]);
+    expect(packages.filter((name) => name.startsWith('@tanstack/'))).toEqual([]);
+  });
+});
+
+describe('virtual Markdown list', () => {
+  const pages = [
+    { page: 'board', folder: 'assets', entry: () => entryOf('assets', 'app') },
+    { page: 'monitor', folder: 'monitor', entry: () => entryOf('monitor', 'monitor') },
+  ] as const;
+
+  for (const { page, folder, entry } of pages) {
+    it(`keeps the ${page}'s virtual list in one on-demand chunk of its own`, () => {
+      const first = new Set(firstLoad(folder, entry()));
+      const holders = files(folder).filter(
+        (name) => name.endsWith('.js') && /^chunk-VirtualMarkdown-[\w-]+\.js$/.test(name),
+      );
+      expect(holders).toHaveLength(1);
+      expect(first.has(holders[0] as string)).toBe(false);
+      // The list and its library are small: well under what the first load may grow by.
+      expect(bytes(folder, holders)).toBeLessThanOrEqual(VIRTUAL_CHUNK_BUDGET);
+    });
+  }
+
+  it('bundles the virtual list library with the list and in no other chunk', () => {
+    const graph = JSON.parse(read('chunk-graph.json')) as {
+      chunks: Record<string, { sources: string[]; packages: string[] }>;
+    };
+    const holders = Object.entries(graph.chunks)
+      .filter(([, chunk]) => chunk.packages.includes('@tanstack/react-virtual'))
+      .map(([name, chunk]) => ({ name, sources: chunk.sources }));
+    expect(holders).toHaveLength(1);
+    expect(holders[0]?.sources).toEqual(['src/shared/markdown/VirtualMarkdown.tsx']);
   });
 });
 
@@ -141,6 +177,8 @@ const bytes = (folder: string, names: string[]) =>
 // The monitor's budget is 520 KB: the header logo (about 14 KB in base64) is inlined so it loads with the page.
 const FIRST_LOAD_BUDGET = { board: 660_000, monitor: 520_000 };
 const LAZY_ONLY_ABOVE = 500_000;
+// The virtual list chunk (the list and @tanstack/react-virtual) loads for a large document only.
+const VIRTUAL_CHUNK_BUDGET = 40_000;
 
 describe('script size', () => {
   const pages = [
