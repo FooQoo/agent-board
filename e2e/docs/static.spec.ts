@@ -74,7 +74,8 @@ test.describe('Pages workflow (AC-9)', () => {
     expect(deploy).toMatch(/needs: build/);
     expect(deploy).toMatch(/pages: write/);
     expect(deploy).toMatch(/id-token: write/);
-    expect(deploy).toMatch(/name: github-pages/);
+    // The deploy job runs without the github-pages environment.
+    expect(deploy).not.toMatch(/environment:/);
     expect(deploy).toMatch(/uses: actions\/deploy-pages@/);
   });
 });
