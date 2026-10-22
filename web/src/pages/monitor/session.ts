@@ -11,6 +11,11 @@ export interface MonitorRequestOptions {
   timeoutMs?: number;
 }
 
+/** The body of an error answer of the monitor. */
+export interface ErrorBody {
+  error?: { code?: string; message?: string; reason?: string };
+}
+
 export class MonitorClientError extends Error {
   constructor(
     message: string,

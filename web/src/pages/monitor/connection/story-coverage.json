@@ -66,6 +66,37 @@
           ]
         }
       ]
+    },
+    {
+      "file": "pages/monitor/connection/ProjectErrorView.tsx",
+      "exports": [
+        {
+          "name": "ProjectErrorView",
+          "stories": [
+            {
+              "id": "pages-monitor-project-error--missing-project",
+              "states": ["no project in the address", "QR guidance"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-project-error--invalid-project",
+              "states": ["address names no project"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-project-error--project-not-found",
+              "states": ["deleted project"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-project-error--narrow-japanese",
+              "states": ["Japanese", "320px wide"],
+              "interaction": true
+            }
+          ]
+        }
+      ],
+      "owner": "U7"
     }
   ]
 }

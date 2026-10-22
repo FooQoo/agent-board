@@ -48,38 +48,6 @@ body {
 .monitor-refresh {
   flex: none;
 }
-.monitor-controls {
-  display: flex;
-  flex: none;
-  gap: 8px;
-  min-width: 0;
-}
-.monitor-controls > .project-switcher {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  height: 44px;
-  padding: 0 10px;
-  border: 1px solid var(--r-border);
-  border-radius: 6px;
-  color: var(--r-text);
-  background: var(--r-surface);
-  font-size: 13px;
-}
-.monitor-controls > .project-switcher .project-switcher__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.monitor-route-notice {
-  flex: none;
-  margin: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
-  color: var(--r-text);
-  background: var(--r-pend-bg);
-  font-size: 12px;
-}
 .monitor-summary {
   display: grid;
   flex: none;
@@ -321,9 +289,11 @@ body {
 }
 .monitor-freshness__message {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding-block: 4px;
+  overflow-wrap: anywhere;
+}
+.monitor-drawer__panel > .detail-state__partial {
+  margin-bottom: 12px;
 }
 .monitor-freshness__time {
   margin-left: auto;

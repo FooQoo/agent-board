@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/shared/i18n';
@@ -10,13 +10,13 @@ import type {
 } from '../../src/pages/monitor/contracts';
 import { PROJECT_A, makeTask } from '../fixtures';
 import { useMonitorInteractions } from '../../src/pages/monitor/hooks/useMonitorInteractions';
+import { renderWithData as render } from './support';
 
 beforeEach(() => selectLocale('en'));
 
 const freshness: MonitorFreshness = {
   state: 'fresh',
   lastFetchedAt: '2026-10-12T00:00:00Z',
-  failedProjectIds: [],
   snapshotProblems: [],
 };
 
@@ -26,8 +26,6 @@ function item(task: MonitorTask['task']): MonitorTask {
 
 function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
   return {
-    projects: [PROJECT_A],
-    scope: 'all',
     summary: { todo: 1, doing: 2, done: 1 },
     todo: [
       item(
@@ -69,7 +67,6 @@ function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
     ],
     done: [item(makeTask({ id: 3, title: 'Done', taskStatus: 'done' }))],
     freshness,
-    onScopeChange: () => undefined,
     onRefresh: () => undefined,
     ...overrides,
   };
@@ -158,13 +155,7 @@ describe('monitor answer interactions', () => {
     }));
     function Connected() {
       const answerController = useMonitorInteractions({ writeAnswer });
-      return (
-        <MonitorView
-          {...props()}
-          answerController={answerController}
-          scopeLocked={answerController.locked}
-        />
-      );
+      return <MonitorView {...props()} answerController={answerController} />;
     }
     const user = userEvent.setup();
     render(<Connected />);
@@ -172,9 +163,6 @@ describe('monitor answer interactions', () => {
     const doing = screen.getByRole('article', { name: /Doing decision/ });
 
     await user.type(within(todo).getByRole('textbox'), 'Keep both approaches');
-    expect(
-      (screen.getByRole('button', { name: 'All Projects' }) as HTMLButtonElement).disabled,
-    ).toBe(true);
     await user.click(within(todo).getByRole('button', { name: 'Send' }));
     await user.type(within(doing).getByRole('textbox'), 'Use the shared implementation');
     await user.click(within(doing).getByRole('button', { name: 'Send' }));
@@ -207,13 +195,7 @@ describe('monitor answer retry and retained drafts', () => {
       });
     function Connected() {
       const answerController = useMonitorInteractions({ writeAnswer });
-      return (
-        <MonitorView
-          {...props()}
-          answerController={answerController}
-          scopeLocked={answerController.locked}
-        />
-      );
+      return <MonitorView {...props()} answerController={answerController} />;
     }
     const user = userEvent.setup();
     render(<Connected />);
