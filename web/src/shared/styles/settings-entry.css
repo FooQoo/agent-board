@@ -1,8 +1,8 @@
 /*
  * An entry row of the settings dialog (shared/ui/settings-entry-row.tsx): icon tile, title and one
- * line of description, and an outlined button. Colors are the r-* tokens, so each theme and accent
- * draws its own tile and button. The rules are unlayered on purpose: they sit above the Tailwind
- * utilities of the shared Button.
+ * line of description, and the shared outline button. The tile and text colors are the r-* tokens,
+ * so each theme and accent draws its own tile. The rules are unlayered on purpose: they sit above
+ * the Tailwind utilities.
  */
 .settings-entry {
   container-type: inline-size;
@@ -56,27 +56,13 @@
   overflow-wrap: anywhere;
 }
 
-/* The label is centred in the space the chevron leaves, so two buttons of any label read alike. */
+/*
+ * The button is the shared outline Button at size m, with its own colors and hover state. Only its
+ * width is the row's: both rows use the same width, wide enough for the longest label (English
+ * "Connection settings" is about 125px of text), so the two buttons line up.
+ */
 .settings-entry__action {
-  min-width: 122px;
-  gap: 6px;
-  padding-inline: 22px 12px;
-  border-color: color-mix(in srgb, var(--r-accent) 25%, var(--r-border));
-  background: color-mix(in srgb, var(--r-accent) 6%, var(--r-surface));
-  font-weight: 600;
-}
-
-.settings-entry__action:hover {
-  background: color-mix(in srgb, var(--r-accent) 12%, var(--r-surface));
-}
-
-.settings-entry__label {
-  flex: 1;
-  text-align: center;
-}
-
-.settings-entry__chevron {
-  color: var(--r-accent);
+  width: 176px;
 }
 
 /* In a narrow dialog the button moves under the text, so the text keeps its width. */

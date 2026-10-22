@@ -42,7 +42,7 @@ export const Tutorial: Story = {
   },
 };
 
-/** A longer label widens its button; the chevron stays at the right edge. */
+/** The longer label fits the same button width as a short one; the button has no icon. */
 export const MobileConnection: Story = {
   args: {
     icon: SmartphoneIcon,
@@ -53,7 +53,7 @@ export const MobileConnection: Story = {
   play: async ({ canvasElement }) => {
     const button = within(canvasElement).getByRole('button', { name: 'Connection settings' });
     await expect(button).toBeEnabled();
-    await expect(button.querySelector('svg')).not.toBeNull();
+    await expect(button.querySelector('svg')).toBeNull();
   },
 };
 
@@ -82,11 +82,19 @@ export const RowsInDialog: Story = {
     </>
   ),
   play: async ({ canvasElement }) => {
-    const rows = within(canvasElement).getAllByRole('region');
+    const canvas = within(canvasElement);
+    const rows = canvas.getAllByRole('region');
     await expect(rows).toHaveLength(2);
     const [first, second] = rows.map((row) => row.getBoundingClientRect());
     // The two rows touch, so the dialog's gap does not open a space between them.
     await expect(Math.round(second?.top ?? 0)).toBe(Math.round(first?.bottom ?? -1));
+    // Both buttons are the shared outline button at size m and have the same width, whatever the label.
+    const [tutorial, connection] = [
+      canvas.getByRole('button', { name: 'Try it' }),
+      canvas.getByRole('button', { name: 'Connection settings' }),
+    ].map((button) => button.getBoundingClientRect());
+    await expect(Math.round(tutorial?.width ?? 0)).toBe(Math.round(connection?.width ?? -1));
+    await expect(Math.round(tutorial?.height ?? 0)).toBe(38);
   },
 };
 

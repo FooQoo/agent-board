@@ -13,7 +13,7 @@
         },
         {
           "id": "shared-ui-settingsentryrow--mobile-connection",
-          "states": ["longer button label", "chevron"],
+          "states": ["longer button label in the same button width", "no icon in the button"],
           "interaction": true
         },
         {
@@ -23,7 +23,11 @@
         },
         {
           "id": "shared-ui-settingsentryrow--rows-in-dialog",
-          "states": ["two rows in the dialog's list", "rules between the rows"],
+          "states": [
+            "two rows in the dialog's list",
+            "rules between the rows",
+            "same button width and size m"
+          ],
           "interaction": true
         },
         {

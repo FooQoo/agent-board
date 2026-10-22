@@ -1,12 +1,12 @@
 import { useId } from 'react';
-import { ChevronRightIcon, type LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import '../styles/settings-entry.css';
 
 /**
  * One entry row of the settings dialog: an icon tile, a title over one line of description, and an
- * outlined button with a chevron that opens the feature. The tutorial and the mobile connection
- * share it, so both rows look and wrap the same.
+ * outlined button that opens the feature. The tutorial and the mobile connection share it, so both
+ * rows look and wrap the same.
  */
 export function SettingsEntryRow({
   icon: Icon,
@@ -41,12 +41,12 @@ export function SettingsEntryRow({
         <Button
           type="button"
           variant="outline"
+          size="m"
           className="settings-entry__action"
           aria-describedby={bodyId}
           onClick={onOpen}
         >
-          <span className="settings-entry__label">{action}</span>
-          <ChevronRightIcon className="settings-entry__chevron" aria-hidden="true" />
+          {action}
         </Button>
       </div>
     </section>

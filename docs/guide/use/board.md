@@ -77,7 +77,7 @@ The choice is saved on this PC, so every browser on this PC shows the same langu
 
 The width of the detail panel is not part of these settings. Each browser keeps its own width.
 
-Below the themes, two rows open other features. Each has an icon, a title, one line of description, and a button with a chevron:
+Below the themes, two rows open other features. Each has an icon, a title, one line of description, and a button:
 
 - **Tutorial** with **Try it** closes the dialog and shows the [first-run guide](#the-first-run-guide) again.
 - **Mobile connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [mobile monitor guide](../operations/mobile-monitor).
