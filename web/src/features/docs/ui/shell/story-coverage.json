@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "owner": "U2",
+  "files": [
+    {
+      "file": "features/docs/ui/shell/DocsDialogView.tsx",
+      "exports": [
+        {
+          "name": "DocsDialogView",
+          "stories": [
+            {
+              "id": "docs-shell-docsdialogview--no-file-selected",
+              "states": ["no file selected", "guidance", "close only footer"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--no-file-selected-japanese-dark",
+              "states": ["japanese locale", "dark theme"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--file-selected",
+              "states": ["file selected", "body pane", "save disabled"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--editing",
+              "states": ["unsaved changes", "discard question"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--no-docs",
+              "states": ["no docs", "root path", "copy path", "close only footer"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--tree-loading",
+              "states": ["file list loading"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--tree-error",
+              "states": ["file list failed", "retry"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--save-error",
+              "states": ["save error band", "footer buttons unchanged"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--resize-list",
+              "states": ["list width drag", "lower and upper limits"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--choose-file",
+              "states": ["guidance replaced by body"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--phone-file-list",
+              "states": ["phone width", "list as screen", "no resize handle"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--phone-body",
+              "states": ["phone width", "body as screen"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/docs/ui/shell/DocsFileTree.tsx",
+      "exports": [
+        {
+          "name": "DocsFileTree",
+          "stories": [
+            {
+              "id": "docs-shell-docsfiletree--folders-open",
+              "states": ["folders open", "file select"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsfiletree--selected-file",
+              "states": ["selected row"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsfiletree--folder-toggle",
+              "states": ["folder close", "folder open", "selection"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsfiletree--long-names",
+              "states": ["long file name", "long folder name"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsfiletree--empty",
+              "states": ["no files"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsfiletree--japanese",
+              "states": ["japanese locale", "no files"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/docs/ui/shell/DocsPlaceholder.tsx",
+      "exports": [
+        {
+          "name": "DocsPlaceholder",
+          "stories": [
+            {
+              "id": "docs-shell-docsplaceholder--no-file-selected",
+              "states": ["no file selected"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsplaceholder--no-file-selected-japanese",
+              "states": ["japanese locale"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsplaceholder--no-docs",
+              "states": ["no docs", "root path", "copy path"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsplaceholder--no-file-selected-compact",
+              "states": ["phone wording"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

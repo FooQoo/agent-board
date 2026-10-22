@@ -37,6 +37,12 @@ export interface EditorShellProps {
   footerStart?: ReactNode;
   /** The buttons at the right of the footer, after Cancel. */
   actions: ReactNode;
+  /** Extra class on the dialog, for a screen that restyles the shell (the docs dialog). */
+  className?: string;
+  /** Data attributes on the dialog, for the same purpose as `className`. */
+  dialogData?: Record<`data-${string}`, string | undefined>;
+  /** The label of the footer button that closes the dialog; Cancel unless the dialog only reads. */
+  closeLabel?: string;
   children: ReactNode;
 }
 
@@ -60,6 +66,9 @@ export function EditorShell({
   status,
   footerStart,
   actions,
+  className,
+  dialogData,
+  closeLabel,
   children,
 }: EditorShellProps) {
   const { t } = useTranslation();
@@ -78,7 +87,8 @@ export function EditorShell({
   return (
     <Dialog open onOpenChange={(open) => !open && requestClose()}>
       <DialogContent
-        className={`editor-dialog editor-dialog--${variant}`}
+        className={`editor-dialog editor-dialog--${variant}${className ? ` ${className}` : ''}`}
+        {...dialogData}
         showCloseButton={false}
         aria-describedby={undefined}
         // A click on the backdrop must not throw away what was typed into a new card; for an
@@ -159,7 +169,7 @@ export function EditorShell({
           </span>
           <DialogActions>
             <Button type="button" variant="outline" disabled={saving} onClick={requestClose}>
-              {t('dialog.cancel')}
+              {closeLabel ?? t('dialog.cancel')}
             </Button>
             {actions}
           </DialogActions>
