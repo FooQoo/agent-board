@@ -1,5 +1,7 @@
 /** The longest description the CLI, the API and the screen accept, in Unicode scalar values. */
 export const DESCRIPTION_LIMIT = 50_000;
+/** The longest epic details text (EPIC.md body) the CLI, the API and the screen accept. */
+export const EPIC_DOCUMENT_LIMIT = 100_000;
 export const TITLE_LIMIT = 100;
 
 /** The line endings are stored as LF, so the screen counts and sends them that way. */

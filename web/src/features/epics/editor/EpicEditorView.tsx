@@ -4,6 +4,7 @@ import { epicInk } from '../model/epic';
 import type { Epic } from '../../../shared/api/contracts';
 import { DiscardConfirm } from '../../../shared/ui/editor/DiscardConfirm';
 import { EditorBody } from '../../../shared/ui/editor/EditorBody';
+import { EPIC_DOCUMENT_LIMIT } from '../../../shared/ui/editor/limits';
 import { EditorShell } from '../../../shared/ui/editor/EditorShell';
 import { CollapsibleSection } from '../../../shared/ui/editor/CollapsibleSection';
 import { EpicProgressList, type ProgressTaskRenderer } from './EpicProgressList';
@@ -74,6 +75,7 @@ export function EpicEditorView({
       }
     >
       <EditorBody
+        limit={EPIC_DOCUMENT_LIMIT}
         title={name}
         onTitleChange={setName}
         titleLabel={t('epic.nameLabel')}

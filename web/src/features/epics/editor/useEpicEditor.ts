@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Task, Epic } from '../../../shared/api/contracts';
 import type { StoredAttachment } from '../../../shared/ui/editor/attachmentTypes';
-import { normalizeNewlines } from '../../../shared/ui/editor/limits';
+import { EPIC_DOCUMENT_LIMIT, normalizeNewlines } from '../../../shared/ui/editor/limits';
 import type { RichMarkdownEditorHandle } from '../../../shared/rich-editor/RichMarkdownEditor';
 import { useAttachmentState } from '../../../shared/ui/editor/useAttachmentState';
 import { useMultipartRequest } from '../../../shared/ui/editor/useMultipartRequest';
@@ -74,7 +74,7 @@ export function useEpicEditor({
     .filter((task): task is Task => task !== undefined);
   const orderChanged = JSON.stringify(order) !== JSON.stringify(saved.order);
   const dirty = imagesChanged || documentChanged || detailsChanged || orderChanged;
-  const overLimit = useOverLimit(epicDocument);
+  const overLimit = useOverLimit(epicDocument, EPIC_DOCUMENT_LIMIT);
   const validName = nameIsValid(name);
   const valid = validName && overLimit === null;
   const currentDocument = () => normalizeNewlines(editor.current?.markdown() ?? epicDocument);
