@@ -110,6 +110,7 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
     let shared = data_dir.join("shared");
     crate::file_store::io::remove_stale_temporaries(&shared, STALE_TEMPORARY_AGE);
     crate::file_store::FileStore::open(&shared).seed_unseeded_projects(chrono::Utc::now());
+    crate::file_store::FileStore::open(&shared).ensure_docs_dirs();
     let listener = bind(config.port)?;
     let addr = listener
         .local_addr()

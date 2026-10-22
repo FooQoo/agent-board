@@ -6,13 +6,14 @@ use serde::Serialize;
 
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
+use crate::file_store::layout;
 use crate::paths;
 
 /// Docs failures are ordinary [`AgboardError`]s with `docs_*` codes, so they
 /// reach HTTP through the same mapping as every other error.
 pub type DocsError = AgboardError;
 
-/// One project's Docs folder, `<data area>/docs/<project-id>/`. Making a
+/// One project's Docs folder, `<data area>/shared/projects/<project-id>/docs/`. Making a
 /// `DocsRoot` creates nothing; a read of a missing folder is an empty tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocsRoot {
@@ -21,8 +22,15 @@ pub struct DocsRoot {
 
 impl DocsRoot {
     pub fn for_project(project: &ProjectId) -> Result<DocsRoot, DocsError> {
-        let dir = paths::data_dir()?.join("docs").join(project.as_str());
-        Ok(DocsRoot { dir })
+        let shared = paths::data_dir()?.join("shared");
+        Ok(DocsRoot::of_project(&shared, project))
+    }
+
+    /// The Docs folder of a project under the shared folder.
+    pub fn of_project(shared: &Path, project: &ProjectId) -> DocsRoot {
+        DocsRoot {
+            dir: layout::docs_dir(&layout::project_dir(shared, project)),
+        }
     }
 
     /// A root at `dir`, for tests.

@@ -75,6 +75,8 @@ pub fn classify(shared: &Path, path: &Path) -> Option<Target> {
         [projects, id] if projects == "projects" => {
             ProjectId::from_str(id).ok().map(|_| Target::All)
         }
+        // The Docs are the user's files: they are not board data.
+        [projects, _, docs, ..] if projects == "projects" && docs == "docs" => None,
         [projects, _, file] if projects == "projects" && file == "README.md" => None,
         [projects, id, ..] if projects == "projects" => {
             ProjectId::from_str(id).ok().map(Target::Project)
@@ -277,6 +279,19 @@ mod tests {
             classify(&shared(), &shared().join("projects")),
             Some(Target::All)
         );
+    }
+
+    #[test]
+    fn the_docs_folder_and_everything_in_it_are_ignored() {
+        for rest in [
+            "docs",
+            "docs/a.md",
+            "docs/sub/b.md",
+            "docs/sub/tasks/1/TASK.md",
+        ] {
+            let path = shared().join("projects").join(ID).join(rest);
+            assert_eq!(classify(&shared(), &path), None, "{rest}");
+        }
     }
 
     #[test]

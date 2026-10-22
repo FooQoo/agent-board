@@ -89,6 +89,7 @@ impl FileStore {
             fs::create_dir(&temp).map_err(|e| io::write_error(&label, e))?;
             fs::create_dir(layout::tasks_dir(&temp)).map_err(|e| io::write_error(&label, e))?;
             fs::create_dir(layout::epics_dir(&temp)).map_err(|e| io::write_error(&label, e))?;
+            fs::create_dir(layout::docs_dir(&temp)).map_err(|e| io::write_error(&label, e))?;
             let file = ProjectFile {
                 format_version: FORMAT_VERSION,
                 id: id.clone(),
@@ -126,6 +127,19 @@ impl FileStore {
 }
 
 impl FileStore {
+    /// Create the `docs/` folder of every project that lacks one. A folder that
+    /// exists is left as it is, content included. A failure is skipped: the
+    /// Docs reads treat a missing folder as empty.
+    pub fn ensure_docs_dirs(&self) {
+        let shared = self.shared_dir();
+        for id in crate::file_store::index::scan_ids(shared).unwrap_or_default() {
+            let docs = layout::docs_dir(&layout::project_dir(shared, &id));
+            if !docs.exists() {
+                let _ = fs::create_dir(&docs);
+            }
+        }
+    }
+
     /// Rename a project. The ID and the tasks do not change. The name is
     /// trimmed and checked against the other projects' names under the catalog
     /// lock; a name equal to the current one changes nothing.
