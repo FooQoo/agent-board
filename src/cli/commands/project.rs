@@ -15,10 +15,12 @@ use crate::cli::args::{
     ProjectArgs, ProjectBindArgs, ProjectCommand, ProjectCreateArgs, ProjectRenameArgs,
 };
 use crate::cli::{Context, Outcome};
+use crate::docs::DocsLocale;
 use crate::domain::validate_project_name;
 use crate::error::AgboardError;
 use crate::file_store::bindings::canonical_folder;
 use crate::interact::confirm;
+use crate::server::preferences::PreferencesStore;
 
 pub fn run(ctx: &mut Context, args: &ProjectArgs) -> Result<Outcome, AgboardError> {
     match &args.command {
@@ -27,6 +29,15 @@ pub fn run(ctx: &mut Context, args: &ProjectArgs) -> Result<Outcome, AgboardErro
         ProjectCommand::Ls => ls(ctx),
         ProjectCommand::Rename(args) => rename(ctx, args),
         ProjectCommand::Rm => rm(ctx),
+    }
+}
+
+/// The language of the README a new `docs/` folder gets: the app's language
+/// setting, read from the data area that holds the shared files.
+pub(super) fn docs_locale(ctx: &Context) -> DocsLocale {
+    match ctx.files.shared_dir().parent() {
+        Some(data_dir) => DocsLocale::from_locale(&PreferencesStore::new(data_dir).load().locale),
+        None => DocsLocale::default(),
     }
 }
 
@@ -41,7 +52,9 @@ pub fn create(ctx: &Context, args: &ProjectCreateArgs) -> Result<Outcome, Agboar
             folder: folder.display().to_string(),
         });
     }
-    let project = ctx.files.create_project(&args.name, ctx.clock.now())?;
+    let project =
+        ctx.files
+            .create_project_with_docs(&args.name, ctx.clock.now(), docs_locale(ctx))?;
     if let Err(error) = ctx.files.bind_folder(&project.id, &folder) {
         let _ = ctx.files.delete_project(&project.id);
         return Err(error);

@@ -6,11 +6,13 @@ pub mod model;
 pub mod paths;
 pub mod reader;
 pub mod revision;
+pub mod templates;
 pub mod writer;
 
 pub use model::{DocsError, DocsFile, DocsRoot, DocsTree, DocsTreeNode, NodeKind};
 pub use paths::DocsPath;
 pub use revision::revision_of;
+pub use templates::DocsLocale;
 
 /// The largest file the Docs read or save: 2 MiB.
 pub const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024;

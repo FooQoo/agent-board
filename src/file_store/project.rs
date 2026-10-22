@@ -3,6 +3,7 @@
 //! The folder is built under a temporary name and renamed into place, so a
 //! failure leaves no half-made project.
 
+use crate::docs::DocsLocale;
 use std::fs;
 
 use chrono::{DateTime, Utc};
@@ -62,6 +63,17 @@ impl FileStore {
         name: &str,
         now: DateTime<Utc>,
     ) -> Result<ProjectMeta, AgboardError> {
+        self.create_project_with_docs(name, now, DocsLocale::default())
+    }
+
+    /// [`FileStore::create_project`] with the language of the README placed in
+    /// the new `docs/` folder. Callers pass the app's language setting.
+    pub fn create_project_with_docs(
+        &self,
+        name: &str,
+        now: DateTime<Utc>,
+        docs_locale: DocsLocale,
+    ) -> Result<ProjectMeta, AgboardError> {
         let name = validate_project_name(name)?;
         let id = ProjectId::generate()?;
         let created_at = parse_utc(&format_utc(now)).unwrap_or(now);
@@ -89,7 +101,13 @@ impl FileStore {
             fs::create_dir(&temp).map_err(|e| io::write_error(&label, e))?;
             fs::create_dir(layout::tasks_dir(&temp)).map_err(|e| io::write_error(&label, e))?;
             fs::create_dir(layout::epics_dir(&temp)).map_err(|e| io::write_error(&label, e))?;
-            fs::create_dir(layout::docs_dir(&temp)).map_err(|e| io::write_error(&label, e))?;
+            let docs = layout::docs_dir(&temp);
+            fs::create_dir(&docs).map_err(|e| io::write_error(&label, e))?;
+            io::write_atomic(
+                &docs.join("README.md"),
+                docs_locale.readme().as_bytes(),
+                &format!("{label}/docs/README.md"),
+            )?;
             let file = ProjectFile {
                 format_version: FORMAT_VERSION,
                 id: id.clone(),
@@ -127,15 +145,20 @@ impl FileStore {
 }
 
 impl FileStore {
-    /// Create the `docs/` folder of every project that lacks one. A folder that
-    /// exists is left as it is, content included. A failure is skipped: the
-    /// Docs reads treat a missing folder as empty.
-    pub fn ensure_docs_dirs(&self) {
+    /// Create the `docs/` folder of every project that lacks one, with a README
+    /// in `docs_locale`. A folder that exists is left as it is, content
+    /// included, so a README the user deleted stays deleted. A failure is
+    /// skipped: the Docs reads treat a missing folder as empty.
+    pub fn ensure_docs_dirs(&self, docs_locale: DocsLocale) {
         let shared = self.shared_dir();
         for id in crate::file_store::index::scan_ids(shared).unwrap_or_default() {
             let docs = layout::docs_dir(&layout::project_dir(shared, &id));
-            if !docs.exists() {
-                let _ = fs::create_dir(&docs);
+            if !docs.exists() && fs::create_dir(&docs).is_ok() {
+                let _ = io::write_atomic(
+                    &docs.join("README.md"),
+                    docs_locale.readme().as_bytes(),
+                    &format!("projects/{}/docs/README.md", id.as_str()),
+                );
             }
         }
     }

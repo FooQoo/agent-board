@@ -12,7 +12,7 @@ mod events;
 pub mod guard;
 mod instance;
 pub mod monitor;
-mod preferences;
+pub(crate) mod preferences;
 pub mod monitor_auth {
     pub mod contracts;
     pub mod guard;
@@ -25,6 +25,7 @@ mod response;
 mod store;
 pub mod web_assets;
 
+use crate::docs::DocsLocale;
 use std::future::Future;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
@@ -110,7 +111,9 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
     let shared = data_dir.join("shared");
     crate::file_store::io::remove_stale_temporaries(&shared, STALE_TEMPORARY_AGE);
     crate::file_store::FileStore::open(&shared).seed_unseeded_projects(chrono::Utc::now());
-    crate::file_store::FileStore::open(&shared).ensure_docs_dirs();
+    let docs_locale =
+        DocsLocale::from_locale(&preferences::PreferencesStore::new(&data_dir).load().locale);
+    crate::file_store::FileStore::open(&shared).ensure_docs_dirs(docs_locale);
     let listener = bind(config.port)?;
     let addr = listener
         .local_addr()
