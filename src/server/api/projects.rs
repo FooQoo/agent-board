@@ -8,6 +8,7 @@ use axum::http::StatusCode;
 use axum::response::Response;
 use serde::Serialize;
 
+use crate::docs::DocsRoot;
 use crate::file_store::model::TaskView;
 use crate::server::response::{agboard_error_response, json_response};
 use crate::server::store::{indexed_view, parse_project_id, with_files};
@@ -15,8 +16,39 @@ use crate::server::{AppState, epic_counts};
 
 /// The catalog: every project by name, without tasks. Read in one transaction.
 pub(super) async fn projects(State(state): State<Arc<AppState>>) -> Response {
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct ListedProject<'a> {
+        #[serde(flatten)]
+        meta: &'a crate::domain::ProjectMeta,
+        docs_path: String,
+    }
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Listed<'a> {
+        projects: Vec<ListedProject<'a>>,
+        catalog_version: &'a str,
+    }
     match with_files(&state, |files| files.catalog()).await {
-        Ok(catalog) => json_response(StatusCode::OK, &catalog),
+        Ok(catalog) => {
+            let projects = catalog
+                .projects
+                .iter()
+                .map(|meta| {
+                    let docs = DocsRoot::of_project(&state.shared, &meta.id);
+                    let docs = std::path::absolute(docs.dir()).unwrap_or(docs.dir().to_path_buf());
+                    ListedProject {
+                        meta,
+                        docs_path: docs.to_string_lossy().into_owned(),
+                    }
+                })
+                .collect();
+            let listed = Listed {
+                projects,
+                catalog_version: &catalog.catalog_version,
+            };
+            json_response(StatusCode::OK, &listed)
+        }
         Err(error) => agboard_error_response(&error),
     }
 }

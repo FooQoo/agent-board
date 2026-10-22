@@ -526,7 +526,11 @@ fn the_list_has_every_project_by_name_with_no_tasks_and_the_catalog_version() {
     assert_eq!(body["projects"][1]["createdAt"], "2026-10-02T01:00:00Z");
     for project in body["projects"].as_array().unwrap() {
         let keys: Vec<&String> = project.as_object().unwrap().keys().collect();
-        assert_eq!(keys.len(), 3, "only id, name and createdAt: {project}");
+        assert_eq!(
+            keys.len(),
+            4,
+            "only id, name, createdAt and docsPath: {project}"
+        );
     }
     assert!(!reply.body.contains("tasks"));
 }
@@ -1621,4 +1625,82 @@ fn two_choices() -> Vec<agent_board::file_store::model::Choice> {
             label: "Plan B".into(),
         },
     ]
+}
+
+// ------------------------------------------------------------------- docs
+
+#[test]
+fn a_new_project_has_a_docs_folder_and_its_project_file_names_no_docs_root() {
+    let home = tempfile::tempdir().unwrap();
+    let id = store(home.path()).create_project("alpha", t(0)).unwrap().id;
+    let project = home.path().join("shared/projects").join(id.to_string());
+    assert!(project.join("docs").is_dir());
+    let file = std::fs::read_to_string(project.join("project.json")).unwrap();
+    assert!(!file.contains("docsRoot"), "{file}");
+    // A project file written before the Docs existed reads as it did.
+    assert_eq!(store(home.path()).board(&id).unwrap().project.name, "alpha");
+}
+
+#[test]
+fn starting_the_server_adds_a_missing_docs_folder_and_leaves_existing_ones_alone() {
+    let (home, a, b) = two_projects();
+    let projects = home.path().join("shared/projects");
+    std::fs::remove_dir_all(projects.join(a.to_string()).join("docs")).unwrap();
+    let kept = projects.join(b.to_string()).join("docs");
+    std::fs::create_dir_all(kept.join("sub")).unwrap();
+    std::fs::write(kept.join("sub/note.md"), "keep\r\n").unwrap();
+    let server = Running::start(home.path());
+    assert!(projects.join(a.to_string()).join("docs").is_dir());
+    assert_eq!(
+        std::fs::read_to_string(kept.join("sub/note.md")).unwrap(),
+        "keep\r\n"
+    );
+    server.stop();
+}
+
+#[test]
+fn the_list_names_each_projects_docs_folder() {
+    let (home, a, _b) = two_projects();
+    let server = Running::start(home.path());
+    let body = server.get("/api/projects").json();
+    let listed = body["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["id"] == a.to_string())
+        .unwrap();
+    let expected = std::path::absolute(
+        home.path()
+            .join("shared/projects")
+            .join(a.to_string())
+            .join("docs"),
+    )
+    .unwrap();
+    assert_eq!(listed["docsPath"], expected.to_string_lossy().as_ref());
+    assert!(std::path::Path::new(listed["docsPath"].as_str().unwrap()).is_absolute());
+}
+
+#[test]
+fn changes_in_the_docs_folder_do_not_reload_the_board_or_send_changed() {
+    let (home, a, _b) = two_projects();
+    let server = Running::start(home.path());
+    let docs = home
+        .path()
+        .join("shared/projects")
+        .join(a.to_string())
+        .join("docs");
+    let board = format!("/api/projects/{a}/board");
+    let before = server.get(&board).json();
+    let mut events = server.events();
+    std::fs::create_dir_all(docs.join("product")).unwrap();
+    std::fs::write(docs.join("product/tasks.md"), "# one\n").unwrap();
+    std::fs::write(docs.join("product/tasks.md"), "# two\n").unwrap();
+    std::fs::remove_file(docs.join("product/tasks.md")).unwrap();
+    assert!(events.stays_quiet());
+    assert_eq!(events.changed_count(), 0);
+    let after = server.get(&board).json();
+    assert_eq!(after["version"], before["version"]);
+    assert_eq!(server.get("/api/projects").json()["catalogVersion"], {
+        store(home.path()).catalog().unwrap().catalog_version
+    });
 }

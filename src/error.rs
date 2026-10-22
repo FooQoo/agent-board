@@ -156,6 +156,37 @@ pub enum AgboardError {
     },
     /// `agboard wait` reached its `--timeout` with no change.
     WaitTimeout,
+    /// A Docs path that cannot name a file under the Docs root.
+    DocsPathInvalid {
+        reason: String,
+    },
+    DocsNotFound {
+        path: String,
+    },
+    /// The Docs file API only serves `.md` files.
+    DocsNotMarkdown {
+        path: String,
+    },
+    DocsTooLarge {
+        path: String,
+        limit: u64,
+    },
+    DocsNotUtf8 {
+        path: String,
+    },
+    /// The file changed since `expected` was read; `current` is its revision now.
+    DocsRevisionConflict {
+        expected: String,
+        current: String,
+    },
+    DocsReadOnly {
+        path: String,
+    },
+    /// The Docs image API serves only PNG, JPEG, WebP and GIF.
+    DocsAssetType {
+        path: String,
+    },
+    DocsNotImplemented,
 }
 
 impl AgboardError {
@@ -201,6 +232,15 @@ impl AgboardError {
             AgboardError::BoardUnavailable { .. } => "board_unavailable",
             AgboardError::CursorInvalid { .. } => "cursor_invalid",
             AgboardError::WaitTimeout => "wait_timeout",
+            AgboardError::DocsPathInvalid { .. } => "docs_path_invalid",
+            AgboardError::DocsNotFound { .. } => "docs_not_found",
+            AgboardError::DocsNotMarkdown { .. } => "docs_not_markdown",
+            AgboardError::DocsTooLarge { .. } => "docs_too_large",
+            AgboardError::DocsNotUtf8 { .. } => "docs_not_utf8",
+            AgboardError::DocsRevisionConflict { .. } => "docs_revision_conflict",
+            AgboardError::DocsReadOnly { .. } => "docs_read_only",
+            AgboardError::DocsAssetType { .. } => "docs_asset_type",
+            AgboardError::DocsNotImplemented => "docs_not_implemented",
         }
     }
 
@@ -290,6 +330,19 @@ impl AgboardError {
             AgboardError::BoardUnavailable { .. } => "the board is unavailable.".to_string(),
             AgboardError::CursorInvalid { .. } => "the cursor is invalid.".to_string(),
             AgboardError::WaitTimeout => "no board change before the timeout.".to_string(),
+            AgboardError::DocsPathInvalid { .. } => "the document path is invalid.".to_string(),
+            AgboardError::DocsNotFound { path } => format!("document {path} not found."),
+            AgboardError::DocsNotMarkdown { path } => format!("{path} is not a Markdown file."),
+            AgboardError::DocsTooLarge { path, .. } => format!("{path} is too large."),
+            AgboardError::DocsNotUtf8 { path } => format!("{path} is not UTF-8 text."),
+            AgboardError::DocsRevisionConflict { .. } => {
+                "the document changed since it was read.".to_string()
+            }
+            AgboardError::DocsReadOnly { path } => format!("{path} is read-only."),
+            AgboardError::DocsAssetType { path } => format!("{path} is not a supported image."),
+            AgboardError::DocsNotImplemented => {
+                "this document operation is not available yet.".to_string()
+            }
         }
     }
 
@@ -391,6 +444,31 @@ impl AgboardError {
                 "Nothing changed in the project. This is not an answer; read the snapshot before acting."
                     .to_string()
             }
+            AgboardError::DocsPathInvalid { reason } => reason.clone(),
+            AgboardError::DocsNotFound { .. } => {
+                "No such file in the project's Docs. Choose a file from the tree.".to_string()
+            }
+            AgboardError::DocsNotMarkdown { .. } => {
+                "Only files ending in .md can be opened or saved.".to_string()
+            }
+            AgboardError::DocsTooLarge { limit, .. } => {
+                format!("Files larger than {limit} bytes cannot be opened or saved here.")
+            }
+            AgboardError::DocsNotUtf8 { .. } => {
+                "Only UTF-8 text can be opened here. The file is not changed.".to_string()
+            }
+            AgboardError::DocsRevisionConflict { current, .. } => format!(
+                "Another change saved the file first (revision {current}). Reload it, or save again with the latest revision."
+            ),
+            AgboardError::DocsReadOnly { .. } => {
+                "The file cannot be written. Check its permissions.".to_string()
+            }
+            AgboardError::DocsAssetType { .. } => {
+                "Only PNG, JPEG, WebP and GIF images are served.".to_string()
+            }
+            AgboardError::DocsNotImplemented => {
+                "The Docs API is still being built. Try again in a later version.".to_string()
+            }
         }
     }
 }
@@ -473,6 +551,33 @@ mod tests {
                 reason: "wrong project".into(),
             },
             AgboardError::WaitTimeout,
+            AgboardError::DocsPathInvalid {
+                reason: "Paths are relative and use /.".into(),
+            },
+            AgboardError::DocsNotFound {
+                path: "a/b.md".into(),
+            },
+            AgboardError::DocsNotMarkdown {
+                path: "a.txt".into(),
+            },
+            AgboardError::DocsTooLarge {
+                path: "a.md".into(),
+                limit: 2_097_152,
+            },
+            AgboardError::DocsNotUtf8 {
+                path: "a.md".into(),
+            },
+            AgboardError::DocsRevisionConflict {
+                expected: "sha256:a".into(),
+                current: "sha256:b".into(),
+            },
+            AgboardError::DocsReadOnly {
+                path: "a.md".into(),
+            },
+            AgboardError::DocsAssetType {
+                path: "a.svg".into(),
+            },
+            AgboardError::DocsNotImplemented,
         ]
     }
 
@@ -511,6 +616,15 @@ mod tests {
                 ("board_unavailable", 1),
                 ("cursor_invalid", 1),
                 ("wait_timeout", 1),
+                ("docs_path_invalid", 1),
+                ("docs_not_found", 1),
+                ("docs_not_markdown", 1),
+                ("docs_too_large", 1),
+                ("docs_not_utf8", 1),
+                ("docs_revision_conflict", 1),
+                ("docs_read_only", 1),
+                ("docs_asset_type", 1),
+                ("docs_not_implemented", 1),
             ]
         );
     }
@@ -613,6 +727,42 @@ mod tests {
             (
                 "no board change before the timeout.",
                 "Nothing changed in the project. This is not an answer; read the snapshot before acting.",
+            ),
+            (
+                "the document path is invalid.",
+                "Paths are relative and use /.",
+            ),
+            (
+                "document a/b.md not found.",
+                "No such file in the project's Docs. Choose a file from the tree.",
+            ),
+            (
+                "a.txt is not a Markdown file.",
+                "Only files ending in .md can be opened or saved.",
+            ),
+            (
+                "a.md is too large.",
+                "Files larger than 2097152 bytes cannot be opened or saved here.",
+            ),
+            (
+                "a.md is not UTF-8 text.",
+                "Only UTF-8 text can be opened here. The file is not changed.",
+            ),
+            (
+                "the document changed since it was read.",
+                "Another change saved the file first (revision sha256:b). Reload it, or save again with the latest revision.",
+            ),
+            (
+                "a.md is read-only.",
+                "The file cannot be written. Check its permissions.",
+            ),
+            (
+                "a.svg is not a supported image.",
+                "Only PNG, JPEG, WebP and GIF images are served.",
+            ),
+            (
+                "this document operation is not available yet.",
+                "The Docs API is still being built. Try again in a later version.",
             ),
         ];
         let expected: Vec<(String, String)> = expected
