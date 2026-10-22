@@ -113,7 +113,8 @@ fn ask_and_wait(home: &Path, timeout_seconds: u64) -> Child {
     ))
 }
 
-fn ask_and_wait_forever(home: &Path) -> Child {
+/// Asks with the given `wait` value (`None` omits the key) and no `--no-wait`.
+fn ask_with(home: &Path, wait: Option<&str>) -> Child {
     spawn_wait(command(
         home,
         &[
@@ -124,9 +125,14 @@ fn ask_and_wait_forever(home: &Path) -> Child {
             "--actor",
             "ai",
             "--request-json",
-            &question(Some("{}")),
+            &question(wait),
         ],
     ))
+}
+
+/// The default wait: the JSON leaves `wait` out.
+fn ask_and_wait_forever(home: &Path) -> Child {
+    ask_with(home, None)
 }
 
 fn stop(mut server: Child) {
@@ -323,22 +329,191 @@ fn a_wait_without_its_time_or_out_of_range_is_refused_and_nothing_is_asked() {
     }
 }
 
+/// `state 1 pending` with the question and the extra arguments, run to completion.
+fn ask_now(home: &Path, wait: Option<&str>, extra: &[&str]) -> Output {
+    let question = question(wait);
+    let mut args = vec![
+        "--json",
+        "state",
+        "1",
+        "pending",
+        "--actor",
+        "ai",
+        "--request-json",
+        &question,
+    ];
+    args.extend_from_slice(extra);
+    agboard(home, &args)
+}
+
+fn error_code(output: &Output) -> String {
+    let error: Value = serde_json::from_slice(&output.stderr).unwrap();
+    error["error"]["code"].as_str().unwrap().to_string()
+}
+
+fn show(home: &Path) -> Value {
+    let shown = agboard(home, &["show", "1", "--json"]);
+    serde_json::from_slice(&shown.stdout).unwrap()
+}
+
 #[test]
-fn without_a_wait_the_question_is_sent_and_the_command_returns() {
+fn every_form_without_a_time_waits_for_the_answer() {
+    for wait in [
+        None,
+        Some("{}"),
+        Some("null"),
+        Some(r#"{"timeoutSeconds":null}"#),
+    ] {
+        let home = tempdir().unwrap();
+        board(home.path());
+        let server = start_server(home.path());
+        let mut waiter = ask_with(home.path(), wait);
+        let request = wait_for_request(home.path());
+        // The question is saved, yet the command is still waiting for its answer.
+        std::thread::sleep(Duration::from_millis(500));
+        assert!(waiter.try_wait().unwrap().is_none(), "{wait:?}");
+        let answered = agboard(
+            home.path(),
+            &[
+                "state",
+                "1",
+                "idle",
+                "--actor",
+                "human",
+                "--request",
+                &request,
+                "--choice",
+                "b",
+                "--reason",
+                "B it is.",
+            ],
+        );
+        assert!(answered.status.success());
+        let output = waiter.wait_with_output().unwrap();
+        stop(server);
+        assert!(output.status.success(), "{wait:?}");
+        let reply: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(reply["answer"]["choiceId"], "b", "{wait:?}");
+        assert_eq!(reply["answer"]["text"], "B it is.", "{wait:?}");
+        assert_eq!(reply["task"]["agentStatus"], "idle", "{wait:?}");
+    }
+}
+
+#[test]
+fn no_wait_registers_the_question_and_returns_without_a_server() {
+    for wait in [None, Some("{}"), Some(r#"{"timeoutSeconds":null}"#)] {
+        let home = tempdir().unwrap();
+        board(home.path());
+        let output = ask_now(home.path(), wait, &["--no-wait"]);
+        assert!(output.status.success(), "{wait:?}");
+        let reply: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(reply["task"]["agentStatus"], "pending", "{wait:?}");
+        assert!(reply.get("answer").is_none(), "{wait:?}");
+        assert!(task(home.path())["pendingRequestId"].is_string());
+        // The wait choice is a process setting; it is never stored.
+        let stored = std::fs::read_to_string(
+            std::fs::read_dir(home.path().join("shared/projects"))
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .path()
+                .join("tasks/1/task.json"),
+        )
+        .unwrap();
+        assert!(!stored.contains("wait"), "{stored}");
+    }
+}
+
+#[test]
+fn no_wait_with_a_time_is_refused_and_nothing_changes() {
     let home = tempdir().unwrap();
     board(home.path());
+    let before = show(home.path());
+    for server in [false, true] {
+        let running = server.then(|| start_server(home.path()));
+        let output = ask_now(
+            home.path(),
+            Some(r#"{"timeoutSeconds":30}"#),
+            &["--no-wait"],
+        );
+        assert_eq!(output.status.code(), Some(2));
+        assert_eq!(error_code(&output), "invalid_argument");
+        assert_eq!(show(home.path()), before);
+        if let Some(running) = running {
+            stop(running);
+        }
+    }
+}
+
+#[test]
+fn no_wait_applies_only_to_asking() {
+    let home = tempdir().unwrap();
+    board(home.path());
+    let before = show(home.path());
     let output = agboard(
         home.path(),
         &[
+            "--json",
             "state",
             "1",
-            "pending",
+            "running",
             "--actor",
             "ai",
-            "--request-json",
-            &question(None),
+            "--no-wait",
         ],
     );
-    assert!(output.status.success());
-    assert_eq!(task(home.path())["agentStatus"], "pending");
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(error_code(&output), "invalid_argument");
+    assert_eq!(show(home.path()), before);
+
+    assert!(ask_now(home.path(), None, &["--no-wait"]).status.success());
+    let request = task(home.path())["pendingRequestId"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let before = show(home.path());
+    let output = agboard(
+        home.path(),
+        &[
+            "--json",
+            "state",
+            "1",
+            "idle",
+            "--actor",
+            "human",
+            "--request",
+            &request,
+            "--choice",
+            "a",
+            "--no-wait",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(error_code(&output), "invalid_argument");
+    assert_eq!(show(home.path()), before);
+}
+
+#[test]
+fn no_wait_does_not_hide_an_invalid_request() {
+    let home = tempdir().unwrap();
+    board(home.path());
+    let before = show(home.path());
+    let output = ask_now(home.path(), Some("true"), &["--no-wait"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(error_code(&output), "invalid_value");
+    assert_eq!(show(home.path()), before);
+}
+
+#[test]
+fn a_waiting_ask_without_a_server_changes_nothing() {
+    let home = tempdir().unwrap();
+    board(home.path());
+    let before = show(home.path());
+    for wait in [None, Some("{}"), Some(r#"{"timeoutSeconds":600}"#)] {
+        let output = ask_now(home.path(), wait, &[]);
+        assert_eq!(output.status.code(), Some(1), "{wait:?}");
+        assert_eq!(error_code(&output), "board_unavailable", "{wait:?}");
+        assert_eq!(show(home.path()), before, "{wait:?}");
+    }
 }

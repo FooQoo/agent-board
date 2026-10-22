@@ -128,6 +128,7 @@ fn import_fixture(home: &Path, project: &str, file: &str) {
                     "ai",
                     "--request-json",
                     &request,
+                    "--no-wait",
                 ]
             } else {
                 vec!["state", &id, state, "--actor", "ai", "--reason", reason]
@@ -853,6 +854,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
             "ai",
             "--request-json",
             &common::decision_json("Beta asks as well"),
+            "--no-wait",
         ],
     ));
     assert!(

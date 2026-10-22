@@ -69,7 +69,7 @@ export function seed(home, text) {
   for (const id of [2, 3, 7]) run('mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start sample work');
   run('state', '2', 'running', '--actor', 'ai', '--reason', 'Build the landing page');
   run('history', 'add', '3', '--reason', text.workNote);
-  run('state', '3', 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
+  run('state', '3', 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({
     question: text.question, choices: text.choices.map((label, i) => ({ id: `option-${i + 1}`, label })),
   }));
   // This is a disposable human-owned sample; AI card #6 completes automatically at server startup.

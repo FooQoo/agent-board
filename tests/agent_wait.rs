@@ -83,6 +83,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
             "ai",
             "--request-json",
             &common::decision_json("Need the user's direction"),
+            "--no-wait",
             "--json",
         ],
     );

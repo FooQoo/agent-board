@@ -229,6 +229,7 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
             "ai",
             "--request-json",
             r#"{"question":"Wait?","choices":[{"id":"yes","label":"Yes"},{"id":"no","label":"No"}]}"#,
+            "--no-wait",
         ],
     );
     success(

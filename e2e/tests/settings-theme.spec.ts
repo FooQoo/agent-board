@@ -710,7 +710,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Idle Added by the CLI `) })).toBeVisible();
   agboardOk(mainProject, ['state', String(fresh + 1), 'running']);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Running Added by the CLI `) })).toBeVisible();
-  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--actor', 'ai', '--request-json', decisionJson('Waiting for a theme review')]);
+  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Waiting for a theme review')]);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Pending Added by the CLI `) }).locator('..')).toContainText(
     'Waiting for a theme review',
   );
