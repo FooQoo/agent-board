@@ -45,22 +45,25 @@ export function mainHome(): string {
  */
 export function makeHome(label: string, guide: 'skipped' | 'unseen' = 'skipped'): string {
   const home = mkdtempSync(path.join(os.tmpdir(), `agent-board-e2e-${label}-`));
-  if (guide === 'skipped') {
-    const internal = path.join(home, 'shared', '.internal');
-    mkdirSync(internal, { recursive: true });
-    writeFileSync(
-      path.join(internal, 'onboarding.json'),
-      JSON.stringify({
-        formatVersion: 1,
-        revision: 1,
-        status: 'skipped',
-        owner: null,
-        run: null,
-        appliedCommands: [],
-      }),
-    );
-  }
+  if (guide === 'skipped') skipGuide(home);
   return home;
+}
+
+/** Marks a data area's first-run guide as skipped, so a test sees the board without the guide on top. */
+export function skipGuide(home: string): void {
+  const internal = path.join(home, 'shared', '.internal');
+  mkdirSync(internal, { recursive: true });
+  writeFileSync(
+    path.join(internal, 'onboarding.json'),
+    JSON.stringify({
+      formatVersion: 1,
+      revision: 1,
+      status: 'skipped',
+      owner: null,
+      run: null,
+      appliedCommands: [],
+    }),
+  );
 }
 
 export function removeHome(home: string): void {

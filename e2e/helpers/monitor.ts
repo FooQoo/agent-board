@@ -2,7 +2,15 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { agboardBinary, agboardCatalogOk, projectId, taskBody, decisionJson, workspace } from './agboard';
+import {
+  agboardBinary,
+  agboardCatalogOk,
+  decisionJson,
+  projectId,
+  skipGuide,
+  taskBody,
+  workspace,
+} from './agboard';
 
 // The phone monitor is reached through the ngrok entrance: the dedicated loopback
 // backend behind an Edge stand-in. See phone-entrance.mjs for what is and is not covered.
@@ -41,6 +49,7 @@ function writeJson(file: string, value: unknown): void {
 /** Build an isolated two-project file-store fixture using the real CLI and the documented shared files. */
 export function createMonitorHome(): string {
   const home = mkdtempSync(path.join(os.tmpdir(), 'agent-board-monitor-'));
+  skipGuide(home);
   for (const name of ['Alpha', 'Beta', 'Empty', 'DeleteMe']) agboardCatalogOk(['project', 'create', name], home);
 
   const alphaPending = task(home, 'Alpha', 'Alpha pending review', 'Pending request body.');
