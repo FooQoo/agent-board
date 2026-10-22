@@ -126,7 +126,8 @@ test('OB-04: the settings start the tutorial again, and ending it archives its s
 
 /** The titles of the cards the server holds for a project, from the board (open cards) or the archive. */
 async function serverTitles(url: string, id: string, list: 'board' | 'archive'): Promise<string[]> {
-	const response = await fetch(`${url}api/projects/${id}/${list}`);
+	// The open cards are listed in the Summary.
+	const response = await fetch(`${url}api/projects/${id}/${list === 'board' ? 'summary' : list}`);
 	expect(response.ok).toBe(true);
 	const body = (await response.json()) as { tasks: { title: string }[] };
 	return body.tasks.map((task) => task.title).sort();
