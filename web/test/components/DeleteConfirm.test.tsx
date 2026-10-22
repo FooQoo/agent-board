@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderDetail } from '../renderDetail';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/shared/i18n';
@@ -8,7 +9,7 @@ import { PROJECT_A, fixtureTask, makeTask } from '../fixtures';
 const CONFIRM_TEXT = 'Archive #11 "Implement task moves"? You can restore it from the archive.';
 
 function renderPanel(onRemove = vi.fn(async () => true)) {
-  render(
+  renderDetail(
     <DetailPanel
       projectId={PROJECT_A.id}
       task={fixtureTask(11)}
@@ -32,7 +33,7 @@ describe('inline archive confirmation', () => {
   it('renders localized confirmation text and failure without interpreting a title as markup', () => {
     const task = makeTask({ id: 42, title: '<img src=x onerror="alert(1)"> & "quoted"' });
     selectLocale('ja');
-    const { container } = render(
+    const { container } = renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={task}
@@ -81,7 +82,7 @@ describe('inline archive confirmation', () => {
 
   it('keeps the confirm and cancel buttons disabled while the lifecycle operation is saving', async () => {
     const onRemove = vi.fn(async () => false);
-    render(
+    renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(11)}

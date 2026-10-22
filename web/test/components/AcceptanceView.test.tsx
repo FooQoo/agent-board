@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { renderDetail } from '../renderDetail';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AcceptanceView } from '../../src/features/tasks/acceptance/AcceptanceView';
 import { DetailPanel } from '../../src/features/tasks/detail/DetailPanel';
@@ -38,7 +39,7 @@ describe('AcceptanceView', () => {
 });
 
 describe('unreadable conditions in the detail body', () => {
-  it('says that the conditions cannot be read and that the body is shown', () => {
+  it('says that the conditions cannot be read and that the body is shown', async () => {
     const task = makeTask({
       id: 12,
       title: 'Task',
@@ -46,7 +47,7 @@ describe('unreadable conditions in the detail body', () => {
       body: '---\nacceptance:\n  - id: AC-1\n    text: \n---\n\nBody below\n',
       acceptanceError: true,
     });
-    render(
+    renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={task}
@@ -58,13 +59,13 @@ describe('unreadable conditions in the detail body', () => {
     expect(
       within(screen.getByRole('tabpanel')).getByText('Acceptance conditions cannot be read'),
     ).toBeTruthy();
-    expect(screen.getByText(/Body below/)).toBeTruthy();
+    expect(await screen.findByText(/Body below/)).toBeTruthy();
     expect(screen.queryByText('0 / 1')).toBeNull();
   });
 });
 
 describe('DetailPanel body', () => {
-  it('shows the body without the frontmatter and the conditions above it', () => {
+  it('shows the body without the frontmatter and the conditions above it', async () => {
     const task = makeTask({
       id: 12,
       title: 'Task',
@@ -73,7 +74,7 @@ describe('DetailPanel body', () => {
       body: 'Body only\n',
       acceptance: [item(1, false)],
     });
-    render(
+    renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={task}
@@ -82,10 +83,10 @@ describe('DetailPanel body', () => {
         onRemove={async () => true}
       />,
     );
-    expect(screen.getByText('Body only')).toBeTruthy();
+    expect(await screen.findByText('Body only')).toBeTruthy();
     expect(screen.queryByText(/acceptance:/)).toBeNull();
     expect(within(screen.getByRole('tabpanel')).queryByText('Condition 1')).toBeNull();
     fireEvent.click(screen.getByRole('tab', { name: 'Conditions' }));
-    expect(within(screen.getByRole('tabpanel')).getByText('Condition 1')).toBeTruthy();
+    expect(await within(screen.getByRole('tabpanel')).findByText('Condition 1')).toBeTruthy();
   });
 });

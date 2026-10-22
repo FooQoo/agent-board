@@ -18,6 +18,7 @@ import type { BoardMessageKind } from '../pages/board/ui/BoardMessage';
 import type { UseProjectsResult } from '../features/projects/model/useProjects';
 import type { TaskAnswerController } from '../features/tasks/answer/model/useTaskAnswers';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
+import type { ArchivedTask } from '../features/tasks/api/read';
 import type { EpicApi } from '../features/epics/editor/epicApi';
 
 export type AppInitial = { select?: number; confirm?: boolean; deleteFail?: boolean };
@@ -41,8 +42,8 @@ export interface AppControllerModel {
   archive: ReturnType<typeof useArchive>;
   answerSession: TaskAnswerController;
   tasks: TaskSummary[];
-  selected: Task | null;
-  archivedSelected: Task | null;
+  selected: TaskSummary | null;
+  archivedSelected: ArchivedTask | null;
   selectedEpic: Epic | null;
   activeId: ProjectId | null;
   activeName: string | null;
@@ -108,7 +109,7 @@ export interface AppWorkspaceActions {
   onRetryEpics: () => void;
   onEditTask: () => void;
   onTaskChanged: () => void;
-  onRemove: (action: 'archive' | 'delete', task: Task) => Promise<boolean>;
+  onRemove: (action: 'archive' | 'delete', task: TaskSummary) => Promise<boolean>;
   onRestore: () => void;
   onCloseDetails: () => void;
 }

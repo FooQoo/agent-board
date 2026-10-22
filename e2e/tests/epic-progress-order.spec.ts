@@ -3,7 +3,7 @@
 
 import { expect, test, type Page, type Locator } from '@playwright/test';
 import { agboardOk, mainProject, projectId, resetBoard } from '../helpers/agboard';
-import { waitForSync } from '../helpers/ui';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 const task = (page: Page | Locator, title: string) => page.locator('.epic-progress__row', { hasText: title });
 
@@ -28,6 +28,7 @@ test('a task moved in the progress table by keyboard is saved with the epic and 
 
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await page.locator('[data-epic-label="ORDER"]').first().click();
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
@@ -53,6 +54,7 @@ test('cancelling after a move in the progress table discards the new order', asy
   const before = progressOrder();
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await page.locator('[data-epic-label="ORDER"]').first().click();
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
@@ -77,6 +79,7 @@ test('a failed save keeps the new order in the progress table, and trying again 
   const [first, second, third] = before as [number, number, number];
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await page.locator('[data-epic-label="ORDER"]').first().click();
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();

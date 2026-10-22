@@ -141,7 +141,11 @@ export function stubBackend(backend: FakeBackend) {
       if (board === undefined) return errorResponse(404, 'project_not_found');
       return answer(board, (b) => {
         if (detail[2] === 'tasks') {
-          const task = b.tasks.find((item) => item.id === Number(detail[3]));
+          // An archived task's Detail is read the same way as a listed one's.
+          const archived = Array.isArray(backend.archives?.[projectId])
+            ? (backend.archives?.[projectId] as typeof b.tasks)
+            : [];
+          const task = [...b.tasks, ...archived].find((item) => item.id === Number(detail[3]));
           return task
             ? ndjson(
                 taskDetailEvents(

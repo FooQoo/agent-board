@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmPanel } from '@/shared/ui/confirm-panel';
-import type { Task } from '../../../shared/api/contracts';
+import type { TaskSummary } from '../../../shared/api/contracts';
 
 export interface DeleteConfirmProps {
-  task: Task;
+  task: Pick<TaskSummary, 'id' | 'title'>;
   action?: 'archive' | 'delete';
   saving: boolean;
   /** The confirmation was opened by the user, so keyboard focus moves into it. */

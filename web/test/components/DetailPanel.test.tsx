@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import { renderDetail } from '../renderDetail';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DetailPanel } from '../../src/features/tasks/detail/DetailPanel';
@@ -8,16 +9,18 @@ import { PROJECT_A, fixtureTask, makeTask } from '../fixtures';
 const noop = () => {};
 const noRemove = async () => true;
 
+/** Opens the History tab and waits for the log to be read. */
 async function openHistory() {
   await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+  await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
 }
 
 describe('DetailPanel', () => {
   beforeEach(() => selectLocale('en'));
 
-  it('translates the detail region, empty selection, headings, and accessible controls', () => {
+  it('translates the detail region, empty selection, headings, and accessible controls', async () => {
     selectLocale('ja');
-    const { rerender } = render(
+    const { rerender } = renderDetail(
       <DetailPanel projectId={PROJECT_A.id} task={null} onClose={noop} onRemove={noRemove} />,
     );
     expect(screen.getByRole('complementary', { name: 'タスクの詳細' })).toBeTruthy();
@@ -36,19 +39,21 @@ describe('DetailPanel', () => {
     expect(screen.getByRole('button', { name: '下書きにする' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: '本文' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: /^履歴/ })).toBeTruthy();
-    expect(screen.getByText('説明はありません。')).toBeTruthy();
+    expect(await screen.findByText('説明はありません。')).toBeTruthy();
     selectLocale('en');
   });
 
   it('asks for a selection when no task is selected', () => {
-    render(<DetailPanel projectId={PROJECT_A.id} task={null} onClose={noop} onRemove={noRemove} />);
+    renderDetail(
+      <DetailPanel projectId={PROJECT_A.id} task={null} onClose={noop} onRemove={noRemove} />,
+    );
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Archive task' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Close details' })).toBeNull();
   });
 
-  it('shows the id, title, column, description and history of the selected task', () => {
-    const { container } = render(
+  it('shows the id, title, column and description of the selected task, and its history once opened', async () => {
+    const { container } = renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(8)}
@@ -60,17 +65,23 @@ describe('DetailPanel', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
     expect(container.querySelector('.detail__meta .status-label--done')?.textContent).toBe('Done');
     expect(screen.getByRole('tab', { name: 'Description', selected: true })).toBeTruthy();
-    expect(screen.getByText('Create the storage for the board with agboard init.')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'History 3', selected: false })).toBeTruthy();
+    expect(
+      await screen.findByText('Create the storage for the board with agboard init.'),
+    ).toBeTruthy();
+    // The log is read when its tab is opened, so the count is not known before.
+    expect(screen.getByRole('tab', { name: 'History', selected: false })).toBeTruthy();
+    await openHistory();
+    expect(screen.getByRole('tab', { name: 'History 3', selected: true })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Close details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Archive task' })).toBeTruthy();
   });
 
-  it('shows every line break and shows markup as text', () => {
+  it('shows every line break and shows markup as text', async () => {
     const task = makeTask({ id: 31, description: 'Line one\nLine **two**\n<b>three</b>' });
-    const { container } = render(
+    const { container } = renderDetail(
       <DetailPanel projectId={PROJECT_A.id} task={task} onClose={noop} onRemove={noRemove} />,
     );
+    await screen.findByText(/Line one/);
     const panel = screen.getByRole('tabpanel');
     expect(panel.querySelectorAll('br')).toHaveLength(2);
     expect(panel.querySelector('strong')?.textContent).toBe('two');
@@ -78,8 +89,8 @@ describe('DetailPanel', () => {
     expect(container.querySelector('b')).toBeNull();
   });
 
-  it('shows a note when the description is empty', () => {
-    render(
+  it('shows a note when the description is empty', async () => {
+    renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(12)}
@@ -87,11 +98,11 @@ describe('DetailPanel', () => {
         onRemove={noRemove}
       />,
     );
-    expect(screen.getByText('No description.')).toBeTruthy();
+    expect(await screen.findByText('No description.')).toBeTruthy();
   });
 
   it('draws one history point per event with only the recorded datetime and reason', async () => {
-    const { container } = render(
+    const { container } = renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(8)}
@@ -123,7 +134,7 @@ describe('DetailPanel', () => {
         { at: '2026-10-01T18:00:00Z', reason: 'move' },
       ],
     });
-    const { container } = render(
+    const { container } = renderDetail(
       <DetailPanel projectId={PROJECT_A.id} task={task} onClose={noop} onRemove={noRemove} />,
     );
     await openHistory();
@@ -131,7 +142,7 @@ describe('DetailPanel', () => {
   });
 
   it('shows Running and Pending states without duplicating the answer prompt', () => {
-    const { rerender } = render(
+    const { rerender } = renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(11)}
@@ -167,7 +178,7 @@ describe('DetailPanel', () => {
 
   it('closes with the Close details button', async () => {
     const onClose = vi.fn();
-    render(
+    renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(8)}
@@ -180,7 +191,7 @@ describe('DetailPanel', () => {
   });
 
   it('renders the panel as a labelled region', () => {
-    render(
+    renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(8)}
@@ -193,7 +204,7 @@ describe('DetailPanel', () => {
   });
 
   it('puts the datetime first and the reason next without inferred tags', async () => {
-    const { container } = render(
+    const { container } = renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(8)}
@@ -210,7 +221,7 @@ describe('DetailPanel', () => {
   });
 
   it('shows the status icons in the detail too and spins none of them outside the board', () => {
-    const { container } = render(
+    const { container } = renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(8)}
@@ -223,7 +234,7 @@ describe('DetailPanel', () => {
   });
 
   it('names the assignee next to the icon in the detail header', () => {
-    const { container } = render(
+    const { container } = renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(8)}
@@ -238,7 +249,7 @@ describe('DetailPanel', () => {
   });
 
   it('uses the shared Button for Delete and Cancel in the confirmation', async () => {
-    render(
+    renderDetail(
       <DetailPanel
         projectId={PROJECT_A.id}
         task={fixtureTask(8)}
@@ -266,7 +277,7 @@ describe('DetailPanel', () => {
         { at, reason: 'Work completed after review.' },
       ],
     });
-    const { container } = render(
+    const { container } = renderDetail(
       <DetailPanel projectId={PROJECT_A.id} task={task} onClose={noop} onRemove={noRemove} />,
     );
     await openHistory();
@@ -288,7 +299,7 @@ it('shows every attachment after the description and only offers viewing control
     size: 50,
     createdAt: '2026-10-08T00:00:00Z',
   };
-  const { container } = render(
+  const { container } = renderDetail(
     <DetailPanel
       projectId={PROJECT_A.id}
       task={makeTask({
@@ -300,7 +311,7 @@ it('shows every attachment after the description and only offers viewing control
       onRemove={noRemove}
     />,
   );
-  const list = screen.getByRole('region', { name: 'Image attachments' });
+  const list = await screen.findByRole('region', { name: 'Image attachments' });
   expect(list.textContent).toContain('Attachments · 1');
   expect(list.textContent).toContain('unreferenced.png');
   expect(

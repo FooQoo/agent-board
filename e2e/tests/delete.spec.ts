@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, agboardOnTerminal, listTasks, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
+import { readBoardAfterReset } from '../helpers/ui';
 
 // Card IDs are never reused, so the disposable card gets whatever number is next after the reset.
 let disposable: number;
@@ -12,6 +13,7 @@ test.beforeEach(async ({ page }) => {
   agboardOk(mainProject, ['add', 'Disposable task', '--desc', 'Delete me']);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
+  await readBoardAfterReset(page);
 });
 
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
@@ -55,6 +57,8 @@ test('a task the CLI deletes while selected clears the selection', async ({ page
   expect(result.code).toBe(0);
   expect(result.stdout).toContain('Deleted #15.');
 
+  // The drawer is open, so the page holds the stream's update back: it reads the board itself.
+  await readBoardAfterReset(page);
   await expect(panel(page)).toContainText('Select a task to see its details.');
   await expect(task(page, 15)).toHaveCount(0);
   await expect(page.getByRole('contentinfo')).toContainText('8 tasks');

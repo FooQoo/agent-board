@@ -2,7 +2,7 @@ import { Suspense, useMemo } from 'react';
 import { preloadable } from '../lib/lazy/preloadable';
 import { MarkdownBlock } from './MarkdownBlock';
 import { blockKey, shouldVirtualize, type MarkdownBlockData } from './model/blocks';
-import { RenderScopeContext, ResolverContext } from './renderScope';
+import { ChapterHeadingsContext, RenderScopeContext, ResolverContext } from './renderScope';
 import type { AttachmentResolver } from './model';
 import './markdown.css';
 
@@ -19,6 +19,8 @@ export interface MarkdownBlocksProps {
   isStreaming?: boolean;
   variant?: MarkdownVariant;
   resolveAttachment?: AttachmentResolver;
+  /** Draw each H2 as an H3 that looks like an H2, for a document that sits under an H2 title. */
+  chapterHeadings?: boolean;
 }
 
 /** The virtual list (and `@tanstack/react-virtual` with it) loads only when a large document needs it. */
@@ -36,7 +38,7 @@ export function preloadVirtualMarkdown(): Promise<unknown> {
  * characters or 40 blocks or more is virtualized: only the blocks near the viewport are mounted. A
  * smaller one, or any document without a scroll parent, is drawn whole.
  */
-export function MarkdownBlocks({
+function MarkdownBlocksBody({
   blocks,
   scrollParent,
   isStreaming = false,
@@ -85,5 +87,13 @@ export function MarkdownBlocks({
         </div>
       </RenderScopeContext.Provider>
     </ResolverContext.Provider>
+  );
+}
+
+export function MarkdownBlocks(props: MarkdownBlocksProps) {
+  return (
+    <ChapterHeadingsContext.Provider value={props.chapterHeadings ?? false}>
+      <MarkdownBlocksBody {...props} />
+    </ChapterHeadingsContext.Provider>
   );
 }

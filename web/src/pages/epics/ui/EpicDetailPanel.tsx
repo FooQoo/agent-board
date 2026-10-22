@@ -1,12 +1,14 @@
 import { PencilIcon, Trash2Icon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useEpicDetail } from '../../../shared/data/react';
 import { useTranslation } from 'react-i18next';
 import type { Epic, ProjectId } from '../../../shared/api/contracts';
 import { WriteError } from '../../../shared/api/writeErrors';
 import { noOperations, type OperationControls } from '../../../shared/lib/operations/operations';
 import { EpicBadge } from '../../../features/epics/label/EpicBadge';
 import { DetailAttachments } from '../../../features/tasks/detail/DetailAttachments';
-import { EpicTabView } from '../../../features/tasks/detail/EpicTabView';
+import { DocumentBlocks } from '../../../features/tasks/detail/BodyDocumentView';
+import { DetailSectionView } from '../../../features/tasks/detail/DetailSection';
 import { DetailHeader } from '../../../features/tasks/detail/DetailHeader';
 import { ConfirmPanel } from '@/shared/ui/confirm-panel';
 import '../../../features/tasks/detail/detail.css';
@@ -49,6 +51,11 @@ export function EpicDetailPanel({
   const operation = useRef<number | null>(null);
   const controls = useRef(operations);
   controls.current = operations;
+  // The epic's text is its `document`, read when the epic is first shown and kept for later.
+  const detail = useEpicDetail(projectId, epic.id);
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  const attachmentUrl = (id: string) =>
+    `/api/projects/${projectId}/epics/${encodeURIComponent(epic.id)}/attachments/${encodeURIComponent(id)}`;
 
   useEffect(() => {
     if (!confirming) return;
@@ -133,22 +140,35 @@ export function EpicDetailPanel({
       <h2 className="detail__title" id="epic-detail-title">
         {epic.name}
       </h2>
-      {epic.body.trim() === '' ? (
-        // Empty epic details have one placeholder; the Markdown view would add its own, so only the images follow it.
-        <>
-          <p className="detail__empty">{t('epics.noDocument')}</p>
-          <DetailAttachments
-            projectId={projectId}
-            taskId={0}
-            attachments={epic.attachments}
-            attachmentUrl={(id) =>
-              `/api/projects/${projectId}/epics/${encodeURIComponent(epic.id)}/attachments/${encodeURIComponent(id)}`
-            }
-          />
-        </>
-      ) : (
-        <EpicTabView projectId={projectId} epic={epic} status="ready" />
-      )}
+      <div className="detail__viewport" ref={setScroller}>
+        <DetailSectionView snapshot={detail.document} onRetry={() => void detail.refresh()}>
+          {(data, arriving) => (
+            <>
+              {data.blocks.every((block) => block.text.trim() === '') ? (
+                // Empty epic details have one placeholder; the images follow it.
+                arriving ? null : (
+                  <p className="detail__empty">{t('epics.noDocument')}</p>
+                )
+              ) : (
+                <DocumentBlocks
+                  document={data}
+                  arriving={arriving}
+                  attachmentUrl={attachmentUrl}
+                  scrollParent={scroller}
+                />
+              )}
+              {!arriving && (
+                <DetailAttachments
+                  projectId={projectId}
+                  taskId={0}
+                  attachments={[...(data.attachments ?? [])]}
+                  attachmentUrl={attachmentUrl}
+                />
+              )}
+            </>
+          )}
+        </DetailSectionView>
+      </div>
     </aside>
   );
 }

@@ -13,7 +13,7 @@ import {
   workspace,
   type TaskJson,
 } from '../helpers/agboard';
-import { editorValue, openManualCreateDialog, waitForSync } from '../helpers/ui';
+import { editorValue, openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // The acceptance conditions on the real page and in the real CLI: how they show on the board and in the details,
 // how a person adds, edits, reorders, and checks them, what a broken frontmatter does, and when an agent may not
@@ -107,6 +107,7 @@ test('the board and the details show the number of conditions done, and nothing 
   );
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
 
   await expect(task(page, none).locator('.acceptance-chip')).toHaveCount(0);
   const partialChip = task(page, partial).locator('.acceptance-chip');
@@ -162,6 +163,7 @@ test('a person edits the conditions of a draft: removes, adds without reusing a 
   const id = addTask('Edit me', frontmatter(THREE, 'Old text.'));
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await makeDraft(page, id);
 
   const { dialog } = await openEdit(page, id);
@@ -186,6 +188,7 @@ test('cancelling the edit dialog discards the changes to the conditions', async 
   const id = addTask('Cancel me', frontmatter(THREE));
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await makeDraft(page, id);
 
   const { dialog } = await openEdit(page, id);
@@ -200,6 +203,7 @@ test('a save of the body keeps the other frontmatter keys, which the page does n
   const id = addTask('Keep my keys', '---\ntags:\n  - plan\nacceptance: []\n---\n\nold\n');
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await makeDraft(page, id);
 
   const { dialog, editor } = await openEdit(page, id);
@@ -222,6 +226,7 @@ test('a frontmatter that cannot be read is shown as a problem, the body stays vi
   writeFileSync(taskFile(id), broken, 'utf8');
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
 
   await task(page, id).click();
   await expect(details(page).getByText('Body stays visible.')).toBeVisible();
@@ -239,6 +244,7 @@ test('a frontmatter that cannot be read is shown as a problem, the body stays vi
   replaceFileAtomically(taskFile(id), original);
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await expect(task(page, id).locator('.acceptance-chip')).toHaveAttribute('title', 'Acceptance conditions 0 / 3');
 });
 
@@ -252,6 +258,7 @@ test('an agent cannot move a task to Done while a condition is unmet, and a pers
   // A person moves the card from the page, with the conditions still unmet.
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
   const pid = projectId(mainProject);
   const moved = await page.evaluate(
     async ({ url, body }) => {
@@ -276,6 +283,7 @@ test('a task written in the earlier Japanese form is read as a body with no cond
   );
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
 
   await task(page, id).click();
   await expect(details(page).getByText('作業。')).toBeVisible();
@@ -288,6 +296,7 @@ test('the edit dialog wraps each condition onto two rows in a narrow width and k
   const id = addTask('Narrow', frontmatter(THREE));
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await makeDraft(page, id);
 
   // The dialog is open at the desktop width; the gap is measured between the first condition's checkbox and text.
@@ -320,6 +329,7 @@ test('epic reference conditions stay in the Markdown body without a conditions d
   agboardOk(mainProject, ['edit', String(inPlan), '--epic', 'PLAN-CHK']);
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await page.locator('[data-epic-label="PLAN-CHK"]').first().click();
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
@@ -338,6 +348,7 @@ test('task conditions fold in their own dock and a long body scrolls alone', asy
   const id = addTask('Many conditions', frontmatter(conditions, body));
   await page.reload();
   await waitForSync(page);
+  await readBoardAfterReset(page);
 
   await makeDraft(page, id);
   const { dialog } = await openEdit(page, id);

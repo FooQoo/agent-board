@@ -17,19 +17,19 @@ for (const mode of ["light", "dark"] as const) {
 				await setPreferences({ locale, theme: { mode, accent: "blue" } });
 
 				// Keep layout checks independent of writes; all cards are temporary response fixtures.
-				await page.route("**/api/projects/*/board", async (route) => {
+				// The board is drawn from the Summary, so that is the response replaced.
+				await page.route("**/api/projects/*/summary", async (route) => {
 					const response = await route.fetch();
-					const board = await response.json();
-					const task = board.tasks.find(
+					const summary = await response.json();
+					const task = summary.tasks.find(
 						(item: { taskStatus: string }) => item.taskStatus === "done",
 					);
-					board.tasks = Array.from({ length: 24 }, (_, index) => ({
+					summary.tasks = Array.from({ length: 24 }, (_, index) => ({
 						...task,
 						id: index + 1,
 						title: `Archive layout task ${index + 1}: 日本語の長いタイトルと対象タスクの確認`,
-						attachments: [],
 					}));
-					await route.fulfill({ json: board });
+					await route.fulfill({ json: summary });
 				});
 				await page.route("**/api/projects/*/archive", async (route) => {
 					const boardUrl = route
@@ -235,13 +235,13 @@ for (const mode of ["light", "dark"] as const) {
 			resetBoard(mainProject);
 			await page.setViewportSize({ width: 360, height: 800 });
 			await setPreferences({ locale, theme: { mode, accent: "blue" } });
-			await page.route("**/api/projects/*/board", async (route) => {
+			await page.route("**/api/projects/*/summary", async (route) => {
 				const response = await route.fetch();
-				const board = await response.json();
-				const task = board.tasks.find(
+				const summary = await response.json();
+				const task = summary.tasks.find(
 					(item: { taskStatus: string }) => item.taskStatus === "done",
 				);
-				board.tasks = Array.from({ length: 100 }, (_, index) => ({
+				summary.tasks = Array.from({ length: 100 }, (_, index) => ({
 					...task,
 					id: index + 1001,
 					title:
@@ -249,9 +249,8 @@ for (const mode of ["light", "dark"] as const) {
 							? `検証対象タスク${index + 1}：アーカイブ確認用のとても長い日本語タイトルと保持説明`
 							: `Verification task ${index + 1}: a deliberately long English title for archive retention`,
 					assignee: index % 2 === 0 ? "ai" : "human",
-					attachments: [],
 				}));
-				await route.fulfill({ json: board });
+				await route.fulfill({ json: summary });
 			});
 			await page.goto("/");
 			const trigger = page.locator(".lane-header__archive");

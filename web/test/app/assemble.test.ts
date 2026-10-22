@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  assembleEpic,
-  assembleTask,
   bodyOf,
+  epicForEditor,
+  taskForEditor,
   toBoardView,
   toTaskSummary,
 } from '../../src/app/data/assemble';
 import { summaryOfBoard } from '../../src/app/development/boardWire';
 import type { Summary, SummaryEpic, SummaryTask } from '../../src/shared/data/api';
-import type { DocumentData, HistoryData } from '../../src/shared/data/core';
+import type { DocumentData } from '../../src/shared/data/core';
 import type { Epic } from '../../src/shared/api/contracts';
 import { fixtureBoard, makeTask } from '../fixtures';
 
@@ -54,7 +54,6 @@ const document_: DocumentData = {
   ],
   acceptance: [{ id: 'AC-1', text: 'one', done: true }],
 };
-const history: HistoryData = { items: [{ at: '2026-01-01T00:00:00Z', reason: 'made' }] };
 
 describe('the list bridge', () => {
   it('makes a card of a Summary task: counts, no body, the epic resolved', () => {
@@ -133,9 +132,9 @@ describe('what the Summary now keeps', () => {
     expect(toBoardView(summary).epics[0]?.priority).toEqual([]);
   });
 
-  it('assembles a task with its own creation time, not the last update', () => {
+  it('builds an editor task with its own creation time, not the last update', () => {
     const card = toTaskSummary(rich.tasks[0] as SummaryTask, rich.epics);
-    const task = assembleTask(card, { document: document_, history });
+    const task = taskForEditor(card, document_);
     expect(task.createdAt).toBe('2026-01-02T03:04:05Z');
     expect(task.updatedAt).toBe('2026-05-06T07:08:09Z');
     expect(task.acceptanceError).toBe(true);
@@ -144,11 +143,8 @@ describe('what the Summary now keeps', () => {
   it('takes the task attachments from the Detail and shows none before it arrives', () => {
     const card = toTaskSummary(withEpic, summary.epics);
     const list = [stored('a1', 'one.png'), stored('a2', 'two.png')];
-    expect(
-      assembleTask(card, { document: { ...document_, attachments: list }, history }).attachments,
-    ).toEqual(list);
-    expect(assembleTask(card, { document: document_, history }).attachments).toEqual([]);
-    expect(assembleTask(card, { document: null, history: null }).attachments).toEqual([]);
+    expect(taskForEditor(card, { ...document_, attachments: list }).attachments).toEqual(list);
+    expect(taskForEditor(card, document_).attachments).toEqual([]);
   });
 
   it('edits a card with unreadable conditions from the whole text, which the body is', () => {
@@ -157,9 +153,9 @@ describe('what the Summary now keeps', () => {
     // frontmatter is cut off from the body; the Rust test of the Detail reader pins that.)
     const whole = '---\nacceptance: [unclosed\n';
     const card = toTaskSummary(rich.tasks[0] as SummaryTask, rich.epics);
-    const task = assembleTask(card, {
-      document: { blocks: [{ kind: 'markdown', text: whole }], acceptance: [] },
-      history: null,
+    const task = taskForEditor(card, {
+      blocks: [{ kind: 'markdown', text: whole }],
+      acceptance: [],
     });
     expect(task.acceptanceError).toBe(true);
     expect(task.description).toBe(whole);
@@ -169,42 +165,31 @@ describe('what the Summary now keeps', () => {
   it('takes the epic attachments from the Detail', () => {
     const base = toBoardView(summary).epics[0] as Epic;
     const list = [stored('e1', 'plan.png')];
-    expect(assembleEpic(base, { ...document_, attachments: list }).attachments).toEqual(list);
-    expect(assembleEpic(base, document_).attachments).toEqual([]);
-    expect(assembleEpic(base, null).attachments).toEqual([]);
+    expect(epicForEditor(base, { ...document_, attachments: list }).attachments).toEqual(list);
+    expect(epicForEditor(base, document_).attachments).toEqual([]);
   });
 });
 
-describe('assembleTask', () => {
+describe('taskForEditor', () => {
   const card = toTaskSummary(withEpic, summary.epics);
 
-  it('joins the blocks into the body and takes the conditions and the history from the Detail', () => {
-    const task = assembleTask(card, { document: document_, history });
+  it('joins the blocks into the body and takes the conditions from the Detail', () => {
+    const task = taskForEditor(card, document_);
     expect(task.body).toBe('# Title\n\nFirst paragraph.\n\n- item\n');
     expect(task.acceptance).toEqual([{ id: 'AC-1', text: 'one', done: true }]);
-    expect(task.history).toEqual([{ at: '2026-01-01T00:00:00Z', reason: 'made' }]);
     expect(task.title).toBe('With epic');
     expect(task.epic?.id).toBe('E-1');
   });
 
-  it('shows an empty body and history while the Detail has not arrived', () => {
-    const task = assembleTask(card, { document: null, history: null });
-    expect(task.body).toBe('');
-    expect(task.acceptance).toEqual([]);
-    expect(task.history).toEqual([]);
-  });
-
   it('gives the whole file text as the body, because the frontmatter is not sent', () => {
-    expect(assembleTask(card, { document: document_, history }).description).toBe(
-      bodyOf(document_),
-    );
+    expect(taskForEditor(card, document_).description).toBe(bodyOf(document_));
   });
 });
 
-describe('assembleEpic', () => {
+describe('epicForEditor', () => {
   it('puts the joined blocks in the epic body and document', () => {
     const base = toBoardView(summary).epics.find((item) => item.id === epicOne.id) as Epic;
-    const epic = assembleEpic(base, document_);
+    const epic = epicForEditor(base, document_);
     expect(epic.body).toBe('# Title\n\nFirst paragraph.\n\n- item\n');
     expect(epic.document).toBe(epic.body);
     expect(epic.name).toBe('Epic one');
