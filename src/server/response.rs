@@ -61,6 +61,16 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::RequestChoiceUnknown { .. }
         | AgboardError::AttachmentLimitExceeded => StatusCode::UNPROCESSABLE_ENTITY,
         AgboardError::DatabaseBusy => StatusCode::SERVICE_UNAVAILABLE,
+        AgboardError::DocsPathInvalid { .. } => StatusCode::BAD_REQUEST,
+        AgboardError::DocsNotFound { .. } => StatusCode::NOT_FOUND,
+        AgboardError::DocsNotMarkdown { .. } | AgboardError::DocsAssetType { .. } => {
+            StatusCode::UNSUPPORTED_MEDIA_TYPE
+        }
+        AgboardError::DocsTooLarge { .. } => StatusCode::PAYLOAD_TOO_LARGE,
+        AgboardError::DocsNotUtf8 { .. } => StatusCode::UNPROCESSABLE_ENTITY,
+        AgboardError::DocsRevisionConflict { .. } => StatusCode::CONFLICT,
+        AgboardError::DocsReadOnly { .. } => StatusCode::FORBIDDEN,
+        AgboardError::DocsNotImplemented => StatusCode::NOT_IMPLEMENTED,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     };
     error_response(status, error.code(), error.message(), error.reason())

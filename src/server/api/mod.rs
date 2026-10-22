@@ -2,6 +2,7 @@
 //! handlers live in the submodules, grouped as the routes are.
 
 mod archive;
+mod docs;
 mod epic_attachments;
 mod epics;
 mod monitor_connections;
@@ -34,6 +35,7 @@ use crate::domain::Changed;
 use crate::error::AgboardError;
 use crate::file_store::model::TaskView;
 use archive::*;
+use docs::*;
 use epic_attachments::*;
 use epics::*;
 use monitor_connections::*;
@@ -179,6 +181,15 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route(
             "/api/projects/{project_id}/onboarding/{run_id}/abort",
             post(abort_onboarding),
+        )
+        .route("/api/projects/{project_id}/docs/tree", get(get_docs_tree))
+        .route(
+            "/api/projects/{project_id}/docs/file",
+            get(get_docs_file).put(put_docs_file),
+        )
+        .route(
+            "/api/projects/{project_id}/docs/assets",
+            get(get_docs_asset),
         )
         .route("/api/health", get(health))
         .route(
