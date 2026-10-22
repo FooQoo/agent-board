@@ -16,7 +16,7 @@ Horizontal swipes move the tab content and underline together. Gestures inside t
 
 The monitor HTML and API responses are never cached. The browser keeps the monitor's scripts and styles, so later visits download only the page and the data. The monitor has no offline snapshot cache or service worker.
 
-After you install a new version and restart `agboard serve`, an open monitor reloads itself to show the new UI. If you are writing an answer, it waits until you send or clear it. When disconnected, the page reports the connection state.
+After you install a new version and restart `agboard serve`, an open monitor reloads itself to show the new UI. If you are writing an answer or have a task drawer open, it waits until you send or clear the answer, or close the drawer. When disconnected, the page reports the connection state.
 
 ## Before you start
 

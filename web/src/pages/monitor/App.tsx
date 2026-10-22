@@ -71,7 +71,9 @@ function MonitorReadyApp({ useBuildReload }: { useBuildReload: BuildReloadHook }
     onRefresh: refresh,
     onVisibility: monitor.onVisibility,
   });
-  useBuildReload(events.build, answers.locked);
+  // A reload would drop an open drawer, and a drag in it, so it waits until the drawer is closed.
+  const [detailOpen, setDetailOpen] = useState(false);
+  useBuildReload(events.build, answers.locked || detailOpen);
   const route = useMonitorUrl(monitor.projects, monitor.catalogReady);
   const [appliedScope, setAppliedScope] = useState(route.scope);
   useEffect(() => {
@@ -111,6 +113,7 @@ function MonitorReadyApp({ useBuildReload }: { useBuildReload: BuildReloadHook }
     onScopeChange: route.onScopeChange,
     scopeLocked: answers.locked,
     onRefresh: refresh,
+    onDetailOpenChange: setDetailOpen,
   };
   return <MonitorView {...props} />;
 }

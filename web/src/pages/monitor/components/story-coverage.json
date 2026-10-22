@@ -17,6 +17,11 @@
               "id": "pages-monitor-components-monitordetaildrawer--epic-error",
               "states": ["epic read error", "retry"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--heavy-content",
+              "states": ["long document", "diagrams and images", "opened by trigger"],
+              "interaction": true
             }
           ]
         },

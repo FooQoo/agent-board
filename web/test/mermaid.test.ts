@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 describe('renderMermaid', () => {
-  it('draws the source with the strict security level and the theme variables', async () => {
+  it('draws the source with the strict security level, SVG-text labels and the theme variables', async () => {
     const theme = mermaidThemeFromCss();
     const result = await renderMermaid('flowchart TD\n  A1 --> B1', theme);
     expect(result).toEqual({ ok: true, svg: expect.stringContaining('<svg') });
@@ -36,6 +36,7 @@ describe('renderMermaid', () => {
       expect.objectContaining({
         startOnLoad: false,
         securityLevel: 'strict',
+        htmlLabels: false,
         theme: 'base',
         themeVariables: theme.variables,
       }),

@@ -198,13 +198,18 @@ export const ImageEnlarge: Story = {
   },
 };
 
-/** A well-formed Mermaid block is drawn as a diagram. */
+/**
+ * A well-formed Mermaid block is drawn as a diagram. Its labels are SVG text: HTML inside
+ * `foreignObject` kept a closed sheet and its whole document in memory.
+ */
 export const MermaidValid: Story = {
   args: { source: '```mermaid\nflowchart TD\n  Start --> Finish\n```' },
   play: async ({ canvasElement }) => {
     await waitFor(() => expect(canvasElement.querySelector('.md-mermaid svg')).not.toBeNull(), {
       timeout: 10000,
     });
+    expect(canvasElement.querySelector('.md-mermaid foreignObject')).toBeNull();
+    expect(canvasElement.querySelector('.md-mermaid svg')?.textContent).toContain('Finish');
   },
 };
 
