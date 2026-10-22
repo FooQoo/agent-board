@@ -1,7 +1,6 @@
 export const docsEn = {
   docs: {
     title: 'Docs',
-    breadcrumb: 'Location of the open file',
     notSaved: 'Not saved',
     files: 'Files',
     fileTree: 'Document files',

@@ -1,7 +1,6 @@
 export const docsJa = {
   docs: {
     title: 'ドキュメント',
-    breadcrumb: 'ファイルの場所',
     notSaved: '保存されていません',
     files: 'ファイル',
     fileTree: 'ドキュメントのファイル',

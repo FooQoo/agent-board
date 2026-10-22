@@ -157,7 +157,7 @@ export const EditAndSave: Story = {
     await choose(view, /Tasks\.md/);
     const save = await view.findByRole('button', { name: 'Save' });
     await expect(save).toBeDisabled();
-    const crumbs = view.getByRole('navigation', { name: 'Location of the open file' });
+    const crumbs = view.getByRole('navigation');
     await expect(crumbs).toHaveTextContent('Docs/Product/Tasks.md');
     await expect(view.getByText('title: Tasks', { exact: false })).toBeInTheDocument();
     await userEvent.click(await editor());

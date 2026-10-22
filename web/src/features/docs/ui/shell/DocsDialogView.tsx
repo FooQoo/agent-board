@@ -65,7 +65,7 @@ function DocsTitle({ path }: { path: string | null }) {
   const segments = path === null ? [] : path.split('/').filter((segment) => segment !== '');
   if (segments.length === 0) return <>{t('docs.title')}</>;
   return (
-    <nav className="docs-crumbs" aria-label={t('docs.breadcrumb')}>
+    <nav className="docs-crumbs">
       <span className="docs-crumbs__root">{t('docs.title')}</span>
       {segments.map((segment, index) => (
         <span key={`${index}:${segment}`} className="docs-crumbs__item">
