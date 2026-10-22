@@ -28,7 +28,7 @@ export function SettingsEntryRow({
     <section className="settings-entry" aria-labelledby={titleId}>
       <div className="settings-entry__grid">
         <span className="settings-entry__icon" aria-hidden="true">
-          <Icon />
+          <Icon strokeWidth={1.5} />
         </span>
         <div className="settings-entry__copy">
           <h3 id={titleId} className="settings-entry__title">
