@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * The Markdown of the rich editor (ProseMirror), rebuilt from its blocks: headings get their `#` marks, list items
@@ -39,6 +39,29 @@ export function decisionRequest(details: Locator, name = 'The agent is waiting f
 /** Wait for the board to show it is in sync, so the page is ready to use. */
 export async function waitForSync(page: Page): Promise<void> {
   await page.getByRole('contentinfo').getByRole('status').filter({ hasText: /^(Synced|同期済み)/ }).waitFor();
+}
+
+/**
+ * Read the board again after the files under it were replaced. The server notices a changed file
+ * 200 ms later, and the page holds the stream's updates back once a drawer or a dialog is open,
+ * so a test that acts at once would work on the state before the change.
+ */
+export async function readBoardAfterReset(page: Page): Promise<void> {
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: /^(Refresh|最新の状態に更新)$/ }).click();
+  await waitForSync(page);
+}
+
+/**
+ * Press refresh until `check` holds. For a change made while a drawer or a dialog is open: the page
+ * holds the stream's updates back then, and the refresh button reads the board at once. The button is
+ * pressed through the page because an open dialog makes the rest of the page inert.
+ */
+export async function refreshUntil(page: Page, check: () => Promise<void>): Promise<void> {
+  await expect(async () => {
+    await page.locator('.header__refresh').evaluate((button) => (button as HTMLButtonElement).click());
+    await check();
+  }).toPass({ timeout: 15_000 });
 }
 
 /** Open the established full task editor from the Add task button's simple-request entry point. */

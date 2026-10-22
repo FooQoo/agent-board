@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
-import { openManualCreateDialog, pasteMarkdown } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, refreshUntil } from '../helpers/ui';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
 let fresh = 0;
@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
   fresh = nextTaskId(mainProject);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
+  await readBoardAfterReset(page);
   // A marker that a reload would wipe: every change below must arrive without one.
   await page.evaluate(() => {
     (window as unknown as { __opened: boolean }).__opened = true;
@@ -96,7 +97,8 @@ test('confirming a move after an external lane change keeps exactly one task and
   await expect(reason).toHaveValue('');
   await expect(page.locator('.card--dragging')).toHaveCount(0);
   agboardOk(mainProject, ['mv', '16', 'done', '--actor', 'human']);
-  await expect(move.getByRole('group', { name: 'Status change' })).toContainText('Done');
+  // The open dialog holds the stream's updates back, so the board is read now.
+  await refreshUntil(page, () => expect(move.getByRole('group', { name: 'Status change' })).toContainText('Done', { timeout: 1_500 }));
   await expect(move.getByRole('button', { name: 'Move', exact: true })).toBeEnabled();
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move).toHaveCount(0);
@@ -130,7 +132,10 @@ test('the selection stays on a task that moves to another lane', async ({ page }
   await expect(panel).toContainText('Doing');
 
   agboardOk(mainProject, ['mv', '11', 'done']);
-  await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#11(?!\d)/);
+  // The open details hold the stream's updates back, so the board is read now.
+  await refreshUntil(page, () =>
+    expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#11(?!\d)/, { timeout: 1_500 }),
+  );
   await expect(task(page, 11)).toHaveAttribute('aria-current', 'true');
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Implement task moves');
   await expect(panel).toContainText('Done');

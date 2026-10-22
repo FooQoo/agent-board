@@ -1,5 +1,5 @@
 import { groupTasks } from '../../../features/tasks/model/board';
-import type { Task, ColumnName } from '../../../shared/api/contracts';
+import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
 import { BoardMessage, type BoardMessageKind } from './BoardMessage';
 import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
@@ -12,13 +12,13 @@ const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
 export interface BoardProps {
   /** A state shown in place of the lanes; `null` shows the lanes. */
   message: Exclude<BoardMessageKind, 'empty'> | null;
-  tasks: Task[];
+  tasks: TaskSummary[];
   selectedId: number | null;
   onSelect: (id: number) => void;
   onRetry: () => void;
-  onMove: (task: Task, column: ColumnName) => void;
+  onMove: (task: TaskSummary, column: ColumnName) => void;
   /** A card was dropped in another place of its own lane: just before `beforeId`, or at the end. */
-  onReorder?: (task: Task, beforeId: number | null) => void;
+  onReorder?: (task: TaskSummary, beforeId: number | null) => void;
   onArchiveDone?: () => void;
   /** The EPIC-ID label of a card was pressed. */
   onOpenEpic?: (epicId: string) => void;

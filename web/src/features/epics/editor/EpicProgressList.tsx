@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DragDropProvider } from '@dnd-kit/react';
 import { isSortable, useSortable } from '@dnd-kit/react/sortable';
-import type { Task } from '../../../shared/api/contracts';
+import type { TaskSummary } from '../../../shared/api/contracts';
 
 /** What a row gives the caller to draw a task: the drag handle to place, and the row's actions. */
 export interface ProgressTaskRow {
@@ -13,7 +13,7 @@ export interface ProgressTaskRow {
   onOpen: () => void;
 }
 
-export type ProgressTaskRenderer = (task: Task, row: ProgressTaskRow) => ReactNode;
+export type ProgressTaskRenderer = (task: TaskSummary, row: ProgressTaskRow) => ReactNode;
 
 /**
  * The progress table of an epic: its tasks in the order they are worked on. Dragging a row changes
@@ -27,7 +27,7 @@ export function EpicProgressList({
   renderTask,
 }: {
   /** The tasks of this epic in their current order. */
-  tasks: readonly Task[];
+  tasks: readonly TaskSummary[];
   disabled: boolean;
   /** The new order: the moved task goes from `from` to `to` in the list. */
   onMove: (from: number, to: number) => void;
@@ -78,7 +78,7 @@ function ProgressRow({
   onOpenTask,
   renderTask,
 }: {
-  task: Task;
+  task: TaskSummary;
   index: number;
   disabled: boolean;
   onOpenTask: (taskId: number) => void;

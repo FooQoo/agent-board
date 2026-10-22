@@ -41,6 +41,7 @@ interface HeaderDemoProps {
   onArchive?: () => void;
   onEpics?: () => void;
   onBack?: () => void;
+  onRefresh?: () => void;
 }
 
 /**
@@ -123,6 +124,16 @@ export const SwitchDisabled: Story = {
     await expect(canvas.getByRole('button', { name: /add task/i })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: /epics/i })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: /archive/i })).toBeDisabled();
+  },
+};
+
+/** The refresh button reads the data again now; it shows only where the page offers it. */
+export const WithRefresh: Story = {
+  args: { onRefresh: fn() },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Refresh' }));
+    await expect(args.onRefresh).toHaveBeenCalledTimes(1);
   },
 };
 
