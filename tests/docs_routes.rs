@@ -1,5 +1,4 @@
-//! The Docs routes on the board router: the save route answering 501 until built,
-//! the write guard, and bad input refused first.
+//! The Docs routes on the board router: the write guard and bad input refused first.
 
 mod common;
 
@@ -18,13 +17,6 @@ fn docs(path: &str) -> String {
 }
 
 #[test]
-fn the_save_route_answers_not_implemented_for_a_page_write() {
-    let (_home, server) = running();
-    let body = r#"{"path":"a.md","content":"x","expectedRevision":"sha256:0"}"#;
-    let reply = server.write("PUT", &docs("file"), Some(body));
-    assert_eq!(reply.status, 501, "{}", reply.body);
-    assert_eq!(reply.code(), "docs_not_implemented");
-}
 
 #[test]
 fn the_save_route_is_behind_the_write_guard() {
