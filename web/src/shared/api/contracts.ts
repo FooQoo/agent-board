@@ -152,6 +152,11 @@ export interface EpicTaskCounts {
   total: number;
 }
 
+/**
+ * A whole project in one value. The server no longer answers with it (the client reads the Summary and
+ * the Detail instead); it remains as the shape of the sample data and the test fixtures, which
+ * `app/development/boardWire.ts` splits into a Summary and Details.
+ */
 export interface Board {
   project: Project;
   version: string;

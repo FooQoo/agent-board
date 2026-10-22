@@ -13,6 +13,7 @@ import {
   stopServe,
   workspace,
 } from '../helpers/agboard';
+import { readBoardAfterReset } from '../helpers/ui';
 
 function run(args: string[], home: string, cwd: string, input = ''): { code: number; stdout: string; stderr: string } {
   const result = spawnSync(agboardBinary(), args, {
@@ -123,6 +124,8 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
       .toMatchObject({ taskStatus: 'doing', agentStatus: 'pending' });
 
     await page.goto(`${serve.url}?project=${projectId}`);
+    // The file was edited behind the server's back: read the board again before the card is opened.
+    await readBoardAfterReset(page);
     const taskButton = page.getByRole('button', { name: new RegExp(`^#${publish}(?!\\d)`) });
     await expect(taskButton).toBeVisible();
     await taskButton.click();

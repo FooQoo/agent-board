@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { resetBoard, agboardOk, mainProject, projectId } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // Headless Chromium hides scrollbars by default; the scroll cue needs the real ones.
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
@@ -79,6 +80,9 @@ for (const locale of ['en', 'ja']) {
       }, detailWidth);
       await page.setViewportSize({ width: 1920, height: 900 });
       await page.goto(`/?project=${projectId(mainProject)}`);
+      await waitForSync(page);
+      // The server notices the reset 200 ms later: read the board again, not the one from before it.
+      await readBoardAfterReset(page);
       await task(page, 8).click();
       const detail = page.locator('.detail');
       const row = await box(detail.locator('.detail__tabs'));

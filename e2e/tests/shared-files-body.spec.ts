@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, decisionJson } from '../helpers/agboard';
-import { waitForSync } from '../helpers/ui';
+import { readBoardAfterReset, refreshUntil, waitForSync } from '../helpers/ui';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
 // card that is Done and still takes an edit, and the edit dialog that saves once and rewrites nothing unless asked.
@@ -28,6 +28,8 @@ function show(id: number): ShownTask {
 async function openBoard(page: Page): Promise<void> {
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
+  // The server notices a file the CLI wrote 200 ms later: read the board again before a card is opened.
+  await readBoardAfterReset(page);
 }
 
 /** A decision request on card `id`, the card moved to Doing and running first, as an agent does. */
@@ -85,7 +87,7 @@ test('a task body shows its sections, consecutive captures side by side, and a M
   await task(page, 13).click();
   const panel = details(page);
   // The body is written as numbered chapters; the captures sit in one group, side by side.
-  await expect(panel.locator('.md-chapter__title', { hasText: /^Work$/ }).first()).toBeVisible();
+  await expect(panel.getByRole('heading', { name: 'Work', level: 3 })).toBeVisible();
   const group = panel.locator('.md-captures').first();
   await expect(group.locator('.md__image-open')).toHaveCount(2);
   const boxes = await group.locator('.md__image-open').evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
@@ -119,6 +121,7 @@ test('a decision request is answered with a choice only, with text only, or with
 
   // A choice alone.
   askWithChoices(16, 'Which way?', choices);
+  await readBoardAfterReset(page);
   await task(page, 16).click();
   const answer = request(page, 16);
   await expect(answer.getByRole('radiogroup', { name: 'Choices' })).toBeVisible();
@@ -132,8 +135,9 @@ test('a decision request is answered with a choice only, with text only, or with
   expectHistoryNote(show(16).history.at(-1), ['Which way?', 'Proceed']);
 
   // Text alone, with no choice.
+  // The open drawer holds the stream's updates back, so the board is read again by hand.
   askText(16, 'What name?');
-  await expect(request(page, 16)).toContainText('What name?');
+  await refreshUntil(page, () => expect(request(page, 16)).toContainText('What name?', { timeout: 1_000 }));
   await request(page, 16).getByRole('textbox', { name: 'Your answer' }).fill('Keep the old name.');
   await request(page, 16).getByRole('button', { name: 'Send', exact: true }).click();
   await expect(request(page, 16)).toHaveCount(0);
@@ -142,7 +146,7 @@ test('a decision request is answered with a choice only, with text only, or with
 
   // A choice and a note together.
   askWithChoices(16, 'Which way now?', choices);
-  await expect(request(page, 16).getByRole('radio', { name: 'Stop' })).toBeVisible();
+  await refreshUntil(page, () => expect(request(page, 16).getByRole('radio', { name: 'Stop' })).toBeVisible({ timeout: 1_000 }));
   await request(page, 16).getByRole('radio', { name: 'Stop' }).check();
   await request(page, 16).getByRole('textbox', { name: 'Your answer' }).fill('Stop after the backup.');
   await request(page, 16).getByRole('button', { name: 'Send', exact: true }).click();
