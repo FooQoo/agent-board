@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/confirm-panel.tsx",
+  "exports": [
+    {
+      "name": "ConfirmPanel",
+      "stories": [
+        {
+          "id": "shared-ui-confirmpanel--default",
+          "states": ["default", "cancel"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-confirmpanel--failed",
+          "states": ["failed"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-confirmpanel--busy",
+          "states": ["busy"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

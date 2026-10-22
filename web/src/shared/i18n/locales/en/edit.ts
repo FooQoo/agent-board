@@ -100,7 +100,6 @@ export const editEn = {
     saveFailedFirst: 'Could not save {{step}}. Your input is kept.',
     deleteTitle: 'Delete this epic?',
     deleteBody: 'The epic details and images of {{id}} are deleted too. This cannot be undone.',
-    deleteDirty: 'Changes you have not saved in this dialog are discarded as well.',
     deleteConfirm: 'Delete epic',
     deleteCancel: 'Cancel',
     deleteInUse: 'A task still uses this epic. Move or clear those tasks first.',

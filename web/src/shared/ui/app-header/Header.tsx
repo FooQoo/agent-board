@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState, type ReactNode, type RefObject }
 import { useTranslation } from 'react-i18next';
 import { ArchiveIcon, ArrowLeftIcon, LayersIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 import { Button, type ButtonSize } from '@/shared/ui/button';
+import { IconLabel } from '@/shared/ui/icon-label';
 import type { Project, ProjectId } from '../../api/contracts';
 
 export type ViewMode = 'board' | 'archive' | 'epics';
@@ -93,8 +94,9 @@ export function Header({
       <span className="header__spacer" aria-hidden="true" />
       {viewMode === 'board' && canAdd && (
         <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
-          <PlusIcon aria-hidden="true" />
-          {t('dialog.addCard')}
+          <IconLabel icon={PlusIcon} optical={1.5}>
+            {t('dialog.addCard')}
+          </IconLabel>
         </Button>
       )}
       {viewMode === 'archive' || viewMode === 'epics' ? (
@@ -105,8 +107,11 @@ export function Header({
           disabled={switchDisabled}
           onClick={onBack}
         >
-          {viewMode === 'epics' && <ArrowLeftIcon aria-hidden="true" />}
-          {viewMode === 'epics' ? t('epics.back') : t('archive.back')}
+          {viewMode === 'epics' ? (
+            <IconLabel icon={ArrowLeftIcon}>{t('epics.back')}</IconLabel>
+          ) : (
+            t('archive.back')
+          )}
         </Button>
       ) : canAdd ? (
         <>
@@ -117,8 +122,7 @@ export function Header({
             disabled={switchDisabled}
             onClick={onEpics}
           >
-            <LayersIcon aria-hidden="true" />
-            {t('epics.title')}
+            <IconLabel icon={LayersIcon}>{t('epics.title')}</IconLabel>
           </Button>
           <Button
             type="button"
@@ -127,8 +131,7 @@ export function Header({
             disabled={switchDisabled}
             onClick={onArchive}
           >
-            <ArchiveIcon aria-hidden="true" />
-            {t('archive.title')}
+            <IconLabel icon={ArchiveIcon}>{t('archive.title')}</IconLabel>
           </Button>
         </>
       ) : null}

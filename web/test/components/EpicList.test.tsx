@@ -75,9 +75,9 @@ describe('EpicList', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
     rerender(<ProtectedDetails requested={PROJECT_B.id} />);
     expect(screen.getByTestId('active-project').textContent).toBe(PROJECT_A.id);
-    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByRole('group')).toBeTruthy();
     await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+      within(screen.getByRole('group')).getByRole('button', { name: 'Cancel' }),
     );
     await waitFor(() =>
       expect(screen.getByTestId('active-project').textContent).toBe(PROJECT_B.id),
@@ -156,7 +156,7 @@ describe('EpicList', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
     expect(onDelete).not.toHaveBeenCalled();
     await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete epic' }),
+      within(screen.getByRole('group')).getByRole('button', { name: 'Delete epic' }),
     );
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
@@ -176,7 +176,7 @@ describe('EpicList', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
     await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete epic' }),
+      within(screen.getByRole('group')).getByRole('button', { name: 'Delete epic' }),
     );
     expect((await screen.findByRole('alert')).textContent).toContain('A task still uses this epic');
   });

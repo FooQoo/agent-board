@@ -1,13 +1,8 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-} from '@/shared/ui/dialog';
+import { DialogActions } from '@/shared/ui/dialog-actions';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog';
 import type { Task } from '../../../shared/api/contracts';
 import '../../../shared/styles/modal.css';
 
@@ -134,7 +129,7 @@ export function BulkArchiveDialog({
           </p>
         )}
         <p className="bulk-archive__note">{t('archive.bulkRetentionNote')}</p>
-        <DialogFooter className="bulk-archive__footer">
+        <DialogActions>
           <Button ref={cancelRef} type="button" variant="outline" onClick={close} disabled={saving}>
             {t('delete.cancel')}
           </Button>
@@ -146,7 +141,7 @@ export function BulkArchiveDialog({
           >
             {saving ? t('dialog.saving') : t('archive.bulkSubmit', { count: targets.length })}
           </Button>
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/dialog-actions.tsx",
+  "exports": [
+    {
+      "name": "DialogActions",
+      "stories": [
+        {
+          "id": "shared-ui-dialogactions--dialog",
+          "states": ["size m", "equal columns", "align end"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-dialogactions--small",
+          "states": ["size s", "align start"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-dialogactions--between",
+          "states": ["align between"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

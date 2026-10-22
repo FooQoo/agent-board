@@ -182,12 +182,6 @@
   white-space: pre-wrap;
 }
 
-.modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
 .modal__footer {
   display: flex;
   align-items: flex-end;
@@ -553,8 +547,9 @@
   }
 
   .request-dialog .modal__actions {
-    flex-direction: column;
+    grid-auto-flow: row;
     align-self: stretch;
+    width: 100%;
     margin-top: 0;
   }
 
@@ -681,11 +676,6 @@
   color: var(--r-text2);
   font-size: 12px;
   line-height: 1.5;
-}
-
-.bulk-archive__footer {
-  flex-direction: row;
-  justify-content: flex-end;
 }
 
 @media (max-width: 400px) {

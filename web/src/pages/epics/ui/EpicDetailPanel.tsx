@@ -8,7 +8,7 @@ import { EpicBadge } from '../../../features/epics/label/EpicBadge';
 import { DetailAttachments } from '../../../features/tasks/detail/DetailAttachments';
 import { EpicTabView } from '../../../features/tasks/detail/EpicTabView';
 import { DetailHeader } from '../../../features/tasks/detail/DetailHeader';
-import { EpicDeleteConfirm } from '../../../features/epics/editor/EpicDeleteConfirm';
+import { ConfirmPanel } from '@/shared/ui/confirm-panel';
 import '../../../features/tasks/detail/detail.css';
 import '../epics.css';
 
@@ -117,6 +117,19 @@ export function EpicDetailPanel({
           </div>
         }
       />
+      {confirming && (
+        <ConfirmPanel
+          title={t('epic.deleteTitle')}
+          message={t('epic.deleteBody', { id: epic.id })}
+          error={deleteError}
+          confirmLabel={t('epic.deleteConfirm')}
+          cancelLabel={t('epic.deleteCancel')}
+          busy={deleting}
+          focusOnMount
+          onConfirm={() => void remove()}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
       <h2 className="detail__title" id="epic-detail-title">
         {epic.name}
       </h2>
@@ -136,15 +149,6 @@ export function EpicDetailPanel({
       ) : (
         <EpicTabView projectId={projectId} epic={epic} status="ready" />
       )}
-      <EpicDeleteConfirm
-        open={confirming}
-        epicId={epic.id}
-        dirty={false}
-        busy={deleting}
-        error={deleteError}
-        onCancel={() => setConfirming(false)}
-        onConfirm={() => void remove()}
-      />
     </aside>
   );
 }

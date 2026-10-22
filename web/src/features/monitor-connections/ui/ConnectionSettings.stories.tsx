@@ -325,7 +325,7 @@ export const DeleteSavedToken: Story = {
   beforeEach: install(savedToken),
   play: async () => {
     const view = within(document.body);
-    await userEvent.click(await view.findByRole('button', { name: 'Change connection settings' }));
+    await userEvent.click(await view.findByRole('button', { name: 'Change settings' }));
     await waitFor(() =>
       expect(view.getByTestId('token-note')).toHaveTextContent("Saved in this PC's secure storage"),
     );
@@ -418,7 +418,7 @@ export const SavedTokenForm: Story = {
   beforeEach: install(savedToken),
   play: async () => {
     const view = within(document.body);
-    await userEvent.click(await view.findByRole('button', { name: 'Change connection settings' }));
+    await userEvent.click(await view.findByRole('button', { name: 'Change settings' }));
     await waitFor(() =>
       expect(view.getByTestId('token-note')).toHaveTextContent("Saved in this PC's secure storage"),
     );

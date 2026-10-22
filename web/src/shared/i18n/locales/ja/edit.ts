@@ -101,7 +101,6 @@ export const editJa = {
     saveFailedFirst: '{{step}}を保存できませんでした。入力は残っています。',
     deleteTitle: 'このエピックを削除しますか？',
     deleteBody: '{{id}}のエピックの詳細と画像も削除されます。この操作は元に戻せません。',
-    deleteDirty: 'このダイアログで保存していない変更も破棄されます。',
     deleteConfirm: 'エピックを削除',
     deleteCancel: 'キャンセル',
     deleteInUse:

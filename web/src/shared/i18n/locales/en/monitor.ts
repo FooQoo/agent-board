@@ -54,7 +54,7 @@ export const monitorEn = {
     stoppedTitle: 'You can connect again with the saved settings.',
     stoppedToken: 'The saved token will be used.',
     stoppedNext: 'Reconnecting shows the QR code and the passcode.',
-    changeSettings: 'Change connection settings',
+    changeSettings: 'Change settings',
     reconnect: 'Reconnect',
     statusOn: 'Accepting connections',
     getTokenTitle: 'Get a token',

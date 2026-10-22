@@ -13,6 +13,7 @@
   row-gap: 4px;
   min-width: 0;
   width: 100%;
+  /* biome-ignore lint/plugin: a list row that opens a task, not a button size */
   min-height: 76px;
   padding: 12px 14px;
   border: 1px solid var(--r-border);

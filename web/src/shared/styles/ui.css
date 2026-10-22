@@ -84,3 +84,95 @@
   --color-input: var(--r-border);
   --color-ring: var(--r-accent);
 }
+
+/*
+ * Text that only screen readers announce. It is shared by every entry (the board and the monitor),
+ * so a dialog title hidden with it takes no room in any layout.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * iOS zooms the page in when a field with text under 16px is focused. On touch screens the fields
+ * keep 16px, so focusing one leaves the page where it is; pinch zoom stays available to the user.
+ * The selector repeats :root so that it outweighs the field classes that set their own size.
+ */
+@media (pointer: coarse) {
+  :root:root :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    font-size: 16px;
+  }
+}
+
+/*
+ * DialogActions (shared/ui/dialog-actions.tsx): the one place that sizes the buttons of a dialog's
+ * action row. M for dialogs, S for a confirm inside a panel; a row is equal columns.
+ */
+:root {
+  --header-action-w: 136px;
+  --dialog-action-w: 144px;
+  --dialog-action-w-s: 88px;
+}
+.dialog-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 12px;
+  width: max-content;
+  max-width: 100%;
+  margin-left: auto;
+}
+.dialog-actions[data-align="start"] {
+  margin-left: 0;
+}
+.dialog-actions[data-align="between"] {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+.dialog-actions > button {
+  height: var(--btn-m-h);
+  min-width: var(--dialog-action-w);
+  padding-inline: var(--btn-m-px);
+  font-size: var(--btn-m-fs);
+}
+.dialog-actions[data-align="between"] > button {
+  width: var(--dialog-action-w);
+}
+.dialog-actions[data-size="s"] > button {
+  height: var(--btn-s-h);
+  min-width: var(--dialog-action-w-s);
+  padding-inline: var(--btn-s-px);
+  font-size: var(--btn-s-fs);
+}
+
+/*
+ * The text buttons of the app header share one width, with or without an icon: the icon and the
+ * text are centred in it, and the side padding is trimmed so the width fits the longest label.
+ */
+.header__add,
+.header__back,
+.header__epics,
+.header__archive {
+  min-width: var(--header-action-w);
+  padding-inline: 12px;
+}
+
+/* The icon and the text of an IconLabel: one icon box (16px) and one gap in every button. */
+.icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.icon-label > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
