@@ -1,5 +1,5 @@
-//! The Docs routes on the board router: framed, answering 501 until built, and
-//! behind the write guard.
+//! The Docs routes on the board router: the save route answering 501 until built,
+//! the write guard, and bad input refused first.
 
 mod common;
 
@@ -15,20 +15,6 @@ fn running() -> (tempfile::TempDir, Running) {
 
 fn docs(path: &str) -> String {
     format!("/api/projects/{PROJECT}/docs/{path}")
-}
-
-#[test]
-fn the_read_routes_answer_not_implemented() {
-    let (_home, server) = running();
-    for path in [
-        docs("tree"),
-        docs("file?path=a/b.md"),
-        docs("assets?path=img/a.png"),
-    ] {
-        let reply = server.get(&path);
-        assert_eq!(reply.status, 501, "{path}: {}", reply.body);
-        assert_eq!(reply.code(), "docs_not_implemented", "{path}");
-    }
 }
 
 #[test]
