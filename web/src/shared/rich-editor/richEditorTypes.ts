@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import type { AttachmentResolver } from '../markdown/model';
+import type { AttachmentResolver, RelativeImageResolver } from '../markdown/model';
 
 /** What the parent can do with the editor: go to a second-level heading, focus, insert, read. */
 export interface RichMarkdownEditorHandle {
@@ -23,5 +23,10 @@ export interface RichMarkdownEditorProps {
   disabled?: boolean;
   /** Turns an owned attachment id into an image URL, or null when it is not one of the card's. */
   resolveAttachment?: AttachmentResolver;
+  /**
+   * Turns an image source written relative to the file (`./a.png`) into an image URL, or null. Only
+   * for bodies that live in files (Docs); an owned attachment and an absolute URL never reach it.
+   */
+  resolveImage?: RelativeImageResolver;
   ref?: Ref<RichMarkdownEditorHandle>;
 }

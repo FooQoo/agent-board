@@ -31,6 +31,7 @@ export default function RichMarkdownEditorImpl({
   'aria-label': label,
   disabled = false,
   resolveAttachment,
+  resolveImage,
   ref,
 }: RichMarkdownEditorProps) {
   const { t } = useTranslation();
@@ -53,6 +54,7 @@ export default function RichMarkdownEditorImpl({
       noImageLabel={t('markdown.noImage')}
       diagramError={(message) => t('markdown.diagramError', { message })}
       resolveAttachment={resolveAttachment}
+      resolveImage={resolveImage}
       onReport={(markdownText) => {
         reported.current = markdownText;
         onChange(markdownText);
