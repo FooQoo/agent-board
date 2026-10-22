@@ -8,7 +8,7 @@
       "stories": [
         {
           "id": "shared-ui-header--board",
-          "states": ["board", "add, epics, archive and settings enabled"],
+          "states": ["board", "add, docs, epics, archive and settings enabled"],
           "interaction": false
         },
         {
@@ -43,7 +43,7 @@
         },
         {
           "id": "shared-ui-header--action-callbacks",
-          "states": ["add", "epics", "archive", "change callbacks"],
+          "states": ["add", "docs", "epics", "archive", "change callbacks"],
           "interaction": true
         },
         {

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { actionDialog, bulkArchiveDialog } from './dialogs/lazyDialogs';
+import { actionDialog, bulkArchiveDialog, docsDialog } from './dialogs/lazyDialogs';
 import type { AppDialogsProps } from './contracts';
 
 export function AppDialogs({
@@ -35,6 +35,15 @@ export function AppDialogs({
             epicApi={dialog.kind === 'epic' ? epicApi : undefined}
             onOpenTask={onOpenTask}
             onSubmit={onSubmit}
+          />
+        </Suspense>
+      ) : null}
+      {model.docsProjectId !== null ? (
+        <Suspense fallback={null}>
+          <docsDialog.Component
+            key={model.docsProjectId}
+            projectId={model.docsProjectId}
+            onClose={() => model.setDocsProjectId(null)}
           />
         </Suspense>
       ) : null}

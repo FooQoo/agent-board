@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "owner": "U8",
+  "file": "features/docs/ui/DocsDialogContainer.tsx",
+  "exports": [
+    {
+      "name": "DocsDialogContainer",
+      "stories": [
+        {
+          "id": "docs-docsdialogcontainer--no-file-selected",
+          "states": ["file list loaded", "no file selected"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--tree-loading",
+          "states": ["file list loading"],
+          "interaction": false
+        },
+        {
+          "id": "docs-docsdialogcontainer--no-docs",
+          "states": ["no docs", "root path"],
+          "interaction": false
+        },
+        {
+          "id": "docs-docsdialogcontainer--tree-error",
+          "states": ["file list failed", "retry"],
+          "interaction": false
+        },
+        {
+          "id": "docs-docsdialogcontainer--file-loading",
+          "states": ["file loading"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--file-error",
+          "states": ["file failed", "reload"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--read-only",
+          "states": ["read-only", "save disabled"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--edit-and-save",
+          "states": ["direct edit", "unsaved", "saved", "stays open"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--save-failed",
+          "states": ["save failed", "input kept"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--conflict",
+          "states": ["conflict", "overwrite"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--unsaved-move",
+          "states": ["unsaved", "discard question"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--japanese-dark",
+          "states": ["japanese locale", "dark theme"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

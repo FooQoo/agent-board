@@ -32,9 +32,14 @@ export function useAppController(initial: AppInitial | undefined): AppController
     requested,
     initial?.select ?? null,
   );
+  // The dialog belongs to the project it was opened in: another project closes it.
+  const [docsOpenFor, setDocsOpenFor] = useState<ProjectId | null>(null);
   const taskAnswers = useTaskAnswers(answerLeaseControls.set);
   const projects = useProjects();
   const activeId = session.activeProjectId;
+  useEffect(() => {
+    if (docsOpenFor !== null && docsOpenFor !== activeId) setDocsOpenFor(null);
+  }, [docsOpenFor, activeId]);
   const known =
     isProjectId(activeId) && projects.projects.some((project) => project.id === activeId);
   const board = useBoard(known ? activeId : null);
@@ -195,5 +200,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     setRestoreFailure,
     projectName: (projectId) => projects.projects.find((project) => project.id === projectId)?.name,
     viewMode: session.viewMode,
+    docsProjectId: docsOpenFor === activeId ? docsOpenFor : null,
+    setDocsProjectId: setDocsOpenFor,
   };
 }

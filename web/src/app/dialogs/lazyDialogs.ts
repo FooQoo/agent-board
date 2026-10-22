@@ -14,6 +14,11 @@ export const bulkArchiveDialog = preloadable(() =>
   ),
 );
 
+/** The docs dialog loads when it is first opened. */
+export const docsDialog = preloadable(() =>
+  import('../../features/docs/ui/DocsDialogContainer').then((module) => module.DocsDialogContainer),
+);
+
 /**
  * Fetches the dialogs and the Markdown renderer once the board is shown; a failed fetch is tried
  * again when one of them is first rendered.

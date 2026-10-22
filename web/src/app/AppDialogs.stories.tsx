@@ -25,6 +25,8 @@ const meta = {
       boardData: { epics: [] },
       board: { fetchFailed: false },
       projects: { projects: [project] },
+      docsProjectId: null,
+      setDocsProjectId: fn(),
     } as unknown as AppControllerModel,
     onSubmit: fn(async () => {}),
     onCloseOperation: fn(),
