@@ -49,6 +49,7 @@ flowchart LR
 | エージェントの質問に答える | [判断依頼](./use/decisions) |
 | タスクをまとめ、次にやることを見る | [エピックと進行表](./use/epics) |
 | タスクを書き、画像を添付する | [編集と画像添付](./use/editing) |
+| プロジェクトのMarkdown文書を読み、編集する | [プロジェクトのドキュメント](./use/docs) |
 | Claude CodeやCodexをつなぐ | [エージェントとの連携](./automation/agents) |
 | コマンドを調べる | [CLIリファレンス](./automation/cli) |
 | `TASK.md`や`EPIC.md`を手で編集する | [Markdownファイルの形式](./automation/file-format) |

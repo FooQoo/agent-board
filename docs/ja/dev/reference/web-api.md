@@ -27,6 +27,7 @@
 | `POST …/tasks/{id}/archive`、`POST …/tasks/{id}/restore` | 本文なし。すでにその状態のタスクに繰り返すと、変更せず同じタスクを返す。 |
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
 | `GET /api/projects/{projectId}/archive` | 本文・全履歴・添付のメタデータを持つアーカイブ済みのタスクと、同じスナップショットの`epics`。各タスクの`epicId`は同じ応答の`epics`で解決する。エピックがないタスク、または存在しないエピックのタスクにはラベルを付けない。 |
+| `GET /api/projects/{projectId}/docs/tree`<br>`GET`/`PUT /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets` | プロジェクトの`docs/`にあるMarkdown文書。フォルダのツリー、1つのファイル、保存、画像。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
 | `GET /assets/{name}` | `build.rs`が生成した表にある、内容から名前を付けたスクリプトとスタイルシートだけ。ほかは404。immutableでキャッシュする。`Accept-Encoding`が許せばgzipで送り、`Vary: Accept-Encoding`を付ける。 |
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、versionの変化で`changed`、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
 | `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
@@ -78,6 +79,43 @@
 
 JSONとして読めない本文は、ほかの書き込みと同じく400です。`locale`と`theme`のどちらもない本文、それ以外の項目を含む本文、許可されない値は422 `invalid_preferences`です。revisionの確認はなく、後から保存した内容が優先されます。
 
+### プロジェクトのドキュメント
+
+次の4つのルートは、プロジェクトの`docs/`（`shared/projects/<projectId>/docs/`）にあるファイルを読み書きします。ボードのルーターにだけあり、モニターの入口では提供しません。ボードは変わりません。保存しても、プロジェクトの`version`は変わらず、SSEの`changed`も送りません。パスは`docs/`からの相対パスで、区切りは`/`です。検証の内容は[セキュリティモデル](../concepts/security.md#プロジェクトのドキュメント)にあります。プロジェクトIDが32文字の小文字16進数でないときは422 `invalid_value`です。
+
+| API | 契約 |
+| --- | --- |
+| `GET …/docs/tree` | `docs/`の下のフォルダと`.md`ファイルの名前だけを、`{nodes, truncated}`で返す。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、ほかの種類のファイル、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
+| `GET …/docs/file?path=` | `{path, content, revision, readOnly}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）。`readOnly`はファイルの読み取り専用の属性。対象は、`.md`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
+| `PUT …/docs/file` | 本文は`{path, content, expectedRevision}`。知らない項目は400 `invalid_json`。ファイルがまだ`expectedRevision`のときだけ、`content`をそのままのバイト列で書き、新しい`revision`を含む`{path, revision}`を返す。ほかの書き込みと同じ書き込みのガードを通る。ファイルを新しく作ることはない。 |
+| `GET …/docs/assets?path=` | 10 MiB以下のPNG・JPEG・WebP・GIFの画像のバイト列。`Content-Type`は拡張子から決め（`image/png`・`image/jpeg`・`image/webp`・`image/gif`）、`X-Content-Type-Options: nosniff`を付ける。SVGなどほかの形式は415 `docs_asset_type`。 |
+
+ツリーの例:
+
+```json
+{"nodes":[{"name":"design","path":"design","kind":"dir","children":[{"name":"images","path":"design/images","kind":"dir","children":[]},{"name":"spec.md","path":"design/spec.md","kind":"file"}]},{"name":"overview.md","path":"overview.md","kind":"file"},{"name":"README.md","path":"README.md","kind":"file"}],"truncated":false}
+```
+
+ファイルの例:
+
+```json
+{"path":"design/spec.md","content":"---\ntitle: Design\n---\n# Design\n","revision":"sha256:b9dc9fdb…","readOnly":false}
+```
+
+保存では、読んだときの`revision`を指定します。
+
+```json
+{"path":"design/spec.md","content":"---\ntitle: Design\n---\n# Design\n\nEdited.\n","expectedRevision":"sha256:b9dc9fdb…"}
+```
+
+その後にファイルが変わっていたときは、何も書かずに409を返します。本文にはファイルの今の`revision`が入るので、画面はファイルを読み直さずに上書きの保存ができます。
+
+```json
+{"error":{"code":"docs_revision_conflict","currentRevision":"sha256:52bed404…","message":"the document changed since it was read.","reason":"Another change saved the file first (revision sha256:52bed404…). Reload it, or save again with the latest revision."}}
+```
+
+ほかの失敗は通常のエラーの形式です。コードとステータスは[エラーコード](./errors.md#プロジェクトのドキュメント)にあります。保存の仕組みと、防げないことは[保存と復旧](../concepts/saving-and-recovery.md#プロジェクトのドキュメント)にあります。
+
 ### multipartでタスクを作成する
 
 `POST /api/projects/{projectId}/tasks/multipart`は、JSONの`metadata`パートを一つ、`file`パートを0件以上受け付けます。各ファイルには、`metadata.attachments`に対応する`{id, name}`が必要です。通常の添付枚数・サイズ・メディア形式の制限も適用されます。通常のタスクでは、`requestId`・`title`・`description`・`assignee`と任意の`isDraft`を指定します。簡易依頼フォームの場合は次のように送ります。
@@ -99,12 +137,13 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 | ステータス | 意味 |
 | --- | --- |
-| 400 | 壊れたJSON。 |
-| 403 | 保護に失敗した。 |
-| 404 | プロジェクト・タスク・エピックがない。 |
-| 409 | `request_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
-| 413 | 1 MiBを超える本文。 |
-| 422 | ID構文・入力・状態の規則の違反。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
+| 400 | 壊れたJSON。または、ドキュメントの不正なパス（`docs_path_invalid`）。 |
+| 403 | 保護に失敗した。または、ドキュメントのファイルが読み取り専用（`docs_read_only`）。 |
+| 404 | プロジェクト・タスク・エピック・ドキュメントのファイルがない。 |
+| 409 | `docs_revision_conflict`・`request_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
+| 413 | 1 MiBを超える本文（ドキュメントの保存は13 MiB。2 MiBの本文をJSONでエスケープしても収まる値）。または、上限を超えるドキュメントのファイル（`docs_too_large`）。 |
+| 415 | Markdownでないドキュメントのファイル、または提供しない形式の画像（`docs_not_markdown`・`docs_asset_type`）。 |
+| 422 | ID構文・入力・状態の規則の違反。UTF-8でないドキュメントのファイル（`docs_not_utf8`）。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
 | 503 | ロック待ちが時間切れになった。 |
 | 500 | それ以外（`format_unsupported`・`file_unreadable`・`file_error`を含む）。 |
 

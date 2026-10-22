@@ -17,6 +17,7 @@ export const guideFiles = [
   'use/decisions',
   'use/epics',
   'use/editing',
+  'use/docs',
   'automation/agents',
   'automation/cli',
   'automation/file-format',
@@ -65,8 +66,8 @@ export function devPagePath(lang: Lang, file: DevFile): string {
   return file === 'index' ? `${prefix}dev/` : `${prefix}dev/${file}`;
 }
 
-// Every page of the site in both languages: the home page, the fourteen guide pages, and the twenty-one
-// developer pages (72).
+// Every page of the site in both languages: the home page, the fifteen guide pages, and the twenty-one
+// developer pages (74).
 export const allPages: { lang: Lang; file: string; path: string }[] = (['en', 'ja'] as Lang[]).flatMap((lang) => [
   ...(['home', ...guideFiles] as PageFile[]).map((file) => ({ lang, file, path: pagePath(lang, file) })),
   ...devFiles.map((file) => ({ lang, file: `dev/${file}`, path: devPagePath(lang, file) })),
@@ -75,7 +76,7 @@ export const allPages: { lang: Lang; file: string; path: string }[] = (['en', 'j
 // Pages that must render a Mermaid diagram.
 export const mermaidFiles: PageFile[] = ['index', 'use/decisions', 'automation/agents'];
 
-// The seven guide screenshots covered by the page-level language checks (fourteen files with the Japanese set)
+// The nine guide screenshots covered by the page-level language checks (eighteen files with the Japanese set)
 // and the guide page that shows each one.
 export const guideScreenshots: Record<string, GuideFile> = {
   'card-detail': 'use/board',
@@ -85,6 +86,8 @@ export const guideScreenshots: Record<string, GuideFile> = {
   question: 'use/decisions',
   editor: 'use/editing',
   'task-request': 'use/editing',
+  docs: 'use/docs',
+  'docs-conflict': 'use/docs',
 };
 
 export function screenshotFile(name: string, lang: Lang): string {

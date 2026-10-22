@@ -18,7 +18,7 @@ flowchart LR
 ```
 
 1. `serve` resolves the data area once at startup and uses it until exit. It writes `serve.json` after it starts listening and removes it on exit.
-2. It registers a recursive watcher on `shared/` before loading every project into its index. Events for dot-prefixed names, `.internal/`, and `README.md` are ignored.
+2. It registers a recursive watcher on `shared/` before loading every project into its index. Events for dot-prefixed names, `.internal/`, `README.md`, and the project's `docs/` folder are ignored.
 3. Events are coalesced per project for 200 ms. A rescan request from the watcher reloads every project.
 4. After a save that changed something, the CLI reads `serve.json` and sends `POST http://127.0.0.1:<port>/api/notify` over a plain TCP connection with a 300 ms budget, ignoring failure. Agents that edit files directly need not notify.
 5. When the version changes, every connected browser receives SSE `changed` and re-fetches the project list and the current board. `wait` compares only its own project's version.

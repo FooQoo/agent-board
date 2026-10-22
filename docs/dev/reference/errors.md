@@ -85,6 +85,21 @@ On the command line, `serve --monitor ngrok` with a missing or invalid option ex
 
 On the monitor entry, a request that fails the Host check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`. `POST /monitor/api/unlock` answers a wrong passcode with 403 `unlock_failed` and, after five wrong ones in a row, every attempt with 429 `unlock_locked`; neither says how many tries are left.
 
+## Project docs
+
+These are returned by the `/api/projects/{projectId}/docs/…` routes (see [Web API](./web-api.md#project-docs)). They are not CLI errors, so they have no exit code.
+
+| Code | When | Exit | HTTP |
+| --- | --- | --- | --- |
+| `docs_path_invalid` | The path is empty, absolute, too long (1,024 bytes, or 255 bytes in one part), nested more than 17 parts deep, or has an empty part, a part that starts with a dot (such as `..`), a backslash, or a control character; or a file or folder on the way is a symbolic link. The `reason` says which. | n/a | 400 |
+| `docs_not_found` | No such file under `docs/`, or the path names a folder. A save never creates a file, so saving a new path is this error too. | n/a | 404 |
+| `docs_not_markdown` | The file routes were given a name that does not end in `.md`. | n/a | 415 |
+| `docs_asset_type` | The image route was given a file that is not PNG, JPEG, WebP, or GIF, such as SVG. | n/a | 415 |
+| `docs_too_large` | A file or saved content over 2 MiB, or an image over 10 MiB. | n/a | 413 |
+| `docs_not_utf8` | The file is not valid UTF-8 text. It is not changed. | n/a | 422 |
+| `docs_revision_conflict` | The file changed since the page read it. Nothing is written; the body adds `currentRevision`. | n/a | 409 |
+| `docs_read_only` | The file is read-only, so it cannot be saved. | n/a | 403 |
+
 ## Display preferences
 
 These are returned by the `/api/preferences` and `/monitor/api/preferences` routes (see [Web API](./web-api.md#display-preferences)). They are not CLI errors, so they have no exit code. A preferences file that cannot be read is not an error: the defaults are used.

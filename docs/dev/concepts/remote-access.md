@@ -15,6 +15,7 @@ flowchart LR
 
 - The ngrok Rust SDK is linked into `agboard`. There is no external `ngrok` program and no sidecar. The supervisor in `src/server/monitor_connection/` opens one HTTP endpoint, with no domain and no Traffic Policy, and forwards it to the monitor entry. ngrok chooses the public address. The free ngrok plan rejects Traffic Policy actions, so none is sent.
 - The monitor entry is a dedicated loopback listener that the connection starts and stops. It runs in the same `serve` process as the local listener and shares the lifecycle guard, the FileStore index and reader, the watcher, and the `changed` broadcast. `serve.json` keeps only the local port, so the CLI, hook, and `wait` are unaffected.
+- The [project docs](../reference/web-api.md#project-docs) routes exist only on the board router. The monitor entry has none, so the docs are never reachable through ngrok.
 - The local listener and the monitor entry are separate surfaces. The local listener keeps its own Host, Origin, and token checks; the monitor entry never serves the desktop board, and the connection settings API exists only on the local listener.
 
 Two kinds of state keep the surfaces apart:
