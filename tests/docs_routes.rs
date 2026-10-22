@@ -17,8 +17,6 @@ fn docs(path: &str) -> String {
 }
 
 #[test]
-
-#[test]
 fn the_save_route_is_behind_the_write_guard() {
     let (_home, server) = running();
     let body = r#"{"path":"a.md","content":"x","expectedRevision":"sha256:0"}"#;
