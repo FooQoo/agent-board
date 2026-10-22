@@ -1,5 +1,6 @@
 //! The monitor's Summary and Detail routes: the same contract as the PC's, under
-//! `/monitor/api/`. The handlers are stubs until the data layer fills them.
+//! `/monitor/api/`. The Summary is a stub until the data layer fills it; the Detail routes
+//! answer through the PC's functions.
 
 use std::sync::Arc;
 
@@ -8,7 +9,7 @@ use axum::http::HeaderMap;
 use axum::response::Response;
 
 use super::router::MonitorState;
-use crate::server::api::detail_stub;
+use crate::server::api::{Target, detail_response};
 use crate::server::summary_response;
 
 /// The Summary: the same answer as the PC server's, from the same projection.
@@ -20,10 +21,32 @@ pub(super) async fn summary(
     summary_response::respond(state.shared(), state.index(), &raw_project, &headers)
 }
 
-pub(super) async fn task_detail(RawQuery(query): RawQuery) -> Response {
-    detail_stub(query, "The task detail")
+pub(super) async fn task_detail(
+    State(state): State<Arc<MonitorState>>,
+    Path((project, id)): Path<(String, String)>,
+    RawQuery(query): RawQuery,
+) -> Response {
+    detail_response(
+        state.shared(),
+        state.index(),
+        &project,
+        Target::Task(id),
+        query,
+    )
+    .await
 }
 
-pub(super) async fn epic_detail(RawQuery(query): RawQuery) -> Response {
-    detail_stub(query, "The epic detail")
+pub(super) async fn epic_detail(
+    State(state): State<Arc<MonitorState>>,
+    Path((project, epic)): Path<(String, String)>,
+    RawQuery(query): RawQuery,
+) -> Response {
+    detail_response(
+        state.shared(),
+        state.index(),
+        &project,
+        Target::Epic(epic),
+        query,
+    )
+    .await
 }

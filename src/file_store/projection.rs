@@ -8,7 +8,6 @@
 
 mod build;
 mod changes;
-mod detail_versions;
 mod diff;
 
 use std::collections::BTreeMap;

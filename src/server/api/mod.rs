@@ -26,7 +26,7 @@ use axum::middleware::{self, Next};
 use axum::response::Response;
 use axum::routing::{delete, get, patch, post, put};
 
-pub(crate) use detail::detail_stub;
+pub(crate) use detail::{Target, detail_response};
 
 use super::guard::{self, header_text};
 use super::response::{

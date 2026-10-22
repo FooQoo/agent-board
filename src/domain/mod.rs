@@ -2,6 +2,7 @@
 
 mod column;
 mod limits;
+pub mod markdown_blocks;
 mod project;
 mod task;
 mod work;

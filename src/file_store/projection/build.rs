@@ -1,5 +1,6 @@
 //! Building a projection from a parsed project snapshot.
 
+use crate::file_store::detail::{epic_version, task_versions};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
@@ -7,7 +8,6 @@ use std::path::Path;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use super::detail_versions;
 use super::{
     EpicProgress, EpicProjection, EpicSummaryFields, Projection, TaskProjection, TaskSummaryFields,
 };
@@ -52,8 +52,8 @@ fn task_projection(task: &TaskView, damaged: bool) -> TaskProjection {
     let fields = task_fields(task);
     let archived = task.archived_at.is_some();
     // The same values the Detail stream reports.
-    let document_version = detail_versions::task_document(task);
-    let history_version = detail_versions::task_history(&task.history);
+    let versions = task_versions(task);
+    let (document_version, history_version) = (versions.document, versions.history);
     TaskProjection {
         // `updatedAt` is a Summary field and moves with every edit of the card, but it has only
         // second precision. The two content versions stand in for it, so an edit within the
@@ -78,7 +78,7 @@ fn epic_projection(epic: &EpicView, progress: EpicProgress, damaged: bool) -> Ep
     EpicProjection {
         // The progress follows the tasks, which announce their own changes.
         summary_hash: digest(&fields),
-        document_version: detail_versions::epic_document(epic),
+        document_version: epic_version(epic),
         fields,
         progress,
         damaged,
