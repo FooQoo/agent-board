@@ -1,6 +1,5 @@
 //! The monitor's Summary and Detail routes: the same contract as the PC's, under
-//! `/monitor/api/`. The Summary is a stub until the data layer fills it; the Detail routes
-//! answer through the PC's functions.
+//! `/monitor/api/`. All three routes answer through the PC's functions.
 
 use std::sync::Arc;
 
