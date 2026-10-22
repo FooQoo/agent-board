@@ -6,6 +6,7 @@ mod epic_attachments;
 mod epics;
 mod monitor_connections;
 mod multipart;
+mod onboarding;
 mod pages;
 mod preferences;
 mod projects;
@@ -36,6 +37,7 @@ use archive::*;
 use epic_attachments::*;
 use epics::*;
 use monitor_connections::*;
+use onboarding::*;
 use pages::*;
 use preferences::*;
 use projects::*;
@@ -156,6 +158,27 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         )
         .route("/api/monitor-connections/token", delete(delete_saved_token))
         .route("/api/notify", post(notify))
+        .route("/api/onboarding", get(get_onboarding))
+        .route("/api/onboarding/claim", post(claim_onboarding))
+        .route("/api/onboarding/heartbeat", post(heartbeat_onboarding))
+        .route("/api/onboarding/skip", post(skip_onboarding))
+        .route("/api/onboarding/recover", post(recover_onboarding))
+        .route(
+            "/api/projects/{project_id}/onboarding/start",
+            post(start_onboarding),
+        )
+        .route(
+            "/api/projects/{project_id}/onboarding/{run_id}/advance",
+            post(advance_onboarding),
+        )
+        .route(
+            "/api/projects/{project_id}/onboarding/{run_id}/finish",
+            post(finish_onboarding),
+        )
+        .route(
+            "/api/projects/{project_id}/onboarding/{run_id}/abort",
+            post(abort_onboarding),
+        )
         .route("/api/health", get(health))
         .route(
             "/api/preferences",

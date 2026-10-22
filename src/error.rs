@@ -97,6 +97,14 @@ pub enum AgboardError {
         state: RunState,
     },
     RequestChanged,
+    /// The guide's state moved on: a stale revision, another tab's lease, or another run.
+    OnboardingConflict {
+        reason: String,
+    },
+    /// A guide command that the current step does not allow, or a malformed guide input.
+    OnboardingInvalid {
+        reason: String,
+    },
     ConfirmationRequired {
         operation: String,
     },
@@ -178,6 +186,8 @@ impl AgboardError {
             AgboardError::TaskNotDraft { .. } => "task_not_draft",
             AgboardError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
             AgboardError::RequestChanged => "request_changed",
+            AgboardError::OnboardingConflict { .. } => "onboarding_conflict",
+            AgboardError::OnboardingInvalid { .. } => "onboarding_invalid",
             AgboardError::ConfirmationRequired { .. } => "confirmation_required",
             AgboardError::FileError { .. } => "file_error",
             AgboardError::FileInvalid { .. } => "file_invalid",
@@ -256,6 +266,8 @@ impl AgboardError {
                 format!("cannot make #{id} a draft while it is {}.", state.as_str())
             }
             AgboardError::RequestChanged => "the pending request has changed.".into(),
+            AgboardError::OnboardingConflict { reason } => reason.clone(),
+            AgboardError::OnboardingInvalid { reason } => reason.clone(),
             AgboardError::ConfirmationRequired { operation } => {
                 format!("{operation} needs confirmation from a human.")
             }
@@ -327,6 +339,12 @@ impl AgboardError {
             }
             AgboardError::TaskIsDone { .. } => {
                 "A person must move the task out of Done before you can change it.".into()
+            }
+            AgboardError::OnboardingConflict { .. } => {
+                "Read the guide's state again, then repeat the step with the current revision.".into()
+            }
+            AgboardError::OnboardingInvalid { .. } => {
+                "Follow the guide's order: the step does not apply to the current state.".into()
             }
             AgboardError::AcceptanceUnmet { .. } => {
                 "Mark each condition done once it is verified, or ask a person to move the task.".into()
