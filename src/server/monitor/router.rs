@@ -30,8 +30,8 @@ use crate::server::web_assets::{self, MONITOR_BUILD_ID};
 
 #[derive(Clone)]
 pub(crate) struct MonitorState {
-    shared: PathBuf,
-    index: Arc<RwLock<ProjectIndex>>,
+    pub(super) shared: PathBuf,
+    pub(super) index: Arc<RwLock<ProjectIndex>>,
     changed: broadcast::Sender<()>,
     preferences: PreferencesStore,
     preferences_changed: broadcast::Sender<Preferences>,
