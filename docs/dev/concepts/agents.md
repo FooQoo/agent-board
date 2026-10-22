@@ -71,6 +71,12 @@ The rule is defined in [Data model](./history-and-decisions.md#acceptance-condit
 
 This restrains cooperative agents; it does not authenticate against direct file edits or a spoofed actor.
 
+## Sample cards of the first-run guide
+
+The first-run guide creates two sample cards. Each carries an `onboardingSample` identity, which holds the run ID and the ordinal (1 or 2). The progress table, the hook, and `wait --until task` leave out every card with this identity, whatever its lane or run state, so an agent never picks one up.
+
+Only the guide writes the identity. Create and edit requests have no field for it, and moves, history updates, archiving, and restoring keep it. The board still shows the cards. For what the user sees, see [Before you start](../../guide/quickstart.md#before-you-start-the-first-run-guide).
+
 ## Preparing access with setup
 
 `agboard setup` adds the Agent Board data area to the agents' allowed folders so they can edit shared files. It is a one-time step the user runs; it never creates projects or registers hooks.

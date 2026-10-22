@@ -107,3 +107,19 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | 422 | ID構文・入力・状態の規則の違反。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
 | 503 | ロック待ちが時間切れになった。 |
 | 500 | それ以外（`format_unsupported`・`file_unreadable`・`file_error`を含む）。 |
+
+## 初回の案内
+
+| メソッドとパス | 役割 |
+| --- | --- |
+| `GET /api/onboarding` | 案内の状態。読み取りだけ。 |
+| `POST /api/onboarding/claim` | タブに案内を渡す。`clientId`、`expectedRevision`。 |
+| `POST /api/onboarding/heartbeat` | リースを延長する。`clientId`。 |
+| `POST /api/onboarding/skip` | カードを作る前にスキップする。`clientId`、`expectedRevision`、`commandId`。 |
+| `POST /api/onboarding/recover` | リースが切れた run を終了する。 |
+| `POST /api/projects/{projectId}/onboarding/start` | run を始める。`clientId`、`attemptId`、`expectedRevision`、`locale`。同じ attempt の再送は同じ run を返す。 |
+| `POST /api/projects/{projectId}/onboarding/{runId}/advance` | 手順を 1 つ進める。`clientId`、`expectedRevision`、`commandId`、`transition`。 |
+| `POST /api/projects/{projectId}/onboarding/{runId}/finish` | run のカードをアーカイブし、案内を完了する。 |
+| `POST /api/projects/{projectId}/onboarding/{runId}/abort` | run を途中で終え、カードをアーカイブする。 |
+
+書き込みは write guard を通り、未知のフィールドは拒否されます。サンプルの質問への回答は、既存の `/api/projects/{projectId}/tasks/{id}/answer` を使います。

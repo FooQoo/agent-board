@@ -100,3 +100,7 @@ taskの項目を省略した例です。
 ```json
 { "task": { "…": "…" }, "answer": { "actor": "human", "choiceId": "keep", "choiceLabel": "Keep them and migrate", "text": null } }
 ```
+
+## 初回案内のサンプルカード
+
+進行表、hook の出力、`wait --until task` は、`onboardingSample` の識別があるカードを、レーンや状態に関係なく除外します。[エージェント連携](../concepts/agents.md#初回案内のサンプルカード)を参照してください。

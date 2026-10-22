@@ -68,6 +68,14 @@ The product never repairs files on its own. It reports what is wrong, keeps show
 
 While a project has defects, the `serve` index keeps the last good view and returns the defect as an error. Once the file is fixed by hand, the next read shows it normally.
 
+## The first-run guide's state
+
+The guide keeps one file for the whole shared directory, `shared/.internal/onboarding.json`. It holds the status (`unseen`, `offered`, `active`, `closing`, `completed`, `interrupted`, or `skipped`), the tab that holds the lease and when it expires, the active run with its phase and sample card IDs, and the most recent command IDs that were applied.
+
+Each operation takes the guide lock and then the project lock. A command that changes the state saves the file atomically with a new revision. A request names the revision it read and a command ID. A repeated command returns the current state without repeating the step, and a request that names an old revision is refused.
+
+A tab holds the lease for 30 seconds and renews it with a heartbeat every 10 seconds. A heartbeat extends the lease without changing the revision. When the server starts, and when a recovery request arrives, a run whose lease has expired is ended: its cards are archived, and the guide becomes `interrupted`.
+
 ## Failure behavior at a glance
 
 | Situation | What happens |

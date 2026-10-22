@@ -94,6 +94,11 @@ These are returned by the `/api/preferences` and `/monitor/api/preferences` rout
 | `invalid_preferences` | The body has an unknown field, a value that is not allowed, or neither `locale` nor `theme`. Nothing is saved. | n/a | 422 |
 | `preferences_unavailable` | The preferences file could not be written. The saved value is unchanged. | n/a | 500 |
 
+## First-run guide
+
+- `onboarding_conflict` (409): the guide changed since the tab read it, another tab holds the lease, or the run is not the active one. Read the state again and repeat the step with the current revision.
+- `onboarding_invalid` (422): the step does not follow from the current phase, such as resuming before the answer is saved.
+
 ## Exit codes
 
 | Exit | Meaning |

@@ -65,6 +65,16 @@
 - `integrations/`: Hookのテンプレートを置きます。
 - `.agents/skills/agent-board/`: エージェントのスキルを置きます。
 
+### 初回の案内
+
+- `src/file_store/onboarding_state.rs`: 状態ファイル、そのロック、run の型。
+- `src/file_store/onboarding_model.rs`: サンプルの識別と検査。
+- `src/file_store/ops/onboarding.rs`: 案内の操作。
+- `src/server/api/onboarding.rs`: 案内の経路。
+- `web/src/app/onboarding/`: 要求の窓口、制御、層。
+- `web/src/features/onboarding/ui/`: 表示部品。
+- `e2e/tests/onboarding.spec.ts`: E2E 試験。
+
 ## 採用技術
 
 <div class="technology-table">

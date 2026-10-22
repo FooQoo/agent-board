@@ -161,6 +161,11 @@ The CLI, web API, and hook share one camelCase task representation: the `task.js
 
 `problems` report format defects: `[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`. `field` is `frontmatter`, `acceptance[<index>].<key>`, `history`, or `history[<index>].<key>`; `file` is relative to `shared/`; `reason` is English. How defects affect reads and writes is described in [Storage and consistency](../concepts/saving-and-recovery.md#when-files-are-invalid).
 
+## First-run guide
+
+- `shared/.internal/onboarding.json`: the guide's status, lease owner, active run, and recent command IDs. See [saving and recovery](../concepts/saving-and-recovery.md).
+- `tasks/<id>/task.json` `onboardingSample`: `{ "runId": "<32 lowercase hex>", "ordinal": 1 | 2 }`. Present only on the guide's sample cards.
+
 ## Folder bindings
 
 A folder binding maps a real folder to a ProjectId so the hook and `agboard progress` know which project a working folder belongs to. It is stored only in the machine-local data area, never in the shared area or tracked files. Because it stores the ProjectId, it follows renames and never moves to a re-created project with the same name. The nearest bound ancestor folder wins. Missing folders, broken bindings, and deleted ProjectIds are explained errors.

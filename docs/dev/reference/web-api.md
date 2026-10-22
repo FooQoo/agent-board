@@ -107,3 +107,19 @@ A malformed JSON body is 400, as for other writes. A body with neither field, a 
 | 422 | Invalid ID syntax, input, or state rule; or an invalid source file (`file_invalid`) with path, field, and reason. |
 | 503 | The lock wait timed out. |
 | 500 | Anything else, including `format_unsupported`, `file_unreadable`, and `file_error`. |
+
+## First-run guide
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/onboarding` | The guide's state. Read only. |
+| `POST /api/onboarding/claim` | Take the guide for a tab: `clientId`, `expectedRevision`. |
+| `POST /api/onboarding/heartbeat` | Renew the lease: `clientId`. |
+| `POST /api/onboarding/skip` | Skip before any card is created: `clientId`, `expectedRevision`, `commandId`. |
+| `POST /api/onboarding/recover` | End the runs whose lease has expired. |
+| `POST /api/projects/{projectId}/onboarding/start` | Start a run: `clientId`, `attemptId`, `expectedRevision`, `locale`. A repeated attempt returns the same run. |
+| `POST /api/projects/{projectId}/onboarding/{runId}/advance` | Take one step: `clientId`, `expectedRevision`, `commandId`, `transition`. |
+| `POST /api/projects/{projectId}/onboarding/{runId}/finish` | Archive the run's cards and complete the guide. |
+| `POST /api/projects/{projectId}/onboarding/{runId}/abort` | End the run early and archive its cards. |
+
+The writes pass the write guard, and unknown fields are refused. The answer to a sample's question uses the existing `/api/projects/{projectId}/tasks/{id}/answer` route.

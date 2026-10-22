@@ -161,6 +161,11 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 
 `problems`は形式の不備を報告します。`[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`の形で、`field`は`frontmatter`・`acceptance[<index>].<key>`・`history`・`history[<index>].<key>`のいずれか、`file`は`shared/`からの相対パス、`reason`は英語です。不備が読み書きにどう影響するかは[保存と復旧](../concepts/saving-and-recovery.md#ファイルに不備があるとき)にあります。
 
+## 初回の案内
+
+- `shared/.internal/onboarding.json`: 案内の状態、リースの持ち主、実行中の run、直近のコマンド ID。[保存と回復](../concepts/saving-and-recovery.md)を参照してください。
+- `tasks/<id>/task.json` の `onboardingSample`: `{ "runId": "<32 桁の小文字 hex>", "ordinal": 1 | 2 }`。案内のサンプルカードにだけ付きます。
+
 ## フォルダの紐付け
 
 フォルダの紐付けは、実フォルダとProjectIdを対応づけ、Hookと`agboard progress`が作業フォルダが属するプロジェクトを識別できるようにします。端末ローカルのデータ領域にだけ保存し、共有領域や追跡ファイルには保存しません。ProjectIdを保存するので、名前変更に追従し、同じ名前で作り直したプロジェクトへは移りません。最も近い紐付け済みの祖先フォルダを使います。存在しないフォルダ・壊れた紐付け・削除済みのProjectIdは、説明つきのエラーにします。

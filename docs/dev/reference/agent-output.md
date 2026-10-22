@@ -100,3 +100,7 @@ The timeout is required and ranges from 1 to 86,400 seconds. Connection, project
 ```json
 { "task": { "…": "…" }, "answer": { "actor": "human", "choiceId": "keep", "choiceLabel": "Keep them and migrate", "text": null } }
 ```
+
+## Sample cards of the first-run guide
+
+The progress table, the hook output, and `wait --until task` leave out the cards that carry an `onboardingSample` identity, whatever their lane or state. See [agent integration](../concepts/agents.md#sample-cards-of-the-first-run-guide).

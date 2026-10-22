@@ -87,6 +87,10 @@ The dialog has a language switch and a grid of themes: one row of 12 light color
 
 The same board after choosing a dark theme.
 
+## The first-run guide
+
+The guide's two sample cards appear in the lanes like other cards, so you can open and read them while the guide runs. Agents never pick them up: they are not listed in the progress table, and `wait --until task` does not return them. Once the guide finishes or ends, both cards are archived. See [Before you start](../quickstart.md#before-you-start-the-first-run-guide).
+
 ## Next
 
 - [Decisions](./decisions): answer an agent's question.

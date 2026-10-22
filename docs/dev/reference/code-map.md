@@ -65,6 +65,16 @@ The main files and directories outside `src/` are:
 - `integrations/`: hook templates.
 - `.agents/skills/agent-board/`: the agent skill.
 
+### First-run guide
+
+- `src/file_store/onboarding_state.rs`: the state file, its lock, and the run's types.
+- `src/file_store/onboarding_model.rs`: the sample identity and its checks.
+- `src/file_store/ops/onboarding.rs`: the guide's operations.
+- `src/server/api/onboarding.rs`: the guide's routes.
+- `web/src/app/onboarding/`: the request client, the controller, and the layer.
+- `web/src/features/onboarding/ui/`: the view parts.
+- `e2e/tests/onboarding.spec.ts`: the end-to-end tests.
+
 ## Technology choices
 
 <div class="technology-table">

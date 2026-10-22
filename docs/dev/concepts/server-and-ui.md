@@ -101,3 +101,7 @@ Keep a UI part's Stories, focused tests, dedicated CSS, and coverage ledger besi
 ## Reading across projects
 
 `ls --all-projects` reads every project in turn. Each project is returned from before or after any concurrent save, with no consistency across projects. It never creates the data area, notifies, or changes files. Without a data area it returns empty `projects`; if any `project.json` is invalid it returns only the error, never partial output.
+
+## The first-run guide
+
+The guide's view parts are in `web/src/features/onboarding/ui`. They take only props and do not import the board. The controller in `web/src/app/onboarding` (`useGuide`) calls the guide routes, runs the scripted steps, and renews the lease every 10 seconds. `GuideLayer` joins the views to the board: it measures the lane the guide points at, and renders the real task card and its answer form inside the spotlight. `BoardWorkspace` mounts the layer, and the guide is offered only on the board view, while no other operation, answer, Epics view, or archive view is open. The guide's routes are registered only on the PC board router. The monitor has its own `/monitor/api` routes, and none of them serve the guide.
