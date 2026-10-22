@@ -42,6 +42,8 @@ export interface DocsDialogViewProps {
   children?: ReactNode;
   /** The line at the left of the footer; "No changes" unless the caller says more. */
   footerStatus?: string;
+  /** The footer line is a warning (unsaved changes, a failed save), drawn in the pending color. */
+  footerWarn?: boolean;
   /** The buttons of the footer after Close. Without a chosen file there are none. */
   actions?: ReactNode;
   /** There are unsaved changes: closing asks first. */
@@ -54,6 +56,31 @@ export interface DocsDialogViewProps {
   compact?: boolean;
   /** Which screen the phone layout shows; the body once a file is chosen unless told otherwise. */
   phonePane?: 'list' | 'body';
+}
+
+/** The header title: "Docs", then the folders and the file of the open one as a path. */
+function DocsTitle({ path }: { path: string | null }) {
+  const { t } = useTranslation();
+  const segments = path === null ? [] : path.split('/').filter((segment) => segment !== '');
+  if (segments.length === 0) return <>{t('docs.title')}</>;
+  return (
+    <nav className="docs-crumbs" aria-label={t('docs.breadcrumb')}>
+      <span className="docs-crumbs__root">{t('docs.title')}</span>
+      {segments.map((segment, index) => (
+        <span key={`${index}:${segment}`} className="docs-crumbs__item">
+          <span className="docs-crumbs__sep" aria-hidden="true">
+            /
+          </span>
+          <span
+            className={index === segments.length - 1 ? 'docs-crumbs__file' : 'docs-crumbs__folder'}
+            aria-current={index === segments.length - 1 ? 'page' : undefined}
+          >
+            {segment}
+          </span>
+        </span>
+      ))}
+    </nav>
+  );
 }
 
 /**
@@ -71,6 +98,7 @@ export function DocsDialogView({
   onResize,
   children,
   footerStatus,
+  footerWarn = false,
   actions,
   dirty = false,
   saving = false,
@@ -122,11 +150,15 @@ export function DocsDialogView({
 
   return (
     <EditorShell
-      title={t('docs.title')}
+      title={<DocsTitle path={hasFile ? selectedPath : null} />}
       badge=""
       variant="edit"
       className="docs-dialog"
-      dialogData={{ 'data-compact': phone ? 'true' : 'false', 'data-pane': pane }}
+      dialogData={{
+        'data-compact': phone ? 'true' : 'false',
+        'data-pane': pane,
+        'data-warn': footerWarn ? 'true' : undefined,
+      }}
       closeLabel={t('dialog.close')}
       dirty={dirty}
       saving={saving}

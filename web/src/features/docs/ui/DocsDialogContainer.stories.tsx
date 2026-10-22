@@ -157,6 +157,8 @@ export const EditAndSave: Story = {
     await choose(view, /Tasks\.md/);
     const save = await view.findByRole('button', { name: 'Save' });
     await expect(save).toBeDisabled();
+    const crumbs = view.getByRole('navigation', { name: 'Location of the open file' });
+    await expect(crumbs).toHaveTextContent('Docs/Product/Tasks.md');
     await expect(view.getByText('title: Tasks', { exact: false })).toBeInTheDocument();
     await userEvent.click(await editor());
     await userEvent.keyboard('Typed ');
@@ -207,6 +209,7 @@ export const Conflict: Story = {
     await userEvent.click(save);
     await expect(await view.findByText(/The file was changed outside/)).toBeVisible();
     await expect(document.querySelector('.ProseMirror')?.textContent).toContain('Typed');
+    await expect(view.getByText('Not saved')).toBeVisible();
     await userEvent.click(view.getByRole('button', { name: 'Overwrite with mine' }));
     await waitFor(() => expect(view.queryByText(/The file was changed outside/)).toBeNull());
     await expect(view.getByText('No changes')).toBeVisible();

@@ -218,3 +218,23 @@
 .docs-frontmatter__body[hidden] {
   display: none;
 }
+
+/* The body as a document: a rule under each section heading, and tables in a rounded frame. */
+.docs-doc__body .ProseMirror h2 {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--r-border);
+}
+
+.docs-doc__body .milkdown-table-block .table-wrapper {
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.docs-doc__body .milkdown-table-block table {
+  border-collapse: collapse;
+}
+
+.docs-doc__body .milkdown-table-block th {
+  background: var(--r-lane);
+}

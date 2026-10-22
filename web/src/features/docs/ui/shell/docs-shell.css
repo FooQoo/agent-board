@@ -7,6 +7,52 @@
   display: none;
 }
 
+/* The dialog keeps the mock's 1216 × 828 and sits in the middle with room around it. */
+.editor-dialog.docs-dialog {
+  height: min(828px, calc(100dvh - 112px));
+  max-height: calc(100dvh - 112px);
+}
+
+/* The title is a path: Docs / folders / file. */
+.docs-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.docs-crumbs__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.docs-crumbs__sep,
+.docs-crumbs__folder {
+  color: var(--r-muted);
+  font-weight: 400;
+}
+
+.docs-crumbs__file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The save button is gray while there is nothing to save (the mock), not a faded accent. */
+.docs-dialog__save:disabled {
+  border: 1px solid var(--r-border);
+  background: var(--r-surface);
+  color: var(--r-muted);
+  opacity: 1;
+}
+
+/* Unsaved changes and a failed save: the footer line is the pending color. */
+.docs-dialog[data-warn="true"] .editor__status {
+  color: var(--r-pend-tx);
+}
+
 /* The mock's title is 16px; the shell's own is 18px. */
 .docs-dialog .editor__title {
   font-size: 16px;
@@ -39,7 +85,10 @@
   overflow-y: auto;
 }
 
-/* The handle sits on the right edge of the list, not at the right of the board. */
+/*
+ * The handle sits on the right edge of the list, not at the right of the board. The mock shows
+ * only the thin rule, so the grip is a transparent strip over the border that still takes the drag.
+ */
 .docs-dialog__resize {
   position: absolute;
   inset: 0;
@@ -47,8 +96,24 @@
 }
 
 .docs-dialog__resize .resize-handle {
-  right: 0;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   pointer-events: auto;
+  transform: none;
+}
+
+.docs-dialog__resize .resize-handle__grip {
+  display: none;
+}
+
+.docs-dialog__resize .resize-handle:hover,
+.docs-dialog__resize .resize-handle:active {
+  background: linear-gradient(var(--r-accent), var(--r-accent)) center / 1px 100% no-repeat;
 }
 
 .docs-dialog__list-heading {
