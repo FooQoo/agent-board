@@ -10,7 +10,6 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | --- | --- |
 | `GET /` | HTML with the write token in `meta[name=agboard-token]`. |
 | `GET /api/projects` | `projects` (id, name, createdAt) and `catalogVersion`, without tasks. 200 even when empty. |
-| `GET /api/projects/{projectId}/board` | project, version, cursor, epics, `epicTaskCounts` (per epic: todo, doing, done, archived, total; archived counts only as archived; all from the same snapshot), unarchived tasks with bodies and full history, problems. No `nextTaskId`. |
 | `POST /api/projects/{projectId}/tasks` | Creates a Todo/Idle task from title, body, acceptance, assignee, isDraft. The server composes and validates the frontmatter. 201. |
 | `POST /api/projects/{projectId}/tasks/multipart` | Creates a regular task with images, or an AI task from a short request with its optional epic and images, in one multipart submission. See below. |
 | `PATCH /api/projects/{projectId}/tasks/{id}` | Updates title, body, acceptance, and optional `finalize: true` on a **draft** task. Body alone keeps the frontmatter; acceptance alone keeps the body; `description` with `body` is 422 `invalid_value`. Last write wins. Non-draft is 409 `task_not_draft`. |
@@ -42,14 +41,14 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 
 The board and the monitor read a project in two steps. The Summary lists everything a card or a list row shows. The Detail streams what is read only when a card or an epic opens. The same contract is served at `/monitor/api/projects/{projectId}/…` for the mobile monitor, behind the monitor session; see [Monitor routes](./remote-routes.md). A project ID in the path selects what is read. It is not an access right.
 
-Until their handlers are written, the Summary and Detail routes answer 501 `not_implemented`. The shapes below are fixed by the Rust types in `src/server/contracts/` and by the golden examples in `tests/fixtures/data-layer/`, which the Rust and TypeScript tests both read.
+The shapes below are fixed by the Rust types in `src/server/contracts/` and by the golden examples in `tests/fixtures/data-layer/`, which the Rust and TypeScript tests both read.
 
 **Summary.** `GET …/summary` returns `project` (`id`, `name`), `version`, `tasks`, `epics`, and `problems`. The response never holds a body, acceptance text, history, epic document, or image bytes. It is built from the projection in the index, so no file is read for it. Archived tasks are not listed (the epics count them). `version` is a hash of the parsed data and is also the `ETag` (`"<version>"`); a request whose `If-None-Match` names it (a list, a weak tag, or `*` also match) gets `304` with no body. A missing project is 404 `project_not_found`, a malformed ID is 422 `invalid_value`, and a project whose `project.json` cannot be read gets that file's error.
 
 | Item | Fields |
 | --- | --- |
-| Task | `id` (integer), `title`, `taskStatus`, `agentStatus`, `assignee`, `isDraft`, `position`, `epicId` (or `null`), `acceptance` (`done`, `total`), `updatedAt`, `taskStatusChangedAt`, `agentStatusChangedAt`, `pendingRequestId`, `pendingReason`, `pendingChoices`, `onboardingSample` (only on guide samples), and `detailVersions` (`document`, `history`). The names match the board's `Task`. |
-| Epic | `id` (string), `name`, `color`, `isDraft`, `progress` (`todo`, `doing`, `done`, `archived`, `total`), and `detailVersions` (`document`). |
+| Task | `id` (integer), `title`, `taskStatus`, `agentStatus`, `assignee`, `isDraft`, `position`, `epicId` (or `null`), `acceptance` (`done`, `total`), `acceptanceError`, `createdAt`, `updatedAt`, `taskStatusChangedAt`, `agentStatusChangedAt`, `pendingRequestId`, `pendingReason`, `pendingChoices`, `onboardingSample` (only on guide samples), and `detailVersions` (`document`, `history`). The names match the board's `Task`. |
+| Epic | `id` (string), `name`, `color`, `isDraft`, `priority` (the task IDs in the order the epic sets; empty when it sets none), `priorityError` (the stored order cannot be read, so `priority` is ignored), `progress` (`todo`, `doing`, `done`, `archived`, `total`), and `detailVersions` (`document`). |
 | Problem | `file`, `field`, `reason`, as in the board. |
 
 Every version is an opaque string: a content hash of the parsed data. It does not depend on the server run, so a cached value can be compared after a restart. Compare versions for equality only.
@@ -60,6 +59,7 @@ Every version is an opaque string: a content hash of the parsed data. It does no
 | --- | --- | --- |
 | `start` | `resource` (`task` or `epic`), `id`, `projectId`, `sections`, `versions` | The first line. `versions` names exactly the requested sections. |
 | `section-start` | `section` (`document` or `history`) | Opens a section. |
+| `attachments` | `items` | The resource's attachments. Sent once in the `document` section, right after `section-start` and before the first block. Not counted in `section-end`'s `count`. |
 | `block` | `kind` (`markdown` or `mermaid`), `text`, optional `images` | A top-level Markdown block of the document. Joining the blocks gives the body. Each image has `src` (the URL used in `text`) and, when the file header can be read, `width` and `height`. |
 | `acceptance` | `id`, `text`, `done` | One acceptance condition, in full. Tasks only; it follows the blocks. |
 | `history-item` | `at`, `reason` | One history entry, oldest first. Tasks only. |
@@ -166,7 +166,6 @@ A malformed JSON body is 400, as for other writes. A body with neither field, a 
 | 413 | Body over 1 MiB. |
 | 422 | Invalid ID syntax, input, or state rule; or an invalid source file (`file_invalid`) with path, field, and reason. |
 | 503 | The lock wait timed out. |
-| 501 | A route whose handler is not written yet (`not_implemented`). |
 | 500 | Anything else, including `format_unsupported`, `file_unreadable`, and `file_error`. |
 
 ## First-run guide
