@@ -75,7 +75,7 @@
           "stories": [
             {
               "id": "app-onboarding-tutorialentryrow--settings-entry",
-              "states": ["entry row in a settings dialog frame", "Try the tutorial action"],
+              "states": ["entry row in a settings dialog frame", "Try it action"],
               "interaction": true
             }
           ]

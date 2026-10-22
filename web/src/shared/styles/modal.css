@@ -784,6 +784,12 @@
   line-height: 17px;
 }
 
+.settings__entries {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--r-border);
+}
+
 .settings__note {
   margin: 0;
   color: var(--r-muted);

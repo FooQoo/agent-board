@@ -77,11 +77,14 @@ The choice is saved on this PC, so every browser on this PC shows the same langu
 
 The width of the detail panel is not part of these settings. Each browser keeps its own width.
 
-**Mobile connection** in the same dialog opens the setup for checking the board from a phone with ngrok; see the [mobile monitor guide](../operations/mobile-monitor).
+Below the themes, two rows open other features. Each has an icon, a title, one line of description, and a button with a chevron:
 
-![Settings dialog with the language switch and the light and dark color theme choices](../../images/guide/settings.png){.screenshot}
+- **Tutorial** with **Try it** closes the dialog and shows the [first-run guide](#the-first-run-guide) again.
+- **Mobile connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [mobile monitor guide](../operations/mobile-monitor).
 
-The dialog has a language switch and a grid of themes: one row of 12 light colors and one row of 12 dark colors.
+![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial and Mobile connection rows](../../images/guide/settings.png){.screenshot}
+
+The dialog has a language switch and a grid of themes: one row of 12 light colors and one row of 12 dark colors. On a narrow window the button of each row moves under its description.
 
 ![The board in a dark theme](../../images/guide/board-dark.png){.screenshot}
 

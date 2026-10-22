@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,7 +54,18 @@ export function cli(home, args) {
   return JSON.parse(result.stdout);
 }
 
+/** Marks the first-run guide of a data area as skipped, so the screenshots show the board and not the guide. */
+function skipGuide(home) {
+  const internal = path.join(home, 'shared', '.internal');
+  mkdirSync(internal, { recursive: true });
+  writeFileSync(
+    path.join(internal, 'onboarding.json'),
+    JSON.stringify({ formatVersion: 1, revision: 1, status: 'skipped', owner: null, run: null, appliedCommands: [] }),
+  );
+}
+
 export function seed(home, text) {
+  skipGuide(home);
   const meta = cli(home, ['project', 'create', project]).project;
   const run = (...args) => cli(home, ['--project', project, ...args]);
   for (const [id, name, color] of [['DESIGN', text.design, '#7C3AED'], ['LAUNCH', text.launch, '#008FCC']]) {

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/settings-entry-row.tsx",
+  "exports": [
+    {
+      "name": "SettingsEntryRow",
+      "stories": [
+        {
+          "id": "shared-ui-settingsentryrow--tutorial",
+          "states": ["icon tile, title and description", "button description", "open action"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-settingsentryrow--mobile-connection",
+          "states": ["longer button label", "chevron"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-settingsentryrow--dark-japanese",
+          "states": ["Japanese", "dark theme with the sky accent"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-settingsentryrow--rows-in-dialog",
+          "states": ["two rows in the dialog's list", "rules between the rows"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-settingsentryrow--narrow-dialog",
+          "states": ["phone-width dialog", "button under the text", "no sideways scroll"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

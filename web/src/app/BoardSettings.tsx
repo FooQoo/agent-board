@@ -27,7 +27,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
         restoreFocusRef={restoreFocusRef}
         preferencesEndpoint={boardPreferences}
         extra={
-          <>
+          <div className="settings__entries">
             <TutorialEntryRow
               onStart={() => {
                 onOpenChange(false);
@@ -40,7 +40,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
                 setConnectionOpen(true);
               }}
             />
-          </>
+          </div>
         }
       />
       <ConnectionSettings

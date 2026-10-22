@@ -1,0 +1,95 @@
+/*
+ * An entry row of the settings dialog (shared/ui/settings-entry-row.tsx): icon tile, title and one
+ * line of description, and an outlined button. Colors are the r-* tokens, so each theme and accent
+ * draws its own tile and button. The rules are unlayered on purpose: they sit above the Tailwind
+ * utilities of the shared Button.
+ */
+.settings-entry {
+  container-type: inline-size;
+  border-top: 1px solid var(--r-border);
+}
+
+.settings-entry__grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 20px;
+  padding: 24px 0;
+}
+
+.settings-entry__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--r-accent-soft);
+  color: var(--r-text);
+}
+
+.settings-entry__icon > svg {
+  width: 24px;
+  height: 24px;
+}
+
+.settings-entry__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-entry__title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.settings-entry__body {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* The label is centred in the space the chevron leaves, so two buttons of any label read alike. */
+.settings-entry__action {
+  min-width: 122px;
+  gap: 6px;
+  padding-inline: 22px 12px;
+  border-color: color-mix(in srgb, var(--r-accent) 25%, var(--r-border));
+  background: color-mix(in srgb, var(--r-accent) 6%, var(--r-surface));
+  font-weight: 600;
+}
+
+.settings-entry__action:hover {
+  background: color-mix(in srgb, var(--r-accent) 12%, var(--r-surface));
+}
+
+.settings-entry__label {
+  flex: 1;
+  text-align: center;
+}
+
+.settings-entry__chevron {
+  color: var(--r-accent);
+}
+
+/* In a narrow dialog the button moves under the text, so the text keeps its width. */
+@container (max-width: 480px) {
+  .settings-entry__grid {
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 16px;
+    row-gap: 14px;
+    padding: 20px 0;
+  }
+
+  .settings-entry__action {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

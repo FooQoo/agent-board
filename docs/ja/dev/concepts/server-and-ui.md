@@ -58,7 +58,7 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 | `features/` | `tasks/`・`epics/`・`projects/`・`settings/`・`monitor-connections/`（モバイル接続のPC用ダイアログ）: 一つの主題の表示、フック、計算、リクエスト。 |
 | `shared/` | `ui/`の基盤部品と汎用の枠、`markdown/`、`rich-editor/`、`api/`（HTTPの共通処理とサーバーのやり取りの型）、`lib/`、`styles/`、`theme/`、`i18n/`。 |
 
-ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`RequestDialog`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。ボードの設定スロット（`app/BoardSettings.tsx`）もこうした組み合わせの一つで、設定ダイアログにモバイル接続の入口を置き、隣にある接続ダイアログを持ちます。そのため、設定ダイアログを閉じてから接続ダイアログが開きます。モニターの`useBuildReload`も、入口から同じように渡します。
+ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`RequestDialog`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。ボードの設定スロット（`app/BoardSettings.tsx`）もこうした組み合わせの一つで、設定ダイアログにチュートリアルとモバイル接続の行を置き、隣にある接続ダイアログを持ちます。そのため、設定ダイアログを閉じてから接続ダイアログが開きます。2つの行は、`shared/ui`の`SettingsEntryRow`を呼ぶ薄い部品（`TutorialEntryRow`・`ConnectionEntryRow`）で、アイコンのタイル、文言、ボタンは`SettingsEntryRow`が描きます。モニターの`useBuildReload`も、入口から同じように渡します。
 
 `pnpm --dir web check`は、Biomeの後に`web/scripts/check-boundaries.mjs`を実行します。静的import、`import type`、再エクスポート、`import()`をたどり、規則に反するimport、解決できないimport、循環importがあると失敗します。許可リストで黙らせず、共通部分を下の層へ移すか、ページで組み合わせてください。機能全体を一つのファイルから再エクスポートしないでください。エディターやMarkdown表示のような重いモジュールが最初のスクリプトに入ってしまいます。遅延importは実装ファイルを指します。
 
@@ -106,6 +106,6 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 
 ## 初回の案内
 
-案内の表示部品は `web/src/features/onboarding/ui` にあります。部品は props だけを受け取り、ボードを import しません。`web/src/app/onboarding` の制御（`useGuide`）が案内の経路を呼び、手順を進め、10 秒ごとにリースを延長します。`GuideLayer` は部品をボードに結び付けます。案内が指すレーンを測り、スポットライトの中に実際のタスクカードとその回答フォームを描きます。`BoardWorkspace` は層を別に読み込まれる部品として載せます。そのため案内のコードはボードの初回読み込みに含まれません。案内はボードの表示中で、ほかの操作・回答・エピック表示・アーカイブ表示が開いていないときだけ提示されます。設定の「チュートリアルを試す」は、完了またはスキップ済みの案内をもう一度出すようボードに頼みます。`useTutorialReplay` は、ボードが案内を表示できるようになるまでこの依頼を保持し、その後 `POST /api/onboarding/replay` を呼びます。案内の経路は PC のボードのルーターにだけ登録されます。モニターは `/monitor/api` という独自の経路を持ち、そのどれも案内を扱いません。
+案内の表示部品は `web/src/features/onboarding/ui` にあります。部品は props だけを受け取り、ボードを import しません。`web/src/app/onboarding` の制御（`useGuide`）が案内の経路を呼び、手順を進め、10 秒ごとにリースを延長します。`GuideLayer` は部品をボードに結び付けます。案内が指すレーンを測り、スポットライトの中に実際のタスクカードとその回答フォームを描きます。`BoardWorkspace` は層を別に読み込まれる部品として載せます。そのため案内のコードはボードの初回読み込みに含まれません。案内はボードの表示中で、ほかの操作・回答・エピック表示・アーカイブ表示が開いていないときだけ提示されます。設定の「チュートリアル」の行は、完了またはスキップ済みの案内をもう一度出すようボードに頼みます。`useTutorialReplay` は、ボードが案内を表示できるようになるまでこの依頼を保持し、その後 `POST /api/onboarding/replay` を呼びます。案内の経路は PC のボードのルーターにだけ登録されます。モニターは `/monitor/api` という独自の経路を持ち、そのどれも案内を扱いません。
 
 スポットライトの枠の高さは、中のカードの高さに合わせます。ただし下端が案内パネルより 24 px 上に収まるよう上限を設け、それより高いカードは枠の中でスクロールします。制御は、ボードが表示するプロジェクトごとに案内を 1 回読み、すべてのコマンドを画面に表示中のプロジェクトへ送ります。実行の途中でタブを閉じたり再読み込みしたりすると、ファイルはリースが切れたまま `active` で残ります。そのため最初の読み取りでサーバーに run の回収を依頼し、案内は中断された案内として改めて提示されます。HTTP ステータスが 500 以上の失敗では、サーバーの英語の文言ではなく、翻訳済みの接続エラーの文言を表示します。

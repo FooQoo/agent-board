@@ -112,7 +112,7 @@ test('OB-04: the settings start the tutorial again, and ending it archives its s
 	await expect(page.getByText('Try Agent Board')).toBeHidden();
 
 	await page.getByRole('button', { name: 'Settings' }).click();
-	await page.getByRole('button', { name: 'Try the tutorial' }).click();
+	await page.getByRole('button', { name: 'Try it' }).click();
 	await expect(page.getByText('Try Agent Board')).toBeVisible();
 
 	await page.getByRole('button', { name: 'Start guide' }).click();
@@ -154,7 +154,7 @@ test('OB-05: a tutorial started in a second project puts its samples on that pro
 	await expect(page.getByText('Try Agent Board')).toBeHidden();
 
 	await page.getByRole('button', { name: 'Settings' }).click();
-	await page.getByRole('button', { name: 'Try the tutorial' }).click();
+	await page.getByRole('button', { name: 'Try it' }).click();
 	await expect(page.getByText('Try Agent Board')).toBeVisible();
 	await page.getByRole('button', { name: 'Start guide' }).click();
 	await expect(page.getByText('Guide 1 / 4')).toBeVisible();

@@ -45,7 +45,7 @@ A program that is already running on your PC can send requests straight to the m
 
 ## Connect from the PC
 
-1. Open the board, then open **Settings**. In **Mobile connection**, choose **Set up**. The settings dialog closes and the **Mobile connection** dialog opens with **Not connected**.
+1. Open the board, then open **Settings**. In **Mobile connection**, choose **Connection settings**. The settings dialog closes and the **Mobile connection** dialog opens with **Not connected**.
 2. In step 1, **Get a token**, choose **Open the token page**. Sign in to ngrok and copy the authtoken.
 3. In step 2, **Paste and connect**, paste the token into **ngrok auth token**.
 4. Decide whether to keep the token with **Save the token on this PC** (see [Where the token is kept](#where-the-token-is-kept)).

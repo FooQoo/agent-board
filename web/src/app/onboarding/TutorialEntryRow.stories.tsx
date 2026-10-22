@@ -22,7 +22,7 @@ export const SettingsEntry: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Tutorial' })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole('button', { name: 'Try the tutorial' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Try it' }));
     await expect(args.onStart).toHaveBeenCalledTimes(1);
   },
 };

@@ -33,7 +33,7 @@ const status = async (page: Page) =>
 async function openConnection(page: Page) {
   await page.getByRole('button', { name: 'Settings' }).click();
   await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
-  await page.getByRole('button', { name: 'Set up' }).click();
+  await page.getByRole('button', { name: 'Connection settings' }).click();
   // The settings dialog closes first: only the connection dialog is on the screen.
   await expect(page.getByRole('dialog')).toHaveCount(1);
   await expect(page.getByRole('dialog', { name: 'Mobile connection' })).toBeVisible();

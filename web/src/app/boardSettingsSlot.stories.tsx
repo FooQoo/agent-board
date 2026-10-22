@@ -62,7 +62,7 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
     const view = within(document.body);
     await expect(view.getAllByRole('radio')).toHaveLength(26);
     await expect(view.getAllByRole('dialog', { hidden: true })).toHaveLength(1);
-    await userEvent.click(await view.findByRole('button', { name: 'Set up' }));
+    await userEvent.click(await view.findByRole('button', { name: 'Connection settings' }));
     // The settings dialog is gone and the connection dialog is the only one on the screen.
     await waitFor(() => expect(view.queryAllByRole('radio')).toHaveLength(0));
     await waitFor(() => expect(view.getAllByRole('dialog', { hidden: true })).toHaveLength(1));

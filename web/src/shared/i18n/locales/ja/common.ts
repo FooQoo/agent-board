@@ -13,8 +13,8 @@ export const commonJa = {
     note: '変更はすぐに適用され、保存されます。',
     tutorial: {
       title: 'チュートリアル',
-      body: '2枚のサンプルで、AIの進み方と判断の戻し方を試せます。終わるとサンプルはアーカイブされます。',
-      action: 'チュートリアルを試す',
+      body: 'サンプルで基本操作を体験できます。',
+      action: '試してみる',
     },
     themeName: '{{mode}}・{{color}}',
     colors: {

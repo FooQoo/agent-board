@@ -222,7 +222,7 @@ export const SettingsEntry: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('button', { name: 'Set up' })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: 'Connection settings' })).toBeEnabled();
   },
 };
 

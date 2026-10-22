@@ -94,8 +94,8 @@ export const monitorJa = {
     stop: '接続を停止',
     stopping: '停止しています…',
     entryTitle: 'モバイル接続',
-    entryBody: 'ngrokと合言葉で外出先から確認',
-    entryAction: '設定する',
+    entryBody: 'スマートフォンから進捗を確認できます。',
+    entryAction: '接続設定',
     phone: {
       passcodeTitle: '合言葉を入力',
       passcodeBody: 'PCに表示されている\n4桁の合言葉を入力してください。',

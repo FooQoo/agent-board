@@ -96,8 +96,8 @@ export const monitorEn = {
     stop: 'Stop connection',
     stopping: 'Stopping…',
     entryTitle: 'Mobile connection',
-    entryBody: 'Check from outside with ngrok and a passcode',
-    entryAction: 'Set up',
+    entryBody: 'Check progress from your smartphone.',
+    entryAction: 'Connection settings',
     phone: {
       passcodeTitle: 'Enter the passcode',
       passcodeBody: 'Enter the 4-digit passcode shown on your PC.',
