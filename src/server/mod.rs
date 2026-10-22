@@ -9,7 +9,6 @@ pub mod assets;
 pub(crate) mod change_feed;
 pub mod contracts;
 pub mod dist;
-mod epic_counts;
 mod events;
 pub mod guard;
 mod instance;

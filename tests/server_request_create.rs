@@ -17,7 +17,7 @@ fn project_id(home: &Path) -> String {
 }
 
 fn task_count(server: &Running, pid: &str) -> usize {
-    let reply = server.get(&format!("/api/projects/{pid}/board"));
+    let reply = server.get(&format!("/api/projects/{pid}/summary"));
     assert_eq!(reply.status, 200, "{}", reply.body);
     serde_json::from_str::<Value>(&reply.body).unwrap()["tasks"]
         .as_array()
@@ -177,7 +177,7 @@ fn a_legacy_task_parse_problem_does_not_block_simple_request_creation() {
     let created = task(&send(&server, &pid, "A new request", None, false), 201);
     assert_eq!(created["id"], 2);
 
-    let board = server.get(&format!("/api/projects/{pid}/board"));
+    let board = server.get(&format!("/api/projects/{pid}/summary"));
     assert_eq!(board.status, 200, "{}", board.body);
     let board: Value = serde_json::from_str(&board.body).unwrap();
     assert!(board["problems"].as_array().unwrap().iter().any(|problem| {

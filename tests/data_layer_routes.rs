@@ -1,6 +1,7 @@
 //! The Summary and Detail routes of the data layer are registered on the PC server and on the
 //! monitor. The Summary is covered by `summary_api.rs` and the Detail
-//! routes by `detail_stream.rs`. The existing `/board` routes are untouched. Servers listen on port 0 in a temporary data directory.
+//! routes by `detail_stream.rs`. The old whole-board read is gone from both servers. Servers listen
+//! on port 0 in a temporary data directory.
 
 mod common;
 #[path = "support/mobile_monitor.rs"]
@@ -40,7 +41,9 @@ fn data_layer_routes_pc_answers_summary_and_detail() {
     assert_eq!(server.get(&format!("{base}/tasks/1/detail")).status, 200);
     let missing = server.get(&format!("{base}/epics/EPIC-1/detail"));
     assert_eq!(missing.status, 404, "{}", missing.body);
-    assert_eq!(server.get(&format!("{base}/board")).status, 200);
+    // The whole-board read is gone for good: no handler answers it.
+    let old = server.get(&format!("{base}/board"));
+    assert_eq!(old.status, 404, "{}", old.body);
 }
 
 #[test]
