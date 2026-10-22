@@ -118,6 +118,24 @@ describe('monitor detail drawer', () => {
     expect(props.readResolvers?.getEpics).toHaveBeenCalledTimes(1);
   });
 
+  it('tells the page while the drawer is open, so a build reload can wait for it', async () => {
+    const user = userEvent.setup();
+    const { props } = setup();
+    const onDetailOpenChange = vi.fn();
+    const { unmount } = render(<MonitorView {...props} onDetailOpenChange={onDetailOpenChange} />);
+    expect(onDetailOpenChange).toHaveBeenLastCalledWith(false);
+
+    await user.click(screen.getByRole('button', { name: 'Read this task' }));
+    expect(onDetailOpenChange).toHaveBeenLastCalledWith(true);
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(onDetailOpenChange).toHaveBeenLastCalledWith(false));
+
+    await user.click(screen.getByRole('button', { name: 'Read this task' }));
+    expect(onDetailOpenChange).toHaveBeenLastCalledWith(true);
+    unmount();
+    expect(onDetailOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
   it('opens the epic tab from the epic label and shows an explicit unassigned state', async () => {
     const user = userEvent.setup();
     const linked = setup();

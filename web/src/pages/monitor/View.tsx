@@ -46,6 +46,11 @@ export function MonitorView(props: MonitorViewProps) {
     props.readResolvers ?? unconnectedMonitorReadResolvers,
     projects,
   );
+  const { onDetailOpenChange } = props;
+  useEffect(() => {
+    onDetailOpenChange?.(detail.open);
+    return () => onDetailOpenChange?.(false);
+  }, [detail.open, onDetailOpenChange]);
   const scopeName =
     scope === 'all'
       ? t('monitor.allProjects')

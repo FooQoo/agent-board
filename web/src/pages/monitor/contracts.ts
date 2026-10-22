@@ -60,6 +60,8 @@ export interface MonitorViewProps {
   /** Read-only resolvers used by the monitor drawer. */
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
   routeNotice?: boolean;
+  /** Told whenever the detail drawer opens or closes; the page does not reload while it is open. */
+  onDetailOpenChange?(open: boolean): void;
 }
 
 export interface OrphanAnswerDraft {
