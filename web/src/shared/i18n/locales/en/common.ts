@@ -11,6 +11,11 @@ export const commonEn = {
     light: 'Light',
     dark: 'Dark',
     note: 'Changes apply immediately.',
+    tutorial: {
+      title: 'Tutorial',
+      body: 'Walk through two sample tasks to see how AI makes progress and asks for your decision. The samples are archived when you finish.',
+      action: 'Try the tutorial',
+    },
     themeName: '{{mode}} {{color}}',
     colors: {
       blue: 'Blue',

@@ -5,15 +5,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { i18n } from '../../shared/i18n';
 import type { ProjectId, Task } from '../../shared/api/contracts';
-import { type GuideScreen, HEARTBEAT_MS, NOTICE_MS, RUNNING_MIN_MS } from './guideTiming';
+import { type GuideScreen, NOTICE_MS, RUNNING_MIN_MS } from './guideTiming';
+import { useGuideLease } from './useGuideLease';
+import { useTutorialReplay } from './useTutorialReplay';
 import {
   type GuideState,
   type GuideTransition,
   abortGuide,
+  phaseOf,
   advanceGuide,
   claimGuide,
   finishGuide,
-  heartbeatGuide,
   newId,
   readGuide,
   recoverGuide,
@@ -40,10 +42,6 @@ export interface GuideController {
 interface PendingCommand {
   commandId: string;
   transition: GuideTransition;
-}
-
-function phaseOf(state: GuideState | null): string | null {
-  return state?.run?.phase ?? null;
 }
 
 /**
@@ -113,18 +111,23 @@ export function useGuide({
     })();
   }, [eligible, projectId, clientId, apply]);
 
-  // Keep the lease while the guide is on screen.
-  useEffect(() => {
-    if (screen.kind === 'hidden') return undefined;
-    const timer = window.setInterval(() => {
-      void heartbeatGuide(clientId)
-        .then(apply)
-        .catch(() => {
-          setScreen({ kind: 'hidden' });
-        });
-    }, HEARTBEAT_MS);
-    return () => window.clearInterval(timer);
-  }, [screen.kind, clientId, apply]);
+  useTutorialReplay({
+    eligible,
+    projectId,
+    clientId,
+    hidden: screen.kind === 'hidden',
+    onReplayed: (next) => {
+      apply(next);
+      setScreen({ kind: 'welcome' });
+    },
+  });
+
+  useGuideLease({
+    active: screen.kind !== 'hidden',
+    clientId,
+    apply,
+    onLost: () => setScreen({ kind: 'hidden' }),
+  });
 
   const run = useCallback(
     async (transition: GuideTransition) => {
@@ -281,7 +284,6 @@ export function useGuide({
       fail(cause);
     }
   }, [apply, clientId, fail]);
-
   // The explanation's "次へ". A running card's step is enabled only once the card has been on screen long enough.
   const next = useCallback(() => {
     if (phase === 'samples') void run('first-running');

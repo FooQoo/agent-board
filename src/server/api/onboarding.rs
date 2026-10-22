@@ -88,6 +88,24 @@ pub(super) async fn claim_onboarding(
     }
 }
 
+pub(super) async fn replay_onboarding(
+    State(state): State<Arc<AppState>>,
+    ApiJson(input): ApiJson<ClaimInput>,
+) -> Response {
+    match with_files(&state, move |store| {
+        store.guide_replay(
+            &input.client_id,
+            input.expected_revision,
+            chrono::Utc::now(),
+        )
+    })
+    .await
+    {
+        Ok(file) => json_response(StatusCode::OK, &file),
+        Err(error) => agboard_error_response(&error),
+    }
+}
+
 pub(super) async fn heartbeat_onboarding(
     State(state): State<Arc<AppState>>,
     ApiJson(input): ApiJson<HeartbeatInput>,

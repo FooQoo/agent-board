@@ -17,6 +17,8 @@ The first time you open a board in this data area, Agent Board offers a short gu
 - **Skip** closes the guide without creating anything. The guide is not shown again in this data area.
 - **End guide** ends the run early, and so does Escape, unless you are typing in an answer field. Its two cards are archived. The next time you open a board, the guide is offered again with two new cards.
 
+A guide that you finished or skipped does not appear again by itself in this data area. To see it again, open Settings and choose **Try the tutorial**. It starts in the project you have open, creates two sample cards, and archives them when you finish or end it.
+
 ## 1. Start the board
 
 ```sh

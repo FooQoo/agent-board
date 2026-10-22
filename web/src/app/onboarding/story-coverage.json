@@ -68,6 +68,21 @@
       ]
     },
     {
+      "file": "app/onboarding/TutorialEntryRow.tsx",
+      "exports": [
+        {
+          "name": "TutorialEntryRow",
+          "stories": [
+            {
+              "id": "app-onboarding-tutorialentryrow--settings-entry",
+              "states": ["entry row in a settings dialog frame", "Try the tutorial action"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "file": "app/onboarding/GuideLayer.tsx",
       "exports": [
         {

@@ -114,6 +114,7 @@ A malformed JSON body is 400, as for other writes. A body with neither field, a 
 | --- | --- |
 | `GET /api/onboarding` | The guide's state. Read only. |
 | `POST /api/onboarding/claim` | Take the guide for a tab: `clientId`, `expectedRevision`. |
+| `POST /api/onboarding/replay` | Offer a finished or skipped guide again: `clientId`, `expectedRevision`. |
 | `POST /api/onboarding/heartbeat` | Renew the lease: `clientId`. |
 | `POST /api/onboarding/skip` | Skip before any card is created: `clientId`, `expectedRevision`, `commandId`. |
 | `POST /api/onboarding/recover` | End the runs whose lease has expired. |

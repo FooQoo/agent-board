@@ -98,3 +98,28 @@ test('OB-03: ending the guide early archives its two cards and offers a new run'
 	await page.reload();
 	await expect(page.getByText('Try Agent Board')).toBeVisible();
 });
+
+async function openSkippedBoard(): Promise<string> {
+	home = makeHome('onboarding-tutorial', 'skipped');
+	ensureProject(PROJECT, home);
+	serve = await startServe(statesPort, home);
+	return serve.url;
+}
+
+test('OB-04: the settings start the tutorial again, and ending it archives its samples', async ({ page }) => {
+	const url = await openSkippedBoard();
+	await page.goto(url);
+	await expect(page.getByText('Try Agent Board')).toBeHidden();
+
+	await page.getByRole('button', { name: 'Settings' }).click();
+	await page.getByRole('button', { name: 'Try the tutorial' }).click();
+	await expect(page.getByText('Try Agent Board')).toBeVisible();
+
+	await page.getByRole('button', { name: 'Start guide' }).click();
+	await expect(page.getByText('Guide 1 / 4')).toBeVisible();
+	await page.getByRole('button', { name: 'End guide' }).click();
+
+	await expect(page.getByText('Guide 1 / 4')).toBeHidden();
+	expect(await sampleCardTitles(page)).toEqual([]);
+	expect((await guideState(url)).status).toBe('interrupted');
+});

@@ -11,6 +11,11 @@ export const commonJa = {
     light: 'ライト',
     dark: 'ダーク',
     note: '変更はすぐに適用され、保存されます。',
+    tutorial: {
+      title: 'チュートリアル',
+      body: '2枚のサンプルで、AIの進み方と判断の戻し方を試せます。終わるとサンプルはアーカイブされます。',
+      action: 'チュートリアルを試す',
+    },
     themeName: '{{mode}}・{{color}}',
     colors: {
       blue: 'ブルー',

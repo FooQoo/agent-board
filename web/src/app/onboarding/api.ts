@@ -104,6 +104,15 @@ export function claimGuide(clientId: string, expectedRevision: number): Promise<
   return send('/api/onboarding/claim', { clientId, expectedRevision });
 }
 
+/** The run's phase, or null when no run is active. */
+export function phaseOf(state: GuideState | null): string | null {
+  return state?.run?.phase ?? null;
+}
+
+export function replayGuide(clientId: string, expectedRevision: number): Promise<GuideState> {
+  return send('/api/onboarding/replay', { clientId, expectedRevision });
+}
+
 export function heartbeatGuide(clientId: string): Promise<GuideState> {
   return send('/api/onboarding/heartbeat', { clientId });
 }

@@ -26,6 +26,28 @@ impl FileStore {
         expected_revision: u64,
         now: DateTime<Utc>,
     ) -> Result<OnboardingFile, AgboardError> {
+        self.claim_guide(client_id, expected_revision, now, false)
+    }
+
+    /// Take the guide again on request, from the settings. A finished or skipped
+    /// guide is offered once more, and its next run creates two new samples just
+    /// as the first run did.
+    pub fn guide_replay(
+        &self,
+        client_id: &str,
+        expected_revision: u64,
+        now: DateTime<Utc>,
+    ) -> Result<OnboardingFile, AgboardError> {
+        self.claim_guide(client_id, expected_revision, now, true)
+    }
+
+    fn claim_guide(
+        &self,
+        client_id: &str,
+        expected_revision: u64,
+        now: DateTime<Utc>,
+        replay: bool,
+    ) -> Result<OnboardingFile, AgboardError> {
         check_id(client_id, "clientId")?;
         let shared = self.shared_dir();
         state::with_lock(shared, || {
@@ -41,6 +63,7 @@ impl FileStore {
             }
             match file.status {
                 GuideStatus::Unseen | GuideStatus::Interrupted | GuideStatus::Offered => {}
+                GuideStatus::Completed | GuideStatus::Skipped if replay => {}
                 GuideStatus::Closing => return Err(conflict("The guide is closing.")),
                 GuideStatus::Active => return Err(conflict("A guide run is active.")),
                 GuideStatus::Completed | GuideStatus::Skipped => {

@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   startGuide: vi.fn(),
   advanceGuide: vi.fn(),
   finishGuide: vi.fn(),
+  replayGuide: vi.fn(),
   abortGuide: vi.fn(),
   newId: vi.fn(() => 'id-1'),
 }));
@@ -21,6 +22,7 @@ vi.mock('./api', async (importOriginal) => {
   return { ...actual, ...api };
 });
 
+import { requestTutorial } from './tutorialRequest';
 import { useGuide } from './useGuide';
 
 const PROJECT = 'a'.repeat(32) as ProjectId;
@@ -175,5 +177,46 @@ describe('useGuide', () => {
     await waitFor(() => expect(result.current.error).not.toBeNull());
     await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
     expect(api.advanceGuide).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts the guide again on a tutorial request once the board can show it', async () => {
+    api.readGuide.mockResolvedValue(guide({ status: 'completed', revision: 9 }));
+    api.replayGuide.mockResolvedValue(
+      guide({
+        status: 'offered',
+        revision: 10,
+        owner: { clientId: 'tab', leaseUntil: '2099-01-01T00:00:00Z' },
+      }),
+    );
+    const { result } = renderHook(() =>
+      useGuide({ projectId: PROJECT, eligible: true, tasks: [], clientId: 'tab' }),
+    );
+    await waitFor(() => expect(api.readGuide).toHaveBeenCalled());
+    expect(result.current.screen.kind).toBe('hidden');
+    act(() => requestTutorial());
+    await waitFor(() => expect(result.current.screen.kind).toBe('welcome'));
+    expect(api.replayGuide).toHaveBeenCalledWith('tab', 9);
+  });
+
+  it('keeps a tutorial request until the board can show the guide', async () => {
+    api.readGuide.mockResolvedValue(guide({ status: 'completed', revision: 9 }));
+    api.replayGuide.mockResolvedValue(
+      guide({
+        status: 'offered',
+        revision: 10,
+        owner: { clientId: 'tab', leaseUntil: '2099-01-01T00:00:00Z' },
+      }),
+    );
+    const { result, rerender } = renderHook(
+      ({ eligible }: { eligible: boolean }) =>
+        useGuide({ projectId: PROJECT, eligible, tasks: [], clientId: 'tab' }),
+      { initialProps: { eligible: false } },
+    );
+    act(() => requestTutorial());
+    await act(async () => {});
+    expect(api.replayGuide).not.toHaveBeenCalled();
+    rerender({ eligible: true });
+    await waitFor(() => expect(result.current.screen.kind).toBe('welcome'));
+    expect(api.replayGuide).toHaveBeenCalledTimes(1);
   });
 });

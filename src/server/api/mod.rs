@@ -160,6 +160,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route("/api/notify", post(notify))
         .route("/api/onboarding", get(get_onboarding))
         .route("/api/onboarding/claim", post(claim_onboarding))
+        .route("/api/onboarding/replay", post(replay_onboarding))
         .route("/api/onboarding/heartbeat", post(heartbeat_onboarding))
         .route("/api/onboarding/skip", post(skip_onboarding))
         .route("/api/onboarding/recover", post(recover_onboarding))

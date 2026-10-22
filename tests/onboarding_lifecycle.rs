@@ -483,3 +483,63 @@ fn a_reloaded_tab_takes_back_its_own_run_before_the_guide_is_offered_again() {
         );
     }
 }
+
+#[test]
+fn a_replay_offers_a_skipped_guide_again_while_a_plain_claim_still_refuses_it() {
+    let f = fixture();
+    let claimed = f.store.guide_claim("tab-a", 0, at(0)).unwrap();
+    let skipped = f
+        .store
+        .guide_skip("tab-a", claimed.revision, "skip", at(1))
+        .unwrap();
+    let refused = f
+        .store
+        .guide_claim("tab-b", skipped.revision, at(100))
+        .unwrap_err();
+    assert!(matches!(refused, AgboardError::OnboardingConflict { .. }));
+    let offered = f
+        .store
+        .guide_replay("tab-b", skipped.revision, at(100))
+        .unwrap();
+    assert_eq!(offered.status, GuideStatus::Offered);
+    assert_eq!(offered.owner.unwrap().client_id, "tab-b");
+    assert_eq!(f.store.snapshot(&f.project).unwrap().tasks.len(), 0);
+}
+
+#[test]
+fn a_replay_run_creates_two_new_samples() {
+    let f = fixture();
+    let claimed = f.store.guide_claim("tab-a", 0, at(0)).unwrap();
+    let skipped = f
+        .store
+        .guide_skip("tab-a", claimed.revision, "skip", at(1))
+        .unwrap();
+    let offered = f
+        .store
+        .guide_replay("tab-b", skipped.revision, at(100))
+        .unwrap();
+    let run = f
+        .store
+        .guide_start(
+            &f.project,
+            "tab-b",
+            "attempt-2",
+            offered.revision,
+            GuideLocale::En,
+            at(101),
+        )
+        .unwrap();
+    assert_eq!(run.status, GuideStatus::Active);
+    assert_eq!(sample_ids(&run).len(), 2);
+}
+
+#[test]
+fn a_replay_waits_for_the_lease_of_another_tab() {
+    let f = fixture();
+    let claimed = f.store.guide_claim("tab-a", 0, at(0)).unwrap();
+    let refused = f
+        .store
+        .guide_replay("tab-b", claimed.revision, at(5))
+        .unwrap_err();
+    assert!(matches!(refused, AgboardError::OnboardingConflict { .. }));
+}

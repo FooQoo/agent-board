@@ -114,6 +114,7 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | --- | --- |
 | `GET /api/onboarding` | 案内の状態。読み取りだけ。 |
 | `POST /api/onboarding/claim` | タブに案内を渡す。`clientId`、`expectedRevision`。 |
+| `POST /api/onboarding/replay` | 完了またはスキップ済みの案内をもう一度提示する。`clientId`、`expectedRevision`。 |
 | `POST /api/onboarding/heartbeat` | リースを延長する。`clientId`。 |
 | `POST /api/onboarding/skip` | カードを作る前にスキップする。`clientId`、`expectedRevision`、`commandId`。 |
 | `POST /api/onboarding/recover` | リースが切れた run を終了する。 |

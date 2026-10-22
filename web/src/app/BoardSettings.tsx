@@ -3,6 +3,8 @@ import { ConnectionEntryRow } from '../features/monitor-connections/ui/Connectio
 import { ConnectionSettings } from '../features/monitor-connections/ui/ConnectionSettings';
 import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
 import { readToken } from '../shared/api/http';
+import { TutorialEntryRow } from './onboarding/TutorialEntryRow';
+import { requestTutorial } from './onboarding/tutorialRequest';
 import type { PreferencesEndpoint } from '../shared/preferences';
 import type { SettingsSlotState } from '../shared/ui/app-header/Header';
 
@@ -25,12 +27,20 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
         restoreFocusRef={restoreFocusRef}
         preferencesEndpoint={boardPreferences}
         extra={
-          <ConnectionEntryRow
-            onOpen={() => {
-              onOpenChange(false);
-              setConnectionOpen(true);
-            }}
-          />
+          <>
+            <TutorialEntryRow
+              onStart={() => {
+                onOpenChange(false);
+                requestTutorial();
+              }}
+            />
+            <ConnectionEntryRow
+              onOpen={() => {
+                onOpenChange(false);
+                setConnectionOpen(true);
+              }}
+            />
+          </>
         }
       />
       <ConnectionSettings
