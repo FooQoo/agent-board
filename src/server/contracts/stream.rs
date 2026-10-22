@@ -29,6 +29,8 @@ enum State {
         index: usize,
         count: u32,
         acceptance: bool,
+        /// The `attachments` event has come.
+        attachments: bool,
     },
     Done,
 }
@@ -69,6 +71,7 @@ impl StreamValidator {
                     index: *next,
                     count: 0,
                     acceptance: false,
+                    attachments: false,
                 };
                 Ok(())
             }
@@ -87,9 +90,10 @@ impl StreamValidator {
                     index,
                     count,
                     acceptance,
+                    attachments,
                 },
                 _,
-            ) => self.in_section(*index, *count, *acceptance, event),
+            ) => self.in_section(*index, *count, *acceptance, *attachments, event),
             (State::Done, _) => fail("nothing may follow complete"),
             (State::Between { .. }, _) => fail("an item or section-end outside a section"),
         }
@@ -152,20 +156,31 @@ impl StreamValidator {
         index: usize,
         count: u32,
         acceptance: bool,
+        attachments: bool,
         event: &DetailEvent,
     ) -> Result<(), StreamError> {
         let section = self.sections[index];
-        let (count, acceptance) = match (section, event) {
-            (Section::Document, DetailEvent::Block { .. }) if !acceptance => (count + 1, false),
+        let (count, acceptance, attachments) = match (section, event) {
+            (Section::Document, DetailEvent::Attachments { .. }) if attachments => {
+                return fail("attachments came twice in the document");
+            }
+            (Section::Document, DetailEvent::Attachments { .. }) if count > 0 => {
+                return fail("attachments must come before the first block");
+            }
+            // Not an item: the count stays.
+            (Section::Document, DetailEvent::Attachments { .. }) => (count, false, true),
+            (Section::Document, DetailEvent::Block { .. }) if !acceptance => {
+                (count + 1, false, attachments)
+            }
             (Section::Document, DetailEvent::Block { .. }) => {
                 return fail("a block came after an acceptance condition");
             }
             (Section::Document, DetailEvent::Acceptance { .. })
                 if self.resource == Some(DetailResource::Task) =>
             {
-                (count + 1, true)
+                (count + 1, true, attachments)
             }
-            (Section::History, DetailEvent::HistoryItem { .. }) => (count + 1, false),
+            (Section::History, DetailEvent::HistoryItem { .. }) => (count + 1, false, false),
             (
                 _,
                 DetailEvent::SectionEnd {
@@ -190,6 +205,7 @@ impl StreamValidator {
             index,
             count,
             acceptance,
+            attachments,
         };
         Ok(())
     }

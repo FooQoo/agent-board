@@ -12,6 +12,8 @@
       "position": 1,
       "epicId": "EPIC-1",
       "acceptance": { "done": 2, "total": 8 },
+      "acceptanceError": false,
+      "createdAt": "2026-10-22T09:45:32Z",
       "updatedAt": "2026-10-22T09:57:52Z",
       "pendingRequestId": null,
       "pendingReason": null,
@@ -30,6 +32,8 @@
       "position": 2,
       "epicId": null,
       "acceptance": { "done": 0, "total": 0 },
+      "acceptanceError": true,
+      "createdAt": "2026-10-22T09:58:00Z",
       "updatedAt": "2026-10-22T10:01:00Z",
       "pendingRequestId": "req-7",
       "pendingReason": "Pick the transport.",
@@ -49,6 +53,8 @@
       "name": "Data layer",
       "color": "#3366CC",
       "isDraft": false,
+      "priority": [303, 302],
+      "priorityError": false,
       "progress": { "todo": 3, "doing": 2, "done": 1, "archived": 0, "total": 6 },
       "detailVersions": { "document": "c0ffee00c0ffee00" }
     }

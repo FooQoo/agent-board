@@ -27,6 +27,8 @@ const TASK_FIELDS = [
   'position',
   'epicId',
   'acceptance',
+  'acceptanceError',
+  'createdAt',
   'updatedAt',
   'pendingRequestId',
   'pendingReason',
@@ -53,6 +55,8 @@ function parseTask(value: unknown, path: string): SummaryTask {
       done: int(acceptance.done, `${path}.acceptance.done`),
       total: int(acceptance.total, `${path}.acceptance.total`),
     },
+    acceptanceError: bool(o.acceptanceError, `${path}.acceptanceError`),
+    createdAt: str(o.createdAt, `${path}.createdAt`),
     updatedAt: str(o.updatedAt, `${path}.updatedAt`),
     pendingRequestId: nullableStr(o.pendingRequestId, `${path}.pendingRequestId`),
     pendingReason: nullableStr(o.pendingReason, `${path}.pendingReason`),
@@ -78,7 +82,16 @@ function parseTask(value: unknown, path: string): SummaryTask {
 }
 
 function parseEpic(value: unknown, path: string): SummaryEpic {
-  const o = exact(value, path, ['id', 'name', 'color', 'isDraft', 'progress', 'detailVersions']);
+  const o = exact(value, path, [
+    'id',
+    'name',
+    'color',
+    'isDraft',
+    'priority',
+    'priorityError',
+    'progress',
+    'detailVersions',
+  ]);
   const p = exact(o.progress, `${path}.progress`, ['todo', 'doing', 'done', 'archived', 'total']);
   const v = exact(o.detailVersions, `${path}.detailVersions`, ['document']);
   return {
@@ -86,6 +99,8 @@ function parseEpic(value: unknown, path: string): SummaryEpic {
     name: str(o.name, `${path}.name`),
     color: str(o.color, `${path}.color`),
     isDraft: bool(o.isDraft, `${path}.isDraft`),
+    priority: list(o.priority, `${path}.priority`, (v, p) => int(v, p, 1)),
+    priorityError: bool(o.priorityError, `${path}.priorityError`),
     progress: {
       todo: int(p.todo, `${path}.progress.todo`),
       doing: int(p.doing, `${path}.progress.doing`),

@@ -56,9 +56,10 @@ export function toTaskSummary(task: SummaryTask, epics: readonly SummaryEpic[]):
     pendingChoices: task.pendingChoices,
     epic: epic ? refOf(epic) : null,
     updatedAt: task.updatedAt,
+    createdAt: task.createdAt,
     isDraft: task.isDraft,
     acceptance: { done: task.acceptance.done, total: task.acceptance.total },
-    acceptanceError: false,
+    acceptanceError: task.acceptanceError,
   };
   if (task.onboardingSample) card.onboardingSample = task.onboardingSample;
   return card;
@@ -71,8 +72,8 @@ export function toEpic(epic: SummaryEpic): Epic {
     isDraft: epic.isDraft,
     document: '',
     body: '',
-    priority: [],
-    priorityError: false,
+    priority: [...epic.priority],
+    priorityError: epic.priorityError,
     attachments: [],
     createdAt: '',
     updatedAt: '',
@@ -99,9 +100,10 @@ export function bodyOf(document: DocumentData | null): string {
 
 /**
  * A full `Task` from a card and its Detail. The body is the blocks joined; the conditions and the
- * history come from the Detail. What the Detail does not carry is left empty: the whole file text
- * (`description`, equal to the body), the attachment list and the creation time (the last update
- * stands in).
+ * history and the attachment list come from the Detail. The creation time and the condition read
+ * error come from the card (the Summary). `description` is the body. The server's body is the
+ * whole file only when the frontmatter has no closing line; a closed frontmatter that cannot be
+ * read is cut off, so the editor's whole-file mode then starts without it.
  */
 export function assembleTask(card: TaskSummary, detail: DetailParts): Task {
   const acceptance: AcceptanceItem[] = detail.document
@@ -127,17 +129,22 @@ export function assembleTask(card: TaskSummary, detail: DetailParts): Task {
       : {}),
     pendingChoices: card.pendingChoices,
     epic: card.epic,
-    createdAt: card.updatedAt,
+    createdAt: card.createdAt ?? card.updatedAt,
     updatedAt: card.updatedAt,
     agentStatusChangedAt: card.agentStatusChangedAt,
     isDraft: card.isDraft,
     history: detail.history ? detail.history.items.map(({ at, reason }) => ({ at, reason })) : [],
-    attachments: [],
+    attachments: detail.document?.attachments ? [...detail.document.attachments] : [],
   };
 }
 
-/** An epic with its document: the body is the blocks joined. */
+/** An epic with its document: the body is the blocks joined; the attachments come with it. */
 export function assembleEpic(epic: Epic, document: DocumentData | null): Epic {
   const body = bodyOf(document);
-  return { ...epic, body, document: body };
+  return {
+    ...epic,
+    body,
+    document: body,
+    attachments: document?.attachments ? [...document.attachments] : epic.attachments,
+  };
 }

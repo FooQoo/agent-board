@@ -94,6 +94,12 @@ fn pc_task_detail_streams_ndjson_in_contract_order() {
     assert_eq!(sections, &vec![Section::Document, Section::History]);
     assert!(count(&events, |e| matches!(e, DetailEvent::Block { .. })) > 0);
     assert!(count(&events, |e| matches!(e, DetailEvent::HistoryItem { .. })) > 0);
+    // The attachment list comes once, right after the document starts.
+    assert_eq!(
+        count(&events, |e| matches!(e, DetailEvent::Attachments { .. })),
+        1
+    );
+    assert!(matches!(events[2], DetailEvent::Attachments { .. }));
 }
 
 #[test]
@@ -167,6 +173,10 @@ fn pc_epic_detail_streams_the_document() {
     assert_eq!(*resource, DetailResource::Epic);
     assert_eq!(*rid, ResourceId::Epic("ALPHA".into()));
     assert_eq!(sections, &vec![Section::Document]);
+    assert!(matches!(
+        &events[2],
+        DetailEvent::Attachments { items } if items.is_empty()
+    ));
     assert!(events.iter().any(|e| matches!(
         e,
         DetailEvent::Block {

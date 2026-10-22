@@ -84,6 +84,40 @@ describe('readDetail', () => {
     expect(result.history?.items.map((i) => i.reason)).toEqual(['a', 'b']);
   });
 
+  it('keeps the attachments of the document and hands them out as partial', async () => {
+    const items = [
+      {
+        id: 'a1',
+        name: 'one.png',
+        mediaType: 'image/png',
+        size: 10,
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+    ];
+    const withList: DetailEvent[] = [...full];
+    withList.splice(2, 0, { type: 'attachments', items });
+    const onPartial = vi.fn();
+    const result = await readDetail(events(withList), { ...expectation, sections }, { onPartial });
+    expect(result.document?.attachments).toEqual(items);
+    expect(result.document?.blocks).toHaveLength(1);
+    expect(onPartial.mock.calls[0]?.[1]).toMatchObject({ attachments: items });
+    // A document with no such event reads as before.
+    const bare = await readDetail(events(full), { ...expectation, sections });
+    expect(bare.document?.attachments).toBeUndefined();
+  });
+
+  it('rejects an attachments event after a block, or a second one', async () => {
+    const list: DetailEvent = { type: 'attachments', items: [] };
+    const late: DetailEvent[] = [...full];
+    late.splice(3, 0, list);
+    const twice: DetailEvent[] = [...full];
+    twice.splice(2, 0, list, list);
+    for (const stream of [late, twice]) {
+      const error = await rejection(readDetail(events(stream), { ...expectation, sections }));
+      expect((error as StreamRejected).reason).toBe('order');
+    }
+  });
+
   it('hands out what has arrived as partial while the stream runs', async () => {
     const seen: string[] = [];
     const onPartial = vi.fn((section: string, data: unknown) => {

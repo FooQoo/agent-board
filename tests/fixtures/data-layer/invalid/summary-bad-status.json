@@ -27,7 +27,9 @@
       "detailVersions": {
         "document": "1a2b3c4d5e6f7081",
         "history": "8091a2b3c4d5e6f7"
-      }
+      },
+      "acceptanceError": false,
+      "createdAt": "2026-10-22T09:45:32Z"
     },
     {
       "id": 303,
@@ -64,7 +66,9 @@
       "detailVersions": {
         "document": "00112233445566ff",
         "history": "ffeeddccbbaa9988"
-      }
+      },
+      "acceptanceError": true,
+      "createdAt": "2026-10-22T09:58:00Z"
     }
   ],
   "epics": [
@@ -82,7 +86,12 @@
       },
       "detailVersions": {
         "document": "c0ffee00c0ffee00"
-      }
+      },
+      "priority": [
+        303,
+        302
+      ],
+      "priorityError": false
     }
   ],
   "problems": [

@@ -19,7 +19,8 @@ use crate::domain::markdown_blocks::{self, BlockKind as SplitKind};
 use crate::error::AgboardError;
 use crate::server::contracts::Version;
 use crate::server::contracts::detail::{
-    BlockKind, DetailEvent, DetailImage, DetailResource, ResourceId, Section, Versions,
+    BlockKind, DetailAttachment, DetailEvent, DetailImage, DetailResource, ResourceId, Section,
+    Versions,
 };
 
 /// What one Detail response is made from. It owns its data, so the index and the files can
@@ -107,6 +108,10 @@ impl DetailSnapshot {
         }];
         for section in &self.sections {
             events.push(DetailEvent::SectionStart { section: *section });
+            // The attachments event is the document's header, not an item.
+            if *section == Section::Document {
+                events.push(self.attachments_event());
+            }
             let before = events.len();
             match section {
                 Section::Document => self.document_events(&mut events),
@@ -121,6 +126,22 @@ impl DetailSnapshot {
             versions: self.versions.clone(),
         });
         events
+    }
+
+    fn attachments_event(&self) -> DetailEvent {
+        DetailEvent::Attachments {
+            items: self
+                .attachments
+                .iter()
+                .map(|attachment| DetailAttachment {
+                    id: attachment.id.clone(),
+                    name: attachment.name.clone(),
+                    media_type: attachment.media_type.clone(),
+                    size: attachment.size,
+                    created_at: format_utc(attachment.created_at),
+                })
+                .collect(),
+        }
     }
 
     fn document_events(&self, events: &mut Vec<DetailEvent>) {

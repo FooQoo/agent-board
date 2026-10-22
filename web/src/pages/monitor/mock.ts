@@ -81,6 +81,8 @@ function fixtureTask(id: number, status: ColumnName, long: boolean): FixtureTask
       position: id,
       epicId: id === 1 ? EPIC_ID : null,
       acceptance: { done: acceptance.filter((item) => item.done).length, total: acceptance.length },
+      acceptanceError: false,
+      createdAt: at,
       updatedAt: at,
       pendingRequestId: pending ? `request-${id}` : null,
       pendingReason: pending
@@ -129,6 +131,8 @@ export function createMonitorFixture(): MonitorFixture {
     name: 'Mobile work',
     color: '#4466aa',
     isDraft: false,
+    priority: [],
+    priorityError: false,
     progress: { todo: 1, doing: 0, done: 0, archived: 0, total: 1 },
     detailVersions: { document: 'e1' },
   };

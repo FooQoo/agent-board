@@ -35,6 +35,8 @@ fn task_fields(task: &TaskView) -> TaskSummaryFields {
         epic_id: task.epic_id.clone(),
         acceptance_done: task.acceptance.iter().filter(|item| item.done).count() as u32,
         acceptance_total: task.acceptance.len() as u32,
+        acceptance_error: task.acceptance_error,
+        created_at: crate::clock::format_utc(task.created_at),
         updated_at: crate::clock::format_utc(task.updated_at),
         pending_request_id: task.pending_request_id.clone(),
         pending_reason: task.pending_reason.clone(),
@@ -74,6 +76,8 @@ fn epic_projection(epic: &EpicView, progress: EpicProgress, damaged: bool) -> Ep
         name: epic.name.clone(),
         color: epic.color.clone(),
         is_draft: epic.is_draft,
+        priority: epic.priority.clone(),
+        priority_error: epic.priority_error,
     };
     EpicProjection {
         // The progress follows the tasks, which announce their own changes.

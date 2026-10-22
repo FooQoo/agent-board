@@ -91,6 +91,8 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                         done: f.acceptance_done,
                         total: f.acceptance_total,
                     },
+                    acceptance_error: f.acceptance_error,
+                    created_at: f.created_at.clone(),
                     updated_at: f.updated_at.clone(),
                     pending_request_id: f.pending_request_id.clone(),
                     pending_reason: f.pending_reason.clone(),
@@ -125,6 +127,8 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                 name: epic.fields.name.clone(),
                 color: epic.fields.color.clone(),
                 is_draft: epic.fields.is_draft,
+                priority: epic.fields.priority.clone(),
+                priority_error: epic.fields.priority_error,
                 progress: SummaryEpicProgress {
                     todo: epic.progress.todo,
                     doing: epic.progress.doing,

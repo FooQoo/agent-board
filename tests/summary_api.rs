@@ -132,6 +132,8 @@ fn check_summary(body: &str, project: &ProjectId) -> Summary {
                 "position",
                 "epicId",
                 "acceptance",
+                "acceptanceError",
+                "createdAt",
                 "updatedAt",
                 "pendingRequestId",
                 "pendingReason",
@@ -152,6 +154,8 @@ fn check_summary(body: &str, project: &ProjectId) -> Summary {
                 "name",
                 "color",
                 "isDraft",
+                "priority",
+                "priorityError",
                 "progress",
                 "detailVersions"
             ])
@@ -179,6 +183,8 @@ fn check_content(summary: &Summary) {
     assert_eq!(task.epic_id.as_deref(), Some("ALPHA"));
     assert_eq!(task.acceptance.total, 1);
     assert_eq!(task.acceptance.done, 0);
+    assert!(!task.acceptance_error);
+    assert_eq!(task.created_at, "2026-10-10T01:02:00Z");
     assert_eq!(task.detail_versions.document.len(), 32);
     assert_eq!(task.detail_versions.history.len(), 32);
     assert_ne!(task.detail_versions.document, task.detail_versions.history);
@@ -190,6 +196,8 @@ fn check_content(summary: &Summary) {
         .expect("the epic");
     assert_eq!(epic.name, "Alpha epic");
     assert_eq!(epic.color, "#336699");
+    assert!(epic.priority.is_empty());
+    assert!(!epic.priority_error);
     assert_eq!(epic.progress.doing, 1);
     assert_eq!(epic.progress.total, 1);
     assert_eq!(epic.detail_versions.document.len(), 32);
@@ -367,4 +375,34 @@ fn summary_the_pc_and_the_monitor_give_the_same_body() {
         )
         .body;
     assert_eq!(pc, monitor);
+}
+
+#[test]
+fn summary_pc_keeps_the_epic_order_and_the_condition_read_error() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let (home, project) = home();
+    let shared = home.path().join("shared");
+    let store = FileStore::open(&shared);
+    let alpha = EpicId::normalize("ALPHA").unwrap();
+    store
+        .set_task_epic(&project, 2, Some(&alpha), Actor::Human, at(7))
+        .unwrap();
+    store
+        .set_epic_priority(&project, &alpha, &[2, 1], at(8))
+        .unwrap();
+    let md = shared
+        .join("projects")
+        .join(project.as_str())
+        .join("tasks/1/TASK.md");
+    std::fs::write(&md, "---\nacceptance: [unclosed\n---\n\nbroken\n").unwrap();
+    let server = common::Running::start(home.path());
+    let reply = server.get(&format!("/api/projects/{project}/summary"));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    let summary = check_summary(&reply.body, &project);
+    let epic = summary.epics.iter().find(|e| e.id == "ALPHA").unwrap();
+    assert_eq!(epic.priority, vec![2, 1]);
+    assert!(!epic.priority_error);
+    let task = &summary.tasks[0];
+    assert!(task.acceptance_error);
+    assert_eq!(task.created_at, "2026-10-10T01:02:00Z");
 }

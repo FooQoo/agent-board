@@ -82,6 +82,99 @@ describe('the list bridge', () => {
   });
 });
 
+const stored = (id: string, name: string) => ({
+  id,
+  name,
+  mediaType: 'image/png',
+  size: 120,
+  createdAt: '2026-02-03T04:05:06Z',
+});
+
+describe('what the Summary now keeps', () => {
+  const rich: Summary = summaryOfBoard({
+    ...fixtureBoard,
+    tasks: [
+      makeTask({
+        id: 8,
+        acceptanceError: true,
+        createdAt: '2026-01-02T03:04:05Z',
+        updatedAt: '2026-05-06T07:08:09Z',
+      }),
+    ],
+    epics: [
+      {
+        id: 'E-2',
+        name: 'Ordered',
+        color: '#445566',
+        isDraft: false,
+        document: '',
+        body: '',
+        priority: [8, 3],
+        priorityError: true,
+        attachments: [],
+        createdAt: '',
+        updatedAt: '',
+      },
+    ],
+    epicTaskCounts: {},
+  });
+
+  it('puts the condition read error and the creation time on the card', () => {
+    const card = toTaskSummary(rich.tasks[0] as SummaryTask, rich.epics);
+    expect(card.acceptanceError).toBe(true);
+    expect(card.createdAt).toBe('2026-01-02T03:04:05Z');
+    expect(toTaskSummary(withEpic, summary.epics).acceptanceError).toBe(false);
+  });
+
+  it('gives the epic its task order and the order error, from the Summary', () => {
+    const [epic] = toBoardView(rich).epics;
+    expect(epic?.priority).toEqual([8, 3]);
+    expect(epic?.priorityError).toBe(true);
+    expect(toBoardView(summary).epics[0]?.priority).toEqual([]);
+  });
+
+  it('assembles a task with its own creation time, not the last update', () => {
+    const card = toTaskSummary(rich.tasks[0] as SummaryTask, rich.epics);
+    const task = assembleTask(card, { document: document_, history });
+    expect(task.createdAt).toBe('2026-01-02T03:04:05Z');
+    expect(task.updatedAt).toBe('2026-05-06T07:08:09Z');
+    expect(task.acceptanceError).toBe(true);
+  });
+
+  it('takes the task attachments from the Detail and shows none before it arrives', () => {
+    const card = toTaskSummary(withEpic, summary.epics);
+    const list = [stored('a1', 'one.png'), stored('a2', 'two.png')];
+    expect(
+      assembleTask(card, { document: { ...document_, attachments: list }, history }).attachments,
+    ).toEqual(list);
+    expect(assembleTask(card, { document: document_, history }).attachments).toEqual([]);
+    expect(assembleTask(card, { document: null, history: null }).attachments).toEqual([]);
+  });
+
+  it('edits a card with unreadable conditions from the whole text, which the body is', () => {
+    // With an unclosed frontmatter the server sends the whole file as the body, so the editor's
+    // whole-file mode (task.description) starts from the same text. (A closed but unreadable
+    // frontmatter is cut off from the body; the Rust test of the Detail reader pins that.)
+    const whole = '---\nacceptance: [unclosed\n';
+    const card = toTaskSummary(rich.tasks[0] as SummaryTask, rich.epics);
+    const task = assembleTask(card, {
+      document: { blocks: [{ kind: 'markdown', text: whole }], acceptance: [] },
+      history: null,
+    });
+    expect(task.acceptanceError).toBe(true);
+    expect(task.description).toBe(whole);
+    expect(task.body).toBe(whole);
+  });
+
+  it('takes the epic attachments from the Detail', () => {
+    const base = toBoardView(summary).epics[0] as Epic;
+    const list = [stored('e1', 'plan.png')];
+    expect(assembleEpic(base, { ...document_, attachments: list }).attachments).toEqual(list);
+    expect(assembleEpic(base, document_).attachments).toEqual([]);
+    expect(assembleEpic(base, null).attachments).toEqual([]);
+  });
+});
+
 describe('assembleTask', () => {
   const card = toTaskSummary(withEpic, summary.epics);
 

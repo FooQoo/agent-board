@@ -63,6 +63,13 @@ fn contracts_summary_example_round_trips() {
     assert_eq!(summary.tasks.len(), 2);
     assert!(summary.tasks[1].onboarding_sample.is_some());
     assert!(summary.tasks[0].onboarding_sample.is_none());
+    // The values the card used to lose: the condition-read error, the creation time, and the
+    // epic's task order with its read error.
+    assert!(!summary.tasks[0].acceptance_error);
+    assert!(summary.tasks[1].acceptance_error);
+    assert_eq!(summary.tasks[0].created_at, "2026-10-22T09:45:32Z");
+    assert_eq!(summary.epics[0].priority, vec![303, 302]);
+    assert!(!summary.epics[0].priority_error);
 }
 
 #[test]
@@ -137,6 +144,7 @@ fn contracts_detail_covers_every_event_type() {
         seen,
         [
             "acceptance",
+            "attachments",
             "block",
             "complete",
             "history-item",
@@ -148,6 +156,24 @@ fn contracts_detail_covers_every_event_type() {
 }
 
 #[test]
+fn contracts_detail_attachments_come_once_before_the_blocks_of_a_document() {
+    for (name, items) in [("task-detail.ndjson", 2), ("epic-detail.ndjson", 0)] {
+        let events = read_stream(&read(&dir().join(name))).unwrap();
+        let positions: Vec<usize> = events
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| matches!(e, DetailEvent::Attachments { .. }))
+            .map(|(i, _)| i)
+            .collect();
+        assert_eq!(positions, vec![2], "{name}: right after section-start");
+        let DetailEvent::Attachments { items: listed } = &events[2] else {
+            panic!()
+        };
+        assert_eq!(listed.len(), items, "{name}");
+    }
+}
+
+#[test]
 fn contracts_detail_refuses_invalid_examples() {
     for path in invalid("detail-") {
         assert!(
@@ -155,6 +181,34 @@ fn contracts_detail_refuses_invalid_examples() {
             "{} was accepted",
             path.display()
         );
+    }
+}
+
+#[test]
+fn contracts_detail_attachments_are_refused_for_the_right_reason() {
+    for (name, reason) in [
+        (
+            "detail-attachments-after-acceptance.ndjson",
+            "before the first block",
+        ),
+        (
+            "detail-attachments-after-block.ndjson",
+            "before the first block",
+        ),
+        ("detail-attachments-twice.ndjson", "came twice"),
+        ("detail-attachments-in-history.ndjson", "does not belong"),
+        (
+            "detail-attachments-unknown-field.ndjson",
+            "unknown field `url`",
+        ),
+        (
+            "detail-attachments-missing-name.ndjson",
+            "missing field `name`",
+        ),
+        ("detail-attachments-fractional-size.ndjson", "invalid type"),
+    ] {
+        let error = read_stream(&read(&dir().join("invalid").join(name))).unwrap_err();
+        assert!(error.contains(reason), "{name}: {error}");
     }
 }
 

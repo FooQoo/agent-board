@@ -38,6 +38,10 @@ pub struct SummaryTask {
     pub position: i64,
     pub epic_id: Option<String>,
     pub acceptance: AcceptanceCount,
+    /// The conditions cannot be read from the frontmatter; the full text is then the body.
+    pub acceptance_error: bool,
+    /// When the task was created.
+    pub created_at: String,
     pub updated_at: String,
     pub pending_request_id: Option<String>,
     pub pending_reason: Option<String>,
@@ -82,6 +86,10 @@ pub struct SummaryEpic {
     /// `#RRGGBB`.
     pub color: String,
     pub is_draft: bool,
+    /// The IDs of the epic's tasks in the order the epic sets; empty when it sets none.
+    pub priority: Vec<i64>,
+    /// The stored order cannot be read, so it is ignored.
+    pub priority_error: bool,
     pub progress: SummaryEpicProgress,
     pub detail_versions: EpicDetailVersions,
 }

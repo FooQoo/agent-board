@@ -455,3 +455,79 @@ fn projection_project_changes_are_announced_with_the_project_resource() {
         && set.changes[0].resource == Resource::Project
         && set.changes[0].facets == vec![Facet::Deleted]));
 }
+
+/// A second task (2) of the same project, created after task 1.
+fn add_second_task(fx: &Fx) {
+    fx.store
+        .create_task(
+            &fx.project,
+            NewTask {
+                title: "Second".into(),
+                description: common::BODY.into(),
+                assignee: Assignee::Ai,
+                actor: Actor::Human,
+                is_draft: false,
+            },
+            at(3),
+        )
+        .unwrap();
+}
+
+#[test]
+fn projection_the_summary_fields_carry_the_creation_time_and_the_condition_read_error() {
+    let mut fx = Fx::new();
+    let fields = fx.projection().tasks[0].fields.clone();
+    assert_eq!(fields.created_at, "2026-10-10T01:02:00Z");
+    assert!(!fields.acceptance_error);
+
+    // A TASK.md whose frontmatter cannot be read: the card says so, and keeps its other fields.
+    let md_path = fx.task_dir(1).join("TASK.md");
+    fs::write(&md_path, "---\nacceptance: [unclosed\n---\n\nbroken\n").unwrap();
+    fx.reload();
+    let broken = fx.projection().tasks[0].fields.clone();
+    assert!(broken.acceptance_error);
+    assert_eq!(broken.created_at, fields.created_at);
+    assert_eq!(broken.title, fields.title);
+}
+
+#[test]
+fn projection_an_epic_order_is_a_summary_change_and_leaves_the_document_version() {
+    let mut fx = Fx::new();
+    add_second_task(&fx);
+    let alpha = EpicId::normalize("ALPHA").unwrap();
+    for id in [1, 2] {
+        fx.store
+            .set_task_epic(&fx.project, id, Some(&alpha), Actor::Human, at(4))
+            .unwrap();
+    }
+    fx.reload();
+    let before = fx.projection().epics[0].clone();
+    assert!(before.fields.priority.is_empty());
+    assert!(!before.fields.priority_error);
+
+    fx.store
+        .set_epic_priority(&fx.project, &alpha, &[2, 1], at(5))
+        .unwrap();
+    let sets = fx.reload();
+    let after = fx.projection().epics[0].clone();
+    assert_eq!(after.fields.priority, vec![2, 1]);
+    assert!(!after.fields.priority_error);
+    let facets = epic_facets(&sets, "ALPHA").expect("the epic changed");
+    assert!(facets.contains(&Facet::Summary), "{facets:?}");
+    assert_ne!(after.summary_hash, before.summary_hash);
+    assert_ne!(fx.projection().version, "");
+    // The order lives in the EPIC.md frontmatter; the document the reader shows is unchanged.
+    assert_eq!(after.document_version, before.document_version);
+    assert!(!facets.contains(&Facet::Document), "{facets:?}");
+}
+
+#[test]
+fn projection_an_unreadable_epic_order_is_reported_and_ignored() {
+    let mut fx = Fx::new();
+    let path = fx.epic_dir("ALPHA").join("EPIC.md");
+    fs::write(&path, "---\npriority: nope\n---\n\nText.\n").unwrap();
+    fx.reload();
+    let fields = fx.projection().epics[0].fields.clone();
+    assert!(fields.priority_error);
+    assert!(fields.priority.is_empty());
+}
