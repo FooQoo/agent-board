@@ -40,7 +40,7 @@ Options:
 | Option | Meaning |
 | --- | --- |
 | `--bin <path>` | The `agboard` binary to measure. |
-| `--port <n>` | Loopback port of the PC server. Must be within 9210 to 9219. |
+| `--port <n>` | Loopback port of the PC server. Must be within 9210 to 9219 or 9320 to 9329. |
 | `--runs <n>` | Runs per target. The results keep every run, the median, and the range. |
 | `--target pc\|monitor\|both` | Which target to measure. |
 | `--fixture <dir>` | A fixture made by `gen-fixture.mjs`. When omitted, one is generated into a temporary directory. |

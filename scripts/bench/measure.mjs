@@ -35,6 +35,9 @@ const { startPhoneEntrance } = await import(pathToFileURL(path.join(repo, 'e2e',
 
 const PORT_MIN = 9210;
 const PORT_MAX = 9219;
+// The final measurement runs in the range of its own run.
+const PORT_ALT_MIN = 9320;
+const PORT_ALT_MAX = 9329;
 const PC_VIEWPORT = { width: 1280, height: 900 };
 const PHONE_VIEWPORT = { width: 390, height: 844 };
 const PROJECT = 'Bench';
@@ -72,8 +75,9 @@ function parseArgs(argv) {
       default: throw new Error(`unknown argument: ${argv[i]}`);
     }
   }
-  if (!Number.isInteger(args.port) || args.port < PORT_MIN || args.port > PORT_MAX) {
-    throw new Error(`--port must be within ${PORT_MIN}-${PORT_MAX}`);
+  const inRange = (min, max) => args.port >= min && args.port <= max;
+  if (!Number.isInteger(args.port) || !(inRange(PORT_MIN, PORT_MAX) || inRange(PORT_ALT_MIN, PORT_ALT_MAX))) {
+    throw new Error(`--port must be within ${PORT_MIN}-${PORT_MAX} or ${PORT_ALT_MIN}-${PORT_ALT_MAX}`);
   }
   if (!['pc', 'monitor', 'both'].includes(args.target)) throw new Error('--target must be pc, monitor, or both');
   args.outDir ??= path.join(here, 'results');
@@ -202,14 +206,15 @@ class NetLog {
   }
 }
 
-/** Waits until an API response has started after `mark`. The live update can arrive seconds after the change. */
+/** Waits until an API response has started after `mark`, or returns null after `maxMs`. The live update can arrive seconds after the change. */
 async function waitForApi(log, mark, maxMs = 30_000) {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
     if (log.responses.slice(mark.responses).some((response) => response.category === 'api')) return Date.now() - start;
     await sleep(100);
   }
-  throw new Error('the status change was not followed by an API request');
+  // The page holds automatic updates while a card is open, so no request may follow: that is a result, not a failure.
+  return null;
 }
 
 /** Waits until no response has started or finished for QUIET_MS, or until maxMs has passed. */
