@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '@/shared/api/contracts';
 import { resolveRelativeImage } from '@/shared/markdown/resolveRelativeImage';
 import { RichMarkdownEditor } from '@/shared/rich-editor/RichMarkdownEditor';
+import { SaveIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { DiscardConfirm } from '@/shared/ui/editor/DiscardConfirm';
 import { docsAssetUrl, type DocsFile } from '../api/docsApi';
@@ -86,6 +87,7 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
             disabled={!editor.canSave}
             onClick={() => void editor.save()}
           >
+            <SaveIcon aria-hidden="true" />
             {t('editor.save')}
           </Button>
         }
