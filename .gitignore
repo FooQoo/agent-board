@@ -9,3 +9,4 @@ e2e/playwright-report/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 graphify-out
+scripts/bench/results/
