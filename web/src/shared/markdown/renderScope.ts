@@ -25,3 +25,6 @@ export const ImageSizesContext = createContext<ImageSizes | undefined>(undefined
 
 /** Turns an attachment id of the card into the URL to show. */
 export const ResolverContext = createContext<AttachmentResolver | undefined>(undefined);
+
+/** A second-level heading is drawn as a chapter title one level down, under a title that is already an H2. */
+export const ChapterHeadingsContext = createContext(false);

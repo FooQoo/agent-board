@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import { imageUrlOf, safeLinkUrl } from './model';
-import { ImageSizesContext, ResolverContext } from './renderScope';
+import { ChapterHeadingsContext, ImageSizesContext, ResolverContext } from './renderScope';
 import { Lightbox } from '../ui/lightbox/Lightbox';
 import { MermaidDiagram } from './MermaidDiagram';
 import './markdown.css';
@@ -163,7 +163,14 @@ function mermaidSourceOf(children: ReactNode): string | null {
   return String(child.props.children ?? '').replace(/\n$/, '');
 }
 
+/** An H2 of the text: a chapter title (an H3 with the H2's look) where the surrounding title already is an H2. */
+function MarkdownH2({ children }: { children?: ReactNode }) {
+  const chapter = useContext(ChapterHeadingsContext);
+  return chapter ? <h3 className="md__chapter">{children}</h3> : <h2>{children}</h2>;
+}
+
 const COMPONENTS: Components = {
+  h2: MarkdownH2,
   a: ({ href, children }) => <MarkdownLink href={href}>{children}</MarkdownLink>,
   img: MarkdownImageNode,
   input: ({ type, checked }) => <MarkdownCheckbox type={type} checked={checked} />,

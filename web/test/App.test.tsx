@@ -176,10 +176,77 @@ describe('App', () => {
     await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
     const urls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(urls).toContain(`/api/projects/${PROJECT_A.id}/summary`);
-    expect(urls).toContain(
-      `/api/projects/${PROJECT_A.id}/tasks/11/detail?sections=document,history`,
-    );
+    // Only the active tab's section is read: the description needs the document, not the history.
+    expect(urls).toContain(`/api/projects/${PROJECT_A.id}/tasks/11/detail?sections=document`);
+    expect(urls.filter((url) => url.includes('sections=history'))).toEqual([]);
     expect(urls.filter((url) => url.endsWith('/board'))).toEqual([]);
+  });
+
+  it('reads only the section the shown tab needs, and reuses what it read when the tab changes', async () => {
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    const reads = (section: string) =>
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).includes(`/tasks/11/detail?sections=${section}`),
+      ).length;
+    await userEvent.click(taskButton('Implement task moves'));
+    await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
+    // The description is drawn: the document has arrived whole.
+    await waitFor(() =>
+      expect(
+        document.querySelector('.detail__viewport .md, .detail__viewport .md-empty'),
+      ).not.toBeNull(),
+    );
+    expect(reads('document')).toBe(1);
+    // The log is not read until its tab is opened.
+    expect(reads('history')).toBe(0);
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    await waitFor(() => expect(reads('history')).toBe(1));
+    // Back on the description: the document read before is shown again, with no new read.
+    await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    expect(reads('document')).toBe(1);
+    expect(reads('history')).toBe(1);
+  });
+
+  it('reads an epic document when its tab is first reached, and reuses it for the next task of the epic', async () => {
+    const epic = {
+      id: 'PLAN',
+      name: 'Plan',
+      color: '#7C3AED',
+      isDraft: false,
+      document: 'The epic plan.',
+      body: 'The epic plan.',
+      priority: [],
+      priorityError: false,
+      attachments: [],
+      createdAt: '2026-10-02T00:00:00Z',
+      updatedAt: '2026-10-02T00:00:00Z',
+    };
+    const ref = { id: epic.id, name: epic.name, color: epic.color };
+    setCurrent({
+      ...current(),
+      epics: [epic],
+      epicTaskCounts: { PLAN: { todo: 1, doing: 1, done: 0, archived: 0, total: 2 } },
+      tasks: current().tasks.map((task) =>
+        task.id === 11 || task.id === 12 ? { ...task, epic: ref } : task,
+      ),
+    });
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    const epicReads = () =>
+      fetchMock.mock.calls.filter(([url]) => String(url).includes('/epics/PLAN/detail')).length;
+    await userEvent.click(taskButton('Implement task moves'));
+    await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
+    expect(epicReads()).toBe(0);
+    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
+    expect(await screen.findByText('The epic plan.')).toBeTruthy();
+    expect(epicReads()).toBe(1);
+    await userEvent.click(taskButton('Restore a board from JSON'));
+    await screen.findByRole('heading', { level: 2, name: 'Restore a board from JSON' });
+    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
+    expect(await screen.findByText('The epic plan.')).toBeTruthy();
+    expect(epicReads()).toBe(1);
   });
 
   it('holds the stream back while the drawer is open and applies it 3 seconds after it closes', async () => {

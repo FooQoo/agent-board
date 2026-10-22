@@ -1,5 +1,4 @@
 import type {
-  AcceptanceItem,
   Epic,
   EpicRef,
   EpicTaskCounts,
@@ -8,12 +7,12 @@ import type {
   TaskSummary,
 } from '../../shared/api/contracts';
 import type { Summary, SummaryEpic, SummaryProject, SummaryTask } from '../../shared/data/api';
-import type { DocumentData, HistoryData } from '../../shared/data/core';
+import type { DocumentData } from '../../shared/data/core';
 
 /**
- * The bridge between the data layer and the screens that still take the old shapes. The list
- * shows `TaskSummary` cards; the detail drawer and the editors get a full `Task` assembled from a
- * card and the cached Detail. The bridge goes away when those screens read Detail directly.
+ * What the app builds from the data layer. The list shows `TaskSummary` cards made from the
+ * Summary. The detail drawer, the epic screen and the archive read their Detail themselves; only
+ * the editing dialogs, which take a whole `Task` or `Epic`, are given one built here.
  */
 
 /** What the board shows of a project, taken from its Summary. */
@@ -25,12 +24,6 @@ export interface BoardView {
   epics: Epic[];
   epicTaskCounts: Record<string, EpicTaskCounts>;
   problems: Problem[];
-}
-
-/** The sections of a Detail that the drawer shows. An absent section reads as empty. */
-export interface DetailParts {
-  document: DocumentData | null;
-  history: HistoryData | null;
 }
 
 const refOf = (epic: SummaryEpic): EpicRef => ({
@@ -99,23 +92,21 @@ export function bodyOf(document: DocumentData | null): string {
 }
 
 /**
- * A full `Task` from a card and its Detail. The body is the blocks joined; the conditions and the
- * history and the attachment list come from the Detail. The creation time and the condition read
- * error come from the card (the Summary). `description` is the body. The server's body is the
- * whole file only when the frontmatter has no closing line; a closed frontmatter that cannot be
- * read is cut off, so the editor's whole-file mode then starts without it.
+ * The full `Task` an editing dialog takes, from a card and the Detail just read for it. The
+ * screens that show a task read its Detail themselves; only the editors still take a whole task.
+ * The body is the blocks joined; the conditions and the attachment list come from the document.
+ * `description` is the body too: the server's body is the whole file only when the frontmatter has
+ * no closing line, so a closed frontmatter that cannot be read starts the editor's whole-file mode
+ * without it.
  */
-export function assembleTask(card: TaskSummary, detail: DetailParts): Task {
-  const acceptance: AcceptanceItem[] = detail.document
-    ? detail.document.acceptance.map(({ id, text, done }) => ({ id, text, done }))
-    : [];
-  const body = bodyOf(detail.document);
+export function taskForEditor(card: TaskSummary, document: DocumentData): Task {
+  const body = bodyOf(document);
   return {
     id: card.id,
     title: card.title,
     description: body,
     body,
-    acceptance,
+    acceptance: document.acceptance.map(({ id, text, done }) => ({ id, text, done })),
     acceptanceError: card.acceptanceError ?? false,
     assignee: card.assignee,
     taskStatus: card.taskStatus,
@@ -133,18 +124,18 @@ export function assembleTask(card: TaskSummary, detail: DetailParts): Task {
     updatedAt: card.updatedAt,
     agentStatusChangedAt: card.agentStatusChangedAt,
     isDraft: card.isDraft,
-    history: detail.history ? detail.history.items.map(({ at, reason }) => ({ at, reason })) : [],
-    attachments: detail.document?.attachments ? [...detail.document.attachments] : [],
+    history: [],
+    attachments: document.attachments ? [...document.attachments] : [],
   };
 }
 
-/** An epic with its document: the body is the blocks joined; the attachments come with it. */
-export function assembleEpic(epic: Epic, document: DocumentData | null): Epic {
+/** An epic with its document, for the epic editor: the body is the blocks joined. */
+export function epicForEditor(epic: Epic, document: DocumentData): Epic {
   const body = bodyOf(document);
   return {
     ...epic,
     body,
     document: body,
-    attachments: document?.attachments ? [...document.attachments] : epic.attachments,
+    attachments: document.attachments ? [...document.attachments] : epic.attachments,
   };
 }

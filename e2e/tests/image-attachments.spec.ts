@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody } from '../helpers/agboard';
-import { openManualCreateDialog, pasteMarkdown, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -144,6 +144,7 @@ test('drop works at narrow widths without shrinking the body and CLI can read sa
   const file = info.outputPath('cli.png');
   writeFileSync(file, png);
   agboardOk(mainProject, ['attachment', 'add', String(id), '--file', file, '--actor', 'ai']);
+  await readBoardAfterReset(page);
   await page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) }).click();
   const detail = page.getByRole('complementary', { name: 'Task details' });
   await expect(detail.locator('.detail-attachments__tile')).toHaveCount(2);

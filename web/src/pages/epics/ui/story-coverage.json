@@ -23,8 +23,16 @@
               "states": ["count unavailable"],
               "interaction": false
             },
-            { "id": "pages-epics-epiclist--empty", "states": ["zero epics"], "interaction": false },
-            { "id": "pages-epics-epiclist--loading", "states": ["loading"], "interaction": false },
+            {
+              "id": "pages-epics-epiclist--empty",
+              "states": ["zero epics"],
+              "interaction": false
+            },
+            {
+              "id": "pages-epics-epiclist--loading",
+              "states": ["loading"],
+              "interaction": false
+            },
             {
               "id": "pages-epics-epiclist--load-error-and-retry",
               "states": ["load error", "retry"],
@@ -53,6 +61,21 @@
             {
               "id": "pages-epics-epicdetailpanel--with-document",
               "states": ["epic details markdown"],
+              "interaction": false
+            },
+            {
+              "id": "pages-epics-epicdetailpanel--document-loading",
+              "states": ["epic text loading"],
+              "interaction": false
+            },
+            {
+              "id": "pages-epics-epicdetailpanel--document-failed",
+              "states": ["epic text failed", "retry"],
+              "interaction": false
+            },
+            {
+              "id": "pages-epics-epicdetailpanel--document-empty",
+              "states": ["epic text empty"],
               "interaction": false
             }
           ]

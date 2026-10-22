@@ -98,7 +98,7 @@ export function taskDetailEvents(
   ];
   if (sections.includes('document')) {
     events.push({ type: 'section-start', section: 'document' });
-    events.push({ type: 'attachments', items: task.attachments });
+    events.push({ type: 'attachments', items: task.attachments ?? [] });
     if (task.body !== '') events.push({ type: 'block', kind: 'markdown', text: task.body });
     for (const item of task.acceptance) events.push({ type: 'acceptance', ...item });
     events.push({
@@ -123,7 +123,7 @@ export function epicDetailEvents(projectId: string, epic: Epic): DetailEvent[] {
   return [
     { type: 'start', resource: 'epic', id: epic.id, projectId, sections: ['document'], versions },
     { type: 'section-start', section: 'document' },
-    { type: 'attachments', items: epic.attachments },
+    { type: 'attachments', items: epic.attachments ?? [] },
     ...blocks,
     { type: 'section-end', section: 'document', count: blocks.length },
     { type: 'complete', versions },

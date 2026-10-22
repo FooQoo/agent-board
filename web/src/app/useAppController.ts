@@ -6,13 +6,8 @@ import { useProjects } from '../features/projects/model/useProjects';
 import { useTaskLifecycle } from '../features/tasks/model/useTaskLifecycle';
 import { useBuildReload } from './model/useBuildReload';
 import { usePcConnection } from './data/PcData';
-import { assembleEpic, assembleTask, toBoardView } from './data/assemble';
-import {
-  useDataCore,
-  usePresentationHold,
-  useTaskDetail,
-  useEpicDetail,
-} from '../shared/data/react';
+import { epicForEditor, taskForEditor, toBoardView } from './data/assemble';
+import { useDataCore, usePresentationHold } from '../shared/data/react';
 import { useDetailWidth } from '../shared/lib/detail-width/useDetailWidth';
 import { useProjectSession } from './model/useProjectSession';
 import { useTaskAnswers } from '../features/tasks/answer/model/useTaskAnswers';
@@ -95,18 +90,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     if (boardData && isProjectId(activeId)) taskAnswers.reconcileTasks(activeId, boardData.tasks);
   }, [activeId, boardData, taskAnswers.reconcileTasks]);
 
-  const selectedCard = findTask(tasks, session.selectedId);
-  const detailProject = isProjectId(activeId) ? activeId : '';
-  const taskDetail = useTaskDetail(detailProject, selectedCard?.id ?? null);
-  const selectedDocument = taskDetail.document.data ?? taskDetail.document.partial;
-  const selectedHistory = taskDetail.history.data ?? taskDetail.history.partial;
-  const selected = useMemo(
-    () =>
-      selectedCard
-        ? assembleTask(selectedCard, { document: selectedDocument, history: selectedHistory })
-        : null,
-    [selectedCard, selectedDocument, selectedHistory],
-  );
+  const selected = findTask(tasks, session.selectedId);
   const archivedSelected =
     archive.data?.tasks.find((task) => task.id === session.archiveSelectedId) ?? null;
   const activeName = projects.projects.find((project) => project.id === activeId)?.name ?? null;
@@ -117,15 +101,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     }
   }, [boardData, session.selectedId, dispatch]);
   const listedEpic = boardData?.epics.find((epic) => epic.id === session.epicSelectedId) ?? null;
-  const epicDetail = useEpicDetail(
-    detailProject,
-    epicsVisible && listedEpic !== null ? listedEpic.id : null,
-  );
-  const epicDocument = epicDetail.document.data ?? epicDetail.document.partial;
-  const selectedEpic = useMemo(
-    () => (listedEpic ? assembleEpic(listedEpic, epicDocument) : null),
-    [listedEpic, epicDocument],
-  );
+  const selectedEpic = listedEpic;
   useEffect(() => {
     if (boardData && session.epicSelectedId !== null && listedEpic === null)
       dispatch({ type: 'SELECT_EPIC', id: null });
@@ -159,10 +135,9 @@ export function useAppController(initial: AppInitial | undefined): AppController
   const loadTask = useCallback(
     async (projectId: ProjectId, card: TaskSummary): Promise<Task | null> => {
       const key: ResourceKey = { kind: 'task', projectId, id: card.id };
-      await core.refreshDetail(key, ['document', 'history']);
-      const loaded = core.store.getResource(key);
-      if (loaded.document.data === null) return null;
-      return assembleTask(card, { document: loaded.document.data, history: loaded.history.data });
+      await core.refreshDetail(key, ['document']);
+      const loaded = core.store.getResource(key).document.data;
+      return loaded === null ? null : taskForEditor(card, loaded);
     },
     [core],
   );
@@ -171,7 +146,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
       const key: ResourceKey = { kind: 'epic', projectId, id: epic.id };
       await core.refreshDetail(key, ['document']);
       const loaded = core.store.getResource(key).document.data;
-      return loaded === null ? null : assembleEpic(epic, loaded);
+      return loaded === null ? null : epicForEditor(epic, loaded);
     },
     [core],
   );

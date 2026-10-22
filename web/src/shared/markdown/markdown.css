@@ -56,6 +56,11 @@
   font-size: 14px;
 }
 
+/* An H2 drawn as an H3 (a chapter title) keeps the H2's size. */
+.md h3.md__chapter {
+  font-size: 16px;
+}
+
 .md--wide h1 {
   font-size: 22px;
 }
