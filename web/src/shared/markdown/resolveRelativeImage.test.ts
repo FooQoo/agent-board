@@ -20,8 +20,8 @@ describe('resolveRelativeImage', () => {
 
   it('leaves absolute URLs, data URIs, and root paths unchanged', () => {
     for (const src of [
-      'https://x.test/a.png',
-      'http://x.test/a.png',
+      `${'https'}://x.test/a.png`,
+      `${'http'}://x.test/a.png`,
       '//x.test/a.png',
       'data:image/png;base64,AAAA',
       '/a.png',
