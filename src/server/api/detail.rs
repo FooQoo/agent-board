@@ -6,7 +6,7 @@
 //! copy, so neither the index nor a file is touched while it goes out.
 
 use std::convert::Infallible;
-use std::path::PathBuf;
+use std::path::Path as FsPath;
 use std::sync::{Arc, RwLock};
 
 use axum::body::{Body, Bytes};
@@ -52,8 +52,8 @@ pub(crate) enum Target {
 /// Answer a Detail request. A bad `sections` is `400` and a missing project, task or epic is
 /// `404`, both before any byte of the stream.
 pub(crate) async fn detail_response(
-    shared: PathBuf,
-    index: Arc<RwLock<ProjectIndex>>,
+    shared: &FsPath,
+    index: &RwLock<ProjectIndex>,
     raw_project: &str,
     target: Target,
     query: Option<String>,
@@ -85,10 +85,11 @@ pub(crate) async fn detail_response(
         },
     };
     // The index is only read here, and only long enough to take the snapshot's `Arc`.
-    let snapshot = match indexed_view_in(&shared, &index, &project_id) {
+    let snapshot = match indexed_view_in(shared, index, &project_id) {
         Ok(snapshot) => snapshot,
         Err(error) => return agboard_error_response(&error),
     };
+    let shared = shared.to_path_buf();
     let built = tokio::task::spawn_blocking(move || {
         let detail = match &target {
             Resolved::Task(id) => DetailSnapshot::task(&shared, &snapshot, *id, &sections),
@@ -149,8 +150,8 @@ pub(super) async fn task_detail(
     RawQuery(query): RawQuery,
 ) -> Response {
     detail_response(
-        state.shared.clone(),
-        state.index.clone(),
+        &state.shared,
+        &state.index,
         &project,
         Target::Task(id),
         query,
@@ -164,8 +165,8 @@ pub(super) async fn epic_detail(
     RawQuery(query): RawQuery,
 ) -> Response {
     detail_response(
-        state.shared.clone(),
-        state.index.clone(),
+        &state.shared,
+        &state.index,
         &project,
         Target::Epic(epic),
         query,

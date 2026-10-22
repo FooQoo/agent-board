@@ -5,14 +5,20 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, RawQuery, State};
+use axum::http::HeaderMap;
 use axum::response::Response;
 
 use super::router::MonitorState;
 use crate::server::api::{Target, detail_response};
-use crate::server::response::not_implemented;
+use crate::server::summary_response;
 
-pub(super) async fn summary() -> Response {
-    not_implemented("The summary")
+/// The Summary: the same answer as the PC server's, from the same projection.
+pub(super) async fn summary(
+    State(state): State<Arc<MonitorState>>,
+    Path(raw_project): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    summary_response::respond(state.shared(), state.index(), &raw_project, &headers)
 }
 
 pub(super) async fn task_detail(
@@ -21,8 +27,8 @@ pub(super) async fn task_detail(
     RawQuery(query): RawQuery,
 ) -> Response {
     detail_response(
-        state.shared.clone(),
-        state.index.clone(),
+        state.shared(),
+        state.index(),
         &project,
         Target::Task(id),
         query,
@@ -36,8 +42,8 @@ pub(super) async fn epic_detail(
     RawQuery(query): RawQuery,
 ) -> Response {
     detail_response(
-        state.shared.clone(),
-        state.index.clone(),
+        state.shared(),
+        state.index(),
         &project,
         Target::Epic(epic),
         query,

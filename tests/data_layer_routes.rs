@@ -1,6 +1,6 @@
 //! The Summary and Detail routes of the data layer are registered on the PC server and on the
-//! monitor. The Summary answers `501 not_implemented` until its handler is written; the Detail
-//! routes stream (see `detail_stream.rs`). The existing `/board` routes are untouched. Servers listen on port 0 in a temporary data directory.
+//! monitor. The Summary is covered by `summary_api.rs` and the Detail
+//! routes by `detail_stream.rs`. The existing `/board` routes are untouched. Servers listen on port 0 in a temporary data directory.
 
 mod common;
 #[path = "support/mobile_monitor.rs"]
@@ -28,17 +28,18 @@ fn project_id(home: &std::path::Path) -> String {
 }
 
 #[test]
-fn data_layer_routes_pc_summary_answers_501_not_implemented() {
+fn data_layer_routes_pc_answers_summary_and_detail() {
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let home = support::home();
     let id = project_id(home.path());
     let server = common::Running::start(home.path());
     let base = format!("/api/projects/{id}");
-    let path = format!("{base}/summary");
-    let reply = server.get(&path);
-    assert_eq!(reply.status, 501, "{path}: {}", reply.body);
-    assert_eq!(error_code(&reply.body), "not_implemented", "{path}");
-    assert_eq!(reply.header("cache-control"), Some("no-store"), "{path}");
+    // The Summary has its handler (tests/summary_api.rs); the Detail routes stream
+    // (tests/detail_stream.rs). A task answers 200 and a missing epic 404, never 501.
+    assert_eq!(server.get(&format!("{base}/summary")).status, 200);
+    assert_eq!(server.get(&format!("{base}/tasks/1/detail")).status, 200);
+    let missing = server.get(&format!("{base}/epics/EPIC-1/detail"));
+    assert_eq!(missing.status, 404, "{}", missing.body);
     assert_eq!(server.get(&format!("{base}/board")).status, 200);
 }
 
@@ -79,10 +80,7 @@ fn data_layer_routes_monitor_answers_with_a_session_only() {
         format!("{base}/tasks/1/detail"),
         format!("{base}/epics/EPIC-1/detail"),
     ];
-    let reply = server.get(&session, &paths[0]);
-    assert_eq!(reply.status, 501, "{}", reply.body);
-    assert_eq!(error_code(&reply.body), "not_implemented");
-    assert_eq!(reply.header("cache-control"), Some("no-store"));
+    assert_eq!(server.get(&session, &paths[0]).status, 200);
     assert_eq!(server.get(&session, &paths[1]).status, 200);
     assert_eq!(server.get(&session, &paths[2]).status, 404);
     let bad = server.get(&session, &format!("{base}/tasks/1/detail?sections=body"));

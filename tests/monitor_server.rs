@@ -91,6 +91,8 @@ fn monitor_assets_are_cached_by_content_name_and_missing_files_are_not() {
 #[test]
 fn monitor_events_emit_ready_and_react_to_the_shared_change_broadcast() {
     let home = home();
+    let files = agent_board::file_store::FileStore::open(&home.path().join("shared"));
+    let project = files.project_by_name("monitor").unwrap().id;
     let server = Running::start(home.path());
     let session = server.session();
     let agent: ureq::Agent = ureq::Agent::config_builder()
@@ -99,7 +101,7 @@ fn monitor_events_emit_ready_and_react_to_the_shared_change_broadcast() {
         .build()
         .into();
     let mut response = agent
-        .get(server.url("/monitor/api/events"))
+        .get(server.url(&format!("/monitor/api/events?project={project}")))
         .header("Host", server.host())
         .header("Cookie", &session.cookie)
         .call()
@@ -123,7 +125,12 @@ fn monitor_events_emit_ready_and_react_to_the_shared_change_broadcast() {
         )),
         "{ready}"
     );
-    let files = agent_board::file_store::FileStore::open(&home.path().join("shared"));
+    // The stream follows one project: a new project is not sent, a change of that project is.
     files.create_project("other", chrono::Utc::now()).unwrap();
-    assert!(next_event(&mut reader).contains("event: changed"));
+    files
+        .add_history(&project, 1, Some("A note."), chrono::Utc::now())
+        .unwrap();
+    let changed = next_event(&mut reader);
+    assert!(changed.contains("event: changed"), "{changed}");
+    assert!(changed.contains(project.as_str()), "{changed}");
 }

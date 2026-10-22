@@ -480,3 +480,65 @@ fn pc_an_epic_asks_for_the_document_only() {
         assert_eq!(error_code(&reply.body), "invalid_sections", "{query}");
     }
 }
+
+#[test]
+fn pc_summary_and_detail_report_the_same_versions() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let home = support::home();
+    let id = project_id(home.path());
+    store(home.path())
+        .create_epic(
+            &id,
+            NewEpic {
+                id: "DELTA".into(),
+                name: "Delta".into(),
+                color: Some("#7C3AED".into()),
+                is_draft: false,
+                document: Some("Doc.\n".into()),
+            },
+            chrono::Utc::now(),
+        )
+        .unwrap();
+    let server = common::Running::start(home.path());
+    let summary = server.get(&format!("/api/projects/{id}/summary")).json();
+    let task = summary["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"] == 1)
+        .unwrap();
+    let events = events_of(
+        &server
+            .get(&format!("/api/projects/{id}/tasks/1/detail"))
+            .body,
+    );
+    let DetailEvent::Start { versions, .. } = &events[0] else {
+        panic!()
+    };
+    assert_eq!(
+        task["detailVersions"]["document"].as_str(),
+        versions.document.as_deref()
+    );
+    assert_eq!(
+        task["detailVersions"]["history"].as_str(),
+        versions.history.as_deref()
+    );
+    let epic = summary["epics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["id"] == "DELTA")
+        .unwrap();
+    let events = events_of(
+        &server
+            .get(&format!("/api/projects/{id}/epics/DELTA/detail"))
+            .body,
+    );
+    let DetailEvent::Start { versions, .. } = &events[0] else {
+        panic!()
+    };
+    assert_eq!(
+        epic["detailVersions"]["document"].as_str(),
+        versions.document.as_deref()
+    );
+}
