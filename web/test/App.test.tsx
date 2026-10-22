@@ -41,7 +41,7 @@ beforeEach(() => {
       return jsonResponse({}, 404);
     },
   };
-  FakeEventSource.reset();
+  FakeEventSource.reset(true);
   vi.stubGlobal('EventSource', FakeEventSource);
   document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
   fetchMock = stubBackend(backend);
@@ -130,7 +130,7 @@ describe('App', () => {
         c.id === 11 ? { ...c, agentStatus: 'pending' as const, pendingReason: 'Waiting' } : c,
       ),
     });
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
 
     await waitFor(() => expect(screen.getAllByText('Pending').length).toBeGreaterThan(0));
     expect(screen.getByRole('heading', { level: 2, name: 'Implement task moves' })).toBeTruthy();
@@ -141,8 +141,9 @@ describe('App', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(taskButton('Initialize the board'));
 
+    // The open drawer holds the stream's updates back; the refresh button reads the board now.
     setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
-    act(() => FakeEventSource.latest.emit('changed'));
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
     await waitFor(() => expect(screen.getByText('Select a task to see its details.')).toBeTruthy());
     expect(screen.getByText('7 tasks')).toBeTruthy();
@@ -166,6 +167,56 @@ describe('App', () => {
       method: 'POST',
       headers: { 'X-Agboard-Token': 'test-token', 'X-Agboard-Language': 'en' },
     });
+  });
+
+  it('reads the board from its Summary and never from the board route', async () => {
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(taskButton('Implement task moves'));
+    await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
+    const urls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(urls).toContain(`/api/projects/${PROJECT_A.id}/summary`);
+    expect(urls).toContain(
+      `/api/projects/${PROJECT_A.id}/tasks/11/detail?sections=document,history`,
+    );
+    expect(urls.filter((url) => url.endsWith('/board'))).toEqual([]);
+  });
+
+  it('holds the stream back while the drawer is open and applies it 3 seconds after it closes', async () => {
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(taskButton('Implement task moves'));
+    const summaryReads = () =>
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith(`${PROJECT_A.id}/summary`))
+        .length;
+    const before = summaryReads();
+
+    setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(summaryReads()).toBe(before);
+    expect(screen.getByText('8 tasks')).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    expect(summaryReads()).toBe(before);
+    expect(screen.getByText('8 tasks')).toBeTruthy();
+
+    await waitFor(() => expect(screen.getByText('7 tasks')).toBeTruthy(), { timeout: 3_500 });
+    expect(summaryReads()).toBe(before + 1);
+  });
+
+  it('cancels the countdown when a drawer opens again', async () => {
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(taskButton('Implement task moves'));
+    setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await userEvent.click(taskButton('Implement task moves'));
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    expect(screen.getByText('8 tasks')).toBeTruthy();
   });
 
   it('shows the empty board message with three empty lanes', async () => {

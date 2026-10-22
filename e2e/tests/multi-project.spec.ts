@@ -277,9 +277,10 @@ test.describe('two projects with the same task numbers', () => {
     await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Alpha: choose the license');
     await expect(page.getByText('Beta:')).toHaveCount(0);
 
-    // A change to the shown project still arrives live.
+    // A change to the shown project arrives live. The open details hold it back; it appears about 3 seconds after they close.
     agboardOk('Alpha', ['edit', '1', '--title', 'Alpha: edited from the CLI'], home);
-    await expect(task(page, 1)).toContainText('Alpha: edited from the CLI');
+    await page.getByRole('button', { name: 'Close details' }).click();
+    await expect(task(page, 1)).toContainText('Alpha: edited from the CLI', { timeout: 10_000 });
   });
 
   test('the menu switches projects: the selection clears, the check and left edge line up, and the keyboard works', async ({
@@ -576,7 +577,7 @@ test.describe('two projects with the same task numbers', () => {
     page,
   }) => {
     await open(page, alpha);
-    const boardPath = (id: string) => `**/api/projects/${id}/board`;
+    const boardPath = (id: string) => `**/api/projects/${id}/summary`;
 
     // Alpha -> Beta -> Alpha: Beta's board is slow; Alpha is shown again before it arrives.
     let betaCalls = 0;
@@ -678,7 +679,9 @@ test.describe('two projects with the same task numbers', () => {
     expect(context).not.toContain('Beta');
     expect(context).not.toContain('Use the MIT license, please.');
     expect(context).not.toContain('Resuming with the MIT license.');
-    await expect(task(page, 2)).toContainText('Running');
+    // The open details hold the page's update back; it appears about 3 seconds after they close.
+    await page.getByRole('button', { name: 'Close details' }).click();
+    await expect(task(page, 2)).toContainText('Running', { timeout: 10_000 });
   });
 
   test('the URL names the project: reload, back and forward reproduce it, tabs are independent, a rename keeps it', async ({
@@ -753,7 +756,7 @@ test.describe('two projects with the same task numbers', () => {
     // The board of Beta fails: an explanation with Retry, and another project can be chosen.
     await open(page, alpha);
     let failing = true;
-    await page.route(`**/api/projects/${beta}/board`, async (route) => {
+    await page.route(`**/api/projects/${beta}/summary`, async (route) => {
       if (failing) return route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"x"}}' });
       return route.fallback();
     });
@@ -778,7 +781,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect(page.getByText('Could not load this board.')).toBeVisible();
     await choose(page, 'Alpha');
     await expect(task(page, 1)).toHaveText(/Alpha: draft the release notes/);
-    await page.unroute(`**/api/projects/${beta}/board`);
+    await page.unroute(`**/api/projects/${beta}/summary`);
 
     // The list of projects cannot be loaded: Retry fetches it again.
     let listFails = true;

@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useBoard } from '../pages/board/model/useBoard';
 import { useArchive } from '../pages/archive/model/useArchive';
 import { useProjects } from '../features/projects/model/useProjects';
 import { useTaskLifecycle } from '../features/tasks/model/useTaskLifecycle';
-import { useBoardEvents } from './model/useBoardEvents';
 import { useBuildReload } from './model/useBuildReload';
+import { usePcConnection } from './data/PcData';
+import { assembleEpic, assembleTask, toBoardView } from './data/assemble';
+import {
+  useDataCore,
+  usePresentationHold,
+  useTaskDetail,
+  useEpicDetail,
+} from '../shared/data/react';
 import { useDetailWidth } from '../shared/lib/detail-width/useDetailWidth';
 import { useProjectSession } from './model/useProjectSession';
 import { useTaskAnswers } from '../features/tasks/answer/model/useTaskAnswers';
@@ -14,7 +21,8 @@ import { isProjectId } from './model/projectSession';
 import { STALE_PAGE_EVENT } from './api';
 import { preloadBoardCode } from './dialogs/lazyDialogs';
 import type { AppControllerModel, AppInitial, AppView } from './contracts';
-import type { DialogAction, ProjectId } from '../shared/api/contracts';
+import type { DialogAction, Epic, ProjectId, Task, TaskSummary } from '../shared/api/contracts';
+import type { ResourceKey } from '../shared/data/core';
 
 const BOARD_MESSAGE: Partial<Record<AppView, AppControllerModel['message']>> = {
   'projects-loading': 'loading',
@@ -37,6 +45,8 @@ export function useAppController(initial: AppInitial | undefined): AppController
   const activeId = session.activeProjectId;
   const known =
     isProjectId(activeId) && projects.projects.some((project) => project.id === activeId);
+  const core = useDataCore();
+  const { adapter, serverBuild, streamDown } = usePcConnection();
   const board = useBoard(known ? activeId : null);
   const archive = useArchive(session.viewMode === 'archive' && known ? activeId : null);
   const archiveLifecycle = useTaskLifecycle(operations);
@@ -73,7 +83,11 @@ export function useAppController(initial: AppInitial | undefined): AppController
     if (board.error === 'not_found') reloadProjects();
   }, [board.error, reloadProjects]);
 
-  const boardData = view === 'board' ? board.board : null;
+  const boardView = useMemo(
+    () => (board.summary ? toBoardView(board.summary) : null),
+    [board.summary],
+  );
+  const boardData = view === 'board' ? boardView : null;
   const tasks = isProjectId(activeId)
     ? taskAnswers.withSavedAnswers(activeId, boardData?.tasks ?? [], board.lastSyncedAt)
     : [];
@@ -81,7 +95,18 @@ export function useAppController(initial: AppInitial | undefined): AppController
     if (boardData && isProjectId(activeId)) taskAnswers.reconcileTasks(activeId, boardData.tasks);
   }, [activeId, boardData, taskAnswers.reconcileTasks]);
 
-  const selected = findTask(tasks, session.selectedId);
+  const selectedCard = findTask(tasks, session.selectedId);
+  const detailProject = isProjectId(activeId) ? activeId : '';
+  const taskDetail = useTaskDetail(detailProject, selectedCard?.id ?? null);
+  const selectedDocument = taskDetail.document.data ?? taskDetail.document.partial;
+  const selectedHistory = taskDetail.history.data ?? taskDetail.history.partial;
+  const selected = useMemo(
+    () =>
+      selectedCard
+        ? assembleTask(selectedCard, { document: selectedDocument, history: selectedHistory })
+        : null,
+    [selectedCard, selectedDocument, selectedHistory],
+  );
   const archivedSelected =
     archive.data?.tasks.find((task) => task.id === session.archiveSelectedId) ?? null;
   const activeName = projects.projects.find((project) => project.id === activeId)?.name ?? null;
@@ -91,11 +116,20 @@ export function useAppController(initial: AppInitial | undefined): AppController
       if (next !== session.selectedId) dispatch({ type: 'SELECT_CARD', id: next });
     }
   }, [boardData, session.selectedId, dispatch]);
-  const selectedEpic = boardData?.epics.find((epic) => epic.id === session.epicSelectedId) ?? null;
+  const listedEpic = boardData?.epics.find((epic) => epic.id === session.epicSelectedId) ?? null;
+  const epicDetail = useEpicDetail(
+    detailProject,
+    epicsVisible && listedEpic !== null ? listedEpic.id : null,
+  );
+  const epicDocument = epicDetail.document.data ?? epicDetail.document.partial;
+  const selectedEpic = useMemo(
+    () => (listedEpic ? assembleEpic(listedEpic, epicDocument) : null),
+    [listedEpic, epicDocument],
+  );
   useEffect(() => {
-    if (boardData && session.epicSelectedId !== null && selectedEpic === null)
+    if (boardData && session.epicSelectedId !== null && listedEpic === null)
       dispatch({ type: 'SELECT_EPIC', id: null });
-  }, [boardData, session.epicSelectedId, selectedEpic, dispatch]);
+  }, [boardData, session.epicSelectedId, listedEpic, dispatch]);
   useEffect(() => {
     if (
       archive.status === 'ready' &&
@@ -109,24 +143,84 @@ export function useAppController(initial: AppInitial | undefined): AppController
     document.title = activeName !== null ? `${activeName} - Agent Board` : 'Agent Board';
   }, [activeName]);
 
-  const reloadBoard = board.reload;
   const activeRef = useRef(activeId);
   activeRef.current = activeId;
+  // A write is shown at once: the Summary is read again without waiting for the presentation hold,
+  // and the Details it names as changed follow in the same pass.
   const refreshProject = useCallback(
     (projectId: ProjectId) => {
-      if (activeRef.current === projectId) reloadBoard();
+      if (activeRef.current === projectId) void core.refreshSummary(projectId);
     },
-    [reloadBoard],
+    [core],
+  );
+  const reloadArchive = archive.reload;
+  // The editors start from the whole text, so the Detail is read again just before they open: a
+  // body that is still loading, or older than the file, would be saved over the real one.
+  const loadTask = useCallback(
+    async (projectId: ProjectId, card: TaskSummary): Promise<Task | null> => {
+      const key: ResourceKey = { kind: 'task', projectId, id: card.id };
+      await core.refreshDetail(key, ['document', 'history']);
+      const loaded = core.store.getResource(key);
+      if (loaded.document.data === null) return null;
+      return assembleTask(card, { document: loaded.document.data, history: loaded.history.data });
+    },
+    [core],
+  );
+  const loadEpic = useCallback(
+    async (projectId: ProjectId, epic: Epic): Promise<Epic | null> => {
+      const key: ResourceKey = { kind: 'epic', projectId, id: epic.id };
+      await core.refreshDetail(key, ['document']);
+      const loaded = core.store.getResource(key).document.data;
+      return loaded === null ? null : assembleEpic(epic, loaded);
+    },
+    [core],
+  );
+  const refresh = useCallback(() => {
+    reloadProjects();
+    reloadArchive();
+    if (isProjectId(activeRef.current)) void core.refreshSummary(activeRef.current);
+  }, [core, reloadProjects, reloadArchive]);
+
+  // The lists the data core does not own are read again when the stream says they changed. The
+  // archive list waits like the Summary while a drawer or a modal is open; the project list is
+  // not what a drawer or a modal shows, so it does not wait.
+  const reloadProjectsRef = useRef(reloadProjects);
+  reloadProjectsRef.current = reloadProjects;
+  const reloadArchiveRef = useRef(reloadArchive);
+  reloadArchiveRef.current = reloadArchive;
+  useEffect(
+    () =>
+      adapter.subscribe((note) => {
+        if (note.type === 'sync') {
+          reloadProjectsRef.current();
+          core.gate.submit(() => reloadArchiveRef.current(), { key: 'archive' });
+          return;
+        }
+        const { event } = note;
+        if (event.changes.some((change) => change.resource === 'project'))
+          reloadProjectsRef.current();
+        if (event.projectId === activeRef.current)
+          core.gate.submit(() => reloadArchiveRef.current(), { key: 'archive' });
+      }),
+    [adapter, core],
   );
 
-  const { streamDown, serverBuild } = useBoardEvents(
-    useCallback(() => {
-      reloadProjects();
-      reloadBoard();
-      archive.reload();
-    }, [reloadProjects, reloadBoard, archive.reload]),
+  // Automatic updates wait while the detail drawer or a modal is open and for 3 seconds after.
+  usePresentationHold(
+    session.selectedId !== null ||
+      session.archiveSelectedId !== null ||
+      session.epicSelectedId !== null,
+    'drawer',
   );
-  useBuildReload(serverBuild, session.operation !== null || session.answerLeases.length > 0);
+  usePresentationHold(
+    session.operation !== null || session.dialog !== null || session.bulkArchive !== null,
+    'modal',
+  );
+  useBuildReload(
+    serverBuild,
+    session.operation !== null || session.answerLeases.length > 0,
+    core.gate,
+  );
   useEffect(preloadBoardCode, []);
   const openDialog = useCallback(
     (dialog: DialogAction) => {
@@ -190,6 +284,9 @@ export function useAppController(initial: AppInitial | undefined): AppController
     archiveLifecycle,
     openDialog,
     refreshProject,
+    refresh,
+    loadTask,
+    loadEpic,
     setRequested,
     restoreFailure,
     setRestoreFailure,

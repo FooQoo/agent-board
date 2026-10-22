@@ -1,4 +1,4 @@
-import type { Task, Epic } from '../../../shared/api/contracts';
+import type { TaskSummary, Epic } from '../../../shared/api/contracts';
 import type { ProgressTaskRenderer } from './EpicProgressList';
 import { EpicEditorView } from './EpicEditorView';
 import { useEpicEditor } from './useEpicEditor';
@@ -12,7 +12,7 @@ export interface EpicDialogProps {
   /** Draws a task in the progress table. The caller supplies it. */
   renderTask: ProgressTaskRenderer;
   /** Every task of the project, read when the dialog is shown and kept up to date by the board. */
-  tasks: readonly Task[];
+  tasks: readonly TaskSummary[];
   api: EpicApi;
   projectId?: string;
   onOpenTask: (taskId: number) => void;

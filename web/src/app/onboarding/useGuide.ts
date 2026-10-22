@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { i18n } from '../../shared/i18n';
-import type { ProjectId, Task } from '../../shared/api/contracts';
+import type { ProjectId, TaskSummary } from '../../shared/api/contracts';
 import { type GuideScreen, NOTICE_MS, RUNNING_MIN_MS } from './guideTiming';
 import { openGuide } from './openGuide';
 import { useGuideLease } from './useGuideLease';
@@ -56,7 +56,7 @@ export function useGuide({
   projectId: ProjectId | null;
   eligible: boolean;
   /** The board's cards: the second sample's question is answered when its request is gone. */
-  tasks: Task[];
+  tasks: TaskSummary[];
   clientId: string;
 }): GuideController {
   const [state, setState] = useState<GuideState | null>(null);

@@ -68,6 +68,41 @@ export interface AcceptanceItem {
   done: boolean;
 }
 
+/** How many completion conditions a card has and how many are done. */
+export interface AcceptanceCounts {
+  done: number;
+  total: number;
+}
+
+/**
+ * A task as a list shows it: no body, condition text, history or files. A full `Task` is also a
+ * `TaskSummary`, so a screen that needs only this part takes either.
+ */
+export interface TaskSummary {
+  id: number;
+  title: string;
+  assignee: Assignee;
+  taskStatus: ColumnName;
+  /** Time of the last real lane change; independent of later notes and edits. */
+  taskStatusChangedAt: string;
+  position: number;
+  agentStatus: RunState;
+  agentStatusChangedAt: string;
+  pendingReason: string | null;
+  pendingRequestId: string | null;
+  pendingChoices: Choice[];
+  /** The first-run guide's sample cards carry this; ordinary cards do not. */
+  onboardingSample?: { runId: string; ordinal: number } | null;
+  epic: EpicRef | null;
+  updatedAt: string;
+  /** A draft is read-only for agents until a person finalizes it. */
+  isDraft: boolean;
+  /** The conditions themselves, or only their counts where the text is not loaded. */
+  acceptance: AcceptanceItem[] | AcceptanceCounts;
+  /** The conditions cannot be read from the frontmatter. */
+  acceptanceError?: boolean;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -131,7 +166,7 @@ export interface Board {
 export type DialogAction =
   | { kind: 'create' }
   | { kind: 'request' }
-  | { kind: 'move'; task: Task; target: ColumnName }
+  | { kind: 'move'; task: TaskSummary; target: ColumnName }
   | { kind: 'edit'; task: Task }
   | { kind: 'epic'; epic: Epic };
 

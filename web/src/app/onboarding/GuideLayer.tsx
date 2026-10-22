@@ -2,9 +2,9 @@
 // the lane the guide is pointing at, and shows the real task cards and answer form in
 // the spotlight. The view parts stay free of the board, so this file joins them.
 
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ProjectId, Task } from '../../shared/api/contracts';
+import type { ProjectId, TaskSummary } from '../../shared/api/contracts';
 import type { TaskAnswerController } from '../../features/tasks/answer/model/useTaskAnswers';
 import { TaskCard } from '../../features/tasks/card/TaskCard';
 import { OnboardingComplete } from '../../features/onboarding/ui/OnboardingComplete';
@@ -89,7 +89,7 @@ export function GuideLayer({
 }: {
   projectId: ProjectId | null;
   eligible: boolean;
-  tasks: Task[];
+  tasks: TaskSummary[];
   answers: TaskAnswerController;
   syncedAt: Date | null;
   onAnswerChanged: () => void;
@@ -99,6 +99,15 @@ export function GuideLayer({
   const guide = useGuide({ projectId, eligible, tasks, clientId });
   const { screen, state, busy, error, ready } = guide;
   const run = state?.run ?? null;
+  // Every saved step, start, end or finish moves the revision. The board it changed is read at
+  // once, not when the presentation hold lets the stream's update through.
+  const revision = state?.revision;
+  const seenRevision = useRef(revision);
+  useEffect(() => {
+    const before = seenRevision.current;
+    seenRevision.current = revision;
+    if (before !== undefined && before !== revision) onAnswerChanged();
+  }, [revision, onAnswerChanged]);
   const samples = run
     ? tasks
         .filter((task) => task.onboardingSample?.runId === run.runId)

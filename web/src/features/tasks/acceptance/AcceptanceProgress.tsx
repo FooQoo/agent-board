@@ -1,14 +1,18 @@
 import { CircleCheckIcon, ListChecksIcon, TriangleAlertIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { progressOf } from './model/acceptance';
-import type { Task } from '../../../shared/api/contracts';
+import type { TaskSummary } from '../../../shared/api/contracts';
 import './acceptance.css';
 
 /**
  * The number of conditions done on a card, shown on the card and on the monitor. Nothing is shown for
  * a card without conditions; a card whose frontmatter cannot be read says so.
  */
-export function AcceptanceProgress({ task }: { task: Task }) {
+export function AcceptanceProgress({
+  task,
+}: {
+  task: Pick<TaskSummary, 'acceptance' | 'acceptanceError'>;
+}) {
   const { t } = useTranslation();
   if (task.acceptanceError) {
     return (
@@ -18,8 +22,8 @@ export function AcceptanceProgress({ task }: { task: Task }) {
       </span>
     );
   }
-  if (task.acceptance.length === 0) return null;
   const { done, total, complete } = progressOf(task.acceptance);
+  if (total === 0) return null;
   const progress = t('acceptance.progress', { done, total });
   const label = `${t('acceptance.title')} ${progress}`;
   return (

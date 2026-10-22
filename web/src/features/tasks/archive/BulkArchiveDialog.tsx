@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog';
-import type { Task } from '../../../shared/api/contracts';
+import type { TaskSummary } from '../../../shared/api/contracts';
 import '../../../shared/styles/modal.css';
 
 export interface BulkArchiveDialogProps {
   projectName: string;
-  targets: readonly Task[];
+  targets: readonly TaskSummary[];
   saving: boolean;
   onConfirm: () => Promise<void>;
   onCancel: () => void;

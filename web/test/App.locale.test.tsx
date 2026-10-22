@@ -29,7 +29,7 @@ describe('language changes in the app', () => {
         return jsonResponse({}, 404);
       },
     };
-    FakeEventSource.reset();
+    FakeEventSource.reset(true);
     vi.stubGlobal('EventSource', FakeEventSource);
     document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
     fetchMock = stubBackend(backend);
@@ -82,7 +82,7 @@ describe('language changes in the app', () => {
     expect(document.documentElement.lang).toBe('ja');
     await waitFor(() =>
       expect(
-        fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/board`),
+        fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/summary`),
       ).toHaveLength(1),
     );
   });
