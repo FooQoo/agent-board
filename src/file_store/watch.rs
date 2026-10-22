@@ -120,6 +120,8 @@ impl Watch {
 
         // Reconcile completed AI work before the first snapshot is published.
         FileStore::open(&root).auto_complete_all(chrono::Utc::now())?;
+        // A guide run whose tab was closed while the server was down is taken back now.
+        FileStore::open(&root).guide_recover(chrono::Utc::now())?;
 
         {
             let mut guard = index.write().unwrap_or_else(|e| e.into_inner());

@@ -13,6 +13,7 @@ use super::super::history::{ParseMode, compose_task, parse_task};
 use super::super::io;
 use super::super::layout;
 use super::super::model::{HistoryRecord, TaskFile, TaskMetadata, TaskView};
+use super::super::onboarding_model::OnboardingSample;
 use super::super::reader;
 use super::super::validate;
 use super::super::{FileStore, TaskTextParts};
@@ -146,6 +147,18 @@ impl FileStore {
         new: NewTask,
         now: DateTime<Utc>,
     ) -> Result<TaskView, AgboardError> {
+        self.create_task_with_identity(project, new, now, None)
+    }
+
+    /// [`Self::create_task`] for the first-run guide: the card is written with its
+    /// sample identity in the same file, so it never exists without one.
+    pub(crate) fn create_task_with_identity(
+        &self,
+        project: &ProjectId,
+        new: NewTask,
+        now: DateTime<Utc>,
+        identity: Option<OnboardingSample>,
+    ) -> Result<TaskView, AgboardError> {
         let title = validate_title(&new.title)?;
         let description = normalize_description(&new.description)?;
         let shared = self.shared_dir();
@@ -187,7 +200,7 @@ impl FileStore {
             task_status_changed_at: at,
             attachments: Vec::new(),
             simple_request: None,
-            onboarding_sample: None,
+            onboarding_sample: identity,
             history: vec![transition_event(Transition {
                 language,
                 kind: HistoryKind::Created,
