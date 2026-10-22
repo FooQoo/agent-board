@@ -5,7 +5,6 @@ import { Header } from '../../shared/ui/app-header/Header';
 import { monitorLogo } from './logo';
 import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
 import { monitorPreferences } from './preferences';
-import { ProjectSwitcher } from '../../features/projects/switcher/ProjectSwitcher';
 import type { MonitorViewProps } from './contracts';
 import { TaskList } from './components/TaskList';
 import { Freshness } from './components/Freshness';
@@ -34,27 +33,19 @@ export function MonitorView(props: MonitorViewProps) {
     // A failed fetch is tried again when the drawer is first rendered.
     detailDrawer.preload().catch(() => {});
   }, []);
-  const { projects, scope, summary, todo, doing, done, freshness, onScopeChange } = props;
+  const { summary, todo, doing, done, freshness } = props;
   const ordered = {
     todo: sortLane(todo),
     doing: sortLane(doing),
     done: sortDone(done),
   };
   const tasks = [...ordered.todo, ...ordered.doing, ...ordered.done];
-  const detail = useMonitorDetailDrawer(
-    tasks,
-    props.readResolvers ?? unconnectedMonitorReadResolvers,
-    projects,
-  );
+  const detail = useMonitorDetailDrawer(tasks);
   const { onDetailOpenChange } = props;
   useEffect(() => {
     onDetailOpenChange?.(detail.open);
     return () => onDetailOpenChange?.(false);
   }, [detail.open, onDetailOpenChange]);
-  const scopeName =
-    scope === 'all'
-      ? t('monitor.allProjects')
-      : (projects.find((project) => project.id === scope)?.name ?? t('monitor.allProjects'));
   // While the shared files are partly damaged the server summary is missing; the tiles then show a dash, not a zero.
   const tile = (n: number) => (summary === null ? '—' : n);
   const goTo = (section: string) => {
@@ -67,32 +58,13 @@ export function MonitorView(props: MonitorViewProps) {
   return (
     <main className="monitor-shell">
       <Header settings={monitorSettingsSlot} logoSrc={monitorLogo} settingsSize="l" />
-      <div className="monitor-controls">
-        <ProjectSwitcher
-          projects={projects}
-          activeProjectId={scope}
-          allProjects
-          allProjectsLabel={t('monitor.allProjects')}
-          onSelect={onScopeChange}
-          disabled={props.scopeLocked}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="l"
-          iconOnly
-          className="monitor-refresh"
-          aria-label={t('monitor.refresh')}
-          onClick={props.onRefresh}
-        >
-          ↻
-        </Button>
-      </div>
-      {props.routeNotice && (
-        <p className="monitor-route-notice" role="status">
-          {t('monitor.invalidSelection')}
-        </p>
-      )}
+      <Freshness
+        state={freshness.state}
+        lastFetchedAt={freshness.lastFetchedAt}
+        problemCount={freshness.snapshotProblems.length}
+        onRefresh={props.onRefresh}
+        refreshing={props.refreshing}
+      />
       <section className="monitor-summary" aria-label={t('monitor.summary')}>
         <button type="button" onClick={() => goTo('todo')} aria-controls={listId}>
           <strong>{tile(ordered.todo.length)}</strong>
@@ -135,7 +107,6 @@ export function MonitorView(props: MonitorViewProps) {
         todo={ordered.todo}
         doing={ordered.doing}
         done={ordered.done}
-        scopeName={scopeName}
         freshness={freshness}
         onOpenDetail={(item, tab) => {
           detail.show(item, tab);
@@ -148,22 +119,12 @@ export function MonitorView(props: MonitorViewProps) {
           item={detail.target}
           open={detail.open}
           tab={detail.tab}
-          epicRead={detail.epicRead}
           onOpenChange={detail.close}
           onTabChange={detail.setTab}
-          onRetryEpic={detail.retryEpic}
           resolvers={props.readResolvers ?? unconnectedMonitorReadResolvers}
           problems={freshness.snapshotProblems}
         />
       </Suspense>
-      <Freshness
-        state={freshness.state}
-        lastFetchedAt={freshness.lastFetchedAt}
-        failedCount={freshness.failedProjectIds.length}
-        problemCount={freshness.snapshotProblems.length}
-        onRefresh={props.onRefresh}
-        compact
-      />
     </main>
   );
 }

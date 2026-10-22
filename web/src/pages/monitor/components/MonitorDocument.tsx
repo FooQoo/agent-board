@@ -1,28 +1,40 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MarkdownView } from '../../../shared/markdown/MarkdownView';
-import { Lightbox } from '../../../shared/ui/lightbox/Lightbox';
-import type { Attachment, Problem } from '../../../shared/api/contracts';
+import { MarkdownBlocks } from '../../../shared/markdown/MarkdownBlocks';
+import type { MarkdownBlockData } from '../../../shared/markdown/model/blocks';
+import type { DetailBlock } from '../../../shared/data/core';
+import type { Problem } from '../../../shared/api/contracts';
+
+/** The blocks of a Detail stream as the Markdown renderer takes them. */
+export function markdownBlocksOf(blocks: readonly DetailBlock[]): MarkdownBlockData[] {
+  return blocks.map((block, index) => ({
+    id: String(index),
+    kind: block.kind,
+    source: block.text,
+    ...(block.images ? { images: block.images } : {}),
+  }));
+}
 
 /** Mobile reading content, independent of the desktop detail layout. */
 export function MonitorDocument({
-  body,
-  acceptanceError,
-  attachments,
-  attachmentUrl,
+  blocks,
+  scrollParent,
+  isStreaming = false,
+  resolveAttachment,
   problems = [],
 }: {
-  body: string;
-  acceptanceError: boolean;
-  attachments: readonly Attachment[];
-  attachmentUrl(id: string): string;
+  blocks: readonly DetailBlock[];
+  /** The panel that scrolls the document; a long document is drawn only near the viewport. */
+  scrollParent: HTMLElement | null;
+  isStreaming?: boolean;
+  /** The address of an attachment named by ID, or null when there is none. */
+  resolveAttachment(id: string): string | null;
   problems?: readonly Problem[];
 }) {
   const { t } = useTranslation();
-  const [preview, setPreview] = useState<Attachment | null>(null);
+  const data = useMemo(() => markdownBlocksOf(blocks), [blocks]);
   return (
     <article className="monitor-document">
-      {acceptanceError && <p role="status">{t('acceptance.unreadableTitle')}</p>}
       {problems.map((problem) => (
         <p role="status" key={`${problem.file}:${problem.field}`}>
           {t('acceptance.unreadableProblem', {
@@ -32,40 +44,15 @@ export function MonitorDocument({
           })}
         </p>
       ))}
-      {body.trim() ? (
-        <MarkdownView
-          source={body}
-          resolveAttachment={(id) =>
-            attachments.some((item) => item.id === id) ? attachmentUrl(id) : null
-          }
+      {data.length > 0 ? (
+        <MarkdownBlocks
+          blocks={data}
+          scrollParent={scrollParent}
+          isStreaming={isStreaming}
+          resolveAttachment={resolveAttachment}
         />
-      ) : (
+      ) : isStreaming ? null : (
         <p>{t('detail.noDescription')}</p>
-      )}
-      {attachments.length > 0 && (
-        <section aria-label={t('editor.attachmentsLabel')}>
-          <h3>
-            {t('editor.attachments')} · {attachments.length}
-          </h3>
-          <div className="monitor-document__images">
-            {attachments.map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                aria-label={t('editor.previewAttachment', { name: item.name })}
-                onClick={() => setPreview(item)}
-              >
-                <img src={attachmentUrl(item.id)} alt={item.name} loading="lazy" />
-                <span>{item.name}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-      {preview && (
-        <Lightbox label={preview.name} onClose={() => setPreview(null)}>
-          <img src={attachmentUrl(preview.id)} alt={preview.name} />
-        </Lightbox>
       )}
     </article>
   );

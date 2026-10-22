@@ -1,72 +1,50 @@
 import { useTranslation } from 'react-i18next';
-import { MonitorDocument } from './MonitorDocument';
-import type { Epic } from '../../../shared/api/contracts';
+import { useEpicDetail } from '../../../shared/data/react';
+import { monitorErrorStatus } from '../client';
 import type { MonitorReadResolvers } from '../contracts';
-import type { EpicReadState } from '../hooks/useMonitorDetailDrawer';
+import { attachmentResolver } from './attachment-resolver';
+import { MonitorDocument } from './MonitorDocument';
+import { MonitorSection } from './MonitorSection';
 
+/**
+ * The epic tab. It is mounted only while the tab is active, so the epic's document is read the
+ * first time the tab is reached and reused afterwards.
+ */
 export function MonitorEpicContent({
-  state,
-  retry,
   projectId,
+  epicId,
   resolvers,
+  scrollParent,
 }: {
-  state: EpicReadState;
-  retry(): void;
   projectId: string;
+  epicId: string | null;
   resolvers: MonitorReadResolvers;
+  scrollParent: HTMLElement | null;
 }) {
   const { t } = useTranslation();
-  if (state.status === 'idle')
+  const detail = useEpicDetail(projectId, epicId);
+  if (epicId === null)
     return <p className="monitor-drawer__notice">{t('monitor.epicNotAssigned')}</p>;
-  if (state.status === 'loading')
-    return (
-      <p className="monitor-drawer__notice" role="status">
-        {t('monitor.epicLoading')}
-      </p>
-    );
-  if (state.status === 'not-found')
+  const { error, data } = detail.document;
+  if (monitorErrorStatus(error) === 404 && data === null) {
     return (
       <p className="monitor-drawer__notice" role="status">
         {t('monitor.epicNotFound')}
       </p>
     );
-  if (state.status === 'error') {
-    return (
-      <div className="monitor-drawer__notice" role="alert">
-        <p>{t('monitor.epicError')}</p>
-        <button type="button" className="monitor-drawer__retry" onClick={retry}>
-          {t('monitor.retry')}
-        </button>
-      </div>
-    );
   }
   return (
-    <>
-      {state.status === 'partial' && (
-        <p className="monitor-drawer__partial" role="status">
-          {t('monitor.epicPartial')}
-        </p>
+    <MonitorSection snapshot={detail.document} onRetry={() => void detail.refresh()}>
+      {(document, arriving) => (
+        <MonitorDocument
+          blocks={document.blocks}
+          scrollParent={scrollParent}
+          isStreaming={arriving}
+          resolveAttachment={attachmentResolver((id) =>
+            resolvers.epicAttachmentUrl(projectId, epicId, id),
+          )}
+        />
       )}
-      <EpicDocument epic={state.epic} projectId={projectId} resolvers={resolvers} />
-    </>
-  );
-}
-
-function EpicDocument({
-  epic,
-  projectId,
-  resolvers,
-}: {
-  epic: Epic;
-  projectId: string;
-  resolvers: MonitorReadResolvers;
-}) {
-  return (
-    <MonitorDocument
-      body={epic.body}
-      acceptanceError={false}
-      attachments={epic.attachments ?? []}
-      attachmentUrl={(id) => resolvers.epicAttachmentUrl(projectId, epic.id, id)}
-    />
+    </MonitorSection>
   );
 }

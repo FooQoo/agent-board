@@ -10,7 +10,7 @@
           "stories": [
             {
               "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
-              "states": ["four tabs", "history panel", "loaded epic"],
+              "states": ["frame shown at once", "active tab only", "history panel", "loaded epic"],
               "interaction": true
             },
             {
@@ -21,6 +21,21 @@
             {
               "id": "pages-monitor-components-monitordetaildrawer--heavy-content",
               "states": ["long document", "diagrams and images", "opened by trigger"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--loading-detail",
+              "states": ["body placeholder", "frame and tabs shown"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--arriving-detail",
+              "states": ["partial document", "arriving note"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--detail-failure",
+              "states": ["read error", "retry", "frame kept"],
               "interaction": true
             }
           ]
@@ -84,8 +99,18 @@
               "interaction": false
             },
             {
-              "id": "pages-monitor-components-monitorgallery--partial-fetch-failure",
-              "states": ["partial project fetch failure", "readable project tasks retained"],
+              "id": "pages-monitor-components-monitorgallery--data-problems",
+              "states": ["data problems", "readable tasks retained"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--refreshing",
+              "states": ["refresh button waits while a refresh runs"],
+              "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--stale",
+              "states": ["notifications stopped", "refresh by hand", "dark", "320px wide"],
               "interaction": false
             }
           ]
@@ -114,8 +139,8 @@
               "interaction": false
             },
             {
-              "id": "pages-monitor-components-monitorgallery--partial-fetch-failure",
-              "states": ["partial project fetch failure", "readable task sections retained"],
+              "id": "pages-monitor-components-monitorgallery--data-problems",
+              "states": ["data problems", "readable task sections retained"],
               "interaction": false
             },
             {
@@ -139,8 +164,8 @@
               "interaction": false
             },
             {
-              "id": "pages-monitor-components-monitorgallery--partial-fetch-failure",
-              "states": ["readable task rows retained while a project fetch fails"],
+              "id": "pages-monitor-components-monitorgallery--data-problems",
+              "states": ["readable task rows retained with data problems"],
               "interaction": false
             }
           ]
@@ -169,8 +194,8 @@
               "interaction": false
             },
             {
-              "id": "pages-monitor-components-monitorgallery--partial-fetch-failure",
-              "states": ["partial project fetch failure"],
+              "id": "pages-monitor-components-monitorgallery--data-problems",
+              "states": ["data problems"],
               "interaction": false
             },
             {
@@ -196,6 +221,73 @@
           ]
         }
       ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorSection.tsx",
+      "exports": [
+        {
+          "name": "MonitorSection",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--loading-detail",
+              "states": ["placeholder"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--arriving-detail",
+              "states": ["partial document with note"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--detail-failure",
+              "states": ["error with retry"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
+              "states": ["whole document"],
+              "interaction": true
+            }
+          ]
+        }
+      ],
+      "owner": "U7"
+    },
+    {
+      "file": "pages/monitor/components/MonitorTaskTabs.tsx",
+      "exports": [
+        {
+          "name": "TaskBodyTab",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
+              "states": ["body tab reads the document"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "TaskAcceptanceTab",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
+              "states": ["conditions tab shares the document"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "TaskHistoryTab",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitordetaildrawer--four-tabs",
+              "states": ["history tab reads the history"],
+              "interaction": true
+            }
+          ]
+        }
+      ],
+      "owner": "U7"
     }
   ]
 }

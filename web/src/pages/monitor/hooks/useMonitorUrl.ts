@@ -1,46 +1,30 @@
-import { useCallback, useEffect, useState } from 'react';
-import { parseAsString, useQueryStates } from 'nuqs';
-import type { MonitorScope } from '../contracts';
-import type { Project } from '../../../shared/api/contracts';
+import { useState } from 'react';
 
-const monitorUrlState = {
-  project: parseAsString,
-  taskProject: parseAsString,
-  task: parseAsString,
-  tab: parseAsString,
-};
+const PROJECT_ID = /^[0-9a-f]{32}$/;
 
-export function useMonitorUrl(projects: Project[], catalogReady: boolean) {
-  const [query, setQuery] = useQueryStates(monitorUrlState, { history: 'push', shallow: true });
-  const [notice, setNotice] = useState(false);
-  const scope: MonitorScope =
-    query.project && projects.some(({ id }) => id === query.project) ? query.project : 'all';
+/**
+ * Which project the monitor shows. The phone opens `/monitor/?project={projectId}`; an address
+ * without a valid project is an error screen, never a list of every project.
+ */
+export type MonitorRoute =
+  | { status: 'ok'; projectId: string }
+  | { status: 'missing' }
+  | { status: 'invalid' };
 
-  useEffect(() => {
-    if (!catalogReady) return;
-    const validScope = query.project === null || projects.some(({ id }) => id === query.project);
-    const hasDetailQuery = query.taskProject !== null || query.task !== null || query.tab !== null;
-    if (!validScope) setNotice(true);
-    if (!validScope || hasDetailQuery) {
-      void setQuery(
-        { project: validScope ? query.project : null, taskProject: null, task: null, tab: null },
-        { history: 'replace' },
-      );
-    }
-  }, [catalogReady, projects, query, setQuery]);
+export function parseMonitorRoute(search: string): MonitorRoute {
+  const values = new URLSearchParams(search).getAll('project');
+  if (values.length === 0 || (values.length === 1 && values[0] === '')) {
+    return { status: 'missing' };
+  }
+  const [value] = values;
+  if (values.length > 1 || value === undefined || !PROJECT_ID.test(value)) {
+    return { status: 'invalid' };
+  }
+  return { status: 'ok', projectId: value };
+}
 
-  const onScopeChange = useCallback(
-    (next: MonitorScope) => {
-      setNotice(false);
-      void setQuery({
-        project: next === 'all' ? null : next,
-        taskProject: null,
-        task: null,
-        tab: null,
-      });
-    },
-    [setQuery],
-  );
-
-  return { scope, notice, onScopeChange };
+/** The route of this page. The address is read once: the monitor never navigates to another project. */
+export function useMonitorUrl(): MonitorRoute {
+  const [route] = useState(() => parseMonitorRoute(window.location.search));
+  return route;
 }

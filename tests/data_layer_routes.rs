@@ -89,7 +89,7 @@ fn data_layer_routes_monitor_answers_with_a_session_only() {
 
     // Without a session the entrance answers as it does for the existing routes.
     let refused = server
-        .request("GET", &format!("{base}/board"), &[], "")
+        .request("GET", &format!("{base}/tasks/1/attachments/none"), &[], "")
         .status;
     assert_ne!(refused, 200);
     for path in &paths {
@@ -99,5 +99,6 @@ fn data_layer_routes_monitor_answers_with_a_session_only() {
     // The monitor stays read-only: a write to a new route is refused as before.
     let write = server.write(&session, "POST", &paths[0], "{}");
     assert_eq!(write.status, 405, "{}", write.body);
-    assert_eq!(server.get(&session, &format!("{base}/board")).status, 200);
+    // The whole-board read is gone for good, with a session or without.
+    assert_eq!(server.get(&session, &format!("{base}/board")).status, 404);
 }

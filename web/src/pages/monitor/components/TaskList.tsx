@@ -11,7 +11,6 @@ export const TaskList = forwardRef<
   HTMLDivElement,
   Pick<Sections, 'todo' | 'doing' | 'done'> & {
     id: string;
-    scopeName: string;
     freshness: MonitorFreshness;
     onOpenDetail?: MonitorViewProps['onOpenDetail'];
     answerController?: MonitorViewProps['answerController'];

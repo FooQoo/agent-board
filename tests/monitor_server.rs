@@ -8,31 +8,35 @@ fn monitor_api_is_read_only_allowlisted_and_uses_the_shared_snapshot() {
     let home = home();
     let server = Running::start(home.path());
     let session = server.session();
-    let projects = server.get(&session, "/monitor/api/projects");
-    assert_eq!(projects.status, 200, "{}", projects.body);
-    assert_eq!(projects.header("cache-control"), Some("no-store"));
-    assert_eq!(projects.header("x-content-type-options"), Some("nosniff"));
-    assert_eq!(projects.header("referrer-policy"), Some("no-referrer"));
     let base = server.monitor_base(home.path());
-    let board = server.get(&session, &format!("{base}/board"));
-    assert_eq!(board.status, 200, "{}", board.body);
-    assert!(board.body.contains("Sample"));
-    let epics = server.get(&session, &format!("{base}/epics"));
-    assert_eq!(epics.status, 200, "{}", epics.body);
-    assert_eq!(epics.header("cache-control"), Some("no-store"));
-    let board_json: serde_json::Value = serde_json::from_str(&board.body).unwrap();
-    let epics_json: serde_json::Value = serde_json::from_str(&epics.body).unwrap();
-    assert_eq!(epics_json["epics"], board_json["epics"]);
+    let summary = server.get(&session, &format!("{base}/summary"));
+    assert_eq!(summary.status, 200, "{}", summary.body);
+    assert_eq!(summary.header("cache-control"), Some("no-store"));
+    assert_eq!(summary.header("x-content-type-options"), Some("nosniff"));
+    assert_eq!(summary.header("referrer-policy"), Some("no-referrer"));
+    assert!(summary.body.contains("Sample"));
+
+    // The old whole-board reads are gone: a read finds no route, and a write is refused first.
+    for path in [
+        "/monitor/api/projects".to_string(),
+        format!("{base}/board"),
+        format!("{base}/epics"),
+        format!("{base}/epics/ALPHA"),
+    ] {
+        assert_eq!(server.get(&session, &path).status, 404, "GET {path}");
+        assert_eq!(
+            server.write(&session, "POST", &path, "{}").status,
+            405,
+            "POST {path}"
+        );
+    }
+    // The events stream follows one project: without `?project=` it is an error, not every project.
+    let all = server.get(&session, "/monitor/api/events");
+    assert_eq!(all.status, 422, "{}", all.body);
 
     for method in ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"] {
-        let result = server.write(&session, method, &format!("{base}/board"), "{}");
+        let result = server.write(&session, method, &format!("{base}/summary"), "{}");
         assert_eq!(result.status, 405, "{method}: {}", result.body);
-        assert_eq!(
-            server
-                .write(&session, method, &format!("{base}/epics"), "{}")
-                .status,
-            405
-        );
         let unknown = server.write(&session, method, "/monitor/api/unknown", "");
         assert_eq!(unknown.status, 405, "{method}: {}", unknown.body);
     }

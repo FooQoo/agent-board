@@ -24,6 +24,22 @@
       "owner": "U4"
     },
     {
+      "file": "pages/monitor/MonitorProject.tsx",
+      "exports": [
+        {
+          "name": "MonitorProject",
+          "stories": [
+            {
+              "id": "pages-monitor--connected-project",
+              "states": ["list drawn from the Summary", "manual refresh"],
+              "interaction": true
+            }
+          ]
+        }
+      ],
+      "owner": "U7"
+    },
+    {
       "file": "pages/monitor/App.tsx",
       "exports": [
         {
