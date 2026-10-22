@@ -119,10 +119,13 @@ export function useGuide({
     },
   });
 
+  // The lease is renewed only while a guide screen is up. The notice comes after the run has
+  // ended, when the server no longer accepts a renewal. A renewal only records the guide's state:
+  // it must not clear an error from the user's own request, which only a command or Retry clears.
   useGuideLease({
-    active: screen.kind !== 'hidden',
+    active: screen.kind === 'welcome' || screen.kind === 'step' || screen.kind === 'complete',
     clientId,
-    apply,
+    onRenewed: setState,
     onLost: () => setScreen({ kind: 'hidden' }),
   });
 

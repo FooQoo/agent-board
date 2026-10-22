@@ -4,6 +4,7 @@ import type { ProjectId, Task } from '../../shared/api/contracts';
 import { i18n } from '../../shared/i18n';
 import '../../shared/i18n/onboarding-strings';
 import { GuideError, type GuideRunState, type GuideState } from './api';
+import { HEARTBEAT_MS, NOTICE_MS } from './guideTiming';
 
 const api = vi.hoisted(() => ({
   readGuide: vi.fn(),
@@ -308,6 +309,71 @@ describe('useGuide', () => {
         new GuideError(409, 'stale_revision', 'The guide changed in another tab.'),
       );
       expect(error).toBe('The guide changed in another tab.');
+    });
+  });
+
+  describe('the lease heartbeat', () => {
+    async function advance(ms: number) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(ms);
+      });
+    }
+
+    async function welcome() {
+      vi.useFakeTimers();
+      api.readGuide.mockResolvedValue(
+        guide({ status: 'offered', revision: 1, owner: OWNER, run: questionRun() }),
+      );
+      const hook = renderHook(() =>
+        useGuide({ projectId: PROJECT, eligible: true, tasks: [], clientId: 'tab' }),
+      );
+      await vi.waitFor(() => expect(hook.result.current.screen.kind).toBe('welcome'));
+      return hook;
+    }
+
+    it('keeps the error of a failed request on screen when a heartbeat succeeds', async () => {
+      api.startGuide.mockRejectedValue(
+        new GuideError(500, 'request_failed', 'Request failed (500)'),
+      );
+      api.heartbeatGuide.mockResolvedValue(
+        guide({ status: 'offered', revision: 2, owner: OWNER, run: questionRun() }),
+      );
+      const { result } = await welcome();
+      await act(async () => result.current.start());
+      expect(result.current.error).toBe(i18n.t('onboarding.guide.networkError'));
+      await advance(HEARTBEAT_MS);
+      expect(api.heartbeatGuide).toHaveBeenCalledTimes(1);
+      // The renewal recorded the server's state, but the error is still there to be retried.
+      expect(result.current.state?.revision).toBe(2);
+      expect(result.current.error).toBe(i18n.t('onboarding.guide.networkError'));
+    });
+
+    it('does not renew the lease while the archive notice is shown', async () => {
+      api.heartbeatGuide.mockResolvedValue(guide({ status: 'offered', revision: 1, owner: OWNER }));
+      api.finishGuide.mockResolvedValue(guide({ status: 'completed', revision: 5 }));
+      const { result } = await welcome();
+      // Finish one second before a renewal is due, so the old timer would fire inside the notice.
+      await advance(HEARTBEAT_MS - 1000);
+      await act(async () => result.current.finish());
+      expect(result.current.screen.kind).toBe('notice');
+      await advance(NOTICE_MS - 1);
+      expect(result.current.screen.kind).toBe('notice');
+      expect(api.heartbeatGuide).not.toHaveBeenCalled();
+      await advance(1);
+      expect(result.current.screen.kind).toBe('hidden');
+    });
+
+    it('hides the guide without logging an error when the server refuses a renewal', async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      api.heartbeatGuide.mockRejectedValue(
+        new GuideError(409, 'not_owner', 'This tab no longer holds the guide.'),
+      );
+      const { result } = await welcome();
+      await advance(HEARTBEAT_MS);
+      expect(api.heartbeatGuide).toHaveBeenCalledTimes(1);
+      expect(result.current.screen.kind).toBe('hidden');
+      expect(logged).not.toHaveBeenCalled();
+      logged.mockRestore();
     });
   });
 

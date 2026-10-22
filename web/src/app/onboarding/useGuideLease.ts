@@ -7,12 +7,13 @@ import { HEARTBEAT_MS } from './guideTiming';
 export function useGuideLease({
   active,
   clientId,
-  apply,
+  onRenewed,
   onLost,
 }: {
   active: boolean;
   clientId: string;
-  apply: (state: GuideState) => void;
+  /** Called with the guide as the server holds it after a renewal; it only records that state. */
+  onRenewed: (state: GuideState) => void;
   /** Called when the lease cannot be renewed; the guide then leaves the screen. */
   onLost: () => void;
 }): void {
@@ -22,9 +23,9 @@ export function useGuideLease({
     if (!active) return undefined;
     const timer = window.setInterval(() => {
       void heartbeatGuide(clientId)
-        .then(apply)
+        .then(onRenewed)
         .catch(() => lost.current());
     }, HEARTBEAT_MS);
     return () => window.clearInterval(timer);
-  }, [active, clientId, apply]);
+  }, [active, clientId, onRenewed]);
 }
