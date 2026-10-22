@@ -1,22 +1,13 @@
-import { type CSSProperties, type PointerEvent, type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { XIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog as DialogPrimitive } from 'radix-ui';
-
-/** A drag past this share of the sheet's height, or a quick flick, dismisses it. */
-const DISMISS_SHARE = 0.25;
-const FLICK_PX_PER_MS = 0.5;
-const FLICK_MIN_PX = 24;
-
-interface Drag {
-  pointerId: number;
-  startY: number;
-  startTime: number;
-}
+import { useDrawerDrag } from './use-drawer-drag';
 
 /**
  * A bottom sheet on the shared Radix Dialog: modal, closed by Escape, the backdrop or the close
- * button. Dragging the top handle down moves the sheet and dismisses it past a threshold.
+ * button. Dragging the top handle down moves the sheet and dismisses it past a threshold; the drag is
+ * painted outside React (see `useDrawerDrag`).
  */
 export function Drawer({
   open,
@@ -35,10 +26,8 @@ export function Drawer({
 }) {
   const { t } = useTranslation();
   const popup = useRef<HTMLDivElement>(null);
-  const drag = useRef<Drag | null>(null);
-  // How far the sheet is pulled down. It stays set while a dismissed sheet slides out.
-  const [offset, setOffset] = useState(0);
-  const [swiping, setSwiping] = useState(false);
+  const overlay = useRef<HTMLDivElement>(null);
+  const handle = useDrawerDrag({ open, onOpenChange, popup, overlay });
   // Focus goes back where it was when the sheet opened; the sheet has no trigger of its own.
   const returnFocus = useRef<HTMLElement | null>(null);
   const wasOpen = useRef(false);
@@ -48,64 +37,19 @@ export function Drawer({
   }
   wasOpen.current = open;
 
-  const height = () => popup.current?.offsetHeight || window.innerHeight;
-  const startDrag = (event: PointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) return;
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // A pointer that is no longer active cannot be captured; the drag still follows it.
-    }
-    drag.current = {
-      pointerId: event.pointerId,
-      startY: event.clientY,
-      startTime: event.timeStamp,
-    };
-    setOffset(0);
-  };
-  const moveDrag = (event: PointerEvent<HTMLButtonElement>) => {
-    const current = drag.current;
-    if (!current || current.pointerId !== event.pointerId) return;
-    setSwiping(true);
-    setOffset(Math.max(0, event.clientY - current.startY));
-  };
-  const endDrag = (event: PointerEvent<HTMLButtonElement>, cancelled: boolean) => {
-    const current = drag.current;
-    if (!current || current.pointerId !== event.pointerId) return;
-    drag.current = null;
-    setSwiping(false);
-    const distance = Math.max(0, event.clientY - current.startY);
-    const speed = distance / Math.max(1, event.timeStamp - current.startTime);
-    const dismiss =
-      !cancelled &&
-      (distance > height() * DISMISS_SHARE || (speed > FLICK_PX_PER_MS && distance > FLICK_MIN_PX));
-    if (dismiss) onOpenChange(false);
-    else setOffset(0);
-  };
-
-  const progress = Math.min(1, offset / height());
   return (
-    <DialogPrimitive.Root
-      open={open}
-      onOpenChange={(next) => {
-        if (next) setOffset(0);
-        onOpenChange(next);
-      }}
-    >
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
+          ref={overlay}
           className="mobile-drawer__overlay"
           data-slot="drawer-backdrop"
-          data-swiping={swiping ? '' : undefined}
-          style={{ '--drawer-swipe-progress': progress } as CSSProperties}
         />
         <DialogPrimitive.Content
           ref={popup}
           className="mobile-drawer"
           data-slot="drawer-popup"
           data-swipe-direction="down"
-          data-swiping={swiping ? '' : undefined}
-          style={offset > 0 ? { translate: `0 ${offset}px` } : undefined}
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
@@ -118,10 +62,7 @@ export function Drawer({
               type="button"
               className="mobile-drawer__handle"
               aria-label={t('monitor.drawer.dismiss')}
-              onPointerDown={startDrag}
-              onPointerMove={moveDrag}
-              onPointerUp={(event) => endDrag(event, false)}
-              onPointerCancel={(event) => endDrag(event, true)}
+              {...handle}
               onKeyDown={(event) => {
                 if (event.key === 'ArrowDown') {
                   event.preventDefault();

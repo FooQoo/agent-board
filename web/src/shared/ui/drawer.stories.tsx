@@ -138,3 +138,47 @@ export const LongBody: Story = {
     ).toBeInTheDocument();
   },
 };
+
+function pointer(type: string, clientY: number) {
+  return new PointerEvent(type, {
+    pointerId: 1,
+    isPrimary: true,
+    button: 0,
+    bubbles: true,
+    clientY,
+  });
+}
+
+/** A drag past the threshold dismisses the sheet, and opening it again shows it at rest. */
+export const DragDownDismissesAndReopensAtRest: Story = {
+  play: async ({ args, canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('button', { name: 'Open details' });
+    await userEvent.click(trigger);
+    const handle = within(document.body).getByRole('button', {
+      name: 'Swipe down to close details',
+    });
+    const sheet = within(document.body).getByRole('dialog', { name: DRAWER_TITLE });
+    await waitFor(() => expect(sheet.getAnimations()).toHaveLength(0));
+    const rest = sheet.getBoundingClientRect().top;
+
+    handle.dispatchEvent(pointer('pointerdown', 100));
+    handle.dispatchEvent(pointer('pointermove', 160));
+    await waitFor(() => expect(sheet.getBoundingClientRect().top).toBeCloseTo(rest + 60, 0));
+    // A short drag that is also slow: the flick rule must not take it for a dismissal.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    handle.dispatchEvent(pointer('pointerup', 160));
+    await expect(args.onOpenChange).not.toHaveBeenCalled();
+    await waitFor(() => expect(sheet.getBoundingClientRect().top).toBeCloseTo(rest, 0));
+
+    handle.dispatchEvent(pointer('pointerdown', 100));
+    handle.dispatchEvent(pointer('pointermove', 100 + sheet.offsetHeight));
+    handle.dispatchEvent(pointer('pointerup', 100 + sheet.offsetHeight));
+    await expect(args.onOpenChange).toHaveBeenLastCalledWith(false);
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+
+    await userEvent.click(trigger);
+    const reopened = within(document.body).getByRole('dialog', { name: DRAWER_TITLE });
+    await waitFor(() => expect(reopened.getAnimations()).toHaveLength(0));
+    await expect(reopened.getBoundingClientRect().top).toBeCloseTo(rest, 0);
+  },
+};
