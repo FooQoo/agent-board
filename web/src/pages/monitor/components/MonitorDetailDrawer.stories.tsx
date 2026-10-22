@@ -45,7 +45,7 @@ const heavyBody = (parts: string) =>
   [
     ...Array.from({ length: 40 }, (_, index) => [
       `## Section ${index + 1}`,
-      'A paragraph with **bold**, `code`, and a [link](https://example.com) that wraps over several lines of a narrow phone screen.',
+      'A paragraph with **bold**, `code`, and a [link](#section-1) that wraps over several lines of a narrow phone screen.',
       parts.includes('table') ? '| Column | Value |\n| --- | --- |\n| one | 1 |\n| two | 2 |' : 'x',
       index % 10 === 0 && parts.includes('mermaid')
         ? DIAGRAM

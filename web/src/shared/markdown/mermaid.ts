@@ -90,6 +90,9 @@ async function draw(source: string, theme: MermaidTheme): Promise<Drawing> {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'strict',
+      // Labels are SVG text, not HTML inside `foreignObject`: a closed drawer kept every diagram
+      // that had HTML labels, and the whole document around it, alive.
+      htmlLabels: false,
       theme: 'base',
       themeVariables: { ...theme.variables },
     });
