@@ -44,6 +44,11 @@
               "interaction": true
             },
             {
+              "id": "editor-richmarkdowneditor--docs-relative-images",
+              "states": ["relative image resolved", "relative image missing", "original text kept"],
+              "interaction": true
+            },
+            {
               "id": "editor-richmarkdowneditor--code-languages",
               "states": [
                 "known languages highlighted",

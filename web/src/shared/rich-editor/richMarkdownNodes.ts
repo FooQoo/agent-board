@@ -6,11 +6,18 @@ import type { Node as ProseNode } from '@milkdown/kit/prose/model';
 import { Plugin } from '@milkdown/kit/prose/state';
 import type { EditorView, NodeView, NodeViewConstructor } from '@milkdown/kit/prose/view';
 import { $prose } from '@milkdown/kit/utils';
-import { imageUrlOf, safeLinkUrl, type AttachmentResolver } from '../markdown/model';
+import {
+  imageUrlOf,
+  safeLinkUrl,
+  type AttachmentResolver,
+  type RelativeImageResolver,
+} from '../markdown/model';
 
 /** What the image view reads when it draws: the latest resolver and the label of the placeholder. */
 export interface RichImageOptions {
   resolve: () => AttachmentResolver | undefined;
+  /** Turns a file-relative source into an image URL; absent for a body that has no files. */
+  resolveRelative?: () => RelativeImageResolver | undefined;
   noImageLabel: () => string;
 }
 
@@ -55,7 +62,7 @@ class RichImageView implements NodeView {
   private render(): void {
     const src = String(this.node.attrs.src ?? '');
     const alt = String(this.node.attrs.alt ?? '');
-    const url = imageUrlOf(src, this.options.resolve());
+    const url = imageUrlOf(src, this.options.resolve(), this.options.resolveRelative?.());
     this.dom.replaceChildren();
     if (url === null) {
       this.dom.append(this.placeholder(alt));
