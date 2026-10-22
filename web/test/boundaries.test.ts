@@ -85,6 +85,41 @@ describe('import scan', () => {
   });
 });
 
+describe('shared/data rules', () => {
+  const data = (text: string, extra: Record<string, string> = {}) =>
+    analyze({
+      'src/shared/data/core/a.ts': text,
+      'src/shared/rich-editor/editor.ts': 'export const e = 1;',
+      'src/shared/lib/x.ts': 'export const x = 1;',
+      'src/features/tasks/t.ts': 'export const t = 1;',
+      'src/app/m.ts': 'export const m = 1;',
+      'src/pages/p/p.ts': 'export const p = 1;',
+      ...extra,
+    });
+
+  it('allows the data layer to use lower shared code and packages', () => {
+    expect(data("import { x } from '../../lib/x';\nimport 'react';")).toEqual([]);
+  });
+
+  it('refuses pages, features, app, the rich editor and the heavy rendering libraries', () => {
+    for (const line of [
+      "import { t } from '../../../features/tasks/t';",
+      "import { m } from '../../../app/m';",
+      "import { p } from '../../../pages/p/p';",
+      "import { e } from '../../rich-editor/editor';",
+      "import mermaid from 'mermaid';",
+      "import('mermaid/dist/mermaid.core');",
+      "import Markdown from 'react-markdown';",
+    ]) {
+      expect(data(line), line).toHaveLength(1);
+    }
+  });
+
+  it('does not apply to code outside shared/data', () => {
+    expect(analyze({ 'src/shared/lib/y.ts': "import mermaid from 'mermaid';" })).toEqual([]);
+  });
+});
+
 describe('web/src', () => {
   it('has no layer violation and no import cycle', () => {
     expect(analyze(sourcesOf('src', sourcesOf('.storybook')))).toEqual([]);

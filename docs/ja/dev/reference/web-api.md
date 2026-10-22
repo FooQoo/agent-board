@@ -27,13 +27,71 @@
 | `POST …/tasks/{id}/archive`、`POST …/tasks/{id}/restore` | 本文なし。すでにその状態のタスクに繰り返すと、変更せず同じタスクを返す。 |
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
 | `GET /api/projects/{projectId}/archive` | 本文・全履歴・添付のメタデータを持つアーカイブ済みのタスクと、同じスナップショットの`epics`。各タスクの`epicId`は同じ応答の`epics`で解決する。エピックがないタスク、または存在しないエピックのタスクにはラベルを付けない。 |
+| `GET /api/projects/{projectId}/summary` | ボードの一覧に使うデータ。プロジェクト、`version`、タスク、エピック、problemsを返し、本文は含めない。[SummaryとDetail](#summaryとdetail)を参照。 |
+| `GET /api/projects/{projectId}/tasks/{id}/detail` | 1件のタスクの本文・受入条件・履歴をNDJSONのストリームで返す。アーカイブ済みのタスクも同じ方法で読む。 |
+| `GET /api/projects/{projectId}/epics/{epicId}/detail` | 1件のエピックのドキュメントをNDJSONのストリームで返す。 |
 | `GET /assets/{name}` | `build.rs`が生成した表にある、内容から名前を付けたスクリプトとスタイルシートだけ。ほかは404。immutableでキャッシュする。`Accept-Encoding`が許せばgzipで送り、`Vary: Accept-Encoding`を付ける。 |
-| `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、versionの変化で`changed`、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
+| `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、変更されたリソースを運ぶ`changed`（[変更イベント](#変更イベント)を参照）、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
 | `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
 | `PUT /api/preferences` | JSONの本文で`locale`・`theme`・両方のいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。未知の項目と不正な値は422 `invalid_preferences`、書き込みの失敗は500 `preferences_unavailable`。拒否・失敗のときは保存済みの値を変えない。 |
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
 | `GET /api/monitor-connections`とその配下の経路 | ngrokのモバイル接続。[モバイル接続](#モバイル接続)を参照。 |
+
+### SummaryとDetail
+
+ボードとモニターは、プロジェクトを2段階で読みます。Summaryは、カードや一覧の行に表示する内容をまとめて返します。Detailは、カードやエピックを開いたときにだけ必要な内容をストリームで返します。モバイルモニターには同じ契約を`/monitor/api/projects/{projectId}/…`で提供し、モニターのセッションを必要とします。[モニターの経路](./remote-routes.md)を参照してください。パスのプロジェクトIDは読む対象の指定であり、アクセス権ではありません。
+
+ハンドラーが書かれるまで、SummaryとDetailの経路は501 `not_implemented`を返します。以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
+
+**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。
+
+| 項目 | フィールド |
+| --- | --- |
+| タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`isDraft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（案内のサンプルのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
+| エピック | `id`（文字列）、`name`、`color`、`isDraft`、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
+| Problem | `file`・`field`・`reason`。ボードと同じ。 |
+
+versionはすべて不透明な文字列で、解析済みデータの内容ハッシュです。サーバーの起動回に依存しないため、再起動後も保存済みの値と比べられます。versionは等しいかどうかだけを比べてください。
+
+**Detail。** `GET …/tasks/{id}/detail`と`GET …/epics/{epicId}/detail`は、`Content-Type: application/x-ndjson`と`Cache-Control: no-store`つきの`200`を返します。各行は1つのJSONオブジェクトで、`type`がイベントを表します。
+
+| `type` | フィールド | 意味 |
+| --- | --- | --- |
+| `start` | `resource`（`task`または`epic`）、`id`、`projectId`、`sections`、`versions` | 最初の行。`versions`は要求したセクションだけを持つ。 |
+| `section-start` | `section`（`document`または`history`） | セクションを開く。 |
+| `block` | `kind`（`markdown`または`mermaid`）、`text`、任意の`images` | ドキュメントの最上位のMarkdownブロック。ブロックを連結すると本文になる。各画像は`src`（`text`中のURL）を持ち、ファイルのヘッダーを読めたときは`width`と`height`も持つ。 |
+| `acceptance` | `id`、`text`、`done` | 受入条件1件の全文。タスクのみ。ブロックの後に続く。 |
+| `history-item` | `at`、`reason` | 履歴1件。古い順。タスクのみ。 |
+| `section-end` | `section`、`count` | セクションを閉じる。`count`はそのセクションの項目行の数。 |
+| `complete` | `versions` | 最後の行。`start`と同じ`versions`を繰り返す。どちらも1つのスナップショットから計算する。 |
+
+順序は、`start`、要求した各セクションの`section-start`・項目・`section-end`、最後に`complete`です。`document`は`history`より前に置きます。タスクの`document`セクションは、ブロックの後に受入条件が続きます。エピックには`document`セクションしかありません。`complete`なしで終わったストリームは不完全であり、クライアントは受け取った内容を破棄します。
+
+`?sections=document`、`?sections=history`、`?sections=document,history`でセクションを選びます。指定しなければ両方を送ります。エピックに`history`はありません。ほかの値は400 `invalid_sections`です。プロジェクト、タスク、エピックがなければ、ストリームの開始前に404を返します。最初の行の後で失敗したときは`complete`を送らず、接続を閉じます。
+
+#### 変更イベント
+
+`changed`は、変更されたリソースを運びます。
+
+```json
+{"instanceId": "inst-5f3a", "seq": 42, "projectId": "…", "changes": [
+  {"resource": "task", "id": 302, "facets": ["summary", "history"]},
+  {"resource": "epic", "id": "EPIC-1", "facets": ["document"]},
+  {"resource": "project", "id": "…", "facets": ["deleted"]}
+]}
+```
+
+| フィールド | 意味 |
+| --- | --- |
+| `instanceId` | サーバーの起動ごとに1つの値。新しい値は、`seq`が最初からになったことをクライアントに伝える。 |
+| `seq` | 1つのインスタンス内で、`changed`ごとに1ずつ増える整数。欠番はイベントを取り逃したことを表す。 |
+| `projectId` | 変更が属するプロジェクト。モニターのストリームは、要求したプロジェクトの変更だけを送る。PCのストリームは全プロジェクトを送り、画面は現在のプロジェクト以外を無視する。 |
+| `changes[].resource` | `task`、`epic`、`project`（プロジェクト一覧の変化: 作成・名前の変更・削除）。 |
+| `changes[].id` | タスクは整数、エピックとプロジェクトは文字列。 |
+| `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・Pendingの質問・受入条件の件数。`document`は本文と受入条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
+
+`seq`の欠番、新しい`instanceId`、未知のイベントを見たクライアントは、Summaryと関係するキャッシュ済みのDetailを破棄します。`ready`と`preferences`は変わりません。
 
 ### モバイル接続
 
@@ -99,13 +157,14 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 | ステータス | 意味 |
 | --- | --- |
-| 400 | 壊れたJSON。 |
+| 400 | 壊れたJSON、または不正な`sections`クエリ（`invalid_sections`）。 |
 | 403 | 保護に失敗した。 |
 | 404 | プロジェクト・タスク・エピックがない。 |
 | 409 | `request_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
 | 413 | 1 MiBを超える本文。 |
 | 422 | ID構文・入力・状態の規則の違反。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
 | 503 | ロック待ちが時間切れになった。 |
+| 501 | ハンドラーがまだ書かれていない経路（`not_implemented`）。 |
 | 500 | それ以外（`format_unsupported`・`file_unreadable`・`file_error`を含む）。 |
 
 ## 初回の案内

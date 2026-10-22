@@ -41,6 +41,21 @@ export function violation(from, to) {
   return null;
 }
 
+// `shared/data` is loaded at start-up, so it stays free of the heavy rendering libraries and of the
+// rich editor; they load only when a screen needs them.
+const DATA_FOLDER = 'src/shared/data/';
+const HEAVY_FOR_DATA = ['src/shared/rich-editor/'];
+const HEAVY_PACKAGES = ['mermaid', 'react-markdown'];
+
+/** The rule a file under `shared/data` breaks by importing `spec` (a package) or `target` (a file). */
+export function dataViolation(from, spec, target) {
+  if (!from.startsWith(DATA_FOLDER)) return null;
+  if (target && HEAVY_FOR_DATA.some((folder) => target.startsWith(folder)))
+    return 'shared/data must not import the rich editor';
+  const heavy = HEAVY_PACKAGES.find((name) => spec === name || spec.startsWith(`${name}/`));
+  return heavy ? `shared/data must not import ${heavy}` : null;
+}
+
 /** Files that `source` imports, as paths under `src/` that exist in `files`. */
 export function importsOf(source, text, files) {
   const found = [];
@@ -100,6 +115,10 @@ export function analyze(sources) {
     if (!/\.(ts|tsx)$/.test(path) || path.startsWith(SUPPORT)) continue;
     const targets = importsOf(path, text, files);
     graph.set(path, []);
+    for (const [, , spec] of stripComments(text).matchAll(SPECIFIER)) {
+      const broken = dataViolation(path, spec, null);
+      if (broken) problems.push(`${path}: imports ${spec}: ${broken}`);
+    }
     for (const target of targets) {
       if (target.endsWith('(missing)')) {
         problems.push(`${path}: cannot resolve ${target}`);
@@ -114,7 +133,7 @@ export function analyze(sources) {
         continue;
       }
       if (/\.(ts|tsx)$/.test(target)) graph.get(path).push(target);
-      const broken = violation(path, target);
+      const broken = violation(path, target) ?? dataViolation(path, '', target);
       if (broken) problems.push(`${path}: imports ${target}: ${broken}`);
     }
   }

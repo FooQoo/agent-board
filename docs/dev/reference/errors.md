@@ -66,6 +66,8 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | 1 | n/a |
 | `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, or a Pending request reached its integer `wait.timeoutSeconds`. It is not an answer; the question stays Pending. | 1 | n/a |
 | `forbidden` | A web write failed the guard (Host, Origin, `Sec-Fetch-Site`, or token). | n/a | 403 |
+| `invalid_sections` | The `sections` query of a Detail route is not `document`, `history`, or `document,history`. See [Web API](./web-api.md#summary-and-detail). | n/a | 400 |
+| `not_implemented` | The Summary or Detail route exists but its handler is not written yet. | n/a | 501 |
 
 ## Mobile connection
 

@@ -66,6 +66,26 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
     error_response(status, error.code(), error.message(), error.reason())
 }
 
+/// A route that is registered but whose handler is not written yet.
+pub(crate) fn not_implemented(what: &str) -> Response {
+    error_response(
+        StatusCode::NOT_IMPLEMENTED,
+        super::contracts::NOT_IMPLEMENTED,
+        "not implemented.",
+        format!("{what} is not available yet."),
+    )
+}
+
+/// A `sections` query that is not `document`, `history` or `document,history`.
+pub(crate) fn invalid_sections() -> Response {
+    error_response(
+        StatusCode::BAD_REQUEST,
+        super::contracts::INVALID_SECTIONS,
+        "sections is invalid.",
+        "sections must be document, history or document,history.",
+    )
+}
+
 pub(crate) fn forbidden(reason: &str) -> Response {
     error_response(
         StatusCode::FORBIDDEN,
