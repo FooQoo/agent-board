@@ -14,10 +14,11 @@ function digest(value: unknown): string {
   return hash.toString(16).padStart(8, '0');
 }
 
-const documentVersion = (task: Pick<Task, 'body' | 'acceptance'>) =>
-  digest({ body: task.body, acceptance: task.acceptance });
+const documentVersion = (task: Pick<Task, 'body' | 'acceptance' | 'attachments'>) =>
+  digest({ body: task.body, acceptance: task.acceptance, attachments: task.attachments });
 const historyVersion = (task: Pick<Task, 'history'>) => digest(task.history);
-const epicVersion = (epic: Pick<Epic, 'body'>) => digest(epic.body);
+const epicVersion = (epic: Pick<Epic, 'body' | 'attachments'>) =>
+  digest({ body: epic.body, attachments: epic.attachments });
 
 export function summaryOfBoard(board: Board): Summary {
   const summary: Summary = {
@@ -37,6 +38,8 @@ export function summaryOfBoard(board: Board): Summary {
           done: task.acceptance.filter((item) => item.done).length,
           total: task.acceptance.length,
         },
+        acceptanceError: task.acceptanceError,
+        createdAt: task.createdAt,
         updatedAt: task.updatedAt,
         pendingRequestId: task.pendingRequestId,
         pendingReason: task.pendingReason,
@@ -53,6 +56,8 @@ export function summaryOfBoard(board: Board): Summary {
       name: epic.name,
       color: epic.color,
       isDraft: epic.isDraft,
+      priority: epic.priority,
+      priorityError: epic.priorityError,
       progress: board.epicTaskCounts[epic.id] ?? {
         todo: 0,
         doing: 0,
@@ -93,6 +98,7 @@ export function taskDetailEvents(
   ];
   if (sections.includes('document')) {
     events.push({ type: 'section-start', section: 'document' });
+    events.push({ type: 'attachments', items: task.attachments });
     if (task.body !== '') events.push({ type: 'block', kind: 'markdown', text: task.body });
     for (const item of task.acceptance) events.push({ type: 'acceptance', ...item });
     events.push({
@@ -117,6 +123,7 @@ export function epicDetailEvents(projectId: string, epic: Epic): DetailEvent[] {
   return [
     { type: 'start', resource: 'epic', id: epic.id, projectId, sections: ['document'], versions },
     { type: 'section-start', section: 'document' },
+    { type: 'attachments', items: epic.attachments },
     ...blocks,
     { type: 'section-end', section: 'document', count: blocks.length },
     { type: 'complete', versions },

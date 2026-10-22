@@ -4,6 +4,7 @@ import type { ProjectId } from '../../api/contracts';
 import type {
   BlockKind,
   ChangedEvent,
+  DetailAttachment,
   DetailEvent,
   DetailImage,
   DetailSection,
@@ -74,6 +75,8 @@ export interface DetailHistoryItem {
 export interface DocumentData {
   blocks: DetailBlock[];
   acceptance: DetailAcceptance[];
+  /** The attachment list the stream sent; absent when it sent none. */
+  attachments?: DetailAttachment[];
 }
 
 /** The `history` section. */

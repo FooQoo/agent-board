@@ -35,6 +35,45 @@ describe('summary', () => {
     expect(summary.epics[0]?.detailVersions.document).toBeTruthy();
   });
 
+  it('keeps the condition read error, the creation time and the epic order', () => {
+    const summary = parseSummary(JSON.parse(read('summary.json')));
+    expect(summary.tasks.map((t) => [t.acceptanceError, t.createdAt])).toEqual([
+      [false, '2026-10-22T09:45:32Z'],
+      [true, '2026-10-22T09:58:00Z'],
+    ]);
+    expect(summary.epics[0]?.priority).toEqual([303, 302]);
+    expect(summary.epics[0]?.priorityError).toBe(false);
+  });
+
+  it('refuses a task or epic without the new fields, or with a wrong type', () => {
+    const base = JSON.parse(read('summary.json'));
+    const without = (pick: (s: any) => any, key: string) => {
+      const copy = structuredClone(base);
+      delete pick(copy)[key];
+      return copy;
+    };
+    for (const [pick, key] of [
+      [(s: any) => s.tasks[0], 'acceptanceError'],
+      [(s: any) => s.tasks[0], 'createdAt'],
+      [(s: any) => s.epics[0], 'priority'],
+      [(s: any) => s.epics[0], 'priorityError'],
+    ] as const) {
+      expect(() => parseSummary(without(pick, key)), key).toThrow(ContractError);
+    }
+    for (const change of [
+      (s: any) => (s.tasks[0].acceptanceError = 'yes'),
+      (s: any) => (s.tasks[0].createdAt = 5),
+      (s: any) => (s.epics[0].priority = [1.5]),
+      (s: any) => (s.epics[0].priority = [0]),
+      (s: any) => (s.epics[0].priority = '303'),
+      (s: any) => (s.epics[0].priorityError = 1),
+    ]) {
+      const copy = structuredClone(base);
+      change(copy);
+      expect(() => parseSummary(copy)).toThrow(ContractError);
+    }
+  });
+
   it('refuses every invalid example', () => {
     const names = invalid('summary-');
     expect(names.length).toBeGreaterThan(0);
@@ -59,6 +98,50 @@ describe('detail stream', () => {
     const images = events.flatMap((e) => (e.type === 'block' ? (e.images ?? []) : []));
     expect(images[0]).toEqual({ src: expect.any(String), width: 640, height: 360 });
     expect(images[1]?.width).toBeUndefined();
+  });
+
+  it('reads the attachments of a document once, right after section-start', () => {
+    const task = readDetailStream(read('task-detail.ndjson'));
+    const listed = task.filter((e) => e.type === 'attachments');
+    expect(listed).toHaveLength(1);
+    expect(task[2]).toEqual(listed[0]);
+    expect(listed[0]).toMatchObject({
+      items: [
+        { id: 'a1', name: 'diagram.png', mediaType: 'image/png', size: 1024 },
+        { id: 'a2', name: 'notes.webp', mediaType: 'image/webp', size: 2048 },
+      ],
+    });
+    const epic = readDetailStream(read('epic-detail.ndjson'));
+    expect(epic[2]).toEqual({ type: 'attachments', items: [] });
+  });
+
+  it('refuses attachments that come late, twice, in history, or with a wrong item', () => {
+    const reasons: Record<string, RegExp> = {
+      'detail-attachments-after-acceptance.ndjson': /before the first block/,
+      'detail-attachments-after-block.ndjson': /before the first block/,
+      'detail-attachments-fractional-size.ndjson': /attachments\.items\[0\]\.size/,
+      'detail-attachments-in-history.ndjson': /belongs in the history section/,
+      'detail-attachments-missing-name.ndjson': /attachments\.items\[0\]\.name/,
+      'detail-attachments-twice.ndjson': /one attachments event/,
+      'detail-attachments-unknown-field.ndjson':
+        /attachments\.items\[0\]\.url: expected no such field/,
+    };
+    expect(invalid('detail-attachments-')).toEqual(Object.keys(reasons));
+    for (const [name, reason] of Object.entries(reasons)) {
+      expect(() => readDetailStream(read('invalid', name)), name).toThrow(reason);
+    }
+  });
+
+  it('does not count the attachments as an item of the section', () => {
+    const lines = read('task-detail.ndjson').split('\n').filter(Boolean);
+    const withoutList = lines.filter((line) => !line.includes('"type":"attachments"'));
+    expect(() => readDetailStream(`${withoutList.join('\n')}\n`)).not.toThrow();
+    const miscount = lines.map((line) =>
+      line.includes('"section":"document","count":5')
+        ? line.replace('"count":5', '"count":6')
+        : line,
+    );
+    expect(() => readDetailStream(`${miscount.join('\n')}\n`)).toThrow(ContractError);
   });
 
   it('refuses every invalid example', () => {

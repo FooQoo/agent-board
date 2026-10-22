@@ -60,6 +60,18 @@ pub struct DetailImage {
     pub height: Option<u32>,
 }
 
+/// One attachment of a task or an epic, as its `task.json` / `epic.json` records it. The
+/// bytes are fetched from the attachment route.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DetailAttachment {
+    pub id: String,
+    pub name: String,
+    pub media_type: String,
+    pub size: i64,
+    pub created_at: String,
+}
+
 /// One line of a Detail stream; `type` names the event.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(
@@ -78,6 +90,12 @@ pub enum DetailEvent {
     },
     SectionStart {
         section: Section,
+    },
+    /// The attachments of the resource, once per `document` section: right after
+    /// `section-start`, before the first block. It is not an item: `section-end.count` does not
+    /// count it.
+    Attachments {
+        items: Vec<DetailAttachment>,
     },
     /// A top-level Markdown block of the document. Concatenating the blocks gives the body.
     Block {

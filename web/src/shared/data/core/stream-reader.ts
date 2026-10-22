@@ -121,6 +121,10 @@ export async function readDetail(
         case 'start':
           checkStart(event);
           break;
+        case 'attachments':
+          document.attachments = event.items.map((item) => ({ ...item }));
+          options.onPartial?.('document', copyDocument(document));
+          break;
         case 'block':
           document.blocks.push({
             kind: event.kind,
@@ -166,5 +170,9 @@ export async function readDetail(
 }
 
 function copyDocument(data: DocumentData): DocumentData {
-  return { blocks: [...data.blocks], acceptance: [...data.acceptance] };
+  return {
+    blocks: [...data.blocks],
+    acceptance: [...data.acceptance],
+    ...(data.attachments ? { attachments: [...data.attachments] } : {}),
+  };
 }

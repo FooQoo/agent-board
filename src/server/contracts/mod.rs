@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 
 pub use changes::{Change, ChangeId, ChangeResource, Changed, Facet};
 pub use detail::{
-    BlockKind, DetailEvent, DetailImage, DetailResource, ResourceId, Section, Versions,
+    BlockKind, DetailAttachment, DetailEvent, DetailImage, DetailResource, ResourceId, Section,
+    Versions,
 };
 pub use stream::{StreamError, StreamValidator};
 pub use summary::{

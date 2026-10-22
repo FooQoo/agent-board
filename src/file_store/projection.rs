@@ -34,6 +34,9 @@ pub struct TaskSummaryFields {
     pub epic_id: Option<String>,
     pub acceptance_done: u32,
     pub acceptance_total: u32,
+    /// The conditions cannot be read from the frontmatter.
+    pub acceptance_error: bool,
+    pub created_at: String,
     pub updated_at: String,
     pub pending_request_id: Option<String>,
     pub pending_reason: Option<String>,
@@ -65,6 +68,9 @@ pub struct EpicSummaryFields {
     pub name: String,
     pub color: String,
     pub is_draft: bool,
+    /// The epic's task order (EPIC.md `priority`) and whether it could not be read.
+    pub priority: Vec<i64>,
+    pub priority_error: bool,
 }
 
 /// How many of an epic's tasks are in each group.

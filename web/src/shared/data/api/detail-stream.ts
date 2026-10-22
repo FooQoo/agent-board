@@ -2,6 +2,7 @@
 // `parseDetailLine` and the result to a `DetailStreamValidator`; blocks are held aside until
 // `complete` has been accepted and `finish()` has passed.
 import type {
+  DetailAttachment,
   DetailEvent,
   DetailImage,
   DetailResource,
@@ -28,6 +29,17 @@ function image(value: unknown, path: string): DetailImage {
   if (o.width !== undefined) out.width = int(o.width, `${path}.width`, 1);
   if (o.height !== undefined) out.height = int(o.height, `${path}.height`, 1);
   return out;
+}
+
+function attachment(value: unknown, path: string): DetailAttachment {
+  const o = exact(value, path, ['id', 'name', 'mediaType', 'size', 'createdAt']);
+  return {
+    id: str(o.id, `${path}.id`),
+    name: str(o.name, `${path}.name`),
+    mediaType: str(o.mediaType, `${path}.mediaType`),
+    size: int(o.size, `${path}.size`),
+    createdAt: str(o.createdAt, `${path}.createdAt`),
+  };
 }
 
 /** One NDJSON line as an event, or a `ContractError` (bad JSON, unknown `type`, bad shape). */
@@ -62,6 +74,10 @@ export function parseDetailLine(line: string): DetailEvent {
     case 'section-start': {
       const o = exact(value, 'section-start', ['type', 'section']);
       return { type, section: oneOf(o.section, 'section-start.section', SECTIONS) };
+    }
+    case 'attachments': {
+      const o = exact(value, 'attachments', ['type', 'items']);
+      return { type, items: list(o.items, 'attachments.items', attachment) };
     }
     case 'block': {
       const o = exact(value, 'block', ['type', 'kind', 'text'], ['images']);
@@ -105,7 +121,7 @@ export function parseDetailLine(line: string): DetailEvent {
     default:
       return fail(
         'type',
-        'start, section-start, block, acceptance, history-item, section-end or complete',
+        'start, section-start, attachments, block, acceptance, history-item, section-end or complete',
       );
   }
 }
@@ -113,7 +129,7 @@ export function parseDetailLine(line: string): DetailEvent {
 type State =
   | { at: 'init' }
   | { at: 'between'; next: number }
-  | { at: 'section'; index: number; count: number; acceptance: boolean }
+  | { at: 'section'; index: number; count: number; acceptance: boolean; attachments: boolean }
   | { at: 'done' };
 
 function sameVersions(a: DetailVersions, b: DetailVersions): boolean {
@@ -172,7 +188,13 @@ export class DetailStreamValidator {
     if (event.type === 'section-start') {
       if (this.sections[next] !== event.section)
         fail('section-start', 'the next requested section');
-      this.state = { at: 'section', index: next, count: 0, acceptance: false };
+      this.state = {
+        at: 'section',
+        index: next,
+        count: 0,
+        acceptance: false,
+        attachments: false,
+      };
     } else if (event.type === 'complete') {
       if (next !== this.sections.length) fail('complete', 'every requested section ended first');
       if (!sameVersions(event.versions, this.versions))
@@ -189,6 +211,11 @@ export class DetailStreamValidator {
       if (event.section !== section) fail('section-end.section', `${section}`);
       if (event.count !== state.count) fail('section-end.count', `${state.count}`);
       this.state = { at: 'between', next: state.index + 1 };
+    } else if (section === 'document' && event.type === 'attachments') {
+      if (state.attachments) fail('attachments', 'one attachments event in the document');
+      if (state.count > 0) fail('attachments', 'attachments before the first block');
+      // The list is the document's header, not an item: the count stays.
+      this.state = { ...state, attachments: true };
     } else if (section === 'document' && event.type === 'block') {
       if (state.acceptance) fail('block', 'no block after an acceptance condition');
       this.state = { ...state, count: state.count + 1 };

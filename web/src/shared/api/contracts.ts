@@ -95,6 +95,8 @@ export interface TaskSummary {
   onboardingSample?: { runId: string; ordinal: number } | null;
   epic: EpicRef | null;
   updatedAt: string;
+  /** When the task was created; a card built from the Summary carries it. */
+  createdAt?: string;
   /** A draft is read-only for agents until a person finalizes it. */
   isDraft: boolean;
   /** The conditions themselves, or only their counts where the text is not loaded. */

@@ -2,7 +2,14 @@
 // The shapes are checked against the golden examples in `tests/fixtures/data-layer/`.
 // This file has types only; parsing is in `parse.ts` and the Detail order checks in
 // `detail-stream.ts`.
-import type { Assignee, Choice, ColumnName, ProjectId, RunState } from '../../api/contracts';
+import type {
+  Assignee,
+  Attachment,
+  Choice,
+  ColumnName,
+  ProjectId,
+  RunState,
+} from '../../api/contracts';
 
 /** An opaque content hash. Compare for equality; never read it. */
 export type Version = string;
@@ -37,6 +44,10 @@ export interface SummaryTask {
   position: number;
   epicId: string | null;
   acceptance: AcceptanceCount;
+  /** The conditions cannot be read from the frontmatter; the full text is then the body. */
+  acceptanceError: boolean;
+  /** When the task was created. */
+  createdAt: string;
   updatedAt: string;
   pendingRequestId: string | null;
   pendingReason: string | null;
@@ -61,6 +72,10 @@ export interface SummaryEpic {
   /** `#RRGGBB`. */
   color: string;
   isDraft: boolean;
+  /** The IDs of the epic's tasks in the order the epic sets; empty when it sets none. */
+  priority: number[];
+  /** The stored order cannot be read, so it is ignored. */
+  priorityError: boolean;
   progress: SummaryEpicProgress;
   detailVersions: { document: Version };
 }
@@ -98,6 +113,9 @@ export interface DetailImage {
   height?: number;
 }
 
+/** One attachment of a task or an epic, as its record in `task.json` / `epic.json` has it. */
+export type DetailAttachment = Attachment;
+
 export type DetailEvent =
   | {
       type: 'start';
@@ -108,6 +126,8 @@ export type DetailEvent =
       versions: DetailVersions;
     }
   | { type: 'section-start'; section: DetailSection }
+  /** The attachments of the resource: once per `document` section, before the first block. */
+  | { type: 'attachments'; items: DetailAttachment[] }
   | { type: 'block'; kind: BlockKind; text: string; images?: DetailImage[] }
   | { type: 'acceptance'; id: string; text: string; done: boolean }
   | { type: 'history-item'; at: string; reason: string }

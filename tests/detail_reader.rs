@@ -117,6 +117,7 @@ fn types(events: &[DetailEvent]) -> Vec<&'static str> {
         .map(|e| match e {
             DetailEvent::Start { .. } => "start",
             DetailEvent::SectionStart { .. } => "section-start",
+            DetailEvent::Attachments { .. } => "attachments",
             DetailEvent::Block { .. } => "block",
             DetailEvent::Acceptance { .. } => "acceptance",
             DetailEvent::HistoryItem { .. } => "history-item",
@@ -219,7 +220,14 @@ fn an_epic_streams_its_document_only() {
     validate(&events);
     assert_eq!(
         types(&events),
-        ["start", "section-start", "block", "section-end", "complete"]
+        [
+            "start",
+            "section-start",
+            "attachments",
+            "block",
+            "section-end",
+            "complete"
+        ]
     );
     let epic = snapshot.epics.iter().find(|e| e.id == id).unwrap();
     assert_eq!(joined_blocks(&events), epic.body);
@@ -468,4 +476,163 @@ fn acceptance_conditions_follow_the_blocks_with_their_full_text() {
             .unwrap()
         )
     );
+}
+
+fn attachment_items(
+    events: &[DetailEvent],
+) -> Vec<Vec<agent_board::server::contracts::DetailAttachment>> {
+    events
+        .iter()
+        .filter_map(|e| match e {
+            DetailEvent::Attachments { items } => Some(items.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_task_document_lists_its_attachments_once_before_the_blocks() {
+    let world = World::new();
+    let id = world.task("Text.\n\nMore.\n");
+    let owner = AttachmentOwner::Task(id);
+    world.png(&owner, &"a".repeat(32), 4, 4);
+    world.png(&owner, &"b".repeat(32), 5, 5);
+    let snapshot = world.snapshot();
+    let task = snapshot.tasks.iter().find(|t| t.id == id).unwrap();
+    assert_eq!(task.attachments.len(), 2);
+
+    let events = DetailSnapshot::task(world.shared(), &snapshot, id, &BOTH)
+        .unwrap()
+        .events();
+    validate(&events);
+    let kinds = types(&events);
+    assert_eq!(&kinds[..3], ["start", "section-start", "attachments"]);
+    assert_eq!(kinds.iter().filter(|k| **k == "attachments").count(), 1);
+    let listed = attachment_items(&events).remove(0);
+    assert_eq!(listed.len(), 2);
+    for (item, stored) in listed.iter().zip(&task.attachments) {
+        assert_eq!(item.id, stored.id);
+        assert_eq!(item.name, stored.name);
+        assert_eq!(item.media_type, stored.media_type);
+        assert_eq!(item.size, stored.size);
+        assert_eq!(
+            item.created_at,
+            agent_board::clock::format_utc(stored.created_at)
+        );
+    }
+    // The list is the document's header, not an item: the count is of blocks and conditions.
+    let ends: Vec<u32> = events
+        .iter()
+        .filter_map(|e| match e {
+            DetailEvent::SectionEnd {
+                section: Section::Document,
+                count,
+            } => Some(*count),
+            _ => None,
+        })
+        .collect();
+    let items = events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                DetailEvent::Block { .. } | DetailEvent::Acceptance { .. }
+            )
+        })
+        .count();
+    assert_eq!(ends, vec![u32::try_from(items).unwrap()]);
+
+    // A history-only stream has no such event; a document with no attachment lists none.
+    let history = DetailSnapshot::task(world.shared(), &snapshot, id, &[Section::History])
+        .unwrap()
+        .events();
+    assert!(attachment_items(&history).is_empty());
+    let bare = world.task("Other.\n");
+    let snapshot = world.snapshot();
+    let events = DetailSnapshot::task(world.shared(), &snapshot, bare, &[Section::Document])
+        .unwrap()
+        .events();
+    assert_eq!(attachment_items(&events), vec![Vec::new()]);
+}
+
+#[test]
+fn an_epic_document_lists_its_attachments_once_before_the_blocks() {
+    let world = World::new();
+    let id = world.epic("ALPHA", "# Alpha\n\nText.\n");
+    world.png(&AttachmentOwner::Epic(id.clone()), &"c".repeat(32), 3, 3);
+    let snapshot = world.snapshot();
+    let events = DetailSnapshot::epic(world.shared(), &snapshot, &id, &[Section::Document])
+        .unwrap()
+        .events();
+    validate(&events);
+    assert_eq!(
+        types(&events)[..3],
+        ["start", "section-start", "attachments"]
+    );
+    let listed = attachment_items(&events).remove(0);
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id, "c".repeat(32));
+    assert_eq!(listed[0].media_type, "image/png");
+}
+
+#[test]
+fn the_document_version_follows_the_attachment_list_and_the_history_version_does_not() {
+    let world = World::new();
+    let id = world.task("Text.\n");
+    let before = task_versions(world.snapshot().tasks.iter().find(|t| t.id == id).unwrap());
+    world.png(&AttachmentOwner::Task(id), &"a".repeat(32), 4, 4);
+    let after_add = task_versions(world.snapshot().tasks.iter().find(|t| t.id == id).unwrap());
+    assert_ne!(before.document, after_add.document);
+
+    let epic = world.epic("ALPHA", "Doc.\n");
+    let view = |world: &World| {
+        epic_version(
+            world
+                .snapshot()
+                .epics
+                .iter()
+                .find(|e| e.id == epic)
+                .unwrap(),
+        )
+    };
+    let epic_before = view(&world);
+    world.png(&AttachmentOwner::Epic(epic.clone()), &"d".repeat(32), 2, 2);
+    assert_ne!(epic_before, view(&world));
+}
+
+#[test]
+fn a_task_whose_frontmatter_cannot_be_read_streams_the_text_the_reader_calls_its_body() {
+    let world = World::new();
+    let id = world.task("Text.\n");
+    let path = world
+        .shared()
+        .join("projects")
+        .join(world.project.as_str())
+        .join("tasks")
+        .join(id.to_string())
+        .join("TASK.md");
+    let blocks_of = |text: &str| {
+        std::fs::write(&path, text).unwrap();
+        let snapshot = world.snapshot();
+        let task = snapshot.tasks.iter().find(|t| t.id == id).unwrap();
+        assert!(task.acceptance_error, "{text}");
+        let events = DetailSnapshot::task(world.shared(), &snapshot, id, &[Section::Document])
+            .unwrap()
+            .events();
+        validate(&events);
+        (task.body.clone(), joined_blocks(&events))
+    };
+    // The blocks always give the reader's body back.
+    // An unclosed frontmatter leaves the whole file as the body: the editor's whole-file mode
+    // (which starts from the whole file text) can take it from the Detail.
+    let unclosed = "---\nacceptance: [unclosed\n";
+    let (body, blocks) = blocks_of(unclosed);
+    assert_eq!(blocks, body);
+    assert_eq!(blocks, unclosed);
+    // A closed frontmatter whose YAML cannot be read is cut off from the body, so the blocks do
+    // not carry the frontmatter text: a known gap of the Detail for the whole-file mode.
+    let closed = "---\nacceptance: [unclosed\n---\n\nbroken text\n";
+    let (body, blocks) = blocks_of(closed);
+    assert_eq!(blocks, body);
+    assert_ne!(blocks, closed);
 }
