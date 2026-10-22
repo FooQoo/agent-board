@@ -227,7 +227,7 @@
 
 /* The body as a document: a rule under each section heading, and tables in a rounded frame. */
 .docs-doc__body .ProseMirror h1 {
-  font-size: 36px;
+  font-size: 40px;
   line-height: 1.2;
 }
 
@@ -239,7 +239,7 @@
 }
 
 .docs-dialog[data-compact="true"] .docs-doc__body .ProseMirror h1 {
-  font-size: 26px;
+  font-size: 29px;
 }
 
 .docs-dialog[data-compact="true"] .docs-doc__body .ProseMirror h2 {

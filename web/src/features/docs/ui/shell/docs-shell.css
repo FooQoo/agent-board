@@ -390,7 +390,8 @@
 }
 
 .docs-dialog[data-compact="true"] .docs-dialog__rule {
-  margin-bottom: 14px;
+  width: auto;
+  margin: 0 16px 14px;
 }
 
 /* The phone's footer is the two buttons Files and Save; the header's close button closes. */
