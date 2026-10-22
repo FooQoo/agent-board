@@ -19,9 +19,11 @@ pub mod onboarding_model;
 pub mod onboarding_state;
 mod ops;
 pub mod project;
+pub mod projection;
 pub mod reader;
 pub mod transaction;
 pub mod validate;
+mod versions;
 pub mod watch;
 
 use std::path::{Path, PathBuf};

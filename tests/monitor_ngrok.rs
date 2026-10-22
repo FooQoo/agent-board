@@ -171,13 +171,13 @@ fn write_headers<'a>(cookie: &'a str, csrf: &'a str) -> Vec<(&'a str, &'a str)> 
 }
 
 /// Open the event stream by hand so that its end can be observed.
-fn open_events(addr: SocketAddr, cookie: &str) -> (TcpStream, String) {
+fn open_events(addr: SocketAddr, project: &str, cookie: &str) -> (TcpStream, String) {
     let mut stream = TcpStream::connect(addr).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
     let head = format!(
-        "GET /monitor/api/events HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
+        "GET /monitor/api/events?project={project} HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
         Tunnel::host()
     );
     stream.write_all(head.as_bytes()).unwrap();
@@ -1110,11 +1110,11 @@ fn disconnect_ends_the_session_and_leaves_no_logout_path() {
 #[test]
 fn the_event_stream_needs_a_session_and_ends_when_the_run_stops() {
     let t = Tunnel::up();
-    let (_, denied) = open_events(t.backend, "");
+    let (_, denied) = open_events(t.backend, &t.project(), "");
     assert!(denied.starts_with("HTTP/1.1 401"), "{denied}");
     assert!(!denied.contains("event: ready"));
     let (value, _) = t.session();
-    let (stream, seen) = open_events(t.backend, &cookie_header(&value));
+    let (stream, seen) = open_events(t.backend, &t.project(), &cookie_header(&value));
     assert!(seen.starts_with("HTTP/1.1 200"), "{seen}");
     assert!(seen.contains("event: ready"), "{seen}");
     // No token travels in the URL.
@@ -1133,7 +1133,7 @@ fn the_event_stream_ends_when_its_session_is_disconnected() {
     let t = Tunnel::up();
     let (value, csrf) = t.session();
     let cookie = cookie_header(&value);
-    let (stream, seen) = open_events(t.backend, &cookie);
+    let (stream, seen) = open_events(t.backend, &t.project(), &cookie);
     assert!(seen.contains("event: ready"), "{seen}");
     assert_eq!(
         t.call(
@@ -1146,7 +1146,7 @@ fn the_event_stream_ends_when_its_session_is_disconnected() {
         200
     );
     // The session is gone for new streams at once; an open one stops at its next event.
-    let (_, again) = open_events(t.backend, &cookie);
+    let (_, again) = open_events(t.backend, &t.project(), &cookie);
     assert!(again.starts_with("HTTP/1.1 401"), "{again}");
     let store = FileStore::open(&t.home.path().join("shared"));
     let project = store.project_by_name("monitor").unwrap().id;

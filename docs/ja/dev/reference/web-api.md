@@ -44,7 +44,7 @@
 
 ハンドラーが書かれるまで、SummaryとDetailの経路は501 `not_implemented`を返します。以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
 
-**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。
+**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。応答はインデックスの投影から作るため、ファイルは読みません。アーカイブ済みのタスクは一覧に含めません（エピックの件数には数えます）。`version`は解析済みデータのハッシュで、`ETag`（`"<version>"`）にもなります。`If-None-Match`がこの値を指す要求（複数の値、弱い形式、`*`も一致）には、本文なしの`304`を返します。存在しないプロジェクトは404 `project_not_found`、形式の誤ったIDは422 `invalid_value`、`project.json`を読めないプロジェクトはそのファイルのエラーです。
 
 | 項目 | フィールド |
 | --- | --- |
@@ -92,6 +92,8 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・Pendingの質問・受入条件の件数。`document`は本文と受入条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
 
 `seq`の欠番、新しい`instanceId`、未知のイベントを見たクライアントは、Summaryと関係するキャッシュ済みのDetailを破棄します。`ready`と`preferences`は変わりません。
+
+サーバーは再読込のたびに解析済みデータを前後で比べるため、SummaryにもDetailにも見える内容が変わらない保存ではイベントを送りません。解析できないファイルは、そのリソースのすべてのfacetを変更とします。遅れすぎたストリームには、取りこぼしたイベントの代わりに`resync`（`{"instanceId", "seq"}`。`seq`は最新の番号）を送り、クライアントは全体を取得し直します。モニターのストリームは送るイベントに自分で番号を振るため、ほかのプロジェクトの変更で`seq`に欠番は生じず、`project`の変更も送りません。
 
 ### モバイル接続
 

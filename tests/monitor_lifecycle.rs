@@ -260,7 +260,8 @@ fn open_events(t: &Tunnel, cookie: &str) -> (TcpStream, String) {
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
     let head = format!(
-        "GET /monitor/api/events HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
+        "GET /monitor/api/events?project={} HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
+        project_of(t.path()),
         t.host()
     );
     stream.write_all(head.as_bytes()).unwrap();
