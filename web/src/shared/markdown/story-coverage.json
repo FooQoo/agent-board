@@ -123,21 +123,6 @@
       ]
     },
     {
-      "file": "shared/markdown/LazyMarkdownSections.tsx",
-      "exports": [
-        {
-          "name": "LazyMarkdownSections",
-          "stories": [
-            {
-              "id": "shared-markdown-markdownsections--chapters",
-              "states": ["lazy chapter fallback and loaded content"],
-              "interaction": false
-            }
-          ]
-        }
-      ]
-    },
-    {
       "file": "shared/markdown/MarkdownSections.tsx",
       "exports": [
         {

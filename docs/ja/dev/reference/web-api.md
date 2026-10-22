@@ -10,7 +10,6 @@
 | --- | --- |
 | `GET /` | 書き込み用トークンを`meta[name=agboard-token]`に埋め込んだHTML。 |
 | `GET /api/projects` | `projects`（id・name・createdAt）と`catalogVersion`。タスクは含まない。0件でも200。 |
-| `GET /api/projects/{projectId}/board` | project・version・cursor・epics・`epicTaskCounts`（エピックごとにtodo・doing・done・archived・total。アーカイブ済みはarchivedだけに数え、同じスナップショットから集計する）、本文と全履歴を持つ未アーカイブのtasks、problems。`nextTaskId`はない。 |
 | `POST /api/projects/{projectId}/tasks` | title・body・acceptance・assignee・isDraftからTodo・Idleのタスクを作る。サーバーがfrontmatterを組み立てて検証する。201。 |
 | `POST /api/projects/{projectId}/tasks/multipart` | 画像付きの通常タスク、または依頼本文・任意のエピック・画像をまとめた簡易依頼タスクを作る。下記を参照。 |
 | `PATCH /api/projects/{projectId}/tasks/{id}` | **下書き**のタスクのtitle・body・acceptanceと任意の`finalize: true`を更新する。bodyだけならfrontmatterを、acceptanceだけなら本文を保つ。`description`と`body`の同時指定は422 `invalid_value`。後から保存した内容が優先される。下書きでなければ409 `task_not_draft`。 |
@@ -42,14 +41,14 @@
 
 ボードとモニターは、プロジェクトを2段階で読みます。Summaryは、カードや一覧の行に表示する内容をまとめて返します。Detailは、カードやエピックを開いたときにだけ必要な内容をストリームで返します。モバイルモニターには同じ契約を`/monitor/api/projects/{projectId}/…`で提供し、モニターのセッションを必要とします。[モニターの経路](./remote-routes.md)を参照してください。パスのプロジェクトIDは読む対象の指定であり、アクセス権ではありません。
 
-ハンドラーが書かれるまで、SummaryとDetailの経路は501 `not_implemented`を返します。以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
+以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
 
 **Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。応答はインデックスの投影から作るため、ファイルは読みません。アーカイブ済みのタスクは一覧に含めません（エピックの件数には数えます）。`version`は解析済みデータのハッシュで、`ETag`（`"<version>"`）にもなります。`If-None-Match`がこの値を指す要求（複数の値、弱い形式、`*`も一致）には、本文なしの`304`を返します。存在しないプロジェクトは404 `project_not_found`、形式の誤ったIDは422 `invalid_value`、`project.json`を読めないプロジェクトはそのファイルのエラーです。
 
 | 項目 | フィールド |
 | --- | --- |
-| タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`isDraft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（案内のサンプルのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
-| エピック | `id`（文字列）、`name`、`color`、`isDraft`、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
+| タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`isDraft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（案内のサンプルのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
+| エピック | `id`（文字列）、`name`、`color`、`isDraft`、`priority`（エピックが定める順序のタスクID。定めなければ空）、`priorityError`（保存された順序を読めないため、`priority`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
 | Problem | `file`・`field`・`reason`。ボードと同じ。 |
 
 versionはすべて不透明な文字列で、解析済みデータの内容ハッシュです。サーバーの起動回に依存しないため、再起動後も保存済みの値と比べられます。versionは等しいかどうかだけを比べてください。
@@ -60,6 +59,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | --- | --- | --- |
 | `start` | `resource`（`task`または`epic`）、`id`、`projectId`、`sections`、`versions` | 最初の行。`versions`は要求したセクションだけを持つ。 |
 | `section-start` | `section`（`document`または`history`） | セクションを開く。 |
+| `attachments` | `items` | 要求したリソースの添付画像。`document`セクションで1回だけ送り、`section-start`の直後、最初のブロックの前に置く。`section-end`の`count`には数えない。 |
 | `block` | `kind`（`markdown`または`mermaid`）、`text`、任意の`images` | ドキュメントの最上位のMarkdownブロック。ブロックを連結すると本文になる。各画像は`src`（`text`中のURL）を持ち、ファイルのヘッダーを読めたときは`width`と`height`も持つ。 |
 | `acceptance` | `id`、`text`、`done` | 受入条件1件の全文。タスクのみ。ブロックの後に続く。 |
 | `history-item` | `at`、`reason` | 履歴1件。古い順。タスクのみ。 |
@@ -166,7 +166,6 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | 413 | 1 MiBを超える本文。 |
 | 422 | ID構文・入力・状態の規則の違反。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
 | 503 | ロック待ちが時間切れになった。 |
-| 501 | ハンドラーがまだ書かれていない経路（`not_implemented`）。 |
 | 500 | それ以外（`format_unsupported`・`file_unreadable`・`file_error`を含む）。 |
 
 ## 初回の案内

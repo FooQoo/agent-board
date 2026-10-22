@@ -260,9 +260,19 @@ test('the CLI, snapshot, progress, hook, wait, and API return document and docum
   expectNoOldFields(one);
   const all = await (await fetch(`${base}/epics`)).json();
   expectNoOldFields(all);
-  const board = await (await fetch(`${base}/board`)).json();
-  expectNoOldFields(board);
-  expect(board.epics.find((epic: { id: string }) => epic.id === 'ALPHA').document).toBe(LEGACY_ALPHA);
+  // The Epic Detail streams the document as blocks; the front matter is not part of the body.
+  const detail = (await (await fetch(`${base}/epics/ALPHA/detail?sections=document`)).text())
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  expectNoOldFields(detail);
+  const body = detail
+    .filter((event: { type: string }) => event.type === 'block')
+    .map((event: { text: string }) => event.text)
+    .join('\n\n');
+  expect(body).toContain('# Alpha document');
+  expect(body).toContain('Legacy alpha text.');
+  expect(body).not.toContain('priority:');
 
   // The API no longer accepts the earlier field either: nothing is stored.
   const refused = await fetch(`${base}/epics/BETA`, {

@@ -401,7 +401,7 @@ test('the settings stay available while the board loads and when it cannot load'
     release = resolve;
   });
   let failing = false;
-  await page.route('**/api/projects/*/board', async (route) => {
+  await page.route('**/api/projects/*/summary', async (route) => {
     await gate;
     if (failing) await route.fulfill({ status: 500, body: 'boom' });
     else await route.fallback();
@@ -925,7 +925,7 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
     release = resolve;
   });
   let failing = false;
-  await page.route('**/api/projects/*/board', async (route) => {
+  await page.route('**/api/projects/*/summary', async (route) => {
     await gate;
     if (failing) await route.fulfill({ status: 500, body: 'boom' });
     else await route.fallback();

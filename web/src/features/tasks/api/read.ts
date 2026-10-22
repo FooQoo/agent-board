@@ -1,10 +1,6 @@
-import type { Board, Epic, ProjectId, Task, TaskSummary } from '../../../shared/api/contracts';
+import type { Epic, Project, ProjectId, Task, TaskSummary } from '../../../shared/api/contracts';
 import { getJson, projectPath } from '../../../shared/api/http';
-import { toBoard, toTask, type WireBoard, type WireTask } from '../../../shared/api/wire';
-
-export async function fetchBoard(projectId: ProjectId): Promise<Board> {
-  return toBoard(await getJson<WireBoard>(`${projectPath(projectId)}/board`));
-}
+import { toTask, type WireTask } from '../../../shared/api/wire';
 
 /** An archived card as the archive lists it: no text, conditions or history. Its Detail is read when it is opened. */
 export type ArchivedTask = TaskSummary & { archivedAt?: string | null };
@@ -19,7 +15,7 @@ function archivedCard(task: Task): ArchivedTask {
 }
 
 export interface ArchiveResponse {
-  project: Board['project'];
+  project: Project;
   version: string;
   cursor: string;
   /** The archived cards. Each card's epic is resolved against `epics` from the same response. */

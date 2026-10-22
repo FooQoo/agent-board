@@ -100,7 +100,7 @@ function toWireTask({ epic, ...task }: Task) {
   return { ...task, epicId: epic?.id ?? null };
 }
 
-/** The board snapshot as the server writes it (`GET /api/projects/{id}/board`). */
+/** The project's parts in the wire shape the server writes: cards with their epic IDs, the epics and the problems. */
 function wireBoard(board: MockBoard, tasks: Task[]) {
   return {
     project: board.project,
