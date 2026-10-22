@@ -52,4 +52,4 @@ export const docsTree: DocsTreeNode[] = [
 ];
 
 /** The folder the Docs of a project live in, as the empty state shows it. */
-export const docsRootPath = '~/.agent-board/docs/<project-id>/';
+export const docsRootPath = 'shared/projects/<project-id>/docs/';
