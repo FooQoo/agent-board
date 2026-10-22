@@ -143,7 +143,6 @@ export interface ProjectList {
   catalogVersion: string;
 }
 
-/** A board snapshot: `GET /api/projects/{projectId}/board`. */
 /** How many of an epic's tasks are in each group. `total` is the sum of the four. */
 export interface EpicTaskCounts {
   todo: number;
