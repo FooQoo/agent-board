@@ -40,10 +40,20 @@
   white-space: nowrap;
 }
 
+/* The close button sits on the title's vertical middle and 38px from the right edge (the mock). */
+.docs-dialog .editor__close {
+  margin-top: -2px;
+}
+
+.docs-dialog[data-compact="false"] .editor__close {
+  margin-right: 5px;
+}
+
 /* The save button is gray while there is nothing to save (the mock), not a faded accent. */
-/* The footer buttons are as wide as their labels (the mock's), not the shared 144px. */
+/* The footer buttons are one 88px wide on every screen (the mock's), not the shared 144px. */
 .docs-dialog .editor__footer .dialog-actions > button {
-  min-width: 0;
+  min-width: 88px;
+  padding-inline: 12px;
 }
 
 .docs-dialog__save:disabled {
@@ -366,8 +376,8 @@
   flex: none;
   align-items: flex-start;
   justify-content: flex-start;
-  gap: 6px;
-  padding: 20px 16px 14px;
+  gap: 2px;
+  padding: 18px 16px 13px;
   text-align: left;
 }
 
@@ -386,11 +396,13 @@
 /* The phone's footer is the two buttons Files and Save; the header's close button closes. */
 .docs-dialog[data-compact="true"] .editor__footer .dialog-actions {
   flex: 1 1 auto;
+  gap: 10px;
   width: 100%;
 }
 
 .docs-dialog[data-compact="true"] .editor__footer .dialog-actions > button {
   min-width: 0;
+  height: 40px;
 }
 
 .docs-dialog[data-compact="true"]
