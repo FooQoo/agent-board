@@ -321,19 +321,6 @@
   height: 16px;
 }
 
-.connection-dialog__actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-/* 保存して接続 and 再接続 share one width (the English save label sets it), so they match. */
-.connection-dialog .connection-dialog__submit,
-.connection-dialog .connection-dialog__reconnect {
-  min-width: 146px;
-}
-
 .connection-dialog .connection-dialog__stop {
   border-color: var(--r-danger);
   color: var(--r-danger);
@@ -366,10 +353,6 @@
   .connection-dialog__step + .connection-dialog__step {
     padding-top: 20px;
     border-top: 1px solid var(--r-border);
-  }
-
-  .connection-dialog__actions {
-    flex-wrap: wrap;
   }
 }
 

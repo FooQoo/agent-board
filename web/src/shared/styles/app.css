@@ -287,8 +287,8 @@ ol {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-icon);
   border: 0;
   border-radius: 5px;
   color: var(--r-muted);
@@ -760,6 +760,7 @@ ol {
   gap: 8px;
   min-width: 0;
   max-width: 100%;
+  /* biome-ignore lint/plugin: existing: the project switcher is not on a Button size yet */
   height: 34px;
   padding: 0 9px;
   border: 1px solid var(--r-border);
@@ -829,6 +830,7 @@ ol {
   flex: none;
   align-items: center;
   gap: 10px;
+  /* biome-ignore lint/plugin: existing: the menu item is not on a Button size yet */
   height: 38px;
   padding: 0 10px;
   border-radius: 5px;

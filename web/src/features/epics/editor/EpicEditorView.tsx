@@ -3,13 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { epicInk } from '../model/epic';
 import type { Epic } from '../../../shared/api/contracts';
 import { DiscardConfirm } from '../../../shared/ui/editor/DiscardConfirm';
-import { EpicDeleteConfirm } from './EpicDeleteConfirm';
 import { EditorBody } from '../../../shared/ui/editor/EditorBody';
 import { EditorShell } from '../../../shared/ui/editor/EditorShell';
 import { CollapsibleSection } from '../../../shared/ui/editor/CollapsibleSection';
 import { EpicProgressList, type ProgressTaskRenderer } from './EpicProgressList';
 import { EpicColorPicker } from './EpicColorPicker';
-import { ListOrderedIcon, Trash2Icon } from 'lucide-react';
+import { ListOrderedIcon } from 'lucide-react';
 import type { useEpicEditor } from './useEpicEditor';
 
 type EpicEditorState = ReturnType<typeof useEpicEditor>;
@@ -46,12 +45,6 @@ export function EpicEditorView({
     saving,
     error,
     run,
-    confirmDelete,
-    setConfirmDelete,
-    deleting,
-    deleteError,
-    remove,
-    requestDelete,
     pendingTask,
     setPendingTask,
     requestOpenTask,
@@ -75,21 +68,9 @@ export function EpicEditorView({
       onClose={onClose}
       status={dirty ? t('editor.unsaved') : t('editor.noChanges')}
       actions={
-        <>
-          <button
-            type="button"
-            className="detail__tool detail__tool--delete"
-            aria-label={t('epic.deleteButton')}
-            title={t('epic.deleteButton')}
-            disabled={saving || deleting}
-            onClick={requestDelete}
-          >
-            <Trash2Icon aria-hidden="true" />
-          </button>
-          <Button type="button" disabled={saving || !valid || !dirty} onClick={() => void run()}>
-            {saving ? t('dialog.saving') : t('editor.save')}
-          </Button>
-        </>
+        <Button type="button" disabled={saving || !valid || !dirty} onClick={() => void run()}>
+          {saving ? t('dialog.saving') : t('editor.save')}
+        </Button>
       }
     >
       <EditorBody
@@ -154,15 +135,6 @@ export function EpicEditorView({
         }}
         keepLabel={t('editor.backToEdit')}
         discardLabel={t('editor.discardAndMove')}
-      />
-      <EpicDeleteConfirm
-        open={confirmDelete}
-        epicId={epic.id}
-        dirty={dirty}
-        busy={deleting}
-        error={deleteError}
-        onCancel={() => setConfirmDelete(false)}
-        onConfirm={() => void remove()}
       />
     </EditorShell>
   );

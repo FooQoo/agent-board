@@ -36,12 +36,12 @@ function askWithChoices(id: number, question: string, choices: { id: string; lab
   agboardOk(mainProject, ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Working.']);
   const file = path.join(work, `request-${id}-${Date.now()}.json`);
   writeFileSync(file, JSON.stringify({ question, choices }));
-  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', readFileSync(file, 'utf8')]);
+  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', readFileSync(file, 'utf8')]);
 }
 
 function askText(id: number, question: string): void {
   agboardOk(mainProject, ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Working.']);
-  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', decisionJson(question)]);
+  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(question)]);
 }
 
 let work: string;

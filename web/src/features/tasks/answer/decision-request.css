@@ -89,11 +89,6 @@
   align-self: auto;
 }
 
-.detail-btn--plain {
-  font-weight: 400;
-  color: var(--r-text2);
-}
-
 .detail-btn--quiet {
   font-weight: 400;
   color: var(--r-text2);

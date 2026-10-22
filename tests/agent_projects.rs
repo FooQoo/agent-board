@@ -300,6 +300,7 @@ fn the_hook_passes_only_the_named_projects_progress_table() {
                 "ai",
                 "--request-json",
                 &common::decision_json(&format!("{project} needs a decision")),
+                "--no-wait",
             ],
         ));
     }

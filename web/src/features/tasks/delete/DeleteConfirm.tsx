@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/shared/ui/button';
+import { ConfirmPanel } from '@/shared/ui/confirm-panel';
 import type { Task } from '../../../shared/api/contracts';
 
 export interface DeleteConfirmProps {
@@ -28,13 +28,7 @@ export function DeleteConfirm({
   const { t } = useTranslation();
   const [failed, setFailed] = useState(initialFailed);
   const [busy, setBusy] = useState(false);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  const messageId = useId();
   const inFlight = useRef(false);
-
-  useEffect(() => {
-    if (focusOnMount) cancelRef.current?.focus();
-  }, [focusOnMount]);
 
   const confirm = async () => {
     if (inFlight.current || saving) return;
@@ -52,41 +46,20 @@ export function DeleteConfirm({
   };
 
   return (
-    <div className="delete-confirm" role="group" aria-labelledby={messageId}>
-      <p id={messageId} className="delete-confirm__message">
-        {t(action === 'archive' ? 'archive.confirm' : 'delete.confirm', {
-          id: task.id,
-          title: task.title,
-        })}
-      </p>
-      {failed && (
-        <p className="delete-confirm__error" role="alert">
-          {t(action === 'archive' ? 'archive.error' : 'delete.error')}
-        </p>
-      )}
-      <div className="delete-confirm__buttons">
-        <Button
-          type="button"
-          variant="destructive"
-          size="s"
-          className="detail-btn"
-          disabled={busy || saving}
-          onClick={() => void confirm()}
-        >
-          {t(action === 'archive' ? 'archive.submit' : 'delete.submit')}
-        </Button>
-        <Button
-          ref={cancelRef}
-          type="button"
-          variant="outline"
-          size="s"
-          className="detail-btn detail-btn--plain"
-          disabled={busy || saving}
-          onClick={onCancel}
-        >
-          {t('delete.cancel')}
-        </Button>
-      </div>
-    </div>
+    <ConfirmPanel
+      className="delete-confirm"
+      messageClassName="delete-confirm__message"
+      message={t(action === 'archive' ? 'archive.confirm' : 'delete.confirm', {
+        id: task.id,
+        title: task.title,
+      })}
+      error={failed ? t(action === 'archive' ? 'archive.error' : 'delete.error') : null}
+      confirmLabel={t(action === 'archive' ? 'archive.submit' : 'delete.submit')}
+      cancelLabel={t('delete.cancel')}
+      busy={busy || saving}
+      focusOnMount={focusOnMount}
+      onConfirm={() => void confirm()}
+      onCancel={onCancel}
+    />
   );
 }

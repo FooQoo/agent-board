@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LockIcon, XIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import '../../../shared/styles/modal.css';
 import './connection.css';
@@ -147,7 +148,7 @@ export function ConnectionSettingsView({
                 <LockIcon aria-hidden="true" />
                 {t('monitorConnection.protectNotice')}
               </p>
-              <div className="connection-dialog__actions">
+              <DialogActions align="between">
                 <Button type="button" variant="outline" disabled={busy} onClick={onResetToken}>
                   {t('monitorConnection.resetToken')}
                 </Button>
@@ -160,7 +161,7 @@ export function ConnectionSettingsView({
                 >
                   {saving ? t('monitorConnection.stopping') : t('monitorConnection.stop')}
                 </Button>
-              </div>
+              </DialogActions>
             </div>
           </div>
         ) : stopped ? (
@@ -178,7 +179,7 @@ export function ConnectionSettingsView({
                   {message}
                 </p>
               )}
-              <div className="connection-dialog__actions">
+              <DialogActions align="between">
                 <Button type="button" variant="outline" disabled={busy} onClick={onResetToken}>
                   {t('monitorConnection.changeSettings')}
                 </Button>
@@ -190,7 +191,7 @@ export function ConnectionSettingsView({
                 >
                   {t('monitorConnection.reconnect')}
                 </Button>
-              </div>
+              </DialogActions>
             </div>
           </div>
         ) : (
@@ -217,13 +218,15 @@ export function ConnectionSettingsView({
                   {message}
                 </p>
               )}
-              <Button type="submit" className="connection-dialog__submit" disabled={busy}>
-                {status === 'stopping'
-                  ? t('monitorConnection.stopping')
-                  : busy
-                    ? t('monitorConnection.connecting')
-                    : t('monitorConnection.save')}
-              </Button>
+              <DialogActions>
+                <Button type="submit" className="connection-dialog__submit" disabled={busy}>
+                  {status === 'stopping'
+                    ? t('monitorConnection.stopping')
+                    : busy
+                      ? t('monitorConnection.connecting')
+                      : t('monitorConnection.save')}
+                </Button>
+              </DialogActions>
             </div>
           </form>
         )}

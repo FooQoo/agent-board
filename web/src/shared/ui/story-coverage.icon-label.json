@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/icon-label.tsx",
+  "exports": [
+    {
+      "name": "IconLabel",
+      "stories": [
+        {
+          "id": "shared-ui-iconlabel--default",
+          "states": ["default"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-iconlabel--header-buttons",
+          "states": ["plus with optical inset", "header buttons"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

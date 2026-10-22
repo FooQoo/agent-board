@@ -94,6 +94,7 @@ fn board() -> Board {
             "ai",
             "--request-json",
             r#"{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}"#,
+            "--no-wait",
         ],
     ));
     for id in [first, second, closed, stray] {

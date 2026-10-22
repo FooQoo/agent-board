@@ -2,6 +2,7 @@ import { CircleAlertIcon, XIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
+import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { findTaskButton } from '../dialog-frame/DialogFrame';
 import { DiscardConfirm } from './DiscardConfirm';
@@ -156,10 +157,12 @@ export function EditorShell({
           <span className="editor__status" role="status">
             {saving ? t('editor.savingStatus') : status}
           </span>
-          <Button type="button" variant="outline" disabled={saving} onClick={requestClose}>
-            {t('dialog.cancel')}
-          </Button>
-          {actions}
+          <DialogActions>
+            <Button type="button" variant="outline" disabled={saving} onClick={requestClose}>
+              {t('dialog.cancel')}
+            </Button>
+            {actions}
+          </DialogActions>
         </div>
         <DiscardConfirm
           open={asking}

@@ -241,7 +241,7 @@ function askAgain(reason: string): void {
   agboardOk(mainProject, ['mv', '12', 'todo', '--actor', 'human', '--reason', 'Back to Todo.']);
   agboardOk(mainProject, ['mv', '12', 'doing', '--actor', 'human', '--reason', 'Doing again.']);
   agboardOk(mainProject, ['state', '12', 'running', '--actor', 'ai', '--reason', 'Moving on.']);
-  agboardOk(mainProject, ['state', '12', 'pending', '--actor', 'ai', '--request-json', decisionJson(reason)]);
+  agboardOk(mainProject, ['state', '12', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(reason)]);
 }
 
 test('when the agent asks something else while an answer is typed, the page says so, keeps the text, and sends it for the new request only after an edit', async ({
@@ -301,7 +301,7 @@ test('an answer sent from a page that missed the new request is refused by the s
 
 test('a long reason is cut at four lines, and Show more reads all of it', async ({ page }) => {
   const lines = Array.from({ length: 14 }, (_, index) => `Line ${index + 1} of a long question about the release plan.`);
-  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--request-json', decisionJson(lines.join('\n'))]);
+  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(lines.join('\n'))]);
   await task(page, 13).click();
   const reason = request(page, 13).locator('p', { hasText: 'Line 1 of a long question' });
   await expect(reason).toBeVisible();

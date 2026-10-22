@@ -36,7 +36,7 @@ Open **Epics** in the header to see every epic in the project, in ID order, incl
 
 ![Epic list showing each epic's task counts, with the details of the selected epic beside it](../../images/guide/epic-list.png){.screenshot}
 
-Select an epic to read its name, details, and images in the details column beside the list. The column stays in place, as it does in the archive, and reads "Select an epic to see its cards and details." until you select one. The edit button in the detail header (**Edit epic**) opens the same editor as the epic label. The trash button next to it (**Delete epic**) asks for confirmation and then deletes the epic under the same rules as the editor's trash button (**Delete epic**), described below. The edit, delete, and close icons use the same style and spacing as task and archive details. Close the details or select the row again to return to the prompt. **Back to board** returns to the board.
+Select an epic to read its name, details, and images in the details column beside the list. The column stays in place, as it does in the archive, and reads "Select an epic to see its cards and details." until you select one. The edit button in the detail header (**Edit epic**) opens the same editor as the epic label. The trash button next to it (**Delete epic**) opens a confirmation in the details column, as the task details do, and then deletes the epic with its details and images. Nothing is deleted while a task still belongs to the epic, archived tasks included; the confirmation says so, and you move or clear those tasks first. The edit, delete, and close icons use the same style and spacing as task and archive details. Close the details or select the row again to return to the prompt. **Back to board** returns to the board.
 
 ## Order the work
 
@@ -59,7 +59,6 @@ The epic editor shows the outline on the left, the name and the "Epic details (M
 - The right column starts with progress expanded and attachments folded. Opening either panel folds the other.
 - The progress list scrolls on its own, so a long list stays inside the dialog and includes finished tasks for review.
 - Drag a task by its handle (or use the handle's keyboard controls), then **Save** to apply the order.
-- The trash button (**Delete epic**) in the editor's header, beside **Save** and styled like the task details' trash button, removes the epic with its details and images after you confirm. Nothing is deleted while a task still belongs to the epic, archived tasks included; the dialog says so, and you move or clear those tasks first. Unsaved changes in the dialog are discarded with the epic.
 - Selecting a task opens its details. Change membership in the task editor or on the command line, not in the epic dialog. The epic dialog has no Draft checkbox and keeps the epic's existing draft state.
 
 ## Read the progress table

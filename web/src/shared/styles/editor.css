@@ -570,11 +570,12 @@
 .editor__segment {
   display: inline-flex;
   flex: 0 0 100px;
+  /* biome-ignore lint/plugin: the width of one segment of a two-part switch */
   width: 100px;
   gap: 6px;
   align-items: center;
   justify-content: center;
-  height: 31px;
+  height: var(--btn-s-h);
   padding: 0;
   border: 0;
   background: var(--r-surface);
@@ -695,10 +696,4 @@
   color: var(--r-text2);
   font-size: 13px;
   line-height: 21px;
-}
-
-.editor-confirm__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
 }

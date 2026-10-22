@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Task, Epic } from '../../../shared/api/contracts';
-import { WriteError } from '../../../shared/api/writeErrors';
 import type { StoredAttachment } from '../../../shared/ui/editor/attachmentTypes';
 import { normalizeNewlines } from '../../../shared/ui/editor/limits';
 import type { RichMarkdownEditorHandle } from '../../../shared/rich-editor/RichMarkdownEditor';
@@ -55,9 +54,6 @@ export function useEpicEditor({
   const [pendingTask, setPendingTask] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const busy = useRef(false);
   const somethingSaved = useRef(false);
   const attachmentState = useAttachmentState({
@@ -154,27 +150,6 @@ export function useEpicEditor({
     }
   };
 
-  const remove = async () => {
-    if (busy.current) return;
-    busy.current = true;
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await api.remove();
-      busy.current = false;
-      setDeleting(false);
-      onClose();
-    } catch (cause) {
-      busy.current = false;
-      setDeleting(false);
-      setDeleteError(
-        cause instanceof WriteError && cause.code === 'epic_in_use'
-          ? t('epic.deleteInUse')
-          : t('epic.deleteFailed'),
-      );
-    }
-  };
-
   const move = (from: number, to: number) =>
     setOrder(() => {
       const next = [...rowIds];
@@ -195,11 +170,6 @@ export function useEpicEditor({
     attachmentState.remove(id);
   };
 
-  const requestDelete = () => {
-    setDeleteError(null);
-    setConfirmDelete(true);
-  };
-
   return {
     editor,
     panel,
@@ -218,12 +188,6 @@ export function useEpicEditor({
     saving,
     error,
     run,
-    confirmDelete,
-    setConfirmDelete,
-    deleting,
-    deleteError,
-    remove,
-    requestDelete,
     pendingTask,
     setPendingTask,
     requestOpenTask,

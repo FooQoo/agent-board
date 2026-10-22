@@ -20,6 +20,7 @@ Before you change behavior, read the [developer reference](../index.md) for the 
 ## UI changes
 
 - Use the existing shadcn/ui Dialog and Button components for modal flows. Reuse the shared overlay and theme styles instead of implementing an independent modal shell.
+- Size buttons only through the shared parts: the `size` of `Button`, `DialogActions` for the buttons that end a dialog or a confirm, `IconLabel` for an icon with its text, and `ConfirmPanel` for a confirm inside a panel. A stylesheet rule with `cursor: pointer` that gives itself a fixed `px` height or width is reported by Biome (`web/biome-plugins/no-fixed-clickable-size.grit`), in the editor and in `pnpm --dir web check`. A rule that must keep a fixed size (a list row, a slider) says why in a comment before the declaration: `/* biome-ignore lint/plugin: reason */`.
 - Verify archive layouts in a browser both before and after selecting a task. Check bulk confirmations with enough rows to scroll, in English and Japanese, light and dark themes, and narrow and desktop viewports.
 
 ## Verification

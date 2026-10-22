@@ -21,7 +21,7 @@ struct RequestFile {
     question: String,
     #[serde(default)]
     choices: Vec<Choice>,
-    /// Present when the command should wait for the answer after asking.
+    /// Only limits the wait; asking waits for the answer unless `--no-wait` is given.
     #[serde(default)]
     wait: Option<WaitSpec>,
 }
@@ -137,19 +137,29 @@ pub fn run(ctx: &mut Context, args: &StateArgs) -> Result<Outcome, AgboardError>
         }
     }
 
+    if args.no_wait && args.request_json.is_none() {
+        return Err(invalid(
+            "--no-wait is only valid when asking with --request-json.",
+        ));
+    }
+
     // The request is read once, before anything is saved; a wait that cannot work saves nothing.
     let request = args
         .request_json
         .as_deref()
         .map(read_request_json)
         .transpose()?;
-    let wait_requested = request
-        .as_ref()
-        .is_some_and(|request| request.wait.is_some());
+    // Asking waits for the answer unless --no-wait registers the question and returns.
+    let wait_requested = request.is_some() && !args.no_wait;
     let wait_secs = request
         .as_ref()
         .and_then(|request| request.wait.as_ref())
         .and_then(|wait| wait.timeout_seconds);
+    if args.no_wait && wait_secs.is_some() {
+        return Err(invalid(
+            "--no-wait cannot be combined with wait.timeoutSeconds.",
+        ));
+    }
     if wait_requested {
         // The wait needs the server's event stream.
         let dir = ctx

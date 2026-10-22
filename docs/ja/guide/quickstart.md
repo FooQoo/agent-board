@@ -74,7 +74,7 @@ agboard --project "Quickstart" history add 2 --reason "Built the web UI and inst
 agboard --project "Quickstart" state 2 pending --actor ai --request-json '{"question":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}'
 ```
 
-タスク#2が**待機中**になり、質問と2つの選択肢が表示されます。ブラウザで選択肢を選び、必要ならメモを書いて、回答を送ります。タスクは**未稼働**に戻ります。
+このコマンドは既定で回答まで待つため、`agboard serve`を起動しておきます。タスク#2が**待機中**になり、質問と2つの選択肢が表示されます。ブラウザで選択肢を選び、必要ならメモを書いて、回答を送ります。コマンドは回答を受け取って戻り、タスクは**未稼働**に戻ります。
 
 エージェントは、タスクの履歴で回答を読んで、作業を再開します。
 

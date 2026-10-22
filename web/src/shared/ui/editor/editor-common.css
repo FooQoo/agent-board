@@ -192,6 +192,9 @@
 
 .editor__outline-item {
   position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--btn-s-h);
   overflow: visible;
   padding: 0;
   white-space: normal;
@@ -201,8 +204,9 @@
 
 .editor__outline-item::before {
   position: absolute;
-  top: 6px;
+  top: 50%;
   left: -17px;
+  transform: translateY(-50%);
   width: 9px;
   height: 9px;
   border: 1.5px solid var(--r-border);
@@ -315,6 +319,7 @@
 .epic-color__hue {
   appearance: none;
   width: 100%;
+  /* biome-ignore lint/plugin: a colour slider, not a button size */
   height: 14px;
   margin: 0;
   border-radius: 7px;
@@ -397,7 +402,7 @@
   align-items: center;
   gap: 6px;
   width: 100%;
-  min-height: 28px;
+  min-height: var(--btn-s-h);
   padding: 0;
   border: 0;
   background: transparent;

@@ -89,7 +89,7 @@ body {
 .monitor-summary button {
   display: flex;
   min-width: 0;
-  height: 46px;
+  height: var(--btn-l-h);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -347,7 +347,7 @@ body {
     gap: 4px;
   }
   .monitor-summary button {
-    height: 42px;
+    height: var(--btn-l-h);
   }
   .monitor-card {
     padding: 7px;
@@ -545,6 +545,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 44px;
+  /* biome-ignore lint/plugin: existing: the drawer close is not on a Button size yet */
   height: 44px;
   padding: 0;
   border: 0;
@@ -565,7 +566,7 @@ body {
 }
 .monitor-drawer__tablist {
   display: grid;
-  height: 44px;
+  height: var(--btn-m-h);
   width: 100%;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -593,7 +594,7 @@ body {
   cursor: pointer;
   justify-content: center;
   min-width: 0;
-  height: 44px;
+  height: var(--btn-m-h);
   padding-inline: 4px;
   gap: 4px;
   font-size: 12px;
@@ -652,7 +653,7 @@ body {
 }
 .monitor-drawer__retry {
   margin-top: 12px;
-  min-height: 40px;
+  min-height: var(--btn-m-h);
   padding: 0 14px;
   border: 1px solid var(--r-border);
   border-radius: 6px;

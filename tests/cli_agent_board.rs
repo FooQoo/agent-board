@@ -58,6 +58,7 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
             "ai",
             "--request-json",
             &common::decision_json("Need input"),
+            "--no-wait",
             "--json",
         ],
     )

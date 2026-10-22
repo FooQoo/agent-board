@@ -100,12 +100,12 @@ export const Stopped: Story = {
     ).toBeInTheDocument();
     await expect(view.getByText('The saved token will be used.')).toBeInTheDocument();
     await expect(view.queryByLabelText('ngrok auth token')).toBeNull();
-    // Both actions are the M size (38px) high, and Reconnect is as wide as the save action.
-    const change = view.getByRole('button', { name: 'Change connection settings' });
+    // Both actions are the M size (38px) high and exactly as wide as each other.
+    const change = view.getByRole('button', { name: 'Change settings' });
     const reconnect = view.getByRole('button', { name: 'Reconnect' });
     await expect(change.offsetHeight).toBe(38);
     await expect(reconnect.offsetHeight).toBe(38);
-    await expect(reconnect.offsetWidth).toBe(146);
+    await expect(reconnect.offsetWidth).toBe(change.offsetWidth);
     await userEvent.click(reconnect);
     await expect(args.onConnect).toHaveBeenCalledWith({ token: '', save: false });
   },
