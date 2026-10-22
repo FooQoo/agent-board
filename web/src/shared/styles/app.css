@@ -158,6 +158,13 @@ ol {
   height: 14px;
 }
 
+/* Narrow windows keep the project name readable: the Docs button shows its icon only. */
+@media (max-width: 1200px) {
+  .header__docs-label {
+    display: none;
+  }
+}
+
 .header__add svg {
   width: 14px;
   height: 14px;

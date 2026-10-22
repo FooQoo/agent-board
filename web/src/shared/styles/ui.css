@@ -166,6 +166,14 @@
   padding-inline: 12px;
 }
 
+/* Narrow windows keep the project name readable: the Docs button is an icon there. */
+@media (max-width: 1200px) {
+  .header__docs {
+    min-width: 0;
+    padding-inline: 10px;
+  }
+}
+
 /* The icon and the text of an IconLabel: one icon box (16px) and one gap in every button. */
 .icon-label {
   display: inline-flex;

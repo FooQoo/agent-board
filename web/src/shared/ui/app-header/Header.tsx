@@ -130,10 +130,13 @@ export function Header({
               type="button"
               variant="outline"
               className="header__docs"
+              aria-label={t('docs.title')}
               disabled={switchDisabled}
               onClick={onDocs}
             >
-              <IconLabel icon={BookOpenIcon}>{t('docs.title')}</IconLabel>
+              <IconLabel icon={BookOpenIcon}>
+                <span className="header__docs-label">{t('docs.title')}</span>
+              </IconLabel>
             </Button>
           )}
           <Button
