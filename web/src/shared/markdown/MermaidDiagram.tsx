@@ -1,7 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Lightbox } from '../ui/lightbox/Lightbox';
+import { RenderScopeContext } from './renderScope';
 import {
+  cachedMermaid,
   mermaidThemeFromCss,
   svgElementOf,
   watchPageTheme,
@@ -24,6 +26,37 @@ function useMermaidTheme(): MermaidTheme {
     return stop;
   }, []);
   return theme;
+}
+
+/** A block this close to the edge of the scrolling area (in pixels) is drawn before it is seen. */
+export const MERMAID_ROOT_MARGIN = 600;
+
+/**
+ * True once `element` has come within `MERMAID_ROOT_MARGIN` pixels of `root` (the page viewport when
+ * null) and stays true after that. Always true when `active` is false or the browser cannot observe.
+ */
+function useNearViewport(
+  element: HTMLElement | null,
+  root: HTMLElement | null,
+  active: boolean,
+): boolean {
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    if (!active || near || element === null) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setNear(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setNear(true);
+      },
+      { root, rootMargin: `${MERMAID_ROOT_MARGIN}px 0px` },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [active, near, element, root]);
+  return !active || near;
 }
 
 /** A drawn diagram placed in a span as nodes; the span is the only element it adds. */
@@ -57,13 +90,22 @@ export function mermaidViewStateOf(result: RenderResult | null): MermaidViewStat
  * be shown on its own. A wrong notation shows one line of the error and the source, so the text can still
  * be read and corrected. A drawn diagram opens enlarged on a press.
  */
-export function MermaidDiagramView({ source, state }: { source: string; state: MermaidViewState }) {
+export function MermaidDiagramView({
+  source,
+  state,
+  figureRef,
+}: {
+  source: string;
+  state: MermaidViewState;
+  /** The figure of the diagram, so a caller can observe where it is on the page. */
+  figureRef?: Ref<HTMLElement>;
+}) {
   const { t } = useTranslation();
   const [enlarged, setEnlarged] = useState(false);
 
   if (state.status === 'loading') {
     return (
-      <figure className="md-mermaid md-mermaid--loading" aria-busy="true">
+      <figure ref={figureRef} className="md-mermaid md-mermaid--loading" aria-busy="true">
         <p className="md-mermaid__status">{t('markdown.diagramLoading')}</p>
       </figure>
     );
@@ -71,7 +113,7 @@ export function MermaidDiagramView({ source, state }: { source: string; state: M
 
   if (state.status === 'failed') {
     return (
-      <figure className="md-mermaid md-mermaid--error">
+      <figure ref={figureRef} className="md-mermaid md-mermaid--error">
         <p className="md-mermaid__status" role="alert">
           {t('markdown.diagramError', { message: state.message })}
         </p>
@@ -84,7 +126,7 @@ export function MermaidDiagramView({ source, state }: { source: string; state: M
 
   return (
     <>
-      <figure className="md-mermaid">
+      <figure ref={figureRef} className="md-mermaid">
         <button
           type="button"
           className="md-mermaid__open"
@@ -103,9 +145,17 @@ export function MermaidDiagramView({ source, state }: { source: string; state: M
   );
 }
 
-/** A Mermaid block drawn with the page's theme. The drawing runs once per source and theme. */
+/**
+ * A Mermaid block drawn with the page's theme. The drawing runs once per source and theme, and a drawing
+ * that is still kept is shown at once when the block is mounted again. Inside a scope that defers (a block
+ * of kind `mermaid`) nothing is drawn until the block is near the viewport and fully received.
+ */
 export function MermaidDiagram({ source }: { source: string }) {
   const theme = useMermaidTheme();
+  const scope = useContext(RenderScopeContext);
+  const [figure, setFigure] = useState<HTMLElement | null>(null);
+  const near = useNearViewport(figure, scope.scrollParent, scope.deferMermaid);
+  const enabled = near && scope.complete;
   const [drawn, setDrawn] = useState<{
     source: string;
     theme: MermaidTheme;
@@ -113,6 +163,7 @@ export function MermaidDiagram({ source }: { source: string }) {
   } | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let current = true;
     void renderMermaid(source, theme).then((result) => {
       if (current) setDrawn({ source, theme, result });
@@ -120,10 +171,16 @@ export function MermaidDiagram({ source }: { source: string }) {
     return () => {
       current = false;
     };
-  }, [source, theme]);
+  }, [enabled, source, theme]);
 
   const result =
-    drawn !== null && drawn.source === source && drawn.theme === theme ? drawn.result : null;
+    drawn !== null && drawn.source === source && drawn.theme === theme
+      ? drawn.result
+      : enabled
+        ? cachedMermaid(source, theme)
+        : null;
 
-  return <MermaidDiagramView source={source} state={mermaidViewStateOf(result)} />;
+  return (
+    <MermaidDiagramView source={source} state={mermaidViewStateOf(result)} figureRef={setFigure} />
+  );
 }
