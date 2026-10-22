@@ -135,6 +135,10 @@ export function ConnectionSetupSteps({
 
 export interface ConnectionReadyStepsProps {
   qr?: ConnectionQr | null;
+  /** A project is selected. Without one nothing stands in for the QR code, and the copy is off. */
+  projectSelected?: boolean;
+  /** There is an address to copy. */
+  copyable?: boolean;
   /** The 4-digit passcode the phone enters; nothing is shown in its place before it is known. */
   passcode?: string | null;
   /** The URL was just copied. */
@@ -143,7 +147,14 @@ export interface ConnectionReadyStepsProps {
 }
 
 /** The two steps once the connection is up: scan the QR code, then enter the passcode. */
-export function ConnectionReadySteps({ qr, passcode, copied, onCopy }: ConnectionReadyStepsProps) {
+export function ConnectionReadySteps({
+  qr,
+  projectSelected = true,
+  copyable = true,
+  passcode,
+  copied,
+  onCopy,
+}: ConnectionReadyStepsProps) {
   const { t } = useTranslation();
   const passcodeTitle = useId();
   return (
@@ -160,8 +171,13 @@ export function ConnectionReadySteps({ qr, passcode, copied, onCopy }: Connectio
             )}
           </figure>
         )}
+        {!projectSelected && (
+          <p className="connection-dialog__step-text" data-testid="project-needed">
+            {t('dataLayerConnection.projectNeeded')}
+          </p>
+        )}
         <div className="connection-dialog__copy">
-          <Button type="button" variant="outline" onClick={onCopy}>
+          <Button type="button" variant="outline" disabled={!copyable} onClick={onCopy}>
             {t('monitorConnection.copy')}
           </Button>
           {copied && (
