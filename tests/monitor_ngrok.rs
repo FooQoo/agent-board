@@ -355,7 +355,7 @@ fn forged_identity_headers_never_stand_in_for_a_session() {
         ("X-Agboard-Csrf", "x"),
         ("Origin", PUBLIC),
     ];
-    let path = format!("/monitor/api/projects/{}/board", t.project());
+    let path = format!("/monitor/api/projects/{}/summary", t.project());
     for p in [
         "/monitor/api/projects",
         path.as_str(),
@@ -650,8 +650,13 @@ fn the_cookie_alone_cannot_reach_the_backend() {
         assert_eq!(r.status, 403, "{headers:?}");
     }
     assert_eq!(
-        t.call("GET", "/monitor/api/projects", &[("Cookie", &cookie)], "")
-            .status,
+        t.call(
+            "GET",
+            &format!("/monitor/api/projects/{}/summary", t.project()),
+            &[("Cookie", &cookie)],
+            ""
+        )
+        .status,
         200
     );
 }
@@ -662,8 +667,13 @@ fn a_session_dies_with_the_run_that_issued_it() {
     let (value, _) = t.session();
     let cookie = cookie_header(&value);
     assert_eq!(
-        t.call("GET", "/monitor/api/projects", &[("Cookie", &cookie)], "")
-            .status,
+        t.call(
+            "GET",
+            &format!("/monitor/api/projects/{}/summary", t.project()),
+            &[("Cookie", &cookie)],
+            ""
+        )
+        .status,
         200
     );
     let old_backend = t.backend;
@@ -713,8 +723,8 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     let routes = [
         "/monitor/api/projects".to_string(),
         format!("{base}/board"),
-        format!("{base}/epics"),
-        format!("{base}/epics/EPIC-1"),
+        format!("{base}/summary"),
+        format!("{base}/tasks/1/detail"),
         format!("{base}/tasks/1/attachments/none"),
         "/monitor/api/events".to_string(),
         "/monitor/api/nothing-here".to_string(),
@@ -731,19 +741,20 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     let (value, csrf) = t.session();
     let cookie = cookie_header(&value);
     let with = [("Cookie", cookie.as_str())];
-    assert_eq!(
-        t.call("GET", "/monitor/api/projects", &with, "").status,
-        200
-    );
-    let board = t.call("GET", &format!("{base}/board"), &with, "");
+    // The whole-board reads are gone, also for a phone with a session.
+    for old in [
+        "/monitor/api/projects".to_string(),
+        format!("{base}/board"),
+        format!("{base}/epics"),
+        format!("{base}/epics/EPIC-1"),
+    ] {
+        assert_eq!(t.call("GET", &old, &with, "").status, 404, "{old}");
+    }
+    let board = t.call("GET", &format!("{base}/summary"), &with, "");
     assert_eq!(board.status, 200);
     assert_eq!(board.header("cache-control").as_deref(), Some("no-store"));
     assert!(
         board.body.contains("Choose the first path") || board.body.contains("pendingRequestId")
-    );
-    assert_eq!(
-        t.call("GET", &format!("{base}/epics"), &with, "").status,
-        200
     );
     // An attachment that is not the task's is not found, not served.
     assert_eq!(
@@ -776,7 +787,7 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     let w = write_headers(&cookie, &csrf);
     for (m, p) in [
         ("POST", "/monitor/api/projects".to_string()),
-        ("DELETE", format!("{base}/board")),
+        ("DELETE", format!("{base}/summary")),
         ("PUT", format!("{base}/tasks/1/answer")),
         ("PATCH", "/monitor/api/events".to_string()),
         ("POST", format!("{base}/tasks/1/move")),
@@ -827,7 +838,12 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
     let (value, csrf) = t.session();
     let cookie = cookie_header(&value);
     let board: Value = t
-        .call("GET", &format!("{base}/board"), &[("Cookie", &cookie)], "")
+        .call(
+            "GET",
+            &format!("{base}/summary"),
+            &[("Cookie", &cookie)],
+            "",
+        )
         .json();
     let request_id = board["tasks"]
         .as_array()
@@ -925,7 +941,12 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
     let _ = other_cookie;
     // Nothing was written by the refusals.
     let after: Value = t
-        .call("GET", &format!("{base}/board"), &[("Cookie", &cookie)], "")
+        .call(
+            "GET",
+            &format!("{base}/summary"),
+            &[("Cookie", &cookie)],
+            "",
+        )
         .json();
     assert_eq!(
         after["tasks"]
@@ -946,7 +967,12 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
     assert_eq!(r.status, 200, "{}", r.body);
     assert_eq!(r.json()["changed"], true);
     let done: Value = t
-        .call("GET", &format!("{base}/board"), &[("Cookie", &cookie)], "")
+        .call(
+            "GET",
+            &format!("{base}/summary"),
+            &[("Cookie", &cookie)],
+            "",
+        )
         .json();
     let task = done["tasks"]
         .as_array()
@@ -1082,8 +1108,13 @@ fn disconnect_ends_the_session_and_leaves_no_logout_path() {
         403
     );
     assert_eq!(
-        t.call("GET", &format!("{base}/board"), &[("Cookie", &cookie)], "")
-            .status,
+        t.call(
+            "GET",
+            &format!("{base}/summary"),
+            &[("Cookie", &cookie)],
+            ""
+        )
+        .status,
         200
     );
     let r = t.call("POST", "/monitor/api/disconnect", &w, "{}");
@@ -1093,7 +1124,7 @@ fn disconnect_ends_the_session_and_leaves_no_logout_path() {
     assert!(!r.body.contains("logout"));
     let cleared = r.header("set-cookie").unwrap();
     assert!(cleared.contains("Max-Age=0") && cleared.contains("Path=/monitor/"));
-    for p in [format!("{base}/board"), "/monitor/api/events".to_string()] {
+    for p in [format!("{base}/summary"), "/monitor/api/events".to_string()] {
         assert_eq!(t.call("GET", &p, &[("Cookie", &cookie)], "").status, 401);
     }
     assert_eq!(

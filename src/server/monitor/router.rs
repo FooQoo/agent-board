@@ -26,8 +26,8 @@ use crate::file_store::model::AttachmentOwner;
 use crate::file_store::validate::EpicId;
 use crate::server::change_feed::{ChangeEvent, ChangeFeed};
 use crate::server::preferences::{Preferences, PreferencesStore};
-use crate::server::response::{agboard_error_response, file_response, json_response};
-use crate::server::store::{indexed_view_in, parse_project_id, read_checked};
+use crate::server::response::{agboard_error_response, file_response};
+use crate::server::store::{parse_project_id, read_checked};
 use crate::server::web_assets::{self, MONITOR_BUILD_ID};
 
 #[derive(Clone)]
@@ -73,11 +73,6 @@ impl MonitorState {
 pub(crate) fn router(state: Arc<MonitorState>) -> Router {
     Router::new()
         .route("/monitor/assets/monitor/{name}", get(asset))
-        .route("/monitor/api/projects", get(projects).head(projects))
-        .route(
-            "/monitor/api/projects/{project_id}/board",
-            get(board).head(board),
-        )
         .route(
             "/monitor/api/projects/{project_id}/summary",
             get(data::summary).head(data::summary),
@@ -94,14 +89,6 @@ pub(crate) fn router(state: Arc<MonitorState>) -> Router {
         .route(
             "/monitor/api/projects/{project_id}/tasks/{id}/attachments/{attachment_id}",
             get(task_attachment).head(task_attachment),
-        )
-        .route(
-            "/monitor/api/projects/{project_id}/epics",
-            get(epics).head(epics),
-        )
-        .route(
-            "/monitor/api/projects/{project_id}/epics/{epic_id}",
-            get(epic).head(epic),
         )
         .route(
             "/monitor/api/projects/{project_id}/epics/{epic_id}/attachments/{attachment_id}",
@@ -201,61 +188,6 @@ async fn asset(Path(name): Path<String>, headers: HeaderMap) -> Response {
     }
 }
 
-async fn projects(State(state): State<Arc<MonitorState>>) -> Response {
-    match FileStore::open(&state.shared).catalog() {
-        Ok(catalog) => json_response(StatusCode::OK, &catalog),
-        Err(error) => agboard_error_response(&error),
-    }
-}
-
-async fn board(
-    State(state): State<Arc<MonitorState>>,
-    Path(raw_project): Path<String>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    match indexed_view_in(&state.shared, &state.index, &project_id) {
-        Ok(view) => {
-            #[derive(serde::Serialize)]
-            #[serde(rename_all = "camelCase")]
-            struct Board<'a> {
-                project: &'a crate::domain::ProjectMeta,
-                version: &'a str,
-                cursor: &'a crate::domain::ChangeCursor,
-                epics: &'a [crate::file_store::model::EpicView],
-                epic_task_counts: &'a std::collections::BTreeMap<
-                    String,
-                    crate::server::epic_counts::EpicTaskCounts,
-                >,
-                tasks: Vec<&'a crate::file_store::model::TaskView>,
-                problems: &'a [crate::file_store::model::Problem],
-            }
-            let tasks = view
-                .tasks
-                .iter()
-                .filter(|task| task.archived_at.is_none())
-                .collect();
-            let epic_task_counts =
-                crate::server::epic_counts::task_counts_by_epic(&view.epics, &view.tasks);
-            json_response(
-                StatusCode::OK,
-                &Board {
-                    project: &view.project,
-                    version: &view.version,
-                    cursor: &view.cursor,
-                    epics: &view.epics,
-                    epic_task_counts: &epic_task_counts,
-                    tasks,
-                    problems: &view.problems,
-                },
-            )
-        }
-        Err(error) => agboard_error_response(&error),
-    }
-}
-
 async fn task_attachment(
     State(state): State<Arc<MonitorState>>,
     Path((raw_project, raw_id, attachment_id)): Path<(String, String, String)>,
@@ -277,45 +209,6 @@ async fn task_attachment(
     .await;
     match result {
         Ok(Ok((mime, bytes))) => file_response(&mime, bytes),
-        Ok(Err(error)) => agboard_error_response(&error),
-        Err(error) => agboard_error_response(&AgboardError::DatabaseError {
-            reason: error.to_string(),
-        }),
-    }
-}
-
-async fn epics(
-    State(state): State<Arc<MonitorState>>,
-    Path(raw_project): Path<String>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    match indexed_view_in(&state.shared, &state.index, &project_id) {
-        Ok(view) => json_response(StatusCode::OK, &serde_json::json!({"epics": view.epics})),
-        Err(error) => agboard_error_response(&error),
-    }
-}
-
-async fn epic(
-    State(state): State<Arc<MonitorState>>,
-    Path((raw_project, raw_epic)): Path<(String, String)>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    let epic_id = match raw_epic.parse::<EpicId>() {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    let result = tokio::task::spawn_blocking(move || {
-        FileStore::open(&state.shared).epic(&project_id, &epic_id)
-    })
-    .await;
-    match result {
-        Ok(Ok(epic)) => json_response(StatusCode::OK, &serde_json::json!({"epic": epic})),
         Ok(Err(error)) => agboard_error_response(&error),
         Err(error) => agboard_error_response(&AgboardError::DatabaseError {
             reason: error.to_string(),

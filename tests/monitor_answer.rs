@@ -92,7 +92,7 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
     let server = Running::start(home.path());
     let session = server.session();
     let base = server.monitor_base(home.path());
-    let board = server.get(&session, &format!("{base}/board"));
+    let board = server.get(&session, &format!("{base}/summary"));
     let board: serde_json::Value = serde_json::from_str(&board.body).unwrap();
     let todo_request = board["tasks"]
         .as_array()
@@ -126,7 +126,7 @@ fn monitor_answers_todo_and_doing_pending_without_moving_the_tasks() {
     assert_eq!(todo_answer.as_object().unwrap().len(), 2);
     assert!(todo_answer["reason"].as_str().unwrap().contains("Keep it"));
 
-    let board = server.get(&session, &format!("{base}/board"));
+    let board = server.get(&session, &format!("{base}/summary"));
     let board: serde_json::Value = serde_json::from_str(&board.body).unwrap();
     let doing = board["tasks"]
         .as_array()
@@ -260,7 +260,7 @@ fn monitor_answer_requires_its_session_origin_host_and_csrf_and_only_allows_post
 
     let board = server.get(
         &session,
-        &format!("{}/board", server.monitor_base(home.path())),
+        &format!("{}/summary", server.monitor_base(home.path())),
     );
     let board: serde_json::Value = serde_json::from_str(&board.body).unwrap();
     let todo = board["tasks"]
