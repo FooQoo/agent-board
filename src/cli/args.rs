@@ -621,10 +621,10 @@ pub struct EpicEditArgs {
 #[derive(Args, Debug, Clone, Default)]
 #[group(id = "document_source", multiple = false)]
 pub struct DocumentArgs {
-    /// Whole EPIC.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
+    /// Whole EPIC.md text in Markdown, frontmatter included, up to 100,000 characters; use "-" to read it from standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub document: Option<String>,
-    /// Read the whole EPIC.md text, frontmatter included (up to 50,000 characters), from a file
+    /// Read the whole EPIC.md text, frontmatter included (up to 100,000 characters), from a file
     #[arg(long, value_name = "PATH")]
     pub document_file: Option<PathBuf>,
 }

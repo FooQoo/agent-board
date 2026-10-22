@@ -20,7 +20,7 @@ agboard --project "My project" edit 1 --clear-epic
 
 - Epic IDs use letters, digits, and hyphens; lowercase input is turned into uppercase.
 - The details are free Markdown with optional `priority` frontmatter. Write reference completion conditions directly in the details; no heading is required.
-- Use `--document-file` to set the whole `EPIC.md` text from a file, or `--document` to pass the text (use `-` to read standard input). The text includes frontmatter and can be up to 50,000 characters.
+- Use `--document-file` to set the whole `EPIC.md` text from a file, or `--document` to pass the text (use `-` to read standard input). The text includes frontmatter and can be up to 100,000 characters.
 - Use `--name` or `--color '#7C3AED'` with `epic edit` to change the name or color.
 - A task belongs to at most one epic.
 

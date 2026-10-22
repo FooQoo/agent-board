@@ -71,7 +71,7 @@ For longer Markdown, use a file rather than a command-line string:
 agboard --project "My project" edit 1 --desc-file task.md
 ```
 
-Descriptions and epic details (`EPIC.md`) allow up to 50,000 characters, and the file must follow the [Markdown file format](./file-format). Use `--desc -` to read a description from standard input.
+Descriptions allow up to 50,000 characters and epic details (`EPIC.md`) up to 100,000, and the file must follow the [Markdown file format](./file-format). Use `--desc -` to read a description from standard input.
 
 `edit --desc-file` replaces the body and acceptance conditions and keeps the latest history from `TASK.md`; history in the input file is ignored. Moves, state changes, and other operations from the CLI or the UI append history to `TASK.md`, and `show`, `snapshot`, and the browser read that same history.
 
@@ -85,7 +85,7 @@ agboard --project "My project" epic edit LAUNCH --document -
 agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
-`--document` and `--document-file` cannot be given together, and each accepts up to 50,000 characters. The earlier `--plan` and `--plan-file` options were removed; see [Data and backups](../operations/data) for the new names.
+`--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters. The earlier `--plan` and `--plan-file` options were removed; see [Data and backups](../operations/data) for the new names.
 
 ## Filter and list
 

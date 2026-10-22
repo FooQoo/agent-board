@@ -50,7 +50,7 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 | `name` | 1 to 100 characters after trimming, one line. |
 | `color` | `#RRGGBB`, uppercased. Random at creation when omitted. |
 | `isDraft` | Marks an epic that is still being prepared; member tasks are not affected. |
-| `document`, `body` | The whole `EPIC.md` text, frontmatter included (0 to 50,000 characters), and the body without frontmatter. |
+| `document`, `body` | The whole `EPIC.md` text, frontmatter included (0 to 100,000 characters), and the body without frontmatter. |
 | `priority`, `priorityError` | Member task IDs in work order, and whether reading them failed. |
 
 - Tasks store only `epicId`; the label color and name are resolved when read.

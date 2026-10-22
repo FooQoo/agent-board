@@ -71,7 +71,7 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 agboard --project "My project" edit 1 --desc-file task.md
 ```
 
-説明とエピックの詳細（`EPIC.md`）は、50,000文字まで使えます。ファイルは[Markdownファイルの形式](./file-format)に従う必要があります。標準入力から説明を読むには、`--desc -`を使います。
+説明は50,000文字まで、エピックの詳細（`EPIC.md`）は100,000文字まで使えます。ファイルは[Markdownファイルの形式](./file-format)に従う必要があります。標準入力から説明を読むには、`--desc -`を使います。
 
 `edit --desc-file`は、本文と受入条件を置き換え、`TASK.md`の最新の履歴を保ちます。入力ファイルの履歴は無視されます。CLIや画面からの移動・状態の変更などの操作は、`TASK.md`に履歴を追加し、`show`・`snapshot`・ブラウザは同じ履歴を読みます。
 
@@ -85,7 +85,7 @@ agboard --project "My project" epic edit LAUNCH --document -
 agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
-`--document`と`--document-file`は同時に指定できません。どちらも50,000文字まで受け付けます。以前の`--plan`と`--plan-file`は削除されました。新しい名前は[データとバックアップ](../operations/data)の移行の節を参照してください。
+`--document`と`--document-file`は同時に指定できません。どちらも100,000文字まで受け付けます。以前の`--plan`と`--plan-file`は削除されました。新しい名前は[データとバックアップ](../operations/data)の移行の節を参照してください。
 
 ## 一覧を絞り込む
 

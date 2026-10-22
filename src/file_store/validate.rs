@@ -124,17 +124,17 @@ pub fn validate_epic_name(text: &str) -> Result<String, AgboardError> {
     Ok(trimmed.to_string())
 }
 
-/// A document text with CRLF folded to LF, and at most 50,000 characters of
+/// A document text with CRLF folded to LF, and at most 100,000 characters of
 /// Markdown body. The frontmatter is not counted, because the editor counts only
 /// the body.
 pub fn normalize_document(text: &str) -> Result<String, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
     let body = super::frontmatter::parse_document(&normalized).body;
     let count = body.chars().count();
-    if count > 50_000 {
+    if count > 100_000 {
         return Err(AgboardError::InvalidValue {
             field: "document".into(),
-            reason: "Documents must be 50,000 characters or fewer.".into(),
+            reason: "Documents must be 100,000 characters or fewer.".into(),
         });
     }
     Ok(normalized)

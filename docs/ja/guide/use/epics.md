@@ -20,7 +20,7 @@ agboard --project "My project" edit 1 --clear-epic
 
 - エピックIDには、英字・数字・ハイフンを使います。小文字で入力すると、大文字になります。
 - 詳細は自由なMarkdownで、frontmatterの`priority`は任意です。参考となる完了条件は、詳細の本文に直接書きます。見出しは不要です。
-- `--document-file`でファイルから`EPIC.md`の全文を設定し、`--document`で文字列を渡します（`-`で標準入力）。frontmatterを含め、50,000文字まで使えます。
+- `--document-file`でファイルから`EPIC.md`の全文を設定し、`--document`で文字列を渡します（`-`で標準入力）。frontmatterを含め、100,000文字まで使えます。
 - 名前や色を変えるには、`epic edit`に`--name`や`--color '#7C3AED'`を使います。
 - タスクは、最大で一つのエピックに所属します。
 
