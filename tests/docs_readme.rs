@@ -116,3 +116,19 @@ fn creating_a_project_never_touches_another_projects_readme() {
         "edited\n"
     );
 }
+
+#[test]
+fn deleting_a_project_deletes_its_docs_folder_too() {
+    let home = tempfile::tempdir().unwrap();
+    let store = agent_board::file_store::FileStore::open(&home.path().join("shared"));
+    let id = store
+        .create_project("doomed", chrono::Utc::now())
+        .unwrap()
+        .id;
+    let project = home.path().join("shared/projects").join(id.to_string());
+    fs::write(project.join("docs/notes.md"), "kept?\n").unwrap();
+    assert!(project.join("docs/README.md").is_file());
+    store.delete_project(&id).unwrap();
+    assert!(!project.join("docs").exists());
+    assert!(!project.exists());
+}
