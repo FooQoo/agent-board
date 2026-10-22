@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "owner": "U3",
+  "files": [
+    {
+      "file": "features/docs/ui/document/DocumentPane.tsx",
+      "exports": [
+        {
+          "name": "DocumentPane",
+          "stories": [
+            {
+              "id": "docs-document-documentpane--ready",
+              "states": ["file open", "unchanged", "save disabled", "kind label", "table"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--with-frontmatter",
+              "states": ["front matter", "folds", "item count"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--editing",
+              "states": ["unsaved changes", "save enabled"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--loading",
+              "states": ["loading"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--load-error",
+              "states": ["load failed", "reload"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--read-only",
+              "states": ["read-only notice", "save disabled"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--saving",
+              "states": ["saving", "buttons off"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--save-failed",
+              "states": ["failed save", "input retained", "no retry button"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--conflict",
+              "states": [
+                "conflict",
+                "two choices",
+                "input retained",
+                "reload confirm",
+                "overwrite without question"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--conflict-overwriting",
+              "states": ["overwrite in progress", "choices off"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--conflict-japanese-dark",
+              "states": ["japanese locale", "dark theme", "front matter"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--phone",
+              "states": ["phone width", "conflict", "front matter"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/docs/ui/document/ConflictBanner.tsx",
+      "exports": [
+        {
+          "name": "ConflictBanner",
+          "stories": [
+            {
+              "id": "docs-document-conflictbanner--conflict",
+              "states": ["conflict", "two choices", "reload confirm"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-conflictbanner--conflict-overwriting",
+              "states": ["overwrite in progress"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/docs/ui/document/FrontmatterBlock.tsx",
+      "exports": [
+        {
+          "name": "FrontmatterBlock",
+          "stories": [
+            {
+              "id": "docs-document-frontmatterblock--with-frontmatter",
+              "states": ["front matter", "folds"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

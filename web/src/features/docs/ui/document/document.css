@@ -1,0 +1,220 @@
+/*
+ * The center pane of the docs dialog: the conflict notice, the read-only notice, the kind label,
+ * the front matter and the body. Colors are the r-* tokens of theme.css; the lengths are the
+ * approved mock's own. The rules are unlayered, like editor.css, so they sit above the Tailwind
+ * utilities.
+ */
+.docs-doc {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  min-height: 0;
+  padding: 28px 44px 0;
+  background: var(--r-surface);
+}
+
+.docs-doc[data-compact="true"] {
+  gap: 16px;
+  padding: 20px 20px 0;
+}
+
+.docs-doc__kind {
+  color: var(--r-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.docs-doc__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.docs-doc__readonly {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-lane);
+  color: var(--r-text2);
+  font-size: 13px;
+}
+
+.docs-doc__readonly svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+/* Loading: bars where the title and the first lines will be. */
+.docs-doc__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.docs-doc__bone {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--r-lane);
+}
+
+.docs-doc__bone--title {
+  width: 200px;
+  max-width: 60%;
+  height: 22px;
+}
+
+.docs-doc__bone--short {
+  width: 60%;
+}
+
+/* A load failure replaces the body. */
+.docs-doc__failure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.docs-doc__failure-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--r-danger);
+}
+
+.docs-doc__failure-title {
+  color: var(--r-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.docs-doc__failure-body {
+  margin-top: -4px;
+  color: var(--r-text2);
+  font-size: 13px;
+}
+
+/* The conflict notice. */
+.docs-conflict {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.docs-conflict__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  background: var(--r-pend-bg);
+}
+
+.docs-conflict__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--r-pend-tx);
+}
+
+.docs-conflict__text {
+  display: flex;
+  flex: 1 1 160px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.docs-conflict__title {
+  color: var(--r-pend-tx);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.docs-conflict__body {
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* The front matter: folds, read only. */
+.docs-frontmatter {
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+}
+
+.docs-frontmatter__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  /* biome-ignore lint/plugin: a disclosure row, not a button size; the mock fixes it at 36px */
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  background: var(--r-lane);
+  color: var(--r-text2);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.docs-frontmatter__head:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -2px;
+}
+
+.docs-frontmatter__chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--r-muted);
+  transition: transform 0.15s;
+}
+
+.docs-frontmatter[data-open="true"] .docs-frontmatter__chevron {
+  transform: none;
+}
+
+.docs-frontmatter:not([data-open="true"]) .docs-frontmatter__chevron {
+  transform: rotate(-90deg);
+}
+
+.docs-frontmatter__title {
+  font-weight: 600;
+}
+
+.docs-frontmatter__count {
+  color: var(--r-muted);
+}
+
+.docs-frontmatter__body {
+  margin: 0;
+  padding: 10px 14px;
+  overflow-x: auto;
+  color: var(--r-text2);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.docs-frontmatter__body[hidden] {
+  display: none;
+}
