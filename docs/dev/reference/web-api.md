@@ -44,7 +44,7 @@ The board and the monitor read a project in two steps. The Summary lists everyth
 
 Until their handlers are written, the Summary and Detail routes answer 501 `not_implemented`. The shapes below are fixed by the Rust types in `src/server/contracts/` and by the golden examples in `tests/fixtures/data-layer/`, which the Rust and TypeScript tests both read.
 
-**Summary.** `GET …/summary` returns `project` (`id`, `name`), `version`, `tasks`, `epics`, and `problems`. The response never holds a body, acceptance text, history, epic document, or image bytes.
+**Summary.** `GET …/summary` returns `project` (`id`, `name`), `version`, `tasks`, `epics`, and `problems`. The response never holds a body, acceptance text, history, epic document, or image bytes. It is built from the projection in the index, so no file is read for it. Archived tasks are not listed (the epics count them). `version` is a hash of the parsed data and is also the `ETag` (`"<version>"`); a request whose `If-None-Match` names it (a list, a weak tag, or `*` also match) gets `304` with no body. A missing project is 404 `project_not_found`, a malformed ID is 422 `invalid_value`, and a project whose `project.json` cannot be read gets that file's error.
 
 | Item | Fields |
 | --- | --- |
@@ -92,6 +92,8 @@ The order is `start`, then for each requested section `section-start`, its items
 | `changes[].facets` | A non-empty list without repeats. `summary`: title, status, position, epic, pending question, acceptance counts. `document`: the body and acceptance text. `history`: the history. `deleted`: the resource is gone. A project has only `summary` or `deleted`. Moving a task to the archive, or restoring it, is a `summary` change. |
 
 A client that sees a gap in `seq`, a new `instanceId`, or an event it does not know drops the Summary and the related cached details. `ready` and `preferences` are unchanged.
+
+The server compares the parsed data before and after every reload, so a save that changes nothing the Summary or a Detail shows sends no event. A file that cannot be parsed changes every facet of its resource. A stream that fell too far behind gets `resync` (`{"instanceId", "seq"}`, the newest number) instead of the events it missed, and the client fetches everything again. The monitor stream numbers the events it sends itself, so the changes of other projects leave no gap in `seq`, and it sends no `project` change.
 
 ### Mobile connection
 

@@ -1270,8 +1270,14 @@ fn notify_sends_changed_to_every_connected_client() {
         )
         .unwrap();
     assert_eq!(server.send("POST", "/api/notify", &[]).status, 204);
-    first.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
-    second.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
+    first.wait_for(
+        "event: changed\ndata: {\"instanceId\":",
+        Duration::from_secs(2),
+    );
+    second.wait_for(
+        "event: changed\ndata: {\"instanceId\":",
+        Duration::from_secs(2),
+    );
 }
 
 #[test]
@@ -1325,7 +1331,10 @@ fn a_successful_delete_sends_changed_and_a_refused_one_does_not() {
     );
     assert_eq!(archive.status, 200, "{}", archive.body);
     assert_eq!(server.delete_as_page(1).status, 204);
-    events.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
+    events.wait_for(
+        "event: changed\ndata: {\"instanceId\":",
+        Duration::from_secs(2),
+    );
 }
 
 #[test]
@@ -1531,7 +1540,10 @@ fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
         .unwrap();
     let notified = with_home(home.path(), agent_board::interact::notify::notify_serve);
     assert!(notified);
-    events.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
+    events.wait_for(
+        "event: changed\ndata: {\"instanceId\":",
+        Duration::from_secs(2),
+    );
 }
 
 #[test]

@@ -3,8 +3,9 @@
 //! `notify` reports paths on its own thread; the path is turned into a target
 //! (one project, or the whole catalog) and queued. A tokio task keeps a
 //! deadline per target, moved 200 ms forward by every new event, and reloads
-//! the target when the deadline passes. The `changed` broadcast is sent only
-//! when the catalog version changed, so a save of identical content is silent.
+//! the target when the deadline passes. The index compares the projection before and after the
+//! reload, and the change sets it found go to the sink, so a save that changes no parsed data
+//! is silent.
 //!
 //! Temporary files and `.internal/` are not canonical data, and neither is the
 //! project README; their events are dropped before they reach the queue.
@@ -16,11 +17,12 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tokio::time::Instant;
 
 use super::FileStore;
 use super::index::ProjectIndex;
+use super::projection::ChangeSink;
 use crate::domain::ProjectId;
 use crate::error::{AgboardError, FileAction};
 
@@ -90,7 +92,7 @@ impl Watch {
     pub fn start(
         shared: &Path,
         index: Arc<RwLock<ProjectIndex>>,
-        changed: broadcast::Sender<()>,
+        changed: impl Into<ChangeSink>,
     ) -> Result<(Watch, Reloader), AgboardError> {
         std::fs::create_dir_all(shared).map_err(|e| watch_error(shared, e))?;
         let root = shared.canonicalize().map_err(|e| watch_error(shared, e))?;
@@ -126,8 +128,10 @@ impl Watch {
         {
             let mut guard = index.write().unwrap_or_else(|e| e.into_inner());
             guard.reload_all(&root)?;
+            // The first read is the baseline, not a change.
+            guard.take_changes();
         }
-        tokio::spawn(reload_loop(rx, root, index, changed));
+        tokio::spawn(reload_loop(rx, root, index, changed.into()));
         Ok((Watch { _watcher: watcher }, Reloader { tx }))
     }
 }
@@ -145,7 +149,7 @@ async fn reload_loop(
     mut rx: mpsc::UnboundedReceiver<Target>,
     root: PathBuf,
     index: Arc<RwLock<ProjectIndex>>,
-    changed: broadcast::Sender<()>,
+    changed: ChangeSink,
 ) {
     let mut due: HashMap<Target, Instant> = HashMap::new();
     loop {
@@ -183,13 +187,8 @@ async fn wait_until(at: Option<Instant>) {
     }
 }
 
-/// Reload the ready targets and announce a change when the catalog changed.
-fn apply(
-    root: &Path,
-    index: &RwLock<ProjectIndex>,
-    changed: &broadcast::Sender<()>,
-    ready: &[Target],
-) {
+/// Reload the ready targets and announce the changes the reload found.
+fn apply(root: &Path, index: &RwLock<ProjectIndex>, changed: &ChangeSink, ready: &[Target]) {
     // A canonical file save (including a direct TASK.md edit) may complete a
     // task. Reconcile before loading the version that clients will observe.
     let store = FileStore::open(root);
@@ -208,19 +207,19 @@ fn apply(
     }
 
     let mut guard = index.write().unwrap_or_else(|e| e.into_inner());
-    let mut changed_now = false;
     if ready.contains(&Target::All) {
-        changed_now |= guard.reload_all(root).unwrap_or(false);
+        let _ = guard.reload_all(root);
     } else {
         for target in ready {
             if let Target::Project(id) = target {
-                changed_now |= guard.reload_project(root, id);
+                guard.reload_project(root, id);
             }
         }
     }
+    let found = guard.take_changes();
     drop(guard);
-    if changed_now {
-        let _ = changed.send(());
+    for set in found {
+        changed.send(set);
     }
 }
 

@@ -14,7 +14,7 @@ ngrokのモニター入口の背後で配信する経路です（モバイルモ
 | GET/HEAD `/monitor/assets/monitor/{name}` | モニターのmanifestにある、内容から名前を付けたスクリプトとスタイルシートだけ。immutableでキャッシュさせ、受け付ける場合はgzipで送る。ほかの名前は`no-store`の404。 |
 | GET/HEAD `/logo-white.png` | ヘッダーのロゴ。入口の検査は必要だが、sessionは要らない。 |
 | GET `/monitor/api/projects`、`/monitor/api/projects/{projectId}/board` | 本文・全履歴・problemsを持つ読み取り専用のAPI。 |
-| GET `/monitor/api/events` | `ready`（モニターのビルドIDを含む）・`changed`・`heartbeat`・`preferences`（保存した言語とテーマ。変更のあとに送る）の専用SSE。 |
+| GET `/monitor/api/events?project=<projectId>` | `ready`（モニターのビルドIDを含む）・`changed`・`resync`・`heartbeat`・`preferences`（保存した言語とテーマ。変更のあとに送る）の専用SSE。`project`は必須で、欠落または形式の誤りは422 `invalid_value`、存在しないプロジェクトは404 `project_not_found`です。そのプロジェクトの変更だけを送ります。 |
 | GET `/monitor/api/preferences` | 保存した言語とカラーテーマ。PCの`GET /api/preferences`と同じJSON。 |
 | PUT `/monitor/api/preferences` | 言語とテーマだけを保存する。`locale`・`theme`・両方のいずれか。回答と同じく、公開Origin・`Sec-Fetch-Site: same-origin`・CSRFトークンが必要。未知の項目と不正な値は422 `invalid_preferences`。 |
 | POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | 現在の依頼への回答だけ。 |

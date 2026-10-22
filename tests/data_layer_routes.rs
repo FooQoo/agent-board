@@ -34,8 +34,8 @@ fn data_layer_routes_pc_answers_501_not_implemented() {
     let id = project_id(home.path());
     let server = common::Running::start(home.path());
     let base = format!("/api/projects/{id}");
+    // The Summary has its handler (tests/summary_api.rs); the Detail routes still answer 501.
     for path in [
-        format!("{base}/summary"),
         format!("{base}/tasks/1/detail"),
         format!("{base}/epics/EPIC-1/detail"),
         format!("{base}/tasks/1/detail?sections=document"),
@@ -88,7 +88,8 @@ fn data_layer_routes_monitor_answers_501_with_a_session_only() {
         format!("{base}/tasks/1/detail"),
         format!("{base}/epics/EPIC-1/detail"),
     ];
-    for path in &paths {
+    // The Summary has its handler (tests/summary_api.rs); the Detail routes still answer 501.
+    for path in &paths[1..] {
         let reply = server.get(&session, path);
         assert_eq!(reply.status, 501, "{path}: {}", reply.body);
         assert_eq!(error_code(&reply.body), "not_implemented", "{path}");
