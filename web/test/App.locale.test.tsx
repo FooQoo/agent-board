@@ -59,7 +59,8 @@ describe('language changes in the app', () => {
     ).toBe('true');
 
     await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
-    await userEvent.click(screen.getByRole('radio', { name: '日本語' }));
+    // The settings dialog loads on first use, so wait for the option instead of looking once.
+    await userEvent.click(await screen.findByRole('radio', { name: '日本語' }));
     expect(screen.getByRole('dialog', { name: '設定' })).toBeTruthy();
 
     expect(
