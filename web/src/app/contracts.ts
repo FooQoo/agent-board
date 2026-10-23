@@ -1,6 +1,14 @@
 import type { Dispatch, RefCallback, RefObject } from 'react';
 import type { UseBoardResult } from '../pages/board/model/useBoard';
-import type { Epic, ProjectId, Task, DialogAction, ColumnName } from '../shared/api/contracts';
+import type {
+  Epic,
+  ProjectId,
+  Task,
+  TaskSummary,
+  DialogAction,
+  ColumnName,
+} from '../shared/api/contracts';
+import type { BoardView } from './data/assemble';
 import type { useArchive } from '../pages/archive/model/useArchive';
 import type { SessionAction, SessionState } from './model/projectSession';
 import type { OperationControls } from '../shared/lib/operations/operations';
@@ -10,6 +18,7 @@ import type { BoardMessageKind } from '../pages/board/ui/BoardMessage';
 import type { UseProjectsResult } from '../features/projects/model/useProjects';
 import type { TaskAnswerController } from '../features/tasks/answer/model/useTaskAnswers';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
+import type { ArchivedTask } from '../features/tasks/api/read';
 import type { EpicApi } from '../features/epics/editor/epicApi';
 
 export type AppInitial = { select?: number; confirm?: boolean; deleteFail?: boolean };
@@ -32,14 +41,14 @@ export interface AppControllerModel {
   board: UseBoardResult;
   archive: ReturnType<typeof useArchive>;
   answerSession: TaskAnswerController;
-  tasks: Task[];
-  selected: Task | null;
-  archivedSelected: Task | null;
+  tasks: TaskSummary[];
+  selected: TaskSummary | null;
+  archivedSelected: ArchivedTask | null;
   selectedEpic: Epic | null;
   activeId: ProjectId | null;
   activeName: string | null;
   known: boolean;
-  boardData: UseBoardResult['board'];
+  boardData: BoardView | null;
   view: AppView;
   archiveVisible: boolean;
   epicsVisible: boolean;
@@ -63,6 +72,10 @@ export interface AppControllerModel {
   >;
   openDialog: (dialog: DialogAction) => void;
   refreshProject: (projectId: ProjectId) => void;
+  /** The task with its Detail read fresh, for an editor; `null` when the Detail cannot be read. */
+  loadTask: (projectId: ProjectId, card: TaskSummary) => Promise<Task | null>;
+  /** The epic with its document read fresh, for an editor; `null` when it cannot be read. */
+  loadEpic: (projectId: ProjectId, epic: Epic) => Promise<Epic | null>;
   setRequested: (
     projectId: string | null,
     options?: { history?: 'push' | 'replace' },
@@ -88,8 +101,8 @@ export interface AppWorkspaceActions {
   onSelectCard: (id: number | null) => void;
   onAnswerChanged: () => void;
   onOpenEpic: (epicId: string) => void;
-  onMove: (task: Task, column: ColumnName) => void;
-  onReorder: (task: Task, beforeId: number | null) => void;
+  onMove: (task: TaskSummary, column: ColumnName) => void;
+  onReorder: (task: TaskSummary, beforeId: number | null) => void;
   onArchiveDone: () => void;
   onCloseEpic: () => void;
   onEditEpic: () => void;
@@ -97,7 +110,7 @@ export interface AppWorkspaceActions {
   onRetryEpics: () => void;
   onEditTask: () => void;
   onTaskChanged: () => void;
-  onRemove: (action: 'archive' | 'delete', task: Task) => Promise<boolean>;
+  onRemove: (action: 'archive' | 'delete', task: TaskSummary) => Promise<boolean>;
   onRestore: () => void;
   onCloseDetails: () => void;
 }

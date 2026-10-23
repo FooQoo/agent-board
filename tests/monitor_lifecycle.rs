@@ -183,7 +183,7 @@ impl Tunnel {
     fn read(&self, session: &Session) -> Reply {
         self.call(
             "GET",
-            &format!("{}/board", self.base()),
+            &format!("{}/summary", self.base()),
             &[("Cookie", &session.cookie)],
             "",
         )
@@ -260,7 +260,8 @@ fn open_events(t: &Tunnel, cookie: &str) -> (TcpStream, String) {
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
     let head = format!(
-        "GET /monitor/api/events HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
+        "GET /monitor/api/events?project={} HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
+        project_of(t.path()),
         t.host()
     );
     stream.write_all(head.as_bytes()).unwrap();
@@ -377,8 +378,8 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
         ("GET", "/logo-white.png".into()),
         ("GET", "/monitor/api/session".into()),
         ("POST", "/monitor/api/unlock".into()),
-        ("GET", format!("{base}/board")),
-        ("GET", format!("{base}/epics")),
+        ("GET", format!("{base}/summary")),
+        ("GET", format!("{base}/tasks/1/detail")),
         ("GET", "/monitor/api/events".into()),
         ("POST", answer.clone()),
     ];
@@ -529,7 +530,14 @@ fn starting_again_or_changing_the_public_origin_ends_the_old_session_and_stream(
     // The old public Host does not open the new backend, whatever it carries.
     let stale_host = [("Host", old_host.as_str()), ("Cookie", old.cookie.as_str())];
     assert_eq!(
-        request(t.backend, "GET", "/monitor/api/projects", &stale_host, "").status,
+        request(
+            t.backend,
+            "GET",
+            &format!("{}/summary", t.base()),
+            &stale_host,
+            ""
+        )
+        .status,
         403
     );
     assert!(t.still_waiting());

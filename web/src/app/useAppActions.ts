@@ -51,7 +51,10 @@ export function useAppActions(model: AppControllerModel) {
     },
     onOpenEpic: (epicId) => {
       const epic = model.boardData?.epics.find((item) => item.id === epicId);
-      if (epic) model.openDialog({ kind: 'epic', epic });
+      if (!epic || !isProjectId(activeId)) return;
+      void model.loadEpic(activeId, epic).then((loaded) => {
+        if (loaded) model.openDialog({ kind: 'epic', epic: loaded });
+      });
     },
     onMove: (task, column) =>
       model.openDialog({ kind: 'move', task, target: column as ColumnName }),
@@ -70,7 +73,10 @@ export function useAppActions(model: AppControllerModel) {
     onCloseEpic: () => dispatch({ type: 'SELECT_EPIC', id: null }),
     onEditEpic: () => {
       const epic = model.selectedEpic;
-      if (epic) model.openDialog({ kind: 'epic', epic });
+      if (!epic || !isProjectId(activeId)) return;
+      void model.loadEpic(activeId, epic).then((loaded) => {
+        if (loaded) model.openDialog({ kind: 'epic', epic: loaded });
+      });
     },
     onDeleteEpic: async () => {
       const epic = model.selectedEpic;
@@ -82,7 +88,11 @@ export function useAppActions(model: AppControllerModel) {
       else if (activeId) refreshProject(activeId);
     },
     onEditTask: () => {
-      if (model.selected?.isDraft) model.openDialog({ kind: 'edit', task: model.selected });
+      const card = model.selected;
+      if (!card?.isDraft || !isProjectId(activeId)) return;
+      void model.loadTask(activeId, card).then((task) => {
+        if (task) model.openDialog({ kind: 'edit', task });
+      });
     },
     onTaskChanged: () => {
       if (activeId) refreshProject(activeId);

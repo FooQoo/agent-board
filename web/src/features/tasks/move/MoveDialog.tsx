@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRightIcon } from 'lucide-react';
 import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
-import type { Task, ColumnName } from '../../../shared/api/contracts';
+import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
 import { TaskStatusBadge } from '../status/DialogBadges';
 import { DialogFrame } from '../../../shared/ui/dialog-frame/DialogFrame';
 
@@ -14,7 +14,7 @@ export function MoveDialog({
   onSavingChange,
   onSubmit,
 }: {
-  task: Task;
+  task: TaskSummary;
   target: ColumnName;
   onClose: () => void;
   onSavingChange?: (saving: boolean) => void;

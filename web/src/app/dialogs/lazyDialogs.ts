@@ -1,5 +1,6 @@
 import { preloadable } from '../../shared/lib/lazy/preloadable';
-import { preloadMarkdownSections } from '../../shared/markdown/LazyMarkdownSections';
+import { preloadDocumentBlocks } from '../../features/tasks/detail/BodyDocumentView';
+import { preloadDetailSection } from '../../features/tasks/detail/DetailSection';
 
 /**
  * The board's card, epic and bulk-archive dialogs, with the editor shell, attachments and condition
@@ -24,6 +25,11 @@ export const docsDialog = preloadable(() =>
  * again when one of them is first rendered.
  */
 export function preloadBoardCode(): void {
-  for (const preload of [actionDialog.preload, bulkArchiveDialog.preload, preloadMarkdownSections])
+  for (const preload of [
+    actionDialog.preload,
+    bulkArchiveDialog.preload,
+    preloadDocumentBlocks,
+    preloadDetailSection,
+  ])
     preload().catch(() => {});
 }

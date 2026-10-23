@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Task, Epic } from '../../../shared/api/contracts';
+import type { TaskSummary, Epic } from '../../../shared/api/contracts';
 import type { StoredAttachment } from '../../../shared/ui/editor/attachmentTypes';
 import { EPIC_DOCUMENT_LIMIT, normalizeNewlines } from '../../../shared/ui/editor/limits';
 import type { RichMarkdownEditorHandle } from '../../../shared/rich-editor/RichMarkdownEditor';
@@ -26,7 +26,7 @@ export function useEpicEditor({
   onSavingChange,
 }: {
   epic: Epic;
-  tasks: readonly Task[];
+  tasks: readonly TaskSummary[];
   api: EpicApi;
   projectId: string;
   onOpenTask: (taskId: number) => void;
@@ -71,7 +71,7 @@ export function useEpicEditor({
   const rowIds = orderOf(order, members);
   const rows = rowIds
     .map((id) => members.find((task) => task.id === id))
-    .filter((task): task is Task => task !== undefined);
+    .filter((task): task is TaskSummary => task !== undefined);
   const orderChanged = JSON.stringify(order) !== JSON.stringify(saved.order);
   const dirty = imagesChanged || documentChanged || detailsChanged || orderChanged;
   const overLimit = useOverLimit(epicDocument, EPIC_DOCUMENT_LIMIT);

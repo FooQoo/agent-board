@@ -16,6 +16,7 @@ import type {
   TokenInfo,
 } from './ui/connectionTypes';
 import { qrDataUrl } from './qr';
+import { isProjectIdValue, phoneUrl } from './phoneUrl';
 
 const POLL_MS = 1500;
 
@@ -23,7 +24,7 @@ const POLL_MS = 1500;
  * The state behind the connection dialog: it reads the status from the local API, saves the
  * settings, starts and stops. The token goes straight to the start request and is kept nowhere.
  */
-export function useConnectionController(open: boolean) {
+export function useConnectionController(open: boolean, projectId: string | null = null) {
   const { t } = useTranslation();
   const [snapshot, setSnapshot] = useState<ConnectionSnapshot | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -167,7 +168,11 @@ export function useConnectionController(open: boolean) {
     }),
     [snapshot],
   );
-  const url = snapshot?.status === 'ready' ? snapshot.url : null;
+  // The QR code and the copied URL are the same address, and both need the selected project.
+  const url = useMemo(
+    () => (snapshot?.status === 'ready' ? phoneUrl(snapshot.url, projectId) : null),
+    [snapshot, projectId],
+  );
   // The server sends the passcode only while the connection is ready; show nothing otherwise.
   const passcode = snapshot?.status === 'ready' ? (snapshot.passcode ?? null) : null;
   const qr: ConnectionQr | null = useMemo(() => (url ? { src: qrDataUrl(url) } : null), [url]);
@@ -193,6 +198,7 @@ export function useConnectionController(open: boolean) {
     tokenInfo,
     removeToken,
     url,
+    projectSelected: isProjectIdValue(projectId),
     passcode,
     qr,
     error: error ?? failure ?? (loadFailed ? t('monitorConnectionPc.error.unreachable') : null),

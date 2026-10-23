@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "owner": "U8",
+  "files": [
+    {
+      "file": "app/data/PcData.tsx",
+      "exports": [
+        {
+          "name": "PcDataProvider",
+          "stories": [],
+          "exclusion": "PcDataProvider connects the data core to the board's server and renders no UI; it is verified by the connection and App tests."
+        }
+      ]
+    }
+  ]
+}

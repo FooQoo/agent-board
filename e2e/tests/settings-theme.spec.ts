@@ -1,4 +1,4 @@
-import { editorValue, openManualCreateDialog, pasteMarkdown } from '../helpers/ui';
+import { editorValue, openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
@@ -110,6 +110,8 @@ const addButtonBehindDialog = (page: Page) => page.locator('header button', { ha
 async function openFresh(page: Page): Promise<void> {
   await page.goto('/');
   await expect(synced(page)).toHaveText(/^Synced/);
+  // The server notices the reset and the CLI writes 200 ms later: read the board again, not the stale one.
+  await readBoardAfterReset(page);
   // The browser starts empty; its copy then follows what the server saved (the defaults after the reset).
   await expect
     .poll(() => page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), [THEME_KEY, LOCALE_KEY]))
@@ -401,7 +403,7 @@ test('the settings stay available while the board loads and when it cannot load'
     release = resolve;
   });
   let failing = false;
-  await page.route('**/api/projects/*/board', async (route) => {
+  await page.route('**/api/projects/*/summary', async (route) => {
     await gate;
     if (failing) await route.fulfill({ status: 500, body: 'boom' });
     else await route.fallback();
@@ -622,9 +624,13 @@ test('changing the language does not translate or alter what was entered', async
   await expect(panel.getByText('Line one')).toBeVisible();
   expect(await panel.getByText('Line one').evaluate((element) => (element as HTMLElement).innerText)).toBe('Line one');
   await expect(panel.getByText('Line two')).toBeVisible();
-  await panel.getByRole('tab', { name: '履歴 2' }).click();
+  // The count is known once the log is read, so the tab is pressed by its plain name first.
+  await panel.getByRole('tab', { name: /^履歴/ }).click();
+  await expect(panel.getByRole('tab', { name: '履歴 2' })).toBeVisible();
   await expect(panel).toContainText('Starting the draft today.');
   await task(page, 12).click();
+  // The answer is in the log, which is read when its tab is opened.
+  await panel.getByRole('tab', { name: /^履歴/ }).click();
   await expect(panel).toContainText('Keep the database name.');
   expect(listTasks(mainProject)).toEqual(before);
 
@@ -925,7 +931,7 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
     release = resolve;
   });
   let failing = false;
-  await page.route('**/api/projects/*/board', async (route) => {
+  await page.route('**/api/projects/*/summary', async (route) => {
     await gate;
     if (failing) await route.fulfill({ status: 500, body: 'boom' });
     else await route.fallback();

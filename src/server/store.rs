@@ -40,12 +40,15 @@ pub(crate) async fn with_request_files<T: Send + 'static>(
 }
 
 /// After a save made by this server, read the shared files again before the
-/// answer goes out, so the next read agrees with it. A `changed` is sent only
-/// if the catalog version moved, as for every other reload.
+/// answer goes out, so the next read agrees with it. The changes the reload
+/// finds are announced, as for every other reload.
 pub(crate) fn refresh_index(state: &AppState) {
     let mut index = state.index.write().unwrap_or_else(|e| e.into_inner());
-    if index.reload_all(&state.shared).unwrap_or(false) {
-        let _ = state.changed.send(());
+    let _ = index.reload_all(&state.shared);
+    let found = index.take_changes();
+    drop(index);
+    for set in found {
+        state.changed.publish(set);
     }
 }
 
@@ -69,6 +72,32 @@ pub(crate) fn indexed_view_in(
     index: &std::sync::RwLock<crate::file_store::index::ProjectIndex>,
     id: &ProjectId,
 ) -> Result<Arc<crate::file_store::reader::ProjectSnapshot>, AgboardError> {
+    indexed_ready_in(shared, index, id, |entry| match entry {
+        ProjectEntry::Ready { view, .. } => Some(view.clone()),
+        ProjectEntry::Invalid { .. } => None,
+    })
+}
+
+/// The Summary projection of a project, from the index. The files are not read.
+pub(crate) fn indexed_projection_in(
+    shared: &std::path::Path,
+    index: &std::sync::RwLock<crate::file_store::index::ProjectIndex>,
+    id: &ProjectId,
+) -> Result<Arc<crate::file_store::projection::Projection>, AgboardError> {
+    indexed_ready_in(shared, index, id, |entry| match entry {
+        ProjectEntry::Ready { projection, .. } => Some(projection.clone()),
+        ProjectEntry::Invalid { .. } => None,
+    })
+}
+
+/// Something from the index entry of a readable project; the errors of a project that is gone
+/// or defective otherwise.
+fn indexed_ready_in<T>(
+    shared: &std::path::Path,
+    index: &std::sync::RwLock<crate::file_store::index::ProjectIndex>,
+    id: &ProjectId,
+    pick: impl FnOnce(&ProjectEntry) -> Option<T>,
+) -> Result<T, AgboardError> {
     // A folder that is gone is a deleted project, even before the watcher reloads.
     if !crate::file_store::layout::project_dir(shared, id).is_dir() {
         return Err(AgboardError::ProjectNotFound {
@@ -76,12 +105,16 @@ pub(crate) fn indexed_view_in(
         });
     }
     let index = index.read().unwrap_or_else(|e| e.into_inner());
-    match index.entry(id) {
-        None => Err(AgboardError::ProjectNotFound {
+    let entry = index
+        .entry(id)
+        .ok_or_else(|| AgboardError::ProjectNotFound {
             project: id.to_string(),
-        }),
-        Some(ProjectEntry::Ready { view, .. }) => Ok(view.clone()),
-        Some(ProjectEntry::Invalid { error, .. }) => Err(match error {
+        })?;
+    if let Some(found) = pick(entry) {
+        return Ok(found);
+    }
+    match entry {
+        ProjectEntry::Invalid { error, .. } => Err(match error {
             AgboardError::FileInvalid {
                 file,
                 field,
@@ -96,6 +129,9 @@ pub(crate) fn indexed_view_in(
                 file: id.to_string(),
                 reason: other.reason(),
             },
+        }),
+        ProjectEntry::Ready { .. } => Err(AgboardError::ProjectNotFound {
+            project: id.to_string(),
         }),
     }
 }

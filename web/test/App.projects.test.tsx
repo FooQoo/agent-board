@@ -40,7 +40,7 @@ function restart() {
 beforeEach(() => {
   window.localStorage.clear();
   selectLocale('en');
-  FakeEventSource.reset();
+  FakeEventSource.reset(true);
   vi.stubGlobal('EventSource', FakeEventSource);
   document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
   restart();
@@ -82,7 +82,7 @@ describe('which project is shown', () => {
     expect(switcher('knowledge')).toBeTruthy();
     expect(app.updates()).toHaveLength(0);
     expect(fetchMock).not.toHaveBeenCalledWith(
-      `/api/projects/${PROJECT_A.id}/board`,
+      `/api/projects/${PROJECT_A.id}/summary`,
       expect.anything(),
     );
   });
@@ -157,8 +157,9 @@ describe('which project is shown', () => {
     await screen.findByText('Eight in knowledge');
     await userEvent.click(taskButton('Eight in knowledge'));
 
+    // The project list is not what the open drawer shows, so it follows the stream at once.
     backend.projects = [PROJECT_A, { ...PROJECT_B, name: 'renamed' }, PROJECT_C];
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_B.id));
 
     await screen.findByRole('button', { name: 'renamed' });
     expect(screen.getByRole('heading', { level: 2, name: 'Eight in knowledge' })).toBeTruthy();
@@ -348,7 +349,7 @@ describe('which project is shown', () => {
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
   });
 
-  it('keeps the selected archive detail visible when only the ordinary board refresh fails', async () => {
+  it('keeps the selected archive detail open while a change is held back', async () => {
     backend.archives = {
       [PROJECT_A.id]: [makeTask({ id: 96, title: 'Archived during board failure' })],
     };
@@ -358,17 +359,14 @@ describe('which project is shown', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: /Archived during board failure/ }),
     );
-    backend.boards[PROJECT_A.id] = new Error('board temporarily unavailable');
-    const previousBoardRequests = fetchMock.mock.calls.filter(
-      ([url]) => url === `/api/projects/${PROJECT_A.id}/board`,
-    ).length;
-    act(() => FakeEventSource.latest.emit('changed'));
-    await waitFor(() => {
-      expect(
-        fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/board`)
-          .length,
-      ).toBeGreaterThan(previousBoardRequests);
-    });
+    const summaryRequests = () =>
+      fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/summary`)
+        .length;
+    const previousBoardRequests = summaryRequests();
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
+
+    // The open archive drawer holds the change back, so the board is not read again yet.
+    expect(summaryRequests()).toBe(previousBoardRequests);
     expect(
       screen.getByRole('heading', { level: 2, name: 'Archived during board failure' }),
     ).toBeTruthy();
@@ -415,7 +413,7 @@ describe('which project is shown', () => {
       ...initialArchive,
       makeTask({ id: 96, title: 'Second archived task' }),
     ];
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
 
     await screen.findByRole('button', { name: /Second archived task/ });
     expect(within(screen.getByRole('main')).getByText('2 archived tasks')).toBeTruthy();
@@ -434,7 +432,7 @@ describe('which project is shown', () => {
 
     backend.projects = [PROJECT_B, PROJECT_C];
     backend.boards[PROJECT_A.id] = 'not_found';
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
 
     expect(await screen.findByText('Project not found')).toBeTruthy();
     expect(document.querySelector('.list-pane')).toBeNull();
@@ -469,7 +467,7 @@ describe('which project is shown', () => {
 describe('states', () => {
   it('shows Loading board… with the switcher and an empty detail area while the board loads', async () => {
     const gate = deferred();
-    backend.gate = (url) => (url.endsWith('/board') ? gate.promise : undefined);
+    backend.gate = (url) => (url.endsWith('/summary') ? gate.promise : undefined);
     renderApp(urlOf(PROJECT_B.id));
 
     expect(await screen.findByText('Loading board…')).toBeTruthy();
@@ -533,7 +531,7 @@ describe('states', () => {
     expect(switcher('Choose a project')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
     expect(app.updates()).toHaveLength(0);
-    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/board'))).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/summary'))).toBe(false);
 
     await choose('Choose a project', 'tech-blog');
     await screen.findByText('No tasks yet.');
@@ -543,7 +541,10 @@ describe('states', () => {
   it('shows Project not found for an ID that is not in the list and does not ask its board', async () => {
     renderApp(urlOf(missing));
     expect(await screen.findByText('Project not found')).toBeTruthy();
-    expect(fetchMock).not.toHaveBeenCalledWith(`/api/projects/${missing}/board`, expect.anything());
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      `/api/projects/${missing}/summary`,
+      expect.anything(),
+    );
   });
 
   it('turns into Project not found when the shown project is deleted, and lists the rest', async () => {
@@ -553,9 +554,11 @@ describe('states', () => {
 
     backend.projects = [PROJECT_A, PROJECT_C];
     backend.boards[PROJECT_B.id] = 'not_found';
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_B.id));
 
-    expect(await screen.findByText('Project not found')).toBeTruthy();
+    // The open drawer holds the change back until it has been closed for three seconds.
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    expect(await screen.findByText('Project not found', {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByText('Eight in knowledge')).toBeNull();
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     await userEvent.click(switcher('Choose a project'));
@@ -570,7 +573,7 @@ describe('states', () => {
     await screen.findByRole('region', { name: 'Todo' });
     backend.projects = [];
     backend.boards[PROJECT_A.id] = 'not_found';
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
     expect(await screen.findByText('No projects yet')).toBeTruthy();
   });
 
@@ -594,7 +597,7 @@ describe('late answers', () => {
   it('does not show the board of a project that is no longer the one shown', async () => {
     const lateA = deferred();
     backend.gate = (url) =>
-      url.includes(PROJECT_A.id) && url.endsWith('/board') ? lateA.promise : undefined;
+      url.includes(PROJECT_A.id) && url.endsWith('/summary') ? lateA.promise : undefined;
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByText('Loading board…');
 
@@ -618,18 +621,19 @@ describe('refreshing on events', () => {
     const count = (suffix: string) =>
       fetchMock.mock.calls.filter(([url]) => String(url).endsWith(suffix)).length;
     const lists = count('/api/projects');
-    const boardsOfA = count(`${PROJECT_A.id}/board`);
+    const boardsOfA = count(`${PROJECT_A.id}/summary`);
 
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
     await waitFor(() => expect(count('/api/projects')).toBe(lists + 1));
-    expect(count(`${PROJECT_A.id}/board`)).toBe(boardsOfA + 1);
-    expect(count(`${PROJECT_B.id}/board`)).toBe(0);
+    await waitFor(() => expect(count(`${PROJECT_A.id}/summary`)).toBe(boardsOfA + 1));
+    expect(count(`${PROJECT_B.id}/summary`)).toBe(0);
 
     act(() => FakeEventSource.latest.emit('error'));
     expect(screen.getByText(/^Disconnected · Last synced/)).toBeTruthy();
-    act(() => FakeEventSource.latest.emit('ready'));
-    await waitFor(() => expect(count('/api/projects')).toBe(lists + 2));
+    // The connection reopens by itself after a pause; the lists and the Summary are read again.
+    await waitFor(() => expect(count('/api/projects')).toBe(lists + 2), { timeout: 4000 });
     await waitFor(() => expect(screen.getByText(/^Synced/)).toBeTruthy());
+    await waitFor(() => expect(count(`${PROJECT_A.id}/summary`)).toBe(boardsOfA + 2));
   });
 });
 
@@ -842,14 +846,9 @@ describe('switching while a form is open', () => {
       ],
       2,
     );
-    const boardUrl = `/api/projects/${PROJECT_A.id}/board`;
-    const readsBeforeChange = fetchMock.mock.calls.filter(([url]) => url === boardUrl).length;
-    act(() => FakeEventSource.latest.emit('changed'));
-    await waitFor(() =>
-      expect(fetchMock.mock.calls.filter(([url]) => url === boardUrl).length).toBeGreaterThan(
-        readsBeforeChange,
-      ),
-    );
+    const boardUrl = `/api/projects/${PROJECT_A.id}/summary`;
+    // The open dialog holds the stream's updates back, so its rows keep the snapshot taken on opening.
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
     expect(
       within(dialog)
         .getAllByRole('row')
@@ -869,7 +868,16 @@ describe('switching while a form is open', () => {
     ).toEqual(initialDoneIds.map((id) => `#${id}`));
     expect(submittedIds).toEqual([initialDoneIds]);
 
+    const readsBeforeCancel = fetchMock.mock.calls.filter(([url]) => url === boardUrl).length;
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    // The held change is read three seconds after the dialog has closed.
+    await waitFor(
+      () =>
+        expect(fetchMock.mock.calls.filter(([url]) => url === boardUrl).length).toBeGreaterThan(
+          readsBeforeCancel,
+        ),
+      { timeout: 5000 },
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Archive completed tasks' }));
     dialog = screen.getByRole('dialog');
     const reopenedIds = within(dialog)
@@ -955,7 +963,7 @@ describe('Japanese state screens use the approved texts', () => {
   it('board loading', async () => {
     selectLocale('ja');
     const gate = deferred();
-    backend.gate = (url) => (url.endsWith('/board') ? gate.promise : undefined);
+    backend.gate = (url) => (url.endsWith('/summary') ? gate.promise : undefined);
     renderApp(urlOf(PROJECT_B.id));
     expect(await screen.findByText('ボードを読み込み中…')).toBeTruthy();
     expect(screen.getByText('読み込み中', { selector: '.status-bar__text' })).toBeTruthy();

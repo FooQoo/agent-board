@@ -1,0 +1,2523 @@
+{
+  "schemaVersion": 1,
+  "target": "pc",
+  "startedAt": "2026-10-22T10:11:01.362Z",
+  "finishedAt": "2026-10-22T10:11:27.430Z",
+  "environment": {
+    "commit": "1a9b2d0",
+    "binary": "target/debug/agboard",
+    "binaryBuild": "cargo build (dev profile)",
+    "os": "macOS 26.6.2 (arm64)",
+    "chromium": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "node": "v24.19.0",
+    "timezone": "UTC",
+    "locale": "en-US",
+    "fixture": {
+      "seed": 20261022,
+      "files": 654,
+      "bytes": 1164537,
+      "digest": "aab0498af1600555ae12c5283dc62638a24a5ead1c646d42d1897609e9c5171d",
+      "attachments": 30
+    },
+    "port": 9210
+  },
+  "runs": [
+    {
+      "index": 1,
+      "metrics": {
+        "firstVisibleMs": 962,
+        "load.requests.document": 1,
+        "load.bytes.document": 1029,
+        "load.requests.api": 6,
+        "load.bytes.api": 2194990,
+        "load.requests.static": 16,
+        "load.bytes.static": 329099,
+        "load.requests.stream": 1,
+        "load.bytes.stream": 0,
+        "load.requests.inline": 0,
+        "load.bytes.inline": 0,
+        "load.requests.total": 24,
+        "load.bytes.total": 2525118,
+        "heavyOpenMs": 322,
+        "heavy.requests.document": 0,
+        "heavy.bytes.document": 0,
+        "heavy.requests.api": 4,
+        "heavy.bytes.api": 1036,
+        "heavy.requests.static": 32,
+        "heavy.bytes.static": 657163,
+        "heavy.requests.stream": 0,
+        "heavy.bytes.stream": 0,
+        "heavy.requests.inline": 0,
+        "heavy.bytes.inline": 0,
+        "heavy.requests.total": 36,
+        "heavy.bytes.total": 658199,
+        "domNodes": 10937,
+        "jsHeapUsedBytes": 85827584,
+        "longtaskCount": 3,
+        "longtaskTotalMs": 532,
+        "statusDetectedMs": 810,
+        "statusMs": 3389,
+        "status.requests.document": 0,
+        "status.bytes.document": 0,
+        "status.requests.api": 2,
+        "status.bytes.api": 2194071,
+        "status.requests.static": 0,
+        "status.bytes.static": 0,
+        "status.requests.stream": 0,
+        "status.bytes.stream": 0,
+        "status.requests.inline": 0,
+        "status.bytes.inline": 0,
+        "status.requests.total": 2,
+        "status.bytes.total": 2194071
+      },
+      "routes": {
+        "load": {
+          "/": {
+            "requests": 1,
+            "bytes": 1029
+          },
+          "/assets/app-CWx6I9n4.css": {
+            "requests": 1,
+            "bytes": 20736
+          },
+          "/assets/app-DxRdGIfE.js": {
+            "requests": 1,
+            "bytes": 150154
+          },
+          "/assets/chunk-rolldown-runtime-Dd_uD5pT.js": {
+            "requests": 1,
+            "bytes": 879
+          },
+          "/assets/chunk-clsx-Oas98qaH.js": {
+            "requests": 1,
+            "bytes": 5968
+          },
+          "/assets/chunk-preload-helper-oCYlU9a4.js": {
+            "requests": 1,
+            "bytes": 1057
+          },
+          "/assets/chunk-dialog-4knxpwP4.js": {
+            "requests": 1,
+            "bytes": 25118
+          },
+          "/assets/chunk-i18n-BDfnoemy.js": {
+            "requests": 1,
+            "bytes": 25615
+          },
+          "/api/preferences": {
+            "requests": 2,
+            "bytes": 464
+          },
+          "/logo-white.png": {
+            "requests": 1,
+            "bytes": 10625
+          },
+          "/assets/chunk-GuideLayer-CJJhRtaz.js": {
+            "requests": 1,
+            "bytes": 7220
+          },
+          "/assets/chunk-BoardSettings-Dtd9q4h6.js": {
+            "requests": 1,
+            "bytes": 13486
+          },
+          "/assets/chunk-MarkdownSections-rsbHhRQY.js": {
+            "requests": 1,
+            "bytes": 762
+          },
+          "/assets/chunk-BulkArchiveDialog-BJJ-FgEw.js": {
+            "requests": 1,
+            "bytes": 1456
+          },
+          "/api/events": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/assets/chunk-ActionDialog-DnO94-3C.js": {
+            "requests": 1,
+            "bytes": 14335
+          },
+          "/assets/chunk-tutorialRequest-lcaft-JE.js": {
+            "requests": 1,
+            "bytes": 366
+          },
+          "/assets/chunk-input-Lsc2pB8n.js": {
+            "requests": 1,
+            "bytes": 2350
+          },
+          "/assets/chunk-MarkdownView-DPbdQoN_.js": {
+            "requests": 1,
+            "bytes": 48972
+          },
+          "/api/projects": {
+            "requests": 2,
+            "bytes": 644
+          },
+          "/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193623
+          },
+          "/api/onboarding": {
+            "requests": 1,
+            "bytes": 259
+          }
+        },
+        "heavy": {
+          "/assets/chunk-mermaid.core-jMXYr-iq.js": {
+            "requests": 1,
+            "bytes": 27385
+          },
+          "/assets/chunk-chunk-Y2CYZVJY-DsF7k-Jl.js": {
+            "requests": 1,
+            "bytes": 395
+          },
+          "/assets/chunk-src-BuR9lG3U.js": {
+            "requests": 1,
+            "bytes": 16119
+          },
+          "/api/projects/:id/tasks/:n/attachments/:id": {
+            "requests": 4,
+            "bytes": 1036
+          },
+          "/assets/chunk-purify.es--06brOip.js": {
+            "requests": 1,
+            "bytes": 11274
+          },
+          "/assets/chunk-chunk-VPRB5NB3-DYzgenmu.js": {
+            "requests": 1,
+            "bytes": 26104
+          },
+          "/assets/chunk-chunk-3YJQHVM4-KcLBK8tR.js": {
+            "requests": 1,
+            "bytes": 8725
+          },
+          "/assets/chunk-chunk-HJ2JQQFS-GCe1AGBI.js": {
+            "requests": 1,
+            "bytes": 2929
+          },
+          "/assets/chunk-chunk-E2ZNV5FY-DQTHDtxH.js": {
+            "requests": 1,
+            "bytes": 16769
+          },
+          "/assets/chunk-chunk-DUW6YSOI-BgS-a7Ky.js": {
+            "requests": 1,
+            "bytes": 714
+          },
+          "/assets/chunk-chunk-4EA7E6EY-BTlUFwUh.js": {
+            "requests": 1,
+            "bytes": 1205
+          },
+          "/assets/chunk-chunk-DBDB3WZW-hylVVe9A.js": {
+            "requests": 1,
+            "bytes": 1048
+          },
+          "/assets/chunk-chunk-NTY3LDVX-BqcBaPWN.js": {
+            "requests": 1,
+            "bytes": 4423
+          },
+          "/assets/chunk-chunk-2BW5OAIV-BFXRjs6G.js": {
+            "requests": 1,
+            "bytes": 8415
+          },
+          "/assets/chunk-chunk-XC4XBNZT-CkH4bKj3.js": {
+            "requests": 1,
+            "bytes": 29229
+          },
+          "/assets/chunk-dist-QJO80J_y.js": {
+            "requests": 1,
+            "bytes": 1236
+          },
+          "/assets/chunk-line-CHEnPIbT.js": {
+            "requests": 1,
+            "bytes": 727
+          },
+          "/assets/chunk-chunk-J5ZVWO5B-Dq9GsbUE.js": {
+            "requests": 1,
+            "bytes": 688
+          },
+          "/assets/chunk-rough.esm-Dy-Kn_BL.js": {
+            "requests": 1,
+            "bytes": 9032
+          },
+          "/assets/chunk-array-BifhSqXX.js": {
+            "requests": 1,
+            "bytes": 364
+          },
+          "/assets/chunk-path-fybaL0A-.js": {
+            "requests": 1,
+            "bytes": 1229
+          },
+          "/assets/chunk-flowDiagram-OXPTDLAJ-CBJ7T8rg.js": {
+            "requests": 1,
+            "bytes": 575
+          },
+          "/assets/chunk-chunk-7TKQ45FW-Dwl8VV2T.js": {
+            "requests": 1,
+            "bytes": 1141
+          },
+          "/assets/chunk-chunk-XXDRQBXY-CXEpsXr7.js": {
+            "requests": 1,
+            "bytes": 480
+          },
+          "/assets/chunk-chunk-KQW6MTUR-BZq-9p-E.js": {
+            "requests": 1,
+            "bytes": 654
+          },
+          "/assets/chunk-chunk-EU5HNXII-CWrf_N4x.js": {
+            "requests": 1,
+            "bytes": 20271
+          },
+          "/assets/chunk-channel-BP0t41Qv.js": {
+            "requests": 1,
+            "bytes": 377
+          },
+          "/assets/chunk-chunk-5VM5RSS4-DfXEBQKp.js": {
+            "requests": 1,
+            "bytes": 526
+          },
+          "/assets/chunk-elk-IJKZMXRS-DAblYahg.js": {
+            "requests": 1,
+            "bytes": 448920
+          },
+          "/assets/chunk-chunk-HTAEGDNF-C4v8dJ05.js": {
+            "requests": 1,
+            "bytes": 2745
+          },
+          "/assets/chunk-chunk-FVRAUYC3-BVt4R9Fv.js": {
+            "requests": 1,
+            "bytes": 4485
+          },
+          "/assets/chunk-graphlib-CjI3ttgK.js": {
+            "requests": 1,
+            "bytes": 8314
+          },
+          "/assets/chunk-isObject-BNleAbAq.js": {
+            "requests": 1,
+            "bytes": 665
+          }
+        },
+        "status": {
+          "/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193749
+          },
+          "/api/projects": {
+            "requests": 1,
+            "bytes": 322
+          }
+        }
+      },
+      "pageErrors": 0
+    },
+    {
+      "index": 2,
+      "metrics": {
+        "firstVisibleMs": 1382,
+        "load.requests.document": 1,
+        "load.bytes.document": 1029,
+        "load.requests.api": 6,
+        "load.bytes.api": 2194990,
+        "load.requests.static": 16,
+        "load.bytes.static": 329099,
+        "load.requests.stream": 1,
+        "load.bytes.stream": 0,
+        "load.requests.inline": 0,
+        "load.bytes.inline": 0,
+        "load.requests.total": 24,
+        "load.bytes.total": 2525118,
+        "heavyOpenMs": 247,
+        "heavy.requests.document": 0,
+        "heavy.bytes.document": 0,
+        "heavy.requests.api": 4,
+        "heavy.bytes.api": 1036,
+        "heavy.requests.static": 32,
+        "heavy.bytes.static": 657163,
+        "heavy.requests.stream": 0,
+        "heavy.bytes.stream": 0,
+        "heavy.requests.inline": 0,
+        "heavy.bytes.inline": 0,
+        "heavy.requests.total": 36,
+        "heavy.bytes.total": 658199,
+        "domNodes": 10937,
+        "jsHeapUsedBytes": 87810164,
+        "longtaskCount": 3,
+        "longtaskTotalMs": 493,
+        "statusDetectedMs": 909,
+        "statusMs": 3170,
+        "status.requests.document": 0,
+        "status.bytes.document": 0,
+        "status.requests.api": 2,
+        "status.bytes.api": 2194071,
+        "status.requests.static": 0,
+        "status.bytes.static": 0,
+        "status.requests.stream": 0,
+        "status.bytes.stream": 0,
+        "status.requests.inline": 0,
+        "status.bytes.inline": 0,
+        "status.requests.total": 2,
+        "status.bytes.total": 2194071
+      },
+      "routes": {
+        "load": {
+          "/": {
+            "requests": 1,
+            "bytes": 1029
+          },
+          "/assets/app-CWx6I9n4.css": {
+            "requests": 1,
+            "bytes": 20736
+          },
+          "/assets/app-DxRdGIfE.js": {
+            "requests": 1,
+            "bytes": 150154
+          },
+          "/assets/chunk-rolldown-runtime-Dd_uD5pT.js": {
+            "requests": 1,
+            "bytes": 879
+          },
+          "/assets/chunk-clsx-Oas98qaH.js": {
+            "requests": 1,
+            "bytes": 5968
+          },
+          "/assets/chunk-preload-helper-oCYlU9a4.js": {
+            "requests": 1,
+            "bytes": 1057
+          },
+          "/assets/chunk-i18n-BDfnoemy.js": {
+            "requests": 1,
+            "bytes": 25615
+          },
+          "/assets/chunk-dialog-4knxpwP4.js": {
+            "requests": 1,
+            "bytes": 25118
+          },
+          "/api/preferences": {
+            "requests": 2,
+            "bytes": 464
+          },
+          "/logo-white.png": {
+            "requests": 1,
+            "bytes": 10625
+          },
+          "/assets/chunk-GuideLayer-CJJhRtaz.js": {
+            "requests": 1,
+            "bytes": 7220
+          },
+          "/assets/chunk-BoardSettings-Dtd9q4h6.js": {
+            "requests": 1,
+            "bytes": 13486
+          },
+          "/assets/chunk-BulkArchiveDialog-BJJ-FgEw.js": {
+            "requests": 1,
+            "bytes": 1456
+          },
+          "/assets/chunk-MarkdownSections-rsbHhRQY.js": {
+            "requests": 1,
+            "bytes": 762
+          },
+          "/api/events": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/assets/chunk-ActionDialog-DnO94-3C.js": {
+            "requests": 1,
+            "bytes": 14335
+          },
+          "/assets/chunk-tutorialRequest-lcaft-JE.js": {
+            "requests": 1,
+            "bytes": 366
+          },
+          "/assets/chunk-input-Lsc2pB8n.js": {
+            "requests": 1,
+            "bytes": 2350
+          },
+          "/assets/chunk-MarkdownView-DPbdQoN_.js": {
+            "requests": 1,
+            "bytes": 48972
+          },
+          "/api/projects": {
+            "requests": 2,
+            "bytes": 644
+          },
+          "/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193623
+          },
+          "/api/onboarding": {
+            "requests": 1,
+            "bytes": 259
+          }
+        },
+        "heavy": {
+          "/assets/chunk-mermaid.core-jMXYr-iq.js": {
+            "requests": 1,
+            "bytes": 27385
+          },
+          "/assets/chunk-chunk-Y2CYZVJY-DsF7k-Jl.js": {
+            "requests": 1,
+            "bytes": 395
+          },
+          "/assets/chunk-src-BuR9lG3U.js": {
+            "requests": 1,
+            "bytes": 16119
+          },
+          "/api/projects/:id/tasks/:n/attachments/:id": {
+            "requests": 4,
+            "bytes": 1036
+          },
+          "/assets/chunk-purify.es--06brOip.js": {
+            "requests": 1,
+            "bytes": 11274
+          },
+          "/assets/chunk-chunk-VPRB5NB3-DYzgenmu.js": {
+            "requests": 1,
+            "bytes": 26104
+          },
+          "/assets/chunk-chunk-3YJQHVM4-KcLBK8tR.js": {
+            "requests": 1,
+            "bytes": 8725
+          },
+          "/assets/chunk-chunk-HJ2JQQFS-GCe1AGBI.js": {
+            "requests": 1,
+            "bytes": 2929
+          },
+          "/assets/chunk-chunk-DUW6YSOI-BgS-a7Ky.js": {
+            "requests": 1,
+            "bytes": 714
+          },
+          "/assets/chunk-chunk-E2ZNV5FY-DQTHDtxH.js": {
+            "requests": 1,
+            "bytes": 16769
+          },
+          "/assets/chunk-chunk-4EA7E6EY-BTlUFwUh.js": {
+            "requests": 1,
+            "bytes": 1205
+          },
+          "/assets/chunk-chunk-DBDB3WZW-hylVVe9A.js": {
+            "requests": 1,
+            "bytes": 1048
+          },
+          "/assets/chunk-chunk-NTY3LDVX-BqcBaPWN.js": {
+            "requests": 1,
+            "bytes": 4423
+          },
+          "/assets/chunk-chunk-2BW5OAIV-BFXRjs6G.js": {
+            "requests": 1,
+            "bytes": 8415
+          },
+          "/assets/chunk-chunk-XC4XBNZT-CkH4bKj3.js": {
+            "requests": 1,
+            "bytes": 29229
+          },
+          "/assets/chunk-dist-QJO80J_y.js": {
+            "requests": 1,
+            "bytes": 1236
+          },
+          "/assets/chunk-line-CHEnPIbT.js": {
+            "requests": 1,
+            "bytes": 727
+          },
+          "/assets/chunk-chunk-J5ZVWO5B-Dq9GsbUE.js": {
+            "requests": 1,
+            "bytes": 688
+          },
+          "/assets/chunk-rough.esm-Dy-Kn_BL.js": {
+            "requests": 1,
+            "bytes": 9032
+          },
+          "/assets/chunk-array-BifhSqXX.js": {
+            "requests": 1,
+            "bytes": 364
+          },
+          "/assets/chunk-path-fybaL0A-.js": {
+            "requests": 1,
+            "bytes": 1229
+          },
+          "/assets/chunk-flowDiagram-OXPTDLAJ-CBJ7T8rg.js": {
+            "requests": 1,
+            "bytes": 575
+          },
+          "/assets/chunk-chunk-7TKQ45FW-Dwl8VV2T.js": {
+            "requests": 1,
+            "bytes": 1141
+          },
+          "/assets/chunk-chunk-XXDRQBXY-CXEpsXr7.js": {
+            "requests": 1,
+            "bytes": 480
+          },
+          "/assets/chunk-chunk-KQW6MTUR-BZq-9p-E.js": {
+            "requests": 1,
+            "bytes": 654
+          },
+          "/assets/chunk-chunk-EU5HNXII-CWrf_N4x.js": {
+            "requests": 1,
+            "bytes": 20271
+          },
+          "/assets/chunk-chunk-5VM5RSS4-DfXEBQKp.js": {
+            "requests": 1,
+            "bytes": 526
+          },
+          "/assets/chunk-channel-BP0t41Qv.js": {
+            "requests": 1,
+            "bytes": 377
+          },
+          "/assets/chunk-elk-IJKZMXRS-DAblYahg.js": {
+            "requests": 1,
+            "bytes": 448920
+          },
+          "/assets/chunk-chunk-HTAEGDNF-C4v8dJ05.js": {
+            "requests": 1,
+            "bytes": 2745
+          },
+          "/assets/chunk-chunk-FVRAUYC3-BVt4R9Fv.js": {
+            "requests": 1,
+            "bytes": 4485
+          },
+          "/assets/chunk-graphlib-CjI3ttgK.js": {
+            "requests": 1,
+            "bytes": 8314
+          },
+          "/assets/chunk-isObject-BNleAbAq.js": {
+            "requests": 1,
+            "bytes": 665
+          }
+        },
+        "status": {
+          "/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193749
+          },
+          "/api/projects": {
+            "requests": 1,
+            "bytes": 322
+          }
+        }
+      },
+      "pageErrors": 0
+    },
+    {
+      "index": 3,
+      "metrics": {
+        "firstVisibleMs": 1007,
+        "load.requests.document": 1,
+        "load.bytes.document": 1029,
+        "load.requests.api": 6,
+        "load.bytes.api": 2194990,
+        "load.requests.static": 16,
+        "load.bytes.static": 329099,
+        "load.requests.stream": 1,
+        "load.bytes.stream": 0,
+        "load.requests.inline": 0,
+        "load.bytes.inline": 0,
+        "load.requests.total": 24,
+        "load.bytes.total": 2525118,
+        "heavyOpenMs": 232,
+        "heavy.requests.document": 0,
+        "heavy.bytes.document": 0,
+        "heavy.requests.api": 4,
+        "heavy.bytes.api": 1036,
+        "heavy.requests.static": 32,
+        "heavy.bytes.static": 657163,
+        "heavy.requests.stream": 0,
+        "heavy.bytes.stream": 0,
+        "heavy.requests.inline": 0,
+        "heavy.bytes.inline": 0,
+        "heavy.requests.total": 36,
+        "heavy.bytes.total": 658199,
+        "domNodes": 10937,
+        "jsHeapUsedBytes": 85511644,
+        "longtaskCount": 3,
+        "longtaskTotalMs": 491,
+        "statusDetectedMs": 807,
+        "statusMs": 3332,
+        "status.requests.document": 0,
+        "status.bytes.document": 0,
+        "status.requests.api": 2,
+        "status.bytes.api": 2194071,
+        "status.requests.static": 0,
+        "status.bytes.static": 0,
+        "status.requests.stream": 0,
+        "status.bytes.stream": 0,
+        "status.requests.inline": 0,
+        "status.bytes.inline": 0,
+        "status.requests.total": 2,
+        "status.bytes.total": 2194071
+      },
+      "routes": {
+        "load": {
+          "/": {
+            "requests": 1,
+            "bytes": 1029
+          },
+          "/assets/app-CWx6I9n4.css": {
+            "requests": 1,
+            "bytes": 20736
+          },
+          "/assets/app-DxRdGIfE.js": {
+            "requests": 1,
+            "bytes": 150154
+          },
+          "/assets/chunk-rolldown-runtime-Dd_uD5pT.js": {
+            "requests": 1,
+            "bytes": 879
+          },
+          "/assets/chunk-clsx-Oas98qaH.js": {
+            "requests": 1,
+            "bytes": 5968
+          },
+          "/assets/chunk-preload-helper-oCYlU9a4.js": {
+            "requests": 1,
+            "bytes": 1057
+          },
+          "/assets/chunk-i18n-BDfnoemy.js": {
+            "requests": 1,
+            "bytes": 25615
+          },
+          "/assets/chunk-dialog-4knxpwP4.js": {
+            "requests": 1,
+            "bytes": 25118
+          },
+          "/api/preferences": {
+            "requests": 2,
+            "bytes": 464
+          },
+          "/logo-white.png": {
+            "requests": 1,
+            "bytes": 10625
+          },
+          "/assets/chunk-GuideLayer-CJJhRtaz.js": {
+            "requests": 1,
+            "bytes": 7220
+          },
+          "/assets/chunk-BoardSettings-Dtd9q4h6.js": {
+            "requests": 1,
+            "bytes": 13486
+          },
+          "/assets/chunk-MarkdownSections-rsbHhRQY.js": {
+            "requests": 1,
+            "bytes": 762
+          },
+          "/assets/chunk-BulkArchiveDialog-BJJ-FgEw.js": {
+            "requests": 1,
+            "bytes": 1456
+          },
+          "/assets/chunk-ActionDialog-DnO94-3C.js": {
+            "requests": 1,
+            "bytes": 14335
+          },
+          "/api/events": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/assets/chunk-tutorialRequest-lcaft-JE.js": {
+            "requests": 1,
+            "bytes": 366
+          },
+          "/assets/chunk-input-Lsc2pB8n.js": {
+            "requests": 1,
+            "bytes": 2350
+          },
+          "/assets/chunk-MarkdownView-DPbdQoN_.js": {
+            "requests": 1,
+            "bytes": 48972
+          },
+          "/api/projects": {
+            "requests": 2,
+            "bytes": 644
+          },
+          "/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193623
+          },
+          "/api/onboarding": {
+            "requests": 1,
+            "bytes": 259
+          }
+        },
+        "heavy": {
+          "/assets/chunk-mermaid.core-jMXYr-iq.js": {
+            "requests": 1,
+            "bytes": 27385
+          },
+          "/assets/chunk-chunk-Y2CYZVJY-DsF7k-Jl.js": {
+            "requests": 1,
+            "bytes": 395
+          },
+          "/api/projects/:id/tasks/:n/attachments/:id": {
+            "requests": 4,
+            "bytes": 1036
+          },
+          "/assets/chunk-src-BuR9lG3U.js": {
+            "requests": 1,
+            "bytes": 16119
+          },
+          "/assets/chunk-purify.es--06brOip.js": {
+            "requests": 1,
+            "bytes": 11274
+          },
+          "/assets/chunk-chunk-3YJQHVM4-KcLBK8tR.js": {
+            "requests": 1,
+            "bytes": 8725
+          },
+          "/assets/chunk-chunk-VPRB5NB3-DYzgenmu.js": {
+            "requests": 1,
+            "bytes": 26104
+          },
+          "/assets/chunk-chunk-HJ2JQQFS-GCe1AGBI.js": {
+            "requests": 1,
+            "bytes": 2929
+          },
+          "/assets/chunk-chunk-DUW6YSOI-BgS-a7Ky.js": {
+            "requests": 1,
+            "bytes": 714
+          },
+          "/assets/chunk-chunk-4EA7E6EY-BTlUFwUh.js": {
+            "requests": 1,
+            "bytes": 1205
+          },
+          "/assets/chunk-chunk-E2ZNV5FY-DQTHDtxH.js": {
+            "requests": 1,
+            "bytes": 16769
+          },
+          "/assets/chunk-chunk-DBDB3WZW-hylVVe9A.js": {
+            "requests": 1,
+            "bytes": 1048
+          },
+          "/assets/chunk-chunk-2BW5OAIV-BFXRjs6G.js": {
+            "requests": 1,
+            "bytes": 8415
+          },
+          "/assets/chunk-chunk-NTY3LDVX-BqcBaPWN.js": {
+            "requests": 1,
+            "bytes": 4423
+          },
+          "/assets/chunk-chunk-XC4XBNZT-CkH4bKj3.js": {
+            "requests": 1,
+            "bytes": 29229
+          },
+          "/assets/chunk-dist-QJO80J_y.js": {
+            "requests": 1,
+            "bytes": 1236
+          },
+          "/assets/chunk-chunk-J5ZVWO5B-Dq9GsbUE.js": {
+            "requests": 1,
+            "bytes": 688
+          },
+          "/assets/chunk-line-CHEnPIbT.js": {
+            "requests": 1,
+            "bytes": 727
+          },
+          "/assets/chunk-rough.esm-Dy-Kn_BL.js": {
+            "requests": 1,
+            "bytes": 9032
+          },
+          "/assets/chunk-path-fybaL0A-.js": {
+            "requests": 1,
+            "bytes": 1229
+          },
+          "/assets/chunk-array-BifhSqXX.js": {
+            "requests": 1,
+            "bytes": 364
+          },
+          "/assets/chunk-flowDiagram-OXPTDLAJ-CBJ7T8rg.js": {
+            "requests": 1,
+            "bytes": 575
+          },
+          "/assets/chunk-chunk-7TKQ45FW-Dwl8VV2T.js": {
+            "requests": 1,
+            "bytes": 1141
+          },
+          "/assets/chunk-chunk-XXDRQBXY-CXEpsXr7.js": {
+            "requests": 1,
+            "bytes": 480
+          },
+          "/assets/chunk-chunk-KQW6MTUR-BZq-9p-E.js": {
+            "requests": 1,
+            "bytes": 654
+          },
+          "/assets/chunk-chunk-EU5HNXII-CWrf_N4x.js": {
+            "requests": 1,
+            "bytes": 20271
+          },
+          "/assets/chunk-chunk-5VM5RSS4-DfXEBQKp.js": {
+            "requests": 1,
+            "bytes": 526
+          },
+          "/assets/chunk-channel-BP0t41Qv.js": {
+            "requests": 1,
+            "bytes": 377
+          },
+          "/assets/chunk-elk-IJKZMXRS-DAblYahg.js": {
+            "requests": 1,
+            "bytes": 448920
+          },
+          "/assets/chunk-chunk-HTAEGDNF-C4v8dJ05.js": {
+            "requests": 1,
+            "bytes": 2745
+          },
+          "/assets/chunk-chunk-FVRAUYC3-BVt4R9Fv.js": {
+            "requests": 1,
+            "bytes": 4485
+          },
+          "/assets/chunk-graphlib-CjI3ttgK.js": {
+            "requests": 1,
+            "bytes": 8314
+          },
+          "/assets/chunk-isObject-BNleAbAq.js": {
+            "requests": 1,
+            "bytes": 665
+          }
+        },
+        "status": {
+          "/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193749
+          },
+          "/api/projects": {
+            "requests": 1,
+            "bytes": 322
+          }
+        }
+      },
+      "pageErrors": 0
+    }
+  ],
+  "summary": {
+    "firstVisibleMs": {
+      "values": [
+        962,
+        1382,
+        1007
+      ],
+      "median": 1007,
+      "min": 962,
+      "max": 1382,
+      "identical": false
+    },
+    "load.requests.document": {
+      "values": [
+        1,
+        1,
+        1
+      ],
+      "median": 1,
+      "min": 1,
+      "max": 1,
+      "identical": true
+    },
+    "load.bytes.document": {
+      "values": [
+        1029,
+        1029,
+        1029
+      ],
+      "median": 1029,
+      "min": 1029,
+      "max": 1029,
+      "identical": true
+    },
+    "load.requests.api": {
+      "values": [
+        6,
+        6,
+        6
+      ],
+      "median": 6,
+      "min": 6,
+      "max": 6,
+      "identical": true
+    },
+    "load.bytes.api": {
+      "values": [
+        2194990,
+        2194990,
+        2194990
+      ],
+      "median": 2194990,
+      "min": 2194990,
+      "max": 2194990,
+      "identical": true
+    },
+    "load.requests.static": {
+      "values": [
+        16,
+        16,
+        16
+      ],
+      "median": 16,
+      "min": 16,
+      "max": 16,
+      "identical": true
+    },
+    "load.bytes.static": {
+      "values": [
+        329099,
+        329099,
+        329099
+      ],
+      "median": 329099,
+      "min": 329099,
+      "max": 329099,
+      "identical": true
+    },
+    "load.requests.stream": {
+      "values": [
+        1,
+        1,
+        1
+      ],
+      "median": 1,
+      "min": 1,
+      "max": 1,
+      "identical": true
+    },
+    "load.bytes.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "load.requests.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "load.bytes.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "load.requests.total": {
+      "values": [
+        24,
+        24,
+        24
+      ],
+      "median": 24,
+      "min": 24,
+      "max": 24,
+      "identical": true
+    },
+    "load.bytes.total": {
+      "values": [
+        2525118,
+        2525118,
+        2525118
+      ],
+      "median": 2525118,
+      "min": 2525118,
+      "max": 2525118,
+      "identical": true
+    },
+    "heavyOpenMs": {
+      "values": [
+        322,
+        247,
+        232
+      ],
+      "median": 247,
+      "min": 232,
+      "max": 322,
+      "identical": false
+    },
+    "heavy.requests.document": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.bytes.document": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.requests.api": {
+      "values": [
+        4,
+        4,
+        4
+      ],
+      "median": 4,
+      "min": 4,
+      "max": 4,
+      "identical": true
+    },
+    "heavy.bytes.api": {
+      "values": [
+        1036,
+        1036,
+        1036
+      ],
+      "median": 1036,
+      "min": 1036,
+      "max": 1036,
+      "identical": true
+    },
+    "heavy.requests.static": {
+      "values": [
+        32,
+        32,
+        32
+      ],
+      "median": 32,
+      "min": 32,
+      "max": 32,
+      "identical": true
+    },
+    "heavy.bytes.static": {
+      "values": [
+        657163,
+        657163,
+        657163
+      ],
+      "median": 657163,
+      "min": 657163,
+      "max": 657163,
+      "identical": true
+    },
+    "heavy.requests.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.bytes.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.requests.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.bytes.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.requests.total": {
+      "values": [
+        36,
+        36,
+        36
+      ],
+      "median": 36,
+      "min": 36,
+      "max": 36,
+      "identical": true
+    },
+    "heavy.bytes.total": {
+      "values": [
+        658199,
+        658199,
+        658199
+      ],
+      "median": 658199,
+      "min": 658199,
+      "max": 658199,
+      "identical": true
+    },
+    "domNodes": {
+      "values": [
+        10937,
+        10937,
+        10937
+      ],
+      "median": 10937,
+      "min": 10937,
+      "max": 10937,
+      "identical": true
+    },
+    "jsHeapUsedBytes": {
+      "values": [
+        85827584,
+        87810164,
+        85511644
+      ],
+      "median": 85827584,
+      "min": 85511644,
+      "max": 87810164,
+      "identical": false
+    },
+    "longtaskCount": {
+      "values": [
+        3,
+        3,
+        3
+      ],
+      "median": 3,
+      "min": 3,
+      "max": 3,
+      "identical": true
+    },
+    "longtaskTotalMs": {
+      "values": [
+        532,
+        493,
+        491
+      ],
+      "median": 493,
+      "min": 491,
+      "max": 532,
+      "identical": false
+    },
+    "statusDetectedMs": {
+      "values": [
+        810,
+        909,
+        807
+      ],
+      "median": 810,
+      "min": 807,
+      "max": 909,
+      "identical": false
+    },
+    "statusMs": {
+      "values": [
+        3389,
+        3170,
+        3332
+      ],
+      "median": 3332,
+      "min": 3170,
+      "max": 3389,
+      "identical": false
+    },
+    "status.requests.document": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.bytes.document": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.requests.api": {
+      "values": [
+        2,
+        2,
+        2
+      ],
+      "median": 2,
+      "min": 2,
+      "max": 2,
+      "identical": true
+    },
+    "status.bytes.api": {
+      "values": [
+        2194071,
+        2194071,
+        2194071
+      ],
+      "median": 2194071,
+      "min": 2194071,
+      "max": 2194071,
+      "identical": true
+    },
+    "status.requests.static": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.bytes.static": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.requests.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.bytes.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.requests.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.bytes.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.requests.total": {
+      "values": [
+        2,
+        2,
+        2
+      ],
+      "median": 2,
+      "min": 2,
+      "max": 2,
+      "identical": true
+    },
+    "status.bytes.total": {
+      "values": [
+        2194071,
+        2194071,
+        2194071
+      ],
+      "median": 2194071,
+      "min": 2194071,
+      "max": 2194071,
+      "identical": true
+    }
+  },
+  "routeSummary": {
+    "load": {
+      "/": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1029,
+            1029,
+            1029
+          ],
+          "median": 1029,
+          "identical": true
+        }
+      },
+      "/api/events": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            0,
+            0,
+            0
+          ],
+          "median": 0,
+          "identical": true
+        }
+      },
+      "/api/onboarding": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            259,
+            259,
+            259
+          ],
+          "median": 259,
+          "identical": true
+        }
+      },
+      "/api/preferences": {
+        "requests": {
+          "values": [
+            2,
+            2,
+            2
+          ],
+          "median": 2,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            464,
+            464,
+            464
+          ],
+          "median": 464,
+          "identical": true
+        }
+      },
+      "/api/projects": {
+        "requests": {
+          "values": [
+            2,
+            2,
+            2
+          ],
+          "median": 2,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            644,
+            644,
+            644
+          ],
+          "median": 644,
+          "identical": true
+        }
+      },
+      "/api/projects/:id/board": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2193623,
+            2193623,
+            2193623
+          ],
+          "median": 2193623,
+          "identical": true
+        }
+      },
+      "/assets/app-CWx6I9n4.css": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            20736,
+            20736,
+            20736
+          ],
+          "median": 20736,
+          "identical": true
+        }
+      },
+      "/assets/app-DxRdGIfE.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            150154,
+            150154,
+            150154
+          ],
+          "median": 150154,
+          "identical": true
+        }
+      },
+      "/assets/chunk-ActionDialog-DnO94-3C.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            14335,
+            14335,
+            14335
+          ],
+          "median": 14335,
+          "identical": true
+        }
+      },
+      "/assets/chunk-BoardSettings-Dtd9q4h6.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            13486,
+            13486,
+            13486
+          ],
+          "median": 13486,
+          "identical": true
+        }
+      },
+      "/assets/chunk-BulkArchiveDialog-BJJ-FgEw.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1456,
+            1456,
+            1456
+          ],
+          "median": 1456,
+          "identical": true
+        }
+      },
+      "/assets/chunk-GuideLayer-CJJhRtaz.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            7220,
+            7220,
+            7220
+          ],
+          "median": 7220,
+          "identical": true
+        }
+      },
+      "/assets/chunk-MarkdownSections-rsbHhRQY.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            762,
+            762,
+            762
+          ],
+          "median": 762,
+          "identical": true
+        }
+      },
+      "/assets/chunk-MarkdownView-DPbdQoN_.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            48972,
+            48972,
+            48972
+          ],
+          "median": 48972,
+          "identical": true
+        }
+      },
+      "/assets/chunk-clsx-Oas98qaH.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            5968,
+            5968,
+            5968
+          ],
+          "median": 5968,
+          "identical": true
+        }
+      },
+      "/assets/chunk-dialog-4knxpwP4.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            25118,
+            25118,
+            25118
+          ],
+          "median": 25118,
+          "identical": true
+        }
+      },
+      "/assets/chunk-i18n-BDfnoemy.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            25615,
+            25615,
+            25615
+          ],
+          "median": 25615,
+          "identical": true
+        }
+      },
+      "/assets/chunk-input-Lsc2pB8n.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2350,
+            2350,
+            2350
+          ],
+          "median": 2350,
+          "identical": true
+        }
+      },
+      "/assets/chunk-preload-helper-oCYlU9a4.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1057,
+            1057,
+            1057
+          ],
+          "median": 1057,
+          "identical": true
+        }
+      },
+      "/assets/chunk-rolldown-runtime-Dd_uD5pT.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            879,
+            879,
+            879
+          ],
+          "median": 879,
+          "identical": true
+        }
+      },
+      "/assets/chunk-tutorialRequest-lcaft-JE.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            366,
+            366,
+            366
+          ],
+          "median": 366,
+          "identical": true
+        }
+      },
+      "/logo-white.png": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            10625,
+            10625,
+            10625
+          ],
+          "median": 10625,
+          "identical": true
+        }
+      }
+    },
+    "heavy": {
+      "/api/projects/:id/tasks/:n/attachments/:id": {
+        "requests": {
+          "values": [
+            4,
+            4,
+            4
+          ],
+          "median": 4,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1036,
+            1036,
+            1036
+          ],
+          "median": 1036,
+          "identical": true
+        }
+      },
+      "/assets/chunk-array-BifhSqXX.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            364,
+            364,
+            364
+          ],
+          "median": 364,
+          "identical": true
+        }
+      },
+      "/assets/chunk-channel-BP0t41Qv.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            377,
+            377,
+            377
+          ],
+          "median": 377,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-2BW5OAIV-BFXRjs6G.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            8415,
+            8415,
+            8415
+          ],
+          "median": 8415,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-3YJQHVM4-KcLBK8tR.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            8725,
+            8725,
+            8725
+          ],
+          "median": 8725,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-4EA7E6EY-BTlUFwUh.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1205,
+            1205,
+            1205
+          ],
+          "median": 1205,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-5VM5RSS4-DfXEBQKp.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            526,
+            526,
+            526
+          ],
+          "median": 526,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-7TKQ45FW-Dwl8VV2T.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1141,
+            1141,
+            1141
+          ],
+          "median": 1141,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-DBDB3WZW-hylVVe9A.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1048,
+            1048,
+            1048
+          ],
+          "median": 1048,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-DUW6YSOI-BgS-a7Ky.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            714,
+            714,
+            714
+          ],
+          "median": 714,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-E2ZNV5FY-DQTHDtxH.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            16769,
+            16769,
+            16769
+          ],
+          "median": 16769,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-EU5HNXII-CWrf_N4x.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            20271,
+            20271,
+            20271
+          ],
+          "median": 20271,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-FVRAUYC3-BVt4R9Fv.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            4485,
+            4485,
+            4485
+          ],
+          "median": 4485,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-HJ2JQQFS-GCe1AGBI.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2929,
+            2929,
+            2929
+          ],
+          "median": 2929,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-HTAEGDNF-C4v8dJ05.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2745,
+            2745,
+            2745
+          ],
+          "median": 2745,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-J5ZVWO5B-Dq9GsbUE.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            688,
+            688,
+            688
+          ],
+          "median": 688,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-KQW6MTUR-BZq-9p-E.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            654,
+            654,
+            654
+          ],
+          "median": 654,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-NTY3LDVX-BqcBaPWN.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            4423,
+            4423,
+            4423
+          ],
+          "median": 4423,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-VPRB5NB3-DYzgenmu.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            26104,
+            26104,
+            26104
+          ],
+          "median": 26104,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-XC4XBNZT-CkH4bKj3.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            29229,
+            29229,
+            29229
+          ],
+          "median": 29229,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-XXDRQBXY-CXEpsXr7.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            480,
+            480,
+            480
+          ],
+          "median": 480,
+          "identical": true
+        }
+      },
+      "/assets/chunk-chunk-Y2CYZVJY-DsF7k-Jl.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            395,
+            395,
+            395
+          ],
+          "median": 395,
+          "identical": true
+        }
+      },
+      "/assets/chunk-dist-QJO80J_y.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1236,
+            1236,
+            1236
+          ],
+          "median": 1236,
+          "identical": true
+        }
+      },
+      "/assets/chunk-elk-IJKZMXRS-DAblYahg.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            448920,
+            448920,
+            448920
+          ],
+          "median": 448920,
+          "identical": true
+        }
+      },
+      "/assets/chunk-flowDiagram-OXPTDLAJ-CBJ7T8rg.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            575,
+            575,
+            575
+          ],
+          "median": 575,
+          "identical": true
+        }
+      },
+      "/assets/chunk-graphlib-CjI3ttgK.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            8314,
+            8314,
+            8314
+          ],
+          "median": 8314,
+          "identical": true
+        }
+      },
+      "/assets/chunk-isObject-BNleAbAq.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            665,
+            665,
+            665
+          ],
+          "median": 665,
+          "identical": true
+        }
+      },
+      "/assets/chunk-line-CHEnPIbT.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            727,
+            727,
+            727
+          ],
+          "median": 727,
+          "identical": true
+        }
+      },
+      "/assets/chunk-mermaid.core-jMXYr-iq.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            27385,
+            27385,
+            27385
+          ],
+          "median": 27385,
+          "identical": true
+        }
+      },
+      "/assets/chunk-path-fybaL0A-.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1229,
+            1229,
+            1229
+          ],
+          "median": 1229,
+          "identical": true
+        }
+      },
+      "/assets/chunk-purify.es--06brOip.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            11274,
+            11274,
+            11274
+          ],
+          "median": 11274,
+          "identical": true
+        }
+      },
+      "/assets/chunk-rough.esm-Dy-Kn_BL.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            9032,
+            9032,
+            9032
+          ],
+          "median": 9032,
+          "identical": true
+        }
+      },
+      "/assets/chunk-src-BuR9lG3U.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            16119,
+            16119,
+            16119
+          ],
+          "median": 16119,
+          "identical": true
+        }
+      }
+    },
+    "status": {
+      "/api/projects": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            322,
+            322,
+            322
+          ],
+          "median": 322,
+          "identical": true
+        }
+      },
+      "/api/projects/:id/board": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2193749,
+            2193749,
+            2193749
+          ],
+          "median": 2193749,
+          "identical": true
+        }
+      }
+    }
+  },
+  "notes": [
+    "PC runs use agboard serve on the port given by --port.",
+    "Status change is a CLI move while the board is open."
+  ]
+}

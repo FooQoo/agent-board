@@ -1,41 +1,62 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { monitorReadResolvers } from './client';
-import type { MonitorViewProps } from './contracts';
-import { MonitorView } from './View';
-import { createMonitorFixtureProps } from './mock';
-import { monitorFreshnessForStream, useMonitor } from './hooks/useMonitor';
-import { useMonitorEvents } from './hooks/useMonitorEvents';
+import { createMonitorAdapter, monitorClient } from './client';
+import { MonitorProject, type BuildReloadHook } from './MonitorProject';
+import { createMonitorFixture } from './mock';
+import { createMonitorFixtureAdapter } from './mock-adapter';
 import { useMonitorUrl } from './hooks/useMonitorUrl';
-import { selectMonitorTasks } from './model/select';
-import { useMonitorInteractions } from './hooks/useMonitorInteractions';
-import { monitorClient } from './client';
-import { monitorPreferences } from './preferences';
-import { syncPreferences } from '../../shared/preferences';
 import { ConnectionStateView } from './connection/ConnectionStateView';
+import { ProjectErrorView } from './connection/ProjectErrorView';
 import { useMonitorConnection } from './hooks/useMonitorConnection';
 
-/** A hook that reloads the page for a newer build (`served`), unless the page is `busy`. The entry supplies it. */
-export type BuildReloadHook = (served: string | null, busy: boolean) => void;
+export type { BuildReloadHook } from './MonitorProject';
 
 export function App({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
   return import.meta.env.MODE === 'mock' ? (
-    <MonitorFixtureApp />
+    <MonitorFixtureApp useBuildReload={useBuildReload} />
   ) : (
-    <MonitorConnectedApp useBuildReload={useBuildReload} />
+    <MonitorRoutedApp useBuildReload={useBuildReload} />
   );
 }
 
-function MonitorFixtureApp() {
-  return <MonitorView {...createMonitorFixtureProps()} />;
+function MonitorFixtureApp({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
+  const fixture = useMemo(() => createMonitorFixture(), []);
+  const adapter = useMemo(() => createMonitorFixtureAdapter(fixture), [fixture]);
+  return (
+    <MonitorProject
+      projectId={fixture.projectId}
+      adapter={adapter}
+      writeAnswer={async () => {
+        throw new Error('The sample data cannot take an answer.');
+      }}
+      useBuildReload={useBuildReload}
+      onNotFound={() => undefined}
+    />
+  );
+}
+
+/**
+ * The address names the project: `/monitor/?project={projectId}`. Without a valid one the error
+ * screen is all there is, and nothing is asked of the server, so no project is read by default.
+ */
+function MonitorRoutedApp({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
+  const route = useMonitorUrl();
+  if (route.status !== 'ok') return <ProjectErrorView kind={route.status} />;
+  return <MonitorConnectedApp projectId={route.projectId} useBuildReload={useBuildReload} />;
 }
 
 /**
  * Confirms the phone's access before the monitor reads anything. While the session is missing,
- * expired or stopped, no list, event stream or answer runs and no board data is shown: the phone
- * is asked for the passcode instead.
+ * expired or stopped, no Summary, event stream or answer runs and no board data is shown: the
+ * phone is asked for the passcode instead. The project in the address is kept throughout.
  */
-function MonitorConnectedApp({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
+function MonitorConnectedApp({
+  projectId,
+  useBuildReload,
+}: {
+  projectId: string;
+  useBuildReload: BuildReloadHook;
+}) {
   const { t } = useTranslation();
   const connection = useMonitorConnection();
   const { state, unlockFailure } = connection;
@@ -54,66 +75,28 @@ function MonitorConnectedApp({ useBuildReload }: { useBuildReload: BuildReloadHo
       />
     );
   }
-  return <MonitorReadyApp useBuildReload={useBuildReload} />;
+  return <MonitorReadyApp projectId={projectId} useBuildReload={useBuildReload} />;
 }
 
-function MonitorReadyApp({ useBuildReload }: { useBuildReload: BuildReloadHook }) {
-  const monitor = useMonitor();
-  // The session is live here: show the language and theme saved on the PC (the copy painted first).
-  useEffect(() => {
-    void syncPreferences(monitorPreferences);
-  }, []);
-  const answers = useMonitorInteractions({
-    writeAnswer: monitorClient.answerRequest,
-  });
-  const refresh = useCallback(() => monitor.refresh(), [monitor.refresh]);
-  const events = useMonitorEvents({
-    onRefresh: refresh,
-    onVisibility: monitor.onVisibility,
-  });
-  // A reload would drop an open drawer, and a drag in it, so it waits until the drawer is closed.
-  const [detailOpen, setDetailOpen] = useState(false);
-  useBuildReload(events.build, answers.locked || detailOpen);
-  const route = useMonitorUrl(monitor.projects, monitor.catalogReady);
-  const [appliedScope, setAppliedScope] = useState(route.scope);
-  useEffect(() => {
-    answers.reconcileTasks(monitor.tasks);
-  }, [answers.reconcileTasks, monitor.tasks]);
-  useEffect(() => {
-    if (!answers.locked) setAppliedScope(route.scope);
-  }, [answers.locked, route.scope]);
-  const scope = answers.locked ? appliedScope : route.scope;
-  const tasks = answers.tasksWithSavedAnswers(monitor.tasks, monitor.freshness.state === 'fresh');
-  const visible = selectMonitorTasks(tasks, scope);
-  const hasPartial =
-    monitor.freshness.failedProjectIds.length > 0 || monitor.freshness.snapshotProblems.length > 0;
-  const freshness = monitorFreshnessForStream(monitor.freshness, events.state);
-  const props: MonitorViewProps = {
-    projects: monitor.projects,
-    scope,
-    summary:
-      hasPartial || !monitor.hasSnapshot
-        ? null
-        : {
-            todo: visible.todo.length,
-            doing: visible.doing.length,
-            done: visible.done.length,
-          },
-    ...visible,
-    answerController: {
-      ...answers,
-      onAnswered: (item, requestId, result) => {
-        answers.onAnswered(item, requestId, result);
-        monitor.refresh();
-      },
-    },
-    readResolvers: monitorReadResolvers,
-    freshness,
-    routeNotice: route.notice,
-    onScopeChange: route.onScopeChange,
-    scopeLocked: answers.locked,
-    onRefresh: refresh,
-    onDetailOpenChange: setDetailOpen,
-  };
-  return <MonitorView {...props} />;
+function MonitorReadyApp({
+  projectId,
+  useBuildReload,
+}: {
+  projectId: string;
+  useBuildReload: BuildReloadHook;
+}) {
+  const adapter = useMemo(() => createMonitorAdapter(projectId), [projectId]);
+  const [gone, setGone] = useState(false);
+  const onNotFound = useCallback(() => setGone(true), []);
+  // The project was deleted: the error screen takes the place of the monitor, and its stream ends.
+  if (gone) return <ProjectErrorView kind="notFound" />;
+  return (
+    <MonitorProject
+      projectId={projectId}
+      adapter={adapter}
+      writeAnswer={monitorClient.answerRequest}
+      useBuildReload={useBuildReload}
+      onNotFound={onNotFound}
+    />
+  );
 }

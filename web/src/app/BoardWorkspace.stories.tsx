@@ -3,6 +3,7 @@ import { expect, within } from 'storybook/test';
 import { makeEpic, makeProject, makeTask } from '../../.storybook/support/fixtures';
 import { initSession } from './model/projectSession';
 import type { AppControllerModel, AppView } from './contracts';
+import { detailFixtureOf, withDetailFixture } from '../features/tasks/detail/detailFixture';
 import { BoardWorkspace } from './BoardWorkspace';
 
 const project = makeProject({ name: 'agent-board' });
@@ -242,11 +243,14 @@ const meta = {
   title: 'App/Board Workspace',
   component: BoardWorkspace,
   parameters: { layout: 'fullscreen' },
-  render: (args) => (
-    <div className="app">
-      <BoardWorkspace {...args} />
-    </div>
-  ),
+  // The drawer and the epic screen read their Detail: this serves the cards' and the epic's.
+  render: (args) =>
+    withDetailFixture(
+      detailFixtureOf(boardTasks, [epic]),
+      <div className="app">
+        <BoardWorkspace {...args} />
+      </div>,
+    ),
   args: { model: makeModel(), actions: { onArchiveDone: () => {} } as never, guide: false },
 } satisfies Meta<typeof BoardWorkspace>;
 export default meta;

@@ -1,0 +1,7 @@
+{"type":"start","resource":"epic","id":"EPIC-1","projectId":"0123456789abcdef0123456789abcdef","sections":["document"],"versions":{"document":"c0ffee00c0ffee00"}}
+{"type":"section-start","section":"document"}
+{"type":"attachments","items":[]}
+{"type":"block","kind":"markdown","text":"# Data layer\n\nThe plan.\n\n"}
+{"type":"block","kind":"markdown","text":"- one\n- two\n"}
+{"type":"section-end","section":"document","count":2}
+{"type":"complete","versions":{"document":"c0ffee00c0ffee00"}}

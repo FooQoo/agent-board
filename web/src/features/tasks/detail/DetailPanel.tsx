@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setDraft } from '../api/edit';
 import { noOperations, type OperationControls } from '../../../shared/lib/operations/operations';
-import type { Task, Epic, Problem, ProjectId } from '../../../shared/api/contracts';
+import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/api/contracts';
+import { useEpicDetail, useTaskDetail } from '../../../shared/data/react';
 import { DeleteButton } from '../delete/DeleteButton';
 import { DeleteConfirm } from '../delete/DeleteConfirm';
 import type { DetailTab } from './DetailTabs';
@@ -14,18 +15,19 @@ import './detail.css';
 export interface DetailPanelProps {
   /** The project the card belongs to. Part keys and delete requests use it. */
   projectId: ProjectId | null;
-  task: Task | null;
+  /** The card, as a list shows it. Its text, conditions and history are read as the tabs need them. */
+  task: TaskSummary | null;
   /** Used where the panel only holds a project state (switching, failure, none): the hint sits at the top. */
   variant?: 'card' | 'state';
   /** Tells the app about the delete confirmation, so the project cannot change under it. */
   operations?: OperationControls;
   onClose: () => void;
   /** The edit icon (shown for a draft) was pressed. */
-  onEdit?: (task: Task) => void;
+  onEdit?: (task: TaskSummary) => void;
   /** A draft toggle or an answer was saved: the board should be fetched again. */
   onChanged?: () => void;
   /** Runs archive/delete through the app's project-bound lifecycle operation. */
-  onRemove: (action: 'archive' | 'delete', task: Task) => Promise<boolean>;
+  onRemove: (action: 'archive' | 'delete', task: TaskSummary) => Promise<boolean>;
   /** Mock mode only: open the delete confirmation immediately. */
   initialConfirm?: boolean;
   /** Mock mode only: show the delete failure message immediately. */
@@ -37,7 +39,7 @@ export interface DetailPanelProps {
   /** The board's format defects. The ones of this card's files are shown above its body. */
   problems?: readonly Problem[];
   /** The project's epics, for the epic tab. Undefined while the board is loading. */
-  epics?: readonly Epic[];
+  epics?: readonly EpicRef[];
   epicsFailed?: boolean;
   onRetryEpics?: () => void;
   onRestore?: () => void;
@@ -107,7 +109,7 @@ export function DetailPanel({
 interface DetailBodyProps
   extends Omit<DetailPanelProps, 'task' | 'variant' | 'operations' | 'projectId' | 'problems'> {
   projectId: ProjectId;
-  task: Task;
+  task: TaskSummary;
   operations: OperationControls;
   problems: readonly Problem[];
 }
@@ -145,6 +147,10 @@ function DetailBody({
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
   const confirming = confirm !== 'closed';
+  // Opening the drawer reads the whole task and its epic once, so every tab shows at once; the tabs only
+  // choose what they show.
+  const detail = useTaskDetail(projectId, task.id);
+  const epicDetail = useEpicDetail(projectId, task.epic?.id ?? null);
 
   // The open confirmation is an operation: the project cannot change until it is done or cancelled.
   useEffect(() => {
@@ -184,6 +190,12 @@ function DetailBody({
     <TaskDetailView
       projectId={projectId}
       task={task}
+      document={detail.document}
+      history={detail.history}
+      epicDocument={epicDetail.document}
+      onRetryDocument={() => void detail.refresh()}
+      onRetryHistory={() => void detail.refresh()}
+      onRetryEpicDocument={() => void epicDetail.refresh()}
       tab={tab}
       onTabChange={setTab}
       onClose={onClose}

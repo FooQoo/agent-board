@@ -20,8 +20,10 @@ export interface ConnectionSettingsViewProps {
   status: ConnectionStatus;
   /** The values the form starts from; the form keeps its own copy while it is edited. */
   draft: ConnectionDraft;
-  /** The public phone URL, known once the connection is ready. */
+  /** The phone URL of the selected project, known once the connection is ready and a project is selected. */
   url?: string | null;
+  /** A project is selected; without one the QR code is not made and the copy is off. */
+  projectSelected?: boolean;
   /** The 4-digit passcode the phone enters, known once the connection is ready. */
   passcode?: string | null;
   qr?: ConnectionQr | null;
@@ -51,6 +53,7 @@ export function ConnectionSettingsView({
   status,
   draft,
   url = null,
+  projectSelected = true,
   passcode = null,
   qr = null,
   tokenInfo = { source: null, keychainAvailable: true, saved: false },
@@ -141,7 +144,14 @@ export function ConnectionSettingsView({
         {connected ? (
           <div className="connection-dialog__main">
             <div className="connection-dialog__body">
-              <ConnectionReadySteps qr={qr} passcode={passcode} copied={copied} onCopy={copyUrl} />
+              <ConnectionReadySteps
+                qr={qr}
+                projectSelected={projectSelected}
+                copyable={Boolean(url)}
+                passcode={passcode}
+                copied={copied}
+                onCopy={copyUrl}
+              />
             </div>
             <div className="connection-dialog__footer">
               <p className="connection-dialog__notice">

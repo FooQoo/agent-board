@@ -2,7 +2,7 @@ import { expectHistoryNote } from '../helpers/history';
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson, decisionJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
-import { openManualCreateDialog, pasteMarkdown, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, refreshUntil, waitForSync } from '../helpers/ui';
 
 // Adding a card in the shared dialog, and answering a decision request on its card, on the real page.
 
@@ -36,6 +36,7 @@ test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
   await page.goto('/');
   await waitForSync(page);
+  await readBoardAfterReset(page);
 });
 
 // ------------------------------------------------------------------ Adding a card
@@ -254,14 +255,15 @@ test('when the agent asks something else while an answer is typed, the page says
 
   // The board refresh is held back while the agent asks again, so the page sees the old request replaced
   // by the new one in one step, as it does when two changes arrive together.
-  await page.route('**/api/projects/*/board', (route) => route.abort());
+  await page.route('**/api/projects/*/summary', (route) => route.abort());
   askAgain('A different question now.');
   expect(show(12).pendingRequestId).not.toBe(oldRequest);
-  await page.unroute('**/api/projects/*/board');
+  await page.unroute('**/api/projects/*/summary');
   agboardOk(mainProject, ['add', 'Triggers a refresh']);
 
-  // The page follows the board: the new question is shown, the old answer is kept but cannot be sent as it is.
-  await expect(request(page)).toContainText('A different question now.');
+  // The open details hold the stream's updates back, so the board is read now. The new question is shown,
+  // the old answer is kept but cannot be sent as it is.
+  await refreshUntil(page, () => expect(request(page)).toContainText('A different question now.', { timeout: 1_500 }));
   await expect(request(page).getByRole('alert')).toHaveText('This request has changed. Review the latest board.');
   await expect(box).toHaveValue('An answer to the old question.');
   await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
@@ -280,7 +282,7 @@ test('an answer sent from a page that missed the new request is refused by the s
   await box.fill('An answer to the old question.');
 
   // This page cannot refresh its board, so it still shows the old request when the agent asks again.
-  await page.route('**/api/projects/*/board', (route) => route.abort());
+  await page.route('**/api/projects/*/summary', (route) => route.abort());
   askAgain('A different question now.');
   await expect(request(page)).toContainText('Waiting for confirmation on how to replace a board.');
   const answered = page.waitForResponse((response) => response.url().endsWith('/tasks/12/answer'));
@@ -293,18 +295,19 @@ test('an answer sent from a page that missed the new request is refused by the s
   expect(show(12).history.filter((event) => event.reason.includes('An answer to the old question.'))).toHaveLength(0);
 
   // Once the board can be read, the new question appears.
-  await page.unroute('**/api/projects/*/board');
+  await page.unroute('**/api/projects/*/summary');
   agboardOk(mainProject, ['add', 'Triggers a refresh']);
-  await expect(request(page)).toContainText('A different question now.');
+  await refreshUntil(page, () => expect(request(page)).toContainText('A different question now.', { timeout: 1_500 }));
   await expect(box).toHaveValue('An answer to the old question.');
 });
 
 test('a long reason is cut at four lines, and Show more reads all of it', async ({ page }) => {
   const lines = Array.from({ length: 14 }, (_, index) => `Line ${index + 1} of a long question about the release plan.`);
   agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(lines.join('\n'))]);
-  await task(page, 13).click();
+  // The card shows the question as soon as the page hears of it; details opened earlier would hold that back.
   const reason = request(page, 13).locator('p', { hasText: 'Line 1 of a long question' });
   await expect(reason).toBeVisible();
+  await task(page, 13).click();
   const lineHeight = await reason.evaluate((element) => parseFloat(getComputedStyle(element).lineHeight));
   expect((await reason.boundingBox())!.height).toBeLessThanOrEqual(lineHeight * 4 + 2);
   const more = request(page, 13).getByRole('button', { name: 'Show more' });

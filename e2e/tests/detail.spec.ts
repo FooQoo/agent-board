@@ -155,7 +155,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 16; step++) {
+  for (let step = 0; step < 17; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
@@ -171,6 +171,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
     'BUTTON Docs',
     'BUTTON Epics',
     'BUTTON Archive',
+    'BUTTON Refresh',
     'BUTTON Settings',
     'DIV #14',
     'DIV #15',
@@ -203,7 +204,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), eight cards, the Pending form (two choices, the note, Cancel, Send), four detail controls.
+  // Header actions (switcher, Add task, Docs, Epics, Archive, Refresh, Settings), eight cards, the Pending form (two choices, the note, Cancel, Send), four detail controls.
   expect(focusable).toHaveLength(1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 4 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

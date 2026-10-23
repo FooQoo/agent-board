@@ -214,7 +214,7 @@ fn a_full_run_over_http_archives_its_samples_and_completes_the_guide() {
         assert_eq!(status, 200, "{next}");
         current = next;
     }
-    let (_, board) = server.get(&format!("/api/projects/{project}/board"));
+    let (_, board) = server.get(&format!("/api/projects/{project}/summary"));
     let second = samples[1];
     let request = board["tasks"]
         .as_array()
@@ -256,7 +256,7 @@ fn a_full_run_over_http_archives_its_samples_and_completes_the_guide() {
     assert_eq!(finished["status"], "completed");
 
     // The samples are archived, not deleted, and the board no longer lists them.
-    let (_, board) = server.get(&format!("/api/projects/{project}/board"));
+    let (_, board) = server.get(&format!("/api/projects/{project}/summary"));
     let listed: Vec<i64> = board["tasks"]
         .as_array()
         .unwrap()
@@ -326,7 +326,7 @@ fn a_run_whose_tab_was_gone_when_the_server_stopped_is_taken_back_at_the_next_st
     let (_, state) = server.get("/api/onboarding");
     assert_eq!(state["status"], "interrupted", "{state}");
     assert!(state["owner"].is_null());
-    let (_, board) = server.get(&format!("/api/projects/{project}/board"));
+    let (_, board) = server.get(&format!("/api/projects/{project}/summary"));
     assert_eq!(
         board["tasks"].as_array().unwrap().len(),
         0,

@@ -6,13 +6,16 @@ export function ConnectionSettings({
   open,
   onOpenChange,
   restoreFocusRef,
+  projectId = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Where the focus goes when the dialog closes. */
   restoreFocusRef?: { current: HTMLElement | null };
+  /** The project the phone opens; without one there is no QR code and no copied URL. */
+  projectId?: string | null;
 }) {
-  const controller = useConnectionController(open);
+  const controller = useConnectionController(open, projectId);
   return (
     <ConnectionSettingsView
       open={open}
@@ -26,6 +29,7 @@ export function ConnectionSettings({
       tokenInfo={controller.tokenInfo}
       onDeleteToken={() => void controller.removeToken()}
       url={controller.url}
+      projectSelected={controller.projectSelected}
       passcode={controller.passcode}
       qr={controller.qr}
       error={controller.error}

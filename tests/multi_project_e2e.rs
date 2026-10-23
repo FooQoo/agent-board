@@ -7,6 +7,8 @@
 //! content.
 
 mod common;
+#[path = "support/detail_lines.rs"]
+mod detail_lines;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
@@ -666,11 +668,13 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
     let alpha_id = project_id(home.path(), "Alpha");
     let beta_id = project_id(home.path(), "Beta");
 
-    // Each project's board has its own tasks, with their full history.
+    // Each project's summary has its own tasks; a task's detail has its full history.
     let alpha_board = server
-        .get(&format!("/api/projects/{alpha_id}/board"))
+        .get(&format!("/api/projects/{alpha_id}/summary"))
         .json();
-    let beta_board = server.get(&format!("/api/projects/{beta_id}/board")).json();
+    let beta_board = server
+        .get(&format!("/api/projects/{beta_id}/summary"))
+        .json();
     assert_eq!(alpha_board["project"]["name"], "Alpha");
     assert_eq!(beta_board["project"]["name"], "Beta");
     assert_eq!(
@@ -681,10 +685,9 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
         task(&beta_board, 1)["title"],
         "Beta: benchmark the importer"
     );
-    assert_eq!(
-        task(&alpha_board, 2)["history"].as_array().unwrap().len(),
-        3
-    );
+    let detail = server.get(&format!("/api/projects/{alpha_id}/tasks/2/detail"));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert_eq!(detail_lines::history(&detail.body).len(), 3);
 
     // The browser's connection hears about changes by the CLI, in either project.
     let mut events = server.events();
@@ -708,12 +711,12 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
     assert_eq!(world(home.path()), before);
 
     // An unknown project is 404 and a malformed ID is 422; neither creates anything.
-    let missing = server.get("/api/projects/00000000000000000000000000000000/board");
+    let missing = server.get("/api/projects/00000000000000000000000000000000/summary");
     assert_eq!(
         (missing.status, missing.code()),
         (404, "project_not_found".into())
     );
-    let malformed = server.get("/api/projects/not-an-id/board");
+    let malformed = server.get("/api/projects/not-an-id/summary");
     assert_eq!(
         (malformed.status, malformed.code()),
         (422, "invalid_value".into())
@@ -758,7 +761,7 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
     let renamed = loop {
         let board = server
-            .get(&format!("/api/projects/{alpha_id}/board"))
+            .get(&format!("/api/projects/{alpha_id}/summary"))
             .json();
         if board["project"]["name"] == "Alpha Renamed" || std::time::Instant::now() > deadline {
             break board;
@@ -780,7 +783,7 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
         ));
         let new_id = project_id(home.path(), "Alpha Renamed");
         assert_ne!(new_id, alpha_id);
-        let old = server.get(&format!("/api/projects/{alpha_id}/board"));
+        let old = server.get(&format!("/api/projects/{alpha_id}/summary"));
         assert_eq!((old.status, old.code()), (404, "project_not_found".into()));
         let reply = server.write(
             "POST",
@@ -791,7 +794,9 @@ fn the_server_writes_only_where_the_url_points_and_tells_browsers_what_changed()
         // A project created on the shared files appears on the board once the watcher reads it.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
         let fresh = loop {
-            let board = server.get(&format!("/api/projects/{new_id}/board")).json();
+            let board = server
+                .get(&format!("/api/projects/{new_id}/summary"))
+                .json();
             if board["tasks"].is_array() || std::time::Instant::now() > deadline {
                 break board;
             }

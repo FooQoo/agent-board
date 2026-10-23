@@ -1,3 +1,5 @@
+import { LruCache } from './model/lruCache';
+
 /**
  * The one place that draws Mermaid diagrams. The library is loaded on the first use only, so the
  * first screen does not read it. Drawings are cached per source and theme, and run one at a time
@@ -66,8 +68,33 @@ function firstLine(error: unknown): string {
   );
 }
 
-const CACHE_LIMIT = 200;
-const cache = new Map<string, Promise<RenderResult>>();
+/** The drawings kept for reuse: at most 50, and 2 MiB of SVG text in all; the least recently used go first. */
+export const MERMAID_CACHE_MAX_ENTRIES = 50;
+export const MERMAID_CACHE_MAX_BYTES = 2 * 1024 * 1024;
+interface Kept {
+  promise: Promise<RenderResult>;
+  /** The outcome once the drawing has finished, so a remounted block can show it at once. */
+  result: RenderResult | null;
+}
+const cache = new LruCache<Kept>({
+  maxEntries: MERMAID_CACHE_MAX_ENTRIES,
+  maxBytes: MERMAID_CACHE_MAX_BYTES,
+});
+
+/** The number and the size of the drawings kept now. */
+export function mermaidCacheStats(): { entries: number; bytes: number } {
+  return { entries: cache.size, bytes: cache.bytes };
+}
+
+/** Forgets every kept drawing. */
+export function clearMermaidCache(): void {
+  cache.clear();
+}
+
+const encoder = new TextEncoder();
+function sizeOf(result: RenderResult): number {
+  return encoder.encode(result.ok ? result.svg : result.message).length;
+}
 let queue: Promise<unknown> = Promise.resolve();
 let sequence = 0;
 
@@ -105,27 +132,36 @@ async function draw(source: string, theme: MermaidTheme): Promise<Drawing> {
   }
 }
 
+const keyOf = (source: string, theme: MermaidTheme) => `${theme.id}\u0000${source}`;
+
+/** The finished drawing of `source` with `theme` if it is kept, or null; it makes the drawing the most recent. */
+export function cachedMermaid(source: string, theme: MermaidTheme): RenderResult | null {
+  return cache.get(keyOf(source, theme))?.result ?? null;
+}
+
 /**
  * Draws `source` with `theme`. A wrong notation resolves to `{ ok: false }` with one line of the
  * error; it never rejects, so saving the text is never blocked by a diagram.
  */
 export function renderMermaid(source: string, theme: MermaidTheme): Promise<RenderResult> {
-  const key = `${theme.id}\u0000${source}`;
+  const key = keyOf(source, theme);
   const cached = cache.get(key);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined) return cached.promise;
 
   const drawing = queue.then(() => draw(source, theme));
   queue = drawing;
-  if (cache.size >= CACHE_LIMIT) {
-    const oldest = cache.keys().next().value;
-    if (oldest !== undefined) cache.delete(oldest);
-  }
-  const result = drawing.then(({ result: outcome, transient }) => {
+  const kept: Kept = { result: null, promise: Promise.resolve({ ok: false, message: '' }) };
+  kept.promise = drawing.then(({ result: outcome, transient }) => {
     if (transient) cache.delete(key);
+    else if (cache.has(key)) {
+      kept.result = outcome;
+      // The size is known only now; a pending drawing is kept with no size.
+      cache.set(key, kept, sizeOf(outcome));
+    }
     return outcome;
   });
-  cache.set(key, result);
-  return result;
+  cache.set(key, kept, 0);
+  return kept.promise;
 }
 
 /**

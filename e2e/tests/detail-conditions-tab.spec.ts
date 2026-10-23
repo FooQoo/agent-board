@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import { agboardOk, mainProject, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
-import { waitForSync } from '../helpers/ui';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 test.beforeEach(() => resetPreferences());
 test.afterEach(() => resetPreferences());
@@ -29,6 +29,7 @@ test.describe('PC condition tab', () => {
         await page.addInitScript(() => localStorage.setItem('agboard.detailWidth', '320'));
         await page.goto(`/?project=${projectId(mainProject)}`);
         await waitForSync(page);
+        await readBoardAfterReset(page);
         await page
           .getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })
           .locator('.card__title')

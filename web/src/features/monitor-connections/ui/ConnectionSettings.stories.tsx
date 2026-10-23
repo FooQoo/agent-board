@@ -128,11 +128,14 @@ const install = (initial: ConnectionSnapshot, options?: Parameters<typeof mockAp
   return () => mock?.restore();
 };
 
+/** The project the board shows; the phone opens its monitor. */
+const selectedProject = '0123456789abcdef0123456789abcdef';
+
 const meta = {
   title: 'Monitor connections/ConnectionSettings',
   component: ConnectionSettings,
   parameters: { layout: 'fullscreen', ...modalDocsParameters },
-  args: { open: true, onOpenChange: fn() },
+  args: { open: true, onOpenChange: fn(), projectId: selectedProject },
 } satisfies Meta<typeof ConnectionSettings>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -435,5 +438,20 @@ export const TokenRequired: Story = {
     await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
     await expect(await view.findByRole('alert')).toHaveTextContent('Enter your ngrok auth token');
     await expect(mock?.calls.some((call) => call.line.startsWith('PUT'))).toBe(false);
+  },
+};
+
+/** No project is selected on the board: the connection runs, but no QR code or copied URL is made. */
+export const NoProjectSelected: Story = {
+  beforeEach: install(connected),
+  args: { projectId: null },
+  play: async () => {
+    const view = within(document.body);
+    await connectedView(view);
+    await expect(view.getByTestId('project-needed')).toHaveTextContent(
+      'Select a project on the board to show its QR code and URL.',
+    );
+    await expect(view.queryByRole('img', { name: 'QR code for the phone URL' })).toBeNull();
+    await expect(view.getByRole('button', { name: 'Copy URL' })).toBeDisabled();
   },
 };

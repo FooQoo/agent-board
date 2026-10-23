@@ -16,12 +16,13 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   MonitorClientError,
+  createMonitorAdapter,
   monitorClient,
   onMonitorAuthLoss,
   type MonitorAuthLoss,
 } from '../../src/pages/monitor/client';
 import { useMonitorConnection } from '../../src/pages/monitor/hooks/useMonitorConnection';
-import { useMonitorEvents } from '../../src/pages/monitor/hooks/useMonitorEvents';
+import { DataCore, type ConnectionState } from '../../src/shared/data/core';
 
 const live = process.env.AGBOARD_PHONE_LIVE === '1';
 
@@ -171,8 +172,13 @@ class BridgeEventSource {
   }
 }
 
+/** Reads the Summary of the backend's project, as the phone does. */
+function readSummary() {
+  return createMonitorAdapter(projectId).fetchSummary(projectId, new AbortController().signal);
+}
+
 async function firstPendingRequest() {
-  const board = await monitorClient.fetchBoard(projectId);
+  const board = await readSummary();
   const task = board.tasks.find((t) => t.pendingRequestId !== null);
   if (!task?.pendingRequestId) throw new Error('no pending request');
   return { taskId: task.id, requestId: task.pendingRequestId, choice: task.pendingChoices[0]?.id };
@@ -224,7 +230,7 @@ afterEach(() => {
 describe.skipIf(!live)('the phone client against the real backend', () => {
   it('reads nothing without a session, then the passcode opens one and reads', async () => {
     document.head.innerHTML = '';
-    await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({
+    await expect(readSummary()).rejects.toMatchObject({
       status: 401,
       code: 'session_required',
     });
@@ -235,8 +241,9 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
     const session = await monitorClient.unlock(backend.passcode);
     expect(session.csrfToken.length).toBeGreaterThan(8);
     expect(browser.cookie.size).toBe(1);
-    const catalog = await monitorClient.fetchCatalog();
-    expect(catalog.projects.length).toBeGreaterThan(0);
+    const summary = await readSummary();
+    expect(summary.project.id).toBe(projectId);
+    expect(summary.tasks.length).toBeGreaterThan(0);
   });
 
   it('answers with the CSRF token, and never resends a refused answer', async () => {
@@ -298,11 +305,11 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
       code: 'unlock_locked',
     });
     expect(browser.cookie.size).toBe(0);
-    await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({ code: 'session_required' });
+    await expect(readSummary()).rejects.toMatchObject({ code: 'session_required' });
     // Starting the connection again is a new run with a new passcode and a clean count.
     await command('rotate', 'READY');
     await expect(monitorClient.unlock(backend.passcode)).resolves.toBeTruthy();
-    await expect(monitorClient.fetchCatalog()).resolves.toBeTruthy();
+    await expect(readSummary()).resolves.toBeTruthy();
   }, 30_000);
 
   it('treats a page that is not the monitor as a lost connection and never asks for a passcode', async () => {
@@ -310,7 +317,7 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
     await expect(monitorClient.openSession()).rejects.toMatchObject({
       code: 'unexpected_response',
     });
-    await expect(monitorClient.fetchCatalog()).rejects.toBeInstanceOf(MonitorClientError);
+    await expect(readSummary()).rejects.toBeInstanceOf(MonitorClientError);
     expect(losses).toEqual(['unexpected_response']);
     const hook = renderHook(() => useMonitorConnection());
     await waitFor(() => expect(hook.result.current.state).toEqual({ status: 'reconnecting' }));
@@ -326,7 +333,7 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
     });
     expect(hook.result.current.state.status).toBe('ready');
     await command('rotate', 'READY');
-    await expect(monitorClient.fetchCatalog()).rejects.toMatchObject({ code: 'session_required' });
+    await expect(readSummary()).rejects.toMatchObject({ code: 'session_required' });
     await waitFor(() =>
       expect(hook.result.current.state).toEqual({ status: 'needs_passcode', failure: 'expired' }),
     );
@@ -334,21 +341,26 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
       await hook.result.current.unlock(backend.passcode);
     });
     await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
-    await expect(monitorClient.fetchCatalog()).resolves.toBeTruthy();
+    await expect(readSummary()).resolves.toBeTruthy();
   }, 30_000);
 
   it('drops the event stream when the session ends, then reconnects once a session is back', async () => {
     await monitorClient.unlock(backend.passcode);
-    const hook = renderHook(() => useMonitorEvents({ onRefresh: () => {} }));
-    await waitFor(() => expect(hook.result.current.state).toBe('connected'), { timeout: 10_000 });
-    await command('rotate', 'READY');
-    await waitFor(() => expect(hook.result.current.state).toBe('disconnected'), {
-      timeout: 10_000,
+    const states: ConnectionState[] = [];
+    const core = new DataCore({
+      adapter: createMonitorAdapter(projectId),
+      onConnectionState: (state) => states.push(state),
     });
+    core.start();
+    const last = () => states[states.length - 1];
+    await waitFor(() => expect(last()).toBe('connected'), { timeout: 10_000 });
+    await command('rotate', 'READY');
+    await waitFor(() => expect(last()).toBe('disconnected'), { timeout: 10_000 });
     await act(async () => {
       await monitorClient.unlock(backend.passcode);
     });
-    await waitFor(() => expect(hook.result.current.state).toBe('connected'), { timeout: 20_000 });
+    await waitFor(() => expect(last()).toBe('connected'), { timeout: 20_000 });
+    core.dispose();
   }, 60_000);
 
   it('shows an unreachable monitor as reconnecting, then as a failure on the passcode screen', async () => {

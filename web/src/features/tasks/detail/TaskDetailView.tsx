@@ -1,8 +1,8 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { historyItems } from '../history/model/history';
 import { stateLabel } from '../model/format';
-import type { Task, Epic, Problem, ProjectId } from '../../../shared/api/contracts';
+import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/api/contracts';
+import type { SectionSnapshot } from '../../../shared/data/core';
 import { AssigneeLabel } from '../assignee/AssigneeLabel';
 import { HistoryTimeline } from '../history/HistoryTimeline';
 import { StatusLabel } from '../status/StatusLabel';
@@ -11,19 +11,30 @@ import { type DetailTab, DetailTabs, panelId, tabId } from './DetailTabs';
 import { DraftStatus } from './DraftStatus';
 import { EpicTabView, type EpicTabStatus } from './EpicTabView';
 import { AcceptanceTabView } from './AcceptanceTabView';
+import { DetailSectionView } from './DetailSection';
 import { DetailHeader } from './DetailHeader';
 import './detail.css';
 
 export interface TaskDetailViewProps {
   projectId: ProjectId;
-  task: Task;
+  /** The card, as the Summary lists it. The text, conditions and history come from the sections below. */
+  task: TaskSummary;
+  /** The task's `document` section; read while the description or conditions tab is shown. */
+  document: SectionSnapshot<'document'>;
+  /** The task's `history` section; read while the history tab is shown. */
+  history: SectionSnapshot<'history'>;
+  /** The card's epic `document` section; read the first time the epic tab is shown. */
+  epicDocument: SectionSnapshot<'document'>;
+  onRetryDocument?: () => void;
+  onRetryHistory?: () => void;
+  onRetryEpicDocument?: () => void;
   tab: DetailTab;
   onTabChange(tab: DetailTab): void;
   onClose(): void;
   attachmentUrl?: (id: string) => string;
   problems?: readonly Problem[];
   /** The epics of the project, when they are read. Undefined while they load. */
-  epics?: readonly Epic[];
+  epics?: readonly EpicRef[];
   /** The epics could not be read: the epic tab offers to try again. */
   epicsFailed?: boolean;
   onRetryEpics?: () => void;
@@ -38,6 +49,12 @@ export interface TaskDetailViewProps {
 export function TaskDetailView({
   projectId,
   task,
+  document,
+  history,
+  epicDocument,
+  onRetryDocument,
+  onRetryHistory,
+  onRetryEpicDocument,
   tab,
   onTabChange,
   onClose,
@@ -54,11 +71,16 @@ export function TaskDetailView({
 }: TaskDetailViewProps) {
   const { t } = useTranslation();
   const idBase = useId();
+  // The active panel scrolls the document; a long one is drawn only near the viewport.
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  const panelRef = (id: DetailTab) => (tab === id ? setScroller : undefined);
   const ownProblems = problems.filter((problem) =>
     problem.file.startsWith(`projects/${projectId}/tasks/${task.id}/`),
   );
   // The card's epic is looked up in the project's epics; a card without one has no epic tab content.
-  const epic = task.epic ? (epics?.find((item) => item.id === task.epic?.id) ?? null) : null;
+  const epic: EpicRef | null = task.epic
+    ? (epics?.find((item) => item.id === task.epic?.id) ?? null)
+    : null;
   const epicStatus: EpicTabStatus = !task.epic
     ? 'none'
     : epic
@@ -99,7 +121,7 @@ export function TaskDetailView({
       <DetailTabs
         idBase={idBase}
         tab={tab}
-        historyCount={historyItems(task.history).length}
+        historyCount={(history.data ?? history.partial)?.items.length}
         onChange={onTabChange}
       />
       <div
@@ -108,16 +130,20 @@ export function TaskDetailView({
         id={panelId(idBase, 'description')}
         aria-labelledby={tabId(idBase, 'description')}
         hidden={tab !== 'description'}
+        ref={panelRef('description')}
       >
-        <BodyDocumentView
-          body={task.body}
-          acceptanceError={task.acceptanceError}
-          problems={ownProblems}
-          attachments={task.attachments ?? []}
-          projectId={projectId}
-          taskId={task.id}
-          attachmentUrl={attachmentUrl}
-        />
+        {tab === 'description' && (
+          <BodyDocumentView
+            document={document}
+            onRetry={() => onRetryDocument?.()}
+            acceptanceError={task.acceptanceError ?? false}
+            problems={ownProblems}
+            projectId={projectId}
+            taskId={task.id}
+            attachmentUrl={attachmentUrl}
+            scrollParent={scroller}
+          />
+        )}
       </div>
       <div
         className="detail__viewport"
@@ -125,8 +151,19 @@ export function TaskDetailView({
         id={panelId(idBase, 'epic')}
         aria-labelledby={tabId(idBase, 'epic')}
         hidden={tab !== 'epic'}
+        ref={panelRef('epic')}
       >
-        <EpicTabView projectId={projectId} epic={epic} status={epicStatus} onRetry={onRetryEpics} />
+        {tab === 'epic' && (
+          <EpicTabView
+            projectId={projectId}
+            epic={epic}
+            status={epicStatus}
+            document={epicDocument}
+            onRetry={onRetryEpics}
+            onRetryDocument={onRetryEpicDocument}
+            scrollParent={scroller}
+          />
+        )}
       </div>
       <div
         className="detail__viewport"
@@ -134,8 +171,13 @@ export function TaskDetailView({
         id={panelId(idBase, 'history')}
         aria-labelledby={tabId(idBase, 'history')}
         hidden={tab !== 'history'}
+        ref={panelRef('history')}
       >
-        <HistoryTimeline events={task.history} />
+        {tab === 'history' && (
+          <DetailSectionView snapshot={history} onRetry={() => onRetryHistory?.()}>
+            {(data) => <HistoryTimeline events={data.items} />}
+          </DetailSectionView>
+        )}
       </div>
       <div
         className="detail__viewport"
@@ -143,8 +185,20 @@ export function TaskDetailView({
         id={panelId(idBase, 'acceptance')}
         aria-labelledby={tabId(idBase, 'acceptance')}
         hidden={tab !== 'acceptance'}
+        ref={panelRef('acceptance')}
       >
-        <AcceptanceTabView task={task} />
+        {tab === 'acceptance' && (
+          <DetailSectionView snapshot={document} onRetry={() => onRetryDocument?.()}>
+            {(data) => (
+              <AcceptanceTabView
+                task={{
+                  acceptance: data.acceptance,
+                  acceptanceError: task.acceptanceError ?? false,
+                }}
+              />
+            )}
+          </DetailSectionView>
+        )}
       </div>
     </aside>
   );

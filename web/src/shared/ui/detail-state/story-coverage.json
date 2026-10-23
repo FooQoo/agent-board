@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "owner": "U6",
+  "file": "shared/ui/detail-state/DetailState.tsx",
+  "exports": [
+    {
+      "name": "DetailSkeleton",
+      "stories": [
+        {
+          "id": "shared-ui-detailstate--loading",
+          "states": ["loading", "frame shown at once", "busy body"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-detailstate--loading-ja-dark-phone",
+          "states": ["loading", "Japanese", "dark", "phone 375px"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DetailPartialNotice",
+      "stories": [
+        {
+          "id": "shared-ui-detailstate--partial",
+          "states": ["receiving"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-detailstate--partial-ja-dark",
+          "states": ["receiving", "Japanese", "dark"],
+          "interaction": false
+        }
+      ]
+    },
+    {
+      "name": "DetailError",
+      "stories": [
+        {
+          "id": "shared-ui-detailstate--failed",
+          "states": ["failed", "reason", "retry"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-detailstate--failed-ja-dark-phone",
+          "states": ["failed", "Japanese", "dark", "phone 375px"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-detailstate--retrying",
+          "states": ["retrying", "button disabled"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { Task, Epic, Project, ProjectId } from '../../shared/api/contracts';
+import type { Task, ProjectId } from '../../shared/api/contracts';
 import type {
   AnswerFormKey,
   AnswerFormStateStore,
@@ -13,7 +13,6 @@ export interface MonitorTask {
   task: Task;
 }
 
-export type MonitorScope = 'all' | ProjectId;
 export type MonitorSummary = { todo: number; doing: number; done: number } | null;
 export type MonitorDetailTab = 'description' | 'acceptance' | 'history' | 'epic';
 export type MonitorFreshnessState = 'loading' | 'syncing' | 'fresh' | 'stale' | 'partial' | 'error';
@@ -21,45 +20,39 @@ export type MonitorFreshnessState = 'loading' | 'syncing' | 'fresh' | 'stale' | 
 export interface MonitorFreshness {
   state: MonitorFreshnessState;
   lastFetchedAt: string | null;
-  failedProjectIds: ProjectId[];
   snapshotProblems: Array<{ projectId: ProjectId; file: string; field: string; reason: string }>;
 }
 
+/** Where a task's or an epic's attachments are read from. */
 export interface MonitorReadResolvers {
   attachmentUrl(projectId: ProjectId, taskId: number, attachmentId: string): string;
   epicAttachmentUrl(projectId: ProjectId, epicId: string, attachmentId: string): string;
-  getEpics(projectId: ProjectId, signal?: AbortSignal): Promise<Epic[]>;
 }
 
-/** Explicitly unconnected U1 resolvers. U4 supplies the live read-only API adapter. */
+/** Resolvers for pages that are not connected to a server (stories, the sample-data mode). */
 export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
   attachmentUrl: (projectId, taskId, attachmentId) =>
     `/monitor/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/attachments/${encodeURIComponent(attachmentId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
     `/monitor/api/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/attachments/${encodeURIComponent(attachmentId)}`,
-  getEpics: async () => {
-    throw new Error('Monitor epic resolver is not connected.');
-  },
 };
 
 export const MONITOR_API_BASE = '/monitor/api/';
 
 export interface MonitorViewProps {
-  projects: Project[];
-  scope: MonitorScope;
   summary: MonitorSummary;
   todo: MonitorTask[];
   doing: MonitorTask[];
   done: MonitorTask[];
   freshness: MonitorFreshness;
-  onScopeChange(scope: MonitorScope): void;
+  /** A person asked for fresh data: the screen asks the server now, without the presentation hold. */
   onRefresh(): void;
+  /** True while that request runs; the button waits. */
+  refreshing?: boolean;
   answerController?: MonitorAnswerController;
-  readResolvers?: MonitorReadResolvers;
-  scopeLocked?: boolean;
   /** Read-only resolvers used by the monitor drawer. */
+  readResolvers?: MonitorReadResolvers;
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
-  routeNotice?: boolean;
   /** Told whenever the detail drawer opens or closes; the page does not reload while it is open. */
   onDetailOpenChange?(open: boolean): void;
 }

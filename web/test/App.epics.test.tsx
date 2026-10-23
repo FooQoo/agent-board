@@ -56,7 +56,7 @@ function restart(epics: Epic[], epicTaskCounts: Record<string, EpicTaskCounts>) 
 beforeEach(() => {
   window.localStorage.clear();
   selectLocale('en');
-  FakeEventSource.reset();
+  FakeEventSource.reset(true);
   vi.stubGlobal('EventSource', FakeEventSource);
   document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
 });

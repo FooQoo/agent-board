@@ -20,7 +20,7 @@ import {
   taskBody,
   workspace,
 } from '../helpers/agboard';
-import { openManualCreateDialog, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // The shared folder as the product keeps it: created by the CLI, read by two working directories, and edited
 // directly in its files. These scenarios use the real binary and the real serve on the main port.
@@ -33,6 +33,8 @@ const folderOf = (project: string) => workspace(project).folder;
 async function openBoard(page: Page, project = mainProject): Promise<void> {
   await page.goto(`/?project=${projectId(project)}`);
   await waitForSync(page);
+  // The server notices a file written outside it 200 ms later: read the board again before a card is opened.
+  await readBoardAfterReset(page);
 }
 
 /** Run the CLI from `cwd`, the way a working directory of an agent would, against the test data area. */
@@ -120,7 +122,11 @@ test('two working directories read and write one shared TASK.md; the page and wa
   expect(await waitEnded).toBe(0);
   expect(JSON.parse(waited).tasks.find((c: { id: number }) => c.id === 13).description).toContain('Checked from worktree A.');
 
-  // The open page shows the new text with no reload and no manual step.
+  // The open drawer holds the stream's updates back. Once it is closed and the hold has ended, the page shows the
+  // new text with no reload and no manual step.
+  await details(page).getByRole('button', { name: 'Close details' }).click();
+  await page.waitForTimeout(3_500);
+  await task(page, 13).click();
   await expect(details(page)).toContainText('Checked from worktree A.');
 
   // A save with the same content is no change: a new wait stays open, and reports nothing when it times out.

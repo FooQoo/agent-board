@@ -1,29 +1,23 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailTabList, detailPanelId, detailTabId } from '../../../shared/ui/detail-tabs';
-import { HistoryTimeline } from '../../../features/tasks/history/HistoryTimeline';
-import { AcceptanceTabView } from '../../../features/tasks/detail/AcceptanceTabView';
-import { MonitorDocument } from './MonitorDocument';
+import { TaskAcceptanceTab, TaskBodyTab, TaskHistoryTab } from './MonitorTaskTabs';
 import { MonitorEpicContent } from './MonitorEpicContent';
 import type { Problem } from '../../../shared/api/contracts';
 import type { MonitorTask, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
-import type { EpicReadState } from '../hooks/useMonitorDetailDrawer';
-import { useMonitorTabSwipe } from '../hooks/useMonitorTabSwipe';
+import { useMonitorTabSwipe, TAB_ORDER } from '../hooks/useMonitorTabSwipe';
+import { useEpicDetail } from '../../../shared/data/react';
 
 export function MonitorDrawerPanels({
   item,
   tab,
-  epicRead,
   onTabChange,
-  onRetryEpic,
   resolvers,
   problems,
 }: {
   item: MonitorTask;
   tab: MonitorDetailTab;
-  epicRead: EpicReadState;
   onTabChange(tab: MonitorDetailTab): void;
-  onRetryEpic(): void;
   resolvers: MonitorReadResolvers;
   problems: readonly (Problem & { projectId: string })[];
 }) {
@@ -31,6 +25,19 @@ export function MonitorDrawerPanels({
   const idBase = useId();
   const { tabsRef, carouselRef } = useMonitorTabSwipe(tab, onTabChange);
   const task = item.task;
+  // The epic is read with the task, so its tab shows at once; the neighbouring tabs are drawn too, so a
+  // swipe shows their content while it moves. Everything they show was read when the drawer opened.
+  useEpicDetail(item.projectId, task.epic?.id ?? null);
+  const drawn = (id: MonitorDetailTab) =>
+    Math.abs(TAB_ORDER.indexOf(id) - TAB_ORDER.indexOf(tab)) <= 1;
+  // The active panel scrolls the document; a long one is drawn only near the viewport.
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  const panelRef = (id: MonitorDetailTab) => (tab === id ? setScroller : undefined);
+  const problemsOfTask = problems.filter(
+    (problem) =>
+      problem.projectId === item.projectId &&
+      problem.file.startsWith(`projects/${item.projectId}/tasks/${task.id}/`),
+  );
   const tabs = [
     { id: 'description' as const, label: t('monitor.body'), icon: null },
     { id: 'acceptance' as const, label: t('detail.tabAcceptance'), icon: null },
@@ -67,63 +74,60 @@ export function MonitorDrawerPanels({
           <div
             role="tabpanel"
             id={detailPanelId(idBase, 'description')}
+            ref={panelRef('description')}
             aria-labelledby={detailTabId(idBase, 'description')}
             aria-hidden={tab !== 'description'}
             inert={tab !== 'description'}
             className="monitor-drawer__panel"
           >
-            <MonitorDocument
-              body={task.body}
-              acceptanceError={task.acceptanceError}
-              problems={problems.filter(
-                (problem) =>
-                  problem.projectId === item.projectId &&
-                  problem.file.startsWith(`projects/${item.projectId}/tasks/${task.id}/`),
-              )}
-              attachments={task.attachments ?? []}
-              attachmentUrl={(id) => resolvers.attachmentUrl(item.projectId, task.id, id)}
-            />
+            {drawn('description') && (
+              <TaskBodyTab
+                item={item}
+                resolvers={resolvers}
+                scrollParent={scroller}
+                problems={problemsOfTask}
+              />
+            )}
           </div>
           <div
             role="tabpanel"
             id={detailPanelId(idBase, 'acceptance')}
+            ref={panelRef('acceptance')}
             aria-labelledby={detailTabId(idBase, 'acceptance')}
             aria-hidden={tab !== 'acceptance'}
             inert={tab !== 'acceptance'}
             className="monitor-drawer__panel"
           >
-            <AcceptanceTabView task={task} />
+            {drawn('acceptance') && <TaskAcceptanceTab item={item} />}
           </div>
           <div
             role="tabpanel"
             id={detailPanelId(idBase, 'history')}
+            ref={panelRef('history')}
             aria-labelledby={detailTabId(idBase, 'history')}
             aria-hidden={tab !== 'history'}
             inert={tab !== 'history'}
             className="monitor-drawer__panel"
           >
-            <HistoryTimeline events={task.history} />
+            {drawn('history') && <TaskHistoryTab item={item} />}
           </div>
           <div
             role="tabpanel"
             id={detailPanelId(idBase, 'epic')}
+            ref={panelRef('epic')}
             aria-labelledby={detailTabId(idBase, 'epic')}
             aria-hidden={tab !== 'epic'}
             inert={tab !== 'epic'}
             className="monitor-drawer__panel"
           >
-            <MonitorEpicContent
-              state={
-                task.epic
-                  ? epicRead.status === 'idle'
-                    ? { status: 'loading' }
-                    : epicRead
-                  : { status: 'idle' }
-              }
-              retry={onRetryEpic}
-              projectId={item.projectId}
-              resolvers={resolvers}
-            />
+            {drawn('epic') && (
+              <MonitorEpicContent
+                projectId={item.projectId}
+                epicId={task.epic?.id ?? null}
+                resolvers={resolvers}
+                scrollParent={scroller}
+              />
+            )}
           </div>
         </div>
       </div>

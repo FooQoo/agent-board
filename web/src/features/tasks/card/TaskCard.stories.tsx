@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { makeEpic, makeTask } from '../../../../.storybook/support/fixtures';
+import type { TaskSummary } from '../../../shared/api/contracts';
 import { TaskCardContent, TaskCardView } from './TaskCard';
 
 const meta = {
@@ -20,6 +21,26 @@ const meta = {
 } satisfies Meta<typeof TaskCardView>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+/** A card as the board's Summary gives it: no body, no condition text, no history. */
+const summaryCard: TaskSummary = {
+  id: 47,
+  title: 'Card from the Summary',
+  assignee: 'ai',
+  taskStatus: 'doing',
+  taskStatusChangedAt: '2026-10-01T09:00:00Z',
+  position: 1,
+  agentStatus: 'running',
+  agentStatusChangedAt: '2026-10-01T09:00:00Z',
+  pendingReason: null,
+  pendingRequestId: null,
+  pendingChoices: [],
+  epic: null,
+  updatedAt: '2026-10-01T09:30:00Z',
+  isDraft: false,
+  acceptance: { done: 2, total: 4 },
+  acceptanceError: false,
+};
 
 export const Default: Story = {};
 export const Idle: Story = {
@@ -49,6 +70,14 @@ export const PartialAcceptance: Story = {
   },
   play: async ({ canvasElement }) =>
     expect(within(canvasElement).getByText('3/5')).toBeInTheDocument(),
+};
+export const FromSummary: Story = {
+  args: { task: summaryCard },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Card from the Summary')).toBeInTheDocument();
+    await expect(canvas.getByText('2/4')).toBeInTheDocument();
+  },
 };
 export const Draft: Story = { args: { task: makeTask({ id: 43, isDraft: true }) } };
 export const PendingWithEpic: Story = {

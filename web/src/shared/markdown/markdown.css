@@ -25,6 +25,7 @@
 }
 
 .md > * + *,
+.md-vblock > * + *,
 .md :where(.ProseMirror) > * + * {
   margin-top: var(--md-gap);
 }
@@ -55,6 +56,11 @@
   font-size: 14px;
 }
 
+/* An H2 drawn as an H3 (a chapter title) keeps the H2's size. */
+.md h3.md__chapter {
+  font-size: 16px;
+}
+
 .md--wide h1 {
   font-size: 22px;
 }
@@ -64,16 +70,19 @@
 }
 
 .md > * + :is(h1, h2, h3, h4, h5, h6),
+.md-vblock > * + :is(h1, h2, h3, h4, h5, h6),
 .md :where(.ProseMirror) > * + :is(h1, h2, h3, h4, h5, h6) {
   margin-top: var(--md-section-gap);
 }
 
 .md > :is(h1, h2, h3, h4, h5, h6) + *,
+.md-vblock > :is(h1, h2, h3, h4, h5, h6) + *,
 .md :where(.ProseMirror) > :is(h1, h2, h3, h4, h5, h6) + * {
   margin-top: 10px;
 }
 
 .md > :is(h1, h2, h3, h4, h5, h6) + :is(h1, h2, h3, h4, h5, h6),
+.md-vblock > :is(h1, h2, h3, h4, h5, h6) + :is(h1, h2, h3, h4, h5, h6),
 .md :where(.ProseMirror) > :is(h1, h2, h3, h4, h5, h6) + :is(h1, h2, h3, h4, h5, h6) {
   margin-top: 18px;
 }
@@ -485,4 +494,19 @@
 
 .md-mermaid__source {
   margin: 6px 0 0;
+}
+
+/* ---- Virtualized documents ---- */
+
+/* A row of the virtual list. Rows are absolutely placed, so the gap between blocks is padding (it is measured). */
+.md-virtual {
+  width: 100%;
+}
+
+.md-vblock {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding-bottom: var(--md-gap);
 }

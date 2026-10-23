@@ -6,9 +6,13 @@
 //! file, change only the required items, and replace the file atomically.
 
 pub mod bindings;
+pub mod detail;
+mod detail_refs;
+mod detail_version;
 pub mod frontmatter;
 pub mod history;
 pub mod history_language;
+pub mod image_size;
 pub mod index;
 pub mod io;
 pub mod layout;
@@ -19,9 +23,11 @@ pub mod onboarding_model;
 pub mod onboarding_state;
 mod ops;
 pub mod project;
+pub mod projection;
 pub mod reader;
 pub mod transaction;
 pub mod validate;
+mod versions;
 pub mod watch;
 
 use std::path::{Path, PathBuf};

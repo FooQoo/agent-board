@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import path from 'node:path';
 import { agboardOk, mainProject, nextTaskId, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
-import { openManualCreateDialog, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 const conditions = Array.from({ length: 40 }, (_, i) => `- [ ] Condition ${i + 1}`).join('\n');
 const body = `# 進行表と自動完了によるAIの操作削減\n\n## 目的・背景\n\nAIがプロジェクト全体の進行表から作業を選び、必要なエピック計画と作業記録だけを読んで進める。完了更新とプロジェクト指定の操作を減らす。\n\n## スコープ\n\n進行表、プロジェクトとフォルダの登録、エピックの進行順、Hook、自動Doneを扱う。\n\n### プロジェクトの識別\n\nフォルダの登録では \`agboard project bind NAME\` を使い、最も近い祖先の登録を参照する。\n\n${'More body text.\n\n'.repeat(60)}\n\n## Reference conditions\n\n${conditions}`;
@@ -24,6 +24,8 @@ for (const mode of ['light', 'dark'] as const) {
       await setPreferences({ locale, theme: { mode, accent: 'blue' } });
       await page.goto(`/?project=${projectId(mainProject)}`);
       await waitForSync(page);
+      // The server notices the new cards 200 ms after the CLI wrote them; read the board again before the dialog opens.
+      await readBoardAfterReset(page);
       await page.locator('[data-epic-label="PANELS"]').first().click();
       const dialog = page.locator('.editor-dialog');
       const list = dialog.locator('.epic-progress__list');

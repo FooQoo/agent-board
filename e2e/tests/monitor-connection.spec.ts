@@ -123,7 +123,7 @@ test('the phone answers the current question, and the answer reaches the shared 
 test('nothing is read or answered without a session, and a replaced tunnel needs a new passcode', async ({ page }) => {
   const bare = await playwrightRequest.newContext();
   const base = `${entrance.phoneOrigin}/monitor/api`;
-  for (const path of ['/projects', `/projects/${alpha}/board`, '/events', '/session']) {
+  for (const path of [`/projects/${alpha}/summary`, `/projects/${alpha}/tasks/1/detail`, `/events?project=${alpha}`, '/session']) {
     const response = await bare.get(`${base}${path}`);
     expect(response.status(), path).toBe(401);
     expect((await response.json()).error?.code ?? (await response.json()).code).toBe('session_required');
@@ -145,9 +145,9 @@ test('nothing is read or answered without a session, and a replaced tunnel needs
   const old = await playwrightRequest.newContext({
     extraHTTPHeaders: { Cookie: `agboard_ngrok_session=${session!.value}` },
   });
-  expect((await old.get(`${base}/projects`)).status()).toBe(200);
+  expect((await old.get(`${base}/projects/${alpha}/summary`)).status()).toBe(200);
   await entrance.rotate();
-  expect((await old.get(`${base}/projects`)).status()).toBe(401);
+  expect((await old.get(`${base}/projects/${alpha}/summary`)).status()).toBe(401);
   await old.dispose();
 
   // The page does not open a session by itself: it asks for the passcode of the new run.

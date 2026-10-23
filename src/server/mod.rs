@@ -6,8 +6,9 @@
 mod answer;
 mod api;
 pub mod assets;
+pub(crate) mod change_feed;
+pub mod contracts;
 pub mod dist;
-mod epic_counts;
 mod events;
 pub mod guard;
 mod instance;
@@ -23,6 +24,7 @@ pub mod monitor_connection;
 mod request;
 mod response;
 mod store;
+mod summary_response;
 pub mod web_assets;
 
 use crate::docs::DocsLocale;
@@ -61,8 +63,8 @@ pub(crate) struct AppState {
     pub index: Arc<RwLock<ProjectIndex>>,
     /// Queues a reload after a save made by this server or a notification.
     pub reloader: Reloader,
-    /// Sends one unit when the catalog version changes; each SSE connection subscribes.
-    pub changed: broadcast::Sender<()>,
+    /// The numbered change sets the reloader finds; each SSE connection subscribes.
+    pub changed: change_feed::ChangeFeed,
     /// The ngrok monitor connection: saved settings, memory-only secrets, supervisor.
     pub monitor: Arc<MonitorConnections>,
     /// The saved language and theme, read and written by `/api/preferences` and the monitor.
@@ -132,9 +134,9 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
         // The watch exists before the first read, so a change made during the
         // read is queued and read again.
         let index = Arc::new(RwLock::new(ProjectIndex::default()));
-        let (changed, _) = broadcast::channel(16);
+        let changed = change_feed::ChangeFeed::new();
         let (preferences_changed, _) = broadcast::channel(16);
-        let (_watch, reloader) = Watch::start(&shared, index.clone(), changed.clone())?;
+        let (_watch, reloader) = Watch::start(&shared, index.clone(), changed.sink())?;
         let state = Arc::new(AppState {
             port: addr.port(),
             token: assets::new_token()?,

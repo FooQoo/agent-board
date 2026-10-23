@@ -41,7 +41,7 @@ beforeEach(() => {
       return jsonResponse({}, 404);
     },
   };
-  FakeEventSource.reset();
+  FakeEventSource.reset(true);
   vi.stubGlobal('EventSource', FakeEventSource);
   document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
   fetchMock = stubBackend(backend);
@@ -130,22 +130,27 @@ describe('App', () => {
         c.id === 11 ? { ...c, agentStatus: 'pending' as const, pendingReason: 'Waiting' } : c,
       ),
     });
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
 
     await waitFor(() => expect(screen.getAllByText('Pending').length).toBeGreaterThan(0));
     expect(screen.getByRole('heading', { level: 2, name: 'Implement task moves' })).toBeTruthy();
   });
 
-  it('clears the selection when the selected task disappears', async () => {
+  it('applies a change that arrived while the drawer was open once the drawer has closed', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(taskButton('Initialize the board'));
 
+    // The open drawer holds the stream's updates back, so the board still lists the task.
     setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
-    act(() => FakeEventSource.latest.emit('changed'));
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
+    expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
+    expect(screen.getByText('8 tasks')).toBeTruthy();
 
-    await waitFor(() => expect(screen.getByText('Select a task to see its details.')).toBeTruthy());
-    expect(screen.getByText('7 tasks')).toBeTruthy();
+    // After the drawer has been closed for three seconds, the change is applied.
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    await waitFor(() => expect(screen.getByText('7 tasks')).toBeTruthy(), { timeout: 5000 });
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
   });
 
   it('archives a task after confirmation, returns to no selection and fetches the board again', async () => {
@@ -166,6 +171,123 @@ describe('App', () => {
       method: 'POST',
       headers: { 'X-Agboard-Token': 'test-token', 'X-Agboard-Language': 'en' },
     });
+  });
+
+  it('reads the board from its Summary and never from the board route', async () => {
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(taskButton('Implement task moves'));
+    await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
+    const urls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(urls).toContain(`/api/projects/${PROJECT_A.id}/summary`);
+    // Opening the drawer reads the whole task once: the text, its conditions and the log.
+    expect(urls).toContain(
+      `/api/projects/${PROJECT_A.id}/tasks/11/detail?sections=document,history`,
+    );
+    expect(urls.filter((url) => url.endsWith('/board'))).toEqual([]);
+  });
+
+  it('reads the whole task once when it opens, and reuses it when the tab changes', async () => {
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    const reads = (sections: string) =>
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).includes(`/tasks/11/detail?sections=${sections}`),
+      ).length;
+    await userEvent.click(taskButton('Implement task moves'));
+    await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
+    expect(reads('document,history')).toBe(1);
+    // The description is drawn: the document has arrived whole.
+    await waitFor(() =>
+      expect(
+        document.querySelector('.detail__viewport .md, .detail__viewport .md-empty'),
+      ).not.toBeNull(),
+    );
+    // The count is known before the History tab is opened.
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^History \d/ })).toBeTruthy());
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    // Switching tabs reads nothing more.
+    expect(reads('document,history')).toBe(1);
+  });
+
+  it('reads the epic document with the task, and reuses it for the next task of the epic', async () => {
+    const epic = {
+      id: 'PLAN',
+      name: 'Plan',
+      color: '#7C3AED',
+      isDraft: false,
+      document: 'The epic plan.',
+      body: 'The epic plan.',
+      priority: [],
+      priorityError: false,
+      attachments: [],
+      createdAt: '2026-10-02T00:00:00Z',
+      updatedAt: '2026-10-02T00:00:00Z',
+    };
+    const ref = { id: epic.id, name: epic.name, color: epic.color };
+    setCurrent({
+      ...current(),
+      epics: [epic],
+      epicTaskCounts: { PLAN: { todo: 1, doing: 1, done: 0, archived: 0, total: 2 } },
+      tasks: current().tasks.map((task) =>
+        task.id === 11 || task.id === 12 ? { ...task, epic: ref } : task,
+      ),
+    });
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    const epicReads = () =>
+      fetchMock.mock.calls.filter(([url]) => String(url).includes('/epics/PLAN/detail')).length;
+    await userEvent.click(taskButton('Implement task moves'));
+    await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
+    // The epic is read with the task, before its tab is opened.
+    await waitFor(() => expect(epicReads()).toBe(1));
+    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
+    expect(await screen.findByText('The epic plan.')).toBeTruthy();
+    expect(epicReads()).toBe(1);
+    await userEvent.click(taskButton('Restore a board from JSON'));
+    await screen.findByRole('heading', { level: 2, name: 'Restore a board from JSON' });
+    await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
+    expect(await screen.findByText('The epic plan.')).toBeTruthy();
+    expect(epicReads()).toBe(1);
+  });
+
+  it('holds the stream back while the drawer is open and applies it 3 seconds after it closes', async () => {
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(taskButton('Implement task moves'));
+    const summaryReads = () =>
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith(`${PROJECT_A.id}/summary`))
+        .length;
+    const before = summaryReads();
+
+    setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(summaryReads()).toBe(before);
+    expect(screen.getByText('8 tasks')).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    expect(summaryReads()).toBe(before);
+    expect(screen.getByText('8 tasks')).toBeTruthy();
+
+    await waitFor(() => expect(screen.getByText('7 tasks')).toBeTruthy(), { timeout: 3_500 });
+    expect(summaryReads()).toBe(before + 1);
+  });
+
+  it('cancels the countdown when a drawer opens again', async () => {
+    show();
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(taskButton('Implement task moves'));
+    setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await userEvent.click(taskButton('Implement task moves'));
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    expect(screen.getByText('8 tasks')).toBeTruthy();
   });
 
   it('shows the empty board message with three empty lanes', async () => {
