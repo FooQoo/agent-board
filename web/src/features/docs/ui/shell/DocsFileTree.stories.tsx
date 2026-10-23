@@ -89,6 +89,29 @@ export const LongNames: Story = {
   },
 };
 
+const mixedNodes: DocsTreeNode[] = [
+  { name: 'Notes.md', path: 'Notes.md', kind: 'file', viewer: 'markdown' },
+  { name: 'diagram.png', path: 'diagram.png', kind: 'file', viewer: 'image' },
+  { name: 'board.pen', path: 'board.pen', kind: 'file', viewer: 'other' },
+];
+
+/** Every kind of file is listed, each with its own icon, and each can be chosen. */
+export const MixedFiles: Story = {
+  args: { nodes: mixedNodes },
+  play: async ({ args, canvasElement }) => {
+    const tree = within(canvasElement);
+    await expect(tree.getAllByRole('treeitem')).toHaveLength(3);
+    await expect(
+      tree.getByRole('treeitem', { name: 'diagram.png' }).querySelector('.lucide-image'),
+    ).not.toBeNull();
+    await expect(
+      tree.getByRole('treeitem', { name: 'board.pen' }).querySelector('.lucide-file'),
+    ).not.toBeNull();
+    await userEvent.click(tree.getByRole('treeitem', { name: 'board.pen' }));
+    await expect(args.onSelectFile).toHaveBeenCalledWith('board.pen');
+  },
+};
+
 /** No file at all: the list says so. */
 export const Empty: Story = {
   args: { nodes: [] },

@@ -74,7 +74,10 @@ fn the_tree_lists_names_in_order_without_content() {
     f.put("pic.png", b"x");
     let tree = f.tree();
     assert_eq!(tree["truncated"], false);
-    assert_eq!(names(&tree["nodes"]), ["alpha", "zeta", "A.MD", "b.md"]);
+    assert_eq!(
+        names(&tree["nodes"]),
+        ["alpha", "zeta", "A.MD", "b.md", "notes.txt", "pic.png"]
+    );
     let alpha = &tree["nodes"][0];
     assert_eq!(alpha["kind"], "dir");
     assert_eq!(alpha["path"], "alpha");
@@ -83,7 +86,62 @@ fn the_tree_lists_names_in_order_without_content() {
     assert_eq!(deep["children"][0]["path"], "alpha/deep/leaf.md");
     assert_eq!(deep["children"][0]["kind"], "file");
     assert!(deep["children"][0].get("children").is_none());
+    assert!(alpha.get("viewer").is_none());
     assert!(!tree.to_string().contains("secret body"));
+}
+
+#[test]
+fn the_tree_names_how_each_file_is_shown() {
+    let f = fixture();
+    for name in [
+        "a.md", "b.PNG", "c.jpg", "d.jpeg", "e.webp", "f.gif", "g.pen", "h.json", "i.txt", "noext",
+        "j.svg",
+    ] {
+        f.put(name, b"x");
+    }
+    let tree = f.tree();
+    let viewers: Vec<(String, String)> = tree["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| {
+            assert_eq!(n["kind"], "file");
+            (
+                n["name"].as_str().unwrap().to_string(),
+                n["viewer"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    let expected = [
+        ("a.md", "markdown"),
+        ("b.PNG", "image"),
+        ("c.jpg", "image"),
+        ("d.jpeg", "image"),
+        ("e.webp", "image"),
+        ("f.gif", "image"),
+        ("g.pen", "other"),
+        ("h.json", "other"),
+        ("i.txt", "other"),
+        ("j.svg", "other"),
+        ("noext", "other"),
+    ];
+    let expected: Vec<(String, String)> = expected
+        .iter()
+        .map(|(n, v)| (n.to_string(), v.to_string()))
+        .collect();
+    assert_eq!(viewers, expected);
+}
+
+#[test]
+fn a_file_that_is_not_markdown_has_no_text_to_open() {
+    let f = fixture();
+    f.put("pic.png", b"x");
+    f.put("data.json", b"{}");
+    for route in ["file?path=pic.png", "file?path=data.json"] {
+        let reply = f.get(route);
+        assert_eq!(reply.status, 415, "{route}");
+        assert_eq!(reply.json()["error"]["code"], "docs_not_markdown");
+    }
 }
 
 #[test]
@@ -93,10 +151,14 @@ fn the_tree_leaves_out_dot_names_and_links() {
     f.put(".hidden.md", b"x");
     f.put(".git/config.md", b"x");
     f.put("dir/.dot.md", b"x");
+    f.put(".hidden.png", b"x");
+    f.put("dir/.config.json", b"x");
     f.put("real/a.md", b"x");
     #[cfg(unix)]
     {
         std::os::unix::fs::symlink(f.docs_dir().join("keep.md"), f.docs_dir().join("link.md"))
+            .unwrap();
+        std::os::unix::fs::symlink(f.docs_dir().join("keep.md"), f.docs_dir().join("link.png"))
             .unwrap();
         std::os::unix::fs::symlink(f.docs_dir().join("real"), f.docs_dir().join("linkdir"))
             .unwrap();

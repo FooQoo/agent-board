@@ -145,7 +145,7 @@ These four routes read and write the files in the project's `docs/` folder (`sha
 
 | API | Contract |
 | --- | --- |
-| `GET …/docs/tree` | The folders and `.md` files under `docs/`, names only, as `{nodes, truncated}`. Folders come first, then files, each sorted by name ignoring case. Names that start with a dot, symbolic links, other file types, and names the path rules refuse are left out. A missing folder is an empty tree, not an error. At most 5,000 entries and 16 folder levels are listed; `truncated: true` says that a limit cut the listing short. |
+| `GET …/docs/tree` | The folders and files under `docs/`, names only, as `{nodes, truncated}`. A file has `viewer`: `markdown` for `.md`, `image` for PNG, JPEG, WebP, and GIF, and `other` for any other file, which the Docs list but do not show. A folder has no `viewer`. Folders come first, then files, each sorted by name ignoring case. Names that start with a dot, symbolic links, and names the path rules refuse are left out. A missing folder is an empty tree, not an error. At most 5,000 entries and 16 folder levels are listed; `truncated: true` says that a limit cut the listing short. |
 | `GET …/docs/file?path=` | `{path, content, revision, readOnly}`. `content` is the file's exact text, a BOM included. `revision` is `sha256:` and the hex SHA-256 of the file's bytes. `readOnly` is the file's read-only permission. Only `.md` files (any case) of at most 2 MiB that are valid UTF-8 are served. |
 | `PUT …/docs/file` | Body `{path, content, expectedRevision}`; unknown fields are 400 `invalid_json`. Writes `content` as its exact bytes if the file is still at `expectedRevision`, and returns `{path, revision}` with the new revision. It passes the write guard like other writes. It never creates a file. |
 | `GET …/docs/assets?path=` | The bytes of a PNG, JPEG, WebP, or GIF image of at most 10 MiB. `Content-Type` comes from the extension (`image/png`, `image/jpeg`, `image/webp`, `image/gif`) and the response carries `X-Content-Type-Options: nosniff`. SVG and every other type are 415 `docs_asset_type`. |
@@ -153,7 +153,7 @@ These four routes read and write the files in the project's `docs/` folder (`sha
 A tree:
 
 ```json
-{"nodes":[{"name":"design","path":"design","kind":"dir","children":[{"name":"images","path":"design/images","kind":"dir","children":[]},{"name":"spec.md","path":"design/spec.md","kind":"file"}]},{"name":"overview.md","path":"overview.md","kind":"file"},{"name":"README.md","path":"README.md","kind":"file"}],"truncated":false}
+{"nodes":[{"name":"design","path":"design","kind":"dir","children":[{"name":"images","path":"design/images","kind":"dir","children":[]},{"name":"spec.md","path":"design/spec.md","kind":"file","viewer":"markdown"}]},{"name":"flow.png","path":"flow.png","kind":"file","viewer":"image"},{"name":"app.pen","path":"app.pen","kind":"file","viewer":"other"},{"name":"README.md","path":"README.md","kind":"file","viewer":"markdown"}],"truncated":false}
 ```
 
 A file:

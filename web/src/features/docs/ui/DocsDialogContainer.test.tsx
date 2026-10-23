@@ -25,13 +25,15 @@ vi.mock('@/shared/rich-editor/RichMarkdownEditor', () => ({
 
 const TREE = {
   nodes: [
-    { name: 'a.md', path: 'a.md', kind: 'file' },
-    { name: 'b.md', path: 'b.md', kind: 'file' },
+    { name: 'a.md', path: 'a.md', kind: 'file', viewer: 'markdown' },
+    { name: 'b.md', path: 'b.md', kind: 'file', viewer: 'markdown' },
+    { name: 'pic.png', path: 'pic.png', kind: 'file', viewer: 'image' },
+    { name: 'board.pen', path: 'board.pen', kind: 'file', viewer: 'other' },
     {
       name: 'dir',
       path: 'dir',
       kind: 'dir',
-      children: [{ name: 'c.md', path: 'dir/c.md', kind: 'file' }],
+      children: [{ name: 'c.md', path: 'dir/c.md', kind: 'file', viewer: 'markdown' }],
     },
   ],
   truncated: false,
@@ -181,6 +183,36 @@ describe('DocsDialogContainer', () => {
     files['a.md'] = file('a.md');
     await user.click(screen.getByRole('button', { name: 'Reload' }));
     expect(await screen.findByLabelText('editor')).toBeTruthy();
+  });
+
+  it('shows an image from the assets URL without fetching text or enabling Save', async () => {
+    const { user } = await open();
+    await choose(user, /pic\.png/);
+    const image = await screen.findByAltText('pic.png');
+    expect(image.getAttribute('src')).toBe('/api/projects/p1/docs/assets?path=pic.png');
+    expect(urls()).toEqual(['/api/projects/p1/docs/tree']);
+    expect(screen.queryByLabelText('editor')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveProperty('disabled', true);
+  });
+
+  it('says a file of another type cannot be shown, names it, and fetches nothing', async () => {
+    const { user } = await open();
+    await choose(user, /board\.pen/);
+    expect(await screen.findByText('This file type cannot be shown here.')).toBeTruthy();
+    expect(within(screen.getByRole('dialog')).getAllByText('board.pen').length).toBeGreaterThan(0);
+    expect(urls()).toEqual(['/api/projects/p1/docs/tree']);
+    expect(screen.queryByLabelText('editor')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveProperty('disabled', true);
+  });
+
+  it('moves from a Markdown edit to an image only after the discard question', async () => {
+    const { user } = await open();
+    await choose(user, /a\.md/);
+    await user.type(await screen.findByLabelText('editor'), '!');
+    await choose(user, /pic\.png/);
+    expect(await screen.findByText('Discard changes?')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Discard and move' }));
+    expect(await screen.findByAltText('pic.png')).toBeTruthy();
   });
 
   it('shows where the docs go when the project has none', async () => {

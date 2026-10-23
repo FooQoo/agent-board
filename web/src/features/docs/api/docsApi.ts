@@ -1,9 +1,9 @@
 import { i18n } from '@/shared/i18n';
 import { getJson, projectPath, readToken } from '@/shared/api/http';
 import type { ProjectId } from '@/shared/api/contracts';
-import type { DocsTreeNode } from '../ui/shell/DocsFileTree';
+import type { DocsTreeNode, DocsViewer } from '../ui/shell/DocsFileTree';
 
-export type { DocsTreeNode };
+export type { DocsTreeNode, DocsViewer };
 
 /** `GET docs/tree`: the entries of the project's docs folder. */
 export interface DocsTree {

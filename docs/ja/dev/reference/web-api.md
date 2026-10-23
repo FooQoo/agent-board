@@ -145,7 +145,7 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 | API | 契約 |
 | --- | --- |
-| `GET …/docs/tree` | `docs/`の下のフォルダと`.md`ファイルの名前だけを、`{nodes, truncated}`で返す。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、ほかの種類のファイル、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
+| `GET …/docs/tree` | `docs/`の下のフォルダとファイルの名前だけを、`{nodes, truncated}`で返す。ファイルには`viewer`があり、`.md`は`markdown`、PNG・JPEG・WebP・GIFは`image`、それ以外は`other`（一覧には出すが表示しない）。フォルダには`viewer`がない。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
 | `GET …/docs/file?path=` | `{path, content, revision, readOnly}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）。`readOnly`はファイルの読み取り専用の属性。対象は、`.md`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
 | `PUT …/docs/file` | 本文は`{path, content, expectedRevision}`。知らない項目は400 `invalid_json`。ファイルがまだ`expectedRevision`のときだけ、`content`をそのままのバイト列で書き、新しい`revision`を含む`{path, revision}`を返す。ほかの書き込みと同じ書き込みのガードを通る。ファイルを新しく作ることはない。 |
 | `GET …/docs/assets?path=` | 10 MiB以下のPNG・JPEG・WebP・GIFの画像のバイト列。`Content-Type`は拡張子から決め（`image/png`・`image/jpeg`・`image/webp`・`image/gif`）、`X-Content-Type-Options: nosniff`を付ける。SVGなどほかの形式は415 `docs_asset_type`。 |
@@ -153,7 +153,7 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 ツリーの例:
 
 ```json
-{"nodes":[{"name":"design","path":"design","kind":"dir","children":[{"name":"images","path":"design/images","kind":"dir","children":[]},{"name":"spec.md","path":"design/spec.md","kind":"file"}]},{"name":"overview.md","path":"overview.md","kind":"file"},{"name":"README.md","path":"README.md","kind":"file"}],"truncated":false}
+{"nodes":[{"name":"design","path":"design","kind":"dir","children":[{"name":"images","path":"design/images","kind":"dir","children":[]},{"name":"spec.md","path":"design/spec.md","kind":"file","viewer":"markdown"}]},{"name":"flow.png","path":"flow.png","kind":"file","viewer":"image"},{"name":"app.pen","path":"app.pen","kind":"file","viewer":"other"},{"name":"README.md","path":"README.md","kind":"file","viewer":"markdown"}],"truncated":false}
 ```
 
 ファイルの例:

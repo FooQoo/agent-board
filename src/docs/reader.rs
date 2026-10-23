@@ -4,7 +4,7 @@ use std::fs::{self, File};
 use std::io::{ErrorKind, Read};
 use std::path::Path;
 
-use super::model::{DocsError, DocsFile, DocsRoot, DocsTree, DocsTreeNode, NodeKind};
+use super::model::{DocsError, DocsFile, DocsRoot, DocsTree, DocsTreeNode, NodeKind, Viewer};
 use super::paths::DocsPath;
 use super::{MAX_FILE_BYTES, MAX_TREE_DEPTH, MAX_TREE_ENTRIES, revision_of};
 use crate::file_store::io::read_error;
@@ -12,7 +12,7 @@ use crate::file_store::io::read_error;
 /// The largest image the Docs serve: 10 MiB, apart from the file limit.
 pub const MAX_ASSET_BYTES: u64 = 10 * 1024 * 1024;
 
-/// The tree of folders and `.md` files under the root, names only. A missing
+/// The tree of folders and files under the root, names only. A missing
 /// root is an empty tree; a folder that cannot be read is left out.
 pub fn read_tree(root: &DocsRoot) -> Result<DocsTree, DocsError> {
     match fs::symlink_metadata(root.dir()) {
@@ -52,6 +52,7 @@ struct Entry {
     name: String,
     path: String,
     kind: NodeKind,
+    viewer: Option<Viewer>,
 }
 
 impl Walk {
@@ -106,11 +107,12 @@ fn node(entry: Entry, children: Option<Vec<DocsTreeNode>>) -> DocsTreeNode {
         name: entry.name,
         path: entry.path,
         kind: entry.kind,
+        viewer: entry.viewer,
         children,
     }
 }
 
-/// The folders and `.md` files directly in `dir`: no dot names, no links, only
+/// The folders and files directly in `dir`: no dot names, no links, only
 /// names a [`DocsPath`] accepts. Folders first, then by name ignoring case.
 fn listable(dir: &Path, prefix: &str) -> std::io::Result<Vec<Entry>> {
     let mut entries = Vec::new();
@@ -137,10 +139,13 @@ fn listable(dir: &Path, prefix: &str) -> std::io::Result<Vec<Entry>> {
         let Ok(parsed) = DocsPath::parse(&path) else {
             continue;
         };
-        if kind == NodeKind::File && parsed.extension().as_deref() != Some("md") {
-            continue;
-        }
-        entries.push(Entry { name, path, kind });
+        let viewer = (kind == NodeKind::File).then(|| viewer_of(parsed.extension().as_deref()));
+        entries.push(Entry {
+            name,
+            path,
+            kind,
+            viewer,
+        });
     }
     entries.sort_by(|a, b| {
         let rank = |kind: NodeKind| matches!(kind, NodeKind::File) as u8;
@@ -169,18 +174,34 @@ pub fn read_file(root: &DocsRoot, path: &DocsPath) -> Result<DocsFile, DocsError
     })
 }
 
+/// The fixed `Content-Type` of an image extension, or `None` for any other.
+fn image_type(extension: Option<&str>) -> Option<&'static str> {
+    match extension {
+        Some("png") => Some("image/png"),
+        Some("jpg" | "jpeg") => Some("image/jpeg"),
+        Some("webp") => Some("image/webp"),
+        Some("gif") => Some("image/gif"),
+        _ => None,
+    }
+}
+
+/// How the Docs show a file, by its extension.
+fn viewer_of(extension: Option<&str>) -> Viewer {
+    if extension == Some("md") {
+        Viewer::Markdown
+    } else if image_type(extension).is_some() {
+        Viewer::Image
+    } else {
+        Viewer::Other
+    }
+}
+
 /// The image's bytes and its fixed `Content-Type`.
 pub fn read_asset(root: &DocsRoot, path: &DocsPath) -> Result<(Vec<u8>, &'static str), DocsError> {
-    let content_type = match path.extension().as_deref() {
-        Some("png") => "image/png",
-        Some("jpg" | "jpeg") => "image/jpeg",
-        Some("webp") => "image/webp",
-        Some("gif") => "image/gif",
-        _ => {
-            return Err(DocsError::DocsAssetType {
-                path: path.as_string(),
-            });
-        }
+    let Some(content_type) = image_type(path.extension().as_deref()) else {
+        return Err(DocsError::DocsAssetType {
+            path: path.as_string(),
+        });
     };
     let (bytes, _) = read_limited(root, path, MAX_ASSET_BYTES)?;
     Ok((bytes, content_type))

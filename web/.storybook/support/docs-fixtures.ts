@@ -4,6 +4,7 @@ const file = (name: string, parent: string): DocsTreeNode => ({
   name,
   path: parent === '' ? name : `${parent}/${name}`,
   kind: 'file',
+  viewer: 'markdown',
 });
 
 /** The tree of the approved mock: three folders, two of them nested. */
