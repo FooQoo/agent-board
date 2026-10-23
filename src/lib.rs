@@ -4,6 +4,7 @@ pub mod clock;
 pub mod domain;
 pub mod error;
 pub mod file_store;
+pub mod integrations;
 pub mod interact;
 pub mod lifecycle;
 pub mod paths;
