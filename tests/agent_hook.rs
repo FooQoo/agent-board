@@ -81,11 +81,10 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
             .unwrap();
     assert!(output.contains("AGBOARD_ERROR"));
     assert!(!db_path.exists());
-    // An unbound hook folder is an error report, not a guess.
-    let output =
-        agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path, None).unwrap();
-    assert!(output.contains("AGBOARD_ERROR"));
-    assert!(output.contains("folder_unbound"));
+    // A readable, unbound hook folder says nothing and creates nothing.
+    assert!(
+        agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path, None).is_none()
+    );
     assert!(!db_path.exists());
     let oversized = vec![b'x'; 65_537];
     let output = agent_board::agent::hook::run(
@@ -259,4 +258,329 @@ fn installed_binary_handles_hook_json_on_stdin() {
             .unwrap()
             .contains("AGBOARD_PROGRESS")
     );
+}
+
+// ---- unbound and strict binding resolution -------------------------------------
+
+struct HookRun {
+    status: i32,
+    stdout: String,
+    stderr: String,
+}
+
+fn agboard_in(home: &std::path::Path, cwd: &std::path::Path, args: &[&str]) -> HookRun {
+    hook_process(home, cwd, args, None)
+}
+
+fn hook_process(
+    home: &std::path::Path,
+    cwd: &std::path::Path,
+    args: &[&str],
+    stdin: Option<&str>,
+) -> HookRun {
+    use std::io::Write;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_HOME", home)
+        .env("TZ", "UTC")
+        .current_dir(cwd)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut pipe = child.stdin.take().unwrap();
+    if let Some(text) = stdin {
+        pipe.write_all(text.as_bytes()).unwrap();
+    }
+    drop(pipe);
+    let out = child.wait_with_output().unwrap();
+    HookRun {
+        status: out.status.code().unwrap(),
+        stdout: String::from_utf8(out.stdout).unwrap(),
+        stderr: String::from_utf8(out.stderr).unwrap(),
+    }
+}
+
+fn hook(home: &std::path::Path, cwd: &std::path::Path, extra: &[&str], input: &str) -> HookRun {
+    let mut args = vec!["hook", "--agent", "claude"];
+    args.extend_from_slice(extra);
+    hook_process(home, cwd, &args, Some(input))
+}
+
+fn hook_input(cwd: Option<&str>) -> String {
+    match cwd {
+        Some(cwd) => serde_json::json!({"hook_event_name": "SessionStart", "cwd": cwd}).to_string(),
+        None => r#"{"hook_event_name":"SessionStart"}"#.to_string(),
+    }
+}
+
+fn error_of(run: &HookRun) -> Value {
+    assert_eq!(run.status, 0, "{}", run.stderr);
+    assert_eq!(run.stderr, "");
+    let parsed: Value = serde_json::from_str(&run.stdout).unwrap();
+    let context = parsed["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap();
+    let body = context
+        .strip_prefix("AGBOARD_ERROR\n")
+        .unwrap_or_else(|| panic!("not an error: {context}"));
+    serde_json::from_str(body.lines().next().unwrap()).unwrap()
+}
+
+fn project_of(run: &HookRun) -> String {
+    assert_eq!(run.status, 0, "{}", run.stderr);
+    let parsed: Value = serde_json::from_str(&run.stdout).unwrap();
+    let context = parsed["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap();
+    let json = context.strip_prefix("AGBOARD_PROGRESS\n").unwrap();
+    let snapshot: Value = serde_json::from_str(json).unwrap();
+    snapshot["project"]["name"].as_str().unwrap().to_string()
+}
+
+fn create_project(home: &std::path::Path, folder: &std::path::Path, name: &str) {
+    std::fs::create_dir_all(folder).unwrap();
+    let run = agboard_in(home, folder, &["project", "create", name]);
+    assert_eq!(run.status, 0, "{}", run.stderr);
+}
+
+fn assert_silent(run: &HookRun) {
+    assert_eq!(run.status, 0);
+    assert_eq!(run.stdout, "");
+    assert_eq!(run.stderr, "");
+}
+
+#[test]
+fn hook_resolves_the_bind_root_child_folder_and_the_nearest_nested_bind() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = std::fs::canonicalize(folders.path()).unwrap().join("root");
+    let nested = root.join("nested");
+    create_project(home.path(), &root, "Alpha");
+    create_project(home.path(), &nested, "Beta");
+    std::fs::create_dir_all(root.join("child/deep")).unwrap();
+    std::fs::create_dir_all(nested.join("deeper")).unwrap();
+    let elsewhere = tempdir().unwrap();
+
+    for (cwd, expected) in [
+        (root.clone(), "Alpha"),
+        (root.join("child/deep"), "Alpha"),
+        (nested.clone(), "Beta"),
+        (nested.join("deeper"), "Beta"),
+    ] {
+        // From the input cwd, with the process folder somewhere unrelated.
+        let run = hook(
+            home.path(),
+            elsewhere.path(),
+            &[],
+            &hook_input(Some(cwd.to_str().unwrap())),
+        );
+        assert_eq!(project_of(&run), expected, "{cwd:?}");
+        // From the process folder, when the input has no cwd.
+        let run = hook(home.path(), &cwd, &[], &hook_input(None));
+        assert_eq!(project_of(&run), expected, "{cwd:?}");
+    }
+}
+
+#[test]
+fn hook_for_a_readable_unbound_folder_is_silent_and_never_reads_the_board() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let bound = folders.path().join("bound");
+    let unbound = folders.path().join("unbound");
+    create_project(home.path(), &bound, "Alpha");
+    std::fs::create_dir_all(&unbound).unwrap();
+    let before = tree_of(home.path());
+
+    assert_silent(&hook(home.path(), &unbound, &[], &hook_input(None)));
+    for cwd in [Some(unbound.to_str().unwrap()), Some(""), None] {
+        let input = match cwd {
+            Some(cwd) => serde_json::json!({"hook_event_name":"SessionStart","cwd":cwd}),
+            None => serde_json::json!({"hook_event_name":"SessionStart","cwd":null}),
+        };
+        assert_silent(&hook(home.path(), &unbound, &[], &input.to_string()));
+    }
+    assert_eq!(before, tree_of(home.path()));
+
+    // The board files are not read: an unreadable project folder changes nothing.
+    let other = tempdir().unwrap();
+    assert_silent(&hook(other.path(), &unbound, &[], &hook_input(None)));
+}
+
+#[test]
+fn hook_with_a_missing_or_corrupt_shared_folder_stays_silent_when_unbound() {
+    let home = tempdir().unwrap();
+    let work = tempdir().unwrap();
+    assert_silent(&hook(home.path(), work.path(), &[], &hook_input(None)));
+    assert!(!home.path().join("shared").exists());
+}
+
+#[test]
+fn hook_reports_a_broken_bindings_file_instead_of_treating_it_as_unbound() {
+    let home = tempdir().unwrap();
+    let work = tempdir().unwrap();
+    std::fs::write(home.path().join("bindings.json"), "{ broken").unwrap();
+    let run = hook(home.path(), work.path(), &[], &hook_input(None));
+    assert_eq!(error_of(&run)["code"], "file_invalid");
+}
+
+#[test]
+fn hook_reports_a_missing_nearest_project_and_never_uses_the_parent_bind() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = std::fs::canonicalize(folders.path()).unwrap().join("root");
+    let nested = root.join("nested");
+    create_project(home.path(), &root, "Alpha");
+    create_project(home.path(), &nested, "Beta");
+    std::fs::create_dir_all(nested.join("deeper")).unwrap();
+    let store = agent_board::file_store::FileStore::open(&home.path().join("shared"));
+    let beta = store
+        .project_by_name(&agent_board::domain::validate_project_name("Beta").unwrap())
+        .unwrap();
+    store.delete_project(&beta.id).unwrap();
+
+    let run = hook(home.path(), &nested.join("deeper"), &[], &hook_input(None));
+    assert_eq!(error_of(&run)["code"], "bound_project_missing");
+    // The parent folder is still Alpha.
+    assert_eq!(
+        project_of(&hook(home.path(), &root, &[], &hook_input(None))),
+        "Alpha"
+    );
+}
+
+#[test]
+fn hook_diagnoses_an_unusable_input_cwd_and_does_not_skip() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = std::fs::canonicalize(folders.path()).unwrap().join("root");
+    create_project(home.path(), &root, "Alpha");
+    let file = root.join("a-file");
+    std::fs::write(&file, "x").unwrap();
+    let missing = root.join("does-not-exist");
+
+    let wrong_type = [
+        r#"{"hook_event_name":"SessionStart","cwd":7}"#,
+        r#"{"hook_event_name":"SessionStart","cwd":["/"]}"#,
+        r#"{"hook_event_name":"SessionStart","cwd":{"a":1}}"#,
+        r#"{"hook_event_name":"SessionStart","cwd":true}"#,
+    ];
+    for input in wrong_type {
+        let run = hook(home.path(), &root, &[], input);
+        assert_eq!(error_of(&run)["code"], "invalid_hook_input", "{input}");
+    }
+    let relative = hook(home.path(), &root, &[], &hook_input(Some("child/dir")));
+    assert_eq!(error_of(&relative)["code"], "invalid_hook_input");
+    let absent = hook(
+        home.path(),
+        &root,
+        &[],
+        &hook_input(Some(missing.to_str().unwrap())),
+    );
+    assert_eq!(error_of(&absent)["code"], "hook_cwd_unavailable");
+    let not_a_folder = hook(
+        home.path(),
+        &root,
+        &[],
+        &hook_input(Some(file.to_str().unwrap())),
+    );
+    assert_eq!(error_of(&not_a_folder)["code"], "hook_cwd_unavailable");
+}
+
+#[cfg(unix)]
+#[test]
+fn hook_diagnoses_an_input_cwd_it_has_no_permission_to_read() {
+    use std::os::unix::fs::PermissionsExt;
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = std::fs::canonicalize(folders.path()).unwrap().join("root");
+    create_project(home.path(), &root, "Alpha");
+    let locked = root.join("locked");
+    std::fs::create_dir_all(&locked).unwrap();
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let readable_anyway = std::fs::read_dir(&locked).is_ok(); // e.g. running as root
+    let run = hook(
+        home.path(),
+        &root,
+        &[],
+        &hook_input(Some(locked.to_str().unwrap())),
+    );
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+    if !readable_anyway {
+        assert_eq!(error_of(&run)["code"], "hook_cwd_unavailable");
+    }
+}
+
+#[test]
+fn hook_with_an_explicit_project_wins_over_the_folder_and_a_missing_one_is_an_error() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let root = folders.path().join("root");
+    let unbound = folders.path().join("unbound");
+    create_project(home.path(), &root, "Alpha");
+    std::fs::create_dir_all(&unbound).unwrap();
+    create_project(home.path(), &folders.path().join("beta"), "Beta");
+
+    // The named project wins over the bound folder, and works from an unbound one.
+    let run = hook(
+        home.path(),
+        &root,
+        &["--project", "Beta"],
+        &hook_input(None),
+    );
+    assert_eq!(project_of(&run), "Beta");
+    let run = hook(
+        home.path(),
+        &unbound,
+        &["--project", "Beta"],
+        &hook_input(None),
+    );
+    assert_eq!(project_of(&run), "Beta");
+    // An unknown name is an error even from an unbound folder, never a skip.
+    let run = hook(
+        home.path(),
+        &unbound,
+        &["--project", "Nope"],
+        &hook_input(None),
+    );
+    assert_eq!(error_of(&run)["code"], "project_not_found");
+    // An explicit project does not depend on the cwd being usable.
+    let run = hook(
+        home.path(),
+        &unbound,
+        &["--project", "Beta"],
+        r#"{"hook_event_name":"SessionStart","cwd":7}"#,
+    );
+    assert_eq!(project_of(&run), "Beta");
+}
+
+#[test]
+fn hook_keeps_its_event_allow_list_and_json_errors_for_unbound_folders() {
+    let home = tempdir().unwrap();
+    let work = tempdir().unwrap();
+    assert_silent(&hook(
+        home.path(),
+        work.path(),
+        &[],
+        r#"{"hook_event_name":"UserPromptSubmit"}"#,
+    ));
+    let run = hook(home.path(), work.path(), &[], "not json");
+    assert_eq!(error_of(&run)["code"], "invalid_hook_input");
+    let big = format!(
+        r#"{{"hook_event_name":"SessionStart","x":"{}"}}"#,
+        "x".repeat(70_000)
+    );
+    let run = hook(home.path(), work.path(), &[], &big);
+    assert_eq!(error_of(&run)["code"], "hook_input_too_large");
+}
+
+#[test]
+fn normal_progress_keeps_folder_unbound_for_an_unbound_folder() {
+    let home = tempdir().unwrap();
+    let work = tempdir().unwrap();
+    let run = agboard_in(home.path(), work.path(), &["progress", "--json"]);
+    assert_eq!(run.status, 4);
+    assert_eq!(run.stdout, "");
+    let err: Value = serde_json::from_str(&run.stderr).unwrap();
+    assert_eq!(err["error"]["code"], "folder_unbound");
 }

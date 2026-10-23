@@ -312,19 +312,24 @@ fn a_hook_without_a_usable_target_reports_agboard_error_and_changes_nothing() {
     let shared = home.path().join("shared");
     let before = tree_of(&shared);
 
-    // No binding in the process cwd: an error report, not a guess or the only project.
+    // No binding in the process cwd: silence, not a guess or the only project.
     let output = hook(home.path(), None, "claude", SESSION_START);
-    assert_eq!(error_code(&context(&output)), "folder_unbound");
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(output.stderr.is_empty());
     // An unknown name.
     let output = hook(home.path(), Some("Nowhere"), "claude", SESSION_START);
     assert_eq!(error_code(&context(&output)), "project_not_found");
     // A name that is not a valid project name.
     let output = hook(home.path(), Some("  "), "codex", SESSION_START);
     assert_eq!(error_code(&context(&output)), "invalid_value");
-    // The error is data for the agent, never a snapshot.
+    // An error is data for the agent, never a snapshot.
     assert!(
-        !context(&hook(home.path(), None, "codex", SESSION_START)).contains("AGBOARD_PROGRESS")
+        !context(&hook(home.path(), Some("Nowhere"), "codex", SESSION_START))
+            .contains("AGBOARD_PROGRESS")
     );
+    let unbound = hook(home.path(), None, "codex", SESSION_START);
+    assert!(unbound.stdout.is_empty());
     assert_eq!(before, tree_of(&shared));
 
     // No data area at all: nothing is created.
@@ -565,8 +570,19 @@ fn hook_explicit_project_overrides_cwd_binding_and_missing_binding_is_an_error()
     assert_eq!(progress["project"]["name"], "Beta");
     assert_eq!(progress["unassigned"][0]["title"], "Explicit task");
 
+    // Without --project, the unbound folder is silent; an unknown project is an error.
     let output = hook_in(home.path(), None, "claude", SESSION_START, Some(&unbound));
-    assert_eq!(error_code(&context(&output)), "folder_unbound");
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(output.stderr.is_empty());
+    let output = hook_in(
+        home.path(),
+        Some("Nowhere"),
+        "claude",
+        SESSION_START,
+        Some(&unbound),
+    );
+    assert_eq!(error_code(&context(&output)), "project_not_found");
 }
 
 #[test]
