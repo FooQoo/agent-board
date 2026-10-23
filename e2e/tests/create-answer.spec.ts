@@ -2,7 +2,7 @@ import { expectHistoryNote } from '../helpers/history';
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson, decisionJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
-import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, refreshUntil, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // Adding a card in the shared dialog, and answering a decision request on its card, on the real page.
 
@@ -261,9 +261,12 @@ test('when the agent asks something else while an answer is typed, the page says
   await page.unroute('**/api/projects/*/summary');
   agboardOk(mainProject, ['add', 'Triggers a refresh']);
 
-  // The open details hold the stream's updates back, so the board is read now. The new question is shown,
-  // the old answer is kept but cannot be sent as it is.
-  await refreshUntil(page, () => expect(request(page)).toContainText('A different question now.', { timeout: 1_500 }));
+  // The open details hold the stream's updates back; once they are closed, the board is read. The new question
+  // is shown on the card, the old answer is kept but cannot be sent as it is.
+  await closeForUpdates(
+    () => details(page).getByRole('button', { name: 'Close details' }).click(),
+    () => expect(request(page)).toContainText('A different question now.', { timeout: 1_500 }),
+  );
   await expect(request(page).getByRole('alert')).toHaveText('This request has changed. Review the latest board.');
   await expect(box).toHaveValue('An answer to the old question.');
   await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
@@ -297,7 +300,10 @@ test('an answer sent from a page that missed the new request is refused by the s
   // Once the board can be read, the new question appears.
   await page.unroute('**/api/projects/*/summary');
   agboardOk(mainProject, ['add', 'Triggers a refresh']);
-  await refreshUntil(page, () => expect(request(page)).toContainText('A different question now.', { timeout: 1_500 }));
+  await closeForUpdates(
+    () => details(page).getByRole('button', { name: 'Close details' }).click(),
+    () => expect(request(page)).toContainText('A different question now.', { timeout: 1_500 }),
+  );
   await expect(box).toHaveValue('An answer to the old question.');
 });
 

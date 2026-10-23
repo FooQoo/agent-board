@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, decisionJson } from '../helpers/agboard';
-import { readBoardAfterReset, refreshUntil, waitForSync } from '../helpers/ui';
+import { closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
 // card that is Done and still takes an edit, and the edit dialog that saves once and rewrites nothing unless asked.
@@ -135,9 +135,12 @@ test('a decision request is answered with a choice only, with text only, or with
   expectHistoryNote(show(16).history.at(-1), ['Which way?', 'Proceed']);
 
   // Text alone, with no choice.
-  // The open drawer holds the stream's updates back, so the board is read again by hand.
+  // The open drawer holds the stream's updates back; the new request shows once it is closed.
   askText(16, 'What name?');
-  await refreshUntil(page, () => expect(request(page, 16)).toContainText('What name?', { timeout: 1_000 }));
+  await closeForUpdates(
+    () => details(page).getByRole('button', { name: 'Close details' }).click(),
+    () => expect(request(page, 16)).toContainText('What name?', { timeout: 1_000 }),
+  );
   await request(page, 16).getByRole('textbox', { name: 'Your answer' }).fill('Keep the old name.');
   await request(page, 16).getByRole('button', { name: 'Send', exact: true }).click();
   await expect(request(page, 16)).toHaveCount(0);
@@ -145,8 +148,9 @@ test('a decision request is answered with a choice only, with text only, or with
   expect(show(16).history.at(-1)).not.toHaveProperty('choiceId');
 
   // A choice and a note together.
+  // Nothing is open now, so the new request arrives on its own.
   askWithChoices(16, 'Which way now?', choices);
-  await refreshUntil(page, () => expect(request(page, 16).getByRole('radio', { name: 'Stop' })).toBeVisible({ timeout: 1_000 }));
+  await expect(request(page, 16).getByRole('radio', { name: 'Stop' })).toBeVisible({ timeout: 15_000 });
   await request(page, 16).getByRole('radio', { name: 'Stop' }).check();
   await request(page, 16).getByRole('textbox', { name: 'Your answer' }).fill('Stop after the backup.');
   await request(page, 16).getByRole('button', { name: 'Send', exact: true }).click();

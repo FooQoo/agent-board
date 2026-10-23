@@ -57,7 +57,7 @@ test('a task the CLI deletes while selected clears the selection', async ({ page
   expect(result.code).toBe(0);
   expect(result.stdout).toContain('Deleted #15.');
 
-  // The drawer is open, so the page holds the stream's update back: it reads the board itself.
+  // The drawer is open, so the page holds the stream's update back: the page is loaded again.
   await readBoardAfterReset(page);
   await expect(panel(page)).toContainText('Select a task to see its details.');
   await expect(task(page, 15)).toHaveCount(0);

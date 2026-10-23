@@ -168,33 +168,31 @@ test.describe('a Detail is read when it is opened, once', () => {
     await page.waitForTimeout(500);
     expect(details(seen)).toEqual([]);
 
-    // Opening the card shows the frame at once and reads the body, once.
+    // Opening the card shows the frame at once and reads the body and the history together, once.
     await page.getByRole('button', { name: 'Alpha running two' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Alpha running two' })).toBeVisible();
     await expect(dialog.getByText('Changed while nobody looked.')).toBeVisible();
     expect(details(seen).map((r) => `${r.path.split('/projects/')[1]}${r.query}`)).toEqual([
-      `${alpha}/tasks/3/detail?sections=document`,
+      `${alpha}/tasks/3/detail?sections=document,history`,
     ]);
 
-    // The history is read when its tab is reached; going back and forth reads nothing more.
+    // The tabs only choose what is shown: going back and forth reads nothing more.
     await dialog.getByRole('tab', { name: /History/ }).click();
     await expect(dialog.getByText('Start work')).toBeVisible();
-    expect(details(seen)).toHaveLength(2);
-    expect(details(seen)[1]?.query).toBe('?sections=history');
     await dialog.getByRole('tab', { name: 'Body' }).click();
     await expect(dialog.getByText('Changed while nobody looked.')).toBeVisible();
     await dialog.getByRole('tab', { name: /History/ }).click();
     await dialog.getByRole('tab', { name: 'Body' }).click();
     await page.waitForTimeout(300);
-    expect(details(seen)).toHaveLength(2);
+    expect(details(seen)).toHaveLength(1);
 
     // Closing and opening the same card again reuses what was read.
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
     await page.getByRole('button', { name: 'Alpha running two' }).click();
     await expect(page.getByRole('dialog').getByText('Changed while nobody looked.')).toBeVisible();
-    expect(details(seen)).toHaveLength(2);
+    expect(details(seen)).toHaveLength(1);
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
@@ -207,7 +205,7 @@ test.describe('a Detail is read when it is opened, once', () => {
     await expect(dialog.getByText('Running task one.')).toBeVisible();
     await dialog.getByRole('tab', { name: /History/ }).click();
     await expect(dialog.getByText('Working now')).toBeVisible();
-    const documentReads = () => details(seen).filter((r) => r.query === '?sections=document').length;
+    const documentReads = () => details(seen).filter((r) => r.query.includes('document')).length;
     expect(documentReads()).toBe(1);
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);

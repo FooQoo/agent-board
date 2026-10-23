@@ -43,25 +43,25 @@ export async function waitForSync(page: Page): Promise<void> {
 
 /**
  * Read the board again after the files under it were replaced. The server notices a changed file
- * 200 ms later, and the page holds the stream's updates back once a drawer or a dialog is open,
- * so a test that acts at once would work on the state before the change.
+ * 200 ms later, so the first read of a page opened right after the CLI wrote may predate the change,
+ * and the page holds the stream's updates back while a drawer or a dialog is open and for 3 seconds
+ * after. The PC board has no refresh button, so the page is loaded again once the server has seen
+ * the change. Any open drawer or dialog closes.
  */
 export async function readBoardAfterReset(page: Page): Promise<void> {
   await page.waitForTimeout(500);
-  await page.getByRole('button', { name: /^(Refresh|最新の状態に更新)$/ }).click();
+  await page.reload();
   await waitForSync(page);
 }
 
 /**
- * Press refresh until `check` holds. For a change made while a drawer or a dialog is open: the page
- * holds the stream's updates back then, and the refresh button reads the board at once. The button is
- * pressed through the page because an open dialog makes the rest of the page inert.
+ * Let in a change made while a drawer or a dialog is open. The page holds the stream's updates back
+ * while one is open and applies them 3 seconds after the last one closes, as a person sees it: `close`
+ * closes the panel, then `check` is retried until the board shows the change.
  */
-export async function refreshUntil(page: Page, check: () => Promise<void>): Promise<void> {
-  await expect(async () => {
-    await page.locator('.header__refresh').evaluate((button) => (button as HTMLButtonElement).click());
-    await check();
-  }).toPass({ timeout: 15_000 });
+export async function closeForUpdates(close: () => Promise<void>, check: () => Promise<void>): Promise<void> {
+  await close();
+  await expect(check).toPass({ timeout: 15_000 });
 }
 
 /** Open the established full task editor from the Add task button's simple-request entry point. */

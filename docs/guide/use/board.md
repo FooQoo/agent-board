@@ -71,9 +71,9 @@ The Archive screen lists archived tasks with their ID, title, owner, date, and t
 
 The details of an archived task use the same layout as an active task. **Restore** and the trash icon for permanent deletion sit at the top right, next to the close button. Permanent deletion asks for confirmation first.
 
-## Refresh the board
+## Updates
 
-The board updates itself when a change is saved, whether an agent made it or another browser on this PC did. To read the latest data at once, choose **Refresh** in the header. It is the round arrow button between **Archive** and **Settings**. It works even while a panel is open.
+The board updates itself when a change is saved, whether an agent made it or another browser on this PC did. There is no refresh button; reloading the page reads everything again.
 
 While a details panel, an editor, or a dialog is open, automatic updates wait, so the text you are reading or editing does not move. They are applied about three seconds after you close it.
 

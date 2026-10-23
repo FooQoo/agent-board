@@ -57,10 +57,9 @@ test('a status change reads the Summary and the history again, and the document 
   const seen = watch(page);
   await task(page, 16).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Refine the empty board');
-  // Only the tab that is shown is read: the description needs the document and nothing else.
+  // Opening the task reads its text and its history together, once; the tabs only choose what is shown.
   await expect.poll(() => sectionReads(seen, 16, 'document').length).toBe(1);
-  expect(sectionReads(seen, 16, 'history')).toHaveLength(0);
-
+  expect(sectionReads(seen, 16, 'history')).toHaveLength(1);
   await details(page).getByRole('tab', { name: /^History/ }).click();
   await expect(details(page).getByRole('tabpanel').getByRole('listitem').first()).toBeVisible();
   expect(sectionReads(seen, 16, 'history')).toHaveLength(1);
@@ -70,18 +69,18 @@ test('a status change reads the Summary and the history again, and the document 
     histories: sectionReads(seen, 16, 'history').length,
   };
 
-  // The drawer is open, so the page asks for the board itself instead of waiting for the stream.
+  // The open drawer holds the stream's update back; closing it lets the update in 3 seconds later.
   agboardOk(mainProject, ['mv', '16', 'doing', '--actor', 'ai', '--reason', 'Started the work.']);
-  await readBoardAfterReset(page);
+  await details(page).getByRole('button', { name: 'Close details' }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible();
+  await expect.poll(() => sectionReads(seen, 16, 'history').length).toBeGreaterThan(before.histories);
+  expect(summaries(seen).length).toBeGreaterThan(before.summaries);
+
+  // Opened again, the new history is there, and the document read before is shown again without a new read.
+  await task(page, 16).click();
+  await details(page).getByRole('tab', { name: /^History/ }).click();
   await expect(details(page).getByRole('tabpanel').getByRole('listitem').first()).toContainText('Started the work.');
   await expect(details(page).getByRole('tab', { name: /^History [0-9]+$/ })).toBeVisible();
-
-  expect(summaries(seen).length).toBeGreaterThan(before.summaries);
-  expect(sectionReads(seen, 16, 'history').length).toBeGreaterThan(before.histories);
-  expect(sectionReads(seen, 16, 'document')).toHaveLength(before.documents);
-
-  // Back on the description: the document read before is shown again without a new read.
   await details(page).getByRole('tab', { name: 'Description' }).click();
   await expect(details(page).getByRole('tabpanel')).not.toBeEmpty();
   expect(sectionReads(seen, 16, 'document')).toHaveLength(before.documents);
@@ -100,13 +99,15 @@ test('a task nobody opened is not read, and opening a task reads its epic once, 
   agboardOk(mainProject, ['epic', 'edit', 'TEST-EPIC', '--document-file', plan]);
   agboardOk(mainProject, ['add', 'In an epic', '--desc', 'Body.', '--epic', 'TEST-EPIC']);
   await readBoardAfterReset(page);
+  expect(seen.filter((r) => r.path.includes('/detail'))).toEqual([]);
+  // Opening the task reads its epic too, once, so the Epic tab shows at once.
   await task(page, id).click();
   await expect(details(page).getByRole('tabpanel')).toContainText('Body.');
-  expect(seen.filter((r) => r.path.includes('/epics/'))).toEqual([]);
+  const epicReads = () => seen.filter((r) => r.path.includes('/epics/TEST-EPIC/detail')).length;
+  await expect.poll(epicReads).toBe(1);
 
   await details(page).getByRole('tab', { name: /^Epic/ }).click();
   await expect(details(page).getByRole('tabpanel')).toContainText('The epic plan.');
-  const epicReads = () => seen.filter((r) => r.path.includes('/epics/TEST-EPIC/detail')).length;
   expect(epicReads()).toBe(1);
 
   // Another tab and back, and the same epic from a second task: no new read.
