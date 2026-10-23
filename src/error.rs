@@ -187,6 +187,10 @@ pub enum AgboardError {
         path: String,
     },
     DocsNotImplemented,
+    /// The Docs folder could not be opened in the file manager.
+    DocsOpenFailed {
+        reason: String,
+    },
 }
 
 impl AgboardError {
@@ -241,6 +245,7 @@ impl AgboardError {
             AgboardError::DocsReadOnly { .. } => "docs_read_only",
             AgboardError::DocsAssetType { .. } => "docs_asset_type",
             AgboardError::DocsNotImplemented => "docs_not_implemented",
+            AgboardError::DocsOpenFailed { .. } => "docs_open_failed",
         }
     }
 
@@ -343,6 +348,7 @@ impl AgboardError {
             AgboardError::DocsNotImplemented => {
                 "this document operation is not available yet.".to_string()
             }
+            AgboardError::DocsOpenFailed { .. } => "cannot open the Docs folder.".to_string(),
         }
     }
 
@@ -469,6 +475,7 @@ impl AgboardError {
             AgboardError::DocsNotImplemented => {
                 "The Docs API is still being built. Try again in a later version.".to_string()
             }
+            AgboardError::DocsOpenFailed { reason } => reason.clone(),
         }
     }
 }
@@ -578,6 +585,9 @@ mod tests {
                 path: "a.svg".into(),
             },
             AgboardError::DocsNotImplemented,
+            AgboardError::DocsOpenFailed {
+                reason: "xdg-open is not installed".into(),
+            },
         ]
     }
 
@@ -625,6 +635,7 @@ mod tests {
                 ("docs_read_only", 1),
                 ("docs_asset_type", 1),
                 ("docs_not_implemented", 1),
+                ("docs_open_failed", 1),
             ]
         );
     }
@@ -764,6 +775,7 @@ mod tests {
                 "this document operation is not available yet.",
                 "The Docs API is still being built. Try again in a later version.",
             ),
+            ("cannot open the Docs folder.", "xdg-open is not installed"),
         ];
         let expected: Vec<(String, String)> = expected
             .into_iter()

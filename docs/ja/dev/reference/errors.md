@@ -97,6 +97,7 @@
 | `docs_not_found` | `docs/`の下にそのファイルがない、またはパスがフォルダを指す。保存はファイルを作らないので、新しいパスへの保存もこのエラーになる。 | n/a | 404 |
 | `docs_not_markdown` | ファイルのルートに、`.md`で終わらない名前を渡した。 | n/a | 415 |
 | `docs_asset_type` | 画像のルートに、PNG・JPEG・WebP・GIF以外（SVGなど）を渡した。 | n/a | 415 |
+| `docs_open_failed` | フォルダを開くルートが`docs/`を開けなかった。フォルダがない、またはファイルマネージャのプログラムを起動できない。`reason`にどちらかが書かれる。 | n/a | 500 |
 | `docs_too_large` | 2 MiBを超えるファイルや保存する内容、または10 MiBを超える画像。 | n/a | 413 |
 | `docs_not_utf8` | ファイルが正しいUTF-8のテキストでない。ファイルは変更しない。 | n/a | 422 |
 | `docs_revision_conflict` | 画面が読んだ後にファイルが変わった。何も書かず、本文に`currentRevision`を加える。 | n/a | 409 |

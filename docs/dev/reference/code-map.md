@@ -46,7 +46,7 @@ Inside `server`, routers depend on shared modules rather than on each other:
 
 | Module | Responsibility |
 | --- | --- |
-| `api/` | The board router, its Host and write guards, and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, epic images, project docs (`docs/`: `tree`, `file_get`, `file_put`, `assets`), and the mobile connection (`monitor_connections`). |
+| `api/` | The board router, its Host and write guards (`guards`), and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, epic images, project docs (`docs/`: `tree`, `file_get`, `file_put`, `assets`, `open`), and the mobile connection (`monitor_connections`). |
 | `monitor/` | The monitor's read router, its answer endpoint, and its assets. |
 | `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `start`, `run`), the saved settings (`config`), the token and its secure storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`, with its `session` routes for the passcode unlock). |
 | `preferences/` | The saved language and color theme: `preferences.json` in the internal area (`PreferencesStore`), the `GET` and `PUT` handling shared by the PC and the monitor, and the change notice. |

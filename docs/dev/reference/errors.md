@@ -97,6 +97,7 @@ These are returned by the `/api/projects/{projectId}/docs/…` routes (see [Web 
 | `docs_not_found` | No such file under `docs/`, or the path names a folder. A save never creates a file, so saving a new path is this error too. | n/a | 404 |
 | `docs_not_markdown` | The file routes were given a name that does not end in `.md`. | n/a | 415 |
 | `docs_asset_type` | The image route was given a file that is not PNG, JPEG, WebP, or GIF, such as SVG. | n/a | 415 |
+| `docs_open_failed` | The open-folder route could not open `docs/`: the folder does not exist, or the file manager program could not be started. The `reason` says which. | n/a | 500 |
 | `docs_too_large` | A file or saved content over 2 MiB, or an image over 10 MiB. | n/a | 413 |
 | `docs_not_utf8` | The file is not valid UTF-8 text. It is not changed. | n/a | 422 |
 | `docs_revision_conflict` | The file changed since the page read it. Nothing is written; the body adds `currentRevision`. | n/a | 409 |

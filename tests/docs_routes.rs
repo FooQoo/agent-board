@@ -62,3 +62,20 @@ fn bad_input_is_refused_before_the_routes_do_anything() {
         (400, "docs_path_invalid".into())
     );
 }
+
+#[test]
+fn opening_the_folder_is_behind_the_write_guard_and_needs_a_project() {
+    let (_home, server) = running();
+    let path = docs("open");
+    let no_headers = server.request("POST", &path, None, &[], None);
+    assert_eq!(no_headers.status, 403, "{}", no_headers.body);
+    let mut headers = server.page_headers(&server.token());
+    headers[0].1 = "http://evil.example".into();
+    let foreign = server.request("POST", &path, None, &headers, None);
+    assert_eq!(foreign.status, 403, "{}", foreign.body);
+    let missing = server.write("POST", &path, None);
+    assert_eq!(
+        (missing.status, missing.code()),
+        (404, "project_not_found".into())
+    );
+}
