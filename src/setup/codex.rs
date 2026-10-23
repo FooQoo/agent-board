@@ -17,7 +17,7 @@ const SUPPORTED_MODE: &str = "workspace-write";
 /// setup.
 const PROFILE_KEYS: [&str; 4] = ["default_permissions", "permissions", "profile", "profiles"];
 
-pub(super) fn plan(
+pub(crate) fn plan(
     config: &Path,
     original: Option<&str>,
     root: &str,

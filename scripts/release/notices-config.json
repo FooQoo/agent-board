@@ -1,0 +1,43 @@
+{
+  "prefer": [
+    "MIT",
+    "Apache-2.0",
+    "ISC",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "Zlib",
+    "Unlicense",
+    "0BSD",
+    "CC0-1.0",
+    "BSL-1.0"
+  ],
+  "choose": {
+    "eventsource-stream": "MIT"
+  },
+  "texts": {},
+  "sources": {
+    "elkjs": {
+      "url": "https://github.com/kieler/elkjs/tree/a8304cf79fde75bc2ab1a89d28320f53f8637436",
+      "checksum": "a8304cf79fde75bc2ab1a89d28320f53f8637436 (elkjs); ELK base 62d5909f96fad541bc101ad52dabaece6b7eab7e",
+      "patches": "https://github.com/eclipse-elk/elk/pull/955 (head cd7d2bb09bda891380b30e15cfd85f6deab678d9, merge 7ca51784e42a24201f29bc13e458728b6fc61cdc); ELK base https://github.com/eclipse-elk/elk/tree/62d5909f96fad541bc101ad52dabaece6b7eab7e",
+      "modifications": "None",
+      "build": "https://github.com/kieler/elkjs/blob/a8304cf79fde75bc2ab1a89d28320f53f8637436/build.gradle",
+      "also": [
+        "EMF common 2.12.4 (EPL-1.0): https://repo.maven.apache.org/maven2/com/genmymodel/emf/gwt/emf-common/2.12.4/emf-common-2.12.4-sources.jar",
+        "EMF ecore 2.12.4 (EPL-1.0): https://repo.maven.apache.org/maven2/com/genmymodel/emf/gwt/emf-ecore/2.12.4/emf-ecore-2.12.4-sources.jar",
+        "Xtext Xbase lib 2.28.0 (EPL-2.0): https://repo.maven.apache.org/maven2/org/eclipse/xtext/org.eclipse.xtext.xbase.lib/2.28.0/org.eclipse.xtext.xbase.lib-2.28.0-sources.jar",
+        "Xtend lib 2.28.0 (EPL-2.0): https://repo.maven.apache.org/maven2/org/eclipse/xtend/org.eclipse.xtend.lib/2.28.0/org.eclipse.xtend.lib-2.28.0-sources.jar",
+        "GWT runtime 2.10.0 (Apache-2.0): https://repo.maven.apache.org/maven2/org/gwtproject/gwt-user/2.10.0/gwt-user-2.10.0.jar"
+      ]
+    }
+  },
+  "embedded": [],
+  "declared": {
+    "embla-carousel": "2019-present David Jerleke",
+    "embla-carousel-react": "2019-present David Jerleke",
+    "embla-carousel-reactive-utils": "2019-present David Jerleke",
+    "eventsource-stream": "Julian Popescu",
+    "react-remove-scroll-bar": "Anton Korzunov",
+    "remark-math": "Junyoung Choi"
+  }
+}

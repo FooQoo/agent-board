@@ -1,0 +1,132 @@
+name: Release build
+
+# Builds and checks the per-CPU macOS archives. Everything here is an UNSIGNED
+# CANDIDATE: it is never a release asset. The formal release path (Developer ID
+# signing, notarization, SHA256SUMS, and the draft Release) is a later job that
+# consumes the `candidate-<target>` artifacts of one run and is the only place
+# that may hold secrets or write access to repository contents.
+#
+# Candidate artifact contract (one artifact per target, same SHA and run):
+#   candidate-<target>/agboard-<version>-<target>.tar.gz   unsigned, already stripped
+#   candidate-<target>/candidate.json                       {version, target, sha, run_id, signed: false}
+# The signing job must repack the signed binary with scripts/release/package.sh
+# and verify it again with scripts/release/verify-artifact.sh.
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "scripts/release/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "LICENSE"
+      - "THIRD_PARTY_NOTICES.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RUST_VERSION: "1.96.0"
+  NODE_VERSION: "24"
+  PNPM_VERSION: "12"
+  # The formal minimum is macOS 15 on both CPUs.
+  MACOSX_DEPLOYMENT_TARGET: "15.0"
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: check
+        run: |
+          # A tag push must equal Cargo.toml and Cargo.lock; other runs check
+          # that the two files agree with each other.
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then tag="${GITHUB_REF_NAME}"; else
+            tag="v$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
+          fi
+          echo "version=$(python3 scripts/release/check-version.py --tag "$tag")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-15
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup toolchain install "${RUST_VERSION}" --profile minimal --component rust-docs --target "${{ matrix.target }}"
+          rustup default "${RUST_VERSION}"
+      - name: Build the web UI first
+        run: |
+          pnpm --dir web install --frozen-lockfile
+          pnpm --dir web build
+      - name: Check that the notices are up to date
+        run: python3 scripts/release/generate-notices.py --check
+      - name: Build the binary
+        run: cargo build --release --locked --target "${{ matrix.target }}"
+      - name: Strip before any signing
+        run: strip -x "target/${{ matrix.target }}/release/agboard"
+      - name: Package
+        run: scripts/release/package.sh "${{ matrix.target }}" "target/${{ matrix.target }}/release/agboard" dist
+      - name: Verify the archive
+        env:
+          VERIFY_PORT: "9040"
+        run: scripts/release/verify-artifact.sh "dist/agboard-${{ needs.version.outputs.version }}-${{ matrix.target }}.tar.gz" "${{ matrix.target }}"
+      - name: Write the candidate record
+        run: |
+          printf '{"version":"%s","target":"%s","sha":"%s","run_id":"%s","signed":false}\n' \
+            "${{ needs.version.outputs.version }}" "${{ matrix.target }}" "${GITHUB_SHA}" "${GITHUB_RUN_ID}" > dist/candidate.json
+      - uses: actions/upload-artifact@v5
+        with:
+          name: candidate-${{ matrix.target }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  candidates:
+    # Both CPUs must have produced a candidate of the same version and SHA.
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v5
+        with:
+          path: candidates
+      - name: Check the candidate set
+        run: |
+          mkdir assets
+          for target in aarch64-apple-darwin x86_64-apple-darwin; do
+            cp "candidates/candidate-${target}/agboard-${{ needs.version.outputs.version }}-${target}.tar.gz" assets/
+            python3 - "candidates/candidate-${target}/candidate.json" "${target}" "${{ needs.version.outputs.version }}" <<'PY'
+          import json, os, sys
+          record = json.load(open(sys.argv[1]))
+          want = {"target": sys.argv[2], "version": sys.argv[3], "sha": os.environ["GITHUB_SHA"], "signed": False}
+          bad = {k: record.get(k) for k, v in want.items() if record.get(k) != v}
+          sys.exit(f"candidate record differs: {bad}") if bad else None
+          PY
+          done
+          python3 scripts/release/check-version.py --tag "v${{ needs.version.outputs.version }}" --assets assets

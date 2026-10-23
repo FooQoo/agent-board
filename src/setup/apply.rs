@@ -14,7 +14,7 @@ use super::plan::Target;
 use crate::error::{AgboardError, FileAction};
 
 /// Permission bits for a file setup creates (owner read and write only).
-const NEW_FILE_MODE: u32 = 0o600;
+pub(crate) const NEW_FILE_MODE: u32 = 0o600;
 
 /// One failed step, before rollback turns it into the reported error.
 struct Failure {
@@ -144,7 +144,7 @@ fn restore(target: &Target) -> Result<(), String> {
 }
 
 /// The file's bytes, or `None` when it does not exist.
-fn read_current(path: &Path) -> io::Result<Option<Vec<u8>>> {
+pub(crate) fn read_current(path: &Path) -> io::Result<Option<Vec<u8>>> {
     match fs::read(path) {
         Ok(bytes) => Ok(Some(bytes)),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
@@ -172,7 +172,7 @@ fn create_backup(path: &Path, bytes: &[u8], mode: u32) -> io::Result<PathBuf> {
 
 /// Writes `bytes` to a temporary file next to `path` and renames it over
 /// `path`. `path` is the real file, so a symbolic link is never replaced.
-fn write_atomically(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
+pub(crate) fn write_atomically(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
     let dir = path.parent().unwrap_or_else(|| Path::new("."));
     let name = path
         .file_name()
@@ -228,14 +228,14 @@ fn open_new(path: &Path, _mode: u32) -> io::Result<File> {
 }
 
 #[cfg(unix)]
-fn file_mode(path: &Path) -> Option<u32> {
+pub(crate) fn file_mode(path: &Path) -> Option<u32> {
     fs::metadata(path)
         .ok()
         .map(|meta| meta.permissions().mode() & 0o777)
 }
 
 #[cfg(not(unix))]
-fn file_mode(_path: &Path) -> Option<u32> {
+pub(crate) fn file_mode(_path: &Path) -> Option<u32> {
     None
 }
 

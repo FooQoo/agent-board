@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use super::plan::{Planned, invalid_file};
 use crate::error::AgboardError;
 
-pub(super) fn plan(
+pub(crate) fn plan(
     settings: &Path,
     original: Option<&str>,
     root: &str,
