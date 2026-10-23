@@ -26,6 +26,12 @@ export interface DocumentPaneProps {
   compact?: boolean;
   /** The small label above the body; "Markdown" unless the caller names another kind of file. */
   kindLabel?: string;
+  /**
+   * For an `.mdx` file: the body runs as MDX. The switch shows "UI" (`preview`, read-only) or
+   * "Code" (`children`, editable); `children` stays mounted while the UI shows. Without it there
+   * is no switch.
+   */
+  mdx?: { view: 'ui' | 'code'; onViewChange: (view: 'ui' | 'code') => void; preview: ReactNode };
   /** The body, the `RichMarkdownEditor`. */
   children?: ReactNode;
 }
@@ -46,6 +52,7 @@ export function DocumentPane({
   onRetry,
   compact = false,
   kindLabel,
+  mdx,
   children,
 }: DocumentPaneProps) {
   const { t } = useTranslation();
@@ -97,9 +104,29 @@ export function DocumentPane({
           <span>{t('docsDocument.readOnly')}</span>
         </div>
       )}
-      <span className="docs-doc__kind">{kindLabel ?? t('docsDocument.kind')}</span>
+      <div className="docs-doc__head">
+        <span className="docs-doc__kind">{kindLabel ?? t('docsDocument.kind')}</span>
+        {mdx && (
+          <div className="docs-doc__switch" role="group" aria-label={t('docsDocument.viewSwitch')}>
+            {(['ui', 'code'] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                className="docs-doc__switch-button"
+                aria-pressed={mdx.view === view}
+                onClick={() => mdx.onViewChange(view)}
+              >
+                {view === 'ui' ? t('docsDocument.viewUi') : t('docsDocument.viewCode')}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {frontmatter ? <FrontmatterBlock source={frontmatter} /> : null}
-      <div className="docs-doc__body">{children}</div>
+      <div className="docs-doc__body" hidden={mdx?.view === 'ui'}>
+        {children}
+      </div>
+      {mdx?.view === 'ui' && <div className="docs-doc__body">{mdx.preview}</div>}
     </div>
   );
 }

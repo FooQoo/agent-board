@@ -1622,7 +1622,7 @@ fn the_page_carries_a_content_security_policy_and_no_referrer() {
     assert_eq!(
         page.header("content-security-policy"),
         Some(
-            "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+            "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self'; connect-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
         )
     );
     assert_eq!(page.header("referrer-policy"), Some("no-referrer"));

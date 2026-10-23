@@ -21,3 +21,17 @@ fn the_monitor_router_has_no_docs_routes() {
         assert_eq!(server.get(&session, &path).status, 404, "{path}");
     }
 }
+
+#[test]
+fn the_monitor_router_has_no_docs_sandbox_page() {
+    let home = home();
+    let server = Running::start(home.path());
+    let session = server.session();
+    for path in [
+        "/monitor/docs-sandbox",
+        "/monitor/docs-sandbox/sandbox-x.js",
+        "/monitor/assets/docs-sandbox",
+    ] {
+        assert_eq!(server.get(&session, path).status, 404, "{path}");
+    }
+}

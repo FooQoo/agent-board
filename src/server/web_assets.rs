@@ -15,7 +15,7 @@ pub struct EmbeddedAsset {
     pub gzip: &'static [u8],
 }
 
-// `APP_ASSETS`, `MONITOR_ASSETS`, `APP_BUILD_ID` and `MONITOR_BUILD_ID`.
+// `APP_ASSETS`, `MONITOR_ASSETS`, `SANDBOX_ASSETS`, `APP_BUILD_ID` and `MONITOR_BUILD_ID`.
 include!(concat!(env!("OUT_DIR"), "/web_assets.rs"));
 
 /// What the web build leaves in each page's `agboard-build` `<meta>`.

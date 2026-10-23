@@ -74,6 +74,7 @@ fn fake_build(extra: &[(&str, &[u8])]) -> tempfile::TempDir {
         "assets/app-A2.css",
         "monitor/monitor-M1.js",
         "monitor/monitor-M2.css",
+        "sandbox/sandbox-S1.js",
     ] {
         write(root, name, name.as_bytes());
         write(root, &format!("{name}.gz"), name.as_bytes());
@@ -103,6 +104,15 @@ fn the_build_rejects_missing_isolated_assets_with_an_actionable_message() {
         stderr.contains("the monitor web assets are not built"),
         "{stderr}"
     );
+}
+
+#[test]
+fn the_build_rejects_a_missing_sandbox_script() {
+    let dir = fake_build(&[]);
+    std::fs::remove_file(dir.path().join("web/dist/sandbox/sandbox-S1.js.gz")).unwrap();
+    std::fs::remove_file(dir.path().join("web/dist/sandbox/sandbox-S1.js")).unwrap();
+    let stderr = failure(dir.path());
+    assert!(stderr.contains("sandbox web assets"), "{stderr}");
 }
 
 #[test]
@@ -162,8 +172,8 @@ fn a_file_both_pages_contain_is_embedded_once() {
     let (output, table) = run_build_script(dir.path());
     assert!(output.status.success(), "{output:?}");
     let table = table.unwrap();
-    // Four entry files plus one shared chunk.
-    assert_eq!(table.matches("include_bytes!").count(), 5, "{table}");
+    // Four entry files, the sandbox script and one shared chunk.
+    assert_eq!(table.matches("include_bytes!").count(), 6, "{table}");
     assert_eq!(table.matches("chunk-same-SSSS.js\"").count(), 2, "{table}");
 }
 

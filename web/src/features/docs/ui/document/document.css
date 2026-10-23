@@ -283,3 +283,72 @@
 .docs-doc__failure-icon--muted {
   color: var(--r-muted);
 }
+
+.docs-doc__body[hidden] {
+  display: none;
+}
+
+/* The kind label on the left; for an .mdx file the UI / Code switch on the right. */
+.docs-doc__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.docs-doc__switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-lane);
+}
+
+.docs-doc__switch-button {
+  padding: 3px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.docs-doc__switch-button[aria-pressed="true"] {
+  background: var(--r-surface);
+  color: var(--r-text);
+  box-shadow: 0 0 0 1px var(--r-border);
+}
+
+.docs-doc__switch-button:focus-visible {
+  outline: 2px solid var(--r-text2);
+  outline-offset: 1px;
+}
+
+/* The MDX preview: the sandbox iframe, as tall as its content. */
+.docs-mdx {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.docs-mdx__loading {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 13px;
+}
+
+.docs-mdx[data-shown="true"] .docs-mdx__loading {
+  display: none;
+}
+
+.docs-mdx__frame {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  border: 0;
+  background: transparent;
+  color-scheme: normal;
+}

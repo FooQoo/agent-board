@@ -15,6 +15,13 @@ export const docsDocumentJa = {
     frontmatter: 'フロントマター',
     frontmatterCount_one: '{{count}}項目',
     frontmatterCount_other: '{{count}}項目',
+    viewSwitch: '表示',
+    viewUi: 'UI',
+    viewCode: 'コード',
+    mdxLoading: 'プレビューを読み込み中…',
+    mdxPreview: 'MDX のプレビュー',
+    mdxUnregistered: '未登録の部品',
+    mdxRuntimeError: '実行エラー',
     saveFailed: '保存できませんでした。入力は残っています',
     conflictTitle: '保存できませんでした。ファイルが外部で変更されています',
     conflictBody:

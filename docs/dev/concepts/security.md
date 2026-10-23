@@ -118,6 +118,16 @@ What is refused:
 
 The root folder comes from the server's own data area and the ProjectId in the URL, never from the request body. The folder is the user's: Agent Board writes the README when it creates the folder and otherwise changes a file only when the user saves it.
 
+### MDX in the Docs
+
+An `.mdx` file can hold code: expressions such as `{1 + 2}` run when the file is drawn. The board page never runs it. Its policy has no `unsafe-eval`, and the MDX compiler is not in its scripts.
+
+The body is run by a separate page, `GET /docs-sandbox`, shown in an iframe with `sandbox="allow-scripts"` and without `allow-same-origin`. The iframe gets an opaque origin, so the code in it cannot read the board's DOM, `localStorage`, session token, or cookies, and cannot call the board's API. The page is fixed: it holds no token and no board data. The board sends it the MDX text with `postMessage`; the page accepts a message only from the window that embeds it, and the board accepts a reply only from that iframe.
+
+The page has its own policy (`connect-src 'none'`, no framing, no forms, no base URL). Only this page has `'unsafe-eval'`, because the MDX compiler builds code at run time. The board's own policy gains `frame-src 'self'` so that it may embed the page, and nothing else.
+
+What this protects: the token and the saved files stay out of reach of a document's code, and the code cannot send anything out. What it does not: an endless loop or heavy work inside the iframe is not stopped and can slow the browser tab until the user switches to Code or closes the Docs. Parts are registered by name, and only standard HTML elements are registered; any other part is drawn as "Unregistered component". The page cannot be opened from the phone, because the monitor has no such route.
+
 ## Project boundaries
 
 - Naming the target every time and the immutable ProjectId keep cooperative agents from confusing projects, task numbers, or names. They are not per-project authentication or authorization.

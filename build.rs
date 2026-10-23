@@ -33,17 +33,19 @@ fn main() {
     let mut blobs = Blobs::default();
     let app = Page::read(&dist_dir, "assets", "app", &mut blobs);
     let monitor = Page::read(&dist_dir, "monitor", "monitor", &mut blobs);
+    let sandbox = read_sandbox(&dist_dir, &mut blobs);
 
     let mut source = String::new();
     blobs.write_statics(&mut source);
     app.write_table(&mut source, "APP");
     monitor.write_table(&mut source, "MONITOR");
+    write_asset_table(&mut source, "SANDBOX", &sandbox);
     std::fs::write(out_dir.join("web_assets.rs"), source)
         .expect("the build script can write to OUT_DIR");
 
     // Rerun when a folder gains or loses a file; every listed file is also
     // watched, so the tables never outlive the files they name.
-    for folder in ["", "/assets", "/monitor"] {
+    for folder in ["", "/assets", "/monitor", "/sandbox"] {
         println!("cargo:rerun-if-changed=web/dist{folder}");
     }
 }
@@ -51,6 +53,54 @@ fn main() {
 fn fail(message: &str) -> ! {
     eprintln!("{message}");
     std::process::exit(1);
+}
+
+/// The script of the Docs sandbox page: every `sandbox-*` script in `web/dist/sandbox` with its
+/// `.gz`, as the name of the static that holds its bytes. The page has no HTML template: the
+/// server writes it around the script's name.
+fn read_sandbox(dist: &Path, blobs: &mut Blobs) -> BTreeMap<String, String> {
+    let dir = dist.join("sandbox");
+    let mut files = BTreeMap::new();
+    let names: Vec<String> = std::fs::read_dir(&dir)
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .map(|item| item.file_name().to_string_lossy().into_owned())
+                .filter(|name| name.starts_with("sandbox-") && mime_of(name).is_some())
+                .collect()
+        })
+        .unwrap_or_default();
+    if names.len() != 1 {
+        fail(&dist::namespace_error_message(
+            "sandbox",
+            &["sandbox-<hash>.js"],
+        ));
+    }
+    for name in names {
+        let gz = dir.join(format!("{name}.gz"));
+        let Ok(bytes) = std::fs::read(&gz) else {
+            fail(&format!(
+                "error: {} is missing.\nRun \"pnpm --dir web build\" first.",
+                gz.display()
+            ));
+        };
+        println!("cargo:rerun-if-changed={}", gz.display());
+        files.insert(name, blobs.add(&gz, bytes));
+    }
+    files
+}
+
+fn write_asset_table(source: &mut String, prefix: &str, files: &BTreeMap<String, String>) {
+    writeln!(source, "pub static {prefix}_ASSETS: &[EmbeddedAsset] = &[").unwrap();
+    for (name, blob) in files {
+        let mime = mime_of(name).expect("only scripts and stylesheets are listed");
+        writeln!(
+            source,
+            "    EmbeddedAsset {{ name: {name:?}, mime: {mime:?}, gzip: {blob} }},"
+        )
+        .unwrap();
+    }
+    source.push_str("];\n");
 }
 
 /// One page's build: its content-named files and its build ID.
