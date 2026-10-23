@@ -1,5 +1,5 @@
 //! The Task Detail and Epic Detail routes of the PC server and of the monitor answer the NDJSON
-//! contract (U4). Servers listen on port 0 in a temporary data directory.
+//! contract. Servers listen on port 0 in a temporary data directory.
 
 mod common;
 #[path = "support/mobile_monitor.rs"]

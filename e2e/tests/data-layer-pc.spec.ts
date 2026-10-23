@@ -6,10 +6,9 @@ import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboa
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
-// The PC board reads a task's text, log and conditions as Detail sections, only for the tab that is shown:
-// P1 a status change reads the Summary and the history again but not the document, P2 the drawer holds
-// the stream back while it is open and for 3 seconds after, while a save or an answer shows at once,
-// P3 a 50,000-character document is shown with a bounded page and is edited and saved as before.
+// Opening a task reads its text, conditions, log and epic once, so every tab shows at once. A status
+// change reads the Summary and the history again but not the text. The drawer holds the stream back
+// while it is open and for 3 seconds after, while a save or an answer shows at once.
 
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
@@ -54,7 +53,7 @@ test.beforeEach(async ({ page }) => {
   await readBoardAfterReset(page);
 });
 
-test('P1: a status change reads the Summary and the history again, and the document is not read again', async ({ page }) => {
+test('a status change reads the Summary and the history again, and the document is not read again', async ({ page }) => {
   const seen = watch(page);
   await task(page, 16).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Refine the empty board');
@@ -72,10 +71,10 @@ test('P1: a status change reads the Summary and the history again, and the docum
   };
 
   // The drawer is open, so the page asks for the board itself instead of waiting for the stream.
-  agboardOk(mainProject, ['mv', '16', 'doing', '--actor', 'ai', '--reason', 'Started P1 work.']);
+  agboardOk(mainProject, ['mv', '16', 'doing', '--actor', 'ai', '--reason', 'Started the work.']);
   await readBoardAfterReset(page);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible();
-  await expect(details(page).getByRole('tabpanel').getByRole('listitem').first()).toContainText('Started P1 work.');
+  await expect(details(page).getByRole('tabpanel').getByRole('listitem').first()).toContainText('Started the work.');
   await expect(details(page).getByRole('tab', { name: /^History [0-9]+$/ })).toBeVisible();
 
   expect(summaries(seen).length).toBeGreaterThan(before.summaries);
@@ -88,7 +87,7 @@ test('P1: a status change reads the Summary and the history again, and the docum
   expect(sectionReads(seen, 16, 'document')).toHaveLength(before.documents);
 });
 
-test('P1: a task nobody opened is not read, and the epic is read the first time its tab is shown and reused', async ({ page }) => {
+test('a task nobody opened is not read, and opening a task reads its epic once, for every task of that epic', async ({ page }) => {
   const seen = watch(page);
   await expect(lane(page, 'Todo').getByRole('button').first()).toBeVisible();
   expect(seen.filter((r) => r.path.includes('/detail'))).toEqual([]);
@@ -97,9 +96,9 @@ test('P1: a task nobody opened is not read, and the epic is read the first time 
   const id = nextTaskId(mainProject);
   const plan = path.join(work, 'plan.md');
   writeFileSync(plan, 'The epic plan.');
-  agboardOk(mainProject, ['epic', 'add', 'P1-EPIC', '--name', 'P1 epic', '--color', '#2563EB', '--actor', 'human']);
-  agboardOk(mainProject, ['epic', 'edit', 'P1-EPIC', '--document-file', plan]);
-  agboardOk(mainProject, ['add', 'In an epic', '--desc', 'Body.', '--epic', 'P1-EPIC']);
+  agboardOk(mainProject, ['epic', 'add', 'TEST-EPIC', '--name', 'Test epic', '--color', '#2563EB', '--actor', 'human']);
+  agboardOk(mainProject, ['epic', 'edit', 'TEST-EPIC', '--document-file', plan]);
+  agboardOk(mainProject, ['add', 'In an epic', '--desc', 'Body.', '--epic', 'TEST-EPIC']);
   await readBoardAfterReset(page);
   await task(page, id).click();
   await expect(details(page).getByRole('tabpanel')).toContainText('Body.');
@@ -107,7 +106,7 @@ test('P1: a task nobody opened is not read, and the epic is read the first time 
 
   await details(page).getByRole('tab', { name: /^Epic/ }).click();
   await expect(details(page).getByRole('tabpanel')).toContainText('The epic plan.');
-  const epicReads = () => seen.filter((r) => r.path.includes('/epics/P1-EPIC/detail')).length;
+  const epicReads = () => seen.filter((r) => r.path.includes('/epics/TEST-EPIC/detail')).length;
   expect(epicReads()).toBe(1);
 
   // Another tab and back, and the same epic from a second task: no new read.
@@ -117,7 +116,7 @@ test('P1: a task nobody opened is not read, and the epic is read the first time 
   expect(epicReads()).toBe(1);
 });
 
-test('P2: the drawer holds updates while it is open and for 3 seconds after; a save and an answer show at once', async ({ page }) => {
+test('the drawer holds updates while it is open and for 3 seconds after; a save and an answer show at once', async ({ page }) => {
   await task(page, 8).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Initialize the board');
 
@@ -150,8 +149,6 @@ test('P2: the drawer holds updates while it is open and for 3 seconds after; a s
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#15 / })).toBeVisible({ timeout: 5_000 });
 });
 
-// ---- P3
-
 /** A document near the 50,000-character limit with GFM, lists, code, Mermaid and an image. */
 function bigDocument(origin: string): string {
   const head = [
@@ -173,7 +170,7 @@ function bigDocument(origin: string): string {
   return `${text}Last line of the document.`;
 }
 
-test('P3: a 50,000-character document is shown with a bounded page, and is edited and saved as before', async ({ page }) => {
+test('a 50,000-character document is shown with a bounded page, and is edited and saved as before', async ({ page }) => {
   const id = nextTaskId(mainProject);
   const file = path.join(work, 'big.md');
   const text = bigDocument(images.origin);

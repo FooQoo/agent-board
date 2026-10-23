@@ -65,8 +65,8 @@ const projectsNamed = (seen: Seen[]) => [
   ),
 ];
 
-test.describe('M1: one project, named in the address', () => {
-  test('M1: reads the Summary of the project in the address only, with no other project and no switcher', async ({ page }) => {
+test.describe('one project, named in the address', () => {
+  test('reads the Summary of the project in the address only, with no other project and no switcher', async ({ page }) => {
     const seen = watch(page);
     await entrance.open(page, url(alpha));
     await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
@@ -93,7 +93,7 @@ test.describe('M1: one project, named in the address', () => {
     await other.close();
   });
 
-  test('M1: an address without a project, or with one that is not a project, is an error and asks for no data', async ({ page }) => {
+  test('an address without a project, or with one that is not a project, is an error and asks for no data', async ({ page }) => {
     const seen = watch(page);
     for (const query of ['', '?project=', '?project=all', `?project=${alpha.toUpperCase()}`, `?project=${alpha}0`, `?project=${alpha}&project=${beta}`, `?other=${alpha}`]) {
       await page.goto(`${entrance.phoneOrigin}/monitor/${query}`);
@@ -107,7 +107,7 @@ test.describe('M1: one project, named in the address', () => {
     expect(seen).toEqual([]);
   });
 
-  test('M1: a project that does not exist, or was deleted, is an error and shows no other project', async ({ page }) => {
+  test('a project that does not exist, or was deleted, is an error and shows no other project', async ({ page }) => {
     const gone = monitorProjectId(home, 'DeleteMe');
     const seen = watch(page);
     await entrance.open(page, url('f'.repeat(32)));
@@ -128,7 +128,7 @@ test.describe('M1: one project, named in the address', () => {
     await live.close();
   });
 
-  test('M1: asks for no project data before the passcode, and keeps the project through the passcode and a new one', async ({ page }) => {
+  test('asks for no project data before the passcode, and keeps the project through the passcode and a new one', async ({ page }) => {
     const seen = watch(page);
     await page.goto(url(alpha));
     await expect(page.getByRole('heading', { name: 'Enter the passcode' })).toBeVisible();
@@ -153,8 +153,8 @@ test.describe('M1: one project, named in the address', () => {
   });
 });
 
-test.describe('M2: a Detail is read when it is opened, once', () => {
-  test('M2: reads no Detail until a card is opened, then each section once, and not again for a tab already seen', async ({ page }) => {
+test.describe('a Detail is read when it is opened, once', () => {
+  test('reads no Detail until a card is opened, then each section once, and not again for a tab already seen', async ({ page }) => {
     const seen = watch(page);
     await entrance.open(page, url(alpha));
     await expect(page.getByRole('article', { name: /Alpha running two/ })).toBeVisible();
@@ -199,7 +199,7 @@ test.describe('M2: a Detail is read when it is opened, once', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
-  test('M2: a lane change reads the list again but not the body; the history change shows when opened', async ({ page }) => {
+  test('a lane change reads the list again but not the body; the history change shows when opened', async ({ page }) => {
     const seen = watch(page);
     await entrance.open(page, url(alpha));
     await page.getByRole('button', { name: 'Alpha running one' }).click();
@@ -228,7 +228,7 @@ test.describe('M2: a Detail is read when it is opened, once', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('M2: holds automatic updates while the drawer is open and for three seconds after, but not a manual refresh', async ({ page }) => {
+  test('holds automatic updates while the drawer is open and for three seconds after, but not a manual refresh', async ({ page }) => {
     const seen = watch(page);
     await entrance.open(page, url(alpha));
     await page.getByRole('button', { name: 'Alpha ordinary todo' }).click();

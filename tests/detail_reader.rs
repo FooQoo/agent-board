@@ -1,4 +1,4 @@
-//! The Detail reader: the events built from one project snapshot (U4). The snapshot is read with
+//! The Detail reader: the events built from one project snapshot. The snapshot is read with
 //! `FileStore::snapshot`; the shared folder is a temporary one.
 
 use std::io::Cursor;
