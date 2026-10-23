@@ -7,6 +7,7 @@ import { ResizeHandle } from '@/shared/ui/resize-handle/ResizeHandle';
 import { DocsFileTree, type DocsTreeNode } from './DocsFileTree';
 import { DocsPlaceholder } from './DocsPlaceholder';
 import './docs-shell.css';
+import '@/shared/i18n/docs-strings';
 
 /** The width of the file list in pixels: where it starts, and the least and most it may take. */
 export const DOCS_LIST_WIDTH = { default: 280, min: 200, max: 480 } as const;

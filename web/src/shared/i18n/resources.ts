@@ -4,8 +4,7 @@ import { dataLayerDetailEn } from './locales/en/data-layer-detail';
 import { dataLayerMonitorEn } from './locales/en/data-layer-monitor';
 import { dataLayerPcEn } from './locales/en/data-layer-pc';
 import { detailEn } from './locales/en/detail';
-import { docsEn } from './locales/en/docs';
-import { docsDocumentEn } from './locales/en/docsDocument';
+import { docsEntryEn } from './locales/en/docs-entry';
 import { editEn } from './locales/en/edit';
 import { monitorEn } from './locales/en/monitor';
 import { commonJa } from './locales/ja/common';
@@ -14,19 +13,17 @@ import { dataLayerDetailJa } from './locales/ja/data-layer-detail';
 import { dataLayerMonitorJa } from './locales/ja/data-layer-monitor';
 import { dataLayerPcJa } from './locales/ja/data-layer-pc';
 import { detailJa } from './locales/ja/detail';
-import { docsJa } from './locales/ja/docs';
-import { docsDocumentJa } from './locales/ja/docsDocument';
+import { docsEntryJa } from './locales/ja/docs-entry';
 import { editJa } from './locales/ja/edit';
 import { monitorJa } from './locales/ja/monitor';
 
-// One namespace (`translation`), assembled from one file per area: shared, card details, docs, editing, and monitor.
+// One namespace (`translation`), assembled from one file per area: shared, card details, editing, and monitor. The Docs dialog's text is registered by its own code (see docs-strings.ts).
 export const resources = {
   en: {
     translation: {
       ...commonEn,
       ...detailEn,
-      ...docsEn,
-      ...docsDocumentEn,
+      ...docsEntryEn,
       ...editEn,
       ...monitorEn,
       ...dataLayerConnectionEn,
@@ -40,8 +37,7 @@ export const resources = {
     translation: {
       ...commonJa,
       ...detailJa,
-      ...docsJa,
-      ...docsDocumentJa,
+      ...docsEntryJa,
       ...editJa,
       ...monitorJa,
       ...dataLayerConnectionJa,

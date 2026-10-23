@@ -2,6 +2,7 @@ import { ChevronDownIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './document.css';
+import '@/shared/i18n/docs-strings';
 
 export interface FrontmatterBlockProps {
   /** The front matter exactly as the file holds it, with its `---` lines. */

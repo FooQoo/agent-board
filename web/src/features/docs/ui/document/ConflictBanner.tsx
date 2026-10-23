@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button';
 import { ConfirmPanel } from '@/shared/ui/confirm-panel';
 import { DialogActions } from '@/shared/ui/dialog-actions';
 import './document.css';
+import '@/shared/i18n/docs-strings';
 
 export interface ConflictBannerProps {
   /** Loads the latest file. Asked to confirm first: it throws the edit away. */

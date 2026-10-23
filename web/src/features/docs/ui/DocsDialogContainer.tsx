@@ -12,6 +12,7 @@ import { useDocument } from '../model/useDocument';
 import { useDocumentEditor } from '../model/useDocumentEditor';
 import { DocumentPane } from './document/DocumentPane';
 import { DOCS_LIST_WIDTH, DocsDialogView } from './shell/DocsDialogView';
+import '@/shared/i18n/docs-strings';
 
 /** Stands in for the file while none is loaded, so the editor's hook always has one. */
 const NO_FILE: DocsFile = { path: '', content: '', revision: '', readOnly: true };

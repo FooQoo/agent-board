@@ -8,6 +8,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './docs-shell.css';
+import '@/shared/i18n/docs-strings';
 
 /** One entry of the tree the docs API returns: a folder with its entries, or a Markdown file. */
 export interface DocsTreeNode {

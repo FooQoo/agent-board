@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button';
 import { ConflictBanner } from './ConflictBanner';
 import { FrontmatterBlock } from './FrontmatterBlock';
 import './document.css';
+import '@/shared/i18n/docs-strings';
 
 export interface DocumentPaneProps {
   /** `loading` and `error` replace the body; `ready` shows the editor passed as `children`. */

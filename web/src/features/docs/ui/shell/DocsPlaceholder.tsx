@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import './docs-shell.css';
+import '@/shared/i18n/docs-strings';
 
 export interface DocsPlaceholderProps {
   kind: 'noFile' | 'noDocs';
