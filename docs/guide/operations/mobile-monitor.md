@@ -10,9 +10,9 @@ The mobile monitor is a phone-sized view of the board. Use it to check progress 
 
 The monitor shows one project at a time, the one named in its address. The monitor groups tasks into Todo, Doing, and Done. AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an answer form on the task. Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question and change the language and color theme. It cannot change tasks, projects, or connection settings.
 
-![Mobile monitor with a task drawer open on the Body tab, showing the four tabs](../../images/mobile.png){.screenshot--narrow}
+![Mobile monitor with a task drawer open on the Conditions tab, showing the four tabs](../../images/mobile.png){.screenshot--narrow}
 
-Horizontal swipes move the tab content and underline together. Gestures inside the tab content stay within that area; drag the handle or header to dismiss the drawer. Each tab reads its text when you open it, so the Epic tab loads the epic's details the first time you reach it. If a read fails, use the retry button in that tab.
+Horizontal swipes move the tab content and underline together. Gestures inside the tab content stay within that area; drag the handle or header to dismiss the drawer. Opening a task reads its text, conditions, history, and epic once, so switching tabs does not wait for a read. If a read fails, use the retry button in that tab.
 
 The monitor updates itself when the PC saves a change. To read the latest data at once, choose the **Refresh** button in the header. The page keeps the last data it has while it reads again.
 
