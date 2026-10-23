@@ -2,8 +2,8 @@
 //! handlers live in the submodules, grouped as the routes are.
 
 mod archive;
-mod docs;
 mod detail;
+mod docs;
 mod epic_attachments;
 mod epics;
 mod monitor_connections;
@@ -39,8 +39,8 @@ use crate::domain::Changed;
 use crate::error::AgboardError;
 use crate::file_store::model::TaskView;
 use archive::*;
-use docs::*;
 use detail::{epic_detail, task_detail};
+use docs::*;
 use epic_attachments::*;
 use epics::*;
 use monitor_connections::*;
