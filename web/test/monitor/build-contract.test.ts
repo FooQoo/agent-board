@@ -175,7 +175,8 @@ const bytes = (folder: string, names: string[]) =>
 // Budgets for the scripts a page needs before its first screen, a little above their size today.
 // Raise one only with a reason: the first load is what a phone waits for on every new build.
 // The monitor's budget is 520 KB: the header logo (about 14 KB in base64) is inlined so it loads with the page.
-const FIRST_LOAD_BUDGET = { board: 700_000, monitor: 520_000 };
+// The board's budget is 701 KB: the Docs entry (its header button and the dialog's preload hooks) takes about 1.3 KB over the 700 KB it had before the Docs.
+const FIRST_LOAD_BUDGET = { board: 701_000, monitor: 520_000 };
 const LAZY_ONLY_ABOVE = 500_000;
 // The virtual list chunk (the list and @tanstack/react-virtual) loads for a large document only.
 const VIRTUAL_CHUNK_BUDGET = 40_000;
