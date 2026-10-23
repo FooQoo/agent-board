@@ -2,6 +2,7 @@ import { CircleAlertIcon, FileIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './document.css';
+import '@/shared/i18n/docs-strings';
 
 export interface FileViewerProps {
   /** `image` shows the picture at `src`; `other` says the file cannot be shown. */

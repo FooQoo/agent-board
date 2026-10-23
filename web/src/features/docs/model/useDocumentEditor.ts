@@ -10,6 +10,7 @@ import {
   saveErrorMessage,
   type DocsFile,
 } from '../api/docsApi';
+import '@/shared/i18n/docs-strings';
 
 export interface UseDocumentEditorOptions {
   projectId: ProjectId;
