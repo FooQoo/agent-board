@@ -61,9 +61,11 @@ export function importsOf(source, text, files) {
   const found = [];
   for (const [, , spec] of stripComments(text).matchAll(SPECIFIER)) {
     if (!spec.startsWith('.') && !spec.startsWith('@/')) continue;
-    const base = spec.startsWith('@/')
-      ? `src/${spec.slice(2)}`
-      : posix.normalize(posix.join(posix.dirname(source), spec));
+    // A Vite query (`?inline`, `?raw`, `?url`) names how the file is loaded, not another file.
+    const path = spec.replace(/\?[a-z]+$/, '');
+    const base = path.startsWith('@/')
+      ? `src/${path.slice(2)}`
+      : posix.normalize(posix.join(posix.dirname(source), path));
     const target = EXTENSIONS.map((ext) => base + ext).find((path) => files.has(path));
     if (target) found.push(target);
     else found.push(`${base} (missing)`);

@@ -18,6 +18,19 @@ export default defineConfig({
       formats: ['iife'],
       name: 'AgboardDocsSandbox',
     },
-    rollupOptions: { output: { entryFileNames: 'sandbox-[hash].js' } },
+    rollupOptions: {
+      output: { entryFileNames: 'sandbox-[hash].js' },
+      // The MDX compiler's modules end in a bare '' statement, which the bundler reads as a
+      // directive it may drop. It is no directive, so that one warning is left out for them.
+      onwarn(warning, warn) {
+        const where = warning.id ?? warning.loc?.file ?? '';
+        if (
+          warning.code === 'MODULE_LEVEL_DIRECTIVE' &&
+          /node_modules\/(@mdx-js\/mdx|hast-util-to-estree)\//.test(where)
+        )
+          return;
+        warn(warning);
+      },
+    },
   },
 });

@@ -90,6 +90,8 @@ fn build_script_passes_and_watches_the_dist_directory_when_built() {
         "assets/app-A.js.gz",
         "monitor/monitor-M.js",
         "monitor/monitor-M.js.gz",
+        "sandbox/sandbox-S.js",
+        "sandbox/sandbox-S.js.gz",
     ]);
     let dist = dir.path().join("web/dist");
     std::fs::write(

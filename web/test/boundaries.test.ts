@@ -64,6 +64,23 @@ describe('import scan', () => {
     }
   });
 
+  it('follows an import with a Vite query to the file it names', () => {
+    expect(
+      analyze({
+        'src/shared/docs-sandbox/main.tsx':
+          "import css from '@/shared/markdown/markdown.css?inline';",
+        'src/shared/markdown/markdown.css': '.md {}',
+      }),
+    ).toEqual([]);
+    expect(
+      analyze(
+        files({
+          'src/features/tasks/card/TaskCard.tsx': "import css from '../missing.css?inline';",
+        }),
+      ),
+    ).toHaveLength(1);
+  });
+
   it('ignores a path in a comment', () => {
     const problems = analyze(
       files({
