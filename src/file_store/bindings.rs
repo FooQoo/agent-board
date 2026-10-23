@@ -31,6 +31,13 @@ pub struct Binding {
     pub folder: PathBuf,
 }
 
+/// The project a folder resolves to and the bound folder that decided it.
+#[derive(Debug, Clone)]
+pub struct ResolvedBinding {
+    pub project: ProjectMeta,
+    pub bound_root: PathBuf,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BindingsFile {
@@ -175,24 +182,51 @@ impl FileStore {
         })
     }
 
+    /// The nearest binding whose folder contains `start`, which must already be
+    /// canonical. The project is not looked up here.
+    fn nearest_binding(&self, start: &Path) -> Result<Option<Binding>, AgboardError> {
+        Ok(self
+            .bindings()?
+            .into_iter()
+            .filter(|b| start.starts_with(&b.folder))
+            .max_by_key(|b| b.folder.components().count()))
+    }
+
+    /// The binding that governs `start`: the nearest bound folder that contains
+    /// it, with that folder's project. `None` means no bound folder contains
+    /// `start`. The nearest binding is final: when its project no longer
+    /// exists the result is `BoundProjectMissing`, and a binding of a parent
+    /// folder is never used instead. A `start` that cannot be resolved is
+    /// `FolderUnbound`. Only a match reads the project registry.
+    pub fn resolve_binding(&self, start: &Path) -> Result<Option<ResolvedBinding>, AgboardError> {
+        let shown = start.display().to_string();
+        let Ok(canonical) = fs::canonicalize(start) else {
+            return Err(AgboardError::FolderUnbound { folder: shown });
+        };
+        let Some(nearest) = self.nearest_binding(&canonical)? else {
+            return Ok(None);
+        };
+        reader::list_projects(self.shared_dir())?
+            .into_iter()
+            .find(|project| project.id == nearest.project_id)
+            .map(|project| {
+                Some(ResolvedBinding {
+                    project,
+                    bound_root: nearest.folder,
+                })
+            })
+            .ok_or(AgboardError::BoundProjectMissing { folder: shown })
+    }
+
     /// The project a folder works on: the binding of the nearest bound folder
     /// that contains `start`. Nothing is guessed. No binding, an unreadable
     /// folder, or a bound project that no longer exists is an error.
     pub fn project_for_folder(&self, start: &Path) -> Result<ProjectMeta, AgboardError> {
-        let shown = start.display().to_string();
-        let unbound = || AgboardError::FolderUnbound {
-            folder: shown.clone(),
-        };
-        let start = fs::canonicalize(start).map_err(|_| unbound())?;
-        let nearest = self
-            .bindings()?
-            .into_iter()
-            .filter(|b| start.starts_with(&b.folder))
-            .max_by_key(|b| b.folder.components().count())
-            .ok_or_else(unbound)?;
-        reader::list_projects(self.shared_dir())?
-            .into_iter()
-            .find(|project| project.id == nearest.project_id)
-            .ok_or(AgboardError::BoundProjectMissing { folder: shown })
+        match self.resolve_binding(start)? {
+            Some(resolved) => Ok(resolved.project),
+            None => Err(AgboardError::FolderUnbound {
+                folder: start.display().to_string(),
+            }),
+        }
     }
 }

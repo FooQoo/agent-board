@@ -360,3 +360,78 @@ fn a_project_whose_binding_fails_after_creation_is_removed_again() {
     assert_eq!(code, "file_error");
     assert!(project_names(home.path(), &cwd).is_empty());
 }
+
+#[test]
+fn resolve_binding_returns_the_nearest_project_and_the_folder_that_decided_it() {
+    let (_root, store, work) = fixture();
+    let outer = store.create_project("Outer", now()).unwrap();
+    let inner = store.create_project("Inner", now()).unwrap();
+    store.bind_folder(&outer.id, &work.join("x")).unwrap();
+    store.bind_folder(&inner.id, &work.join("x/y")).unwrap();
+
+    let root = store.resolve_binding(&work.join("x")).unwrap().unwrap();
+    assert_eq!(root.project.id, outer.id);
+    assert_eq!(root.bound_root, work.join("x"));
+    let child = store.resolve_binding(&work.join("x/q")).unwrap().unwrap();
+    assert_eq!(child.project.id, outer.id);
+    assert_eq!(child.bound_root, work.join("x"));
+    let nested = store.resolve_binding(&work.join("x/y/z")).unwrap().unwrap();
+    assert_eq!(nested.project.id, inner.id);
+    assert_eq!(nested.bound_root, work.join("x/y"));
+    // project_for_folder delegates and agrees.
+    assert_eq!(
+        store.project_for_folder(&work.join("x/y/z")).unwrap().id,
+        nested.project.id
+    );
+}
+
+#[test]
+fn resolve_binding_has_no_match_for_an_unbound_folder_and_an_unresolvable_start_is_an_error() {
+    let (_root, store, work) = fixture();
+    let alpha = store.create_project("Alpha", now()).unwrap();
+    store.bind_folder(&alpha.id, &work.join("x")).unwrap();
+
+    assert!(
+        store
+            .resolve_binding(&work.join("other"))
+            .unwrap()
+            .is_none()
+    );
+    let unbound = store.project_for_folder(&work.join("other")).unwrap_err();
+    assert_eq!(unbound.code(), "folder_unbound");
+    let gone = store.resolve_binding(&work.join("nope")).unwrap_err();
+    assert_eq!(gone.code(), "folder_unbound");
+}
+
+#[test]
+fn resolve_binding_never_falls_back_to_a_parent_when_the_nearest_project_is_missing() {
+    let (_root, store, work) = fixture();
+    let outer = store.create_project("Outer", now()).unwrap();
+    let inner = store.create_project("Inner", now()).unwrap();
+    store.bind_folder(&outer.id, &work.join("x")).unwrap();
+    store.bind_folder(&inner.id, &work.join("x/y")).unwrap();
+    store.delete_project(&inner.id).unwrap();
+
+    let err = store.resolve_binding(&work.join("x/y/z")).unwrap_err();
+    assert_eq!(err.code(), "bound_project_missing");
+    let err = store.project_for_folder(&work.join("x/y/z")).unwrap_err();
+    assert_eq!(err.code(), "bound_project_missing");
+    // The parent folder itself still resolves.
+    assert_eq!(
+        store
+            .resolve_binding(&work.join("x/q"))
+            .unwrap()
+            .unwrap()
+            .project
+            .id,
+        outer.id
+    );
+}
+
+#[test]
+fn resolve_binding_reports_a_broken_bindings_file_instead_of_no_match() {
+    let (root, store, work) = fixture();
+    fs::write(root.path().join("bindings.json"), "{ not json").unwrap();
+    let err = store.resolve_binding(&work.join("x")).unwrap_err();
+    assert_eq!(err.code(), "file_invalid");
+}
