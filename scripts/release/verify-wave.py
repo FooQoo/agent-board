@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Integration checks for a set of merged units. Run by hand, not by CI.
+
+Usage: verify-wave.py --repo <worktree> --wave <N>
+
+Each wave runs the commands below from the repository root with TZ=UTC and a
+fresh temporary AGBOARD_HOME. Any failing command stops the run with a
+non-zero exit code.
+"""
+
+import argparse
+import os
+import subprocess
+import sys
+import tempfile
+
+FOCUSED_TESTS = [
+    "--test", "integration_assets",
+    "--test", "integration_paths",
+    "--test", "agent_hook",
+    "--test", "project_bindings",
+    "--test", "agent_projects",
+    "--test", "cli_projects",
+]
+
+WAVES = {
+    1: [
+        ["pnpm", "--dir", "web", "build"],
+        ["cargo", "build"],
+        ["cargo", "test", *FOCUSED_TESTS],
+        ["cargo", "test"],
+    ],
+}
+
+
+def run(repo, env, command):
+    print(f"$ {' '.join(command)}", flush=True)
+    result = subprocess.run(command, cwd=repo, env=env)
+    if result.returncode != 0:
+        print(f"FAILED ({result.returncode}): {' '.join(command)}", file=sys.stderr)
+        sys.exit(result.returncode or 1)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--repo", required=True, help="worktree to verify")
+    parser.add_argument("--wave", required=True, type=int)
+    args = parser.parse_args()
+
+    if args.wave not in WAVES:
+        sys.exit(f"no checks are defined for wave {args.wave} yet")
+
+    repo = os.path.abspath(args.repo)
+    with tempfile.TemporaryDirectory(prefix="agboard-wave-") as home:
+        env = dict(os.environ, TZ="UTC", AGBOARD_HOME=home)
+        for command in WAVES[args.wave]:
+            run(repo, env, command)
+    print(f"wave {args.wave}: all checks passed")
+
+
+if __name__ == "__main__":
+    main()
