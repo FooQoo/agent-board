@@ -67,6 +67,18 @@ fn names(dir: &Path) -> Vec<String> {
 }
 
 #[test]
+fn an_mdx_file_is_saved_like_markdown() {
+    let s = Setup::new();
+    let old = "import A from './a.js'\n\n<A />\n";
+    let path = s.file("a.mdx", old.as_bytes());
+    let new = "import A from './a.js'\n\n<A b={1} />\n";
+    let reply = s.save("a.mdx", new, &revision_of(old.as_bytes()));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(fs::read(&path).unwrap(), new.as_bytes());
+    s.server.stop();
+}
+
+#[test]
 fn a_save_at_the_current_revision_writes_and_returns_the_new_revision() {
     let s = Setup::new();
     let path = s.file("a.md", b"old\n");

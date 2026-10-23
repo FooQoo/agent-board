@@ -96,8 +96,8 @@
   flex-direction: column;
   gap: 12px;
   min-height: 0;
-  padding: 24px 12px;
-  overflow-y: auto;
+  padding: 12px 12px 24px;
+  overflow: auto;
 }
 
 /*
@@ -131,10 +131,19 @@
   background: linear-gradient(var(--r-accent), var(--r-accent)) center / 1px 100% no-repeat;
 }
 
-.docs-dialog__list-heading {
+/* The heading row: the title at the left, the open-folder button at the right. */
+.docs-dialog__list-head {
   position: relative;
-  margin: 0;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24px 12px 0;
   padding-bottom: 12px;
+}
+
+.docs-dialog__list-heading {
+  margin: 0;
   color: var(--r-muted);
   font-size: 11px;
   font-weight: 600;
@@ -142,7 +151,7 @@
 }
 
 /* The thin accent rule under the heading, ending in a small square. */
-.docs-dialog__list-heading::after {
+.docs-dialog__list-head::after {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -152,6 +161,46 @@
     linear-gradient(var(--r-accent), var(--r-accent)) left 4px / calc(100% - 8px) 1px no-repeat,
     linear-gradient(var(--r-accent), var(--r-accent)) right 0 / 8px 8px no-repeat;
   content: "";
+}
+
+.docs-dialog__open-folder {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  /* biome-ignore lint/plugin: an icon button in the list heading, not a button size */
+  height: 24px;
+  margin-top: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.docs-dialog__open-folder:hover {
+  background: var(--r-lane);
+  color: var(--r-text);
+}
+
+.docs-dialog__open-folder:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -2px;
+}
+
+.docs-dialog__open-folder svg {
+  width: 16px;
+  height: 16px;
+}
+
+.docs-dialog__open-error {
+  flex: none;
+  margin: 8px 12px 0;
+  color: var(--r-pend-tx);
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .docs-dialog__center {
@@ -178,12 +227,15 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* A long name widens the rows, and the list scrolls sideways. */
+  min-width: max-content;
 }
 
 .docs-tree [role="none"] {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: max-content;
 }
 
 .docs-tree__row {
@@ -191,7 +243,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-width: 0;
+  min-width: max-content;
   /* biome-ignore lint/plugin: a tree row, not a button size; the mock fixes it at 32px */
   height: 32px;
   padding-right: 8px;
@@ -249,9 +301,6 @@
 }
 
 .docs-tree__name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

@@ -1,11 +1,12 @@
-//! The board router: its routes, the Host guard and the write guard. The
-//! handlers live in the submodules, grouped as the routes are.
+//! The board router and its routes. The Host guard and the write guard are in
+//! `guards`; the handlers live in the submodules, grouped as the routes are.
 
 mod archive;
 mod detail;
 mod docs;
 mod epic_attachments;
 mod epics;
+mod guards;
 mod monitor_connections;
 mod multipart;
 mod onboarding;
@@ -21,18 +22,15 @@ mod tasks;
 use std::sync::Arc;
 
 use axum::Router;
-use axum::extract::{DefaultBodyLimit, Request, State};
-use axum::http::{Method, StatusCode, header};
-use axum::middleware::{self, Next};
+use axum::extract::DefaultBodyLimit;
+use axum::http::StatusCode;
+use axum::middleware;
 use axum::response::Response;
 use axum::routing::{delete, get, patch, post, put};
 
 pub(crate) use detail::{Target, detail_response};
 
-use super::guard::{self, header_text};
-use super::response::{
-    agboard_error_response, error_response, forbidden, json_response, page_out_of_date,
-};
+use super::response::{agboard_error_response, error_response, json_response};
 use super::store::refresh_index;
 use super::{AppState, events};
 use crate::domain::Changed;
@@ -43,6 +41,7 @@ use detail::{epic_detail, task_detail};
 use docs::*;
 use epic_attachments::*;
 use epics::*;
+use guards::{host_guard, no_referrer, write_guard};
 use monitor_connections::*;
 use onboarding::*;
 use pages::*;
@@ -205,6 +204,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
             "/api/projects/{project_id}/docs/assets",
             get(get_docs_asset),
         )
+        .route(
+            "/api/projects/{project_id}/docs/open",
+            post(open_docs_folder),
+        )
         .route("/api/health", get(health))
         .route(
             "/api/preferences",
@@ -218,61 +221,6 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .layer(middleware::from_fn_with_state(guard_context, host_guard))
         .layer(middleware::from_fn(no_referrer))
         .with_state(state)
-}
-
-/// Every response tells the browser not to send a `Referer`.
-async fn no_referrer(request: Request, next: Next) -> Response {
-    let private_api = request.uri().path().starts_with("/api/");
-    let mut response = next.run(request).await;
-    response.headers_mut().insert(
-        header::REFERRER_POLICY,
-        header::HeaderValue::from_static("no-referrer"),
-    );
-    if private_api {
-        response.headers_mut().insert(
-            header::CACHE_CONTROL,
-            header::HeaderValue::from_static("no-store"),
-        );
-    }
-    response
-}
-
-/// Every request, whatever the path, needs an accepted `Host`.
-async fn host_guard(State(context): State<GuardContext>, request: Request, next: Next) -> Response {
-    let host = header_text(request.headers(), "host");
-    if guard::host_allowed(host, context.port) {
-        next.run(request).await
-    } else {
-        forbidden("Open the board at http://127.0.0.1:<port>/ as printed by agboard serve.")
-    }
-}
-
-/// Every request that changes data needs the page's Origin, Sec-Fetch-Site and
-/// token. This runs before the path, the body or the shared files are looked at, so
-/// a refusal never tells whether a project or task exists. `POST /api/notify`
-/// changes nothing and is open.
-async fn write_guard(
-    State(context): State<GuardContext>,
-    request: Request,
-    next: Next,
-) -> Response {
-    let reads = matches!(
-        *request.method(),
-        Method::GET | Method::HEAD | Method::OPTIONS
-    );
-    let allowed = guard::write_allowed(request.headers(), context.port, &context.token);
-    if reads || request.uri().path() == "/api/notify" || allowed {
-        next.run(request).await
-    } else if request.headers().contains_key("x-agboard-token")
-        && matches!(
-            guard::write_refusal(request.headers(), context.port, &context.token),
-            Some(guard::Denial::Token)
-        )
-    {
-        page_out_of_date()
-    } else {
-        forbidden("Changes can only be made from the board page.")
-    }
 }
 
 /// A task ID from the URL; one that cannot be a task is `task_not_found`.

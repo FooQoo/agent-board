@@ -1,4 +1,4 @@
-import { FolderTreeIcon } from 'lucide-react';
+import { FolderOpenIcon, FolderTreeIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
@@ -35,6 +35,10 @@ export interface DocsDialogViewProps {
   onSelectFile: (path: string) => void;
   /** The folder the docs live in, shown when the project has none. */
   rootPath?: string;
+  /** Opens the docs folder in the computer's file manager; the button shows only with it, and not on the phone. */
+  onOpenFolder?: () => void;
+  /** The folder could not be opened. */
+  openFolderFailed?: boolean;
   /** Retry of a failed file list. */
   onRetry?: () => void;
   /** The width of the file list in pixels; the view keeps a drag within DOCS_LIST_WIDTH. */
@@ -95,6 +99,8 @@ export function DocsDialogView({
   selectedPath,
   onSelectFile,
   rootPath = '',
+  onOpenFolder,
+  openFolderFailed = false,
   onRetry,
   listWidth,
   onResize,
@@ -210,10 +216,28 @@ export function DocsDialogView({
               <div className="docs-dialog__rule" aria-hidden="true" />
             </>
           )}
-          <div className="docs-dialog__list-scroll">
-            {!phone && <h3 className="docs-dialog__list-heading">{t('docs.files')}</h3>}
-            {list}
-          </div>
+          {!phone && (
+            <div className="docs-dialog__list-head">
+              <h3 className="docs-dialog__list-heading">{t('docs.files')}</h3>
+              {onOpenFolder && (
+                <button
+                  type="button"
+                  className="docs-dialog__open-folder"
+                  aria-label={t('docs.openFolder')}
+                  title={t('docs.openFolder')}
+                  onClick={onOpenFolder}
+                >
+                  <FolderOpenIcon aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
+          {!phone && openFolderFailed && (
+            <p className="docs-dialog__open-error" role="alert">
+              {t('docs.openFolderFailed')}
+            </p>
+          )}
+          <div className="docs-dialog__list-scroll">{list}</div>
           {!phone && (
             <div className="docs-dialog__resize">
               <ResizeHandle

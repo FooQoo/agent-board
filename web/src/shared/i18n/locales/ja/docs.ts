@@ -3,6 +3,8 @@ export const docsJa = {
     title: 'ドキュメント',
     notSaved: '保存されていません',
     files: 'ファイル',
+    openFolder: 'フォルダを開く',
+    openFolderFailed: 'フォルダを開けませんでした。',
     fileTree: 'ドキュメントのファイル',
     resize: 'ファイル一覧の幅を変える',
     noFiles: 'ファイルがありません',

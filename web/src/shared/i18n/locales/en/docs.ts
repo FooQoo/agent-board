@@ -3,6 +3,8 @@ export const docsEn = {
     title: 'Docs',
     notSaved: 'Not saved',
     files: 'Files',
+    openFolder: 'Open folder',
+    openFolderFailed: 'Could not open the folder.',
     fileTree: 'Document files',
     resize: 'Resize the file list',
     noFiles: 'No files',

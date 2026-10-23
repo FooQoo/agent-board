@@ -207,15 +207,64 @@ export const ChooseFile: Story = {
   },
 };
 
+const LONG_NAME = 'A very long design memo about how the Docs list shows names that do not fit.md';
+
+/** The heading row ends in the open-folder button; pressing it asks to open the folder. */
+export const OpenFolder: Story = {
+  args: { onOpenFolder: fn() },
+  play: async ({ args }) => {
+    const view = await opened();
+    const button = view.getByRole('button', { name: 'Open folder' });
+    await expect(button).toHaveAttribute('title', 'Open folder');
+    await userEvent.click(button);
+    await expect(args.onOpenFolder).toHaveBeenCalledTimes(1);
+    await expect(view.queryByRole('alert')).toBeNull();
+  },
+};
+
+/** The folder could not be opened: a short message stays beside the button. */
+export const OpenFolderFailed: Story = {
+  args: { onOpenFolder: fn(), openFolderFailed: true },
+  globals: { locale: 'ja' },
+  play: async () => {
+    const view = await opened();
+    await expect(view.getByRole('button', { name: 'フォルダを開く' })).toBeVisible();
+    await expect(view.getByRole('alert')).toHaveTextContent('フォルダを開けませんでした。');
+  },
+};
+
+/** A long name is not cut short: the row grows and the list scrolls sideways at the same width. */
+export const LongFileName: Story = {
+  args: {
+    onOpenFolder: fn(),
+    tree: [{ name: LONG_NAME, path: LONG_NAME, kind: 'file', viewer: 'markdown' }, ...docsTree],
+  },
+  play: async () => {
+    const view = await opened();
+    const row = await view.findByRole('treeitem', { name: LONG_NAME });
+    const name = row.querySelector<HTMLElement>('.docs-tree__name') as HTMLElement;
+    await expect(getComputedStyle(name).textOverflow).not.toBe('ellipsis');
+    await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
+    const scroller = row.closest<HTMLElement>('.docs-dialog__list-scroll') as HTMLElement;
+    await expect(getComputedStyle(scroller).overflowX).toBe('auto');
+    await expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth);
+    // The pane keeps its width, and the button stays in view at the right of the heading.
+    const list = scroller.closest<HTMLElement>('.docs-dialog__list') as HTMLElement;
+    await expect(list.offsetWidth).toBe(DOCS_LIST_WIDTH.default);
+    await expect(view.getByRole('button', { name: 'Open folder' })).toBeVisible();
+  },
+};
+
 /** Phone width, no file: the list fills the screen under the guidance and there is no resize handle. */
 export const PhoneFileList: Story = {
-  args: { compact: true },
+  args: { compact: true, onOpenFolder: fn() },
   globals: { width: 'phone-390' },
   play: async () => {
     const view = await opened();
     await expect(view.getByText('Choose a Markdown file to show it.')).toBeVisible();
     await expect(view.getAllByRole('treeitem').length).toBeGreaterThan(0);
     await expect(view.queryByRole('separator')).toBeNull();
+    await expect(view.queryByRole('button', { name: 'Open folder' })).toBeNull();
   },
 };
 

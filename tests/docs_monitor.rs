@@ -15,6 +15,7 @@ fn the_monitor_router_has_no_docs_routes() {
         format!("/monitor/api/projects/{project}/docs/tree"),
         format!("/monitor/api/projects/{project}/docs/file?path=a.md"),
         format!("/monitor/api/projects/{project}/docs/assets?path=a.png"),
+        format!("/monitor/api/projects/{project}/docs/open"),
         format!("/api/projects/{project}/docs/tree"),
     ] {
         assert_eq!(server.get(&session, &path).status, 404, "{path}");

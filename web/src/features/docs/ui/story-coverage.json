@@ -12,6 +12,16 @@
           "interaction": true
         },
         {
+          "id": "docs-docsdialogcontainer--open-folder",
+          "states": ["open folder", "post request"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--open-folder-failed",
+          "states": ["open folder failed", "error message"],
+          "interaction": true
+        },
+        {
           "id": "docs-docsdialogcontainer--tree-loading",
           "states": ["file list loading"],
           "interaction": false

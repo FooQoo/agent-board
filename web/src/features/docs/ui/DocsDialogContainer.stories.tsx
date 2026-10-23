@@ -36,8 +36,10 @@ function MockApi({ handler, children }: { handler: Handler; children: ReactNode 
 }
 
 const api =
-  (over: { tree?: Handler; file?: Handler; put?: Handler } = {}): Handler =>
+  (over: { tree?: Handler; file?: Handler; put?: Handler; open?: Handler } = {}): Handler =>
   (url, init) => {
+    if (init?.method === 'POST' && url.endsWith('/docs/open'))
+      return (over.open ?? (() => new Response(null, { status: 204 })))(url, init);
     if (init?.method === 'PUT')
       return (over.put ?? (() => json({ path: FILE.path, revision: 'sha256:2' })))(url, init);
     if (url.endsWith('/docs/tree'))
@@ -84,6 +86,41 @@ const editor = async () => {
     return element;
   });
   return found;
+};
+
+const opened = fn();
+
+/** Open folder asks the server to open the docs folder (POST docs/open); the answer 204 shows nothing. */
+export const OpenFolder: Story = {
+  parameters: {
+    handler: api({
+      open: (url, init) => {
+        opened(url, init?.method);
+        return new Response(null, { status: 204 });
+      },
+    }),
+  },
+  play: async () => {
+    opened.mockClear();
+    const view = await open();
+    await userEvent.click(await view.findByRole('button', { name: 'Open folder' }));
+    await waitFor(() =>
+      expect(opened).toHaveBeenCalledWith('/api/projects/p-alpha/docs/open', 'POST'),
+    );
+    await expect(view.queryByRole('alert')).toBeNull();
+  },
+};
+
+/** The server could not open the folder: the message appears beside the button. */
+export const OpenFolderFailed: Story = {
+  parameters: {
+    handler: api({ open: () => json({ error: { code: 'docs_open_failed' } }, 500) }),
+  },
+  play: async () => {
+    const view = await open();
+    await userEvent.click(await view.findByRole('button', { name: 'Open folder' }));
+    await expect(await view.findByText('Could not open the folder.')).toBeVisible();
+  },
 };
 
 /** The dialog opens with the file list and the guidance to choose a file. */

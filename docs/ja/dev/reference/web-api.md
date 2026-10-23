@@ -29,7 +29,7 @@
 | `GET /api/projects/{projectId}/summary` | ボードの一覧に使うデータ。プロジェクト、`version`、タスク、エピック、problemsを返し、本文は含めない。[SummaryとDetail](#summaryとdetail)を参照。 |
 | `GET /api/projects/{projectId}/tasks/{id}/detail` | 1件のタスクの本文・受入条件・履歴をNDJSONのストリームで返す。アーカイブ済みのタスクも同じ方法で読む。 |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | 1件のエピックのドキュメントをNDJSONのストリームで返す。 |
-| `GET /api/projects/{projectId}/docs/tree`<br>`GET`/`PUT /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets` | プロジェクトの`docs/`にあるMarkdown文書。フォルダのツリー、1つのファイル、保存、画像。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
+| `GET /api/projects/{projectId}/docs/tree`<br>`GET`/`PUT /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | プロジェクトの`docs/`にあるMarkdown文書。フォルダのツリー、1つのファイル、保存、画像、フォルダを開く操作。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
 | `GET /assets/{name}` | `build.rs`が生成した表にある、内容から名前を付けたスクリプトとスタイルシートだけ。ほかは404。immutableでキャッシュする。`Accept-Encoding`が許せばgzipで送り、`Vary: Accept-Encoding`を付ける。 |
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、変更されたリソースを運ぶ`changed`（[変更イベント](#変更イベント)を参照）、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
 | `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
@@ -141,14 +141,15 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 ### プロジェクトのドキュメント
 
-次の4つのルートは、プロジェクトの`docs/`（`shared/projects/<projectId>/docs/`）にあるファイルを読み書きします。ボードのルーターにだけあり、モニターの入口では提供しません。ボードは変わりません。保存しても、プロジェクトの`version`は変わらず、SSEの`changed`も送りません。パスは`docs/`からの相対パスで、区切りは`/`です。検証の内容は[セキュリティモデル](../concepts/security.md#プロジェクトのドキュメント)にあります。プロジェクトIDが32文字の小文字16進数でないときは422 `invalid_value`です。
+次のルートは、プロジェクトの`docs/`（`shared/projects/<projectId>/docs/`）にあるファイルを読み書きします。ボードのルーターにだけあり、モニターの入口では提供しません。ボードは変わりません。保存しても、プロジェクトの`version`は変わらず、SSEの`changed`も送りません。パスは`docs/`からの相対パスで、区切りは`/`です。検証の内容は[セキュリティモデル](../concepts/security.md#プロジェクトのドキュメント)にあります。プロジェクトIDが32文字の小文字16進数でないときは422 `invalid_value`です。
 
 | API | 契約 |
 | --- | --- |
-| `GET …/docs/tree` | `docs/`の下のフォルダとファイルの名前だけを、`{nodes, truncated}`で返す。ファイルには`viewer`があり、`.md`は`markdown`、PNG・JPEG・WebP・GIFは`image`、それ以外は`other`（一覧には出すが表示しない）。フォルダには`viewer`がない。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
-| `GET …/docs/file?path=` | `{path, content, revision, readOnly}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）。`readOnly`はファイルの読み取り専用の属性。対象は、`.md`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
+| `GET …/docs/tree` | `docs/`の下のフォルダとファイルの名前だけを、`{nodes, truncated}`で返す。ファイルには`viewer`があり、`.md`と`.mdx`は`markdown`、`.png`・`.jpg`・`.jpeg`・`.webp`・`.gif`・`.avif`・`.svg`は`image`、それ以外は`other`（一覧には出すが表示しない）。フォルダには`viewer`がない。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
+| `GET …/docs/file?path=` | `{path, content, revision, readOnly}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）。`readOnly`はファイルの読み取り専用の属性。対象は、`.md`と`.mdx`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
 | `PUT …/docs/file` | 本文は`{path, content, expectedRevision}`。知らない項目は400 `invalid_json`。ファイルがまだ`expectedRevision`のときだけ、`content`をそのままのバイト列で書き、新しい`revision`を含む`{path, revision}`を返す。ほかの書き込みと同じ書き込みのガードを通る。ファイルを新しく作ることはない。 |
-| `GET …/docs/assets?path=` | 10 MiB以下のPNG・JPEG・WebP・GIFの画像のバイト列。`Content-Type`は拡張子から決め（`image/png`・`image/jpeg`・`image/webp`・`image/gif`）、`X-Content-Type-Options: nosniff`を付ける。SVGなどほかの形式は415 `docs_asset_type`。 |
+| `GET …/docs/assets?path=` | 10 MiB以下のPNG・JPEG・WebP・GIF・AVIF・SVGの画像のバイト列。`Content-Type`は拡張子から決め（`image/png`・`image/jpeg`・`image/webp`・`image/gif`・`image/avif`・`image/svg+xml`）、`X-Content-Type-Options: nosniff`を付ける。SVGの応答には`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`も付けるので、URLを直接開いてもスクリプトは動かない。画面では`<img>`で表示するので、そこでもスクリプトは動かない。ほかの形式は415 `docs_asset_type`。 |
+| `POST …/docs/open` | 本文なし。サーバーを動かしているコンピュータのファイルマネージャで、プロジェクトの`docs/`を開く。macOSは`open`、Windowsは`explorer`、それ以外は`xdg-open`を使う。プログラムはシェルを通さず、フォルダだけを引数にして起動し、終了は待たない。成功すると204。プロジェクトがないときは404 `project_not_found`。`docs/`がない、またはプログラムを起動できない（たとえば`xdg-open`が入っていない）ときは500 `docs_open_failed`。ほかの書き込みと同じく書き込みガードを通る。 |
 
 ツリーの例:
 
