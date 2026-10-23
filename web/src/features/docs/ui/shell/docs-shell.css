@@ -7,12 +7,6 @@
   display: none;
 }
 
-/* The dialog keeps the mock's 1216 × 828 and sits in the middle with room around it. */
-.editor-dialog.docs-dialog {
-  height: min(828px, calc(100dvh - 112px));
-  max-height: calc(100dvh - 112px);
-}
-
 /* The title is a path: Docs / folders / file. */
 .docs-crumbs {
   display: flex;

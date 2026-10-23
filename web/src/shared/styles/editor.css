@@ -4,27 +4,15 @@
  * values, so this file is kept apart from app.css; the rules are unlayered on purpose, so they sit
  * above the Tailwind utilities of the shadcn/ui sources.
  */
-[data-slot="dialog-overlay"]:has(+ .editor-dialog--edit) {
-  background: rgb(15 23 42 / 55%);
-}
-
-[data-slot="dialog-overlay"]:has(+ .editor-dialog--create) {
-  background: rgb(15 23 42 / 50%);
-}
-
-[data-slot="dialog-overlay"]:has(+ .editor-confirm) {
-  background: rgb(15 23 42 / 40%);
-}
-
 .editor-dialog {
   display: flex;
   flex-direction: column;
   gap: 0;
-  /* 1280 × 900 gives 1216 × 828; 960 × 900 gives 928 × 828 (the design's sizes). */
-  width: min(1216px, calc(100vw - 32px));
-  max-width: calc(100vw - 32px);
-  height: min(828px, calc(100dvh - 72px));
-  max-height: calc(100dvh - 72px);
+  /* The large modal size, shared with every dialog (tokens.css). */
+  width: var(--modal-large-width);
+  max-width: calc(100vw - 48px);
+  height: var(--modal-large-height);
+  max-height: calc(100dvh - 48px);
   padding: 0;
   overflow: hidden;
   /* The design measures everything from the outer edge, so the 1px border is drawn over the edge. */

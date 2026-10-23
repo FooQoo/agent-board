@@ -185,3 +185,9 @@
   width: 16px;
   height: 16px;
 }
+
+/* One scrim for every dialog (see the modal tokens in tokens.css). Unlayered, so it sits above the
+   Tailwind utility on the shadcn overlay. */
+[data-slot="dialog-overlay"] {
+  background: var(--modal-scrim);
+}

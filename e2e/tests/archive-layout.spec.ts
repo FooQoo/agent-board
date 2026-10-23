@@ -213,7 +213,7 @@ for (const mode of ["light", "dark"] as const) {
 					await page
 						.locator('[data-slot="dialog-overlay"]')
 						.evaluate((element) => getComputedStyle(element).backgroundColor),
-				).toBe("rgba(17, 24, 39, 0.4)");
+				).toBe("rgba(15, 23, 42, 0.85)"); // the one scrim every dialog shares (tokens.css)
 				await page.screenshot({
 					path: testInfo.outputPath("03-bulk-archive.png"),
 				});

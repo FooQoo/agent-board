@@ -138,3 +138,11 @@
   /* Detail column width: the stored width is applied inline by the app; this is the default. */
   --detail-width: 360px;
 }
+
+/* Modals share one scrim and two sizes. The scrim hides most of the window behind a dialog; the large
+   size is for the editors (the card and epic editor and the Docs dialog). Every dialog uses these. */
+:root {
+  --modal-scrim: rgb(15 23 42 / 85%);
+  --modal-large-width: min(1480px, calc(100vw - 48px));
+  --modal-large-height: min(960px, calc(100dvh - 48px));
+}

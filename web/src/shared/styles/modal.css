@@ -4,14 +4,6 @@
  * its lengths from tokens.css). The rules are unlayered on purpose: they sit above the Tailwind
  * utilities of the shadcn/ui sources.
  */
-[data-slot="dialog-overlay"] {
-  background: rgb(15 23 42 / 50%);
-}
-
-:root:not([data-mode="dark"]) [data-slot="dialog-overlay"]:has(+ .settings-dialog) {
-  background: rgb(15 23 42 / 40%);
-}
-
 .modal {
   display: flex;
   flex-direction: column;
@@ -560,10 +552,6 @@
   .request-dialog .modal__secondary-action {
     align-self: stretch;
   }
-}
-
-[data-slot="dialog-overlay"].bulk-archive__overlay {
-  background: #11182766;
 }
 
 .bulk-archive__panel {
