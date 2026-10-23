@@ -1,6 +1,7 @@
 [package]
 name = "agent-board"
-version = "0.1.0"
+version = "1.0.0"
+license = "MIT"
 description = "A local, history-backed work board for users and AI agents."
 repository = "https://github.com/FooQoo/agent-board"
 homepage = "https://github.com/FooQoo/agent-board"
