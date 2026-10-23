@@ -61,10 +61,10 @@ impl DocsPath {
         Ok(DocsPath { elements })
     }
 
-    /// A Markdown file for the file API: the last element ends in `.md`, in any case.
+    /// A Markdown file for the file API: the last element ends in `.md` or `.mdx`, in any case.
     pub fn parse_markdown(raw: &str) -> Result<DocsPath, DocsError> {
         let path = DocsPath::parse(raw)?;
-        if path.extension().as_deref() != Some("md") {
+        if !matches!(path.extension().as_deref(), Some("md" | "mdx")) {
             return Err(DocsError::DocsNotMarkdown {
                 path: path.as_string(),
             });

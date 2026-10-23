@@ -95,7 +95,7 @@ fn the_tree_names_how_each_file_is_shown() {
     let f = fixture();
     for name in [
         "a.md", "b.PNG", "c.jpg", "d.jpeg", "e.webp", "f.gif", "g.pen", "h.json", "i.txt", "noext",
-        "j.svg",
+        "j.svg", "k.avif", "l.MDX",
     ] {
         f.put(name, b"x");
     }
@@ -122,7 +122,9 @@ fn the_tree_names_how_each_file_is_shown() {
         ("g.pen", "other"),
         ("h.json", "other"),
         ("i.txt", "other"),
-        ("j.svg", "other"),
+        ("j.svg", "image"),
+        ("k.avif", "image"),
+        ("l.MDX", "markdown"),
         ("noext", "other"),
     ];
     let expected: Vec<(String, String)> = expected
@@ -317,6 +319,7 @@ fn images_are_served_with_a_fixed_type() {
         ("c.jpeg", "image/jpeg"),
         ("d.webp", "image/webp"),
         ("img/e.gif", "image/gif"),
+        ("f.avif", "image/avif"),
     ] {
         f.put(file, &png);
         let reply = f.get(&format!("assets?path={file}"));
@@ -324,6 +327,7 @@ fn images_are_served_with_a_fixed_type() {
         assert_eq!(reply.bytes, png, "{file}");
         assert_eq!(reply.header("content-type"), Some(content_type), "{file}");
         assert_eq!(reply.header("x-content-type-options"), Some("nosniff"));
+        assert_eq!(reply.header("content-security-policy"), None, "{file}");
         // The router's /api/ layer replaces the handler's `no-cache` with `no-store`.
         assert!(
             matches!(reply.header("cache-control"), Some("no-cache" | "no-store")),
@@ -333,12 +337,39 @@ fn images_are_served_with_a_fixed_type() {
 }
 
 #[test]
+fn an_svg_is_served_with_a_policy_that_runs_no_script() {
+    let f = fixture();
+    let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"alert(1)\"/>";
+    f.put("v.svg", svg);
+    let reply = f.get("assets?path=v.svg");
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.bytes, svg);
+    assert_eq!(reply.header("content-type"), Some("image/svg+xml"));
+    assert_eq!(reply.header("x-content-type-options"), Some("nosniff"));
+    assert_eq!(
+        reply.header("content-security-policy"),
+        Some("default-src 'none'; style-src 'unsafe-inline'; sandbox")
+    );
+    f.put("big.svg", &vec![b'x'; 10 * 1024 * 1024 + 1]);
+    assert_eq!(f.get("assets?path=big.svg").code(), "docs_too_large");
+}
+
+#[test]
+fn an_mdx_file_is_read_like_markdown() {
+    let f = fixture();
+    let text = "import Chart from './chart.js'\n\n# Title\n\n<Chart year={2026} />\n";
+    f.put("page.mdx", text.as_bytes());
+    let reply = f.get("file?path=page.mdx");
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["content"], text);
+}
+
+#[test]
 fn other_files_are_not_served_as_images() {
     let f = fixture();
-    f.put("v.svg", b"<svg onload=alert(1)/>");
     f.put("n.md", b"x");
     f.put("noext", b"x");
-    for route in ["assets?path=v.svg", "assets?path=n.md", "assets?path=noext"] {
+    for route in ["assets?path=n.md", "assets?path=noext"] {
         let reply = f.get(route);
         assert_eq!(
             (reply.status, reply.code()),

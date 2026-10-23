@@ -53,6 +53,8 @@ async function mounted(value: string) {
   return { ...utils, ref, onChange };
 }
 
+const MDX_SAMPLE = readFileSync(join(import.meta.dirname, 'fixtures/docs-sample.mdx'), 'utf8');
+
 const NOTATION = readFileSync(join(import.meta.dirname, 'fixtures/docs-notation.md'), 'utf8');
 
 const undo = () => {
@@ -71,8 +73,25 @@ function changedLines(before: string, after: string) {
 }
 
 describe('Docs round trip', () => {
+  it('shows the import, export and JSX lines of an MDX file as text and runs no component', async () => {
+    const { ref, unmount } = await mounted(MDX_SAMPLE);
+    const view = document.querySelector('.ProseMirror') as HTMLElement;
+    expect(view.textContent).toContain('import { Chart } from');
+    expect(view.textContent).toContain('<Chart year={year} kind="bar" />');
+    expect(view.textContent).toContain('export const year = 2026');
+    expect(view.querySelector('chart, callout, main')).toBeNull();
+    expect(ref.current?.markdown()).toBe(MDX_SAMPLE);
+    unmount();
+  });
+
   it('returns the original text exactly when nothing was changed', async () => {
-    for (const text of [SAMPLE, NOTATION, SAMPLE.replace(/\n/g, '\r\n'), SAMPLE.trimEnd()]) {
+    for (const text of [
+      SAMPLE,
+      NOTATION,
+      MDX_SAMPLE,
+      SAMPLE.replace(/\n/g, '\r\n'),
+      SAMPLE.trimEnd(),
+    ]) {
       const { ref, onChange, unmount } = await mounted(text);
       expect(ref.current?.markdown()).toBe(text);
       expect(onChange).not.toHaveBeenCalled();

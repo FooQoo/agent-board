@@ -163,7 +163,7 @@ pub enum AgboardError {
     DocsNotFound {
         path: String,
     },
-    /// The Docs file API only serves `.md` files.
+    /// The Docs file API only serves `.md` and `.mdx` files.
     DocsNotMarkdown {
         path: String,
     },
@@ -182,7 +182,7 @@ pub enum AgboardError {
     DocsReadOnly {
         path: String,
     },
-    /// The Docs image API serves only PNG, JPEG, WebP and GIF.
+    /// The Docs image API serves only PNG, JPEG, WebP, GIF, AVIF and SVG.
     DocsAssetType {
         path: String,
     },
@@ -455,7 +455,7 @@ impl AgboardError {
                 "No such file in the project's Docs. Choose a file from the tree.".to_string()
             }
             AgboardError::DocsNotMarkdown { .. } => {
-                "Only files ending in .md can be opened or saved.".to_string()
+                "Only files ending in .md or .mdx can be opened or saved.".to_string()
             }
             AgboardError::DocsTooLarge { limit, .. } => {
                 format!("Files larger than {limit} bytes cannot be opened or saved here.")
@@ -470,7 +470,7 @@ impl AgboardError {
                 "The file cannot be written. Check its permissions.".to_string()
             }
             AgboardError::DocsAssetType { .. } => {
-                "Only PNG, JPEG, WebP and GIF images are served.".to_string()
+                "Only PNG, JPEG, WebP, GIF, AVIF and SVG images are served.".to_string()
             }
             AgboardError::DocsNotImplemented => {
                 "The Docs API is still being built. Try again in a later version.".to_string()
@@ -749,7 +749,7 @@ mod tests {
             ),
             (
                 "a.txt is not a Markdown file.",
-                "Only files ending in .md can be opened or saved.",
+                "Only files ending in .md or .mdx can be opened or saved.",
             ),
             (
                 "a.md is too large.",
@@ -769,7 +769,7 @@ mod tests {
             ),
             (
                 "a.svg is not a supported image.",
-                "Only PNG, JPEG, WebP and GIF images are served.",
+                "Only PNG, JPEG, WebP, GIF, AVIF and SVG images are served.",
             ),
             (
                 "this document operation is not available yet.",

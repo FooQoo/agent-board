@@ -174,6 +174,9 @@ pub fn read_file(root: &DocsRoot, path: &DocsPath) -> Result<DocsFile, DocsError
     })
 }
 
+/// The `Content-Type` of an SVG, which the asset route serves with a restrictive policy.
+pub const SVG_TYPE: &str = "image/svg+xml";
+
 /// The fixed `Content-Type` of an image extension, or `None` for any other.
 fn image_type(extension: Option<&str>) -> Option<&'static str> {
     match extension {
@@ -181,13 +184,15 @@ fn image_type(extension: Option<&str>) -> Option<&'static str> {
         Some("jpg" | "jpeg") => Some("image/jpeg"),
         Some("webp") => Some("image/webp"),
         Some("gif") => Some("image/gif"),
+        Some("avif") => Some("image/avif"),
+        Some("svg") => Some(SVG_TYPE),
         _ => None,
     }
 }
 
 /// How the Docs show a file, by its extension.
 fn viewer_of(extension: Option<&str>) -> Viewer {
-    if extension == Some("md") {
+    if matches!(extension, Some("md" | "mdx")) {
         Viewer::Markdown
     } else if image_type(extension).is_some() {
         Viewer::Image

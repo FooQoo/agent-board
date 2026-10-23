@@ -145,10 +145,10 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 | API | 契約 |
 | --- | --- |
-| `GET …/docs/tree` | `docs/`の下のフォルダとファイルの名前だけを、`{nodes, truncated}`で返す。ファイルには`viewer`があり、`.md`は`markdown`、PNG・JPEG・WebP・GIFは`image`、それ以外は`other`（一覧には出すが表示しない）。フォルダには`viewer`がない。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
-| `GET …/docs/file?path=` | `{path, content, revision, readOnly}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）。`readOnly`はファイルの読み取り専用の属性。対象は、`.md`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
+| `GET …/docs/tree` | `docs/`の下のフォルダとファイルの名前だけを、`{nodes, truncated}`で返す。ファイルには`viewer`があり、`.md`と`.mdx`は`markdown`、`.png`・`.jpg`・`.jpeg`・`.webp`・`.gif`・`.avif`・`.svg`は`image`、それ以外は`other`（一覧には出すが表示しない）。フォルダには`viewer`がない。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
+| `GET …/docs/file?path=` | `{path, content, revision, readOnly}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）。`readOnly`はファイルの読み取り専用の属性。対象は、`.md`と`.mdx`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
 | `PUT …/docs/file` | 本文は`{path, content, expectedRevision}`。知らない項目は400 `invalid_json`。ファイルがまだ`expectedRevision`のときだけ、`content`をそのままのバイト列で書き、新しい`revision`を含む`{path, revision}`を返す。ほかの書き込みと同じ書き込みのガードを通る。ファイルを新しく作ることはない。 |
-| `GET …/docs/assets?path=` | 10 MiB以下のPNG・JPEG・WebP・GIFの画像のバイト列。`Content-Type`は拡張子から決め（`image/png`・`image/jpeg`・`image/webp`・`image/gif`）、`X-Content-Type-Options: nosniff`を付ける。SVGなどほかの形式は415 `docs_asset_type`。 |
+| `GET …/docs/assets?path=` | 10 MiB以下のPNG・JPEG・WebP・GIF・AVIF・SVGの画像のバイト列。`Content-Type`は拡張子から決め（`image/png`・`image/jpeg`・`image/webp`・`image/gif`・`image/avif`・`image/svg+xml`）、`X-Content-Type-Options: nosniff`を付ける。SVGの応答には`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`も付けるので、URLを直接開いてもスクリプトは動かない。画面では`<img>`で表示するので、そこでもスクリプトは動かない。ほかの形式は415 `docs_asset_type`。 |
 | `POST …/docs/open` | 本文なし。サーバーを動かしているコンピュータのファイルマネージャで、プロジェクトの`docs/`を開く。macOSは`open`、Windowsは`explorer`、それ以外は`xdg-open`を使う。プログラムはシェルを通さず、フォルダだけを引数にして起動し、終了は待たない。成功すると204。プロジェクトがないときは404 `project_not_found`。`docs/`がない、またはプログラムを起動できない（たとえば`xdg-open`が入っていない）ときは500 `docs_open_failed`。ほかの書き込みと同じく書き込みガードを通る。 |
 
 ツリーの例:
