@@ -76,7 +76,7 @@ export const allPages: { lang: Lang; file: string; path: string }[] = (['en', 'j
 // Pages that must render a Mermaid diagram.
 export const mermaidFiles: PageFile[] = ['index', 'use/decisions', 'automation/agents'];
 
-// The nine guide screenshots covered by the page-level language checks (eighteen files with the Japanese set)
+// The eight guide screenshots covered by the page-level language checks (sixteen files with the Japanese set)
 // and the guide page that shows each one.
 export const guideScreenshots: Record<string, GuideFile> = {
   'card-detail': 'use/board',
@@ -87,7 +87,6 @@ export const guideScreenshots: Record<string, GuideFile> = {
   editor: 'use/editing',
   'task-request': 'use/editing',
   docs: 'use/docs',
-  'docs-conflict': 'use/docs',
 };
 
 export function screenshotFile(name: string, lang: Lang): string {

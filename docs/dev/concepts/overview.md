@@ -62,7 +62,7 @@ flowchart LR
 
 ### Project docs
 
-Each project also has a `docs/` folder for the user's own Markdown documents. It sits inside the project's folder but is kept apart from the board: the watcher ignores it, it is not part of the `version`, and saving a document sends no `changed`. The browser reads and saves these files through four routes of their own, and a save is refused when the file changed since it was read. See [Saving and recovery](./saving-and-recovery.md#project-docs) and [Security model](./security.md#project-docs).
+Each project also has a `docs/` folder for the user's own documents. It sits inside the project's folder but is kept apart from the board: it is not part of the `version`, and a change in it sends the SSE `docs` event, never `changed`. The browser only reads these files, through routes of their own; the user edits them in their own editor. See [Change notifications](./notifications.md#the-docs) and [Security model](./security.md#project-docs).
 
 ```mermaid
 flowchart LR

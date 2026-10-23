@@ -79,12 +79,11 @@ pub struct DocsTree {
     pub truncated: bool,
 }
 
-/// `GET docs/file`: the file's exact text and the revision a save must name.
+/// `GET docs/file`: the file's exact text and its revision, which changes with the content.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocsFile {
     pub path: String,
     pub content: String,
     pub revision: String,
-    pub read_only: bool,
 }

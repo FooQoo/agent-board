@@ -2,15 +2,14 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@/shared/i18n';
 import { useDocsTree } from './useDocsTree';
-import { useDocument } from './useDocument';
-import { useDocumentEditor } from './useDocumentEditor';
+import { type FileRefresh, useDocument } from './useDocument';
+import { useDocsFollow } from './useDocsFollow';
 import type { DocsFile } from '../api/docsApi';
 
 const FILE: DocsFile = {
   path: 'a/b.md',
   content: '---\ntitle: T\n---\n# Hello\n',
   revision: 'sha256:1',
-  readOnly: false,
 };
 
 function json(body: unknown, status = 200) {
@@ -71,110 +70,100 @@ describe('useDocument', () => {
     act(() => result.current.reload());
     await waitFor(() => expect(result.current.status).toBe('ready'));
   });
+
+  it('reads the open file again quietly: a new revision replaces it, and a 404 keeps it', async () => {
+    fetchMock.mockResolvedValueOnce(json(FILE));
+    const { result } = renderHook(() => useDocument('p1', 'a/b.md'));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    fetchMock.mockResolvedValueOnce(json(FILE));
+    let outcome: FileRefresh | undefined;
+    await act(async () => {
+      outcome = await result.current.refresh();
+    });
+    expect(outcome).toBe('unchanged');
+
+    fetchMock.mockResolvedValueOnce(
+      json({ ...FILE, content: '# Changed\n', revision: 'sha256:2' }),
+    );
+    await act(async () => {
+      outcome = await result.current.refresh();
+    });
+    expect(outcome).toBe('updated');
+    expect(result.current.status).toBe('ready');
+    expect(result.current.file?.content).toBe('# Changed\n');
+
+    fetchMock.mockResolvedValueOnce(json({ error: { code: 'docs_not_found' } }, 404));
+    await act(async () => {
+      outcome = await result.current.refresh();
+    });
+    expect(outcome).toBe('deleted');
+    expect(result.current.file?.content).toBe('# Changed\n');
+  });
 });
 
-describe('useDocumentEditor', () => {
-  const setup = (file: DocsFile = FILE, onSaved = vi.fn()) =>
-    renderHook(() => useDocumentEditor({ projectId: 'p1', file, onSaved }));
+describe('useDocsFollow', () => {
+  const TREE = {
+    nodes: [{ name: 'b.md', path: 'a/b.md', kind: 'file' as const }],
+    truncated: false,
+  };
+  const NESTED = {
+    nodes: [{ name: 'a', path: 'a', kind: 'dir' as const, children: TREE.nodes }],
+    truncated: false,
+  };
 
-  it('splits the front matter and is not dirty until the editor reports a change', () => {
-    const { result } = setup();
-    expect(result.current.frontmatter).toBe('---\ntitle: T\n---\n');
-    expect(result.current.body).toBe('# Hello\n');
-    expect(result.current.dirty).toBe(false);
-    expect(result.current.canSave).toBe(false);
-  });
-
-  it('saves the front matter and the edited body against the opened revision', async () => {
-    fetchMock.mockResolvedValue(json({ path: 'a/b.md', revision: 'sha256:2' }));
-    const onSaved = vi.fn();
-    const { result } = setup(FILE, onSaved);
-    act(() => result.current.onChange('# Changed\n'));
-    expect(result.current.dirty).toBe(true);
-    expect(result.current.canSave).toBe(true);
-    await act(() => result.current.save());
-    const request = call(0);
-    expect(request[0]).toBe('/api/projects/p1/docs/file');
-    expect(request[1].method).toBe('PUT');
-    expect(JSON.parse(request[1].body)).toEqual({
-      path: 'a/b.md',
-      content: '---\ntitle: T\n---\n# Changed\n',
-      expectedRevision: 'sha256:1',
+  function setup(refreshFile: () => Promise<FileRefresh>, tree: typeof NESTED | null = NESTED) {
+    let listener: ((projectId: string | null) => void) | null = null;
+    const subscribe = vi.fn((next: (projectId: string | null) => void) => {
+      listener = next;
+      return () => {
+        listener = null;
+      };
     });
-    expect(result.current.dirty).toBe(false);
-    expect(result.current.canSave).toBe(false);
-    expect(result.current.error).toBeNull();
-    expect(onSaved).toHaveBeenCalled();
-
-    // The next save uses the new revision.
-    fetchMock.mockResolvedValue(json({ path: 'a/b.md', revision: 'sha256:3' }));
-    act(() => result.current.onChange('# Again\n'));
-    await act(() => result.current.save());
-    expect(JSON.parse(call(1)[1].body).expectedRevision).toBe('sha256:2');
-  });
-
-  it('is clean again when the text is changed back', () => {
-    const { result } = setup();
-    act(() => result.current.onChange('x'));
-    act(() => result.current.onChange('# Hello\n'));
-    expect(result.current.dirty).toBe(false);
-  });
-
-  it('keeps the input and says why when the save fails', async () => {
-    fetchMock.mockResolvedValue(json({ error: { code: 'x', reason: 'secret server text' } }, 500));
-    const { result } = setup();
-    act(() => result.current.onChange('# Changed\n'));
-    await act(() => result.current.save());
-    expect(result.current.dirty).toBe(true);
-    expect(result.current.error).not.toBeNull();
-    expect(result.current.error).not.toContain('secret');
-    expect(result.current.conflict).toBe(false);
-  });
-
-  it('has its own sentence for a read-only rejection', async () => {
-    fetchMock.mockResolvedValue(json({ error: { code: 'docs_read_only' } }, 403));
-    const { result } = setup();
-    act(() => result.current.onChange('# Changed\n'));
-    await act(() => result.current.save());
-    expect(result.current.error).toContain('read-only');
-  });
-
-  it('does not save a read-only file', async () => {
-    const { result } = setup({ ...FILE, readOnly: true });
-    act(() => result.current.onChange('# Changed\n'));
-    expect(result.current.canSave).toBe(false);
-    await act(() => result.current.save());
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('flags a conflict, keeps the input, and overwrites with the current revision', async () => {
-    fetchMock.mockResolvedValueOnce(
-      json({ error: { code: 'docs_revision_conflict' }, currentRevision: 'sha256:9' }, 409),
+    const refreshTree = vi.fn(async () => tree);
+    const hook = renderHook(
+      ({ path }) => useDocsFollow({ projectId: 'p1', subscribe, path, refreshTree, refreshFile }),
+      { initialProps: { path: 'a/b.md' as string | null } },
     );
-    const { result } = setup();
-    act(() => result.current.onChange('# Mine\n'));
-    await act(() => result.current.save());
-    expect(result.current.conflict).toBe(true);
-    expect(result.current.dirty).toBe(true);
-    expect(result.current.error).toBeNull();
+    const notify = async (projectId: string | null) => {
+      await act(async () => {
+        listener?.(projectId);
+        await Promise.resolve();
+      });
+    };
+    return { ...hook, notify, refreshTree, subscribe };
+  }
 
-    fetchMock.mockResolvedValueOnce(json({ path: 'a/b.md', revision: 'sha256:10' }));
-    await act(() => result.current.overwrite());
-    const body = JSON.parse(call(1)[1].body);
-    expect(body.expectedRevision).toBe('sha256:9');
-    expect(body.content).toBe('---\ntitle: T\n---\n# Mine\n');
-    expect(result.current.conflict).toBe(false);
-    expect(result.current.dirty).toBe(false);
+  it('reads the list again for its project and for any project, but not for another one', async () => {
+    const { notify, refreshTree, result } = setup(async () => 'unchanged');
+    await notify('p2');
+    expect(refreshTree).not.toHaveBeenCalled();
+    await notify('p1');
+    await notify(null);
+    await waitFor(() => expect(refreshTree).toHaveBeenCalledTimes(2));
+    expect(result.current).toBeNull();
   });
 
-  it('reads the latest revision itself when the conflict does not carry one', async () => {
-    fetchMock.mockResolvedValueOnce(json({ error: { code: 'docs_revision_conflict' } }, 409));
-    const { result } = setup();
-    act(() => result.current.onChange('# Mine\n'));
-    await act(() => result.current.save());
-    fetchMock.mockResolvedValueOnce(json({ ...FILE, revision: 'sha256:7' }));
-    fetchMock.mockResolvedValueOnce(json({ path: 'a/b.md', revision: 'sha256:8' }));
-    await act(() => result.current.overwrite());
-    expect(JSON.parse(call(2)[1].body).expectedRevision).toBe('sha256:7');
+  it('says the open file was updated when its revision changed', async () => {
+    const { notify, result } = setup(async () => 'updated');
+    await notify('p1');
+    await waitFor(() => expect(result.current?.kind).toBe('updated'));
+    expect(result.current?.path).toBe('a/b.md');
+  });
+
+  it('says the open file was deleted when the list no longer holds it, without reading it', async () => {
+    const refreshFile = vi.fn(async (): Promise<FileRefresh> => 'unchanged');
+    const { notify, result } = setup(refreshFile, { nodes: [], truncated: false });
+    await notify('p1');
+    await waitFor(() => expect(result.current?.kind).toBe('deleted'));
+    expect(refreshFile).not.toHaveBeenCalled();
+  });
+
+  it('shows no notice once another file is chosen', async () => {
+    const { notify, result, rerender } = setup(async () => 'updated');
+    await notify('p1');
+    await waitFor(() => expect(result.current?.kind).toBe('updated'));
+    rerender({ path: 'other.md' });
+    expect(result.current).toBeNull();
   });
 });

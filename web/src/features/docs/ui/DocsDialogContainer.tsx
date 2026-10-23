@@ -1,79 +1,102 @@
-import { useCallback, useMemo, useState } from 'react';
+import { SquarePenIcon } from 'lucide-react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '@/shared/api/contracts';
+import { splitFrontmatter } from '@/shared/markdown/frontmatter';
 import { resolveRelativeImage } from '@/shared/markdown/resolveRelativeImage';
 import { RichMarkdownEditor } from '@/shared/rich-editor/RichMarkdownEditor';
-import { SaveIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import { DiscardConfirm } from '@/shared/ui/editor/DiscardConfirm';
-import { docsAssetUrl, openDocsFolder, type DocsFile } from '../api/docsApi';
+import { docsAssetUrl, openDocs } from '../api/docsApi';
+import {
+  type DocsChangeSubscription,
+  type DocsNotice,
+  useDocsFollow,
+} from '../model/useDocsFollow';
 import { useDocsTree } from '../model/useDocsTree';
-import { useDocument } from '../model/useDocument';
-import { useDocumentEditor } from '../model/useDocumentEditor';
+import { type FileRefresh, useDocument } from '../model/useDocument';
 import { DocumentPane } from './document/DocumentPane';
-import { MdxFrame } from './document/MdxFrame';
 import { FileViewer } from './document/FileViewer';
+import { MdxFrame } from './document/MdxFrame';
 import { DOCS_LIST_WIDTH, DocsDialogView } from './shell/DocsDialogView';
 import type { DocsTreeNode, DocsViewer } from './shell/DocsFileTree';
 import '@/shared/i18n/docs-strings';
 
-/** Stands in for the file while none is loaded, so the editor's hook always has one. */
-const NO_FILE: DocsFile = { path: '', content: '', revision: '', readOnly: true };
-
 /** How the docs show the file at `path`; a path the tree does not hold counts as Markdown. */
-function viewerOf(nodes: readonly DocsTreeNode[], path: string | null): DocsViewer {
+function viewerOf(nodes: readonly DocsTreeNode[], path: string): DocsViewer {
   for (const node of nodes) {
     if (node.path === path) return node.viewer ?? 'markdown';
-    if (node.children && path?.startsWith(`${node.path}/`)) return viewerOf(node.children, path);
+    if (node.children && path.startsWith(`${node.path}/`)) return viewerOf(node.children, path);
   }
   return 'markdown';
 }
 
+const ignoreChange = () => {};
+
 export interface DocsDialogContainerProps {
   projectId: ProjectId;
   onClose: () => void;
+  /** Notices that the project's Docs changed on disk; without it the dialog does not follow them. */
+  subscribeChanges?: DocsChangeSubscription;
 }
 
 /**
- * The docs dialog with its data: the file list (fetched once, when the dialog opens), the chosen
- * file (fetched when it is chosen), and its edit, save and conflict handling. The project is a
- * prop of the instance: give another project a new instance (a `key`) to start from nothing.
+ * The docs dialog with its data. It only shows the files: the list is fetched when the dialog
+ * opens, and a file each time it is chosen, with nothing kept between choices. While the dialog is
+ * open it follows the files on disk: the list is read again on every change, and the open file is
+ * shown again when it changed, with a notice at the right of the footer. Files are edited in the
+ * user's own editor, which "Open in editor" starts. The project is a prop of the instance: give
+ * another project a new instance (a `key`) to start from nothing.
  */
-export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerProps) {
-  const { t } = useTranslation();
+export function DocsDialogContainer({
+  projectId,
+  onClose,
+  subscribeChanges,
+}: DocsDialogContainerProps) {
+  const { t, i18n } = useTranslation();
   const tree = useDocsTree(projectId);
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  // A file chosen while the open one has unsaved changes, waiting for the answer.
-  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  // The chosen file and how it shows, fixed when it is chosen: a file deleted afterwards keeps it.
+  const [selected, setSelected] = useState<{ path: string; viewer: DocsViewer } | null>(null);
   const [listWidth, setListWidth] = useState<number>(DOCS_LIST_WIDTH.default);
   const [openFolderFailed, setOpenFolderFailed] = useState(false);
-  // How an .mdx file shows; each file opens as code, the editable view.
-  const [mdxView, setMdxView] = useState<{ path: string | null; view: 'ui' | 'code' }>({
-    path: null,
-    view: 'code',
-  });
+  const [openFileFailed, setOpenFileFailed] = useState<string | null>(null);
+  // Raised when an open image may have changed, so it is fetched again.
+  const [imageVersion, setImageVersion] = useState(0);
+  const selectedPath = selected?.path ?? null;
+  const viewer = selected?.viewer ?? 'markdown';
   const isMdx = selectedPath?.toLowerCase().endsWith('.mdx') === true;
-  const view = mdxView.path === selectedPath ? mdxView.view : 'code';
-  const viewer = useMemo(() => viewerOf(tree.nodes, selectedPath), [tree.nodes, selectedPath]);
-  // Only a Markdown file has text to fetch, edit or save.
   const document = useDocument(projectId, viewer === 'markdown' ? selectedPath : null);
-  const editor = useDocumentEditor({ projectId, file: document.file ?? NO_FILE });
+
+  const refreshFile = useCallback(async (): Promise<FileRefresh> => {
+    if (viewer === 'image') setImageVersion((value) => value + 1);
+    if (viewer !== 'markdown') return 'unchanged';
+    return document.refresh();
+  }, [viewer, document.refresh]);
+  const notice = useDocsFollow({
+    projectId,
+    subscribe: subscribeChanges,
+    path: selectedPath,
+    refreshTree: tree.refresh,
+    refreshFile,
+  });
 
   const selectFile = useCallback(
-    (path: string) => {
-      if (path === selectedPath) return;
-      if (editor.dirty) setPendingPath(path);
-      else setSelectedPath(path);
-    },
-    [selectedPath, editor.dirty],
+    (path: string) => setSelected({ path, viewer: viewerOf(tree.nodes, path) }),
+    [tree.nodes],
   );
 
   const openFolder = useCallback(() => {
     setOpenFolderFailed(false);
-    openDocsFolder(projectId).catch(() => setOpenFolderFailed(true));
+    openDocs(projectId).catch(() => setOpenFolderFailed(true));
   }, [projectId]);
 
+  const openFile = useCallback(() => {
+    if (selectedPath === null) return;
+    setOpenFileFailed(null);
+    openDocs(projectId, selectedPath).catch(() => setOpenFileFailed(selectedPath));
+  }, [projectId, selectedPath]);
+
   const file = document.file;
+  const split = useMemo(() => splitFrontmatter(file?.content ?? ''), [file]);
   const resolveImage = useCallback(
     (src: string) => {
       if (file === null) return null;
@@ -85,100 +108,97 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
 
   const paneState =
     document.status === 'ready' ? 'ready' : document.status === 'error' ? 'error' : 'loading';
+  const noticeText = (shown: DocsNotice) => {
+    const time = shown.at.toLocaleTimeString(i18n.resolvedLanguage, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+    return shown.kind === 'updated'
+      ? t('docs.fileUpdated', { time })
+      : t('docs.fileDeleted', { time });
+  };
+  const failed = openFileFailed !== null && openFileFailed === selectedPath;
+
+  let body: ReactNode = null;
+  if (selectedPath !== null && viewer !== 'markdown') {
+    const src = docsAssetUrl(projectId, selectedPath);
+    body = (
+      <DocumentPane
+        state="ready"
+        kindLabel={viewer === 'image' ? t('docsDocument.kindImage') : t('docsDocument.kindOther')}
+      >
+        <FileViewer
+          kind={viewer}
+          name={selectedPath.split('/').at(-1) ?? selectedPath}
+          src={
+            viewer === 'image' ? (imageVersion === 0 ? src : `${src}&v=${imageVersion}`) : undefined
+          }
+        />
+      </DocumentPane>
+    );
+  } else if (selectedPath !== null) {
+    body = (
+      <DocumentPane
+        state={paneState}
+        frontmatter={split.frontmatter}
+        onRetry={document.reload}
+        kindLabel={isMdx ? t('docsDocument.kindMdx') : undefined}
+      >
+        {file !== null &&
+          (isMdx ? (
+            <MdxFrame source={split.body} />
+          ) : (
+            <RichMarkdownEditor
+              key={document.loadId}
+              value={split.body}
+              onChange={ignoreChange}
+              aria-label={file.path}
+              disabled
+              resolveImage={resolveImage}
+            />
+          ))}
+      </DocumentPane>
+    );
+  }
 
   return (
-    <>
-      <DocsDialogView
-        status={tree.status}
-        tree={tree.nodes}
-        selectedPath={selectedPath}
-        onSelectFile={selectFile}
-        rootPath={`shared/projects/${projectId}/docs/`}
-        onRetry={tree.reload}
-        onOpenFolder={openFolder}
-        openFolderFailed={openFolderFailed}
-        listWidth={listWidth}
-        onResize={setListWidth}
-        dirty={editor.dirty}
-        saving={editor.saving}
-        error={editor.error}
-        footerStatus={
-          editor.conflict
-            ? t('docs.notSaved')
-            : editor.dirty
-              ? t('editor.unsaved')
-              : t('editor.noChanges')
-        }
-        footerWarn={editor.conflict || editor.dirty}
-        actions={
+    <DocsDialogView
+      status={tree.status}
+      tree={tree.nodes}
+      selectedPath={selectedPath}
+      onSelectFile={selectFile}
+      rootPath={`shared/projects/${projectId}/docs/`}
+      onRetry={tree.reload}
+      onOpenFolder={openFolder}
+      openFolderFailed={openFolderFailed}
+      listWidth={listWidth}
+      onResize={setListWidth}
+      actions={
+        <>
+          {failed ? (
+            <span className="docs-dialog__notice" data-kind="failed" role="alert">
+              {t('docs.openFileFailed')}
+            </span>
+          ) : notice !== null ? (
+            <span className="docs-dialog__notice" data-kind={notice.kind} role="status">
+              {noticeText(notice)}
+            </span>
+          ) : null}
           <Button
             type="button"
-            className="docs-dialog__save"
-            disabled={!editor.canSave}
-            onClick={() => void editor.save()}
+            variant="outline"
+            className="docs-dialog__open-file"
+            onClick={openFile}
           >
-            <SaveIcon aria-hidden="true" />
-            {t('editor.save')}
+            <SquarePenIcon aria-hidden="true" />
+            {t('docs.openInEditor')}
           </Button>
-        }
-        onClose={onClose}
-      >
-        {selectedPath !== null && viewer !== 'markdown' ? (
-          <DocumentPane
-            state="ready"
-            kindLabel={
-              viewer === 'image' ? t('docsDocument.kindImage') : t('docsDocument.kindOther')
-            }
-          >
-            <FileViewer
-              kind={viewer}
-              name={selectedPath.split('/').at(-1) ?? selectedPath}
-              src={viewer === 'image' ? docsAssetUrl(projectId, selectedPath) : undefined}
-            />
-          </DocumentPane>
-        ) : (
-          <DocumentPane
-            state={paneState}
-            frontmatter={editor.frontmatter}
-            readOnly={file?.readOnly ?? false}
-            conflict={editor.conflict}
-            conflictBusy={editor.saving}
-            onReload={document.reload}
-            onOverwrite={() => void editor.overwrite()}
-            onRetry={document.reload}
-            mdx={
-              isMdx
-                ? {
-                    view,
-                    onViewChange: (next) => setMdxView({ path: selectedPath, view: next }),
-                    preview: <MdxFrame source={editor.body} />,
-                  }
-                : undefined
-            }
-          >
-            {file !== null && (
-              <RichMarkdownEditor
-                key={document.loadId}
-                value={editor.body}
-                onChange={editor.onChange}
-                aria-label={file.path}
-                disabled={file.readOnly || editor.saving}
-                resolveImage={resolveImage}
-              />
-            )}
-          </DocumentPane>
-        )}
-      </DocsDialogView>
-      <DiscardConfirm
-        open={pendingPath !== null}
-        onOpenChange={(open) => !open && setPendingPath(null)}
-        onKeep={() => setPendingPath(null)}
-        discardLabel={t('editor.discardAndMove')}
-        onDiscard={() => {
-          setSelectedPath(pendingPath);
-          setPendingPath(null);
-        }}
-      />
-    </>
+        </>
+      }
+      onClose={onClose}
+    >
+      {body}
+    </DocsDialogView>
   );
 }

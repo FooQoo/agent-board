@@ -20,7 +20,7 @@ pnpm --dir docs preview --port <port>   # ビルドしたサイトを配信
 ガイドの画像とデモ動画は、次のスクリプトで再生成します。どちらも先に[Web画面とCLIをビルド](./getting-started/setup.md#ビルド)し、[検証](./getting-started/pull-request.md#検証)のPlaywrightのブラウザをインストールしておく必要があります。
 
 ```sh
-node e2e/scripts/docs-screenshots.mjs   # docs/images/guide/*.png(英日20枚)
+node e2e/scripts/docs-screenshots.mjs   # docs/images/guide/*.png(英日18枚)
 node e2e/scripts/demo-video.mjs         # docs/public/videos/(ffmpegも必要)
 ```
 
@@ -42,4 +42,4 @@ node e2e/scripts/readme-screenshots.mjs
 
 スクリプトは一時的な`AGBOARD_HOME`に使い捨てのプロジェクトを作り、空いているループバックのポートで独自のサーバーを起動し、PCのボード、エピックの進行表、モバイルのドロワーを英語と日本語で撮影します。保存されたボードやポート7420は使いません。ブラウザはビルドした画面を実際のAPIに接続して描画し、その画面を撮影します。詳細の4タブ、タスクの編集画面の折りたたまれた条件欄、ブラウザのエラーを確かめ、終わったら一時データを消します。
 
-`docs/images/`の6枚は、コミット前にすべて確認し、サンプルの文章に個人情報を含めないでください。スクリーンショットは回帰テストやスマホのキーボードの確認の代わりにはなりません。`docs/images/guide/`のガイドの画像(20枚)は上の別のスクリプトで作るので、作り直したときはそれも確認してください。
+`docs/images/`の6枚は、コミット前にすべて確認し、サンプルの文章に個人情報を含めないでください。スクリーンショットは回帰テストやスマホのキーボードの確認の代わりにはなりません。`docs/images/guide/`のガイドの画像(18枚)は上の別のスクリプトで作るので、作り直したときはそれも確認してください。

@@ -2,7 +2,15 @@ import { evaluate } from '@mdx-js/mdx';
 import { Component, type ReactNode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as runtime from 'react/jsx-runtime';
-import { isRenderMessage, type SandboxReply, type SandboxRenderMessage } from './protocol';
+import markdownCss from '@/shared/markdown/markdown.css?inline';
+import {
+  isRenderMessage,
+  isThemeMessage,
+  type SandboxReply,
+  type SandboxRenderMessage,
+  type SandboxThemeMessage,
+} from './protocol';
+import sandboxCss from './sandbox.css?inline';
 import { REGISTERED_COMPONENTS, remarkUnregistered, UNREGISTERED } from './unregistered';
 
 // This page runs the MDX of a document. It is embedded in an iframe without `allow-same-origin`, so
@@ -63,7 +71,24 @@ class Boundary extends Component<
   }
 }
 
-const root = createRoot(document.getElementById('root') as HTMLElement);
+// The same Markdown typography as an .md file in the Docs. The styles are part of this script, so
+// the page stays one file.
+for (const css of [markdownCss, sandboxCss]) {
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.append(style);
+}
+
+/** Takes the board's light or dark mode and its token values. */
+function applyTheme({ colorScheme, tokens }: SandboxThemeMessage) {
+  const rootStyle = document.documentElement.style;
+  rootStyle.colorScheme = colorScheme;
+  for (const [name, value] of Object.entries(tokens)) rootStyle.setProperty(name, value);
+}
+
+const host = document.getElementById('root') as HTMLElement;
+host.className = 'md md--wide';
+const root = createRoot(host);
 let serial = 0;
 
 async function show({ source, labels }: SandboxRenderMessage) {
@@ -85,13 +110,14 @@ async function show({ source, labels }: SandboxRenderMessage) {
   }
   if (mine !== serial) return;
   root.render(<Boundary label={labels.runtimeError}>{content}</Boundary>);
-  requestAnimationFrame(() => post({ type: 'rendered', height: document.body.scrollHeight }));
+  post({ type: 'rendered' });
 }
 
 window.addEventListener('message', (event) => {
   // Only the board page that embeds this one may send it MDX.
-  if (event.source !== window.parent || !isRenderMessage(event.data)) return;
-  void show(event.data);
+  if (event.source !== window.parent) return;
+  if (isThemeMessage(event.data)) applyTheme(event.data);
+  else if (isRenderMessage(event.data)) void show(event.data);
 });
 
 // A link must not take the page away from the sandbox.
@@ -99,7 +125,4 @@ document.addEventListener('click', (event) => {
   if ((event.target as Element | null)?.closest('a')) event.preventDefault();
 });
 
-new ResizeObserver(() => post({ type: 'height', height: document.body.scrollHeight })).observe(
-  document.body,
-);
 post({ type: 'ready' });

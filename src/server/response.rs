@@ -68,8 +68,6 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         }
         AgboardError::DocsTooLarge { .. } => StatusCode::PAYLOAD_TOO_LARGE,
         AgboardError::DocsNotUtf8 { .. } => StatusCode::UNPROCESSABLE_ENTITY,
-        AgboardError::DocsRevisionConflict { .. } => StatusCode::CONFLICT,
-        AgboardError::DocsReadOnly { .. } => StatusCode::FORBIDDEN,
         AgboardError::DocsNotImplemented => StatusCode::NOT_IMPLEMENTED,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     };

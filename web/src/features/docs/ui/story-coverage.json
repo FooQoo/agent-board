@@ -7,11 +7,6 @@
       "name": "DocsDialogContainer",
       "stories": [
         {
-          "id": "docs-docsdialogcontainer--no-file-selected",
-          "states": ["file list loaded", "no file selected"],
-          "interaction": true
-        },
-        {
           "id": "docs-docsdialogcontainer--open-folder",
           "states": ["open folder", "post request"],
           "interaction": true
@@ -19,6 +14,11 @@
         {
           "id": "docs-docsdialogcontainer--open-folder-failed",
           "states": ["open folder failed", "error message"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--no-file-selected",
+          "states": ["file list loaded", "no file selected"],
           "interaction": true
         },
         {
@@ -47,28 +47,28 @@
           "interaction": true
         },
         {
-          "id": "docs-docsdialogcontainer--read-only",
-          "states": ["read-only", "save disabled"],
+          "id": "docs-docsdialogcontainer--mdx-then-markdown",
+          "states": ["mdx then markdown", "own text in preview", "own text in source"],
           "interaction": true
         },
         {
-          "id": "docs-docsdialogcontainer--edit-and-save",
-          "states": ["direct edit", "unsaved", "saved", "stays open"],
+          "id": "docs-docsdialogcontainer--open-in-editor",
+          "states": ["open in editor", "post request"],
           "interaction": true
         },
         {
-          "id": "docs-docsdialogcontainer--save-failed",
-          "states": ["save failed", "input kept"],
+          "id": "docs-docsdialogcontainer--open-in-editor-failed",
+          "states": ["open in editor", "failure notice"],
           "interaction": true
         },
         {
-          "id": "docs-docsdialogcontainer--conflict",
-          "states": ["conflict", "overwrite"],
+          "id": "docs-docsdialogcontainer--follows-changes",
+          "states": ["change on disk", "view updated", "footer notice"],
           "interaction": true
         },
         {
-          "id": "docs-docsdialogcontainer--unsaved-move",
-          "states": ["unsaved", "discard question"],
+          "id": "docs-docsdialogcontainer--follows-deletion",
+          "states": ["deleted on disk", "content kept", "footer notice"],
           "interaction": true
         },
         {

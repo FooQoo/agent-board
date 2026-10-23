@@ -13,11 +13,52 @@ export interface SandboxLabels {
   runtimeError: string;
 }
 
+/**
+ * The board's tokens the sandbox's Markdown typography uses. The sandbox has none of the board's
+ * stylesheets, so the board sends their current values, and sends them again when the theme changes.
+ */
+export const SANDBOX_THEME_TOKENS = [
+  '--r-bg',
+  '--r-surface',
+  '--r-lane',
+  '--r-border',
+  '--r-text',
+  '--r-text2',
+  '--r-muted',
+  '--r-accent',
+  '--r-accent-soft',
+  '--r-done',
+  '--r-danger',
+  '--font-sans',
+  '--font-mono',
+] as const;
+
+/** The board's theme: light or dark, and the values of `SANDBOX_THEME_TOKENS`. */
+export interface SandboxThemeMessage {
+  type: 'theme';
+  colorScheme: 'light' | 'dark';
+  tokens: Partial<Record<(typeof SANDBOX_THEME_TOKENS)[number], string>>;
+}
+
+export function isThemeMessage(data: unknown): data is SandboxThemeMessage {
+  if (typeof data !== 'object' || data === null) return false;
+  const message = data as Partial<SandboxThemeMessage>;
+  return (
+    message.type === 'theme' &&
+    (message.colorScheme === 'light' || message.colorScheme === 'dark') &&
+    typeof message.tokens === 'object' &&
+    message.tokens !== null &&
+    Object.entries(message.tokens).every(
+      ([name, value]) =>
+        (SANDBOX_THEME_TOKENS as readonly string[]).includes(name) && typeof value === 'string',
+    )
+  );
+}
+
 /** What the sandbox page tells the board. */
 export type SandboxReply =
   | { type: 'ready' }
-  | { type: 'rendered'; height: number }
-  | { type: 'height'; height: number }
+  | { type: 'rendered' }
   | { type: 'error'; message: string };
 
 export function isRenderMessage(data: unknown): data is SandboxRenderMessage {
@@ -34,5 +75,5 @@ export function isRenderMessage(data: unknown): data is SandboxRenderMessage {
 export function isSandboxReply(data: unknown): data is SandboxReply {
   if (typeof data !== 'object' || data === null) return false;
   const type = (data as { type?: unknown }).type;
-  return type === 'ready' || type === 'rendered' || type === 'height' || type === 'error';
+  return type === 'ready' || type === 'rendered' || type === 'error';
 }

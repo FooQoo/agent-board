@@ -234,7 +234,7 @@ fn a_file_comes_back_with_its_revision() {
     let body = reply.json();
     assert_eq!(body["path"], "notes/a.md");
     assert_eq!(body["content"], "# Hi\r\nあ\n");
-    assert_eq!(body["readOnly"], false);
+    assert!(body.get("readOnly").is_none());
     assert_eq!(
         body["revision"],
         agent_board::docs::revision_of("# Hi\r\nあ\n".as_bytes())
@@ -251,17 +251,6 @@ fn the_bom_stays_in_the_content() {
         body["revision"],
         agent_board::docs::revision_of(b"\xEF\xBB\xBFtext")
     );
-}
-
-#[cfg(unix)]
-#[test]
-fn a_file_without_write_permission_is_read_only() {
-    use std::os::unix::fs::PermissionsExt;
-    let f = fixture();
-    f.put("ro.md", b"x");
-    let path = f.docs_dir().join("ro.md");
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
-    assert_eq!(f.get("file?path=ro.md").json()["readOnly"], true);
 }
 
 #[test]

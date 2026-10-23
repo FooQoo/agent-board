@@ -23,7 +23,7 @@ const extra = {
     addCard: 'Add task', promptLabel: 'What should be done?', epicLabel: 'Epic (optional)',
     attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
     discard: 'Discard and close',
-    docs: 'Docs', docsFile: 'launch-plan.md', save: 'Save', docsFiles: {
+    docs: 'Docs', docsFile: 'launch-plan.md', docsFiles: {
       'strategy/launch-plan.md': '---\nowner: Product\nstatus: draft\nreview: 2026-11-02\n---\n# Launch plan\n\nShip the new website in three steps, and keep the old pages reachable until the new ones are reviewed.\n\n## Steps\n\n```mermaid\nflowchart LR\n  Draft --> Review --> Publish\n```\n\n| Step | Owner | State |\n| --- | --- | --- |\n| Draft the pages | Design | Done |\n| Review the copy | Product | Doing |\n| Publish | Engineering | Todo |\n\n## Risks\n\n- The pricing page needs legal review.\n- Old links must redirect to the new pages.\n',
       'strategy/goals.md': '# Goals\n\n- Halve the time to find the pricing page.\n',
       'design/architecture.md': '# Architecture\n\nThe site is static and built on every merge.\n',
@@ -40,7 +40,7 @@ const extra = {
     addCard: 'タスク追加', promptLabel: '何をしてほしいですか？', epicLabel: 'エピック（任意）',
     attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
     discard: '破棄して閉じる',
-    docs: 'ドキュメント', docsFile: 'launch-plan.md', save: '保存', docsFiles: {
+    docs: 'ドキュメント', docsFile: 'launch-plan.md', docsFiles: {
       'strategy/launch-plan.md': '---\nowner: プロダクト\nstatus: draft\nreview: 2026-11-02\n---\n# 公開計画\n\n新しいWebサイトを三段階で公開する。新しいページの確認が終わるまで、古いページにもたどり着けるようにしておく。\n\n## 手順\n\n```mermaid\nflowchart LR\n  下書き --> 確認 --> 公開\n```\n\n| 手順 | 担当 | 状態 |\n| --- | --- | --- |\n| ページの下書き | デザイン | 完了 |\n| 文章の確認 | プロダクト | 作業中 |\n| 公開 | エンジニアリング | 未着手 |\n\n## リスク\n\n- 料金ページには法務の確認が必要。\n- 古いリンクは新しいページへ転送する。\n',
       'strategy/goals.md': '# 目標\n\n- 料金ページにたどり着くまでの時間を半分にする。\n',
       'design/architecture.md': '# 構成\n\nサイトは静的で、マージのたびにビルドする。\n',
@@ -210,27 +210,9 @@ try {
       await expect(docsDialog.locator('.rich-mermaid svg').first()).toBeVisible();
       await shot('docs', page, page);
 
-      // docs-conflict: the file changed on disk after it was opened, so the save is refused.
-      const firstParagraph = docsDialog.locator('.ProseMirror p').first();
-      await firstParagraph.click();
-      // Put the caret at the end of the paragraph, so the typed text extends it.
-      await firstParagraph.evaluate((paragraph) => {
-        const range = document.createRange();
-        range.selectNodeContents(paragraph);
-        range.collapse(false);
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-      });
-      await page.keyboard.type(locale === 'ja' ? '公開日は後で決める。' : ' The date is set later.');
-      const planFile = path.join(docs, 'strategy/launch-plan.md');
-      writeFileSync(planFile, `${readFileSync(planFile, 'utf8')}\n- ${locale === 'ja' ? '外部で追加した行' : 'A line added outside the dialog'}\n`);
-      await docsDialog.getByRole('button', { name: more.save, exact: true }).click();
-      await expect(docsDialog.locator('.docs-conflict')).toBeVisible();
-      await shot('docs-conflict', page, page);
 
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured 10 guide screenshots; no browser errors.`);
+      console.log(`${locale}: captured 9 guide screenshots; no browser errors.`);
     } finally {
       await Promise.all(contexts.map((ctx) => ctx.close()));
       await stop(server);

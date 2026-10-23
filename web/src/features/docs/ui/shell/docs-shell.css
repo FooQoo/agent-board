@@ -43,22 +43,25 @@
   margin-right: 5px;
 }
 
-/* The save button is gray while there is nothing to save (the mock), not a faded accent. */
 /* The footer buttons are one 88px wide on every screen (the mock's), not the shared 144px. */
 .docs-dialog .editor__footer .dialog-actions > button {
   min-width: 88px;
   padding-inline: 12px;
 }
 
-.docs-dialog__save:disabled {
-  border: 1px solid var(--r-border);
-  background: var(--r-surface);
-  color: var(--r-muted);
-  opacity: 1;
+/* Before the buttons: the open file was changed or deleted outside the board, or could not be
+   opened in an editor. */
+.docs-dialog__notice {
+  align-self: center;
+  min-width: 0;
+  margin-right: 4px;
+  color: var(--r-text2);
+  font-size: 12px;
+  text-align: right;
 }
 
-/* Unsaved changes and a failed save: the footer line is the pending color. */
-.docs-dialog[data-warn="true"] .editor__status {
+.docs-dialog__notice[data-kind="deleted"],
+.docs-dialog__notice[data-kind="failed"] {
   color: var(--r-pend-tx);
 }
 
@@ -452,17 +455,12 @@
 .docs-dialog[data-compact="true"]
   .editor__footer
   .dialog-actions
-  > button:not(.docs-dialog__files, .docs-dialog__save) {
+  > button:not(.docs-dialog__files, .docs-dialog__open-file) {
   display: none;
 }
 
 .docs-dialog[data-compact="true"] .editor__status {
   display: none;
-}
-
-.docs-dialog[data-compact="true"][data-warn="true"] .editor__status {
-  display: flex;
-  flex: none;
 }
 
 /* The list screen has no footer, and the title leaves out "Docs" to fit the path. */
@@ -473,11 +471,4 @@
 .docs-dialog[data-compact="true"] .docs-crumbs__root,
 .docs-dialog[data-compact="true"] .docs-crumbs__root + .docs-crumbs__item .docs-crumbs__sep {
   display: none;
-}
-
-/* The phone's disabled Save is the mock's pale accent fill, not the desktop's white. */
-.docs-dialog[data-compact="true"] .docs-dialog__save:disabled {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--r-accent) 40%, var(--r-surface));
-  color: var(--r-on-accent, #fff);
 }

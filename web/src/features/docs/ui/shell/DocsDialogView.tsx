@@ -46,17 +46,9 @@ export interface DocsDialogViewProps {
   onResize: (width: number) => void;
   /** The body pane, shown once a file is chosen. */
   children?: ReactNode;
-  /** The line at the left of the footer; "No changes" unless the caller says more. */
-  footerStatus?: string;
-  /** The footer line is a warning (unsaved changes, a failed save), drawn in the pending color. */
-  footerWarn?: boolean;
-  /** The buttons of the footer after Close. Without a chosen file there are none. */
+  /** What sits at the right of the footer, before Close: a notice and the file's buttons. Without a
+   * chosen file there is none. */
   actions?: ReactNode;
-  /** There are unsaved changes: closing asks first. */
-  dirty?: boolean;
-  saving?: boolean;
-  /** A failed save, shown above the footer. */
-  error?: string | null;
   onClose: () => void;
   /** Force the phone layout (list and body as two screens) on or off; follows the window by default. */
   compact?: boolean;
@@ -91,7 +83,7 @@ function DocsTitle({ path }: { path: string | null }) {
 
 /**
  * The docs dialog: the shared editor frame with the file list on the left and the document in the
- * center. The frame, header, footer and the unsaved-changes question are the editor shell's.
+ * center. The frame, header and footer are the editor shell's; nothing here is edited.
  */
 export function DocsDialogView({
   status,
@@ -105,12 +97,7 @@ export function DocsDialogView({
   listWidth,
   onResize,
   children,
-  footerStatus,
-  footerWarn = false,
   actions,
-  dirty = false,
-  saving = false,
-  error = null,
   onClose,
   compact,
   phonePane,
@@ -177,14 +164,13 @@ export function DocsDialogView({
       dialogData={{
         'data-compact': phone ? 'true' : 'false',
         'data-pane': pane,
-        'data-warn': footerWarn ? 'true' : undefined,
       }}
       closeLabel={t('dialog.close')}
-      dirty={dirty}
-      saving={saving}
-      error={error}
+      dirty={false}
+      saving={false}
+      error={null}
       onClose={onClose}
-      status={footerStatus ?? t('editor.noChanges')}
+      status=""
       actions={
         hasFile ? (
           <>

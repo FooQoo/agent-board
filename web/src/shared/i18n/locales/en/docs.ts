@@ -1,7 +1,10 @@
 export const docsEn = {
   docs: {
     title: 'Docs',
-    notSaved: 'Not saved',
+    openInEditor: 'Open in editor',
+    openFileFailed: 'Could not open the file.',
+    fileUpdated: 'The file changed, so the view was updated ({{time}})',
+    fileDeleted: 'This file was deleted ({{time}})',
     files: 'Files',
     openFolder: 'Open folder',
     openFolderFailed: 'Could not open the folder.',

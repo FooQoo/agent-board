@@ -44,6 +44,7 @@ export function AppDialogs({
             key={model.docsProjectId}
             projectId={model.docsProjectId}
             onClose={() => model.setDocsProjectId(null)}
+            subscribeChanges={model.subscribeDocs}
           />
         </Suspense>
       ) : null}

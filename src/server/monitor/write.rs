@@ -234,6 +234,7 @@ mod tests {
             changed,
             preferences: crate::server::preferences::PreferencesStore::new(home.path()),
             preferences_changed: broadcast::channel(4).0,
+            docs_changed: broadcast::channel(4).0,
             monitor: MonitorConnections::new(
                 ConfigStore::new(home.path()),
                 options.connector,

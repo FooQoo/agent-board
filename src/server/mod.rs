@@ -36,9 +36,10 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
 
 use crate::clock::format_utc;
+use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::file_store::index::ProjectIndex;
-use crate::file_store::watch::{Reloader, Watch};
+use crate::file_store::watch::{DocsSink, Reloader, Watch};
 use crate::paths::{self, ServeInfo};
 use monitor_connection::config::ConfigStore;
 use monitor_connection::lifecycle::{MonitorConnections, MonitorEnv};
@@ -71,6 +72,8 @@ pub(crate) struct AppState {
     pub preferences: preferences::PreferencesStore,
     /// Sends each saved preference set; the events streams forward it as `preferences`.
     pub preferences_changed: broadcast::Sender<preferences::Preferences>,
+    /// The projects whose Docs changed (`None`: any project); the board's stream sends `docs`.
+    pub docs_changed: broadcast::Sender<Option<ProjectId>>,
 }
 
 pub fn is_serving(info: &crate::paths::ServeInfo) -> bool {
@@ -136,7 +139,16 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
         let index = Arc::new(RwLock::new(ProjectIndex::default()));
         let changed = change_feed::ChangeFeed::new();
         let (preferences_changed, _) = broadcast::channel(16);
-        let (_watch, reloader) = Watch::start(&shared, index.clone(), changed.sink())?;
+        let (docs_changed, _) = broadcast::channel(64);
+        let docs_sender = docs_changed.clone();
+        let (_watch, reloader) = Watch::start_with_docs(
+            &shared,
+            index.clone(),
+            changed.sink(),
+            DocsSink::new(move |project| {
+                let _ = docs_sender.send(project);
+            }),
+        )?;
         let state = Arc::new(AppState {
             port: addr.port(),
             token: assets::new_token()?,
@@ -152,6 +164,7 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
             ),
             preferences: preferences::PreferencesStore::new(&data_dir),
             preferences_changed,
+            docs_changed,
         });
         state.monitor.attach(&state);
         let app = api::router(state.clone());

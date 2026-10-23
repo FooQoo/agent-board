@@ -14,6 +14,7 @@ use super::AppState;
 use super::change_feed::{ChangeFeed, resync_data};
 use super::preferences::Preferences;
 use super::web_assets::APP_BUILD_ID;
+use crate::domain::ProjectId;
 
 /// How often an idle connection gets a comment line, so proxies and browsers
 /// keep it open.
@@ -40,10 +41,13 @@ pub(crate) async fn events(
             let prefs = saved.unwrap_or_else(|_| store.load());
             Ok(preference_event(&prefs))
         });
+    // A lagged notice may have named any project, so it asks for every project's Docs.
+    let docs = BroadcastStream::new(state.docs_changed.subscribe())
+        .map(|project| Ok(docs_event(project.unwrap_or(None).as_ref())));
     let stream = tokio_stream::once(Ok(Event::default()
         .event("ready")
         .data(format!(r#"{{"build":"{APP_BUILD_ID}"}}"#))))
-    .chain(changes.merge(preferences));
+    .chain(changes.merge(preferences).merge(docs));
     Sse::new(stream).keep_alive(KeepAlive::new().interval(KEEP_ALIVE))
 }
 
@@ -52,6 +56,14 @@ pub(crate) async fn events(
 fn preference_event(prefs: &Preferences) -> Event {
     let data = serde_json::to_string(prefs).unwrap_or_else(|_| "{}".to_string());
     Event::default().event("preferences").data(data)
+}
+
+/// `docs` says that files in a project's Docs changed: `{"projectId": "…"}`, or
+/// `{"projectId": null}` when any project's Docs may have. It is never `changed`:
+/// the Docs are not board data, so the board's `seq` and versions do not move.
+fn docs_event(project: Option<&ProjectId>) -> Event {
+    let data = serde_json::json!({ "projectId": project }).to_string();
+    Event::default().event("docs").data(data)
 }
 
 /// The SSE event of one received change: `changed`, or `resync` when the stream fell behind.

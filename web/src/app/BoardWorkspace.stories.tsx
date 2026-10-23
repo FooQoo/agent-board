@@ -164,6 +164,7 @@ function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppContro
     viewMode,
     docsProjectId: null,
     setDocsProjectId: () => {},
+    subscribeDocs: () => () => {},
   } as unknown as AppControllerModel;
 }
 

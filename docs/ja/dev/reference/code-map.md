@@ -9,7 +9,7 @@
 | `main.rs` | `cli::run()`を呼ぶ。 |
 | `cli` | 引数、コマンド、出力の整形、エラーの表示。 |
 | `file_store` | 共有領域のデータ形式と読み書き全般。<br>パス、保存、ロック、検証、操作、索引、監視。 |
-| `docs` | プロジェクトのドキュメント。パスの規則（`paths`）、共通の型（`model`）、ツリー・ファイル・画像の読み込み（`reader`）、`revision`を確かめる保存（`writer`）、`revision`の計算（`revision`）、新しい`docs/`に置くREADME（`templates`）。 |
+| `docs` | プロジェクトのドキュメント。パスの規則（`paths`）、共通の型（`model`）、ツリー・ファイル・画像の読み込み（`reader`）、ファイルの内容の`revision`の計算（`revision`）、新しい`docs/`に置くREADME（`templates`）。 |
 | `domain` | タスク・レーン・稼働状態・エピック・判断依頼・入力の上限・規則。<br>I/Oなし。 |
 | `server` | axumのアプリ、API、SSE、書き込みの保護、埋め込んだWeb資産、モニターの入口。 |
 | `agent` | Hookと`wait`。 |
@@ -20,7 +20,7 @@
 
 依存は一方向です。
 
-`cli`は`agent`・`interact`・`server`・`setup`・`progress`を使います。`agent`は`progress`を使い、`agent`・`progress`・`server`は`file_store`を、`file_store`は`domain`を使います。`server`は`docs`を使い、`docs`はパスと保存に`file_store`の`layout`と`io`を使います。`file_store`が`docs`から使うのは、新しい`docs/`のREADMEを選ぶ`DocsLocale`だけです。
+`cli`は`agent`・`interact`・`server`・`setup`・`progress`を使います。`agent`は`progress`を使い、`agent`・`progress`・`server`は`file_store`を、`file_store`は`domain`を使います。`server`は`docs`を使い、`docs`はパスと読み込みのエラーに`file_store`の`layout`と`io`を使います。`file_store`が`docs`から使うのは、新しい`docs/`のREADMEを選ぶ`DocsLocale`だけです。
 
 `interact`と`setup`は`paths`と`error`だけを使います。`cli`に依存するものはなく、`server`は`cli`・`agent`・`progress`に依存しません。
 
@@ -46,7 +46,7 @@
 
 | モジュール | 責務 |
 | --- | --- |
-| `api/` | ボードのルーター、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`file_put`・`assets`・`open`）、モバイル接続の`monitor_connections`）。 |
+| `api/` | ボードのルーター、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、モバイル接続の`monitor_connections`）。 |
 | `monitor/` | モニターの読み取り用ルーター、回答のエンドポイント、資産。 |
 | `monitor_connection/` | ngrokのモバイル接続。監督役と状態（`lifecycle`・`start`・`run`）、保存する設定（`config`）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
 | `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、PCとモニターで共有する`GET`・`PUT`の処理、変更の通知。 |
@@ -76,12 +76,12 @@
 
 ### プロジェクトのドキュメント
 
-- `src/docs/`: パス、読み込み、保存、READMEの文面（`templates/README.en.md`・`templates/README.ja.md`）。
+- `src/docs/`: パス、読み込み、READMEの文面（`templates/README.en.md`・`templates/README.ja.md`）。
 - `src/server/api/docs/`: ボードのルーターにある4つのルート。
 - `src/file_store/project.rs`: 新しいプロジェクトと一緒に`docs/`を作る処理（`create_project_with_docs`）と、起動時に補う処理（`ensure_docs_dirs`）。
-- `web/src/features/docs/`: リクエスト（`api/docsApi.ts`）、ツリー・ファイル・編集の状態（`model/`）、ダイアログ（`ui/DocsDialogContainer.tsx`。外枠とファイル一覧は`ui/shell/`、本文の欄・フロントマター・競合のバナーは`ui/document/`）。
+- `web/src/features/docs/`: リクエスト（`api/docsApi.ts`）、ツリー・選んだファイル・ディスクの変化への追従（`model/`）、ダイアログ（`ui/DocsDialogContainer.tsx`。外枠とファイル一覧は`ui/shell/`、本文の欄・フロントマター・ファイルの表示・MDXの枠は`ui/document/`）。
 - `web/src/shared/markdown/frontmatter.ts`と`resolveRelativeImage.ts`: ダイアログが使う、フロントマターの分離と相対パスの画像の解決。
-- `tests/docs_*.rs`: ルート、読み込み、保存、README、モニターとの境界のRustの試験。
+- `tests/docs_*.rs`: ルート、読み込み、README、サンドボックス、モニターとの境界のRustの試験。
 
 ### 初回の案内
 

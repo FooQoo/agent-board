@@ -1,4 +1,5 @@
-//! The Docs routes on the board router: the write guard and bad input refused first.
+//! The Docs routes on the board router: read-only, the write guard on opening, and bad input
+//! refused first.
 
 mod common;
 
@@ -17,20 +18,11 @@ fn docs(path: &str) -> String {
 }
 
 #[test]
-fn the_save_route_is_behind_the_write_guard() {
+fn the_docs_cannot_be_written() {
     let (_home, server) = running();
     let body = r#"{"path":"a.md","content":"x","expectedRevision":"sha256:0"}"#;
-    let path = docs("file");
-    let no_headers = server.request("PUT", &path, Some(body), &[], Some("application/json"));
-    assert_eq!(no_headers.status, 403, "{}", no_headers.body);
-    let mut headers = server.page_headers(&server.token());
-    headers[0].1 = "http://evil.example".into();
-    let foreign = server.request("PUT", &path, Some(body), &headers, Some("application/json"));
-    assert_eq!(foreign.status, 403, "{}", foreign.body);
-    let mut headers = server.page_headers("wrong");
-    headers.retain(|(name, _)| name != "X-Agboard-Token");
-    let no_token = server.request("PUT", &path, Some(body), &headers, Some("application/json"));
-    assert_eq!(no_token.status, 403, "{}", no_token.body);
+    let reply = server.write("PUT", &docs("file"), Some(body));
+    assert_eq!(reply.status, 405, "{}", reply.body);
 }
 
 #[test]
@@ -55,12 +47,6 @@ fn bad_input_is_refused_before_the_routes_do_anything() {
             "{path}"
         );
     }
-    let body = r#"{"path":"../x.md","content":"x","expectedRevision":"sha256:0"}"#;
-    let reply = server.write("PUT", &docs("file"), Some(body));
-    assert_eq!(
-        (reply.status, reply.code()),
-        (400, "docs_path_invalid".into())
-    );
 }
 
 #[test]
@@ -78,4 +64,37 @@ fn opening_the_folder_is_behind_the_write_guard_and_needs_a_project() {
         (missing.status, missing.code()),
         (404, "project_not_found".into())
     );
+}
+
+/// Opening a file checks its path like a read, before anything is started. A
+/// successful open would start an app on this computer, so it is not called here.
+#[test]
+fn opening_a_file_checks_its_path_first() {
+    let home = tempfile::tempdir().unwrap();
+    common::demo_project(home.path());
+    let id =
+        common::json_ok(home.path(), &["--project", "Demo", "workspace", "--json"])["projectId"]
+            .as_str()
+            .unwrap()
+            .to_string();
+    let server = Running::start(home.path());
+    let open = |path: &str| {
+        server.write(
+            "POST",
+            &format!("/api/projects/{id}/docs/open?path={path}"),
+            None,
+        )
+    };
+    for (path, status, code) in [
+        ("..%2Fx.md", 400, "docs_path_invalid"),
+        ("%2Fetc%2Fpasswd", 400, "docs_path_invalid"),
+        ("missing.md", 404, "docs_not_found"),
+    ] {
+        let reply = open(path);
+        assert_eq!(
+            (reply.status, reply.code()),
+            (status, code.to_string()),
+            "{path}"
+        );
+    }
 }

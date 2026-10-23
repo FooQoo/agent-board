@@ -157,11 +157,11 @@ fn listable(dir: &Path, prefix: &str) -> std::io::Result<Vec<Entry>> {
     Ok(entries)
 }
 
-/// A Markdown file's exact text, its revision, and whether it is read-only.
+/// A Markdown file's exact text and its revision.
 /// The BOM, if any, stays in `content`.
 pub fn read_file(root: &DocsRoot, path: &DocsPath) -> Result<DocsFile, DocsError> {
     let label = path.as_string();
-    let (bytes, read_only) = read_limited(root, path, MAX_FILE_BYTES)?;
+    let bytes = read_limited(root, path, MAX_FILE_BYTES)?;
     let content = String::from_utf8(bytes).map_err(|_| DocsError::DocsNotUtf8 {
         path: label.clone(),
     })?;
@@ -170,7 +170,6 @@ pub fn read_file(root: &DocsRoot, path: &DocsPath) -> Result<DocsFile, DocsError
         path: label,
         content,
         revision,
-        read_only,
     })
 }
 
@@ -208,16 +207,12 @@ pub fn read_asset(root: &DocsRoot, path: &DocsPath) -> Result<(Vec<u8>, &'static
             path: path.as_string(),
         });
     };
-    let (bytes, _) = read_limited(root, path, MAX_ASSET_BYTES)?;
+    let bytes = read_limited(root, path, MAX_ASSET_BYTES)?;
     Ok((bytes, content_type))
 }
 
-/// The whole file if it is at most `limit` bytes, and whether it is read-only.
-fn read_limited(
-    root: &DocsRoot,
-    path: &DocsPath,
-    limit: u64,
-) -> Result<(Vec<u8>, bool), DocsError> {
+/// The whole file if it is at most `limit` bytes.
+fn read_limited(root: &DocsRoot, path: &DocsPath, limit: u64) -> Result<Vec<u8>, DocsError> {
     let label = path.as_string();
     let file = root.open_file(path)?;
     let meta = file.metadata().map_err(|error| read_error(&label, error))?;
@@ -235,5 +230,5 @@ fn read_limited(
     if bytes.len() as u64 > limit {
         return Err(too_large());
     }
-    Ok((bytes, meta.permissions().readonly()))
+    Ok(bytes)
 }

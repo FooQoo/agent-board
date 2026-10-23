@@ -13,7 +13,6 @@ const FILE = {
   path: 'Product/Tasks.md',
   content: `${FRONT}## Purpose\n\nThe main tasks of Agent Board.\n\n| Status | Meaning |\n| --- | --- |\n| Todo | Not started |\n`,
   revision: 'sha256:1',
-  readOnly: false,
 };
 
 /** Answers the docs API of the story's project; installed before the dialog fetches and removed after. */
@@ -36,12 +35,10 @@ function MockApi({ handler, children }: { handler: Handler; children: ReactNode 
 }
 
 const api =
-  (over: { tree?: Handler; file?: Handler; put?: Handler; open?: Handler } = {}): Handler =>
+  (over: { tree?: Handler; file?: Handler; open?: Handler } = {}): Handler =>
   (url, init) => {
-    if (init?.method === 'POST' && url.endsWith('/docs/open'))
+    if (init?.method === 'POST' && url.includes('/docs/open'))
       return (over.open ?? (() => new Response(null, { status: 204 })))(url, init);
-    if (init?.method === 'PUT')
-      return (over.put ?? (() => json({ path: FILE.path, revision: 'sha256:2' })))(url, init);
     if (url.endsWith('/docs/tree'))
       return (over.tree ?? (() => json({ nodes: docsTree, truncated: false })))(url, init);
     return (over.file ?? (() => json(FILE)))(url, init);
@@ -182,101 +179,147 @@ export const FileError: Story = {
   },
 };
 
-/** A read-only file shows the notice and cannot be saved. */
-export const ReadOnly: Story = {
-  parameters: { handler: api({ file: () => json({ ...FILE, readOnly: true }) }) },
-  play: async () => {
-    const view = await open();
-    await choose(view, /Tasks\.md/);
-    await expect(await view.findByText(/This file is read-only/)).toBeVisible();
-    await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
-  },
-};
-
-/** The body edits in place; Save turns on, saves, and the dialog stays open. */
-export const EditAndSave: Story = {
-  parameters: { handler: api() },
-  play: async ({ args }) => {
-    const view = await open();
-    await choose(view, /Tasks\.md/);
-    const save = await view.findByRole('button', { name: 'Save' });
-    await expect(save).toBeDisabled();
-    const crumbs = view.getByRole('navigation');
-    await expect(crumbs).toHaveTextContent('Docs/Product/Tasks.md');
-    await expect(view.getByText('title: Tasks', { exact: false })).toBeInTheDocument();
-    await userEvent.click(await editor());
-    await userEvent.keyboard('Typed ');
-    await waitFor(() => expect(save).toBeEnabled());
-    await expect(view.getByText('You have unsaved changes.')).toBeVisible();
-    await userEvent.click(save);
-    await waitFor(() => expect(save).toBeDisabled());
-    await expect(view.getByText('No changes')).toBeVisible();
-    await expect(args.onClose).not.toHaveBeenCalled();
-  },
-};
-
-/** A save that the server refuses keeps the input and says so. */
-export const SaveFailed: Story = {
-  parameters: {
-    handler: api({ put: () => json({ error: { code: 'x', reason: 'hidden' } }, 500) }),
-  },
-  play: async () => {
-    const view = await open();
-    await choose(view, /Tasks\.md/);
-    const save = await view.findByRole('button', { name: 'Save' });
-    await userEvent.click(await editor());
-    await userEvent.keyboard('Typed ');
-    await waitFor(() => expect(save).toBeEnabled());
-    await userEvent.click(save);
-    await expect(await view.findByText(/Could not save/)).toBeVisible();
-    await expect(save).toBeEnabled();
-  },
-};
-
-/** The file changed after it was opened: the edit stays, and Overwrite saves it over the latest. */
-export const Conflict: Story = {
+/** Moving from an .mdx file to a Markdown file shows the Markdown file's own text. */
+export const MdxThenMarkdown: Story = {
   parameters: {
     handler: api({
-      put: (_url, init) =>
-        JSON.parse(String(init?.body)).expectedRevision === 'sha256:9'
-          ? json({ path: FILE.path, revision: 'sha256:10' })
-          : json({ error: { code: 'docs_revision_conflict' }, currentRevision: 'sha256:9' }, 409),
+      tree: () =>
+        json({
+          nodes: [
+            ...docsTree,
+            { name: 'demo.mdx', path: 'demo.mdx', kind: 'file', viewer: 'markdown' },
+          ],
+          truncated: false,
+        }),
+      file: (url) =>
+        url.includes('demo.mdx')
+          ? json({ path: 'demo.mdx', content: '# Only in MDX\n', revision: 'sha256:m' })
+          : json(FILE),
+    }),
+  },
+  play: async () => {
+    const view = await open();
+    await choose(view, /demo\.mdx/);
+    await expect(await view.findByText('MDX', { selector: '.docs-doc__kind' })).toBeVisible();
+    await choose(view, /Tasks\.md/);
+    await waitFor(async () => expect((await editor()).textContent).toContain('The main tasks'));
+    await expect((await editor()).textContent).not.toContain('Only in MDX');
+  },
+};
+
+const openedFile = fn();
+
+/** Open in editor asks the server to open the chosen file in the computer's app for it. */
+export const OpenInEditor: Story = {
+  parameters: {
+    handler: api({
+      open: (url) => {
+        openedFile(url);
+        return new Response(null, { status: 204 });
+      },
+    }),
+  },
+  play: async () => {
+    openedFile.mockClear();
+    const view = await open();
+    await choose(view, /Tasks\.md/);
+    await userEvent.click(await view.findByRole('button', { name: 'Open in editor' }));
+    await waitFor(() =>
+      expect(openedFile).toHaveBeenCalledWith(
+        '/api/projects/p-alpha/docs/open?path=Product%2FTasks.md',
+      ),
+    );
+    await expect(view.queryByRole('alert')).toBeNull();
+  },
+};
+
+/** The file could not be opened: the footer says so before the buttons. */
+export const OpenInEditorFailed: Story = {
+  parameters: {
+    handler: api({ open: () => json({ error: { code: 'docs_not_found' } }, 404) }),
+  },
+  play: async () => {
+    const view = await open();
+    await choose(view, /Tasks\.md/);
+    await userEvent.click(await view.findByRole('button', { name: 'Open in editor' }));
+    await expect(await view.findByRole('alert')).toHaveTextContent('Could not open the file.');
+  },
+};
+
+// The board's notices for the story: `notifyDocs` plays a change on disk.
+let docsListener: ((projectId: string | null) => void) | null = null;
+const subscribeDocs = (listener: (projectId: string | null) => void) => {
+  docsListener = listener;
+  return () => {
+    docsListener = null;
+  };
+};
+const notifyDocs = () => docsListener?.('p-alpha');
+let revision = 1;
+
+type Node = { path: string; children?: readonly Node[] };
+/** The fixture's list without the open file, as after it was deleted on disk. */
+const withoutTasks = (function drop(nodes: readonly Node[]): Node[] {
+  return nodes
+    .filter((node) => node.path !== FILE.path)
+    .map((node) => (node.children ? { ...node, children: drop(node.children) } : node));
+})(docsTree as readonly Node[]);
+
+/** A change on disk: the open file is shown again with its new text, and the footer says why. */
+export const FollowsChanges: Story = {
+  args: { subscribeChanges: subscribeDocs },
+  beforeEach: () => {
+    revision = 1;
+  },
+  parameters: {
+    handler: api({
+      file: () =>
+        json({
+          ...FILE,
+          content: revision === 1 ? FILE.content : `${FRONT}## Changed on disk\n`,
+          revision: `sha256:${revision}`,
+        }),
     }),
   },
   play: async () => {
     const view = await open();
     await choose(view, /Tasks\.md/);
-    const save = await view.findByRole('button', { name: 'Save' });
-    await userEvent.click(await editor());
-    await userEvent.keyboard('Typed ');
-    await waitFor(() => expect(save).toBeEnabled());
-    await userEvent.click(save);
-    await expect(await view.findByText(/The file was changed outside/)).toBeVisible();
-    await expect(document.querySelector('.ProseMirror')?.textContent).toContain('Typed');
-    await expect(view.getByText('Not saved')).toBeVisible();
-    await userEvent.click(view.getByRole('button', { name: 'Overwrite with mine' }));
-    await waitFor(() => expect(view.queryByText(/The file was changed outside/)).toBeNull());
-    await expect(view.getByText('No changes')).toBeVisible();
+    await waitFor(async () => expect((await editor()).textContent).toContain('The main tasks'));
+    revision = 2;
+    notifyDocs();
+    await waitFor(async () => expect((await editor()).textContent).toContain('Changed on disk'));
+    await expect(
+      await view.findByText(/The file changed, so the view was updated \(\d{2}:\d{2}\)/),
+    ).toBeVisible();
   },
 };
 
-/** Moving to another file with unsaved changes asks first. */
-export const UnsavedMove: Story = {
-  parameters: { handler: api() },
+/** The open file was deleted on disk: it stays on screen, and the footer says it was deleted. */
+export const FollowsDeletion: Story = {
+  args: { subscribeChanges: subscribeDocs },
+  beforeEach: () => {
+    revision = 1;
+  },
+  parameters: {
+    handler: api({
+      tree: () => json({ nodes: revision === 1 ? docsTree : withoutTasks, truncated: false }),
+    }),
+  },
   play: async () => {
     const view = await open();
     await choose(view, /Tasks\.md/);
-    await userEvent.click(await editor());
-    await userEvent.keyboard('Typed ');
-    await expect(await view.findByText('You have unsaved changes.')).toBeInTheDocument();
-    await choose(view, /Vision\.md/);
-    await waitFor(async () => expect(await view.findByText('Discard changes?')).toBeVisible());
-    await userEvent.click(view.getByRole('button', { name: 'Keep editing' }));
-    await expect(document.querySelector('.ProseMirror')?.textContent).toContain('Typed');
+    await waitFor(async () => expect((await editor()).textContent).toContain('The main tasks'));
+    revision = 2;
+    notifyDocs();
+    await expect(await view.findByText(/This file was deleted \(\d{2}:\d{2}\)/)).toBeVisible();
+    await expect((await editor()).textContent).toContain('The main tasks');
+    await waitFor(() =>
+      expect(view.getAllByRole('treeitem', { name: /Tasks\.md/ })).toHaveLength(1),
+    );
   },
 };
 
-/** An image file shows as a picture from the assets URL; Save stays off and no text is fetched. */
+/** An image file shows as a picture from the assets URL, and no text is fetched. */
 export const ImageFile: Story = {
   parameters: { handler: mediaApi() },
   play: async () => {
@@ -286,7 +329,6 @@ export const ImageFile: Story = {
     await expect(image.getAttribute('src')).toBe(
       '/api/projects/p-alpha/docs/assets?path=diagram.png',
     );
-    await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
     await expect(view.getByRole('navigation')).toHaveTextContent('Docs/diagram.png');
   },
 };
@@ -299,7 +341,7 @@ export const OtherFile: Story = {
     await choose(view, /board\.pen/);
     await expect(await view.findByText('This file type cannot be shown here.')).toBeVisible();
     await expect(view.getAllByText('board.pen').length).toBeGreaterThan(1);
-    await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await expect(view.getByRole('button', { name: 'Open in editor' })).toBeVisible();
   },
 };
 

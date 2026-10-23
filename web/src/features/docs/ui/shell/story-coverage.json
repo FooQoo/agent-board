@@ -24,11 +24,6 @@
               "interaction": true
             },
             {
-              "id": "docs-shell-docsdialogview--editing",
-              "states": ["unsaved changes", "discard question"],
-              "interaction": true
-            },
-            {
               "id": "docs-shell-docsdialogview--no-docs",
               "states": ["no docs", "root path", "copy path", "close only footer"],
               "interaction": true
@@ -41,11 +36,6 @@
             {
               "id": "docs-shell-docsdialogview--tree-error",
               "states": ["file list failed", "retry"],
-              "interaction": true
-            },
-            {
-              "id": "docs-shell-docsdialogview--save-error",
-              "states": ["save error band", "footer buttons unchanged"],
               "interaction": true
             },
             {

@@ -70,33 +70,14 @@ export const FileSelected: Story = {
   args: {
     selectedPath: 'Product/Tasks.md',
     children: body,
-    footerStatus: 'No changes',
-    actions: <Button disabled>Save</Button>,
+    actions: <Button variant="outline">Open in editor</Button>,
   },
   play: async () => {
     const view = await opened();
     await expect(view.getByRole('treeitem', { current: true })).toHaveTextContent('Tasks.md');
     await expect(view.getByRole('heading', { name: 'Tasks' })).toBeVisible();
     await expect(view.queryByRole('heading', { name: 'Select a file' })).toBeNull();
-    await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
-  },
-};
-
-/** Unsaved changes: the footer says so and Save is on. Closing asks first. */
-export const Editing: Story = {
-  args: {
-    selectedPath: 'Product/Tasks.md',
-    children: body,
-    dirty: true,
-    footerStatus: 'Unsaved changes',
-    actions: <Button>Save</Button>,
-  },
-  play: async ({ args }) => {
-    const view = await opened();
-    await expect(view.getByText('Unsaved changes')).toBeVisible();
-    await userEvent.click(footerOf(view).getByRole('button', { name: 'Close' }));
-    await expect(args.onClose).not.toHaveBeenCalled();
-    await waitFor(() => expect(view.getByText('Discard and close')).toBeVisible());
+    await expect(view.getByRole('button', { name: 'Open in editor' })).toBeEnabled();
   },
 };
 
@@ -109,7 +90,7 @@ export const NoDocs: Story = {
     await expect(view.getByRole('heading', { name: 'This project has no docs' })).toBeVisible();
     await expect(view.getByText(docsRootPath)).toBeVisible();
     await expect(view.getByRole('button', { name: 'Copy the folder path' })).toBeVisible();
-    await expect(view.queryByRole('button', { name: 'Save' })).toBeNull();
+    await expect(view.queryByRole('button', { name: 'Open in editor' })).toBeNull();
     await expect(footerOf(view).getAllByRole('button')).toHaveLength(1);
   },
 };
@@ -130,23 +111,6 @@ export const TreeError: Story = {
     await expect(view.getByText('Could not load the files.')).toBeVisible();
     await userEvent.click(view.getByRole('button', { name: 'Retry' }));
     await expect(args.onRetry).toHaveBeenCalledTimes(1);
-  },
-};
-
-/** A save error shows in the band above the footer; the footer buttons stay as they are. */
-export const SaveError: Story = {
-  args: {
-    selectedPath: 'Product/Tasks.md',
-    children: body,
-    dirty: true,
-    error: 'Could not save the file.',
-    actions: <Button>Save</Button>,
-  },
-  play: async () => {
-    const view = await opened();
-    await expect(view.getByRole('alert')).toHaveTextContent('Could not save the file.');
-    await expect(view.queryByRole('button', { name: 'Retry' })).toBeNull();
-    await expect(view.getByRole('button', { name: 'Save' })).toBeEnabled();
   },
 };
 
@@ -268,15 +232,15 @@ export const PhoneFileList: Story = {
   },
 };
 
-/** Phone width, a file chosen: the body fills the screen, the footer has Files and Save, and Files goes back to the list. */
+/** Phone width, a file chosen: the body fills the screen, the footer has Files and Open in editor, and Files goes back to the list. */
 export const PhoneBody: Story = {
   args: {
     compact: true,
     selectedPath: 'Product/Tasks.md',
     children: body,
     actions: (
-      <Button className="docs-dialog__save" disabled>
-        Save
+      <Button variant="outline" className="docs-dialog__open-file">
+        Open in editor
       </Button>
     ),
   },
@@ -285,7 +249,7 @@ export const PhoneBody: Story = {
     const view = await opened();
     await expect(view.getByRole('heading', { name: 'Tasks' })).toBeVisible();
     await expect(view.queryByRole('tree')).toBeNull();
-    await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await expect(view.getByRole('button', { name: 'Open in editor' })).toBeVisible();
     // Only the header's close button remains; the footer's is hidden on the phone.
     await expect(view.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
     await userEvent.click(view.getByRole('button', { name: 'Files' }));

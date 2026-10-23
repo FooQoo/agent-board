@@ -106,17 +106,18 @@ Titles, descriptions, reasons, and answers are written by agents and users, so t
 
 ## Project docs
 
-The docs routes read and write files chosen by a path in the request, so they check the path before any file is touched (`src/docs/paths.rs`).
+The docs routes read files chosen by a path in the request, and one route opens a file in the computer's own app, so they check the path before any file is touched (`src/docs/paths.rs`). Nothing in the board writes to the docs.
 
 What is refused:
 
-- **Path text.** An empty path, an absolute path, an empty part (`a//b`), any part that starts with a dot (`..`, `.git`), a backslash, a control character such as NUL, a part over 255 bytes, a path over 1,024 bytes, and more than 17 parts are `docs_path_invalid`. The file routes also require the last part to end in `.md` (`docs_not_markdown`).
+- **Path text.** An empty path, an absolute path, an empty part (`a//b`), any part that starts with a dot (`..`, `.git`), a backslash, a control character such as NUL, a part over 255 bytes, a path over 1,024 bytes, and more than 17 parts are `docs_path_invalid`. The file route also requires the last part to end in `.md` or `.mdx` (`docs_not_markdown`).
 - **Symbolic links.** The path is resolved one part at a time under the project's `docs/`, and a symbolic link at any step, the file or a folder above it, is refused. The file is then opened with `O_NOFOLLOW` on Unix, and the opened handle must be a regular file. The tree leaves symbolic links out, so the page never offers one.
 - **Content types.** The file routes read only UTF-8 text up to 2 MiB. The image route serves only PNG, JPEG, WebP, GIF, AVIF, and SVG up to 10 MiB, with a `Content-Type` fixed by the extension and `X-Content-Type-Options: nosniff`, so an HTML file is never served as something a browser could run. An SVG can carry script, so its response also has `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`, and the page shows it in an `<img>`.
-- **Writes.** The save passes the same write guard as every board write (Host, Origin, `Sec-Fetch-Site`, and the token). It only replaces an existing `.md` file; it cannot create, rename, or delete anything.
+- **Opening.** `POST docs/open` passes the same write guard as every board write (Host, Origin, `Sec-Fetch-Site`, and the token), because it starts a program on the computer. With `?path=`, the path is checked as a read checks it, and only an existing regular file is handed to the operating system's opener (`open`, `explorer`, or `xdg-open`) as a single argument, never through a shell. The app the operating system picks then runs with the user's rights, as if the user had double-clicked the file.
+- **No writes.** There is no route that writes, creates, renames, or deletes a file in the docs. A `PUT` to the file route is refused (405).
 - **Exposure.** The routes are on the board router only. The monitor entry that ngrok forwards to has no docs routes, so a phone cannot read or change the docs.
 
-The root folder comes from the server's own data area and the ProjectId in the URL, never from the request body. The folder is the user's: Agent Board writes the README when it creates the folder and otherwise changes a file only when the user saves it.
+The root folder comes from the server's own data area and the ProjectId in the URL, never from the request body. The folder is the user's: Agent Board writes only the README, when it creates the folder.
 
 ### MDX in the Docs
 
@@ -126,7 +127,7 @@ The body is run by a separate page, `GET /docs-sandbox`, shown in an iframe with
 
 The page has its own policy (`connect-src 'none'`, no framing, no forms, no base URL). Only this page has `'unsafe-eval'`, because the MDX compiler builds code at run time. The board's own policy gains `frame-src 'self'` so that it may embed the page, and nothing else.
 
-What this protects: the token and the saved files stay out of reach of a document's code, and the code cannot send anything out. What it does not: an endless loop or heavy work inside the iframe is not stopped and can slow the browser tab until the user switches to Code or closes the Docs. Parts are registered by name, and only standard HTML elements are registered; any other part is drawn as "Unregistered component". The page cannot be opened from the phone, because the monitor has no such route.
+What this protects: the token and the files stay out of reach of a document's code, and the code cannot send anything out. What it does not: an endless loop or heavy work inside the iframe is not stopped and can slow the browser tab until the user chooses another file or closes the Docs. Parts are registered by name, and only standard HTML elements are registered; any other part is drawn as "Unregistered component". The page cannot be opened from the phone, because the monitor has no such route.
 
 ## Project boundaries
 
@@ -161,6 +162,6 @@ These limits are deliberate. Keep them in mind when someone asks for "just one m
 - **Refusing AI changes to Done tasks, drafts, and archived tasks** restrains cooperative agents; it does not authenticate against direct file edits or a spoofed actor.
 - **Writes based on cross-project reads** cannot be prevented by requiring `--project`, because the agent writes the name itself.
 - **A docs folder swapped between the check and the open.** The path check and the open are separate steps, and only the standard library is used. A program that replaces a folder inside `docs/` with a symbolic link after the check and before the open can make the server read or write through that link. The final `O_NOFOLLOW` protects only the last part of the path. Such a program already runs as the same user and can change the files directly.
-- **Docs saves against other programs.** The revision check and the save are ordered by a mutex inside `serve`. An editor, `git`, or an agent does not take it, so a write made between the server's comparison and its rename is lost without a conflict. See [Saving and recovery](./saving-and-recovery.md#project-docs).
+- **Opening a docs file.** **Open in editor** starts whatever app the operating system assigns to the file's type, with the user's rights. A file someone placed in `docs/` can be opened this way, as if the user double-clicked it in the file manager.
 - **The `docs/` folder itself.** The checks start below `docs/`. The data area, the project folder, and `docs/` itself are trusted, as for every other shared file.
 - **The lifecycle lock** prevents a second `serve` among cooperative processes; it does not authorize anything.

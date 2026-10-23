@@ -9,7 +9,9 @@ export type DocsTreeState =
 
 /**
  * The file list of a project's docs. It is fetched when the dialog opens (this hook mounts) and
- * again only when `reload` is called; opening or closing a folder does not fetch.
+ * again when `reload` is called; opening or closing a folder does not fetch. `refresh` reads it
+ * again without the loading state, for a change made outside: the list stays until the new one
+ * arrives, and a failed read keeps it.
  */
 export function useDocsTree(projectId: ProjectId) {
   const [state, setState] = useState<DocsTreeState>({ status: 'loading', tree: null });
@@ -29,10 +31,20 @@ export function useDocsTree(projectId: ProjectId) {
   }, [projectId, attempt]);
 
   const reload = useCallback(() => setAttempt((value) => value + 1), []);
+  const refresh = useCallback(async (): Promise<DocsTree | null> => {
+    try {
+      const tree = await fetchDocsTree(projectId);
+      setState((current) => (current.status === 'loading' ? current : { status: 'ready', tree }));
+      return tree;
+    } catch {
+      return null;
+    }
+  }, [projectId]);
   return {
     status: state.status,
     nodes: state.tree?.nodes ?? [],
     truncated: state.tree?.truncated ?? false,
     reload,
+    refresh,
   };
 }

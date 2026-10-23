@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isSandboxReply, type SandboxRenderMessage } from '@/shared/docs-sandbox/protocol';
+import {
+  isSandboxReply,
+  SANDBOX_THEME_TOKENS,
+  type SandboxRenderMessage,
+  type SandboxThemeMessage,
+} from '@/shared/docs-sandbox/protocol';
 import '@/shared/i18n/docs-strings';
 
 /** The sandbox page the board serves; it runs the MDX. */
@@ -22,7 +27,6 @@ export function MdxFrame({ source }: MdxFrameProps) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [shown, setShown] = useState(false);
-  const [height, setHeight] = useState<number | null>(null);
 
   const send = useCallback(() => {
     const message: SandboxRenderMessage = {
@@ -43,12 +47,40 @@ export function MdxFrame({ source }: MdxFrameProps) {
       if (!isSandboxReply(event.data)) return;
       if (event.data.type === 'ready') setReady(true);
       else if (event.data.type === 'rendered') setShown(true);
-      if (event.data.type === 'rendered' || event.data.type === 'height')
-        setHeight(Math.ceil(event.data.height));
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, []);
+
+  // The board's theme as the frame sees it, sent before the first body and again whenever the
+  // theme on the document changes (`applyTheme` sets these attributes).
+  useEffect(() => {
+    if (!ready) return;
+    const sendTheme = () => {
+      const element = frame.current;
+      if (element === null) return;
+      const style = getComputedStyle(element);
+      const tokens: SandboxThemeMessage['tokens'] = {};
+      for (const name of SANDBOX_THEME_TOKENS) {
+        const value = style.getPropertyValue(name).trim();
+        if (value !== '') tokens[name] = value;
+      }
+      const root = document.documentElement;
+      const message: SandboxThemeMessage = {
+        type: 'theme',
+        colorScheme: root.classList.contains('dark') ? 'dark' : 'light',
+        tokens,
+      };
+      element.contentWindow?.postMessage(message, '*');
+    };
+    sendTheme();
+    const observer = new MutationObserver(sendTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-mode', 'data-accent'],
+    });
+    return () => observer.disconnect();
+  }, [ready]);
 
   // Send the body when the page is ready, and again whenever it changes.
   useEffect(() => {
@@ -69,7 +101,6 @@ export function MdxFrame({ source }: MdxFrameProps) {
         src={SANDBOX_URL}
         sandbox="allow-scripts"
         referrerPolicy="no-referrer"
-        style={height === null ? undefined : { height }}
       />
     </div>
   );

@@ -1,6 +1,5 @@
 /*
- * The center pane of the docs dialog: the conflict notice, the read-only notice, the kind label,
- * the front matter and the body. Colors are the r-* tokens of theme.css; the lengths are the
+ * The center pane of the docs dialog: the kind label, the front matter and the body. Colors are the r-* tokens of theme.css; the lengths are the
  * approved mock's own. The rules are unlayered, like editor.css, so they sit above the Tailwind
  * utilities.
  */
@@ -34,25 +33,6 @@
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-}
-
-.docs-doc__readonly {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: var(--r-lane);
-  color: var(--r-text2);
-  font-size: 13px;
-}
-
-.docs-doc__readonly svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
 }
 
 /* Loading: bars where the title and the first lines will be. */
@@ -103,52 +83,6 @@
   margin-top: -4px;
   color: var(--r-text2);
   font-size: 13px;
-}
-
-/* The conflict notice. */
-.docs-conflict {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.docs-conflict__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--r-pend-bd);
-  border-radius: 8px;
-  background: var(--r-pend-bg);
-}
-
-.docs-conflict__icon {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--r-pend-tx);
-}
-
-.docs-conflict__text {
-  display: flex;
-  flex: 1 1 160px;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.docs-conflict__title {
-  color: var(--r-pend-tx);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.docs-conflict__body {
-  color: var(--r-text2);
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 /* The front matter: folds, read only. */
@@ -284,54 +218,15 @@
   color: var(--r-muted);
 }
 
-.docs-doc__body[hidden] {
-  display: none;
-}
-
-/* The kind label on the left; for an .mdx file the UI / Code switch on the right. */
-.docs-doc__head {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.docs-doc__switch {
-  display: inline-flex;
-  padding: 2px;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: var(--r-lane);
-}
-
-.docs-doc__switch-button {
-  padding: 3px 12px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--r-text2);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.docs-doc__switch-button[aria-pressed="true"] {
-  background: var(--r-surface);
-  color: var(--r-text);
-  box-shadow: 0 0 0 1px var(--r-border);
-}
-
-.docs-doc__switch-button:focus-visible {
-  outline: 2px solid var(--r-text2);
-  outline-offset: 1px;
-}
-
-/* The MDX preview: the sandbox iframe, as tall as its content. */
+/* The MDX preview: the sandbox iframe fills the body and scrolls its own page. A frame as tall as its
+   content would leave the scrolling to the board, and wheel events over a frame of another origin
+   reach the board only after a detour, so the scroll stutters. */
 .docs-mdx {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .docs-mdx__loading {
@@ -346,9 +241,12 @@
 
 .docs-mdx__frame {
   display: block;
+  flex: 1 1 0;
   width: 100%;
-  min-height: 120px;
+  min-height: 0;
   border: 0;
   background: transparent;
-  color-scheme: normal;
+  /* The page inside takes the board's light or dark mode; the same scheme here keeps the frame
+     transparent instead of painting its own background. */
+  color-scheme: inherit;
 }

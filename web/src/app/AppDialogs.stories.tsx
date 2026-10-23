@@ -27,6 +27,7 @@ const meta = {
       projects: { projects: [project] },
       docsProjectId: null,
       setDocsProjectId: fn(),
+      subscribeDocs: () => () => {},
     } as unknown as AppControllerModel,
     onSubmit: fn(async () => {}),
     onCloseOperation: fn(),

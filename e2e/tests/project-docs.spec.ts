@@ -5,8 +5,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { mainHome, mainProject, projectId, resetBoard } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 
-// The project docs on the real page: open the dialog, choose a file, edit and save it to disk, a save that finds the
-// file changed on disk (reload or overwrite), and the HTTP guards on the paths.
+// The project docs on the real page: open the dialog and choose a file, which is only shown; the
+// view follows changes on disk (an edit, a new file, a deletion); and the HTTP guards on the paths.
 
 const original = '# Tasks\n\nFirst line.\n';
 
@@ -43,56 +43,31 @@ test.beforeEach(() => {
   seedDocs();
 });
 
-test('E2E-1: open the docs, choose a file, edit it, save it, and reopen it', async ({ page }) => {
+test('E2E-1: open the docs and choose a file: it is shown read-only, with nothing to save', async ({ page }) => {
   const { dialog, editor } = await chooseTasks(page);
-  await editor.click();
-  await page.keyboard.press('Control+End');
-  await page.keyboard.type('Added by the test.');
-  await expect(dialog.getByText('Unsaved changes')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Save' }).click();
-  await expect(dialog.getByText('No changes')).toBeVisible();
-  await expect.poll(() => readFileSync(path.join(docsDir(), 'product', 'tasks.md'), 'utf8')).toContain('Added by the test.');
-  expect(readFileSync(path.join(docsDir(), 'product', 'tasks.md'), 'utf8')).toContain('First line.');
-
-  await dialog.getByRole('button', { name: 'Close' }).last().click();
-  await expect(dialog).toBeHidden();
-  const again = await chooseTasks(page);
-  await expect(again.editor).toContainText('Added by the test.');
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await expect(dialog.getByRole('button', { name: 'Save' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Open in editor' })).toBeVisible();
 });
 
-test('E2E-2: a save after an outside change shows the conflict; reload takes the latest, overwrite keeps the input', async ({ page }) => {
+test('E2E-2: the dialog follows the files on disk: an edit, a new file, and a deletion', async ({ page }) => {
   const file = path.join(docsDir(), 'product', 'tasks.md');
-  for (const choice of ['reload', 'overwrite'] as const) {
-    seedDocs();
-    const { dialog, editor } = await chooseTasks(page);
-    await editor.click();
-    await page.keyboard.press('Control+End');
-    await page.keyboard.type('Mine.');
-    writeFileSync(file, '# Tasks\n\nChanged outside.\n');
-    await dialog.getByRole('button', { name: 'Save' }).click();
-    const banner = dialog.getByRole('alert').filter({ hasText: 'The file was changed outside this screen' });
-    await expect(banner).toBeVisible();
-    expect(readFileSync(file, 'utf8')).toBe('# Tasks\n\nChanged outside.\n');
-    if (choice === 'reload') {
-      await banner.getByRole('button', { name: 'Reload the latest' }).click();
-      await expect(banner.getByText('Discard your edits and reload?')).toBeVisible();
-      await banner.getByRole('button', { name: 'Discard and reload' }).click();
-      await expect(editor).toContainText('Changed outside.');
-      await expect(editor).not.toContainText('Mine.');
-      await expect(banner).toBeHidden();
-      expect(readFileSync(file, 'utf8')).toBe('# Tasks\n\nChanged outside.\n');
-    } else {
-      await banner.getByRole('button', { name: 'Overwrite with mine' }).click();
-      await expect(banner).toBeHidden();
-      await expect.poll(() => readFileSync(file, 'utf8')).toContain('Mine.');
-      expect(readFileSync(file, 'utf8')).toContain('First line.');
-      expect(readFileSync(file, 'utf8')).not.toContain('Changed outside.');
-    }
-    await page.reload();
-  }
+  const { dialog, editor } = await chooseTasks(page);
+
+  writeFileSync(file, '# Tasks\n\nChanged on disk.\n');
+  await expect(editor).toContainText('Changed on disk.');
+  await expect(dialog.getByRole('status').filter({ hasText: 'The file changed, so the view was updated' })).toBeVisible();
+
+  writeFileSync(path.join(docsDir(), 'product', 'new.md'), '# New\n');
+  await expect(dialog.getByRole('treeitem', { name: 'new.md' })).toBeVisible();
+
+  rmSync(file);
+  await expect(dialog.getByRole('status').filter({ hasText: 'This file was deleted' })).toBeVisible();
+  await expect(editor).toContainText('Changed on disk.');
+  await expect(dialog.getByRole('treeitem', { name: 'tasks.md' })).toHaveCount(0);
 });
 
-test('E2E-3: the file API refuses traversal, absolute paths, links, other extensions and unguarded writes', async ({ page, request }) => {
+test('E2E-3: the file API refuses traversal, absolute paths, links and other extensions, and nothing writes', async ({ page, request }) => {
   const outside = path.join(os.tmpdir(), `agboard-docs-outside-${process.pid}`);
   mkdirSync(outside, { recursive: true });
   writeFileSync(path.join(outside, 'secret.md'), 'secret');
@@ -113,15 +88,22 @@ test('E2E-3: the file API refuses traversal, absolute paths, links, other extens
       expect(read.status(), `GET ${p}`).toBeGreaterThanOrEqual(400);
       expect(await read.text(), `GET ${p}`).not.toContain('secret');
       const write = await request.put(`${base}/file`, { headers: guard, data: { path: p, content: 'pwned', expectedRevision: 'x' } });
-      expect(write.status(), `PUT ${p}`).toBeGreaterThanOrEqual(400);
+      expect(write.status(), `PUT ${p}`).toBe(405);
+      // Opening is refused before anything starts. Any existing file may be opened, so note.txt, which
+      // would start an app on this computer, is left out.
+      if (p !== 'note.txt') {
+        const opened = await request.post(`${base}/open`, { headers: guard, params: { path: p } });
+        expect(opened.status(), `open ${p}`).toBeGreaterThanOrEqual(400);
+      }
     }
     expect(readFileSync(path.join(outside, 'secret.md'), 'utf8')).toBe('secret');
     expect(readFileSync(path.join(docsDir(), 'note.txt'), 'utf8')).toBe('text');
     expect(existsSync(path.join(outside, 'x.md'))).toBe(false);
 
     const good = { path: 'product/tasks.md', content: 'x', expectedRevision: 'x' };
+    expect((await request.put(`${base}/file`, { headers: guard, data: good })).status()).toBe(405);
     for (const headers of [{} as Record<string, string>, { 'X-Agboard-Token': token }, { Origin: guard.Origin, 'Sec-Fetch-Site': 'same-origin' }]) {
-      const response = await request.put(`${base}/file`, { headers, data: good });
+      const response = await request.post(`${base}/open`, { headers, params: { path: 'product/tasks.md' } });
       expect(response.status(), JSON.stringify(Object.keys(headers))).toBe(403);
     }
     expect(readFileSync(path.join(docsDir(), 'product', 'tasks.md'), 'utf8')).toBe(original);

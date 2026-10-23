@@ -174,14 +174,6 @@ pub enum AgboardError {
     DocsNotUtf8 {
         path: String,
     },
-    /// The file changed since `expected` was read; `current` is its revision now.
-    DocsRevisionConflict {
-        expected: String,
-        current: String,
-    },
-    DocsReadOnly {
-        path: String,
-    },
     /// The Docs image API serves only PNG, JPEG, WebP, GIF, AVIF and SVG.
     DocsAssetType {
         path: String,
@@ -241,8 +233,6 @@ impl AgboardError {
             AgboardError::DocsNotMarkdown { .. } => "docs_not_markdown",
             AgboardError::DocsTooLarge { .. } => "docs_too_large",
             AgboardError::DocsNotUtf8 { .. } => "docs_not_utf8",
-            AgboardError::DocsRevisionConflict { .. } => "docs_revision_conflict",
-            AgboardError::DocsReadOnly { .. } => "docs_read_only",
             AgboardError::DocsAssetType { .. } => "docs_asset_type",
             AgboardError::DocsNotImplemented => "docs_not_implemented",
             AgboardError::DocsOpenFailed { .. } => "docs_open_failed",
@@ -340,10 +330,6 @@ impl AgboardError {
             AgboardError::DocsNotMarkdown { path } => format!("{path} is not a Markdown file."),
             AgboardError::DocsTooLarge { path, .. } => format!("{path} is too large."),
             AgboardError::DocsNotUtf8 { path } => format!("{path} is not UTF-8 text."),
-            AgboardError::DocsRevisionConflict { .. } => {
-                "the document changed since it was read.".to_string()
-            }
-            AgboardError::DocsReadOnly { path } => format!("{path} is read-only."),
             AgboardError::DocsAssetType { path } => format!("{path} is not a supported image."),
             AgboardError::DocsNotImplemented => {
                 "this document operation is not available yet.".to_string()
@@ -455,19 +441,13 @@ impl AgboardError {
                 "No such file in the project's Docs. Choose a file from the tree.".to_string()
             }
             AgboardError::DocsNotMarkdown { .. } => {
-                "Only files ending in .md or .mdx can be opened or saved.".to_string()
+                "Only files ending in .md or .mdx can be opened.".to_string()
             }
             AgboardError::DocsTooLarge { limit, .. } => {
-                format!("Files larger than {limit} bytes cannot be opened or saved here.")
+                format!("Files larger than {limit} bytes cannot be opened here.")
             }
             AgboardError::DocsNotUtf8 { .. } => {
                 "Only UTF-8 text can be opened here. The file is not changed.".to_string()
-            }
-            AgboardError::DocsRevisionConflict { current, .. } => format!(
-                "Another change saved the file first (revision {current}). Reload it, or save again with the latest revision."
-            ),
-            AgboardError::DocsReadOnly { .. } => {
-                "The file cannot be written. Check its permissions.".to_string()
             }
             AgboardError::DocsAssetType { .. } => {
                 "Only PNG, JPEG, WebP, GIF, AVIF and SVG images are served.".to_string()
@@ -574,13 +554,6 @@ mod tests {
             AgboardError::DocsNotUtf8 {
                 path: "a.md".into(),
             },
-            AgboardError::DocsRevisionConflict {
-                expected: "sha256:a".into(),
-                current: "sha256:b".into(),
-            },
-            AgboardError::DocsReadOnly {
-                path: "a.md".into(),
-            },
             AgboardError::DocsAssetType {
                 path: "a.svg".into(),
             },
@@ -631,8 +604,6 @@ mod tests {
                 ("docs_not_markdown", 1),
                 ("docs_too_large", 1),
                 ("docs_not_utf8", 1),
-                ("docs_revision_conflict", 1),
-                ("docs_read_only", 1),
                 ("docs_asset_type", 1),
                 ("docs_not_implemented", 1),
                 ("docs_open_failed", 1),
@@ -749,23 +720,15 @@ mod tests {
             ),
             (
                 "a.txt is not a Markdown file.",
-                "Only files ending in .md or .mdx can be opened or saved.",
+                "Only files ending in .md or .mdx can be opened.",
             ),
             (
                 "a.md is too large.",
-                "Files larger than 2097152 bytes cannot be opened or saved here.",
+                "Files larger than 2097152 bytes cannot be opened here.",
             ),
             (
                 "a.md is not UTF-8 text.",
                 "Only UTF-8 text can be opened here. The file is not changed.",
-            ),
-            (
-                "the document changed since it was read.",
-                "Another change saved the file first (revision sha256:b). Reload it, or save again with the latest revision.",
-            ),
-            (
-                "a.md is read-only.",
-                "The file cannot be written. Check its permissions.",
             ),
             (
                 "a.svg is not a supported image.",

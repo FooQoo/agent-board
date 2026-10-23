@@ -87,6 +87,11 @@ export interface AppControllerModel {
   /** The project whose docs dialog is open, or null. */
   docsProjectId: ProjectId | null;
   setDocsProjectId: (projectId: ProjectId | null) => void;
+  /**
+   * Calls `listener` when files in a project's Docs may have changed: with the project, or with
+   * `null` when it may be any project (the stream reopened). Returns the function that stops it.
+   */
+  subscribeDocs: (listener: (projectId: string | null) => void) => () => void;
 }
 
 export interface AppWorkspaceActions {

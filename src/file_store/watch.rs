@@ -8,7 +8,9 @@
 //! is silent.
 //!
 //! Temporary files and `.internal/` are not canonical data, and neither is the
-//! project README; their events are dropped before they reach the queue.
+//! project README; their events are dropped before they reach the queue. The
+//! project's `docs/` folder is the user's own files, not board data: its events
+//! wait out the same 200 ms and then go to the docs sink, without a reload.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -36,6 +38,24 @@ pub enum Target {
     Project(ProjectId),
     /// Every project, and the list of projects itself.
     All,
+    /// Something in one project's `docs/` folder; announced, never loaded.
+    Docs(ProjectId),
+}
+
+/// Told that files in a project's Docs changed: `Some(project)`, or `None` when
+/// the platform lost events and any project's Docs may have changed.
+#[derive(Clone)]
+pub struct DocsSink(Arc<dyn Fn(Option<ProjectId>) + Send + Sync>);
+
+impl DocsSink {
+    pub fn new(send: impl Fn(Option<ProjectId>) + Send + Sync + 'static) -> DocsSink {
+        DocsSink(Arc::new(send))
+    }
+
+    /// A sink for a caller that does not follow the Docs.
+    pub fn none() -> DocsSink {
+        DocsSink::new(|_| {})
+    }
 }
 
 /// Holds the OS watch. Dropping it stops the events.
@@ -77,8 +97,10 @@ pub fn classify(shared: &Path, path: &Path) -> Option<Target> {
         [projects, id] if projects == "projects" => {
             ProjectId::from_str(id).ok().map(|_| Target::All)
         }
-        // The Docs are the user's files: they are not board data.
-        [projects, _, docs, ..] if projects == "projects" && docs == "docs" => None,
+        // The Docs are the user's files: they are announced, not loaded as board data.
+        [projects, id, docs, ..] if projects == "projects" && docs == "docs" => {
+            ProjectId::from_str(id).ok().map(Target::Docs)
+        }
         [projects, _, file] if projects == "projects" && file == "README.md" => None,
         [projects, id, ..] if projects == "projects" => {
             ProjectId::from_str(id).ok().map(Target::Project)
@@ -95,6 +117,16 @@ impl Watch {
         shared: &Path,
         index: Arc<RwLock<ProjectIndex>>,
         changed: impl Into<ChangeSink>,
+    ) -> Result<(Watch, Reloader), AgboardError> {
+        Watch::start_with_docs(shared, index, changed, DocsSink::none())
+    }
+
+    /// [`Watch::start`], also telling `docs` about changes in the projects' Docs.
+    pub fn start_with_docs(
+        shared: &Path,
+        index: Arc<RwLock<ProjectIndex>>,
+        changed: impl Into<ChangeSink>,
+        docs: DocsSink,
     ) -> Result<(Watch, Reloader), AgboardError> {
         std::fs::create_dir_all(shared).map_err(|e| watch_error(shared, e))?;
         let root = shared.canonicalize().map_err(|e| watch_error(shared, e))?;
@@ -133,7 +165,7 @@ impl Watch {
             // The first read is the baseline, not a change.
             guard.take_changes();
         }
-        tokio::spawn(reload_loop(rx, root, index, changed.into()));
+        tokio::spawn(reload_loop(rx, root, index, changed.into(), docs));
         Ok((Watch { _watcher: watcher }, Reloader { tx }))
     }
 }
@@ -152,6 +184,7 @@ async fn reload_loop(
     root: PathBuf,
     index: Arc<RwLock<ProjectIndex>>,
     changed: ChangeSink,
+    docs: DocsSink,
 ) {
     let mut due: HashMap<Target, Instant> = HashMap::new();
     loop {
@@ -172,6 +205,19 @@ async fn reload_loop(
                     .collect();
                 for target in &ready {
                     due.remove(target);
+                }
+                for target in &ready {
+                    match target {
+                        Target::Docs(id) => (docs.0)(Some(id.clone())),
+                        // Lost events may have been in any project's Docs.
+                        Target::All => (docs.0)(None),
+                        Target::Project(_) => {}
+                    }
+                }
+                let ready: Vec<Target> =
+                    ready.into_iter().filter(|target| !matches!(target, Target::Docs(_))).collect();
+                if ready.is_empty() {
+                    continue;
                 }
                 let root = root.clone();
                 let index = index.clone();
@@ -281,7 +327,7 @@ mod tests {
     }
 
     #[test]
-    fn the_docs_folder_and_everything_in_it_are_ignored() {
+    fn the_docs_folder_and_everything_in_it_are_docs_not_board_data() {
         for rest in [
             "docs",
             "docs/a.md",
@@ -289,7 +335,11 @@ mod tests {
             "docs/sub/tasks/1/TASK.md",
         ] {
             let path = shared().join("projects").join(ID).join(rest);
-            assert_eq!(classify(&shared(), &path), None, "{rest}");
+            assert_eq!(
+                classify(&shared(), &path),
+                Some(Target::Docs(ID.parse().unwrap())),
+                "{rest}"
+            );
         }
     }
 

@@ -24,7 +24,9 @@ const EVENT_SOURCE_OPEN = 1;
 export type PcStreamNote =
   | { type: 'changed'; event: ChangedEvent }
   /** The stream opened, or the cache can no longer be trusted: lists the core does not own are read again. */
-  | { type: 'sync' };
+  | { type: 'sync' }
+  /** Files in a project's Docs changed; `null` when any project's Docs may have. */
+  | { type: 'docs'; projectId: string | null };
 
 export interface PcAdapter extends DataAdapter {
   /** Listens to the notes of every stream this adapter opens. Returns the function that stops it. */
@@ -115,6 +117,17 @@ export function createPcAdapter(): PcAdapter {
         tell({ type: 'sync' });
       });
       source.addEventListener('preferences', (event) => handlers.onPreferences?.(event));
+      source.addEventListener('docs', (event) => {
+        let projectId: string | null = null;
+        try {
+          const data: unknown = JSON.parse((event as MessageEvent).data);
+          const named = (data as { projectId?: unknown } | null)?.projectId;
+          if (typeof named === 'string') projectId = named;
+        } catch {
+          // An unreadable notice still says that some Docs changed.
+        }
+        tell({ type: 'docs', projectId });
+      });
       source.addEventListener('error', () => handlers.onClose?.());
       return () => {
         clearInterval(alive);

@@ -29,7 +29,7 @@
 | `GET /api/projects/{projectId}/summary` | ボードの一覧に使うデータ。プロジェクト、`version`、タスク、エピック、problemsを返し、本文は含めない。[SummaryとDetail](#summaryとdetail)を参照。 |
 | `GET /api/projects/{projectId}/tasks/{id}/detail` | 1件のタスクの本文・受入条件・履歴をNDJSONのストリームで返す。アーカイブ済みのタスクも同じ方法で読む。 |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | 1件のエピックのドキュメントをNDJSONのストリームで返す。 |
-| `GET /api/projects/{projectId}/docs/tree`<br>`GET`/`PUT /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | プロジェクトの`docs/`にあるMarkdown文書。フォルダのツリー、1つのファイル、保存、画像、フォルダを開く操作。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
+| `GET /api/projects/{projectId}/docs/tree`<br>`GET /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | プロジェクトの`docs/`にある文書を読むだけのルート。フォルダのツリー、MarkdownかMDXのファイル1つ、画像、フォルダやファイルをコンピュータのアプリで開く操作。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
 | `GET /assets/{name}` | `build.rs`が生成した表にある、内容から名前を付けたスクリプトとスタイルシートだけ。ほかは404。immutableでキャッシュする。`Accept-Encoding`が許せばgzipで送り、`Vary: Accept-Encoding`を付ける。 |
 | `GET /docs-sandbox`<br>`GET /docs-sandbox/{name}` | 文書のMDXを実行するページと、内容から名前を付けたそのスクリプト（ほかの名前は404）。トークンもボードのデータも持たない固定のページ。専用の`Content-Security-Policy`（`default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'`）と`X-Content-Type-Options: nosniff`を付ける。ボードは`sandbox="allow-scripts"`のiframeで埋め込む。ボードのルーターだけにあり、モニターにはない。[ドキュメントのMDX](../concepts/security.md#ドキュメントのmdx)を参照。 |
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、変更されたリソースを運ぶ`changed`（[変更イベント](#変更イベント)を参照）、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
@@ -142,15 +142,15 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 ### プロジェクトのドキュメント
 
-次のルートは、プロジェクトの`docs/`（`shared/projects/<projectId>/docs/`）にあるファイルを読み書きします。ボードのルーターにだけあり、モニターの入口では提供しません。ボードは変わりません。保存しても、プロジェクトの`version`は変わらず、SSEの`changed`も送りません。パスは`docs/`からの相対パスで、区切りは`/`です。検証の内容は[セキュリティモデル](../concepts/security.md#プロジェクトのドキュメント)にあります。プロジェクトIDが32文字の小文字16進数でないときは422 `invalid_value`です。
+次のルートは、プロジェクトの`docs/`（`shared/projects/<projectId>/docs/`）にあるファイルを読みます。書き込むルートはなく、ファイルのルートへの`PUT`は405です。ボードのルーターにだけあり、モニターの入口では提供しません。ディスク上のドキュメントの変化は、`changed`ではなくSSEの`docs`イベントで知らせます（[変更の通知](../concepts/notifications.md#ドキュメント)を参照）。パスは`docs/`からの相対パスで、区切りは`/`です。検証の内容は[セキュリティモデル](../concepts/security.md#プロジェクトのドキュメント)にあります。プロジェクトIDが32文字の小文字16進数でないときは422 `invalid_value`です。
 
 | API | 契約 |
 | --- | --- |
 | `GET …/docs/tree` | `docs/`の下のフォルダとファイルの名前だけを、`{nodes, truncated}`で返す。ファイルには`viewer`があり、`.md`と`.mdx`は`markdown`、`.png`・`.jpg`・`.jpeg`・`.webp`・`.gif`・`.avif`・`.svg`は`image`、それ以外は`other`（一覧には出すが表示しない）。フォルダには`viewer`がない。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
-| `GET …/docs/file?path=` | `{path, content, revision, readOnly}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）。`readOnly`はファイルの読み取り専用の属性。対象は、`.md`と`.mdx`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
+| `GET …/docs/file?path=` | `{path, content, revision}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）で、画面はこれを比べてファイルが変わったかを判断する。対象は、`.md`と`.mdx`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
 | `PUT …/docs/file` | 本文は`{path, content, expectedRevision}`。知らない項目は400 `invalid_json`。ファイルがまだ`expectedRevision`のときだけ、`content`をそのままのバイト列で書き、新しい`revision`を含む`{path, revision}`を返す。ほかの書き込みと同じ書き込みのガードを通る。ファイルを新しく作ることはない。 |
 | `GET …/docs/assets?path=` | 10 MiB以下のPNG・JPEG・WebP・GIF・AVIF・SVGの画像のバイト列。`Content-Type`は拡張子から決め（`image/png`・`image/jpeg`・`image/webp`・`image/gif`・`image/avif`・`image/svg+xml`）、`X-Content-Type-Options: nosniff`を付ける。SVGの応答には`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`も付けるので、URLを直接開いてもスクリプトは動かない。画面では`<img>`で表示するので、そこでもスクリプトは動かない。ほかの形式は415 `docs_asset_type`。 |
-| `POST …/docs/open` | 本文なし。サーバーを動かしているコンピュータのファイルマネージャで、プロジェクトの`docs/`を開く。macOSは`open`、Windowsは`explorer`、それ以外は`xdg-open`を使う。プログラムはシェルを通さず、フォルダだけを引数にして起動し、終了は待たない。成功すると204。プロジェクトがないときは404 `project_not_found`。`docs/`がない、またはプログラムを起動できない（たとえば`xdg-open`が入っていない）ときは500 `docs_open_failed`。ほかの書き込みと同じく書き込みガードを通る。 |
+| `POST …/docs/open[?path=]` | 本文なし。サーバーを動かしているコンピュータで、プロジェクトの`docs/`をファイルマネージャで開く。`?path=`があるときは、そのファイルを、コンピュータがその種類に使うアプリで開く。macOSは`open`、Windowsは`explorer`、それ以外は`xdg-open`を使う。パスは読み込みと同じ方法で確かめ、存在するファイル（種類は問わない）であることを求める（400 `docs_path_invalid`、404 `docs_not_found`）。プログラムはシェルを通さず、フォルダかファイルだけを引数にして起動し、終了は待たない。成功すると204。プロジェクトがないときは404 `project_not_found`。`docs/`がない、またはプログラムを起動できない（たとえば`xdg-open`が入っていない）ときは500 `docs_open_failed`。プログラムを起動するので、ほかの書き込みと同じく書き込みガードを通る。 |
 
 ツリーの例:
 
@@ -161,22 +161,10 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 ファイルの例:
 
 ```json
-{"path":"design/spec.md","content":"---\ntitle: Design\n---\n# Design\n","revision":"sha256:b9dc9fdb…","readOnly":false}
+{"path":"design/spec.md","content":"---\ntitle: Design\n---\n# Design\n","revision":"sha256:b9dc9fdb…"}
 ```
 
-保存では、読んだときの`revision`を指定します。
-
-```json
-{"path":"design/spec.md","content":"---\ntitle: Design\n---\n# Design\n\nEdited.\n","expectedRevision":"sha256:b9dc9fdb…"}
-```
-
-その後にファイルが変わっていたときは、何も書かずに409を返します。本文にはファイルの今の`revision`が入るので、画面はファイルを読み直さずに上書きの保存ができます。
-
-```json
-{"error":{"code":"docs_revision_conflict","currentRevision":"sha256:52bed404…","message":"the document changed since it was read.","reason":"Another change saved the file first (revision sha256:52bed404…). Reload it, or save again with the latest revision."}}
-```
-
-ほかの失敗は通常のエラーの形式です。コードとステータスは[エラーコード](./errors.md#プロジェクトのドキュメント)にあります。保存の仕組みと、防げないことは[保存と復旧](../concepts/saving-and-recovery.md#プロジェクトのドキュメント)にあります。
+失敗は通常のエラーの形式です。コードとステータスは[エラーコード](./errors.md#プロジェクトのドキュメント)にあります。
 
 ### multipartでタスクを作成する
 
@@ -200,10 +188,10 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | ステータス | 意味 |
 | --- | --- |
 | 400 | 壊れたJSON、不正な`sections`クエリ（`invalid_sections`）、または不正なドキュメントのパス（`docs_path_invalid`）。 |
-| 403 | 保護に失敗した。または、ドキュメントのファイルが読み取り専用（`docs_read_only`）。 |
+| 403 | 保護に失敗した。 |
 | 404 | プロジェクト・タスク・エピックがない。またはドキュメントのファイルがない。 |
-| 409 | `docs_revision_conflict`・`request_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
-| 413 | 1 MiBを超える本文（ドキュメントの保存は13 MiB。2 MiBの本文をJSONでエスケープしても収まる値）。または、上限を超えるドキュメントのファイル（`docs_too_large`）。 |
+| 409 | `request_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
+| 413 | 1 MiBを超える本文。または、上限を超えるドキュメントのファイル（`docs_too_large`）。 |
 | 415 | Markdownでないドキュメントのファイル、または提供しない形式の画像（`docs_not_markdown`・`docs_asset_type`）。 |
 | 422 | ID構文・入力・状態の規則の違反。UTF-8でないドキュメントのファイル（`docs_not_utf8`）。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
 | 503 | ロック待ちが時間切れになった。 |

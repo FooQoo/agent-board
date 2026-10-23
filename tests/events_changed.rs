@@ -281,3 +281,63 @@ fn events_monitor_sends_only_the_changes_of_the_followed_project() {
     assert_eq!(second.instance_id, first.instance_id);
     assert!(events.changed(Duration::from_millis(600)).is_none());
 }
+
+/// The next event called `name` within `within`; other events are skipped.
+fn next_named(events: &mut Stream, name: &str, within: Duration) -> Option<Sse> {
+    let deadline = Instant::now() + within;
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        let event = events.next(left)?;
+        if event.name == name {
+            return Some(event);
+        }
+    }
+}
+
+fn write_doc(home: &std::path::Path, project: &ProjectId, name: &str) {
+    let docs = home
+        .join("shared/projects")
+        .join(project.as_str())
+        .join("docs");
+    std::fs::create_dir_all(&docs).unwrap();
+    std::fs::write(docs.join(name), "# Plan\n").unwrap();
+}
+
+#[test]
+fn events_pc_docs_names_the_project_and_leaves_the_board_numbers_alone() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let home = support::home();
+    let project = project_of(home.path(), "monitor");
+    let server = common::Running::start(home.path());
+    let mut events = Stream::open(
+        server.addr,
+        "/api/events",
+        &format!("Host: {}\r\n", server.addr),
+    );
+
+    write_doc(home.path(), &project, "plan.md");
+    let docs = next_named(&mut events, "docs", WAIT).expect("a docs event");
+    let data: serde_json::Value = serde_json::from_str(&docs.data).unwrap();
+    assert_eq!(data["projectId"], project.to_string());
+
+    // The Docs are not board data: the next board change is still the first one.
+    note(home.path(), &project, "After the docs.");
+    let changed = events.changed(WAIT).expect("a changed event");
+    assert_eq!(changed.seq, 1);
+}
+
+#[test]
+fn events_monitor_does_not_send_docs_changes() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let home = support::home();
+    let followed = project_of(home.path(), "monitor");
+    let server = support::Running::start(home.path());
+    let session = server.session();
+    let mut events = monitor_stream(&server, &session, &format!("?project={followed}"));
+
+    write_doc(home.path(), &followed, "plan.md");
+    std::thread::sleep(Duration::from_millis(700));
+    note(home.path(), &followed, "Followed note.");
+    let first = events.next(WAIT).expect("an event");
+    assert_eq!(first.name, "changed", "{}", events.log);
+}

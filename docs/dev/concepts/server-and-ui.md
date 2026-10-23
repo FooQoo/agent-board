@@ -19,7 +19,7 @@ Every request goes through the same steps:
 
 Writes always target the ProjectId in the URL. The web `actor` is always `human`; it is never taken from the request. There are no unscoped routes such as `/api/board`, no compatibility aliases, and no HTTP API for creating, renaming, or deleting projects.
 
-The [project docs](../reference/web-api.md#project-docs) routes are an exception to step 3: they read and write files in the project's `docs/` folder directly, without the index, the project write lock, or a notification. Their saves are ordered by a mutex of their own and checked against the file's revision (see [Saving and recovery](./saving-and-recovery.md#project-docs)). They run on blocking threads, because they wait on that mutex and do file work.
+The [project docs](../reference/web-api.md#project-docs) routes are an exception to step 3: they read files in the project's `docs/` folder directly, without the index or the project write lock, and they never write. The open route runs on a blocking thread, because starting a program may touch the disk.
 
 JSON and HTML responses are `no-store`. Scripts and stylesheets are named by their content and sent with `Cache-Control: public, max-age=31536000, immutable`, gzip-compressed when the browser accepts gzip; a new build changes the names the HTML loads, so a reload always gets the current UI. HTML responses carry `Referrer-Policy: no-referrer` and a `Content-Security-Policy`: scripts and connections from self only; styles from self and `'unsafe-inline'` (the editor injects `<style>` at runtime); images from self, `data:`, `http`, and `https`.
 
@@ -78,7 +78,7 @@ The data layer in `web/src/shared/data/` keeps these reads in one place, in thre
 
 The cache has fixed limits and no time-based expiry. It keeps the Summary of the last four projects, one for each project. It keeps up to 60 task Details within 8 MiB and up to 20 epic Details within 4 MiB, and drops the least recently used entries above those limits. The limits are in `web/src/shared/data/core/limits.ts`.
 
-**Holding updates.** Automatic updates do not change the screen while a drawer or a dialog is open. The data core holds them while the panel is open, and it applies them together 3 seconds after the last panel closes. The event stream stays open during the hold, but nothing is fetched. Manual refresh, saving, and answering skip the hold and apply at once.
+**Holding updates.** Automatic updates do not change the screen while a drawer or a dialog is open. The data core holds them while the panel is open, and it applies them together 3 seconds after the last panel closes. The event stream stays open during the hold, but nothing is fetched. Saving and answering skip the hold and apply at once. The PC board has no manual refresh; a page reload reads everything again.
 
 **Rendering Markdown.** The server splits a body into top-level Markdown blocks. It joins small neighbours up to about 2,000 characters, and it never cuts a list, a table, a code fence, or a quote. A Mermaid fence is a block of its own. The UI renders the blocks in order. A document with 40 blocks or more, or with 5,000 characters or more, is virtualized: only the blocks near the viewport are mounted. The virtual list is a separate chunk that loads when such a document is shown.
 
@@ -124,9 +124,9 @@ The cache has fixed limits and no time-based expiry. It keeps the Summary of the
 
 `DocsDialogContainer` (`web/src/features/docs/ui/`) owns the dialog's data; the screen and its states are described in the [user guide](../../guide/use/docs.md).
 
-- `useDocsTree` fetches the tree once when the dialog opens; there is no live update for the docs. `useDocument` fetches a file when it is chosen, and gives each load an ID that keys the editor, so a new file mounts a new editor.
-- `useDocumentEditor` splits the front matter off with `splitFrontmatter` (`shared/markdown/frontmatter.ts`) and gives only the body to `RichMarkdownEditor`. The file is dirty only after the editor reports a change, so opening and closing writes nothing. A save sends the original front matter followed by the edited body and the revision last read or saved. `useSaveFlow` runs it with `closeOnSuccess: false`, so the dialog stays open.
-- A 409 sets the conflict state and keeps the text. **Reload the latest** asks before it reloads; **Overwrite with mine** saves again with the `currentRevision` from the 409 (or, without one, the revision of a fresh read).
+- The dialog only shows files. `useDocsTree` fetches the tree when the dialog opens. `useDocument` fetches a file each time it is chosen and keeps nothing between choices; each load gets an ID that keys the viewer. A Markdown file is shown by `RichMarkdownEditor` with `disabled`, an `.mdx` file by `MdxFrame` (the sandbox page), and an image by `FileViewer`. The front matter is split off with `splitFrontmatter` (`shared/markdown/frontmatter.ts`) and shown above the body.
+- **Open in editor** posts `docs/open?path=`, and the server opens the file in the computer's app for it.
+- The dialog follows the files through `useDocsFollow`. The app passes it `subscribeDocs`, which turns the stream's `docs` notes for the project, and every reopened stream (`sync`), into calls. Each call reads the tree again quietly (`refresh`, without the loading state). If the open file is no longer in the tree, it is `deleted`; otherwise `useDocument.refresh` reads it again and replaces it only when its `revision` differs, which is `updated`. The notice, with its time, sits at the right of the footer and belongs to that file only. The docs never wait behind the drawer and modal hold, because they are not board data.
 - Relative images go through `resolveRelativeImage` (`shared/markdown/resolveRelativeImage.ts`), which resolves `src` against the file's folder, and then to the image route. Owned attachments and unsafe schemes never reach it.
 - The header shows **Docs** on the board only. The board composes the container in `app/`, keyed by project, so a project switch starts it over. The dialog is loaded on first use.
 

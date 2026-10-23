@@ -1,7 +1,10 @@
 export const docsJa = {
   docs: {
     title: 'ドキュメント',
-    notSaved: '保存されていません',
+    openInEditor: 'エディターで開く',
+    openFileFailed: 'ファイルを開けませんでした。',
+    fileUpdated: 'ファイルが変更されたため、表示を更新しました（{{time}}）',
+    fileDeleted: 'このファイルは削除されました（{{time}}）',
     files: 'ファイル',
     openFolder: 'フォルダを開く',
     openFolderFailed: 'フォルダを開けませんでした。',

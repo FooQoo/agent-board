@@ -1,13 +1,13 @@
-//! The project Docs: Markdown files kept under `<data area>/docs/<project-id>/`,
-//! apart from the board's shared files. The path rules live in [`paths`], the
-//! types in [`model`]; [`reader`] and [`writer`] are the calls the HTTP routes make.
+//! The project Docs: the user's files under `shared/projects/<project-id>/docs/`,
+//! apart from the board's data. The board only reads them; they are edited in the
+//! user's own editor. The path rules live in [`paths`], the types in [`model`];
+//! [`reader`] holds the calls the HTTP routes make.
 
 pub mod model;
 pub mod paths;
 pub mod reader;
 pub mod revision;
 pub mod templates;
-pub mod writer;
 
 pub use model::{DocsError, DocsFile, DocsRoot, DocsTree, DocsTreeNode, NodeKind};
 pub use paths::DocsPath;

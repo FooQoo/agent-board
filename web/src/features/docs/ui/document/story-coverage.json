@@ -30,17 +30,17 @@
           "stories": [
             {
               "id": "docs-document-documentpane--ready",
-              "states": ["file open", "unchanged", "save disabled", "kind label", "table"],
+              "states": ["ready", "no save"],
               "interaction": true
             },
             {
               "id": "docs-document-documentpane--with-frontmatter",
-              "states": ["front matter", "folds", "item count"],
+              "states": ["front matter", "folds"],
               "interaction": true
             },
             {
-              "id": "docs-document-documentpane--editing",
-              "states": ["unsaved changes", "save enabled"],
+              "id": "docs-document-documentpane--mdx-label",
+              "states": ["mdx label"],
               "interaction": true
             },
             {
@@ -50,83 +50,17 @@
             },
             {
               "id": "docs-document-documentpane--load-error",
-              "states": ["load failed", "reload"],
+              "states": ["load error", "reload"],
               "interaction": true
             },
             {
-              "id": "docs-document-documentpane--read-only",
-              "states": ["read-only notice", "save disabled"],
-              "interaction": true
-            },
-            {
-              "id": "docs-document-documentpane--saving",
-              "states": ["saving", "buttons off"],
-              "interaction": true
-            },
-            {
-              "id": "docs-document-documentpane--save-failed",
-              "states": ["failed save", "input retained", "no retry button"],
-              "interaction": true
-            },
-            {
-              "id": "docs-document-documentpane--conflict",
-              "states": [
-                "conflict",
-                "two choices",
-                "input retained",
-                "reload confirm",
-                "overwrite without question"
-              ],
-              "interaction": true
-            },
-            {
-              "id": "docs-document-documentpane--conflict-overwriting",
-              "states": ["overwrite in progress", "choices off"],
-              "interaction": true
-            },
-            {
-              "id": "docs-document-documentpane--conflict-japanese-dark",
+              "id": "docs-document-documentpane--japanese-dark",
               "states": ["japanese locale", "dark theme", "front matter"],
               "interaction": true
             },
             {
-              "id": "docs-document-documentpane--mdx-switch",
-              "states": ["mdx switch", "code by default", "ui view", "editor kept"],
-              "interaction": true
-            },
-            {
-              "id": "docs-document-documentpane--no-mdx-switch",
-              "states": ["no switch for markdown"],
-              "interaction": true
-            },
-            {
-              "id": "docs-document-documentpane--mdx-switch-japanese",
-              "states": ["mdx switch", "japanese locale"],
-              "interaction": true
-            },
-            {
               "id": "docs-document-documentpane--phone",
-              "states": ["phone width", "conflict", "front matter"],
-              "interaction": true
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "file": "features/docs/ui/document/ConflictBanner.tsx",
-      "exports": [
-        {
-          "name": "ConflictBanner",
-          "stories": [
-            {
-              "id": "docs-document-conflictbanner--conflict",
-              "states": ["conflict", "two choices", "reload confirm"],
-              "interaction": true
-            },
-            {
-              "id": "docs-document-conflictbanner--conflict-overwriting",
-              "states": ["overwrite in progress"],
+              "states": ["phone width", "front matter"],
               "interaction": true
             }
           ]

@@ -22,7 +22,7 @@ flowchart LR
 ```
 
 1. `serve` resolves the data area once at startup and uses it until exit. It writes `serve.json` after it starts listening and removes it on exit.
-2. It registers a recursive watcher on `shared/` before loading every project into its index. Events for dot-prefixed names, `.internal/`, `README.md`, and the project's `docs/` folder are ignored.
+2. It registers a recursive watcher on `shared/` before loading every project into its index. Events for dot-prefixed names, `.internal/`, and `README.md` are ignored. Events in a project's `docs/` folder are not board data: they go to the docs notice (see [The docs](#the-docs)) and never reload the project.
 3. Events are coalesced per project for 200 ms. A rescan request from the watcher reloads every project.
 4. After a save that changed something, the CLI reads `serve.json` and sends `POST http://127.0.0.1:<port>/api/notify` over a plain TCP connection with a 300 ms budget, ignoring failure. Agents that edit files directly need not notify.
 5. After a reload, the server compares the parsed data with the data before it. A save that changes nothing a Summary or Detail shows sends no event. A change set gets the next `seq` of this server run, and every open stream receives SSE `changed` with the changed resources and facets.
@@ -82,7 +82,18 @@ The board subscribes to `GET /api/events`, which carries every project. The mobi
 - `resync` when the stream has fallen behind.
 - A keep-alive every 15 seconds (the monitor sends a `heartbeat` event). A keep-alive does not fetch anything.
 - `preferences` after a saved language or theme change.
+- `docs` on the board's stream only, after a change in a project's `docs/` folder (see [The docs](#the-docs)).
 
 A connection that has sent nothing for 45 seconds is dropped and reopened, with growing pauses of 1, 2, 5, 10, and then 30 seconds. The browser lets go of the connection while its tab is hidden and opens it again when the tab becomes visible. Opening a connection also fetches the Summary, so a change made between the last fetch and the subscription is not missed.
 
 The desktop UI shows a disconnected state while the stream is down. There is no periodic polling or reconciliation: a missed notification is caught when the connection opens again or the page reloads.
+
+## The docs
+
+The files in a project's `docs/` folder are the user's, not board data. Their changes travel apart from `changed`:
+
+1. The watcher classifies a path under `projects/<id>/docs/` as that project's docs. Its events wait out the same 200 ms quiet period.
+2. When the period ends, the server sends `docs` with `{"projectId": "…"}` on `GET /api/events`. It reads no file, changes no `version`, and takes no `seq`. When the platform lost events, or the stream fell behind, `projectId` is `null`: any project's docs may have changed.
+3. The monitor's stream never sends `docs`, and agent waits ignore it.
+
+The Docs dialog reads the file list again on every `docs` for its project, and on every reopened stream. It reads the open file again only to compare its `revision`: a changed file is shown again with a notice, and a file gone from the list keeps its last content with a notice (see [Server and UI](./server-and-ui.md#the-docs-dialog)).

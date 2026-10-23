@@ -1,4 +1,3 @@
-import { i18n } from '@/shared/i18n';
 import { getJson, projectPath, readToken } from '@/shared/api/http';
 import type { ProjectId } from '@/shared/api/contracts';
 import type { DocsTreeNode, DocsViewer } from '../ui/shell/DocsFileTree';
@@ -13,34 +12,11 @@ export interface DocsTree {
   truncated: boolean;
 }
 
-/** `GET docs/file`: one Markdown file and the revision to save against. */
+/** `GET docs/file`: one Markdown or MDX file, and a revision that changes with its content. */
 export interface DocsFile {
   path: string;
   content: string;
   revision: string;
-  readOnly: boolean;
-}
-
-/** `PUT docs/file`: the revision the file has now. */
-export interface DocsSaved {
-  path: string;
-  revision: string;
-}
-
-/** A rejected save. `currentRevision` is set for a revision conflict. */
-export class DocsWriteError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code: string | null,
-    readonly currentRevision: string | null = null,
-  ) {
-    super(message);
-  }
-
-  get conflict(): boolean {
-    return this.code === 'docs_revision_conflict';
-  }
 }
 
 const docsPath = (projectId: ProjectId) => `${projectPath(projectId)}/docs`;
@@ -58,60 +34,15 @@ export function docsAssetUrl(projectId: ProjectId, path: string): string {
   return `${docsPath(projectId)}/assets?path=${encodeURIComponent(path)}`;
 }
 
-/** `POST docs/open`: the server opens the project's docs folder in the computer's file manager. */
-export async function openDocsFolder(projectId: ProjectId): Promise<void> {
-  const response = await fetch(`${docsPath(projectId)}/open`, {
+/**
+ * `POST docs/open`: the server opens the project's docs folder in the computer's file manager, or,
+ * given a `path`, that file in the app the computer uses for it. The Docs are edited there.
+ */
+export async function openDocs(projectId: ProjectId, path?: string): Promise<void> {
+  const query = path === undefined ? '' : `?path=${encodeURIComponent(path)}`;
+  const response = await fetch(`${docsPath(projectId)}/open${query}`, {
     method: 'POST',
     headers: { 'X-Agboard-Token': readToken() },
   });
   if (!response.ok) throw new Error(`Request failed (${response.status})`);
-}
-
-export async function saveDocsFile(
-  projectId: ProjectId,
-  input: { path: string; content: string; expectedRevision: string },
-): Promise<DocsSaved> {
-  const response = await fetch(`${docsPath(projectId)}/file`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Agboard-Token': readToken(),
-      'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
-    },
-    body: JSON.stringify(input),
-  });
-  let body: {
-    path?: string;
-    revision?: string;
-    currentRevision?: string;
-    error?: { code?: string; reason?: string; currentRevision?: string };
-  } = {};
-  try {
-    body = await response.json();
-  } catch {
-    // The body was not JSON.
-  }
-  if (!response.ok || typeof body.revision !== 'string') {
-    throw new DocsWriteError(
-      body.error?.reason ?? `Request failed (${response.status})`,
-      response.status,
-      body.error?.code ?? null,
-      body.currentRevision ?? body.error?.currentRevision ?? null,
-    );
-  }
-  return { path: body.path ?? input.path, revision: body.revision };
-}
-
-/**
- * The sentence for a rejected save whose code has its own, or null for any other failure (which
- * gets the general one). The server's reason is not shown.
- */
-export function saveErrorMessage(t: (key: string) => string, error: unknown): string | null {
-  if (!(error instanceof DocsWriteError)) return null;
-  switch (error.code) {
-    case 'docs_read_only':
-      return t('docsDocument.readOnly');
-    default:
-      return null;
-  }
 }

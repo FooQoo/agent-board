@@ -53,26 +53,9 @@ The task metadata and body are written into a private staging directory, followe
 
 ## Project docs
 
-The files in `shared/projects/<project-id>/docs/` are saved by their own path, apart from the board's locks and journal. A save is a compare-and-swap on the file's revision (`src/docs/writer.rs`):
+Agent Board never writes the files in `shared/projects/<project-id>/docs/`, apart from the `README.md` it puts there when it creates the folder. The Docs dialog only reads them, and the user edits them in their own editor (**Open in editor** starts it, see [Web API](../reference/web-api.md#project-docs)). So the docs have no lock, journal, revision check, or recovery of their own; the editor that writes a file is responsible for it.
 
-1. The page reads a file and keeps its `revision`, the SHA-256 of its bytes.
-2. A save sends the new content with that revision as `expectedRevision`.
-3. The server takes a mutex for the project's `docs/` folder. The mutex lives in the `serve` process; it is not a file lock.
-4. Under the mutex it opens the file, reads its bytes, and computes the current revision. If the file is gone, the save is `docs_not_found`; saving never creates a file. If the revision differs, it is `docs_revision_conflict` with `currentRevision`, and nothing is written. A read-only file is `docs_read_only`.
-5. Otherwise it writes the content to a temporary file in the same folder, syncs it, and renames it over the file. The content is written as the exact bytes received, so line endings, a BOM, the final newline, and the front matter stay as the page sent them.
-6. It returns the new revision, which the page keeps for its next save.
-
-The page splits the front matter off before editing and puts the original text back above the edited body when it saves, so the front matter is never rewritten. A file that is opened and closed without an edit is never saved. After an edit, the editor writes the body in its own Markdown style; the list is in the [user guide](../../guide/use/docs.md#formatting-that-changes-when-you-save).
-
-On a conflict, the page keeps the user's text and offers to reload the latest file or to save again with `currentRevision` as the expected revision, which overwrites the other change.
-
-Limits of this design:
-
-- **Other processes are not coordinated.** An editor, `git`, or an agent writing the file does not take the mutex. A write that lands between the server's comparison and its rename is overwritten without a conflict. A write before the comparison is caught.
-- **One server only.** The mutex orders saves inside one `serve`. Only one `serve` runs per data area, so this covers every save made through the API.
-- **No history.** An overwrite replaces the file; there is no backup or undo. Keep documents that matter under version control.
-
-Saving a document does not touch the board: the watcher ignores `docs/`, the project `version` does not change, and no `changed` is sent.
+The board's data is not affected by the docs either: the watcher reports a change in `docs/` as an SSE `docs` event, without reloading the board, changing the project's `version`, or sending `changed` (see [Change notifications](./notifications.md#the-docs)).
 
 ## When files are invalid
 
@@ -112,6 +95,5 @@ A tab holds the lease for 30 seconds and renews it with a heartbeat every 10 sec
 | The project lock is busy for more than 5 seconds | `database_busy`; nothing changes; retry. |
 | An agent crashes while its task is Running | The task stays Running. Nothing resets it automatically. |
 | The shared area is on a network drive | Not supported: OS events may not arrive. |
-| A docs file changed since the page read it | The save is refused with `docs_revision_conflict`; the file is unchanged and the page keeps the text. |
 
 Browser-side failures (lost responses, retries, disconnects) are covered in [Server and web UI](./server-and-ui.md#behavior-on-failure-in-the-ui).

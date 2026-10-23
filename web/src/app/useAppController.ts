@@ -171,6 +171,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
           core.gate.submit(() => reloadArchiveRef.current(), { key: 'archive' });
           return;
         }
+        if (note.type === 'docs') return;
         const { event } = note;
         if (event.changes.some((change) => change.resource === 'project'))
           reloadProjectsRef.current();
@@ -178,6 +179,17 @@ export function useAppController(initial: AppInitial | undefined): AppController
           core.gate.submit(() => reloadArchiveRef.current(), { key: 'archive' });
       }),
     [adapter, core],
+  );
+
+  // The Docs dialog follows its own files: a `docs` note names the project, and a reopened stream
+  // may have missed notes for any project. The Docs are not board data, so nothing here waits.
+  const subscribeDocs = useCallback(
+    (listener: (projectId: string | null) => void) =>
+      adapter.subscribe((note) => {
+        if (note.type === 'docs') listener(note.projectId);
+        else if (note.type === 'sync') listener(null);
+      }),
+    [adapter],
   );
 
   // Automatic updates wait while the detail drawer or a modal is open and for 3 seconds after.
@@ -268,5 +280,6 @@ export function useAppController(initial: AppInitial | undefined): AppController
     viewMode: session.viewMode,
     docsProjectId: docsOpenFor === activeId ? docsOpenFor : null,
     setDocsProjectId: setDocsOpenFor,
+    subscribeDocs,
   };
 }
