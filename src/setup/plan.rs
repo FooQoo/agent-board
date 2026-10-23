@@ -26,7 +26,7 @@ pub struct Target {
 
 /// What an adapter plans for one file. `text` is `None` when nothing changes.
 #[derive(Debug)]
-pub(super) struct Planned {
+pub(crate) struct Planned {
     pub text: Option<String>,
     pub changes: Vec<String>,
 }
@@ -59,7 +59,9 @@ pub(super) fn plan(
 
 /// The real file behind `config_path` and its bytes. A symbolic link is followed
 /// only when its target can be determined; the link itself is never replaced.
-fn resolve_and_read(config_path: &Path) -> Result<(PathBuf, Option<Vec<u8>>), AgboardError> {
+pub(crate) fn resolve_and_read(
+    config_path: &Path,
+) -> Result<(PathBuf, Option<Vec<u8>>), AgboardError> {
     let file = match fs::symlink_metadata(config_path) {
         Ok(meta) if meta.file_type().is_symlink() => {
             fs::canonicalize(config_path).map_err(|error| AgboardError::FileError {
@@ -92,7 +94,7 @@ fn read_error(path: &Path, error: &io::Error) -> AgboardError {
 }
 
 /// A settings file that exists but cannot be used as it is. Nothing is written.
-pub(super) fn invalid_file(path: &Path, field: &str, reason: &str) -> AgboardError {
+pub(crate) fn invalid_file(path: &Path, field: &str, reason: &str) -> AgboardError {
     AgboardError::FileInvalid {
         file: display(path),
         field: field.to_string(),
@@ -102,7 +104,7 @@ pub(super) fn invalid_file(path: &Path, field: &str, reason: &str) -> AgboardErr
 
 /// A file that setup cannot change in this configuration. Nothing is written;
 /// `reason` carries the cause and the manual step.
-pub(super) fn blocked(path: &Path, reason: String) -> AgboardError {
+pub(crate) fn blocked(path: &Path, reason: String) -> AgboardError {
     AgboardError::FileError {
         action: FileAction::Write,
         file: display(path),

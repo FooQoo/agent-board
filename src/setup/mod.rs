@@ -6,11 +6,11 @@
 //! run then writes; a dry run stops after the plan, so both share the same
 //! checks. Project creation, binding, and serving are separate commands.
 
-mod apply;
-mod claude;
-mod codex;
-mod env;
-mod plan;
+pub(crate) mod apply;
+pub(crate) mod claude;
+pub(crate) mod codex;
+pub(crate) mod env;
+pub(crate) mod plan;
 
 use std::fs;
 use std::path::PathBuf;
