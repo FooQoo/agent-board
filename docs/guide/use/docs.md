@@ -25,7 +25,7 @@ What the body shows depends on the type of file:
 | Images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.avif`, `.svg`) | The picture. |
 | Any other file, such as `.pen`, `.json`, or `.txt` | **This file type cannot be shown here.** with the file's name. |
 
-- **Front matter.** A YAML block between `---` lines at the top of a Markdown or MDX file is shown in a separate **Front matter** panel above the body. You can fold it.
+- **Front matter.** A YAML block between `---` lines at the top of a Markdown or MDX file is shown in a separate **Front matter** panel above the body, folded at first with the number of items. Choose it to show the lines.
 - **Images in a document.** An image written with a relative path, such as `![Diagram](images/flow.png)`, is looked up from the file's own folder. Images from `http` and `https` addresses load as they do on the board.
 
 If the project has no files, the dialog says **This project has no docs** and shows the folder's path, `shared/projects/<project-id>/docs/` in the data area, with a button to copy it.

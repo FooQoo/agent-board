@@ -7,6 +7,7 @@ import '@/shared/i18n/docs-strings';
 export interface FrontmatterBlockProps {
   /** The front matter exactly as the file holds it, with its `---` lines. */
   source: string;
+  /** Open at first; folded unless the caller says so, so the body comes first. */
   defaultOpen?: boolean;
 }
 
@@ -24,11 +25,8 @@ function countItems(lines: string[]): number {
   return lines.filter((line) => /^[^\s#-][^:]*:/.test(line)).length;
 }
 
-/**
- * The front matter above the body. It is shown for reading only and folds; the file's own text
- * is put back on save, so it is never part of what the editor edits.
- */
-export function FrontmatterBlock({ source, defaultOpen = true }: FrontmatterBlockProps) {
+/** The front matter above the body: its item count, folded at first, and its lines when opened. */
+export function FrontmatterBlock({ source, defaultOpen = false }: FrontmatterBlockProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
   const bodyId = useId();

@@ -77,20 +77,20 @@ export const Ready: Story = {
   },
 };
 
-/** The front matter sits above the body and folds. */
+/** The front matter sits above the body, folded at first. */
 export const WithFrontmatter: Story = {
   args: { frontmatter },
   play: async () => {
     const view = await opened();
     const head = view.getByRole('button', { name: /Front matter/ });
-    await expect(head).toHaveAttribute('aria-expanded', 'true');
-    await expect(head).toHaveTextContent('3 items');
-    await expect(view.getByText(/status: draft/)).toBeVisible();
-    await userEvent.click(head);
     await expect(head).toHaveAttribute('aria-expanded', 'false');
+    await expect(head).toHaveTextContent('3 items');
     await expect(view.getByText(/status: draft/)).not.toBeVisible();
     await userEvent.click(head);
+    await expect(head).toHaveAttribute('aria-expanded', 'true');
     await expect(view.getByText(/status: draft/)).toBeVisible();
+    await userEvent.click(head);
+    await expect(view.getByText(/status: draft/)).not.toBeVisible();
   },
 };
 
