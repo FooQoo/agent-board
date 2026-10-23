@@ -130,7 +130,8 @@ export const ArrivingDetail: Story = {
   args: { options: { stallAfter: 4 } },
   play: async () => {
     const dialog = within(await within(document.body).findByRole('dialog'));
-    await expect(await dialog.findByText(/Still receiving this document/)).toBeVisible();
+    // The body and the conditions tabs both show the document while it arrives (the neighbour is drawn too).
+    await expect((await dialog.findAllByText(/Still receiving this document/))[0]).toBeVisible();
     await expect(await dialog.findByText('Work')).toBeInTheDocument();
   },
 };

@@ -5,7 +5,8 @@ import { TaskAcceptanceTab, TaskBodyTab, TaskHistoryTab } from './MonitorTaskTab
 import { MonitorEpicContent } from './MonitorEpicContent';
 import type { Problem } from '../../../shared/api/contracts';
 import type { MonitorTask, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
-import { useMonitorTabSwipe } from '../hooks/useMonitorTabSwipe';
+import { useMonitorTabSwipe, TAB_ORDER } from '../hooks/useMonitorTabSwipe';
+import { useEpicDetail } from '../../../shared/data/react';
 
 export function MonitorDrawerPanels({
   item,
@@ -24,6 +25,11 @@ export function MonitorDrawerPanels({
   const idBase = useId();
   const { tabsRef, carouselRef } = useMonitorTabSwipe(tab, onTabChange);
   const task = item.task;
+  // The epic is read with the task, so its tab shows at once; the neighbouring tabs are drawn too, so a
+  // swipe shows their content while it moves. Everything they show was read when the drawer opened.
+  useEpicDetail(item.projectId, task.epic?.id ?? null);
+  const drawn = (id: MonitorDetailTab) =>
+    Math.abs(TAB_ORDER.indexOf(id) - TAB_ORDER.indexOf(tab)) <= 1;
   // The active panel scrolls the document; a long one is drawn only near the viewport.
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
   const panelRef = (id: MonitorDetailTab) => (tab === id ? setScroller : undefined);
@@ -74,7 +80,7 @@ export function MonitorDrawerPanels({
             inert={tab !== 'description'}
             className="monitor-drawer__panel"
           >
-            {tab === 'description' && (
+            {drawn('description') && (
               <TaskBodyTab
                 item={item}
                 resolvers={resolvers}
@@ -92,7 +98,7 @@ export function MonitorDrawerPanels({
             inert={tab !== 'acceptance'}
             className="monitor-drawer__panel"
           >
-            {tab === 'acceptance' && <TaskAcceptanceTab item={item} />}
+            {drawn('acceptance') && <TaskAcceptanceTab item={item} />}
           </div>
           <div
             role="tabpanel"
@@ -103,7 +109,7 @@ export function MonitorDrawerPanels({
             inert={tab !== 'history'}
             className="monitor-drawer__panel"
           >
-            {tab === 'history' && <TaskHistoryTab item={item} />}
+            {drawn('history') && <TaskHistoryTab item={item} />}
           </div>
           <div
             role="tabpanel"
@@ -114,7 +120,7 @@ export function MonitorDrawerPanels({
             inert={tab !== 'epic'}
             className="monitor-drawer__panel"
           >
-            {tab === 'epic' && (
+            {drawn('epic') && (
               <MonitorEpicContent
                 projectId={item.projectId}
                 epicId={task.epic?.id ?? null}

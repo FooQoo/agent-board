@@ -139,7 +139,7 @@ describe('MonitorProject', () => {
     await user.click(screen.getByRole('button', { name: 't1' }));
     await tick();
     await act(async () => {
-      adapter.streamCalls[0]?.respond(taskStream(1, { document: 'd1' }));
+      adapter.streamCalls[0]?.respond(taskStream(1, { document: 'd1', history: 'h1' }));
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(screen.getByRole('dialog').textContent).toContain('body');

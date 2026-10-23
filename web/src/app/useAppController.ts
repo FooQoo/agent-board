@@ -150,11 +150,6 @@ export function useAppController(initial: AppInitial | undefined): AppController
     },
     [core],
   );
-  const refresh = useCallback(() => {
-    reloadProjects();
-    reloadArchive();
-    if (isProjectId(activeRef.current)) void core.refreshSummary(activeRef.current);
-  }, [core, reloadProjects, reloadArchive]);
 
   // The lists the data core does not own are read again when the stream says they changed. The
   // archive list waits like the Summary while a drawer or a modal is open; the project list is
@@ -259,7 +254,6 @@ export function useAppController(initial: AppInitial | undefined): AppController
     archiveLifecycle,
     openDialog,
     refreshProject,
-    refresh,
     loadTask,
     loadEpic,
     setRequested,

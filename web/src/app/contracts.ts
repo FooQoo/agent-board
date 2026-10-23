@@ -72,8 +72,6 @@ export interface AppControllerModel {
   >;
   openDialog: (dialog: DialogAction) => void;
   refreshProject: (projectId: ProjectId) => void;
-  /** Reads the lists and the shown Summary again now, without waiting for the presentation hold. */
-  refresh: () => void;
   /** The task with its Detail read fresh, for an editor; `null` when the Detail cannot be read. */
   loadTask: (projectId: ProjectId, card: TaskSummary) => Promise<Task | null>;
   /** The epic with its document read fresh, for an editor; `null` when it cannot be read. */
@@ -101,7 +99,6 @@ export interface AppWorkspaceActions {
   onOpenEpic: (epicId: string) => void;
   onMove: (task: TaskSummary, column: ColumnName) => void;
   onReorder: (task: TaskSummary, beforeId: number | null) => void;
-  onRefresh?: () => void;
   onArchiveDone: () => void;
   onCloseEpic: () => void;
   onEditEpic: () => void;

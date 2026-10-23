@@ -11,7 +11,7 @@ interface TabProps {
   item: MonitorTask;
 }
 
-/** The body tab: only the `document` section is read. */
+/** The body tab. */
 export function TaskBodyTab({
   item,
   resolvers,
@@ -22,7 +22,7 @@ export function TaskBodyTab({
   scrollParent: HTMLElement | null;
   problems: readonly Problem[];
 }) {
-  const detail = useTaskDetail(item.projectId, item.task.id, ['document']);
+  const detail = useTaskDetail(item.projectId, item.task.id);
   return (
     <MonitorSection snapshot={detail.document} onRetry={() => void detail.refresh()}>
       {(document, arriving) => (
@@ -42,7 +42,7 @@ export function TaskBodyTab({
 
 /** The conditions tab: they come with the `document` section, which the body tab shares. */
 export function TaskAcceptanceTab({ item }: TabProps) {
-  const detail = useTaskDetail(item.projectId, item.task.id, ['document']);
+  const detail = useTaskDetail(item.projectId, item.task.id);
   return (
     <MonitorSection snapshot={detail.document} onRetry={() => void detail.refresh()}>
       {(document) => (
@@ -52,9 +52,9 @@ export function TaskAcceptanceTab({ item }: TabProps) {
   );
 }
 
-/** The history tab: only the `history` section is read. */
+/** The history tab. */
 export function TaskHistoryTab({ item }: TabProps) {
-  const detail = useTaskDetail(item.projectId, item.task.id, ['history']);
+  const detail = useTaskDetail(item.projectId, item.task.id);
   return (
     <MonitorSection snapshot={detail.history} onRetry={() => void detail.refresh()}>
       {(history) => <HistoryTimeline events={history.items} />}

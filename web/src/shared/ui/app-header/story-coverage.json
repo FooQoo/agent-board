@@ -22,11 +22,6 @@
           "interaction": false
         },
         {
-          "id": "shared-ui-header--with-refresh",
-          "states": ["refresh button", "refresh callback"],
-          "interaction": true
-        },
-        {
           "id": "shared-ui-header--archive-view",
           "states": ["archive", "back to board"],
           "interaction": true

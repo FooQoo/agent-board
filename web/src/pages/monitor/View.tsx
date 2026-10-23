@@ -58,13 +58,6 @@ export function MonitorView(props: MonitorViewProps) {
   return (
     <main className="monitor-shell">
       <Header settings={monitorSettingsSlot} logoSrc={monitorLogo} settingsSize="l" />
-      <Freshness
-        state={freshness.state}
-        lastFetchedAt={freshness.lastFetchedAt}
-        problemCount={freshness.snapshotProblems.length}
-        onRefresh={props.onRefresh}
-        refreshing={props.refreshing}
-      />
       <section className="monitor-summary" aria-label={t('monitor.summary')}>
         <button type="button" onClick={() => goTo('todo')} aria-controls={listId}>
           <strong>{tile(ordered.todo.length)}</strong>
@@ -125,6 +118,13 @@ export function MonitorView(props: MonitorViewProps) {
           problems={freshness.snapshotProblems}
         />
       </Suspense>
+      <Freshness
+        state={freshness.state}
+        lastFetchedAt={freshness.lastFetchedAt}
+        problemCount={freshness.snapshotProblems.length}
+        onRefresh={props.onRefresh}
+        refreshing={props.refreshing}
+      />
     </main>
   );
 }

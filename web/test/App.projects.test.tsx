@@ -349,7 +349,7 @@ describe('which project is shown', () => {
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
   });
 
-  it('keeps the selected archive detail visible when only the ordinary board refresh fails', async () => {
+  it('keeps the selected archive detail open while a change is held back', async () => {
     backend.archives = {
       [PROJECT_A.id]: [makeTask({ id: 96, title: 'Archived during board failure' })],
     };
@@ -359,15 +359,14 @@ describe('which project is shown', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: /Archived during board failure/ }),
     );
-    backend.boards[PROJECT_A.id] = new Error('board temporarily unavailable');
     const summaryRequests = () =>
       fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/summary`)
         .length;
     const previousBoardRequests = summaryRequests();
-    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
-    await waitFor(() => {
-      expect(summaryRequests()).toBeGreaterThan(previousBoardRequests);
-    });
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
+
+    // The open archive drawer holds the change back, so the board is not read again yet.
+    expect(summaryRequests()).toBe(previousBoardRequests);
     expect(
       screen.getByRole('heading', { level: 2, name: 'Archived during board failure' }),
     ).toBeTruthy();
@@ -555,10 +554,11 @@ describe('states', () => {
 
     backend.projects = [PROJECT_A, PROJECT_C];
     backend.boards[PROJECT_B.id] = 'not_found';
-    // The open drawer holds the stream's updates back, so the person reads the board now.
-    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    act(() => FakeEventSource.latest.changed(PROJECT_B.id));
 
-    expect(await screen.findByText('Project not found')).toBeTruthy();
+    // The open drawer holds the change back until it has been closed for three seconds.
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    expect(await screen.findByText('Project not found', {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByText('Eight in knowledge')).toBeNull();
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     await userEvent.click(switcher('Choose a project'));
@@ -847,15 +847,8 @@ describe('switching while a form is open', () => {
       2,
     );
     const boardUrl = `/api/projects/${PROJECT_A.id}/summary`;
-    const readsBeforeChange = fetchMock.mock.calls.filter(([url]) => url === boardUrl).length;
-    // The open dialog holds the stream's updates back; the refresh button reads the board now.
-    // The dialog hides the page from the accessibility tree, so press it through the DOM.
-    act(() => document.querySelector<HTMLButtonElement>('.header__refresh')?.click());
-    await waitFor(() =>
-      expect(fetchMock.mock.calls.filter(([url]) => url === boardUrl).length).toBeGreaterThan(
-        readsBeforeChange,
-      ),
-    );
+    // The open dialog holds the stream's updates back, so its rows keep the snapshot taken on opening.
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
     expect(
       within(dialog)
         .getAllByRole('row')
@@ -875,7 +868,16 @@ describe('switching while a form is open', () => {
     ).toEqual(initialDoneIds.map((id) => `#${id}`));
     expect(submittedIds).toEqual([initialDoneIds]);
 
+    const readsBeforeCancel = fetchMock.mock.calls.filter(([url]) => url === boardUrl).length;
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    // The held change is read three seconds after the dialog has closed.
+    await waitFor(
+      () =>
+        expect(fetchMock.mock.calls.filter(([url]) => url === boardUrl).length).toBeGreaterThan(
+          readsBeforeCancel,
+        ),
+      { timeout: 5000 },
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Archive completed tasks' }));
     dialog = screen.getByRole('dialog');
     const reopenedIds = within(dialog)

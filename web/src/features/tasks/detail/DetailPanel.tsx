@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { setDraft } from '../api/edit';
 import { noOperations, type OperationControls } from '../../../shared/lib/operations/operations';
 import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/api/contracts';
-import type { DetailSection } from '../../../shared/data/api';
 import { useEpicDetail, useTaskDetail } from '../../../shared/data/react';
 import { DeleteButton } from '../delete/DeleteButton';
 import { DeleteConfirm } from '../delete/DeleteConfirm';
@@ -148,12 +147,10 @@ function DetailBody({
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
   const confirming = confirm !== 'closed';
-  // Only what the active tab shows is read: the text and conditions are the `document`, the log is the
-  // `history`, and the epic tab reads the epic's document the first time it is reached.
-  const sections: DetailSection[] =
-    tab === 'history' ? ['history'] : tab === 'epic' ? [] : ['document'];
-  const detail = useTaskDetail(projectId, task.id, sections);
-  const epicDetail = useEpicDetail(projectId, tab === 'epic' ? (task.epic?.id ?? null) : null);
+  // Opening the drawer reads the whole task and its epic once, so every tab shows at once; the tabs only
+  // choose what they show.
+  const detail = useTaskDetail(projectId, task.id);
+  const epicDetail = useEpicDetail(projectId, task.epic?.id ?? null);
 
   // The open confirmation is an operation: the project cannot change until it is done or cancelled.
   useEffect(() => {

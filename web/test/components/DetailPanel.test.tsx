@@ -68,8 +68,8 @@ describe('DetailPanel', () => {
     expect(
       await screen.findByText('Create the storage for the board with agboard init.'),
     ).toBeTruthy();
-    // The log is read when its tab is opened, so the count is not known before.
-    expect(screen.getByRole('tab', { name: 'History', selected: false })).toBeTruthy();
+    // The whole task is read when the drawer opens, so the count is known before the tab is opened.
+    expect(await screen.findByRole('tab', { name: /^History 3$/ })).toBeTruthy();
     await openHistory();
     expect(screen.getByRole('tab', { name: 'History 3', selected: true })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Close details' })).toBeTruthy();

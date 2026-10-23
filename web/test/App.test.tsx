@@ -136,17 +136,21 @@ describe('App', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Implement task moves' })).toBeTruthy();
   });
 
-  it('clears the selection when the selected task disappears', async () => {
+  it('applies a change that arrived while the drawer was open once the drawer has closed', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(taskButton('Initialize the board'));
 
-    // The open drawer holds the stream's updates back; the refresh button reads the board now.
+    // The open drawer holds the stream's updates back, so the board still lists the task.
     setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
-    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
+    expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
+    expect(screen.getByText('8 tasks')).toBeTruthy();
 
-    await waitFor(() => expect(screen.getByText('Select a task to see its details.')).toBeTruthy());
-    expect(screen.getByText('7 tasks')).toBeTruthy();
+    // After the drawer has been closed for three seconds, the change is applied.
+    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    await waitFor(() => expect(screen.getByText('7 tasks')).toBeTruthy(), { timeout: 5000 });
+    expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
   });
 
   it('archives a task after confirmation, returns to no selection and fetches the board again', async () => {
@@ -176,40 +180,39 @@ describe('App', () => {
     await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
     const urls = fetchMock.mock.calls.map(([url]) => String(url));
     expect(urls).toContain(`/api/projects/${PROJECT_A.id}/summary`);
-    // Only the active tab's section is read: the description needs the document, not the history.
-    expect(urls).toContain(`/api/projects/${PROJECT_A.id}/tasks/11/detail?sections=document`);
-    expect(urls.filter((url) => url.includes('sections=history'))).toEqual([]);
+    // Opening the drawer reads the whole task once: the text, its conditions and the log.
+    expect(urls).toContain(
+      `/api/projects/${PROJECT_A.id}/tasks/11/detail?sections=document,history`,
+    );
     expect(urls.filter((url) => url.endsWith('/board'))).toEqual([]);
   });
 
-  it('reads only the section the shown tab needs, and reuses what it read when the tab changes', async () => {
+  it('reads the whole task once when it opens, and reuses it when the tab changes', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
-    const reads = (section: string) =>
+    const reads = (sections: string) =>
       fetchMock.mock.calls.filter(([url]) =>
-        String(url).includes(`/tasks/11/detail?sections=${section}`),
+        String(url).includes(`/tasks/11/detail?sections=${sections}`),
       ).length;
     await userEvent.click(taskButton('Implement task moves'));
     await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
+    expect(reads('document,history')).toBe(1);
     // The description is drawn: the document has arrived whole.
     await waitFor(() =>
       expect(
         document.querySelector('.detail__viewport .md, .detail__viewport .md-empty'),
       ).not.toBeNull(),
     );
-    expect(reads('document')).toBe(1);
-    // The log is not read until its tab is opened.
-    expect(reads('history')).toBe(0);
+    // The count is known before the History tab is opened.
+    await waitFor(() => expect(screen.getByRole('tab', { name: /^History \d/ })).toBeTruthy());
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    await waitFor(() => expect(reads('history')).toBe(1));
-    // Back on the description: the document read before is shown again, with no new read.
     await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    expect(reads('document')).toBe(1);
-    expect(reads('history')).toBe(1);
+    // Switching tabs reads nothing more.
+    expect(reads('document,history')).toBe(1);
   });
 
-  it('reads an epic document when its tab is first reached, and reuses it for the next task of the epic', async () => {
+  it('reads the epic document with the task, and reuses it for the next task of the epic', async () => {
     const epic = {
       id: 'PLAN',
       name: 'Plan',
@@ -238,7 +241,8 @@ describe('App', () => {
       fetchMock.mock.calls.filter(([url]) => String(url).includes('/epics/PLAN/detail')).length;
     await userEvent.click(taskButton('Implement task moves'));
     await screen.findByRole('heading', { level: 2, name: 'Implement task moves' });
-    expect(epicReads()).toBe(0);
+    // The epic is read with the task, before its tab is opened.
+    await waitFor(() => expect(epicReads()).toBe(1));
     await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
     expect(await screen.findByText('The epic plan.')).toBeTruthy();
     expect(epicReads()).toBe(1);

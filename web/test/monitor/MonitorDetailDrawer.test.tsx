@@ -68,7 +68,7 @@ describe('monitor detail drawer', () => {
     expect(dialog.querySelector('.monitor-document')).toBeTruthy();
   });
 
-  it('reads nothing for a card that was never opened, and only the active tab afterwards', async () => {
+  it('reads nothing for a card that was never opened, and the whole task once it is opened', async () => {
     const user = userEvent.setup();
     const data = setup();
     render(data.view());
@@ -79,7 +79,10 @@ describe('monitor detail drawer', () => {
     await user.click(screen.getByRole('button', { name: 'Todo work item 1' }));
     const dialog = screen.getByRole('dialog');
     await within(dialog).findByText('Work');
-    expect(data.detailRequests()).toEqual([asked(T1, 'document')]);
+    expect(data.detailRequests()).toEqual([
+      asked(T1, 'document', 'history'),
+      asked(E1, 'document'),
+    ]);
 
     const historyTab = within(dialog).getByRole('tab', { name: /History/ });
     const bodyTab = within(dialog).getByRole('tab', { name: 'Body' });
@@ -92,14 +95,16 @@ describe('monitor detail drawer', () => {
 
     await user.click(historyTab);
     await within(dialog).findByText('Created task in Todo.');
-    expect(data.detailRequests()).toEqual([asked(T1, 'document'), asked(T1, 'history')]);
+    expect(data.detailRequests()).toEqual([
+      asked(T1, 'document', 'history'),
+      asked(E1, 'document'),
+    ]);
     expect(panelOf(bodyTab).textContent).toBe('');
 
     await user.click(epicTab);
     await within(dialog).findByText('Epic body text');
     expect(data.detailRequests()).toEqual([
-      asked(T1, 'document'),
-      asked(T1, 'history'),
+      asked(T1, 'document', 'history'),
       asked(E1, 'document'),
     ]);
 
@@ -109,7 +114,7 @@ describe('monitor detail drawer', () => {
     await user.click(epicTab);
     await user.click(bodyTab);
     await within(dialog).findByText('Work');
-    expect(data.detailRequests()).toHaveLength(3);
+    expect(data.detailRequests()).toHaveLength(2);
   });
 
   it('reuses a read Detail when the drawer is closed and opened again', async () => {
@@ -122,7 +127,10 @@ describe('monitor detail drawer', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await user.click(screen.getByRole('button', { name: 'Todo work item 1' }));
     expect(await within(screen.getByRole('dialog')).findByText('Work')).toBeTruthy();
-    expect(data.detailRequests()).toEqual([asked(T1, 'document')]);
+    expect(data.detailRequests()).toEqual([
+      asked(T1, 'document', 'history'),
+      asked(E1, 'document'),
+    ]);
   });
 
   it('shows the conditions from the document that the body tab shares', async () => {
@@ -166,8 +174,11 @@ describe('monitor detail drawer', () => {
       'true',
     );
     expect(await within(dialog).findByText('Epic body text')).toBeTruthy();
-    // Only the epic was read: the body tab was never active.
-    expect(data.detailRequests()).toEqual([asked(E1, 'document')]);
+    // The task and its epic are read when the drawer opens, so the epic tab shows at once.
+    expect(data.detailRequests()).toEqual([
+      asked(T1, 'document', 'history'),
+      asked(E1, 'document'),
+    ]);
     await user.click(within(dialog).getByRole('button', { name: 'Close details' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
@@ -176,7 +187,8 @@ describe('monitor detail drawer', () => {
     expect(
       within(screen.getByRole('dialog')).getByText('This task is not linked to an epic.'),
     ).toBeTruthy();
-    expect(data.detailRequests()).toHaveLength(2);
+    // The first task, its epic, and the second task were read once each.
+    expect(data.detailRequests()).toHaveLength(3);
   });
 
   it('offers a retry for a failed read and keeps the frame', async () => {

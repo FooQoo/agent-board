@@ -36,7 +36,6 @@ export function useAppActions(model: AppControllerModel) {
     onSelectProject: (projectId) => {
       void setRequested(projectId, { history: 'push' });
     },
-    onRefresh: () => model.refresh(),
     onBack: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'board' }),
     onAdd: () => model.openDialog({ kind: 'request' }),
     onArchive: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'archive' }),

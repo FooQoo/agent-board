@@ -82,7 +82,6 @@ export function BoardWorkspace({
         onAdd={actions.onAdd}
         onArchive={actions.onArchive}
         onEpics={actions.onEpics}
-        onRefresh={actions.onRefresh}
       />
       <div
         className="app__body"

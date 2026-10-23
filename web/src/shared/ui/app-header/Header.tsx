@@ -1,13 +1,6 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ArchiveIcon,
-  ArrowLeftIcon,
-  LayersIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  SettingsIcon,
-} from 'lucide-react';
+import { ArchiveIcon, ArrowLeftIcon, LayersIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 import { Button, type ButtonSize } from '@/shared/ui/button';
 import { IconLabel } from '@/shared/ui/icon-label';
 import type { Project, ProjectId } from '../../api/contracts';
@@ -40,8 +33,6 @@ export interface HeaderProps {
   onAdd?: () => void;
   onArchive?: () => void;
   onEpics?: () => void;
-  /** Reads the data again now. Without it no refresh button shows. */
-  onRefresh?: () => void;
   viewMode?: ViewMode;
   onBack?: () => void;
   /** The project switcher, shown after the slash when the project list is known. */
@@ -62,7 +53,6 @@ export function Header({
   onAdd = () => {},
   onArchive = () => {},
   onEpics = () => {},
-  onRefresh,
   viewMode = 'board',
   onBack = () => {},
   projectSwitcher = null,
@@ -145,20 +135,6 @@ export function Header({
           </Button>
         </>
       ) : null}
-      {onRefresh && (
-        <Button
-          type="button"
-          variant="outline"
-          size={settingsSize}
-          iconOnly
-          className="header__refresh"
-          aria-label={t('dataLayerPc.refresh')}
-          title={t('dataLayerPc.refresh')}
-          onClick={onRefresh}
-        >
-          <RefreshCwIcon aria-hidden="true" />
-        </Button>
-      )}
       <Button
         ref={settingsButtonRef}
         type="button"
