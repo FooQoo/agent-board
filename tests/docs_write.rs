@@ -266,7 +266,7 @@ fn the_save_route_is_behind_the_write_guard() {
 fn a_save_changes_neither_the_board_version_nor_the_event_stream() {
     let s = Setup::new();
     s.file("a.md", b"base\n");
-    let board_url = format!("/api/projects/{}/board", s.pid);
+    let board_url = format!("/api/projects/{}/summary", s.pid);
     let before = s.server.get(&board_url).json()["version"].clone();
     assert!(before.is_string(), "{before}");
 

@@ -1710,7 +1710,7 @@ fn changes_in_the_docs_folder_do_not_reload_the_board_or_send_changed() {
         .join("shared/projects")
         .join(a.to_string())
         .join("docs");
-    let board = format!("/api/projects/{a}/board");
+    let board = format!("/api/projects/{a}/summary");
     let before = server.get(&board).json();
     let mut events = server.events();
     std::fs::create_dir_all(docs.join("product")).unwrap();
