@@ -7,6 +7,8 @@ export class WriteError extends Error {
     readonly status: number,
     readonly code: string | null,
     readonly detail: string | null = null,
+    /** The whole answer, for a failure that carries more than the error, such as `currentStatus`. */
+    readonly body: unknown = null,
   ) {
     super(message);
   }
@@ -19,9 +21,10 @@ export function writeFailure(
   status: number,
   code: string | null,
   detail: string | null = null,
+  body: unknown = null,
 ): WriteError {
   if (code === 'page_out_of_date') window.dispatchEvent(new Event(STALE_PAGE_EVENT));
-  return new WriteError(message, status, code, detail);
+  return new WriteError(message, status, code, detail, body);
 }
 
 /** Extract the invalid file and field from a `file_invalid` write response. */

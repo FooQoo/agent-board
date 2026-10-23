@@ -15,7 +15,7 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | `PATCH /api/projects/{projectId}/tasks/{id}` | Updates title, body, acceptance, and optional `finalize: true` on a **draft** task. Body alone keeps the frontmatter; acceptance alone keeps the body; `description` with `body` is 422 `invalid_value`. Last write wins. Non-draft is 409 `task_not_draft`. |
 | `PUT /api/projects/{projectId}/tasks/{id}/draft` | Sets `isDraft`. A running task is 409 `invalid_state_for_draft`. |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`. Unknown EPIC-ID is 404 `epic_not_found`. |
-| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus` and optional `reason`. |
+| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`, optional `reason`, and optional `fromStatus`, the status the page showed when the user chose the move. With `fromStatus`, a task that is no longer in that status is 409 `task_status_changed` and nothing is written; the body adds `currentStatus`, the status the task has now, so the page can show it and the user can move again from there. The board's move dialog always sends `fromStatus`. |
 | `POST /api/projects/{projectId}/tasks/{id}/answer` | `requestId`, optional `choiceId` and `text`, matched under the lock. Both empty is 422; an unknown choice is 422 `request_choice_unknown`; a changed request is 409 `request_changed`. |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | Changes the run state within the state rules. The UI has no entry point for it. |
 | `DELETE /api/projects/{projectId}/tasks/{id}` | Deletes archived tasks only; others are 409 `task_not_archived`. 204, or 404 when already gone. |
@@ -190,7 +190,7 @@ Failures use the usual error body. Their codes and statuses are in [Error codes]
 | 400 | Malformed JSON, an invalid `sections` query (`invalid_sections`), or an invalid docs path (`docs_path_invalid`). |
 | 403 | A guard failed. |
 | 404 | Project, task, or epic not found, or a docs file not found. |
-| 409 | `request_changed`, `task_not_draft`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
+| 409 | `request_changed`, `task_status_changed`, `task_not_draft`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
 | 413 | Body over 1 MiB, or a docs file over its limit (`docs_too_large`). |
 | 415 | A docs file that is not Markdown, or an image type the docs do not serve (`docs_not_markdown`, `docs_asset_type`). |
 | 422 | Invalid ID syntax, input, or state rule; a docs file that is not UTF-8 (`docs_not_utf8`); or an invalid source file (`file_invalid`) with path, field, and reason. |

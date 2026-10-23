@@ -90,17 +90,23 @@ test('dragging a task opens the reason dialog before moving it', async ({ page }
   await notReloaded(page);
 });
 
-test('confirming a move after an external lane change keeps exactly one task and records the current transition', async ({ page }) => {
+test('a move after an external lane change is refused, shows the current status, and records the real transition', async ({ page }) => {
   await dragToLane(page, 16, 'Doing');
   const move = page.getByRole('dialog');
   const reason = move.getByRole('textbox', { name: 'Reason (optional)' });
   await expect(reason).toHaveValue('');
   await expect(page.locator('.card--dragging')).toHaveCount(0);
+  const before = JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.history.length;
   agboardOk(mainProject, ['mv', '16', 'done', '--actor', 'human']);
-  // The open dialog holds the stream's updates back, so it still shows the move from Todo; the server records
-  // the transition from where the task is now.
-  await expect(move.getByRole('button', { name: 'Move', exact: true })).toBeEnabled();
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
+  // The open dialog holds the stream's updates back, so it still shows the move from Todo. The server
+  // refuses a move from a status the task has left, writes nothing, and names where the task is now.
+  const submit = move.getByRole('button', { name: 'Move', exact: true });
+  await submit.click();
+  await expect(move.getByRole('alert')).toContainText('Another change moved this task to Done.');
+  await expect(move.getByRole('group', { name: 'Status change' })).toContainText('Done');
+  expect(JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.history).toHaveLength(before + 1);
+  // Confirming again moves the task from the status the dialog now shows.
+  await submit.click();
   await expect(move).toHaveCount(0);
   await expect(task(page, 16)).toHaveCount(1);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();

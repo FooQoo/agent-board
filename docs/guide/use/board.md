@@ -34,7 +34,11 @@ Each tab loads its text when you open it. The number on the **History** tab appe
 
 ## Move a task
 
-Drag a task to another column and confirm the move. The reason field is optional; if you leave it empty, a reason is generated from the move. The columns mean:
+Drag a task to another column and confirm the move. The reason field is optional; if you leave it empty, a reason is generated from the move.
+
+If an agent or another browser moves the task while the dialog is open, the move is not made. The dialog shows the column the task is in now and says so, and the reason you typed stays. Confirm again to move it from there.
+
+The columns mean:
 
 | Column | Meaning |
 | --- | --- |

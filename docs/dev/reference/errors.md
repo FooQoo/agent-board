@@ -25,6 +25,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
 | `request_changed` | The answer names a request that is no longer current, or a waiting request was withdrawn by a task move. | 1 | 409 |
+| `task_status_changed` | A move named the status it started from (`fromStatus`), and the task is no longer in it. Nothing is written; the body adds `currentStatus`. | 1 | 409 |
 | `request_choice_unknown` | The answer names a choice that is not in the request. | 2 | 422 |
 
 ## Projects, epics, and attachments

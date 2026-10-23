@@ -44,6 +44,7 @@ export async function postTask<T>(path: string, value: unknown): Promise<T> {
       response.status,
       body.error?.code ?? null,
       body.error?.message ?? null,
+      body,
     );
   }
   return body as T;

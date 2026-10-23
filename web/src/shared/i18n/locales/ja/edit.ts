@@ -23,6 +23,8 @@ export const editJa = {
     statusChange: '状態の変更',
     moveHint: '確定するまでタスクの状態は変わりません。',
     moveReasonDefault: '{{who}}が{{from}}から{{to}}に変更しました。',
+    moveStatusChanged:
+      'このタスクは別の操作で「{{status}}」に変わっていました。今の状態を表示したので、確認してからもう一度移動してください。',
     reasonRequired: '理由は2,000文字以内で入力してください。',
     saveFailed: '変更を保存できませんでした。',
     cancel: 'キャンセル',

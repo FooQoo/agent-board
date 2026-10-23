@@ -155,7 +155,13 @@ export function useAppActions(model: AppControllerModel) {
           attachments: data.attachments,
         });
       } else if (dialog.kind === 'move') {
-        await moveTask(projectId, dialog.task.id, dialog.target, data.reason ?? '');
+        await moveTask(
+          projectId,
+          dialog.task.id,
+          dialog.target,
+          data.reason ?? '',
+          data.fromStatus,
+        );
         if (dialog.target === 'done') model.answerSession.clearTask(projectId, dialog.task.id);
       } else if (dialog.kind === 'edit') {
         if (data.attachments || data.removedAttachmentIds?.length)

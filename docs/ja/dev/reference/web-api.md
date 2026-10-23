@@ -15,7 +15,7 @@
 | `PATCH /api/projects/{projectId}/tasks/{id}` | **下書き**のタスクのtitle・body・acceptanceと任意の`finalize: true`を更新する。bodyだけならfrontmatterを、acceptanceだけなら本文を保つ。`description`と`body`の同時指定は422 `invalid_value`。後から保存した内容が優先される。下書きでなければ409 `task_not_draft`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/draft` | `isDraft`を設定する。Runningのタスクは409 `invalid_state_for_draft`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`。未知のEPIC-IDは404 `epic_not_found`。 |
-| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`と任意の`reason`。 |
+| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`、任意の`reason`、任意の`fromStatus`（利用者が移動を選んだときに画面が表示していた状態）。`fromStatus`があるとき、タスクがもうその状態にいなければ409 `task_status_changed`で、何も書かない。本文には今の状態の`currentStatus`を加えるので、画面はそれを表示し、利用者はそこからもう一度移動できる。ボードの移動のダイアログは、いつも`fromStatus`を送る。 |
 | `POST /api/projects/{projectId}/tasks/{id}/answer` | `requestId`と任意の`choiceId`・`text`をロックの中で照合する。両方空は422、未知の選択肢は422 `request_choice_unknown`、依頼が変わっていれば409 `request_changed`。 |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | 状態の規則の範囲で稼働状態を変える。画面から操作する機能はない。 |
 | `DELETE /api/projects/{projectId}/tasks/{id}` | アーカイブ済みのタスクだけを削除する。それ以外は409 `task_not_archived`。204、すでにないときは404。 |
@@ -190,7 +190,7 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | 400 | 壊れたJSON、不正な`sections`クエリ（`invalid_sections`）、または不正なドキュメントのパス（`docs_path_invalid`）。 |
 | 403 | 保護に失敗した。 |
 | 404 | プロジェクト・タスク・エピックがない。またはドキュメントのファイルがない。 |
-| 409 | `request_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
+| 409 | `request_changed`・`task_status_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
 | 413 | 1 MiBを超える本文。または、上限を超えるドキュメントのファイル（`docs_too_large`）。 |
 | 415 | Markdownでないドキュメントのファイル、または提供しない形式の画像（`docs_not_markdown`・`docs_asset_type`）。 |
 | 422 | ID構文・入力・状態の規則の違反。UTF-8でないドキュメントのファイル（`docs_not_utf8`）。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |

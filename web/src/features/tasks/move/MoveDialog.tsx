@@ -4,6 +4,7 @@ import { ArrowRightIcon } from 'lucide-react';
 import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
+import { TaskStatusChangedError } from '../api/lifecycle';
 import { TaskStatusBadge } from '../status/DialogBadges';
 import { DialogFrame } from '../../../shared/ui/dialog-frame/DialogFrame';
 
@@ -18,10 +19,14 @@ export function MoveDialog({
   target: ColumnName;
   onClose: () => void;
   onSavingChange?: (saving: boolean) => void;
-  onSubmit: (data: { reason: string }) => Promise<void>;
+  onSubmit: (data: { reason: string; fromStatus: ColumnName }) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [reason, setReason] = useState('');
+  // The status the task was found in when a move was refused: the board holds its updates while
+  // the dialog is open, so the dialog shows the status the server named instead.
+  const [found, setFound] = useState<ColumnName | null>(null);
+  const from = found ?? task.taskStatus;
   const reasonId = useId();
 
   return (
@@ -32,23 +37,30 @@ export function MoveDialog({
       onClose={onClose}
       onSavingChange={onSavingChange}
       validate={() => ([...reason].length > 2000 ? t('dialog.reasonRequired') : null)}
-      save={() =>
-        onSubmit({
-          reason: reason.trim()
-            ? reason
-            : t('dialog.moveReasonDefault', {
-                who: t('assignee.human'),
-                from: t(`column.${task.taskStatus}`),
-                to: t(`column.${target}`),
-              }),
-        })
-      }
+      save={async () => {
+        try {
+          await onSubmit({
+            fromStatus: from,
+            reason: reason.trim()
+              ? reason
+              : t('dialog.moveReasonDefault', {
+                  who: t('assignee.human'),
+                  from: t(`column.${from}`),
+                  to: t(`column.${target}`),
+                }),
+          });
+        } catch (cause) {
+          if (!(cause instanceof TaskStatusChangedError)) throw cause;
+          setFound(cause.current);
+          throw new Error(t('dialog.moveStatusChanged', { status: t(`column.${cause.current}`) }));
+        }
+      }}
     >
       <p className="modal__card">
         #{task.id} {task.title}
       </p>
       <div className="modal__statuses" role="group" aria-label={t('dialog.statusChange')}>
-        <TaskStatusBadge status={task.taskStatus} />
+        <TaskStatusBadge status={from} />
         <ArrowRightIcon className="modal__arrow" aria-hidden="true" />
         <TaskStatusBadge status={target} />
       </div>

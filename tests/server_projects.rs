@@ -733,6 +733,34 @@ fn moving_task_one_in_alpha_does_not_move_task_one_in_beta() {
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 }
 
+#[test]
+fn a_move_from_a_status_the_task_has_left_is_refused_and_changes_nothing() {
+    let (home, a, _b) = two_projects();
+    // Another change moves the task while the page still shows it in Todo.
+    store(home.path())
+        .move_work_task(&a, 1, Column::Doing, ctx("Started elsewhere"), t(4))
+        .unwrap();
+    let before = snapshot_json(home.path(), &a);
+    let server = Running::start(home.path());
+    let stale = server.write(
+        "POST",
+        &format!("/api/projects/{a}/tasks/1/move"),
+        Some(r#"{"taskStatus":"done","fromStatus":"todo","reason":"Finish"}"#),
+    );
+    assert_eq!(stale.status, 409, "{}", stale.body);
+    assert_eq!(stale.code(), "task_status_changed");
+    assert_eq!(stale.json()["currentStatus"], "doing");
+    assert_eq!(snapshot_json(home.path(), &a), before);
+
+    let current = server.write(
+        "POST",
+        &format!("/api/projects/{a}/tasks/1/move"),
+        Some(r#"{"taskStatus":"done","fromStatus":"doing","reason":"Finish"}"#),
+    );
+    assert_eq!(current.status, 200, "{}", current.body);
+    assert_eq!(current.json()["task"]["taskStatus"], "done");
+}
+
 fn pending_request(home: &Path, id: &ProjectId) -> String {
     let s = store(home);
     s.move_work_task(id, 2, Column::Doing, ctx("Start"), t(4))

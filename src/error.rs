@@ -97,6 +97,11 @@ pub enum AgboardError {
         state: RunState,
     },
     RequestChanged,
+    /// A move named the status it started from, and the task is no longer there.
+    TaskStatusChanged {
+        id: i64,
+        current: Column,
+    },
     /// The guide's state moved on: a stale revision, another tab's lease, or another run.
     OnboardingConflict {
         reason: String,
@@ -213,6 +218,7 @@ impl AgboardError {
             AgboardError::TaskNotDraft { .. } => "task_not_draft",
             AgboardError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
             AgboardError::RequestChanged => "request_changed",
+            AgboardError::TaskStatusChanged { .. } => "task_status_changed",
             AgboardError::OnboardingConflict { .. } => "onboarding_conflict",
             AgboardError::OnboardingInvalid { .. } => "onboarding_invalid",
             AgboardError::ConfirmationRequired { .. } => "confirmation_required",
@@ -301,6 +307,9 @@ impl AgboardError {
                 format!("cannot make #{id} a draft while it is {}.", state.as_str())
             }
             AgboardError::RequestChanged => "the pending request has changed.".into(),
+            AgboardError::TaskStatusChanged { id, current } => {
+                format!("task #{id} is now {}.", current.as_str())
+            }
             AgboardError::OnboardingConflict { reason } => reason.clone(),
             AgboardError::OnboardingInvalid { reason } => reason.clone(),
             AgboardError::ConfirmationRequired { operation } => {
@@ -403,6 +412,10 @@ impl AgboardError {
             AgboardError::RequestChanged => {
                 "Read the latest board before answering this request.".into()
             }
+            AgboardError::TaskStatusChanged { .. } => {
+                "Another change moved the task first. Check its current status and move it again."
+                    .into()
+            }
             AgboardError::ConfirmationRequired { .. } => {
                 "Run this command yourself in a terminal. Agents cannot delete tasks or projects, or replace a board."
                     .to_string()
@@ -499,6 +512,10 @@ mod tests {
                 state: RunState::Running,
             },
             AgboardError::RequestChanged,
+            AgboardError::TaskStatusChanged {
+                id: 5,
+                current: Column::Done,
+            },
             AgboardError::ConfirmationRequired {
                 operation: "deleting a task".into(),
             },
@@ -586,6 +603,7 @@ mod tests {
                 ("task_not_draft", 1),
                 ("invalid_state_for_draft", 1),
                 ("request_changed", 1),
+                ("task_status_changed", 1),
                 ("confirmation_required", 1),
                 ("file_error", 1),
                 ("file_invalid", 1),
@@ -666,6 +684,10 @@ mod tests {
             (
                 "the pending request has changed.",
                 "Read the latest board before answering this request.",
+            ),
+            (
+                "task #5 is now done.",
+                "Another change moved the task first. Check its current status and move it again.",
             ),
             (
                 "deleting a task needs confirmation from a human.",
