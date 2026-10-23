@@ -50,12 +50,24 @@ pub enum NodeKind {
     File,
 }
 
-/// A folder or `.md` file in the tree. Names only, never the content.
+/// How the Docs show a file: edit Markdown, display an image, or name it as not shown.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Viewer {
+    Markdown,
+    Image,
+    Other,
+}
+
+/// A folder or file in the tree. Names only, never the content.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DocsTreeNode {
     pub name: String,
     pub path: String,
     pub kind: NodeKind,
+    /// How a file is shown; absent for a folder.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer: Option<Viewer>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<DocsTreeNode>>,
 }

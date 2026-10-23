@@ -1,6 +1,12 @@
 export const docsDocumentEn = {
   docsDocument: {
     kind: 'Markdown',
+    kindImage: 'Image',
+    kindOther: 'File',
+    imageLoading: 'Loading the image…',
+    imageErrorTitle: 'Could not load the image',
+    unsupportedTitle: 'This file type cannot be shown here.',
+    unsupportedBody: 'Only Markdown files and images (PNG, JPEG, WebP, GIF) can be shown.',
     loading: 'Loading the file…',
     loadErrorTitle: 'Could not load the file',
     loadErrorBody: 'Try again.',

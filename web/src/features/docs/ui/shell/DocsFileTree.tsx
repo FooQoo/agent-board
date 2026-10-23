@@ -1,7 +1,9 @@
 import {
   ChevronDownIcon,
   ChevronRightIcon,
+  FileIcon,
   FileTextIcon,
+  ImageIcon,
   FolderIcon,
   FolderOpenIcon,
 } from 'lucide-react';
@@ -10,12 +12,17 @@ import { useTranslation } from 'react-i18next';
 import './docs-shell.css';
 import '@/shared/i18n/docs-strings';
 
-/** One entry of the tree the docs API returns: a folder with its entries, or a Markdown file. */
+/** How the docs show a file: Markdown is edited, an image is displayed, any other is only listed. */
+export type DocsViewer = 'markdown' | 'image' | 'other';
+
+/** One entry of the tree the docs API returns: a folder with its entries, or a file. */
 export interface DocsTreeNode {
   name: string;
   /** The path from the docs root, with `/` between the parts. */
   path: string;
   kind: 'dir' | 'file';
+  /** How a file is shown; a folder has none. */
+  viewer?: DocsViewer;
   children?: DocsTreeNode[];
 }
 
@@ -87,7 +94,13 @@ export function DocsFileTree({ nodes, selectedPath, onSelectFile }: DocsFileTree
           onClick={() => onSelectFile(node.path)}
         >
           <span className="docs-tree__indent" aria-hidden="true" />
-          <FileTextIcon aria-hidden="true" className="docs-tree__icon" />
+          {node.viewer === 'image' ? (
+            <ImageIcon aria-hidden="true" className="docs-tree__icon" />
+          ) : node.viewer === 'other' ? (
+            <FileIcon aria-hidden="true" className="docs-tree__icon" />
+          ) : (
+            <FileTextIcon aria-hidden="true" className="docs-tree__icon" />
+          )}
           <span className="docs-tree__name">{node.name}</span>
         </button>
       );

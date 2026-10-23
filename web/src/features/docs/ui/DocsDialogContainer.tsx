@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '@/shared/api/contracts';
 import { resolveRelativeImage } from '@/shared/markdown/resolveRelativeImage';
@@ -11,11 +11,22 @@ import { useDocsTree } from '../model/useDocsTree';
 import { useDocument } from '../model/useDocument';
 import { useDocumentEditor } from '../model/useDocumentEditor';
 import { DocumentPane } from './document/DocumentPane';
+import { FileViewer } from './document/FileViewer';
 import { DOCS_LIST_WIDTH, DocsDialogView } from './shell/DocsDialogView';
+import type { DocsTreeNode, DocsViewer } from './shell/DocsFileTree';
 import '@/shared/i18n/docs-strings';
 
 /** Stands in for the file while none is loaded, so the editor's hook always has one. */
 const NO_FILE: DocsFile = { path: '', content: '', revision: '', readOnly: true };
+
+/** How the docs show the file at `path`; a path the tree does not hold counts as Markdown. */
+function viewerOf(nodes: readonly DocsTreeNode[], path: string | null): DocsViewer {
+  for (const node of nodes) {
+    if (node.path === path) return node.viewer ?? 'markdown';
+    if (node.children && path?.startsWith(`${node.path}/`)) return viewerOf(node.children, path);
+  }
+  return 'markdown';
+}
 
 export interface DocsDialogContainerProps {
   projectId: ProjectId;
@@ -34,7 +45,9 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
   // A file chosen while the open one has unsaved changes, waiting for the answer.
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [listWidth, setListWidth] = useState<number>(DOCS_LIST_WIDTH.default);
-  const document = useDocument(projectId, selectedPath);
+  const viewer = useMemo(() => viewerOf(tree.nodes, selectedPath), [tree.nodes, selectedPath]);
+  // Only a Markdown file has text to fetch, edit or save.
+  const document = useDocument(projectId, viewer === 'markdown' ? selectedPath : null);
   const editor = useDocumentEditor({ projectId, file: document.file ?? NO_FILE });
 
   const selectFile = useCallback(
@@ -94,27 +107,42 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
         }
         onClose={onClose}
       >
-        <DocumentPane
-          state={paneState}
-          frontmatter={editor.frontmatter}
-          readOnly={file?.readOnly ?? false}
-          conflict={editor.conflict}
-          conflictBusy={editor.saving}
-          onReload={document.reload}
-          onOverwrite={() => void editor.overwrite()}
-          onRetry={document.reload}
-        >
-          {file !== null && (
-            <RichMarkdownEditor
-              key={document.loadId}
-              value={editor.body}
-              onChange={editor.onChange}
-              aria-label={file.path}
-              disabled={file.readOnly || editor.saving}
-              resolveImage={resolveImage}
+        {selectedPath !== null && viewer !== 'markdown' ? (
+          <DocumentPane
+            state="ready"
+            kindLabel={
+              viewer === 'image' ? t('docsDocument.kindImage') : t('docsDocument.kindOther')
+            }
+          >
+            <FileViewer
+              kind={viewer}
+              name={selectedPath.split('/').at(-1) ?? selectedPath}
+              src={viewer === 'image' ? docsAssetUrl(projectId, selectedPath) : undefined}
             />
-          )}
-        </DocumentPane>
+          </DocumentPane>
+        ) : (
+          <DocumentPane
+            state={paneState}
+            frontmatter={editor.frontmatter}
+            readOnly={file?.readOnly ?? false}
+            conflict={editor.conflict}
+            conflictBusy={editor.saving}
+            onReload={document.reload}
+            onOverwrite={() => void editor.overwrite()}
+            onRetry={document.reload}
+          >
+            {file !== null && (
+              <RichMarkdownEditor
+                key={document.loadId}
+                value={editor.body}
+                onChange={editor.onChange}
+                aria-label={file.path}
+                disabled={file.readOnly || editor.saving}
+                resolveImage={resolveImage}
+              />
+            )}
+          </DocumentPane>
+        )}
       </DocsDialogView>
       <DiscardConfirm
         open={pendingPath !== null}

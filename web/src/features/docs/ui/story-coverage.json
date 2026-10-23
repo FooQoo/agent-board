@@ -62,6 +62,16 @@
           "interaction": true
         },
         {
+          "id": "docs-docsdialogcontainer--image-file",
+          "states": ["image file", "picture", "save disabled"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--other-file",
+          "states": ["other file", "not shown", "file name", "save disabled"],
+          "interaction": true
+        },
+        {
           "id": "docs-docsdialogcontainer--japanese-dark",
           "states": ["japanese locale", "dark theme"],
           "interaction": true

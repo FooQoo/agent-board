@@ -259,3 +259,27 @@
 .docs-doc__body .milkdown-table-block th {
   background: var(--r-lane);
 }
+
+/* An image shown in the body: as wide as the body at most, as tall as it is. */
+.docs-doc__image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  align-self: flex-start;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+}
+
+.docs-doc__image[hidden] {
+  display: none;
+}
+
+.docs-doc__file-name {
+  overflow-wrap: anywhere;
+  color: var(--r-text2);
+  font-size: 13px;
+}
+
+.docs-doc__failure-icon--muted {
+  color: var(--r-muted);
+}

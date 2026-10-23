@@ -45,6 +45,13 @@ const api =
     return (over.file ?? (() => json(FILE)))(url, init);
   };
 
+const MEDIA_TREE = [
+  ...docsTree,
+  { name: 'diagram.png', path: 'diagram.png', kind: 'file', viewer: 'image' },
+  { name: 'board.pen', path: 'board.pen', kind: 'file', viewer: 'other' },
+] as const;
+const mediaApi = () => api({ tree: () => json({ nodes: MEDIA_TREE, truncated: false }) });
+
 const meta = {
   title: 'Docs/DocsDialogContainer',
   component: DocsDialogContainer,
@@ -229,6 +236,33 @@ export const UnsavedMove: Story = {
     await waitFor(async () => expect(await view.findByText('Discard changes?')).toBeVisible());
     await userEvent.click(view.getByRole('button', { name: 'Keep editing' }));
     await expect(document.querySelector('.ProseMirror')?.textContent).toContain('Typed');
+  },
+};
+
+/** An image file shows as a picture from the assets URL; Save stays off and no text is fetched. */
+export const ImageFile: Story = {
+  parameters: { handler: mediaApi() },
+  play: async () => {
+    const view = await open();
+    await choose(view, /diagram\.png/);
+    const image = await view.findByAltText('diagram.png');
+    await expect(image.getAttribute('src')).toBe(
+      '/api/projects/p-alpha/docs/assets?path=diagram.png',
+    );
+    await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await expect(view.getByRole('navigation')).toHaveTextContent('Docs/diagram.png');
+  },
+};
+
+/** A file of another type is listed, and the body says it cannot be shown. */
+export const OtherFile: Story = {
+  parameters: { handler: mediaApi() },
+  play: async () => {
+    const view = await open();
+    await choose(view, /board\.pen/);
+    await expect(await view.findByText('This file type cannot be shown here.')).toBeVisible();
+    await expect(view.getAllByText('board.pen').length).toBeGreaterThan(1);
+    await expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
   },
 };
 

@@ -107,6 +107,11 @@
               "id": "docs-shell-docsfiletree--japanese",
               "states": ["japanese locale", "no files"],
               "interaction": true
+            },
+            {
+              "id": "docs-shell-docsfiletree--mixed-files",
+              "states": ["markdown, image and other files", "icons"],
+              "interaction": true
             }
           ]
         }

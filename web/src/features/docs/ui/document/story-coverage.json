@@ -112,6 +112,31 @@
           ]
         }
       ]
+    },
+    {
+      "file": "features/docs/ui/document/FileViewer.tsx",
+      "exports": [
+        {
+          "name": "FileViewer",
+          "stories": [
+            {
+              "id": "docs-document-fileviewer--image",
+              "states": ["image", "fits the width"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-fileviewer--image-failed",
+              "states": ["image failed"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-fileviewer--other",
+              "states": ["not shown", "file name"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }

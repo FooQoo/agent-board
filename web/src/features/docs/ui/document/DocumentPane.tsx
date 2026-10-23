@@ -24,6 +24,8 @@ export interface DocumentPaneProps {
   onRetry?: () => void;
   /** The phone layout: smaller margins. */
   compact?: boolean;
+  /** The small label above the body; "Markdown" unless the caller names another kind of file. */
+  kindLabel?: string;
   /** The body, the `RichMarkdownEditor`. */
   children?: ReactNode;
 }
@@ -43,6 +45,7 @@ export function DocumentPane({
   conflictBusy = false,
   onRetry,
   compact = false,
+  kindLabel,
   children,
 }: DocumentPaneProps) {
   const { t } = useTranslation();
@@ -94,7 +97,7 @@ export function DocumentPane({
           <span>{t('docsDocument.readOnly')}</span>
         </div>
       )}
-      <span className="docs-doc__kind">{t('docsDocument.kind')}</span>
+      <span className="docs-doc__kind">{kindLabel ?? t('docsDocument.kind')}</span>
       {frontmatter ? <FrontmatterBlock source={frontmatter} /> : null}
       <div className="docs-doc__body">{children}</div>
     </div>
