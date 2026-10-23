@@ -4,11 +4,16 @@
  * values, so this file is kept apart from app.css; the rules are unlayered on purpose, so they sit
  * above the Tailwind utilities of the shadcn/ui sources.
  */
+/* The large size of the editor dialogs: the card and epic editor and the Docs dialog. */
+:root {
+  --modal-large-width: min(1480px, calc(100vw - 48px));
+  --modal-large-height: min(960px, calc(100dvh - 48px));
+}
+
 .editor-dialog {
   display: flex;
   flex-direction: column;
   gap: 0;
-  /* The large modal size, shared with every dialog (tokens.css). */
   width: var(--modal-large-width);
   max-width: calc(100vw - 48px);
   height: var(--modal-large-height);
