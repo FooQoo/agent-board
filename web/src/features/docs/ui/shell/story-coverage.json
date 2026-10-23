@@ -59,6 +59,21 @@
               "interaction": true
             },
             {
+              "id": "docs-shell-docsdialogview--open-folder",
+              "states": ["open folder button", "click"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--open-folder-failed",
+              "states": ["open folder failed", "japanese locale"],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--long-file-name",
+              "states": ["long file name", "sideways scroll", "no ellipsis"],
+              "interaction": true
+            },
+            {
               "id": "docs-shell-docsdialogview--phone-file-list",
               "states": ["phone width", "list as screen", "no resize handle"],
               "interaction": true

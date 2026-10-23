@@ -76,7 +76,7 @@ const longNodes: DocsTreeNode[] = [
   },
 ];
 
-/** A long name stays on one line and is cut with an ellipsis; its full name is the tooltip. */
+/** A long name stays on one line and is shown whole: the row grows with it. Its full name is the tooltip. */
 export const LongNames: Story = {
   args: { nodes: longNodes },
   play: async ({ canvasElement }) => {
@@ -84,8 +84,9 @@ export const LongNames: Story = {
     const label = item.querySelector<HTMLElement>('.docs-tree__name');
     await expect(label).not.toBeNull();
     await expect(item).toHaveAttribute('title', longName);
-    await expect(label?.scrollWidth).toBeGreaterThan(label?.clientWidth ?? 0);
-    await expect(item.getBoundingClientRect().width).toBeLessThanOrEqual(256);
+    await expect(getComputedStyle(label as HTMLElement).textOverflow).not.toBe('ellipsis');
+    await expect(label?.scrollWidth).toBeLessThanOrEqual(label?.clientWidth ?? 0);
+    await expect(item.getBoundingClientRect().width).toBeGreaterThan(256);
   },
 };
 

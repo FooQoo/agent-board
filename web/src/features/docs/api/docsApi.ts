@@ -58,6 +58,15 @@ export function docsAssetUrl(projectId: ProjectId, path: string): string {
   return `${docsPath(projectId)}/assets?path=${encodeURIComponent(path)}`;
 }
 
+/** `POST docs/open`: the server opens the project's docs folder in the computer's file manager. */
+export async function openDocsFolder(projectId: ProjectId): Promise<void> {
+  const response = await fetch(`${docsPath(projectId)}/open`, {
+    method: 'POST',
+    headers: { 'X-Agboard-Token': readToken() },
+  });
+  if (!response.ok) throw new Error(`Request failed (${response.status})`);
+}
+
 export async function saveDocsFile(
   projectId: ProjectId,
   input: { path: string; content: string; expectedRevision: string },

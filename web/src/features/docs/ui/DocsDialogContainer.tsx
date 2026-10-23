@@ -6,7 +6,7 @@ import { RichMarkdownEditor } from '@/shared/rich-editor/RichMarkdownEditor';
 import { SaveIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { DiscardConfirm } from '@/shared/ui/editor/DiscardConfirm';
-import { docsAssetUrl, type DocsFile } from '../api/docsApi';
+import { docsAssetUrl, openDocsFolder, type DocsFile } from '../api/docsApi';
 import { useDocsTree } from '../model/useDocsTree';
 import { useDocument } from '../model/useDocument';
 import { useDocumentEditor } from '../model/useDocumentEditor';
@@ -45,6 +45,7 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
   // A file chosen while the open one has unsaved changes, waiting for the answer.
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [listWidth, setListWidth] = useState<number>(DOCS_LIST_WIDTH.default);
+  const [openFolderFailed, setOpenFolderFailed] = useState(false);
   const viewer = useMemo(() => viewerOf(tree.nodes, selectedPath), [tree.nodes, selectedPath]);
   // Only a Markdown file has text to fetch, edit or save.
   const document = useDocument(projectId, viewer === 'markdown' ? selectedPath : null);
@@ -58,6 +59,11 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
     },
     [selectedPath, editor.dirty],
   );
+
+  const openFolder = useCallback(() => {
+    setOpenFolderFailed(false);
+    openDocsFolder(projectId).catch(() => setOpenFolderFailed(true));
+  }, [projectId]);
 
   const file = document.file;
   const resolveImage = useCallback(
@@ -81,6 +87,8 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
         onSelectFile={selectFile}
         rootPath={`shared/projects/${projectId}/docs/`}
         onRetry={tree.reload}
+        onOpenFolder={openFolder}
+        openFolderFailed={openFolderFailed}
         listWidth={listWidth}
         onResize={setListWidth}
         dirty={editor.dirty}

@@ -234,3 +234,28 @@ describe('DocsDialogContainer', () => {
     ).toBeTruthy();
   });
 });
+
+describe('DocsDialogContainer: open folder', () => {
+  it('posts to docs/open and shows nothing when the server answers 204', async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/docs/open') ? new Response(null, { status: 204 }) : json(TREE),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { user } = await open();
+    await user.click(screen.getByRole('button', { name: 'Open folder' }));
+    await waitFor(() => expect(urls()).toContain('/api/projects/p1/docs/open'));
+    const call = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/docs/open'));
+    expect(call?.[1]).toMatchObject({ method: 'POST' });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows a short message when the folder could not be opened', async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/docs/open') ? json({ error: { code: 'docs_open_failed' } }, 500) : json(TREE),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { user } = await open();
+    await user.click(screen.getByRole('button', { name: 'Open folder' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Could not open the folder.');
+  });
+});
