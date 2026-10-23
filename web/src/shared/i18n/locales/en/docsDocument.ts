@@ -15,6 +15,13 @@ export const docsDocumentEn = {
     frontmatter: 'Front matter',
     frontmatterCount_one: '{{count}} item',
     frontmatterCount_other: '{{count}} items',
+    viewSwitch: 'View',
+    viewUi: 'UI',
+    viewCode: 'Code',
+    mdxLoading: 'Loading the preview…',
+    mdxPreview: 'MDX preview',
+    mdxUnregistered: 'Unregistered component',
+    mdxRuntimeError: 'Runtime error',
     saveFailed: 'Could not save. Your input is kept.',
     conflictTitle: 'Could not save. The file was changed outside this screen',
     conflictBody:

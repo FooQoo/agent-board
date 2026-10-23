@@ -32,6 +32,8 @@ interface HarnessProps extends DocumentPaneProps {
   error?: string | null;
   /** An editable stand-in for the editor, so the Stories can check that the input stays. */
   editable?: boolean;
+  /** An .mdx file: the UI / Code switch, with a fixed stand-in for the sandbox preview. */
+  mdxFile?: boolean;
 }
 
 /** The dialog the pane sits in. The body is a fixed Markdown view, standing in for the editor. */
@@ -40,9 +42,19 @@ function Harness({
   saving = false,
   error = null,
   editable = false,
+  mdxFile = false,
   ...pane
 }: HarnessProps) {
   const [text, setText] = useState('My unsaved edit');
+  const [view, setView] = useState<'ui' | 'code'>('code');
+  const mdx = mdxFile
+    ? {
+        view,
+        onViewChange: setView,
+        // The real preview is an iframe of the sandbox page; the story shows its look only.
+        preview: <span role="note">Unregistered component: Chart</span>,
+      }
+    : undefined;
   return (
     <EditorShell
       idLabel=""
@@ -61,7 +73,7 @@ function Harness({
       }
     >
       <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }}>
-        <DocumentPane {...pane}>
+        <DocumentPane {...pane} mdx={mdx}>
           {editable ? (
             <textarea
               aria-label="Body"
@@ -248,5 +260,45 @@ export const Phone: Story = {
     const view = await opened();
     await expect(view.getByRole('button', { name: 'Overwrite with mine' })).toBeVisible();
     await expect(view.getByRole('heading', { name: 'Purpose' })).toBeVisible();
+  },
+};
+
+/** An .mdx file opens as code; the switch shows the UI and back, and the editor stays. */
+export const MdxSwitch: Story = {
+  args: { mdxFile: true, editable: true },
+  play: async () => {
+    const view = await opened();
+    const ui = view.getByRole('button', { name: 'UI' });
+    const code = view.getByRole('button', { name: 'Code' });
+    await expect(code).toHaveAttribute('aria-pressed', 'true');
+    await expect(view.getByRole('textbox', { name: 'Body' })).toBeVisible();
+    await userEvent.click(ui);
+    await expect(ui).toHaveAttribute('aria-pressed', 'true');
+    await expect(view.getByText('Unregistered component: Chart')).toBeVisible();
+    await expect(view.getByRole('textbox', { name: 'Body', hidden: true })).not.toBeVisible();
+    await userEvent.click(code);
+    await expect(view.getByRole('textbox', { name: 'Body' })).toHaveValue('My unsaved edit');
+  },
+};
+
+/** A Markdown file has no switch. */
+export const NoMdxSwitch: Story = {
+  play: async () => {
+    const view = await opened();
+    await expect(view.queryByRole('group', { name: 'View' })).toBeNull();
+  },
+};
+
+/** The switch in Japanese. */
+export const MdxSwitchJapanese: Story = {
+  args: { mdxFile: true },
+  globals: { locale: 'ja' },
+  play: async () => {
+    const view = await opened();
+    await expect(view.getByRole('group', { name: '表示' })).toBeVisible();
+    await expect(view.getByRole('button', { name: 'コード' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   },
 };

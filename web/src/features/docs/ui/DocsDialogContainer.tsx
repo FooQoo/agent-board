@@ -11,6 +11,7 @@ import { useDocsTree } from '../model/useDocsTree';
 import { useDocument } from '../model/useDocument';
 import { useDocumentEditor } from '../model/useDocumentEditor';
 import { DocumentPane } from './document/DocumentPane';
+import { MdxFrame } from './document/MdxFrame';
 import { FileViewer } from './document/FileViewer';
 import { DOCS_LIST_WIDTH, DocsDialogView } from './shell/DocsDialogView';
 import type { DocsTreeNode, DocsViewer } from './shell/DocsFileTree';
@@ -46,6 +47,13 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [listWidth, setListWidth] = useState<number>(DOCS_LIST_WIDTH.default);
   const [openFolderFailed, setOpenFolderFailed] = useState(false);
+  // How an .mdx file shows; each file opens as code, the editable view.
+  const [mdxView, setMdxView] = useState<{ path: string | null; view: 'ui' | 'code' }>({
+    path: null,
+    view: 'code',
+  });
+  const isMdx = selectedPath?.toLowerCase().endsWith('.mdx') === true;
+  const view = mdxView.path === selectedPath ? mdxView.view : 'code';
   const viewer = useMemo(() => viewerOf(tree.nodes, selectedPath), [tree.nodes, selectedPath]);
   // Only a Markdown file has text to fetch, edit or save.
   const document = useDocument(projectId, viewer === 'markdown' ? selectedPath : null);
@@ -138,6 +146,15 @@ export function DocsDialogContainer({ projectId, onClose }: DocsDialogContainerP
             onReload={document.reload}
             onOverwrite={() => void editor.overwrite()}
             onRetry={document.reload}
+            mdx={
+              isMdx
+                ? {
+                    view,
+                    onViewChange: (next) => setMdxView({ path: selectedPath, view: next }),
+                    preview: <MdxFrame source={editor.body} />,
+                  }
+                : undefined
+            }
           >
             {file !== null && (
               <RichMarkdownEditor

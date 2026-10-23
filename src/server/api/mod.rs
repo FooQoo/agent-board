@@ -69,6 +69,8 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(index))
         .route("/assets/{name}", get(asset))
+        .route("/docs-sandbox", get(docs_sandbox))
+        .route("/docs-sandbox/{name}", get(docs_sandbox_asset))
         .route("/logo.png", get(logo_png))
         .route("/logo-white.png", get(logo_white_png))
         .route("/api/events", get(events::events))

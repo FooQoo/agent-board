@@ -3,6 +3,26 @@
   "owner": "U3",
   "files": [
     {
+      "file": "features/docs/ui/document/MdxFrame.tsx",
+      "exports": [
+        {
+          "name": "MdxFrame",
+          "stories": [
+            {
+              "id": "docs-document-mdxframe--loading",
+              "states": ["loading", "sandbox scripts only", "no same origin"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-mdxframe--loading-japanese",
+              "states": ["loading", "japanese locale"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "file": "features/docs/ui/document/DocumentPane.tsx",
       "exports": [
         {
@@ -67,6 +87,21 @@
             {
               "id": "docs-document-documentpane--conflict-japanese-dark",
               "states": ["japanese locale", "dark theme", "front matter"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--mdx-switch",
+              "states": ["mdx switch", "code by default", "ui view", "editor kept"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--no-mdx-switch",
+              "states": ["no switch for markdown"],
+              "interaction": true
+            },
+            {
+              "id": "docs-document-documentpane--mdx-switch-japanese",
+              "states": ["mdx switch", "japanese locale"],
               "interaction": true
             },
             {
