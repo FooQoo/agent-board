@@ -98,6 +98,12 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, false),
         };
     }
+    if let Command::Update(args) = &cli.command {
+        return match commands::update::run(env, args) {
+            Ok(code) => code,
+            Err(error) => fail(env, &error, false),
+        };
+    }
     if let Command::Hook(args) = &cli.command {
         let agent = match args.agent {
             args::AgentArg::Claude => "claude",
@@ -169,6 +175,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
                 outcome.human
             };
             write_text(env.stdout, &text);
+            commands::update::notice_if_stale(env, cli.json);
             if let (true, Some(ctx)) = (outcome.changed, &ctx) {
                 let dir = env
                     .shared_dir
@@ -231,6 +238,7 @@ fn access(command: &Command) -> Access {
         Command::Serve(_)
         | Command::Setup(_)
         | Command::Connect(_)
+        | Command::Update(_)
         | Command::Hook(_)
         | Command::Wait(_) => Access::Catalog,
     }
@@ -297,7 +305,8 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         | Command::Wait(_)
         | Command::Serve(_)
         | Command::Setup(_)
-        | Command::Connect(_) => {
+        | Command::Connect(_)
+        | Command::Update(_) => {
             unreachable!("serve, setup, and the agent commands are handled before store setup")
         }
     }
