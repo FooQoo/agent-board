@@ -396,10 +396,9 @@ fn workflow_builds_both_cpus_natively_and_keeps_release_writes_out() {
         workflow.contains("macos-15"),
         "the arm64 runner label is missing"
     );
-    // The default token is read-only; no job writes contents in this workflow.
+    // The default token is read-only. Which jobs may hold secrets or write
+    // contents is checked per job in tests/release_signing.rs.
     assert!(workflow.contains("contents: read"));
-    assert!(!workflow.contains("contents: write"));
-    assert!(!workflow.contains("secrets."));
 }
 
 #[test]

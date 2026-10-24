@@ -42,6 +42,7 @@ Commands:
   serve   Show the board in your browser
   setup   Add the shared folder to Codex and Claude Code settings
   connect Install the Skill and Hook for Claude Code and Codex (interactive)
+  update  Update the installed Skill and Hook to this version
 
 Workflow for agents:
   agboard project ls --json
@@ -136,6 +137,9 @@ pub enum Command {
     /// Install the Skill and Hook for Claude Code and Codex (interactive)
     #[command(after_help = "Examples:\n  agboard project create \"My project\"\n  agboard connect")]
     Connect(ConnectArgs),
+    /// Update the installed Skill and Hook to this version
+    #[command(after_help = "Examples:\n  agboard update\n  agboard update --yes")]
+    Update(UpdateArgs),
     /// Show the project's shared folder and where its files are
     Workspace(WorkspaceArgs),
     /// Show the tasks an agent can pick up, by epic in priority order
@@ -167,13 +171,14 @@ impl Command {
             Command::Serve(_) => "serve",
             Command::Setup(_) => "setup",
             Command::Connect(_) => "connect",
+            Command::Update(_) => "update",
             Command::Workspace(_) => "workspace",
             Command::Progress(_) => "progress",
         }
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 20] = [
+pub const SUBCOMMAND_NAMES: [&str; 21] = [
     "project",
     "init",
     "add",
@@ -194,6 +199,7 @@ pub const SUBCOMMAND_NAMES: [&str; 20] = [
     "progress",
     "setup",
     "connect",
+    "update",
 ];
 
 #[derive(Args, Debug)]
@@ -765,6 +771,15 @@ pub enum SetupAgentArg {
 #[derive(Args, Debug)]
 pub struct ConnectArgs {}
 
+/// `update` refreshes what connect installed. It keeps the recorded agents
+/// and scopes, so it has one option.
+#[derive(Args, Debug)]
+pub struct UpdateArgs {
+    /// Skip the confirmation question; conflicts still stop the update
+    #[arg(long)]
+    pub yes: bool,
+}
+
 #[derive(Args, Debug)]
 #[command(
     after_help = "Examples:\n  agboard setup\n  agboard setup --agent codex --dry-run\n  agboard setup --agent claude --json"
@@ -901,9 +916,18 @@ impl Cli {
             }
             (Command::Ls(args), None) if args.all_projects => {}
             // `serve` shows every project, so naming one is a mistake.
-            (Command::Serve(_) | Command::Setup(_) | Command::Connect(_), Some(_)) => {
+            (
+                Command::Serve(_) | Command::Setup(_) | Command::Connect(_) | Command::Update(_),
+                Some(_),
+            ) => {
                 return Err(AgboardError::InvalidArgument {
                     message: format!("{command} does not take --project."),
+                    command: Some(command.to_string()),
+                });
+            }
+            (Command::Update(_), None) if self.json => {
+                return Err(AgboardError::InvalidArgument {
+                    message: "update does not take --json or --dry-run.".to_string(),
                     command: Some(command.to_string()),
                 });
             }
@@ -942,6 +966,7 @@ impl Cli {
                 Command::Serve(_)
                 | Command::Setup(_)
                 | Command::Connect(_)
+                | Command::Update(_)
                 | Command::Hook(_)
                 | Command::Progress(_),
                 None,

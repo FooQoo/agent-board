@@ -59,6 +59,25 @@ WAVES = {
         ["python3", "scripts/release/check-version.py", "--tag", "v1.0.0"],
         ["cargo", "test"],
     ],
+    4: [
+        ["pnpm", "--dir", "web", "build"],
+        ["cargo", "build"],
+        [
+            "cargo", "test", *FOCUSED_TESTS,
+            "--test", "integration_install",
+            "--test", "integration_recovery",
+            "--test", "setup",
+            "--test", "release_metadata",
+            "--test", "integration_connect",
+            "--test", "agent_templates",
+            "--test", "integration_update",
+            "--test", "integration_notice",
+            "--test", "release_signing",
+        ],
+        ["bash", "scripts/release/test-formula.sh"],
+        ["python3", "scripts/release/check-version.py", "--tag", "v1.0.0"],
+        ["cargo", "test"],
+    ],
 }
 
 

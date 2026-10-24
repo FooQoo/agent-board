@@ -18,6 +18,7 @@ pub mod detect;
 pub mod duplicates;
 pub mod journal;
 pub mod merge;
+pub mod notice;
 mod ops;
 pub mod outcome;
 pub mod paths;
@@ -29,5 +30,7 @@ pub mod report;
 pub mod skill;
 pub mod template;
 pub mod types;
+pub mod update;
+pub mod update_report;
 
 pub use types::{Agent, Component, EffectivePaths, IntegrationError, ResolvedTargets, Scope};

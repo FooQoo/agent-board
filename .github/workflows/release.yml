@@ -1,16 +1,30 @@
 name: Release build
 
-# Builds and checks the per-CPU macOS archives. Everything here is an UNSIGNED
-# CANDIDATE: it is never a release asset. The formal release path (Developer ID
-# signing, notarization, SHA256SUMS, and the draft Release) is a later job that
-# consumes the `candidate-<target>` artifacts of one run and is the only place
-# that may hold secrets or write access to repository contents.
+# Two separate paths share this file.
+#
+# 1. CANDIDATE path (every trigger): the `version`, `build` and `candidates`
+#    jobs build and check the per-CPU macOS archives with no secrets, no
+#    notarization and no write access. Their output is an UNSIGNED CANDIDATE
+#    (candidate.json says signed:false) and is never a release asset.
+# 2. FORMAL path (only a pushed or re-run `v*` tag, never a pull request): the
+#    `sign` jobs run in the protected `release-signing` Environment, the only
+#    place the five signing secrets exist. Each CPU signs with Developer ID
+#    Application (fixed identifier, Hardened Runtime, secure timestamp) in a
+#    temporary keychain, submits a ZIP of the signed binary to notarytool, and
+#    waits for Accepted. The very same bytes are then packed into the tar.gz.
+#    A single Mach-O cannot be stapled, so there is no stapler step.
+#    `release-gate` passes only when BOTH CPUs succeeded, and only then does
+#    `release-draft` create a DRAFT Release. A missing certificate, a rejected
+#    or timed-out notarization, or one failing CPU stops the run; an unsigned
+#    archive is never a fallback for a formal release.
 #
 # Candidate artifact contract (one artifact per target, same SHA and run):
 #   candidate-<target>/agboard-<version>-<target>.tar.gz   unsigned, already stripped
 #   candidate-<target>/candidate.json                       {version, target, sha, run_id, signed: false}
-# The signing job must repack the signed binary with scripts/release/package.sh
-# and verify it again with scripts/release/verify-artifact.sh.
+# Signed artifact contract (one per target, formal path only):
+#   signed-<target>/agboard-<version>-<target>.tar.gz   signed, notarized bytes
+#   signed-<target>/signature.json, notary.json          public facts only
+#   signed-<target>/notary-log.json                      redacted, failures only
 
 on:
   push:
@@ -130,3 +144,135 @@ jobs:
           PY
           done
           python3 scripts/release/check-version.py --tag "v${{ needs.version.outputs.version }}" --assets assets
+
+  sign:
+    # Formal path only. Never runs for a pull request or a branch run.
+    needs: [version, build, candidates]
+    if: github.event_name != 'pull_request' && github.ref_type == 'tag'
+    environment: release-signing
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-15
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v5
+        with:
+          name: candidate-${{ matrix.target }}
+          path: candidate
+      - name: Trust only the candidate of this run, SHA and target
+        env:
+          VERIFY_PORT: "9040"
+        run: |
+          python3 - "candidate/candidate.json" "${{ matrix.target }}" "${{ needs.version.outputs.version }}" <<'PY'
+          import json, os, sys
+          record = json.load(open(sys.argv[1]))
+          want = {"target": sys.argv[2], "version": sys.argv[3], "sha": os.environ["GITHUB_SHA"],
+                  "run_id": os.environ["GITHUB_RUN_ID"], "signed": False}
+          bad = {k: record.get(k) for k, v in want.items() if record.get(k) != v}
+          sys.exit(f"candidate record differs: {bad}") if bad else None
+          PY
+          scripts/release/verify-artifact.sh "candidate/agboard-${{ needs.version.outputs.version }}-${{ matrix.target }}.tar.gz" "${{ matrix.target }}"
+          mkdir -p work evidence
+          tar -xzf "candidate/agboard-${{ needs.version.outputs.version }}-${{ matrix.target }}.tar.gz" -C work agboard
+      - name: Create the temporary signing keychain
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: scripts/release/sign-macos.sh prepare
+      - name: Sign
+        run: scripts/release/sign-macos.sh sign work/agboard
+      - name: Verify the signature
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: scripts/release/verify-signature.sh work/agboard "${{ matrix.target }}" --json evidence/signature.json
+      - name: Notarize and wait for Accepted
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: scripts/release/notarize-macos.sh work/agboard "${{ matrix.target }}" evidence
+      - name: Pack the same bytes and check the archive
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          VERIFY_PORT: "9040"
+        run: |
+          scripts/release/package.sh "${{ matrix.target }}" work/agboard evidence
+          archive="evidence/agboard-${{ needs.version.outputs.version }}-${{ matrix.target }}.tar.gz"
+          scripts/release/verify-artifact.sh "$archive" "${{ matrix.target }}"
+          mkdir unpacked
+          tar -xzf "$archive" -C unpacked agboard
+          scripts/release/verify-signature.sh unpacked/agboard "${{ matrix.target }}"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: signed-${{ matrix.target }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Failure log
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: signing-failure-${{ matrix.target }}
+          path: evidence/notary-log.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Delete the keychain and key material
+        if: always()
+        run: scripts/release/sign-macos.sh cleanup
+
+  release-gate:
+    # Passes only when both CPUs signed and were notarized Accepted.
+    needs: [version, sign]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: signed-*
+          path: signed
+      - name: Gate on both CPUs
+        run: |
+          mkdir evidence
+          for target in aarch64-apple-darwin x86_64-apple-darwin; do
+            if [ -d "signed/signed-${target}" ]; then mv "signed/signed-${target}" "evidence/${target}"; fi
+          done
+          python3 scripts/release/release-gate.py --evidence evidence \
+            --version "${{ needs.version.outputs.version }}" --sha "${GITHUB_SHA}" --out release
+      - name: Render the Formula candidate
+        run: |
+          mkdir -p release/formula
+          python3 scripts/release/render-formula.py --tag "v${{ needs.version.outputs.version }}" \
+            --sums release/assets/SHA256SUMS --assets release/assets --out release/formula/agboard.rb
+      - uses: actions/upload-artifact@v5
+        with:
+          name: release-assets
+          path: release/
+          if-no-files-found: error
+          retention-days: 14
+
+  release-draft:
+    # The only job with write access. It creates a DRAFT; publishing is a
+    # separate human decision.
+    needs: [version, release-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: release-assets
+          path: release
+      - name: Create the draft Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft --verify-tag \
+            --title "${GITHUB_REF_NAME}" --notes "Draft: review the notes before publishing." \
+            release/assets/*
