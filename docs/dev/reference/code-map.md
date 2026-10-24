@@ -59,6 +59,7 @@ The main files and directories outside `src/` are:
 - `e2e/`: Playwright tests and the screenshot and video scripts.
 - `docs/`: this documentation site.
 - `integrations/`: hook templates.
+- `src/cli/commands/connect.rs`: the interactive `agboard connect` flow. It uses `src/integrations/detect.rs` (agents on PATH and their versions), `prompt.rs` (the questions), and `report.rs` (the plan and result text) around the planner and the per-agent apply.
 - `.agents/skills/agent-board/`: the agent skill.
 
 ## Technology choices

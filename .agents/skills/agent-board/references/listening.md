@@ -4,7 +4,7 @@ Use this procedure only when the user explicitly asks you to listen for work. It
 
 ## Start listening
 
-1. Resolve the project using the normal [project selection rules](../SKILL.md#1-resolve-the-project-from-the-working-folder), unless the user specifies an explicit project. Use its current name for commands; the wait operation resolves the name once and then follows that immutable ProjectId through a rename. Never broaden the session to other projects.
+1. Resolve the project using the normal [project selection rules](../SKILL.md#1-resolve-the-project-from-the-working-folder), unless the user specifies an explicit project. Use its current name for commands; the wait operation resolves the name once and then follows that immutable ProjectId through a rename. Never broaden the session to other projects. If the folder is not bound (`folder_unbound`), do not start listening: tell the user to bind it and run `agboard connect` themselves in a terminal, as the project selection rules describe.
 2. Confirm the idle timeout in seconds. It must be a positive integer from 1 to 86,400. There is no default. If the user has not specified it, ask on a relevant AI task in Agent Board using a choice-based Pending request with `"wait": {}`. Do not silently invent a duration.
 3. Read the complete project snapshot and inspect every AI task's `agentStatus` before entering or resuming the listener; `progress` omits Pending tasks. If any task is `running` or `pending`, resolve that work first. A Pending request blocks the session until that same request is answered or explicitly withdrawn. If all AI tasks are `idle`, a task in the Doing lane may be continued without resetting its lane.
 4. Start the listener with the normal shell execution tool:

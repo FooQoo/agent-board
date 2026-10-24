@@ -92,3 +92,36 @@ fn templates_hold_no_personal_or_machine_specific_paths() {
         }
     }
 }
+
+#[test]
+fn the_skill_sends_an_unbound_folder_to_the_users_own_connect_run() {
+    for (name, text) in [
+        (
+            "SKILL.md",
+            include_str!("../.agents/skills/agent-board/SKILL.md"),
+        ),
+        (
+            "listening.md",
+            include_str!("../.agents/skills/agent-board/references/listening.md"),
+        ),
+    ] {
+        assert!(
+            text.contains("folder_unbound"),
+            "{name} omits folder_unbound"
+        );
+        assert!(text.contains("agboard connect"), "{name} omits connect");
+    }
+    let skill = include_str!("../.agents/skills/agent-board/SKILL.md");
+    assert!(
+        skill.contains("never run it"),
+        "the Skill must not run connect itself"
+    );
+    assert!(
+        skill.contains("interactive"),
+        "the Skill must say connect is interactive"
+    );
+    // connect takes no confirmation-skipping or machine-readable options.
+    for forbidden in ["connect --yes", "connect --json", "connect --dry-run"] {
+        assert!(!skill.contains(forbidden), "found {forbidden}");
+    }
+}
