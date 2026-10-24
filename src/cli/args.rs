@@ -41,6 +41,7 @@ Commands:
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser
   setup   Add the shared folder to Codex and Claude Code settings
+  connect Install the Skill and Hook for Claude Code and Codex (interactive)
 
 Workflow for agents:
   agboard project ls --json
@@ -132,6 +133,9 @@ pub enum Command {
     Serve(ServeArgs),
     /// Create the data folder and add it to Codex and Claude Code settings
     Setup(SetupArgs),
+    /// Install the Skill and Hook for Claude Code and Codex (interactive)
+    #[command(after_help = "Examples:\n  agboard project create \"My project\"\n  agboard connect")]
+    Connect(ConnectArgs),
     /// Show the project's shared folder and where its files are
     Workspace(WorkspaceArgs),
     /// Show the tasks an agent can pick up, by epic in priority order
@@ -162,13 +166,14 @@ impl Command {
             Command::Wait(_) => "wait",
             Command::Serve(_) => "serve",
             Command::Setup(_) => "setup",
+            Command::Connect(_) => "connect",
             Command::Workspace(_) => "workspace",
             Command::Progress(_) => "progress",
         }
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 19] = [
+pub const SUBCOMMAND_NAMES: [&str; 20] = [
     "project",
     "init",
     "add",
@@ -188,6 +193,7 @@ pub const SUBCOMMAND_NAMES: [&str; 19] = [
     "workspace",
     "progress",
     "setup",
+    "connect",
 ];
 
 #[derive(Args, Debug)]
@@ -755,6 +761,10 @@ pub enum SetupAgentArg {
     All,
 }
 
+/// `connect` takes no options: it is an interactive first-time setup.
+#[derive(Args, Debug)]
+pub struct ConnectArgs {}
+
 #[derive(Args, Debug)]
 #[command(
     after_help = "Examples:\n  agboard setup\n  agboard setup --agent codex --dry-run\n  agboard setup --agent claude --json"
@@ -891,9 +901,15 @@ impl Cli {
             }
             (Command::Ls(args), None) if args.all_projects => {}
             // `serve` shows every project, so naming one is a mistake.
-            (Command::Serve(_) | Command::Setup(_), Some(_)) => {
+            (Command::Serve(_) | Command::Setup(_) | Command::Connect(_), Some(_)) => {
                 return Err(AgboardError::InvalidArgument {
                     message: format!("{command} does not take --project."),
+                    command: Some(command.to_string()),
+                });
+            }
+            (Command::Connect(_), None) if self.json => {
+                return Err(AgboardError::InvalidArgument {
+                    message: "connect is interactive and does not take --json.".to_string(),
                     command: Some(command.to_string()),
                 });
             }
@@ -923,7 +939,11 @@ impl Cli {
                 None,
             ) => {}
             (
-                Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Progress(_),
+                Command::Serve(_)
+                | Command::Setup(_)
+                | Command::Connect(_)
+                | Command::Hook(_)
+                | Command::Progress(_),
                 None,
             ) => {}
             (_, None) => {

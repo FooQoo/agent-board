@@ -90,6 +90,14 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, cli.json),
         };
     }
+    // `connect` is interactive: it checks the terminal and the folder binding
+    // itself and prints its own results.
+    if let Command::Connect(_) = &cli.command {
+        return match commands::connect::run(env) {
+            Ok(code) => code,
+            Err(error) => fail(env, &error, false),
+        };
+    }
     if let Command::Hook(args) = &cli.command {
         let agent = match args.agent {
             args::AgentArg::Claude => "claude",
@@ -220,9 +228,11 @@ fn access(command: &Command) -> Access {
         | Command::History(_)
         | Command::Rm(_) => Access::ChangeProject,
         Command::Progress(_) => Access::ReadBoundProject,
-        Command::Serve(_) | Command::Setup(_) | Command::Hook(_) | Command::Wait(_) => {
-            Access::Catalog
-        }
+        Command::Serve(_)
+        | Command::Setup(_)
+        | Command::Connect(_)
+        | Command::Hook(_)
+        | Command::Wait(_) => Access::Catalog,
     }
 }
 
@@ -283,7 +293,11 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Snapshot(_) => commands::snapshot::run(ctx),
         Command::Workspace(_) => commands::workspace::run(ctx),
         Command::Progress(args) => commands::progress::run(ctx, args),
-        Command::Hook(_) | Command::Wait(_) | Command::Serve(_) | Command::Setup(_) => {
+        Command::Hook(_)
+        | Command::Wait(_)
+        | Command::Serve(_)
+        | Command::Setup(_)
+        | Command::Connect(_) => {
             unreachable!("serve, setup, and the agent commands are handled before store setup")
         }
     }

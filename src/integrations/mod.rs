@@ -14,6 +14,7 @@
 pub mod apply;
 pub mod assets;
 mod compose;
+pub mod detect;
 pub mod duplicates;
 pub mod journal;
 pub mod merge;
@@ -21,8 +22,10 @@ mod ops;
 pub mod outcome;
 pub mod paths;
 pub mod plan;
+pub mod prompt;
 pub mod recovery;
 pub mod registry;
+pub mod report;
 pub mod skill;
 pub mod template;
 pub mod types;

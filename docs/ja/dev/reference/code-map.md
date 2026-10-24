@@ -59,6 +59,7 @@
 - `e2e/`: Playwrightのテストと、スクリーンショット・動画の生成スクリプトを置きます。
 - `docs/`: このドキュメントサイトです。
 - `integrations/`: Hookのテンプレートを置きます。
+- `src/cli/commands/connect.rs`: 対話式の`agboard connect`の流れです。`src/integrations/detect.rs`（PATH上のエージェントとversion）、`prompt.rs`（質問）、`report.rs`（計画と結果の文面）を、計画とエージェントごとの適用の前後で使います。
 - `.agents/skills/agent-board/`: エージェントのスキルを置きます。
 
 ## 採用技術

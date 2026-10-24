@@ -35,6 +35,8 @@ A project is identified by both `project.id` and `project.name` in the progress 
 
 If `agboard` is not on `PATH`, use an executable supplied by the user or the project runtime. Do not install tools, create a project, or initialize a substitute board on your own.
 
+If the error is `folder_unbound`, report it and show the user these steps to run themselves in a terminal: `agboard project create "<name>"` (or `agboard project bind "<name>"` for an existing project), then `agboard connect` to install this Skill and the Hook. `agboard connect` is interactive and refuses a non-terminal; never run it, create or bind a project, or pick another project on the user's behalf, and keep working on tasks that do not need the board.
+
 Use a CLI that supports `history add`. If the command is unavailable, report the version mismatch; do not fall back to a body execution log or edit `task.json`. Do not replace the installed executable automatically.
 
 ## 2. Read only what is needed before acting
