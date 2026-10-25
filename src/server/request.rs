@@ -65,9 +65,12 @@ impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for ApiJson<
 
 /// Like [`ApiJson`], but a field the route does not take is a broken request
 /// (400) rather than a value it does not accept (422).
-pub(crate) struct StrictJson<T>(pub(crate) T);
+/// `LIMIT` is the largest body read; the default is [`MAX_BODY`].
+pub(crate) struct StrictJson<T, const LIMIT: usize = MAX_BODY>(pub(crate) T);
 
-impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for StrictJson<T> {
+impl<S: Send + Sync, T: serde::de::DeserializeOwned, const LIMIT: usize> FromRequest<S>
+    for StrictJson<T, LIMIT>
+{
     type Rejection = Response;
 
     async fn from_request(request: Request, _state: &S) -> Result<Self, Self::Rejection> {
@@ -88,12 +91,12 @@ impl<S: Send + Sync, T: serde::de::DeserializeOwned> FromRequest<S> for StrictJs
                 "Send the body as application/json.",
             ));
         }
-        let body = to_bytes(request.into_body(), MAX_BODY).await.map_err(|_| {
+        let body = to_bytes(request.into_body(), LIMIT).await.map_err(|_| {
             error_response(
                 StatusCode::PAYLOAD_TOO_LARGE,
                 "payload_too_large",
                 "request body is invalid.",
-                "Request bodies are limited to 1 MiB.",
+                "The request body is over the size limit.",
             )
         })?;
         match serde_json::from_slice::<T>(&body) {

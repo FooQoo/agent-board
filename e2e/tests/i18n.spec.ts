@@ -2,14 +2,20 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { listTasks, mainHome, resetBoard, mainProject } from '../helpers/agboard';
-import { openManualCreateDialog } from '../helpers/ui';
+import { getPreferences, resetPreferences } from '../helpers/preferences';
+import { openManualCreateDialog, readBoardAfterReset } from '../helpers/ui';
 
 test.use({ locale: 'ja-JP' });
 
+test.afterEach(() => resetPreferences());
+
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
+  await resetPreferences();
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
+  // The server notices the reset 200 ms later; read the board again, not the one from before it.
+  await readBoardAfterReset(page);
 });
 
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
@@ -24,7 +30,8 @@ test('starts in English in a Japanese browser, switches and persists without tra
   expect(home).toContain('agent-board-e2e-main-');
   expect(home).not.toMatch(/Library\/Application Support\/agboard$/);
   expect(await page.evaluate(() => navigator.language)).toBe('ja-JP');
-  expect(await page.evaluate(() => localStorage.getItem('agboard.locale'))).toBeNull();
+  // Nothing was saved, so the page is English whatever the browser's language is.
+  expect((await getPreferences()).locale).toBe('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('banner')).toContainText('Agent Board');
   await expect(lane(page, 'Todo')).toBeVisible();
@@ -61,9 +68,12 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Restore a board from JSON');
   await expect(panel).toContainText('進行中');
   await expect(panel).toContainText('待機中');
-  await expect(panel).toContainText('Waiting for confirmation on how to replace a board.');
+  // The question sits on the card (checked above) and in the history, which is read when its tab opens: only the
+  // open tab is drawn, so the panel does not hold the history text before then.
   await expect(panel.getByRole('tab', { name: '本文' })).toHaveAttribute('aria-selected', 'true');
-  await panel.getByRole('tab', { name: '履歴 3' }).click();
+  // The count is known once the log is read, so the tab is pressed by its plain name first.
+  await panel.getByRole('tab', { name: /^履歴/ }).click();
+  await expect(panel.getByRole('tab', { name: '履歴 3' })).toBeVisible();
   await expect(panel.getByRole('tabpanel').getByRole('listitem')).toHaveText([
     '10/02 10:36Waiting for confirmation on how to replace a board.',
     '10/02 01:10Moved task from Todo to Doing.',
@@ -89,6 +99,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
     pendingReason: 'Waiting for confirmation on how to replace a board.',
   });
 
+  expect((await getPreferences()).locale).toBe('ja');
   await expect(page.evaluate(() => localStorage.getItem('agboard.locale'))).resolves.toBe('ja');
   await page.reload();
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^同期済み/);

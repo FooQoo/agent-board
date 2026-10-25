@@ -77,7 +77,7 @@ describe('Storybook stays out of the product code', () => {
   });
 
   it('keeps the Storybook support out of the product build entries', () => {
-    for (const entry of ['index.html', 'monitor.html', 'access.html']) {
+    for (const entry of ['index.html', 'monitor.html']) {
       expect(read(entry)).not.toMatch(/storybook/i);
     }
   });

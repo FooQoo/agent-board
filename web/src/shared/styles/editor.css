@@ -4,27 +4,20 @@
  * values, so this file is kept apart from app.css; the rules are unlayered on purpose, so they sit
  * above the Tailwind utilities of the shadcn/ui sources.
  */
-[data-slot="dialog-overlay"]:has(+ .editor-dialog--edit) {
-  background: rgb(15 23 42 / 55%);
-}
-
-[data-slot="dialog-overlay"]:has(+ .editor-dialog--create) {
-  background: rgb(15 23 42 / 50%);
-}
-
-[data-slot="dialog-overlay"]:has(+ .editor-confirm) {
-  background: rgb(15 23 42 / 40%);
+/* The large size of the editor dialogs: the card and epic editor and the Docs dialog. */
+:root {
+  --modal-large-width: min(1480px, calc(100vw - 48px));
+  --modal-large-height: min(960px, calc(100dvh - 48px));
 }
 
 .editor-dialog {
   display: flex;
   flex-direction: column;
   gap: 0;
-  /* 1280 × 900 gives 1216 × 828; 960 × 900 gives 928 × 828 (the design's sizes). */
-  width: min(1216px, calc(100vw - 32px));
-  max-width: calc(100vw - 32px);
-  height: min(828px, calc(100dvh - 72px));
-  max-height: calc(100dvh - 72px);
+  width: var(--modal-large-width);
+  max-width: calc(100vw - 48px);
+  height: var(--modal-large-height);
+  max-height: calc(100dvh - 48px);
   padding: 0;
   overflow: hidden;
   /* The design measures everything from the outer edge, so the 1px border is drawn over the edge. */
@@ -101,10 +94,7 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
   margin-top: 3px;
-  padding: 0;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -133,7 +123,7 @@
 }
 
 /* Outline. */
-/* The outline stays fixed; only the task list below it scrolls. */
+/* The column scrolls on its own, so a long outline can reach its last chapter. */
 .editor__side {
   display: flex;
   flex: none;
@@ -142,7 +132,8 @@
   width: 220px;
   min-height: 0;
   padding: 24px 16px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-right: 1px solid var(--r-border);
   background: var(--r-surface);
 }
@@ -237,9 +228,6 @@
   justify-content: center;
   align-items: center;
   margin-left: auto;
-  padding: 0;
-  width: 24px;
-  height: 24px;
   border: 0;
   background: transparent;
   color: var(--r-muted);
@@ -256,12 +244,10 @@
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 9px 12px;
   border: 1px solid var(--r-border);
   border-radius: 6px;
   background: transparent;
   color: var(--r-text2);
-  font-size: 12px;
   cursor: pointer;
 }
 .editor-attachments__add svg {
@@ -368,12 +354,10 @@
 }
 .editor-attachments__insert {
   width: 100%;
-  padding: 7px 8px;
   border: 1px solid var(--r-border);
   border-radius: 6px;
   background: transparent;
   color: var(--r-text2);
-  font-size: 12px;
   cursor: pointer;
 }
 .editor-attachments__remove {
@@ -383,9 +367,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
   border: 1px solid var(--r-border);
   border-radius: 6px;
   background: var(--r-surface);
@@ -582,11 +563,12 @@
 .editor__segment {
   display: inline-flex;
   flex: 0 0 100px;
+  /* biome-ignore lint/plugin: the width of one segment of a two-part switch */
   width: 100px;
   gap: 6px;
   align-items: center;
   justify-content: center;
-  height: 31px;
+  height: var(--btn-s-h);
   padding: 0;
   border: 0;
   background: var(--r-surface);
@@ -641,15 +623,12 @@
 
 .editor__retry {
   flex: none;
-  padding: 4px 10px;
   border: 1px solid var(--r-danger);
   border-radius: 6px;
   background: transparent;
   color: var(--r-danger);
   font: inherit;
-  font-size: 12px;
   font-weight: 600;
-  line-height: 17px;
   cursor: pointer;
 }
 
@@ -710,10 +689,4 @@
   color: var(--r-text2);
   font-size: 13px;
   line-height: 21px;
-}
-
-.editor-confirm__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
 }

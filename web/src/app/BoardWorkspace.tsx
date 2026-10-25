@@ -1,7 +1,7 @@
-import type { CSSProperties } from 'react';
+import { type CSSProperties, Suspense } from 'react';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
-import { settingsSlot } from '../features/settings/ui/settingsSlot';
+import { boardSettingsSlot } from './boardSettingsSlot';
 import { Board } from '../pages/board/ui/Board';
 import { ArchiveList } from '../pages/archive/ui/ArchiveList';
 import { EpicList } from '../pages/epics/ui/EpicList';
@@ -10,15 +10,20 @@ import { DetailPanel } from '../features/tasks/detail/DetailPanel';
 import { ResizeHandle } from '../shared/ui/resize-handle/ResizeHandle';
 import { StatusBar } from '../shared/ui/status-bar/StatusBar';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
+import { guideLayer } from './onboarding/lazyGuide';
+import { isProjectId } from './model/projectSession';
 import type { ProjectId } from '../shared/api/contracts';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 
 export function BoardWorkspace({
   model,
   actions,
+  guide = true,
 }: {
   model: AppControllerModel;
   actions: AppWorkspaceActions;
+  /** Whether the first-run guide may run here; stories leave it off, since they make no requests. */
+  guide?: boolean;
 }) {
   const {
     session,
@@ -70,13 +75,14 @@ export function BoardWorkspace({
         activeProjectId={known ? activeId : null}
         switchDisabled={operation !== null}
         projectSwitcher={projectSwitcher}
-        settings={settingsSlot}
+        settings={boardSettingsSlot}
         canAdd={session.viewMode === 'board' && model.view === 'board'}
         viewMode={session.viewMode}
         onBack={actions.onBack}
         onAdd={actions.onAdd}
         onArchive={actions.onArchive}
         onEpics={actions.onEpics}
+        onDocs={actions.onDocs}
       />
       <div
         className="app__body"
@@ -181,6 +187,25 @@ export function BoardWorkspace({
           </>
         ) : null}
       </div>
+      <Suspense fallback={null}>
+        <guideLayer.Component
+          projectId={known && isProjectId(activeId) ? activeId : null}
+          eligible={
+            guide &&
+            known &&
+            model.view === 'board' &&
+            operation === null &&
+            session.answerLeases.length === 0 &&
+            !epicsVisible &&
+            !archiveVisible &&
+            !isMockTask
+          }
+          tasks={tasks}
+          answers={model.answerSession}
+          syncedAt={board.lastSyncedAt}
+          onAnswerChanged={actions.onAnswerChanged}
+        />
+      </Suspense>
       <StatusBar
         status={archiveVisible ? archive.status : epicsVisible ? board.status : barStatus}
         taskCount={

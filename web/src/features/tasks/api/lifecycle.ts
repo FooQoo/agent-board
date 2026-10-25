@@ -2,6 +2,7 @@ import { i18n } from '../../../shared/i18n';
 import type { ColumnName, ProjectId, Task } from '../../../shared/api/contracts';
 import { projectPath, readToken } from '../../../shared/api/http';
 import { postEmpty, postTask } from '../../../shared/api/write';
+import { WriteError } from '../../../shared/api/writeErrors';
 
 export function archiveTask(projectId: ProjectId, id: number) {
   return postEmpty(`${projectPath(projectId)}/tasks/${id}/archive`);
@@ -42,16 +43,46 @@ export async function deleteTask(projectId: ProjectId, id: number): Promise<Dele
   }
 }
 
+/** The task left the status the move started from; `current` is where it is now. */
+export class TaskStatusChangedError extends Error {
+  constructor(
+    message: string,
+    readonly current: ColumnName,
+  ) {
+    super(message);
+  }
+}
+
+const COLUMNS: readonly ColumnName[] = ['todo', 'doing', 'done'];
+
+/**
+ * Moves a task. With `fromStatus` (the status the page showed), a task that has moved on since is
+ * refused, nothing is written, and `TaskStatusChangedError` names its current status.
+ */
 export async function moveTask(
   projectId: ProjectId,
   id: number,
   taskStatus: ColumnName,
   reason: string,
+  fromStatus?: ColumnName,
 ) {
-  return postTask<{ task: Task; changed: boolean }>(`${projectPath(projectId)}/tasks/${id}/move`, {
-    taskStatus,
-    reason,
-  });
+  try {
+    return await postTask<{ task: Task; changed: boolean }>(
+      `${projectPath(projectId)}/tasks/${id}/move`,
+      fromStatus === undefined ? { taskStatus, reason } : { taskStatus, reason, fromStatus },
+    );
+  } catch (cause) {
+    const current = (cause instanceof WriteError ? cause.body : null) as {
+      currentStatus?: unknown;
+    } | null;
+    if (
+      cause instanceof WriteError &&
+      cause.code === 'task_status_changed' &&
+      COLUMNS.includes(current?.currentStatus as ColumnName)
+    )
+      throw new TaskStatusChangedError(cause.message, current?.currentStatus as ColumnName);
+    throw cause;
+  }
 }
 
 /** Puts a card just before `beforeId` in its lane, or at the end of the lane when `beforeId` is null. */

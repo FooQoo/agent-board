@@ -250,6 +250,7 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
             "ai",
             "--request-json",
             &std::fs::read_to_string(request_file).unwrap(),
+            "--no-wait",
         ],
     );
     assert_eq!(code, 0, "{err}");

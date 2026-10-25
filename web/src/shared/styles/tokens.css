@@ -138,3 +138,8 @@
   /* Detail column width: the stored width is applied inline by the app; this is the default. */
   --detail-width: 360px;
 }
+
+/* Every dialog sits over one scrim, which hides most of the window behind it (see ui.css). */
+:root {
+  --modal-scrim: rgb(15 23 42 / 85%);
+}

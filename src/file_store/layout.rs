@@ -44,6 +44,11 @@ pub fn tasks_dir(project_dir: &Path) -> PathBuf {
     project_dir.join("tasks")
 }
 
+/// The project's Docs folder. Its content is not board data.
+pub fn docs_dir(project_dir: &Path) -> PathBuf {
+    project_dir.join("docs")
+}
+
 pub fn epics_dir(project_dir: &Path) -> PathBuf {
     project_dir.join("epics")
 }

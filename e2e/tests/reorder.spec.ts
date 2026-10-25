@@ -1,11 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { mainProject, resetBoard } from '../helpers/agboard';
+import { readBoardAfterReset } from '../helpers/ui';
 
 // The seed is the eight sample cards; see fixtures/agent-board.json.
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
+  await readBoardAfterReset(page);
   await expect(page.locator('.card').first()).toBeVisible();
 });
 

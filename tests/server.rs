@@ -1,5 +1,8 @@
 //! Integration tests for the web server.
 
+#[path = "support/detail_lines.rs"]
+mod detail_lines;
+
 use std::path::Path;
 use std::process::Command;
 
@@ -87,6 +90,8 @@ fn build_script_passes_and_watches_the_dist_directory_when_built() {
         "assets/app-A.js.gz",
         "monitor/monitor-M.js",
         "monitor/monitor-M.js.gz",
+        "sandbox/sandbox-S.js",
+        "sandbox/sandbox-S.js.gz",
     ]);
     let dist = dir.path().join("web/dist");
     std::fs::write(
@@ -96,7 +101,7 @@ fn build_script_passes_and_watches_the_dist_directory_when_built() {
     .unwrap();
     std::fs::write(
         dist.join("monitor/index.html"),
-        r#"<script src="/assets/monitor/monitor-M.js">"#,
+        r#"<script src="/monitor/assets/monitor/monitor-M.js">"#,
     )
     .unwrap();
     let out = run_build_script(dir.path());
@@ -538,41 +543,39 @@ fn logos_are_served_as_png() {
 // ---------------------------------------------------------------- API
 
 #[test]
-fn board_matches_the_stores_snapshot_in_the_model_shape() {
+fn summary_matches_the_stores_snapshot() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
-    let reply = server.get(&server.api("/board"));
+    let reply = server.get(&server.api("/summary"));
     assert_eq!(reply.status, 200);
     assert_eq!(reply.content_type.as_deref(), Some("application/json"));
 
     let snapshot = store_in(home.path()).board(&main_id(home.path())).unwrap();
-    let expected = serde_json::json!({
-        "project": {
-            "id": snapshot.project.id.to_string(),
-            "name": "main",
-            "createdAt": "2026-10-02T01:00:00Z",
-        },
-        "version": snapshot.version,
-        "cursor": snapshot.cursor.to_string(),
-        "epics": serde_json::to_value(&snapshot.epics).unwrap(),
-        "epicTaskCounts": {
-            "BUG": {"todo": 0, "doing": 0, "done": 0, "archived": 0, "total": 0},
-            "ENHANCEMENT": {"todo": 0, "doing": 0, "done": 0, "archived": 0, "total": 0},
-        },
-        "tasks": serde_json::to_value(&snapshot.tasks).unwrap(),
-        "problems": [],
-    });
     let actual: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
-    assert_eq!(actual, expected);
-    assert_eq!(actual["tasks"].as_array().unwrap().len(), 3);
-
-    // The documented key order, at the board and at each task.
-    assert_eq!(actual["version"], snapshot.version);
-    assert_eq!(actual["tasks"][2]["pendingReason"], "Waiting for review");
+    assert_eq!(actual["project"]["id"], snapshot.project.id.to_string());
+    assert_eq!(actual["project"]["name"], "main");
+    assert_eq!(actual["problems"], serde_json::json!([]));
+    let tasks = actual["tasks"].as_array().unwrap();
+    assert_eq!(tasks.len(), snapshot.tasks.len());
+    assert_eq!(tasks.len(), 3);
+    for (task, stored) in tasks.iter().zip(&snapshot.tasks) {
+        assert_eq!(task["id"], stored.id);
+        assert_eq!(task["title"], stored.title);
+    }
+    assert_eq!(tasks[2]["pendingReason"], "Waiting for review");
+    let epics = actual["epics"].as_array().unwrap();
+    let ids: Vec<&str> = epics.iter().map(|e| e["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["BUG", "ENHANCEMENT"]);
+    for epic in epics {
+        assert_eq!(
+            epic["progress"],
+            serde_json::json!({"todo": 0, "doing": 0, "done": 0, "archived": 0, "total": 0})
+        );
+    }
 }
 
 #[test]
-fn board_reflects_changes_made_after_the_server_started() {
+fn summary_reflects_changes_made_after_the_server_started() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     store_in(home.path())
@@ -593,7 +596,7 @@ fn board_reflects_changes_made_after_the_server_started() {
     let deadline = Instant::now() + Duration::from_secs(3);
     let actual = loop {
         let actual: serde_json::Value =
-            serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+            serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
         if actual["tasks"].as_array().unwrap().len() == 4 || Instant::now() > deadline {
             break actual;
         }
@@ -655,9 +658,11 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let answered = server.send_json("POST", &server.api("/tasks/4/answer"), &body, Some(&token));
     assert_eq!(answered.status, 200, "{}", answered.body);
     let board: serde_json::Value =
-        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+        serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
     assert_eq!(board["tasks"][3]["agentStatus"], "idle");
-    assert_eq!(board["tasks"][3]["history"].as_array().unwrap().len(), 4);
+    let detail = server.get(&server.api("/tasks/4/detail?sections=history"));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert_eq!(detail_lines::history(&detail.body).len(), 4);
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 }
 
@@ -675,7 +680,7 @@ fn archive_api_has_separate_reads_bulk_operation_restore_and_delete_guard() {
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 
     let board: serde_json::Value =
-        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+        serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
     assert!(
         !board["tasks"]
             .as_array()
@@ -851,7 +856,7 @@ fn the_same_task_number_in_two_projects_never_mixes_through_the_api() {
     assert_eq!(store_in(home.path()).board(&main).unwrap(), before_main);
 
     let board: serde_json::Value =
-        serde_json::from_str(&server.get(&format!("/api/projects/{other}/board")).body).unwrap();
+        serde_json::from_str(&server.get(&format!("/api/projects/{other}/summary")).body).unwrap();
     assert_eq!(board["project"]["name"], "other");
     assert_eq!(board["tasks"].as_array().unwrap().len(), 2);
     assert_eq!(board["tasks"][0]["taskStatus"], "doing");
@@ -897,7 +902,7 @@ fn a_project_that_does_not_exist_or_is_malformed_is_refused_before_any_change() 
         Some(&token),
     );
     assert_eq!(reply.status, 422, "{}", reply.body);
-    assert_eq!(server.get("/api/projects/not-an-id/board").status, 422);
+    assert_eq!(server.get("/api/projects/not-an-id/summary").status, 422);
     // The guard still comes first: no token, no existence check.
     let reply = server.send_json(
         "POST",
@@ -953,11 +958,14 @@ fn unknown_paths_are_404_and_wrong_methods_405() {
     assert_eq!(server.get("/nope").status, 404);
     assert_eq!(server.get("/assets/other.js").status, 404);
     // A write-method request is guarded before the route is even matched.
-    assert_eq!(server.send("POST", &server.api("/board"), &[]).status, 403);
+    assert_eq!(
+        server.send("POST", &server.api("/summary"), &[]).status,
+        403
+    );
     let headers = server.page_headers(&server.token());
     assert_eq!(
         server
-            .send_owned("POST", &server.api("/board"), &headers)
+            .send_owned("POST", &server.api("/summary"), &headers)
             .status,
         405
     );
@@ -980,7 +988,7 @@ fn a_foreign_host_is_403_on_every_path() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let evil = format!("evil.example:{}", server.port());
-    let board = server.api("/board");
+    let board = server.api("/summary");
     let task = server.api("/tasks/1");
     let requests = [
         ("GET", "/"),
@@ -1048,7 +1056,7 @@ fn a_request_without_a_host_header_is_403() {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .unwrap();
-    write!(stream, "GET {} HTTP/1.0\r\n\r\n", server.api("/board")).unwrap();
+    write!(stream, "GET {} HTTP/1.0\r\n\r\n", server.api("/summary")).unwrap();
     let mut response = String::new();
     let _ = stream.read_to_string(&mut response);
     assert!(
@@ -1075,7 +1083,7 @@ fn a_delete_meeting_all_four_conditions_returns_204_and_removes_the_task() {
     assert_eq!(reply.body, "");
     assert_eq!(task_ids(home.path()), vec![1, 3]);
     let board: serde_json::Value =
-        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+        serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
     assert_eq!(board["tasks"].as_array().unwrap().len(), 2);
 }
 
@@ -1270,8 +1278,14 @@ fn notify_sends_changed_to_every_connected_client() {
         )
         .unwrap();
     assert_eq!(server.send("POST", "/api/notify", &[]).status, 204);
-    first.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
-    second.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
+    first.wait_for(
+        "event: changed\ndata: {\"instanceId\":",
+        Duration::from_secs(2),
+    );
+    second.wait_for(
+        "event: changed\ndata: {\"instanceId\":",
+        Duration::from_secs(2),
+    );
 }
 
 #[test]
@@ -1325,7 +1339,10 @@ fn a_successful_delete_sends_changed_and_a_refused_one_does_not() {
     );
     assert_eq!(archive.status, 200, "{}", archive.body);
     assert_eq!(server.delete_as_page(1).status, 204);
-    events.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
+    events.wait_for(
+        "event: changed\ndata: {\"instanceId\":",
+        Duration::from_secs(2),
+    );
 }
 
 #[test]
@@ -1427,7 +1444,7 @@ fn a_new_data_area_is_served_with_no_projects_and_unknown_projects_are_404() {
     let server = Running::start(home.path(), 0).unwrap();
     assert!(home.path().join("serve.json").exists());
     let ghost = ProjectId::generate().unwrap();
-    let reply = server.get(&format!("/api/projects/{ghost}/board"));
+    let reply = server.get(&format!("/api/projects/{ghost}/summary"));
     assert_eq!(reply.status, 404);
     let body: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
     assert_eq!(body["error"]["code"], "project_not_found");
@@ -1531,7 +1548,10 @@ fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
         .unwrap();
     let notified = with_home(home.path(), agent_board::interact::notify::notify_serve);
     assert!(notified);
-    events.wait_for("event: changed\ndata: {}\n\n", Duration::from_secs(2));
+    events.wait_for(
+        "event: changed\ndata: {\"instanceId\":",
+        Duration::from_secs(2),
+    );
 }
 
 #[test]
@@ -1552,29 +1572,14 @@ fn notify_serve_is_false_after_the_server_stopped() {
     ));
 }
 
-// ---------------------------------------------------------------- examples/serve.rs and `run`
+// ---------------------------------------------------------------- serve command
 
 use std::process::{Child, Stdio};
 
-/// Path of the built `serve` example, building it first if needed (a plain
-/// `cargo test --test server` does not build examples).
-fn serve_example() -> std::path::PathBuf {
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-    let built = Command::new(cargo)
-        .args(["build", "--example", "serve"])
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .status()
-        .unwrap();
-    assert!(built.success());
-    let mut dir = std::env::current_exe().unwrap();
-    dir.pop(); // deps/
-    dir.pop(); // debug/
-    dir.join("examples")
-        .join(if cfg!(windows) { "serve.exe" } else { "serve" })
-}
-
-fn spawn_example(home: &Path, args: &[&str]) -> Child {
-    Command::new(serve_example())
+/// Start `agboard serve` with `args`, serving the data area in `home`.
+fn spawn_serve(home: &Path, args: &[&str]) -> Child {
+    Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .arg("serve")
         .args(args)
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
@@ -1606,11 +1611,11 @@ fn wait_for_exit(child: &mut Child, within: Duration) -> Option<std::process::Ex
     child.try_wait().unwrap()
 }
 
-/// Start the example on `port`, check it serves, send `signal`, and check it
-/// exits cleanly and removes serve.json.
-fn example_stops_on(signal: &str, port: u16) {
+/// Start `agboard serve` on `port`, check it serves, send `signal`, and check
+/// it exits cleanly and removes serve.json.
+fn serve_stops_on(signal: &str, port: u16) {
     let home = board_home();
-    let mut child = spawn_example(home.path(), &["--port", &port.to_string()]);
+    let mut child = spawn_serve(home.path(), &["--port", &port.to_string()]);
     let serve_path = home.path().join("serve.json");
     assert!(
         wait_for_file(&serve_path, Duration::from_secs(5)),
@@ -1638,22 +1643,22 @@ fn example_stops_on(signal: &str, port: u16) {
 
 #[test]
 #[cfg(unix)]
-fn the_example_serves_and_cleans_up_on_sigint() {
-    example_stops_on("-INT", 7941);
+fn serve_stops_on_sigint_and_cleans_up() {
+    serve_stops_on("-INT", 7941);
 }
 
 #[test]
 #[cfg(unix)]
-fn the_example_serves_and_cleans_up_on_sigterm() {
-    example_stops_on("-TERM", 7942);
+fn serve_stops_on_sigterm_and_cleans_up() {
+    serve_stops_on("-TERM", 7942);
 }
 
 #[test]
-fn the_example_reports_an_unusable_shared_folder_with_exit_code_1() {
+fn serve_reports_an_unusable_shared_folder_with_exit_code_1() {
     let home = tempfile::tempdir().unwrap();
     // A file where the shared folder should be is not a folder of projects.
     std::fs::write(home.path().join("shared"), b"not a folder").unwrap();
-    let mut child = spawn_example(home.path(), &["--port", "7940"]);
+    let mut child = spawn_serve(home.path(), &["--port", "7940"]);
     let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
     assert_eq!(status.code(), Some(1));
     let mut stderr = String::new();
@@ -1667,11 +1672,11 @@ fn the_example_reports_an_unusable_shared_folder_with_exit_code_1() {
 }
 
 #[test]
-fn the_example_reports_a_port_in_use_with_exit_code_1() {
+fn serve_reports_a_port_in_use_with_exit_code_1() {
     let home = board_home();
     let blocker = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = blocker.local_addr().unwrap().port();
-    let mut child = spawn_example(home.path(), &["--port", &port.to_string()]);
+    let mut child = spawn_serve(home.path(), &["--port", &port.to_string()]);
     let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
     assert_eq!(status.code(), Some(1));
     let mut stderr = String::new();
@@ -1688,9 +1693,9 @@ fn the_example_reports_a_port_in_use_with_exit_code_1() {
 }
 
 #[test]
-fn the_example_needs_a_port() {
+fn serve_rejects_a_port_that_is_not_a_number() {
     let home = board_home();
-    let mut child = spawn_example(home.path(), &[]);
+    let mut child = spawn_serve(home.path(), &["--port", "not-a-port"]);
     let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
     assert_eq!(status.code(), Some(2));
     assert!(!home.path().join("serve.json").exists());
@@ -1698,13 +1703,13 @@ fn the_example_needs_a_port() {
 
 // ---------------------------------------------------------------- shared-file checks
 
-/// Read `/board` until `done` holds or three seconds pass. A save made outside
+/// Read `/summary` until `done` holds or three seconds pass. A save made outside
 /// the server reaches the board after the watcher's short quiet period (AC-3).
-fn board_until(server: &Running, done: impl Fn(&serde_json::Value) -> bool) -> serde_json::Value {
+fn summary_until(server: &Running, done: impl Fn(&serde_json::Value) -> bool) -> serde_json::Value {
     let deadline = Instant::now() + Duration::from_secs(3);
     loop {
         let board: serde_json::Value =
-            serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+            serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
         if done(&board) || Instant::now() > deadline {
             return board;
         }
@@ -1735,20 +1740,25 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
     let defective = format!("---\nacceptance:\n  - id: AC-1\n    text: Done\nhistory:{history}");
     std::fs::write(&md, &defective).unwrap();
 
-    let board = board_until(&server, |b| !b["problems"].as_array().unwrap().is_empty());
+    let board = summary_until(&server, |b| !b["problems"].as_array().unwrap().is_empty());
     let problems = board["problems"].as_array().unwrap();
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert_eq!(problems[0]["file"], label);
     assert_eq!(problems[0]["field"], "acceptance[0].done");
     assert!(!problems[0]["reason"].as_str().unwrap().is_empty());
-    // The task still shows the text as it was saved; the product does not rewrite it.
+    // The task is still listed and flags the unreadable conditions; its detail still shows the
+    // body as it was saved. The product does not rewrite the file.
     let task = board["tasks"]
         .as_array()
         .unwrap()
         .iter()
         .find(|c| c["id"] == 1)
         .unwrap();
-    assert_eq!(task["description"], defective);
+    assert_eq!(task["acceptanceError"], true);
+    let detail = server.get(&server.api("/tasks/1/detail?sections=document"));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert_eq!(detail_lines::document(&detail.body), "Some details\n");
+    assert_eq!(std::fs::read_to_string(&md).unwrap(), defective);
 
     let parsed = agent_board::file_store::history::parse_task(
         &original,
@@ -1766,12 +1776,12 @@ fn a_task_md_with_a_missing_heading_is_reported_in_problems_until_it_is_fixed() 
     )
     .unwrap();
     std::fs::write(&md, fixed).unwrap();
-    let board = board_until(&server, |b| b["problems"].as_array().unwrap().is_empty());
+    let board = summary_until(&server, |b| b["problems"].as_array().unwrap().is_empty());
     assert!(board["problems"].as_array().unwrap().is_empty(), "{board}");
 }
 
 #[test]
-fn the_board_lists_each_epic_with_its_fields_and_document() {
+fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
     use agent_board::file_store::model::NewEpic;
     let home = board_home();
     let project = main_id(home.path());
@@ -1789,7 +1799,7 @@ fn the_board_lists_each_epic_with_its_fields_and_document() {
         )
         .unwrap();
     let server = Running::start(home.path(), 0).unwrap();
-    let board = board_until(&server, |b| !b["epics"].as_array().unwrap().is_empty());
+    let board = summary_until(&server, |b| !b["epics"].as_array().unwrap().is_empty());
     let epics = board["epics"].as_array().unwrap();
     // The two default epics come first in ID order, then the one added here.
     let ids: Vec<&str> = epics.iter().map(|e| e["id"].as_str().unwrap()).collect();
@@ -1799,12 +1809,8 @@ fn the_board_lists_each_epic_with_its_fields_and_document() {
     assert_eq!(epic["name"], "First epic");
     assert_eq!(epic["color"], "#3366CC");
     assert_eq!(epic["isDraft"], false);
-    assert_eq!(
-        epic["document"],
-        agent_board::file_store::validate::document_template()
-    );
-    assert_eq!(epic["attachments"], serde_json::json!([]));
-    assert!(epic["createdAt"].is_string() && epic["updatedAt"].is_string());
+    assert_eq!(epic["priority"], serde_json::json!([]));
+    assert_eq!(epic["priorityError"], false);
     let mut keys: Vec<&str> = epic
         .as_object()
         .unwrap()
@@ -1815,19 +1821,28 @@ fn the_board_lists_each_epic_with_its_fields_and_document() {
     assert_eq!(
         keys,
         [
-            "attachments",
-            "body",
             "color",
-            "createdAt",
-            "document",
+            "detailVersions",
             "id",
             "isDraft",
             "name",
             "priority",
             "priorityError",
-            "updatedAt"
+            "progress"
         ]
     );
+    // The document and the attachments are read from the epic's detail.
+    let detail = server.get(&server.api("/epics/EPIC-1/detail"));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert_eq!(
+        detail_lines::document(&detail.body),
+        agent_board::file_store::validate::document_template()
+    );
+    let attachments = detail_lines::lines(&detail.body)
+        .into_iter()
+        .find(|event| event["type"] == "attachments")
+        .expect("the attachments event");
+    assert_eq!(attachments["items"], serde_json::json!([]));
 }
 
 #[test]
@@ -1835,15 +1850,14 @@ fn a_restarted_server_serves_the_same_tasks_and_version() {
     let home = board_home();
     let first = Running::start(home.path(), 0).unwrap();
     let before: serde_json::Value =
-        serde_json::from_str(&first.get(&first.api("/board")).body).unwrap();
+        serde_json::from_str(&first.get(&first.api("/summary")).body).unwrap();
     first.stop().unwrap();
     assert!(!home.path().join("serve.json").exists());
 
     let second = Running::start(home.path(), 0).unwrap();
     let after: serde_json::Value =
-        serde_json::from_str(&second.get(&second.api("/board")).body).unwrap();
+        serde_json::from_str(&second.get(&second.api("/summary")).body).unwrap();
     assert_eq!(after["version"], before["version"]);
-    assert_eq!(after["cursor"], before["cursor"]);
     assert_eq!(after["tasks"], before["tasks"]);
     assert_eq!(after["tasks"].as_array().unwrap().len(), 3);
 }
@@ -1874,7 +1888,7 @@ fn archive_done_refuses_empty_and_repeated_lists_and_changed_targets_and_resends
     assert_eq!(not_done.status, 409, "{}", not_done.body);
     assert_eq!(error_code_of(&not_done.body), "archive_targets_changed");
     let board: serde_json::Value =
-        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+        serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
     assert_eq!(board["tasks"].as_array().unwrap().len(), 3);
 
     let moved = server.send_json(
@@ -1940,7 +1954,7 @@ fn a_write_with_a_token_from_an_earlier_server_asks_for_a_reload() {
     assert_eq!(missing.status, 403, "{}", missing.body);
     assert!(missing.body.contains("\"forbidden\""), "{}", missing.body);
     let board: serde_json::Value =
-        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+        serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
     assert!(
         board["tasks"]
             .as_array()
@@ -1951,7 +1965,7 @@ fn a_write_with_a_token_from_an_earlier_server_asks_for_a_reload() {
 }
 
 #[test]
-fn the_board_counts_each_epic_tasks_by_lane_with_archived_counted_once() {
+fn the_summary_counts_each_epic_tasks_by_lane_with_archived_counted_once() {
     use agent_board::file_store::model::NewEpic;
     use agent_board::file_store::validate::EpicId;
     let home = board_home();
@@ -1984,18 +1998,27 @@ fn the_board_counts_each_epic_tasks_by_lane_with_archived_counted_once() {
     let server = Running::start(home.path(), 0).unwrap();
 
     let board: serde_json::Value =
-        serde_json::from_str(&server.get(&server.api("/board")).body).unwrap();
+        serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
+    let progress = |id: &str| {
+        board["epics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|epic| epic["id"] == id)
+            .unwrap_or_else(|| panic!("{id} is not in {board}"))["progress"]
+            .clone()
+    };
     assert_eq!(
-        board["epicTaskCounts"]["EPIC-1"],
+        progress("EPIC-1"),
         serde_json::json!({"todo": 0, "doing": 1, "done": 0, "archived": 1, "total": 2}),
         "{board}"
     );
     assert_eq!(
-        board["epicTaskCounts"]["EPIC-2"],
+        progress("EPIC-2"),
         serde_json::json!({"todo": 0, "doing": 0, "done": 0, "archived": 0, "total": 0}),
         "an epic with no tasks still has zeros"
     );
-    // The board's own task list keeps leaving archived tasks out.
+    // The summary's own task list keeps leaving archived tasks out.
     assert!(
         board["tasks"]
             .as_array()

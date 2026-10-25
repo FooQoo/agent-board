@@ -7,15 +7,13 @@
 //! its last good view next to the error.
 
 use std::collections::BTreeMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::Path;
 use std::sync::Arc;
 
-use sha2::{Digest, Sha256};
-
-use super::io;
 use super::layout;
+use super::projection::{
+    self, ChangeSet, Facet, Projection, invalid_changes, project_change, ready_changes,
+};
 use super::reader::{self, ProjectSnapshot};
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
@@ -27,6 +25,8 @@ pub enum ProjectEntry {
     Ready {
         view: Arc<ProjectSnapshot>,
         version: String,
+        /// The Summary projection of `view`.
+        projection: Arc<Projection>,
     },
     /// `project.json` could not be read. `last_good` keeps the previous read,
     /// so the screen can show it next to the error.
@@ -34,6 +34,8 @@ pub enum ProjectEntry {
         error: AgboardError,
         last_good: Option<Arc<ProjectSnapshot>>,
         version: String,
+        /// The projection of `last_good`.
+        projection: Option<Arc<Projection>>,
     },
 }
 
@@ -41,6 +43,14 @@ impl ProjectEntry {
     pub fn version(&self) -> &str {
         match self {
             ProjectEntry::Ready { version, .. } | ProjectEntry::Invalid { version, .. } => version,
+        }
+    }
+
+    /// The Summary projection of the read to show.
+    pub fn projection(&self) -> Option<&Arc<Projection>> {
+        match self {
+            ProjectEntry::Ready { projection, .. } => Some(projection),
+            ProjectEntry::Invalid { projection, .. } => projection.as_ref(),
         }
     }
 
@@ -58,6 +68,8 @@ impl ProjectEntry {
 pub struct ProjectIndex {
     entries: BTreeMap<ProjectId, ProjectEntry>,
     catalog_version: String,
+    /// The changes found by the reloads since the last [`ProjectIndex::take_changes`].
+    pending: Vec<ChangeSet>,
 }
 
 impl ProjectIndex {
@@ -65,6 +77,12 @@ impl ProjectIndex {
     /// changes when a project is added, removed, or its content changes.
     pub fn catalog_version(&self) -> &str {
         &self.catalog_version
+    }
+
+    /// The change sets that the reloads found since the last call, in the order they were found.
+    /// The reloader announces them; a caller that only reloads may ignore them.
+    pub fn take_changes(&mut self) -> Vec<ChangeSet> {
+        std::mem::take(&mut self.pending)
     }
 
     pub fn entry(&self, id: &ProjectId) -> Option<&ProjectEntry> {
@@ -80,7 +98,16 @@ impl ProjectIndex {
     /// changed. A failure to list the projects leaves the index as it was.
     pub fn reload_all(&mut self, shared: &Path) -> Result<bool, AgboardError> {
         let ids = scan_ids(shared)?;
-        self.entries.retain(|id, _| ids.contains(id));
+        let gone: Vec<ProjectId> = self
+            .entries
+            .keys()
+            .filter(|id| !ids.contains(id))
+            .cloned()
+            .collect();
+        for id in gone {
+            self.entries.remove(&id);
+            self.pending.push(project_change(&id, Facet::Deleted));
+        }
         for id in &ids {
             self.reload_one(shared, id);
         }
@@ -98,32 +125,65 @@ impl ProjectIndex {
     fn reload_one(&mut self, shared: &Path, id: &ProjectId) {
         let dir = layout::project_dir(shared, id);
         if !dir.is_dir() {
-            self.entries.remove(id);
+            if self.entries.remove(id).is_some() {
+                self.pending.push(project_change(id, Facet::Deleted));
+            }
             return;
         }
         let previous = self.entries.get(id);
         let last_good = previous.and_then(|entry| entry.last_good().cloned());
+        let old_projection = previous.and_then(|entry| entry.projection().cloned());
+        let was_invalid = matches!(previous, Some(ProjectEntry::Invalid { .. }));
+        let previous_version = previous.map(|entry| entry.version().to_string());
         // Snapshot takes index→project lock order and recovers any pending pair
         // before computing the version. Hashing first could mistake an
         // interrupted journal for an unchanged project and skip recovery.
-        let entry = match reader::read_snapshot(shared, id) {
+        let (entry, changes) = match reader::read_snapshot(shared, id) {
             Ok(snapshot) => {
                 let version = snapshot.version.clone();
-                if previous.is_some_and(|entry| entry.version() == version) {
+                if previous_version.as_deref() == Some(version.as_str()) {
                     return;
                 }
-                ProjectEntry::Ready {
-                    view: Arc::new(snapshot),
-                    version,
-                }
+                let projection = Arc::new(projection::project(shared, &snapshot));
+                let changes = ready_changes(old_projection.as_deref(), &projection, was_invalid);
+                (
+                    ProjectEntry::Ready {
+                        view: Arc::new(snapshot),
+                        version,
+                        projection,
+                    },
+                    changes,
+                )
             }
-            Err(error) => ProjectEntry::Invalid {
-                error,
-                last_good,
-                version: project_version(&dir),
-            },
+            Err(error) => {
+                let version = project_version(&dir);
+                let unchanged =
+                    was_invalid && previous_version.as_deref() == Some(version.as_str());
+                // Nothing can be told about the files of a project that cannot be read:
+                // every resource it had is changed in every facet.
+                let changes = if unchanged {
+                    Vec::new()
+                } else {
+                    invalid_changes(old_projection.as_deref(), was_invalid)
+                };
+                (
+                    ProjectEntry::Invalid {
+                        error,
+                        last_good,
+                        version,
+                        projection: old_projection,
+                    },
+                    changes,
+                )
+            }
         };
         self.entries.insert(id.clone(), entry);
+        if !changes.is_empty() {
+            self.pending.push(ChangeSet {
+                project_id: id.clone(),
+                changes,
+            });
+        }
     }
 
     /// Recompute the catalog version and report whether it changed.
@@ -135,183 +195,5 @@ impl ProjectIndex {
     }
 }
 
-/// The catalog version of a list of `(project, version)` pairs, in the order
-/// given (callers pass them in ID order).
-pub fn catalog_version_of<'a>(
-    projects: impl IntoIterator<Item = (&'a ProjectId, &'a str)>,
-) -> String {
-    let mut outer = Sha256::new();
-    for (id, version) in projects {
-        outer.update(id.as_str().as_bytes());
-        outer.update([0]);
-        outer.update(version.as_bytes());
-        outer.update(b"\n");
-    }
-    hex_prefix(&outer.finalize())
-}
-
-/// The IDs of the project folders, in order. Only canonical folder names count.
-pub fn scan_ids(shared: &Path) -> Result<Vec<ProjectId>, AgboardError> {
-    let dir = layout::projects_dir(shared);
-    if !dir.is_dir() {
-        return Ok(Vec::new());
-    }
-    let label = layout::shared_label(shared, &dir);
-    let entries = fs::read_dir(&dir).map_err(|e| io::read_error(&label, e))?;
-    let mut ids = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(|e| io::read_error(&label, e))?;
-        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
-            continue;
-        };
-        if let Ok(id) = ProjectId::from_str(&name)
-            && entry.path().is_dir()
-        {
-            ids.push(id);
-        }
-    }
-    ids.sort();
-    Ok(ids)
-}
-
-/// The content version of one project folder: 32 lowercase hexadecimal
-/// digits. It covers `project.json`, every epic's `epic.json` and `EPIC.md`,
-/// every task's `task.json` and `TASK.md`, and the names (not the contents)
-/// of the files in `assets/`. Dot-prefixed names are skipped.
-pub fn project_version(project_dir: &Path) -> String {
-    let mut items: Vec<(String, Option<String>)> = Vec::new();
-    let project_file = layout::project_file(project_dir);
-    if project_file.is_file() {
-        items.push(content_item(project_dir, &project_file));
-    }
-    for (dir, files) in [
-        (
-            layout::epics_dir(project_dir),
-            &["epic.json", "EPIC.md"][..],
-        ),
-        (
-            layout::tasks_dir(project_dir),
-            &["task.json", "TASK.md"][..],
-        ),
-    ] {
-        for folder in child_folders(&dir) {
-            for name in files {
-                let path = folder.join(name);
-                if path.is_file() {
-                    items.push(content_item(project_dir, &path));
-                }
-            }
-            for sub in ["assets"] {
-                for path in child_files(&folder.join(sub)) {
-                    items.push((layout::project_label(project_dir, &path), None));
-                }
-            }
-        }
-    }
-    items.sort_by(|a, b| a.0.cmp(&b.0));
-
-    let mut outer = Sha256::new();
-    for (label, digest) in items {
-        outer.update(label.as_bytes());
-        outer.update([0]);
-        if let Some(digest) = digest {
-            outer.update(digest.as_bytes());
-        }
-        outer.update(b"\n");
-    }
-    hex_prefix(&outer.finalize())
-}
-
-/// A file's relative label and the SHA-256 of its bytes. A file that cannot be
-/// read still counts, with a marker, so its failure changes the version.
-fn content_item(project_dir: &Path, path: &Path) -> (String, Option<String>) {
-    let digest = match fs::read(path) {
-        Ok(bytes) => hex_full(&Sha256::digest(&bytes)),
-        Err(_) => "unreadable".to_string(),
-    };
-    (layout::project_label(project_dir, path), Some(digest))
-}
-
-fn child_folders(dir: &Path) -> Vec<PathBuf> {
-    child_entries(dir, true)
-}
-
-fn child_files(dir: &Path) -> Vec<PathBuf> {
-    child_entries(dir, false)
-}
-
-fn child_entries(dir: &Path, folders: bool) -> Vec<PathBuf> {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return Vec::new();
-    };
-    let mut found: Vec<PathBuf> = entries
-        .filter_map(Result::ok)
-        .filter(|entry| !entry.file_name().to_string_lossy().starts_with('.'))
-        .map(|entry| entry.path())
-        .filter(|path| {
-            if folders {
-                path.is_dir()
-            } else {
-                path.is_file()
-            }
-        })
-        .collect();
-    found.sort();
-    found
-}
-
-fn hex_full(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
-}
-
-/// The first 16 bytes of a digest as 32 lowercase hexadecimal digits.
-fn hex_prefix(digest: &[u8]) -> String {
-    hex_full(&digest[..16])
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn versions_are_32_hex_digits_and_ignore_modification_times() {
-        let root = tempfile::tempdir().unwrap();
-        let project = root.path().join("p");
-        fs::create_dir_all(project.join("tasks/1")).unwrap();
-        fs::write(project.join("project.json"), "{}").unwrap();
-        fs::write(project.join("tasks/1/TASK.md"), "text").unwrap();
-        let first = project_version(&project);
-        assert_eq!(first.len(), 32);
-
-        // Rewriting the same bytes changes the file's time, not the version.
-        fs::write(project.join("tasks/1/TASK.md"), "text").unwrap();
-        assert_eq!(project_version(&project), first);
-
-        fs::write(project.join("tasks/1/TASK.md"), "other").unwrap();
-        assert_ne!(project_version(&project), first);
-    }
-
-    #[test]
-    fn attachment_names_count_but_their_contents_do_not() {
-        let root = tempfile::tempdir().unwrap();
-        let project = root.path().join("p");
-        fs::create_dir_all(project.join("tasks/1/assets")).unwrap();
-        let empty = project_version(&project);
-        fs::write(project.join("tasks/1/assets/a1.png"), b"one").unwrap();
-        let named = project_version(&project);
-        assert_ne!(named, empty);
-        fs::write(project.join("tasks/1/assets/a1.png"), b"two").unwrap();
-        assert_eq!(project_version(&project), named);
-    }
-
-    #[test]
-    fn dot_prefixed_names_are_not_part_of_the_version() {
-        let root = tempfile::tempdir().unwrap();
-        let project = root.path().join("p");
-        fs::create_dir_all(project.join("tasks/1")).unwrap();
-        fs::write(project.join("tasks/1/TASK.md"), "text").unwrap();
-        let before = project_version(&project);
-        fs::write(project.join("tasks/1/.TASK.md.tmp-0123"), "half").unwrap();
-        assert_eq!(project_version(&project), before);
-    }
-}
+pub(super) use super::versions::hex_prefix;
+pub use super::versions::{catalog_version_of, project_version, scan_ids};

@@ -2,7 +2,7 @@ import type { AnswerResult, AnswerWriter, AnswerFormStateStore } from './model/a
 import { DecisionRequestFormView } from './DecisionRequestFormView';
 import { useDecisionRequestForm } from './useDecisionRequestForm';
 import type { OperationControls } from '../../../shared/lib/operations/operations';
-import type { Task, ProjectId } from '../../../shared/api/contracts';
+import type { TaskSummary, ProjectId } from '../../../shared/api/contracts';
 import './decision-request.css';
 
 /** Shared answer form for the local board and the isolated mobile monitor. */
@@ -18,7 +18,7 @@ export function DecisionRequestForm({
   onRequestStale,
 }: {
   projectId: ProjectId;
-  task: Task;
+  task: TaskSummary;
   operations: OperationControls;
   writeAnswer: AnswerWriter;
   disabled?: boolean;

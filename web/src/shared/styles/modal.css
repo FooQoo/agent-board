@@ -4,14 +4,6 @@
  * its lengths from tokens.css). The rules are unlayered on purpose: they sit above the Tailwind
  * utilities of the shadcn/ui sources.
  */
-[data-slot="dialog-overlay"] {
-  background: rgb(15 23 42 / 50%);
-}
-
-:root:not([data-mode="dark"]) [data-slot="dialog-overlay"]:has(+ .settings-dialog) {
-  background: rgb(15 23 42 / 40%);
-}
-
 .modal {
   display: flex;
   flex-direction: column;
@@ -47,10 +39,10 @@
 .modal__close {
   display: inline-flex;
   flex: none;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-h);
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
   padding: 0;
   border: 0;
   border-radius: 4px;
@@ -182,12 +174,6 @@
   white-space: pre-wrap;
 }
 
-.modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
 .modal__footer {
   display: flex;
   align-items: flex-end;
@@ -293,11 +279,9 @@
 .request-dialog__epic-trigger {
   display: flex;
   width: 100%;
-  height: 40px;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 12px;
   border: 1px solid var(--r-border);
   border-radius: 8px;
   background: var(--r-surface2);
@@ -349,12 +333,6 @@
 
 .request-dialog__attachments .editor-attachments__header {
   margin-bottom: 0;
-}
-
-.request-dialog__attachments .editor-attachments__add {
-  height: 34px;
-  padding: 0 12px;
-  font-size: 13px;
 }
 
 .request-dialog__attachments .editor-attachments__dropzone {
@@ -561,8 +539,9 @@
   }
 
   .request-dialog .modal__actions {
-    flex-direction: column;
+    grid-auto-flow: row;
     align-self: stretch;
+    width: 100%;
     margin-top: 0;
   }
 
@@ -573,10 +552,6 @@
   .request-dialog .modal__secondary-action {
     align-self: stretch;
   }
-}
-
-[data-slot="dialog-overlay"].bulk-archive__overlay {
-  background: #11182766;
 }
 
 .bulk-archive__panel {
@@ -691,11 +666,6 @@
   line-height: 1.5;
 }
 
-.bulk-archive__footer {
-  flex-direction: row;
-  justify-content: flex-end;
-}
-
 @media (max-width: 400px) {
   .bulk-archive__table {
     width: calc(100% - 1px);
@@ -735,13 +705,13 @@
   justify-content: center;
   gap: 6px;
   min-width: 0;
-  height: 34px;
+  height: var(--btn-m-h);
   padding: 0;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
   color: var(--r-text2);
-  font-size: 13px;
+  font-size: var(--btn-m-fs);
   cursor: pointer;
   line-height: 19px;
 }
@@ -802,6 +772,12 @@
   line-height: 17px;
 }
 
+.settings__entries {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--r-border);
+}
+
 .settings__note {
   margin: 0;
   color: var(--r-muted);
@@ -841,8 +817,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-icon);
   padding: 0;
   border: 1px solid var(--r-border);
   border-radius: 8px;

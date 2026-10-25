@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { mainProject, resetBoard } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
 
 const png = Buffer.from(
@@ -7,8 +8,11 @@ const png = Buffer.from(
   'base64',
 );
 
+test.afterEach(() => resetPreferences());
+
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
+  await resetPreferences();
   await page.goto('/');
   await waitForSync(page);
 });
@@ -67,7 +71,7 @@ test('request attachment headings use the same typography as the other field lab
 test('the image picker stays square at the left without resizing the request dialog', async ({ page }, testInfo) => {
   for (const { mode, width } of [{ mode: 'light', width: 1280 }, { mode: 'dark', width: 1280 }, { mode: 'light', width: 390 }, { mode: 'dark', width: 390 }]) {
     await page.setViewportSize({ width, height: 1100 });
-    await page.evaluate((value) => localStorage.setItem('agboard.theme', JSON.stringify({ mode: value, accent: 'blue' })), mode);
+    await setPreferences({ theme: { mode: mode as 'light' | 'dark', accent: 'blue' } });
     await page.reload();
     await waitForSync(page);
     await page.getByRole('button', { name: 'Add task' }).click();
@@ -189,12 +193,10 @@ test('request dialog attachments stay visible and operable on desktop, dark, and
   await dialog.getByRole('button', { name: 'Remove shared-notes.png' }).click();
   await expect(dialog.locator('.editor-attachments__tile')).toHaveCount(0);
 
-  await page.evaluate(() =>
-    localStorage.setItem('agboard.theme', JSON.stringify({ mode: 'dark', accent: 'blue' })),
-  );
+  await setPreferences({ theme: { mode: 'dark', accent: 'blue' } });
   await page.reload();
   await waitForSync(page);
-  expect(await page.locator('html').getAttribute('data-mode')).toBe('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
   dialog = await openRequest();
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await dialog.screenshot({ path: testInfo.outputPath('request-dark-empty.png') });

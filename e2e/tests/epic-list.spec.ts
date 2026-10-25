@@ -26,7 +26,7 @@ test('epic details confirm deletion, retain refusals, and remove an unused epic'
 	await page.getByRole('button', { name: 'Epics', exact: true }).click();
 	await row(page, 'Occupied epic sample').getByRole('button').first().click();
 	await page.getByRole('button', { name: 'Delete epic', exact: true }).click();
-	const confirm = page.getByRole('dialog');
+	const confirm = page.getByRole('group', { name: /Delete this epic|epic details and images/ });
 	await confirm.getByRole('button', { name: 'Delete epic', exact: true }).click();
 	await expect(confirm.getByRole('alert')).toContainText('A task still uses this epic');
 	await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();

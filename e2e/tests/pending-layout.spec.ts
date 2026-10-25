@@ -1,8 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, projectId, resetBoard } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
 
+test.beforeEach(() => resetPreferences());
+
 test.afterEach(async ({ page }) => {
+  await resetPreferences();
   resetBoard(mainProject);
   await page.reload();
   await waitForSync(page);
@@ -19,16 +23,13 @@ for (const { locale, theme, height } of [
       const id = nextTaskId(mainProject);
       agboardOk(mainProject, ['add', `Pending layout ${i}`, '--assignee', 'ai', '--actor', 'ai']);
       agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Layout sample']);
-      agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
+      agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({
         question: `Which approach should be used for sample ${i}?`,
         choices: [{ id: 'first', label: 'First approach' }, { id: 'second', label: 'Second approach' }],
       })]);
     }
     await page.setViewportSize({ width: 1280, height });
-    await page.addInitScript(({ locale, theme }) => {
-      localStorage.setItem('agboard.locale', locale);
-      localStorage.setItem('agboard.theme', JSON.stringify({ mode: theme, accent: 'blue' }));
-    }, { locale, theme });
+    await setPreferences({ locale: locale as 'en' | 'ja', theme: { mode: theme as 'light' | 'dark', accent: 'blue' } });
     await page.goto(`/?project=${projectId(mainProject)}`);
     await waitForSync(page);
     const lane = page.getByRole('region', { name: locale === 'ja' ? '進行中' : 'Doing', exact: true });
@@ -52,15 +53,12 @@ for (const { locale, theme, height } of [
     const id = nextTaskId(mainProject);
     const question = '共有ホームとsetupの全体計画と詳細計画を承認しますか？ ~/.agent-boardを既定の保存先にし、agboard setupでCodex・Claude Codeの共有フォルダ設定へ追加します。既存設定を保持し、旧データの移行は行いません。';
     agboardOk(mainProject, ['add', '共有ホームとsetupの計画をレビューする', '--assignee', 'ai', '--actor', 'ai']);
-    agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
+    agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({
       question,
       choices: [{ id: 'approve', label: 'この計画を承認する' }, { id: 'revise', label: '計画を修正する' }],
     })]);
     await page.setViewportSize({ width: 1280, height });
-    await page.addInitScript(({ locale, theme }) => {
-      localStorage.setItem('agboard.locale', locale);
-      localStorage.setItem('agboard.theme', JSON.stringify({ mode: theme, accent: 'blue' }));
-    }, { locale, theme });
+    await setPreferences({ locale: locale as 'en' | 'ja', theme: { mode: theme as 'light' | 'dark', accent: 'blue' } });
     await page.goto(`/?project=${projectId(mainProject)}`);
     await waitForSync(page);
     await expect(page.locator('html')).toHaveAttribute('data-mode', theme);

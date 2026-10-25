@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "owner": "U1",
+  "files": [
+    {
+      "file": "shared/ui/spotlight/Spotlight.tsx",
+      "exports": [
+        {
+          "name": "Spotlight",
+          "stories": [
+            {
+              "id": "shared-ui-spotlight--default",
+              "states": ["framed region", "dimmed stage outside the region"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

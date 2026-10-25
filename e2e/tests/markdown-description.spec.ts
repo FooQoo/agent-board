@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, mainOrigin, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { longMarkdown } from '../helpers/markdown';
-import { waitForSync } from '../helpers/ui';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // A card whose description is long Markdown, made with the real CLI, read on the real page. External images
 // and links come from a sample server on the loopback address (port 7890), never from the internet.
@@ -39,6 +39,7 @@ async function addLongTask(title = 'Long markdown'): Promise<number> {
 async function openTask(page: Page, id: number): Promise<void> {
   await page.goto('/');
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await task(page, id).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toBeVisible();
 }
@@ -136,6 +137,7 @@ test('a body without H2 headings is shown whole, and an empty body says so', asy
   agboardOk(mainProject, ['add', 'Plain task', '--desc', '### Only a small heading\n\nBody text.\n\n- one\n- two']);
   await page.goto('/');
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await task(page, id).click();
   await expect(body(page).getByRole('heading', { name: 'Only a small heading' })).toBeVisible();
   await expect(body(page).getByText('Body text.')).toBeVisible();

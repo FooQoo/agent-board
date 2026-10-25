@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "owner": "U8",
+  "file": "features/docs/ui/DocsDialogContainer.tsx",
+  "exports": [
+    {
+      "name": "DocsDialogContainer",
+      "stories": [
+        {
+          "id": "docs-docsdialogcontainer--open-folder",
+          "states": ["open folder", "post request"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--open-folder-failed",
+          "states": ["open folder failed", "error message"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--no-file-selected",
+          "states": ["file list loaded", "no file selected"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--tree-loading",
+          "states": ["file list loading"],
+          "interaction": false
+        },
+        {
+          "id": "docs-docsdialogcontainer--no-docs",
+          "states": ["no docs", "root path"],
+          "interaction": false
+        },
+        {
+          "id": "docs-docsdialogcontainer--tree-error",
+          "states": ["file list failed", "retry"],
+          "interaction": false
+        },
+        {
+          "id": "docs-docsdialogcontainer--file-loading",
+          "states": ["file loading"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--file-error",
+          "states": ["file failed", "reload"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--mdx-then-markdown",
+          "states": ["mdx then markdown", "own text in preview", "own text in source"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--open-in-editor",
+          "states": ["open in editor", "post request"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--open-in-editor-failed",
+          "states": ["open in editor", "failure notice"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--follows-changes",
+          "states": ["change on disk", "view updated", "footer notice"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--follows-deletion",
+          "states": ["deleted on disk", "content kept", "footer notice"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--image-file",
+          "states": ["image file", "picture", "save disabled"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--other-file",
+          "states": ["other file", "not shown", "file name", "save disabled"],
+          "interaction": true
+        },
+        {
+          "id": "docs-docsdialogcontainer--japanese-dark",
+          "states": ["japanese locale", "dark theme"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

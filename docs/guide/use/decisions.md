@@ -71,27 +71,35 @@ cat question.json | agboard --project "My project" state 1 pending --actor ai --
 
 `choices` takes 2 to 10 options; a request with fewer than 2 or more than 10 is refused, and so is a pending state without `--request-json`. The request gets an ID, which you can read with `show` or `snapshot`.
 
-### Ask and wait in one command
+### Ask and wait for the answer
 
-Add a `wait` object to the JSON to ask and wait for the answer in one command. It needs a running `agboard serve`. An empty object waits indefinitely and prints the answer (the choice, the note, and the task) once the request is answered:
+A `pending --request-json` command waits for the answer by default, even when the JSON omits `wait`. A running `agboard serve` is required for this waiting path. When the request is answered, the command prints the task and answer. Existing requests with `"wait": {}` still wait indefinitely.
 
-```json
-{
-  "question": "Which launch approach should we use?",
-  "choices": [
-    { "id": "preview", "label": "Publish a preview first" },
-    { "id": "public", "label": "Launch publicly" }
-  ],
-  "wait": {}
-}
+Use these three forms as needed:
+
+Default wait until an answer, with no `wait` field:
+
+```sh
+agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}'
 ```
 
-You may add `"timeoutSeconds": 600` to limit this wait command; the value must be from 1 to 86,400 (a day). Without `wait`, the command asks and returns.
+To register a question and return immediately, use `--no-wait`:
+
+```sh
+agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}' --no-wait
+```
+
+Add a timeout to wait for at most 600 seconds (1 to 86,400 seconds is allowed):
+
+```sh
+agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}],"wait":{"timeoutSeconds":600}}'
+```
+
+`--no-wait` does not need a running server. Both waiting forms require `agboard serve`; the CLI checks that it is available before saving the question. `--no-wait` can be combined with `wait: {}`, but combining it with an integer `timeoutSeconds` is an `invalid_argument` error (exit 2) and leaves the question, state, and history unchanged. `wait: null` and `timeoutSeconds: null` mean no timeout. Invalid JSON, unknown fields, wrong types, or an out-of-range timeout return `invalid_value` (exit 2); `--no-wait` on a command other than `pending --request-json` returns `invalid_argument` (exit 2).
 
 - A timeout or Ctrl+C stops waiting but leaves the question Pending.
 - A lost server connection returns `board_unavailable`, a technical error that also leaves the question Pending.
 - If moving the task withdraws the question, the command exits with `request_changed`.
-- Without a running server, nothing is asked.
 
 ### Answer from the command line
 

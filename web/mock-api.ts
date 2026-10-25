@@ -8,10 +8,18 @@ import type {
   Task,
   ColumnName,
   Epic,
+  EpicTaskCounts,
   HistoryEvent,
   Problem,
   Project,
 } from './src/shared/api/contracts.ts';
+import {
+  epicDetailEvents,
+  ndjson,
+  requestedSections,
+  summaryOfBoard,
+  taskDetailEvents,
+} from './src/app/development/boardWire.ts';
 
 /** The mock keeps the board's parts; the version and cursor are made from the revision when it answers. */
 interface MockBoard {
@@ -92,16 +100,46 @@ function toWireTask({ epic, ...task }: Task) {
   return { ...task, epicId: epic?.id ?? null };
 }
 
-/** The board snapshot as the server writes it (`GET /api/projects/{id}/board`). */
+/** The project's parts in the wire shape the server writes: cards with their epic IDs, the epics and the problems. */
 function wireBoard(board: MockBoard, tasks: Task[]) {
   return {
     project: board.project,
     version: versionOf(board),
     cursor: `f1:${board.project.id}:${versionOf(board)}`,
     epics: board.epics,
+    epicTaskCounts: epicCounts(board),
     tasks: tasks.map(toWireTask),
     problems: board.problems,
   };
+}
+
+/** The board as the Summary and the Detail streams are made from it. */
+function boardView(board: MockBoard, tasks: Task[]): Board {
+  const wire = wireBoard(board, tasks);
+  return {
+    project: wire.project,
+    version: wire.version,
+    cursor: wire.cursor,
+    epics: wire.epics,
+    epicTaskCounts: wire.epicTaskCounts,
+    tasks,
+    problems: wire.problems,
+  };
+}
+
+/** How many of each epic's tasks are in each lane, with the archived ones counted apart. */
+function epicCounts(board: MockBoard): Record<string, EpicTaskCounts> {
+  const counts: Record<string, EpicTaskCounts> = {};
+  for (const epic of board.epics) {
+    counts[epic.id] = { todo: 0, doing: 0, done: 0, archived: 0, total: 0 };
+  }
+  for (const task of board.tasks) {
+    const entry = task.epic ? counts[task.epic.id] : undefined;
+    if (!entry) continue;
+    entry[task.archivedAt ? 'archived' : task.taskStatus] += 1;
+    entry.total += 1;
+  }
+  return counts;
 }
 
 /** A card with a long Markdown description, to try the description rendering with sample data. */
@@ -232,8 +270,15 @@ export function mockApi(): Plugin {
   let boards = loadFixtures();
   const clients = new Set<ServerResponse>();
 
-  const broadcastChanged = () => {
-    for (const client of clients) client.write('event: changed\ndata: {}\n\n');
+  let changeNumber = 0;
+  const broadcastChanged = (projectId: string) => {
+    const data = JSON.stringify({
+      instanceId: 'mock',
+      seq: ++changeNumber,
+      projectId,
+      changes: [{ resource: 'project', id: projectId, facets: ['summary'] }],
+    });
+    for (const client of clients) client.write(`event: changed\ndata: ${data}\n\n`);
   };
   const update = (id: string, change: (board: MockBoard) => Task[]) => {
     const board = boards[id];
@@ -242,7 +287,7 @@ export function mockApi(): Plugin {
       ...boards,
       [id]: { ...board, revision: board.revision + 1, tasks: change(board) },
     };
-    broadcastChanged();
+    broadcastChanged(id);
   };
   const taskMarkdown = (body: string, acceptance: Task['acceptance'], history: Task['history']) =>
     `---\nacceptance: ${JSON.stringify(acceptance)}\nhistory: ${JSON.stringify(history)}\n---\n\n${body}`;
@@ -315,7 +360,7 @@ export function mockApi(): Plugin {
                   epics: target.epics.map((item) => (item.id === epicId ? next : item)),
                 },
               };
-              broadcastChanged();
+              broadcastChanged(target.project.id);
               return sendJson(res, 200, { epic: next, changed: true });
             }
             // Images: the mock keeps the form body out of the way and answers with the epic as it is.
@@ -377,11 +422,14 @@ export function mockApi(): Plugin {
               tasks: target.tasks.map((item) => (item.id === taskId ? next : item)),
             },
           };
-          broadcastChanged();
+          broadcastChanged(target.project.id);
           return sendJson(res, 200, { task: toWireTask(next), changed: true });
         }
 
-        const projectMatch = /^\/api\/projects\/([^/]+)\/(board|archive|tasks.*)$/.exec(path);
+        const projectMatch =
+          /^\/api\/projects\/([^/]+)\/(board|summary|archive|epics\/[^/]+\/detail|tasks.*)$/.exec(
+            path,
+          );
         const projectId = projectMatch?.[1] ?? '';
         const rest = projectMatch?.[2] ?? '';
         const found = boards[projectId];
@@ -401,7 +449,7 @@ export function mockApi(): Plugin {
           });
         }
 
-        if (req.method === 'GET' && rest === 'board') {
+        if (req.method === 'GET' && (rest === 'summary' || rest === 'board')) {
           if (!found) {
             return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
           }
@@ -415,16 +463,10 @@ export function mockApi(): Plugin {
             );
           }
           const respond = () => {
-            sendJson(
-              res,
-              200,
-              params.get('empty') === '1'
-                ? wireBoard(found, [])
-                : wireBoard(
-                    found,
-                    found.tasks.filter((task) => !task.archivedAt),
-                  ),
-            );
+            const shown =
+              params.get('empty') === '1' ? [] : found.tasks.filter((task) => !task.archivedAt);
+            const wire = wireBoard(found, shown);
+            sendJson(res, 200, rest === 'summary' ? summaryOfBoard(boardView(found, shown)) : wire);
           };
           if (params.get('slow') === '1') {
             const timer = setTimeout(respond, SLOW_MS);
@@ -432,6 +474,37 @@ export function mockApi(): Plugin {
             return;
           }
           return respond();
+        }
+
+        const detailMatch = /^(tasks|epics)\/([^/]+)\/detail$/.exec(rest);
+        if (req.method === 'GET' && detailMatch) {
+          if (!found) {
+            return sendError(res, 404, 'project_not_found', 'project not found.', 'Unknown ID.');
+          }
+          const board = boardView(found, found.tasks);
+          const name = decodeURIComponent(detailMatch[2] ?? '');
+          const events =
+            detailMatch[1] === 'tasks'
+              ? (() => {
+                  const task = board.tasks.find((item) => item.id === Number(name));
+                  return task
+                    ? taskDetailEvents(
+                        found.project.id,
+                        task,
+                        requestedSections(url.search, ['document', 'history']),
+                      )
+                    : null;
+                })()
+              : (() => {
+                  const epic = board.epics.find((item) => item.id === name);
+                  return epic ? epicDetailEvents(found.project.id, epic) : null;
+                })();
+          if (!events) return sendError(res, 404, 'task_not_found', 'not found.', 'Unknown ID.');
+          res.writeHead(200, {
+            'Content-Type': 'application/x-ndjson',
+            'Cache-Control': 'no-store',
+          });
+          return res.end(ndjson(events));
         }
 
         if (req.method === 'GET' && path === '/api/events') {
@@ -743,7 +816,7 @@ export function mockApi(): Plugin {
           boards = loadFixtures();
           res.statusCode = 204;
           res.end();
-          broadcastChanged();
+          for (const id of Object.keys(boards)) broadcastChanged(id);
           return;
         }
 

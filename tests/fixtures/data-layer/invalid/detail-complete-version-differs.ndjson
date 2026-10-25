@@ -1,0 +1,13 @@
+{"type":"start","resource":"task","id":302,"projectId":"0123456789abcdef0123456789abcdef","sections":["document","history"],"versions":{"document":"1a2b3c4d5e6f7081","history":"8091a2b3c4d5e6f7"}}
+{"type":"section-start","section":"document"}
+{"type":"block","kind":"markdown","text":"## Purpose\n\nWrite the contracts.\n\n"}
+{"type":"block","kind":"markdown","text":"![diagram](/api/projects/0123456789abcdef0123456789abcdef/tasks/302/attachments/a1)\n\n","images":[{"src":"/api/projects/0123456789abcdef0123456789abcdef/tasks/302/attachments/a1","width":640,"height":360},{"src":"/api/projects/0123456789abcdef0123456789abcdef/tasks/302/attachments/a2"}]}
+{"type":"block","kind":"mermaid","text":"graph LR\n  A --> B\n"}
+{"type":"acceptance","id":"AC-1","text":"The golden examples round trip.","done":true}
+{"type":"acceptance","id":"AC-2","text":"The routes answer 501.","done":false}
+{"type":"section-end","section":"document","count":5}
+{"type":"section-start","section":"history"}
+{"type":"history-item","at":"2026-10-22T09:45:32Z","reason":"Created the task in Todo."}
+{"type":"history-item","at":"2026-10-22T09:57:52Z","reason":"Started."}
+{"type":"section-end","section":"history","count":2}
+{"type":"complete","versions":{"document":"deadbeefdeadbeef","history":"8091a2b3c4d5e6f7"}}

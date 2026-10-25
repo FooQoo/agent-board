@@ -10,6 +10,15 @@ You need a running installation. If you have not installed `agboard`, start with
 
 To keep your own board untouched while you try this, run `export AGBOARD_HOME="$(mktemp -d)"` in every terminal you use below. Skip it to use your real board.
 
+## Before you start: the first-run guide
+
+The first time you open a board in this data area, Agent Board offers a short guide. Choose **Start guide** to see how an AI agent works on a card and asks you for a decision. The guide creates two sample cards and simulates the AI's progress on them. No AI agent or API key is needed. You answer the second card's question on the card itself. When you finish, the two samples are archived.
+
+- **Skip** closes the guide without creating anything. The guide is not shown again in this data area.
+- **End guide** ends the run early, and so does Escape, unless you are typing in an answer field. Its two cards are archived. The next time you open a board, the guide is offered again with two new cards.
+
+A guide that you finished or skipped does not appear again by itself in this data area. To see it again, open Settings and choose **Try it** in the **Tutorial** row. It starts in the project you have open, creates two sample cards, and archives them when you finish or end it.
+
 ## 1. Start the board
 
 ```sh
@@ -67,7 +76,7 @@ When an agent needs a decision, it asks a question with choices:
 agboard --project "Quickstart" state 2 pending --actor ai --request-json '{"question":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}'
 ```
 
-Task #2 now shows **Pending** and the question with its two options. In the browser, choose an option, optionally write a note, and send the answer. The task returns to **Idle**.
+This command waits for your answer by default; `agboard serve` must be running. Task #2 shows **Pending** and the question with its two options. In the browser, choose an option, optionally write a note, and send the answer. The command returns with the answer, and the task returns to **Idle**.
 
 The agent reads the answer in the task's history and resumes:
 

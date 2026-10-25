@@ -3,7 +3,7 @@ import type { Ctx } from '@milkdown/kit/ctx';
 import { editorViewCtx, serializerCtx } from '@milkdown/kit/core';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import type { AttachmentResolver } from '../markdown/model';
+import type { AttachmentResolver, RelativeImageResolver } from '../markdown/model';
 import { createRichEditor } from './createEditor';
 import { createEditorCommands } from './editorCommands';
 import { MermaidPreviews } from './MermaidPreviews';
@@ -20,6 +20,7 @@ export interface SessionProps {
   /** The sentence for a diagram that cannot be drawn, in the language of the page. */
   diagramError: (message: string) => string;
   resolveAttachment: AttachmentResolver | undefined;
+  resolveImage: RelativeImageResolver | undefined;
   onReport: (markdown: string) => void;
   onCursorChange: ((position: number) => void) | undefined;
   handle: Ref<RichMarkdownEditorHandle> | undefined;
@@ -86,6 +87,7 @@ export function useRichEditorSession(props: SessionProps): React.RefObject<HTMLD
       placeholder: latest.current.placeholder,
       image: {
         resolve: () => latest.current.resolveAttachment,
+        resolveRelative: () => latest.current.resolveImage,
         noImageLabel: () => latest.current.noImageLabel,
       },
       previews,

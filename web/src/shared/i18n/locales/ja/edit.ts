@@ -23,6 +23,8 @@ export const editJa = {
     statusChange: '状態の変更',
     moveHint: '確定するまでタスクの状態は変わりません。',
     moveReasonDefault: '{{who}}が{{from}}から{{to}}に変更しました。',
+    moveStatusChanged:
+      'このタスクは別の操作で「{{status}}」に変わっていました。今の状態を表示したので、確認してからもう一度移動してください。',
     reasonRequired: '理由は2,000文字以内で入力してください。',
     saveFailed: '変更を保存できませんでした。',
     cancel: 'キャンセル',
@@ -99,10 +101,8 @@ export const editJa = {
     stepDetails: '名称・色・下書き',
     saveFailedAt: '{{step}}を保存できませんでした。先に保存した変更は残り、入力も残っています。',
     saveFailedFirst: '{{step}}を保存できませんでした。入力は残っています。',
-    deleteButton: 'エピックを削除',
     deleteTitle: 'このエピックを削除しますか？',
     deleteBody: '{{id}}のエピックの詳細と画像も削除されます。この操作は元に戻せません。',
-    deleteDirty: 'このダイアログで保存していない変更も破棄されます。',
     deleteConfirm: 'エピックを削除',
     deleteCancel: 'キャンセル',
     deleteInUse:

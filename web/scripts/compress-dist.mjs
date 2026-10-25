@@ -4,9 +4,9 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { gzipSync, constants } from 'node:zlib';
 
 const dist = new URL('../dist/', import.meta.url);
-const EMBEDDED = /^(app|monitor|chunk)-[^/]+\.(js|css)$/;
+const EMBEDDED = /^(app|monitor|sandbox|chunk)-[^/]+\.(js|css)$/;
 
-for (const folder of ['assets', 'monitor']) {
+for (const folder of ['assets', 'monitor', 'sandbox']) {
   const dir = new URL(`${folder}/`, dist);
   for (const name of await readdir(dir)) {
     if (!EMBEDDED.test(name)) continue;

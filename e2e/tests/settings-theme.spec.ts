@@ -1,8 +1,9 @@
-import { editorValue, openManualCreateDialog, pasteMarkdown } from '../helpers/ui';
+import { editorValue, openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The Rust serve on 7631 is real; only the browser storage and a few request
@@ -86,12 +87,14 @@ let fresh = 0;
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
+  await resetPreferences();
   fresh = nextTaskId(mainProject);
   pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 });
 
-test.afterEach(() => {
+test.afterEach(async () => {
+  await resetPreferences();
   expect(pageErrors).toEqual([]);
 });
 
@@ -107,10 +110,12 @@ const addButtonBehindDialog = (page: Page) => page.locator('header button', { ha
 async function openFresh(page: Page): Promise<void> {
   await page.goto('/');
   await expect(synced(page)).toHaveText(/^Synced/);
-  expect(await page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), [THEME_KEY, LOCALE_KEY])).toEqual([
-    null,
-    null,
-  ]);
+  // The server notices the reset and the CLI writes 200 ms later: read the board again, not the stale one.
+  await readBoardAfterReset(page);
+  // The browser starts empty; its copy then follows what the server saved (the defaults after the reset).
+  await expect
+    .poll(() => page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), [THEME_KEY, LOCALE_KEY]))
+    .toEqual(['{"mode":"light","accent":"blue"}', 'en']);
 }
 
 /** Opens the board after `script` has run before the page (it prepares the storage boundary). */
@@ -299,7 +304,7 @@ test.describe('the first theme in an OS dark browser', () => {
   }
 
   test('a saved theme is used even though the OS is dark', async ({ page }) => {
-    await page.addInitScript((key) => localStorage.setItem(key, '{"mode":"light","accent":"yellow"}'), THEME_KEY);
+    await setPreferences({ theme: { mode: 'light', accent: 'yellow' } });
     await page.goto('/');
     await expect(synced(page)).toHaveText(/^Synced/);
     await expectTheme(page, 'Light', 'Yellow');
@@ -310,7 +315,7 @@ test.describe('the first theme in an OS light browser', () => {
   test.use({ colorScheme: 'light' });
 
   test('a saved dark theme is used', async ({ page }) => {
-    await page.addInitScript((key) => localStorage.setItem(key, '{"mode":"dark","accent":"red"}'), THEME_KEY);
+    await setPreferences({ theme: { mode: 'dark', accent: 'red' } });
     await page.goto('/');
     await expect(synced(page)).toHaveText(/^Synced/);
     await expectTheme(page, 'Dark', 'Red');
@@ -333,7 +338,7 @@ test.describe('a storage that fails', () => {
     await expect(task(page, 12)).toBeVisible();
   });
 
-  test('saving the theme throws: the choice still applies to this page and the next page falls back', async ({
+  test('saving the browser copy throws: the choice still applies and the next page shows the saved choice', async ({
     page,
   }) => {
     await openWith(page, () => {
@@ -362,7 +367,8 @@ test.describe('a storage that fails', () => {
 
     await page.reload();
     await expect(synced(page)).toHaveText(/^同期済み/);
-    await expectTheme(page, 'Light', 'Blue');
+    // The server holds the choice, so a browser whose copy cannot be written still opens with it.
+    await expectTheme(page, 'Dark', 'Purple');
   });
 
   test('the whole storage is unavailable: theme and language still apply while the page is open', async ({ page }) => {
@@ -397,7 +403,7 @@ test('the settings stay available while the board loads and when it cannot load'
     release = resolve;
   });
   let failing = false;
-  await page.route('**/api/projects/*/board', async (route) => {
+  await page.route('**/api/projects/*/summary', async (route) => {
     await gate;
     if (failing) await route.fulfill({ status: 500, body: 'boom' });
     else await route.fallback();
@@ -445,7 +451,8 @@ test('the settings dialog takes the focus, keeps it inside, and gives it back', 
   // The focus goes to the chosen language, and the board behind is not reachable.
   await expect(dialog.getByRole('radio', { name: 'English' })).toBeFocused();
   await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
-  await expect(page.getByRole('region')).toHaveCount(0);
+  // The lanes of the board are hidden from the page; the dialog's own sections are not the board.
+  await expect(page.locator('main').getByRole('region')).toHaveCount(0);
 
   // Tab and Shift+Tab wrap around inside the dialog.
   for (const key of ['Tab', 'Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
@@ -617,9 +624,13 @@ test('changing the language does not translate or alter what was entered', async
   await expect(panel.getByText('Line one')).toBeVisible();
   expect(await panel.getByText('Line one').evaluate((element) => (element as HTMLElement).innerText)).toBe('Line one');
   await expect(panel.getByText('Line two')).toBeVisible();
-  await panel.getByRole('tab', { name: '履歴 2' }).click();
+  // The count is known once the log is read, so the tab is pressed by its plain name first.
+  await panel.getByRole('tab', { name: /^履歴/ }).click();
+  await expect(panel.getByRole('tab', { name: '履歴 2' })).toBeVisible();
   await expect(panel).toContainText('Starting the draft today.');
   await task(page, 12).click();
+  // The answer is in the log, which is read when its tab is opened.
+  await panel.getByRole('tab', { name: /^履歴/ }).click();
   await expect(panel).toContainText('Keep the database name.');
   expect(listTasks(mainProject)).toEqual(before);
 
@@ -705,7 +716,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Idle Added by the CLI `) })).toBeVisible();
   agboardOk(mainProject, ['state', String(fresh + 1), 'running']);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Running Added by the CLI `) })).toBeVisible();
-  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--actor', 'ai', '--request-json', decisionJson('Waiting for a theme review')]);
+  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Waiting for a theme review')]);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Pending Added by the CLI `) }).locator('..')).toContainText(
     'Waiting for a theme review',
   );
@@ -920,7 +931,7 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
     release = resolve;
   });
   let failing = false;
-  await page.route('**/api/projects/*/board', async (route) => {
+  await page.route('**/api/projects/*/summary', async (route) => {
     await gate;
     if (failing) await route.fulfill({ status: 500, body: 'boom' });
     else await route.fallback();

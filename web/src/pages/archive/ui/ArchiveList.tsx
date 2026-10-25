@@ -1,8 +1,7 @@
 import { ArchiveIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { ArchiveResponse } from '../../../features/tasks/api/read';
+import type { ArchiveResponse, ArchivedTask } from '../../../features/tasks/api/read';
 import type { ProjectResourceResult } from '../../../features/projects/model/useProjectResource';
-import type { Task } from '../../../shared/api/contracts';
 import { AssigneeLabel } from '../../../features/tasks/assignee/AssigneeLabel';
 import { EpicBadge } from '../../../features/epics/label/EpicBadge';
 import { ListPane } from '../../../shared/ui/list-pane/ListPane';
@@ -29,7 +28,7 @@ export function ArchiveList({
   layoutRef,
 }: ArchiveListProps) {
   const { t } = useTranslation();
-  const tasks: Task[] = data?.tasks ?? [];
+  const tasks: ArchivedTask[] = data?.tasks ?? [];
 
   return (
     <ListPane

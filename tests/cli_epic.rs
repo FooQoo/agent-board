@@ -351,3 +351,31 @@ fn a_draft_task_refuses_cli_image_and_epic_changes_but_reads_still_work() {
     assert_eq!(shown["task"]["isDraft"], true);
     assert_eq!(shown["task"]["epicId"], Value::Null);
 }
+
+#[test]
+fn epic_document_accepts_100000_characters_and_refuses_one_more() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    epic_add(home.path(), "BIG-DOC", "Big document", None);
+    let document = home.path().join("document.md");
+    let edit = |count: usize| {
+        std::fs::write(&document, "あ".repeat(count)).unwrap();
+        agboard(
+            home.path(),
+            &[
+                "--project",
+                "Demo",
+                "epic",
+                "edit",
+                "BIG-DOC",
+                "--document-file",
+                document.to_str().unwrap(),
+            ],
+        )
+    };
+    let (code, _, err) = edit(100_000);
+    assert_eq!(code, 0, "{err}");
+    let (code, _, err) = edit(100_001);
+    assert_ne!(code, 0);
+    assert!(err.contains("100,000"), "{err}");
+}

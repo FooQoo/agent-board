@@ -1,0 +1,474 @@
+/*
+ * The docs dialog: the file list, the center guidance and the two-screen phone layout. Colors are
+ * the r-* tokens of theme.css; the lengths are the approved mock's own. The rules are unlayered,
+ * like editor.css, so they sit above the Tailwind utilities.
+ */
+.docs-dialog .editor__badge:empty {
+  display: none;
+}
+
+/* The title is a path: Docs / folders / file. */
+.docs-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.docs-crumbs__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.docs-crumbs__sep,
+.docs-crumbs__folder {
+  color: var(--r-muted);
+  font-weight: 400;
+}
+
+.docs-crumbs__file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The close button sits on the title's vertical middle and 38px from the right edge (the mock). */
+.docs-dialog .editor__close {
+  margin-top: -2px;
+}
+
+.docs-dialog[data-compact="false"] .editor__close {
+  margin-right: 5px;
+}
+
+/* The footer buttons are one 88px wide on every screen (the mock's), not the shared 144px. */
+.docs-dialog .editor__footer .dialog-actions > button {
+  min-width: 88px;
+  padding-inline: 12px;
+}
+
+/* Before the buttons: the open file was changed or deleted outside the board, or could not be
+   opened in an editor. */
+.docs-dialog__notice {
+  align-self: center;
+  min-width: 0;
+  margin-right: 4px;
+  color: var(--r-text2);
+  font-size: 12px;
+  text-align: right;
+}
+
+.docs-dialog__notice[data-kind="deleted"],
+.docs-dialog__notice[data-kind="failed"] {
+  color: var(--r-pend-tx);
+}
+
+/* The mock's title is 16px; the shell's own is 18px. */
+.docs-dialog .editor__title {
+  font-size: 16px;
+}
+
+.docs-dialog__body {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.docs-dialog__list {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 50%;
+  border-right: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+.docs-dialog__list-scroll {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 12px 12px 24px;
+  overflow: auto;
+}
+
+/*
+ * The handle sits on the right edge of the list, not at the right of the board. The mock shows
+ * only the thin rule, so the grip is a transparent strip over the border that still takes the drag.
+ */
+.docs-dialog__resize {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.docs-dialog__resize .resize-handle {
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  pointer-events: auto;
+  transform: none;
+}
+
+.docs-dialog__resize .resize-handle__grip {
+  display: none;
+}
+
+.docs-dialog__resize .resize-handle:hover,
+.docs-dialog__resize .resize-handle:active {
+  background: linear-gradient(var(--r-accent), var(--r-accent)) center / 1px 100% no-repeat;
+}
+
+/* The heading row: the title at the left, the open-folder button at the right. */
+.docs-dialog__list-head {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24px 12px 0;
+  padding-bottom: 12px;
+}
+
+.docs-dialog__list-heading {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+/* The thin accent rule under the heading, ending in a small square. */
+.docs-dialog__list-head::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 8px;
+  background:
+    linear-gradient(var(--r-accent), var(--r-accent)) left 4px / calc(100% - 8px) 1px no-repeat,
+    linear-gradient(var(--r-accent), var(--r-accent)) right 0 / 8px 8px no-repeat;
+  content: "";
+}
+
+.docs-dialog__open-folder {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  /* biome-ignore lint/plugin: an icon button in the list heading, not a button size */
+  height: 24px;
+  margin-top: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.docs-dialog__open-folder:hover {
+  background: var(--r-lane);
+  color: var(--r-text);
+}
+
+.docs-dialog__open-folder:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -2px;
+}
+
+.docs-dialog__open-folder svg {
+  width: 16px;
+  height: 16px;
+}
+
+.docs-dialog__open-error {
+  flex: none;
+  margin: 8px 12px 0;
+  color: var(--r-pend-tx);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.docs-dialog__center {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--r-surface);
+}
+
+.docs-dialog__rule {
+  width: 100%;
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--r-border);
+}
+
+.docs-dialog [data-hidden="true"] {
+  display: none;
+}
+
+/* The file tree. */
+.docs-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* A long name widens the rows, and the list scrolls sideways. */
+  min-width: max-content;
+}
+
+.docs-tree [role="none"] {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: max-content;
+}
+
+.docs-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: max-content;
+  /* biome-ignore lint/plugin: a tree row, not a button size; the mock fixes it at 32px */
+  height: 32px;
+  padding-right: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--r-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.docs-tree__row:hover {
+  background: var(--r-lane);
+}
+
+.docs-tree__row:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -2px;
+}
+
+.docs-tree__row[aria-current="true"] {
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+  font-weight: 600;
+}
+
+.docs-tree__chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--r-muted);
+}
+
+.docs-tree__indent {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.docs-tree__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--r-text2);
+}
+
+.docs-tree__row--file .docs-tree__icon {
+  color: var(--r-muted);
+}
+
+.docs-tree__row[aria-current="true"] .docs-tree__icon {
+  color: var(--r-accent);
+}
+
+.docs-tree__name {
+  white-space: nowrap;
+}
+
+.docs-tree__empty {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.docs-tree__failure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--r-text2);
+  font-size: 13px;
+}
+
+.docs-tree__failure p {
+  margin: 0;
+}
+
+/* The guidance in the center. */
+.docs-placeholder {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 0 60px;
+  text-align: center;
+}
+
+.docs-placeholder__icon {
+  width: 40px;
+  height: 40px;
+  color: var(--r-muted);
+}
+
+.docs-placeholder__title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.docs-placeholder__body {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.docs-placeholder__path {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  height: 38px;
+  margin-top: 2px;
+  padding: 0 6px 0 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-lane);
+  color: var(--r-text);
+  font-size: 13px;
+}
+
+.docs-placeholder__path code {
+  min-width: 0;
+  overflow: hidden;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The phone: the dialog is the whole screen, and the list and the body take turns. */
+.docs-dialog[data-compact="true"] {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+}
+
+.docs-dialog[data-compact="true"]::after {
+  border-radius: 0;
+}
+
+.docs-dialog[data-compact="true"] .editor__header {
+  height: 56px;
+  padding: 16px 16px 0;
+}
+
+.docs-dialog[data-compact="true"] .editor__title {
+  font-size: 15px;
+}
+
+.docs-dialog[data-compact="true"] .editor__footer {
+  padding: 0 16px;
+}
+
+.docs-dialog[data-compact="true"] .docs-dialog__list {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  border-right: 0;
+  overflow-y: auto;
+}
+
+.docs-dialog[data-compact="true"] .docs-dialog__list-scroll {
+  flex: none;
+  padding: 0 16px 20px;
+  overflow: visible;
+}
+
+.docs-dialog[data-compact="true"] .docs-placeholder--compact {
+  flex: none;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 18px 16px 13px;
+  text-align: left;
+}
+
+.docs-dialog[data-compact="true"] .docs-placeholder--compact .docs-placeholder__title {
+  font-size: 16px;
+}
+
+.docs-dialog[data-compact="true"] .docs-placeholder--compact .docs-placeholder__body {
+  font-size: 13px;
+}
+
+.docs-dialog[data-compact="true"] .docs-dialog__rule {
+  width: auto;
+  margin: 0 16px 14px;
+}
+
+/* The phone's footer is the two buttons Files and Save; the header's close button closes. */
+.docs-dialog[data-compact="true"] .editor__footer .dialog-actions {
+  flex: 1 1 auto;
+  gap: 10px;
+  width: 100%;
+}
+
+.docs-dialog[data-compact="true"] .editor__footer .dialog-actions > button {
+  min-width: 0;
+  height: 40px;
+}
+
+.docs-dialog[data-compact="true"]
+  .editor__footer
+  .dialog-actions
+  > button:not(.docs-dialog__files, .docs-dialog__open-file) {
+  display: none;
+}
+
+.docs-dialog[data-compact="true"] .editor__status {
+  display: none;
+}
+
+/* The list screen has no footer, and the title leaves out "Docs" to fit the path. */
+.docs-dialog[data-compact="true"][data-pane="list"] .editor__footer {
+  display: none;
+}
+
+.docs-dialog[data-compact="true"] .docs-crumbs__root,
+.docs-dialog[data-compact="true"] .docs-crumbs__root + .docs-crumbs__item .docs-crumbs__sep {
+  display: none;
+}

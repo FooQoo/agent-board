@@ -1,4 +1,4 @@
-//! Answering a pending decision request. The local board and the remote
+//! Answering a pending decision request. The local board and the
 //! monitor's write endpoint both save answers through here.
 
 use std::sync::Arc;

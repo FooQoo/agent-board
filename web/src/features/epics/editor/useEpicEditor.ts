@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Task, Epic } from '../../../shared/api/contracts';
-import { WriteError } from '../../../shared/api/writeErrors';
+import type { TaskSummary, Epic } from '../../../shared/api/contracts';
 import type { StoredAttachment } from '../../../shared/ui/editor/attachmentTypes';
-import { normalizeNewlines } from '../../../shared/ui/editor/limits';
+import { EPIC_DOCUMENT_LIMIT, normalizeNewlines } from '../../../shared/ui/editor/limits';
 import type { RichMarkdownEditorHandle } from '../../../shared/rich-editor/RichMarkdownEditor';
 import { useAttachmentState } from '../../../shared/ui/editor/useAttachmentState';
 import { useMultipartRequest } from '../../../shared/ui/editor/useMultipartRequest';
@@ -27,7 +26,7 @@ export function useEpicEditor({
   onSavingChange,
 }: {
   epic: Epic;
-  tasks: readonly Task[];
+  tasks: readonly TaskSummary[];
   api: EpicApi;
   projectId: string;
   onOpenTask: (taskId: number) => void;
@@ -55,9 +54,6 @@ export function useEpicEditor({
   const [pendingTask, setPendingTask] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const busy = useRef(false);
   const somethingSaved = useRef(false);
   const attachmentState = useAttachmentState({
@@ -75,10 +71,10 @@ export function useEpicEditor({
   const rowIds = orderOf(order, members);
   const rows = rowIds
     .map((id) => members.find((task) => task.id === id))
-    .filter((task): task is Task => task !== undefined);
+    .filter((task): task is TaskSummary => task !== undefined);
   const orderChanged = JSON.stringify(order) !== JSON.stringify(saved.order);
   const dirty = imagesChanged || documentChanged || detailsChanged || orderChanged;
-  const overLimit = useOverLimit(epicDocument);
+  const overLimit = useOverLimit(epicDocument, EPIC_DOCUMENT_LIMIT);
   const validName = nameIsValid(name);
   const valid = validName && overLimit === null;
   const currentDocument = () => normalizeNewlines(editor.current?.markdown() ?? epicDocument);
@@ -154,27 +150,6 @@ export function useEpicEditor({
     }
   };
 
-  const remove = async () => {
-    if (busy.current) return;
-    busy.current = true;
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await api.remove();
-      busy.current = false;
-      setDeleting(false);
-      onClose();
-    } catch (cause) {
-      busy.current = false;
-      setDeleting(false);
-      setDeleteError(
-        cause instanceof WriteError && cause.code === 'epic_in_use'
-          ? t('epic.deleteInUse')
-          : t('epic.deleteFailed'),
-      );
-    }
-  };
-
   const move = (from: number, to: number) =>
     setOrder(() => {
       const next = [...rowIds];
@@ -195,11 +170,6 @@ export function useEpicEditor({
     attachmentState.remove(id);
   };
 
-  const requestDelete = () => {
-    setDeleteError(null);
-    setConfirmDelete(true);
-  };
-
   return {
     editor,
     panel,
@@ -218,12 +188,6 @@ export function useEpicEditor({
     saving,
     error,
     run,
-    confirmDelete,
-    setConfirmDelete,
-    deleting,
-    deleteError,
-    remove,
-    requestDelete,
     pendingTask,
     setPendingTask,
     requestOpenTask,

@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { XIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { DiscardConfirm } from '../editor/DiscardConfirm';
 import '../../styles/modal.css';
@@ -147,7 +148,7 @@ export function DialogFrame({
               {error}
             </p>
           )}
-          <div className={footerNote || secondaryAction ? 'modal__footer' : 'modal__actions'}>
+          <div className={footerNote || secondaryAction ? 'modal__footer' : undefined}>
             {(footerNote || secondaryAction) && (
               <div className="modal__footer-copy">
                 {error && errorInFooter && (
@@ -170,7 +171,7 @@ export function DialogFrame({
                 )}
               </div>
             )}
-            <div className="modal__actions">
+            <DialogActions className="modal__actions">
               <Button
                 type="button"
                 variant="outline"
@@ -182,7 +183,7 @@ export function DialogFrame({
               <Button type="submit" disabled={saving || submitDisabled}>
                 {saving ? t('dialog.saving') : submitLabel}
               </Button>
-            </div>
+            </DialogActions>
           </div>
         </form>
         <DiscardConfirm

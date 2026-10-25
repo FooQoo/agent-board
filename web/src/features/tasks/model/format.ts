@@ -1,4 +1,4 @@
-import type { Task, ColumnName } from '../../../shared/api/contracts';
+import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
 import type { TFunction } from 'i18next';
 import { pad } from '../../../shared/lib/time/formatTime';
 
@@ -29,7 +29,7 @@ const STATE_LABELS = {
 } as const;
 
 /** The run state is only shown for cards in Doing. */
-export function stateLabel(task: Task, t?: TFunction): string | null {
+export function stateLabel(task: TaskSummary, t?: TFunction): string | null {
   // An AI card shows its run state in Doing, and a pending question in Todo (before the work starts).
   const shows =
     task.assignee === 'ai' &&

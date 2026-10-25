@@ -2,6 +2,7 @@ import { CircleAlertIcon, XIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
+import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { findTaskButton } from '../dialog-frame/DialogFrame';
 import { DiscardConfirm } from './DiscardConfirm';
@@ -17,7 +18,7 @@ export interface EditorShellProps {
   idLabel?: string;
   /** The label the focus returns to when the dialog closes, if the opener is gone. */
   returnFocusSelector?: string;
-  title: string;
+  title: ReactNode;
   badge: string;
   variant: 'edit' | 'create';
   /** There are unsaved changes: closing asks first. */
@@ -36,6 +37,12 @@ export interface EditorShellProps {
   footerStart?: ReactNode;
   /** The buttons at the right of the footer, after Cancel. */
   actions: ReactNode;
+  /** Extra class on the dialog, for a screen that restyles the shell (the docs dialog). */
+  className?: string;
+  /** Data attributes on the dialog, for the same purpose as `className`. */
+  dialogData?: Record<`data-${string}`, string | undefined>;
+  /** The label of the footer button that closes the dialog; Cancel unless the dialog only reads. */
+  closeLabel?: string;
   children: ReactNode;
 }
 
@@ -59,6 +66,9 @@ export function EditorShell({
   status,
   footerStart,
   actions,
+  className,
+  dialogData,
+  closeLabel,
   children,
 }: EditorShellProps) {
   const { t } = useTranslation();
@@ -77,7 +87,8 @@ export function EditorShell({
   return (
     <Dialog open onOpenChange={(open) => !open && requestClose()}>
       <DialogContent
-        className={`editor-dialog editor-dialog--${variant}`}
+        className={`editor-dialog editor-dialog--${variant}${className ? ` ${className}` : ''}`}
+        {...dialogData}
         showCloseButton={false}
         aria-describedby={undefined}
         // A click on the backdrop must not throw away what was typed into a new card; for an
@@ -115,7 +126,8 @@ export function EditorShell({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="s"
+            iconOnly
             className="editor__close"
             aria-label={t('dialog.close')}
             disabled={saving}
@@ -133,7 +145,7 @@ export function EditorShell({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="s"
                 className="editor__retry"
                 disabled={saving}
                 onClick={onRetry}
@@ -155,10 +167,12 @@ export function EditorShell({
           <span className="editor__status" role="status">
             {saving ? t('editor.savingStatus') : status}
           </span>
-          <Button type="button" variant="outline" disabled={saving} onClick={requestClose}>
-            {t('dialog.cancel')}
-          </Button>
-          {actions}
+          <DialogActions>
+            <Button type="button" variant="outline" disabled={saving} onClick={requestClose}>
+              {closeLabel ?? t('dialog.cancel')}
+            </Button>
+            {actions}
+          </DialogActions>
         </div>
         <DiscardConfirm
           open={asking}

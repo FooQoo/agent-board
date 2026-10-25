@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * The Markdown of the rich editor (ProseMirror), rebuilt from its blocks: headings get their `#` marks, list items
@@ -39,6 +39,29 @@ export function decisionRequest(details: Locator, name = 'The agent is waiting f
 /** Wait for the board to show it is in sync, so the page is ready to use. */
 export async function waitForSync(page: Page): Promise<void> {
   await page.getByRole('contentinfo').getByRole('status').filter({ hasText: /^(Synced|同期済み)/ }).waitFor();
+}
+
+/**
+ * Read the board again after the files under it were replaced. The server notices a changed file
+ * 200 ms later, so the first read of a page opened right after the CLI wrote may predate the change,
+ * and the page holds the stream's updates back while a drawer or a dialog is open and for 3 seconds
+ * after. The PC board has no refresh button, so the page is loaded again once the server has seen
+ * the change. Any open drawer or dialog closes.
+ */
+export async function readBoardAfterReset(page: Page): Promise<void> {
+  await page.waitForTimeout(500);
+  await page.reload();
+  await waitForSync(page);
+}
+
+/**
+ * Let in a change made while a drawer or a dialog is open. The page holds the stream's updates back
+ * while one is open and applies them 3 seconds after the last one closes, as a person sees it: `close`
+ * closes the panel, then `check` is retried until the board shows the change.
+ */
+export async function closeForUpdates(close: () => Promise<void>, check: () => Promise<void>): Promise<void> {
+  await close();
+  await expect(check).toPass({ timeout: 15_000 });
 }
 
 /** Open the established full task editor from the Add task button's simple-request entry point. */

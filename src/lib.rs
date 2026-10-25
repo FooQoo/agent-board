@@ -1,6 +1,7 @@
 pub mod agent;
 pub mod cli;
 pub mod clock;
+pub mod docs;
 pub mod domain;
 pub mod error;
 pub mod file_store;

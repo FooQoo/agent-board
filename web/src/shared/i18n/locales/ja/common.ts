@@ -11,6 +11,11 @@ export const commonJa = {
     light: 'ライト',
     dark: 'ダーク',
     note: '変更はすぐに適用され、保存されます。',
+    tutorial: {
+      title: 'チュートリアル',
+      body: 'サンプルで基本操作を体験できます。',
+      action: '試してみる',
+    },
     themeName: '{{mode}}・{{color}}',
     colors: {
       blue: 'ブルー',

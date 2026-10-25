@@ -5,12 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect } from '@playwright/test';
+import { setPreferences } from '../helpers/preferences.mjs';
 
 // Records the English and Japanese demo videos from the real UI.
 // Build web/ and the CLI first. Needs ffmpeg and ffprobe. Only disposable data is used.
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const binary = process.env.AGBOARD_E2E_BINARY ?? path.join(repo, 'target/debug/agboard');
-const output = path.join(repo, 'docs/public/videos');
+// AGBOARD_MEDIA_OUT points the videos at another folder, so a check run does not touch the repository's files.
+const output = process.env.AGBOARD_MEDIA_OUT ? path.resolve(process.env.AGBOARD_MEDIA_OUT, 'videos') : path.join(repo, 'docs/public/videos');
 const project = 'release-demo';
 const heroId = 3;
 const maxBytes = 6 * 1024 * 1024;
@@ -164,11 +166,9 @@ async function record(browser, locale, tmp) {
   try {
     const projectId = seed(home, text);
     const port = await freePort(Number(process.env.AGBOARD_MEDIA_PORT ?? 0));
-    const remotePort = await freePort(Number(process.env.AGBOARD_MEDIA_REMOTE_PORT ?? 0));
     const origin = `http://127.0.0.1:${port}`;
     let stderr = '';
-    server = spawn(binary, ['serve', '--port', String(port), '--remote-port', String(remotePort),
-      '--remote-origin', 'https://demo.invalid'], {
+    server = spawn(binary, ['serve', '--port', String(port)], {
       cwd: home, env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' }, stdio: ['ignore', 'ignore', 'pipe'],
     });
     server.stderr.on('data', (chunk) => { stderr += chunk; });
@@ -184,10 +184,8 @@ async function record(browser, locale, tmp) {
     context = await browser.newContext({
       viewport: size, timezoneId: 'UTC', recordVideo: { dir: videoDir, size },
     });
-    await context.addInitScript((lang) => {
-      localStorage.setItem('agboard.locale', lang);
-      localStorage.setItem('agboard.theme', JSON.stringify({ mode: 'light', accent: 'blue' }));
-    }, locale);
+    // The language and theme are saved on the board, as the settings screen does.
+    await setPreferences(origin, { locale, theme: { mode: 'light', accent: 'blue' } });
     const created = Date.now();
     const page = await context.newPage();
     const errors = [];
@@ -216,7 +214,7 @@ async function record(browser, locale, tmp) {
     // 2. The agent asks a question.
     await caption(page, text.captions[1]);
     await page.waitForTimeout(1400);
-    run('state', String(heroId), 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
+    run('state', String(heroId), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({
       question: text.question, choices: text.choices.map(([id, label]) => ({ id, label })),
     }));
     const answer = page.locator(`.card__answer[data-task-id="${heroId}"]`);

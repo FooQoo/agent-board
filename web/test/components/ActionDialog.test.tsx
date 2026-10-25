@@ -367,6 +367,7 @@ describe('move dialog', () => {
     await userEvent.clear(reason);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
     expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      fromStatus: 'todo',
       reason: 'User changed the status from Todo to Doing.',
     });
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
@@ -394,7 +395,10 @@ it('generates the move reason from the latest task state and language at confirm
     />,
   );
   await userEvent.click(screen.getByRole('button', { name: '移動する' }));
-  expect(onSubmit).toHaveBeenCalledWith({ reason: 'ユーザーが完了から未着手に変更しました。' });
+  expect(onSubmit).toHaveBeenCalledWith({
+    fromStatus: 'done',
+    reason: 'ユーザーが完了から未着手に変更しました。',
+  });
 });
 
 it('keeps an explicit move reason exactly as written', async () => {
@@ -408,7 +412,10 @@ it('keeps an explicit move reason exactly as written', async () => {
     '  Ready to start\nAfter review.  ',
   );
   await userEvent.click(within(dialog).getByRole('button', { name: 'Move' }));
-  expect(onSubmit).toHaveBeenCalledWith({ reason: '  Ready to start\nAfter review.  ' });
+  expect(onSubmit).toHaveBeenCalledWith({
+    fromStatus: 'todo',
+    reason: '  Ready to start\nAfter review.  ',
+  });
 });
 
 it('uses the refreshed task lane instead of the snapshot saved when the dialog opened', async () => {
@@ -427,5 +434,8 @@ it('uses the refreshed task lane instead of the snapshot saved when the dialog o
     />,
   );
   await userEvent.click(screen.getByRole('button', { name: 'Move' }));
-  expect(onSubmit).toHaveBeenCalledWith({ reason: 'User changed the status from Done to Doing.' });
+  expect(onSubmit).toHaveBeenCalledWith({
+    fromStatus: 'done',
+    reason: 'User changed the status from Done to Doing.',
+  });
 });

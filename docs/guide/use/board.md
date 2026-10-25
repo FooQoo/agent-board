@@ -30,9 +30,15 @@ Select a task to open its details on the right. The tabs show:
 
 The panel on the right shows the selected task. The Conditions tab lists the task's own acceptance conditions with a progress bar. An epic's own reference conditions stay in its Markdown details.
 
+Each tab loads its text when you open it. The number on the **History** tab appears after the history has loaded.
+
 ## Move a task
 
-Drag a task to another column and confirm the move. The reason field is optional; if you leave it empty, a reason is generated from the move. The columns mean:
+Drag a task to another column and confirm the move. The reason field is optional; if you leave it empty, a reason is generated from the move.
+
+If an agent or another browser moves the task while the dialog is open, the move is not made. The dialog shows the column the task is in now and says so, and the reason you typed stays. Confirm again to move it from there.
+
+The columns mean:
 
 | Column | Meaning |
 | --- | --- |
@@ -69,17 +75,36 @@ The Archive screen lists archived tasks with their ID, title, owner, date, and t
 
 The details of an archived task use the same layout as an active task. **Restore** and the trash icon for permanent deletion sit at the top right, next to the close button. Permanent deletion asks for confirmation first.
 
+## Updates
+
+The board updates itself when a change is saved, whether an agent made it or another browser on this PC did. There is no refresh button; reloading the page reads everything again.
+
+While a details panel, an editor, or a dialog is open, automatic updates wait, so the text you are reading or editing does not move. They are applied about three seconds after you close it.
+
 ## Settings
 
-Open **Settings** to choose the language (English or Japanese) and one of 24 themes (12 colors, each in light and dark). Changes apply immediately and are saved in your browser. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
+Open **Settings** to choose the language (English or Japanese) and one of 24 themes (12 colors, each in light and dark).
 
-![Settings dialog with the language switch and the light and dark color theme choices](../../images/guide/settings.png){.screenshot}
+The choice is saved on this PC, so every browser on this PC shows the same language and theme. Changes apply at once to the other open pages, including other browser windows and the mobile monitor, without a reload. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
 
-The dialog has a language switch and a grid of themes: one row of 12 light colors and one row of 12 dark colors.
+The width of the detail panel is not part of these settings. Each browser keeps its own width.
+
+Below the themes, two rows open other features. Each has an icon, a title, one line of description, and a button:
+
+- **Tutorial** with **Try it** closes the dialog and shows the [first-run guide](#the-first-run-guide) again.
+- **Mobile connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [mobile monitor guide](../operations/mobile-monitor).
+
+![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial and Mobile connection rows](../../images/guide/settings.png){.screenshot}
+
+The dialog has a language switch and a grid of themes: one row of 12 light colors and one row of 12 dark colors. On a narrow window the button of each row moves under its description.
 
 ![The board in a dark theme](../../images/guide/board-dark.png){.screenshot}
 
 The same board after choosing a dark theme.
+
+## The first-run guide
+
+The guide's two sample cards appear in the lanes like other cards, but while the guide is on screen the rest of the board is covered, so you cannot open or move cards until the guide ends. Agents never pick them up: they are not listed in the progress table, and `wait --until task` does not return them. Once the guide finishes or ends, both cards are archived. See [Before you start](../quickstart.md#before-you-start-the-first-run-guide).
 
 ## Next
 

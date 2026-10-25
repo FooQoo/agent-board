@@ -32,7 +32,17 @@
           "states": ["status label under title"],
           "interaction": false
         },
-        { "id": "shared-ui-drawer--long-body", "states": ["long body"], "interaction": false }
+        { "id": "shared-ui-drawer--long-body", "states": ["long body"], "interaction": false },
+        {
+          "id": "shared-ui-drawer--drag-down-dismisses-and-reopens-at-rest",
+          "states": [
+            "handle drag",
+            "return below threshold",
+            "dismiss past threshold",
+            "reopen at rest"
+          ],
+          "interaction": true
+        }
       ]
     }
   ]

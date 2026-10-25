@@ -56,7 +56,8 @@ export function readTheme(storageProvider: ThemeStorageProvider = browserStorage
   }
 }
 
-function applyTheme(theme: Theme): void {
+/** Puts a theme on the document now. Nothing is saved; see `selectTheme` and `cacheTheme`. */
+export function applyTheme(theme: Theme): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   root.dataset.mode = theme.mode;
@@ -83,5 +84,18 @@ export function selectTheme(
     return { theme, persisted: true };
   } catch (error) {
     return { theme, persisted: false, error };
+  }
+}
+
+/** Writes the browser's copy of the theme, which the first paint uses. Returns false when the write fails. */
+export function cacheTheme(
+  theme: Theme,
+  storageProvider: ThemeStorageProvider = browserStorage,
+): boolean {
+  try {
+    storageProvider().setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+    return true;
+  } catch {
+    return false;
   }
 }

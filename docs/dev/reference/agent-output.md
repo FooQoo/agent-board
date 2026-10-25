@@ -94,9 +94,13 @@ The timeout is required and ranges from 1 to 86,400 seconds. Connection, project
 ```
 
 - `question`: 1 to 2,000 characters. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]` and unique in the request; each `label` is 1 to 200 characters.
-- `wait: {}` makes the command wait for the answer. An optional `timeoutSeconds` (1 to 86400) limits only the waiting command; the question stays Pending.
+- The command waits for an answer by default, including when `wait` is omitted; `wait: {}` is a compatible explicit form. `wait: null` and `timeoutSeconds: null` mean no timeout. An integer `timeoutSeconds` (1 to 86400) limits only the waiting command; the question stays Pending. `--no-wait` returns after saving and notifying, without waiting.
 - The waiting command returns the updated task and the answer separately:
 
 ```json
 { "task": { "…": "…" }, "answer": { "actor": "human", "choiceId": "keep", "choiceLabel": "Keep them and migrate", "text": null } }
 ```
+
+## Sample cards of the first-run guide
+
+The progress table, the hook output, and `wait --until task` leave out the cards that carry an `onboardingSample` identity, whatever their lane or state. See [agent integration](../concepts/agents.md#sample-cards-of-the-first-run-guide).

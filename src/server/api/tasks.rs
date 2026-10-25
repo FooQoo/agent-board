@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use super::epics::whole_text;
 use crate::domain::{Actor, Assignee, ChangeContext, Column, NewTask, RunState};
+use crate::error::AgboardError;
 use crate::file_store::frontmatter::AcceptanceItem;
 use crate::file_store::model::Choice;
 use crate::file_store::validate::{self};
@@ -40,6 +41,10 @@ pub(super) struct CreateTaskInput {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct MoveInput {
     task_status: Column,
+    /// The status the page showed when the user chose the move. When given, a task that has
+    /// moved on since is refused with `task_status_changed` and nothing is written.
+    #[serde(default)]
+    from_status: Option<Column>,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
     #[serde(default)]
@@ -127,16 +132,27 @@ pub(super) async fn move_task(
         );
     };
     match with_request_files(&state, &headers, move |store| {
-        store.move_work_task_for_user(
-            &project_id,
-            id,
-            input.task_status,
-            ChangeContext {
-                actor: Actor::Human,
-                reason: input.reason,
-            },
-            chrono::Utc::now(),
-        )
+        let ctx = ChangeContext {
+            actor: Actor::Human,
+            reason: input.reason,
+        };
+        match input.from_status {
+            Some(from) => store.move_work_task_for_user_from(
+                &project_id,
+                id,
+                from,
+                input.task_status,
+                ctx,
+                chrono::Utc::now(),
+            ),
+            None => store.move_work_task_for_user(
+                &project_id,
+                id,
+                input.task_status,
+                ctx,
+                chrono::Utc::now(),
+            ),
+        }
     })
     .await
     {
@@ -149,6 +165,18 @@ pub(super) async fn move_task(
                 &serde_json::json!({"task": result.value, "changed": result.changed}),
             )
         }
+        // The page names the status the task has now, so it can show it without reading again.
+        Err(error @ AgboardError::TaskStatusChanged { current, .. }) => json_response(
+            StatusCode::CONFLICT,
+            &serde_json::json!({
+                "error": {
+                    "code": error.code(),
+                    "message": error.message(),
+                    "reason": error.reason(),
+                },
+                "currentStatus": current,
+            }),
+        ),
         Err(error) => agboard_error_response(&error),
     }
 }

@@ -24,7 +24,8 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `request_changed` | The answer names a request that is no longer the current one. | 1 | 409 |
+| `request_changed` | The answer names a request that is no longer current, or a waiting request was withdrawn by a task move. | 1 | 409 |
+| `task_status_changed` | A move named the status it started from (`fromStatus`), and the task is no longer in it. Nothing is written; the body adds `currentStatus`. | 1 | 409 |
 | `request_choice_unknown` | The answer names a choice that is not in the request. | 2 | 422 |
 
 ## Projects, epics, and attachments
@@ -46,7 +47,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `invalid_argument` | A command argument is missing or malformed. | 2 | 422 |
+| `invalid_argument` | A command argument is missing or malformed; for example, `--no-wait` with an integer `timeoutSeconds`. | 2 | 422 |
 | `invalid_value` | A value breaks a rule (length, format, and so on). | 2 | 422 |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | 1 | n/a |
 | `file_invalid` | A shared file is malformed or breaks the format. | 1 | 422 |
@@ -62,10 +63,58 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | --- | --- | --- | --- |
 | `already_serving` | Another `serve` already runs on this data area. | 1 | n/a |
 | `port_in_use` | The port is taken. | 1 | n/a |
-| `board_unavailable` | `wait` or the hook cannot reach the server. | 1 | n/a |
+| `board_unavailable` | A waiting Pending request, `wait`, or the hook cannot reach the server. A Pending request checks the server before saving, so an unavailable server leaves no question. | 1 | n/a |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | 1 | n/a |
-| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change. It is not a Pending answer. | 1 | n/a |
+| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, or a Pending request reached its integer `wait.timeoutSeconds`. It is not an answer; the question stays Pending. | 1 | n/a |
 | `forbidden` | A web write failed the guard (Host, Origin, `Sec-Fetch-Site`, or token). | n/a | 403 |
+| `invalid_sections` | The `sections` query of a Detail route is not `document`, `history`, or `document,history`. See [Web API](./web-api.md#summary-and-detail). | n/a | 400 |
+| `not_implemented` | The Summary or Detail route exists but its handler is not written yet. | n/a | 501 |
+
+## Mobile connection
+
+These are returned by the `/api/monitor-connections` routes (see [Web API](./web-api.md#mobile-connection)) and carry no secret value.
+
+| Code | When | Exit | HTTP |
+| --- | --- | --- | --- |
+| `revision_conflict` | The settings changed since the page read them. | n/a | 409 |
+| `save_failed` | The settings could not be saved. Nothing changed and nothing started. | n/a | 500 |
+| `token_required` | A start found no token in the request, the environment, or the secure storage. | n/a | 422 |
+| `keychain_unavailable` | Saving or deleting the token was asked for but the PC's secure storage cannot do it. Nothing was saved or changed. | n/a | 409 |
+| `settings_unreadable` | A start while the saved settings file cannot be read. Save the settings again first. | n/a | 409 |
+| `start_failed` | The connection could not be started for an internal reason. | n/a | 500 |
+| `invalid_value` | The token or the body breaks a rule (for example `save` without a token, or an unknown field). | n/a | 422 |
+
+On the command line, `serve --monitor ngrok` with a missing or invalid option exits 2 with `invalid_argument`; a connection that cannot start exits 1. The failure codes in the state object (`failure`) are listed in [Web API](./web-api.md#mobile-connection).
+
+On the monitor entry, a request that fails the Host check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`. `POST /monitor/api/unlock` answers a wrong passcode with 403 `unlock_failed` and, after five wrong ones in a row, every attempt with 429 `unlock_locked`; neither says how many tries are left.
+
+## Project docs
+
+These are returned by the `/api/projects/{projectId}/docs/…` routes (see [Web API](./web-api.md#project-docs)). They are not CLI errors, so they have no exit code.
+
+| Code | When | Exit | HTTP |
+| --- | --- | --- | --- |
+| `docs_path_invalid` | The path is empty, absolute, too long (1,024 bytes, or 255 bytes in one part), nested more than 17 parts deep, or has an empty part, a part that starts with a dot (such as `..`), a backslash, or a control character; or a file or folder on the way is a symbolic link. The `reason` says which. | n/a | 400 |
+| `docs_not_found` | No such file under `docs/`, or the path names a folder. | n/a | 404 |
+| `docs_not_markdown` | The file routes were given a name that does not end in `.md` or `.mdx`. | n/a | 415 |
+| `docs_asset_type` | The image route was given a file that is not PNG, JPEG, WebP, GIF, AVIF, or SVG. | n/a | 415 |
+| `docs_open_failed` | The open route could not open `docs/` or the file: the folder does not exist, or the program could not be started. The `reason` says which. | n/a | 500 |
+| `docs_too_large` | A file over 2 MiB, or an image over 10 MiB. | n/a | 413 |
+| `docs_not_utf8` | The file is not valid UTF-8 text. It is not changed. | n/a | 422 |
+
+## Display preferences
+
+These are returned by the `/api/preferences` and `/monitor/api/preferences` routes (see [Web API](./web-api.md#display-preferences)). They are not CLI errors, so they have no exit code. A preferences file that cannot be read is not an error: the defaults are used.
+
+| Code | When | Exit | HTTP |
+| --- | --- | --- | --- |
+| `invalid_preferences` | The body has an unknown field, a value that is not allowed, or neither `locale` nor `theme`. Nothing is saved. | n/a | 422 |
+| `preferences_unavailable` | The preferences file could not be written. The saved value is unchanged. | n/a | 500 |
+
+## First-run guide
+
+- `onboarding_conflict` (409): the guide changed since the tab read it, another tab holds the lease, or the run is not the active one. Read the state again and repeat the step with the current revision.
+- `onboarding_invalid` (422): the step does not follow from the current phase, such as resuming before the answer is saved.
 
 ## Exit codes
 

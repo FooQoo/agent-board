@@ -1,12 +1,14 @@
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium, expect } from '@playwright/test';
+import { setPreferences } from '../helpers/preferences.mjs';
 import { cli, copy, markdown, project, repo, seed, settle, startServer, stop } from './lib/sample-board.mjs';
 
 // Captures the screenshots used by the guide pages into docs/images/guide.
 // Build web/ and the CLI first. Only disposable sample data and free loopback ports are used.
-const output = path.join(repo, 'docs/images/guide');
+// AGBOARD_MEDIA_OUT points the images at another folder, so a check run does not touch the repository's files.
+const output = process.env.AGBOARD_MEDIA_OUT ? path.resolve(process.env.AGBOARD_MEDIA_OUT, 'guide') : path.join(repo, 'docs/images/guide');
 mkdirSync(output, { recursive: true });
 
 // Texts that only the guide screenshots need, in both languages. UI labels come from the app itself.
@@ -21,6 +23,12 @@ const extra = {
     addCard: 'Add task', promptLabel: 'What should be done?', epicLabel: 'Epic (optional)',
     attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
     discard: 'Discard and close',
+    docs: 'Docs', docsFile: 'launch-plan.md', docsFiles: {
+      'strategy/launch-plan.md': '---\nowner: Product\nstatus: draft\nreview: 2026-11-02\n---\n# Launch plan\n\nShip the new website in three steps, and keep the old pages reachable until the new ones are reviewed.\n\n## Steps\n\n```mermaid\nflowchart LR\n  Draft --> Review --> Publish\n```\n\n| Step | Owner | State |\n| --- | --- | --- |\n| Draft the pages | Design | Done |\n| Review the copy | Product | Doing |\n| Publish | Engineering | Todo |\n\n## Risks\n\n- The pricing page needs legal review.\n- Old links must redirect to the new pages.\n',
+      'strategy/goals.md': '# Goals\n\n- Halve the time to find the pricing page.\n',
+      'design/architecture.md': '# Architecture\n\nThe site is static and built on every merge.\n',
+      'notes/2026-10-kickoff.md': '# Kickoff notes\n\n- Agreed on the launch scope.\n',
+    },
   },
   ja: {
     editorTask: 3,
@@ -32,8 +40,25 @@ const extra = {
     addCard: 'タスク追加', promptLabel: '何をしてほしいですか？', epicLabel: 'エピック（任意）',
     attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
     discard: '破棄して閉じる',
+    docs: 'ドキュメント', docsFile: 'launch-plan.md', docsFiles: {
+      'strategy/launch-plan.md': '---\nowner: プロダクト\nstatus: draft\nreview: 2026-11-02\n---\n# 公開計画\n\n新しいWebサイトを三段階で公開する。新しいページの確認が終わるまで、古いページにもたどり着けるようにしておく。\n\n## 手順\n\n```mermaid\nflowchart LR\n  下書き --> 確認 --> 公開\n```\n\n| 手順 | 担当 | 状態 |\n| --- | --- | --- |\n| ページの下書き | デザイン | 完了 |\n| 文章の確認 | プロダクト | 作業中 |\n| 公開 | エンジニアリング | 未着手 |\n\n## リスク\n\n- 料金ページには法務の確認が必要。\n- 古いリンクは新しいページへ転送する。\n',
+      'strategy/goals.md': '# 目標\n\n- 料金ページにたどり着くまでの時間を半分にする。\n',
+      'design/architecture.md': '# 構成\n\nサイトは静的で、マージのたびにビルドする。\n',
+      'notes/2026-10-kickoff.md': '# キックオフのメモ\n\n- 公開の範囲に合意した。\n',
+    },
   },
 };
+
+// The project's docs/ folder with sample files, and the README in the screenshot's language.
+function addDocs(home, id, locale, more) {
+  const docs = path.join(home, 'shared/projects', id, 'docs');
+  writeFileSync(path.join(docs, 'README.md'), readFileSync(path.join(repo, `src/docs/templates/README.${locale}.md`)));
+  for (const [file, content] of Object.entries(more.docsFiles)) {
+    mkdirSync(path.dirname(path.join(docs, file)), { recursive: true });
+    writeFileSync(path.join(docs, file), content);
+  }
+  return docs;
+}
 
 function addSamples(home, id, text, more) {
   const run = (...args) => cli(home, ['--project', project, ...args]);
@@ -56,18 +81,17 @@ try {
       const text = copy[locale];
       const more = extra[locale];
       const id = addSamples(home, seed(home, text), text, more);
+      const docs = addDocs(home, id, locale, more);
       const started = await startServer(home);
       server = started.server;
       const { origin } = started;
       const open = async (mode) => {
+        // The language and theme are saved on the board, as the settings screen does. Every open page follows.
+        await setPreferences(origin, { locale, theme: { mode, accent: 'blue' } });
         const ctx = await browser.newContext({
           viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, timezoneId: 'UTC',
         });
         contexts.push(ctx);
-        await ctx.addInitScript(([lang, value]) => {
-          localStorage.setItem('agboard.locale', lang);
-          localStorage.setItem('agboard.theme', JSON.stringify({ mode: value, accent: 'blue' }));
-        }, [locale, mode]);
         const tab = await ctx.newPage();
         tab.on('pageerror', (error) => errors.push(error.message));
         await tab.goto(`${origin}/?project=${id}`);
@@ -129,6 +153,9 @@ try {
       await expect(dark.getByRole('button', { name: /^#3(?!\d)/ })).toBeVisible();
       await expect(dark.locator('html')).toHaveAttribute('data-mode', 'dark');
       await shot('board-dark', dark, dark);
+      // The saved theme reaches every open page, so the light page needs the light theme back.
+      await setPreferences(origin, { theme: { mode: 'light', accent: 'blue' } });
+      await expect(page.locator('html')).toHaveAttribute('data-mode', 'light');
 
       // settings: the language and theme choices.
       await page.getByRole('button', { name: more.settings, exact: true }).click();
@@ -172,8 +199,20 @@ try {
       await expect(page.locator('.epic-detail')).toBeVisible();
       await shot('epic-list', page, page);
 
+      // docs: the project's docs with a file chosen in the list, its front matter, a diagram and a table.
+      await page.locator('.header__back').click();
+      await page.locator('.header__docs').click();
+      const docsDialog = page.getByRole('dialog', { name: more.docs });
+      await expect(docsDialog).toBeVisible();
+      await docsDialog.getByRole('treeitem', { name: more.docsFile }).click();
+      await expect(docsDialog.locator('.docs-frontmatter')).toBeVisible();
+      await expect(docsDialog.locator('.ProseMirror h1').first()).toBeVisible();
+      await expect(docsDialog.locator('.rich-mermaid svg').first()).toBeVisible();
+      await shot('docs', page, page);
+
+
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured 8 guide screenshots; no browser errors.`);
+      console.log(`${locale}: captured 9 guide screenshots; no browser errors.`);
     } finally {
       await Promise.all(contexts.map((ctx) => ctx.close()));
       await stop(server);

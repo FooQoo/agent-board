@@ -18,6 +18,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  /* biome-ignore lint/plugin: existing: the dock header is not on a Button size yet */
   min-height: 44px;
   padding: 12px 16px;
   border: 0;

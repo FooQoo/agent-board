@@ -16,6 +16,7 @@ import {
   workspace,
   type Serve,
 } from '../helpers/agboard';
+import { setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
 
 // Existing data written with the earlier epic document name (PLAN.md) is migrated to EPIC.md when the real
@@ -259,9 +260,19 @@ test('the CLI, snapshot, progress, hook, wait, and API return document and docum
   expectNoOldFields(one);
   const all = await (await fetch(`${base}/epics`)).json();
   expectNoOldFields(all);
-  const board = await (await fetch(`${base}/board`)).json();
-  expectNoOldFields(board);
-  expect(board.epics.find((epic: { id: string }) => epic.id === 'ALPHA').document).toBe(LEGACY_ALPHA);
+  // The Epic Detail streams the document as blocks; the front matter is not part of the body.
+  const detail = (await (await fetch(`${base}/epics/ALPHA/detail?sections=document`)).text())
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  expectNoOldFields(detail);
+  const body = detail
+    .filter((event: { type: string }) => event.type === 'block')
+    .map((event: { text: string }) => event.text)
+    .join('\n\n');
+  expect(body).toContain('# Alpha document');
+  expect(body).toContain('Legacy alpha text.');
+  expect(body).not.toContain('priority:');
 
   // The API no longer accepts the earlier field either: nothing is stored.
   const refused = await fetch(`${base}/epics/BETA`, {
@@ -380,7 +391,8 @@ test('the page shows the epic details with its cards in order and the Markdown i
 });
 
 test('the Japanese page uses the new labels for the epic details', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('agboard.locale', 'ja'));
+  // This serve and its data area belong to this spec only, so the saved language needs no reset.
+  await setPreferences({ locale: 'ja' }, `http://127.0.0.1:${port}`);
   await page.goto(`http://127.0.0.1:${port}/?project=${projectId(PROJECT, legacy.home)}`);
   await page.locator('[data-epic-label="ALPHA"]').first().waitFor();
   await page.locator('[data-epic-label="ALPHA"]').first().click();

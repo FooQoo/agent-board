@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderDetail } from '../renderDetail';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DetailPanel } from '../../src/features/tasks/detail/DetailPanel';
 import { selectLocale } from '../../src/shared/i18n';
@@ -14,7 +15,7 @@ const file = `projects/${PROJECT_A.id}/tasks/12/TASK.md`;
 beforeEach(() => selectLocale('en'));
 
 function panel(problems: Problem[]) {
-  return render(
+  return renderDetail(
     <DetailPanel
       projectId={PROJECT_A.id}
       task={task}
@@ -26,7 +27,7 @@ function panel(problems: Problem[]) {
 }
 
 describe('file problems in the detail', () => {
-  it('shows the file, item and reason above the body and keeps the body as written', () => {
+  it('shows the file, item and reason above the body and keeps the body as written', async () => {
     const { container } = panel([
       {
         file,
@@ -38,9 +39,9 @@ describe('file problems in the detail', () => {
     expect(warning.textContent).toBe(
       `This file has a problem: ${file} (AC-1) — A line starting with "- 根拠:" is missing.`,
     );
-    const body = screen.getByText('本文の内容');
+    const body = await screen.findByText('本文の内容');
     expect(warning.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(container.querySelector('.md-chapter')).not.toBeNull();
+    expect(container.querySelector('h3.md__chapter')).not.toBeNull();
   });
 
   it('shows the Japanese wording', () => {

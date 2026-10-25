@@ -21,11 +21,15 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
 .agent-board/
   bindings.json          folder registrations (machine-specific)
   serve.json             how the CLI finds a running agboard serve
+  .internal/
+    preferences.json     language and color theme (written by the app)
   shared/
     workspace.json
     projects/<project-id>/
       README.md
       project.json
+      docs/
+        README.md
       tasks/<task-id>/
         task.json
         TASK.md
@@ -38,6 +42,10 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
 
 The files are plain Markdown and JSON. What each file must contain is described in [Markdown file format](../automation/file-format). A file whose `formatVersion` is not 1 is unsupported: the application reports it and leaves the file unchanged. It never migrates, falls back to, deletes, or resets old data.
 
+The `.internal/` folder holds the app's own settings. `preferences.json` keeps the language and color theme you chose in **Settings**, and it applies to every browser on this PC and to the mobile monitor. The app writes this file, so do not edit it by hand. It is outside `shared/`, so it is not part of a project's files.
+
+Each project's `docs/` folder holds your own Markdown documents, which you read and edit from **Docs** in the board header. Agent Board creates the folder with a short `README.md`, but it does not treat the files as board data: changing them never changes the board. See [Project docs](../use/docs).
+
 ## Projects and folders
 
 Most commands name the project with `--project NAME`. A project keeps its ID when you rename it, so folder registrations, tasks, and history follow the new name.
@@ -48,7 +56,7 @@ agboard project ls --json
 agboard --project "My project" project rename "Website launch"
 ```
 
-Update the name in commands that pass `--project` explicitly; folder-based progress and hooks keep resolving the same project. `project rm` deletes the named project and its tasks, asks for a person's confirmation, and is unavailable to agents.
+Update the name in commands that pass `--project` explicitly; folder-based progress and hooks keep resolving the same project. `project rm` deletes the named project, its tasks, and its `docs/` folder, asks for a person's confirmation, and is unavailable to agents.
 
 ### Register a folder
 
@@ -125,6 +133,8 @@ The earlier names are not accepted or produced. Update hook scripts, agent instr
 ## Back up and restore
 
 Stop `agboard serve`, agents, and editors writing to the files before backing up or restoring. Copy the whole `shared/` folder to preserve all projects and the workspace format. For one project, copy its entire folder, using the `folder` value from `workspace --json`. Restore the copy to the same location before restarting the server and agents.
+
+Copying `shared/` does not include `.internal/`, so a project backup does not carry the language and color theme. To keep them too, copy `preferences.json` as well.
 
 ## Next
 

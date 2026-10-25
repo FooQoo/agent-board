@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
-import { openManualCreateDialog, pasteMarkdown } from '../helpers/ui';
+import { closeForUpdates, openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
 let fresh = 0;
@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
   fresh = nextTaskId(mainProject);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
+  await readBoardAfterReset(page);
   // A marker that a reload would wipe: every change below must arrive without one.
   await page.evaluate(() => {
     (window as unknown as { __opened: boolean }).__opened = true;
@@ -89,16 +90,23 @@ test('dragging a task opens the reason dialog before moving it', async ({ page }
   await notReloaded(page);
 });
 
-test('confirming a move after an external lane change keeps exactly one task and records the current transition', async ({ page }) => {
+test('a move after an external lane change is refused, shows the current status, and records the real transition', async ({ page }) => {
   await dragToLane(page, 16, 'Doing');
   const move = page.getByRole('dialog');
   const reason = move.getByRole('textbox', { name: 'Reason (optional)' });
   await expect(reason).toHaveValue('');
   await expect(page.locator('.card--dragging')).toHaveCount(0);
+  const before = JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.history.length;
   agboardOk(mainProject, ['mv', '16', 'done', '--actor', 'human']);
+  // The open dialog holds the stream's updates back, so it still shows the move from Todo. The server
+  // refuses a move from a status the task has left, writes nothing, and names where the task is now.
+  const submit = move.getByRole('button', { name: 'Move', exact: true });
+  await submit.click();
+  await expect(move.getByRole('alert')).toContainText('Another change moved this task to Done.');
   await expect(move.getByRole('group', { name: 'Status change' })).toContainText('Done');
-  await expect(move.getByRole('button', { name: 'Move', exact: true })).toBeEnabled();
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
+  expect(JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.history).toHaveLength(before + 1);
+  // Confirming again moves the task from the status the dialog now shows.
+  await submit.click();
   await expect(move).toHaveCount(0);
   await expect(task(page, 16)).toHaveCount(1);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
@@ -112,7 +120,7 @@ test('agboard state updates the run state and reason without reloading', async (
   agboardOk(mainProject, ['state', '13', 'running']);
   await expect(doing.getByRole('button', { name: /^#13 AI Running Check the board display / })).toBeVisible();
 
-  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--request-json', decisionJson('Waiting for a review')]);
+  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Waiting for a review')]);
   const pending = doing.getByRole('button', { name: /^#13 AI Pending Check the board display / });
   await expect(pending).toBeVisible();
   await expect(doing.locator('.card__answer[data-task-id="13"]')).toContainText('Waiting for a review');
@@ -123,14 +131,25 @@ test('agboard state updates the run state and reason without reloading', async (
   await notReloaded(page);
 });
 
-test('the selection stays on a task that moves to another lane', async ({ page }) => {
+test('an open task stays where it was while it moves to another lane, and shows the new lane once opened again', async ({ page }) => {
   await task(page, 11).click();
   const panel = page.getByRole('complementary', { name: 'Task details' });
   await expect(panel).toContainText('Running');
   await expect(panel).toContainText('Doing');
 
+  // The open details hold the stream's updates back: the card and the panel stay where they were.
   agboardOk(mainProject, ['mv', '11', 'done']);
-  await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#11(?!\d)/);
+  await page.waitForTimeout(1_500);
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#11(?!\d)/ })).toHaveAttribute('aria-current', 'true');
+  await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Implement task moves');
+  await expect(panel).toContainText('Doing');
+
+  // Closed, the move arrives; opened again, the task shows where it is now.
+  await closeForUpdates(
+    () => panel.getByRole('button', { name: 'Close details' }).click(),
+    () => expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#11(?!\d)/, { timeout: 1_500 }),
+  );
+  await task(page, 11).click();
   await expect(task(page, 11)).toHaveAttribute('aria-current', 'true');
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Implement task moves');
   await expect(panel).toContainText('Done');

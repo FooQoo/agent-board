@@ -61,7 +61,12 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
 test('the token appears only in the page, never in the API responses', async ({ page, request }) => {
   await page.goto('/');
   const token = (await page.locator('meta[name="agboard-token"]').getAttribute('content'))!;
-  for (const path of ['/api/projects', `/api/projects/${projectId(mainProject)}/board`, '/api/health']) {
+  for (const path of [
+    '/api/projects',
+    `/api/projects/${projectId(mainProject)}/summary`,
+    `/api/projects/${projectId(mainProject)}/tasks/11/detail`,
+    '/api/health',
+  ]) {
     expect(await (await request.get(path)).text()).not.toContain(token);
   }
 });

@@ -7,6 +7,7 @@ import {
   makeTask,
   SAMPLE_IMAGE_URL,
 } from '../../../../.storybook/support/fixtures';
+import { detailData } from '../../../../.storybook/support/detailData';
 import { DetailPanel } from './DetailPanel';
 
 // The card's attachment is listed but its picture URL is the product's, which Stories do not reach.
@@ -38,6 +39,7 @@ flowchart TD
 const meta = {
   title: 'Task/Detail/DetailPanel',
   component: DetailPanel,
+  decorators: [detailData],
   args: {
     projectId: PROJECT.id,
     task: sampleCard(),
@@ -293,5 +295,55 @@ export const TabEpicNone: Story = {
     const notice = canvasElement.querySelector('.detail__viewport:not([hidden]) .detail__empty');
     expect(notice?.textContent).toContain('This task belongs to no epic.');
     expect(notice && getComputedStyle(notice).fontSize).toBe('13px');
+  },
+};
+
+/** The frame and the tabs are shown at once; the text is a skeleton until the first part arrives. */
+export const DocumentLoading: Story = {
+  parameters: { detailFixture: { stallAfter: 1 } },
+  play: async ({ canvasElement }) => {
+    const view = within(canvasElement);
+    expect(view.getByRole('heading', { level: 2, name: 'Parser notes' })).toBeInTheDocument();
+    expect(view.getByRole('tab', { name: 'Description', selected: true })).toBeInTheDocument();
+    expect(view.getByRole('status', { name: 'Loading details…' })).toBeInTheDocument();
+  },
+};
+
+/** While the text is still arriving, the start of it is shown with a note. */
+export const DocumentPartial: Story = {
+  parameters: { detailFixture: { stallAfter: 4 } },
+  play: async ({ canvasElement }) => {
+    await waitFor(() =>
+      expect(canvasElement.querySelector('.detail-state__partial')).not.toBeNull(),
+    );
+    expect(canvasElement.textContent).toContain('Intro paragraph for the card.');
+  },
+};
+
+/** When the text cannot be read, the tab says so and offers to try again. */
+export const DocumentFailed: Story = {
+  parameters: { detailFixture: { failDetail: true } },
+  play: async ({ canvasElement }) => {
+    const view = within(canvasElement);
+    expect(await view.findByRole('alert')).toBeInTheDocument();
+    expect(view.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  },
+};
+
+/** A card with no text says so. */
+export const DocumentEmpty: Story = {
+  args: { task: makeTask({ id: 9, title: 'Nothing written yet', description: '', body: '' }) },
+  play: async ({ canvasElement }) => {
+    expect(await within(canvasElement).findByText('No description.')).toBeInTheDocument();
+  },
+};
+
+/** The history tab reads the log only when it is opened; a failed read offers to try again. */
+export const HistoryFailed: Story = {
+  parameters: { detailFixture: { failDetail: true } },
+  play: async ({ canvasElement }) => {
+    const view = within(canvasElement);
+    await userEvent.click(view.getByRole('tab', { name: /^History/ }));
+    expect(await view.findByRole('alert')).toBeInTheDocument();
   },
 };

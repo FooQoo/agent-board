@@ -10,7 +10,7 @@ import type {
 } from './model/answer';
 import { problemOf, WriteError } from '../../../shared/api/writeErrors';
 import type { OperationControls } from '../../../shared/lib/operations/operations';
-import type { Task, ProjectId } from '../../../shared/api/contracts';
+import type { TaskSummary, ProjectId } from '../../../shared/api/contracts';
 
 const MAX_ANSWER = 2000;
 const EMPTY_STATE: AnswerFormState = {
@@ -40,7 +40,7 @@ export interface DecisionRequestFormModel {
 
 interface UseDecisionRequestFormOptions {
   projectId: ProjectId;
-  task: Task;
+  task: TaskSummary;
   operations: OperationControls;
   writeAnswer: AnswerWriter;
   disabled: boolean;

@@ -1,0 +1,105 @@
+{
+  "project": {
+    "id": "0123456789abcdef0123456789abcdef",
+    "name": "Agent Board"
+  },
+  "version": "9f2c41d07a6b8e35",
+  "tasks": [
+    {
+      "id": 302,
+      "title": "Write the data contracts",
+      "taskStatus": "doing",
+      "agentStatus": "running",
+      "assignee": "ai",
+      "isDraft": false,
+      "position": 1,
+      "epicId": "EPIC-1",
+      "acceptance": {
+        "done": 2,
+        "total": 8
+      },
+      "updatedAt": "2026-10-22T09:57:52Z",
+      "pendingRequestId": null,
+      "pendingReason": null,
+      "pendingChoices": [],
+      "taskStatusChangedAt": "2026-10-22T09:57:52Z",
+      "agentStatusChangedAt": "2026-10-22T09:57:53Z",
+      "detailVersions": {
+        "document": "1a2b3c4d5e6f7081",
+        "history": "8091a2b3c4d5e6f7"
+      },
+      "acceptanceError": false,
+      "createdAt": "2026-10-22T09:45:32Z"
+    },
+    {
+      "id": 303,
+      "title": "Which transport should the stream use?",
+      "taskStatus": "doing",
+      "agentStatus": "pending",
+      "assignee": "ai",
+      "isDraft": false,
+      "position": 2,
+      "epicId": null,
+      "acceptance": {
+        "done": 0,
+        "total": 0
+      },
+      "updatedAt": "2026-10-22T10:01:00Z",
+      "pendingRequestId": "req-7",
+      "pendingReason": "Pick the transport.",
+      "pendingChoices": [
+        {
+          "id": "a",
+          "label": "NDJSON"
+        },
+        {
+          "id": "b",
+          "label": "WebSocket"
+        }
+      ],
+      "taskStatusChangedAt": "2026-10-22T09:58:00Z",
+      "agentStatusChangedAt": "2026-10-22T10:01:00Z",
+      "onboardingSample": {
+        "runId": "run-1",
+        "ordinal": 1
+      },
+      "detailVersions": {
+        "document": "00112233445566ff",
+        "history": "ffeeddccbbaa9988"
+      },
+      "acceptanceError": false,
+      "createdAt": "2026-10-22T09:45:32Z"
+    }
+  ],
+  "epics": [
+    {
+      "id": "EPIC-1",
+      "name": "Data layer",
+      "color": "#3366CC",
+      "isDraft": false,
+      "progress": {
+        "todo": 3,
+        "doing": 2,
+        "done": 1,
+        "archived": 0,
+        "total": 6
+      },
+      "detailVersions": {
+        "document": "c0ffee00c0ffee00",
+        "history": "x"
+      },
+      "priority": [
+        303,
+        302
+      ],
+      "priorityError": false
+    }
+  ],
+  "problems": [
+    {
+      "file": "tasks/9/TASK.md",
+      "field": "acceptance",
+      "reason": "The list is not valid YAML."
+    }
+  ]
+}

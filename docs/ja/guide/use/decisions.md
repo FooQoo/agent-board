@@ -71,27 +71,35 @@ cat question.json | agboard --project "My project" state 1 pending --actor ai --
 
 `choices`は2〜10件で、1件以下や11件以上、`--request-json`のない待機中の指定は拒否します。依頼にはIDが付き、`show`や`snapshot`で読めます。
 
-### 質問と待機を一つのコマンドで
+### 質問の回答を待つ
 
-JSONに`wait`オブジェクトを加えると、質問と回答の待機を一つのコマンドで行えます。`agboard serve`が動いている必要があります。`wait: {}`では期限を設けずに待ちます。依頼に回答されると、その回答（選択肢・メモ・タスク）を表示します。
+`pending --request-json`は、JSONに`wait`がなくても既定で回答まで待ちます。この待機には`agboard serve`の起動が必要です。依頼に回答されると、コマンドはタスクと回答を表示します。既存互換の`"wait": {}`も無期限待機になります。
 
-```json
-{
-  "question": "Which launch approach should we use?",
-  "choices": [
-    { "id": "preview", "label": "Publish a preview first" },
-    { "id": "public", "label": "Launch publicly" }
-  ],
-  "wait": {}
-}
+用途に応じて、次の3通りで実行します。
+
+waitを省略して、回答まで既定で待機します。
+
+```sh
+agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}'
 ```
 
-`"timeoutSeconds": 600`を加えると、待機時間を制限できます。値は1〜86,400（1日）です。`wait`がなければ、コマンドは質問を登録してすぐに終了します。
+質問を登録してすぐに戻る場合は、`--no-wait`を付けます。
 
-- 時間切れやCtrl+Cで待機は終了しますが、質問は待機中のままです。
-- サーバーとの接続が切れると`board_unavailable`を返します。これは技術的なエラーで、質問は待機中のままです。
+```sh
+agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}' --no-wait
+```
+
+600秒まで待つ例です（1〜86,400秒を指定できます）。
+
+```sh
+agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}],"wait":{"timeoutSeconds":600}}'
+```
+
+`--no-wait`では`agboard serve`は不要です。待機する2つの形式では`agboard serve`が必要で、CLIは質問を保存する前に起動状態を確認します。`--no-wait`と`wait: {}`は併用できますが、整数の`timeoutSeconds`との併用は`invalid_argument`（終了コード2）になり、質問・状態・履歴を変更しません。`wait: null`と`timeoutSeconds: null`は期限なしとして扱います。不正なJSON、未知の項目、型違い、範囲外timeoutは`invalid_value`（終了コード2）、`pending --request-json`以外での`--no-wait`は`invalid_argument`（終了コード2）です。
+
+- 時間切れやCtrl+Cで待機は終了しますが、質問はPendingのままです。
+- サーバーとの接続が切れると`board_unavailable`を返します。これは技術的なエラーで、質問はPendingのままです。
 - タスクの移動で質問が取り下げられると、コマンドは`request_changed`で終わります。
-- サーバーが起動していなければ、質問は登録されません。
 
 ### コマンドラインで回答する
 

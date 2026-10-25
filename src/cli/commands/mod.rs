@@ -16,6 +16,7 @@ pub mod serve;
 pub mod show;
 pub mod snapshot;
 pub mod state;
+pub mod stop;
 pub mod update;
 pub mod workspace;
 

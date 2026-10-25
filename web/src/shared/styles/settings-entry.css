@@ -1,0 +1,81 @@
+/*
+ * An entry row of the settings dialog (shared/ui/settings-entry-row.tsx): icon tile, title and one
+ * line of description, and the shared outline button. The tile and text colors are the r-* tokens,
+ * so each theme and accent draws its own tile. The rules are unlayered on purpose: they sit above
+ * the Tailwind utilities.
+ */
+.settings-entry {
+  container-type: inline-size;
+  border-top: 1px solid var(--r-border);
+}
+
+.settings-entry__grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 20px;
+  padding: 24px 0;
+}
+
+.settings-entry__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--r-accent-soft);
+  color: var(--r-text);
+}
+
+.settings-entry__icon > svg {
+  width: 24px;
+  height: 24px;
+}
+
+.settings-entry__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-entry__title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.settings-entry__body {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The button is the shared outline Button at size m, with its own colors and hover state. Only its
+ * width is the row's: both rows use the same width, wide enough for the longest label (English
+ * "Connection settings" is about 125px of text), so the two buttons line up.
+ */
+.settings-entry__action {
+  width: 176px;
+}
+
+/* In a narrow dialog the button moves under the text, so the text keeps its width. */
+@container (max-width: 480px) {
+  .settings-entry__grid {
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 16px;
+    row-gap: 14px;
+    padding: 20px 0;
+  }
+
+  .settings-entry__action {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

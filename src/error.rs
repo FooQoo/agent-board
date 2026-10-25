@@ -97,6 +97,19 @@ pub enum AgboardError {
         state: RunState,
     },
     RequestChanged,
+    /// A move named the status it started from, and the task is no longer there.
+    TaskStatusChanged {
+        id: i64,
+        current: Column,
+    },
+    /// The guide's state moved on: a stale revision, another tab's lease, or another run.
+    OnboardingConflict {
+        reason: String,
+    },
+    /// A guide command that the current step does not allow, or a malformed guide input.
+    OnboardingInvalid {
+        reason: String,
+    },
     ConfirmationRequired {
         operation: String,
     },
@@ -148,6 +161,33 @@ pub enum AgboardError {
     },
     /// `agboard wait` reached its `--timeout` with no change.
     WaitTimeout,
+    /// A Docs path that cannot name a file under the Docs root.
+    DocsPathInvalid {
+        reason: String,
+    },
+    DocsNotFound {
+        path: String,
+    },
+    /// The Docs file API only serves `.md` and `.mdx` files.
+    DocsNotMarkdown {
+        path: String,
+    },
+    DocsTooLarge {
+        path: String,
+        limit: u64,
+    },
+    DocsNotUtf8 {
+        path: String,
+    },
+    /// The Docs image API serves only PNG, JPEG, WebP, GIF, AVIF and SVG.
+    DocsAssetType {
+        path: String,
+    },
+    DocsNotImplemented,
+    /// The Docs folder could not be opened in the file manager.
+    DocsOpenFailed {
+        reason: String,
+    },
 }
 
 impl AgboardError {
@@ -178,6 +218,9 @@ impl AgboardError {
             AgboardError::TaskNotDraft { .. } => "task_not_draft",
             AgboardError::InvalidStateForDraft { .. } => "invalid_state_for_draft",
             AgboardError::RequestChanged => "request_changed",
+            AgboardError::TaskStatusChanged { .. } => "task_status_changed",
+            AgboardError::OnboardingConflict { .. } => "onboarding_conflict",
+            AgboardError::OnboardingInvalid { .. } => "onboarding_invalid",
             AgboardError::ConfirmationRequired { .. } => "confirmation_required",
             AgboardError::FileError { .. } => "file_error",
             AgboardError::FileInvalid { .. } => "file_invalid",
@@ -191,6 +234,14 @@ impl AgboardError {
             AgboardError::BoardUnavailable { .. } => "board_unavailable",
             AgboardError::CursorInvalid { .. } => "cursor_invalid",
             AgboardError::WaitTimeout => "wait_timeout",
+            AgboardError::DocsPathInvalid { .. } => "docs_path_invalid",
+            AgboardError::DocsNotFound { .. } => "docs_not_found",
+            AgboardError::DocsNotMarkdown { .. } => "docs_not_markdown",
+            AgboardError::DocsTooLarge { .. } => "docs_too_large",
+            AgboardError::DocsNotUtf8 { .. } => "docs_not_utf8",
+            AgboardError::DocsAssetType { .. } => "docs_asset_type",
+            AgboardError::DocsNotImplemented => "docs_not_implemented",
+            AgboardError::DocsOpenFailed { .. } => "docs_open_failed",
         }
     }
 
@@ -256,6 +307,11 @@ impl AgboardError {
                 format!("cannot make #{id} a draft while it is {}.", state.as_str())
             }
             AgboardError::RequestChanged => "the pending request has changed.".into(),
+            AgboardError::TaskStatusChanged { id, current } => {
+                format!("task #{id} is now {}.", current.as_str())
+            }
+            AgboardError::OnboardingConflict { reason } => reason.clone(),
+            AgboardError::OnboardingInvalid { reason } => reason.clone(),
             AgboardError::ConfirmationRequired { operation } => {
                 format!("{operation} needs confirmation from a human.")
             }
@@ -278,6 +334,16 @@ impl AgboardError {
             AgboardError::BoardUnavailable { .. } => "the board is unavailable.".to_string(),
             AgboardError::CursorInvalid { .. } => "the cursor is invalid.".to_string(),
             AgboardError::WaitTimeout => "no board change before the timeout.".to_string(),
+            AgboardError::DocsPathInvalid { .. } => "the document path is invalid.".to_string(),
+            AgboardError::DocsNotFound { path } => format!("document {path} not found."),
+            AgboardError::DocsNotMarkdown { path } => format!("{path} is not a Markdown file."),
+            AgboardError::DocsTooLarge { path, .. } => format!("{path} is too large."),
+            AgboardError::DocsNotUtf8 { path } => format!("{path} is not UTF-8 text."),
+            AgboardError::DocsAssetType { path } => format!("{path} is not a supported image."),
+            AgboardError::DocsNotImplemented => {
+                "this document operation is not available yet.".to_string()
+            }
+            AgboardError::DocsOpenFailed { .. } => "cannot open the Docs folder.".to_string(),
         }
     }
 
@@ -328,6 +394,12 @@ impl AgboardError {
             AgboardError::TaskIsDone { .. } => {
                 "A person must move the task out of Done before you can change it.".into()
             }
+            AgboardError::OnboardingConflict { .. } => {
+                "Read the guide's state again, then repeat the step with the current revision.".into()
+            }
+            AgboardError::OnboardingInvalid { .. } => {
+                "Follow the guide's order: the step does not apply to the current state.".into()
+            }
             AgboardError::AcceptanceUnmet { .. } => {
                 "Mark each condition done once it is verified, or ask a person to move the task.".into()
             }
@@ -339,6 +411,10 @@ impl AgboardError {
             ),
             AgboardError::RequestChanged => {
                 "Read the latest board before answering this request.".into()
+            }
+            AgboardError::TaskStatusChanged { .. } => {
+                "Another change moved the task first. Check its current status and move it again."
+                    .into()
             }
             AgboardError::ConfirmationRequired { .. } => {
                 "Run this command yourself in a terminal. Agents cannot delete tasks or projects, or replace a board."
@@ -373,6 +449,26 @@ impl AgboardError {
                 "Nothing changed in the project. This is not an answer; read the snapshot before acting."
                     .to_string()
             }
+            AgboardError::DocsPathInvalid { reason } => reason.clone(),
+            AgboardError::DocsNotFound { .. } => {
+                "No such file in the project's Docs. Choose a file from the tree.".to_string()
+            }
+            AgboardError::DocsNotMarkdown { .. } => {
+                "Only files ending in .md or .mdx can be opened.".to_string()
+            }
+            AgboardError::DocsTooLarge { limit, .. } => {
+                format!("Files larger than {limit} bytes cannot be opened here.")
+            }
+            AgboardError::DocsNotUtf8 { .. } => {
+                "Only UTF-8 text can be opened here. The file is not changed.".to_string()
+            }
+            AgboardError::DocsAssetType { .. } => {
+                "Only PNG, JPEG, WebP, GIF, AVIF and SVG images are served.".to_string()
+            }
+            AgboardError::DocsNotImplemented => {
+                "The Docs API is still being built. Try again in a later version.".to_string()
+            }
+            AgboardError::DocsOpenFailed { reason } => reason.clone(),
         }
     }
 }
@@ -416,6 +512,10 @@ mod tests {
                 state: RunState::Running,
             },
             AgboardError::RequestChanged,
+            AgboardError::TaskStatusChanged {
+                id: 5,
+                current: Column::Done,
+            },
             AgboardError::ConfirmationRequired {
                 operation: "deleting a task".into(),
             },
@@ -455,6 +555,29 @@ mod tests {
                 reason: "wrong project".into(),
             },
             AgboardError::WaitTimeout,
+            AgboardError::DocsPathInvalid {
+                reason: "Paths are relative and use /.".into(),
+            },
+            AgboardError::DocsNotFound {
+                path: "a/b.md".into(),
+            },
+            AgboardError::DocsNotMarkdown {
+                path: "a.txt".into(),
+            },
+            AgboardError::DocsTooLarge {
+                path: "a.md".into(),
+                limit: 2_097_152,
+            },
+            AgboardError::DocsNotUtf8 {
+                path: "a.md".into(),
+            },
+            AgboardError::DocsAssetType {
+                path: "a.svg".into(),
+            },
+            AgboardError::DocsNotImplemented,
+            AgboardError::DocsOpenFailed {
+                reason: "xdg-open is not installed".into(),
+            },
         ]
     }
 
@@ -480,6 +603,7 @@ mod tests {
                 ("task_not_draft", 1),
                 ("invalid_state_for_draft", 1),
                 ("request_changed", 1),
+                ("task_status_changed", 1),
                 ("confirmation_required", 1),
                 ("file_error", 1),
                 ("file_invalid", 1),
@@ -493,6 +617,14 @@ mod tests {
                 ("board_unavailable", 1),
                 ("cursor_invalid", 1),
                 ("wait_timeout", 1),
+                ("docs_path_invalid", 1),
+                ("docs_not_found", 1),
+                ("docs_not_markdown", 1),
+                ("docs_too_large", 1),
+                ("docs_not_utf8", 1),
+                ("docs_asset_type", 1),
+                ("docs_not_implemented", 1),
+                ("docs_open_failed", 1),
             ]
         );
     }
@@ -554,6 +686,10 @@ mod tests {
                 "Read the latest board before answering this request.",
             ),
             (
+                "task #5 is now done.",
+                "Another change moved the task first. Check its current status and move it again.",
+            ),
+            (
                 "deleting a task needs confirmation from a human.",
                 "Run this command yourself in a terminal. Agents cannot delete tasks or projects, or replace a board.",
             ),
@@ -596,6 +732,35 @@ mod tests {
                 "no board change before the timeout.",
                 "Nothing changed in the project. This is not an answer; read the snapshot before acting.",
             ),
+            (
+                "the document path is invalid.",
+                "Paths are relative and use /.",
+            ),
+            (
+                "document a/b.md not found.",
+                "No such file in the project's Docs. Choose a file from the tree.",
+            ),
+            (
+                "a.txt is not a Markdown file.",
+                "Only files ending in .md or .mdx can be opened.",
+            ),
+            (
+                "a.md is too large.",
+                "Files larger than 2097152 bytes cannot be opened here.",
+            ),
+            (
+                "a.md is not UTF-8 text.",
+                "Only UTF-8 text can be opened here. The file is not changed.",
+            ),
+            (
+                "a.svg is not a supported image.",
+                "Only PNG, JPEG, WebP, GIF, AVIF and SVG images are served.",
+            ),
+            (
+                "this document operation is not available yet.",
+                "The Docs API is still being built. Try again in a later version.",
+            ),
+            ("cannot open the Docs folder.", "xdg-open is not installed"),
         ];
         let expected: Vec<(String, String)> = expected
             .into_iter()

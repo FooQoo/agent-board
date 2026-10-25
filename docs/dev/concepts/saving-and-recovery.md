@@ -14,7 +14,7 @@ Several agents, the CLI, the web server, and text editors may touch the same fil
 - Under the lock a writer re-reads the latest files, changes only what it needs, and replaces each file by renaming a temporary file written in the same folder.
 - A task's lock is held from reading the latest JSON and Markdown until the pair is committed and any recovery is finished. Public task reads, snapshots, and version computation read the pair under the same lock, so they never see a half-written pair. Internal reads during a state update do not take the lock again.
 - When the server index is involved, locks are taken in the order index, then project. State updates release the project lock before updating the index and notifying.
-- **Direct edits take no lock.** An editor that saves `TASK.md` or `EPIC.md` is not coordinated with the CLI; the last save wins. There is no revision-number conflict detection anywhere.
+- **Direct edits take no lock.** An editor that saves `TASK.md` or `EPIC.md` is not coordinated with the CLI; the last save wins. Board files have no revision-number conflict detection; only [project docs](#project-docs) do.
 
 ## Saving a task
 
@@ -51,6 +51,12 @@ The short request form sends the description, optional epic, and images together
 
 The task metadata and body are written into a private staging directory, followed by the image files. One same-filesystem directory rename publishes the complete task. Until that rename, task listing and the wait selector cannot see it. The success response and change notification happen after publication. A failure removes the staging directory; an already-reserved task number may remain unused. This path creates an AI-owned Todo task and keeps the submitted text under `## 元の依頼`; normal manual task creation and editing retain their existing behavior.
 
+## Project docs
+
+Agent Board never writes the files in `shared/projects/<project-id>/docs/`, apart from the `README.md` it puts there when it creates the folder. The Docs dialog only reads them, and the user edits them in their own editor (**Open in editor** starts it, see [Web API](../reference/web-api.md#project-docs)). So the docs have no lock, journal, revision check, or recovery of their own; the editor that writes a file is responsible for it.
+
+The board's data is not affected by the docs either: the watcher reports a change in `docs/` as an SSE `docs` event, without reloading the board, changing the project's `version`, or sending `changed` (see [Change notifications](./notifications.md#the-docs)).
+
 ## When files are invalid
 
 The product never repairs files on its own. It reports what is wrong, keeps showing what it can, and refuses writes that would build on a broken file.
@@ -67,6 +73,14 @@ The product never repairs files on its own. It reports what is wrong, keeps show
 | Body format defects | The body is shown as is, with the defect in `problems`. |
 
 While a project has defects, the `serve` index keeps the last good view and returns the defect as an error. Once the file is fixed by hand, the next read shows it normally.
+
+## The first-run guide's state
+
+The guide keeps one file for the whole shared directory, `shared/.internal/onboarding.json`. It holds the status (`unseen`, `offered`, `active`, `closing`, `completed`, `interrupted`, or `skipped`), the tab that holds the lease and when it expires, the active run with its phase and sample card IDs, and the most recent command IDs that were applied.
+
+Each operation takes the guide lock and then the project lock. A command that changes the state saves the file atomically with a new revision. A request names the revision it read and a command ID. A repeated command returns the current state without repeating the step, and a request that names an old revision is refused.
+
+A tab holds the lease for 30 seconds and renews it with a heartbeat every 10 seconds. A heartbeat extends the lease without changing the revision. When the server starts, and when a recovery request arrives, a run whose lease has expired is ended: its cards are archived, and the guide becomes `interrupted`. The board also sends a recovery request when its first read finds an `active` guide whose lease has expired or has no owner, which is what a closed or reloaded tab leaves behind. A lease that is still live belongs to another tab and is left alone.
 
 ## Failure behavior at a glance
 

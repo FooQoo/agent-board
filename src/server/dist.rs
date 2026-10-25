@@ -8,7 +8,6 @@ use std::path::Path;
 /// checks them through the files the HTML names.
 pub const REQUIRED_FILES: [&str; 3] = ["index.html", "logo.png", "logo-white.png"];
 
-pub const ACCESS_REQUIRED_FILES: [&str; 2] = ["index.html", "entry.js"];
 pub const MONITOR_REQUIRED_FILES: [&str; 1] = ["index.html"];
 
 /// Required files missing beneath one isolated web asset namespace.
@@ -101,18 +100,14 @@ mod tests {
     }
 
     #[test]
-    fn incomplete_access_and_monitor_builds_name_the_files_and_build_command() {
+    fn an_incomplete_monitor_build_names_the_files_and_build_command() {
         let tmp = tempfile::tempdir().unwrap();
-        assert_eq!(
-            missing_namespace_files(tmp.path(), "access", &ACCESS_REQUIRED_FILES),
-            vec!["index.html", "entry.js"]
-        );
         assert_eq!(
             missing_namespace_files(tmp.path(), "monitor", &MONITOR_REQUIRED_FILES),
             vec!["index.html"]
         );
         assert!(
-            namespace_error_message("access", &["entry.js"])
+            namespace_error_message("monitor", &["index.html"])
                 .contains("Run \"pnpm --dir web build\" first.")
         );
         assert!(

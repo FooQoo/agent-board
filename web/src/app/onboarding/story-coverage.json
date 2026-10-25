@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "owner": "U1",
+  "files": [
+    {
+      "file": "app/onboarding/OnboardingMockScreen.tsx",
+      "exports": [
+        {
+          "name": "OnboardingMockScreen",
+          "stories": [
+            {
+              "id": "app-onboarding-mock-screens--welcome",
+              "states": ["01 first screen over the board", "Skip and Start guide actions"],
+              "interaction": true
+            },
+            {
+              "id": "app-onboarding-mock-screens--samples-created",
+              "states": ["02 two sample cards framed in To do", "step 1 of 4"],
+              "interaction": false
+            },
+            {
+              "id": "app-onboarding-mock-screens--automatic-progress",
+              "states": ["03 running sample in In progress", "step 2 of 4"],
+              "interaction": false
+            },
+            {
+              "id": "app-onboarding-mock-screens--decision-needed",
+              "states": ["04 pending card with the answer form", "waiting badge, step 3 of 4"],
+              "interaction": false
+            },
+            {
+              "id": "app-onboarding-mock-screens--decision-needed-dark",
+              "states": ["08 pending card in the dark theme", "waiting badge, step 3 of 4"],
+              "interaction": false
+            },
+            {
+              "id": "app-onboarding-mock-screens--resumed-after-answer",
+              "states": ["05 resumed card running again", "step 4 of 4"],
+              "interaction": false
+            },
+            {
+              "id": "app-onboarding-mock-screens--completed",
+              "states": ["06 completion dialog after both samples are done", "finish action"],
+              "interaction": false
+            },
+            {
+              "id": "app-onboarding-mock-screens--archived",
+              "states": ["07 archive confirmation on the empty board"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/onboarding/MockBoard.tsx",
+      "exports": [
+        {
+          "name": "MockBoard",
+          "stories": [],
+          "exclusion": "MockBoard is the static board backdrop of the mock; every mock screen in OnboardingMockScreen Stories renders it."
+        },
+        {
+          "name": "MockStageCards",
+          "stories": [],
+          "exclusion": "MockStageCards only places the cards of a spotlighted lane; the framed lanes are covered by OnboardingMockScreen Stories."
+        }
+      ]
+    },
+    {
+      "file": "app/onboarding/TutorialEntryRow.tsx",
+      "exports": [
+        {
+          "name": "TutorialEntryRow",
+          "stories": [
+            {
+              "id": "app-onboarding-tutorialentryrow--settings-entry",
+              "states": ["entry row in a settings dialog frame", "Try it action"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/onboarding/GuideLayer.tsx",
+      "exports": [
+        {
+          "name": "GuideLayer",
+          "stories": [],
+          "exclusion": "GuideLayer joins the guide's view parts to the live board and the controller; its parts are covered by the mock screen stories and its controller by the hook tests, and the whole run by the board's end-to-end tests."
+        }
+      ]
+    }
+  ]
+}

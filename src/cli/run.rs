@@ -167,6 +167,15 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, cli.json),
         };
     }
+    if let Command::Stop(_) = &cli.command {
+        return match commands::stop::run(cli.json) {
+            Ok(text) => {
+                write_text(env.stdout, &text);
+                0
+            }
+            Err(error) => fail(env, &error, cli.json),
+        };
+    }
     match prepare_and_run(&cli, env) {
         Ok((ctx, outcome)) => {
             let text = if cli.json {
@@ -236,6 +245,7 @@ fn access(command: &Command) -> Access {
         | Command::Rm(_) => Access::ChangeProject,
         Command::Progress(_) => Access::ReadBoundProject,
         Command::Serve(_)
+        | Command::Stop(_)
         | Command::Setup(_)
         | Command::Connect(_)
         | Command::Update(_)
@@ -304,6 +314,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Hook(_)
         | Command::Wait(_)
         | Command::Serve(_)
+        | Command::Stop(_)
         | Command::Setup(_)
         | Command::Connect(_)
         | Command::Update(_) => {

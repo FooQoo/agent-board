@@ -1,4 +1,4 @@
-import type { AcceptanceItem, Assignee } from '../../../shared/api/contracts';
+import type { AcceptanceItem, Assignee, ColumnName } from '../../../shared/api/contracts';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
 
 export interface ActionDialogData {
@@ -11,6 +11,8 @@ export interface ActionDialogData {
   acceptance?: AcceptanceItem[];
   assignee?: Assignee;
   reason?: string;
+  /** Move only: the status the dialog showed, which the server checks the task is still in. */
+  fromStatus?: ColumnName;
   /** Create: the card is made a draft once it is added. */
   isDraft?: boolean;
   /** Edit only: hand the card back to the agents in the same step. */

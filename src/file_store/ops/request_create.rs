@@ -114,6 +114,7 @@ impl FileStore {
             // `simpleRequest` remains readable for compatibility with records
             // created by older versions, but new tasks no longer store it.
             simple_request: None,
+            onboarding_sample: None,
             history: vec![transition_event(Transition {
                 language,
                 kind: HistoryKind::Created,

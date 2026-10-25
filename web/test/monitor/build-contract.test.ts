@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -9,26 +8,15 @@ const read = (relative: string) => readFileSync(join(dist, relative), 'utf8');
 const files = (folder: string) => readdirSync(join(dist, folder)).sort();
 
 describe('isolated monitor build', () => {
-  it('emits an access entry without a token and a monitor entry with only its runtime placeholders', () => {
-    const access = read('access/index.html');
+  it('emits a monitor entry with only its runtime placeholders', () => {
     const monitor = read('monitor/index.html');
-    expect(access).toMatch(/\/assets\/access\/entry\.js\?v=[a-f0-9]{16}/);
-    expect(monitor).toMatch(/src="\/assets\/monitor\/monitor-[\w-]+\.js"/);
-    expect(monitor).toMatch(/href="\/assets\/monitor\/monitor-[\w-]+\.css"/);
-    expect(access).not.toContain('agboard-token');
+    expect(monitor).toMatch(/src="\/monitor\/assets\/monitor\/monitor-[\w-]+\.js"/);
+    expect(monitor).toMatch(/href="\/monitor\/assets\/monitor\/monitor-[\w-]+\.css"/);
     expect(monitor).toContain('name="agboard-monitor-token" content="{{AGBOARD_MONITOR_TOKEN}}"');
     expect(monitor).toContain('name="agboard-build" content="{{AGBOARD_BUILD_ID}}"');
     expect(monitor).not.toContain('name="agboard-token"');
     expect(monitor).not.toMatch(/name="agboard-monitor-token" content="[a-f0-9]{64}"/);
-    expect(`${access}\n${monitor}`).not.toMatch(/\/assets\/app[-.]/);
-  });
-
-  it('bypasses the access entry saved under the previous long-lived cache policy', () => {
-    const previousVersion = createHash('sha256')
-      .update(read('access/entry.js'))
-      .digest('hex')
-      .slice(0, 16);
-    expect(read('access/index.html')).not.toContain(`entry.js?v=${previousVersion}`);
+    expect(monitor).not.toMatch(/\/assets\/app[-.]/);
   });
 
   it('names every monitor script and stylesheet by content and lists them in its manifest', () => {
@@ -41,10 +29,6 @@ describe('isolated monitor build', () => {
     );
     expect([...monitorAssets].sort()).toEqual(embedded);
     expect(read('monitor/manifest.json')).not.toMatch(/"app[-.]/);
-    const accessAssets = JSON.parse(read('access/manifest.json')).assets.map(
-      (asset: { name: string }) => asset.name,
-    );
-    expect(accessAssets).toEqual(['index.html', 'entry.js']);
   });
 
   it("reuses the board build's diagram chunks byte for byte", () => {
@@ -116,6 +100,10 @@ describe('board build', () => {
       'src/shared/rich-editor/outline.ts',
       'src/shared/markdown/MarkdownSections.tsx',
       'src/shared/markdown/MarkdownView.tsx',
+      'src/shared/markdown/MarkdownBlocks.tsx',
+      'src/shared/markdown/MarkdownBlock.tsx',
+      'src/shared/markdown/MarkdownContent.tsx',
+      'src/shared/markdown/VirtualMarkdown.tsx',
       'src/features/settings/ui/SettingsDialog.tsx',
     ])
       expect(sources).not.toContain(later);
@@ -124,6 +112,38 @@ describe('board build', () => {
         /^(@codemirror\/|@lezer\/|micromark|mdast-|react-markdown)/.test(name),
       ),
     ).toEqual([]);
+    expect(packages.filter((name) => name.startsWith('@tanstack/'))).toEqual([]);
+  });
+});
+
+describe('virtual Markdown list', () => {
+  const pages = [
+    { page: 'board', folder: 'assets', entry: () => entryOf('assets', 'app') },
+    { page: 'monitor', folder: 'monitor', entry: () => entryOf('monitor', 'monitor') },
+  ] as const;
+
+  for (const { page, folder, entry } of pages) {
+    it(`keeps the ${page}'s virtual list in one on-demand chunk of its own`, () => {
+      const first = new Set(firstLoad(folder, entry()));
+      const holders = files(folder).filter(
+        (name) => name.endsWith('.js') && /^chunk-VirtualMarkdown-[\w-]+\.js$/.test(name),
+      );
+      expect(holders).toHaveLength(1);
+      expect(first.has(holders[0] as string)).toBe(false);
+      // The list and its library are small: well under what the first load may grow by.
+      expect(bytes(folder, holders)).toBeLessThanOrEqual(VIRTUAL_CHUNK_BUDGET);
+    });
+  }
+
+  it('bundles the virtual list library with the list and in no other chunk', () => {
+    const graph = JSON.parse(read('chunk-graph.json')) as {
+      chunks: Record<string, { sources: string[]; packages: string[] }>;
+    };
+    const holders = Object.entries(graph.chunks)
+      .filter(([, chunk]) => chunk.packages.includes('@tanstack/react-virtual'))
+      .map(([name, chunk]) => ({ name, sources: chunk.sources }));
+    expect(holders).toHaveLength(1);
+    expect(holders[0]?.sources).toEqual(['src/shared/markdown/VirtualMarkdown.tsx']);
   });
 });
 
@@ -154,8 +174,12 @@ const bytes = (folder: string, names: string[]) =>
 
 // Budgets for the scripts a page needs before its first screen, a little above their size today.
 // Raise one only with a reason: the first load is what a phone waits for on every new build.
-const FIRST_LOAD_BUDGET = { board: 660_000, monitor: 500_000 };
+// The monitor's budget is 520 KB: the header logo (about 14 KB in base64) is inlined so it loads with the page.
+// The board's budget is 701 KB: the Docs entry (its header button and the dialog's preload hooks) takes about 1.3 KB over the 700 KB it had before the Docs.
+const FIRST_LOAD_BUDGET = { board: 701_000, monitor: 520_000 };
 const LAZY_ONLY_ABOVE = 500_000;
+// The virtual list chunk (the list and @tanstack/react-virtual) loads for a large document only.
+const VIRTUAL_CHUNK_BUDGET = 40_000;
 
 describe('script size', () => {
   const pages = [

@@ -27,9 +27,34 @@
           "interaction": false
         },
         {
-          "id": "shared-ui-button--small",
-          "states": ["small"],
+          "id": "shared-ui-button--size-s",
+          "states": ["size s"],
           "interaction": false
+        },
+        {
+          "id": "shared-ui-button--size-m",
+          "states": ["size m"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-button--size-l",
+          "states": ["size l"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-button--size-xl",
+          "states": ["size xl"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-button--size-2-xl",
+          "states": ["size 2xl"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-button--all-sizes",
+          "states": ["all sizes", "icon only"],
+          "interaction": true
         },
         {
           "id": "shared-ui-button--disabled",

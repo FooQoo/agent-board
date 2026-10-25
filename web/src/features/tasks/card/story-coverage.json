@@ -42,6 +42,11 @@
               "id": "task-card-taskcard--pending-with-epic",
               "states": ["pending reason", "epic label", "epic click does not select card"],
               "interaction": true
+            },
+            {
+              "id": "task-card-taskcard--from-summary",
+              "states": ["card from the Summary", "no body", "two of four conditions"],
+              "interaction": true
             }
           ]
         },

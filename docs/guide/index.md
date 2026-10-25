@@ -49,6 +49,7 @@ New here? Read the first three pages in order.
 | Answer a question from an agent | [Decisions](./use/decisions) |
 | Group tasks and see what to do next | [Epics and progress](./use/epics) |
 | Write a task and attach images | [Editing and image attachments](./use/editing) |
+| Read and edit the project's Markdown documents | [Project docs](./use/docs) |
 | Connect Claude Code or Codex | [Working with agents](./automation/agents) |
 | Look up a command | [CLI reference](./automation/cli) |
 | Edit `TASK.md` or `EPIC.md` by hand | [Markdown file format](./automation/file-format) |

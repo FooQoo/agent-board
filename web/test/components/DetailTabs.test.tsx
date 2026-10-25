@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import { renderDetail } from '../renderDetail';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DetailPanel } from '../../src/features/tasks/detail/DetailPanel';
@@ -10,7 +11,7 @@ const noop = () => {};
 const noRemove = async () => true;
 
 function renderPanel(task: Task, props: Partial<Parameters<typeof DetailPanel>[0]> = {}) {
-  return render(
+  return renderDetail(
     <DetailPanel
       projectId={PROJECT_A.id}
       task={task}
@@ -26,31 +27,35 @@ const SECTIONED = '## Goal\n- one\n- two\n\n## Steps\n1. first\n2. second\n3. th
 beforeEach(() => selectLocale('en'));
 
 describe('tabs', () => {
-  it('has a Description tab and a History tab with the number of history entries', () => {
+  it('has a Description tab and a History tab that shows the number of entries once they are read', async () => {
     renderPanel(fixtureTask(8));
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       'Description',
       'Conditions',
-      'History 3',
+      'History',
       'Epic',
     ]);
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tabpanel')).toBeTruthy();
     expect(screen.queryByRole('list', { name: /history/i })).toBeNull();
+    await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
+    expect(await screen.findByRole('tab', { name: 'History 3' })).toBeTruthy();
   });
 
   it('shows the history in the History tab and the description again in the Description tab', async () => {
     const { container } = renderPanel(
       makeTask({ ...fixtureTask(8), description: 'Body text', body: 'Body text' }),
     );
-    expect(screen.getByRole('tabpanel').textContent).toBe('Body text');
+    await waitFor(() => expect(screen.getByRole('tabpanel').textContent).toBe('Body text'));
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    expect(screen.getByRole('tabpanel').querySelectorAll('.history__step')).toHaveLength(3);
+    await waitFor(() =>
+      expect(screen.getByRole('tabpanel').querySelectorAll('.history__step')).toHaveLength(3),
+    );
     expect(container.querySelectorAll('.history__step')).toHaveLength(3);
     expect(screen.getByRole('tabpanel').textContent).not.toContain('Body text');
     await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
-    expect(screen.getByRole('tabpanel').textContent).toBe('Body text');
+    await waitFor(() => expect(screen.getByRole('tabpanel').textContent).toBe('Body text'));
   });
 
   it('moves between the tabs with the arrow keys', async () => {
@@ -67,9 +72,9 @@ describe('tabs', () => {
     );
   });
 
-  it('shows the empty note for an empty description', () => {
+  it('shows the empty note for an empty description', async () => {
     renderPanel(fixtureTask(12));
-    expect(screen.getByRole('tabpanel').textContent).toBe('No description.');
+    await waitFor(() => expect(screen.getByRole('tabpanel').textContent).toBe('No description.'));
   });
 
   it('puts the tabs directly below the task metadata', () => {
@@ -94,7 +99,7 @@ describe('chapters of the description', () => {
   it('shows each H2 chapter as a plain heading and keeps every chapter open, with no fold control', async () => {
     const { container } = renderPanel(makeTask({ id: 50, description: `Intro\n\n${SECTIONED}` }));
     expect(container.querySelector('.md-chapter__number')).toBeNull();
-    expect(screen.getByRole('heading', { level: 3, name: 'Goal' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 3, name: 'Goal' })).toBeTruthy();
     expect(screen.getByText('one')).toBeTruthy();
     expect(screen.getByText('first')).toBeTruthy();
     expect(screen.getByText('Intro')).toBeTruthy();
@@ -107,7 +112,7 @@ describe('chapters of the description', () => {
     renderPanel(makeTask({ id: 50, description: SECTIONED }));
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
     await userEvent.click(screen.getByRole('tab', { name: 'Description' }));
-    expect(screen.getByText('one')).toBeTruthy();
+    expect(await screen.findByText('one')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 3, name: 'Goal' })).toBeTruthy();
   });
 
@@ -288,7 +293,7 @@ describe('epic tab', () => {
   it('shows the epic plan of the task in the epic tab', async () => {
     renderPanel(linked(61), { epics: [EPIC_LINKED] });
     await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
-    expect(screen.getByText('Epic plan text.')).toBeTruthy();
+    expect(await screen.findByText('Epic plan text.')).toBeTruthy();
   });
 
   it('shows only task conditions in the dedicated conditions tab', async () => {

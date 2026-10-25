@@ -25,7 +25,7 @@ export function DraftBanner({
           {t('detail.saveError')}
         </p>
       )}
-      <Button type="button" className="detail-btn" disabled={busy} onClick={onFinalize}>
+      <Button type="button" size="s" className="detail-btn" disabled={busy} onClick={onFinalize}>
         {t('draft.finalize')}
       </Button>
     </section>

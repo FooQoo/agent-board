@@ -19,7 +19,7 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Group and order tasks | `epic`, `progress` |
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
-| Run the server and agent access | `serve`, `setup`, `hook` |
+| Run the server and agent access | `serve`, `stop`, `setup`, `hook` |
 | Delete things (people only) | `rm`, `project rm`, `epic rm`, `init` |
 
 ## Add and inspect tasks
@@ -61,7 +61,7 @@ To finish, record the verification in `TASK.md` and set each verified acceptance
 
 ### Ask a question
 
-Use `state ... pending` with `--request-json` to ask a decision; see [Decisions](../use/decisions). For epics and the progress table, see [Epics and progress](../use/epics).
+Use `state ... pending --request-json` to ask a decision. The command waits for an answer by default; use `--no-wait` only when you explicitly want to register the question and return immediately. Waiting requires a running `agboard serve`; `--no-wait` does not. Do not combine `--no-wait` with an integer `wait.timeoutSeconds`: it returns `invalid_argument` (exit 2) without changing the question or task. See [Decisions](../use/decisions) for the three command forms. For epics and the progress table, see [Epics and progress](../use/epics).
 
 ## Edit long text from a file
 
@@ -71,7 +71,7 @@ For longer Markdown, use a file rather than a command-line string:
 agboard --project "My project" edit 1 --desc-file task.md
 ```
 
-Descriptions and epic details (`EPIC.md`) allow up to 50,000 characters, and the file must follow the [Markdown file format](./file-format). Use `--desc -` to read a description from standard input.
+Descriptions allow up to 50,000 characters and epic details (`EPIC.md`) up to 100,000, and the file must follow the [Markdown file format](./file-format). Use `--desc -` to read a description from standard input.
 
 `edit --desc-file` replaces the body and acceptance conditions and keeps the latest history from `TASK.md`; history in the input file is ignored. Moves, state changes, and other operations from the CLI or the UI append history to `TASK.md`, and `show`, `snapshot`, and the browser read that same history.
 
@@ -85,7 +85,7 @@ agboard --project "My project" epic edit LAUNCH --document -
 agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
-`--document` and `--document-file` cannot be given together, and each accepts up to 50,000 characters. The earlier `--plan` and `--plan-file` options were removed; see [Data and backups](../operations/data) for the new names.
+`--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters. The earlier `--plan` and `--plan-file` options were removed; see [Data and backups](../operations/data) for the new names.
 
 ## Filter and list
 
@@ -125,6 +125,31 @@ On success, task mode prints one JSON object and exits 0:
 ```
 
 When there has been no eligible task for the full interval, it prints `{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}` and exits 0. This is a normal idle completion; it does not say that previous work succeeded. `board_unavailable`, `project_not_found`, invalid board data, and invalid arguments remain errors with non-zero exit codes. `--timeout` applies only to `--after` mode; it reports `wait_timeout` as an error and does not answer a Pending question.
+
+## Run the server
+
+`agboard serve` starts the board on `127.0.0.1`. `--port` chooses the port (default 7420). To also connect a phone through ngrok when the server starts, add `--monitor ngrok`:
+
+| Option | Meaning |
+| --- | --- |
+| `--monitor ngrok` | Starts the mobile monitor connection. `ngrok` is the only mode. Needs `NGROK_AUTHTOKEN` in the environment; the token is never passed as an argument. |
+
+The phone is guarded by a 4-digit passcode that is made for each start; there is no sign-in option. An invalid `--monitor` value, a missing `NGROK_AUTHTOKEN`, or an unknown option exits with code 2. If the connection cannot start, `serve` exits with code 1 and does not start.
+
+When the connection is ready, the startup line shows the phone address and the passcode: `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`. With `--json`, the startup line has the `url` of the board and `monitor` with `mode: "ngrok"`, and the phone `url` and `passcode` in `ngrok`. The passcode is printed only here and in the board's connection dialog; tokens and policies are never printed. You can also set up the connection from the board's **Settings**; see the [mobile monitor guide](../operations/mobile-monitor).
+
+### Run in the background
+
+`agboard serve -d` (or `--daemon`) starts the server in the background and returns once it is ready, so the terminal is free and closing it does not stop the server. It prints the same address (and, with `--monitor ngrok`, the phone address and passcode) plus the process ID and the log file. `--port` and `--monitor` work as usual; with `--json`, the startup object also has `pid` and `log`.
+
+```sh
+agboard serve -d
+agboard stop
+```
+
+`agboard stop` shuts down the running server and returns when it has exited. It stops a server started with `serve` or `serve -d`. If no server is running, it says so and exits with code 0. `stop` takes no `--project`.
+
+The background server writes its output to `serve.log` in the data folder. The file is readable only by you, because it holds the phone passcode, and it is replaced at every `serve -d`. If a server is already running, `serve -d` exits with code 1 (`already_serving`). If the background server cannot start (for example the port is in use), `serve -d` exits with code 1 and shows the reason. The server does not restart by itself after a reboot.
 
 ## Set up the shared folder
 

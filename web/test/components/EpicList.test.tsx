@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderDetail } from '../renderDetail';
 import { EpicDetailPanel } from '../../src/pages/epics/ui/EpicDetailPanel';
 import { EpicList, type EpicListProps } from '../../src/pages/epics/ui/EpicList';
 import { selectLocale } from '../../src/shared/i18n';
@@ -71,13 +72,13 @@ describe('EpicList', () => {
         </>
       );
     }
-    const { rerender } = render(<ProtectedDetails requested={PROJECT_A.id} />);
+    const { rerender } = renderDetail(<ProtectedDetails requested={PROJECT_A.id} />);
     await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
     rerender(<ProtectedDetails requested={PROJECT_B.id} />);
     expect(screen.getByTestId('active-project').textContent).toBe(PROJECT_A.id);
-    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByRole('group')).toBeTruthy();
     await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+      within(screen.getByRole('group')).getByRole('button', { name: 'Cancel' }),
     );
     await waitFor(() =>
       expect(screen.getByTestId('active-project').textContent).toBe(PROJECT_B.id),
@@ -144,7 +145,7 @@ describe('EpicList', () => {
 
   it('asks before deleting and deletes after confirmation', async () => {
     const onDelete = vi.fn(async () => {});
-    render(
+    renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
         epic={epic('BUG', { body: 'Plan.' })}
@@ -156,14 +157,14 @@ describe('EpicList', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
     expect(onDelete).not.toHaveBeenCalled();
     await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete epic' }),
+      within(screen.getByRole('group')).getByRole('button', { name: 'Delete epic' }),
     );
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the question open and says why when the delete is refused', async () => {
     const { WriteError } = await import('../../src/shared/api/writeErrors');
-    render(
+    renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
         epic={epic('BUG', { body: 'Plan.' })}
@@ -176,7 +177,7 @@ describe('EpicList', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Delete epic' }));
     await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete epic' }),
+      within(screen.getByRole('group')).getByRole('button', { name: 'Delete epic' }),
     );
     expect((await screen.findByRole('alert')).textContent).toContain('A task still uses this epic');
   });
@@ -198,7 +199,7 @@ describe('EpicDetailPanel', () => {
   it('shows the label, name, and details, and offers edit and close', async () => {
     const onEdit = vi.fn();
     const onClose = vi.fn();
-    render(
+    renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
         epic={epic('BUG', { name: 'Bugs', body: '## Goal\n\nFix it.' })}
@@ -208,7 +209,7 @@ describe('EpicDetailPanel', () => {
       />,
     );
     expect(screen.getByRole('heading', { level: 2, name: 'Bugs' })).toBeTruthy();
-    expect(screen.getByText('Fix it.')).toBeTruthy();
+    expect(await screen.findByText('Fix it.')).toBeTruthy();
     expect(screen.queryByText('No epic details yet')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Edit epic' }));
     expect(onEdit).toHaveBeenCalledTimes(1);
@@ -223,7 +224,7 @@ describe('EpicDetailPanel', () => {
   });
 
   it('marks a draft epic in its details', () => {
-    render(
+    renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
         epic={epic('DRAFTY', { isDraft: true, body: 'Plan.' })}
@@ -235,8 +236,8 @@ describe('EpicDetailPanel', () => {
     expect(screen.getByText('Draft')).toBeTruthy();
   });
 
-  it('says there are no epic details yet when the body is empty', () => {
-    render(
+  it('says there are no epic details yet when the body is empty', async () => {
+    renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
         epic={epic('BUG', { body: '   ' })}
@@ -245,14 +246,14 @@ describe('EpicDetailPanel', () => {
         onClose={() => {}}
       />,
     );
-    expect(screen.getByText('No epic details yet')).toBeTruthy();
+    expect(await screen.findByText('No epic details yet')).toBeTruthy();
     // The details are the only placeholder: the Markdown view's own "No description." is not shown too.
     expect(screen.queryByText('No description.')).toBeNull();
   });
 
-  it('says in Japanese that there are no epic details yet', () => {
+  it('says in Japanese that there are no epic details yet', async () => {
     selectLocale('ja');
-    render(
+    renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
         epic={epic('BUG', { body: '' })}
@@ -261,6 +262,6 @@ describe('EpicDetailPanel', () => {
         onClose={() => {}}
       />,
     );
-    expect(screen.getByText('エピックの詳細はまだありません')).toBeTruthy();
+    expect(await screen.findByText('エピックの詳細はまだありません')).toBeTruthy();
   });
 });

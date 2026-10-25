@@ -73,8 +73,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-icon);
   padding: 0;
   border: 0;
   border-radius: 6px;
@@ -129,11 +129,11 @@
 
 .rich-markdown .milkdown-table-block .line-handle[data-role="x-line-drag-handle"] .add-button {
   width: 16px;
-  height: 28px;
+  height: var(--btn-s-icon);
 }
 
 .rich-markdown .milkdown-table-block .line-handle[data-role="y-line-drag-handle"] .add-button {
-  width: 28px;
+  width: var(--btn-s-icon);
   height: 16px;
 }
 

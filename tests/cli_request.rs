@@ -42,6 +42,7 @@ fn ask(home: &Path, value: &Value) -> String {
             "ai",
             "--request-json",
             &std::fs::read_to_string(file).unwrap(),
+            "--no-wait",
             "--json",
         ],
     );
@@ -92,6 +93,7 @@ fn a_request_with_two_choices_is_saved_in_task_history() {
             "ai",
             "--request-json",
             &request,
+            "--no-wait",
             "--json",
         ],
     );
@@ -161,6 +163,7 @@ fn answering_with_a_note_only_is_accepted() {
             "ai",
             "--request-json",
             &common::decision_json("Which database?"),
+            "--no-wait",
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -426,6 +429,7 @@ fn a_request_file_is_checked_against_the_limits() {
                 "ai",
                 "--request-json",
                 &std::fs::read_to_string(file).unwrap(),
+                "--no-wait",
             ],
         );
         assert_eq!((code, code_name.as_str()), (2, "invalid_value"), "{value}");
@@ -466,6 +470,7 @@ fn a_request_file_is_checked_against_the_limits() {
             "ai",
             "--request-json",
             &std::fs::read_to_string(file).unwrap(),
+            "--no-wait",
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -495,6 +500,7 @@ fn a_request_without_choices_is_refused_and_nothing_changes() {
             "ai",
             "--request-json",
             &value,
+            "--no-wait",
         ],
     );
     assert_ne!(code, 0);
@@ -517,6 +523,7 @@ fn a_request_that_is_not_json_is_refused_and_changes_nothing() {
             "ai",
             "--request-json",
             "not json",
+            "--no-wait",
         ],
     );
     assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
@@ -542,6 +549,7 @@ fn a_request_read_from_standard_input_keeps_its_question_and_choices() {
             "ai",
             "--request-json",
             "-",
+            "--no-wait",
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -590,6 +598,7 @@ fn a_request_with_more_than_ten_choices_is_refused() {
             "ai",
             "--request-json",
             &value,
+            "--no-wait",
         ],
     );
     assert_eq!((code, code_name.as_str()), (2, "invalid_value"));
@@ -678,6 +687,7 @@ fn ask_task(home: &Path, id: &str, value: &Value) -> String {
             "ai",
             "--request-json",
             &value.to_string(),
+            "--no-wait",
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -778,6 +788,7 @@ fn run_states_refused_outside_their_column_or_owner_leave_the_task_unchanged() {
             "human",
             "--request-json",
             &three_choices().to_string(),
+            "--no-wait",
         ],
     );
     assert_ne!(code, 0);
@@ -811,6 +822,7 @@ fn run_states_refused_outside_their_column_or_owner_leave_the_task_unchanged() {
             "ai",
             "--request-json",
             &three_choices().to_string(),
+            "--no-wait",
         ],
     );
     assert_ne!(code, 0);
@@ -863,4 +875,35 @@ fn moving_a_todo_task_cancels_its_request_and_the_old_answer_is_refused() {
 
 fn task_of(home: &Path, id: &str) -> Value {
     json_ok(home, &["--project", "Demo", "show", id, "--json"])["task"].clone()
+}
+
+#[test]
+fn asking_waits_by_default_so_it_needs_a_server_and_the_help_names_no_wait() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let args = |extra: &[&'static str]| {
+        let mut args = vec![
+            "--project",
+            "Demo",
+            "state",
+            "1",
+            "pending",
+            "--actor",
+            "ai",
+            "--request-json",
+            r#"{"question":"Which?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}]}"#,
+            "--json",
+        ];
+        args.extend_from_slice(extra);
+        args
+    };
+    let (code, error) = json_error(home.path(), &args(&[]));
+    assert_eq!((code, error.as_str()), (1, "board_unavailable"));
+    assert_eq!(task(home.path())["agentStatus"], "idle");
+    let asked = json_ok(home.path(), &args(&["--no-wait"]));
+    assert_eq!(asked["task"]["agentStatus"], "pending");
+
+    let (code, out, _) = agboard(home.path(), &["state", "--help"]);
+    assert_eq!(code, 0);
+    assert!(out.contains("--no-wait"), "{out}");
 }

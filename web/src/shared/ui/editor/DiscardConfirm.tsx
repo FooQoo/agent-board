@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
+import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 
 export interface DiscardConfirmProps {
@@ -34,14 +35,14 @@ export function DiscardConfirm({
         <p className="editor-confirm__body" id="editor-confirm-body">
           {t('editor.discardBody')}
         </p>
-        <div className="editor-confirm__actions">
+        <DialogActions>
           <Button type="button" variant="outline" onClick={onKeep}>
             {keepLabel ?? t('editor.keepEditing')}
           </Button>
           <Button type="button" variant="destructive" onClick={onDiscard}>
             {discardLabel ?? t('editor.discard')}
           </Button>
-        </div>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );

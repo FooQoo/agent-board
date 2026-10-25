@@ -1,0 +1,31 @@
+language css
+
+`$sel { $body }` where {
+  $body <: contains `cursor: pointer`,
+  $body <: or {
+    contains `height: $v` where {
+      $v <: r"[0-9.]+px",
+      register_diagnostic(span=$v, message="A clickable element must not have a fixed size. Use the Button size, DialogActions or IconLabel, or explain the exception with a biome-ignore lint/plugin comment.")
+    },
+    contains `min-height: $v` where {
+      $v <: r"[0-9.]+px",
+      register_diagnostic(span=$v, message="A clickable element must not have a fixed size. Use the Button size, DialogActions or IconLabel, or explain the exception with a biome-ignore lint/plugin comment.")
+    },
+    contains `max-height: $v` where {
+      $v <: r"[0-9.]+px",
+      register_diagnostic(span=$v, message="A clickable element must not have a fixed size. Use the Button size, DialogActions or IconLabel, or explain the exception with a biome-ignore lint/plugin comment.")
+    },
+    contains `width: $v` where {
+      $v <: r"[0-9.]+px",
+      register_diagnostic(span=$v, message="A clickable element must not have a fixed size. Use the Button size, DialogActions or IconLabel, or explain the exception with a biome-ignore lint/plugin comment.")
+    },
+    contains `min-width: $v` where {
+      $v <: r"[0-9.]+px",
+      register_diagnostic(span=$v, message="A clickable element must not have a fixed size. Use the Button size, DialogActions or IconLabel, or explain the exception with a biome-ignore lint/plugin comment.")
+    },
+    contains `max-width: $v` where {
+      $v <: r"[0-9.]+px",
+      register_diagnostic(span=$v, message="A clickable element must not have a fixed size. Use the Button size, DialogActions or IconLabel, or explain the exception with a biome-ignore lint/plugin comment.")
+    }
+  }
+}

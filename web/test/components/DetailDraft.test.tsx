@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { renderDetail } from '../renderDetail';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TaskCard } from '../../src/features/tasks/card/TaskCard';
@@ -12,7 +13,7 @@ const noop = () => {};
 const noRemove = async () => true;
 
 function renderPanel(task: TaskModel, onChanged = vi.fn()) {
-  render(
+  renderDetail(
     <DetailPanel
       projectId={PROJECT_A.id}
       task={task}

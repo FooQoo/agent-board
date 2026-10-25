@@ -11,6 +11,11 @@ export const commonEn = {
     light: 'Light',
     dark: 'Dark',
     note: 'Changes apply immediately.',
+    tutorial: {
+      title: 'Tutorial',
+      body: 'Try the basics with sample tasks.',
+      action: 'Try it',
+    },
     themeName: '{{mode}} {{color}}',
     colors: {
       blue: 'Blue',

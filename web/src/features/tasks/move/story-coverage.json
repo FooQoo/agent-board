@@ -17,6 +17,11 @@
               "id": "task-dialogs-movedialog--optional-reason",
               "states": ["custom reason"],
               "interaction": true
+            },
+            {
+              "id": "task-dialogs-movedialog--status-changed-elsewhere",
+              "states": ["status changed elsewhere", "current status shown", "move again"],
+              "interaction": true
             }
           ]
         }

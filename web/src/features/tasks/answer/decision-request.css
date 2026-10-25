@@ -78,29 +78,18 @@
   height: 13px;
 }
 
-/* The buttons of the banners are 33px high; the ones inside the answer form are 29px. */
+/* The banner and answer-form buttons take their size from the Button `size` prop. */
 .detail-btn {
   align-self: flex-start;
-  height: 33px;
-  padding: 0 14px;
   border-radius: 8px;
-  font-size: 13px;
   font-weight: 600;
 }
 
 .detail-btn--sm {
   align-self: auto;
-  height: 29px;
-  font-size: 12px;
-}
-
-.detail-btn--plain {
-  font-weight: 400;
-  color: var(--r-text2);
 }
 
 .detail-btn--quiet {
-  padding: 0 10px;
   font-weight: 400;
   color: var(--r-text2);
 }
@@ -121,7 +110,7 @@
 .detail__answer-input.detail__answer-input {
   min-height: 124px;
   padding: 10px 12px;
-  border-color: var(--r-border);
+  border-color: var(--r-input);
   border-radius: 6px;
   background: var(--r-surface);
   font-size: 13px;

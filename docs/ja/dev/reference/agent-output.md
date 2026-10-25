@@ -94,9 +94,13 @@ taskの項目を省略した例です。
 ```
 
 - `question`: 1〜2,000文字。`choices`: 2〜10件。各`id`は`[A-Za-z0-9_-]`の1〜64文字で依頼内で一意、各`label`は1〜200文字。
-- `wait: {}`を付けると、コマンドが回答まで待ちます。任意の`timeoutSeconds`（1〜86400）で待機時間を制限できますが、質問はPendingのままです。
+- `wait`を省略しても既定で回答まで待ちます。`wait: {}`も互換の明示形式です。`wait: null`と`timeoutSeconds: null`は期限なしです。整数の`timeoutSeconds`（1〜86400）はコマンドの待機だけを制限し、質問はPendingのままです。`--no-wait`は保存と通知の後に待機せず終了します。
 - 待機したコマンドは、更新されたタスクと回答を別々に返します。
 
 ```json
 { "task": { "…": "…" }, "answer": { "actor": "human", "choiceId": "keep", "choiceLabel": "Keep them and migrate", "text": null } }
 ```
+
+## 初回案内のサンプルカード
+
+進行表、hook の出力、`wait --until task` は、`onboardingSample` の識別があるカードを、レーンや状態に関係なく除外します。[エージェント連携](../concepts/agents.md#初回案内のサンプルカード)を参照してください。

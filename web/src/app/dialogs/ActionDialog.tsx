@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Epic, Task, DialogAction } from '../../shared/api/contracts';
+import type { Epic, TaskSummary, DialogAction } from '../../shared/api/contracts';
 import type { ActionDialogData } from '../../features/tasks/model/actionData';
 import { CreateDialog } from '../../features/tasks/create/CreateDialog';
 import { RequestDialog } from '../../features/tasks/request/RequestDialog';
@@ -51,7 +51,7 @@ export function ActionDialog({
   onSubmit: (data: ActionDialogData) => Promise<void>;
   projectId?: string;
   /** Latest tasks of the project, for lane confirmation and the epic task list. */
-  tasks?: readonly Task[];
+  tasks?: readonly TaskSummary[];
   /** The latest epics in the project snapshot, for request creation. */
   epics?: readonly Epic[];
   /** The epic snapshot failed to refresh; do not present the missing list as empty. */

@@ -11,6 +11,7 @@ use std::time::Duration;
 use agent_board::domain::{Actor, Assignee, NewTask, ProjectId};
 use agent_board::file_store::FileStore;
 use agent_board::file_store::index::{ProjectEntry, ProjectIndex};
+use agent_board::file_store::projection::ChangeSet;
 use agent_board::file_store::watch::Watch;
 use chrono::{TimeZone, Utc};
 use tokio::sync::broadcast;
@@ -24,7 +25,7 @@ struct Fixture {
     shared: PathBuf,
     project: ProjectId,
     index: Arc<RwLock<ProjectIndex>>,
-    changed: broadcast::Receiver<()>,
+    changed: broadcast::Receiver<ChangeSet>,
     _watch: Watch,
 }
 
@@ -73,7 +74,7 @@ impl Fixture {
     async fn changed_within(&mut self, limit: Duration) -> bool {
         matches!(
             tokio::time::timeout(limit, self.changed.recv()).await,
-            Ok(Ok(()))
+            Ok(Ok(_))
         )
     }
 

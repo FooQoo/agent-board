@@ -123,21 +123,6 @@
       ]
     },
     {
-      "file": "shared/markdown/LazyMarkdownSections.tsx",
-      "exports": [
-        {
-          "name": "LazyMarkdownSections",
-          "stories": [
-            {
-              "id": "shared-markdown-markdownsections--chapters",
-              "states": ["lazy chapter fallback and loaded content"],
-              "interaction": false
-            }
-          ]
-        }
-      ]
-    },
-    {
       "file": "shared/markdown/MarkdownSections.tsx",
       "exports": [
         {
@@ -149,6 +134,105 @@
               "interaction": false
             }
           ]
+        }
+      ]
+    },
+    {
+      "file": "shared/markdown/MarkdownBlocks.tsx",
+      "owner": "U6",
+      "exports": [
+        {
+          "name": "MarkdownBlocks",
+          "stories": [
+            {
+              "id": "shared-markdown-markdownblocks--short",
+              "states": ["short document", "drawn whole"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--short-ja-dark",
+              "states": ["short document", "Japanese", "dark"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--large-document",
+              "states": ["50,000 characters", "virtualized", "DOM node count"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--large-document-phone-ja-dark",
+              "states": ["50,000 characters", "phone 375px", "Japanese", "dark"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--many-diagrams",
+              "states": ["many diagrams", "drawn near the viewport only"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--many-images",
+              "states": ["many images", "lazy", "size reserved"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--streaming",
+              "states": ["still arriving", "last diagram waits", "partial notice"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--streaming-ja-dark",
+              "states": ["still arriving", "Japanese", "dark"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--scroll-stability",
+              "states": ["pictures of unknown size", "heading stays in place"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/markdown/VirtualMarkdown.tsx",
+      "owner": "U6",
+      "exports": [
+        {
+          "name": "VirtualMarkdown",
+          "stories": [
+            {
+              "id": "shared-markdown-markdownblocks--large-document",
+              "states": ["virtual list"],
+              "interaction": false
+            },
+            {
+              "id": "shared-markdown-markdownblocks--scroll-stability",
+              "states": ["height correction while scrolling"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/markdown/MarkdownBlock.tsx",
+      "owner": "U6",
+      "exports": [
+        {
+          "name": "MarkdownBlock",
+          "stories": [],
+          "exclusion": "Rendered inside MarkdownBlocks; its text, diagram and picture cases are the MarkdownBlocks Stories."
+        }
+      ]
+    },
+    {
+      "file": "shared/markdown/MarkdownContent.tsx",
+      "owner": "U6",
+      "exports": [
+        {
+          "name": "MarkdownContent",
+          "stories": [],
+          "exclusion": "The parsing core of MarkdownView and MarkdownBlocks; both have Stories that cover every Markdown element."
         }
       ]
     }

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { agboard, agboardOk, mainProject, resetBoard, workspace } from '../helpers/agboard';
-import { waitForSync } from '../helpers/ui';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -13,6 +13,8 @@ test.beforeEach(async ({ page }) => {
   agboardOk(mainProject, ['epic', 'add', 'LISTEN', '--name', 'Listening', '--actor', 'ai']);
   await page.goto('/');
   await waitForSync(page);
+  // The epic is known to the server 200 ms after the CLI wrote it: read the board again before the dialog opens.
+  await readBoardAfterReset(page);
 });
 
 test('a submitted request with an epic and image is returned by task wait as an ordinary AI task', async ({

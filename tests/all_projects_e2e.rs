@@ -191,6 +191,7 @@ fn state(home: &Path, project: &str, id: &str, run_state: &str, reason: &str) {
                 "ai",
                 "--request-json",
                 &common::decision_json(reason),
+                "--no-wait",
             ],
         ));
     } else {

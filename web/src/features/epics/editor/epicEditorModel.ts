@@ -1,5 +1,5 @@
 import type { EditorAttachment, StoredAttachment } from '../../../shared/ui/editor/attachmentTypes';
-import type { Task } from '../../../shared/api/contracts';
+import type { TaskSummary } from '../../../shared/api/contracts';
 
 export type EpicSaveStep = 'images' | 'document' | 'details' | 'order';
 export type EpicEditorPanel = 'progress' | 'images';
@@ -13,7 +13,7 @@ export function nameIsValid(name: string): boolean {
 }
 
 /** The order of the tasks of an epic: the saved order first, then unlisted tasks by ID. */
-export function orderOf(priority: readonly number[], members: readonly Task[]): number[] {
+export function orderOf(priority: readonly number[], members: readonly TaskSummary[]): number[] {
   const ids = new Set(members.map((task) => task.id));
   const listed = priority.filter((id) => ids.has(id));
   const rest = members

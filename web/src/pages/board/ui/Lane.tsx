@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { columnLabel } from '../../../features/tasks/model/format';
 import { useScrollCue } from '../../../shared/lib/scroll/useScrollCue';
-import type { Task as TaskModel, ColumnName, EpicRef } from '../../../shared/api/contracts';
+import type { TaskSummary as TaskModel, ColumnName, EpicRef } from '../../../shared/api/contracts';
 import { EpicLabel } from '../../../features/epics/label/EpicLabel';
 import { TaskCard } from '../../../features/tasks/card/TaskCard';
 import { LaneHeader } from './LaneHeader';
@@ -52,6 +52,7 @@ export function Lane({
     <section
       ref={ref}
       className="lane"
+      data-column={column}
       data-drop-target={isDropTarget ? 'true' : 'false'}
       aria-label={columnLabel(column, t)}
     >

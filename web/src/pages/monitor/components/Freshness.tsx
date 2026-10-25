@@ -21,20 +21,24 @@ const icon = {
 export function Freshness({
   state,
   lastFetchedAt,
-  failedCount,
   problemCount,
   onRefresh,
+  refreshing = false,
   compact = false,
 }: {
   state: MonitorFreshnessState;
   lastFetchedAt: string | null;
-  failedCount: number;
   problemCount: number;
   onRefresh(): void;
+  /** A refresh the person asked for is running; the button waits for it. */
+  refreshing?: boolean;
   compact?: boolean;
 }) {
   const { t } = useTranslation();
-  const message = t(`monitor.freshness.${state}`, { failed: failedCount, problems: problemCount });
+  const message =
+    state === 'partial'
+      ? t('dataLayerMonitor.partial', { problems: problemCount })
+      : t(`monitor.freshness.${state}`);
   return (
     <div
       className={`monitor-freshness${compact ? ' monitor-freshness--compact' : ''}`}
@@ -52,9 +56,11 @@ export function Freshness({
         <Button
           type="button"
           variant="outline"
-          size="icon"
+          size="l"
+          iconOnly
           className="monitor-refresh"
           aria-label={t('monitor.refresh')}
+          disabled={refreshing}
           onClick={onRefresh}
         >
           <RefreshCwIcon aria-hidden="true" />

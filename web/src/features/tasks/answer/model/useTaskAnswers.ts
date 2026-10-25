@@ -7,7 +7,7 @@ import type {
   AnswerResult,
   AnswerWriter,
 } from './answer';
-import type { Task, ProjectId } from '../../../../shared/api/contracts';
+import type { TaskSummary, ProjectId } from '../../../../shared/api/contracts';
 
 interface Entry {
   state: AnswerFormState;
@@ -147,7 +147,7 @@ export function useTaskAnswers(
   );
 
   const reconcileTasks = useCallback(
-    (projectId: ProjectId, tasks: readonly Task[]) => {
+    (projectId: ProjectId, tasks: readonly TaskSummary[]) => {
       for (const task of tasks) {
         if (task.taskStatus === 'done') clearTask(projectId, task.id);
       }
@@ -156,7 +156,7 @@ export function useTaskAnswers(
   );
 
   const withSavedAnswers = useCallback(
-    (projectId: ProjectId, tasks: readonly Task[], syncedAt: Date | null) => {
+    (projectId: ProjectId, tasks: readonly TaskSummary[], syncedAt: Date | null) => {
       const syncTime = syncedAt?.getTime() ?? null;
       const byId = new Map(tasks.map((task) => [task.id, task]));
       for (const [key, receipt] of saved.current) {

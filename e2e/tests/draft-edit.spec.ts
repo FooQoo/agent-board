@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson } from '../helpers/agboard';
-import { editorValue, waitForSync } from '../helpers/ui';
+import { editorValue, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // The whole path of a draft on the real page: make a card a draft, edit its body in the rich editor, save it, and
 // hand it back. The CLI shows what was stored. A body keeps the three required headings; edits add text at its end.
@@ -37,6 +37,7 @@ test.beforeEach(async ({ page }) => {
   agboardOk(mainProject, ['add', 'Draft me', '--desc', SEED]);
   await page.goto('/');
   await waitForSync(page);
+  await readBoardAfterReset(page);
   await task(page, id).click();
 });
 

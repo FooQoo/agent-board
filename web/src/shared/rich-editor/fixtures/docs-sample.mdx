@@ -1,0 +1,19 @@
+import { Chart } from './components/chart'
+export const year = 2026
+
+# Quarterly report
+
+Results for {year}, written in MDX.
+
+<Chart year={year} kind="bar" />
+
+<Callout type="note">
+  The component above is not run here.
+</Callout>
+
+- A list item with `code`
+- Another item
+
+export default function Layout({ children }) {
+  return <main>{children}</main>
+}

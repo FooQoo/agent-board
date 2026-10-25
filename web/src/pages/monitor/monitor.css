@@ -45,47 +45,8 @@ body {
   gap: 8px;
   font-size: 14px;
 }
-.monitor-shell > .header .header__settings {
-  width: 44px;
-  height: 44px;
-}
 .monitor-refresh {
   flex: none;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-}
-.monitor-controls {
-  display: flex;
-  flex: none;
-  gap: 8px;
-  min-width: 0;
-}
-.monitor-controls > .project-switcher {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  height: 44px;
-  padding: 0 10px;
-  border: 1px solid var(--r-border);
-  border-radius: 6px;
-  color: var(--r-text);
-  background: var(--r-surface);
-  font-size: 13px;
-}
-.monitor-controls > .project-switcher .project-switcher__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.monitor-route-notice {
-  flex: none;
-  margin: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
-  color: var(--r-text);
-  background: var(--r-pend-bg);
-  font-size: 12px;
 }
 .monitor-summary {
   display: grid;
@@ -96,7 +57,7 @@ body {
 .monitor-summary button {
   display: flex;
   min-width: 0;
-  height: 46px;
+  height: var(--btn-l-h);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -328,9 +289,11 @@ body {
 }
 .monitor-freshness__message {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding-block: 4px;
+  overflow-wrap: anywhere;
+}
+.monitor-drawer__panel > .detail-state__partial {
+  margin-bottom: 12px;
 }
 .monitor-freshness__time {
   margin-left: auto;
@@ -354,7 +317,7 @@ body {
     gap: 4px;
   }
   .monitor-summary button {
-    height: 42px;
+    height: var(--btn-l-h);
   }
   .monitor-card {
     padding: 7px;
@@ -417,8 +380,9 @@ body {
   max-width: none;
   height: min(85dvh, 720px);
   max-height: calc(100dvh - env(safe-area-inset-top));
-  translate: 0 0;
-  transition: translate 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  /* The only writer of the sheet's position besides the enter and exit keyframes: the drag hook sets
+     the pull, and the keyframes start or end at it. */
+  translate: 0 var(--drawer-drag-y, 0px);
   display: flex;
   overflow: hidden;
   border: 1px solid var(--r-border);
@@ -428,18 +392,22 @@ body {
   color: var(--r-text);
   box-shadow: 0 -8px 32px rgb(0 0 0 / 14%);
   outline: none;
-  will-change: translate;
 }
-/* Radix keeps a closing sheet mounted until its animation ends; a dismissed sheet slides on from
-   where the drag left it. */
+/* Radix keeps a closing sheet mounted until its animation ends; the exit keyframe has no start, so a
+   dismissed sheet slides on from where the drag left it. A released sheet returns by transition only
+   while it is open, so a transition and a keyframe never drive translate at once. */
 .mobile-drawer[data-slot="drawer-popup"][data-state="open"] {
   animation: mobile-drawer-in 280ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 .mobile-drawer[data-slot="drawer-popup"][data-state="closed"] {
   animation: mobile-drawer-out 280ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
-.mobile-drawer[data-slot="drawer-popup"][data-swiping] {
-  transition-duration: 0ms;
+.mobile-drawer[data-slot="drawer-popup"][data-swiping],
+.mobile-drawer[data-slot="drawer-popup"][data-settling] {
+  will-change: translate;
+}
+.mobile-drawer[data-slot="drawer-popup"][data-state="open"][data-settling] {
+  transition: translate 280ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 .mobile-drawer__content[data-slot="drawer-content"] {
   display: flex;
@@ -456,7 +424,6 @@ body {
   z-index: 49;
   background: rgb(0 0 0 / 48%);
   opacity: calc(1 - var(--drawer-swipe-progress, 0));
-  transition: opacity 280ms ease;
 }
 .mobile-drawer__overlay[data-state="open"] {
   animation: mobile-drawer-fade-in 280ms ease;
@@ -464,13 +431,14 @@ body {
 .mobile-drawer__overlay[data-state="closed"] {
   animation: mobile-drawer-fade-out 280ms ease forwards;
 }
-.mobile-drawer__overlay[data-swiping] {
-  transition-duration: 0ms;
+.mobile-drawer__overlay[data-state="open"][data-settling] {
+  transition: opacity 280ms ease;
 }
-.mobile-drawer__handle {
+.mobile-drawer__top {
+  flex: none;
   touch-action: none;
 }
-.mobile-drawer__handle:active {
+.mobile-drawer__top:active {
   cursor: grabbing;
 }
 .mobile-drawer__header {
@@ -552,6 +520,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 44px;
+  /* biome-ignore lint/plugin: existing: the drawer close is not on a Button size yet */
   height: 44px;
   padding: 0;
   border: 0;
@@ -572,7 +541,7 @@ body {
 }
 .monitor-drawer__tablist {
   display: grid;
-  height: 44px;
+  height: var(--btn-m-h);
   width: 100%;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -600,7 +569,7 @@ body {
   cursor: pointer;
   justify-content: center;
   min-width: 0;
-  height: 44px;
+  height: var(--btn-m-h);
   padding-inline: 4px;
   gap: 4px;
   font-size: 12px;
@@ -659,7 +628,7 @@ body {
 }
 .monitor-drawer__retry {
   margin-top: 12px;
-  min-height: 40px;
+  min-height: var(--btn-m-h);
   padding: 0 14px;
   border: 1px solid var(--r-border);
   border-radius: 6px;

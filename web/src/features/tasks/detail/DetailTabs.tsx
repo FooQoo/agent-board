@@ -22,7 +22,8 @@ export function DetailTabs({
 }: {
   idBase: string;
   tab: DetailTab;
-  historyCount: number;
+  /** The number of history entries, once they are read. */
+  historyCount?: number;
   onChange: (tab: DetailTab) => void;
 }) {
   const { t } = useTranslation();

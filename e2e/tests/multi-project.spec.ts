@@ -17,6 +17,7 @@ import {
   type Serve,
 } from '../helpers/agboard';
 import { spawn, spawnSync } from 'node:child_process';
+import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
 import { openManualCreateDialog } from '../helpers/ui';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
@@ -26,6 +27,7 @@ import { openManualCreateDialog } from '../helpers/ui';
 
 test.describe.configure({ mode: 'serial' });
 test.use({ baseURL: `http://127.0.0.1:${statesPort}/` });
+const statesOrigin = `http://127.0.0.1:${statesPort}`;
 
 const synced = (page: Page) => page.getByRole('contentinfo').getByRole('status');
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
@@ -174,11 +176,13 @@ test.describe('two projects with the same task numbers', () => {
     await stopServe(serve);
     removeHome(home);
   });
-  test.beforeEach(() => {
+  test.beforeEach(async () => {
     resetAlphaBeta(home);
     alpha = projectId('Alpha', home);
     beta = projectId('Beta', home);
+    await resetPreferences(statesOrigin);
   });
+  test.afterEach(() => resetPreferences(statesOrigin));
 
   test('task #1 and #2 of each project show their own content, and acting in one never changes the other', async ({
     page,
@@ -273,9 +277,10 @@ test.describe('two projects with the same task numbers', () => {
     await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Alpha: choose the license');
     await expect(page.getByText('Beta:')).toHaveCount(0);
 
-    // A change to the shown project still arrives live.
+    // A change to the shown project arrives live. The open details hold it back; it appears about 3 seconds after they close.
     agboardOk('Alpha', ['edit', '1', '--title', 'Alpha: edited from the CLI'], home);
-    await expect(task(page, 1)).toContainText('Alpha: edited from the CLI');
+    await page.getByRole('button', { name: 'Close details' }).click();
+    await expect(task(page, 1)).toContainText('Alpha: edited from the CLI', { timeout: 10_000 });
   });
 
   test('the menu switches projects: the selection clears, the check and left edge line up, and the keyboard works', async ({
@@ -572,7 +577,7 @@ test.describe('two projects with the same task numbers', () => {
     page,
   }) => {
     await open(page, alpha);
-    const boardPath = (id: string) => `**/api/projects/${id}/board`;
+    const boardPath = (id: string) => `**/api/projects/${id}/summary`;
 
     // Alpha -> Beta -> Alpha: Beta's board is slow; Alpha is shown again before it arrives.
     let betaCalls = 0;
@@ -674,7 +679,9 @@ test.describe('two projects with the same task numbers', () => {
     expect(context).not.toContain('Beta');
     expect(context).not.toContain('Use the MIT license, please.');
     expect(context).not.toContain('Resuming with the MIT license.');
-    await expect(task(page, 2)).toContainText('Running');
+    // The open details hold the page's update back; it appears about 3 seconds after they close.
+    await page.getByRole('button', { name: 'Close details' }).click();
+    await expect(task(page, 2)).toContainText('Running', { timeout: 10_000 });
   });
 
   test('the URL names the project: reload, back and forward reproduce it, tabs are independent, a rename keeps it', async ({
@@ -749,7 +756,7 @@ test.describe('two projects with the same task numbers', () => {
     // The board of Beta fails: an explanation with Retry, and another project can be chosen.
     await open(page, alpha);
     let failing = true;
-    await page.route(`**/api/projects/${beta}/board`, async (route) => {
+    await page.route(`**/api/projects/${beta}/summary`, async (route) => {
       if (failing) return route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"x"}}' });
       return route.fallback();
     });
@@ -774,7 +781,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect(page.getByText('Could not load this board.')).toBeVisible();
     await choose(page, 'Alpha');
     await expect(task(page, 1)).toHaveText(/Alpha: draft the release notes/);
-    await page.unroute(`**/api/projects/${beta}/board`);
+    await page.unroute(`**/api/projects/${beta}/summary`);
 
     // The list of projects cannot be loaded: Retry fetches it again.
     let listFails = true;
@@ -836,13 +843,7 @@ test.describe('two projects with the same task numbers', () => {
   });
 
   test('existing screens work in every project: Japanese and the detail width', async ({ page }) => {
-    await page.addInitScript(() => {
-      try {
-        if (!localStorage.getItem('agboard.locale')) localStorage.setItem('agboard.locale', 'ja');
-      } catch {
-        // storage is not available
-      }
-    });
+    await setPreferences({ locale: 'ja' }, statesOrigin);
     await open(page, alpha);
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
     await expect(page.getByRole('button', { name: 'タスク追加' })).toBeVisible();
@@ -888,10 +889,7 @@ test.describe('two projects with the same task numbers', () => {
     await open(page, alpha);
     for (const mode of ['dark', 'light']) {
       for (const accent of accents) {
-        await page.evaluate(
-          ([m, a]) => localStorage.setItem('agboard.theme', JSON.stringify({ mode: m, accent: a })),
-          [mode, accent],
-        );
+        await setPreferences({ theme: { mode: mode as Mode, accent: accent as Accent } }, statesOrigin);
         await page.reload();
         await expect(synced(page)).toHaveText(/^Synced/);
         const root = page.locator('html');
@@ -935,6 +933,8 @@ test.describe('long names and many projects', () => {
     await stopServe(serve);
     removeHome(home);
   });
+  test.beforeEach(() => resetPreferences(statesOrigin));
+  test.afterEach(() => resetPreferences(statesOrigin));
 
   async function headerFits(page: Page): Promise<void> {
     const width = page.viewportSize()!.width;
@@ -1049,7 +1049,7 @@ test.describe('long names and many projects', () => {
   }
 
   test('in Japanese the header controls fit with the 50-character name as well', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('agboard.locale', 'ja'));
+    await setPreferences({ locale: 'ja' }, statesOrigin);
     await page.setViewportSize({ width: 1024, height: 768 });
     await open(page, projectId(longName, home));
     await expect(page.getByRole('button', { name: 'タスク追加' })).toBeVisible();

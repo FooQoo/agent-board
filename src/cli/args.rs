@@ -39,7 +39,8 @@ Commands:
   hook    Add the current progress table to an agent hook
   wait    Wait for a board change or the next task
   workspace Show the project's shared folder and where its files are
-  serve   Show the board in your browser
+  serve   Show the board in your browser (-d runs it in the background)
+  stop    Stop the running server
   setup   Add the shared folder to Codex and Claude Code settings
   connect Install the Skill and Hook for Claude Code and Codex (interactive)
   update  Update the installed Skill and Hook to this version
@@ -132,6 +133,9 @@ pub enum Command {
     Wait(WaitArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
+    /// Stop the running server (the one started with serve, or serve -d)
+    #[command(after_help = "Examples:\n  agboard stop\n  agboard stop --json")]
+    Stop(StopArgs),
     /// Create the data folder and add it to Codex and Claude Code settings
     Setup(SetupArgs),
     /// Install the Skill and Hook for Claude Code and Codex (interactive)
@@ -169,6 +173,7 @@ impl Command {
             Command::Hook(_) => "hook",
             Command::Wait(_) => "wait",
             Command::Serve(_) => "serve",
+            Command::Stop(_) => "stop",
             Command::Setup(_) => "setup",
             Command::Connect(_) => "connect",
             Command::Update(_) => "update",
@@ -178,7 +183,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 21] = [
+pub const SUBCOMMAND_NAMES: [&str; 22] = [
     "project",
     "init",
     "add",
@@ -193,6 +198,7 @@ pub const SUBCOMMAND_NAMES: [&str; 21] = [
     "epic",
     "snapshot",
     "serve",
+    "stop",
     "hook",
     "wait",
     "workspace",
@@ -417,7 +423,7 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft task (isDraft) is read-only for agents: state fails with task_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI task in todo or doing): ask with --request-json (a question and 2 to 10 choices)\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{}}'   # ask, then wait indefinitely\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{\"timeoutSeconds\":600}}'   # wait up to 10 minutes\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
+    after_help = "A draft task (isDraft) is read-only for agents: state fails with task_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it, or an answer to a pending request\n  running  you are working on it now\n  pending  you are waiting for a decision (an AI task in todo or doing): ask with --request-json (a question and 2 to 10 choices); the command waits for the answer unless --no-wait\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'   # ask, then wait for the answer (needs agboard serve)\n  cat question.json | agboard --project demo state 12 pending --actor ai --request-json -\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}' --no-wait   # register the question and return at once\n  agboard --project demo state 12 pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}],\"wait\":{\"timeoutSeconds\":600}}'   # wait up to 10 minutes\n  agboard --project demo state 12 idle --actor human --request ID --choice a\n  agboard --project demo state 12 idle --actor human --request ID --reason \"Go ahead.\""
 )]
 pub struct StateArgs {
     /// ID of the task
@@ -444,9 +450,12 @@ pub struct StateArgs {
     /// Choice of the pending request to answer with (its CHOICE_ID)
     #[arg(long, value_name = "CHOICE_ID")]
     pub choice: Option<String>,
-    /// A pending request as JSON: {"question": "...", "choices": [{"id": "...", "label": "..."}], "wait": {}} with 2 to 10 choices; wait is optional and waits for the answer (optionally limited to 1 to 86400 seconds; needs a running agboard serve); use - to read the JSON from standard input
+    /// A pending request as JSON: {"question": "...", "choices": [{"id": "...", "label": "..."}]} with 2 to 10 choices. The command then waits for the answer, which needs a running agboard serve; "wait": {"timeoutSeconds": 1 to 86400} limits the wait. Use - to read the JSON from standard input
     #[arg(long, value_name = "JSON")]
     pub request_json: Option<String>,
+    /// Only with a pending --request-json: register the question and return at once, without waiting for the answer or a running agboard serve
+    #[arg(long)]
+    pub no_wait: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
@@ -630,10 +639,10 @@ pub struct EpicEditArgs {
 #[derive(Args, Debug, Clone, Default)]
 #[group(id = "document_source", multiple = false)]
 pub struct DocumentArgs {
-    /// Whole EPIC.md text in Markdown, frontmatter included, up to 50,000 characters; use "-" to read it from standard input
+    /// Whole EPIC.md text in Markdown, frontmatter included, up to 100,000 characters; use "-" to read it from standard input
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub document: Option<String>,
-    /// Read the whole EPIC.md text, frontmatter included (up to 50,000 characters), from a file
+    /// Read the whole EPIC.md text, frontmatter included (up to 100,000 characters), from a file
     #[arg(long, value_name = "PATH")]
     pub document_file: Option<PathBuf>,
 }
@@ -794,18 +803,23 @@ pub struct SetupArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(after_help = "Examples:\n  agboard serve\n  agboard serve --port 7500")]
+#[command(
+    after_help = "Examples:\n  agboard serve\n  agboard serve --port 7500\n  agboard serve -d\n  agboard stop\n  NGROK_AUTHTOKEN=... agboard serve --monitor ngrok"
+)]
 pub struct ServeArgs {
     /// Port to listen on (127.0.0.1 only)
     #[arg(long, value_name = "PORT", default_value_t = 7420)]
     pub port: u16,
-    /// Port for the opt-in HTTPS reverse-proxy entry (127.0.0.1 only)
-    #[arg(long, value_name = "PORT")]
-    pub remote_port: Option<u16>,
-    /// Public HTTPS origin accepted by the remote listener; repeat for each origin
-    #[arg(long = "remote-origin", value_name = "HTTPS_ORIGIN", action = clap::ArgAction::Append)]
-    pub remote_origins: Vec<String>,
+    /// Built-in mobile monitor connection; ngrok is the only mode (a 4-digit passcode is printed at startup)
+    #[arg(long, value_name = "MODE")]
+    pub monitor: Option<String>,
+    /// Run in the background and return once the server is ready; stop it with `agboard stop`. Output goes to serve.log in the data directory
+    #[arg(short = 'd', long)]
+    pub daemon: bool,
 }
+
+#[derive(Args, Debug)]
+pub struct StopArgs {}
 
 /// What parsing the command line produced.
 #[derive(Debug)]
@@ -917,7 +931,11 @@ impl Cli {
             (Command::Ls(args), None) if args.all_projects => {}
             // `serve` shows every project, so naming one is a mistake.
             (
-                Command::Serve(_) | Command::Setup(_) | Command::Connect(_) | Command::Update(_),
+                Command::Serve(_)
+                | Command::Stop(_)
+                | Command::Setup(_)
+                | Command::Connect(_)
+                | Command::Update(_),
                 Some(_),
             ) => {
                 return Err(AgboardError::InvalidArgument {
@@ -964,6 +982,7 @@ impl Cli {
             ) => {}
             (
                 Command::Serve(_)
+                | Command::Stop(_)
                 | Command::Setup(_)
                 | Command::Connect(_)
                 | Command::Update(_)
@@ -1015,7 +1034,9 @@ impl Cli {
                 message: "--output PATH is required.".into(),
                 command: Some("attachment get".into()),
             }),
-            Command::Serve(args) => validate_remote_args(args),
+            Command::Serve(args) => {
+                validate_monitor_args(args, &|name| std::env::var(name).ok()).map(|_| ())
+            }
             Command::Wait(args) if args.until.is_none() && args.after.is_none() => {
                 Err(AgboardError::InvalidArgument {
                     message: "wait requires --after CURSOR or --until task --idle-timeout SECONDS.".into(),
@@ -1041,40 +1062,29 @@ impl Cli {
     }
 }
 
-fn validate_remote_args(args: &ServeArgs) -> Result<(), AgboardError> {
-    let invalid = |message: String| AgboardError::InvalidArgument {
-        message,
+/// Check the monitor options of `serve`. `env` reads one environment variable.
+/// `Ok(false)` means no monitor option was given; `Ok(true)` means `--monitor ngrok`
+/// is valid. Every failure is an invalid-argument error (exit code 2) that never
+/// repeats a secret value.
+pub fn validate_monitor_args(
+    args: &ServeArgs,
+    env: &dyn Fn(&str) -> Option<String>,
+) -> Result<bool, AgboardError> {
+    let invalid = |message: &str| AgboardError::InvalidArgument {
+        message: message.to_string(),
         command: Some("serve".into()),
     };
-    match (args.remote_port, args.remote_origins.is_empty()) {
-        (None, false) | (Some(_), true) => {
-            return Err(invalid(
-                "--remote-port and at least one --remote-origin must be given together.".into(),
-            ));
-        }
-        (Some(port), false) if port == args.port => {
-            return Err(invalid("--remote-port must differ from --port.".into()));
-        }
-        _ => {}
+    match args.monitor.as_deref() {
+        None => return Ok(false),
+        Some("ngrok") => {}
+        Some(_) => return Err(invalid("--monitor accepts only ngrok.")),
     }
-    for origin in &args.remote_origins {
-        let parsed = origin
-            .parse::<axum::http::Uri>()
-            .map_err(|_| invalid(format!("Invalid HTTPS origin: {origin}")))?;
-        let authority = parsed.authority().map(|a| a.as_str()).unwrap_or_default();
-        if parsed.scheme_str() != Some("https")
-            || authority.is_empty()
-            || (!parsed.path().is_empty() && parsed.path() != "/")
-            || parsed.query().is_some()
-            || authority.contains('@')
-            || origin != &format!("https://{authority}")
-        {
-            return Err(invalid(format!(
-                "Remote origin must be an HTTPS origin without a path: {origin}"
-            )));
-        }
+    if env("NGROK_AUTHTOKEN").is_none_or(|v| v.is_empty()) {
+        return Err(invalid(
+            "--monitor ngrok requires NGROK_AUTHTOKEN in the environment.",
+        ));
     }
-    Ok(())
+    Ok(true)
 }
 
 impl Cli {

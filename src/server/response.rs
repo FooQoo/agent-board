@@ -41,6 +41,7 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::AttachmentNotFound { .. }
         | AgboardError::EpicNotFound { .. } => StatusCode::NOT_FOUND,
         AgboardError::RequestChanged
+        | AgboardError::TaskStatusChanged { .. }
         | AgboardError::TaskIsDraft { .. }
         | AgboardError::TaskIsDone { .. }
         | AgboardError::TaskNotDraft { .. }
@@ -50,7 +51,9 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::EpicInUse { .. } => StatusCode::CONFLICT,
         AgboardError::TaskArchived { .. }
         | AgboardError::TaskNotArchived { .. }
-        | AgboardError::ArchiveTargetsChanged => StatusCode::CONFLICT,
+        | AgboardError::ArchiveTargetsChanged
+        | AgboardError::OnboardingConflict { .. } => StatusCode::CONFLICT,
+        AgboardError::OnboardingInvalid { .. } => StatusCode::UNPROCESSABLE_ENTITY,
         AgboardError::InvalidArgument { .. }
         | AgboardError::InvalidValue { .. }
         | AgboardError::FileInvalid { .. }
@@ -59,9 +62,27 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::RequestChoiceUnknown { .. }
         | AgboardError::AttachmentLimitExceeded => StatusCode::UNPROCESSABLE_ENTITY,
         AgboardError::DatabaseBusy => StatusCode::SERVICE_UNAVAILABLE,
+        AgboardError::DocsPathInvalid { .. } => StatusCode::BAD_REQUEST,
+        AgboardError::DocsNotFound { .. } => StatusCode::NOT_FOUND,
+        AgboardError::DocsNotMarkdown { .. } | AgboardError::DocsAssetType { .. } => {
+            StatusCode::UNSUPPORTED_MEDIA_TYPE
+        }
+        AgboardError::DocsTooLarge { .. } => StatusCode::PAYLOAD_TOO_LARGE,
+        AgboardError::DocsNotUtf8 { .. } => StatusCode::UNPROCESSABLE_ENTITY,
+        AgboardError::DocsNotImplemented => StatusCode::NOT_IMPLEMENTED,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     };
     error_response(status, error.code(), error.message(), error.reason())
+}
+
+/// A `sections` query that is not `document`, `history` or `document,history`.
+pub(crate) fn invalid_sections() -> Response {
+    error_response(
+        StatusCode::BAD_REQUEST,
+        super::contracts::INVALID_SECTIONS,
+        "sections is invalid.",
+        "sections must be document, history or document,history.",
+    )
 }
 
 pub(crate) fn forbidden(reason: &str) -> Response {

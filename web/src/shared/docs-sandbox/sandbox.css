@@ -1,0 +1,64 @@
+/*
+ * The sandbox page around the shared Markdown typography (markdown.css): the page itself, and the
+ * Docs body's own rules (docs document.css) for headings and tables, so an .mdx preview looks like
+ * an .md file. Colors are the r-* tokens the board sends (see protocol.ts).
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--r-text2);
+}
+
+/* The page scrolls inside the frame; the space at the end matches the Docs body. */
+body {
+  padding-bottom: 28px;
+}
+
+/* The tokens come from the board; these stand in until its first message. */
+:root {
+  --r-surface: #fff;
+  --r-lane: #f1f5f9;
+  --r-border: #e2e8f0;
+  --r-text: #0f172a;
+  --r-text2: #334155;
+  --r-muted: #64748b;
+  --r-accent: #2563eb;
+  --r-accent-soft: #dbeafe;
+  --font-sans: system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+}
+
+/* The Docs body: a rule under each section heading, and tables in a rounded frame. */
+.md--wide h1 {
+  font-size: 40px;
+  line-height: 1.2;
+}
+
+.md--wide h2 {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--r-border);
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md table {
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.md button,
+.md input,
+.md select,
+.md textarea {
+  font: inherit;
+}

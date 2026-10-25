@@ -3,18 +3,23 @@
  * dialog's own surface and close button, with the content in the middle and no other frame.
  */
 
+/*
+ * The frame keeps a band above the picture for the close button, so the button never covers the
+ * picture. The picture is sized to the frame's content box, which is narrower than the screen on a
+ * phone; a picture sized by the screen width would overflow the frame.
+ */
 .lightbox {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: fit-content;
-  max-width: calc(100vw - 64px);
-  padding: 0;
+  width: max-content;
+  max-width: min(calc(100vw - 32px), 1016px);
+  padding: 44px 8px 8px;
   border: 0;
   background: var(--r-surface);
 }
 .lightbox img {
-  max-width: min(90vw, 1000px);
+  max-width: 100%;
   max-height: 85vh;
   object-fit: contain;
   border-radius: 6px;
@@ -26,8 +31,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-icon);
   border: 1px solid var(--r-border);
   border-radius: 6px;
   background: var(--r-surface);
@@ -41,7 +46,7 @@
 
 .lightbox__diagram svg {
   display: block;
-  max-width: min(90vw, 1000px);
+  max-width: 100%;
   max-height: 85vh;
   height: auto;
 }

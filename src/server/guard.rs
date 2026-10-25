@@ -2,8 +2,9 @@
 //! conditions a browser delete must meet. Pure functions over header values so
 //! they can be tested exhaustively; the HTTP layer only extracts the values.
 //!
-//! The header-map checks below are shared by the board router and the remote
-//! monitor's write surface: local writes, remote writes and HTTPS origins.
+//! The header-map checks below are shared by the board router and the
+//! monitor's write surface behind the ngrok entry: local writes, monitor writes
+//! and HTTPS origins.
 
 use std::sync::Arc;
 
@@ -94,11 +95,10 @@ pub(crate) fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a 
     value.to_str().ok()
 }
 
-/// What the remote listener accepts: its loopback port, the canonical HTTPS
-/// origins and their authorities, and the token of the page it serves.
+/// What the monitor's write surface accepts: the canonical HTTPS origins and
+/// their authorities, and the token that only the entry in front can add.
 #[derive(Clone)]
-pub(crate) struct RemoteGuard {
-    pub port: u16,
+pub(crate) struct BoardWriteGuard {
     pub origins: Arc<std::collections::HashSet<String>>,
     pub authorities: Arc<std::collections::HashSet<String>>,
     pub token: String,
@@ -120,10 +120,10 @@ pub(crate) fn write_refusal(headers: &HeaderMap, port: u16, token: &str) -> Opti
     check_delete(&request, port, token).err()
 }
 
-/// Whether a write through the remote listener comes from one of its pages: no
+/// Whether a write to the monitor surface comes from its page: no
 /// forwarding or method-override header, an allowed HTTPS `Origin` whose
-/// authority is the `Host`, `same-origin`, and the page's token.
-pub(crate) fn remote_write_allowed(headers: &HeaderMap, remote: &RemoteGuard) -> bool {
+/// authority is the `Host`, `same-origin`, and the guard's token.
+pub(crate) fn board_write_allowed(headers: &HeaderMap, guard: &BoardWriteGuard) -> bool {
     if [
         "forwarded",
         "x-forwarded-host",
@@ -143,12 +143,12 @@ pub(crate) fn remote_write_allowed(headers: &HeaderMap, remote: &RemoteGuard) ->
     let Some(origin) = origin.and_then(canonical_https_origin) else {
         return false;
     };
-    remote.origins.contains(&origin.0)
+    guard.origins.contains(&origin.0)
         && host
             .and_then(canonical_https_authority)
             .is_some_and(|host| host == origin.1)
         && site == Some("same-origin")
-        && token_matches(token, &remote.token)
+        && token_matches(token, &guard.token)
 }
 
 /// An HTTPS origin written canonically, and its authority. `None` for anything

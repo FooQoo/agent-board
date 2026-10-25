@@ -1,18 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useMemo } from 'react';
 import { MonitorView } from '../View';
 import type { MonitorViewProps } from '../contracts';
-import { createMonitorFixtureProps } from '../mock';
+import { withMonitorFixtureData } from '../fixture-provider';
+import { createMonitorFixture, createMonitorFixtureProps } from '../mock';
 import { MonitorSectionHeader } from './MonitorSectionHeader';
 
 type MonitorGalleryVariant =
   | 'loaded'
   | 'empty'
   | 'loading'
-  | 'partial-fetch-failure'
+  | 'data-problems'
+  | 'refreshing'
+  | 'stale'
   | 'section-headers';
 
 function MonitorGallery({ variant = 'loaded' }: { variant?: MonitorGalleryVariant }) {
-  const fixture = createMonitorFixtureProps();
+  const data = useMemo(() => createMonitorFixture(), []);
+  const fixture = useMemo(() => createMonitorFixtureProps(data), [data]);
 
   if (variant === 'section-headers') {
     return (
@@ -36,27 +41,30 @@ function MonitorGallery({ variant = 'loaded' }: { variant?: MonitorGalleryVarian
       done: [],
       freshness: { ...fixture.freshness, state: 'loading', lastFetchedAt: null },
     };
-  } else if (variant === 'partial-fetch-failure') {
-    const sourceProject = fixture.projects[0];
-    if (!sourceProject) return null;
-    const unavailableProject = {
-      ...sourceProject,
-      id: 'b'.repeat(32),
-      name: 'unavailable-project',
-    };
+  } else if (variant === 'data-problems') {
     props = {
       ...fixture,
-      projects: [...fixture.projects, unavailableProject],
       summary: null,
       freshness: {
         ...fixture.freshness,
         state: 'partial',
-        failedProjectIds: [unavailableProject.id],
+        snapshotProblems: [
+          {
+            projectId: data.projectId,
+            file: 'projects/x/tasks/2/task.json',
+            field: 'body',
+            reason: 'bad',
+          },
+        ],
       },
     };
+  } else if (variant === 'refreshing') {
+    props = { ...fixture, refreshing: true, freshness: { ...fixture.freshness, state: 'syncing' } };
+  } else if (variant === 'stale') {
+    props = { ...fixture, freshness: { ...fixture.freshness, state: 'stale' } };
   }
 
-  return <MonitorView {...props} />;
+  return withMonitorFixtureData(data, <MonitorView {...props} />);
 }
 
 const meta = {
@@ -87,9 +95,21 @@ export const Loading: Story = {
   globals: mobileJapaneseLight,
 };
 
-export const PartialFetchFailure: Story = {
-  args: { variant: 'partial-fetch-failure' },
+export const DataProblems: Story = {
+  args: { variant: 'data-problems' },
   globals: mobileJapaneseLight,
+};
+
+/** A refresh the person asked for is running, so the button waits. */
+export const Refreshing: Story = {
+  args: { variant: 'refreshing' },
+  globals: { locale: 'en', mode: 'dark', accent: 'blue', width: 'phone-375' },
+};
+
+/** The notifications stopped: the list is marked as not current and can be refreshed by hand. */
+export const Stale: Story = {
+  args: { variant: 'stale' },
+  globals: { locale: 'en', mode: 'dark', accent: 'blue', width: 'phone-320' },
 };
 
 export const SectionHeaders: Story = {

@@ -58,7 +58,7 @@ impl FileStore {
         ctx: ChangeContext,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.move_task(project, id, to, ctx, now, true)
+        self.move_task(project, id, to, None, ctx, now, true)
     }
 
     /// The same move for a user in the Web UI: drafts can be moved.
@@ -70,14 +70,31 @@ impl FileStore {
         ctx: ChangeContext,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.move_task(project, id, to, ctx, now, false)
+        self.move_task(project, id, to, None, ctx, now, false)
     }
 
+    /// [`FileStore::move_work_task_for_user`] for a move that names the status it started from:
+    /// a task that is no longer there is `task_status_changed`, so the history never records a
+    /// transition from a status the user did not see.
+    pub fn move_work_task_for_user_from(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        from: Column,
+        to: Column,
+        ctx: ChangeContext,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<TaskView>, AgboardError> {
+        self.move_task(project, id, to, Some(from), ctx, now, false)
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn move_task(
         &self,
         project: &ProjectId,
         id: i64,
         to: Column,
+        from: Option<Column>,
         ctx: ChangeContext,
         now: DateTime<Utc>,
         block_drafts: bool,
@@ -87,6 +104,14 @@ impl FileStore {
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
+        }
+        if let Some(from) = from
+            && task.task_status != from
+        {
+            return Err(AgboardError::TaskStatusChanged {
+                id,
+                current: task.task_status,
+            });
         }
         ensure_ai_task_not_done(&task, ctx.actor)?;
         if block_drafts && task.is_draft {

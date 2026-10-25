@@ -119,21 +119,6 @@
       ]
     },
     {
-      "file": "features/epics/editor/EpicDeleteConfirm.tsx",
-      "exports": [
-        {
-          "name": "EpicDeleteConfirm",
-          "stories": [
-            {
-              "id": "epic-editor-epicdialog--details-save-retry",
-              "states": ["composite rendering"],
-              "interaction": false
-            }
-          ]
-        }
-      ]
-    },
-    {
       "file": "features/epics/editor/EpicProgressList.tsx",
       "exports": [
         {

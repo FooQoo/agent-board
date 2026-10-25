@@ -19,7 +19,7 @@ title: CLIリファレンス
 | タスクをまとめて順序づける | `epic`、`progress` |
 | 変更を待つ | `wait` |
 | プロジェクトとフォルダを管理する | `project`、`workspace` |
-| サーバーを起動し、エージェント連携を設定する | `serve`、`setup`、`hook` |
+| サーバーを起動し、エージェント連携を設定する | `serve`、`stop`、`setup`、`hook` |
 | 削除する（人だけ） | `rm`、`project rm`、`epic rm`、`init` |
 
 ## タスクを追加して確認する
@@ -61,7 +61,7 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 
 ### 質問する
 
-判断を求めるには、`state ... pending`に`--request-json`を付けます。[判断依頼](../use/decisions)を参照してください。エピックと進行表は[エピックと進行表](../use/epics)を参照してください。
+判断を求めるには、`state ... pending --request-json`を使います。回答まで待つのが既定です。質問を登録してすぐに戻るよう明示された場合だけ`--no-wait`を付けます。待機には`agboard serve`が必要ですが、`--no-wait`には不要です。`--no-wait`と整数の`wait.timeoutSeconds`は併用できず、`invalid_argument`（終了コード2）で終わり、質問やタスクは変更されません。3つのコマンド例は[判断依頼](../use/decisions)を参照してください。エピックと進行表は[エピックと進行表](../use/epics)を参照してください。
 
 ## ファイルを使って本文を編集する
 
@@ -71,7 +71,7 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 agboard --project "My project" edit 1 --desc-file task.md
 ```
 
-説明とエピックの詳細（`EPIC.md`）は、50,000文字まで使えます。ファイルは[Markdownファイルの形式](./file-format)に従う必要があります。標準入力から説明を読むには、`--desc -`を使います。
+説明は50,000文字まで、エピックの詳細（`EPIC.md`）は100,000文字まで使えます。ファイルは[Markdownファイルの形式](./file-format)に従う必要があります。標準入力から説明を読むには、`--desc -`を使います。
 
 `edit --desc-file`は、本文と受入条件を置き換え、`TASK.md`の最新の履歴を保ちます。入力ファイルの履歴は無視されます。CLIや画面からの移動・状態の変更などの操作は、`TASK.md`に履歴を追加し、`show`・`snapshot`・ブラウザは同じ履歴を読みます。
 
@@ -85,7 +85,7 @@ agboard --project "My project" epic edit LAUNCH --document -
 agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
-`--document`と`--document-file`は同時に指定できません。どちらも50,000文字まで受け付けます。以前の`--plan`と`--plan-file`は削除されました。新しい名前は[データとバックアップ](../operations/data)の移行の節を参照してください。
+`--document`と`--document-file`は同時に指定できません。どちらも100,000文字まで受け付けます。以前の`--plan`と`--plan-file`は削除されました。新しい名前は[データとバックアップ](../operations/data)の移行の節を参照してください。
 
 ## 一覧を絞り込む
 
@@ -125,6 +125,31 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 ```
 
 指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。Pendingの質問への回答にはなりません。
+
+## サーバーを起動する
+
+`agboard serve`は、`127.0.0.1`でボードを起動します。`--port`でポートを選べます（既定は7420）。サーバーの起動と同時にngrokでスマホを接続するには、`--monitor ngrok`を付けます。
+
+| オプション | 意味 |
+| --- | --- |
+| `--monitor ngrok` | モバイルモニターの接続を始めます。指定できるのは`ngrok`だけです。環境変数`NGROK_AUTHTOKEN`が必要で、トークンを引数で渡すことはできません。 |
+
+スマホは、起動ごとに作る4桁の合言葉で守られます。サインイン用のオプションはありません。`--monitor`の不正な値、`NGROK_AUTHTOKEN`がないこと、未知のオプションは、終了コード2で終了します。接続を開始できなければ、`serve`は起動せず終了コード1で終了します。
+
+接続の準備ができると、起動行にスマホ用のアドレスと合言葉が表示されます: `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`。`--json`では、起動時の行にボードの`url`と`monitor`が入ります（`mode: "ngrok"`と、`ngrok`のスマホ用`url`・`passcode`）。合言葉を出力するのはここと、ボードの接続ダイアログだけです。トークンとポリシーは出力しません。ボードの**設定**からも接続を設定できます。詳しくは[モバイルモニターのガイド](../operations/mobile-monitor)を参照してください。
+
+### バックグラウンドで実行する
+
+`agboard serve -d`（または`--daemon`）は、サーバーをバックグラウンドで起動し、準備ができた時点で戻ります。ターミナルは空き、閉じてもサーバーは止まりません。表示されるのは通常の起動時と同じアドレス（`--monitor ngrok`ではスマホのアドレスと合言葉も）に加えて、プロセスIDとログファイルです。`--port`と`--monitor`は通常どおり使えます。`--json`では、起動時のオブジェクトに`pid`と`log`も入ります。
+
+```sh
+agboard serve -d
+agboard stop
+```
+
+`agboard stop`は、実行中のサーバーを終了し、終了したところで戻ります。`serve`でも`serve -d`でも起動したサーバーを止められます。サーバーが動いていなければ、その旨を表示して終了コード0で終わります。`stop`に`--project`は指定できません。
+
+バックグラウンドのサーバーは、出力をデータフォルダの`serve.log`に書きます。スマホの合言葉が入るため、このファイルは自分だけが読めます。`serve -d`のたびに作り直されます。すでにサーバーが動いている場合、`serve -d`は終了コード1（`already_serving`）で終わります。バックグラウンドのサーバーを起動できない場合（ポートが使用中など）も、理由を表示して終了コード1で終わります。再起動後に自動で立ち上がることはありません。
 
 ## 共有フォルダをセットアップする
 

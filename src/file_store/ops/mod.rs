@@ -12,6 +12,7 @@ mod answer;
 mod attachment;
 mod completion;
 mod epic;
+mod onboarding;
 mod request_create;
 mod task;
 

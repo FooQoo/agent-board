@@ -5,6 +5,9 @@
 //! Servers listen on port 0 in a temporary data directory. The CLI is run as
 //! the real `agboard` binary against the same `AGBOARD_HOME`.
 
+#[path = "support/detail_lines.rs"]
+mod detail_lines;
+
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::Path;
@@ -433,10 +436,15 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
     replace_task_body_preserving_history(&task_path(existing.id), complete);
 
     let server = Running::start(home.path());
-    let board_path = format!("/api/projects/{project}/board");
+    let board_path = format!("/api/projects/{project}/summary");
     let board = server.get(&board_path).json();
     assert_eq!(board["tasks"][0]["taskStatus"], "done");
-    assert_eq!(board["tasks"][0]["history"].as_array().unwrap().len(), 2);
+    let detail = server.get(&format!(
+        "/api/projects/{project}/tasks/{}/detail?sections=history",
+        existing.id
+    ));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert_eq!(detail_lines::history(&detail.body).len(), 2);
 
     replace_task_body_preserving_history(&task_path(edited.id), complete);
     let notified = server.request("POST", "/api/notify", None, &[], None);
@@ -455,7 +463,12 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
         .find(|task| task["id"] == edited.id)
         .unwrap();
     assert_eq!(edited_json["taskStatus"], "done");
-    assert_eq!(edited_json["history"].as_array().unwrap().len(), 2);
+    let detail = server.get(&format!(
+        "/api/projects/{project}/tasks/{}/detail?sections=history",
+        edited.id
+    ));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert_eq!(detail_lines::history(&detail.body).len(), 2);
 
     replace_task_body_preserving_history(&task_path(pending_task.id), complete);
     let answer = server.write(
@@ -526,7 +539,11 @@ fn the_list_has_every_project_by_name_with_no_tasks_and_the_catalog_version() {
     assert_eq!(body["projects"][1]["createdAt"], "2026-10-02T01:00:00Z");
     for project in body["projects"].as_array().unwrap() {
         let keys: Vec<&String> = project.as_object().unwrap().keys().collect();
-        assert_eq!(keys.len(), 3, "only id, name and createdAt: {project}");
+        assert_eq!(
+            keys.len(),
+            4,
+            "only id, name, createdAt and docsPath: {project}"
+        );
     }
     assert!(!reply.body.contains("tasks"));
 }
@@ -581,21 +598,26 @@ fn the_list_needs_an_accepted_host() {
 // ---------------------------------------------------------------- board
 
 #[test]
-fn the_board_has_the_full_history_the_cursor_and_no_next_task_id() {
+fn the_summary_lists_the_tasks_and_the_detail_has_the_full_history_and_no_next_task_id() {
     let (home, a, _) = two_projects();
     store(home.path())
         .move_work_task(&a, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
     let server = Running::start(home.path());
-    let reply = server.get(&format!("/api/projects/{a}/board"));
+    let reply = server.get(&format!("/api/projects/{a}/summary"));
     assert_eq!(reply.status, 200, "{}", reply.body);
     let body = reply.json();
     assert!(!reply.body.contains("nextTaskId"));
     assert_eq!(body["project"]["id"], a.to_string());
-    let version = body["version"].as_str().unwrap();
-    assert_eq!(body["cursor"], format!("f1:{a}:{version}"));
+    assert_eq!(body["version"].as_str().unwrap().len(), 32);
     assert_eq!(body["tasks"].as_array().unwrap().len(), 2);
-    assert_eq!(body["tasks"][1]["history"].as_array().unwrap().len(), 2);
+    assert_eq!(body["tasks"][1]["id"], 2);
+    let detail = server.get(&format!(
+        "/api/projects/{a}/tasks/2/detail?sections=history"
+    ));
+    assert_eq!(detail.status, 200, "{}", detail.body);
+    assert!(!detail.body.contains("nextTaskId"));
+    assert_eq!(detail_lines::history(&detail.body).len(), 2);
 }
 
 #[test]
@@ -605,11 +627,11 @@ fn the_same_task_number_is_read_separately_per_project() {
         .move_work_task(&a, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
     let server = Running::start(home.path());
-    let alpha = server.get(&format!("/api/projects/{a}/board")).json();
-    let beta = server.get(&format!("/api/projects/{b}/board")).json();
+    let alpha = server.get(&format!("/api/projects/{a}/summary")).json();
+    let beta = server.get(&format!("/api/projects/{b}/summary")).json();
     assert_eq!(alpha["tasks"][1]["taskStatus"], "doing");
     assert_eq!(beta["tasks"][1]["taskStatus"], "todo");
-    assert_ne!(alpha["cursor"], beta["cursor"]);
+    assert_ne!(alpha["project"]["id"], beta["project"]["id"]);
 }
 
 #[test]
@@ -617,11 +639,11 @@ fn a_missing_or_malformed_project_and_the_old_routes_are_not_found_or_invalid() 
     let (home, _, _) = two_projects();
     let server = Running::start(home.path());
     let ghost = ProjectId::generate().unwrap();
-    let reply = server.get(&format!("/api/projects/{ghost}/board"));
+    let reply = server.get(&format!("/api/projects/{ghost}/summary"));
     assert_eq!(reply.status, 404);
     assert_eq!(reply.code(), "project_not_found");
     for bad in ["not-an-id", "ABCDEF0123456789ABCDEF0123456789", "alpha"] {
-        let reply = server.get(&format!("/api/projects/{bad}/board"));
+        let reply = server.get(&format!("/api/projects/{bad}/summary"));
         assert_eq!(reply.status, 422, "{bad}: {}", reply.body);
         assert_eq!(reply.code(), "invalid_value");
     }
@@ -709,6 +731,34 @@ fn moving_task_one_in_alpha_does_not_move_task_one_in_beta() {
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(reply.json()["task"]["taskStatus"], "doing");
     assert_eq!(snapshot_json(home.path(), &b), before_b);
+}
+
+#[test]
+fn a_move_from_a_status_the_task_has_left_is_refused_and_changes_nothing() {
+    let (home, a, _b) = two_projects();
+    // Another change moves the task while the page still shows it in Todo.
+    store(home.path())
+        .move_work_task(&a, 1, Column::Doing, ctx("Started elsewhere"), t(4))
+        .unwrap();
+    let before = snapshot_json(home.path(), &a);
+    let server = Running::start(home.path());
+    let stale = server.write(
+        "POST",
+        &format!("/api/projects/{a}/tasks/1/move"),
+        Some(r#"{"taskStatus":"done","fromStatus":"todo","reason":"Finish"}"#),
+    );
+    assert_eq!(stale.status, 409, "{}", stale.body);
+    assert_eq!(stale.code(), "task_status_changed");
+    assert_eq!(stale.json()["currentStatus"], "doing");
+    assert_eq!(snapshot_json(home.path(), &a), before);
+
+    let current = server.write(
+        "POST",
+        &format!("/api/projects/{a}/tasks/1/move"),
+        Some(r#"{"taskStatus":"done","fromStatus":"doing","reason":"Finish"}"#),
+    );
+    assert_eq!(current.status, 200, "{}", current.body);
+    assert_eq!(current.json()["task"]["taskStatus"], "done");
 }
 
 fn pending_request(home: &Path, id: &ProjectId) -> String {
@@ -803,7 +853,7 @@ fn deleting_in_one_project_leaves_the_other_untouched() {
 fn a_write_to_a_project_that_was_deleted_is_404_and_never_lands_in_another() {
     let (home, a, b) = two_projects();
     let server = Running::start(home.path());
-    let _ = server.get(&format!("/api/projects/{a}/board"));
+    let _ = server.get(&format!("/api/projects/{a}/summary"));
     // Deleted by the CLI while the page still shows it. The same name comes
     // back as a different project.
     store(home.path()).delete_project(&a).unwrap();
@@ -828,7 +878,10 @@ fn a_write_to_a_project_that_was_deleted_is_404_and_never_lands_in_another() {
         assert_eq!(reply.status, 404, "{method} {path}: {}", reply.body);
         assert_eq!(reply.code(), "project_not_found");
     }
-    assert_eq!(server.get(&format!("/api/projects/{a}/board")).status, 404);
+    assert_eq!(
+        server.get(&format!("/api/projects/{a}/summary")).status,
+        404
+    );
     assert_eq!(snapshot_json(home.path(), &again), before_again);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 }
@@ -842,7 +895,7 @@ fn renaming_a_project_keeps_the_same_id_working() {
         &["--project", "alpha", "project", "rename", "renamed"],
     );
     assert_eq!(code, 0, "{err}");
-    let board = read_until(&server, &format!("/api/projects/{a}/board"), |b| {
+    let board = read_until(&server, &format!("/api/projects/{a}/summary"), |b| {
         b["project"]["name"] == "renamed"
     });
     assert_eq!(board["project"]["name"], "renamed");
@@ -1040,7 +1093,7 @@ fn a_cli_change_reaches_an_open_event_stream_after_ready() {
     // The viewer can now read the change from the list and the board.
     let list = server.get("/api/projects").json();
     let alpha = list["projects"][0]["id"].as_str().unwrap().to_string();
-    let board = server.get(&format!("/api/projects/{alpha}/board")).json();
+    let board = server.get(&format!("/api/projects/{alpha}/summary")).json();
     assert_eq!(board["tasks"].as_array().unwrap().len(), 3);
 }
 
@@ -1597,7 +1650,7 @@ fn the_page_carries_a_content_security_policy_and_no_referrer() {
     assert_eq!(
         page.header("content-security-policy"),
         Some(
-            "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+            "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self'; connect-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
         )
     );
     assert_eq!(page.header("referrer-policy"), Some("no-referrer"));
@@ -1621,4 +1674,82 @@ fn two_choices() -> Vec<agent_board::file_store::model::Choice> {
             label: "Plan B".into(),
         },
     ]
+}
+
+// ------------------------------------------------------------------- docs
+
+#[test]
+fn a_new_project_has_a_docs_folder_and_its_project_file_names_no_docs_root() {
+    let home = tempfile::tempdir().unwrap();
+    let id = store(home.path()).create_project("alpha", t(0)).unwrap().id;
+    let project = home.path().join("shared/projects").join(id.to_string());
+    assert!(project.join("docs").is_dir());
+    let file = std::fs::read_to_string(project.join("project.json")).unwrap();
+    assert!(!file.contains("docsRoot"), "{file}");
+    // A project file written before the Docs existed reads as it did.
+    assert_eq!(store(home.path()).board(&id).unwrap().project.name, "alpha");
+}
+
+#[test]
+fn starting_the_server_adds_a_missing_docs_folder_and_leaves_existing_ones_alone() {
+    let (home, a, b) = two_projects();
+    let projects = home.path().join("shared/projects");
+    std::fs::remove_dir_all(projects.join(a.to_string()).join("docs")).unwrap();
+    let kept = projects.join(b.to_string()).join("docs");
+    std::fs::create_dir_all(kept.join("sub")).unwrap();
+    std::fs::write(kept.join("sub/note.md"), "keep\r\n").unwrap();
+    let server = Running::start(home.path());
+    assert!(projects.join(a.to_string()).join("docs").is_dir());
+    assert_eq!(
+        std::fs::read_to_string(kept.join("sub/note.md")).unwrap(),
+        "keep\r\n"
+    );
+    server.stop();
+}
+
+#[test]
+fn the_list_names_each_projects_docs_folder() {
+    let (home, a, _b) = two_projects();
+    let server = Running::start(home.path());
+    let body = server.get("/api/projects").json();
+    let listed = body["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["id"] == a.to_string())
+        .unwrap();
+    let expected = std::path::absolute(
+        home.path()
+            .join("shared/projects")
+            .join(a.to_string())
+            .join("docs"),
+    )
+    .unwrap();
+    assert_eq!(listed["docsPath"], expected.to_string_lossy().as_ref());
+    assert!(std::path::Path::new(listed["docsPath"].as_str().unwrap()).is_absolute());
+}
+
+#[test]
+fn changes_in_the_docs_folder_do_not_reload_the_board_or_send_changed() {
+    let (home, a, _b) = two_projects();
+    let server = Running::start(home.path());
+    let docs = home
+        .path()
+        .join("shared/projects")
+        .join(a.to_string())
+        .join("docs");
+    let board = format!("/api/projects/{a}/summary");
+    let before = server.get(&board).json();
+    let mut events = server.events();
+    std::fs::create_dir_all(docs.join("product")).unwrap();
+    std::fs::write(docs.join("product/tasks.md"), "# one\n").unwrap();
+    std::fs::write(docs.join("product/tasks.md"), "# two\n").unwrap();
+    std::fs::remove_file(docs.join("product/tasks.md")).unwrap();
+    assert!(events.stays_quiet());
+    assert_eq!(events.changed_count(), 0);
+    let after = server.get(&board).json();
+    assert_eq!(after["version"], before["version"]);
+    assert_eq!(server.get("/api/projects").json()["catalogVersion"], {
+        store(home.path()).catalog().unwrap().catalog_version
+    });
 }

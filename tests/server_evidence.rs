@@ -248,7 +248,7 @@ fn task_text_evidence_routes_are_removed() {
             .status,
         404
     );
-    let board = server.get(&format!("/api/projects/{pid}/board"));
+    let board = server.get(&format!("/api/projects/{pid}/summary"));
     assert!(board.json().to_string().find("evidence").is_none());
     server.stop();
 }

@@ -1,6 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 import { mainOrigin } from './helpers/agboard';
 
 // The main serve (port 7631) and the CLI helper share one AGBOARD_HOME, so the
@@ -24,5 +24,9 @@ export default defineConfig({
     viewport: { width: 1280, height: 900 },
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+    // The WebKit engine (Safari's), for the phone monitor's address checks.
+    { name: 'webkit-iphone', testMatch: /monitor-address\.spec\.ts$/, use: { ...devices['iPhone 13'] } },
+  ],
 });

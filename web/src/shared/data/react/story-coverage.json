@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "owner": "U5",
+  "files": [
+    {
+      "file": "shared/data/react/provider.tsx",
+      "exports": [
+        {
+          "name": "DataProvider",
+          "stories": [],
+          "exclusion": "DataProvider only gives a React tree one data core and renders its children without any markup of its own; the screens that use it are covered by their stories, and the provider is verified by the React binding tests."
+        }
+      ]
+    }
+  ]
+}

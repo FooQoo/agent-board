@@ -29,7 +29,7 @@ describe('language changes in the app', () => {
         return jsonResponse({}, 404);
       },
     };
-    FakeEventSource.reset();
+    FakeEventSource.reset(true);
     vi.stubGlobal('EventSource', FakeEventSource);
     document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
     fetchMock = stubBackend(backend);
@@ -59,7 +59,8 @@ describe('language changes in the app', () => {
     ).toBe('true');
 
     await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
-    await userEvent.click(screen.getByRole('radio', { name: '日本語' }));
+    // The settings dialog loads on first use, so wait for the option instead of looking once.
+    await userEvent.click(await screen.findByRole('radio', { name: '日本語' }));
     expect(screen.getByRole('dialog', { name: '設定' })).toBeTruthy();
 
     expect(
@@ -81,7 +82,7 @@ describe('language changes in the app', () => {
     expect(document.documentElement.lang).toBe('ja');
     await waitFor(() =>
       expect(
-        fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/board`),
+        fetchMock.mock.calls.filter(([url]) => url === `/api/projects/${PROJECT_A.id}/summary`),
       ).toHaveLength(1),
     );
   });

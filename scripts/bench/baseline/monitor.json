@@ -1,0 +1,2395 @@
+{
+  "schemaVersion": 1,
+  "target": "monitor",
+  "startedAt": "2026-10-22T10:11:01.362Z",
+  "finishedAt": "2026-10-22T10:11:58.715Z",
+  "environment": {
+    "commit": "1a9b2d0",
+    "binary": "target/debug/agboard",
+    "binaryBuild": "cargo build (dev profile)",
+    "os": "macOS 26.6.2 (arm64)",
+    "chromium": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "node": "v24.19.0",
+    "timezone": "UTC",
+    "locale": "en-US",
+    "fixture": {
+      "seed": 20261022,
+      "files": 654,
+      "bytes": 1164537,
+      "digest": "aab0498af1600555ae12c5283dc62638a24a5ead1c646d42d1897609e9c5171d",
+      "attachments": 30
+    },
+    "port": "OS-assigned loopback (phone entrance)"
+  },
+  "runs": [
+    {
+      "index": 1,
+      "metrics": {
+        "firstVisibleMs": 1349,
+        "load.requests.document": 1,
+        "load.bytes.document": 1093,
+        "load.requests.api": 11,
+        "load.bytes.api": 4599133,
+        "load.requests.static": 7,
+        "load.bytes.static": 254765,
+        "load.requests.stream": 1,
+        "load.bytes.stream": 0,
+        "load.requests.inline": 1,
+        "load.bytes.inline": 0,
+        "load.requests.total": 21,
+        "load.bytes.total": 4854991,
+        "heavyOpenMs": 299,
+        "heavy.requests.document": 0,
+        "heavy.bytes.document": 0,
+        "heavy.requests.api": 5,
+        "heavy.bytes.api": 1530,
+        "heavy.requests.static": 34,
+        "heavy.bytes.static": 661819,
+        "heavy.requests.stream": 0,
+        "heavy.bytes.stream": 0,
+        "heavy.requests.inline": 0,
+        "heavy.bytes.inline": 0,
+        "heavy.requests.total": 39,
+        "heavy.bytes.total": 663349,
+        "domNodes": 6815,
+        "jsHeapUsedBytes": 65593796,
+        "longtaskCount": 2,
+        "longtaskTotalMs": 229,
+        "statusDetectedMs": 1718,
+        "statusMs": 4607,
+        "status.requests.document": 0,
+        "status.bytes.document": 0,
+        "status.requests.api": 3,
+        "status.bytes.api": 2194633,
+        "status.requests.static": 0,
+        "status.bytes.static": 0,
+        "status.requests.stream": 0,
+        "status.bytes.stream": 0,
+        "status.requests.inline": 0,
+        "status.bytes.inline": 0,
+        "status.requests.total": 3,
+        "status.bytes.total": 2194633
+      },
+      "routes": {
+        "load": {
+          "/monitor/": {
+            "requests": 1,
+            "bytes": 1093
+          },
+          "/monitor/assets/monitor/monitor-fXZjssrh.css": {
+            "requests": 1,
+            "bytes": 16074
+          },
+          "/monitor/assets/monitor/monitor-z8xW63iq.js": {
+            "requests": 1,
+            "bytes": 143509
+          },
+          "/monitor/assets/monitor/chunk-rolldown-runtime-hePW80VL.js": {
+            "requests": 1,
+            "bytes": 760
+          },
+          "/monitor/assets/monitor/chunk-createLucideIcon-gUceKo_V.js": {
+            "requests": 1,
+            "bytes": 28746
+          },
+          "/monitor/api/session": {
+            "requests": 1,
+            "bytes": 292
+          },
+          "data: (inline)": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/monitor/api/unlock": {
+            "requests": 1,
+            "bytes": 505
+          },
+          "/monitor/api/projects": {
+            "requests": 4,
+            "bytes": 1608
+          },
+          "/monitor/api/preferences": {
+            "requests": 2,
+            "bytes": 624
+          },
+          "/monitor/assets/monitor/chunk-SettingsDialog-DAxoKjPu.js": {
+            "requests": 1,
+            "bytes": 2101
+          },
+          "/monitor/api/events": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/monitor/assets/monitor/chunk-MonitorDetailDrawer-Bk3wz7nx.js": {
+            "requests": 1,
+            "bytes": 60942
+          },
+          "/monitor/api/projects/:id/board": {
+            "requests": 2,
+            "bytes": 4387406
+          },
+          "/monitor/assets/monitor/chunk-dialog-BLvQIK1u.js": {
+            "requests": 1,
+            "bytes": 2633
+          },
+          "/monitor/api/projects/:id/epics": {
+            "requests": 1,
+            "bytes": 208698
+          }
+        },
+        "heavy": {
+          "/monitor/api/projects/:id/tasks/:n/attachments/:id": {
+            "requests": 5,
+            "bytes": 1530
+          },
+          "/monitor/assets/monitor/chunk-mermaid.core-jMXYr-iq.js": {
+            "requests": 1,
+            "bytes": 27465
+          },
+          "/monitor/assets/monitor/chunk-preload-helper-oCYlU9a4.js": {
+            "requests": 1,
+            "bytes": 1137
+          },
+          "/monitor/assets/monitor/chunk-chunk-Y2CYZVJY-DsF7k-Jl.js": {
+            "requests": 1,
+            "bytes": 475
+          },
+          "/monitor/assets/monitor/chunk-src-BuR9lG3U.js": {
+            "requests": 1,
+            "bytes": 16199
+          },
+          "/monitor/assets/monitor/chunk-chunk-VPRB5NB3-DYzgenmu.js": {
+            "requests": 1,
+            "bytes": 26184
+          },
+          "/monitor/assets/monitor/chunk-chunk-3YJQHVM4-KcLBK8tR.js": {
+            "requests": 1,
+            "bytes": 8805
+          },
+          "/monitor/assets/monitor/chunk-chunk-HJ2JQQFS-GCe1AGBI.js": {
+            "requests": 1,
+            "bytes": 3009
+          },
+          "/monitor/assets/monitor/chunk-purify.es--06brOip.js": {
+            "requests": 1,
+            "bytes": 11354
+          },
+          "/monitor/assets/monitor/chunk-chunk-DUW6YSOI-BgS-a7Ky.js": {
+            "requests": 1,
+            "bytes": 794
+          },
+          "/monitor/assets/monitor/chunk-chunk-4EA7E6EY-BTlUFwUh.js": {
+            "requests": 1,
+            "bytes": 1285
+          },
+          "/monitor/assets/monitor/chunk-chunk-E2ZNV5FY-DQTHDtxH.js": {
+            "requests": 1,
+            "bytes": 16849
+          },
+          "/monitor/assets/monitor/chunk-chunk-NTY3LDVX-BqcBaPWN.js": {
+            "requests": 1,
+            "bytes": 4503
+          },
+          "/monitor/assets/monitor/chunk-chunk-DBDB3WZW-hylVVe9A.js": {
+            "requests": 1,
+            "bytes": 1128
+          },
+          "/monitor/assets/monitor/chunk-rolldown-runtime-Dd_uD5pT.js": {
+            "requests": 1,
+            "bytes": 959
+          },
+          "/monitor/assets/monitor/chunk-chunk-2BW5OAIV-BFXRjs6G.js": {
+            "requests": 1,
+            "bytes": 8495
+          },
+          "/monitor/assets/monitor/chunk-chunk-XC4XBNZT-CkH4bKj3.js": {
+            "requests": 1,
+            "bytes": 29309
+          },
+          "/monitor/assets/monitor/chunk-dist-QJO80J_y.js": {
+            "requests": 1,
+            "bytes": 1316
+          },
+          "/monitor/assets/monitor/chunk-chunk-J5ZVWO5B-Dq9GsbUE.js": {
+            "requests": 1,
+            "bytes": 768
+          },
+          "/monitor/assets/monitor/chunk-line-CHEnPIbT.js": {
+            "requests": 1,
+            "bytes": 807
+          },
+          "/monitor/assets/monitor/chunk-rough.esm-Dy-Kn_BL.js": {
+            "requests": 1,
+            "bytes": 9112
+          },
+          "/monitor/assets/monitor/chunk-path-fybaL0A-.js": {
+            "requests": 1,
+            "bytes": 1309
+          },
+          "/monitor/assets/monitor/chunk-array-BifhSqXX.js": {
+            "requests": 1,
+            "bytes": 444
+          },
+          "/monitor/assets/monitor/chunk-flowDiagram-OXPTDLAJ-CBJ7T8rg.js": {
+            "requests": 1,
+            "bytes": 655
+          },
+          "/monitor/assets/monitor/chunk-chunk-7TKQ45FW-Dwl8VV2T.js": {
+            "requests": 1,
+            "bytes": 1221
+          },
+          "/monitor/assets/monitor/chunk-chunk-XXDRQBXY-CXEpsXr7.js": {
+            "requests": 1,
+            "bytes": 560
+          },
+          "/monitor/assets/monitor/chunk-chunk-KQW6MTUR-BZq-9p-E.js": {
+            "requests": 1,
+            "bytes": 734
+          },
+          "/monitor/assets/monitor/chunk-chunk-EU5HNXII-CWrf_N4x.js": {
+            "requests": 1,
+            "bytes": 20351
+          },
+          "/monitor/assets/monitor/chunk-channel-BP0t41Qv.js": {
+            "requests": 1,
+            "bytes": 457
+          },
+          "/monitor/assets/monitor/chunk-chunk-5VM5RSS4-DfXEBQKp.js": {
+            "requests": 1,
+            "bytes": 606
+          },
+          "/monitor/assets/monitor/chunk-elk-IJKZMXRS-DAblYahg.js": {
+            "requests": 1,
+            "bytes": 449000
+          },
+          "/monitor/assets/monitor/chunk-chunk-HTAEGDNF-C4v8dJ05.js": {
+            "requests": 1,
+            "bytes": 2825
+          },
+          "/monitor/assets/monitor/chunk-chunk-FVRAUYC3-BVt4R9Fv.js": {
+            "requests": 1,
+            "bytes": 4565
+          },
+          "/monitor/assets/monitor/chunk-graphlib-CjI3ttgK.js": {
+            "requests": 1,
+            "bytes": 8394
+          },
+          "/monitor/assets/monitor/chunk-isObject-BNleAbAq.js": {
+            "requests": 1,
+            "bytes": 745
+          }
+        },
+        "status": {
+          "/monitor/api/projects": {
+            "requests": 2,
+            "bytes": 804
+          },
+          "/monitor/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193829
+          }
+        }
+      },
+      "pageErrors": 0
+    },
+    {
+      "index": 2,
+      "metrics": {
+        "firstVisibleMs": 859,
+        "load.requests.document": 1,
+        "load.bytes.document": 1093,
+        "load.requests.api": 11,
+        "load.bytes.api": 4599133,
+        "load.requests.static": 7,
+        "load.bytes.static": 254765,
+        "load.requests.stream": 1,
+        "load.bytes.stream": 0,
+        "load.requests.inline": 1,
+        "load.bytes.inline": 0,
+        "load.requests.total": 21,
+        "load.bytes.total": 4854991,
+        "heavyOpenMs": 282,
+        "heavy.requests.document": 0,
+        "heavy.bytes.document": 0,
+        "heavy.requests.api": 5,
+        "heavy.bytes.api": 1530,
+        "heavy.requests.static": 34,
+        "heavy.bytes.static": 661819,
+        "heavy.requests.stream": 0,
+        "heavy.bytes.stream": 0,
+        "heavy.requests.inline": 0,
+        "heavy.bytes.inline": 0,
+        "heavy.requests.total": 39,
+        "heavy.bytes.total": 663349,
+        "domNodes": 6815,
+        "jsHeapUsedBytes": 65443128,
+        "longtaskCount": 1,
+        "longtaskTotalMs": 153,
+        "statusDetectedMs": 1716,
+        "statusMs": 3717,
+        "status.requests.document": 0,
+        "status.bytes.document": 0,
+        "status.requests.api": 3,
+        "status.bytes.api": 2194633,
+        "status.requests.static": 0,
+        "status.bytes.static": 0,
+        "status.requests.stream": 0,
+        "status.bytes.stream": 0,
+        "status.requests.inline": 0,
+        "status.bytes.inline": 0,
+        "status.requests.total": 3,
+        "status.bytes.total": 2194633
+      },
+      "routes": {
+        "load": {
+          "/monitor/": {
+            "requests": 1,
+            "bytes": 1093
+          },
+          "/monitor/assets/monitor/monitor-fXZjssrh.css": {
+            "requests": 1,
+            "bytes": 16074
+          },
+          "/monitor/assets/monitor/monitor-z8xW63iq.js": {
+            "requests": 1,
+            "bytes": 143509
+          },
+          "/monitor/assets/monitor/chunk-rolldown-runtime-hePW80VL.js": {
+            "requests": 1,
+            "bytes": 760
+          },
+          "/monitor/assets/monitor/chunk-createLucideIcon-gUceKo_V.js": {
+            "requests": 1,
+            "bytes": 28746
+          },
+          "/monitor/api/session": {
+            "requests": 1,
+            "bytes": 292
+          },
+          "data: (inline)": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/monitor/api/unlock": {
+            "requests": 1,
+            "bytes": 505
+          },
+          "/monitor/api/projects": {
+            "requests": 4,
+            "bytes": 1608
+          },
+          "/monitor/api/preferences": {
+            "requests": 2,
+            "bytes": 624
+          },
+          "/monitor/assets/monitor/chunk-SettingsDialog-DAxoKjPu.js": {
+            "requests": 1,
+            "bytes": 2101
+          },
+          "/monitor/api/events": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/monitor/assets/monitor/chunk-MonitorDetailDrawer-Bk3wz7nx.js": {
+            "requests": 1,
+            "bytes": 60942
+          },
+          "/monitor/api/projects/:id/board": {
+            "requests": 2,
+            "bytes": 4387406
+          },
+          "/monitor/assets/monitor/chunk-dialog-BLvQIK1u.js": {
+            "requests": 1,
+            "bytes": 2633
+          },
+          "/monitor/api/projects/:id/epics": {
+            "requests": 1,
+            "bytes": 208698
+          }
+        },
+        "heavy": {
+          "/monitor/api/projects/:id/tasks/:n/attachments/:id": {
+            "requests": 5,
+            "bytes": 1530
+          },
+          "/monitor/assets/monitor/chunk-mermaid.core-jMXYr-iq.js": {
+            "requests": 1,
+            "bytes": 27465
+          },
+          "/monitor/assets/monitor/chunk-preload-helper-oCYlU9a4.js": {
+            "requests": 1,
+            "bytes": 1137
+          },
+          "/monitor/assets/monitor/chunk-chunk-Y2CYZVJY-DsF7k-Jl.js": {
+            "requests": 1,
+            "bytes": 475
+          },
+          "/monitor/assets/monitor/chunk-purify.es--06brOip.js": {
+            "requests": 1,
+            "bytes": 11354
+          },
+          "/monitor/assets/monitor/chunk-src-BuR9lG3U.js": {
+            "requests": 1,
+            "bytes": 16199
+          },
+          "/monitor/assets/monitor/chunk-chunk-3YJQHVM4-KcLBK8tR.js": {
+            "requests": 1,
+            "bytes": 8805
+          },
+          "/monitor/assets/monitor/chunk-chunk-VPRB5NB3-DYzgenmu.js": {
+            "requests": 1,
+            "bytes": 26184
+          },
+          "/monitor/assets/monitor/chunk-chunk-HJ2JQQFS-GCe1AGBI.js": {
+            "requests": 1,
+            "bytes": 3009
+          },
+          "/monitor/assets/monitor/chunk-chunk-DUW6YSOI-BgS-a7Ky.js": {
+            "requests": 1,
+            "bytes": 794
+          },
+          "/monitor/assets/monitor/chunk-chunk-4EA7E6EY-BTlUFwUh.js": {
+            "requests": 1,
+            "bytes": 1285
+          },
+          "/monitor/assets/monitor/chunk-chunk-E2ZNV5FY-DQTHDtxH.js": {
+            "requests": 1,
+            "bytes": 16849
+          },
+          "/monitor/assets/monitor/chunk-chunk-DBDB3WZW-hylVVe9A.js": {
+            "requests": 1,
+            "bytes": 1128
+          },
+          "/monitor/assets/monitor/chunk-chunk-XC4XBNZT-CkH4bKj3.js": {
+            "requests": 1,
+            "bytes": 29309
+          },
+          "/monitor/assets/monitor/chunk-rolldown-runtime-Dd_uD5pT.js": {
+            "requests": 1,
+            "bytes": 959
+          },
+          "/monitor/assets/monitor/chunk-chunk-NTY3LDVX-BqcBaPWN.js": {
+            "requests": 1,
+            "bytes": 4503
+          },
+          "/monitor/assets/monitor/chunk-chunk-2BW5OAIV-BFXRjs6G.js": {
+            "requests": 1,
+            "bytes": 8495
+          },
+          "/monitor/assets/monitor/chunk-dist-QJO80J_y.js": {
+            "requests": 1,
+            "bytes": 1316
+          },
+          "/monitor/assets/monitor/chunk-chunk-J5ZVWO5B-Dq9GsbUE.js": {
+            "requests": 1,
+            "bytes": 768
+          },
+          "/monitor/assets/monitor/chunk-line-CHEnPIbT.js": {
+            "requests": 1,
+            "bytes": 807
+          },
+          "/monitor/assets/monitor/chunk-rough.esm-Dy-Kn_BL.js": {
+            "requests": 1,
+            "bytes": 9112
+          },
+          "/monitor/assets/monitor/chunk-path-fybaL0A-.js": {
+            "requests": 1,
+            "bytes": 1309
+          },
+          "/monitor/assets/monitor/chunk-array-BifhSqXX.js": {
+            "requests": 1,
+            "bytes": 444
+          },
+          "/monitor/assets/monitor/chunk-flowDiagram-OXPTDLAJ-CBJ7T8rg.js": {
+            "requests": 1,
+            "bytes": 655
+          },
+          "/monitor/assets/monitor/chunk-chunk-7TKQ45FW-Dwl8VV2T.js": {
+            "requests": 1,
+            "bytes": 1221
+          },
+          "/monitor/assets/monitor/chunk-chunk-XXDRQBXY-CXEpsXr7.js": {
+            "requests": 1,
+            "bytes": 560
+          },
+          "/monitor/assets/monitor/chunk-chunk-KQW6MTUR-BZq-9p-E.js": {
+            "requests": 1,
+            "bytes": 734
+          },
+          "/monitor/assets/monitor/chunk-chunk-EU5HNXII-CWrf_N4x.js": {
+            "requests": 1,
+            "bytes": 20351
+          },
+          "/monitor/assets/monitor/chunk-channel-BP0t41Qv.js": {
+            "requests": 1,
+            "bytes": 457
+          },
+          "/monitor/assets/monitor/chunk-chunk-5VM5RSS4-DfXEBQKp.js": {
+            "requests": 1,
+            "bytes": 606
+          },
+          "/monitor/assets/monitor/chunk-elk-IJKZMXRS-DAblYahg.js": {
+            "requests": 1,
+            "bytes": 449000
+          },
+          "/monitor/assets/monitor/chunk-chunk-HTAEGDNF-C4v8dJ05.js": {
+            "requests": 1,
+            "bytes": 2825
+          },
+          "/monitor/assets/monitor/chunk-chunk-FVRAUYC3-BVt4R9Fv.js": {
+            "requests": 1,
+            "bytes": 4565
+          },
+          "/monitor/assets/monitor/chunk-graphlib-CjI3ttgK.js": {
+            "requests": 1,
+            "bytes": 8394
+          },
+          "/monitor/assets/monitor/chunk-isObject-BNleAbAq.js": {
+            "requests": 1,
+            "bytes": 745
+          }
+        },
+        "status": {
+          "/monitor/api/projects": {
+            "requests": 2,
+            "bytes": 804
+          },
+          "/monitor/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193829
+          }
+        }
+      },
+      "pageErrors": 0
+    },
+    {
+      "index": 3,
+      "metrics": {
+        "firstVisibleMs": 1343,
+        "load.requests.document": 1,
+        "load.bytes.document": 1093,
+        "load.requests.api": 11,
+        "load.bytes.api": 4599133,
+        "load.requests.static": 7,
+        "load.bytes.static": 254765,
+        "load.requests.stream": 1,
+        "load.bytes.stream": 0,
+        "load.requests.inline": 1,
+        "load.bytes.inline": 0,
+        "load.requests.total": 21,
+        "load.bytes.total": 4854991,
+        "heavyOpenMs": 273,
+        "heavy.requests.document": 0,
+        "heavy.bytes.document": 0,
+        "heavy.requests.api": 5,
+        "heavy.bytes.api": 1530,
+        "heavy.requests.static": 34,
+        "heavy.bytes.static": 661819,
+        "heavy.requests.stream": 0,
+        "heavy.bytes.stream": 0,
+        "heavy.requests.inline": 0,
+        "heavy.bytes.inline": 0,
+        "heavy.requests.total": 39,
+        "heavy.bytes.total": 663349,
+        "domNodes": 6815,
+        "jsHeapUsedBytes": 66339956,
+        "longtaskCount": 2,
+        "longtaskTotalMs": 206,
+        "statusDetectedMs": 1818,
+        "statusMs": 3566,
+        "status.requests.document": 0,
+        "status.bytes.document": 0,
+        "status.requests.api": 3,
+        "status.bytes.api": 2194633,
+        "status.requests.static": 0,
+        "status.bytes.static": 0,
+        "status.requests.stream": 0,
+        "status.bytes.stream": 0,
+        "status.requests.inline": 0,
+        "status.bytes.inline": 0,
+        "status.requests.total": 3,
+        "status.bytes.total": 2194633
+      },
+      "routes": {
+        "load": {
+          "/monitor/": {
+            "requests": 1,
+            "bytes": 1093
+          },
+          "/monitor/assets/monitor/monitor-fXZjssrh.css": {
+            "requests": 1,
+            "bytes": 16074
+          },
+          "/monitor/assets/monitor/monitor-z8xW63iq.js": {
+            "requests": 1,
+            "bytes": 143509
+          },
+          "/monitor/assets/monitor/chunk-rolldown-runtime-hePW80VL.js": {
+            "requests": 1,
+            "bytes": 760
+          },
+          "/monitor/assets/monitor/chunk-createLucideIcon-gUceKo_V.js": {
+            "requests": 1,
+            "bytes": 28746
+          },
+          "/monitor/api/session": {
+            "requests": 1,
+            "bytes": 292
+          },
+          "data: (inline)": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/monitor/api/unlock": {
+            "requests": 1,
+            "bytes": 505
+          },
+          "/monitor/api/projects": {
+            "requests": 4,
+            "bytes": 1608
+          },
+          "/monitor/api/preferences": {
+            "requests": 2,
+            "bytes": 624
+          },
+          "/monitor/assets/monitor/chunk-SettingsDialog-DAxoKjPu.js": {
+            "requests": 1,
+            "bytes": 2101
+          },
+          "/monitor/api/events": {
+            "requests": 1,
+            "bytes": 0
+          },
+          "/monitor/assets/monitor/chunk-MonitorDetailDrawer-Bk3wz7nx.js": {
+            "requests": 1,
+            "bytes": 60942
+          },
+          "/monitor/api/projects/:id/board": {
+            "requests": 2,
+            "bytes": 4387406
+          },
+          "/monitor/assets/monitor/chunk-dialog-BLvQIK1u.js": {
+            "requests": 1,
+            "bytes": 2633
+          },
+          "/monitor/api/projects/:id/epics": {
+            "requests": 1,
+            "bytes": 208698
+          }
+        },
+        "heavy": {
+          "/monitor/api/projects/:id/tasks/:n/attachments/:id": {
+            "requests": 5,
+            "bytes": 1530
+          },
+          "/monitor/assets/monitor/chunk-mermaid.core-jMXYr-iq.js": {
+            "requests": 1,
+            "bytes": 27465
+          },
+          "/monitor/assets/monitor/chunk-preload-helper-oCYlU9a4.js": {
+            "requests": 1,
+            "bytes": 1137
+          },
+          "/monitor/assets/monitor/chunk-chunk-Y2CYZVJY-DsF7k-Jl.js": {
+            "requests": 1,
+            "bytes": 475
+          },
+          "/monitor/assets/monitor/chunk-src-BuR9lG3U.js": {
+            "requests": 1,
+            "bytes": 16199
+          },
+          "/monitor/assets/monitor/chunk-purify.es--06brOip.js": {
+            "requests": 1,
+            "bytes": 11354
+          },
+          "/monitor/assets/monitor/chunk-chunk-3YJQHVM4-KcLBK8tR.js": {
+            "requests": 1,
+            "bytes": 8805
+          },
+          "/monitor/assets/monitor/chunk-chunk-VPRB5NB3-DYzgenmu.js": {
+            "requests": 1,
+            "bytes": 26184
+          },
+          "/monitor/assets/monitor/chunk-chunk-HJ2JQQFS-GCe1AGBI.js": {
+            "requests": 1,
+            "bytes": 3009
+          },
+          "/monitor/assets/monitor/chunk-chunk-DUW6YSOI-BgS-a7Ky.js": {
+            "requests": 1,
+            "bytes": 794
+          },
+          "/monitor/assets/monitor/chunk-chunk-E2ZNV5FY-DQTHDtxH.js": {
+            "requests": 1,
+            "bytes": 16849
+          },
+          "/monitor/assets/monitor/chunk-chunk-4EA7E6EY-BTlUFwUh.js": {
+            "requests": 1,
+            "bytes": 1285
+          },
+          "/monitor/assets/monitor/chunk-chunk-DBDB3WZW-hylVVe9A.js": {
+            "requests": 1,
+            "bytes": 1128
+          },
+          "/monitor/assets/monitor/chunk-rolldown-runtime-Dd_uD5pT.js": {
+            "requests": 1,
+            "bytes": 959
+          },
+          "/monitor/assets/monitor/chunk-chunk-XC4XBNZT-CkH4bKj3.js": {
+            "requests": 1,
+            "bytes": 29309
+          },
+          "/monitor/assets/monitor/chunk-chunk-NTY3LDVX-BqcBaPWN.js": {
+            "requests": 1,
+            "bytes": 4503
+          },
+          "/monitor/assets/monitor/chunk-dist-QJO80J_y.js": {
+            "requests": 1,
+            "bytes": 1316
+          },
+          "/monitor/assets/monitor/chunk-chunk-2BW5OAIV-BFXRjs6G.js": {
+            "requests": 1,
+            "bytes": 8495
+          },
+          "/monitor/assets/monitor/chunk-line-CHEnPIbT.js": {
+            "requests": 1,
+            "bytes": 807
+          },
+          "/monitor/assets/monitor/chunk-chunk-J5ZVWO5B-Dq9GsbUE.js": {
+            "requests": 1,
+            "bytes": 768
+          },
+          "/monitor/assets/monitor/chunk-rough.esm-Dy-Kn_BL.js": {
+            "requests": 1,
+            "bytes": 9112
+          },
+          "/monitor/assets/monitor/chunk-path-fybaL0A-.js": {
+            "requests": 1,
+            "bytes": 1309
+          },
+          "/monitor/assets/monitor/chunk-array-BifhSqXX.js": {
+            "requests": 1,
+            "bytes": 444
+          },
+          "/monitor/assets/monitor/chunk-flowDiagram-OXPTDLAJ-CBJ7T8rg.js": {
+            "requests": 1,
+            "bytes": 655
+          },
+          "/monitor/assets/monitor/chunk-chunk-7TKQ45FW-Dwl8VV2T.js": {
+            "requests": 1,
+            "bytes": 1221
+          },
+          "/monitor/assets/monitor/chunk-chunk-XXDRQBXY-CXEpsXr7.js": {
+            "requests": 1,
+            "bytes": 560
+          },
+          "/monitor/assets/monitor/chunk-chunk-KQW6MTUR-BZq-9p-E.js": {
+            "requests": 1,
+            "bytes": 734
+          },
+          "/monitor/assets/monitor/chunk-chunk-EU5HNXII-CWrf_N4x.js": {
+            "requests": 1,
+            "bytes": 20351
+          },
+          "/monitor/assets/monitor/chunk-channel-BP0t41Qv.js": {
+            "requests": 1,
+            "bytes": 457
+          },
+          "/monitor/assets/monitor/chunk-chunk-5VM5RSS4-DfXEBQKp.js": {
+            "requests": 1,
+            "bytes": 606
+          },
+          "/monitor/assets/monitor/chunk-elk-IJKZMXRS-DAblYahg.js": {
+            "requests": 1,
+            "bytes": 449000
+          },
+          "/monitor/assets/monitor/chunk-chunk-HTAEGDNF-C4v8dJ05.js": {
+            "requests": 1,
+            "bytes": 2825
+          },
+          "/monitor/assets/monitor/chunk-chunk-FVRAUYC3-BVt4R9Fv.js": {
+            "requests": 1,
+            "bytes": 4565
+          },
+          "/monitor/assets/monitor/chunk-graphlib-CjI3ttgK.js": {
+            "requests": 1,
+            "bytes": 8394
+          },
+          "/monitor/assets/monitor/chunk-isObject-BNleAbAq.js": {
+            "requests": 1,
+            "bytes": 745
+          }
+        },
+        "status": {
+          "/monitor/api/projects": {
+            "requests": 2,
+            "bytes": 804
+          },
+          "/monitor/api/projects/:id/board": {
+            "requests": 1,
+            "bytes": 2193829
+          }
+        }
+      },
+      "pageErrors": 0
+    }
+  ],
+  "summary": {
+    "firstVisibleMs": {
+      "values": [
+        1349,
+        859,
+        1343
+      ],
+      "median": 1343,
+      "min": 859,
+      "max": 1349,
+      "identical": false
+    },
+    "load.requests.document": {
+      "values": [
+        1,
+        1,
+        1
+      ],
+      "median": 1,
+      "min": 1,
+      "max": 1,
+      "identical": true
+    },
+    "load.bytes.document": {
+      "values": [
+        1093,
+        1093,
+        1093
+      ],
+      "median": 1093,
+      "min": 1093,
+      "max": 1093,
+      "identical": true
+    },
+    "load.requests.api": {
+      "values": [
+        11,
+        11,
+        11
+      ],
+      "median": 11,
+      "min": 11,
+      "max": 11,
+      "identical": true
+    },
+    "load.bytes.api": {
+      "values": [
+        4599133,
+        4599133,
+        4599133
+      ],
+      "median": 4599133,
+      "min": 4599133,
+      "max": 4599133,
+      "identical": true
+    },
+    "load.requests.static": {
+      "values": [
+        7,
+        7,
+        7
+      ],
+      "median": 7,
+      "min": 7,
+      "max": 7,
+      "identical": true
+    },
+    "load.bytes.static": {
+      "values": [
+        254765,
+        254765,
+        254765
+      ],
+      "median": 254765,
+      "min": 254765,
+      "max": 254765,
+      "identical": true
+    },
+    "load.requests.stream": {
+      "values": [
+        1,
+        1,
+        1
+      ],
+      "median": 1,
+      "min": 1,
+      "max": 1,
+      "identical": true
+    },
+    "load.bytes.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "load.requests.inline": {
+      "values": [
+        1,
+        1,
+        1
+      ],
+      "median": 1,
+      "min": 1,
+      "max": 1,
+      "identical": true
+    },
+    "load.bytes.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "load.requests.total": {
+      "values": [
+        21,
+        21,
+        21
+      ],
+      "median": 21,
+      "min": 21,
+      "max": 21,
+      "identical": true
+    },
+    "load.bytes.total": {
+      "values": [
+        4854991,
+        4854991,
+        4854991
+      ],
+      "median": 4854991,
+      "min": 4854991,
+      "max": 4854991,
+      "identical": true
+    },
+    "heavyOpenMs": {
+      "values": [
+        299,
+        282,
+        273
+      ],
+      "median": 282,
+      "min": 273,
+      "max": 299,
+      "identical": false
+    },
+    "heavy.requests.document": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.bytes.document": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.requests.api": {
+      "values": [
+        5,
+        5,
+        5
+      ],
+      "median": 5,
+      "min": 5,
+      "max": 5,
+      "identical": true
+    },
+    "heavy.bytes.api": {
+      "values": [
+        1530,
+        1530,
+        1530
+      ],
+      "median": 1530,
+      "min": 1530,
+      "max": 1530,
+      "identical": true
+    },
+    "heavy.requests.static": {
+      "values": [
+        34,
+        34,
+        34
+      ],
+      "median": 34,
+      "min": 34,
+      "max": 34,
+      "identical": true
+    },
+    "heavy.bytes.static": {
+      "values": [
+        661819,
+        661819,
+        661819
+      ],
+      "median": 661819,
+      "min": 661819,
+      "max": 661819,
+      "identical": true
+    },
+    "heavy.requests.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.bytes.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.requests.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.bytes.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "heavy.requests.total": {
+      "values": [
+        39,
+        39,
+        39
+      ],
+      "median": 39,
+      "min": 39,
+      "max": 39,
+      "identical": true
+    },
+    "heavy.bytes.total": {
+      "values": [
+        663349,
+        663349,
+        663349
+      ],
+      "median": 663349,
+      "min": 663349,
+      "max": 663349,
+      "identical": true
+    },
+    "domNodes": {
+      "values": [
+        6815,
+        6815,
+        6815
+      ],
+      "median": 6815,
+      "min": 6815,
+      "max": 6815,
+      "identical": true
+    },
+    "jsHeapUsedBytes": {
+      "values": [
+        65593796,
+        65443128,
+        66339956
+      ],
+      "median": 65593796,
+      "min": 65443128,
+      "max": 66339956,
+      "identical": false
+    },
+    "longtaskCount": {
+      "values": [
+        2,
+        1,
+        2
+      ],
+      "median": 2,
+      "min": 1,
+      "max": 2,
+      "identical": false
+    },
+    "longtaskTotalMs": {
+      "values": [
+        229,
+        153,
+        206
+      ],
+      "median": 206,
+      "min": 153,
+      "max": 229,
+      "identical": false
+    },
+    "statusDetectedMs": {
+      "values": [
+        1718,
+        1716,
+        1818
+      ],
+      "median": 1718,
+      "min": 1716,
+      "max": 1818,
+      "identical": false
+    },
+    "statusMs": {
+      "values": [
+        4607,
+        3717,
+        3566
+      ],
+      "median": 3717,
+      "min": 3566,
+      "max": 4607,
+      "identical": false
+    },
+    "status.requests.document": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.bytes.document": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.requests.api": {
+      "values": [
+        3,
+        3,
+        3
+      ],
+      "median": 3,
+      "min": 3,
+      "max": 3,
+      "identical": true
+    },
+    "status.bytes.api": {
+      "values": [
+        2194633,
+        2194633,
+        2194633
+      ],
+      "median": 2194633,
+      "min": 2194633,
+      "max": 2194633,
+      "identical": true
+    },
+    "status.requests.static": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.bytes.static": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.requests.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.bytes.stream": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.requests.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.bytes.inline": {
+      "values": [
+        0,
+        0,
+        0
+      ],
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "identical": true
+    },
+    "status.requests.total": {
+      "values": [
+        3,
+        3,
+        3
+      ],
+      "median": 3,
+      "min": 3,
+      "max": 3,
+      "identical": true
+    },
+    "status.bytes.total": {
+      "values": [
+        2194633,
+        2194633,
+        2194633
+      ],
+      "median": 2194633,
+      "min": 2194633,
+      "max": 2194633,
+      "identical": true
+    }
+  },
+  "routeSummary": {
+    "load": {
+      "/monitor/": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1093,
+            1093,
+            1093
+          ],
+          "median": 1093,
+          "identical": true
+        }
+      },
+      "/monitor/api/events": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            0,
+            0,
+            0
+          ],
+          "median": 0,
+          "identical": true
+        }
+      },
+      "/monitor/api/preferences": {
+        "requests": {
+          "values": [
+            2,
+            2,
+            2
+          ],
+          "median": 2,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            624,
+            624,
+            624
+          ],
+          "median": 624,
+          "identical": true
+        }
+      },
+      "/monitor/api/projects": {
+        "requests": {
+          "values": [
+            4,
+            4,
+            4
+          ],
+          "median": 4,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1608,
+            1608,
+            1608
+          ],
+          "median": 1608,
+          "identical": true
+        }
+      },
+      "/monitor/api/projects/:id/board": {
+        "requests": {
+          "values": [
+            2,
+            2,
+            2
+          ],
+          "median": 2,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            4387406,
+            4387406,
+            4387406
+          ],
+          "median": 4387406,
+          "identical": true
+        }
+      },
+      "/monitor/api/projects/:id/epics": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            208698,
+            208698,
+            208698
+          ],
+          "median": 208698,
+          "identical": true
+        }
+      },
+      "/monitor/api/session": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            292,
+            292,
+            292
+          ],
+          "median": 292,
+          "identical": true
+        }
+      },
+      "/monitor/api/unlock": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            505,
+            505,
+            505
+          ],
+          "median": 505,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-MonitorDetailDrawer-Bk3wz7nx.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            60942,
+            60942,
+            60942
+          ],
+          "median": 60942,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-SettingsDialog-DAxoKjPu.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2101,
+            2101,
+            2101
+          ],
+          "median": 2101,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-createLucideIcon-gUceKo_V.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            28746,
+            28746,
+            28746
+          ],
+          "median": 28746,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-dialog-BLvQIK1u.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2633,
+            2633,
+            2633
+          ],
+          "median": 2633,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-rolldown-runtime-hePW80VL.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            760,
+            760,
+            760
+          ],
+          "median": 760,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/monitor-fXZjssrh.css": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            16074,
+            16074,
+            16074
+          ],
+          "median": 16074,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/monitor-z8xW63iq.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            143509,
+            143509,
+            143509
+          ],
+          "median": 143509,
+          "identical": true
+        }
+      },
+      "data: (inline)": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            0,
+            0,
+            0
+          ],
+          "median": 0,
+          "identical": true
+        }
+      }
+    },
+    "heavy": {
+      "/monitor/api/projects/:id/tasks/:n/attachments/:id": {
+        "requests": {
+          "values": [
+            5,
+            5,
+            5
+          ],
+          "median": 5,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1530,
+            1530,
+            1530
+          ],
+          "median": 1530,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-array-BifhSqXX.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            444,
+            444,
+            444
+          ],
+          "median": 444,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-channel-BP0t41Qv.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            457,
+            457,
+            457
+          ],
+          "median": 457,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-2BW5OAIV-BFXRjs6G.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            8495,
+            8495,
+            8495
+          ],
+          "median": 8495,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-3YJQHVM4-KcLBK8tR.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            8805,
+            8805,
+            8805
+          ],
+          "median": 8805,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-4EA7E6EY-BTlUFwUh.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1285,
+            1285,
+            1285
+          ],
+          "median": 1285,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-5VM5RSS4-DfXEBQKp.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            606,
+            606,
+            606
+          ],
+          "median": 606,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-7TKQ45FW-Dwl8VV2T.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1221,
+            1221,
+            1221
+          ],
+          "median": 1221,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-DBDB3WZW-hylVVe9A.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1128,
+            1128,
+            1128
+          ],
+          "median": 1128,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-DUW6YSOI-BgS-a7Ky.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            794,
+            794,
+            794
+          ],
+          "median": 794,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-E2ZNV5FY-DQTHDtxH.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            16849,
+            16849,
+            16849
+          ],
+          "median": 16849,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-EU5HNXII-CWrf_N4x.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            20351,
+            20351,
+            20351
+          ],
+          "median": 20351,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-FVRAUYC3-BVt4R9Fv.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            4565,
+            4565,
+            4565
+          ],
+          "median": 4565,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-HJ2JQQFS-GCe1AGBI.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            3009,
+            3009,
+            3009
+          ],
+          "median": 3009,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-HTAEGDNF-C4v8dJ05.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2825,
+            2825,
+            2825
+          ],
+          "median": 2825,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-J5ZVWO5B-Dq9GsbUE.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            768,
+            768,
+            768
+          ],
+          "median": 768,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-KQW6MTUR-BZq-9p-E.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            734,
+            734,
+            734
+          ],
+          "median": 734,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-NTY3LDVX-BqcBaPWN.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            4503,
+            4503,
+            4503
+          ],
+          "median": 4503,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-VPRB5NB3-DYzgenmu.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            26184,
+            26184,
+            26184
+          ],
+          "median": 26184,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-XC4XBNZT-CkH4bKj3.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            29309,
+            29309,
+            29309
+          ],
+          "median": 29309,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-XXDRQBXY-CXEpsXr7.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            560,
+            560,
+            560
+          ],
+          "median": 560,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-chunk-Y2CYZVJY-DsF7k-Jl.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            475,
+            475,
+            475
+          ],
+          "median": 475,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-dist-QJO80J_y.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1316,
+            1316,
+            1316
+          ],
+          "median": 1316,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-elk-IJKZMXRS-DAblYahg.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            449000,
+            449000,
+            449000
+          ],
+          "median": 449000,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-flowDiagram-OXPTDLAJ-CBJ7T8rg.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            655,
+            655,
+            655
+          ],
+          "median": 655,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-graphlib-CjI3ttgK.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            8394,
+            8394,
+            8394
+          ],
+          "median": 8394,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-isObject-BNleAbAq.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            745,
+            745,
+            745
+          ],
+          "median": 745,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-line-CHEnPIbT.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            807,
+            807,
+            807
+          ],
+          "median": 807,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-mermaid.core-jMXYr-iq.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            27465,
+            27465,
+            27465
+          ],
+          "median": 27465,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-path-fybaL0A-.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1309,
+            1309,
+            1309
+          ],
+          "median": 1309,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-preload-helper-oCYlU9a4.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            1137,
+            1137,
+            1137
+          ],
+          "median": 1137,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-purify.es--06brOip.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            11354,
+            11354,
+            11354
+          ],
+          "median": 11354,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-rolldown-runtime-Dd_uD5pT.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            959,
+            959,
+            959
+          ],
+          "median": 959,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-rough.esm-Dy-Kn_BL.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            9112,
+            9112,
+            9112
+          ],
+          "median": 9112,
+          "identical": true
+        }
+      },
+      "/monitor/assets/monitor/chunk-src-BuR9lG3U.js": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            16199,
+            16199,
+            16199
+          ],
+          "median": 16199,
+          "identical": true
+        }
+      }
+    },
+    "status": {
+      "/monitor/api/projects": {
+        "requests": {
+          "values": [
+            2,
+            2,
+            2
+          ],
+          "median": 2,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            804,
+            804,
+            804
+          ],
+          "median": 804,
+          "identical": true
+        }
+      },
+      "/monitor/api/projects/:id/board": {
+        "requests": {
+          "values": [
+            1,
+            1,
+            1
+          ],
+          "median": 1,
+          "identical": true
+        },
+        "bytes": {
+          "values": [
+            2193829,
+            2193829,
+            2193829
+          ],
+          "median": 2193829,
+          "identical": true
+        }
+      }
+    }
+  },
+  "notes": [
+    "Monitor runs use the phone entrance: monitor_phone_serve backend and a proxy on OS-assigned loopback ports.",
+    "Status change is a CLI move while the monitor is open; the monitor refetches through its change stream."
+  ]
+}

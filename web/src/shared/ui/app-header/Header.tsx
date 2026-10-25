@@ -1,7 +1,15 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArchiveIcon, ArrowLeftIcon, LayersIcon, PlusIcon, SettingsIcon } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
+import {
+  ArchiveIcon,
+  ArrowLeftIcon,
+  BookOpenIcon,
+  LayersIcon,
+  PlusIcon,
+  SettingsIcon,
+} from 'lucide-react';
+import { Button, type ButtonSize } from '@/shared/ui/button';
+import { IconLabel } from '@/shared/ui/icon-label';
 import type { Project, ProjectId } from '../../api/contracts';
 
 export type ViewMode = 'board' | 'archive' | 'epics';
@@ -32,12 +40,18 @@ export interface HeaderProps {
   onAdd?: () => void;
   onArchive?: () => void;
   onEpics?: () => void;
+  /** Opens the project's docs. Offered with Epics and Archive, on the board only. */
+  onDocs?: () => void;
   viewMode?: ViewMode;
   onBack?: () => void;
   /** The project switcher, shown after the slash when the project list is known. */
   projectSwitcher?: ReactNode;
   /** The settings dialog; without it the settings button opens nothing. */
   settings?: HeaderSettings;
+  /** The logo the header shows. The monitor passes its own copy, so the logo loads with the page. */
+  logoSrc?: string;
+  /** The size of the settings button; the monitor uses a larger one for a thumb. */
+  settingsSize?: ButtonSize;
 }
 
 export function Header({
@@ -48,10 +62,13 @@ export function Header({
   onAdd = () => {},
   onArchive = () => {},
   onEpics = () => {},
+  onDocs,
   viewMode = 'board',
   onBack = () => {},
   projectSwitcher = null,
   settings,
+  logoSrc = '/logo-white.png',
+  settingsSize = 'm',
 }: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -65,7 +82,7 @@ export function Header({
     <header className="header">
       <h1 className="header__app">
         <span className="header__logo">
-          <img src="/logo-white.png" alt="" width="24" height="24" />
+          <img src={logoSrc} alt="" width="24" height="24" />
         </span>
         <span>Agent Board</span>
       </h1>
@@ -87,8 +104,9 @@ export function Header({
       <span className="header__spacer" aria-hidden="true" />
       {viewMode === 'board' && canAdd && (
         <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
-          <PlusIcon aria-hidden="true" />
-          {t('dialog.addCard')}
+          <IconLabel icon={PlusIcon} optical={1.5}>
+            {t('dialog.addCard')}
+          </IconLabel>
         </Button>
       )}
       {viewMode === 'archive' || viewMode === 'epics' ? (
@@ -99,11 +117,28 @@ export function Header({
           disabled={switchDisabled}
           onClick={onBack}
         >
-          {viewMode === 'epics' && <ArrowLeftIcon aria-hidden="true" />}
-          {viewMode === 'epics' ? t('epics.back') : t('archive.back')}
+          {viewMode === 'epics' ? (
+            <IconLabel icon={ArrowLeftIcon}>{t('epics.back')}</IconLabel>
+          ) : (
+            t('archive.back')
+          )}
         </Button>
       ) : canAdd ? (
         <>
+          {onDocs && (
+            <Button
+              type="button"
+              variant="outline"
+              className="header__docs"
+              aria-label={t('docs.title')}
+              disabled={switchDisabled}
+              onClick={onDocs}
+            >
+              <IconLabel icon={BookOpenIcon}>
+                <span className="header__docs-label">{t('docs.title')}</span>
+              </IconLabel>
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -111,8 +146,7 @@ export function Header({
             disabled={switchDisabled}
             onClick={onEpics}
           >
-            <LayersIcon aria-hidden="true" />
-            {t('epics.title')}
+            <IconLabel icon={LayersIcon}>{t('epics.title')}</IconLabel>
           </Button>
           <Button
             type="button"
@@ -121,8 +155,7 @@ export function Header({
             disabled={switchDisabled}
             onClick={onArchive}
           >
-            <ArchiveIcon aria-hidden="true" />
-            {t('archive.title')}
+            <IconLabel icon={ArchiveIcon}>{t('archive.title')}</IconLabel>
           </Button>
         </>
       ) : null}
@@ -130,7 +163,8 @@ export function Header({
         ref={settingsButtonRef}
         type="button"
         variant="outline"
-        size="icon"
+        size={settingsSize}
+        iconOnly
         className="header__settings"
         aria-label={t('settings.title')}
         aria-haspopup="dialog"

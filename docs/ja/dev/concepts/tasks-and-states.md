@@ -50,7 +50,7 @@
 | `name` | 前後の空白を除いて1〜100文字、1行。 |
 | `color` | `#RRGGBB`（大文字）。省略時は作成時に乱数で決める。 |
 | `isDraft` | 準備中のエピックの印。所属タスクには影響しない。 |
-| `document`・`body` | frontmatterを含む`EPIC.md`の全文（0〜50,000文字）と、frontmatterを除いた本文。 |
+| `document`・`body` | frontmatterを含む`EPIC.md`の全文（0〜100,000文字）と、frontmatterを除いた本文。 |
 | `priority`・`priorityError` | 所属タスクIDの作業順と、その読み込みに失敗したかどうか。 |
 
 - タスクは`epicId`だけを保存し、ラベルの色と名前は取得時に解決します。

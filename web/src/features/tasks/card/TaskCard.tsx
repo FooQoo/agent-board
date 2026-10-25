@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import type { ReactNode, RefCallback } from 'react';
 import { formatShort, stateLabel } from '../model/format';
 import { AcceptanceProgress } from '../acceptance/AcceptanceProgress';
-import type { EpicRef, Task as TaskModel } from '../../../shared/api/contracts';
+import type { EpicRef, TaskSummary as TaskModel } from '../../../shared/api/contracts';
 import { GripVerticalIcon } from 'lucide-react';
 import { AssigneeLabel } from '../assignee/AssigneeLabel';
 import { StatusLabel } from '../status/StatusLabel';

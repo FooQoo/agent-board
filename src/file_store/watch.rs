@@ -3,11 +3,14 @@
 //! `notify` reports paths on its own thread; the path is turned into a target
 //! (one project, or the whole catalog) and queued. A tokio task keeps a
 //! deadline per target, moved 200 ms forward by every new event, and reloads
-//! the target when the deadline passes. The `changed` broadcast is sent only
-//! when the catalog version changed, so a save of identical content is silent.
+//! the target when the deadline passes. The index compares the projection before and after the
+//! reload, and the change sets it found go to the sink, so a save that changes no parsed data
+//! is silent.
 //!
 //! Temporary files and `.internal/` are not canonical data, and neither is the
-//! project README; their events are dropped before they reach the queue.
+//! project README; their events are dropped before they reach the queue. The
+//! project's `docs/` folder is the user's own files, not board data: its events
+//! wait out the same 200 ms and then go to the docs sink, without a reload.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -16,11 +19,12 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tokio::time::Instant;
 
 use super::FileStore;
 use super::index::ProjectIndex;
+use super::projection::ChangeSink;
 use crate::domain::ProjectId;
 use crate::error::{AgboardError, FileAction};
 
@@ -34,6 +38,24 @@ pub enum Target {
     Project(ProjectId),
     /// Every project, and the list of projects itself.
     All,
+    /// Something in one project's `docs/` folder; announced, never loaded.
+    Docs(ProjectId),
+}
+
+/// Told that files in a project's Docs changed: `Some(project)`, or `None` when
+/// the platform lost events and any project's Docs may have changed.
+#[derive(Clone)]
+pub struct DocsSink(Arc<dyn Fn(Option<ProjectId>) + Send + Sync>);
+
+impl DocsSink {
+    pub fn new(send: impl Fn(Option<ProjectId>) + Send + Sync + 'static) -> DocsSink {
+        DocsSink(Arc::new(send))
+    }
+
+    /// A sink for a caller that does not follow the Docs.
+    pub fn none() -> DocsSink {
+        DocsSink::new(|_| {})
+    }
 }
 
 /// Holds the OS watch. Dropping it stops the events.
@@ -75,6 +97,10 @@ pub fn classify(shared: &Path, path: &Path) -> Option<Target> {
         [projects, id] if projects == "projects" => {
             ProjectId::from_str(id).ok().map(|_| Target::All)
         }
+        // The Docs are the user's files: they are announced, not loaded as board data.
+        [projects, id, docs, ..] if projects == "projects" && docs == "docs" => {
+            ProjectId::from_str(id).ok().map(Target::Docs)
+        }
         [projects, _, file] if projects == "projects" && file == "README.md" => None,
         [projects, id, ..] if projects == "projects" => {
             ProjectId::from_str(id).ok().map(Target::Project)
@@ -90,7 +116,17 @@ impl Watch {
     pub fn start(
         shared: &Path,
         index: Arc<RwLock<ProjectIndex>>,
-        changed: broadcast::Sender<()>,
+        changed: impl Into<ChangeSink>,
+    ) -> Result<(Watch, Reloader), AgboardError> {
+        Watch::start_with_docs(shared, index, changed, DocsSink::none())
+    }
+
+    /// [`Watch::start`], also telling `docs` about changes in the projects' Docs.
+    pub fn start_with_docs(
+        shared: &Path,
+        index: Arc<RwLock<ProjectIndex>>,
+        changed: impl Into<ChangeSink>,
+        docs: DocsSink,
     ) -> Result<(Watch, Reloader), AgboardError> {
         std::fs::create_dir_all(shared).map_err(|e| watch_error(shared, e))?;
         let root = shared.canonicalize().map_err(|e| watch_error(shared, e))?;
@@ -120,12 +156,16 @@ impl Watch {
 
         // Reconcile completed AI work before the first snapshot is published.
         FileStore::open(&root).auto_complete_all(chrono::Utc::now())?;
+        // A guide run whose tab was closed while the server was down is taken back now.
+        FileStore::open(&root).guide_recover(chrono::Utc::now())?;
 
         {
             let mut guard = index.write().unwrap_or_else(|e| e.into_inner());
             guard.reload_all(&root)?;
+            // The first read is the baseline, not a change.
+            guard.take_changes();
         }
-        tokio::spawn(reload_loop(rx, root, index, changed));
+        tokio::spawn(reload_loop(rx, root, index, changed.into(), docs));
         Ok((Watch { _watcher: watcher }, Reloader { tx }))
     }
 }
@@ -143,7 +183,8 @@ async fn reload_loop(
     mut rx: mpsc::UnboundedReceiver<Target>,
     root: PathBuf,
     index: Arc<RwLock<ProjectIndex>>,
-    changed: broadcast::Sender<()>,
+    changed: ChangeSink,
+    docs: DocsSink,
 ) {
     let mut due: HashMap<Target, Instant> = HashMap::new();
     loop {
@@ -165,6 +206,19 @@ async fn reload_loop(
                 for target in &ready {
                     due.remove(target);
                 }
+                for target in &ready {
+                    match target {
+                        Target::Docs(id) => (docs.0)(Some(id.clone())),
+                        // Lost events may have been in any project's Docs.
+                        Target::All => (docs.0)(None),
+                        Target::Project(_) => {}
+                    }
+                }
+                let ready: Vec<Target> =
+                    ready.into_iter().filter(|target| !matches!(target, Target::Docs(_))).collect();
+                if ready.is_empty() {
+                    continue;
+                }
                 let root = root.clone();
                 let index = index.clone();
                 let changed = changed.clone();
@@ -181,13 +235,8 @@ async fn wait_until(at: Option<Instant>) {
     }
 }
 
-/// Reload the ready targets and announce a change when the catalog changed.
-fn apply(
-    root: &Path,
-    index: &RwLock<ProjectIndex>,
-    changed: &broadcast::Sender<()>,
-    ready: &[Target],
-) {
+/// Reload the ready targets and announce the changes the reload found.
+fn apply(root: &Path, index: &RwLock<ProjectIndex>, changed: &ChangeSink, ready: &[Target]) {
     // A canonical file save (including a direct TASK.md edit) may complete a
     // task. Reconcile before loading the version that clients will observe.
     let store = FileStore::open(root);
@@ -206,19 +255,19 @@ fn apply(
     }
 
     let mut guard = index.write().unwrap_or_else(|e| e.into_inner());
-    let mut changed_now = false;
     if ready.contains(&Target::All) {
-        changed_now |= guard.reload_all(root).unwrap_or(false);
+        let _ = guard.reload_all(root);
     } else {
         for target in ready {
             if let Target::Project(id) = target {
-                changed_now |= guard.reload_project(root, id);
+                guard.reload_project(root, id);
             }
         }
     }
+    let found = guard.take_changes();
     drop(guard);
-    if changed_now {
-        let _ = changed.send(());
+    for set in found {
+        changed.send(set);
     }
 }
 
@@ -275,6 +324,23 @@ mod tests {
             classify(&shared(), &shared().join("projects")),
             Some(Target::All)
         );
+    }
+
+    #[test]
+    fn the_docs_folder_and_everything_in_it_are_docs_not_board_data() {
+        for rest in [
+            "docs",
+            "docs/a.md",
+            "docs/sub/b.md",
+            "docs/sub/tasks/1/TASK.md",
+        ] {
+            let path = shared().join("projects").join(ID).join(rest);
+            assert_eq!(
+                classify(&shared(), &path),
+                Some(Target::Docs(ID.parse().unwrap())),
+                "{rest}"
+            );
+        }
     }
 
     #[test]

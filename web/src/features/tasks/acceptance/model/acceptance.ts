@@ -8,9 +8,21 @@ export interface AcceptanceProgress {
   complete: boolean;
 }
 
-export function progressOf(items: readonly { done: boolean }[]): AcceptanceProgress {
-  const done = items.filter((item) => item.done).length;
-  return { done, total: items.length, complete: items.length > 0 && done === items.length };
+/** The progress of the conditions themselves, or of the counts a list carries instead of them. */
+export function progressOf(
+  items: readonly { done: boolean }[] | { done: number; total: number },
+): AcceptanceProgress {
+  if (!Array.isArray(items)) {
+    const counts = items as { done: number; total: number };
+    return {
+      done: counts.done,
+      total: counts.total,
+      complete: counts.total > 0 && counts.done === counts.total,
+    };
+  }
+  const list = items as readonly { done: boolean }[];
+  const done = list.filter((item) => item.done).length;
+  return { done, total: list.length, complete: list.length > 0 && done === list.length };
 }
 
 /**

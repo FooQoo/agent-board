@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/shared/i18n';
 import { MonitorView } from '../../src/pages/monitor/View';
 import type { MonitorViewProps } from '../../src/pages/monitor/contracts';
-import { makeTask, PROJECT_A, PROJECTS } from '../fixtures';
+import { makeTask, PROJECT_A } from '../fixtures';
 
 function props(): MonitorViewProps {
   const item = (
@@ -23,8 +23,6 @@ function props(): MonitorViewProps {
     }),
   });
   return {
-    projects: PROJECTS,
-    scope: 'all',
     summary: { todo: 1, doing: 3, done: 1 },
     todo: [item(1, 'todo', 'idle')],
     doing: [item(2, 'doing', 'running'), item(4, 'doing', 'pending'), item(5, 'doing', 'idle')],
@@ -32,10 +30,8 @@ function props(): MonitorViewProps {
     freshness: {
       state: 'fresh',
       lastFetchedAt: '2026-10-11T00:00:00Z',
-      failedProjectIds: [],
       snapshotProblems: [],
     },
-    onScopeChange: vi.fn(),
     onRefresh: vi.fn(),
   };
 }

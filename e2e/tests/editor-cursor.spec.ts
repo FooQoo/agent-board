@@ -1,22 +1,20 @@
 import { expect, test } from '@playwright/test';
 import { resetBoard, mainProject } from '../helpers/agboard';
+import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync, editorValue, openManualCreateDialog } from '../helpers/ui';
 
 // The rich body editor of the add dialog: an empty editor shows its placeholder and takes typing, Enter starts a
 // new paragraph, and Home and the arrows move the caret inside the text. The Markdown it writes has a blank line
 // between blocks.
 
+test.beforeEach(() => resetPreferences());
+test.afterEach(() => resetPreferences());
+
 for (const locale of ['en', 'ja'] as const) {
   for (const mode of ['light', 'dark'] as const) {
     test(`${locale}/${mode}: an empty editor shows its placeholder and takes the caret`, async ({ page }) => {
-      await page.addInitScript(
-        ({ locale, mode }) => {
-          localStorage.setItem('agboard.locale', locale);
-          localStorage.setItem('agboard.theme', JSON.stringify({ mode, accent: 'blue' }));
-        },
-        { locale, mode },
-      );
       resetBoard(mainProject);
+      await setPreferences({ locale, theme: { mode, accent: 'blue' } });
       await page.goto('/');
       await waitForSync(page);
       const dialog = await openManualCreateDialog(page);

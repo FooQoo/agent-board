@@ -30,7 +30,11 @@ pub fn run_with_io(
 ) -> Result<Outcome, AgboardError> {
     let existing = match &ctx.target {
         Target::Missing { name } => {
-            let project = ctx.files.create_project(name, ctx.clock.now())?;
+            let project = ctx.files.create_project_with_docs(
+                name,
+                ctx.clock.now(),
+                super::project::docs_locale(ctx),
+            )?;
             let board = BoardMeta {
                 name: project.name.clone(),
                 next_task_id: 1,

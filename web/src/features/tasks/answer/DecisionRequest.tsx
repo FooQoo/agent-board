@@ -1,7 +1,7 @@
 import { answerRequest } from '../api/edit';
 import { DecisionRequestForm } from './DecisionRequestForm';
 import type { OperationControls } from '../../../shared/lib/operations/operations';
-import type { Task, ProjectId } from '../../../shared/api/contracts';
+import type { TaskSummary, ProjectId } from '../../../shared/api/contracts';
 
 /**
  * The decision request of a pending card: the question, the single choice, the free text and Send, in
@@ -16,7 +16,7 @@ export function DecisionRequest({
   onAnswered,
 }: {
   projectId: ProjectId;
-  task: Task;
+  task: TaskSummary;
   operations: OperationControls;
   /** An answer was saved (or found stale): the board should be fetched again. */
   onChanged?: () => void;

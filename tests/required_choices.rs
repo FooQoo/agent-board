@@ -62,6 +62,7 @@ fn cli_refuses_missing_zero_one_and_eleven_choices_without_saving() {
                 "ai",
                 "--request-json",
                 &value,
+                "--no-wait",
                 "--json",
             ],
         );
@@ -91,6 +92,7 @@ fn cli_accepts_two_and_ten_choices() {
                 "ai",
                 "--request-json",
                 &request(count),
+                "--no-wait",
                 "--json",
             ],
         );
@@ -169,6 +171,7 @@ fn valid_requests_still_accept_choice_text_and_both_answers() {
                 "ai",
                 "--request-json",
                 &request(2),
+                "--no-wait",
                 "--json",
             ],
         );

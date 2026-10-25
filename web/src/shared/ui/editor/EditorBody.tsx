@@ -27,6 +27,8 @@ export interface EditorBodyProps {
   onDescriptionChange: (description: string) => void;
   /** The accessible name of the body. */
   bodyLabel?: string;
+  /** The longest body the dialog accepts; a card's description unless the dialog says otherwise. */
+  limit?: number;
   /** The handle of the rich editor: the dialog reads the text and inserts images through it. */
   editorRef: RefObject<RichMarkdownEditorHandle | null>;
   /** The text is being saved: nothing can be edited. */
@@ -55,18 +57,21 @@ export interface EditorBodyProps {
  * The over-limit band the dialog shows above its footer, or null while the text fits. The band says
  * how many characters to remove; the counter next to the body shows the same count in red.
  */
-export function useOverLimit(description: string): { message: string; count: string } | null {
+export function useOverLimit(
+  description: string,
+  limit: number = DESCRIPTION_LIMIT,
+): { message: string; count: string } | null {
   const { t } = useTranslation();
   const count = countChars(description);
-  const over = count - DESCRIPTION_LIMIT;
+  const over = count - limit;
   if (over <= 0) return null;
   return {
     message: t('editor.overLimit', {
       count: over,
-      max: DESCRIPTION_LIMIT.toLocaleString('en-US'),
+      max: limit.toLocaleString('en-US'),
       over: over.toLocaleString('en-US'),
     }),
-    count: `${count.toLocaleString('en-US')} / ${DESCRIPTION_LIMIT.toLocaleString('en-US')}`,
+    count: `${count.toLocaleString('en-US')} / ${limit.toLocaleString('en-US')}`,
   };
 }
 
@@ -80,6 +85,7 @@ export function EditorBody({
   description,
   onDescriptionChange,
   bodyLabel,
+  limit = DESCRIPTION_LIMIT,
   editorRef,
   disabled,
   beforeTitle,
@@ -105,7 +111,7 @@ export function EditorBody({
   const active = outline.length > 0 ? Math.max(activeOutlineIndex(outline, cursor), 0) : -1;
 
   const count = countChars(description);
-  const over = count - DESCRIPTION_LIMIT;
+  const over = count - limit;
   const overLimit = over > 0;
   const body = bodyLabel ?? t('editor.descriptionLabel');
 
@@ -190,7 +196,7 @@ export function EditorBody({
             <span className="editor__counter" data-over={overLimit ? 'true' : undefined}>
               {t('editor.counter', {
                 count: count.toLocaleString('en-US'),
-                max: DESCRIPTION_LIMIT.toLocaleString('en-US'),
+                max: limit.toLocaleString('en-US'),
               })}
             </span>
           </div>

@@ -207,6 +207,7 @@ fn epics_without_listed_tasks_are_left_out_and_done_and_pending_tasks_are_not_li
             "ai",
             "--request-json",
             r#"{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}"#,
+            "--no-wait",
         ],
     ));
     ok(agboard(
@@ -267,6 +268,7 @@ fn a_pending_task_returns_to_the_table_once_it_is_idle_again() {
             "ai",
             "--request-json",
             r#"{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}"#,
+            "--no-wait",
         ],
     ));
     assert!(epic_task_ids(&progress(home.path()), "ALPHA").is_empty());

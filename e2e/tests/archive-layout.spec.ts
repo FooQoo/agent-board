@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 import { mainProject, resetBoard } from "../helpers/agboard";
+import { resetPreferences, setPreferences } from "../helpers/preferences";
+
+test.beforeEach(() => resetPreferences());
+test.afterEach(() => resetPreferences());
 
 for (const mode of ["light", "dark"] as const) {
 	for (const locale of ["en", "ja"] as const) {
@@ -10,46 +14,47 @@ for (const mode of ["light", "dark"] as const) {
 			}, testInfo) => {
 				resetBoard(mainProject);
 				await page.setViewportSize({ width, height: 900 });
-				await page.addInitScript(
-					({ mode, locale }) => {
-						localStorage.setItem(
-							"agboard.theme",
-							JSON.stringify({ mode, accent: "blue" }),
-						);
-						localStorage.setItem("agboard.locale", locale);
-					},
-					{ mode, locale },
-				);
+				await setPreferences({ locale, theme: { mode, accent: "blue" } });
 
 				// Keep layout checks independent of writes; all cards are temporary response fixtures.
-				await page.route("**/api/projects/*/board", async (route) => {
+				// The board is drawn from the Summary, so that is the response replaced.
+				await page.route("**/api/projects/*/summary", async (route) => {
 					const response = await route.fetch();
-					const board = await response.json();
-					const task = board.tasks.find(
+					const summary = await response.json();
+					const task = summary.tasks.find(
 						(item: { taskStatus: string }) => item.taskStatus === "done",
 					);
-					board.tasks = Array.from({ length: 24 }, (_, index) => ({
+					summary.tasks = Array.from({ length: 24 }, (_, index) => ({
 						...task,
 						id: index + 1,
 						title: `Archive layout task ${index + 1}: 日本語の長いタイトルと対象タスクの確認`,
-						attachments: [],
 					}));
-					await route.fulfill({ json: board });
+					await route.fulfill({ json: summary });
 				});
 				await page.route("**/api/projects/*/archive", async (route) => {
-					const boardUrl = route
+					// The archive lists whole cards with their conditions; the Summary only counts them, so the
+					// conditions are rebuilt from the counts.
+					const summaryUrl = route
 						.request()
 						.url()
-						.replace(/\/archive$/, "/board");
-					const board = await (await page.request.get(boardUrl)).json();
+						.replace(/\/archive$/, "/summary");
+					const summary = await (await page.request.get(summaryUrl)).json();
 					await route.fulfill({
 						json: {
-							...board,
-							tasks: board.tasks.slice(0, 3).map((task: object) => ({
-								...task,
-								archivedAt: "2026-10-08T00:00:00Z",
-								attachments: [],
-							})),
+							...summary,
+							cursor: summary.version,
+							tasks: summary.tasks.slice(0, 3).map(
+								(task: { acceptance: { done: number; total: number } }) => ({
+									...task,
+									archivedAt: "2026-10-08T00:00:00Z",
+									attachments: [],
+									acceptance: Array.from({ length: task.acceptance.total }, (_, index) => ({
+										id: String(index + 1),
+										text: "",
+										done: index < task.acceptance.done,
+									})),
+								}),
+							),
 						},
 					});
 				});
@@ -208,7 +213,7 @@ for (const mode of ["light", "dark"] as const) {
 					await page
 						.locator('[data-slot="dialog-overlay"]')
 						.evaluate((element) => getComputedStyle(element).backgroundColor),
-				).toBe("rgba(17, 24, 39, 0.4)");
+				).toBe("rgba(15, 23, 42, 0.85)"); // the one scrim every dialog shares (tokens.css)
 				await page.screenshot({
 					path: testInfo.outputPath("03-bulk-archive.png"),
 				});
@@ -239,23 +244,14 @@ for (const mode of ["light", "dark"] as const) {
 		}, testInfo) => {
 			resetBoard(mainProject);
 			await page.setViewportSize({ width: 360, height: 800 });
-			await page.addInitScript(
-				({ mode, locale }) => {
-					localStorage.setItem(
-						"agboard.theme",
-						JSON.stringify({ mode, accent: "blue" }),
-					);
-					localStorage.setItem("agboard.locale", locale);
-				},
-				{ mode, locale },
-			);
-			await page.route("**/api/projects/*/board", async (route) => {
+			await setPreferences({ locale, theme: { mode, accent: "blue" } });
+			await page.route("**/api/projects/*/summary", async (route) => {
 				const response = await route.fetch();
-				const board = await response.json();
-				const task = board.tasks.find(
+				const summary = await response.json();
+				const task = summary.tasks.find(
 					(item: { taskStatus: string }) => item.taskStatus === "done",
 				);
-				board.tasks = Array.from({ length: 100 }, (_, index) => ({
+				summary.tasks = Array.from({ length: 100 }, (_, index) => ({
 					...task,
 					id: index + 1001,
 					title:
@@ -263,9 +259,8 @@ for (const mode of ["light", "dark"] as const) {
 							? `検証対象タスク${index + 1}：アーカイブ確認用のとても長い日本語タイトルと保持説明`
 							: `Verification task ${index + 1}: a deliberately long English title for archive retention`,
 					assignee: index % 2 === 0 ? "ai" : "human",
-					attachments: [],
 				}));
-				await route.fulfill({ json: board });
+				await route.fulfill({ json: summary });
 			});
 			await page.goto("/");
 			const trigger = page.locator(".lane-header__archive");
@@ -342,13 +337,7 @@ test("bulk archive Pen baseline shows two fixed tasks and retention copy", async
 }, testInfo) => {
 	resetBoard(mainProject);
 	await page.setViewportSize({ width: 1280, height: 900 });
-	await page.addInitScript(() => {
-		localStorage.setItem(
-			"agboard.theme",
-			JSON.stringify({ mode: "light", accent: "blue" }),
-		);
-		localStorage.setItem("agboard.locale", "ja");
-	});
+	await setPreferences({ locale: "ja", theme: { mode: "light", accent: "blue" } });
 	await page.goto("/");
 	await page.getByRole("button", { name: /Initialize the board/ }).click();
 	const trigger = page.locator(".lane-header__archive");
@@ -386,13 +375,7 @@ test("archive empty state matches the Pen guidance and shared detail placeholder
 }, testInfo) => {
 	resetBoard(mainProject);
 	await page.setViewportSize({ width: 1280, height: 900 });
-	await page.addInitScript(() => {
-		localStorage.setItem(
-			"agboard.theme",
-			JSON.stringify({ mode: "light", accent: "blue" }),
-		);
-		localStorage.setItem("agboard.locale", "ja");
-	});
+	await setPreferences({ locale: "ja", theme: { mode: "light", accent: "blue" } });
 	await page.route("**/api/projects/*/archive", async (route) => {
 		const response = await route.fetch();
 		await route.fulfill({

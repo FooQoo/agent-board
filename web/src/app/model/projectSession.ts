@@ -1,4 +1,4 @@
-import type { Task, DialogAction, ProjectId } from '../../shared/api/contracts';
+import type { TaskSummary, DialogAction, ProjectId } from '../../shared/api/contracts';
 import type { AnswerFormKey } from '../../features/tasks/answer/model/answer';
 import type { OperationKind } from '../../shared/lib/operations/operations';
 import type { ViewMode } from '../../shared/ui/app-header/Header';
@@ -30,7 +30,7 @@ export interface SessionState {
   archiveSelectedId: number | null;
   /** The epic whose details the epic list shows, by epic ID. */
   epicSelectedId: string | null;
-  bulkArchive: { projectId: ProjectId; targets: Task[] } | null;
+  bulkArchive: { projectId: ProjectId; targets: TaskSummary[] } | null;
   dialog: DialogAction | null;
   operation: Operation | null;
   pendingTarget: PendingTarget | null;
@@ -43,7 +43,7 @@ export type SessionAction =
   | { type: 'SET_VIEW_MODE'; mode: ViewMode }
   | { type: 'SELECT_ARCHIVE_CARD'; id: number | null }
   | { type: 'SELECT_EPIC'; id: string | null }
-  | { type: 'OPEN_BULK_ARCHIVE'; projectId: ProjectId; targets: Task[] }
+  | { type: 'OPEN_BULK_ARCHIVE'; projectId: ProjectId; targets: TaskSummary[] }
   | { type: 'CLOSE_BULK_ARCHIVE' }
   | {
       type: 'OPEN_OPERATION';

@@ -72,9 +72,7 @@ export function DecisionRequestFormView({
             </div>
           ))}
         </RadioGroup>
-        <p className="detail__guide">
-          {t('request.guideChoice')}
-        </p>
+        <p className="detail__guide">{t('request.guideChoice')}</p>
         <Label htmlFor={textareaId} className="visually-hidden">
           {t('request.label')}
         </Label>
@@ -104,13 +102,19 @@ export function DecisionRequestFormView({
           <Button
             type="button"
             variant="ghost"
+            size="s"
             className="detail-btn detail-btn--sm detail-btn--quiet"
             disabled={model.disabled}
             onClick={onClear}
           >
             {t('request.cancel')}
           </Button>
-          <Button type="submit" className="detail-btn detail-btn--sm" disabled={!model.sendable}>
+          <Button
+            type="submit"
+            size="s"
+            className="detail-btn detail-btn--sm"
+            disabled={!model.sendable}
+          >
             {model.phase === 'sending' ? (
               <>
                 <LoaderIcon aria-hidden="true" />

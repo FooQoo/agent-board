@@ -1,0 +1,252 @@
+/*
+ * The center pane of the docs dialog: the kind label, the front matter and the body. Colors are the r-* tokens of theme.css; the lengths are the
+ * approved mock's own. The rules are unlayered, like editor.css, so they sit above the Tailwind
+ * utilities.
+ */
+.docs-doc {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  min-height: 0;
+  padding: 28px 44px 0;
+  background: var(--r-surface);
+}
+
+.docs-doc[data-compact="true"],
+.docs-dialog[data-compact="true"] .docs-doc {
+  gap: 16px;
+  padding: 20px 21px 0;
+}
+
+.docs-doc__kind {
+  color: var(--r-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.docs-doc__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Loading: bars where the title and the first lines will be. */
+.docs-doc__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.docs-doc__bone {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--r-lane);
+}
+
+.docs-doc__bone--title {
+  width: 200px;
+  max-width: 60%;
+  height: 22px;
+}
+
+.docs-doc__bone--short {
+  width: 60%;
+}
+
+/* A load failure replaces the body. */
+.docs-doc__failure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.docs-doc__failure-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--r-danger);
+}
+
+.docs-doc__failure-title {
+  color: var(--r-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.docs-doc__failure-body {
+  margin-top: -4px;
+  color: var(--r-text2);
+  font-size: 13px;
+}
+
+/* The front matter: folds, read only. */
+.docs-frontmatter {
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+}
+
+.docs-frontmatter__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  /* biome-ignore lint/plugin: a disclosure row, not a button size; the mock fixes it at 36px */
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  background: var(--r-lane);
+  color: var(--r-text2);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.docs-frontmatter__head:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -2px;
+}
+
+.docs-frontmatter__chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--r-muted);
+  transition: transform 0.15s;
+}
+
+.docs-frontmatter[data-open="true"] .docs-frontmatter__chevron {
+  transform: none;
+}
+
+.docs-frontmatter:not([data-open="true"]) .docs-frontmatter__chevron {
+  transform: rotate(-90deg);
+}
+
+.docs-frontmatter__title {
+  font-weight: 600;
+}
+
+.docs-frontmatter__count {
+  color: var(--r-muted);
+}
+
+.docs-frontmatter__body {
+  margin: 0;
+  padding: 10px 14px;
+  overflow-x: auto;
+  color: var(--r-text2);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.docs-frontmatter__body[hidden] {
+  display: none;
+}
+
+/* Read-only, a widget node comes before the first block, so the heading would keep its top margin. */
+.docs-doc__body .ProseMirror > .ProseMirror-widget:first-child + * {
+  margin-top: 0;
+}
+
+/* The body as a document: a rule under each section heading, and tables in a rounded frame. */
+.docs-doc__body .ProseMirror h1 {
+  font-size: 40px;
+  line-height: 1.2;
+}
+
+.docs-doc__body .ProseMirror h2 {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--r-border);
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+.docs-dialog[data-compact="true"] .docs-doc__body .ProseMirror h1 {
+  font-size: 29px;
+}
+
+.docs-dialog[data-compact="true"] .docs-doc__body .ProseMirror h2 {
+  font-size: 20px;
+}
+
+.docs-doc__body .milkdown-table-block .table-wrapper {
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.docs-doc__body .milkdown-table-block table {
+  border-collapse: collapse;
+}
+
+.docs-doc__body .milkdown-table-block th {
+  background: var(--r-lane);
+}
+
+/* An image shown in the body: as wide as the body at most, as tall as it is. */
+.docs-doc__image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  align-self: flex-start;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+}
+
+.docs-doc__image[hidden] {
+  display: none;
+}
+
+.docs-doc__file-name {
+  overflow-wrap: anywhere;
+  color: var(--r-text2);
+  font-size: 13px;
+}
+
+.docs-doc__failure-icon--muted {
+  color: var(--r-muted);
+}
+
+/* The MDX preview: the sandbox iframe fills the body and scrolls its own page. A frame as tall as its
+   content would leave the scrolling to the board, and wheel events over a frame of another origin
+   reach the board only after a detour, so the scroll stutters. */
+.docs-mdx {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.docs-mdx__loading {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 13px;
+}
+
+.docs-mdx[data-shown="true"] .docs-mdx__loading {
+  display: none;
+}
+
+.docs-mdx__frame {
+  display: block;
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  /* The page inside takes the board's light or dark mode; the same scheme here keeps the frame
+     transparent instead of painting its own background. */
+  color-scheme: inherit;
+}

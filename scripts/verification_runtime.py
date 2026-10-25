@@ -11,18 +11,16 @@ from urllib.request import urlopen
 
 
 @contextmanager
-def serve(binary, home, port, remote_port):
-    """Start an isolated board and monitor and stop the whole process group."""
-    for number in (port, remote_port):
-        if number == 7420:
-            raise ValueError("Port 7420 is reserved for normal use")
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", number))
+def serve(binary, home, port):
+    """Start an isolated board and stop the whole process group."""
+    if port == 7420:
+        raise ValueError("Port 7420 is reserved for normal use")
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", port))
     env = {**os.environ, "AGBOARD_HOME": str(home), "TZ": "UTC"}
     with (Path(home) / "serve.log").open("w+") as log:
         process = subprocess.Popen(
-            [str(binary), "serve", "--port", str(port), "--remote-port",
-             str(remote_port), "--remote-origin", "https://verify.invalid"],
+            [str(binary), "serve", "--port", str(port)],
             env=env, cwd=home, stdout=log, stderr=log, start_new_session=True,
         )
         try:

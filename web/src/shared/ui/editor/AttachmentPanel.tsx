@@ -137,7 +137,8 @@ export function AttachmentPanel({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="s"
+              iconOnly
               className="editor-attachments__close"
               aria-label={t('editor.closeAttachments')}
               onClick={onClose}
@@ -256,7 +257,7 @@ function AttachmentTile({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="s"
             className="editor-attachments__insert"
             disabled={disabled}
             onClick={onInsert}
@@ -268,7 +269,8 @@ function AttachmentTile({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="s"
+        iconOnly
         className="editor-attachments__remove"
         aria-label={t('editor.removeAttachment', { name: attachment.name })}
         disabled={disabled}

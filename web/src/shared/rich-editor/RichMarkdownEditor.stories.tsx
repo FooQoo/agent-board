@@ -12,6 +12,9 @@ const MISSING_ID = 'fedcba9876543210fedcba9876543210';
 
 const resolveAttachment = (id: string) => (id === IMAGE_ID ? SAMPLE_IMAGE_URL : null);
 
+const resolveImage = (src: string) => (src === './images/overview.png' ? SAMPLE_IMAGE_URL : null);
+const DOCS_IMAGES = `## Docs\n\n![Overview](./images/overview.png)\n\n![Elsewhere](./images/missing.png)\n`;
+
 const OUTLINE =
   '## Goal\n\nKeep the *original* text.\n\n## Steps\n\n* First\n* Second\n\n## Result\n\nDone.\n';
 const TABLE = '## Table\n\n| Name | Value |\n| --- | --- |\n| alpha | 1 |\n| beta | 2 |\n';
@@ -34,13 +37,15 @@ interface HostProps {
   /** Insert text as soon as the handle exists, which is before the editor is ready. */
   insertEarly?: string;
   placeholder?: string;
+  /** Docs: turns a file-relative picture path into an image URL. */
+  docsImages?: boolean;
 }
 
 /**
  * A parent of the editor that does what the dialogs do: it holds the value, takes `onChange`, and
  * calls the handle. Its buttons and output let a play function drive and read every contract.
  */
-function Host({ initial, replacement, disabled, insertEarly, placeholder }: HostProps) {
+function Host({ initial, replacement, disabled, insertEarly, placeholder, docsImages }: HostProps) {
   const [value, setValue] = useState(initial);
   const [open, setOpen] = useState(true);
   const [changes, setChanges] = useState(0);
@@ -86,6 +91,7 @@ function Host({ initial, replacement, disabled, insertEarly, placeholder }: Host
           placeholder={placeholder}
           disabled={disabled}
           resolveAttachment={resolveAttachment}
+          resolveImage={docsImages ? resolveImage : undefined}
           ref={attach}
         />
       )}
@@ -222,6 +228,21 @@ export const Images: Story = {
     await expect(within(canvasElement).getByText('No image')).toBeInTheDocument();
     await userEvent.click(within(canvasElement).getByText('Read text'));
     await expect(output(canvasElement, 'read').textContent).toBe(IMAGES);
+  },
+};
+
+/** Docs: a picture written relative to the file is resolved by the function the parent passes. */
+export const DocsRelativeImages: Story = {
+  args: { initial: DOCS_IMAGES, docsImages: true },
+  play: async ({ canvasElement }) => {
+    await readyEditor(canvasElement);
+    await waitFor(() =>
+      expect(canvasElement.querySelector(`img[src="${SAMPLE_IMAGE_URL}"]`)).not.toBeNull(),
+    );
+    await expect(within(canvasElement).getAllByText('No image')).toHaveLength(1);
+    await userEvent.click(within(canvasElement).getByText('Read text'));
+    await expect(output(canvasElement, 'read').textContent).toBe(DOCS_IMAGES);
+    await expect(output(canvasElement, 'changes')).toHaveTextContent('0');
   },
 };
 

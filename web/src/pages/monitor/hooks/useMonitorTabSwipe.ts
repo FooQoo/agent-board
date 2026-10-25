@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import type { MonitorDetailTab } from '../contracts';
 
-const TAB_ORDER: MonitorDetailTab[] = ['description', 'acceptance', 'history', 'epic'];
+export const TAB_ORDER: MonitorDetailTab[] = ['description', 'acceptance', 'history', 'epic'];
 
 export function shouldIgnoreTabSwipe(target: EventTarget | null, panel: HTMLElement): boolean {
   if (!(target instanceof Element)) return false;

@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "owner": "U1",
+  "files": [
+    {
+      "file": "features/onboarding/ui/OnboardingWelcome.tsx",
+      "exports": [
+        {
+          "name": "OnboardingWelcome",
+          "stories": [
+            {
+              "id": "features-onboarding-guide--welcome",
+              "states": ["first screen", "Skip and Start guide actions", "dialog role"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/onboarding/ui/OnboardingComplete.tsx",
+      "exports": [
+        {
+          "name": "OnboardingComplete",
+          "stories": [
+            {
+              "id": "features-onboarding-guide--completed",
+              "states": ["completion after both samples are done", "finish action"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/onboarding/ui/OnboardingGuidePanel.tsx",
+      "exports": [
+        {
+          "name": "OnboardingGuidePanel",
+          "stories": [
+            {
+              "id": "features-onboarding-guide--samples-created",
+              "states": ["step 1 of 4", "action button"],
+              "interaction": false
+            },
+            {
+              "id": "features-onboarding-guide--automatic-progress",
+              "states": ["step 2 of 4", "action button"],
+              "interaction": false
+            },
+            {
+              "id": "features-onboarding-guide--decision-needed",
+              "states": ["step 3 of 4", "waiting badge in place of the action"],
+              "interaction": false
+            },
+            {
+              "id": "features-onboarding-guide--resumed-after-answer",
+              "states": ["step 4 of 4", "action button"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/onboarding/ui/OnboardingStage.tsx",
+      "exports": [
+        {
+          "name": "OnboardingStage",
+          "stories": [
+            {
+              "id": "features-onboarding-guide--samples-created",
+              "states": ["framed sample lane"],
+              "interaction": false
+            },
+            {
+              "id": "features-onboarding-guide--automatic-progress",
+              "states": ["framed running lane"],
+              "interaction": false
+            },
+            {
+              "id": "features-onboarding-guide--decision-needed",
+              "states": ["framed pending card with the answer form"],
+              "interaction": false
+            },
+            {
+              "id": "features-onboarding-guide--resumed-after-answer",
+              "states": ["framed resumed card"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/onboarding/ui/OnboardingNotice.tsx",
+      "exports": [
+        {
+          "name": "OnboardingNotice",
+          "stories": [
+            {
+              "id": "features-onboarding-guide--archived",
+              "states": ["archive confirmation on the board"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

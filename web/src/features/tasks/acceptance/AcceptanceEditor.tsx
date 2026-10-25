@@ -85,7 +85,7 @@ export function AcceptanceEditor({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size="s"
         className="acceptance-edit__add"
         disabled={disabled}
         onClick={add}
@@ -142,7 +142,8 @@ function ConditionRow({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="s"
+        iconOnly
         className="acceptance-edit__icon"
         aria-label={t('acceptanceEdit.remove', { id })}
         disabled={disabled}

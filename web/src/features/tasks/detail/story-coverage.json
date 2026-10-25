@@ -81,6 +81,31 @@
               "id": "task-detail-detailpanel--tab-epic-none",
               "states": ["epic tab", "no epic", "body-sized notice"],
               "interaction": true
+            },
+            {
+              "id": "task-detail-detailpanel--document-loading",
+              "states": ["text loading", "frame and tabs shown at once"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-partial",
+              "states": ["text partial", "arriving note"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-failed",
+              "states": ["text failed", "retry"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-empty",
+              "states": ["text empty"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--history-failed",
+              "states": ["history failed"],
+              "interaction": true
             }
           ]
         }
@@ -117,6 +142,51 @@
               "id": "task-detail-detailpanel--attachment-available",
               "states": ["composite rendering"],
               "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-loading",
+              "states": ["text loading", "frame and tabs shown at once"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-partial",
+              "states": ["text partial", "arriving note"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-failed",
+              "states": ["text failed", "retry"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-empty",
+              "states": ["text empty"],
+              "interaction": false
+            }
+          ]
+        },
+        {
+          "name": "DocumentBlocks",
+          "stories": [
+            {
+              "id": "task-detail-detailpanel--card",
+              "states": ["card", "chapters", "table", "mermaid drawn", "attachment missing"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-partial",
+              "states": ["text partial", "arriving note"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-empty",
+              "states": ["text empty"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--tab-epic-ready",
+              "states": ["epic tab", "epic shown"],
+              "interaction": true
             }
           ]
         }
@@ -281,6 +351,66 @@
             {
               "id": "task-detail-detailpanel--draft",
               "states": ["composite rendering"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/detail/DetailSection.tsx",
+      "exports": [
+        {
+          "name": "DetailSectionView",
+          "stories": [
+            {
+              "id": "task-detail-detailpanel--document-loading",
+              "states": ["text loading", "frame and tabs shown at once"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-partial",
+              "states": ["text partial", "arriving note"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-failed",
+              "states": ["text failed", "retry"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--card",
+              "states": ["card", "chapters", "table", "mermaid drawn", "attachment missing"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/detail/DetailSectionBody.tsx",
+      "exports": [
+        {
+          "name": "DetailSectionBody",
+          "stories": [
+            {
+              "id": "task-detail-detailpanel--document-loading",
+              "states": ["text loading", "frame and tabs shown at once"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-partial",
+              "states": ["text partial", "arriving note"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--document-failed",
+              "states": ["text failed", "retry"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-detailpanel--card",
+              "states": ["card", "chapters", "table", "mermaid drawn", "attachment missing"],
               "interaction": false
             }
           ]

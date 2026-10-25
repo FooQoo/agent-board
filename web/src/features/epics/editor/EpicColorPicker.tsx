@@ -109,6 +109,8 @@ export function EpicColorPicker({
         <Button
           type="button"
           variant="outline"
+          size="s"
+          iconOnly
           className="epic-label-row__swatch"
           aria-label={t('epic.colorPick')}
           disabled={disabled}

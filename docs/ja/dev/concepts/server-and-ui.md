@@ -19,13 +19,15 @@
 
 書き込みの対象は、常にURLのProjectIdです。Webの`actor`は常に`human`で、要求から受け取ることはありません。`/api/board`のような対象のない経路、互換の別名、プロジェクトを作成・名前変更・削除するHTTP APIはありません。
 
+[プロジェクトのドキュメント](../reference/web-api.md#プロジェクトのドキュメント)のルートは、手順3の例外です。索引とプロジェクトの書き込みロックを使わず、プロジェクトの`docs/`のファイルを直接読みます。書き込みはしません。開くルートは、プログラムの起動がディスクに触れることがあるため、ブロッキング用のスレッドで動きます。
+
 JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシートは内容から名前を付け、`Cache-Control: public, max-age=31536000, immutable`で送ります。ブラウザがgzipを受け付ける場合はgzipで圧縮して送ります。新しいビルドではHTMLが読み込む名前が変わるため、再読み込みすれば常に最新の画面になります。HTMLの応答には`Referrer-Policy: no-referrer`と`Content-Security-Policy`を付けます。スクリプトと接続は自分自身だけ、スタイルは自分自身と`'unsafe-inline'`（エディターが実行時に`<style>`を挿入するため）、画像は自分自身・`data:`・`http`・`https`です。
 
 ## Web画面の作り
 
 - `web/`はVite・TypeScript・Reactのアプリです。nuqsが選択対象のプロジェクトをURLで管理し（`useQueryState('project', parseAsString)`）、`useBoard`がプロジェクトごとの取得・購読・読み込みを担い、一つの`useReducer`が適用中のプロジェクト・切り替え待ち・タスクの選択・ダイアログを連動させます。部品内の入力は`useState`です。ほかの状態管理やフォームのライブラリは足しません。
 - 初回のプロジェクト選択はブラウザ履歴を置き換え、メニューからの選択は履歴に追加します。戻る・進むはnuqsのadapterに従います。History APIを直接使ったり、独自に`popstate`を処理したりはしません。
-- `pnpm --dir web build`は、`index.html`、入口のスクリプトとスタイルシート`assets/app-[hash].js`・`assets/app-[hash].css`、動的な分割チャンク`assets/chunk-[name]-[hash].js`としてのエディターとMermaid、独自のmanifestを持つ`access/`と`monitor/`の別ビルドを出力します。ボードのビルドは、チャンクごとのimport・`web/src/`のモジュール・パッケージを記した`chunk-graph.json`も書き出します。最後の手順で、すべてのスクリプトとスタイルシートの横に`.gz`を書き出します。
+- `pnpm --dir web build`は、`index.html`、入口のスクリプトとスタイルシート`assets/app-[hash].js`・`assets/app-[hash].css`、動的な分割チャンク`assets/chunk-[name]-[hash].js`としてのエディターとMermaid、独自のmanifestを持つ`monitor/`の別ビルドを出力します。ボードのビルドは、チャンクごとのimport・`web/src/`のモジュール・パッケージを記した`chunk-graph.json`も書き出します。最後の手順で、すべてのスクリプトとスタイルシートの横に`.gz`を書き出します。
 - 最初のスクリプトには、最初の画面に必要なものだけを入れます。カード・エピック・一括アーカイブ・設定のダイアログ、詳細パネルのMarkdown表示、モニターの詳細ドロワーは`preloadable`（`web/src/shared/lib/lazy/preloadable.ts`）で分割し、最初の画面を表示した直後に取得します。表示部品が届くまで、本文はプレーンテキストで表示します。エディターのアウトラインは表示側のMarkdownパーサーで`##`見出しを読むため、CodeMirrorはエディターを開いたときにだけ読み込まれます。
 - `web/test/monitor/build-contract.test.ts`は、ページごとの初回読み込み（入口と、そこから静的にimportされるチャンク）に上限を設け、500 kBを超えるスクリプトは使うときだけ読み込むことを確かめます。Viteの`chunkSizeWarningLimit`は、使うときだけ読み込む大きなチャンク（MermaidのELKレイアウト、文法パーサー、リッチエディター）に合わせて1500 kBにしています。
 - Rustは二つのロゴ、HTMLのテンプレート、`.gz`ファイルを埋め込みます。`build.rs`はボードとモニターのスクリプトとスタイルシートを`OUT_DIR`の表にまとめ、両方にある同じファイルは一度だけ埋め込みます。配信するのは表にある名前だけです。各ページのHTMLとファイル名から、ページごとのビルドIDも作ります。ファイルや`.gz`がない場合、またはHTMLが表にないファイルを読み込む場合は、`Run "pnpm --dir web build" first.`でビルドを止めます。画面のビルドを`cargo build`の前に行うのはこのためです。`web/dist/`はコミットしません。
@@ -37,11 +39,13 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 
 **入力されたテキストの表示。** テキストはReactの通常のエスケープで表示し、`dangerouslySetInnerHTML`は使いません。MarkdownはReact要素にし（react-markdown・remark-gfm、`rehype-raw`は使わない）、生のHTMLは文字として表示します。有効なリンクは`http`と`https`だけで、新しいタブで開きます。タスクやエピックに添付された画像（`assets/<id>.<ext>`、`attachment:<id>`）は画像APIに解決し、外部の画像は`http`/`https`からだけ`referrerpolicy="no-referrer"`で読み込み、失敗すれば「No image」にします。Mermaidは`securityLevel: 'strict'`で描画し、挿入するのはそれが生成したSVGだけです。
 
+**下から出るシートのドラッグ。** シート上端のハンドルをドラッグしても、Reactのstateは更新しません。`useDrawerDrag`（`web/src/shared/ui/use-drawer-drag.ts`）がポインターと引き下げ量をrefに持ち、ドラッグの開始時にシートの高さを一度だけ測り、引き下げ量を1アニメーションフレームにつき最大1回、シートの`--drawer-drag-y`とバックドロップの`--drawer-swipe-progress`に書き込みます。スタイルシートがこれらを`translate`と`opacity`に変えます。シートの高さの4分の1を超える引き下げか、24px以上を0.5px/msより速く動かすフリックで閉じます。それより短い、またはキャンセルされたドラッグは、シートが開いている間だけ有効なtransitionで元の位置に戻すので、transitionとkeyframeが同時に`translate`を動かすことはありません。閉じたシートは退出のkeyframeのために引き下げ量を保ち、開くシートは描画の前に以前の引き下げ量を捨てます。動作は[モバイルモニター](../../guide/operations/mobile-monitor.md)を参照してください。
+
 **エディター。** `RichMarkdownEditor`（Milkdown Crepe）は`MarkdownEditor`と同じ契約を保ちます。`value`・`onChange`・`onCursorChange`・`disabled`と、`goTo`・`focus`・`insert`を持つrefです。遅延読み込みで、その間は`MarkdownView`を表示します。有効にするのはCodeMirror・ListItem・ImageBlock・Cursor・Placeholder・LinkTooltip・Toolbar・Tableだけで、Crepeのテーマは使いません。初期値はマウント時に一度だけ渡し、`onChange`は利用者の編集でだけ呼びます。編集していない文書は元の文字列のまま保存するので、変えていないMarkdownの書式は崩れません。アップロードは保留中の添付になり、`assets/<id>.<ext>`で参照します。Mermaidのプレビューと閲覧は`renderMermaid`を共有します。`web/src/shared/rich-editor/`の中では、`RichMarkdownEditor.impl.tsx`は外部の値でセッションを作り直す境界だけを持ち、`useRichEditorSession.ts`がセッション（元の文章・編集済みかどうか・初期化前のコマンド・見出し位置・後始末）、`createEditor.ts`が機能の組み合わせ、`editorCommands.ts`が`goTo`・`focus`・`insert`・`markdown`のハンドル、`MermaidPreviews.ts`が図のプレビューを受け持ちます。図のエラー文は画面の翻訳を受け取って作ります。
 
-**テーマ。** `web/src/shared/theme/index.ts`が、テーマの型・一覧・検証・DOMの属性・保存を受け持ちます。テーマはモード（lightかdark）と12色のアクセントの一つです。Reactの描画前に`data-mode`・`data-accent`・`dark`クラス・`color-scheme`を同期して適用し、`localStorage`の`agboard.theme`に保存します。テーマの変更はAPIにもタスクの履歴にも届きません。
+**テーマ。** `web/src/shared/theme/index.ts`が、テーマの型・一覧・検証・DOMの属性を受け持ちます。テーマはモード（lightかdark）と12色のアクセントの一つです。Reactの描画前に`data-mode`・`data-accent`・`dark`クラス・`color-scheme`を同期して適用します。保存した値はPCの`preferences.json`にあり、`web/src/shared/preferences/index.ts`が`GET`・`PUT /api/preferences`で読み書きします（[共有ファイル](../reference/files.md#表示設定)を参照）。ブラウザは最初の描画のためだけに、`localStorage`の`agboard.theme`と`agboard.locale`に控えを持ちます。テーマの変更がタスクの履歴に届くことはありません。
 
-エピック一覧は、ボードの応答の`epics`と`epicTaskCounts`を読みます。件数はサーバーが`epics`と同じスナップショットから集計するので、一覧が二つの読み込みを混ぜることはありません。モバイルモニターも同じ件数を応答に含みますが、エピック一覧の画面はありません。一覧はアーカイブと`ListPane`で外枠を共有し、読み込み中・読み込み失敗・再取得失敗・空の各状態はプロジェクトのresourceから決まります。再取得に失敗しても直前に読めた行を残します。
+エピック一覧は、プロジェクトのSummaryから、エピックと進捗を読みます。進捗はサーバーが`epics`と同じスナップショットから計算するので、一覧が二つの読み込みを混ぜることはありません。モバイルモニターには、エピック一覧の画面はありません。一覧はアーカイブと`ListPane`で外枠を共有し、読み込み中・読み込み失敗・再取得失敗・空の各状態はプロジェクトのresourceから決まります。再取得に失敗しても直前に読めた行を残します。
 
 タスク詳細（アーカイブ・モニターを含む）とエピック詳細は、`web/src/features/tasks/detail/DetailHeader.tsx`の`DetailHeader`を共有します。識別表示・操作ツールバー・閉じるボタンを共通の配置にし、閉じるボタンまでの間隔を揃えます。画面ごとの操作は呼び出し側が渡します。
 
@@ -51,16 +55,34 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 
 | 層 | 置くもの |
 | --- | --- |
-| `app/` | 3つの入口（`entry/board.tsx`・`entry/monitor.tsx`・`access/entry.ts`）、ボードの`App`、プロジェクトのセッション、集約する`api.ts`、遅延ダイアログの接続、サンプルデータのモード。 |
+| `app/` | 2つの入口（`entry/board.tsx`・`entry/monitor.tsx`）、ボードの`App`、プロジェクトのセッション、集約する`api.ts`、遅延ダイアログの接続、サンプルデータのモード。 |
 | `pages/` | 画面ごとのフォルダー: `board/`・`archive/`・`epics/`・`monitor/`。 |
-| `features/` | `tasks/`・`epics/`・`projects/`・`settings/`: 一つの主題の表示、フック、計算、リクエスト。 |
+| `features/` | `tasks/`・`epics/`・`projects/`・`settings/`・`docs/`（プロジェクトのドキュメントのダイアログ）・`monitor-connections/`（モバイル接続のPC用ダイアログ）: 一つの主題の表示、フック、計算、リクエスト。 |
 | `shared/` | `ui/`の基盤部品と汎用の枠、`markdown/`、`rich-editor/`、`api/`（HTTPの共通処理とサーバーのやり取りの型）、`lib/`、`styles/`、`theme/`、`i18n/`。 |
 
-ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`RequestDialog`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。モニターの`useBuildReload`も、入口から同じように渡します。
+ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`RequestDialog`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。ボードの設定スロット（`app/BoardSettings.tsx`）もこうした組み合わせの一つで、設定ダイアログにチュートリアルとモバイル接続の行を置き、隣にある接続ダイアログを持ちます。そのため、設定ダイアログを閉じてから接続ダイアログが開きます。2つの行は、`shared/ui`の`SettingsEntryRow`を呼ぶ薄い部品（`TutorialEntryRow`・`ConnectionEntryRow`）で、アイコンのタイル、文言、ボタンは`SettingsEntryRow`が描きます。モニターの`useBuildReload`も、入口から同じように渡します。
 
 `pnpm --dir web check`は、Biomeの後に`web/scripts/check-boundaries.mjs`を実行します。静的import、`import type`、再エクスポート、`import()`をたどり、規則に反するimport、解決できないimport、循環importがあると失敗します。許可リストで黙らせず、共通部分を下の層へ移すか、ページで組み合わせてください。機能全体を一つのファイルから再エクスポートしないでください。エディターやMarkdown表示のような重いモジュールが最初のスクリプトに入ってしまいます。遅延importは実装ファイルを指します。
 
 UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳はソースの近くに置きます。台帳では、公開された部品とStory ID、表示状態を対応付けます。ページStoryは画面全体の合成を、部品Storyはその部品が持つ状態と操作を記録します。コマンドと台帳検査の現在の範囲は[Storybook](../getting-started/setup.md#storybook)を参照してください。
+
+## データの読み取りと更新
+
+ボードとモニターは、プロジェクトを2段階で読みます。Summary（`GET .../summary`）は、カードや一覧の行に表示するすべての内容を持ちます。サーバーは索引からSummaryを作るので、読み取りでファイルは読まれません。Detail（`GET .../tasks/{id}/detail`、または`.../epics/{epicId}/detail`）は、本文・受入条件の文章・履歴を持ちます。画面がDetailを読むのは、利用者がそのカードやエピックを開いたときだけです。モバイルモニターは、同じ契約を`/monitor/api/projects/{projectId}/`の下で使います。応答の形は[Web API](../reference/web-api.md#summaryとdetail)にあります。
+
+`web/src/shared/data/`のデータ層は、これらの読み取りを次の3つに分けて扱います。
+
+- `api/`: 契約の型と、DetailのNDJSONストリームの解析部です。ストリームは`complete`行を受け取った後にだけ受理します。
+- `core/`: Reactに依存しないコードです。`ResourceStore`は、Summaryと、タスクやエピックごとのDetailのセクションを保持します。`RefreshScheduler`は150msの間に届いた通知をまとめ、同じリソースへの要求を1回の取得にまとめ、バックグラウンドの取得を同時に2件までにし、通知で示されたセクションだけを取得します。`ChangeInvalidator`は`changed`イベントを、安全な範囲で最も小さい無効化に変えます。`EventConnection`はイベントのストリームを開いたり閉じたりします。
+- `react/`: 画面が使うフックです。`useSummary`・`useTaskDetail`・`useEpicDetail`・`usePresentationHold`などがあります。
+
+キャッシュには固定の上限があり、時間による期限切れはありません。Summaryは直近4プロジェクトの分を、プロジェクトごとに1つずつ保持します。タスクのDetailは60件・8 MiBまで、エピックのDetailは20件・4 MiBまで保持し、上限を超えたら最も長く使われていないものから捨てます。上限は`web/src/shared/data/core/limits.ts`にあります。
+
+**更新の保留。** ドロワーやダイアログが開いている間は、自動更新で画面が変わらないようにしています。データ層は、パネルが開いている間は更新を保留し、最後のパネルが閉じてから3秒後にまとめて適用します。保留の間もイベントのストリームは開いたままですが、データは取得しません。保存と回答は保留を待たず、すぐに適用します。PCのボードには手動の更新はありません。ページを再読み込みすると、すべてを読み直します。
+
+**Markdownの描画。** サーバーは本文を、トップレベルのMarkdownブロックに分けます。小さいブロックは隣と約2,000文字まで結合しますが、リスト・表・コードフェンス・引用は分割しません。Mermaidのフェンスは単独のブロックです。画面は、ブロックを順番に描きます。40ブロック以上、または5,000文字以上の文書は仮想化します。画面の近くにあるブロックだけをマウントします。仮想リストは別のチャンクで、そうした文書を表示するときに読み込まれます。
+
+**ボードの詳細タブ。** 詳細パネルは、開いているタブが表示する内容だけを読みます。「説明」と「受入条件」のタブは`document`セクションを、「履歴」タブは`history`を読みます。「エピック」タブは、初めて開いたときにエピックの本文を読みます。履歴タブの件数は、履歴の読み込みが終わってから表示されます。
 
 ## 画面での失敗時の振る舞い
 
@@ -90,11 +112,30 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 - ブラウザは成功まで確認を開いたままにし、ネットワークの失敗の後は再試行できるようにします。保存中は二重送信・閉じる・切り替えを止め、開始時のIDや要求番号が違う遅れた応答を捨てます。
 - 削除での404は再取得して、タスクがすでにないことを示します。ネットワークの失敗を削除の成功として扱うことはありません。空・読み込み中・一覧の失敗と再試行・切断の状態は、アーカイブの画面にも適用します。
 
-**ブラウザの設定**
+**設定**
 
-- 言語・テーマ・詳細欄の幅は、ブラウザごとに別のキーで保存します。値がない・不正・読めないときは既定（英語、既定のテーマと幅）に戻し、ブラウザやOSの言語や配色は使いません。
-- 保存に失敗しても、選んだ設定は今のページに反映します。日本語の翻訳キーがなければ英語の文言を表示します。設定の失敗でボードのデータが変わることはなく、一つのキーが不正でもほかのキーは戻りません。
+- 言語とカラーテーマは、ブラウザではなくPCの一つのファイルに保存し、このPCのすべてのブラウザとモバイルモニターがその値を使います。ファイルがない・不正・読めない場合は既定（英語とライトブルー）に戻し、ブラウザやOSの言語や配色は使いません。
+- 起動時、ページはブラウザの控えで描画してから、`GET /api/preferences`を読みます。PCの値と違えば、ページはPCの値に切り替えます。正しいのはPCの値で、ブラウザの控えは表示が一瞬ずれるのを防ぐためだけに使います。
+- `preferences`イベントは、開いているすべてのページに変更をすぐに反映します。再読み込みは要りません。ページは、すでに新しい版を表示していれば、遅れて届いた古い応答やイベントを無視します。
+- 保存に失敗した場合（`invalid_preferences`・`preferences_unavailable`、または接続できない場合）も、選んだ設定は今のページに反映します。設定のダイアログには保存の失敗を表示し、PCの値は変えません。日本語の翻訳キーがなければ英語の文言を表示します。設定の失敗でボードのデータが変わることはありません。
+- 詳細欄の幅は、保存する設定には含みません。`agboard.detailWidth`の別のキーでブラウザごとに保存し、値がない・不正なときは既定の幅に戻します。
+
+### ドキュメントのダイアログ
+
+ダイアログのデータは`DocsDialogContainer`（`web/src/features/docs/ui/`）が持ちます。画面と状態は[利用者ガイド](../../guide/use/docs.md)で説明しています。
+
+- ダイアログはファイルを表示するだけです。`useDocsTree`は、ダイアログを開いたときにツリーを取得します。`useDocument`はファイルを選ぶたびにそのファイルを取得し、選択の間で何も保持しません。読み込みごとにIDを付けて表示部品のキーにします。Markdownは`disabled`の`RichMarkdownEditor`、`.mdx`は`MdxFrame`（サンドボックスのページ）、画像は`FileViewer`で表示します。フロントマターは`splitFrontmatter`（`shared/markdown/frontmatter.ts`）で分け、本文の上に表示します。
+- **エディターで開く**は`docs/open?path=`を送り、サーバーがそのファイルをコンピュータのアプリで開きます。
+- ダイアログは`useDocsFollow`でファイルの変化に追従します。アプリは`subscribeDocs`を渡します。これは、ストリームのそのプロジェクトの`docs`の通知と、ストリームの再接続（`sync`）を呼び出しに変えるものです。呼び出しのたびに、ツリーを読み込み中の状態にせずに読み直します（`refresh`）。開いているファイルがツリーになければ`deleted`です。あれば`useDocument.refresh`で読み直し、`revision`が違うときだけ表示を置き換えて`updated`とします。通知は時刻付きでフッターの右に出し、そのファイルにだけ付きます。ドキュメントはボードのデータではないので、ドロワーやモーダルによる更新の保留を待ちません。
+- 相対パスの画像は`resolveRelativeImage`（`shared/markdown/resolveRelativeImage.ts`）がファイルのフォルダを基準に解決し、画像のルートへつなぎます。自分の添付や安全でないスキームは、ここに届きません。
+- ヘッダーの**ドキュメント**は、ボードにだけ表示します。ボードは`app/`でコンテナをプロジェクトをキーにして組み立てるので、プロジェクトを切り替えると最初からになります。ダイアログは初めて使うときに読み込みます。
 
 ## プロジェクトをまたぐ読み込み
 
 `ls --all-projects`は全プロジェクトを順に読みます。各プロジェクトは並行する保存の前か後の状態で返り、プロジェクトをまたいだ一貫性はありません。データ領域を作らず、通知せず、ファイルを変えません。データ領域がなければ空の`projects`を返し、不正な`project.json`が一つでもあれば、部分的な出力はせずエラーだけを返します。
+
+## 初回の案内
+
+案内の表示部品は `web/src/features/onboarding/ui` にあります。部品は props だけを受け取り、ボードを import しません。`web/src/app/onboarding` の制御（`useGuide`）が案内の経路を呼び、手順を進め、10 秒ごとにリースを延長します。`GuideLayer` は部品をボードに結び付けます。案内が指すレーンを測り、スポットライトの中に実際のタスクカードとその回答フォームを描きます。`BoardWorkspace` は層を別に読み込まれる部品として載せます。そのため案内のコードはボードの初回読み込みに含まれません。案内はボードの表示中で、ほかの操作・回答・エピック表示・アーカイブ表示が開いていないときだけ提示されます。設定の「チュートリアル」の行は、完了またはスキップ済みの案内をもう一度出すようボードに頼みます。`useTutorialReplay` は、ボードが案内を表示できるようになるまでこの依頼を保持し、その後 `POST /api/onboarding/replay` を呼びます。案内の経路は PC のボードのルーターにだけ登録されます。モニターは `/monitor/api` という独自の経路を持ち、そのどれも案内を扱いません。
+
+スポットライトの枠の高さは、中のカードの高さに合わせます。ただし下端が案内パネルより 24 px 上に収まるよう上限を設け、それより高いカードは枠の中でスクロールします。制御は、ボードが表示するプロジェクトごとに案内を 1 回読み、すべてのコマンドを画面に表示中のプロジェクトへ送ります。実行の途中でタブを閉じたり再読み込みしたりすると、ファイルはリースが切れたまま `active` で残ります。そのため最初の読み取りでサーバーに run の回収を依頼し、案内は中断された案内として改めて提示されます。HTTP ステータスが 500 以上の失敗では、サーバーの英語の文言ではなく、翻訳済みの接続エラーの文言を表示します。

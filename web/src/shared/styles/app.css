@@ -142,22 +142,27 @@ ol {
 
 .header__add {
   flex: none;
-  height: 34px;
-  padding: 0 14px;
   gap: 6px;
 }
 
+.header__docs,
 .header__epics,
 .header__archive {
-  height: 36px;
-  padding-inline: 8px;
   gap: 6px;
 }
 
+.header__docs svg,
 .header__epics svg,
 .header__archive svg {
   width: 14px;
   height: 14px;
+}
+
+/* Narrow windows keep the project name readable: the Docs button shows its icon only. */
+@media (max-width: 1200px) {
+  .header__docs-label {
+    display: none;
+  }
 }
 
 .header__add svg {
@@ -167,8 +172,6 @@ ol {
 
 .header__settings {
   flex: none;
-  width: 36px;
-  height: 36px;
 }
 
 .header__settings svg {
@@ -293,8 +296,8 @@ ol {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-icon);
   border: 0;
   border-radius: 5px;
   color: var(--r-muted);
@@ -589,8 +592,8 @@ ol {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 27px;
-  height: 25px;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-h);
   padding: 0;
   border: 0;
   background: transparent;
@@ -766,6 +769,7 @@ ol {
   gap: 8px;
   min-width: 0;
   max-width: 100%;
+  /* biome-ignore lint/plugin: existing: the project switcher is not on a Button size yet */
   height: 34px;
   padding: 0 9px;
   border: 1px solid var(--r-border);
@@ -835,6 +839,7 @@ ol {
   flex: none;
   align-items: center;
   gap: 10px;
+  /* biome-ignore lint/plugin: existing: the menu item is not on a Button size yet */
   height: 38px;
   padding: 0 10px;
   border-radius: 5px;
@@ -894,8 +899,6 @@ ol {
 }
 
 .board-message__retry {
-  height: 34px;
-  padding: 0 14px;
   font-weight: 400;
 }
 

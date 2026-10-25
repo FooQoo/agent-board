@@ -1,8 +1,9 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect } from '@playwright/test';
+import { startPhoneEntrance } from '../../helpers/phone-entrance.mjs';
 
 // Shared disposable sample board for the screenshot scripts. Build web/ and the CLI first.
 export const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -53,7 +54,18 @@ export function cli(home, args) {
   return JSON.parse(result.stdout);
 }
 
+/** Marks the first-run guide of a data area as skipped, so the screenshots show the board and not the guide. */
+function skipGuide(home) {
+  const internal = path.join(home, 'shared', '.internal');
+  mkdirSync(internal, { recursive: true });
+  writeFileSync(
+    path.join(internal, 'onboarding.json'),
+    JSON.stringify({ formatVersion: 1, revision: 1, status: 'skipped', owner: null, run: null, appliedCommands: [] }),
+  );
+}
+
 export function seed(home, text) {
+  skipGuide(home);
   const meta = cli(home, ['project', 'create', project]).project;
   const run = (...args) => cli(home, ['--project', project, ...args]);
   for (const [id, name, color] of [['DESIGN', text.design, '#7C3AED'], ['LAUNCH', text.launch, '#008FCC']]) {
@@ -69,7 +81,7 @@ export function seed(home, text) {
   for (const id of [2, 3, 7]) run('mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start sample work');
   run('state', '2', 'running', '--actor', 'ai', '--reason', 'Build the landing page');
   run('history', 'add', '3', '--reason', text.workNote);
-  run('state', '3', 'pending', '--actor', 'ai', '--request-json', JSON.stringify({
+  run('state', '3', 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({
     question: text.question, choices: text.choices.map((label, i) => ({ id: `option-${i + 1}`, label })),
   }));
   // This is a disposable human-owned sample; AI card #6 completes automatically at server startup.
@@ -88,11 +100,13 @@ export async function freePort(preferred = 0) {
   return port;
 }
 
-export async function stop(child) {
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  const exited = new Promise((resolve) => child.once('exit', resolve));
-  child.kill('SIGTERM');
-  await exited;
+/** Stops what `startServer` returned: the phone entrance, or any child process. */
+export async function stop(server) {
+  if (typeof server?.stop === 'function') return server.stop();
+  if (!server || server.exitCode !== null || server.signalCode !== null) return undefined;
+  const exited = new Promise((resolve) => server.once('exit', resolve));
+  server.kill('SIGTERM');
+  return exited;
 }
 
 export async function settle(page) {
@@ -105,26 +119,11 @@ export async function settle(page) {
   await page.mouse.move(0, 0);
 }
 
-/** Starts `agboard serve` on available loopback ports and waits until it is healthy. */
+/**
+ * Starts the board for the scripts: the PC board on loopback (`origin`) and the phone monitor behind
+ * the ngrok entrance stand-in (`remote`), both over `home`. No connection to ngrok is made.
+ */
 export async function startServer(home) {
-  const localPort = await freePort(Number(process.env.AGBOARD_MEDIA_PORT ?? 0));
-  const remotePort = await freePort(Number(process.env.AGBOARD_MEDIA_REMOTE_PORT ?? 0));
-  const origin = `http://127.0.0.1:${localPort}`;
-  const remote = `http://127.0.0.1:${remotePort}`;
-  let stderr = '';
-  const server = spawn(binary, ['serve', '--port', String(localPort), '--remote-port', String(remotePort),
-    '--remote-origin', 'https://screenshots.invalid'], {
-    cwd: home, env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' }, stdio: ['ignore', 'ignore', 'pipe'],
-  });
-  server.stderr.on('data', (chunk) => { stderr += chunk; });
-  try {
-    await expect.poll(async () => {
-      if (server.exitCode !== null) throw new Error(stderr);
-      return fetch(`${origin}/api/health`).then((r) => r.ok).catch(() => false);
-    }).toBe(true);
-  } catch (error) {
-    await stop(server);
-    throw error;
-  }
-  return { server, origin, remote };
+  const entrance = await startPhoneEntrance(home);
+  return { server: entrance, origin: entrance.pcOrigin, remote: entrance.phoneOrigin };
 }

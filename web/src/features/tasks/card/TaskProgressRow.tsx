@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Task } from '../../../shared/api/contracts';
+import type { TaskSummary } from '../../../shared/api/contracts';
 import { AcceptanceProgress } from '../acceptance/AcceptanceProgress';
 import { AssigneeLabel } from '../assignee/AssigneeLabel';
 import { StatusLabel } from '../status/StatusLabel';
@@ -17,7 +17,7 @@ export function TaskProgressRow({
   disabled,
   onOpen,
 }: {
-  task: Task;
+  task: TaskSummary;
   grip: ReactNode;
   disabled: boolean;
   onOpen: () => void;
