@@ -767,7 +767,6 @@ fn job(workflow: &str, name: &str) -> String {
     let rest = &workflow[start + header.len() - 1..];
     let end = rest
         .lines()
-        .skip(0)
         .scan(0usize, |pos, line| {
             let at = *pos;
             *pos += line.len() + 1;
