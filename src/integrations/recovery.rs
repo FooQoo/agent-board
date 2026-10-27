@@ -51,7 +51,7 @@ pub struct RecoveryReport {
 impl RecoveryReport {
     /// Whether the journal could be closed.
     pub fn is_clean(&self) -> bool {
-        self.stuck.is_empty() && !(self.keep_on_external && !self.external.is_empty())
+        self.stuck.is_empty() && (!self.keep_on_external || self.external.is_empty())
     }
 }
 
