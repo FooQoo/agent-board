@@ -25,6 +25,18 @@ use expectrl::process::unix::WaitStatus;
 use expectrl::session::OsSession as Session;
 use expectrl::{Eof, Expect};
 
+/// A child process keeps copies of the descriptors that exist while it is
+/// being spawned until it execs, and a copy of a lock file keeps the lock.
+/// Spawning takes this lock shared; holding an agent lock in the test process
+/// takes it exclusive, so the two never overlap.
+static SPAWN: std::sync::RwLock<()> = std::sync::RwLock::new(());
+
+/// An agent lock held by the test process, with spawning paused.
+pub struct HeldLock {
+    _lock: agent_board::integrations::journal::AgentLock,
+    _spawn: std::sync::RwLockWriteGuard<'static, ()>,
+}
+
 pub struct Fx {
     pub tmp: tempfile::TempDir,
 }
@@ -95,12 +107,12 @@ impl Fx {
 
     /// A non-interactive run: (exit code, stdout, stderr).
     pub fn agboard(&self, args: &[&str], cwd: &Path) -> (i32, String, String) {
-        let output = self
-            .command(cwd)
-            .args(args)
-            .stdin(Stdio::null())
-            .output()
-            .unwrap();
+        let mut command = self.command(cwd);
+        command.args(args).stdin(Stdio::null());
+        let output = {
+            let _spawn = SPAWN.read().unwrap_or_else(|e| e.into_inner());
+            command.output().unwrap()
+        };
         (
             output.status.code().unwrap_or(-1),
             String::from_utf8_lossy(&output.stdout).into_owned(),
@@ -111,9 +123,23 @@ impl Fx {
     pub fn session(&self, cwd: &Path, args: &[&str]) -> Session {
         let mut command = self.command(cwd);
         command.args(args);
-        let mut session = expectrl::Session::spawn(command).unwrap();
+        let mut session = {
+            let _spawn = SPAWN.read().unwrap_or_else(|e| e.into_inner());
+            expectrl::Session::spawn(command).unwrap()
+        };
         session.set_expect_timeout(Some(Duration::from_secs(20)));
         session
+    }
+
+    /// Holds `agent`'s lock until the guard is dropped; no child is spawned meanwhile.
+    pub fn hold_lock(&self, agent: Agent) -> HeldLock {
+        let spawn = SPAWN.write().unwrap_or_else(|e| e.into_inner());
+        let lock =
+            agent_board::integrations::journal::AgentLock::acquire(&self.data(), agent).unwrap();
+        HeldLock {
+            _lock: lock,
+            _spawn: spawn,
+        }
     }
 
     /// Both agents, one scope pair (`1` Global, `2` Project), from `cwd`.
@@ -215,6 +241,8 @@ impl Fx {
     /// at the registry commit, leaving the files written and the journal
     /// pending, as a killed `agboard` would.
     pub fn interrupted_run(&self, agent: Agent) {
+        // The run holds the agent lock; no child may be spawned meanwhile.
+        let _spawn = SPAWN.write().unwrap_or_else(|e| e.into_inner());
         let env = PathEnv {
             agboard_home: Some(self.data().into()),
             home: Some(self.base().join("home")),

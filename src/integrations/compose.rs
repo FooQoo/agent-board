@@ -12,7 +12,7 @@ use super::plan::{AgentPlan, PlanInput, RegistryChange, Stage, Stages};
 use super::registry::InstallationRecord;
 use super::skill::{SkillPlan, plan_install, plan_removal};
 use super::template::TemplateGroup;
-use super::types::{Component, IntegrationError, Scope};
+use super::types::{Agent, Component, IntegrationError, Scope};
 
 pub(super) fn plan_hook(
     input: &PlanInput,
@@ -43,11 +43,11 @@ pub(super) fn plan_hook(
     let check = check_other_registrations(
         input.env,
         t.agent,
-        target,
-        t.hook_scope,
+        (target, t.hook_scope),
         input.scan_root,
         input.registry,
         template,
+        input.moves,
     );
     plan.conflicts.extend(check.conflicts);
     plan.warnings.extend(check.warnings);
@@ -235,8 +235,12 @@ fn nested_warnings(input: &PlanInput, component: Component, plan: &mut AgentPlan
         } else {
             continue;
         };
+        let loads = match input.targets.agent {
+            Agent::Codex => "Codex loads both in the inner project",
+            Agent::Claude => "Claude Code may also load it in the inner project",
+        };
         plan.warnings.push(format!(
-            "The Project {name} of another project at {} is in a folder {place} this project. In the inner project both load. They were left as they are.",
+            "The Project {name} of another project at {} is in a folder {place} this project. {loads}. They were left as they are.",
             record.resolved_path.display()
         ));
     }

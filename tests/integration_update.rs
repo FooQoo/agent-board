@@ -680,7 +680,8 @@ fn a_nested_projects_update_leaves_the_outer_projects_managed_hooks_alone() {
     assert!(
         screen.contains("Warning")
             && screen.contains(outer_files[0].to_str().unwrap())
-            && screen.contains("both"),
+            && screen.contains("both")
+            && screen.contains("may also load"),
         "{screen}"
     );
     let outer_records: Vec<_> = fx
@@ -721,18 +722,7 @@ fn a_held_lock_during_recovery_is_reported_on_standard_error() {
     use agent_board::integrations::paths::PathEnv;
     let fx = Fx::new();
     fx.interrupted_run(Agent::Claude);
-    // Another test's child process can briefly inherit the lock file of the
-    // run above while it is being spawned, so retry for a moment.
-    let _held = (0..50)
-        .find_map(|_| {
-            let lock =
-                agent_board::integrations::journal::AgentLock::acquire(&fx.data(), Agent::Claude);
-            lock.ok().or_else(|| {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                None
-            })
-        })
-        .expect("the lock becomes free");
+    let _held = fx.hold_lock(Agent::Claude);
     let session = Session {
         path_env: PathEnv {
             agboard_home: Some(fx.data().into()),
@@ -752,4 +742,44 @@ fn a_held_lock_during_recovery_is_reported_on_standard_error() {
     assert_eq!(code, 1, "{out}{err}");
     assert!(err.contains("another run"), "stderr: {err}\nstdout: {out}");
     assert!(!out.contains("another run"), "{out}");
+}
+
+/// Ages project A's records (project `Demo`), leaves project B's alone, and
+/// returns B's Claude settings file.
+fn age_first_project(fx: &Fx) -> std::path::PathBuf {
+    fx.connect_both_at(&fx.other(), "2", "2");
+    fx.age("0.0.1", |r| {
+        r.bound_root.as_deref() == Some(fx.root().as_path())
+    });
+    fx.other().join(".claude/settings.json")
+}
+
+#[test]
+fn another_projects_unknown_agboard_command_does_not_block_update() {
+    let fx = two_projects();
+    let theirs = age_first_project(&fx);
+    let mut settings: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&theirs).unwrap()).unwrap();
+    settings["hooks"]["Stop"] = serde_json::json!([
+        {"hooks": [{"type": "command", "command": "agboard my-own-thing"}]}
+    ]);
+    std::fs::write(&theirs, serde_json::to_string_pretty(&settings).unwrap()).unwrap();
+    let before = std::fs::read(&theirs).unwrap();
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &fx.root());
+    assert_eq!(code, 0, "{stdout}{stderr}");
+    assert!(!skill_is_old(&fx, Agent::Claude, true));
+    assert!(!format!("{stdout}{stderr}").contains(theirs.to_str().unwrap()));
+    assert_eq!(std::fs::read(&theirs).unwrap(), before);
+}
+
+#[test]
+fn another_projects_unreadable_settings_do_not_warn_update() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = two_projects();
+    let theirs = age_first_project(&fx);
+    std::fs::set_permissions(&theirs, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &fx.root());
+    std::fs::set_permissions(&theirs, std::fs::Permissions::from_mode(0o644)).unwrap();
+    assert_eq!(code, 0, "{stdout}{stderr}");
+    assert!(!format!("{stdout}{stderr}").contains(theirs.to_str().unwrap()));
 }
