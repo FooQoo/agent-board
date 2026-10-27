@@ -100,6 +100,27 @@ WAVES = {
         ["pnpm", "--dir", "e2e", "install", "--frozen-lockfile"],
         ["env", "AGBOARD_DOCS_E2E_PORT=9095", "pnpm", "--dir", "e2e", "test:docs"],
     ],
+    # The final run: every check the release requires, once, on the last commit.
+    "6": [
+        ["pnpm", "--dir", "web", "install", "--frozen-lockfile"],
+        ["pnpm", "--dir", "web", "build"],
+        ["cargo", "build"],
+        ["cargo", "fmt", "--all", "--", "--check"],
+        ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"],
+        ["cargo", "test"],
+        ["pnpm", "--dir", "web", "typecheck"],
+        ["pnpm", "--dir", "web", "check"],
+        ["pnpm", "--dir", "web", "test"],
+        ["pnpm", "--dir", "web", "typecheck:storybook"],
+        ["pnpm", "--dir", "web", "test:storybook"],
+        ["pnpm", "--dir", "web", "build-storybook"],
+        ["pnpm", "--dir", "e2e", "install", "--frozen-lockfile"],
+        ["env", "AGBOARD_E2E_MAIN_PORT=9101", "AGBOARD_E2E_STATES_PORT=9102", "pnpm", "--dir", "e2e", "test"],
+        ["pnpm", "--dir", "docs", "install", "--frozen-lockfile"],
+        ["pnpm", "--dir", "docs", "build"],
+        ["env", "AGBOARD_DOCS_E2E_PORT=9105", "pnpm", "--dir", "e2e", "test:docs"],
+        ["git", "diff", "--check"],
+    ],
 }
 
 

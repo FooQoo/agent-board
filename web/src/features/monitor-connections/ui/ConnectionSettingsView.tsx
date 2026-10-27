@@ -145,7 +145,9 @@ export function ConnectionSettingsView({
               : t('monitorConnection.statusOff')}
         </p>
         {!stopped && <p className="connection-dialog__intro">{t('monitorConnection.intro')}</p>}
-        <PreviewNotice feature="mobileMonitor" />
+        {/* The notice is for the decision to connect; once connected, the badge stays and the
+            QR code keeps the room the dialog's fixed size gives it. */}
+        {!connected && <PreviewNotice feature="mobileMonitor" />}
 
         {connected ? (
           <div className="connection-dialog__main">

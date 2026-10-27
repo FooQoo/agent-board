@@ -6,7 +6,7 @@ use std::fs::{self, OpenOptions};
 use std::io::Write as _;
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::journal::JournalOp;
@@ -71,26 +71,49 @@ pub(super) fn registry_op(
     }))
 }
 
+/// The hidden folder that holds the backup and the staging copy of a Skill
+/// folder: `.agboard-backups` in the parent of the skills root, so that agents
+/// do not load them as Skills and a rename stays on one file system.
+pub(super) fn skill_backup_dir(skill: &Path) -> Option<PathBuf> {
+    // Follow links in the skills root, so the folder is on the same file
+    // system as the real Skill folder even when `skills` is a symbolic link.
+    let skills_root = super::paths::resolve_links(skill.parent()?);
+    Some(skills_root.parent()?.join(BACKUP_DIR))
+}
+
+/// Removes the hidden backup folder around `path` when nothing is left in it.
+pub(super) fn prune_backup_dir(path: &Path) {
+    if let Some(dir) = path.parent().filter(|d| d.ends_with(BACKUP_DIR)) {
+        let _ = fs::remove_dir(dir);
+    }
+}
+
+/// The folder name for Skill backups and staging copies.
+const BACKUP_DIR: &str = ".agboard-backups";
+
 pub(super) fn journal_op(op: &PlannedOp, txn: &str, index: usize) -> JournalOp {
     let name = op
         .path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let beside = |tag: &str| {
-        op.path
-            .with_file_name(format!(".{name}.agboard-{tag}-{txn}-{index}"))
+    // File backups sit beside the file; Skill folders go to the hidden folder.
+    let hidden = (op.kind == OpKind::Tree)
+        .then(|| skill_backup_dir(&op.path))
+        .flatten();
+    let place = |file: String| match &hidden {
+        Some(dir) => dir.join(file),
+        None => op.path.with_file_name(file),
     };
-    let backup_name = op
-        .path
-        .with_file_name(format!("{name}.agboard-backup-{txn}-{index}"));
+    let backup_name = place(format!("{name}.agboard-backup-{txn}-{index}"));
+    let stage_name = place(format!(".{name}.agboard-stage-{txn}-{index}"));
     JournalOp {
         kind: op.kind,
         path: op.path.clone(),
         original_hash: op.original_hash.clone(),
         planned_hash: op.planned_hash.clone(),
         backup: op.original_hash.as_ref().map(|_| backup_name),
-        stage: matches!(op.payload, Payload::Tree(_)).then(|| beside("stage")),
+        stage: matches!(op.payload, Payload::Tree(_)).then_some(stage_name),
     }
 }
 

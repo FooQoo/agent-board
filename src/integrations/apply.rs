@@ -9,7 +9,9 @@ use std::fs;
 use super::journal::{
     AgentLock, Journal, JournalOp, journal_path, read_journal, state_hash, write_journal,
 };
-use super::ops::{build_tree, journal_op, registry_op, unique_id, write_new_file};
+use super::ops::{
+    build_tree, journal_op, prune_backup_dir, registry_op, unique_id, write_new_file,
+};
 use super::outcome::{Abort, notify};
 pub use super::outcome::{
     AgentOutcome, ApplyOptions, Observer, Phase, Status, Step, StepAction, exit_code, is_partial,
@@ -101,10 +103,12 @@ fn run(env: &PathEnv, plan: &AgentPlan, options: &ApplyOptions) -> Result<AgentO
                 },
                 Abort::Fail(reason) => {
                     let report = rollback(&data, &journal, began, observer);
-                    let tail = if report.is_clean() {
+                    let tail = if !report.is_clean() {
+                        "Some changes could not be restored; see the recovery paths."
+                    } else if report.external.is_empty() {
                         "Everything this run changed for the agent was restored."
                     } else {
-                        "Some changes could not be restored; see the recovery paths."
+                        "The rest was restored; files someone else changed were left as they are, and their backups are named below."
                     };
                     AgentOutcome {
                         rollback: Some(report),
@@ -116,6 +120,9 @@ fn run(env: &PathEnv, plan: &AgentPlan, options: &ApplyOptions) -> Result<AgentO
         }
     }
     super::journal::remove_journal(&data, agent);
+    for stage in journal.ops.iter().filter_map(|j| j.stage.as_deref()) {
+        prune_backup_dir(stage);
+    }
     let backups = journal
         .ops
         .iter()
@@ -146,6 +153,9 @@ fn apply_op(
             .map_err(fail)?;
     }
     if let (Payload::Tree(files), Some(stage)) = (&op.payload, &journal.stage) {
+        if let Some(parent) = stage.parent() {
+            fs::create_dir_all(parent).map_err(fail)?;
+        }
         build_tree(stage, files).map_err(fail)?;
     }
     *began = index + 1;
@@ -177,11 +187,19 @@ fn apply_op(
                 fs::create_dir_all(parent).map_err(fail)?;
             }
             if let Some(backup) = backup {
+                if let Some(parent) = backup.parent() {
+                    fs::create_dir_all(parent).map_err(fail)?;
+                }
                 fs::rename(&op.path, backup).map_err(fail)?;
             }
             fs::rename(stage, &op.path).map_err(fail)
         }
-        (Payload::Remove, Some(backup), _) => fs::rename(&op.path, backup).map_err(fail),
+        (Payload::Remove, Some(backup), _) => {
+            if let Some(parent) = backup.parent() {
+                fs::create_dir_all(parent).map_err(fail)?;
+            }
+            fs::rename(&op.path, backup).map_err(fail)
+        }
         _ => Err(Abort::Fail(format!(
             "{}: the plan is inconsistent",
             op.path.display()

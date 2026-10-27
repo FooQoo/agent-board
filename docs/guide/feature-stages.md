@@ -26,7 +26,7 @@ Where you see it:
 | Feature | Where the notice appears |
 | --- | --- |
 | [Docs](#docs) | The heading of the Docs dialog shows a **Public preview** badge, with the notice and a link to this page below it. |
-| [Mobile monitor](#mobile-monitor) | The **Mobile connection** dialog on the computer shows the badge, the notice, and a link to this page. The monitor on the phone does not show it. |
+| [Mobile monitor](#mobile-monitor) | The **Mobile connection** dialog on the computer shows the badge. Before you connect, it also shows the notice and a link to this page. The monitor on the phone does not show it. |
 | [First-run welcome](#onboarding) | The first screen shows the badge next to its title. |
 | [connect and update](#connect-and-update) | The interactive screen of each command starts with one line: `Public preview: this command may change. See the documentation for current limitations.` `update --yes` asks no question, so it prints no such line. |
 | [Task listening](#listen) | No screen. This page and the agent skill describe it. |

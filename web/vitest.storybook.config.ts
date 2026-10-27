@@ -25,6 +25,9 @@ export default defineConfig({
           alias: { '@': `${root}src` },
         },
         publicDir: storyStatic,
+        // Bundled before the first Story loads. Found during the run instead, it makes Vite reload
+        // the page and the Story under test never becomes ready.
+        optimizeDeps: { include: ['nuqs/adapters/react'] },
         plugins: [
           tailwindcss(),
           // Runs every Story as a test. The addon takes the Stories from .storybook/main.ts.

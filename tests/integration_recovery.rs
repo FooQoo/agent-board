@@ -62,6 +62,7 @@ fn plan(fx: &Fx, skill: Scope, hook: Scope) -> AgentPlan {
         registry: &registry,
         bundle: &bundle,
         permissions: true,
+        moves: true,
     })
     .unwrap()
 }
@@ -260,6 +261,85 @@ fn an_update_keeps_the_old_skill_as_a_backup_and_a_failure_puts_it_back() {
     );
 }
 
+/// Folders of `root` that hold a SKILL.md: the ones an agent would load.
+fn loaded_skills(root: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = fs::read_dir(root) else {
+        return Vec::new();
+    };
+    entries
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.join("SKILL.md").is_file())
+        .collect()
+}
+
+#[test]
+fn a_skill_update_leaves_one_skill_in_the_skills_root_and_the_backup_outside() {
+    let fx = fixture();
+    let skill = install_old_skill(&fx);
+    let outcome = run(&fx, None);
+    assert_eq!(outcome.status, Status::Applied, "{outcome:?}");
+    let root = skill.parent().unwrap();
+    assert_eq!(
+        loaded_skills(root),
+        vec![skill.clone()],
+        "{:?}",
+        fs::read_dir(root).unwrap().collect::<Vec<_>>()
+    );
+    assert_eq!(
+        fs::read_dir(root).unwrap().count(),
+        1,
+        "nothing else in the skills root"
+    );
+    let hidden = fx.base.join("claude/.agboard-backups");
+    let backup = outcome
+        .backups
+        .iter()
+        .find(|b| b.join("SKILL.md").is_file())
+        .expect("the old Skill is kept");
+    assert!(backup.starts_with(&hidden), "{}", backup.display());
+    assert_eq!(
+        fs::read_to_string(backup.join("SKILL.md")).unwrap(),
+        "old skill"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_skills_folder_keeps_its_backup_beside_the_real_folder() {
+    let fx = fixture();
+    let volume = fx.base.join("volume");
+    fs::create_dir_all(volume.join("skills")).unwrap();
+    std::os::unix::fs::symlink(volume.join("skills"), fx.base.join("claude/skills")).unwrap();
+    let skill = install_old_skill(&fx);
+    let outcome = run(&fx, None);
+    assert_eq!(outcome.status, Status::Applied, "{outcome:?}");
+    let backup = outcome
+        .backups
+        .iter()
+        .find(|b| b.join("SKILL.md").is_file())
+        .expect("the old Skill is kept");
+    assert!(
+        backup.starts_with(volume.join(".agboard-backups")),
+        "{}",
+        backup.display()
+    );
+    assert!(!fx.base.join("claude/.agboard-backups").exists());
+    assert!(skill.join("references").is_dir());
+}
+
+#[test]
+fn a_fresh_install_leaves_no_empty_backup_folder() {
+    let fx = fixture();
+    let outcome = run(&fx, None);
+    assert_eq!(outcome.status, Status::Applied, "{outcome:?}");
+    assert!(!fx.base.join("claude/.agboard-backups").exists());
+    // and a failed run that is rolled back leaves none either
+    let fx = fixture();
+    let observer = fail_at(Phase::Registry, 2);
+    assert_eq!(run(&fx, Some(&observer)).status, Status::Failed);
+    assert!(!fx.base.join("claude/.agboard-backups").exists());
+}
+
 #[test]
 fn a_run_that_dies_is_detected_and_undone_by_the_next_run() {
     let fx = fixture();
@@ -333,7 +413,13 @@ fn a_run_that_dies_between_the_two_renames_of_a_skill_update_is_recovered() {
         .find(|o| o["kind"] == "tree")
         .unwrap();
     fs::remove_dir_all(&skill).unwrap();
-    assert!(op["backup"].as_str().is_some());
+    let backup = PathBuf::from(op["backup"].as_str().expect("a backup is journaled"));
+    assert!(
+        backup.starts_with(fx.base.join("claude/.agboard-backups")),
+        "the Skill backup is outside the skills root: {}",
+        backup.display()
+    );
+    assert!(backup.join("SKILL.md").is_file());
     let report = recover_pending(&fx.env, Agent::Claude, None)
         .unwrap()
         .unwrap();
@@ -430,16 +516,16 @@ fn a_change_made_after_our_write_is_left_alone_by_the_rollback() {
     };
     let outcome = run(&fx, Some(&meddle));
     assert_eq!(outcome.status, Status::Failed);
-    let report = outcome.rollback.unwrap();
+    let report = outcome.rollback.clone().unwrap();
     assert!(
         report.is_clean(),
         "an external change is not a stuck rollback"
     );
     assert_eq!(report.external.len(), 1);
     assert_eq!(report.external[0].0, settings);
-    let backup = report.external[0].1.as_ref().expect("the backup is named");
+    let backup = report.external[0].1.clone().expect("the backup is named");
     assert_eq!(
-        fs::read_to_string(backup).unwrap(),
+        fs::read_to_string(&backup).unwrap(),
         ORIGINAL,
         "the original is safe in the backup"
     );
@@ -449,6 +535,107 @@ fn a_change_made_after_our_write_is_left_alone_by_the_rollback() {
         "their edit is not overwritten"
     );
     assert!(!is_pending(&fx.env, Agent::Claude).unwrap());
+
+    // The failure text says what was left and where the originals are.
+    let message = outcome.message.as_deref().unwrap();
+    assert!(
+        !message.contains("Everything this run changed"),
+        "{message}"
+    );
+    assert!(message.contains("someone else"), "{message}");
+    let (_, errors) = agent_board::integrations::update_report::results(
+        std::slice::from_ref(&AgentOutcome {
+            rollback: Some(report.clone()),
+            ..outcome.clone()
+        }),
+        &[],
+        1,
+    );
+    assert!(errors.contains(backup.to_str().unwrap()), "{errors}");
+    let mut stuck = report;
+    stuck
+        .stuck
+        .push((settings.clone(), "no".into(), Some(backup.clone())));
+    let (_, errors) = agent_board::integrations::update_report::results(
+        &[AgentOutcome {
+            rollback: Some(stuck),
+            ..outcome
+        }],
+        &[],
+        1,
+    );
+    assert!(
+        errors.matches(backup.to_str().unwrap()).count() >= 2,
+        "{errors}"
+    );
+}
+
+#[test]
+fn recovery_keeps_the_journal_when_someone_else_changed_a_file() {
+    let fx = fixture();
+    let (_, settings) = with_settings(&fx);
+    let crash = |step: &Step| {
+        if step.phase == Phase::Registry {
+            StepAction::Crash
+        } else {
+            StepAction::Continue
+        }
+    };
+    assert_eq!(run(&fx, Some(&crash)).status, Status::Interrupted);
+    let edited = "{\"model\":\"edited-by-someone-else\"}";
+    fs::write(&settings, edited).unwrap();
+
+    for _ in 0..2 {
+        let report = recover_pending(&fx.env, Agent::Claude, None)
+            .unwrap()
+            .expect("pending");
+        assert!(!report.is_clean(), "{report:?}");
+        assert_eq!(report.external.len(), 1);
+        assert_eq!(report.external[0].0, settings);
+        let backup = report.external[0].1.as_ref().expect("the backup is named");
+        assert_eq!(fs::read_to_string(backup).unwrap(), ORIGINAL);
+        assert!(report.journal.as_ref().unwrap().is_file());
+        assert!(is_pending(&fx.env, Agent::Claude).unwrap());
+        assert_eq!(fs::read_to_string(&settings).unwrap(), edited);
+    }
+    let pending = recover_pending(&fx.env, Agent::Claude, None)
+        .unwrap()
+        .unwrap();
+    let update_text =
+        agent_board::integrations::report::recovery(Agent::Claude, &pending, "update");
+    assert!(update_text.contains("run update again"), "{update_text}");
+    assert!(!update_text.contains("run connect again"), "{update_text}");
+    let text = agent_board::integrations::report::recovery(Agent::Claude, &pending, "connect");
+    assert!(text.contains("run connect again"), "{text}");
+    assert!(text.contains("could not be undone safely"), "{text}");
+    assert!(text.contains("integrations-journal-claude.json"), "{text}");
+}
+
+#[test]
+fn recovery_takes_the_agent_lock_before_it_reads_the_journal() {
+    let fx = fixture();
+    with_settings(&fx);
+    let crash = |step: &Step| {
+        if step.phase == Phase::Registry {
+            StepAction::Crash
+        } else {
+            StepAction::Continue
+        }
+    };
+    assert_eq!(run(&fx, Some(&crash)).status, Status::Interrupted);
+    let held = agent_board::integrations::journal::AgentLock::acquire(
+        &fx.base.join("data"),
+        Agent::Claude,
+    )
+    .unwrap();
+    let error = recover_pending(&fx.env, Agent::Claude, None).unwrap_err();
+    assert!(error.to_string().contains("another run"), "{error}");
+    drop(held);
+    assert!(
+        recover_pending(&fx.env, Agent::Claude, None)
+            .unwrap()
+            .is_some()
+    );
 }
 
 #[test]

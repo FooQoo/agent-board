@@ -13,14 +13,29 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
+use agent_board::integrations::apply::{ApplyOptions, Status, Step, StepAction, apply_agent};
 use agent_board::integrations::assets::{
     canonical_json, hook_manifest_hash, sha256_hex, skill_manifest_hash,
 };
+use agent_board::integrations::paths::{PathEnv, resolve_targets};
+use agent_board::integrations::plan::{PlanInput, plan_agent};
 use agent_board::integrations::registry::{InstallationRecord, Registry};
-use agent_board::integrations::{Agent, Component};
+use agent_board::integrations::{Agent, Component, Scope};
 use expectrl::process::unix::WaitStatus;
 use expectrl::session::OsSession as Session;
 use expectrl::{Eof, Expect};
+
+/// A child process keeps copies of the descriptors that exist while it is
+/// being spawned until it execs, and a copy of a lock file keeps the lock.
+/// Spawning takes this lock shared; holding an agent lock in the test process
+/// takes it exclusive, so the two never overlap.
+static SPAWN: std::sync::RwLock<()> = std::sync::RwLock::new(());
+
+/// An agent lock held by the test process, with spawning paused.
+pub struct HeldLock {
+    _lock: agent_board::integrations::journal::AgentLock,
+    _spawn: std::sync::RwLockWriteGuard<'static, ()>,
+}
 
 pub struct Fx {
     pub tmp: tempfile::TempDir,
@@ -92,12 +107,12 @@ impl Fx {
 
     /// A non-interactive run: (exit code, stdout, stderr).
     pub fn agboard(&self, args: &[&str], cwd: &Path) -> (i32, String, String) {
-        let output = self
-            .command(cwd)
-            .args(args)
-            .stdin(Stdio::null())
-            .output()
-            .unwrap();
+        let mut command = self.command(cwd);
+        command.args(args).stdin(Stdio::null());
+        let output = {
+            let _spawn = SPAWN.read().unwrap_or_else(|e| e.into_inner());
+            command.output().unwrap()
+        };
         (
             output.status.code().unwrap_or(-1),
             String::from_utf8_lossy(&output.stdout).into_owned(),
@@ -108,25 +123,48 @@ impl Fx {
     pub fn session(&self, cwd: &Path, args: &[&str]) -> Session {
         let mut command = self.command(cwd);
         command.args(args);
-        let mut session = expectrl::Session::spawn(command).unwrap();
+        let mut session = {
+            let _spawn = SPAWN.read().unwrap_or_else(|e| e.into_inner());
+            expectrl::Session::spawn(command).unwrap()
+        };
         session.set_expect_timeout(Some(Duration::from_secs(20)));
         session
     }
 
+    /// Holds `agent`'s lock until the guard is dropped; no child is spawned meanwhile.
+    pub fn hold_lock(&self, agent: Agent) -> HeldLock {
+        let spawn = SPAWN.write().unwrap_or_else(|e| e.into_inner());
+        let lock =
+            agent_board::integrations::journal::AgentLock::acquire(&self.data(), agent).unwrap();
+        HeldLock {
+            _lock: lock,
+            _spawn: spawn,
+        }
+    }
+
     /// Both agents, one scope pair (`1` Global, `2` Project), from `cwd`.
     pub fn connect_both_at(&self, cwd: &Path, skill: &str, hook: &str) {
+        let (code, screen) = self.connect_screen_at(cwd, skill, hook);
+        assert_eq!(code, 0, "{screen}");
+    }
+
+    /// The same, returning the exit code and everything connect printed.
+    pub fn connect_screen_at(&self, cwd: &Path, skill: &str, hook: &str) -> (i32, String) {
         let mut term = self.session(cwd, &["connect"]);
+        let mut screen = String::new();
         for (prompt, answer) in [
             ("Select agents", "1 2"),
             ("Skill scope", skill),
             ("Hook scope", hook),
             ("[y/N]", "y"),
         ] {
-            term.expect(prompt).unwrap();
+            let seen = term.expect(prompt).unwrap();
+            screen.push_str(&String::from_utf8_lossy(seen.as_bytes()));
             term.send_line(answer).unwrap();
         }
-        let (code, screen) = finish(term);
-        assert_eq!(code, 0, "{screen}");
+        let (code, rest) = finish(term);
+        screen.push_str(&rest);
+        (code, screen)
     }
 
     pub fn connect_both(&self, skill: &str, hook: &str) {
@@ -197,6 +235,63 @@ impl Fx {
             )
             .unwrap();
         });
+    }
+
+    /// Runs the Global/Global connect plan of `agent` in this world and dies
+    /// at the registry commit, leaving the files written and the journal
+    /// pending, as a killed `agboard` would.
+    pub fn interrupted_run(&self, agent: Agent) {
+        // The run holds the agent lock; no child may be spawned meanwhile.
+        let _spawn = SPAWN.write().unwrap_or_else(|e| e.into_inner());
+        let env = PathEnv {
+            agboard_home: Some(self.data().into()),
+            home: Some(self.base().join("home")),
+            codex_home: Some(self.base().join("codex").into()),
+            claude_config_dir: Some(self.claude().into()),
+        };
+        let targets = resolve_targets(
+            &env,
+            agent,
+            Scope::Global,
+            Scope::Global,
+            Some(&self.root()),
+        )
+        .unwrap();
+        let registry = Registry::read(&self.registry_file())
+            .unwrap()
+            .unwrap_or_default();
+        let bundle = agent_board::integrations::assets::bundle().unwrap();
+        let plan = plan_agent(&PlanInput {
+            env: &env,
+            targets: &targets,
+            project_id: None,
+            scan_root: Some(&self.root()),
+            registry: &registry,
+            bundle: &bundle,
+            permissions: true,
+            moves: true,
+        })
+        .unwrap();
+        let crash = |step: &Step| {
+            if step.phase == agent_board::integrations::apply::Phase::Registry {
+                StepAction::Crash
+            } else {
+                StepAction::Continue
+            }
+        };
+        let outcome = apply_agent(
+            &env,
+            &plan,
+            &ApplyOptions {
+                observer: Some(&crash),
+            },
+        );
+        assert_eq!(outcome.status, Status::Interrupted, "{outcome:?}");
+    }
+
+    pub fn journal(&self, agent: Agent) -> PathBuf {
+        self.data()
+            .join(format!("integrations-journal-{}.json", agent.key()))
     }
 
     pub fn skill_dir(&self, agent: Agent, project: bool) -> PathBuf {

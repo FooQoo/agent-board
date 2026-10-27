@@ -8,7 +8,7 @@
 //! line or no terminal.
 
 use std::ffi::OsString;
-use std::io::{BufRead, IsTerminal};
+use std::io::{BufRead, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 use crate::cli::Env;
@@ -64,12 +64,17 @@ pub fn run(env: &mut Env) -> Result<i32, AgboardError> {
     };
     let stdin = std::io::stdin();
     let mut input = stdin.lock();
-    Ok(flow(&mut input, &mut *env.stdout, &session))
+    Ok(flow(
+        &mut input,
+        &mut *env.stdout,
+        &mut *env.stderr,
+        &session,
+    ))
 }
 
 /// The seven steps, after the terminal and the binding are known. Returns the
 /// exit code.
-pub fn flow(input: &mut dyn BufRead, out: &mut dyn std::io::Write, s: &Session) -> i32 {
+pub fn flow(input: &mut dyn BufRead, out: &mut dyn Write, err: &mut dyn Write, s: &Session) -> i32 {
     let mut p = Prompter::new(input, out);
     p.say(report::PREVIEW_LINE);
     p.say(&report::header(&s.project_name, &s.root));
@@ -100,8 +105,17 @@ pub fn flow(input: &mut dyn BufRead, out: &mut dyn std::io::Write, s: &Session) 
     let Reply::Value(hook) = p.select_scope("Hook", &s.root, defaults.hook) else {
         return cancelled(&mut p);
     };
-    let mut stopped = false;
-    let plans = plan_all(&mut p, s, &agents, skill, hook, &registry, &mut stopped);
+    let mut progress = Progress::default();
+    let plans = plan_all(
+        &mut p,
+        err,
+        s,
+        &agents,
+        (skill, hook),
+        &registry,
+        &mut progress,
+    );
+    let Progress { stopped, recovered } = progress;
     if plans.is_empty() {
         p.say("\nSetup finished with errors.\n");
         return 1;
@@ -121,6 +135,12 @@ pub fn flow(input: &mut dyn BufRead, out: &mut dyn std::io::Write, s: &Session) 
         return 1;
     }
     if !p.confirm("Apply these changes?") {
+        if recovered {
+            p.say(
+                "\nCancelled. The unfinished earlier run was undone; nothing else was changed.\n",
+            );
+            return 0;
+        }
         return cancelled(&mut p);
     }
     p.say("\n");
@@ -188,23 +208,33 @@ impl Defaults {
     }
 }
 
-/// Recovers any unfinished earlier run, then plans each agent. An agent whose
-/// earlier run cannot be undone, or that cannot be planned, is left out and
-/// `stopped` is set.
+/// What planning learned besides the plans.
+#[derive(Default)]
+struct Progress {
+    /// An agent was left out: its earlier run could not be undone, or it could
+    /// not be planned.
+    stopped: bool,
+    /// An unfinished earlier run was undone, so files changed before the question.
+    recovered: bool,
+}
+
+/// Recovers any unfinished earlier run, then plans each agent. A run that
+/// cannot be undone safely is reported on standard error and its agent is
+/// left out.
 fn plan_all(
     p: &mut Prompter,
+    err: &mut dyn Write,
     s: &Session,
     agents: &[Agent],
-    skill: Scope,
-    hook: Scope,
+    (skill, hook): (Scope, Scope),
     registry: &Registry,
-    stopped: &mut bool,
+    progress: &mut Progress,
 ) -> Vec<AgentPlan> {
     let bundle = match bundle() {
         Ok(bundle) => bundle,
         Err(error) => {
             p.say(&format!("Error: {error}\n"));
-            *stopped = true;
+            progress.stopped = true;
             return Vec::new();
         }
     };
@@ -213,15 +243,19 @@ fn plan_all(
         match recover_pending(&s.path_env, agent, None) {
             Ok(None) => {}
             Ok(Some(found)) => {
-                p.say(&report::recovery(agent, &found));
-                if !found.is_clean() {
-                    *stopped = true;
+                let text = report::recovery(agent, &found, "connect");
+                if found.is_clean() {
+                    p.say(&text);
+                    progress.recovered |= !found.restored.is_empty();
+                } else {
+                    let _ = err.write_all(text.as_bytes());
+                    progress.stopped = true;
                     continue;
                 }
             }
             Err(error) => {
-                p.say(&format!("{}: {error}\n", agent.label()));
-                *stopped = true;
+                let _ = writeln!(err, "{}: {error}", agent.label());
+                progress.stopped = true;
                 continue;
             }
         }
@@ -235,13 +269,14 @@ fn plan_all(
                     registry,
                     bundle: &bundle,
                     permissions: true,
+                    moves: true,
                 })
             });
         match planned {
             Ok(plan) => plans.push(plan),
             Err(error) => {
                 p.say(&format!("{}: not configured; {error}\n", agent.label()));
-                *stopped = true;
+                progress.stopped = true;
             }
         }
     }
