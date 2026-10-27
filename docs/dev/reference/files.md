@@ -200,7 +200,7 @@ The CLI, web API, and hook share one camelCase task representation: the `task.js
 - `agent` is `claude` or `codex`; `component` is `skill` or `hook`; `scope` is `global` or `project`.
 - `projectId` and `boundRoot` appear only on Project records.
 - A Skill record lists `files` (`path` relative to the Skill folder, and `sha256`); a Hook record lists `managedEntries`. The other list is empty. `managedHash` is the manifest hash or the entries hash described in [Embedded bundle](../concepts/agents.md#embedded-bundle).
-- Only `schemaVersion` 1 is read. Unknown fields, a different version, and malformed JSON are refused and the file is never rewritten. Backups of changed files sit next to them as `<name>.agboard-backup-<txn>-<index>`.
+- Only `schemaVersion` 1 is read. Unknown fields, a different version, and malformed JSON are refused and the file is never rewritten. Backups of changed files sit next to them as `<name>.agboard-backup-<txn>-<index>`. A Skill folder's backup and staging folder (`.<name>.agboard-stage-<txn>-<index>`) live in `.agboard-backups/`, in the parent of the skills root (`~/.claude/.agboard-backups/`, `~/.agents/.agboard-backups/`, `<root>/.claude/.agboard-backups/`, `<root>/.agents/.agboard-backups/`), so they are on the same file system for the rename and are never loaded as a Skill. With Project scope these paths are inside the repository and belong in `.gitignore`.
 - Paths in the file are absolute for this machine; in documentation they are written with placeholders.
 
 ## Folder bindings
