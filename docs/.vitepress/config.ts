@@ -7,12 +7,13 @@ const repo = 'https://github.com/FooQoo/agent-board'
 
 // The published version comes from scripts/release/docs-release.mjs, which reads the
 // GitHub Releases before the build. Without that file, or with no published release, the
-// header shows no version. The version in Cargo.toml is never used.
+// header shows no version. A fixture preview is not a published release and shows no
+// version either. The version in Cargo.toml is never used.
 function publishedVersion(): { version: string; url: string } | null {
   try {
     const file = fileURLToPath(new URL('./release.json', import.meta.url))
     const data = JSON.parse(fs.readFileSync(file, 'utf8'))
-    if (typeof data.version === 'string' && typeof data.url === 'string') {
+    if (data.state === 'published' && typeof data.version === 'string' && typeof data.url === 'string') {
       return { version: data.version, url: data.url }
     }
   } catch {

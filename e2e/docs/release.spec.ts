@@ -175,6 +175,12 @@ test.describe('Pages workflow reads the releases', () => {
     expect(text.indexOf('docs-release.mjs')).toBeLessThan(text.indexOf('pnpm --dir docs build'));
   });
 
+  test('a release event builds the default branch, not the tag', () => {
+    const checkout = /- uses: actions\/checkout@[^\n]*\n\s+with:\n([\s\S]*?)- uses: pnpm/.exec(text)?.[1] ?? '';
+    expect(checkout).toContain("github.event_name == 'release'");
+    expect(checkout).toContain('github.event.repository.default_branch');
+  });
+
   test('the generated header file is ignored by Git', () => {
     expect(readRepoFile('.gitignore')).toContain('docs/.vitepress/release.json');
   });
@@ -202,7 +208,8 @@ for (const lang of langs) {
     const nav = page.locator('.VPNavBarMenu');
     await expect(nav.getByRole('link', { name: labels[lang].releases })).toHaveAttribute('href', `/agent-board/${prefix}releases`);
     const versionLink = nav.getByRole('link', { name: /^v\d/ });
-    if (built.version) {
+    // Only a published release shows a version; a fixture preview shows none.
+    if (built.state === 'published' && built.version) {
       await expect(versionLink).toHaveCount(1);
       await expect(versionLink).toHaveText(`v${built.version}`);
       await expect(versionLink).toHaveAttribute('href', built.url!);

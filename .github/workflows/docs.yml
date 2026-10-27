@@ -32,6 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # A release event would otherwise build the tag, which may be older than the
+          # site that is already published. Build the default branch instead.
+          ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || '' }}
           # Page "last updated" times come from the Git history.
           fetch-depth: 0
       - uses: pnpm/action-setup@v6
