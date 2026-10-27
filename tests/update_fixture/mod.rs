@@ -241,6 +241,7 @@ impl Fx {
             registry: &registry,
             bundle: &bundle,
             permissions: true,
+            moves: true,
         })
         .unwrap();
         let crash = |step: &Step| {

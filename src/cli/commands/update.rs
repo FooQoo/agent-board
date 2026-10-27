@@ -103,13 +103,16 @@ pub fn flow(
         bundle: &bundle,
         project_id: s.project.as_ref().map(|(id, _)| id.as_str()),
         root: s.root.as_deref(),
+        registry: &registry,
     };
     p.say(&header(s));
     let mut stopped = false;
     let mut recovered = false;
     let plans = plan_all(&mut p, err, &input, &selected, &mut stopped, &mut recovered);
     for plan in &plans {
-        p.say(&describe(plan, &registry));
+        let own = selected.iter().find(|r| r.agent == plan.agent);
+        let records: Vec<_> = own.map(|r| r.all().cloned().collect()).unwrap_or_default();
+        p.say(&describe(plan, &records));
     }
     let ready = plans.iter().any(|plan| plan.state() == PlanState::Ready);
     if !ready {
@@ -167,7 +170,7 @@ fn plan_all(
         match recover_pending(input.env, agent, None) {
             Ok(None) => {}
             Ok(Some(found)) => {
-                let text = report::recovery(agent, &found);
+                let text = report::recovery(agent, &found, "update");
                 if found.is_clean() {
                     p.say(&text);
                     *recovered |= !found.restored.is_empty();

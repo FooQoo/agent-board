@@ -28,7 +28,7 @@ pub struct AgentRecords {
 }
 
 impl AgentRecords {
-    fn all(&self) -> impl Iterator<Item = &InstallationRecord> {
+    pub fn all(&self) -> impl Iterator<Item = &InstallationRecord> {
         self.skill.iter().chain(self.hook.iter())
     }
 }
@@ -96,50 +96,39 @@ pub struct UpdateInput<'a> {
     /// The nearest binding, when the folder is bound.
     pub project_id: Option<&'a str>,
     pub root: Option<&'a Path>,
+    /// The whole registry: every root's managed entries count as managed.
+    pub registry: &'a Registry,
 }
 
 /// Plans update for one agent without writing. `Err` is a reason that stops
-/// this agent (it is reported and the exit code is 1).
+/// this agent (it is reported and the exit code is 1). Each recorded scope is
+/// planned on its own: the Global record and this root's Project record are
+/// both updated, and a record is never moved to another scope.
 pub fn plan_update(input: &UpdateInput, records: &AgentRecords) -> Result<AgentPlan, String> {
     let agent = records.agent;
+    let scopes: Vec<Scope> = [Scope::Global, Scope::Project]
+        .into_iter()
+        .filter(|scope| records.all().any(|r| r.scope == *scope))
+        .collect();
     for list in [&records.skill, &records.hook] {
-        if list.len() > 1 {
-            return Err(format!(
-                "{} is recorded in more than one place. Run agboard connect to settle it.",
-                list[0].component.key()
-            ));
+        for scope in &scopes {
+            if list.iter().filter(|r| r.scope == *scope).count() > 1 {
+                return Err(format!(
+                    "{} is recorded in more than one place. Run agboard connect to settle it.",
+                    list[0].component.key()
+                ));
+            }
         }
     }
     for record in records.all() {
         check_record(input, record)?;
     }
-    let skill_scope = records.skill.first().map(|r| r.scope);
-    let hook_scope = records.hook.first().map(|r| r.scope);
-    let targets = resolve_targets(
-        input.env,
-        agent,
-        skill_scope.or(hook_scope).unwrap_or(Scope::Global),
-        hook_scope.or(skill_scope).unwrap_or(Scope::Global),
-        input.root,
-    )
-    .map_err(|e| e.to_string())?;
-    // Only the recorded components are planned, against the records of this
-    // selection alone, so a record of another project is never seen.
-    let registry = Registry {
-        installations: records.all().cloned().collect(),
-    };
-    let plan_input = super::plan::PlanInput {
-        env: input.env,
-        targets: &targets,
-        project_id: input.project_id,
-        scan_root: input.root,
-        registry: &registry,
-        bundle: input.bundle,
-        permissions: false,
-    };
+    let first = scopes.first().copied().unwrap_or(Scope::Global);
+    let targets =
+        resolve_targets(input.env, agent, first, first, input.root).map_err(|e| e.to_string())?;
     let mut plan = AgentPlan {
         agent,
-        targets: targets.clone(),
+        targets,
         ops: Vec::new(),
         registry_changes: Vec::new(),
         permissions: Vec::new(),
@@ -150,17 +139,34 @@ pub fn plan_update(input: &UpdateInput, records: &AgentRecords) -> Result<AgentP
         manual_steps: Vec::new(),
     };
     let mut stages = Stages::default();
-    let planned = (|| -> Result<(), IntegrationError> {
-        if !records.hook.is_empty() {
-            let template = template_groups(input.bundle, agent)?;
-            plan_hook(&plan_input, &template, &mut stages, &mut plan)?;
-        }
-        if !records.skill.is_empty() {
-            plan_skill(&plan_input, &mut plan)?;
-        }
-        Ok(())
-    })();
-    planned.map_err(|e| e.to_string())?;
+    for scope in scopes {
+        let targets = resolve_targets(input.env, agent, scope, scope, input.root)
+            .map_err(|e| e.to_string())?;
+        // The whole registry is read, so that another root's managed entries
+        // are never reported as unmanaged; only the records of this scope
+        // are planned, and nothing is moved.
+        let plan_input = super::plan::PlanInput {
+            env: input.env,
+            targets: &targets,
+            project_id: input.project_id,
+            scan_root: input.root,
+            registry: input.registry,
+            bundle: input.bundle,
+            permissions: false,
+            moves: false,
+        };
+        let planned = (|| -> Result<(), IntegrationError> {
+            if records.hook.iter().any(|r| r.scope == scope) {
+                let template = template_groups(input.bundle, agent)?;
+                plan_hook(&plan_input, &template, &mut stages, &mut plan)?;
+            }
+            if records.skill.iter().any(|r| r.scope == scope) {
+                plan_skill(&plan_input, &mut plan)?;
+            }
+            Ok(())
+        })();
+        planned.map_err(|e| e.to_string())?;
+    }
     if !plan.conflicts.is_empty() {
         plan.registry_changes.clear();
         plan.ops.clear();

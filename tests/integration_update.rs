@@ -628,3 +628,118 @@ fn cancelling_after_a_recovery_says_the_earlier_run_was_undone() {
     );
     assert!(screen.contains("Cancelled."), "{screen}");
 }
+
+#[test]
+fn update_covers_the_global_skill_another_project_installed_and_this_projects_own() {
+    let fx = two_projects();
+    // The second project installs a Global Skill; the first keeps its Project Skill.
+    let (code, screen) = fx.connect_screen_at(&fx.other(), "1", "2");
+    assert_eq!(code, 0, "{screen}");
+    fx.age("0.0.1", |r| {
+        r.scope == Scope::Global || r.bound_root.as_deref() == Some(fx.root().as_path())
+    });
+    assert!(skill_is_old(&fx, Agent::Claude, true));
+    assert!(skill_is_old(&fx, Agent::Claude, false));
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &fx.root());
+    assert_eq!(code, 0, "{stdout}{stderr}");
+    assert!(!skill_is_old(&fx, Agent::Claude, true));
+    assert!(!skill_is_old(&fx, Agent::Claude, false));
+    for (component, scope) in [
+        (Component::Skill, Scope::Project),
+        (Component::Skill, Scope::Global),
+        (Component::Hook, Scope::Project),
+    ] {
+        assert_eq!(
+            record(&fx, Agent::Claude, component, scope).installed_version,
+            CURRENT
+        );
+    }
+    assert!(stdout.contains("Skill (global)"), "{stdout}");
+    assert!(stdout.contains("Skill (project)"), "{stdout}");
+}
+
+#[test]
+fn a_nested_projects_update_leaves_the_outer_projects_managed_hooks_alone() {
+    let fx = Fx::new();
+    let inner = fx.root().join("pkg");
+    std::fs::create_dir_all(&inner).unwrap();
+    let (code, ..) = fx.agboard(&["project", "create", "Inner"], &inner);
+    assert_eq!(code, 0);
+    fx.connect_both_at(&fx.root(), "2", "2");
+    let outer_files = [
+        fx.root().join(".claude/settings.json"),
+        fx.root().join(".codex/hooks.json"),
+        fx.skill_dir(Agent::Claude, true).join("SKILL.md"),
+    ];
+    let before: Vec<_> = outer_files
+        .iter()
+        .map(|p| std::fs::read(p).unwrap())
+        .collect();
+    let (code, screen) = fx.connect_screen_at(&inner, "2", "2");
+    assert_eq!(code, 0, "{screen}");
+    assert!(
+        screen.contains("Warning")
+            && screen.contains(outer_files[0].to_str().unwrap())
+            && screen.contains("both"),
+        "{screen}"
+    );
+    let outer_records: Vec<_> = fx
+        .read_registry()
+        .installations
+        .into_iter()
+        .filter(|r| r.bound_root.as_deref() == Some(fx.root().as_path()))
+        .collect();
+    fx.age("0.0.1", |r| {
+        r.bound_root.as_deref() == Some(inner.as_path())
+    });
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &inner);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+    let after: Vec<_> = outer_files
+        .iter()
+        .map(|p| std::fs::read(p).unwrap())
+        .collect();
+    assert_eq!(before, after, "the outer project's files are untouched");
+    let outer_after: Vec<_> = fx
+        .read_registry()
+        .installations
+        .into_iter()
+        .filter(|r| r.bound_root.as_deref() == Some(fx.root().as_path()))
+        .collect();
+    assert_eq!(outer_records, outer_after);
+    assert!(
+        fx.read_registry()
+            .installations
+            .iter()
+            .filter(|r| r.bound_root.as_deref() == Some(inner.as_path()))
+            .all(|r| r.installed_version == CURRENT)
+    );
+}
+
+#[test]
+fn a_held_lock_during_recovery_is_reported_on_standard_error() {
+    use agent_board::cli::commands::connect::{Session, flow};
+    use agent_board::integrations::paths::PathEnv;
+    let fx = Fx::new();
+    fx.interrupted_run(Agent::Claude);
+    let _held =
+        agent_board::integrations::journal::AgentLock::acquire(&fx.data(), Agent::Claude).unwrap();
+    let session = Session {
+        path_env: PathEnv {
+            agboard_home: Some(fx.data().into()),
+            home: Some(fx.base().join("home")),
+            codex_home: Some(fx.base().join("codex").into()),
+            claude_config_dir: Some(fx.claude().into()),
+        },
+        path_var: Some(fx.base().join("bin").into()),
+        project_id: "x".into(),
+        project_name: "Demo".into(),
+        root: fx.root(),
+    };
+    let mut input = std::io::Cursor::new(b"1\n1\n1\nn\n".to_vec());
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let code = flow(&mut input, &mut out, &mut err, &session);
+    let (out, err) = (String::from_utf8_lossy(&out), String::from_utf8_lossy(&err));
+    assert_eq!(code, 1, "{out}{err}");
+    assert!(err.contains("another run"), "stderr: {err}\nstdout: {out}");
+    assert!(!out.contains("another run"), "{out}");
+}

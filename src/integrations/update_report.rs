@@ -5,29 +5,17 @@
 use std::fmt::Write as _;
 
 use super::apply::{AgentOutcome, Status};
-use super::paths::resolve_links;
 use super::plan::{AgentPlan, OpKind, PlanState};
-use super::registry::Registry;
+use super::registry::InstallationRecord;
 use super::report::backup_note;
 use super::types::Component;
 
 /// The diff shown before the question: one block per agent.
-pub fn describe(plan: &AgentPlan, registry: &Registry) -> String {
+pub fn describe(plan: &AgentPlan, records: &[InstallationRecord]) -> String {
     let mut text = format!("{}\n", plan.agent.label());
-    let recorded = |component: Component| {
-        registry.installations.iter().find(|r| {
-            r.agent == plan.agent
-                && r.component == component
-                && r.resolved_path
-                    == resolve_links(&match component {
-                        Component::Skill => plan.targets.effective_paths.skill.clone(),
-                        Component::Hook => plan.targets.effective_paths.hook.clone(),
-                    })
-        })
-    };
     let new_version = env!("CARGO_PKG_VERSION");
     for (name, component) in [("Skill", Component::Skill), ("Hook", Component::Hook)] {
-        if let Some(r) = recorded(component) {
+        for r in records.iter().filter(|r| r.component == component) {
             let _ = writeln!(
                 text,
                 "  {name} ({}): {} -> {new_version}",

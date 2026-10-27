@@ -51,7 +51,12 @@ pub(super) fn plan_hook(
     );
     plan.conflicts.extend(check.conflicts);
     plan.warnings.extend(check.warnings);
-    for source in &check.sources {
+    let sources = if input.moves {
+        check.sources
+    } else {
+        Vec::new()
+    };
+    for source in &sources {
         match stages.load(&source.resolved_path) {
             Ok(i) => {
                 let edit = remove_hooks(
@@ -64,6 +69,9 @@ pub(super) fn plan_hook(
             Err(conflict) => plan.conflicts.push(conflict),
         }
         plan.registry_changes.push(remove_change(source));
+    }
+    if input.moves && t.hook_scope == Scope::Project {
+        nested_warnings(input, Component::Hook, plan);
     }
     let entries: Vec<_> = template.iter().map(|g| g.entry.clone()).collect();
     let new = InstallationRecord {
@@ -108,7 +116,10 @@ pub(super) fn plan_skill(input: &PlanInput, plan: &mut AgentPlan) -> Result<(), 
         plan.additions.push(op.description.clone());
         plan.ops.push(op);
     }
-    let others = skills().filter(|r| resolve_links(&r.resolved_path) != resolved);
+    if input.moves && t.skill_scope == Scope::Project {
+        nested_warnings(input, Component::Skill, plan);
+    }
+    let others = skills().filter(|r| input.moves && resolve_links(&r.resolved_path) != resolved);
     for kept in others
         .clone()
         .filter(|r| !is_move_source(r, t.skill_scope, input.scan_root))
@@ -131,7 +142,8 @@ pub(super) fn plan_skill(input: &PlanInput, plan: &mut AgentPlan) -> Result<(), 
     } else {
         Scope::Global
     };
-    if let Ok(path) = placement(input.env, t.agent, Component::Skill, other, input.scan_root) {
+    let probe = placement(input.env, t.agent, Component::Skill, other, input.scan_root);
+    if let (true, Ok(path)) = (input.moves, probe) {
         let known = skills().any(|r| resolve_links(&r.resolved_path) == resolve_links(&path));
         if path.exists() && !known {
             plan.warnings.push(format!("Another Skill named agent-board exists at {}. The agent may load it instead of the one connect installs.", path.display()));
@@ -197,4 +209,35 @@ fn root_of(input: &PlanInput, scope: Scope) -> Option<PathBuf> {
     (scope == Scope::Project)
         .then(|| input.targets.bound_root.clone())
         .flatten()
+}
+
+/// Warns about another recorded root's Project record that sits in a folder
+/// above or below the bound root: both load in the inner project. Nothing is
+/// blocked or moved.
+fn nested_warnings(input: &PlanInput, component: Component, plan: &mut AgentPlan) {
+    let Some(root) = input.scan_root else {
+        return;
+    };
+    let name = match component {
+        Component::Hook => "Hook",
+        Component::Skill => "Skill",
+    };
+    for record in input.registry.installations.iter().filter(|r| {
+        r.agent == input.targets.agent && r.component == component && r.scope == Scope::Project
+    }) {
+        let Some(other) = record.bound_root.as_deref().filter(|b| *b != root) else {
+            continue;
+        };
+        let place = if root.starts_with(other) {
+            "above"
+        } else if other.starts_with(root) {
+            "below"
+        } else {
+            continue;
+        };
+        plan.warnings.push(format!(
+            "The Project {name} of another project at {} is in a folder {place} this project. In the inner project both load. They were left as they are.",
+            record.resolved_path.display()
+        ));
+    }
 }
