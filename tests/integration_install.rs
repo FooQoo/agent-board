@@ -497,6 +497,29 @@ fn moving_the_skill_scope_removes_the_old_managed_directory() {
             .join("SKILL.md")
             .is_file()
     );
+    // No stale copy stays where the agent loads Skills from.
+    let old_root = old.parent().unwrap();
+    let loaded = |root: &Path| {
+        fs::read_dir(root)
+            .map(|d| {
+                d.map(|e| e.unwrap().path())
+                    .filter(|p| p.join("SKILL.md").is_file())
+                    .count()
+            })
+            .unwrap_or(0)
+    };
+    assert_eq!(loaded(old_root), 0, "the moved-away Skill is not loaded");
+    assert_eq!(fs::read_dir(old_root).unwrap().count(), 0);
+    let moved_backups: Vec<_> = backups(&fx)
+        .into_iter()
+        .filter(|p| p.ends_with("SKILL.md"))
+        .collect();
+    assert!(
+        moved_backups
+            .iter()
+            .any(|p| p.starts_with(old_root.parent().unwrap().join(".agboard-backups"))),
+        "{moved_backups:?}"
+    );
 }
 
 #[test]

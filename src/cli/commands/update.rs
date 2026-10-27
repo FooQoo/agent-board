@@ -121,7 +121,7 @@ pub fn flow(
         p.say("\nEverything is up to date. Nothing was written.\n");
         return 0;
     }
-    p.say("\nBackups: every existing file or Skill folder that changes is first copied next to the original (name.agboard-backup-...) and the copy is kept.\n\n");
+    p.say("\nBackups: every existing file that changes is first copied next to the original (name.agboard-backup-...), and a Skill folder that changes is moved to .agboard-backups beside the skills folder. The copies are kept.\n\n");
     if !yes && !p.confirm("Apply these updates?") {
         p.say("\nCancelled. Nothing was changed.\n");
         return 0;

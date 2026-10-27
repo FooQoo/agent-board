@@ -146,6 +146,9 @@ fn apply_op(
             .map_err(fail)?;
     }
     if let (Payload::Tree(files), Some(stage)) = (&op.payload, &journal.stage) {
+        if let Some(parent) = stage.parent() {
+            fs::create_dir_all(parent).map_err(fail)?;
+        }
         build_tree(stage, files).map_err(fail)?;
     }
     *began = index + 1;
@@ -177,11 +180,19 @@ fn apply_op(
                 fs::create_dir_all(parent).map_err(fail)?;
             }
             if let Some(backup) = backup {
+                if let Some(parent) = backup.parent() {
+                    fs::create_dir_all(parent).map_err(fail)?;
+                }
                 fs::rename(&op.path, backup).map_err(fail)?;
             }
             fs::rename(stage, &op.path).map_err(fail)
         }
-        (Payload::Remove, Some(backup), _) => fs::rename(&op.path, backup).map_err(fail),
+        (Payload::Remove, Some(backup), _) => {
+            if let Some(parent) = backup.parent() {
+                fs::create_dir_all(parent).map_err(fail)?;
+            }
+            fs::rename(&op.path, backup).map_err(fail)
+        }
         _ => Err(Abort::Fail(format!(
             "{}: the plan is inconsistent",
             op.path.display()

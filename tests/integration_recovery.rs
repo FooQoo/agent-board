@@ -260,6 +260,48 @@ fn an_update_keeps_the_old_skill_as_a_backup_and_a_failure_puts_it_back() {
     );
 }
 
+/// Folders of `root` that hold a SKILL.md: the ones an agent would load.
+fn loaded_skills(root: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = fs::read_dir(root) else {
+        return Vec::new();
+    };
+    entries
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.join("SKILL.md").is_file())
+        .collect()
+}
+
+#[test]
+fn a_skill_update_leaves_one_skill_in_the_skills_root_and_the_backup_outside() {
+    let fx = fixture();
+    let skill = install_old_skill(&fx);
+    let outcome = run(&fx, None);
+    assert_eq!(outcome.status, Status::Applied, "{outcome:?}");
+    let root = skill.parent().unwrap();
+    assert_eq!(
+        loaded_skills(root),
+        vec![skill.clone()],
+        "{:?}",
+        fs::read_dir(root).unwrap().collect::<Vec<_>>()
+    );
+    assert_eq!(
+        fs::read_dir(root).unwrap().count(),
+        1,
+        "nothing else in the skills root"
+    );
+    let hidden = fx.base.join("claude/.agboard-backups");
+    let backup = outcome
+        .backups
+        .iter()
+        .find(|b| b.join("SKILL.md").is_file())
+        .expect("the old Skill is kept");
+    assert!(backup.starts_with(&hidden), "{}", backup.display());
+    assert_eq!(
+        fs::read_to_string(backup.join("SKILL.md")).unwrap(),
+        "old skill"
+    );
+}
+
 #[test]
 fn a_run_that_dies_is_detected_and_undone_by_the_next_run() {
     let fx = fixture();
@@ -333,7 +375,13 @@ fn a_run_that_dies_between_the_two_renames_of_a_skill_update_is_recovered() {
         .find(|o| o["kind"] == "tree")
         .unwrap();
     fs::remove_dir_all(&skill).unwrap();
-    assert!(op["backup"].as_str().is_some());
+    let backup = PathBuf::from(op["backup"].as_str().expect("a backup is journaled"));
+    assert!(
+        backup.starts_with(fx.base.join("claude/.agboard-backups")),
+        "the Skill backup is outside the skills root: {}",
+        backup.display()
+    );
+    assert!(backup.join("SKILL.md").is_file());
     let report = recover_pending(&fx.env, Agent::Claude, None)
         .unwrap()
         .unwrap();
