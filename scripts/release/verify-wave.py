@@ -24,13 +24,13 @@ FOCUSED_TESTS = [
 ]
 
 WAVES = {
-    1: [
+    "1": [
         ["pnpm", "--dir", "web", "build"],
         ["cargo", "build"],
         ["cargo", "test", *FOCUSED_TESTS],
         ["cargo", "test"],
     ],
-    2: [
+    "2": [
         ["pnpm", "--dir", "web", "build"],
         ["cargo", "build"],
         [
@@ -43,7 +43,7 @@ WAVES = {
         ["python3", "scripts/release/check-version.py", "--tag", "v1.0.0"],
         ["cargo", "test"],
     ],
-    3: [
+    "3": [
         ["pnpm", "--dir", "web", "build"],
         ["cargo", "build"],
         [
@@ -59,7 +59,7 @@ WAVES = {
         ["python3", "scripts/release/check-version.py", "--tag", "v1.0.0"],
         ["cargo", "test"],
     ],
-    4: [
+    "4": [
         ["pnpm", "--dir", "web", "build"],
         ["cargo", "build"],
         [
@@ -78,6 +78,19 @@ WAVES = {
         ["python3", "scripts/release/check-version.py", "--tag", "v1.0.0"],
         ["cargo", "test"],
     ],
+    "4.5": [
+        ["pnpm", "--dir", "web", "build"],
+        ["cargo", "build"],
+        ["cargo", "test", "--test", "integration_connect", "--test", "integration_update"],
+        ["cargo", "test"],
+        ["pnpm", "--dir", "web", "typecheck"],
+        ["pnpm", "--dir", "web", "check"],
+        ["pnpm", "--dir", "web", "test"],
+        ["pnpm", "--dir", "web", "typecheck:storybook"],
+        ["pnpm", "--dir", "web", "test:storybook"],
+        ["pnpm", "--dir", "web", "build-storybook"],
+        ["pnpm", "--dir", "web", "verify:story-coverage"],
+    ],
 }
 
 
@@ -92,7 +105,7 @@ def run(repo, env, command):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repo", required=True, help="worktree to verify")
-    parser.add_argument("--wave", required=True, type=int)
+    parser.add_argument("--wave", required=True)
     args = parser.parse_args()
 
     if args.wave not in WAVES:

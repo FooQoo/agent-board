@@ -72,6 +72,20 @@
               "id": "docs-shell-docsdialogview--phone-body",
               "states": ["phone width", "body as screen"],
               "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--public-preview",
+              "states": [
+                "public preview badge",
+                "notice above the file list",
+                "link to the docs section"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "docs-shell-docsdialogview--public-preview-japanese-dark-narrow",
+              "states": ["japanese locale", "dark theme", "phone width", "public preview notice"],
+              "interaction": true
             }
           ]
         }

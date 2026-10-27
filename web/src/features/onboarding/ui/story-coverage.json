@@ -12,6 +12,16 @@
               "id": "features-onboarding-guide--welcome",
               "states": ["first screen", "Skip and Start guide actions", "dialog role"],
               "interaction": true
+            },
+            {
+              "id": "features-onboarding-guide--welcome-public-preview",
+              "states": ["public preview badge beside the title", "no notice or link"],
+              "interaction": true
+            },
+            {
+              "id": "features-onboarding-guide--welcome-public-preview-japanese-dark-narrow",
+              "states": ["japanese locale", "dark theme", "phone width", "public preview badge"],
+              "interaction": true
             }
           ]
         }

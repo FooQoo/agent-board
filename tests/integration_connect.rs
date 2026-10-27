@@ -113,6 +113,26 @@ impl Fx {
         session
     }
 
+    /// A session for a run that prints and exits without asking anything.
+    /// macOS can drop what a pseudo-terminal holds once its last writer has
+    /// exited, so a shell keeps the terminal open for a moment after agboard
+    /// ends and then exits with agboard's own code.
+    fn short_session(&self, cwd: &Path, args: &[&str]) -> Session {
+        let agboard = self.command(cwd);
+        let mut command = Command::new("/bin/sh");
+        command
+            .arg("-c")
+            .arg("\"$0\" \"$@\"; status=$?; /bin/sleep 1; exit $status")
+            .arg(agboard.get_program())
+            .args(args)
+            .current_dir(cwd)
+            .env_clear()
+            .envs(agboard.get_envs().filter_map(|(k, v)| v.map(|v| (k, v))));
+        let mut session = expectrl::Session::spawn(command).unwrap();
+        session.set_expect_timeout(Some(Duration::from_secs(20)));
+        session
+    }
+
     /// Runs connect on a terminal with `answers`, one line each, waiting for
     /// the prompt text in `prompts` before every answer. Returns the exit
     /// code and everything printed.
@@ -243,7 +263,7 @@ fn an_unbound_folder_gets_the_create_and_bind_examples_and_nothing_else() {
     let fx = Fx::unbound();
     let before = world(&fx.base());
     let other = fx.base().join("other");
-    let term = fx.session(&other, &["connect"]);
+    let term = fx.short_session(&other, &["connect"]);
     let (code, screen) = finish(term);
     assert!(screen.contains("not bound"), "{screen}");
     assert!(screen.contains("agboard project create"), "{screen}");
@@ -485,7 +505,7 @@ fn no_detected_agent_ends_without_a_change() {
     fx.remove_agent("codex");
     fx.remove_agent("claude");
     let before = world(&fx.base());
-    let term = fx.session(&fx.root(), &["connect"]);
+    let term = fx.short_session(&fx.root(), &["connect"]);
     let (code, screen) = finish(term);
     assert_eq!(code, 0, "{screen}");
     assert!(screen.contains("No supported agent"), "{screen}");
@@ -636,4 +656,41 @@ fn an_unfinished_earlier_run_is_recovered_and_reported_before_planning() {
     assert!(screen.contains("unfinished"), "{screen}");
     assert!(fx.claude().join("skills/agent-board/SKILL.md").is_file());
     assert_eq!(registered(&fx, "claude", "skill")["scope"], "global");
+}
+
+const PREVIEW: &str =
+    "Public preview: this command may change. See the documentation for current limitations.";
+
+#[test]
+fn the_interactive_screen_starts_with_the_preview_line() {
+    let fx = Fx::new();
+    let (code, screen) = fx.connect(&fx.root(), &[("Select agents", "q")]);
+    assert_eq!(code, 0, "{screen}");
+    assert!(screen.trim_start().starts_with(PREVIEW), "{screen}");
+    assert!(screen.find(PREVIEW) < screen.find("Project:"), "{screen}");
+}
+
+#[test]
+fn refusals_and_usage_errors_do_not_print_the_preview_line() {
+    let fx = Fx::new();
+    let (code, stdout, stderr) = fx.agboard(&["connect", "--json"], &fx.root());
+    assert_eq!(code, 2);
+    assert!(!format!("{stdout}{stderr}").contains(PREVIEW));
+    let output = fx
+        .command(&fx.root())
+        .arg("connect")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!text.contains(PREVIEW), "{text}");
+    let unbound = Fx::unbound();
+    let (code, screen) = finish(unbound.session(&unbound.base().join("other"), &["connect"]));
+    assert_eq!(code, 1, "{screen}");
+    assert!(!screen.contains(PREVIEW), "{screen}");
 }

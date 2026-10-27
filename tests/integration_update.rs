@@ -396,3 +396,45 @@ fn a_moved_install_location_is_refused() {
     // Codex was not affected by the move and is updated.
     assert!(!skill_is_old(&fx, Agent::Codex, false));
 }
+
+const PREVIEW: &str =
+    "Public preview: this command may change. See the documentation for current limitations.";
+
+#[test]
+fn the_interactive_screen_starts_with_the_preview_line() {
+    let fx = Fx::new();
+    fx.connect_both("1", "1");
+    fx.age("0.0.1", |_| true);
+    let mut term = fx.session(&fx.root(), &["update"]);
+    let seen = term.expect("[y/N]").unwrap();
+    let screen = String::from_utf8_lossy(seen.as_bytes()).into_owned();
+    assert!(screen.trim_start().starts_with(PREVIEW), "{screen}");
+    term.send_line("n").unwrap();
+    finish(term);
+}
+
+#[test]
+fn yes_runs_and_refusals_do_not_print_the_preview_line() {
+    let fx = Fx::new();
+    fx.connect_both("1", "1");
+    fx.age("0.0.1", |_| true);
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &fx.root());
+    assert_eq!(code, 0, "{stdout}{stderr}");
+    assert!(!format!("{stdout}{stderr}").contains(PREVIEW));
+    let output = fx
+        .command(&fx.root())
+        .arg("update")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!text.contains(PREVIEW), "{text}");
+    let (code, stdout, stderr) = fx.agboard(&["update", "--json"], &fx.root());
+    assert_eq!(code, 2);
+    assert!(!format!("{stdout}{stderr}").contains(PREVIEW));
+}
