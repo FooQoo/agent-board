@@ -101,10 +101,12 @@ fn run(env: &PathEnv, plan: &AgentPlan, options: &ApplyOptions) -> Result<AgentO
                 },
                 Abort::Fail(reason) => {
                     let report = rollback(&data, &journal, began, observer);
-                    let tail = if report.is_clean() {
+                    let tail = if !report.is_clean() {
+                        "Some changes could not be restored; see the recovery paths."
+                    } else if report.external.is_empty() {
                         "Everything this run changed for the agent was restored."
                     } else {
-                        "Some changes could not be restored; see the recovery paths."
+                        "The rest was restored; files someone else changed were left as they are, and their backups are named below."
                     };
                     AgentOutcome {
                         rollback: Some(report),

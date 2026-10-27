@@ -106,7 +106,8 @@ pub fn flow(
     };
     p.say(&header(s));
     let mut stopped = false;
-    let plans = plan_all(&mut p, err, &input, &selected, &mut stopped);
+    let mut recovered = false;
+    let plans = plan_all(&mut p, err, &input, &selected, &mut stopped, &mut recovered);
     for plan in &plans {
         p.say(&describe(plan, &registry));
     }
@@ -123,7 +124,11 @@ pub fn flow(
     }
     p.say("\nBackups: every existing file that changes is first copied next to the original (name.agboard-backup-...), and a Skill folder that changes is moved to .agboard-backups beside the skills folder. The copies are kept.\n\n");
     if !yes && !p.confirm("Apply these updates?") {
-        p.say("\nCancelled. Nothing was changed.\n");
+        p.say(if recovered {
+            "\nCancelled. The unfinished earlier run was undone; nothing else was changed.\n"
+        } else {
+            "\nCancelled. Nothing was changed.\n"
+        });
         return 0;
     }
     p.say("\n");
@@ -154,6 +159,7 @@ fn plan_all(
     input: &UpdateInput,
     selected: &[AgentRecords],
     stopped: &mut bool,
+    recovered: &mut bool,
 ) -> Vec<AgentPlan> {
     let mut plans = Vec::new();
     for records in selected {
@@ -164,6 +170,7 @@ fn plan_all(
                 let text = report::recovery(agent, &found);
                 if found.is_clean() {
                     p.say(&text);
+                    *recovered |= !found.restored.is_empty();
                 } else {
                     let _ = err.write_all(text.as_bytes());
                     *stopped = true;

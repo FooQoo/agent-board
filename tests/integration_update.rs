@@ -553,3 +553,78 @@ fn a_global_skill_in_a_second_project_warns_and_keeps_the_first_projects_skill()
         .count();
     assert_eq!(skills, 2, "the first project's record and the Global one");
 }
+
+const THEIRS: &str = "{\"model\":\"edited-by-someone-else\"}\n";
+
+#[test]
+fn connect_stops_an_agent_whose_interrupted_run_met_an_outside_change() {
+    let fx = Fx::new();
+    let settings = fx.claude().join("settings.json");
+    fs::write(&settings, "{\n  \"model\": \"sentinel\"\n}\n").unwrap();
+    fx.interrupted_run(Agent::Claude);
+    fs::write(&settings, THEIRS).unwrap();
+
+    let (code, screen) = fx.connect_screen_at(&fx.root(), "1", "1");
+    assert_eq!(code, 1, "{screen}");
+    assert!(screen.contains(settings.to_str().unwrap()), "{screen}");
+    assert!(screen.contains("settings.json.agboard-backup-"), "{screen}");
+    assert!(
+        screen.contains(fx.journal(Agent::Claude).to_str().unwrap()),
+        "{screen}"
+    );
+    assert!(fx.journal(Agent::Claude).exists(), "the journal stays");
+    assert_eq!(fs::read_to_string(&settings).unwrap(), THEIRS);
+    // the other agent is unaffected
+    assert!(fx.skill_dir(Agent::Codex, false).join("SKILL.md").is_file());
+    assert!(!fx.skill_dir(Agent::Claude, false).join("SKILL.md").exists());
+}
+
+#[test]
+fn update_stops_an_agent_whose_interrupted_run_met_an_outside_change() {
+    let fx = Fx::new();
+    fx.connect_both("1", "1");
+    fx.age("0.0.1", |_| true);
+    fx.age_hook(Agent::Claude);
+    fx.interrupted_run(Agent::Claude);
+    let settings = fx.claude().join("settings.json");
+    fs::write(&settings, THEIRS).unwrap();
+
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &fx.root());
+    assert_eq!(code, 1, "{stdout}{stderr}");
+    assert!(stderr.contains(settings.to_str().unwrap()), "{stderr}");
+    assert!(stderr.contains("settings.json.agboard-backup-"), "{stderr}");
+    assert!(
+        stderr.contains(fx.journal(Agent::Claude).to_str().unwrap()),
+        "{stderr}"
+    );
+    assert!(fx.journal(Agent::Claude).exists(), "the journal stays");
+    assert_eq!(fs::read_to_string(&settings).unwrap(), THEIRS);
+    assert!(!skill_is_old(&fx, Agent::Codex, false), "Codex is updated");
+}
+
+#[test]
+fn cancelling_after_a_recovery_says_the_earlier_run_was_undone() {
+    let fx = Fx::new();
+    fx.interrupted_run(Agent::Claude);
+    let mut term = fx.session(&fx.root(), &["connect"]);
+    let mut screen = String::new();
+    for (prompt, answer) in [
+        ("Select agents", "1"),
+        ("Skill scope", "1"),
+        ("Hook scope", "1"),
+        ("[y/N]", "n"),
+    ] {
+        let seen = term.expect(prompt).unwrap();
+        screen.push_str(&String::from_utf8_lossy(seen.as_bytes()));
+        term.send_line(answer).unwrap();
+    }
+    let (code, rest) = finish(term);
+    screen.push_str(&rest);
+    assert_eq!(code, 0, "{screen}");
+    assert!(screen.contains("undone"), "{screen}");
+    assert!(
+        !screen.contains("Cancelled. Nothing was changed."),
+        "{screen}"
+    );
+    assert!(screen.contains("Cancelled."), "{screen}");
+}

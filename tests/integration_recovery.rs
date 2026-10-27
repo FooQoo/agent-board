@@ -478,16 +478,16 @@ fn a_change_made_after_our_write_is_left_alone_by_the_rollback() {
     };
     let outcome = run(&fx, Some(&meddle));
     assert_eq!(outcome.status, Status::Failed);
-    let report = outcome.rollback.unwrap();
+    let report = outcome.rollback.clone().unwrap();
     assert!(
         report.is_clean(),
         "an external change is not a stuck rollback"
     );
     assert_eq!(report.external.len(), 1);
     assert_eq!(report.external[0].0, settings);
-    let backup = report.external[0].1.as_ref().expect("the backup is named");
+    let backup = report.external[0].1.clone().expect("the backup is named");
     assert_eq!(
-        fs::read_to_string(backup).unwrap(),
+        fs::read_to_string(&backup).unwrap(),
         ORIGINAL,
         "the original is safe in the backup"
     );
@@ -497,6 +497,104 @@ fn a_change_made_after_our_write_is_left_alone_by_the_rollback() {
         "their edit is not overwritten"
     );
     assert!(!is_pending(&fx.env, Agent::Claude).unwrap());
+
+    // The failure text says what was left and where the originals are.
+    let message = outcome.message.as_deref().unwrap();
+    assert!(
+        !message.contains("Everything this run changed"),
+        "{message}"
+    );
+    assert!(message.contains("someone else"), "{message}");
+    let (_, errors) = agent_board::integrations::update_report::results(
+        std::slice::from_ref(&AgentOutcome {
+            rollback: Some(report.clone()),
+            ..outcome.clone()
+        }),
+        &[],
+        1,
+    );
+    assert!(errors.contains(backup.to_str().unwrap()), "{errors}");
+    let mut stuck = report;
+    stuck
+        .stuck
+        .push((settings.clone(), "no".into(), Some(backup.clone())));
+    let (_, errors) = agent_board::integrations::update_report::results(
+        &[AgentOutcome {
+            rollback: Some(stuck),
+            ..outcome
+        }],
+        &[],
+        1,
+    );
+    assert!(
+        errors.matches(backup.to_str().unwrap()).count() >= 2,
+        "{errors}"
+    );
+}
+
+#[test]
+fn recovery_keeps_the_journal_when_someone_else_changed_a_file() {
+    let fx = fixture();
+    let (_, settings) = with_settings(&fx);
+    let crash = |step: &Step| {
+        if step.phase == Phase::Registry {
+            StepAction::Crash
+        } else {
+            StepAction::Continue
+        }
+    };
+    assert_eq!(run(&fx, Some(&crash)).status, Status::Interrupted);
+    let edited = "{\"model\":\"edited-by-someone-else\"}";
+    fs::write(&settings, edited).unwrap();
+
+    for _ in 0..2 {
+        let report = recover_pending(&fx.env, Agent::Claude, None)
+            .unwrap()
+            .expect("pending");
+        assert!(!report.is_clean(), "{report:?}");
+        assert_eq!(report.external.len(), 1);
+        assert_eq!(report.external[0].0, settings);
+        let backup = report.external[0].1.as_ref().expect("the backup is named");
+        assert_eq!(fs::read_to_string(backup).unwrap(), ORIGINAL);
+        assert!(report.journal.as_ref().unwrap().is_file());
+        assert!(is_pending(&fx.env, Agent::Claude).unwrap());
+        assert_eq!(fs::read_to_string(&settings).unwrap(), edited);
+    }
+    let text = agent_board::integrations::report::recovery(
+        Agent::Claude,
+        &recover_pending(&fx.env, Agent::Claude, None)
+            .unwrap()
+            .unwrap(),
+    );
+    assert!(text.contains("could not be undone safely"), "{text}");
+    assert!(text.contains("integrations-journal-claude.json"), "{text}");
+}
+
+#[test]
+fn recovery_takes_the_agent_lock_before_it_reads_the_journal() {
+    let fx = fixture();
+    with_settings(&fx);
+    let crash = |step: &Step| {
+        if step.phase == Phase::Registry {
+            StepAction::Crash
+        } else {
+            StepAction::Continue
+        }
+    };
+    assert_eq!(run(&fx, Some(&crash)).status, Status::Interrupted);
+    let held = agent_board::integrations::journal::AgentLock::acquire(
+        &fx.base.join("data"),
+        Agent::Claude,
+    )
+    .unwrap();
+    let error = recover_pending(&fx.env, Agent::Claude, None).unwrap_err();
+    assert!(error.to_string().contains("another run"), "{error}");
+    drop(held);
+    assert!(
+        recover_pending(&fx.env, Agent::Claude, None)
+            .unwrap()
+            .is_some()
+    );
 }
 
 #[test]

@@ -13,11 +13,14 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
+use agent_board::integrations::apply::{ApplyOptions, Status, Step, StepAction, apply_agent};
 use agent_board::integrations::assets::{
     canonical_json, hook_manifest_hash, sha256_hex, skill_manifest_hash,
 };
+use agent_board::integrations::paths::{PathEnv, resolve_targets};
+use agent_board::integrations::plan::{PlanInput, plan_agent};
 use agent_board::integrations::registry::{InstallationRecord, Registry};
-use agent_board::integrations::{Agent, Component};
+use agent_board::integrations::{Agent, Component, Scope};
 use expectrl::process::unix::WaitStatus;
 use expectrl::session::OsSession as Session;
 use expectrl::{Eof, Expect};
@@ -206,6 +209,60 @@ impl Fx {
             )
             .unwrap();
         });
+    }
+
+    /// Runs the Global/Global connect plan of `agent` in this world and dies
+    /// at the registry commit, leaving the files written and the journal
+    /// pending, as a killed `agboard` would.
+    pub fn interrupted_run(&self, agent: Agent) {
+        let env = PathEnv {
+            agboard_home: Some(self.data().into()),
+            home: Some(self.base().join("home")),
+            codex_home: Some(self.base().join("codex").into()),
+            claude_config_dir: Some(self.claude().into()),
+        };
+        let targets = resolve_targets(
+            &env,
+            agent,
+            Scope::Global,
+            Scope::Global,
+            Some(&self.root()),
+        )
+        .unwrap();
+        let registry = Registry::read(&self.registry_file())
+            .unwrap()
+            .unwrap_or_default();
+        let bundle = agent_board::integrations::assets::bundle().unwrap();
+        let plan = plan_agent(&PlanInput {
+            env: &env,
+            targets: &targets,
+            project_id: None,
+            scan_root: Some(&self.root()),
+            registry: &registry,
+            bundle: &bundle,
+            permissions: true,
+        })
+        .unwrap();
+        let crash = |step: &Step| {
+            if step.phase == agent_board::integrations::apply::Phase::Registry {
+                StepAction::Crash
+            } else {
+                StepAction::Continue
+            }
+        };
+        let outcome = apply_agent(
+            &env,
+            &plan,
+            &ApplyOptions {
+                observer: Some(&crash),
+            },
+        );
+        assert_eq!(outcome.status, Status::Interrupted, "{outcome:?}");
+    }
+
+    pub fn journal(&self, agent: Agent) -> PathBuf {
+        self.data()
+            .join(format!("integrations-journal-{}.json", agent.key()))
     }
 
     pub fn skill_dir(&self, agent: Agent, project: bool) -> PathBuf {

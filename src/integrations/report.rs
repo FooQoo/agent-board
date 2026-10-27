@@ -122,7 +122,7 @@ pub fn recovery(agent: Agent, report: &RecoveryReport) -> String {
     text
 }
 
-fn backup_note(backup: &Option<std::path::PathBuf>) -> String {
+pub(super) fn backup_note(backup: &Option<std::path::PathBuf>) -> String {
     backup
         .as_ref()
         .map(|b| format!(" (backup: {})", b.display()))
