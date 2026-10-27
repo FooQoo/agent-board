@@ -8,6 +8,7 @@ use super::apply::{AgentOutcome, Status};
 use super::paths::resolve_links;
 use super::plan::{AgentPlan, OpKind, PlanState};
 use super::registry::Registry;
+use super::report::backup_note;
 use super::types::Component;
 
 /// The diff shown before the question: one block per agent.
@@ -151,14 +152,20 @@ fn failure(text: &mut String, outcome: &AgentOutcome) {
         outcome.message.as_deref().unwrap_or("the change failed.")
     );
     if let Some(report) = &outcome.rollback {
-        for (path, reason, _) in &report.stuck {
-            let _ = writeln!(text, "  Could not restore {}: {reason}", path.display());
-        }
-        for (path, _) in &report.external {
+        for (path, reason, backup) in &report.stuck {
             let _ = writeln!(
                 text,
-                "  Changed by someone else, left as it is: {}",
-                path.display()
+                "  Could not restore {}: {reason}{}",
+                path.display(),
+                backup_note(backup)
+            );
+        }
+        for (path, backup) in &report.external {
+            let _ = writeln!(
+                text,
+                "  Changed by someone else, left as it is: {}{}",
+                path.display(),
+                backup_note(backup)
             );
         }
         if let Some(journal) = report.journal.as_ref().filter(|_| !report.is_clean()) {

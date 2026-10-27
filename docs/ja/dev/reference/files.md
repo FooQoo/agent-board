@@ -200,7 +200,7 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 - `agent`は`claude`か`codex`、`component`は`skill`か`hook`、`scope`は`global`か`project`です。
 - `projectId`と`boundRoot`は、Projectの記録にだけあります。
 - Skillの記録は`files`（Skillのフォルダからの相対`path`と`sha256`）を、Hookの記録は`managedEntries`を持ちます。もう一方は空です。`managedHash`は、[同梱するバンドル](../concepts/agents.md#同梱するバンドル)にあるmanifestのハッシュか、項目のハッシュです。
-- 読むのは`schemaVersion` 1だけです。未知のフィールド、別の版、壊れたJSONは拒否し、ファイルを書き換えません。変更したファイルのバックアップは、隣に`<name>.agboard-backup-<txn>-<index>`として置かれます。
+- 読むのは`schemaVersion` 1だけです。未知のフィールド、別の版、壊れたJSONは拒否し、ファイルを書き換えません。変更したファイルのバックアップは、隣に`<name>.agboard-backup-<txn>-<index>`として置かれます。Skillのフォルダのバックアップと作業用フォルダ（`.<name>.agboard-stage-<txn>-<index>`）は、Skillの置き場の親にある`.agboard-backups/`（`~/.claude/.agboard-backups/`、`~/.agents/.agboard-backups/`、`<root>/.claude/.agboard-backups/`、`<root>/.agents/.agboard-backups/`）に置かれます。名前の付け替えが同じファイルシステム内で済み、Skillとして読み込まれることもありません。Projectスコープではこれらがリポジトリの中になるので、`.gitignore`に加えてください。
 - ファイルの中のパスは、このマシンの絶対パスです。ドキュメントでは、プレースホルダーで書きます。
 
 ## フォルダの紐付け

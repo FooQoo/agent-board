@@ -71,7 +71,7 @@ pub fn summary(plans: &[AgentPlan]) -> String {
         lines(&mut text, "Warning", &plan.warnings);
     }
     text.push_str(
-        "\nBackups: every existing file or Skill folder that changes is first copied next to the original (name.agboard-backup-...) and the copy is kept.\n\n",
+        "\nBackups: every existing file that changes is first copied next to the original (name.agboard-backup-...), and a Skill folder that changes is moved to .agboard-backups beside the skills folder. The copies are kept.\n\n",
     );
     text
 }
@@ -122,7 +122,7 @@ pub fn recovery(agent: Agent, report: &RecoveryReport) -> String {
     text
 }
 
-fn backup_note(backup: &Option<std::path::PathBuf>) -> String {
+pub(super) fn backup_note(backup: &Option<std::path::PathBuf>) -> String {
     backup
         .as_ref()
         .map(|b| format!(" (backup: {})", b.display()))

@@ -462,3 +462,169 @@ fn yes_runs_and_refusals_do_not_print_the_preview_line() {
     assert_eq!(code, 2);
     assert!(!format!("{stdout}{stderr}").contains(PREVIEW));
 }
+
+/// A second bound project "Second" at `other/`, with its own Project-scope
+/// connect after the first project's.
+fn two_projects() -> Fx {
+    let fx = Fx::new();
+    fx.connect_both("2", "2");
+    let (code, ..) = fx.agboard(&["project", "create", "Second"], &fx.other());
+    assert_eq!(code, 0);
+    fx
+}
+
+fn project_records(fx: &Fx, root: &std::path::Path) -> usize {
+    fx.read_registry()
+        .installations
+        .iter()
+        .filter(|r| r.bound_root.as_deref() == Some(root))
+        .count()
+}
+
+#[test]
+fn connecting_in_a_second_project_keeps_the_first_projects_files_and_records() {
+    let fx = two_projects();
+    let first = world(&fx.root());
+    fx.connect_both_at(&fx.other(), "2", "2");
+    assert_eq!(world(&fx.root()), first, "the first project is untouched");
+    assert_eq!(project_records(&fx, &fx.root()), 4);
+    assert_eq!(project_records(&fx, &fx.other()), 4);
+
+    // update run in the first project still finds and updates it
+    fx.age("0.0.1", |r| {
+        r.bound_root.as_deref() == Some(fx.root().as_path())
+    });
+    assert!(skill_is_old(&fx, Agent::Claude, true));
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &fx.root());
+    assert_eq!(code, 0, "{stdout}{stderr}");
+    assert!(!skill_is_old(&fx, Agent::Claude, true));
+    assert_eq!(
+        record(&fx, Agent::Claude, Component::Hook, Scope::Project).installed_version,
+        CURRENT
+    );
+}
+
+#[test]
+fn a_global_hook_in_a_second_project_lists_and_moves_the_first_projects_hook() {
+    let fx = two_projects();
+    let first_hooks = [
+        fx.root().join(".claude/settings.json"),
+        fx.root().join(".codex/hooks.json"),
+    ];
+    let (code, screen) = fx.connect_screen_at(&fx.other(), "2", "1");
+    assert_eq!(code, 0, "{screen}");
+    for path in &first_hooks {
+        assert!(screen.contains(path.to_str().unwrap()), "{screen}");
+        assert!(
+            !std::fs::read_to_string(path)
+                .unwrap()
+                .contains("agboard hook"),
+            "{} still holds the Hook",
+            path.display()
+        );
+    }
+    let registry = fx.read_registry();
+    let first_hook_records = registry
+        .installations
+        .iter()
+        .filter(|r| r.bound_root.as_deref() == Some(fx.root().as_path()))
+        .filter(|r| r.component == Component::Hook)
+        .count();
+    assert_eq!(first_hook_records, 0);
+    // the first project's Skill stays
+    assert!(fx.skill_dir(Agent::Claude, true).join("SKILL.md").is_file());
+    assert_eq!(project_records(&fx, &fx.root()), 2);
+}
+
+#[test]
+fn a_global_skill_in_a_second_project_warns_and_keeps_the_first_projects_skill() {
+    let fx = two_projects();
+    let (code, screen) = fx.connect_screen_at(&fx.other(), "1", "2");
+    assert_eq!(code, 0, "{screen}");
+    let first_skill = fx.skill_dir(Agent::Claude, true);
+    assert!(first_skill.join("SKILL.md").is_file());
+    assert!(screen.contains("Warning"), "{screen}");
+    assert!(screen.contains(first_skill.to_str().unwrap()), "{screen}");
+    let skills = fx
+        .read_registry()
+        .installations
+        .into_iter()
+        .filter(|r| r.component == Component::Skill && r.agent == Agent::Claude)
+        .count();
+    assert_eq!(skills, 2, "the first project's record and the Global one");
+}
+
+const THEIRS: &str = "{\"model\":\"edited-by-someone-else\"}\n";
+
+#[test]
+fn connect_stops_an_agent_whose_interrupted_run_met_an_outside_change() {
+    let fx = Fx::new();
+    let settings = fx.claude().join("settings.json");
+    fs::write(&settings, "{\n  \"model\": \"sentinel\"\n}\n").unwrap();
+    fx.interrupted_run(Agent::Claude);
+    fs::write(&settings, THEIRS).unwrap();
+
+    let (code, screen) = fx.connect_screen_at(&fx.root(), "1", "1");
+    assert_eq!(code, 1, "{screen}");
+    assert!(screen.contains(settings.to_str().unwrap()), "{screen}");
+    assert!(screen.contains("settings.json.agboard-backup-"), "{screen}");
+    assert!(
+        screen.contains(fx.journal(Agent::Claude).to_str().unwrap()),
+        "{screen}"
+    );
+    assert!(fx.journal(Agent::Claude).exists(), "the journal stays");
+    assert_eq!(fs::read_to_string(&settings).unwrap(), THEIRS);
+    // the other agent is unaffected
+    assert!(fx.skill_dir(Agent::Codex, false).join("SKILL.md").is_file());
+    assert!(!fx.skill_dir(Agent::Claude, false).join("SKILL.md").exists());
+}
+
+#[test]
+fn update_stops_an_agent_whose_interrupted_run_met_an_outside_change() {
+    let fx = Fx::new();
+    fx.connect_both("1", "1");
+    fx.age("0.0.1", |_| true);
+    fx.age_hook(Agent::Claude);
+    fx.interrupted_run(Agent::Claude);
+    let settings = fx.claude().join("settings.json");
+    fs::write(&settings, THEIRS).unwrap();
+
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &fx.root());
+    assert_eq!(code, 1, "{stdout}{stderr}");
+    assert!(stderr.contains(settings.to_str().unwrap()), "{stderr}");
+    assert!(stderr.contains("settings.json.agboard-backup-"), "{stderr}");
+    assert!(
+        stderr.contains(fx.journal(Agent::Claude).to_str().unwrap()),
+        "{stderr}"
+    );
+    assert!(fx.journal(Agent::Claude).exists(), "the journal stays");
+    assert_eq!(fs::read_to_string(&settings).unwrap(), THEIRS);
+    assert!(!skill_is_old(&fx, Agent::Codex, false), "Codex is updated");
+}
+
+#[test]
+fn cancelling_after_a_recovery_says_the_earlier_run_was_undone() {
+    let fx = Fx::new();
+    fx.interrupted_run(Agent::Claude);
+    let mut term = fx.session(&fx.root(), &["connect"]);
+    let mut screen = String::new();
+    for (prompt, answer) in [
+        ("Select agents", "1"),
+        ("Skill scope", "1"),
+        ("Hook scope", "1"),
+        ("[y/N]", "n"),
+    ] {
+        let seen = term.expect(prompt).unwrap();
+        screen.push_str(&String::from_utf8_lossy(seen.as_bytes()));
+        term.send_line(answer).unwrap();
+    }
+    let (code, rest) = finish(term);
+    screen.push_str(&rest);
+    assert_eq!(code, 0, "{screen}");
+    assert!(screen.contains("undone"), "{screen}");
+    assert!(
+        !screen.contains("Cancelled. Nothing was changed."),
+        "{screen}"
+    );
+    assert!(screen.contains("Cancelled."), "{screen}");
+}

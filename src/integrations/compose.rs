@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 
 use super::assets::hook_manifest_hash;
-use super::duplicates::check_other_registrations;
+use super::duplicates::{check_other_registrations, is_move_source};
 use super::merge::{HookEdit, merge_hooks, remove_hooks};
 use super::paths::{placement, resolve_links};
 use super::plan::{AgentPlan, PlanInput, RegistryChange, Stage, Stages};
@@ -44,6 +44,7 @@ pub(super) fn plan_hook(
         input.env,
         t.agent,
         target,
+        t.hook_scope,
         input.scan_root,
         input.registry,
         template,
@@ -107,7 +108,16 @@ pub(super) fn plan_skill(input: &PlanInput, plan: &mut AgentPlan) -> Result<(), 
         plan.additions.push(op.description.clone());
         plan.ops.push(op);
     }
-    for source in skills().filter(|r| resolve_links(&r.resolved_path) != resolved) {
+    let others = skills().filter(|r| resolve_links(&r.resolved_path) != resolved);
+    for kept in others
+        .clone()
+        .filter(|r| !is_move_source(r, t.skill_scope, input.scan_root))
+    {
+        if t.skill_scope == Scope::Global {
+            plan.warnings.push(format!("Another project has its own Skill at {}. In that project the agent loads both it and the Global Skill.", kept.resolved_path.display()));
+        }
+    }
+    for source in others.filter(|r| is_move_source(r, t.skill_scope, input.scan_root)) {
         let removal = plan_removal(&source.resolved_path, source);
         plan.conflicts.extend(removal.conflicts);
         if let Some(op) = removal.op {

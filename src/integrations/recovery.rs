@@ -43,12 +43,15 @@ pub struct RecoveryReport {
     /// Could not be undone: path, reason, backup.
     pub stuck: Vec<(PathBuf, String, Option<PathBuf>)>,
     pub journal: Option<PathBuf>,
+    /// Recovery of an earlier run: a path someone else changed also keeps the
+    /// journal, so the user decides what to do with it.
+    pub keep_on_external: bool,
 }
 
 impl RecoveryReport {
     /// Whether the journal could be closed.
     pub fn is_clean(&self) -> bool {
-        self.stuck.is_empty()
+        self.stuck.is_empty() && (!self.keep_on_external || self.external.is_empty())
     }
 }
 
@@ -60,8 +63,19 @@ pub fn rollback(
     began: usize,
     observer: Option<Observer>,
 ) -> RecoveryReport {
+    undo(data_dir, journal, began, observer, false)
+}
+
+fn undo(
+    data_dir: &Path,
+    journal: &Journal,
+    began: usize,
+    observer: Option<Observer>,
+    keep_on_external: bool,
+) -> RecoveryReport {
     let mut report = RecoveryReport {
         journal: Some(super::journal::journal_path(data_dir, journal.agent)),
+        keep_on_external,
         ..RecoveryReport::default()
     };
     let mut results: Vec<(usize, OpRestore)> = Vec::new();
@@ -171,17 +185,30 @@ pub fn is_pending(env: &PathEnv, agent: Agent) -> Result<bool, IntegrationError>
 
 /// Finds and undoes the unfinished transaction of `agent`, if any. connect and
 /// update call this before they plan. `Ok(None)` when nothing was pending.
-/// When the report is not clean the journal stays, and the caller must stop
-/// and show the paths.
+/// When the report is not clean (a path could not be undone, or someone else
+/// changed one) the journal stays, and the caller must stop and show the paths.
 pub fn recover_pending(
     env: &PathEnv,
     agent: Agent,
     observer: Option<Observer>,
 ) -> Result<Option<RecoveryReport>, IntegrationError> {
     let dir = data_dir(env)?;
+    // Without a journal file there is nothing to recover, and a run that only
+    // plans or is cancelled must not create the lock file. When one exists,
+    // the lock is taken before the journal is read, so that a run in progress
+    // is never mistaken for a dead one.
+    if !super::journal::journal_path(&dir, agent).exists() {
+        return Ok(None);
+    }
+    let _lock = AgentLock::acquire(&dir, agent).map_err(IntegrationError::Board)?;
     let Some(journal) = read_journal(&dir, agent).map_err(IntegrationError::Board)? else {
         return Ok(None);
     };
-    let _lock = AgentLock::acquire(&dir, agent).map_err(IntegrationError::Board)?;
-    Ok(Some(rollback(&dir, &journal, journal.ops.len(), observer)))
+    Ok(Some(undo(
+        &dir,
+        &journal,
+        journal.ops.len(),
+        observer,
+        true,
+    )))
 }
