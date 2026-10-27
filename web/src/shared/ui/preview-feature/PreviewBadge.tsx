@@ -1,3 +1,4 @@
+import '@/shared/i18n/preview-feature-strings';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/shared/ui/badge';
 import type { PreviewFeature } from './feature-stage';

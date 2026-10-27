@@ -1,3 +1,4 @@
+import '@/shared/i18n/preview-feature-strings';
 import { Trans, useTranslation } from 'react-i18next';
 import { isLocale } from '@/shared/i18n';
 import { featureStagesUrl, type PreviewFeature } from './feature-stage';
