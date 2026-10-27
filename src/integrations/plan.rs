@@ -114,6 +114,10 @@ pub struct PlanInput<'a> {
     pub bundle: &'a EmbeddedBundle,
     /// Add the permissions setup adds. Update does not.
     pub permissions: bool,
+    /// Take over this root's records in the other scope (a scope move) and
+    /// warn about other projects' records. Update plans each recorded scope
+    /// separately and moves nothing.
+    pub moves: bool,
 }
 
 /// The setup planner of one agent's permissions: file, text, data root.

@@ -114,11 +114,14 @@ impl AgentLock {
             .write(true)
             .open(&path)
             .map_err(|error| format!("{} cannot be opened: {error}", path.display()))?;
-        file.try_lock().map_err(|_| {
-            format!(
+        file.try_lock().map_err(|error| match error {
+            std::fs::TryLockError::WouldBlock => format!(
                 "another run is changing the {} integration; try again when it ends.",
                 agent.label()
-            )
+            ),
+            std::fs::TryLockError::Error(error) => {
+                format!("{} cannot be locked: {error}", path.display())
+            }
         })?;
         Ok(AgentLock { _file: file })
     }

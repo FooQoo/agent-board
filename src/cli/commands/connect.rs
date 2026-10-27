@@ -243,7 +243,7 @@ fn plan_all(
         match recover_pending(&s.path_env, agent, None) {
             Ok(None) => {}
             Ok(Some(found)) => {
-                let text = report::recovery(agent, &found);
+                let text = report::recovery(agent, &found, "connect");
                 if found.is_clean() {
                     p.say(&text);
                     progress.recovered |= !found.restored.is_empty();
@@ -254,7 +254,7 @@ fn plan_all(
                 }
             }
             Err(error) => {
-                p.say(&format!("{}: {error}\n", agent.label()));
+                let _ = writeln!(err, "{}: {error}", agent.label());
                 progress.stopped = true;
                 continue;
             }
@@ -269,6 +269,7 @@ fn plan_all(
                     registry,
                     bundle: &bundle,
                     permissions: true,
+                    moves: true,
                 })
             });
         match planned {

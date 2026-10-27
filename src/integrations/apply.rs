@@ -9,7 +9,9 @@ use std::fs;
 use super::journal::{
     AgentLock, Journal, JournalOp, journal_path, read_journal, state_hash, write_journal,
 };
-use super::ops::{build_tree, journal_op, registry_op, unique_id, write_new_file};
+use super::ops::{
+    build_tree, journal_op, prune_backup_dir, registry_op, unique_id, write_new_file,
+};
 use super::outcome::{Abort, notify};
 pub use super::outcome::{
     AgentOutcome, ApplyOptions, Observer, Phase, Status, Step, StepAction, exit_code, is_partial,
@@ -118,6 +120,9 @@ fn run(env: &PathEnv, plan: &AgentPlan, options: &ApplyOptions) -> Result<AgentO
         }
     }
     super::journal::remove_journal(&data, agent);
+    for stage in journal.ops.iter().filter_map(|j| j.stage.as_deref()) {
+        prune_backup_dir(stage);
+    }
     let backups = journal
         .ops
         .iter()

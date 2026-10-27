@@ -65,6 +65,7 @@ fn plan_for(fx: &Fx, agent: Agent, skill: Scope, hook: Scope) -> AgentPlan {
         registry: &registry,
         bundle: &bundle,
         permissions: true,
+        moves: true,
     })
     .unwrap()
 }

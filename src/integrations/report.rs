@@ -83,7 +83,7 @@ fn lines(text: &mut String, label: &str, items: &[String]) {
 }
 
 /// What recovering an unfinished earlier run found. `None` when it is clean.
-pub fn recovery(agent: Agent, report: &RecoveryReport) -> String {
+pub fn recovery(agent: Agent, report: &RecoveryReport, command: &str) -> String {
     let mut text = String::new();
     if report.is_clean() {
         let _ = writeln!(
@@ -118,7 +118,10 @@ pub fn recovery(agent: Agent, report: &RecoveryReport) -> String {
     if let Some(journal) = &report.journal {
         let _ = writeln!(text, "  Journal: {}", journal.display());
     }
-    text.push_str("  Restore the files from the backups named above, remove the journal, then run connect again.\n");
+    let _ = writeln!(
+        text,
+        "  Restore the files from the backups named above, remove the journal, then run {command} again."
+    );
     text
 }
 

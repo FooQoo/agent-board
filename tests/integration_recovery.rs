@@ -62,6 +62,7 @@ fn plan(fx: &Fx, skill: Scope, hook: Scope) -> AgentPlan {
         registry: &registry,
         bundle: &bundle,
         permissions: true,
+        moves: true,
     })
     .unwrap()
 }
@@ -300,6 +301,43 @@ fn a_skill_update_leaves_one_skill_in_the_skills_root_and_the_backup_outside() {
         fs::read_to_string(backup.join("SKILL.md")).unwrap(),
         "old skill"
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_skills_folder_keeps_its_backup_beside_the_real_folder() {
+    let fx = fixture();
+    let volume = fx.base.join("volume");
+    fs::create_dir_all(volume.join("skills")).unwrap();
+    std::os::unix::fs::symlink(volume.join("skills"), fx.base.join("claude/skills")).unwrap();
+    let skill = install_old_skill(&fx);
+    let outcome = run(&fx, None);
+    assert_eq!(outcome.status, Status::Applied, "{outcome:?}");
+    let backup = outcome
+        .backups
+        .iter()
+        .find(|b| b.join("SKILL.md").is_file())
+        .expect("the old Skill is kept");
+    assert!(
+        backup.starts_with(volume.join(".agboard-backups")),
+        "{}",
+        backup.display()
+    );
+    assert!(!fx.base.join("claude/.agboard-backups").exists());
+    assert!(skill.join("references").is_dir());
+}
+
+#[test]
+fn a_fresh_install_leaves_no_empty_backup_folder() {
+    let fx = fixture();
+    let outcome = run(&fx, None);
+    assert_eq!(outcome.status, Status::Applied, "{outcome:?}");
+    assert!(!fx.base.join("claude/.agboard-backups").exists());
+    // and a failed run that is rolled back leaves none either
+    let fx = fixture();
+    let observer = fail_at(Phase::Registry, 2);
+    assert_eq!(run(&fx, Some(&observer)).status, Status::Failed);
+    assert!(!fx.base.join("claude/.agboard-backups").exists());
 }
 
 #[test]
@@ -560,12 +598,15 @@ fn recovery_keeps_the_journal_when_someone_else_changed_a_file() {
         assert!(is_pending(&fx.env, Agent::Claude).unwrap());
         assert_eq!(fs::read_to_string(&settings).unwrap(), edited);
     }
-    let text = agent_board::integrations::report::recovery(
-        Agent::Claude,
-        &recover_pending(&fx.env, Agent::Claude, None)
-            .unwrap()
-            .unwrap(),
-    );
+    let pending = recover_pending(&fx.env, Agent::Claude, None)
+        .unwrap()
+        .unwrap();
+    let update_text =
+        agent_board::integrations::report::recovery(Agent::Claude, &pending, "update");
+    assert!(update_text.contains("run update again"), "{update_text}");
+    assert!(!update_text.contains("run connect again"), "{update_text}");
+    let text = agent_board::integrations::report::recovery(Agent::Claude, &pending, "connect");
+    assert!(text.contains("run connect again"), "{text}");
     assert!(text.contains("could not be undone safely"), "{text}");
     assert!(text.contains("integrations-journal-claude.json"), "{text}");
 }

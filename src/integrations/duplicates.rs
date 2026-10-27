@@ -19,6 +19,7 @@ use super::paths::{PathEnv, placement, resolve_links};
 use super::registry::{InstallationRecord, ManagedHookEntry, Registry};
 use super::template::TemplateGroup;
 use super::types::{Agent, Component, Scope};
+use super::update::in_reach;
 
 /// One `agboard` command found in a settings file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -179,11 +180,11 @@ pub fn is_move_source(
 pub fn check_other_registrations(
     env: &PathEnv,
     agent: Agent,
-    target: &Path,
-    target_scope: Scope,
+    (target, target_scope): (&Path, Scope),
     scan_root: Option<&Path>,
     registry: &Registry,
     template: &[TemplateGroup],
+    scan_all_recorded: bool,
 ) -> HookCheck {
     let mut check = HookCheck::default();
     let target_real = resolve_links(target);
@@ -198,7 +199,14 @@ pub fn check_other_registrations(
         .map(|r| resolve_links(&r.resolved_path))
         .collect();
     let mut files = candidate_files(env, agent, scan_root);
-    files.extend(recorded.iter().map(|r| r.resolved_path.clone()));
+    // Every recorded file is read only when connect plans; update reads the
+    // registry for ownership but opens just the records it may change.
+    files.extend(
+        recorded
+            .iter()
+            .filter(|r| scan_all_recorded || in_reach(r, scan_root))
+            .map(|r| r.resolved_path.clone()),
+    );
     let mut seen = BTreeSet::new();
     for path in files {
         let real = resolve_links(&path);

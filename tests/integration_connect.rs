@@ -625,6 +625,7 @@ fn an_unfinished_earlier_run_is_recovered_and_reported_before_planning() {
         registry: &registry,
         bundle: &bundle,
         permissions: true,
+        moves: true,
     })
     .unwrap();
     let crash = |step: &agent_board::integrations::apply::Step| {
