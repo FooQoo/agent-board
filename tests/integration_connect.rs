@@ -637,3 +637,40 @@ fn an_unfinished_earlier_run_is_recovered_and_reported_before_planning() {
     assert!(fx.claude().join("skills/agent-board/SKILL.md").is_file());
     assert_eq!(registered(&fx, "claude", "skill")["scope"], "global");
 }
+
+const PREVIEW: &str =
+    "Public preview: this command may change. See the documentation for current limitations.";
+
+#[test]
+fn the_interactive_screen_starts_with_the_preview_line() {
+    let fx = Fx::new();
+    let (code, screen) = fx.connect(&fx.root(), &[("Select agents", "q")]);
+    assert_eq!(code, 0, "{screen}");
+    assert!(screen.trim_start().starts_with(PREVIEW), "{screen}");
+    assert!(screen.find(PREVIEW) < screen.find("Project:"), "{screen}");
+}
+
+#[test]
+fn refusals_and_usage_errors_do_not_print_the_preview_line() {
+    let fx = Fx::new();
+    let (code, stdout, stderr) = fx.agboard(&["connect", "--json"], &fx.root());
+    assert_eq!(code, 2);
+    assert!(!format!("{stdout}{stderr}").contains(PREVIEW));
+    let output = fx
+        .command(&fx.root())
+        .arg("connect")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!text.contains(PREVIEW), "{text}");
+    let unbound = Fx::unbound();
+    let (code, screen) = finish(unbound.session(&unbound.base().join("other"), &["connect"]));
+    assert_eq!(code, 1, "{screen}");
+    assert!(!screen.contains(PREVIEW), "{screen}");
+}

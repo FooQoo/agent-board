@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { FEATURE_STAGES_URL } from '@/shared/ui/preview-feature/feature-stage';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { ConnectionEntryRow } from './ConnectionEntryRow';
 import { NGROK_TOKEN_URL } from './ConnectionSteps';
@@ -53,7 +54,9 @@ export const NeedsConfig: Story = {
     await expect(view.getByText('Check the board on your phone from outside.')).toBeInTheDocument();
     const steps = view.getAllByRole('listitem');
     await expect(steps).toHaveLength(2);
-    await expect((steps[1] as HTMLElement).offsetHeight).toBe(280);
+    // The public preview notice sits above the steps. The dialog keeps its design size, so the
+    // steps row, which fills what is left, is 24px shorter than the design's 280px.
+    await expect((steps[1] as HTMLElement).offsetHeight).toBe(256);
     await expect(view.getByRole('heading', { name: 'Get a token' })).toBeInTheDocument();
     // Save and connect is about 146px wide, the same as Reconnect in the stopped view. The width
     // follows the text, so a font that measures one pixel apart must not fail the story.
@@ -275,4 +278,33 @@ export const ConnectedWithoutProjectJa: Story = {
   args: { status: 'ready', url: null, projectSelected: false, passcode: '4821', qr: null },
   globals: { locale: 'ja' },
   play: noProjectPlay('ja'),
+};
+
+/** The mobile monitor is in public preview: the badge beside the heading, the notice under the description. */
+export const PublicPreview: Story = {
+  play: async () => {
+    const view = within(document.body);
+    await expect(
+      view.getAllByText('Public preview', { selector: '[data-slot="badge"]' }).length,
+    ).toBeGreaterThan(0);
+    const link = view.getByRole('link', { name: 'documentation' });
+    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#mobile-monitor`);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  },
+};
+
+/** The same notice in Japanese, in the dark theme, on a phone-width window. */
+export const PublicPreviewJapaneseDarkNarrow: Story = {
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async () => {
+    const view = within(document.body);
+    await expect(
+      view.getAllByText('パブリックプレビュー', { selector: '[data-slot="badge"]' }).length,
+    ).toBeGreaterThan(0);
+    const link = view.getByRole('link', { name: 'ドキュメント' });
+    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.ja}#mobile-monitor`);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  },
 };

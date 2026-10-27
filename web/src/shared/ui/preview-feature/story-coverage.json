@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "owner": "U11",
+  "files": [
+    {
+      "file": "shared/ui/preview-feature/PreviewBadge.tsx",
+      "exports": [
+        {
+          "name": "PreviewBadge",
+          "stories": [
+            {
+              "id": "shared-ui-previewfeature--badge",
+              "states": ["outline badge", "Public preview label"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-previewfeature--every-feature",
+              "states": ["every listed feature"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/ui/preview-feature/PreviewNotice.tsx",
+      "exports": [
+        {
+          "name": "PreviewNotice",
+          "stories": [
+            {
+              "id": "shared-ui-previewfeature--notice",
+              "states": ["English sentence", "link to the feature section", "new tab"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-previewfeature--notice-japanese",
+              "states": ["Japanese sentence", "link to the Japanese page"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-previewfeature--every-feature",
+              "states": ["every listed feature"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

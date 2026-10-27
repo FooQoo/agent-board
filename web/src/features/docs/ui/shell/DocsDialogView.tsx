@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { EditorShell } from '@/shared/ui/editor/EditorShell';
+import { PreviewBadge } from '@/shared/ui/preview-feature/PreviewBadge';
+import { PreviewNotice } from '@/shared/ui/preview-feature/PreviewNotice';
 import { ResizeHandle } from '@/shared/ui/resize-handle/ResizeHandle';
 import { DocsFileTree, type DocsTreeNode } from './DocsFileTree';
 import { DocsPlaceholder } from './DocsPlaceholder';
@@ -158,7 +160,7 @@ export function DocsDialogView({
   return (
     <EditorShell
       title={<DocsTitle path={hasFile && pane === 'body' ? selectedPath : null} />}
-      badge=""
+      badge={<PreviewBadge feature="docs" decorative />}
       variant="edit"
       className="docs-dialog"
       dialogData={{
@@ -190,6 +192,11 @@ export function DocsDialogView({
         ) : null
       }
     >
+      {(!phone || pane === 'list') && (
+        <div className="docs-dialog__stage">
+          <PreviewNotice feature="docs" />
+        </div>
+      )}
       <div className="docs-dialog__body">
         <div
           className="docs-dialog__list"

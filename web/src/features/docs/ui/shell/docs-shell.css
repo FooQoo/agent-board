@@ -7,6 +7,25 @@
   display: none;
 }
 
+/* The badge is the shared Badge, which has its own pill; the shell's draft pill is not drawn. */
+.docs-dialog .editor__badge {
+  padding: 0;
+  background: none;
+  line-height: 0;
+}
+
+/* The public preview notice: one sentence above the file list, across the dialog. */
+.docs-dialog__stage {
+  flex: none;
+  padding: 8px 28px;
+  border-bottom: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+.docs-dialog[data-compact="true"] .docs-dialog__stage {
+  padding: 8px 16px;
+}
+
 /* The title is a path: Docs / folders / file. */
 .docs-crumbs {
   display: flex;

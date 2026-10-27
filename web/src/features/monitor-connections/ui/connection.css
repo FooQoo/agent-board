@@ -52,6 +52,14 @@
   background: var(--r-accent);
 }
 
+.connection-dialog__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
 .connection-dialog__intro {
   margin: 0;
   color: var(--r-text2);

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { FEATURE_STAGES_URL } from '@/shared/ui/preview-feature/feature-stage';
 import { Button } from '@/shared/ui/button';
 import { docsRootPath, docsTree } from '../../../../../.storybook/support/docs-fixtures';
 import { modalDocsParameters } from '../../../../../.storybook/support/modal-docs';
@@ -258,5 +259,37 @@ export const PhoneBody: Story = {
     await userEvent.click(view.getAllByRole('treeitem', { name: /Tasks\.md/ })[0] as HTMLElement);
     await waitFor(() => expect(view.queryByRole('tree')).toBeNull());
     await expect(view.getByRole('heading', { name: 'Tasks' })).toBeVisible();
+  },
+};
+
+/** The Docs is in public preview: the badge beside the title, and the notice above the file list. */
+export const PublicPreview: Story = {
+  play: async () => {
+    const view = await opened();
+    await expect(view.getByRole('dialog')).toHaveAccessibleName('Docs');
+    await expect(
+      view.getAllByText('Public preview', { selector: '[data-slot="badge"]' }).length,
+    ).toBeGreaterThan(0);
+    const link = view.getByRole('link', { name: 'documentation' });
+    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#docs`);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  },
+};
+
+/** The same notice in Japanese, in the dark theme, on a phone-width window. */
+export const PublicPreviewJapaneseDarkNarrow: Story = {
+  args: { compact: true },
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async () => {
+    const view = await opened();
+    await expect(view.getByRole('dialog')).toHaveAccessibleName('ドキュメント');
+    await expect(
+      view.getAllByText('パブリックプレビュー', { selector: '[data-slot="badge"]' }).length,
+    ).toBeGreaterThan(0);
+    const link = view.getByRole('link', { name: 'ドキュメント' });
+    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.ja}#docs`);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   },
 };

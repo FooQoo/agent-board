@@ -75,6 +75,10 @@ pub fn flow(
     yes: bool,
 ) -> i32 {
     let mut p = Prompter::new(input, out);
+    // Only the screen that asks a question is interactive; a --yes run is not.
+    if !yes {
+        p.say(report::PREVIEW_LINE);
+    }
     let registry = match registry_path(&s.path_env).map(|path| Registry::read(&path)) {
         Ok(Ok(registry)) => registry.unwrap_or_default(),
         Ok(Err(error)) | Err(error) => {
