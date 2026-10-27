@@ -185,6 +185,11 @@ export const Connected: Story = {
     // The setup, the domain and the old URL field are not part of the connected view.
     await expect(view.queryByLabelText('ngrok auth token')).toBeNull();
     await expect(view.queryByRole('textbox')).toBeNull();
+    // Once connected, the public preview badge stays and the notice before connecting is gone.
+    await expect(
+      view.getAllByText('Public preview', { selector: '[data-slot="badge"]' }).length,
+    ).toBeGreaterThan(0);
+    await expect(view.queryByRole('link', { name: 'documentation' })).toBeNull();
     await userEvent.click(view.getByRole('button', { name: 'Reset token' }));
     await expect(args.onResetToken).toHaveBeenCalled();
     await userEvent.click(view.getByRole('button', { name: 'Stop connection' }));

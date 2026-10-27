@@ -26,7 +26,7 @@ Agent Board v1.0.0の機能は、一般提供（GA）とパブリックプレビ
 | 機能 | 表示される場所 |
 | --- | --- |
 | [Docs](#docs) | Docsダイアログの見出しに「パブリックプレビュー」のバッジが付き、その下に注意文とこのページへのリンクが出ます。 |
-| [モバイルモニター](#mobile-monitor) | パソコンの「モバイル接続」ダイアログにバッジ、注意文、このページへのリンクが出ます。スマートフォンのモニターには出ません。 |
+| [モバイルモニター](#mobile-monitor) | パソコンの「モバイル接続」ダイアログにバッジが出ます。接続する前は、注意文とこのページへのリンクも出ます。スマートフォンのモニターには出ません。 |
 | [初回の案内](#onboarding) | 最初の画面のタイトルの横にバッジが出ます。 |
 | [connectとupdate](#connect-and-update) | 対話画面の先頭に1行出ます。`Public preview: this command may change. See the documentation for current limitations.` `update --yes`は質問をしないため、この行を出しません。 |
 | [タスクの受け取り](#listen) | 画面はありません。このページとエージェントのSkillで説明します。 |
