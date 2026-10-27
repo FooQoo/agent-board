@@ -105,6 +105,7 @@ fn undo(
             let op = &journal.ops[index];
             if let Some(stage) = &op.stage {
                 let _ = fs::remove_dir_all(stage);
+                super::ops::prune_backup_dir(stage);
             }
             let keep = outcome == OpRestore::External || op.kind != OpKind::File;
             if let (false, Some(backup)) = (keep, &op.backup) {

@@ -75,8 +75,17 @@ pub(super) fn registry_op(
 /// folder: `.agboard-backups` in the parent of the skills root, so that agents
 /// do not load them as Skills and a rename stays on one file system.
 pub(super) fn skill_backup_dir(skill: &Path) -> Option<PathBuf> {
-    let skills_root = skill.parent()?;
+    // Follow links in the skills root, so the folder is on the same file
+    // system as the real Skill folder even when `skills` is a symbolic link.
+    let skills_root = super::paths::resolve_links(skill.parent()?);
     Some(skills_root.parent()?.join(BACKUP_DIR))
+}
+
+/// Removes the hidden backup folder around `path` when nothing is left in it.
+pub(super) fn prune_backup_dir(path: &Path) {
+    if let Some(dir) = path.parent().filter(|d| d.ends_with(BACKUP_DIR)) {
+        let _ = fs::remove_dir(dir);
+    }
 }
 
 /// The folder name for Skill backups and staging copies.
