@@ -170,6 +170,39 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 - `shared/.internal/onboarding.json`: 案内の状態、リースの持ち主、実行中の run、直近のコマンド ID。[保存と回復](../concepts/saving-and-recovery.md)を参照してください。
 - `tasks/<id>/task.json` の `onboardingSample`: `{ "runId": "<32 桁の小文字 hex>", "ordinal": 1 | 2 }`。案内のサンプルカードにだけ付きます。
 
+## 連携の導入記録 {#integration-records}
+
+`<data-dir>/integrations.json`（通常は`~/.agent-board/integrations.json`）は、`connect`と`update`が書きます。`shared/`の外にあるので、どのプロジェクトにも含まれません。原子的に書き込まれます。隣には`integrations-<agent>.lock`と、実行が終わっていない間だけ、`integrations-journal-<agent>.json`（所有者だけが読める）があります。
+
+```json
+{
+  "schemaVersion": 1,
+  "installations": [
+    {
+      "agent": "claude",
+      "component": "hook",
+      "scope": "project",
+      "projectId": "<project-id>",
+      "boundRoot": "<bindのルートの絶対パス>",
+      "configuredPath": "<設定ファイルの絶対パス>",
+      "resolvedPath": "<リンクをたどった同じパス>",
+      "installedVersion": "1.0.0",
+      "managedHash": "<sha256>",
+      "managedEntries": [
+        { "event": "PostToolUse", "matcher": null, "command": "agboard hook --agent claude", "sha256": "<sha256>" }
+      ],
+      "files": []
+    }
+  ]
+}
+```
+
+- `agent`は`claude`か`codex`、`component`は`skill`か`hook`、`scope`は`global`か`project`です。
+- `projectId`と`boundRoot`は、Projectの記録にだけあります。
+- Skillの記録は`files`（Skillのフォルダからの相対`path`と`sha256`）を、Hookの記録は`managedEntries`を持ちます。もう一方は空です。`managedHash`は、[同梱するバンドル](../concepts/agents.md#同梱するバンドル)にあるmanifestのハッシュか、項目のハッシュです。
+- 読むのは`schemaVersion` 1だけです。未知のフィールド、別の版、壊れたJSONは拒否し、ファイルを書き換えません。変更したファイルのバックアップは、隣に`<name>.agboard-backup-<txn>-<index>`として置かれます。
+- ファイルの中のパスは、このマシンの絶対パスです。ドキュメントでは、プレースホルダーで書きます。
+
 ## フォルダの紐付け
 
 フォルダの紐付けは、実フォルダとProjectIdを対応づけ、Hookと`agboard progress`が作業フォルダが属するプロジェクトを識別できるようにします。端末ローカルのデータ領域にだけ保存し、共有領域や追跡ファイルには保存しません。ProjectIdを保存するので、名前変更に追従し、同じ名前で作り直したプロジェクトへは移りません。最も近い紐付け済みの祖先フォルダを使います。存在しないフォルダ・壊れた紐付け・削除済みのProjectIdは、説明つきのエラーにします。

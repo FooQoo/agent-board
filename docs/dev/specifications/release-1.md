@@ -1,6 +1,6 @@
 # v1.0.0 release specification
 
-Approved specification for implementation. The connect/update commands and distribution described here are not a claim that they are implemented or released. See the [user guide](../../guide/index.md) for current behavior.
+The distribution, connect, update, and documentation contract of v1.0.0. This page states the contract; the [user guide](../../guide/index.md) describes the behavior, and a version counts as released only when its GitHub Release is published.
 
 [日本語](../../ja/dev/specifications/release-1.md)
 
@@ -39,11 +39,17 @@ Do not relax permission modes, managed policies, or Hook trust and approval. Whe
 
 Back up changed files before atomic writes. On failure, restore the changes made for that agent without undoing another agent's successful installation. Report partial success, locations, and recovery status with a nonzero exit code. Managed hashes detect user changes; they do not authenticate distribution sources or prevent malicious direct file edits.
 
+## Signing and notarization
+
+Each CPU's binary in a formal release is signed with a Developer ID Application certificate, with Hardened Runtime, a secure timestamp, the same Team ID on both CPUs, and the fixed identifier `io.github.FooQoo.agent-board.agboard`. The release uses the default Developer ID designated requirement and does not pin a binary hash. The signed binary is submitted to Apple notarization as a ZIP, and only after the status is `Accepted` are the same bytes packed into the per-CPU tar.gz, hashed into `SHA256SUMS`, and used for the GitHub Release and the Formula. A single command-line binary cannot carry a stapled ticket, so macOS checks the notarization online at first launch. Installing never requires turning off Gatekeeper.
+
+The signing secrets (`MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`) exist only in the protected `release-signing` environment, for a pushed `v*` tag. Pull requests and manual builds produce an unsigned candidate and never a release file. A missing certificate, a rejected or timed-out notarization, or one failing CPU stops the release; there is no unsigned fallback. The Team ID and identifier stay the same from release to release. The developer procedure is in [Build release](../getting-started/setup.md#build-release).
+
 ## Hook project resolution
 
-Resolve the nearest binding from the Hook input's cwd, falling back to the process cwd when unavailable. A Global Hook also starts in unbound folders, but a normal unbound result produces no stdout or stderr, exits with code 0, and injects no progress. An explicit --project takes precedence.
+Resolve the nearest binding from the Hook input's cwd, falling back to the process cwd when it is missing, `null`, or empty. A Global Hook also starts in unbound folders, but a normal unbound result produces no stdout or stderr, exits with code 0, and injects no progress. An explicit --project takes precedence.
 
-Report broken bindings, missing bound projects, malformed input, and read or permission failures as AGBOARD_ERROR with a diagnostic cause. Do not fall back to another project in a parent folder. Ordinary `agboard progress` retains its folder_unbound error. A Global Skill must not guess another project for an unbound folder.
+Report broken bindings, missing bound projects (`bound_project_missing`), malformed input and a `cwd` of the wrong type or a relative path (`invalid_hook_input`), and a `cwd` that does not exist or cannot be read (`hook_cwd_unavailable`) as AGBOARD_ERROR with a diagnostic cause. Do not fall back to another project in a parent folder. Ordinary `agboard progress` retains its folder_unbound error. A Global Skill must not guess another project for an unbound folder.
 
 ## Updating Skills and Hooks
 
@@ -58,3 +64,7 @@ After a CLI upgrade, interactive ordinary CLI operations can suggest `agboard up
 The English and Japanese VitePress headers show the published version and link to GitHub Releases. `/releases` and `/ja/releases` list changes, fixes, breaking changes, and required update actions, newest first. Published GitHub Releases are the canonical release history. Do not display the development Cargo version on main as the published version. Do not add a documentation version switcher.
 
 Installation guides explain Homebrew, connect, update, bind, the Global/Project distinction, unbound Hook skips, and trust approval. Use the existing VitePress theme without adding application UI or new Pencil mockups.
+
+## Feature stages
+
+Every feature of v1.0.0 is generally available (GA) or in public preview. GA means the feature is kept as it is for a good while; it does not mean free of bugs or an unlimited compatibility or support promise. Public preview means the behavior may change. v1.0.0 mixes both. In public preview are Docs, `connect` and `update`, task listening (`wait --until task`), the mobile monitor, and the first-run welcome. The screens of Docs, the mobile connection settings, and the welcome show a badge and a notice with a link, and the interactive screens of `connect` and `update` start with one line. [Feature stages](../../guide/feature-stages.md) is the single place that lists the stages and limits; the product shows its text and links to it.

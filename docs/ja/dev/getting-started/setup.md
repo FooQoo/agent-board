@@ -91,6 +91,34 @@ Storyで使う架空の画像は`web/.storybook/static/`にあります。Storyb
 
 各フォルダの`story-coverage.json`には、ソースのexport、表示するStory、各Storyが扱う状態を記録します。同じフォルダに複数の台帳が必要な場合は`story-coverage.<name>.json`を使います。台帳は対象部品の隣に置き、Story IDもそのフォルダの`*.stories.tsx`が登録するものに限ります。形式と規則は`web/.storybook/support/component-coverage.json`にあります。Nodeの検査は台帳の記載と配置を検証します。現在のexport台帳はまだ部分的で、UI exportのすべてが記載済みであることは保証しません。`test:storybook`の共通部品テストは、登録されたStory IDと台帳に記載されたStory IDが双方向で一致することを確認します。全UI exportの棚卸しは別の最終ゲートです。Storyには共通fixtureとadapterを使い、製品APIやイベントストリームへのアクセスを拒否する通信ガードの対象にします。
 
+## リリースをビルドする {#build-release}
+
+利用者はHomebrewでAgent Boardをインストールします（[インストールと起動](../../guide/getting-started.md)を参照）。この節は、リリースをビルドして公開する人のためのものです。ワークフローは`.github/workflows/release.yml`、スクリプトは`scripts/release/`にあります。
+
+### アーカイブと検査
+
+- **版。** 版は`Cargo.toml`と`Cargo.lock`が持ち、タグは`v`にその版を付けたものです。`scripts/release/check-version.py --tag vX.Y.Z`が、食い違いを失敗にします。`main`の版は開発中の版で、公開済みのGitHub Releaseだけがリリース済みの版です。
+- **ビルド。** CPUごとに専用のmacOSランナー（Apple Siliconは`macos-15`、Intelは`macos-15-intel`）で、Web画面、`cargo build --release --locked`の順にビルドします。`MACOSX_DEPLOYMENT_TARGET=15.0`で、両CPUとも最低のmacOSは15です。stripをする場合は、署名の前に行います。
+- **アーカイブ。** `package.sh`が`agboard-<version>-<target>.tar.gz`を作ります。中身は`agboard`、`LICENSE`、`THIRD_PARTY_NOTICES.txt`だけで、Web画面、Skill、Hookのテンプレートはバイナリの中にあります。`verify-artifact.sh`が、名前、2つのライセンスファイル、CPU、deployment target、システムライブラリだけにリンクしていること、実行できる環境では`--version`と埋め込んだWeb画面を確認します。
+- **通知。** `generate-notices.py`が`THIRD_PARTY_NOTICES.txt`を作り、`--check`で古いと失敗します。MITの本文は`LICENSE`にあり、リリースの前に、著作権表示へ実際の権利者と年を入れる必要があります。
+- **候補とリリース。** プルリクエストと手動の実行は、署名なしの候補（`candidate.json`が`signed: false`）だけを作ります。候補がリリースのファイルになることはありません。
+
+### 署名と公証
+
+正式な経路は、プッシュまたは再実行した`v*`タグでだけ、保護された`release-signing` environmentの中で動きます。署名用のSecretsがあるのは、そこだけです。
+
+1. **人が一度だけ準備します。** Apple Developer Programに登録し、秘密鍵を持つDeveloper ID Application証明書を作って`.p12`に書き出し、アプリ用パスワードを作ります。次の5つのリポジトリSecretsを登録します。`MACOS_CERT_P12`、`MACOS_CERT_PASSWORD`、`APPLE_ID`、`APPLE_TEAM_ID`、`APPLE_APP_PASSWORD`です。値を、リポジトリ、Issue、ログに書いてはいけません。environmentは、信頼するタグに限定します。
+2. **署名します。** `sign-macos.sh`が、ジョブの一時ディレクトリに一時キーチェーンを作り、証明書を取り込み、期待するTeamのDeveloper ID Applicationのidentityがちょうど1つに決まることを確かめて、`--options runtime --timestamp`と固定のidentifier `io.github.FooQoo.agent-board.agboard`で署名します。`verify-signature.sh`が、Team ID、identifier、Hardened Runtime、secure timestamp、designated requirementが既定のものであることを確認します。
+3. **公証します。** `notarize-macos.sh`が、署名したバイナリをZIPにし（notarytoolはtar.gzを受け付けません）、提出して待ち、状態が`Accepted`のときだけ成功にします。Invalid、拒否、タイムアウト、処理中は失敗です。タイムアウトした提出は、再提出せずにIDで続きを確認できます。
+4. **同じバイト列を梱包します。** 公証に通ったバイナリをtar.gzへ入れ、`release-gate.py`が、署名したもの、公証したもの、梱包したものが同一であること、両CPUが同じTeam IDであることを確認してから、アーカイブと`SHA256SUMS`を作ります。一時キーチェーンと鍵の素材は、必ず実行されるステップで削除します。
+5. **ドラフト。** 両CPUが通ったときだけ、ジョブがGitHub Releaseのドラフトを作り、Formulaの候補を作ります。証明書がない、公証が拒否された、片方のCPUが失敗したときは、実行が止まります。署名なしのアーカイブへ切り替えることはありません。
+
+単体のコマンドラインのバイナリにはstapleしたチケットを持たせられないため、macOSは初回の起動で、公証をオンラインで確認します。インストールの手順としてGatekeeperを無効にしないでください。Team IDとidentifierは、リリースをまたいで同じものを使い続けます。証明書の期限切れや失効、Appleの資格情報の変更があったときは、新しい証明書やパスワードを作って、Secretsを入れ替えます。署名だけでは、保存したKeychainの許可が引き継がれるとは限らないので、更新は、きれいなMacで確認してください。
+
+### Homebrewへの公開
+
+Releaseを公開したあとに、`scripts/release/render-formula.py --tag vX.Y.Z --sums SHA256SUMS --assets <dir> --out Formula/agboard.rb`で、公開したファイルからFormulaを作ります。CPUの欠け、版の違い、ハッシュの不一致は拒否されます。Formulaは、`on_macos`でCPUごとにアーカイブを選び、macOS 15を要求し（`depends_on macos: :sequoia`）、MITを宣言し、`agboard`を`bin`へ、2つのライセンスファイルを`pkgshare`へインストールします。`test do`では、`--version`を確認し、一時的な`AGBOARD_HOME`を使います。`scripts/release/test-formula.sh`がインストールとテストをローカルで再現します。Tapの手順は、そのREADMEにあります。`FooQoo/homebrew-tap`へ自動でpushすることはありません。人が、作られたFormulaを確認してコミットします。
+
 ## ソースからインストール
 
 エージェントとHookは`PATH`の`agboard`を実行するので、変更をエージェント経由で試すには、ビルドした実行ファイルをインストールします。
