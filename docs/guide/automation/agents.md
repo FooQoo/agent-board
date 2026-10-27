@@ -8,24 +8,81 @@ Agents work from the same board as you. A hook gives them a short progress table
 
 ## Connect your agent
 
-Connecting an agent takes three separate steps, all manual:
+Run `agboard connect` in the folder you bound to a project (see [Install and start](../getting-started#create-or-bind-a-project)). It installs the **Skill** (`agent-board`, which tells the agent how to work) and the **Hook** (which hands the agent the progress table) for Claude Code, Codex, or both. `connect` and `update` are in [public preview](../feature-stages#connect-and-update).
 
-1. **Prepare the shared folder** so the agent may write there: run `agboard setup` once. It only adds the data folder to your Codex and Claude Code user settings; it installs neither hooks nor the skill. See [Set up the shared folder](../operations/data#set-up-the-shared-folder).
-2. **Register the hook** that hands the agent the progress table.
-3. **Install the agent skill** (`agent-board`) that tells the agent how to work.
+```sh
+cd my-project
+agboard connect
+```
 
-The settings templates for the hooks live in the repository's `integrations/` folder, so follow the [Claude Code and Codex integration guide](https://github.com/FooQoo/agent-board/blob/main/integrations/README.md) instead of copying them here:
+`connect` needs a terminal. It shows the project and the bound root first, then asks, in this order:
 
-- **Claude Code.** Merge `integrations/claude-code/settings.json` into the project's `.claude/settings.json` and review it in `/hooks`.
-- **Codex CLI and Codex App.** Merge `integrations/codex/hooks.json` into the project's `.codex/hooks.json` and review it in `/hooks`.
+1. **Agents.** It looks for `claude` and `codex` on your `PATH` and lists them with their versions. An agent it cannot find is shown with the reason and cannot be chosen. Type the numbers of the agents to connect, `a` for all that are available, or `q` to cancel.
+2. **Skill scope.** One choice, Global or Project, for every agent you selected.
+3. **Hook scope.** One choice, Global or Project, for every agent you selected. It is separate from the Skill scope.
+4. **Confirmation.** It lists every file it will add, change, or remove, the permission it will add, and the backups, then asks `[y/N]`. Anything but `y` or `yes`, and Ctrl+C or the end of input, cancels without writing.
 
-Register the project's folder with `agboard project create` or `agboard project bind` so the hook knows which project it belongs to.
+Skill scope and Hook scope are independent. A rerun offers what you chose before.
 
-Hooks and the agent skill run `agboard` from your `PATH`, so they use the installed version, not a development build. See [Install and start](../getting-started#update).
+### Choose scopes
+
+The scope decides where the files go and which folders they cover. `<bound-root>` is the root of the nearest binding, even when you run `connect` in a subfolder.
+
+| Agent | Component | Global | Project |
+| --- | --- | --- | --- |
+| Claude Code | Skill | `~/.claude/skills/agent-board/` | `<bound-root>/.claude/skills/agent-board/` |
+| Claude Code | Hook | `~/.claude/settings.json` | `<bound-root>/.claude/settings.json` |
+| Codex | Skill | `~/.agents/skills/agent-board/` | `<bound-root>/.agents/skills/agent-board/` |
+| Codex | Hook | `~/.codex/hooks.json` | `<bound-root>/.codex/hooks.json` |
+
+- **Global** works in every folder. The Claude Code Global paths follow `CLAUDE_CONFIG_DIR` when it is set, and the Codex Hook follows `CODEX_HOME`. The Codex Skill is always under `~/.agents/skills`.
+- **Project** works only in that project's folders and writes files you may want to commit or ignore.
+- A Global Hook also runs in folders with no project. There it prints nothing and exits normally, so the agent keeps working. Only a folder bound to a project gets the progress table.
+- The data folder permission is separate from both scopes. `connect` adds the data folder to Claude Code's `permissions.additionalDirectories` and to Codex's `sandbox_workspace_write.writable_roots`, the same change as `agboard setup`. If Codex is not set to `sandbox_mode = "workspace-write"`, or uses a permission profile, `connect` changes nothing for Codex, shows the manual steps, and finishes with exit code 1. Claude Code is still configured. Make the change yourself in Codex's `config.toml`, then run `connect` again.
+
+### Trust hooks
+
+Writing the files does not mean the agent has loaded them. After `connect` reports **configured**, start a new Claude Code session, or restart Codex, and review the Hook with `/hooks` before you trust it. A Hook you have not trusted does not run. The same applies after `agboard update` changes a Hook.
+
+### Conflicts, backups, and what stays yours
+
+- **Your files are kept.** `connect` merges only its own entries into the settings and adds no duplicate. A rerun with nothing to change writes nothing and makes no backup.
+- **Backups.** Before it changes an existing file or Skill folder, `connect` copies it next to the original as `<name>.agboard-backup-<id>-<n>`. The copy stays. It holds your original settings, so keep it out of shared folders.
+- **Moving a scope.** If you choose another scope, `connect` shows the removal of its own entries from the old place and the addition in the new one, and moves them together for that agent.
+- **Duplicates.** If an equivalent Hook was registered by hand, or an `agboard` command it cannot identify is in a settings file, `connect` stops for that agent and names the file. Remove or tidy that registration yourself, then run `connect` again. `connect` only looks at the Global files, the bound root and its parent folders, and the folders it recorded earlier; it does not search your disk. A Skill of the same name elsewhere produces a warning, because the agent may load that one instead.
+- **Edited files.** If you edited a file `connect` installed, or added a file to its Skill folder, `connect` and `update` report a conflict and leave the files as they are.
+- **Failure.** Each agent is applied on its own, Claude Code first. If one fails, its files return to how they were, and the agent that succeeded stays configured. A run that was cut off is undone by the next `connect` or `update`; if it cannot be undone safely, the command stops and names the backup files. See [Troubleshooting](../operations/troubleshooting#connect-or-update-reports-a-problem).
+
+If the folder is not bound, `connect` prints how to create or bind a project and exits with code 1. Exit codes: `0` for success, nothing to change, or a cancel; `1` when an agent could not be configured or the folder is not bound; `2` for a bad command line, or when there is no terminal.
+
+### Refresh the integrations
+
+After `brew upgrade fooqoo/tap/agboard`, bring the installed Skill and Hook up to the new version:
+
+```sh
+agboard update
+agboard update --yes
+```
+
+`update` handles the agents, Skill scope, and Hook scope that `connect` recorded: the Global installations, and the Project installations of the nearest bound root. It works from a folder with no project, but then updates only the Global ones. It does not look at other projects. It shows the old and new version of each part and asks `[y/N]`. `--yes` skips only that question. It never adds an agent or a permission and never changes a scope; use `connect` for that.
+
+- With nothing recorded it says `No managed integrations found. Run agboard connect in a bound project.` and exits with `0`. With everything current it writes nothing.
+- When the Hook changes, you must trust the changed Hook again in the agent (`/hooks`).
+- A conflict (see above) stops the update of that agent, even with `--yes`. The other agent is still updated, and the exit code is `1`.
+- Exit codes: `0` for success, nothing to update, or a cancel; `1` for a failure, a conflict, or a partial failure; `2` for a bad command line, or no terminal without `--yes`. `--json` and `--dry-run` are refused.
+- It never installs an older version over a newer one.
+
+Ordinary commands remind you. When the installed Skill or Hook is older than your command, a command you run in a terminal prints one line to the error output after its normal output:
+
+```text
+Agent Board 1.0.0 is newer than the installed Skill and Hook (0.9.0). Run "agboard update" to update them.
+```
+
+The line never appears with `--json`, in a pipe, in hooks, in `wait`, `serve`, `connect`, or `update`, and it never changes a command's result.
 
 ### What the hook does
 
-- **Folder resolution.** The hook command is fixed, `agboard hook --agent claude`, with no project name or session ID. It reads `cwd` from its input and uses the nearest registered ancestor folder; an explicit `--project NAME` overrides the binding. A missing or broken binding returns `AGBOARD_ERROR`; the hook never guesses another project.
+- **Folder resolution.** The hook command is fixed, `agboard hook --agent claude`, with no project name or session ID. It reads `cwd` from its input and uses the nearest registered ancestor folder; an explicit `--project NAME` overrides the binding. A folder with no binding at all is not an error: the hook prints nothing and exits normally, so a Global Hook does not disturb work in other folders. A broken binding, a bound project that was deleted, or an unreadable `cwd` returns `AGBOARD_ERROR`; the hook never guesses another project.
 - **Progress table.** The hook supplies the same concise table as `agboard progress`. Done, archived, and Pending tasks are left out unless you add `--include-pending` or `--include-done COUNT` to the hook command (see [Epics and progress](../use/epics)). If the table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes.
 
 ### What agents may edit

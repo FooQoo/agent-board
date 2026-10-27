@@ -20,6 +20,7 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
 | Run the server and agent access | `serve`, `stop`, `setup`, `hook` |
+| Install and update the Skill and Hook | `connect`, `update` |
 | Delete things (people only) | `rm`, `project rm`, `epic rm`, `init` |
 
 ## Add and inspect tasks
@@ -161,6 +162,28 @@ agboard setup --agent claude --json
 ```
 
 `--agent codex|claude|all` chooses the settings to update (default `all`). `--dry-run` changes nothing, and `--json` prints machine-readable output. The command refuses a Codex configuration that is not `sandbox_mode = "workspace-write"` and changes nothing when it refuses. See [Data and backups](../operations/data#set-up-the-shared-folder) for the settings it changes and how it backs them up.
+
+## Connect and update
+
+`connect` and `update` install and refresh the Skill and the Hook for Claude Code and Codex. Both are in [public preview](../feature-stages#connect-and-update). The questions, the files written, and the conflict rules are in [Working with agents](./agents#connect-your-agent).
+
+```sh
+agboard connect
+agboard update
+agboard update --yes
+```
+
+| Command | What it does | Exit codes |
+| --- | --- | --- |
+| `agboard connect` | Asks which agents, one Skill scope, and one Hook scope, shows the plan, and writes after you answer `y`. Needs a terminal and a folder bound to a project. It takes no options. | `0` success, nothing to change, or a cancel. `1` an agent could not be configured, or the folder is not bound. `2` bad command line, or no terminal. |
+| `agboard update` | Updates what `connect` recorded: the Global installations and the Project installations of the nearest bound root. Shows the changes and asks `[y/N]`. | `0` success, nothing to update, or a cancel. `1` failure, conflict, or partial failure. `2` bad command line, or no terminal without `--yes`. |
+| `agboard update --yes` | The same, without the question. Conflicts still fail; your own edits are never overwritten. | The same as `update`. |
+
+- Neither command waits on a pipe. Without a terminal, `connect` and `update` exit with `2` and ask you to run them in a terminal. `update --yes` also works without one.
+- `--json` is refused for both, and `--dry-run` for `update`. `connect` and `update` have no other options.
+- Failure reasons go to the error output.
+- `connect` in a folder that is not bound exits with `1` after printing `agboard project create "My project"` and `agboard project bind "My project"`.
+- `setup` stays a separate command that only adds the data folder to the agent settings. `connect` makes the same permission change, so you do not need to run `setup` first.
 
 ## Output and confirmation
 

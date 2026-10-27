@@ -104,6 +104,8 @@ The same board after choosing a dark theme.
 
 ## The first-run guide
 
+The first-run guide is in [public preview](../feature-stages#onboarding): it may change, and it is shown only in the board on a PC.
+
 The guide's two sample cards appear in the lanes like other cards, but while the guide is on screen the rest of the board is covered, so you cannot open or move cards until the guide ends. Agents never pick them up: they are not listed in the progress table, and `wait --until task` does not return them. Once the guide finishes or ends, both cards are archived. See [Before you start](../quickstart.md#before-you-start-the-first-run-guide).
 
 ## Next

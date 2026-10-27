@@ -6,6 +6,10 @@ title: Mobile monitor
 
 The mobile monitor is a phone-sized view of the board. Use it to check progress and to answer an agent's question when you are away from your desk. This page explains what the monitor shows, how to connect it from your phone with ngrok, and how to check that it works.
 
+::: info Public preview
+This feature is in public preview. Its behavior and specifications may change. See [Feature stages](../feature-stages#mobile-monitor) for its current limitations.
+:::
+
 ## What the monitor shows
 
 The monitor shows one project at a time, the one named in its address. The monitor groups tasks into Todo, Doing, and Done. AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an answer form on the task. Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question and change the language and color theme. It cannot change tasks, projects, or connection settings.

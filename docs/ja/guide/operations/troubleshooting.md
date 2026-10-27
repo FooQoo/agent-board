@@ -25,7 +25,7 @@ title: トラブルシューティング
 | `task_is_done` | タスクが完了で、エージェントは変更できない。 | 作業が必要なら、ブラウザでタスクを再開します。 |
 | `acceptance_unmet` | 未達成の条件があるタスクを、エージェントが完了へ移そうとした。 | エージェントに条件を検証させて達成にします。そうすればタスクは自動で完了します。 |
 | `request_changed` | 質問がすでに回答された、取り下げられた、または置き換えられた。 | タスクを読み直し、現在の質問に回答します。 |
-| `folder_unbound`・`bound_project_missing` | エージェントのフォルダがプロジェクトに登録されていない、またはプロジェクトが削除された。 | フォルダを登録します: `agboard project bind "My project"`。[データとバックアップ](./data#フォルダを登録する)を参照。 |
+| `folder_unbound`・`bound_project_missing` | エージェントのフォルダがプロジェクトに登録されていない、またはプロジェクトが削除された（紐付けがないフォルダでは、Hook自体は何も出力しません。このエラーは`agboard progress`と、削除されたプロジェクトで出ます）。 | フォルダを登録します: `agboard project bind "My project"`。[データとバックアップ](./data#フォルダを登録する)を参照。 |
 | `confirmation_required` | 削除には、端末での人の確認が必要。 | 自分でコマンドを実行します。 |
 | Hookが`AGBOARD_ERROR`を示す | 進行表を作れない（プロジェクトがない、表が256 KiBを超える、サーバーに届かない）。 | メッセージが示す原因を直します。有効な進行表を取得できるまで、エージェントはボードを変更してはいけません。 |
 
@@ -48,6 +48,24 @@ title: トラブルシューティング
 | 設定は保存されたがngrokに接続できなかったと表示される | ngrokのauthtokenが誤っている、またはインターネットに接続できない。 | トークンと接続を確認して、**保存して再試行**を選びます。 |
 | ページは開くが、回答が拒否される | 開いたアドレスが、現在の接続の公開アドレスではない。 | 接続が示すアドレスを開きます。接続を再起動すると、新しいセッションになります。 |
 | モニターが、データが古いと表示する | 自動更新が止まった、または一部のプロジェクトを読めなかった。 | ページを再読み込みするか、開き直します。モニターは、再び表示されると取得し直します。 |
+
+## connectやupdateが問題を報告する {#connect-or-update-reports-a-problem}
+
+| 表示 | 原因 | 対処 |
+| --- | --- | --- |
+| `connect is interactive and needs a terminal`（終了コード2） | パイプ、スクリプト、エージェントから`connect`を起動した。 | 自分でターミナルから実行してください。`update`も、`--yes`を付けない限りターミナルが必要です。 |
+| `This folder is not bound to a project`（終了コード1） | フォルダも親フォルダもbindされていない。 | `agboard project create "My project"`または`agboard project bind "My project"`を実行してから、`connect`をやり直してください。 |
+| エージェントが見つからないと表示される | `claude`や`codex`が`PATH`にない。 | インストールするか`PATH`を直して、もう一度`connect`を実行してください。 |
+| `was edited after Agent Board installed it`、`was added to the Skill directory by someone else`、`is already registered and Agent Board did not install it` | 競合です。`connect`が導入したファイルをあなたが変更した、または同等のHookが手作業で登録されています。そのエージェントには何も書き込まれていません。 | 変更を残すか退避し、重複した登録を削除してから、もう一度実行してください。`--yes`でも競合は上書きされません。[競合](./data#integration-records-backups-and-manual-permissions)を参照してください。 |
+| `sandbox_mode is not set`、または`workspace-write`以外のモード | Codexの権限設定では、データフォルダへ書けません。`connect`は変更しません。 | Codexの`config.toml`で`sandbox_mode = "workspace-write"`を自分で設定してから、もう一度`connect`を実行してください。 |
+| 前回の未完了の実行を安全に元へ戻せなかった | 実行が途中で止まり、その後にファイルが変わった。 | メッセージが示すバックアップからファイルを戻し、示されたジャーナルを削除してから、もう一度実行してください。 |
+| エージェントがHookを実行しない | Hookは書き込まれたが信頼されていない、またはエージェントを再起動していない。 | 新しいセッション（Claude Code）を開始するか、Codexを再起動して、`/hooks`でHookを確認してください。`update`でHookが変わったときも、信頼し直します。 |
+
+両コマンドの終了コードは、[CLIリファレンス](../automation/cli#connect-and-update)にあります。
+
+## macOSがagboardの実行を拒否する {#macos-will-not-run-agboard}
+
+Homebrewで入るコマンドは、Developer ID証明書で署名され、Appleの公証を受けています。macOSが実行を止めたときは、Gatekeeperを無効にしたり、隔離属性を自分で外したりしないでください。まず、`brew install fooqoo/tap/agboard`がエラーなく終わったか、MacがmacOS 15以降か、`agboard --version`が動くかを確認します。初回の起動では、macOSが公証を確認するためにネットワーク接続が必要な場合があります。それでも止まるときは、macOSの版とメッセージを添えて、[Issueを作成](https://github.com/FooQoo/agent-board/issues)してください。
 
 ## それでも解決しないとき
 

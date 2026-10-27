@@ -6,26 +6,83 @@ title: エージェントとの連携
 
 エージェントは、あなたと同じボードで作業します。Hookから進行表を受け取り、タスクを選んで進捗を報告します。ユーザーの判断が必要になったら質問し、回答を待ちます。このページでは、連携の設定方法と作業の流れを説明します。[クイックスタート](../quickstart)では、同じ流れをコマンドで体験できます。
 
-## エージェントをつなぐ
+## エージェントをつなぐ {#connect-your-agent}
 
-連携には、次の三つをそれぞれ手動で設定します。
+プロジェクトにbindしたフォルダで`agboard connect`を実行します（[インストールと起動](../getting-started#create-or-bind-a-project)を参照）。Claude Code、Codex、または両方に、**Skill**（エージェントに作業の進め方を伝える`agent-board`）と、**Hook**（エージェントに進行表を渡す仕組み）を導入します。`connect`と`update`は[パブリックプレビュー](../feature-stages#connect-and-update)です。
 
-1. **共有フォルダを準備する。** エージェントがそこへ書けるよう、`agboard setup`を一度実行します。CodexとClaude Codeのユーザー設定にデータフォルダを加えるだけで、Hookもスキルもインストールしません。[共有フォルダをセットアップする](../operations/data#共有フォルダをセットアップする)を参照してください。
-2. **Hookを登録する。** エージェントに進行表を渡すHookです。
-3. **エージェントのスキルを入れる。** ボードを使った作業手順を定める`agent-board`スキルです。
+```sh
+cd my-project
+agboard connect
+```
 
-Hookの設定テンプレートはリポジトリの`integrations/`フォルダにあります。設定の詳細は、[Claude CodeとCodexの連携ガイド](https://github.com/FooQoo/agent-board/blob/main/integrations/README.md)に従ってください。
+`connect`にはターミナルが必要です。最初にプロジェクトとbindのルートを表示し、次の順に尋ねます。
 
-- **Claude Code。** `integrations/claude-code/settings.json`をプロジェクトの`.claude/settings.json`に統合し、`/hooks`で確認します。
-- **Codex CLIとCodex App。** `integrations/codex/hooks.json`をプロジェクトの`.codex/hooks.json`に統合し、`/hooks`で確認します。
+1. **エージェント。** `PATH`上の`claude`と`codex`を探し、版とあわせて一覧にします。見つからないエージェントは理由つきで表示され、選べません。接続するエージェントの番号、使えるものすべてなら`a`、取り消すなら`q`を入力します。
+2. **Skillのスコープ。** 選んだすべてのエージェントに共通する、GlobalまたはProjectの1つです。
+3. **Hookのスコープ。** 選んだすべてのエージェントに共通する、GlobalまたはProjectの1つです。Skillのスコープとは別に選びます。
+4. **確認。** 追加・変更・削除するファイル、追加する権限、バックアップを一覧にして、`[y/N]`で尋ねます。`y`か`yes`以外、Ctrl+C、入力の終わりは、何も書き込まずに取り消します。
 
-Hookがどのプロジェクトのものか分かるよう、プロジェクトのフォルダを`agboard project create`か`agboard project bind`で登録します。
+SkillのスコープとHookのスコープは独立しています。再実行すると、前回の選択が最初の候補になります。
 
-HookとエージェントのスキルはPATHの`agboard`を実行するので、開発中のビルドではなく、インストールした版を使います。[インストールと起動](../getting-started#更新する)を参照してください。
+### スコープを選ぶ {#choose-scopes}
+
+スコープは、ファイルの置き場所と、効く範囲を決めます。`<bound-root>`は、サブフォルダで`connect`を実行しても、最も近いbindのルートです。
+
+| エージェント | 部品 | Global | Project |
+| --- | --- | --- | --- |
+| Claude Code | Skill | `~/.claude/skills/agent-board/` | `<bound-root>/.claude/skills/agent-board/` |
+| Claude Code | Hook | `~/.claude/settings.json` | `<bound-root>/.claude/settings.json` |
+| Codex | Skill | `~/.agents/skills/agent-board/` | `<bound-root>/.agents/skills/agent-board/` |
+| Codex | Hook | `~/.codex/hooks.json` | `<bound-root>/.codex/hooks.json` |
+
+- **Global**は、どのフォルダでも効きます。`CLAUDE_CONFIG_DIR`を設定していれば、Claude CodeのGlobalの置き場所はそれに従い、CodexのHookは`CODEX_HOME`に従います。CodexのSkillは常に`~/.agents/skills`です。
+- **Project**は、そのプロジェクトのフォルダだけで効きます。コミットするか無視するかを決めたいファイルが、プロジェクトに増えます。
+- GlobalのHookは、プロジェクトのないフォルダでも動きます。その場合は何も出力せず正常終了するので、エージェントは作業を続けられます。進行表が渡されるのは、プロジェクトにbindしたフォルダだけです。
+- データフォルダへの権限は、どちらのスコープとも別です。`connect`は、`agboard setup`と同じ変更として、データフォルダをClaude Codeの`permissions.additionalDirectories`と、Codexの`sandbox_workspace_write.writable_roots`に加えます。Codexが`sandbox_mode = "workspace-write"`でないとき、または権限プロファイルを使っているときは、Codexには何も変更せず、手作業の手順を表示して、終了コード1で終わります。Claude Codeの設定は行われます。Codexの`config.toml`を自分で変更してから、もう一度`connect`を実行してください。
+
+### Hookを信頼する
+
+ファイルを書き込んだことは、エージェントが読み込んだことを意味しません。`connect`が**configured**と表示したら、Claude Codeは新しいセッションを開始し、Codexは再起動して、`/hooks`でHookを確認してから信頼してください。信頼していないHookは実行されません。`agboard update`がHookを変更したときも同じです。
+
+### 競合、バックアップ、あなたのものとして残るもの
+
+- **あなたのファイルは保たれます。** `connect`は、自分のエントリだけを設定に統合し、重複を作りません。変更がない再実行では、何も書き込まず、バックアップも作りません。
+- **バックアップ。** 既存のファイルやSkillのフォルダを変更する前に、元の場所の隣へ`<name>.agboard-backup-<id>-<n>`としてコピーします。コピーは残ります。元の設定が入っているので、共有フォルダには置かないでください。
+- **スコープの移動。** 別のスコープを選ぶと、古い場所から自分のエントリを削除し、新しい場所へ追加する内容を表示して、そのエージェントについてまとめて移します。
+- **重複。** 手作業で登録した同等のHookや、判別できない`agboard`のコマンドが設定ファイルにあるときは、そのエージェントの変更を止め、ファイルを示します。その登録を自分で削除または整理してから、もう一度`connect`を実行してください。調べるのは、Globalのファイル、bindのルートとその親フォルダ、前に記録したフォルダだけで、ディスク全体は探しません。別の場所に同名のSkillがあると、エージェントがそちらを読む可能性があるため警告します。
+- **編集したファイル。** `connect`が導入したファイルを編集した、またはそのSkillのフォルダにファイルを足したときは、`connect`も`update`も競合として報告し、ファイルはそのままにします。
+- **失敗。** エージェントごとに、Claude Code、Codexの順で独立に適用します。1つが失敗しても、そのエージェントのファイルは元の状態に戻り、成功したエージェントは設定されたままです。途中で止まった実行は、次の`connect`か`update`が元に戻します。安全に戻せないときは、コマンドが止まり、バックアップのファイルを示します。[トラブルシューティング](../operations/troubleshooting#connect-or-update-reports-a-problem)を参照してください。
+
+フォルダがbindされていないときは、プロジェクトの作成またはbindの方法を表示して、終了コード1で終わります。終了コードは、成功、変更なし、取り消しが`0`、エージェントの設定に失敗した、またはフォルダがbindされていないが`1`、コマンドラインが不正、またはターミナルがないが`2`です。
+
+### 連携を更新する {#refresh-the-integrations}
+
+`brew upgrade fooqoo/tap/agboard`のあと、導入済みのSkillとHookを新しい版にそろえます。
+
+```sh
+agboard update
+agboard update --yes
+```
+
+`update`の対象は、`connect`が記録したエージェントとスコープです。具体的には、Globalの導入と、最も近いbindのルートのProjectの導入です。プロジェクトのないフォルダからも実行できますが、その場合に更新するのはGlobalだけです。ほかのプロジェクトは調べません。各部品の古い版と新しい版を表示し、`[y/N]`で尋ねます。`--yes`が省くのはこの質問だけです。エージェントや権限の追加、スコープの変更は行いません。それは`connect`で行います。
+
+- 記録がないときは`No managed integrations found. Run agboard connect in a bound project.`と表示して`0`で終わります。すべて最新のときは何も書き込みません。
+- Hookが変わるときは、変更されたHookをエージェントの`/hooks`で信頼し直す必要があります。
+- 競合（上記）があると、`--yes`でも、そのエージェントの更新は止まります。もう一方のエージェントは更新され、終了コードは`1`です。
+- 終了コードは、成功、更新なし、取り消しが`0`、失敗、競合、一部の失敗が`1`、コマンドラインが不正、または`--yes`なしでターミナルがないが`2`です。`--json`と`--dry-run`は受け付けません。
+- 新しい版の上に古い版を入れることはありません。
+
+通常のコマンドも知らせてくれます。導入済みのSkillやHookがコマンドより古いと、ターミナルで実行したコマンドが、通常の出力のあとに、エラー出力へ次の1行を出します。
+
+```text
+Agent Board 1.0.0 is newer than the installed Skill and Hook (0.9.0). Run "agboard update" to update them.
+```
+
+この行は、`--json`、パイプ、Hook、`wait`、`serve`、`connect`、`update`では出ません。コマンドの結果も変わりません。
 
 ### Hookが行うこと
 
-- **フォルダの解決。** Hookのコマンドは固定の`agboard hook --agent claude`で、プロジェクト名もセッションIDもありません。入力の`cwd`を読み、最も近い登録済みの祖先フォルダを使います。明示した`--project NAME`は紐付けより優先されます。紐付けがない、または壊れているときは`AGBOARD_ERROR`を返し、Hookが別のプロジェクトを推測することはありません。
+- **フォルダの解決。** Hookのコマンドは固定の`agboard hook --agent claude`で、プロジェクト名もセッションIDもありません。入力の`cwd`を読み、最も近い登録済みの祖先フォルダを使います。明示した`--project NAME`は紐付けより優先されます。紐付けがまったくないフォルダはエラーではありません。Hookは何も出力せず正常終了するので、GlobalのHookがほかのフォルダでの作業を妨げることはありません。壊れた紐付け、削除されたプロジェクト、読めない`cwd`では`AGBOARD_ERROR`を返し、Hookが別のプロジェクトを推測することはありません。
 - **進行表。** Hookは、`agboard progress`と同じ簡潔な表を渡します。完了・アーカイブ済み・待機中のタスクは、Hookのコマンドに`--include-pending`や`--include-done COUNT`を付けない限り含みません（[エピックと進行表](../use/epics)を参照）。表が256 KiBを超える、または読めないときは、エージェントに`AGBOARD_ERROR`が渡され、ボードに依存する変更をしてはいけません。
 
 ### エージェントが編集してよいもの
@@ -85,7 +142,7 @@ cursorの形式は`f1:<project-id>:<version>`です。`snapshot`が返す値を�
 - `wait_timeout`・`board_unavailable`・`cursor_invalid`・`project_not_found`はエラーで、回答ではありません。
 - `wait`が返ったら、スナップショットと履歴をすべて読み、ユーザーの理由を考慮して、再開するか、追加の質問をします。
 
-## 次のタスクを待つ
+## 次のタスクを待つ {#listen-for-the-next-task}
 
 起動済みのCodexまたはClaude Codeのセッションを一つ使い、同じプロジェクトのAI担当タスクを順番に進められます。同じデータ領域で`agboard serve`を起動してから、明示的にリッスンを始め、対象がない状態が何秒続いたらコマンドを終えるか指定します。
 

@@ -12,7 +12,7 @@ AIが作業と進捗を登録し、ユーザーは同じボードで状態を確
 
 ![ローカル完結](https://img.shields.io/badge/data-local%20only-1f6feb)
 ![通常のファイル](https://img.shields.io/badge/storage-plain%20files-1f6feb)
-![macOS と Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-1f6feb)
+![macOS 15以降](https://img.shields.io/badge/platform-macOS%2015%2B-1f6feb)
 
 <img src="docs/images/board.ja.png" alt="タスク内の回答欄、受入条件の達成数、詳細の4タブを表示した現在のPCボード" width="860">
 
@@ -52,32 +52,60 @@ flowchart LR
 
 ## インストール
 
-Git、Rust（edition 2024に対応したCargoを含む）、Node.js、pnpmを使い、ソースからビルドします。
+Agent Boardは、macOS 15以降のApple SiliconとIntelで動作します。[Homebrew](https://brew.sh)でインストールします。RustやNode.jsは不要で、ビルドもしません。
 
 ```sh
-git clone https://github.com/FooQoo/agent-board.git
-cd agent-board
-pnpm --dir web install
-pnpm --dir web build
-cargo install --path . --locked --force
+brew install fooqoo/tap/agboard
+agboard --version
 ```
 
-`~/.cargo/bin`（または`$CARGO_HOME/bin`）を`PATH`に追加してください。`agboard`はWeb画面を含むため、先にWeb画面をビルドします。更新や導入確認は[使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/getting-started)を参照してください。
+Homebrew自体にも、環境によってはCommand Line Toolsなどの前提があります。詳しくはHomebrewのドキュメントを参照してください。ソースからビルドする場合は、[開発者ガイド](https://fooqoo.github.io/agent-board/ja/dev/getting-started/setup)を参照してください。
+
+## 連携する
+
+作業フォルダにプロジェクトを作成し、エージェントをつなぎます。
+
+```sh
+cd my-project
+agboard project create "My project"
+agboard connect
+```
+
+`project create`は、現在のフォルダをプロジェクトにbindします。既存のプロジェクトを使うときは`agboard project bind "My project"`を実行します。`connect`は、設定するエージェント（Claude Code、Codex、または両方）と、置き場所を尋ねます。Skillに1つ、Hookに1つ、GlobalかProjectのスコープを選びます。書き込む前にすべての変更を表示し、バックアップを残し、あなたの編集を上書きしません。終わったら、エージェントの`/hooks`でHookを確認してください。詳しくは[エージェントとの連携](https://fooqoo.github.io/agent-board/ja/guide/automation/agents#connect-your-agent)を参照してください。
 
 ## 使い始める
 
 ```sh
-agboard project create "My project"
-agboard serve --port 7420
+agboard serve
 ```
 
 [http://127.0.0.1:7420/](http://127.0.0.1:7420/)を開き、プロジェクトを選んでタスクを追加します。`agboard progress`とHookはカレントフォルダに最も近い登録済みプロジェクトを使います。別プロジェクトを対象にする場合は`--project NAME`で指定します。
 
 スマホから進捗の確認や質問への回答をするには、**設定** → **モバイル接続**を開き、ngrokのauthtokenで接続します。スマホでは、ボードがコンピューターに表示する4桁の合言葉（接続を開始するたびに変わります）を入力します。ボード全体はあなたのコンピューターに残ります。環境変数`NGROK_AUTHTOKEN`を設定して`agboard serve --monitor ngrok`で起動することもでき、その場合は合言葉が表示されます。4桁の合言葉はアカウント認証より弱いため、URLは他の人に教えないでください。制限は[モバイルモニターのガイド](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor)で説明しています。
 
+## 更新する
+
+更新は2段階です。先にコマンドを更新し、続けて`connect`が導入したSkillとHookを更新します。
+
+```sh
+brew upgrade fooqoo/tap/agboard
+agboard update
+```
+
+`agboard update`は、変更内容を表示して、書き込む前に確認します。`agboard update --yes`が省くのは質問だけで、あなたの編集は上書きしません。更新したら、`agboard serve`を再起動してください。
+
+## 機能の提供段階
+
+v1.0.0には、一般提供（GA）の機能と、パブリックプレビューの機能が混在しています。Docs、`connect`と`update`、タスクの受け取り、モバイルモニター、初回の案内はパブリックプレビューで、今後変わる可能性があります。GAは、何も変わらないことや、不具合がないことを約束するものではありません。詳しくは[機能の提供段階](https://fooqoo.github.io/agent-board/ja/guide/feature-stages)を参照してください。
+
+## ライセンス
+
+Agent Boardは、[MITライセンス](LICENSE)で公開しています。同梱する第三者コンポーネントには、それぞれのライセンスが適用されます。詳細は[LICENSE](LICENSE)と[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)を参照してください。
+
 ## ドキュメント
 
 - [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
 - [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
-- [Claude Code・Codexとの連携（英語）](integrations/README.md) — Hookとエージェントの設定。
+- [リリースノート](https://fooqoo.github.io/agent-board/ja/releases) — 公開した各版の変更点。
+- [Claude Code・Codexとの連携（英語）](integrations/README.md) — `connect`が導入するものと、Hookの仕組み。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。
