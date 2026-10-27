@@ -721,8 +721,18 @@ fn a_held_lock_during_recovery_is_reported_on_standard_error() {
     use agent_board::integrations::paths::PathEnv;
     let fx = Fx::new();
     fx.interrupted_run(Agent::Claude);
-    let _held =
-        agent_board::integrations::journal::AgentLock::acquire(&fx.data(), Agent::Claude).unwrap();
+    // Another test's child process can briefly inherit the lock file of the
+    // run above while it is being spawned, so retry for a moment.
+    let _held = (0..50)
+        .find_map(|_| {
+            let lock =
+                agent_board::integrations::journal::AgentLock::acquire(&fx.data(), Agent::Claude);
+            lock.ok().or_else(|| {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                None
+            })
+        })
+        .expect("the lock becomes free");
     let session = Session {
         path_env: PathEnv {
             agboard_home: Some(fx.data().into()),
