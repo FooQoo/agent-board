@@ -115,18 +115,27 @@ impl Fx {
 
     /// Both agents, one scope pair (`1` Global, `2` Project), from `cwd`.
     pub fn connect_both_at(&self, cwd: &Path, skill: &str, hook: &str) {
+        let (code, screen) = self.connect_screen_at(cwd, skill, hook);
+        assert_eq!(code, 0, "{screen}");
+    }
+
+    /// The same, returning the exit code and everything connect printed.
+    pub fn connect_screen_at(&self, cwd: &Path, skill: &str, hook: &str) -> (i32, String) {
         let mut term = self.session(cwd, &["connect"]);
+        let mut screen = String::new();
         for (prompt, answer) in [
             ("Select agents", "1 2"),
             ("Skill scope", skill),
             ("Hook scope", hook),
             ("[y/N]", "y"),
         ] {
-            term.expect(prompt).unwrap();
+            let seen = term.expect(prompt).unwrap();
+            screen.push_str(&String::from_utf8_lossy(seen.as_bytes()));
             term.send_line(answer).unwrap();
         }
-        let (code, screen) = finish(term);
-        assert_eq!(code, 0, "{screen}");
+        let (code, rest) = finish(term);
+        screen.push_str(&rest);
+        (code, screen)
     }
 
     pub fn connect_both(&self, skill: &str, hook: &str) {

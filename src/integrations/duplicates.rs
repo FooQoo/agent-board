@@ -156,13 +156,31 @@ pub struct HookCheck {
     pub warnings: Vec<String>,
 }
 
+/// Whether connect takes `record` over when it installs `component` into
+/// `target_scope` for the bound root `root`. A scope move takes over this
+/// root's own record in the other scope, and any Global record. Another
+/// root's Project record is left alone, except that a Global Hook would
+/// duplicate it, so that one moves.
+pub fn is_move_source(
+    record: &InstallationRecord,
+    target_scope: Scope,
+    root: Option<&Path>,
+) -> bool {
+    let other_root = record.scope == Scope::Project && record.bound_root.as_deref() != root;
+    match record.component {
+        Component::Hook => !(other_root && target_scope == Scope::Project),
+        Component::Skill => !other_root,
+    }
+}
+
 /// Looks for Agent Board Hooks of `agent` outside `target`. Registrations the
-/// registry records for this agent are move sources; every other one stops the
-/// change.
+/// registry records for this agent are known; those that `is_move_source`
+/// accepts are move sources, and every other one stops the change.
 pub fn check_other_registrations(
     env: &PathEnv,
     agent: Agent,
     target: &Path,
+    target_scope: Scope,
     scan_root: Option<&Path>,
     registry: &Registry,
     template: &[TemplateGroup],
@@ -229,7 +247,11 @@ pub fn check_other_registrations(
             ));
         }
     }
-    check.sources = recorded.into_iter().cloned().collect();
+    check.sources = recorded
+        .into_iter()
+        .filter(|r| is_move_source(r, target_scope, scan_root))
+        .cloned()
+        .collect();
     check
 }
 
