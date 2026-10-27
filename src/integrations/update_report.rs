@@ -122,6 +122,27 @@ pub fn results(outcomes: &[AgentOutcome], plans: &[AgentPlan], exit: i32) -> (St
     (shown, errors)
 }
 
+/// The failure reasons (standard error) when no agent can be updated at all:
+/// each blocked agent's conflicts and manual steps, worded as `results`
+/// reports a blocked agent after an apply.
+pub fn blocked_reasons(plans: &[AgentPlan]) -> String {
+    let mut errors = String::new();
+    for plan in plans.iter().filter(|p| p.state() == PlanState::Blocked) {
+        let _ = writeln!(
+            errors,
+            "{}: not updated; nothing was changed.",
+            plan.agent.label()
+        );
+        for c in &plan.conflicts {
+            let _ = writeln!(errors, "  {}: {}", c.path.display(), c.detail);
+        }
+        for step in &plan.manual_steps {
+            let _ = writeln!(errors, "  Do this yourself: {step}");
+        }
+    }
+    errors
+}
+
 fn failure(text: &mut String, outcome: &AgentOutcome) {
     let _ = writeln!(
         text,
