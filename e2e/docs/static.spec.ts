@@ -187,7 +187,7 @@ test.describe('site sources', () => {
       const sections = (text: string) => text.split('\n').filter((line) => /^##+ /.test(line)).length;
       expect(sections(ja), `dev/${file}: headings`).toBe(sections(en));
     }
-    expect(allPages).toHaveLength(74);
+    expect(allPages).toHaveLength(76);
   });
 
   test('the eighteen guide screenshots exist as readable PNGs', () => {

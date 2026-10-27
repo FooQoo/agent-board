@@ -143,7 +143,7 @@ for (const { lang, file, path: urlPath } of allPages.filter((p) => p.file !== 'h
   });
 }
 
-test('the sidebar lists the fifteen guide pages in four groups, in the same order in both languages', async ({ page }) => {
+test('the sidebar lists the sixteen guide pages in four groups, in the same order in both languages', async ({ page }) => {
   const hrefs: Record<Lang, string[]> = { en: [], ja: [] };
   for (const lang of langs) {
     await page.goto(pagePath(lang, 'index'));

@@ -1,7 +1,28 @@
+import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
 
 const repo = 'https://github.com/FooQoo/agent-board'
+
+// The published version comes from scripts/release/docs-release.mjs, which reads the
+// GitHub Releases before the build. Without that file, or with no published release, the
+// header shows no version. The version in Cargo.toml is never used.
+function publishedVersion(): { version: string; url: string } | null {
+  try {
+    const file = fileURLToPath(new URL('./release.json', import.meta.url))
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'))
+    if (typeof data.version === 'string' && typeof data.url === 'string') {
+      return { version: data.version, url: data.url }
+    }
+  } catch {
+    // No generated file: no published release is known.
+  }
+  return null
+}
+
+const published = publishedVersion()
+const versionNav = published ? [{ text: `v${published.version}`, link: published.url }] : []
 
 type Page = { file: string; en: string; ja: string }
 type Group = { en: string; ja: string; pages: Page[] }
@@ -16,6 +37,7 @@ const guideGroups: Group[] = [
       { file: 'getting-started', en: 'Install and start', ja: 'インストールと起動' },
       { file: 'quickstart', en: 'Quickstart', ja: 'クイックスタート' },
       { file: 'concepts', en: 'Core concepts', ja: '基本の考え方' },
+      { file: 'feature-stages', en: 'Feature stages', ja: '機能の提供段階' },
     ],
   },
   {
@@ -140,6 +162,8 @@ export default withMermaid(
           nav: [
             { text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
             { text: 'Developers', link: '/dev/', activeMatch: '/dev/' },
+            { text: 'Releases', link: '/releases', activeMatch: '/releases' },
+            ...versionNav,
             { text: 'GitHub', link: repo },
           ],
           sidebar: {
@@ -161,6 +185,8 @@ export default withMermaid(
           nav: [
             { text: 'ガイド', link: '/ja/guide/', activeMatch: '/ja/guide/' },
             { text: '開発者向け', link: '/ja/dev/', activeMatch: '/ja/dev/' },
+            { text: 'リリースノート', link: '/ja/releases', activeMatch: '/ja/releases' },
+            ...versionNav,
             { text: 'GitHub', link: repo },
           ],
           sidebar: {
