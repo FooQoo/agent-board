@@ -185,6 +185,30 @@ fn an_edited_managed_skill_file_is_a_conflict_even_with_yes() {
 }
 
 #[test]
+fn when_every_agent_conflicts_the_reasons_go_to_standard_error() {
+    let fx = Fx::new();
+    fx.connect_both("1", "1");
+    fx.age("0.0.1", |_| true);
+    // Both agents' managed Skill files were edited, so no agent can update.
+    let mut edited = Vec::new();
+    for agent in [Agent::Claude, Agent::Codex] {
+        let rec = record(&fx, agent, Component::Skill, Scope::Global);
+        let path = fx.skill_dir(agent, false).join(&rec.files[0].path);
+        fs::write(&path, "my own notes\n").unwrap();
+        edited.push(path);
+    }
+    let (code, stdout, stderr) = fx.agboard(&["update", "--yes"], &fx.root());
+    assert_eq!(code, 1, "{stdout}{stderr}");
+    assert!(stdout.contains("Nothing can be updated"), "{stdout}");
+    assert!(stderr.contains("Claude Code: not updated"), "{stderr}");
+    assert!(stderr.contains("Codex: not updated"), "{stderr}");
+    for path in &edited {
+        assert_eq!(fs::read_to_string(path).unwrap(), "my own notes\n");
+        assert!(stderr.contains(path.to_str().unwrap()), "{stderr}");
+    }
+}
+
+#[test]
 fn deleted_and_replaced_managed_content_is_a_conflict() {
     let fx = Fx::new();
     fx.connect_both("1", "1");

@@ -23,7 +23,7 @@
 
 `src/progress.rs`は、`Include`に応じて任意の`pending`節と`done`節を作ります。`agboard progress`と`agboard hook`が`--include-pending`と`--include-done`から`Include`を作ります。既定の`Include`は何も追加しないため、既定の表は変わりません。オプションは[エピックと進行表](../../guide/use/epics.md#進行表を読む)を参照してください。
 
-Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐付け済みの祖先からプロジェクトを識別します。セッションIDは使わず、紐付けがないときに全プロジェクトを選ぶこともありません。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`folder_unbound`などの`AGBOARD_ERROR`を返します。
+Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐付け済みの祖先からプロジェクトを識別します。セッションIDは使わず、紐付けがないときに全プロジェクトを選ぶことも、最も近い紐付けが壊れているときに親へ戻ることもありません。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`bound_project_missing`などの`AGBOARD_ERROR`を返します。紐付けがまったくないフォルダはエラーではありません。[Hookのスキップとエラー](#hookのスキップとエラー)を参照してください。
 
 - **Claude Code。** `integrations/claude-code/`のテンプレートが、プロジェクト名を固定せずに`agboard hook`をPostToolUseに、失敗の後はPostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。スキルは最初の読み込み時にスナップショットを読み、コンテキスト圧縮後（SessionStartの`compact`）か次のツールの完了時に一覧を取り直します。
 - **Codex。** `integrations/codex/`のテンプレートが`agboard hook --agent codex`をPostToolUseに登録し、最初の利用時とコンテキスト圧縮後にも取得します。既存の設定に自動で書き込むことはなく、利用者がテンプレートを確認して信頼します。
@@ -77,11 +77,56 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐�
 
 初回の案内は 2 枚のサンプルカードを作ります。それぞれに `onboardingSample` の識別があり、実行 ID と順番（1 または 2）を保持します。進行表、hook、`wait --until task` は、この識別のあるカードをレーンや実行状態に関係なく除外します。そのためエージェントはカードを取り上げません。
 
-識別は案内だけが書き込みます。作成と編集の要求には識別のフィールドがなく、移動・履歴の更新・アーカイブ・復元のあいだも識別は保たれます。ボードにはカードが表示されます。利用者から見た動きは[始める前に](../../guide/quickstart.md#始める前に-初回の案内)を参照してください。
+識別は案内だけが書き込みます。作成と編集の要求には識別のフィールドがなく、移動・履歴の更新・アーカイブ・復元のあいだも識別は保たれます。ボードにはカードが表示されます。利用者から見た動きは[始める前に](../../guide/quickstart.md#before-you-start-the-first-run-guide)を参照してください。
+
+## 同梱するバンドル
+
+`connect`と`update`は、実行時にGitのclone、Node.js、Rustを必要としません。SkillとHookのテンプレートが、バイナリの中にあるためです。
+
+- **同梱するもの。** `build.rs`（と`src/integrations/build_bundle.rs`）が、許可リストにあるファイルを取り込みます。`.agents/skills/agent-board/`の`SKILL.md`、`references/`、`assets/`と、`integrations/claude-code/`、`integrations/codex/`のHookのJSONです。参照切れ、個人の絶対パス、シンボリックリンクは拒否し、`node_modules`は読みません。`assets::bundle()`は、クレートの版と、各項目の相対パス、バイト列、そのSHA-256を持つ`EmbeddedBundle`を返します。Skillのフォルダがないときは、ビルドが警告して何も埋め込みません。その場合、`connect`と`update`は実行時に失敗するので、リリースビルドでは埋め込んだファイルの数を確認してください。
+- **配置先。** `paths.rs`は、環境（`AGBOARD_HOME`、`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、ホームフォルダ）とbindのルートから、[スコープを選ぶ](../../guide/automation/agents.md#choose-scopes)にある4つの配置先を求める純粋な関数です。Claude CodeのGlobalのSkillは`CLAUDE_CONFIG_DIR`に従います。CodexのSkillは`~/.agents/skills`を使い、`CODEX_HOME`を無視します。空の環境変数は未設定として扱います。Projectの配置先は、`FileStore::resolve_binding`が返すbindのルートを起点にし、作業フォルダは使いません。
+- **導入記録。** `registry.rs`が`<data-dir>/integrations.json`（`schemaVersion` 1）を読み書きします。それ以外の版や、規則に反する記録は、拒否し、移行も書き換えもしません。項目は[共有ファイル](../reference/files.md#integration-records)にあります。
+- **ハッシュ。** ファイルのハッシュは、バイト列のSHA-256（小文字の16進）です。Skillの管理ハッシュは、ファイルごとに`path<TAB>sha256<LF>`の1行をpath順に並べたもののSHA-256です。Hookの項目のハッシュは、`hooks[event][i]`のグループを正規化したJSON（全階層でキーを並べ替え、空白なし）のSHA-256です。Hookの管理ハッシュは、項目ごとに`event<TAB>matcher<TAB>command<TAB>sha256<LF>`の1行（matcherがなければ空欄）を並べたもののSHA-256です。設定ファイル全体のハッシュは、実行中の変更に気づくためだけに使います。Agent Boardのものではないキーの変更は、競合になりません。
+
+ハッシュが見つけるのは、うっかりした上書きや編集です。ファイルの出どころを認証するものではなく、配布するバイナリの署名の代わりにもなりません。
+
+## 計画と適用
+
+`connect`と`update`は`src/integrations/`の同じ処理を使うので、所有と競合の規則が食い違いません。
+
+1. **計画（読み取りのみ）。** `plan::plan_agent`が、1つのエージェントの`AgentPlan`を作ります。内容は、操作、追加と削除、権限の編集、競合、手作業の手順、警告です。状態は`Ready`、`Unchanged`、`Blocked`のいずれかです。`connect`は、権限と、利用者が選んだスコープで計画します。`update`は、記録されている対象だけを、権限なしで計画します。
+2. **所有。** Hookは、エージェント、イベント、matcher、正規化した固定コマンドで識別します。編集された、または消えた管理対象の項目、管理外の同等のHook、識別できない`agboard`のコマンドは、いずれもそのエージェントを止めます。調べるのは、Globalのファイル、bindのルートとその祖先（`settings.json`と`settings.local.json`、または`hooks.json`と`config.toml`。Codexのinline hookを含む）、導入記録にあるProjectのパスです。ディスクを走査することはありません。Skillは、管理しているファイルが編集または削除された、ファイルが足された、ファイルがリンクに置き換えられたときに、競合になります。
+3. **適用。** `apply::apply_agent`は、エージェントを1つずつ、Claude Code、Codexの順に処理するので、片方の失敗がもう片方を取り消すことはありません。エージェントごとに、ロック（`integrations-<agent>.lock`。保持されていれば、待たずに失敗）を取り、ジャーナルが残っていれば開始を拒否し、すべての対象を検証し、元とこれから書くハッシュとバックアップ名を持つジャーナルを書き、変更するファイルを`<name>.agboard-backup-<txn>-<index>`へバックアップし、同じファイルシステム上の一時ファイルまたはフォルダへ新しい内容を書き、元のものと原子的に置き換え、最後に導入記録をコミットします。Skillのフォルダは、作業用のフォルダで完成させてから、古いものと入れ替えます。
+4. **結果。** 各エージェントは、`Applied`、`Unchanged`、`Blocked`、`Failed`、`Interrupted`のいずれかで終わります。失敗したときは、そのエージェントを開始前の状態へ戻します。他の人が変更したファイルは上書きしません。戻せないときは、ジャーナルが残ります。
+5. **復旧。** `recovery::recover_pending`は、`connect`と`update`が計画する前に呼ばれます。ジャーナル、元と新しいハッシュ、バックアップを突き合わせ、安全なものを戻します。安全でないときは、ファイルを示して止まります。通常のコマンドとHookは、復旧も設定の書き込みもしません。
+
+導入記録が読めない、または未知のときは、両コマンドとも理由を示して止まります。競合とバックアップに対して利用者が行うことは、[エージェントとの連携](../../guide/automation/agents.md#connect-your-agent)と[データとバックアップ](../../guide/operations/data.md#integration-records-backups-and-manual-permissions)にあります。
+
+## Hookのスキップとエラー
+
+Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。これは`ResolvedBinding`（プロジェクトとbindのルート）を返します。`project_for_folder`はこれを呼ぶので、通常のコマンドの`folder_unbound`エラーは変わりません。
+
+| 入力・状態 | 動作 |
+| --- | --- |
+| `cwd`がbindのルート、サブフォルダ、またはより近い入れ子のbindの中 | 最も近いプロジェクトだけを、`AGBOARD_PROGRESS`として返します。 |
+| bindの情報が正常で、`cwd`が読め、一致するbindがない | stdoutにもstderrにも出力せず、終了コード0。ボードも導入記録も読みません。 |
+| 最も近いbindのプロジェクトが存在しない | `bound_project_missing`。親へ戻りません。 |
+| bindの情報が壊れている、または読めない | 原因を付けた`AGBOARD_ERROR`。未bindとは扱いません。 |
+| 入力がJSONでない、型が違う、大きすぎる | これまでどおり`invalid_hook_input`。 |
+| `cwd`がない、`null`、空 | プロセスの作業フォルダを使います。 |
+| `cwd`が文字列でない、または相対パス | `invalid_hook_input`。 |
+| `cwd`が存在しない、または読めない | `hook_cwd_unavailable`。スキップにはしません。 |
+| 明示した`--project` | 指定したプロジェクトを優先します。見つからなければ`project_not_found`。 |
+
+入力64 KiB、一覧256 KiB、10秒の制限、イベントの許可リスト、固定コマンドは変わりません。Hookは、更新通知の表示、設定の復旧、ネットワークの利用、設定の書き込みをしません。
+
+## 更新通知
+
+通常のコマンドが出力を終えたあとに、`notice::stale_line`が標準エラー出力へ1行を出すことがあります。`update`が対象とする記録（Global、および最も近いbindのルートのProject）の`installedVersion`と、このビルドの版を比べるだけで、アセットの走査も、ネットワークの利用も、書き込みもしません。標準出力と標準エラー出力がどちらも端末で、出力がJSONでないときだけ出します。`hook`、`wait`、`serve`、`stop`、`setup`、`connect`、`update`、helpとバージョン表示は、この処理より前に戻ります。導入記録がない、読めない、未知のときは、通知を出さず、コマンドの出力と終了コードも変えません。その問題は`update`が報告します。文言は[エージェントとの連携](../../guide/automation/agents.md#refresh-the-integrations)にあります。
 
 ## setupでアクセスを準備する
 
-`agboard setup`は、エージェントが共有ファイルを編集できるよう、Agent Boardのデータ領域をエージェントの許可されたフォルダに加えます。利用者が一度だけ実行する手順で、プロジェクトの作成やHookの登録はしません。
+`agboard setup`は、エージェントが共有ファイルを編集できるよう、Agent Boardのデータ領域をエージェントの許可されたフォルダに加えます。利用者が一度だけ実行する手順で、プロジェクトの作成やHookの登録はしません。`agboard connect`は同じ権限の変更を行い、SkillとHookも導入します。
 
 内部処理は次のように分かれています。
 

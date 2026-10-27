@@ -101,7 +101,17 @@ Setup keeps every existing setting and changes only the array above. Before it c
 
 Setup refuses to write Codex settings unless `sandbox_mode` is `"workspace-write"`. Only that mode is supported, and permission profiles (`default_permissions`, `permissions`, `profile`, or `profiles`) are refused as well. Setup never changes `sandbox_mode` itself. If it refuses, set `sandbox_mode = "workspace-write"` in `config.toml` yourself, then run setup again. A refusal writes nothing, and with the default `--agent all`, a refused Codex target also blocks the Claude Code change. If you do not use Codex, run `agboard setup --agent claude`.
 
-Setup does not install the hooks or the `agent-board` skill. Those remain separate manual steps (see [Working with agents](../automation/agents)). Setup is a one-time step that you run; do not ask an agent to run it during normal work. Project or managed settings can still limit access to the folder, so confirm it in a new session.
+Setup does not install the Hook or the `agent-board` Skill. `agboard connect` does, and it makes the same permission change (see [Working with agents](../automation/agents#connect-your-agent)). Setup is a one-time step that you run; do not ask an agent to run it during normal work. Project or managed settings can still limit access to the folder, so confirm it in a new session.
+
+## Integration records, backups, and manual permissions
+
+`connect` and `update` keep a few files of their own. They are outside `shared/`, so a backup of a project does not carry them.
+
+- **Integration record.** `integrations.json` in the data folder (normally `~/.agent-board/integrations.json`) lists what `connect` installed: the agent, the Skill or Hook, its scope, the files and where they are, the installed version, and a hash of each managed part. `update` and the update notice read it. Do not edit it by hand. A record that is broken or has an unknown `schemaVersion` is never rewritten; the commands stop and say so.
+- **Backups.** Before `connect` or `update` changes a file or a Skill folder, it copies the original next to it as `<name>.agboard-backup-<id>-<n>`, for example `settings.json.agboard-backup-...`. A change to the record itself is backed up the same way. The copies are never deleted for you. They contain your original settings, so keep them out of shared folders and keep their permissions. To go back, stop your agents and copy the backup over the file.
+- **Conflicts.** If you edited a Skill file `connect` installed, added a file to that folder, removed a managed Hook, or changed one, the commands report a conflict and write nothing for that agent. Keep your change and leave the agent as it is, or move your edit aside and run the command again.
+- **Interrupted runs.** While it writes, each agent has a small journal (`integrations-journal-<agent>.json`) and a lock (`integrations-<agent>.lock`) in the data folder. If a run was cut off, the next `connect` or `update` puts the files back from the backups. When a file changed in the meantime, it stays as it is and the command stops and names the journal and the backups. Restore those files yourself, remove the journal, and run the command again.
+- **Manual permissions.** Codex only gets the data folder permission when `config.toml` sets `sandbox_mode = "workspace-write"` and uses no permission profile. Otherwise `connect` skips Codex and shows what to do. Set it yourself, then run `connect` again. An agent that Agent Board could not find on your `PATH` is not configured; install it and run `connect` again.
 
 ## Upgrading from PLAN.md
 

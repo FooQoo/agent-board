@@ -26,7 +26,7 @@ use crate::integrations::recovery::recover_pending;
 use crate::integrations::registry::Registry;
 use crate::integrations::report;
 use crate::integrations::update::{AgentRecords, UpdateInput, plan_update, select};
-use crate::integrations::update_report::{describe, results};
+use crate::integrations::update_report::{blocked_reasons, describe, results};
 
 const NONE_FOUND: &str = "No managed integrations found. Run agboard connect in a bound project.\n";
 
@@ -114,6 +114,7 @@ pub fn flow(
     if !ready {
         let blocked = plans.iter().any(|plan| plan.state() == PlanState::Blocked);
         if blocked || stopped {
+            let _ = err.write_all(blocked_reasons(&plans).as_bytes());
             p.say("\nNothing can be updated. Nothing was written.\n");
             return 1;
         }

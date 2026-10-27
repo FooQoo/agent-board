@@ -75,6 +75,13 @@ The main files and directories outside `src/` are:
 - `src/cli/commands/connect.rs`: the interactive `agboard connect` flow. It uses `src/integrations/detect.rs` (agents on PATH and their versions), `prompt.rs` (the questions), and `report.rs` (the plan and result text) around the planner and the per-agent apply.
 - `.agents/skills/agent-board/`: the agent skill.
 
+### Skill and Hook installation
+
+- `src/integrations/`: `assets.rs` and `build_bundle.rs` (the embedded bundle), `paths.rs` (placement), `registry.rs` (the records), `plan.rs`, `compose.rs`, `merge.rs`, `skill.rs`, and `duplicates.rs` (the read-only plan and ownership), `apply.rs`, `ops.rs`, `journal.rs`, and `recovery.rs` (writing, backups, journal, and recovery), `update.rs` and `update_report.rs` (what `update` selects and shows), and `notice.rs` (the update notice).
+- `src/cli/commands/update.rs`: `agboard update` and the glue that prints the notice.
+- `tests/integration_*.rs`: the focused tests of the bundle, paths, install, recovery, connect, update, and notice.
+- `scripts/release/` and `.github/workflows/release.yml`: the release archive, signing, notarization, and Formula (see [Build release](../getting-started/setup.md#build-release)).
+
 ### Project docs
 
 - `src/docs/`: paths, reads, and the README templates (`templates/README.en.md`, `templates/README.ja.md`).

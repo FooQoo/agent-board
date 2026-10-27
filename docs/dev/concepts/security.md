@@ -147,6 +147,17 @@ What this protects: the token and the files stay out of reach of a document's co
 - Project, application, or organization settings may take precedence over user settings, so updating a file does not guarantee access; users confirm in a session.
 - The resolved absolute path is stored only in the user's local settings, never in shared templates or project documents.
 
+## Skill and Hook installation
+
+`connect` and `update` write the Skill and the Hook into the settings of other programs, so their boundary is stated here. The mechanics are in [Plan and apply](./agents.md#plan-and-apply).
+
+- **What is protected.** The agent's existing settings, your own edits, the shared board, and the machine-readable output. Each agent is validated before any write, backed up, written through a temporary file and an atomic replace, and recorded last. A failed agent is restored without overwriting a file that someone else changed.
+- **Who it defends against.** Cooperative local agents and programs that edit the same settings at the same time. The managed hashes, backups, locks, and journal detect accidental overwrites and recover from a failure part way. They are not authentication. A malicious program running as the same OS user can edit the files, the registry, or the backups directly, and can forge the records.
+- **What it never loosens.** `connect` and `update` do not change an agent's permission mode, managed policy, trust database, or network permission. The only permission they add is the data folder, as `setup` does, and they refuse to do it where that would need a mode change. A Hook the agent has not trusted does not run, and Agent Board does not trust it for you.
+- **Fixed commands.** The Hook command is fixed and is never built from task text or tool input. An unmanaged Hook or `agboard` command is never adopted or deleted for you.
+- **Backups hold your settings.** They keep the original file's access rights, and are never put in a shared folder for you.
+- **The hashes are not a signature.** The integrity of the command itself comes from the Developer ID signature and Apple notarization of the distributed binary (see [Build release](../getting-started/setup.md#build-release)).
+
 ## What is not prevented
 
 These limits are deliberate. Keep them in mind when someone asks for "just one more check".

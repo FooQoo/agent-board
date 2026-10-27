@@ -1,6 +1,6 @@
 # Set up and run
 
-Prepare your machine, build Agent Board, run it against a temporary board, and install your build so that agents use it. Run every command from the repository root.
+Prepare your machine, build Agent Board (users install it with Homebrew; building from source is for development), run it against a temporary board, and install your build so that agents use it. Run every command from the repository root.
 
 ## Before you start
 
@@ -90,6 +90,34 @@ Synthetic images for Stories live in `web/.storybook/static/`. Storybook and the
 Keep each part's `*.stories.tsx`, focused `*.test.tsx`, dedicated styles, and `story-coverage*.json` beside that part. A screen Story covers the composed page and its important page states; it does not replace Stories for the parts that own their own behavior. For example, `Pages/Board/Board` with the `ThreeLanes` export produces `pages-board-board--three-lanes`. Use typed `Meta`/`StoryObj` args to provide stable fixtures, and add a `play` function when a user interaction matters. Extend an existing Story file for that part instead of adding a duplicate.
 
 A folder's `story-coverage.json` lists its source exports, the Stories that show them, and their states; use `story-coverage.<name>.json` when the folder already has a shared ledger. Each ledger must sit beside its parts, and listed Story IDs must be registered by a `*.stories.tsx` file in that folder. The format and rules are in `web/.storybook/support/component-coverage.json`. The Node check validates ledger entries and placement. The current inventory is still partial: it does not yet prove that every UI export has an entry. The `test:storybook` support checks that registered Story IDs and listed Story IDs match in both directions; the final UI-export inventory is a separate gate. Keep Story args synthetic and use the shared fixtures/adapters; the network guard rejects requests to the product API and event stream.
+
+## Build release
+
+Users install Agent Board with Homebrew (see [Install and start](../../guide/getting-started.md)). This section is for the people who build and publish a release. The workflow is `.github/workflows/release.yml` and the scripts are in `scripts/release/`.
+
+### Archive and checks
+
+- **Version.** `Cargo.toml` and `Cargo.lock` hold the version, and the tag is `v` plus that version. `scripts/release/check-version.py --tag vX.Y.Z` fails on any mismatch. The version on `main` is a development version; only a published GitHub Release is a released version.
+- **Build.** Each CPU builds on its own macOS runner (`macos-15` for Apple Silicon, `macos-15-intel` for Intel), web UI first, then `cargo build --release --locked`, with `MACOSX_DEPLOYMENT_TARGET=15.0`. The minimum supported macOS is 15 on both CPUs. Strip, if any, runs before signing.
+- **Archive.** `package.sh` writes `agboard-<version>-<target>.tar.gz` holding exactly `agboard`, `LICENSE`, and `THIRD_PARTY_NOTICES.txt`; the web UI, Skill, and Hook templates are inside the binary. `verify-artifact.sh` checks the names, the two license files, the CPU, the deployment target, that only system libraries are linked, and, where it can run, `--version` and the embedded web UI.
+- **Notices.** `generate-notices.py` builds `THIRD_PARTY_NOTICES.txt`; `--check` fails when it is out of date. The MIT text is in `LICENSE`; its copyright line must hold the real holder and year before a release.
+- **Candidate or release.** Pull requests and manual runs produce only an unsigned candidate (`candidate.json` says `signed: false`). A candidate is never a release file.
+
+### Sign and notarize
+
+The formal path runs only for a pushed or re-run `v*` tag, in the protected `release-signing` environment, the only place the signing secrets exist.
+
+1. **Prepare once, by a person.** Enroll in the Apple Developer Program, create a Developer ID Application certificate with its private key, export it as a `.p12`, and create an app-specific password. Store these five repository secrets: `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`. Never write their values in the repository, an issue, or a log. Limit the environment to the trusted tags.
+2. **Sign.** `sign-macos.sh` creates a temporary keychain under the job's temporary directory, imports the certificate, resolves exactly one Developer ID Application identity of the expected Team, and signs with `--options runtime --timestamp` and the fixed identifier `io.github.FooQoo.agent-board.agboard`. `verify-signature.sh` checks the Team ID, identifier, Hardened Runtime, secure timestamp, and that the designated requirement is the default one.
+3. **Notarize.** `notarize-macos.sh` zips the signed binary (notarytool does not take a tar.gz), submits it, waits, and passes only on status `Accepted`. Invalid, rejected, timed out, or in progress is a failure. A timed-out submission can be continued by its ID instead of submitting again.
+4. **Pack the same bytes.** The accepted binary goes into the tar.gz, and `release-gate.py` checks that the signed, notarized, and packed binaries are identical, that both CPUs share one Team ID, and then writes the archives and `SHA256SUMS`. The temporary keychain and key material are deleted in a step that always runs.
+5. **Draft.** Only when both CPUs pass does a job create a draft GitHub Release and render the Formula candidate. A missing certificate, a rejected notarization, or one failing CPU stops the run; an unsigned archive is never a fallback.
+
+A single command-line binary cannot carry a stapled ticket, so macOS checks the notarization online on first launch. Do not turn off Gatekeeper as part of any install step. Keep the same Team ID and identifier from release to release. When the certificate expires or is revoked, or the Apple credentials change, create a new certificate or password and replace the secrets; a signature alone does not guarantee that stored Keychain permissions carry over, so check an upgrade on a clean Mac.
+
+### Publish to Homebrew
+
+After the Release is published: `scripts/release/render-formula.py --tag vX.Y.Z --sums SHA256SUMS --assets <dir> --out Formula/agboard.rb` renders the Formula from the published files and refuses a missing CPU, a wrong version, or a hash mismatch. The Formula selects the archive by CPU in `on_macos`, requires macOS 15 (`depends_on macos: :sequoia`), declares MIT, installs `agboard` into `bin` and the two license files into `pkgshare`, and has a `test do` block that checks `--version` and uses a temporary `AGBOARD_HOME`. `scripts/release/test-formula.sh` replays the install and test locally, and the Tap procedure is in its README. Nothing pushes to the `FooQoo/homebrew-tap` repository automatically; a person reviews the generated Formula and commits it.
 
 ## Install from source
 

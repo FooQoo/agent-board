@@ -23,7 +23,7 @@ The progress table lists non-Pending Todo and Doing tasks, grouped by epic in `p
 
 `src/progress.rs` builds the optional `pending` and `done` sections from `Include`, which `agboard progress` and `agboard hook` fill from `--include-pending` and `--include-done`. The default `Include` adds nothing, so the default table is unchanged. See [Epics and progress](../../guide/use/epics.md#read-the-progress-table) for the options.
 
-The hook identifies the project from the nearest bound ancestor of the input `cwd` (or the process cwd), never from a session ID, and never selects all projects when the folder is unbound. It returns the table as `AGBOARD_PROGRESS` JSON in `hookSpecificOutput.additionalContext`, or an `AGBOARD_ERROR` such as `folder_unbound`.
+The hook identifies the project from the nearest bound ancestor of the input `cwd` (or the process cwd), never from a session ID, and never selects all projects when the folder is unbound, and never falls back to a parent when the nearest binding is broken. It returns the table as `AGBOARD_PROGRESS` JSON in `hookSpecificOutput.additionalContext`, or an `AGBOARD_ERROR` such as `bound_project_missing`. A folder with no binding at all is not an error; see [Hook skip and errors](#hook-skip-and-errors).
 
 - **Claude Code.** The template in `integrations/claude-code/` registers `agboard hook` on PostToolUse, and on PostToolUseFailure after failures, without a fixed project name. Generic skill frontmatter hooks are not used. The skill reads a snapshot when first loaded; the table is fetched again after compaction (SessionStart `compact`) or on the next tool completion.
 - **Codex.** The template in `integrations/codex/` registers `agboard hook --agent codex` on PostToolUse and also fetches at first use and after compaction. Existing settings are never written automatically; users review and trust the template.
@@ -79,9 +79,54 @@ The first-run guide creates two sample cards. Each carries an `onboardingSample`
 
 Only the guide writes the identity. Create and edit requests have no field for it, and moves, history updates, archiving, and restoring keep it. The board still shows the cards. For what the user sees, see [Before you start](../../guide/quickstart.md#before-you-start-the-first-run-guide).
 
+## Embedded bundle
+
+`connect` and `update` need no Git clone, Node.js, or Rust at run time, because the Skill and the Hook templates are inside the binary.
+
+- **What is embedded.** `build.rs` (with `src/integrations/build_bundle.rs`) takes an allowlist: `SKILL.md`, `references/`, and `assets/` of `.agents/skills/agent-board/`, and the Hook JSON of `integrations/claude-code/` and `integrations/codex/`. It rejects dangling references, personal absolute paths, and symbolic links, and never reads `node_modules`. `assets::bundle()` returns an `EmbeddedBundle` with the crate version and, for each entry, a relative path, the bytes, and their SHA-256. If the Skill folder is missing, the build warns and embeds nothing; `connect` and `update` then fail at run time, so check the embedded file count of a release build.
+- **Where it is placed.** `paths.rs` holds pure functions from the environment (`AGBOARD_HOME`, `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, the home folder) and the bound root to the four targets in [Choose scopes](../../guide/automation/agents.md#choose-scopes). The Claude Code Global Skill follows `CLAUDE_CONFIG_DIR`. The Codex Skill uses `~/.agents/skills` and ignores `CODEX_HOME`. An empty variable counts as unset. Project paths start from the bound root that `FileStore::resolve_binding` returns, never from the working folder.
+- **The registry.** `registry.rs` reads and writes `<data-dir>/integrations.json`, `schemaVersion` 1. Anything else, or a record that breaks the rules, is refused and never migrated or rewritten. The fields are in [Shared files](../reference/files.md#integration-records).
+- **Hashes.** A file's hash is the SHA-256 of its bytes, in lowercase hex. A Skill's managed hash is the SHA-256 of one line `path<TAB>sha256<LF>` per file, in path order. A Hook entry's hash is the SHA-256 of the canonical JSON of its `hooks[event][i]` group (keys sorted at every level, no whitespace). The Hook's managed hash is the SHA-256 of one line `event<TAB>matcher<TAB>command<TAB>sha256<LF>` per entry, with an empty matcher when there is none. A hash of a whole settings file is used only to notice a change during the run. A change to a key that is not Agent Board's is never a conflict.
+
+The hashes find accidental overwrites and edits. They do not authenticate where the files came from, and they do not replace the signature of the distributed binary.
+
+## Plan and apply
+
+`connect` and `update` share one engine in `src/integrations/`, so the ownership and conflict rules cannot differ.
+
+1. **Plan (read-only).** `plan::plan_agent` builds an `AgentPlan` for one agent: the operations, what is added or removed, the permission edits, conflicts, manual steps, and warnings. Its state is `Ready`, `Unchanged`, or `Blocked`. `connect` plans with permissions and the scope the user chose. `update` plans only the recorded targets, with permissions off.
+2. **Ownership.** A Hook is identified by agent, event, matcher, and the normalized fixed command. Edited or missing managed entries, an unmanaged equal Hook, and an `agboard` command that cannot be identified each block the agent. The scan covers the Global files, the bound root and its ancestors (`settings.json` and `settings.local.json`, or `hooks.json` and `config.toml`, including Codex inline hooks), and the Project paths in the registry. It never walks the disk. A Skill is a conflict when a managed file was edited or removed, a file was added, or a link replaced a file.
+3. **Apply.** `apply::apply_agent` runs one agent at a time, Claude Code before Codex, so one failure never undoes the other. For each agent it takes a lock (`integrations-<agent>.lock`, which fails at once if held), refuses to start while a journal exists, validates every target, writes a journal that holds the original and planned hashes and the backup names, backs up each changed file as `<name>.agboard-backup-<txn>-<index>`, writes the new content to a temporary file or folder on the same filesystem, replaces the original atomically, and commits the registry last. A Skill folder is finished in a staging folder before it replaces the old one.
+4. **Result.** Each agent ends as `Applied`, `Unchanged`, `Blocked`, `Failed`, or `Interrupted`. A failure rolls that agent back to its start without overwriting a file that someone else changed; if that is not possible, the journal stays.
+5. **Recovery.** `recovery::recover_pending` is called by `connect` and `update` before they plan. It compares the journal, the original and new hashes, and the backups, then restores what is safe and stops, naming the files, when it is not. Ordinary commands and the Hook never recover and never write settings.
+
+An unreadable or unknown registry stops both commands with the reason. For what users do about conflicts and backups, see [Working with agents](../../guide/automation/agents.md#connect-your-agent) and [Data and backups](../../guide/operations/data.md#integration-records-backups-and-manual-permissions).
+
+## Hook skip and errors
+
+The Hook resolves the project with `FileStore::resolve_binding`, which returns a `ResolvedBinding` (the project and the bound root). `project_for_folder` calls it, so ordinary commands keep their `folder_unbound` error.
+
+| Input or state | Behavior |
+| --- | --- |
+| The `cwd` is a bound root, a subfolder, or inside a nearer nested binding | The nearest project only, as `AGBOARD_PROGRESS`. |
+| The bindings are valid, the `cwd` is readable, and no binding matches | Nothing on stdout or stderr, exit code 0. The board and the registry are not read. |
+| The nearest binding names a project that is gone | `bound_project_missing`. It never falls back to a parent. |
+| The bindings file is malformed or unreadable | `AGBOARD_ERROR` with the cause. It is not treated as unbound. |
+| The input is not valid JSON, has the wrong type, or is too large | `invalid_hook_input`, as before. |
+| The `cwd` is missing, `null`, or empty | The process working folder is used. |
+| The `cwd` is not a string, or is a relative path | `invalid_hook_input`. |
+| The `cwd` does not exist or cannot be read | `hook_cwd_unavailable`. It is never turned into a skip. |
+| An explicit `--project` | The named project wins. A name that is not found is `project_not_found`. |
+
+The 64 KiB input, 256 KiB table, 10 second limit, event allowlist, and fixed command stay. The Hook never shows an update notice, recovers a settings file, uses the network, or writes settings.
+
+## The update notice
+
+After an ordinary command prints its output, `notice::stale_line` may print one line to stderr. It compares the `installedVersion` of the records `update` would touch (Global, and the nearest bound root's Project) with this build's version. It scans no asset, uses no network, and writes nothing. It prints only when stdout and stderr are both terminals and the output is not JSON. `hook`, `wait`, `serve`, `stop`, `setup`, `connect`, `update`, help, and version return before it. A missing, unreadable, or unknown registry means no notice and no change to the command's output or exit code; `update` is where such a problem is reported. The text is in [Working with agents](../../guide/automation/agents.md#refresh-the-integrations).
+
 ## Preparing access with setup
 
-`agboard setup` adds the Agent Board data area to the agents' allowed folders so they can edit shared files. It is a one-time step the user runs; it never creates projects or registers hooks.
+`agboard setup` adds the Agent Board data area to the agents' allowed folders so they can edit shared files. It is a one-time step the user runs; it never creates projects or registers hooks. `agboard connect` makes the same permission change and also installs the Skill and the Hook.
 
 How it is built:
 

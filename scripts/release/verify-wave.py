@@ -91,6 +91,15 @@ WAVES = {
         ["pnpm", "--dir", "web", "build-storybook"],
         ["pnpm", "--dir", "web", "verify:story-coverage"],
     ],
+    "5": [
+        ["pnpm", "--dir", "web", "build"],
+        ["cargo", "build"],
+        ["cargo", "test"],
+        ["pnpm", "--dir", "docs", "install", "--frozen-lockfile"],
+        ["pnpm", "--dir", "docs", "build"],
+        ["pnpm", "--dir", "e2e", "install", "--frozen-lockfile"],
+        ["env", "AGBOARD_DOCS_E2E_PORT=9095", "pnpm", "--dir", "e2e", "test:docs"],
+    ],
 }
 
 

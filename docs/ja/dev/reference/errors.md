@@ -66,6 +66,8 @@
 | `board_unavailable` | 回答待機中のPending依頼、`wait`、Hookがサーバーに届かない。Pending依頼は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。 | 1 | なし |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 1 | なし |
 | `wait_timeout` | 変更待ち（`wait --after`）が任意の`--timeout`に達した、またはPending依頼の`wait.timeoutSeconds`に達した。回答ではなく、質問はPendingのまま。 | 1 | なし |
+| `hook_cwd_unavailable` | Hookの入力の`cwd`が、存在しない、または読めない絶対パス。`AGBOARD_ERROR`として返す。確認できないフォルダを未bindとは扱わない。 | なし（Hookの出力） | なし |
+| `invalid_hook_input` | Hookの入力がJSONでない、大きすぎる、または`cwd`が文字列でない、絶対パスでない。`AGBOARD_ERROR`として返す。 | なし（Hookの出力） | なし |
 | `forbidden` | Webの書き込みが保護に失敗した（Host・Origin・`Sec-Fetch-Site`・トークン）。 | なし | 403 |
 | `invalid_sections` | Detail経路の`sections`クエリが`document`・`history`・`document,history`のいずれでもない。[Web API](./web-api.md#summaryとdetail)を参照。 | なし | 400 |
 | `not_implemented` | SummaryまたはDetailの経路はあるが、ハンドラーがまだ書かれていない。 | なし | 501 |
@@ -127,5 +129,7 @@
 | 4 | プロジェクトが見つからない、またはフォルダが紐付いていない。 |
 
 そのほかのHTTPステータス: 壊れたJSONは400、1 MiBを超える本文は413です。保護は対象を探す前に行うので、拒否された要求から何が存在するかは分かりません。
+
+`connect`と`update`は、結果を自分で表示し、独自の終了コードを使います。`connect`は、成功、変更なし、取り消しが0、エージェントの設定に失敗した、またはフォルダがbindされていないが1、コマンドラインが不正、またはターミナルがないが2です。`update`は、成功、更新なし、取り消しが0、失敗、競合、一部の失敗が1、コマンドラインが不正、または`--yes`なしでターミナルがないが2です。どちらもグローバルの`--json`を`invalid_argument`（終了コード2）で拒否し、`update`は`--dry-run`も拒否します。失敗の理由は、たとえば`was edited after Agent Board installed it`のように、標準エラー出力へテキストで出ます。読めるフォルダに紐付けがないHookは、エラーではありません。何も出力せず、終了コード0で終わります。[計画と適用](../concepts/agents.md#計画と適用)を参照してください。
 
 タスク待ちモード（`wait --until task --idle-timeout <seconds>`）では、idle期限まで対象タスクが現れないと、成功結果の`kind: "idle_timeout"`を出力して終了コード0を返します。対象タスクを取得した場合も終了コード0です。引数誤りは2、プロジェクトがない場合は4、サーバー停止・不整合な応答・不正なボードデータ・ストリーム障害は`board_unavailable`で1です。これらは対象なしの正常終了ではありません。idle秒数は必須で1〜86,400です。

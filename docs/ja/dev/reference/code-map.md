@@ -75,6 +75,13 @@
 - `src/cli/commands/connect.rs`: 対話式の`agboard connect`の流れです。`src/integrations/detect.rs`（PATH上のエージェントとversion）、`prompt.rs`（質問）、`report.rs`（計画と結果の文面）を、計画とエージェントごとの適用の前後で使います。
 - `.agents/skills/agent-board/`: エージェントのスキルを置きます。
 
+### SkillとHookの導入
+
+- `src/integrations/`: `assets.rs`と`build_bundle.rs`（同梱するバンドル）、`paths.rs`（配置先）、`registry.rs`（導入記録）、`plan.rs`・`compose.rs`・`merge.rs`・`skill.rs`・`duplicates.rs`（読み取りだけの計画と所有）、`apply.rs`・`ops.rs`・`journal.rs`・`recovery.rs`（書き込み、バックアップ、ジャーナル、復旧）、`update.rs`と`update_report.rs`（`update`が選ぶものと表示）、`notice.rs`（更新通知）。
+- `src/cli/commands/update.rs`: `agboard update`と、通知を表示する処理。
+- `tests/integration_*.rs`: バンドル、配置先、導入、復旧、connect、update、通知の焦点テスト。
+- `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。
+
 ### プロジェクトのドキュメント
 
 - `src/docs/`: パス、読み込み、READMEの文面（`templates/README.en.md`・`templates/README.ja.md`）。

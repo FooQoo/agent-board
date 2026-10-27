@@ -66,6 +66,8 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `board_unavailable` | A waiting Pending request, `wait`, or the hook cannot reach the server. A Pending request checks the server before saving, so an unavailable server leaves no question. | 1 | n/a |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | 1 | n/a |
 | `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, or a Pending request reached its integer `wait.timeoutSeconds`. It is not an answer; the question stays Pending. | 1 | n/a |
+| `hook_cwd_unavailable` | The hook's input `cwd` is an absolute path that does not exist or cannot be read. It is reported as `AGBOARD_ERROR`; a folder that cannot be checked is never treated as unbound. | n/a (hook output) | n/a |
+| `invalid_hook_input` | The hook input is not valid JSON, is too large, or has a `cwd` that is not a string or not an absolute path. Reported as `AGBOARD_ERROR`. | n/a (hook output) | n/a |
 | `forbidden` | A web write failed the guard (Host, Origin, `Sec-Fetch-Site`, or token). | n/a | 403 |
 | `invalid_sections` | The `sections` query of a Detail route is not `document`, `history`, or `document,history`. See [Web API](./web-api.md#summary-and-detail). | n/a | 400 |
 | `not_implemented` | The Summary or Detail route exists but its handler is not written yet. | n/a | 501 |
@@ -127,5 +129,7 @@ These are returned by the `/api/preferences` and `/monitor/api/preferences` rout
 | 4 | The project was not found or the folder is not bound. |
 
 Other web statuses: 400 for malformed JSON and 413 for a body over 1 MiB. Guards run before the target is looked up, so a refused request never reveals what exists.
+
+`connect` and `update` print their own results and use their own codes. `connect`: 0 for success, nothing to change, or a cancel; 1 when an agent could not be configured or the folder is not bound; 2 for a bad command line or no terminal. `update`: 0 for success, nothing to update, or a cancel; 1 for a failure, a conflict, or a partial failure; 2 for a bad command line, or no terminal without `--yes`. Both refuse the global `--json` with `invalid_argument` (exit 2), and `update` also refuses `--dry-run`. Their failure reasons go to stderr as text, for example `was edited after Agent Board installed it`. A hook that finds no binding for a readable folder is not an error: it prints nothing and exits 0. See [Plan and apply](../concepts/agents.md#plan-and-apply).
 
 Task mode (`wait --until task --idle-timeout <seconds>`) has a different successful ending: when no eligible task arrives before its idle deadline, it prints a `kind: "idle_timeout"` JSON result and exits 0. An eligible task also exits 0. Invalid arguments exit 2. A missing project exits 4. A stopped/mismatched server, invalid board data, or a stream failure returns `board_unavailable` and exits 1; these are errors, not idle completion. The idle timeout is 1 to 86,400 seconds and is required.

@@ -25,7 +25,7 @@ Find what you see, read the cause, and do what the last column says. The command
 | `task_is_done` | The task is Done; agents may not change it. | Reopen the task in the browser if more work is needed. |
 | `acceptance_unmet` | The agent tried to move a task to Done while a condition is unmet. | Have the agent verify the conditions and mark them done; the task then finishes by itself. |
 | `request_changed` | The question was already answered, withdrawn, or replaced. | Read the task again and answer the current question. |
-| `folder_unbound` or `bound_project_missing` | The agent's folder is not registered to a project, or the project was deleted. | Register the folder: `agboard project bind "My project"`. See [Data and backups](./data#register-a-folder). |
+| `folder_unbound` or `bound_project_missing` | The agent's folder is not registered to a project, or the project was deleted. (The hook itself stays silent in a folder with no binding; this error comes from `agboard progress` and from a deleted project.) | Register the folder: `agboard project bind "My project"`. See [Data and backups](./data#register-a-folder). |
 | `confirmation_required` | Deleting something needs a person's confirmation in a terminal. | Run the command yourself. |
 | The hook shows `AGBOARD_ERROR` | The progress table cannot be built (no project, table larger than 256 KiB, or the server is unreachable). | Fix the cause named in the message. The agent must not change the board until the table works. |
 
@@ -48,6 +48,24 @@ Find what you see, read the cause, and do what the last column says. The command
 | The dialog says the settings were saved but ngrok could not be reached | The ngrok authtoken is wrong, or there is no internet connection. | Check the token and the connection, then choose **Save and try again**. |
 | The page loads but answers are refused | The address you opened is not the public address of the current connection. | Open the address the connection reports. Restarting the connection issues a new session. |
 | The monitor says the data is out of date | Auto-update stopped, or some projects could not be read. | Reload or reopen the page. The monitor re-fetches when it becomes visible again. |
+
+## connect or update reports a problem
+
+| What you see | Cause | What to do |
+| --- | --- | --- |
+| `connect is interactive and needs a terminal` (exit 2) | `connect` was started from a pipe, a script, or an agent. | Run it yourself in a terminal. `update` needs a terminal too, unless you add `--yes`. |
+| `This folder is not bound to a project` (exit 1) | The folder, or a parent, is not bound. | Run `agboard project create "My project"` or `agboard project bind "My project"`, then `connect` again. |
+| An agent is listed as not found | `claude` or `codex` is not on your `PATH`. | Install it or fix `PATH`, then run `connect` again. |
+| `was edited after Agent Board installed it`, `was added to the Skill directory by someone else`, or `is already registered and Agent Board did not install it` | A conflict: a file `connect` installed was changed by you, or an equivalent Hook was registered by hand. Nothing was written for that agent. | Keep or move your edit, remove the duplicate registration, then run the command again. `--yes` does not override a conflict. See [Conflicts](./data#integration-records-backups-and-manual-permissions). |
+| `sandbox_mode is not set` or a mode that is not `workspace-write` | Codex's permission settings do not let the data folder be written. `connect` never changes them. | Set `sandbox_mode = "workspace-write"` in Codex's `config.toml` yourself, then run `connect` again. |
+| An unfinished earlier run could not be undone safely | A run was cut off and a file changed afterwards. | Restore the files from the backups the message names, remove the journal file it names, then run the command again. |
+| The agent does not run the Hook | The Hook is written but not trusted, or the agent was not restarted. | Start a new session (Claude Code) or restart Codex, then review the Hook with `/hooks`. Trust it again after `update` changes a Hook. |
+
+Exit codes of both commands are in the [CLI reference](../automation/cli#connect-and-update).
+
+## macOS will not run agboard
+
+The command from Homebrew is signed with a Developer ID certificate and notarized by Apple. If macOS blocks it, do not turn off Gatekeeper or remove the quarantine yourself. First check that `brew install fooqoo/tap/agboard` finished without an error, that your Mac runs macOS 15 or later, and that `agboard --version` runs. The first launch may need a network connection so that macOS can check the notarization. If it is still blocked, [open an issue](https://github.com/FooQoo/agent-board/issues) with the macOS version and the message.
 
 ## Still stuck?
 

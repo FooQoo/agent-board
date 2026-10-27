@@ -26,6 +26,23 @@ node e2e/scripts/demo-video.mjs         # docs/public/videos/(ffmpegも必要)
 
 どちらのスクリプトも、一時的な`AGBOARD_HOME`と専用のループバックポートを使うため、普段のボードやポート7420には影響しません。生成した画像と動画は、コミット前に確認してください。
 
+## 公開済みリリースの情報をプレビューする
+
+サイトのヘッダーの版とリリースノートのページは、リポジトリではなく、公開済みのGitHub Releaseから作ります。ビルドの前に、`node scripts/release/docs-release.mjs`が書き出します。
+
+```sh
+node scripts/release/docs-release.mjs --github --repo FooQoo/agent-board   # 公開するサイト
+node scripts/release/docs-release.mjs --fixture                              # 公開済みの状態を手元で確認
+node scripts/release/docs-release.mjs --none                                 # リリース前の状態（既定）
+pnpm --dir docs build
+```
+
+- 対象にするのは、`draft=false`、`prerelease=false`で、タグが`vMAJOR.MINOR.PATCH`の形のリリースだけで、その中で版が最も新しいものを使います。`Cargo.toml`の版は使いません。各リリースの本文には、`## English`と`## 日本語`のセクションが必要で、それぞれに4つの見出し（`### Changes`、`### Fixes`、`### Breaking changes`、`### Required update steps`と、その日本語の見出し）が要ります。満たさないと、スクリプトは止まります。
+- `docs/.vitepress/release.json`（Gitは無視します。ヘッダーが読みます）と、`docs/releases.md`、`docs/ja/releases.md`を書き出します。コミットしてあるページは「まだ公開されていない」状態です。`--fixture`は`releases/`のレビュー用の原稿を、目立つ警告つきで表示します。その出力はコミットしないでください。
+- Pagesのワークフローは、`main`へのプッシュ、`release`イベント（published、edited、deleted）、手動の実行で、ビルドの前にこのスクリプトを`--github`で実行します。APIの呼び出しが失敗する、またはリリースが不正なときは、ビルドが止まり、公開済みのサイトはそのまま残ります。プルリクエストは、コミットしてある状態で、オフラインでビルドします。ワークフロー自身のトークンで公開したリリースは、ワークフローを起動しないことがあります。その場合は手動で実行してください。
+- `releases/vX.Y.Z.md`は、リリースノートのレビュー用の原稿です。公開後は、GitHub Releaseの本文が正本です。
+- 公開後の見た目を確認するには、fixtureを実行してビルドし、`pnpm --dir docs preview --port <port>`で開きます。確認したら、`--none`でコミットしてあるページに戻します。
+
 ## UIのStoryとカバレッジ
 
 Storybookでは、部品の状態を個別に表示したり、アプリと同じUI部品を組み合わせてページ全体を表示したりできます。各部品のStory、焦点を絞ったテスト、専用スタイル、カバレッジ台帳はソースの近くに置きます。部品やページを変更したら、Storyと画面状態の記録も更新し、対象の言語・テーマ・表示幅で画面を確認してください。自動検査の現在の範囲は[開発環境のセットアップ](./getting-started/setup.md#storybook)を参照してください。

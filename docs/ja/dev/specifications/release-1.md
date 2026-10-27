@@ -1,6 +1,6 @@
 # v1.0.0 リリース仕様
 
-承認済みの実装前仕様。ここに記載したconnect/update・配布は、実装済み・公開済みであることを意味しない。現在の操作は[利用ガイド](../../guide/index.md)を参照する。
+v1.0.0の配布・connect・update・ドキュメントの仕様。このページは仕様を示す。動作は[利用ガイド](../../guide/index.md)に書く。版がリリース済みになるのは、そのGitHub Releaseを公開したときだけである。
 
 [English](../../../dev/specifications/release-1.md)
 
@@ -39,11 +39,17 @@ agboard serve
 
 変更前にバックアップし、原子的に書き込む。失敗したエージェントの今回の書き込みを復旧し、他のエージェントの成功を巻き戻さない。部分成功はエージェント・配置・復旧状況を示して非ゼロ終了する。管理対象のハッシュは利用者変更の検出に使い、配布元の真正性や悪意のある直接編集を防ぐ認証手段とは扱わない。
 
+## 署名と公証
+
+正式リリースの各CPUのバイナリは、Developer ID Application証明書で署名する。Hardened Runtimeとsecure timestampを付け、両CPUで同じTeam ID、固定のidentifier `io.github.FooQoo.agent-board.agboard`を使う。既定のDeveloper IDのdesignated requirementを使い、バイナリのハッシュは固定しない。署名したバイナリをZIPにしてAppleの公証へ提出し、状態が`Accepted`になってから、同じバイト列をCPUごとのtar.gzへ梱包し、`SHA256SUMS`のハッシュを求め、GitHub ReleaseとFormulaに使う。単体のコマンドラインのバイナリにはstapleしたチケットを持たせられないため、macOSは初回の起動で公証をオンラインで確認する。インストールでGatekeeperを無効にすることは求めない。
+
+署名用のSecrets（`MACOS_CERT_P12`、`MACOS_CERT_PASSWORD`、`APPLE_ID`、`APPLE_TEAM_ID`、`APPLE_APP_PASSWORD`）は、保護された`release-signing` environmentの、プッシュした`v*`タグの実行にだけある。プルリクエストと手動のビルドは、署名なしの候補を作り、リリースのファイルにはならない。証明書がない、公証が拒否またはタイムアウトした、片方のCPUが失敗した場合は、リリースを止める。署名なしへ切り替えることはない。Team IDとidentifierは、リリースをまたいで変えない。開発者の手順は[リリースをビルドする](../getting-started/setup.md#build-release)にある。
+
 ## Hookの対象解決
 
-Hook入力のcwd（利用できないときはプロセスcwd）から、最も近いbindを解決する。Global Hookも未bindフォルダで起動するが、正常な未bindはstdout/stderrとも空・終了コード0とし、進捗を注入しない。明示的な--projectは優先する。
+Hook入力のcwd（ない、null、空のときはプロセスcwd）から、最も近いbindを解決する。Global Hookも未bindフォルダで起動するが、正常な未bindはstdout/stderrとも空・終了コード0とし、進捗を注入しない。明示的な--projectは優先する。
 
-壊れたbind、対象プロジェクトの消失、形式不正、読込・権限障害はAGBOARD_ERRORで原因を示す。親の別プロジェクトへフォールバックしない。通常の`agboard progress`の未bindはfolder_unboundのまま。Global Skillも未bindで別プロジェクトを推測しない。
+壊れたbind、対象プロジェクトの消失（`bound_project_missing`）、入力の形式不正やcwdの型違い・相対パス（`invalid_hook_input`）、cwdが存在しない・読めない（`hook_cwd_unavailable`）はAGBOARD_ERRORで原因を示す。親の別プロジェクトへフォールバックしない。通常の`agboard progress`の未bindはfolder_unboundのまま。Global Skillも未bindで別プロジェクトを推測しない。
 
 ## Skills・Hooksの更新
 
@@ -58,3 +64,7 @@ Hook入力のcwd（利用できないときはプロセスcwd）から、最も�
 VitePressの英語・日本語ヘッダーに公開済みバージョンとGitHub Releasesへのリンクを表示する。`/releases`と`/ja/releases`は新しい順に変更・修正・破壊的変更・必要な更新操作を案内する。GitHub Releasesの公開済み履歴を正本とし、mainの開発中Cargoバージョンを公開版として表示しない。過去版の切替UIは設けない。
 
 導入ガイドはHomebrew、connect、update、bind、Global/Projectの違い、Hookの未bind時のskipと信頼確認を説明する。画面はVitePress既定テーマに従い、アプリUIや新しいPencilモックは追加しない。
+
+## 機能の提供段階
+
+v1.0.0のすべての機能は、一般提供（GA）かパブリックプレビューのどちらかである。GAは、その機能を当面そのまま運用することを指し、不具合がないことや、互換性・サポートを無期限に保証することを意味しない。パブリックプレビューは、動作が変わる可能性があることを指す。v1.0.0には両方が混在する。パブリックプレビューは、Docs、`connect`と`update`、タスクの受け取り（`wait --until task`）、モバイルモニター、初回の案内である。Docs、モバイル接続の設定、初回の案内の画面にバッジと、リンク付きの注意を表示し、`connect`と`update`の対話画面は、先頭に1行を出す。段階と制約を一覧にする場所は[機能の提供段階](../../guide/feature-stages.md)だけで、製品はその文言を表示し、そこへリンクする。

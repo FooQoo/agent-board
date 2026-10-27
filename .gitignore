@@ -8,5 +8,6 @@ e2e/playwright-report/
 .playwright-mcp
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+docs/.vitepress/release.json
 graphify-out
 scripts/bench/results/

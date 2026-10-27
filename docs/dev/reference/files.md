@@ -170,6 +170,39 @@ The CLI, web API, and hook share one camelCase task representation: the `task.js
 - `shared/.internal/onboarding.json`: the guide's status, lease owner, active run, and recent command IDs. See [saving and recovery](../concepts/saving-and-recovery.md).
 - `tasks/<id>/task.json` `onboardingSample`: `{ "runId": "<32 lowercase hex>", "ordinal": 1 | 2 }`. Present only on the guide's sample cards.
 
+## Integration records
+
+`<data-dir>/integrations.json` (normally `~/.agent-board/integrations.json`) is written by `connect` and `update`. It lives outside `shared/`, so it is not part of any project. It is written atomically. Next to it are `integrations-<agent>.lock` and, only while a run is unfinished, `integrations-journal-<agent>.json` (owner-only).
+
+```json
+{
+  "schemaVersion": 1,
+  "installations": [
+    {
+      "agent": "claude",
+      "component": "hook",
+      "scope": "project",
+      "projectId": "<project-id>",
+      "boundRoot": "<absolute bound root>",
+      "configuredPath": "<absolute path of the settings file>",
+      "resolvedPath": "<the same path with links resolved>",
+      "installedVersion": "1.0.0",
+      "managedHash": "<sha256>",
+      "managedEntries": [
+        { "event": "PostToolUse", "matcher": null, "command": "agboard hook --agent claude", "sha256": "<sha256>" }
+      ],
+      "files": []
+    }
+  ]
+}
+```
+
+- `agent` is `claude` or `codex`; `component` is `skill` or `hook`; `scope` is `global` or `project`.
+- `projectId` and `boundRoot` appear only on Project records.
+- A Skill record lists `files` (`path` relative to the Skill folder, and `sha256`); a Hook record lists `managedEntries`. The other list is empty. `managedHash` is the manifest hash or the entries hash described in [Embedded bundle](../concepts/agents.md#embedded-bundle).
+- Only `schemaVersion` 1 is read. Unknown fields, a different version, and malformed JSON are refused and the file is never rewritten. Backups of changed files sit next to them as `<name>.agboard-backup-<txn>-<index>`.
+- Paths in the file are absolute for this machine; in documentation they are written with placeholders.
+
 ## Folder bindings
 
 A folder binding maps a real folder to a ProjectId so the hook and `agboard progress` know which project a working folder belongs to. It is stored only in the machine-local data area, never in the shared area or tracked files. Because it stores the ProjectId, it follows renames and never moves to a re-created project with the same name. The nearest bound ancestor folder wins. Missing folders, broken bindings, and deleted ProjectIds are explained errors.

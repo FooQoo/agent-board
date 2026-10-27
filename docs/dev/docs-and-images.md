@@ -26,6 +26,23 @@ node e2e/scripts/demo-video.mjs         # docs/public/videos/ (also needs ffmpeg
 
 Both scripts use disposable data in a temporary `AGBOARD_HOME` and their own loopback ports, so your saved board and port 7420 are untouched. Review the generated images and videos before committing them.
 
+## Preview published release metadata
+
+The version in the site header and the release notes pages come from the published GitHub Releases, not from the repository. `node scripts/release/docs-release.mjs` writes them before the build:
+
+```sh
+node scripts/release/docs-release.mjs --github --repo FooQoo/agent-board   # the published site
+node scripts/release/docs-release.mjs --fixture                              # local preview of a published state
+node scripts/release/docs-release.mjs --none                                 # the state before any release (default)
+pnpm --dir docs build
+```
+
+- It counts only releases with `draft=false`, `prerelease=false`, and a `vMAJOR.MINOR.PATCH` tag, and takes the newest by version. The version in `Cargo.toml` is never used. Each release body needs an `## English` and a `## 日本語` section with the four headings (`### Changes`, `### Fixes`, `### Breaking changes`, `### Required update steps`, and the Japanese equivalents); anything else stops the script.
+- It writes `docs/.vitepress/release.json` (ignored by Git), which the header reads, and `docs/releases.md` and `docs/ja/releases.md`. The committed pages show the "not yet published" state. `--fixture` renders the review copies in `releases/` with a visible warning; do not commit its output.
+- The Pages workflow runs the script with `--github` before the build, on `main` pushes, on `release` events (published, edited, deleted), and by hand. If the API call fails or a release is invalid, the build stops and the published site stays as it is. Pull requests build offline with the committed state. A release published with the workflow's own token may not start the workflow; run it by hand.
+- `releases/vX.Y.Z.md` is the review copy of the release notes. The GitHub Release body is the source of truth once it is published.
+- To check the published look, run the fixture, build, and `pnpm --dir docs preview --port <port>`, then restore the committed pages with `--none`.
+
 ## UI stories and coverage
 
 Use Storybook to isolate a component state or compose a full page with the same UI parts the application uses. Keep the Story, focused test, dedicated stylesheet, and coverage entry with the source. When a component or page changes, update its Story and visible-state entry, then review the rendered page at the locale, theme, and viewport it represents. The Storybook page in [Set up and run](./getting-started/setup.md#storybook) describes the current automated coverage limits.
