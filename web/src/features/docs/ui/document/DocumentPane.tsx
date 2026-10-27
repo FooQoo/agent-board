@@ -19,6 +19,11 @@ export interface DocumentPaneProps {
   kindLabel?: string;
   /** The body: the rendered Markdown, the MDX frame, or the file viewer. */
   children?: ReactNode;
+  /**
+   * A link in the body was chosen; `href` is as the document wrote it. The pane stops the browser
+   * from following it, so the board's page never navigates away.
+   */
+  onLink?: (href: string) => void;
 }
 
 /**
@@ -32,6 +37,7 @@ export function DocumentPane({
   compact = false,
   kindLabel,
   children,
+  onLink,
 }: DocumentPaneProps) {
   const { t } = useTranslation();
 
@@ -71,7 +77,19 @@ export function DocumentPane({
     <div className="docs-doc" data-compact={compact ? 'true' : undefined} data-state="ready">
       <span className="docs-doc__kind">{kindLabel ?? t('docsDocument.kind')}</span>
       {frontmatter ? <FrontmatterBlock source={frontmatter} /> : null}
-      <div className="docs-doc__body">{children}</div>
+      {/* Catches the clicks on the links inside; a focused link's Enter fires the same click. */}
+      <div
+        className="docs-doc__body"
+        onClickCapture={(event) => {
+          const link = (event.target as Element).closest('a[href]');
+          if (link === null || !event.currentTarget.contains(link)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          onLink?.(link.getAttribute('href') ?? '');
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

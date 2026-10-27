@@ -55,11 +55,15 @@ export function isThemeMessage(data: unknown): data is SandboxThemeMessage {
   );
 }
 
-/** What the sandbox page tells the board. */
+/**
+ * What the sandbox page tells the board. `link` is a link the reader chose: the page never follows
+ * one itself, and the board decides what the `href` (untrusted text from the document) opens.
+ */
 export type SandboxReply =
   | { type: 'ready' }
   | { type: 'rendered' }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'link'; href: string };
 
 export function isRenderMessage(data: unknown): data is SandboxRenderMessage {
   if (typeof data !== 'object' || data === null) return false;
@@ -74,6 +78,7 @@ export function isRenderMessage(data: unknown): data is SandboxRenderMessage {
 
 export function isSandboxReply(data: unknown): data is SandboxReply {
   if (typeof data !== 'object' || data === null) return false;
-  const type = (data as { type?: unknown }).type;
+  const { type, href } = data as { type?: unknown; href?: unknown };
+  if (type === 'link') return typeof href === 'string';
   return type === 'ready' || type === 'rendered' || type === 'error';
 }

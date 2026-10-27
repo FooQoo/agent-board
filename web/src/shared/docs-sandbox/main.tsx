@@ -10,8 +10,9 @@ import {
   type SandboxRenderMessage,
   type SandboxThemeMessage,
 } from './protocol';
+import { REMARK_PLUGINS } from './plugins';
 import sandboxCss from './sandbox.css?inline';
-import { REGISTERED_COMPONENTS, remarkUnregistered, UNREGISTERED } from './unregistered';
+import { REGISTERED_COMPONENTS, UNREGISTERED } from './unregistered';
 
 // This page runs the MDX of a document. It is embedded in an iframe without `allow-same-origin`, so
 // it cannot reach the board's page, storage or token; its own CSP (see the server) forbids every
@@ -102,7 +103,7 @@ async function show({ source, labels }: SandboxRenderMessage) {
   try {
     const { default: Content } = await evaluate(source, {
       ...runtime,
-      remarkPlugins: [remarkUnregistered],
+      remarkPlugins: REMARK_PLUGINS,
     });
     content = <Content components={{ ...REGISTERED_COMPONENTS, [UNREGISTERED]: Unregistered }} />;
   } catch (error) {
@@ -120,9 +121,14 @@ window.addEventListener('message', (event) => {
   else if (isRenderMessage(event.data)) void show(event.data);
 });
 
-// A link must not take the page away from the sandbox.
+// A link must not take the page away from the sandbox. The board is told which link was chosen and
+// decides what it opens: another file of the Docs, or an http(s) address in a new tab.
 document.addEventListener('click', (event) => {
-  if ((event.target as Element | null)?.closest('a')) event.preventDefault();
+  const link = (event.target as Element | null)?.closest('a');
+  if (!link) return;
+  event.preventDefault();
+  const href = link.getAttribute('href');
+  if (href !== null) post({ type: 'link', href });
 });
 
 post({ type: 'ready' });

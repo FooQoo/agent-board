@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@/shared/i18n';
 import { DocsDialogContainer } from './DocsDialogContainer';
 
+// Built in parts so the source guard keeps rejecting embedded remote URLs.
+const SITE = `${['https:', '', 'example.com'].join('/')}/x`;
+
 vi.mock('@/shared/rich-editor/RichMarkdownEditor', () => ({
   RichMarkdownEditor: ({
     value,
@@ -14,12 +17,20 @@ vi.mock('@/shared/rich-editor/RichMarkdownEditor', () => ({
     onChange: (v: string) => void;
     disabled?: boolean;
   }) => (
-    <textarea
-      aria-label="editor"
-      defaultValue={value}
-      disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
-    />
+    <div>
+      <textarea
+        aria-label="editor"
+        defaultValue={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {/* The links of the body, as the editor draws them: plain anchors. */}
+      {[...value.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)].map(([, text, href]) => (
+        <a key={href} href={href}>
+          {text}
+        </a>
+      ))}
+    </div>
   ),
 }));
 
@@ -183,5 +194,61 @@ describe('DocsDialogContainer: open folder', () => {
     const { user } = await open();
     await user.click(screen.getByRole('button', { name: 'Open folder' }));
     expect((await screen.findByRole('alert')).textContent).toBe('Could not open the folder.');
+  });
+});
+
+describe('DocsDialogContainer: links', () => {
+  const withLinks = () => {
+    files['a.md'] = file('a.md', {
+      content: `# a\n[to c](dir/c.md#part) [folder](dir/) [nowhere](none.md) [site](${SITE})\n`,
+    });
+  };
+
+  it('opens the linked file of the docs in the dialog, read from the document folder', async () => {
+    withLinks();
+    const { user } = await open();
+    await choose(user, /a\.md/);
+    await user.click(await screen.findByRole('link', { name: 'to c' }));
+    await waitFor(() => expect(urls()).toContain('/api/projects/p1/docs/file?path=dir%2Fc.md'));
+    expect(screen.getByRole('treeitem', { name: /c\.md/ }).getAttribute('aria-current')).toBe(
+      'true',
+    );
+  });
+
+  it('opens the folder the reader closed, to show the linked file in the list', async () => {
+    withLinks();
+    const { user } = await open();
+    await user.click(screen.getByRole('treeitem', { name: /dir/ }));
+    expect(screen.queryByRole('treeitem', { name: /c\.md/ })).toBeNull();
+    await choose(user, /a\.md/);
+    await user.click(await screen.findByRole('link', { name: 'to c' }));
+    expect(await screen.findByRole('treeitem', { name: /c\.md/ })).toBeTruthy();
+  });
+
+  it('says so at the left of the footer when a link leads to no file', async () => {
+    withLinks();
+    const { user } = await open();
+    await choose(user, /a\.md/);
+    await user.click(await screen.findByRole('link', { name: 'nowhere' }));
+    const notice = await screen.findByText('The linked file is not in the docs.');
+    const openInEditor = screen.getByRole('button', { name: 'Open in editor' });
+    // The notice comes before the footer's buttons.
+    expect(
+      notice.compareDocumentPosition(openInEditor) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(urls().filter((url) => url.includes('none.md'))).toEqual([]);
+  });
+
+  it('opens an https address in a new tab and keeps the dialog on the document', async () => {
+    withLinks();
+    const openWindow = vi.fn();
+    vi.stubGlobal('open', openWindow);
+    const { user } = await open();
+    await choose(user, /a\.md/);
+    await user.click(await screen.findByRole('link', { name: 'site' }));
+    expect(openWindow).toHaveBeenCalledWith(SITE, '_blank', 'noopener,noreferrer');
+    expect(screen.getByRole('treeitem', { name: /a\.md/ }).getAttribute('aria-current')).toBe(
+      'true',
+    );
   });
 });

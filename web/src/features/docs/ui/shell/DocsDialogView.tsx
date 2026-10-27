@@ -46,9 +46,12 @@ export interface DocsDialogViewProps {
   onResize: (width: number) => void;
   /** The body pane, shown once a file is chosen. */
   children?: ReactNode;
-  /** What sits at the right of the footer, before Close: a notice and the file's buttons. Without a
-   * chosen file there is none. */
+  /** What sits at the right of the footer, after Close: the file's buttons. Without a chosen file
+   * there is none. */
   actions?: ReactNode;
+  /** The line at the left of the footer: the open file changed, was deleted, or could not be opened,
+   * or a link led nowhere. Shown only while a file is chosen. */
+  notice?: ReactNode;
   onClose: () => void;
   /** Force the phone layout (list and body as two screens) on or off; follows the window by default. */
   compact?: boolean;
@@ -98,6 +101,7 @@ export function DocsDialogView({
   onResize,
   children,
   actions,
+  notice,
   onClose,
   compact,
   phonePane,
@@ -171,6 +175,7 @@ export function DocsDialogView({
       error={null}
       onClose={onClose}
       status=""
+      footerStart={hasFile ? notice : null}
       actions={
         hasFile ? (
           <>

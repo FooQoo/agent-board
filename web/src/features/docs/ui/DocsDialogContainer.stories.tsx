@@ -294,7 +294,7 @@ export const FollowsChanges: Story = {
   },
 };
 
-/** The open file was deleted on disk: it stays on screen, and the footer says it was deleted. */
+/** The open file was deleted on disk: it stays on screen, and the left of the footer says it was deleted. */
 export const FollowsDeletion: Story = {
   args: { subscribeChanges: subscribeDocs },
   beforeEach: () => {
@@ -311,7 +311,17 @@ export const FollowsDeletion: Story = {
     await waitFor(async () => expect((await editor()).textContent).toContain('The main tasks'));
     revision = 2;
     notifyDocs();
-    await expect(await view.findByText(/This file was deleted \(\d{2}:\d{2}\)/)).toBeVisible();
+    const notice = await view.findByText(/This file was deleted \(\d{2}:\d{2}\)/);
+    await expect(notice).toBeVisible();
+    // The notice sits at the left of the footer, apart from its buttons at the right.
+    const footer = notice.closest('.editor__footer') as HTMLElement;
+    const button = view.getByRole('button', { name: 'Open in editor' });
+    await expect(
+      notice.getBoundingClientRect().left - footer.getBoundingClientRect().left,
+    ).toBeLessThan(40);
+    await expect(notice.getBoundingClientRect().right).toBeLessThan(
+      button.getBoundingClientRect().left,
+    );
     await expect((await editor()).textContent).toContain('The main tasks');
     await waitFor(() =>
       expect(view.getAllByRole('treeitem', { name: /Tasks\.md/ })).toHaveLength(1),

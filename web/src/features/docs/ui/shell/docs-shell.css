@@ -49,15 +49,17 @@
   padding-inline: 12px;
 }
 
-/* Before the buttons: the open file was changed or deleted outside the board, or could not be
-   opened in an editor. */
+/* At the left of the footer: the open file was changed or deleted outside the board, could not be
+   opened in an editor, or a link in it led to no file. */
 .docs-dialog__notice {
+  flex: 0 1 auto;
   align-self: center;
   min-width: 0;
-  margin-right: 4px;
+  overflow: hidden;
   color: var(--r-text2);
   font-size: 12px;
-  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .docs-dialog__notice[data-kind="deleted"],
@@ -461,6 +463,13 @@
 
 .docs-dialog[data-compact="true"] .editor__status {
   display: none;
+}
+
+/* The phone's buttons fill the footer, so the notice keeps to a part of it. */
+.docs-dialog[data-compact="true"] .docs-dialog__notice {
+  flex-basis: 34%;
+  white-space: normal;
+  line-height: 15px;
 }
 
 /* The list screen has no footer, and the title leaves out "Docs" to fit the path. */

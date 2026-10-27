@@ -76,9 +76,9 @@ fn the_tree_lists_names_in_order_without_content() {
     assert_eq!(tree["truncated"], false);
     assert_eq!(
         names(&tree["nodes"]),
-        ["alpha", "zeta", "A.MD", "b.md", "notes.txt", "pic.png"]
+        ["A.MD", "alpha", "b.md", "notes.txt", "pic.png", "zeta"]
     );
-    let alpha = &tree["nodes"][0];
+    let alpha = &tree["nodes"][1];
     assert_eq!(alpha["kind"], "dir");
     assert_eq!(alpha["path"], "alpha");
     let deep = &alpha["children"][0];
@@ -166,7 +166,7 @@ fn the_tree_leaves_out_dot_names_and_links() {
             .unwrap();
     }
     let tree = f.tree();
-    assert_eq!(names(&tree["nodes"]), ["dir", "real", "keep.md"]);
+    assert_eq!(names(&tree["nodes"]), ["dir", "keep.md", "real"]);
     assert_eq!(tree["nodes"][0]["children"], json!([]));
 }
 
