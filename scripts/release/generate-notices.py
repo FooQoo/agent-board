@@ -10,7 +10,8 @@ Usage:
 Sources: `cargo metadata --locked` for each release target (normal
 dependencies only), `pnpm licenses` for the web production dependencies, and
 the Rust toolchain's library COPYRIGHT file. Choices that cannot be derived
-(OR selections, source pointers) live in notices-config.json. The output has
+(OR selections, source pointers, license texts copied from upstream with their
+source recorded under text_sources) live in notices-config.json. The output has
 no timestamps or local paths, so equal inputs give equal bytes.
 """
 import argparse
@@ -179,12 +180,17 @@ def toolchain_component():
 
 
 def declared_notice(holder, license_id):
-    """A notice for a package that ships no license file (MIT only)."""
+    """A notice for a package that ships no license file (MIT only).
+
+    No copyright line is invented: the holder is named as the package metadata
+    gives it, with no year, and the notice says so.
+    """
     if license_id != "MIT":
         fail(f"declared notices support MIT only, not {license_id}")
     body = "\n".join((ROOT / "LICENSE").read_text(encoding="utf-8").split("\n")[4:]).rstrip("\n")
-    return (f"MIT License\n\nCopyright (c) {holder}\n\n"
-            "(This package ships no license file; the notice above is taken from the package metadata.)\n\n" + body)
+    return (f"MIT License\n\nCopyright holder (from the package metadata): {holder}\n\n"
+            "This package ships no license file, so the upstream copyright line cannot be quoted.\n"
+            "The license is the one declared in the package metadata; no copyright year is stated.\n\n" + body)
 
 
 def make_component(config, name, version, dist, expr, directory, upstream, source):
@@ -265,7 +271,8 @@ def main():
         components = json.loads(Path(args.components).read_text(encoding="utf-8"))
     else:
         components = rust_components(config) + web_components(config) + [toolchain_component()]
-        components += config["embedded"]
+        for item in config["embedded"]:
+            components.append({**item, "texts": [str(ROOT / t) for t in item["texts"]]})
     text = render(components)
     if args.stdout:
         sys.stdout.write(text)
