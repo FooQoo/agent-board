@@ -18,8 +18,11 @@ const T_X86: &str = "x86_64-apple-darwin";
 // Obviously fake values; none is a real credential.
 const FAKE_P12: &str = "ZmFrZS1wMTI=";
 const FAKE_CERT_PW: &str = "fixture-cert-pw-not-real";
-const FAKE_APPLE_ID: &str = "fixture@example.invalid";
-const FAKE_APP_PW: &str = "fixture-app-pw-not-real";
+const FAKE_KEY_BODY: &str = "FIXTURE-API-KEY-BODY-NOT-REAL";
+const FAKE_API_KEY: &str =
+    "-----BEGIN PRIVATE KEY-----\nFIXTURE-API-KEY-BODY-NOT-REAL\n-----END PRIVATE KEY-----";
+const FAKE_KEY_ID: &str = "FIXTUREKEY";
+const FAKE_ISSUER: &str = "00000000-0000-0000-0000-000000000000";
 
 fn repo(name: &str) -> PathBuf {
     Path::new(ROOT).join(name)
@@ -65,7 +68,15 @@ case "$1" in
       shift 4; printf '%s\n' "$@" > "$FAKE_STATE/list"
     else cat "$FAKE_STATE/list" 2>/dev/null || echo '    "/fake/login.keychain-db"'; fi ;;
   find-identity) cat "$FAKE_IDENTITIES" ;;
-  import) exit "${FAKE_IMPORT_EXIT:-0}" ;;
+  import)
+    # Record the file, the passphrase after -P, and whether the PEM is gone.
+    f="$2"; shift 2; pw=""
+    while [ $# -gt 0 ]; do [ "$1" = "-P" ] && pw="$2"; shift; done
+    printf '%s' "$pw" > "$FAKE_STATE/import_pw"
+    cp "$f" "$FAKE_STATE/import_file" 2>/dev/null || true
+    if [ -e "$(cat "$FAKE_STATE/pem_path" 2>/dev/null)" ]; then echo yes; else echo no; fi > "$FAKE_STATE/pem_at_import"
+    [ "$(cat "$f" 2>/dev/null)" = "REWRAPPED:$pw" ] || exit 1
+    exit "${FAKE_IMPORT_EXIT:-0}" ;;
   delete-keychain) touch "$FAKE_STATE/deleted" ;;
 esac
 exit 0"#,
@@ -93,9 +104,51 @@ exit 0"#,
         write_exe(
             &bin.join("xcrun"),
             r#"echo "xcrun $*" >> "$FAKE_LOG"
+# Remember the API key file the way notarytool would read it.
+key=""; kid=""; prev=""
+for a in "$@"; do
+  [ "$prev" = "--key" ] && key="$a"; [ "$prev" = "--key-id" ] && kid="$a"; prev="$a"
+done
+if [ -n "$key" ]; then
+  printf '%s' "$key" > "$FAKE_STATE/key_path"
+  cp "$key" "$FAKE_STATE/key_seen" 2>/dev/null || true
+  { stat -f %Lp "$key" 2>/dev/null || stat -c %a "$key"; } > "$FAKE_STATE/key_mode"
+fi
 case "$2" in
   submit|info) printf '%s\n' "${FAKE_NOTARY_JSON:-}"; exit "${FAKE_NOTARY_EXIT:-0}" ;;
-  log) eval "last=\${$#}"; echo "{\"issues\":[\"leaked $APPLE_ID and $APPLE_APP_PASSWORD\"]}" > "$last" ;;
+  log) eval "last=\${$#}"; printf '{"issues":["leaked %s and %s"]}\n' "$(cat "$key")" "$kid" > "$last" ;;
+esac
+exit 0"#,
+        );
+        // OpenSSL: `rand -hex N`, and `pkcs12` decrypt / re-wrap. Passwords are
+        // read from the environment variable named by `env:`; the fake records
+        // the resolved values in state files, never in the argument log.
+        write_exe(
+            &bin.join("openssl"),
+            r#"echo "openssl $*" >> "$FAKE_LOG"
+resolve() { case "$1" in env:*) v="${1#env:}"; printf '%s' "${!v}" ;; *) printf '%s' "$1" ;; esac; }
+case "$1" in
+  rand) head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n'; echo ;;
+  pkcs12)
+    shift; in=""; out=""; passin=""; passout=""; export_mode=0
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -in) in="$2"; shift ;; -out) out="$2"; shift ;;
+        -passin) passin=$(resolve "$2"); shift ;; -passout) passout=$(resolve "$2"); shift ;;
+        -export) export_mode=1 ;;
+      esac; shift
+    done
+    if [ "$export_mode" = 0 ]; then
+      [ "$passin" = "fixture-cert-pw-not-real" ] || { echo "wrong password" >&2; exit 1; }
+      printf '%s' "$out" > "$FAKE_STATE/pem_path"
+      printf 'PEM-FIXTURE' > "$out"
+      { stat -f %Lp "$out" 2>/dev/null || stat -c %a "$out"; } > "$FAKE_STATE/pem_mode"
+    else
+      printf '%s' "$passout" > "$FAKE_STATE/passout"
+      [ -n "$passout" ] || exit 1
+      [ "$(cat "$in")" = PEM-FIXTURE ] || exit 1
+      printf 'REWRAPPED:%s' "$passout" > "$out"
+    fi ;;
 esac
 exit 0"#,
         );
@@ -136,6 +189,9 @@ exit 0"#,
             .env_remove("APPLE_TEAM_ID")
             .env_remove("APPLE_ID")
             .env_remove("APPLE_APP_PASSWORD")
+            .env_remove("APP_STORE_CONNECT_API_KEY")
+            .env_remove("APP_STORE_CONNECT_KEY_ID")
+            .env_remove("APP_STORE_CONNECT_ISSUER_ID")
             .env_remove("NOTARY_RESUME_ID");
         c
     }
@@ -164,7 +220,7 @@ exit 0"#,
 }
 
 fn assert_no_secrets(output: &str) {
-    for secret in [FAKE_P12, FAKE_CERT_PW, FAKE_APPLE_ID, FAKE_APP_PW] {
+    for secret in [FAKE_P12, FAKE_CERT_PW, FAKE_KEY_BODY] {
         assert!(
             !output.contains(secret),
             "a secret value reached the output"
@@ -173,6 +229,52 @@ fn assert_no_secrets(output: &str) {
 }
 
 // ---- sign-macos.sh -------------------------------------------------------
+
+/// The certificate password must reach OpenSSL only through the environment,
+/// and `security import -P` may carry only the random one-time passphrase.
+fn assert_password_never_on_a_command_line(w: &World) {
+    let log = w.log();
+    assert!(
+        !log.contains(FAKE_CERT_PW),
+        "the password is on a command line"
+    );
+    assert!(
+        !log.contains(FAKE_P12),
+        "the certificate is on a command line"
+    );
+    assert!(
+        log.contains("-passin env:MACOS_CERT_PASSWORD"),
+        "the decrypt must read the password from the environment: {log}"
+    );
+    assert!(log.contains("-passout env:"), "{log}");
+    let onetime = fs::read_to_string(w.path("state/passout")).unwrap();
+    assert!(!onetime.is_empty());
+    assert_ne!(
+        onetime, FAKE_CERT_PW,
+        "the one-time passphrase equals the password"
+    );
+    assert_eq!(
+        fs::read_to_string(w.path("state/import_pw")).unwrap(),
+        onetime,
+        "security import must use the one-time passphrase"
+    );
+    assert!(log.contains(&format!("-P {onetime}")), "{log}");
+    assert_eq!(
+        fs::read_to_string(w.path("state/pem_at_import"))
+            .unwrap()
+            .trim(),
+        "no"
+    );
+    assert_eq!(
+        fs::read_to_string(w.path("state/pem_mode")).unwrap().trim(),
+        "600"
+    );
+    let pem = fs::read_to_string(w.path("state/pem_path")).unwrap();
+    assert!(
+        !Path::new(&pem).exists(),
+        "the decrypted PEM was left behind"
+    );
+}
 
 #[test]
 fn prepare_makes_a_job_keychain_resolves_one_identity_and_cleanup_removes_it() {
@@ -191,6 +293,7 @@ fn prepare_makes_a_job_keychain_resolves_one_identity_and_cleanup_removes_it() {
     assert!(log.contains("security create-keychain"));
     assert!(log.contains("-T /usr/bin/codesign"));
     assert!(!w.path("runner/agboard-signing/cert.p12").exists());
+    assert_password_never_on_a_command_line(&w);
 
     let mut clean = w.cmd("sign-macos.sh", &["cleanup"]);
     let out = clean.output().unwrap();
@@ -262,6 +365,25 @@ fn prepare_stops_when_the_certificate_cannot_be_imported() {
     assert_eq!(out.status.code(), Some(2), "{}", text(&out));
     assert_no_secrets(&text(&out));
     assert!(w.path("state/deleted").exists());
+    assert_password_never_on_a_command_line(&w);
+    // Nothing decrypted or re-wrapped survives the failure.
+    assert!(!w.path("runner/agboard-signing").exists());
+}
+
+#[test]
+fn prepare_stops_with_exit_2_when_the_certificate_password_is_wrong() {
+    let w = World::new();
+    let mut c = w.cmd("sign-macos.sh", &["prepare"]);
+    w.secrets(&mut c);
+    let out = c
+        .env("MACOS_CERT_PASSWORD", "wrong-fixture-pw")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(2), "{}", text(&out));
+    assert!(!w.log().contains("security import"));
+    assert!(!w.path("runner/agboard-signing").exists());
+    let pem = fs::read_to_string(w.path("state/pem_path")).unwrap_or_default();
+    assert!(pem.is_empty() || !Path::new(&pem).exists());
 }
 
 #[test]
@@ -390,14 +512,46 @@ fn notarize(w: &World, env: &[(&str, &str)], creds: bool) -> Output {
         ],
     );
     if creds {
-        c.env("APPLE_ID", FAKE_APPLE_ID)
-            .env("APPLE_TEAM_ID", TEAM)
-            .env("APPLE_APP_PASSWORD", FAKE_APP_PW);
+        c.env("APP_STORE_CONNECT_API_KEY", FAKE_API_KEY)
+            .env("APP_STORE_CONNECT_KEY_ID", FAKE_KEY_ID)
+            .env("APP_STORE_CONNECT_ISSUER_ID", FAKE_ISSUER);
     }
     for (k, v) in env {
         c.env(k, v);
     }
     c.output().unwrap()
+}
+
+/// The key reaches notarytool only as a 0600 file path, never as an argument,
+/// and the file is gone afterwards.
+fn assert_key_handled_safely(w: &World) {
+    let log = w.log();
+    assert!(
+        !log.contains(FAKE_KEY_BODY),
+        "key contents on a command line"
+    );
+    assert!(
+        !log.contains("--password") && !log.contains("--apple-id"),
+        "{log}"
+    );
+    let path = fs::read_to_string(w.path("state/key_path")).unwrap();
+    assert!(
+        log.contains(&format!(
+            "--key {path} --key-id {FAKE_KEY_ID} --issuer {FAKE_ISSUER}"
+        )),
+        "{log}"
+    );
+    assert_eq!(
+        fs::read_to_string(w.path("state/key_mode")).unwrap().trim(),
+        "600"
+    );
+    assert_eq!(
+        fs::read_to_string(w.path("state/key_seen"))
+            .unwrap()
+            .trim_end(),
+        FAKE_API_KEY
+    );
+    assert!(!Path::new(&path).exists(), "the key file was left behind");
 }
 
 fn notary_record(w: &World) -> serde_json::Value {
@@ -424,6 +578,7 @@ fn notarization_submits_a_zip_and_passes_only_on_accepted() {
     assert!(!log.contains(".tar.gz"));
     assert!(log.contains("--wait") && log.contains("--output-format json"));
     assert!(!log.contains("stapler"));
+    assert_key_handled_safely(&w);
     assert_no_secrets(&fs::read_to_string(w.path("evidence/notary.json")).unwrap());
 }
 
@@ -479,6 +634,8 @@ fn notarization_that_is_not_accepted_stops_with_a_distinct_code_and_a_redacted_l
         let log = fs::read_to_string(w.path("evidence/notary-log.json")).unwrap();
         assert_no_secrets(&log);
         assert!(log.contains("[redacted]"), "{name}: {log}");
+        assert!(!log.contains(FAKE_KEY_ID), "{name}: key id left in the log");
+        assert_key_handled_safely(&w);
         assert!(!w.path("evidence/notary-log.raw.json").exists());
     }
 }
@@ -491,11 +648,22 @@ fn notarization_with_unreadable_output_fails_and_never_succeeds() {
 }
 
 #[test]
-fn notarization_needs_all_three_credentials() {
+fn notarization_needs_the_key_the_key_id_and_the_issuer() {
     let w = World::new();
     let out = notarize(&w, &[], false);
     assert_eq!(out.status.code(), Some(2), "{}", text(&out));
     assert!(!w.log().contains("notarytool submit"));
+    for missing in [
+        "APP_STORE_CONNECT_API_KEY",
+        "APP_STORE_CONNECT_KEY_ID",
+        "APP_STORE_CONNECT_ISSUER_ID",
+    ] {
+        let w = World::new();
+        let out = notarize(&w, &[(missing, "")], true);
+        assert_eq!(out.status.code(), Some(2), "{missing}: {}", text(&out));
+        assert!(text(&out).contains(missing));
+        assert!(!w.log().contains("notarytool"));
+    }
 }
 
 #[test]
@@ -513,6 +681,7 @@ fn notarization_can_resume_an_earlier_submission_without_submitting_again() {
     let log = w.log();
     assert!(log.contains("notarytool info sub-9"));
     assert!(!log.contains("notarytool submit"));
+    assert_key_handled_safely(&w);
 }
 
 // ---- release-gate.py -----------------------------------------------------
@@ -812,15 +981,17 @@ fn secrets_and_write_access_live_only_in_the_formal_path() {
     for secret in [
         "MACOS_CERT_P12",
         "MACOS_CERT_PASSWORD",
-        "APPLE_ID",
         "APPLE_TEAM_ID",
-        "APPLE_APP_PASSWORD",
+        "APP_STORE_CONNECT_API_KEY",
+        "APP_STORE_CONNECT_KEY_ID",
+        "APP_STORE_CONNECT_ISSUER_ID",
     ] {
         assert!(
             sign.contains(&format!("secrets.{secret}")),
             "sign lacks {secret}"
         );
     }
+    assert!(!wf.contains("APPLE_ID") && !wf.contains("APPLE_APP_PASSWORD"));
     // No secret value is written into the YAML and `set -x` is never used.
     assert!(!wf.contains("set -x") && !wf.contains("-x\n"));
     // Cleanup always runs, after everything else in the job.
@@ -863,6 +1034,31 @@ fn secrets_and_write_access_live_only_in_the_formal_path() {
     );
     assert!(s < n && n < p, "order must be sign, notarize, pack");
     assert!(!sign.contains("stapler"));
+}
+
+#[test]
+fn every_action_is_pinned_to_a_full_commit_sha_with_the_version_as_a_comment() {
+    let wf = fs::read_to_string(repo(".github/workflows/release.yml")).unwrap();
+    let mut count = 0;
+    for line in wf.lines().filter(|l| l.contains("uses:")) {
+        if line.trim_start().starts_with('#') {
+            continue;
+        }
+        count += 1;
+        let rest = line.split("uses:").nth(1).unwrap().trim();
+        let (spec, comment) = rest
+            .split_once(" # ")
+            .unwrap_or_else(|| panic!("no version comment: {line}"));
+        let (_, sha) = spec
+            .split_once('@')
+            .unwrap_or_else(|| panic!("no ref: {line}"));
+        assert!(
+            sha.len() == 40 && sha.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')),
+            "not a full commit SHA: {line}"
+        );
+        assert!(comment.trim().starts_with('v'), "version comment: {line}");
+    }
+    assert!(count >= 10, "found only {count} uses: lines");
 }
 
 #[test]
