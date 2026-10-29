@@ -11,7 +11,13 @@
 # stapled; the ticket is checked online by Gatekeeper, and no stapler step is
 # part of this contract.
 #
-# Environment (secrets, never printed): APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD.
+# Environment (secrets, never printed, never on a command line):
+#   APP_STORE_CONNECT_API_KEY   the contents of the App Store Connect .p8 key
+#   APP_STORE_CONNECT_KEY_ID    the key's ID
+#   APP_STORE_CONNECT_ISSUER_ID the issuer UUID
+# notarytool reads the key only from a file, so the key is written to a 0600
+# file in a private temporary folder and passed as `--key <path>`. The folder
+# (and so the key file) is removed on every exit, success or failure.
 # NOTARY_RESUME_ID: continue an earlier submission with `notarytool info`
 #   instead of submitting again. NOTARY_TIMEOUT (default 30m) bounds the wait.
 #
@@ -25,13 +31,18 @@ target=${2:?usage: notarize-macos.sh <signed-binary> <target> <out-dir>}
 out=${3:?usage: notarize-macos.sh <signed-binary> <target> <out-dir>}
 
 die() { echo "notarize-macos: $*" >&2; exit "$1"; }
-for name in APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
+for name in APP_STORE_CONNECT_API_KEY APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID; do
   [ -n "${!name:-}" ] || { echo "notarize-macos: required setting $name is not set" >&2; exit 2; }
 done
 [ -f "$binary" ] || { echo "notarize-macos: no such binary: $binary" >&2; exit 5; }
 mkdir -p "$out"
+umask 077
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
+keyfile="$work/AuthKey.p8"
+: > "$keyfile"
+chmod 600 "$keyfile"
+printf '%s\n' "$APP_STORE_CONNECT_API_KEY" > "$keyfile"
 
 binary_sha=$(shasum -a 256 "$binary" | awk '{print $1}')
 mkdir "$work/zip"
@@ -40,7 +51,7 @@ zip="$work/agboard-$target.zip"
 ditto -c -k "$work/zip/agboard" "$zip" || die 5 "could not create the submission zip"
 zip_sha=$(shasum -a 256 "$zip" | awk '{print $1}')
 
-creds=(--apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD")
+creds=(--key "$keyfile" --key-id "$APP_STORE_CONNECT_KEY_ID" --issuer "$APP_STORE_CONNECT_ISSUER_ID")
 rc=0
 if [ -n "${NOTARY_RESUME_ID:-}" ]; then
   xcrun notarytool info "$NOTARY_RESUME_ID" "${creds[@]}" --output-format json > "$work/result.json" 2> "$work/err.txt" || rc=$?
@@ -84,16 +95,22 @@ fi
 if [ -n "$id" ]; then
   xcrun notarytool log "$id" "${creds[@]}" "$out/notary-log.raw.json" >/dev/null 2>&1 || true
 fi
+rm -f "$keyfile"
 python3 -I - "$out" <<'PY'
 import os, sys
 out = sys.argv[1]
 raw = os.path.join(out, "notary-log.raw.json")
 if os.path.exists(raw):
     text = open(raw, encoding="utf-8", errors="replace").read()
-    for name in ("APPLE_ID", "APPLE_APP_PASSWORD"):
+    values = []
+    for name in ("APP_STORE_CONNECT_API_KEY", "APP_STORE_CONNECT_KEY_ID", "APP_STORE_CONNECT_ISSUER_ID"):
         value = os.environ.get(name)
         if value:
-            text = text.replace(value, "[redacted]")
+            values.append(value)
+            if "\n" in value:
+                values.extend(line for line in value.splitlines() if len(line.strip()) >= 8)
+    for value in sorted(set(values), key=len, reverse=True):
+        text = text.replace(value, "[redacted]")
     open(os.path.join(out, "notary-log.json"), "w", encoding="utf-8").write(text)
     os.remove(raw)
 PY

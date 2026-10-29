@@ -8,10 +8,11 @@ name: Release build
 #    (candidate.json says signed:false) and is never a release asset.
 # 2. FORMAL path (only a pushed or re-run `v*` tag, never a pull request): the
 #    `sign` jobs run in the protected `release-signing` Environment, the only
-#    place the five signing secrets exist. Each CPU signs with Developer ID
+#    place the six signing secrets exist. Each CPU signs with Developer ID
 #    Application (fixed identifier, Hardened Runtime, secure timestamp) in a
-#    temporary keychain, submits a ZIP of the signed binary to notarytool, and
-#    waits for Accepted. The very same bytes are then packed into the tar.gz.
+#    temporary keychain, submits a ZIP of the signed binary to notarytool with
+#    an App Store Connect API key, and waits for Accepted. No secret value is
+#    ever passed on a command line. Every action is pinned to a commit SHA. The very same bytes are then packed into the tar.gz.
 #    A single Mach-O cannot be stapled, so there is no stapler step.
 #    `release-gate` passes only when BOTH CPUs succeeded, and only then does
 #    `release-draft` create a DRAFT Release. A missing certificate, a rejected
@@ -59,7 +60,7 @@ jobs:
     outputs:
       version: ${{ steps.check.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: check
         run: |
           # A tag push must equal Cargo.toml and Cargo.lock; other runs check
@@ -81,11 +82,11 @@ jobs:
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -114,7 +115,7 @@ jobs:
         run: |
           printf '{"version":"%s","target":"%s","sha":"%s","run_id":"%s","signed":false}\n' \
             "${{ needs.version.outputs.version }}" "${{ matrix.target }}" "${GITHUB_SHA}" "${GITHUB_RUN_ID}" > dist/candidate.json
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: candidate-${{ matrix.target }}
           path: dist/
@@ -126,8 +127,8 @@ jobs:
     needs: [version, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           path: candidates
       - name: Check the candidate set
@@ -160,8 +161,8 @@ jobs:
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: candidate-${{ matrix.target }}
           path: candidate
@@ -194,9 +195,9 @@ jobs:
         run: scripts/release/verify-signature.sh work/agboard "${{ matrix.target }}" --json evidence/signature.json
       - name: Notarize and wait for Accepted
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: scripts/release/notarize-macos.sh work/agboard "${{ matrix.target }}" evidence
       - name: Pack the same bytes and check the archive
         env:
@@ -209,7 +210,7 @@ jobs:
           mkdir unpacked
           tar -xzf "$archive" -C unpacked agboard
           scripts/release/verify-signature.sh unpacked/agboard "${{ matrix.target }}"
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: signed-${{ matrix.target }}
           path: evidence/
@@ -217,7 +218,7 @@ jobs:
           retention-days: 14
       - name: Failure log
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: signing-failure-${{ matrix.target }}
           path: evidence/notary-log.json
@@ -232,8 +233,8 @@ jobs:
     needs: [version, sign]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           pattern: signed-*
           path: signed
@@ -250,7 +251,7 @@ jobs:
           mkdir -p release/formula
           python3 scripts/release/render-formula.py --tag "v${{ needs.version.outputs.version }}" \
             --sums release/assets/SHA256SUMS --assets release/assets --out release/formula/agboard.rb
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: release-assets
           path: release/
@@ -265,7 +266,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: release-assets
           path: release

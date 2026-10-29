@@ -101,19 +101,20 @@ Storyで使う架空の画像は`web/.storybook/static/`にあります。Storyb
 - **ビルド。** CPUごとに専用のmacOSランナー（Apple Siliconは`macos-15`、Intelは`macos-15-intel`）で、Web画面、`cargo build --release --locked`の順にビルドします。`MACOSX_DEPLOYMENT_TARGET=15.0`で、両CPUとも最低のmacOSは15です。stripをする場合は、署名の前に行います。
 - **アーカイブ。** `package.sh`が`agboard-<version>-<target>.tar.gz`を作ります。中身は`agboard`、`LICENSE`、`THIRD_PARTY_NOTICES.txt`だけで、Web画面、Skill、Hookのテンプレートはバイナリの中にあります。`verify-artifact.sh`が、名前、2つのライセンスファイル、CPU、deployment target、システムライブラリだけにリンクしていること、実行できる環境では`--version`と埋め込んだWeb画面を確認します。
 - **通知。** `generate-notices.py`が`THIRD_PARTY_NOTICES.txt`を作り、`--check`で古いと失敗します。MITの本文は`LICENSE`にあり、リリースの前に、著作権表示へ実際の権利者と年を入れる必要があります。
+- **Actions。** `release.yml`のすべての`uses:`は、40文字のコミットSHAに固定し、行末のコメントに版を書きます（`actions/checkout@<sha> # v7.0.1`）。更新するときは、タグをコミットに解決し（注釈付きタグは実体のコミット）、SHAとコメントを一緒に変えます。
 - **候補とリリース。** プルリクエストと手動の実行は、署名なしの候補（`candidate.json`が`signed: false`）だけを作ります。候補がリリースのファイルになることはありません。
 
 ### 署名と公証
 
 正式な経路は、プッシュまたは再実行した`v*`タグでだけ、保護された`release-signing` environmentの中で動きます。署名用のSecretsがあるのは、そこだけです。
 
-1. **人が一度だけ準備します。** Apple Developer Programに登録し、秘密鍵を持つDeveloper ID Application証明書を作って`.p12`に書き出し、アプリ用パスワードを作ります。次の5つのリポジトリSecretsを登録します。`MACOS_CERT_P12`、`MACOS_CERT_PASSWORD`、`APPLE_ID`、`APPLE_TEAM_ID`、`APPLE_APP_PASSWORD`です。値を、リポジトリ、Issue、ログに書いてはいけません。environmentは、信頼するタグに限定します。
-2. **署名します。** `sign-macos.sh`が、ジョブの一時ディレクトリに一時キーチェーンを作り、証明書を取り込み、期待するTeamのDeveloper ID Applicationのidentityがちょうど1つに決まることを確かめて、`--options runtime --timestamp`と固定のidentifier `io.github.FooQoo.agent-board.agboard`で署名します。`verify-signature.sh`が、Team ID、identifier、Hardened Runtime、secure timestamp、designated requirementが既定のものであることを確認します。
-3. **公証します。** `notarize-macos.sh`が、署名したバイナリをZIPにし（notarytoolはtar.gzを受け付けません）、提出して待ち、状態が`Accepted`のときだけ成功にします。Invalid、拒否、タイムアウト、処理中は失敗です。タイムアウトした提出は、再提出せずにIDで続きを確認できます。
+1. **人が一度だけ準備します。** Apple Developer Programに登録し、秘密鍵を持つDeveloper ID Application証明書を作って`.p12`に書き出し、App Store ConnectのAPIキー（`.p8`ファイルと、そのKey IDとIssuer ID）を作ります。次の6つのリポジトリSecretsを登録します。`MACOS_CERT_P12`、`MACOS_CERT_PASSWORD`、`APPLE_TEAM_ID`、`APP_STORE_CONNECT_API_KEY`（`.p8`ファイルの中身）、`APP_STORE_CONNECT_KEY_ID`、`APP_STORE_CONNECT_ISSUER_ID`です。値を、リポジトリ、Issue、ログに書いてはいけません。environmentは、信頼するタグに限定します。
+2. **署名します。** `sign-macos.sh`が、ジョブの一時ディレクトリに一時キーチェーンを作り、証明書を取り込み、期待するTeamのDeveloper ID Applicationのidentityがちょうど1つに決まることを確かめて、`--options runtime --timestamp`と固定のidentifier `io.github.FooQoo.agent-board.agboard`で署名します。証明書のパスワードをコマンドラインに出すことはありません。`openssl`が環境変数の`MACOS_CERT_PASSWORD`を読んで復号し、鍵と証明書を、乱数のその場限りのパスフレーズで守った一時的な`.p12`に包み直し、そのパスフレーズだけを`security import -P`に渡します。復号したPEMは0600のファイルで、包み直した直後に削除します。包み直した`.p12`をmacOSが受け付けることは、最初の本番の実行で確認する必要があります。`verify-signature.sh`が、Team ID、identifier、Hardened Runtime、secure timestamp、designated requirementが既定のものであることを確認します。
+3. **公証します。** `notarize-macos.sh`が、署名したバイナリをZIPにし（notarytoolはtar.gzを受け付けません）、App Store ConnectのAPIキーで提出して待ち、状態が`Accepted`のときだけ成功にします。鍵は一時フォルダの0600のファイルに書き出し、`notarytool`には`--key <path> --key-id <id> --issuer <uuid>`で渡します。ファイルはどの終わり方でも削除し、秘密の値がコマンドラインに出ることはありません。Invalid、拒否、タイムアウト、処理中は失敗です。タイムアウトした提出は、再提出せずにIDで続きを確認できます。
 4. **同じバイト列を梱包します。** 公証に通ったバイナリをtar.gzへ入れ、`release-gate.py`が、署名したもの、公証したもの、梱包したものが同一であること、両CPUが同じTeam IDであることを確認してから、アーカイブと`SHA256SUMS`を作ります。一時キーチェーンと鍵の素材は、必ず実行されるステップで削除します。
 5. **ドラフト。** 両CPUが通ったときだけ、ジョブがGitHub Releaseのドラフトを作り、Formulaの候補を作ります。証明書がない、公証が拒否された、片方のCPUが失敗したときは、実行が止まります。署名なしのアーカイブへ切り替えることはありません。
 
-単体のコマンドラインのバイナリにはstapleしたチケットを持たせられないため、macOSは初回の起動で、公証をオンラインで確認します。インストールの手順としてGatekeeperを無効にしないでください。Team IDとidentifierは、リリースをまたいで同じものを使い続けます。証明書の期限切れや失効、Appleの資格情報の変更があったときは、新しい証明書やパスワードを作って、Secretsを入れ替えます。署名だけでは、保存したKeychainの許可が引き継がれるとは限らないので、更新は、きれいなMacで確認してください。
+単体のコマンドラインのバイナリにはstapleしたチケットを持たせられないため、macOSは初回の起動で、公証をオンラインで確認します。インストールの手順としてGatekeeperを無効にしないでください。Team IDとidentifierは、リリースをまたいで同じものを使い続けます。証明書の期限切れや失効、Appleの資格情報の変更があったときは、新しい証明書やAPIキーを作って、Secretsを入れ替えます。署名だけでは、保存したKeychainの許可が引き継がれるとは限らないので、更新は、きれいなMacで確認してください。
 
 ### Homebrewへの公開
 
