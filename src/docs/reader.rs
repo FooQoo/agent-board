@@ -56,7 +56,7 @@ struct Entry {
 }
 
 impl Walk {
-    /// The listable entries of `dir` at `depth`, folders first. The root's
+    /// The listable entries of `dir` at `depth`, by name. The root's
     /// own read error is returned; a nested folder that fails is skipped.
     fn list(
         &mut self,
@@ -147,11 +147,12 @@ fn listable(dir: &Path, prefix: &str) -> std::io::Result<Vec<Entry>> {
             viewer,
         });
     }
+    // By name alone, folders and files mixed, so a numbered prefix such as
+    // `01_` orders both.
     entries.sort_by(|a, b| {
-        let rank = |kind: NodeKind| matches!(kind, NodeKind::File) as u8;
-        rank(a.kind)
-            .cmp(&rank(b.kind))
-            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+        a.name
+            .to_lowercase()
+            .cmp(&b.name.to_lowercase())
             .then_with(|| a.name.cmp(&b.name))
     });
     Ok(entries)
@@ -231,4 +232,46 @@ fn read_limited(root: &DocsRoot, path: &DocsPath, limit: u64) -> Result<Vec<u8>,
         return Err(too_large());
     }
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_tree_is_in_order_of_name_with_folders_and_files_mixed() {
+        let dir = tempfile::tempdir().unwrap();
+        let root_dir = dir.path();
+        for folder in ["02_business", "04_design", "Zeta"] {
+            fs::create_dir_all(root_dir.join(folder)).unwrap();
+        }
+        for file in ["03_ISSUE.mdx", "01_PRODUCT.mdx", "00_README.md", "alpha.md"] {
+            fs::write(root_dir.join(file), "x").unwrap();
+        }
+        fs::write(root_dir.join("02_business/01_STRATEGY.mdx"), "x").unwrap();
+        fs::write(root_dir.join("02_business/00_README.md"), "x").unwrap();
+
+        let tree = read_tree(&DocsRoot::at(root_dir)).unwrap();
+        let names: Vec<&str> = tree.nodes.iter().map(|n| n.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "00_README.md",
+                "01_PRODUCT.mdx",
+                "02_business",
+                "03_ISSUE.mdx",
+                "04_design",
+                "alpha.md",
+                "Zeta",
+            ]
+        );
+        let business: Vec<&str> = tree.nodes[2]
+            .children
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|n| n.name.as_str())
+            .collect();
+        assert_eq!(business, ["00_README.md", "01_STRATEGY.mdx"]);
+    }
 }

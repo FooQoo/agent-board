@@ -7,7 +7,7 @@ import {
   FolderIcon,
   FolderOpenIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './docs-shell.css';
 import '@/shared/i18n/docs-strings';
@@ -37,6 +37,20 @@ export interface DocsFileTreeProps {
 export function DocsFileTree({ nodes, selectedPath, onSelectFile }: DocsFileTreeProps) {
   const { t } = useTranslation();
   const [closed, setClosed] = useState<ReadonlySet<string>>(() => new Set());
+  const treeRef = useRef<HTMLDivElement>(null);
+
+  // A file chosen from elsewhere (a link in a document) may sit in a folder the reader closed:
+  // open the folders above it, then bring its row into view.
+  const [revealed, setRevealed] = useState(selectedPath);
+  if (selectedPath !== revealed) {
+    setRevealed(selectedPath);
+    if (selectedPath !== null && [...closed].some((path) => selectedPath.startsWith(`${path}/`)))
+      setClosed(new Set([...closed].filter((path) => !selectedPath.startsWith(`${path}/`))));
+  }
+  useEffect(() => {
+    if (selectedPath === null) return;
+    treeRef.current?.querySelector('[aria-current="true"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [selectedPath]);
 
   if (nodes.length === 0) return <p className="docs-tree__empty">{t('docs.noFiles')}</p>;
 
@@ -107,7 +121,7 @@ export function DocsFileTree({ nodes, selectedPath, onSelectFile }: DocsFileTree
     });
 
   return (
-    <div role="tree" aria-label={t('docs.fileTree')} className="docs-tree">
+    <div ref={treeRef} role="tree" aria-label={t('docs.fileTree')} className="docs-tree">
       {rows(nodes, 0)}
     </div>
   );

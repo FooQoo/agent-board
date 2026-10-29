@@ -14,6 +14,8 @@ export const SANDBOX_URL = '/docs-sandbox';
 export interface MdxFrameProps {
   /** The MDX to run: the body as it is now, saved or not. */
   source: string;
+  /** A link in the document was chosen; `href` is as the document wrote it. */
+  onLink?: (href: string) => void;
 }
 
 /**
@@ -22,11 +24,16 @@ export interface MdxFrameProps {
  * storage nor the token, and the page's own CSP forbids every connection. The two pages only talk
  * by `postMessage`; messages from any other window are ignored.
  */
-export function MdxFrame({ source }: MdxFrameProps) {
+export function MdxFrame({ source, onLink }: MdxFrameProps) {
   const { t } = useTranslation();
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [shown, setShown] = useState(false);
+  // The latest handler, so the message listener does not have to be added again when it changes.
+  const linkHandler = useRef(onLink);
+  useEffect(() => {
+    linkHandler.current = onLink;
+  }, [onLink]);
 
   const send = useCallback(() => {
     const message: SandboxRenderMessage = {
@@ -47,6 +54,7 @@ export function MdxFrame({ source }: MdxFrameProps) {
       if (!isSandboxReply(event.data)) return;
       if (event.data.type === 'ready') setReady(true);
       else if (event.data.type === 'rendered') setShown(true);
+      else if (event.data.type === 'link') linkHandler.current?.(event.data.href);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);

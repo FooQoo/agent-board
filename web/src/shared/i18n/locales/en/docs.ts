@@ -5,6 +5,7 @@ export const docsEn = {
     openFileFailed: 'Could not open the file.',
     fileUpdated: 'The file changed, so the view was updated ({{time}})',
     fileDeleted: 'This file was deleted ({{time}})',
+    linkMissing: 'The linked file is not in the docs.',
     files: 'Files',
     openFolder: 'Open folder',
     openFolderFailed: 'Could not open the folder.',

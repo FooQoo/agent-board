@@ -5,6 +5,7 @@ export const docsJa = {
     openFileFailed: 'ファイルを開けませんでした。',
     fileUpdated: 'ファイルが変更されたため、表示を更新しました（{{time}}）',
     fileDeleted: 'このファイルは削除されました（{{time}}）',
+    linkMissing: 'リンク先のファイルが見つかりません。',
     files: 'ファイル',
     openFolder: 'フォルダを開く',
     openFolderFailed: 'フォルダを開けませんでした。',

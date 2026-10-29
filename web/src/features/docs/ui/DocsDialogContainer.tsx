@@ -7,6 +7,7 @@ import { resolveRelativeImage } from '@/shared/markdown/resolveRelativeImage';
 import { RichMarkdownEditor } from '@/shared/rich-editor/RichMarkdownEditor';
 import { Button } from '@/shared/ui/button';
 import { docsAssetUrl, openDocs } from '../api/docsApi';
+import { resolveDocsLink } from '../model/docsLink';
 import {
   type DocsChangeSubscription,
   type DocsNotice,
@@ -43,7 +44,8 @@ export interface DocsDialogContainerProps {
  * The docs dialog with its data. It only shows the files: the list is fetched when the dialog
  * opens, and a file each time it is chosen, with nothing kept between choices. While the dialog is
  * open it follows the files on disk: the list is read again on every change, and the open file is
- * shown again when it changed, with a notice at the right of the footer. Files are edited in the
+ * shown again when it changed, with a notice at the left of the footer. A link in a document opens
+ * the file it names in the dialog, or an http(s) address in a new tab. Files are edited in the
  * user's own editor, which "Open in editor" starts. The project is a prop of the instance: give
  * another project a new instance (a `key`) to start from nothing.
  */
@@ -59,6 +61,8 @@ export function DocsDialogContainer({
   const [listWidth, setListWidth] = useState<number>(DOCS_LIST_WIDTH.default);
   const [openFolderFailed, setOpenFolderFailed] = useState(false);
   const [openFileFailed, setOpenFileFailed] = useState<string | null>(null);
+  // The document in which a link to no listed file was chosen; the notice shows while it is open.
+  const [linkMissingIn, setLinkMissingIn] = useState<string | null>(null);
   // Raised when an open image may have changed, so it is fetched again.
   const [imageVersion, setImageVersion] = useState(0);
   const selectedPath = selected?.path ?? null;
@@ -82,6 +86,22 @@ export function DocsDialogContainer({
   const selectFile = useCallback(
     (path: string) => setSelected({ path, viewer: viewerOf(tree.nodes, path) }),
     [tree.nodes],
+  );
+
+  const followLink = useCallback(
+    (href: string) => {
+      if (selectedPath === null) return;
+      const target = resolveDocsLink(selectedPath, href, tree.nodes);
+      if (target.kind === 'file') {
+        setLinkMissingIn(null);
+        selectFile(target.path);
+      } else if (target.kind === 'external') {
+        window.open(target.url, '_blank', 'noopener,noreferrer');
+      } else if (target.kind === 'missing') {
+        setLinkMissingIn(selectedPath);
+      }
+    },
+    [selectedPath, tree.nodes, selectFile],
   );
 
   const openFolder = useCallback(() => {
@@ -119,6 +139,7 @@ export function DocsDialogContainer({
       : t('docs.fileDeleted', { time });
   };
   const failed = openFileFailed !== null && openFileFailed === selectedPath;
+  const linkMissing = linkMissingIn !== null && linkMissingIn === selectedPath;
 
   let body: ReactNode = null;
   if (selectedPath !== null && viewer !== 'markdown') {
@@ -144,10 +165,11 @@ export function DocsDialogContainer({
         frontmatter={split.frontmatter}
         onRetry={document.reload}
         kindLabel={isMdx ? t('docsDocument.kindMdx') : undefined}
+        onLink={followLink}
       >
         {file !== null &&
           (isMdx ? (
-            <MdxFrame source={split.body} />
+            <MdxFrame source={split.body} onLink={followLink} />
           ) : (
             <RichMarkdownEditor
               key={document.loadId}
@@ -174,27 +196,31 @@ export function DocsDialogContainer({
       openFolderFailed={openFolderFailed}
       listWidth={listWidth}
       onResize={setListWidth}
+      notice={
+        failed ? (
+          <span className="docs-dialog__notice" data-kind="failed" role="alert">
+            {t('docs.openFileFailed')}
+          </span>
+        ) : linkMissing ? (
+          <span className="docs-dialog__notice" data-kind="failed" role="alert">
+            {t('docs.linkMissing')}
+          </span>
+        ) : notice !== null ? (
+          <span className="docs-dialog__notice" data-kind={notice.kind} role="status">
+            {noticeText(notice)}
+          </span>
+        ) : null
+      }
       actions={
-        <>
-          {failed ? (
-            <span className="docs-dialog__notice" data-kind="failed" role="alert">
-              {t('docs.openFileFailed')}
-            </span>
-          ) : notice !== null ? (
-            <span className="docs-dialog__notice" data-kind={notice.kind} role="status">
-              {noticeText(notice)}
-            </span>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            className="docs-dialog__open-file"
-            onClick={openFile}
-          >
-            <SquarePenIcon aria-hidden="true" />
-            {t('docs.openInEditor')}
-          </Button>
-        </>
+        <Button
+          type="button"
+          variant="outline"
+          className="docs-dialog__open-file"
+          onClick={openFile}
+        >
+          <SquarePenIcon aria-hidden="true" />
+          {t('docs.openInEditor')}
+        </Button>
       }
       onClose={onClose}
     >
