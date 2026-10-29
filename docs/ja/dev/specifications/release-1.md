@@ -41,9 +41,9 @@ agboard serve
 
 ## 署名と公証
 
-正式リリースの各CPUのバイナリは、Developer ID Application証明書で署名する。Hardened Runtimeとsecure timestampを付け、両CPUで同じTeam ID、固定のidentifier `io.github.FooQoo.agent-board.agboard`を使う。既定のDeveloper IDのdesignated requirementを使い、バイナリのハッシュは固定しない。署名したバイナリをZIPにしてAppleの公証へ提出し、状態が`Accepted`になってから、同じバイト列をCPUごとのtar.gzへ梱包し、`SHA256SUMS`のハッシュを求め、GitHub ReleaseとFormulaに使う。単体のコマンドラインのバイナリにはstapleしたチケットを持たせられないため、macOSは初回の起動で公証をオンラインで確認する。インストールでGatekeeperを無効にすることは求めない。
+正式リリースの各CPUのバイナリは、Developer ID Application証明書で署名する。Hardened Runtimeとsecure timestampを付け、両CPUで同じTeam ID、固定のidentifier `io.github.FooQoo.agent-board.agboard`を使う。既定のDeveloper IDのdesignated requirementを使い、バイナリのハッシュは固定しない。署名したバイナリをZIPにしてAppleの公証へ提出し、状態が`Accepted`になってから、同じバイト列をCPUごとのtar.gzへ梱包し、`SHA256SUMS`のハッシュを求め、GitHub ReleaseとFormulaに使う。単体のコマンドラインのバイナリにはstapleしたチケットを持たせられないため、macOSは初回の起動で公証をオンラインで確認する。インストールでGatekeeperを無効にすることは求めない。公証にはApple IDのパスワードではなく、App Store ConnectのAPIキーを使う。秘密の値をコマンドラインで渡すことはない。証明書のパスワードは`openssl`が環境変数から読み、`security import`の前に乱数のその場限りのパスフレーズへ置き換える。APIキーは0600のファイルとして`notarytool`に渡す。リリースのワークフローのGitHub Actionsは、すべて完全なコミットSHAに固定する。
 
-署名用のSecrets（`MACOS_CERT_P12`、`MACOS_CERT_PASSWORD`、`APPLE_ID`、`APPLE_TEAM_ID`、`APPLE_APP_PASSWORD`）は、保護された`release-signing` environmentの、プッシュした`v*`タグの実行にだけある。プルリクエストと手動のビルドは、署名なしの候補を作り、リリースのファイルにはならない。証明書がない、公証が拒否またはタイムアウトした、片方のCPUが失敗した場合は、リリースを止める。署名なしへ切り替えることはない。Team IDとidentifierは、リリースをまたいで変えない。開発者の手順は[リリースをビルドする](../getting-started/setup.md#build-release)にある。
+署名用のSecrets（`MACOS_CERT_P12`、`MACOS_CERT_PASSWORD`、`APPLE_TEAM_ID`、`APP_STORE_CONNECT_API_KEY`、`APP_STORE_CONNECT_KEY_ID`、`APP_STORE_CONNECT_ISSUER_ID`）は、保護された`release-signing` environmentの、プッシュした`v*`タグの実行にだけある。プルリクエストと手動のビルドは、署名なしの候補を作り、リリースのファイルにはならない。証明書がない、公証が拒否またはタイムアウトした、片方のCPUが失敗した場合は、リリースを止める。署名なしへ切り替えることはない。Team IDとidentifierは、リリースをまたいで変えない。開発者の手順は[リリースをビルドする](../getting-started/setup.md#build-release)にある。
 
 ## Hookの対象解決
 
