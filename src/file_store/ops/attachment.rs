@@ -1,4 +1,3 @@
-// file-size: allow (predates the 300-line limit; split it by responsibility rather than growing it)
 //! Image operations for a task or an epic: registration, deletion, and the
 //! path of a stored image. An image belongs to one owner. An ID that belongs
 //! to another owner, or to none, is `attachment_not_found`.
@@ -6,6 +5,8 @@
 //! The file is written under the owner's `assets/` folder and recorded in the
 //! owner's JSON. The limits are per owner: 20 images, 50 MiB in total, and
 //! 10 MiB per image (see `domain::validate_attachment`).
+
+mod owner;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,92 +16,16 @@ use chrono::{DateTime, Utc};
 use super::super::FileStore;
 use super::super::io;
 use super::super::layout;
-use super::super::model::{AttachmentOwner, EpicFile, StoredAttachment, TaskFile};
+use super::super::model::{AttachmentOwner, StoredAttachment};
 use super::super::reader;
-use super::epic::read_epic_file;
-use super::{ensure_ai_task_not_done, lock_project, save_task, stamp};
+use super::{lock_project, stamp};
 use crate::domain::{
     Attachment, AttachmentInput, MAX_TASK_ATTACHMENT_BYTES, MAX_TASK_ATTACHMENTS, ProjectId,
     validate_attachment,
 };
 use crate::error::AgboardError;
 
-/// The record that owns the images, read strictly.
-enum Loaded {
-    Task(Box<TaskFile>),
-    Epic(EpicFile),
-}
-
-impl Loaded {
-    fn attachments(&self) -> &[Attachment] {
-        match self {
-            Loaded::Task(task) => &task.attachments,
-            Loaded::Epic(epic) => &epic.attachments,
-        }
-    }
-
-    fn attachments_mut(&mut self) -> &mut Vec<Attachment> {
-        match self {
-            Loaded::Task(task) => &mut task.attachments,
-            Loaded::Epic(epic) => &mut epic.attachments,
-        }
-    }
-
-    fn touch(&mut self, at: DateTime<Utc>) {
-        match self {
-            Loaded::Task(task) => task.updated_at = at,
-            Loaded::Epic(epic) => epic.updated_at = at,
-        }
-    }
-
-    /// A task that is archived takes no image changes for anyone. A draft
-    /// takes none from the agent side (`block_drafts`); a person may change
-    /// it. Epics have neither state.
-    fn ensure_writable(&self, block_drafts: bool) -> Result<(), AgboardError> {
-        match self {
-            Loaded::Task(task) if task.archived_at.is_some() => {
-                Err(AgboardError::TaskArchived { id: task.id })
-            }
-            Loaded::Task(task) if block_drafts => {
-                ensure_ai_task_not_done(task, crate::domain::Actor::Ai)?;
-                if task.is_draft {
-                    Err(AgboardError::TaskIsDraft { id: task.id })
-                } else {
-                    Ok(())
-                }
-            }
-            Loaded::Task(task) if block_drafts && task.is_draft => {
-                Err(AgboardError::TaskIsDraft { id: task.id })
-            }
-            _ => Ok(()),
-        }
-    }
-}
-
-fn load(
-    shared: &Path,
-    project: &ProjectId,
-    owner: &AttachmentOwner,
-) -> Result<Loaded, AgboardError> {
-    match owner {
-        AttachmentOwner::Task(id) => Ok(Loaded::Task(Box::new(reader::read_task_strict(
-            shared, project, *id,
-        )?))),
-        AttachmentOwner::Epic(id) => {
-            read_epic_file(shared, project, id).map(|(_, file)| Loaded::Epic(file))
-        }
-    }
-}
-
-fn save(shared: &Path, project_dir: &Path, loaded: &Loaded) -> Result<(), AgboardError> {
-    match loaded {
-        Loaded::Task(task) => save_task(shared, project_dir, task),
-        Loaded::Epic(epic) => {
-            let path = layout::epic_file(&layout::epic_dir(project_dir, &epic.id));
-            io::write_json(&path, epic, &layout::shared_label(shared, &path))
-        }
-    }
-}
+use self::owner::{load, save};
 
 /// The file of an image: `assets/<id>.<ext>` below the owner's folder. The
 /// ID is checked by the layout functions before a path exists.
