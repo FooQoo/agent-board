@@ -75,13 +75,13 @@ Agent Boardは手元のマシンで動き、アカウントもホスティング
 
 <div class="home-steps">
 
-1. **ボードを起動する**
+1. **インストールしてボードを起動する**
 
-   プロジェクトを作成して`agboard serve`を実行し、ブラウザでボードを開きます。[インストールと起動](./guide/getting-started)
+   Homebrewで`agboard`をインストールし、作業フォルダーにプロジェクトを作成して`agboard serve`を実行します。ブラウザでボードを開きます。[インストールと起動](./guide/getting-started)
 
-2. **エージェントに作業を登録させる**
+2. **エージェントをつなぐ**
 
-   Claude CodeやCodexをHookで連携します。エージェントは進行表を読み、タスクを追加します。[エージェントとの連携](./guide/automation/agents)
+   `agboard connect`を実行し、Claude Code、Codex、またはその両方にSkillとHookを設定します。エージェントは進行表を読み、タスクを追加します。[エージェントとの連携](./guide/automation/agents#connect-your-agent)
 
 3. **質問に回答する**
 
@@ -90,12 +90,14 @@ Agent Boardは手元のマシンで動き、アカウントもホスティング
 </div>
 
 ```sh
-git clone https://github.com/FooQoo/agent-board.git
-cd agent-board
-pnpm --dir web install
-pnpm --dir web build
-cargo install --path . --locked --force
+brew install fooqoo/tap/agboard
+cd my-project
+agboard project create "My project"
+agboard connect
+agboard serve
 ```
+
+バージョン1.0.0には、`connect`、Docs、モバイルモニターなど、パブリックプレビューの機能が含まれます。詳しくは[機能の提供段階](./guide/feature-stages)と[リリースノート](./releases)を参照してください。
 
 <div class="home-cta">
   <a class="home-cta__button home-cta__button--brand" :href="withBase('/ja/guide/getting-started')">はじめる</a>

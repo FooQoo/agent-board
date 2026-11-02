@@ -75,13 +75,13 @@ Agent Board runs on your machine, with no account or hosted service. Install it,
 
 <div class="home-steps">
 
-1. **Start the board**
+1. **Install and start the board**
 
-   Create a project and run `agboard serve`, then open the board in your browser. [Getting started](./guide/getting-started)
+   Install `agboard` with Homebrew, create a project for your working folder, and run `agboard serve`. Then open the board in your browser. [Install and start](./guide/getting-started)
 
-2. **Let your agent register work**
+2. **Connect your agent**
 
-   Connect Claude Code or Codex with a hook. The agent reads the progress table and adds tasks. [Working with agents](./guide/automation/agents)
+   Run `agboard connect` to set up the Skill and the Hook for Claude Code, Codex, or both. The agent reads the progress table and adds tasks. [Working with agents](./guide/automation/agents#connect-your-agent)
 
 3. **Answer on the task**
 
@@ -90,12 +90,14 @@ Agent Board runs on your machine, with no account or hosted service. Install it,
 </div>
 
 ```sh
-git clone https://github.com/FooQoo/agent-board.git
-cd agent-board
-pnpm --dir web install
-pnpm --dir web build
-cargo install --path . --locked --force
+brew install fooqoo/tap/agboard
+cd my-project
+agboard project create "My project"
+agboard connect
+agboard serve
 ```
+
+Version 1.0.0 includes features in public preview, such as `connect`, Docs, and the mobile monitor. See [Feature stages](./guide/feature-stages) and the [release notes](./releases).
 
 <div class="home-cta">
   <a class="home-cta__button home-cta__button--brand" :href="withBase('/guide/getting-started')">Get started</a>
