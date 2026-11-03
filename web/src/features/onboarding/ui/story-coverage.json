@@ -14,13 +14,13 @@
               "interaction": true
             },
             {
-              "id": "features-onboarding-guide--welcome-public-preview",
-              "states": ["public preview badge beside the title", "no notice or link"],
+              "id": "features-onboarding-guide--welcome-without-preview-badge",
+              "states": ["no public preview badge", "no notice or link"],
               "interaction": true
             },
             {
-              "id": "features-onboarding-guide--welcome-public-preview-japanese-dark-narrow",
-              "states": ["japanese locale", "dark theme", "phone width", "public preview badge"],
+              "id": "features-onboarding-guide--welcome-japanese-dark-narrow",
+              "states": ["japanese locale", "dark theme", "phone width", "no public preview badge"],
               "interaction": true
             }
           ]

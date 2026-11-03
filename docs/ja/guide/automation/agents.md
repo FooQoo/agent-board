@@ -8,7 +8,7 @@ title: エージェントとの連携
 
 ## エージェントをつなぐ {#connect-your-agent}
 
-プロジェクトにbindしたフォルダで`agboard connect`を実行します（[インストールと起動](../getting-started#create-or-bind-a-project)を参照）。Claude Code、Codex、または両方に、**Skill**（エージェントに作業の進め方を伝える`agent-board`）と、**Hook**（エージェントに進行表を渡す仕組み）を導入します。`connect`と`update`は[パブリックプレビュー](../feature-stages#connect-and-update)です。
+プロジェクトにbindしたフォルダで`agboard connect`を実行します（[インストールと起動](../getting-started#create-or-bind-a-project)を参照）。Claude Code、Codex、または両方に、**Skill**（エージェントに作業の進め方を伝える`agent-board`）と、**Hook**（エージェントに進行表を渡す仕組み）を導入します。
 
 ```sh
 cd my-project

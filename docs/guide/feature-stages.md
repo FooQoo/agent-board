@@ -27,8 +27,6 @@ Where you see it:
 | --- | --- |
 | [Docs](#docs) | The heading of the Docs dialog shows a **Public preview** badge, with the notice and a link to this page below it. |
 | [Mobile monitor](#mobile-monitor) | The **Mobile connection** dialog on the computer shows the badge. Before you connect, it also shows the notice and a link to this page. The monitor on the phone does not show it. |
-| [First-run welcome](#onboarding) | The first screen shows the badge next to its title. |
-| [connect and update](#connect-and-update) | The interactive screen of each command starts with one line: `Public preview: this command may change. See the documentation for current limitations.` `update --yes` asks no question, so it prints no such line. |
 | [Task listening](#listen) | No screen. This page and the agent skill describe it. |
 
 Features that are GA show no notice.
@@ -47,6 +45,8 @@ Features that are GA show no notice.
 | Saving and recovery of data | macOS | Only files with `formatVersion` 1 are supported. | [Data and backups](./operations/data) |
 | Language and themes | PC, mobile monitor | English and Japanese, and 24 themes. | [Settings](./use/board#settings) |
 | Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex CLI | The Hook and the skill need the version you installed. You start the agent yourself. | [Working with agents](./automation/agents) |
+| `connect` and `update` | macOS, with Claude Code and Codex CLI found on your `PATH` | Both commands are interactive, except `update --yes`. After the Hook changes, you trust it again in the agent. `update` never installs an older version. | [Working with agents](./automation/agents#connect-your-agent), [CLI reference](./automation/cli#connect-and-update) |
+| First-run welcome | PC browser | It does not appear when the data area already has a project, and it does not appear on the mobile monitor. | [The first-run guide](./use/board#the-first-run-guide) |
 
 ## Features in public preview
 
@@ -57,14 +57,6 @@ The Docs dialog lets you browse and read the files in a project's `docs/` folder
 - **Supported range:** the board in a PC browser. The mobile monitor does not show Docs.
 - **Limits:** a Markdown or MDX file can be up to 2 MiB, and an image up to 10 MiB.
 - **Guide:** [Project docs](./use/docs).
-
-### connect and update {#connect-and-update}
-
-`agboard connect` installs the Skill and the Hook for Claude Code and Codex. `agboard update` brings what `connect` installed up to the version of your command.
-
-- **Supported range:** macOS, with Claude Code and Codex CLI found on your `PATH`.
-- **Limits:** both commands are interactive, except `update --yes`. After the Hook changes, you trust it again in the agent. `update` never installs an older version. They do not offer a separate scope for each agent, a dry run, or JSON output; those may be added later.
-- **Guide:** [Working with agents](./automation/agents#connect-your-agent) and the [CLI reference](./automation/cli#connect-and-update).
 
 ### Task listening {#listen}
 
@@ -82,15 +74,6 @@ The mobile monitor shows the board on a phone and lets you answer an agent's que
 - **Limits:** it depends on ngrok, and ngrok ends the HTTPS connection. It works only while your computer is on and `agboard serve` is running. The way it connects may change.
 - **Guide:** [Mobile monitor](./operations/mobile-monitor).
 
-### First-run welcome {#onboarding}
-
-The first time you open a board, a short guide with two sample cards shows how an agent works on a card and asks you for a decision.
-
-- **Supported range:** the board in a PC browser.
-- **Limits:** it does not appear when the data area already has a project, and it does not appear on the mobile monitor.
-- **Guide:** [The first-run guide](./use/board#the-first-run-guide) and the [Quickstart](./quickstart#before-you-start-the-first-run-guide).
-
 ## Related
 
 - [Install and start](./getting-started)
-- [Release notes](/releases)

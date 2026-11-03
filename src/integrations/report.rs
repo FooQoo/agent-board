@@ -18,11 +18,6 @@ fn scope_word(scope: Scope) -> &'static str {
     }
 }
 
-/// The first line of the interactive connect and update screens: both commands
-/// are in public preview.
-pub const PREVIEW_LINE: &str =
-    "Public preview: this command may change. See the documentation for current limitations.\n\n";
-
 /// What is shown first: the project and the root that decides Project scope.
 pub fn header(project: &str, root: &Path) -> String {
     format!("Project: {project}\nBound root: {}\n\n", root.display())

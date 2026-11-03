@@ -8,7 +8,7 @@ Agents work from the same board as you. A hook gives them a short progress table
 
 ## Connect your agent
 
-Run `agboard connect` in the folder you bound to a project (see [Install and start](../getting-started#create-or-bind-a-project)). It installs the **Skill** (`agent-board`, which tells the agent how to work) and the **Hook** (which hands the agent the progress table) for Claude Code, Codex, or both. `connect` and `update` are in [public preview](../feature-stages#connect-and-update).
+Run `agboard connect` in the folder you bound to a project (see [Install and start](../getting-started#create-or-bind-a-project)). It installs the **Skill** (`agent-board`, which tells the agent how to work) and the **Hook** (which hands the agent the progress table) for Claude Code, Codex, or both.
 
 ```sh
 cd my-project

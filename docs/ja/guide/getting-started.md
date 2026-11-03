@@ -50,7 +50,7 @@ agboard project bind "My project"
 agboard connect
 ```
 
-`connect`は、ターミナルで質問に答えながら進める設定です。Claude Code、Codex、または両方に、SkillとHookを導入します。HookとProjectスコープは、フォルダのプロジェクトに依存するため、bind済みのフォルダで実行する必要があります。聞かれる内容、書き込み先、その後の操作は、[エージェントをつなぐ](./automation/agents#connect-your-agent)を参照してください。`connect`と`update`は[パブリックプレビュー](./feature-stages#connect-and-update)です。
+`connect`は、ターミナルで質問に答えながら進める設定です。Claude Code、Codex、または両方に、SkillとHookを導入します。HookとProjectスコープは、フォルダのプロジェクトに依存するため、bind済みのフォルダで実行する必要があります。聞かれる内容、書き込み先、その後の操作は、[エージェントをつなぐ](./automation/agents#connect-your-agent)を参照してください。
 
 ## ボードを開始する
 

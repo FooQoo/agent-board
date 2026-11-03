@@ -77,24 +77,29 @@ landing:
         link: { text: エピックと進行表, link: /ja/guide/use/epics }
         alt: タスクの進行表とMarkdown本文を持つエピック編集画面
       - image: mobile
-        title: スマホで回答
+        title: スマホで確認
         text: 席を離れていても、スマホのモニターから状況を確かめ、質問に答えられます。
         link: { text: モバイルモニター, link: /ja/guide/operations/mobile-monitor }
         preview: /ja/guide/feature-stages#mobile-monitor
-        alt: 下部のドロワーでタスクを開いたモバイルモニター
+        alts:
+          - 選択肢を選び、送信ボタンが出ているモバイルモニターの質問
+          - モバイルモニターの下部のドロワーで、受入条件のタブを開いたタスク
       - image: docs
         title: プロジェクトのドキュメント
         text: プロジェクトのdocs/にある設計書や仕様を、ボードから開いて読めます。
         link: { text: プロジェクトのドキュメント, link: /ja/guide/use/docs }
         preview: /ja/guide/feature-stages#docs
-        alt: ファイル一覧とMarkdownの文書を表示したDocsダイアログ
+        alt: ファイル一覧とMarkdownの文書を表示した「ドキュメント」ダイアログ
   agents:
     eyebrow: 連携
     title: いつものエージェントから、そのまま。
     lead: agboard connectが、Claude CodeとCodex CLIにSkillとHookを対話で導入します。エージェントは進行表を読み、タスクを追加し、質問して回答を待ちます。
-    names: [Claude Code, Codex CLI]
+    supportedLabel: 対応エージェント
+    supported:
+      - { text: Claude Code, link: https://www.claude.com/product/claude-code }
+      - { text: Codex CLI, link: https://developers.openai.com/codex/cli }
+    trademark: Claude CodeはAnthropic、Codex CLIはOpenAIの製品で、各名称は各社の商標です。Agent Boardは独立したプロジェクトで、両社と提携しておらず、推奨も受けていません。
     command: agboard connect
-    preview: /ja/guide/feature-stages#connect-and-update
     link: { text: エージェントとの連携, link: /ja/guide/automation/agents }
   trust:
     title: 手元で動き、データはあなたのもの。
@@ -111,10 +116,9 @@ landing:
       - { title: インストールする, commands: [brew install fooqoo/tap/agboard] }
       - { title: プロジェクトとエージェントをつなぐ, commands: ['agboard project create "My project"', agboard connect] }
       - { title: ボードを開く, commands: [agboard serve] }
-    note: "バージョン1.0.0には、connect、Docs、モバイルモニターなど、パブリックプレビューの機能が含まれます。詳しくは"
+    note: "バージョン1.0.0には、ドキュメントやモバイルモニターなど、パブリックプレビューの機能が含まれます。詳しくは"
     noteLinks:
       - { text: 機能の提供段階, link: /ja/guide/feature-stages }
-      - { text: リリースノート, link: /ja/releases }
     noteJoin: と
     noteEnd: を参照してください。
     primary: { text: インストールと起動を読む, link: /ja/guide/getting-started }

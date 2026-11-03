@@ -76,7 +76,6 @@ pub fn run(env: &mut Env) -> Result<i32, AgboardError> {
 /// exit code.
 pub fn flow(input: &mut dyn BufRead, out: &mut dyn Write, err: &mut dyn Write, s: &Session) -> i32 {
     let mut p = Prompter::new(input, out);
-    p.say(report::PREVIEW_LINE);
     p.say(&report::header(&s.project_name, &s.root));
     let detections = detect_all(s.path_var.as_deref());
     if detections.iter().all(|d| !d.is_available()) {

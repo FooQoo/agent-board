@@ -165,7 +165,7 @@ agboard setup --agent claude --json
 
 ## connectとupdate {#connect-and-update}
 
-`connect`と`update`は、Claude CodeとCodexのSkillとHookを導入し、更新します。どちらも[パブリックプレビュー](../feature-stages#connect-and-update)です。尋ねる内容、書き込むファイル、競合の扱いは、[エージェントとの連携](./agents#connect-your-agent)にあります。
+`connect`と`update`は、Claude CodeとCodexのSkillとHookを導入し、更新します。尋ねる内容、書き込むファイル、競合の扱いは、[エージェントとの連携](./agents#connect-your-agent)にあります。
 
 ```sh
 agboard connect

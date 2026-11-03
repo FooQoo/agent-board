@@ -30,7 +30,7 @@ Both scripts use disposable data in a temporary `AGBOARD_HOME` and their own loo
 
 ## Preview published release metadata
 
-The version in the site header and the release notes pages come from the published GitHub Releases, not from the repository. `node scripts/release/docs-release.mjs` writes them before the build:
+The version in the site header comes from the published GitHub Releases, not from the repository. `node scripts/release/docs-release.mjs` writes it before the build. The site has no release notes page; the GitHub Release is the release notes.
 
 ```sh
 node scripts/release/docs-release.mjs --github --repo FooQoo/agent-board   # the published site
@@ -40,10 +40,10 @@ pnpm --dir docs build
 ```
 
 - It counts only releases with `draft=false`, `prerelease=false`, and a `vMAJOR.MINOR.PATCH` tag, and takes the newest by version. The version in `Cargo.toml` is never used. Each release body needs an `## English` and a `## 日本語` section with the four headings (`### Changes`, `### Fixes`, `### Breaking changes`, `### Required update steps`, and the Japanese equivalents); anything else stops the script.
-- It writes `docs/.vitepress/release.json` (ignored by Git), which the header reads, and `docs/releases.md` and `docs/ja/releases.md`. The committed pages show the "not yet published" state. `--fixture` renders the review copies in `releases/` with a visible warning; do not commit its output.
+- It writes `docs/.vitepress/release.json` (ignored by Git), which the header reads. `--fixture` uses the review copies in `releases/` and records the fixture state, so the header still shows no version.
 - The Pages workflow runs the script with `--github` before the build, on `main` pushes, on `release` events (published, edited, deleted), and by hand. If the API call fails or a release is invalid, the build stops and the published site stays as it is. Pull requests build offline with the committed state. A release published with the workflow's own token may not start the workflow; run it by hand.
 - `releases/vX.Y.Z.md` is the review copy of the release notes. The GitHub Release body is the source of truth once it is published.
-- To check the published look, run the fixture, build, and `pnpm --dir docs preview --port <port>`, then restore the committed pages with `--none`.
+- To check the header of a published release, run the script with `--releases-json` and a file in the shape of the GitHub API list, build, and `pnpm --dir docs preview --port <port>`. Run `--none` afterwards.
 
 ## UI stories and coverage
 
@@ -59,6 +59,6 @@ pnpm --dir e2e exec playwright install chromium
 node e2e/scripts/readme-screenshots.mjs
 ```
 
-The script creates disposable projects in temporary `AGBOARD_HOME` directories, starts its own servers on available loopback ports, and captures the desktop board, the epic progress panel, and the mobile drawer in English and Japanese. It never uses your saved board or port 7420. The browser renders the built UI against the real API; images are not mockups. It checks the four detail tabs, the task editor's folded conditions panel, and browser errors, and removes its temporary data afterwards.
+The script creates disposable projects in temporary `AGBOARD_HOME` directories, starts its own servers on available loopback ports, and captures the desktop board, the epic progress panel, and two phone screens (a question with a choice picked, and the bottom drawer) in English and Japanese. It never uses your saved board or port 7420. The browser renders the built UI against the real API; images are not mockups. It checks the four detail tabs, the task editor's folded conditions panel, and browser errors, and removes its temporary data afterwards.
 
-Review all six images in `docs/images/` before committing them, and keep the sample text free of personal data. Screenshots do not replace the regression suite or phone keyboard checks. The guide images in `docs/images/guide/` (18 files) come from the separate script above; review them too when you regenerate them.
+Review all eight images in `docs/images/` before committing them, and keep the sample text free of personal data. Screenshots do not replace the regression suite or phone keyboard checks. The guide images in `docs/images/guide/` (18 files) come from the separate script above; review them too when you regenerate them.

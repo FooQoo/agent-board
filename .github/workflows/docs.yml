@@ -12,7 +12,7 @@ on:
       - "docs/**"
       - "scripts/release/docs-release.mjs"
       - ".github/workflows/docs.yml"
-  # The published releases decide the version in the header and the release notes pages.
+  # The published releases decide the version in the header.
   # A release published with the workflow token may not start this workflow; then run it
   # by hand (workflow_dispatch) to refresh the site.
   release:

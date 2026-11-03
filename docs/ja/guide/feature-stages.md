@@ -25,10 +25,8 @@ Agent Board v1.0.0の機能は、一般提供（GA）とパブリックプレビ
 
 | 機能 | 表示される場所 |
 | --- | --- |
-| [Docs](#docs) | Docsダイアログの見出しに「パブリックプレビュー」のバッジが付き、その下に注意文とこのページへのリンクが出ます。 |
+| [ドキュメント](#docs) | 「ドキュメント」ダイアログの見出しに「パブリックプレビュー」のバッジが付き、その下に注意文とこのページへのリンクが出ます。 |
 | [モバイルモニター](#mobile-monitor) | パソコンの「モバイル接続」ダイアログにバッジが出ます。接続する前は、注意文とこのページへのリンクも出ます。スマートフォンのモニターには出ません。 |
-| [初回の案内](#onboarding) | 最初の画面のタイトルの横にバッジが出ます。 |
-| [connectとupdate](#connect-and-update) | 対話画面の先頭に1行出ます。`Public preview: this command may change. See the documentation for current limitations.` `update --yes`は質問をしないため、この行を出しません。 |
 | [タスクの受け取り](#listen) | 画面はありません。このページとエージェントのSkillで説明します。 |
 
 GAの機能には、この表示はありません。
@@ -47,24 +45,18 @@ GAの機能には、この表示はありません。
 | データの保存と復旧 | macOS | `formatVersion`が1のファイルだけに対応します。 | [データとバックアップ](./operations/data) |
 | 表示言語とテーマ | パソコン、モバイルモニター | 日本語と英語、24のテーマです。 | [設定](./use/board#settings) |
 | エージェント向けのCLI・JSON出力・Hook・`wait` | Claude Code、Codex CLI | HookとSkillは、導入しないと使えません。エージェントの起動は人が行います。 | [エージェントとの連携](./automation/agents) |
+| `connect`と`update` | macOS。`PATH`上にClaude CodeやCodex CLIが見つかる環境 | `update --yes`を除き、どちらのコマンドも対話式です。Hookが変わったときは、エージェントで信頼し直す必要があります。`update`が古い版を入れ直すことはありません。 | [エージェントとの連携](./automation/agents#connect-your-agent)、[CLIリファレンス](./automation/cli#connect-and-update) |
+| 初回の案内 | パソコンのブラウザ | データ領域にすでにプロジェクトがあるときと、モバイルモニターでは表示しません。 | [初回の案内](./use/board#the-first-run-guide) |
 
 ## パブリックプレビューの機能
 
-### Docs {#docs}
+### ドキュメント {#docs}
 
-Docsダイアログで、プロジェクトの`docs/`フォルダにあるファイルを一覧して読めます。機能は今も変わり続けています。
+「ドキュメント」ダイアログで、プロジェクトの`docs/`フォルダにあるファイルを一覧して読めます。機能は今も変わり続けています。
 
-- **対応範囲:** パソコンのブラウザのボード。モバイルモニターにはDocsを表示しません。
+- **対応範囲:** パソコンのブラウザのボード。モバイルモニターにはドキュメントを表示しません。
 - **制約:** MarkdownとMDXのファイルは2 MiBまで、画像は10 MiBまでです。
 - **ガイド:** [プロジェクトのドキュメント](./use/docs)
-
-### connectとupdate {#connect-and-update}
-
-`agboard connect`は、Claude CodeとCodexにSkillとHookを導入します。`agboard update`は、`connect`が導入したものを、お使いのコマンドの版にそろえます。
-
-- **対応範囲:** macOS。`PATH`上にClaude CodeやCodex CLIが見つかる環境です。
-- **制約:** `update --yes`を除き、どちらのコマンドも対話式です。Hookが変わったときは、エージェントで信頼し直す必要があります。`update`が古い版を入れ直すことはありません。エージェントごとの範囲指定、ドライラン、JSON出力はありません。今後加わる可能性があります。
-- **ガイド:** [エージェントとの連携](./automation/agents#connect-your-agent)、[CLIリファレンス](./automation/cli#connect-and-update)
 
 ### タスクの受け取り {#listen}
 
@@ -82,15 +74,6 @@ Docsダイアログで、プロジェクトの`docs/`フォルダにあるファ
 - **制約:** ngrokに依存し、HTTPSはngrokで終端されます。パソコンが起動していて、`agboard serve`が動いている間だけ使えます。接続の方式は今後変わる可能性があります。
 - **ガイド:** [モバイルモニター](./operations/mobile-monitor)
 
-### 初回の案内 {#onboarding}
-
-ボードを初めて開くと、2枚のサンプルカードで、エージェントがカードで作業し、判断を求める流れを短く案内します。
-
-- **対応範囲:** パソコンのブラウザのボード。
-- **制約:** データ領域にすでにプロジェクトがあるときと、モバイルモニターでは表示しません。
-- **ガイド:** [初回の案内](./use/board#the-first-run-guide)、[クイックスタート](./quickstart#before-you-start-the-first-run-guide)
-
 ## 関連
 
 - [インストールと起動](./getting-started)
-- [リリースノート](/ja/releases)

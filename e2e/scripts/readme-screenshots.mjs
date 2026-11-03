@@ -54,6 +54,13 @@ try {
       await page.setViewportSize({ width: 390, height: 844 });
       await server.open(page, `${remote}/monitor/?project=${id}`);
       await expect(page.getByRole('status')).toContainText(text.ready);
+      // The question on that card, with the first choice picked and not yet sent.
+      const waiting = page.getByRole('article', { name: /^#3(?!\d)/ });
+      await waiting.getByText(text.choices[0], { exact: true }).click();
+      // Show the whole card, down to the button that sends the answer.
+      await waiting.evaluate((card) => card.scrollIntoView({ block: 'end' }));
+      await settle(page);
+      await page.screenshot({ path: path.join(output, `mobile-question${suffix}.png`) });
       await page.getByRole('article', { name: /^#3(?!\d)/ }).getByRole('button', { name: text.titles[2], exact: true }).click();
       await expect(page.getByRole('tab')).toHaveCount(4);
       await page.getByRole('tab', { name: text.tab, exact: true }).click();
@@ -69,7 +76,7 @@ try {
       await settle(page);
       await page.screenshot({ path: path.join(output, `mobile${suffix}.png`) });
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured board, epic progress, and mobile drawer; no browser errors.`);
+      console.log(`${locale}: captured board, epic progress, the mobile question and drawer; no browser errors.`);
     } finally {
       await context?.close();
       await stop(server);

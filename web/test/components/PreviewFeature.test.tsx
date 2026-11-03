@@ -34,13 +34,11 @@ afterEach(async () => {
 describe('the list of preview features', () => {
   it('names exactly the approved features, each with its own anchor', () => {
     expect(Object.keys(PREVIEW_FEATURES).sort()).toEqual(
-      ['connectAndUpdate', 'docs', 'listen', 'mobileMonitor', 'onboarding'].sort(),
+      ['docs', 'listen', 'mobileMonitor'].sort(),
     );
     expect(Object.values(PREVIEW_FEATURES).map((f) => f.anchor)).toEqual([
       'docs',
       'mobile-monitor',
-      'onboarding',
-      'connect-and-update',
       'listen',
     ]);
   });
@@ -74,9 +72,6 @@ const entries = {
       onStop={() => {}}
       onResetToken={() => {}}
     />
-  ),
-  onboarding: () => (
-    <OnboardingWelcome busy={false} error={null} onStart={() => {}} onSkip={() => {}} />
   ),
 } satisfies Partial<Record<PreviewFeature, () => React.ReactElement>>;
 
@@ -112,12 +107,6 @@ describe.each(['en', 'ja'] as const)('the preview entries in %s', (locale) => {
     );
   });
 
-  it('onboarding shows the badge only, without a notice or a link', async () => {
-    await i18n.changeLanguage(locale);
-    render(entries.onboarding());
-    expect(within(screen.getByRole('dialog')).queryByRole('link')).toBeNull();
-  });
-
   it('keeps the Docs dialog named after the feature, not the badge', async () => {
     await i18n.changeLanguage(locale);
     render(entries.docs());
@@ -133,5 +122,13 @@ describe('a generally available screen', () => {
     expect(container.querySelector('[data-preview-feature]')).toBeNull();
     expect(screen.queryByText('Public preview')).toBeNull();
     expect(screen.queryByText(/public preview/i)).toBeNull();
+  });
+
+  it.each(['en', 'ja'] as const)('the first-run welcome shows none in %s', async (locale) => {
+    await i18n.changeLanguage(locale);
+    render(<OnboardingWelcome busy={false} error={null} onStart={() => {}} onSkip={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).queryByText(WORDS[locale].badge)).toBeNull();
+    expect(within(dialog).queryByRole('link')).toBeNull();
   });
 });

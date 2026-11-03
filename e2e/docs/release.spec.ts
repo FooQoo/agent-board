@@ -5,10 +5,10 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { readRepoFile, repoRoot, type Lang } from './site';
 
-// The published version in the header and the release notes pages. They come from
-// scripts/release/docs-release.mjs, never from Cargo.toml. These tests cover the script
-// (no browser) and the built site in the state it was built in: not yet published, or a
-// fixture preview.
+// The published version in the header. It comes from scripts/release/docs-release.mjs,
+// never from Cargo.toml. These tests cover the script (no browser) and the built site in the
+// state it was built in: not yet published, or a fixture preview. The site has no release
+// notes page; the GitHub Release is the release notes.
 
 const script = path.join(repoRoot, 'scripts', 'release', 'docs-release.mjs');
 const langs: Lang[] = ['en', 'ja'];
@@ -73,38 +73,21 @@ function release(tag: string, over: Record<string, unknown> = {}) {
 }
 
 test.describe('docs-release script', () => {
-  test('--none writes the not-yet-published state, and the committed pages are that state', () => {
+  test('--none writes the not-yet-published state and no page', () => {
     const out = tmp();
     expect(run(['--none'], out).status).toBe(0);
     const header = JSON.parse(fs.readFileSync(path.join(out, '.vitepress', 'release.json'), 'utf8'));
     expect(header).toEqual({ state: 'unpublished', version: null, url: null });
-    for (const [rel, committed] of [
-      ['releases.md', 'docs/releases.md'],
-      ['ja/releases.md', 'docs/ja/releases.md'],
-    ]) {
-      const text = fs.readFileSync(path.join(out, rel), 'utf8');
-      expect(text).toBe(readRepoFile(committed));
-    }
-    expect(fs.readFileSync(path.join(out, 'releases.md'), 'utf8')).toContain('No release has been published yet.');
-    expect(fs.readFileSync(path.join(out, 'ja', 'releases.md'), 'utf8')).toContain('まだ公開されたリリースはありません。');
+    expect(fs.readdirSync(out)).toEqual(['.vitepress']);
   });
 
-  test('--fixture shows the review copy of v1.0.0 with a warning, in both languages', () => {
+  test('--fixture reads the review copy of v1.0.0 and records the fixture state', () => {
     const out = tmp();
     expect(run(['--fixture'], out).status).toBe(0);
     const header = JSON.parse(fs.readFileSync(path.join(out, '.vitepress', 'release.json'), 'utf8'));
     expect(header.state).toBe('fixture');
     expect(header.version).toBe('1.0.0');
-    const en = fs.readFileSync(path.join(out, 'releases.md'), 'utf8');
-    const ja = fs.readFileSync(path.join(out, 'ja', 'releases.md'), 'utf8');
-    expect(en).toContain('## v1.0.0');
-    expect(en).toContain('not from a published GitHub Release');
-    expect(en).toContain('### Required update steps');
-    expect(en).not.toContain('### 変更点');
-    expect(ja).toContain('## v1.0.0');
-    expect(ja).toContain('公開済みのGitHub Releaseではなく');
-    expect(ja).toContain('### 必要な更新操作');
-    expect(ja).not.toContain('### Changes');
+    expect(fs.existsSync(path.join(out, 'releases.md'))).toBe(false);
   });
 
   test('only published semver releases count, the newest comes first, and Cargo.toml is not read', () => {
@@ -129,12 +112,8 @@ test.describe('docs-release script', () => {
       version: '1.10.0',
       url: 'https://github.com/FooQoo/agent-board/releases/tag/v1.10.0',
     });
-    const en = fs.readFileSync(path.join(out, 'releases.md'), 'utf8');
-    expect([...en.matchAll(/^## (v[\d.]+)$/gm)].map((m) => m[1])).toEqual(['v1.10.0', 'v1.2.0', 'v1.0.0']);
-    expect(en).not.toContain('not from a published GitHub Release');
-    expect(en).toContain('Published on 2026-11-01.');
     const cargo = /^version = "(.*)"$/m.exec(readRepoFile('Cargo.toml'))![1];
-    if (!['1.10.0', '1.2.0', '1.0.0'].includes(cargo)) expect(en).not.toContain(`v${cargo}`);
+    if (cargo !== '1.10.0') expect(header.version).not.toBe(cargo);
   });
 
   test('a release without a Japanese section stops the script and writes nothing', () => {
@@ -195,18 +174,13 @@ function builtState(): { state: string; version: string | null; url: string | nu
   }
 }
 
-const labels = {
-  en: { releases: 'Releases', title: 'Releases', none: 'No release has been published yet.', fixture: 'not from a published GitHub Release' },
-  ja: { releases: 'リリースノート', title: 'リリースノート', none: 'まだ公開されたリリースはありません。', fixture: '公開済みのGitHub Releaseではなく' },
-} as const;
-
 for (const lang of langs) {
   const prefix = lang === 'ja' ? 'ja/' : '';
-  test(`nav and release page (${lang}) match the built state`, async ({ page }) => {
+  test(`the nav (${lang}) shows the version of the built state and no release notes page`, async ({ page, request }) => {
     const built = builtState();
     await page.goto(`${prefix}guide/`);
     const nav = page.locator('.VPNavBarMenu');
-    await expect(nav.getByRole('link', { name: labels[lang].releases })).toHaveAttribute('href', `/agent-board/${prefix}releases`);
+    await expect(nav.getByRole('link', { name: lang === 'en' ? 'Releases' : 'リリースノート' })).toHaveCount(0);
     const versionLink = nav.getByRole('link', { name: /^v\d/ });
     // Only a published release shows a version; a fixture preview shows none.
     if (built.state === 'published' && built.version) {
@@ -216,52 +190,15 @@ for (const lang of langs) {
     } else {
       await expect(versionLink).toHaveCount(0);
     }
-
-    await nav.getByRole('link', { name: labels[lang].releases }).click();
-    await expect(page).toHaveURL(new RegExp(`/agent-board/${prefix}releases$`));
-    await expect(page.locator('html')).toHaveAttribute('lang', lang);
-    await expect(page.locator('.vp-doc h1')).toHaveText(labels[lang].title);
-    const doc = page.locator('.vp-doc');
-    if (built.state === 'unpublished') {
-      await expect(doc).toContainText(labels[lang].none);
-      await expect(doc.locator('h2')).toHaveCount(0);
-    } else {
-      await expect(doc.locator('h2').first()).toHaveText(`v${built.version}`);
-      if (built.state === 'fixture') await expect(doc).toContainText(labels[lang].fixture);
-      const own = lang === 'en' ? 'Required update steps' : '必要な更新操作';
-      const other = lang === 'en' ? '必要な更新操作' : 'Required update steps';
-      await expect(doc.getByRole('heading', { name: own })).toHaveCount(1);
-      await expect(doc.getByRole('heading', { name: other })).toHaveCount(0);
-    }
-    expect(await doc.evaluate((el) => (el.textContent ?? '').includes('**'))).toBe(false);
-  });
-
-  test(`the release page (${lang}) has no horizontal scroll at 375px and 1280px, in light and dark`, async ({ page }) => {
-    for (const width of [375, 1280]) {
-      for (const scheme of ['light', 'dark'] as const) {
-        await page.setViewportSize({ width, height: 900 });
-        await page.emulateMedia({ colorScheme: scheme });
-        await page.addInitScript((value) => localStorage.setItem('vitepress-theme-appearance', value), scheme);
-        await page.goto(`${prefix}releases`);
-        await expect(page.locator('.vp-doc h1')).toBeVisible();
-        const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, inner: window.innerWidth }));
-        expect(overflow.scroll, `${lang} ${width} ${scheme}`).toBeLessThanOrEqual(overflow.inner);
-      }
-    }
+    expect(fs.existsSync(path.join(repoRoot, 'docs', prefix, 'releases.md'))).toBe(false);
+    expect((await request.get(`${prefix}releases`)).status()).toBe(404);
   });
 }
-
-test('the phone menu lists the release notes link', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 800 });
-  await page.goto('guide/');
-  await page.locator('.VPNavBarHamburger').click();
-  await expect(page.locator('.VPNavScreen').getByRole('link', { name: 'Releases' })).toHaveAttribute('href', '/agent-board/releases');
-});
 
 test('the feature stages page keeps the anchors the product links to', async ({ page }) => {
   for (const lang of langs) {
     await page.goto(`${lang === 'ja' ? 'ja/' : ''}guide/feature-stages`);
-    for (const id of ['docs', 'mobile-monitor', 'onboarding', 'connect-and-update', 'listen']) {
+    for (const id of ['docs', 'mobile-monitor', 'listen']) {
       await expect(page.locator(`.vp-doc h3[id="${id}"]`), `${lang} #${id}`).toHaveCount(1);
     }
   }

@@ -144,3 +144,13 @@ video.demo-video {
 .VPHome:has(.landing) {
   margin-bottom: 0;
 }
+
+/* The copyright line (SiteCopyright.vue): below the prev/next links on doc pages, and padded to
+   the page gutter on the home page. */
+.site-copyright--doc {
+  margin-top: 48px;
+}
+
+.site-copyright--home {
+  padding-inline: 24px;
+}

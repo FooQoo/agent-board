@@ -8,6 +8,8 @@ import epic from '../../images/epic.png'
 import epicJa from '../../images/epic.ja.png'
 import mobile from '../../images/mobile.png'
 import mobileJa from '../../images/mobile.ja.png'
+import mobileQuestion from '../../images/mobile-question.png'
+import mobileQuestionJa from '../../images/mobile-question.ja.png'
 import boardDark from '../../images/guide/board-dark.png'
 import boardDarkJa from '../../images/guide/board-dark.ja.png'
 import docs from '../../images/guide/docs.png'
@@ -18,7 +20,8 @@ import questionJa from '../../images/guide/question.ja.png'
 // The copy lives in the `landing` frontmatter of each language's index.md; this component only lays it out.
 type Link = { text: string; link: string }
 type Step = { actor: 'ai' | 'human' | 'auto'; title: string; text: string }
-type Feature = { image: string; title: string; text: string; link: Link; preview?: string; alt: string }
+// `alts` holds one description per phone screen; the other features show one image with `alt`.
+type Feature = { image: string; title: string; text: string; link: Link; preview?: string; alt?: string; alts?: string[] }
 
 const { frontmatter, lang } = useData()
 const c = computed(() => frontmatter.value.landing)
@@ -26,8 +29,12 @@ const ja = computed(() => lang.value === 'ja')
 
 const images = computed(() =>
   ja.value
-    ? { board: boardJa, boardDark: boardDarkJa, epic: epicJa, mobile: mobileJa, docs: docsJa, question: questionJa }
-    : { board, boardDark, epic, mobile, docs, question },
+    ? { board: boardJa, boardDark: boardDarkJa, epic: epicJa, docs: docsJa, question: questionJa }
+    : { board, boardDark, epic, docs, question },
+)
+// The phone feature shows a question being answered on the left and a task in the drawer on the right.
+const phones = computed(() =>
+  ja.value ? [mobileQuestionJa, mobileJa] : [mobileQuestion, mobile],
 )
 const video = computed(() => withBase(`/videos/demo${ja.value ? '.ja' : ''}.mp4`))
 const poster = computed(() => withBase(`/videos/demo${ja.value ? '.ja' : ''}.jpg`))
@@ -184,6 +191,9 @@ onMounted(() => {
                 <img class="screenshot lp-only-light" :src="images.board" :alt="f.alt" loading="lazy" />
                 <img class="screenshot lp-only-dark" :src="images.boardDark" :alt="f.alt" loading="lazy" />
               </template>
+              <template v-else-if="f.image === 'mobile'">
+                <img v-for="(src, i) in phones" :key="src" class="screenshot" :src="src" :alt="f.alts?.[i]" loading="lazy" />
+              </template>
               <img v-else class="screenshot" :src="images[f.image as keyof typeof images]" :alt="f.alt" loading="lazy" />
             </div>
             <div class="lp-feature__text">
@@ -204,9 +214,13 @@ onMounted(() => {
           <h2>{{ c.agents.title }}</h2>
           <p class="lp-lead">{{ c.agents.lead }}</p>
         </header>
-        <ul class="lp-agents">
-          <li v-for="name in c.agents.names" :key="name">
-            <span class="lp-agents__icon"><LandingIcon name="terminal" :size="20" /></span>{{ name }}
+        <p id="lp-agents-label" class="lp-agents__label">{{ c.agents.supportedLabel }}</p>
+        <!-- Names and links only: the companies' logos need their written permission. -->
+        <ul class="lp-agents" aria-labelledby="lp-agents-label">
+          <li v-for="agent in c.agents.supported as Link[]" :key="agent.link">
+            <a :href="agent.link" target="_blank" rel="noopener noreferrer">
+              {{ agent.text }}<LandingIcon name="external-link" :size="16" />
+            </a>
           </li>
         </ul>
         <div class="lp-agents__connect">
@@ -222,9 +236,10 @@ onMounted(() => {
               <span v-if="copied === c.agents.command" class="lp-command__done">{{ c.copy.done }}</span>
             </button>
           </div>
-          <a class="lp-badge" :href="href(c.agents.preview)">{{ c.features.previewLabel }}</a>
+          <a v-if="c.agents.preview" class="lp-badge" :href="href(c.agents.preview)">{{ c.features.previewLabel }}</a>
         </div>
         <a class="lp-more" :href="href(c.agents.link.link)">{{ c.agents.link.text }} →</a>
+        <p class="lp-agents__trademark">{{ c.agents.trademark }}</p>
       </div>
     </section>
 
@@ -845,10 +860,15 @@ onMounted(() => {
 }
 .lp-feature__panel.is-phone {
   align-items: center;
+  gap: 4%;
   padding: 5% 0;
 }
 .lp-feature__panel.is-phone img {
+  /* The phone captures are 390 x 844. The ratio gives a lazy image its width before it loads;
+     without it the image has no width, never enters the viewport, and never loads. */
+  aspect-ratio: 390 / 844;
   width: auto;
+  min-width: 0;
   height: 100%;
   border-bottom: 1px solid var(--vp-c-divider);
   border-radius: 20px;
@@ -913,26 +933,40 @@ onMounted(() => {
   width: 100%;
   max-width: 540px;
 }
-.lp-agents li {
+.lp-agents__label {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.lp-agents li a {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   padding: 16px 20px;
   border: 1px solid var(--vp-c-divider);
   border-radius: var(--lp-radius);
   background: var(--lp-surface);
+  color: var(--vp-c-text-1);
   font-size: 17px;
   font-weight: 800;
+  text-decoration: none;
+  transition: border-color 0.2s;
 }
-.lp-agents__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--lp-lane);
+.lp-agents li a:hover {
+  border-color: var(--vp-c-brand-1);
+}
+.lp-agents li a .lp-icon {
+  color: var(--vp-c-text-2);
+}
+.lp-agents__trademark {
+  max-width: 560px;
+  margin: 0;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+  line-height: 1.6;
 }
 .lp-agents__connect {
   display: flex;

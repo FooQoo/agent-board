@@ -21,22 +21,9 @@
  * The app resets the margins and padding of headings, paragraphs and lists with element selectors,
  * which are unlayered and so beat the utility classes. Spacing on those elements is set here.
  */
-.onboarding-dialog__heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
-  margin: 20px 0 0;
-}
-
 .onboarding-dialog__title {
   margin: 20px 0 0;
   line-height: 38px;
-}
-
-/* Beside the badge, the row carries the top margin and the title none. */
-.onboarding-dialog__heading .onboarding-dialog__title {
-  margin: 0;
 }
 
 .onboarding-dialog__body {

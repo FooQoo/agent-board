@@ -165,7 +165,7 @@ agboard setup --agent claude --json
 
 ## Connect and update
 
-`connect` and `update` install and refresh the Skill and the Hook for Claude Code and Codex. Both are in [public preview](../feature-stages#connect-and-update). The questions, the files written, and the conflict rules are in [Working with agents](./agents#connect-your-agent).
+`connect` and `update` install and refresh the Skill and the Hook for Claude Code and Codex. The questions, the files written, and the conflict rules are in [Working with agents](./agents#connect-your-agent).
 
 ```sh
 agboard connect

@@ -163,27 +163,24 @@ export const Welcome: Story = {
     await expect(within(document.body).getByRole('dialog')).toBeInTheDocument();
   },
 };
-/** The first screen carries the public preview badge beside the title, and no notice or link. */
-export const WelcomePublicPreview: Story = {
+/** The first-run welcome is generally available: no public preview badge, notice, or link. */
+export const WelcomeWithoutPreviewBadge: Story = {
   args: { kind: 'welcome' },
   play: async () => {
     const dialog = within(document.body).getByRole('dialog');
     await expect(dialog).toHaveAccessibleName('Try Agent Board');
-    await expect(within(dialog).getByText('Public preview')).toHaveAttribute('data-slot', 'badge');
+    await expect(within(dialog).queryByText('Public preview')).toBeNull();
     await expect(within(dialog).queryByRole('link')).toBeNull();
   },
 };
 
 /** The same screen in Japanese, in the dark theme, on a phone-width window. */
-export const WelcomePublicPreviewJapaneseDarkNarrow: Story = {
+export const WelcomeJapaneseDarkNarrow: Story = {
   args: { kind: 'welcome' },
   globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
   play: async () => {
     const dialog = within(document.body).getByRole('dialog');
-    await expect(within(dialog).getByText('パブリックプレビュー')).toHaveAttribute(
-      'data-slot',
-      'badge',
-    );
+    await expect(within(dialog).queryByText('パブリックプレビュー')).toBeNull();
   },
 };
 

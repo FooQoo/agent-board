@@ -30,7 +30,7 @@ node e2e/scripts/demo-video.mjs         # docs/public/videos/(ffmpegも必要)
 
 ## 公開済みリリースの情報をプレビューする
 
-サイトのヘッダーの版とリリースノートのページは、リポジトリではなく、公開済みのGitHub Releaseから作ります。ビルドの前に、`node scripts/release/docs-release.mjs`が書き出します。
+サイトのヘッダーの版は、リポジトリではなく、公開済みのGitHub Releaseから作ります。ビルドの前に、`node scripts/release/docs-release.mjs`が書き出します。サイトにはリリースノートのページはなく、GitHub Releaseがリリースノートです。
 
 ```sh
 node scripts/release/docs-release.mjs --github --repo FooQoo/agent-board   # 公開するサイト
@@ -40,10 +40,10 @@ pnpm --dir docs build
 ```
 
 - 対象にするのは、`draft=false`、`prerelease=false`で、タグが`vMAJOR.MINOR.PATCH`の形のリリースだけで、その中で版が最も新しいものを使います。`Cargo.toml`の版は使いません。各リリースの本文には、`## English`と`## 日本語`のセクションが必要で、それぞれに4つの見出し（`### Changes`、`### Fixes`、`### Breaking changes`、`### Required update steps`と、その日本語の見出し）が要ります。満たさないと、スクリプトは止まります。
-- `docs/.vitepress/release.json`（Gitは無視します。ヘッダーが読みます）と、`docs/releases.md`、`docs/ja/releases.md`を書き出します。コミットしてあるページは「まだ公開されていない」状態です。`--fixture`は`releases/`のレビュー用の原稿を、目立つ警告つきで表示します。その出力はコミットしないでください。
+- `docs/.vitepress/release.json`（Gitは無視します。ヘッダーが読みます）を書き出します。`--fixture`は`releases/`のレビュー用の原稿を使い、fixtureの状態として記録するので、ヘッダーには版を表示しません。
 - Pagesのワークフローは、`main`へのプッシュ、`release`イベント（published、edited、deleted）、手動の実行で、ビルドの前にこのスクリプトを`--github`で実行します。APIの呼び出しが失敗する、またはリリースが不正なときは、ビルドが止まり、公開済みのサイトはそのまま残ります。プルリクエストは、コミットしてある状態で、オフラインでビルドします。ワークフロー自身のトークンで公開したリリースは、ワークフローを起動しないことがあります。その場合は手動で実行してください。
 - `releases/vX.Y.Z.md`は、リリースノートのレビュー用の原稿です。公開後は、GitHub Releaseの本文が正本です。
-- 公開後の見た目を確認するには、fixtureを実行してビルドし、`pnpm --dir docs preview --port <port>`で開きます。確認したら、`--none`でコミットしてあるページに戻します。
+- 公開したリリースのヘッダーを確認するには、GitHub APIの一覧と同じ形のファイルを`--releases-json`に渡してスクリプトを実行し、ビルドして、`pnpm --dir docs preview --port <port>`で開きます。確認したら、`--none`で戻します。
 
 ## UIのStoryとカバレッジ
 
@@ -59,6 +59,6 @@ pnpm --dir e2e exec playwright install chromium
 node e2e/scripts/readme-screenshots.mjs
 ```
 
-スクリプトは一時的な`AGBOARD_HOME`に使い捨てのプロジェクトを作り、空いているループバックのポートで独自のサーバーを起動し、PCのボード、エピックの進行表、モバイルのドロワーを英語と日本語で撮影します。保存されたボードやポート7420は使いません。ブラウザはビルドした画面を実際のAPIに接続して描画し、その画面を撮影します。詳細の4タブ、タスクの編集画面の折りたたまれた条件欄、ブラウザのエラーを確かめ、終わったら一時データを消します。
+スクリプトは一時的な`AGBOARD_HOME`に使い捨てのプロジェクトを作り、空いているループバックのポートで独自のサーバーを起動し、PCのボード、エピックの進行表、スマホの2画面（選択肢を選んだ質問、下部のドロワー）を英語と日本語で撮影します。保存されたボードやポート7420は使いません。ブラウザはビルドした画面を実際のAPIに接続して描画し、その画面を撮影します。詳細の4タブ、タスクの編集画面の折りたたまれた条件欄、ブラウザのエラーを確かめ、終わったら一時データを消します。
 
-`docs/images/`の6枚は、コミット前にすべて確認し、サンプルの文章に個人情報を含めないでください。スクリーンショットは回帰テストやスマホのキーボードの確認の代わりにはなりません。`docs/images/guide/`のガイドの画像(18枚)は上の別のスクリプトで作るので、作り直したときはそれも確認してください。
+`docs/images/`の8枚は、コミット前にすべて確認し、サンプルの文章に個人情報を含めないでください。スクリーンショットは回帰テストやスマホのキーボードの確認の代わりにはなりません。`docs/images/guide/`のガイドの画像(18枚)は上の別のスクリプトで作るので、作り直したときはそれも確認してください。

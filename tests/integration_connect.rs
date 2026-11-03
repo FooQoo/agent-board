@@ -659,20 +659,20 @@ fn an_unfinished_earlier_run_is_recovered_and_reported_before_planning() {
     assert_eq!(registered(&fx, "claude", "skill")["scope"], "global");
 }
 
-const PREVIEW: &str =
-    "Public preview: this command may change. See the documentation for current limitations.";
+/// connect is generally available, so no screen carries a public preview line.
+const PREVIEW: &str = "Public preview";
 
 #[test]
-fn the_interactive_screen_starts_with_the_preview_line() {
+fn the_interactive_screen_starts_with_the_project() {
     let fx = Fx::new();
     let (code, screen) = fx.connect(&fx.root(), &[("Select agents", "q")]);
     assert_eq!(code, 0, "{screen}");
-    assert!(screen.trim_start().starts_with(PREVIEW), "{screen}");
-    assert!(screen.find(PREVIEW) < screen.find("Project:"), "{screen}");
+    assert!(screen.trim_start().starts_with("Project:"), "{screen}");
+    assert!(!screen.contains(PREVIEW), "{screen}");
 }
 
 #[test]
-fn refusals_and_usage_errors_do_not_print_the_preview_line() {
+fn refusals_and_usage_errors_print_no_preview_line() {
     let fx = Fx::new();
     let (code, stdout, stderr) = fx.agboard(&["connect", "--json"], &fx.root());
     assert_eq!(code, 2);

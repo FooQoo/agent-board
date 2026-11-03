@@ -100,7 +100,7 @@ agboard update
 
 ## 機能の提供段階
 
-v1.0.0には、一般提供（GA）の機能と、パブリックプレビューの機能が混在しています。Docs、`connect`と`update`、タスクの受け取り、モバイルモニター、初回の案内はパブリックプレビューで、今後変わる可能性があります。GAは、何も変わらないことや、不具合がないことを約束するものではありません。詳しくは[機能の提供段階](https://fooqoo.github.io/agent-board/ja/guide/feature-stages)を参照してください。
+v1.0.0には、一般提供（GA）の機能と、パブリックプレビューの機能が混在しています。ドキュメント、タスクの受け取り、モバイルモニターはパブリックプレビューで、今後変わる可能性があります。GAは、何も変わらないことや、不具合がないことを約束するものではありません。詳しくは[機能の提供段階](https://fooqoo.github.io/agent-board/ja/guide/feature-stages)を参照してください。
 
 ## ライセンス
 
@@ -110,6 +110,6 @@ Agent Boardは、[MITライセンス](LICENSE)で公開しています。同梱�
 
 - [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
 - [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
-- [リリースノート](https://fooqoo.github.io/agent-board/ja/releases) — 公開した各版の変更点。
+- [リリース](https://github.com/FooQoo/agent-board/releases) — 公開した各版の変更点。
 - [Claude Code・Codexとの連携（英語）](integrations/README.md) — `connect`が導入するものと、Hookの仕組み。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

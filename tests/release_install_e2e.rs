@@ -384,16 +384,7 @@ fn the_documented_stages_match_the_confirmed_classification() {
         .filter_map(|line| line.split_once("anchor: '"))
         .map(|(_, rest)| rest.split('\'').next().unwrap().to_string())
         .collect();
-    assert_eq!(
-        in_product,
-        [
-            "docs",
-            "mobile-monitor",
-            "onboarding",
-            "connect-and-update",
-            "listen"
-        ]
-    );
+    assert_eq!(in_product, ["docs", "mobile-monitor", "listen"]);
     let mut expected = in_product.clone();
     expected.sort();
 
@@ -415,27 +406,23 @@ fn the_documented_stages_match_the_confirmed_classification() {
         let mut anchors = preview_anchors(&page, preview);
         anchors.sort();
         assert_eq!(anchors, expected, "{path}: the preview sections");
-        // Ten GA features, and none of the preview ones among them.
+        // Twelve GA features, and none of the preview ones among them.
         let rows = ga_rows(&page, ga);
-        assert_eq!(rows.len(), 10, "{path}: {rows:#?}");
+        assert_eq!(rows.len(), 12, "{path}: {rows:#?}");
         for row in &rows {
             for name in [
                 "Docs",
-                "connect",
+                "ドキュメント",
                 "listen",
                 "Mobile monitor",
                 "モバイルモニター",
-                "初回の案内",
             ] {
                 let cell = row.split('|').nth(1).unwrap();
                 assert!(!cell.contains(name), "{path}: {name} is listed as GA");
             }
         }
         assert!(page.contains(notice), "{path}: the adopted notice");
-        // The terminal line is the same text the product prints.
-        assert!(
-            page.contains("Public preview: this command may change. See the documentation for current limitations."),
-            "{path}: the CLI line"
-        );
+        // connect and update are GA, so the page no longer quotes a terminal line.
+        assert!(!page.contains("Public preview: this command"), "{path}");
     }
 }

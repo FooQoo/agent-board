@@ -2,10 +2,8 @@
 // Builds the release information of the documentation site from the published
 // GitHub Releases, before `pnpm --dir docs build`.
 //
-// It writes three files under the output folder (default: docs):
+// It writes one file under the output folder (default: docs):
 //   .vitepress/release.json   the version the site header shows (git-ignored)
-//   releases.md               English release notes
-//   ja/releases.md            Japanese release notes
 //
 // Source of the releases (exactly one):
 //   --github          the GitHub API of --repo (default FooQoo/agent-board); the
@@ -15,7 +13,7 @@
 //   --releases-json F a file in the shape of the GitHub API list (tests)
 //   --fixture         the local review copies in releases/*.md, shown as a
 //                     fixture and never as a published release
-//   --none (default)  no release: the pages say that nothing is published
+//   --none (default)  no release: the header shows no version
 //
 // Only releases with draft=false and prerelease=false and a vMAJOR.MINOR.PATCH
 // tag count. The version in Cargo.toml is never read.
@@ -136,63 +134,19 @@ export function validate(releases, options) {
       throw new Error(`${tag}: html_url is not a release of ${options.repo}`);
     }
     if (typeof release.body !== 'string') throw new Error(`${tag}: the release has no body`);
-    const date = release.published_at ? String(release.published_at).slice(0, 10) : null;
-    if (date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`${tag}: invalid published_at`);
-    valid.push({
-      tag,
-      version: tag.slice(1),
-      parts: match.slice(1).map(Number),
-      url: release.html_url,
-      date,
-      sections: splitBody(release.body, tag),
-    });
+    // The body keeps both languages, as the GitHub Release is the release notes.
+    splitBody(release.body, tag);
+    valid.push({ tag, version: tag.slice(1), parts: match.slice(1).map(Number), url: release.html_url });
   }
   valid.sort((a, b) => b.parts[0] - a.parts[0] || b.parts[1] - a.parts[1] || b.parts[2] - a.parts[2]);
   return valid;
 }
 
-const TEXT = {
-  en: {
-    title: 'Releases',
-    intro: 'Each version lists its changes, fixes, breaking changes, and the steps you need to take to update. The newest version comes first. The same text is published as the GitHub Release.',
-    releasesLabel: 'All releases on GitHub',
-    none: 'No release has been published yet. After the first release is published, this page lists every version here, newest first.',
-    fixture: 'This page was built from the local review copy of the release notes, not from a published GitHub Release. Do not treat it as a published release.',
-    published: (date) => (date ? `Published on ${date}.` : ''),
-    link: 'GitHub Release',
-  },
-  ja: {
-    title: 'リリースノート',
-    intro: '各バージョンの変更点、不具合修正、互換性に影響する変更、更新に必要な操作を新しい順に掲載します。同じ内容をGitHub Releaseとしても公開します。',
-    releasesLabel: 'GitHubのリリース一覧',
-    none: 'まだ公開されたリリースはありません。最初のリリースを公開すると、このページに各バージョンを新しい順に掲載します。',
-    fixture: 'このページは公開済みのGitHub Releaseではなく、手元のレビュー用リリースノートから作成した表示確認用です。公開済みのリリースとして扱わないでください。',
-    published: (date) => (date ? `${date}に公開。` : ''),
-    link: 'GitHub Release',
-  },
-};
 
-export function renderPage(lang, state, releases, options) {
-  const t = TEXT[lang];
-  const list = `https://github.com/${options.repo}/releases`;
-  const parts = [`---\ntitle: ${t.title}\n---\n\n# ${t.title}\n`, `${t.intro}\n`, `[${t.releasesLabel}](${list})\n`];
-  if (state === 'unpublished') parts.push(`${t.none}\n`);
-  if (state === 'fixture') parts.push(`::: warning\n${t.fixture}\n:::\n`);
-  for (const release of releases) {
-    const meta = [t.published(release.date), `[${t.link}](${release.url})`].filter(Boolean).join(' ');
-    parts.push(`## ${release.tag}\n\n${meta}\n\n::: v-pre\n${release.sections[lang]}\n:::\n`);
-  }
-  return parts.join('\n');
-}
-
-function writeAll(out, header, pages) {
-  const targets = [
-    [path.join(out, '.vitepress', 'release.json'), `${JSON.stringify(header, null, 2)}\n`],
-    [path.join(out, 'releases.md'), pages.en],
-    [path.join(out, 'ja', 'releases.md'), pages.ja],
-  ];
-  for (const [file] of targets) fs.mkdirSync(path.dirname(file), { recursive: true });
-  for (const [file, text] of targets) fs.writeFileSync(file, text);
+function writeHeader(out, header) {
+  const file = path.join(out, '.vitepress', 'release.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify(header, null, 2)}\n`);
 }
 
 export async function build(options) {
@@ -209,15 +163,14 @@ export async function build(options) {
     version: latest ? latest.version : null,
     url: latest ? latest.url : null,
   };
-  const pages = { en: renderPage('en', state, releases, options), ja: renderPage('ja', state, releases, options) };
-  return { header, pages };
+  return { header };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const options = parseArgs(process.argv.slice(2));
-    const { header, pages } = await build(options);
-    writeAll(options.out, header, pages);
+    const { header } = await build(options);
+    writeHeader(options.out, header);
     console.log(`docs-release: ${header.state}${header.version ? ` v${header.version}` : ''}`);
   } catch (error) {
     console.error(`docs-release: ${error.message}`);

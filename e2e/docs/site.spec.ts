@@ -104,14 +104,13 @@ for (const lang of langs) {
     await expect(landing.locator('.lp-loop .lp-card')).toHaveCount(5);
     await expect(landing.locator('.lp-loop .lp-card--human')).toHaveCount(1);
 
-    // Four features; the mobile monitor and Docs carry the public preview badge, as does connect.
+    // Four features; only the mobile monitor and Docs carry the public preview badge.
     await expect(landing.locator('.lp-feature')).toHaveCount(4);
     const badges = landing.getByRole('link', { name: en ? 'Public preview' : 'パブリックプレビュー' });
     const stages = `/agent-board/${pagePath(lang, 'feature-stages')}`;
     expect(await badges.evaluateAll((els) => els.map((el) => el.getAttribute('href')))).toEqual([
       `${stages}#mobile-monitor`,
       `${stages}#docs`,
-      `${stages}#connect-and-update`,
     ]);
 
     const boardSrc = (await docImageSources(page)).find((src) => assetPattern('board', lang).test(src));
@@ -136,7 +135,22 @@ for (const lang of langs) {
       expect(res.status(), href).toBe(200);
       if (hash) expect(await res.text(), href).toContain(`id="${hash}"`);
     }
-    expect(hrefs.filter((href) => !href.startsWith('/agent-board/'))).toEqual([repoUrl, repoUrl]);
+    // Outside the site: GitHub twice, and the official page of each supported agent.
+    expect(hrefs.filter((href) => !href.startsWith('/agent-board/'))).toEqual([
+      repoUrl,
+      'https://www.claude.com/product/claude-code',
+      'https://developers.openai.com/codex/cli',
+      repoUrl,
+    ]);
+    // The agents are names with links, opened in a new tab; no company logo is shown.
+    const agents = page.locator('.lp-agents a');
+    await expect(agents).toHaveCount(2);
+    for (const agent of await agents.all()) {
+      await expect(agent).toHaveAttribute('target', '_blank');
+      await expect(agent).toHaveAttribute('rel', 'noopener noreferrer');
+    }
+    await expect(page.locator('.lp-agents img')).toHaveCount(0);
+    await expect(page.locator('.lp-agents__trademark')).toContainText(lang === 'en' ? 'not affiliated' : '提携しておらず');
   });
 }
 
@@ -243,6 +257,7 @@ test('board, epic, and mobile screenshots appear on the home and feature pages',
     const targets: [string, string][] = [
       [pagePath(lang, 'home'), 'board'],
       [pagePath(lang, 'home'), 'epic'],
+      [pagePath(lang, 'home'), 'mobile-question'],
       [pagePath(lang, 'home'), 'mobile'],
       [pagePath(lang, 'index'), 'board'],
       [pagePath(lang, 'use/epics'), 'epic'],

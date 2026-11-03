@@ -61,10 +61,10 @@ After a CLI upgrade, interactive ordinary CLI operations can suggest `agboard up
 
 ## Official documentation and release history
 
-The English and Japanese VitePress headers show the published version and link to GitHub Releases. `/releases` and `/ja/releases` list changes, fixes, breaking changes, and required update actions, newest first. Published GitHub Releases are the canonical release history. Do not display the development Cargo version on main as the published version. Do not add a documentation version switcher.
+The English and Japanese VitePress headers show the published version and link to GitHub Releases. The documentation site has no release notes page; published GitHub Releases are the release notes and the canonical release history. Do not display the development Cargo version on main as the published version. Do not add a documentation version switcher.
 
 Installation guides explain Homebrew, connect, update, bind, the Global/Project distinction, unbound Hook skips, and trust approval. Use the existing VitePress theme without adding application UI or new Pencil mockups.
 
 ## Feature stages
 
-Every feature of v1.0.0 is generally available (GA) or in public preview. GA means the feature is kept as it is for a good while; it does not mean free of bugs or an unlimited compatibility or support promise. Public preview means the behavior may change. v1.0.0 mixes both. In public preview are Docs, `connect` and `update`, task listening (`wait --until task`), the mobile monitor, and the first-run welcome. The screens of Docs, the mobile connection settings, and the welcome show a badge and a notice with a link, and the interactive screens of `connect` and `update` start with one line. [Feature stages](../../guide/feature-stages.md) is the single place that lists the stages and limits; the product shows its text and links to it.
+Every feature of v1.0.0 is generally available (GA) or in public preview. GA means the feature is kept as it is for a good while; it does not mean free of bugs or an unlimited compatibility or support promise. Public preview means the behavior may change. v1.0.0 mixes both. In public preview are Docs, task listening (`wait --until task`), and the mobile monitor. `connect`, `update`, and the first-run welcome are GA. The screens of Docs and the mobile connection settings show a badge and a notice with a link. [Feature stages](../../guide/feature-stages.md) is the single place that lists the stages and limits; the product shows its text and links to it.

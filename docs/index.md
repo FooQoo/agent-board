@@ -77,11 +77,13 @@ landing:
         link: { text: Epics and progress, link: /guide/use/epics }
         alt: The epic editor with the task progress panel and the Markdown details
       - image: mobile
-        title: Answer from your phone
+        title: Check from your phone
         text: Away from your desk, check the status and answer questions from the mobile monitor.
         link: { text: Mobile monitor, link: /guide/operations/mobile-monitor }
         preview: /guide/feature-stages#mobile-monitor
-        alt: The mobile monitor with a task open in the bottom drawer
+        alts:
+          - A question on the mobile monitor with a choice picked and the Send button
+          - A task open in the bottom drawer of the mobile monitor, on its Conditions tab
       - image: docs
         title: Project docs
         text: Open the design notes and specs in your project's docs/ folder right from the board.
@@ -92,9 +94,12 @@ landing:
     eyebrow: Integrations
     title: Works with the agents you already use.
     lead: agboard connect walks you through installing the Skill and the Hook for Claude Code and Codex CLI. Your agent reads the progress table, adds tasks, asks questions, and waits for your answer.
-    names: [Claude Code, Codex CLI]
+    supportedLabel: Supported agents
+    supported:
+      - { text: Claude Code, link: https://www.claude.com/product/claude-code }
+      - { text: Codex CLI, link: https://developers.openai.com/codex/cli }
+    trademark: Claude Code is a product of Anthropic and Codex CLI is a product of OpenAI; their names are trademarks of their respective owners. Agent Board is an independent project and is not affiliated with or endorsed by either company.
     command: agboard connect
-    preview: /guide/feature-stages#connect-and-update
     link: { text: Working with agents, link: /guide/automation/agents }
   trust:
     title: Runs on your machine. Your data stays yours.
@@ -111,10 +116,9 @@ landing:
       - { title: Install, commands: [brew install fooqoo/tap/agboard] }
       - { title: Connect a project and your agent, commands: ['agboard project create "My project"', agboard connect] }
       - { title: Open the board, commands: [agboard serve] }
-    note: "Version 1.0.0 includes features in public preview, such as connect, Docs, and the mobile monitor. See "
+    note: "Version 1.0.0 includes features in public preview, such as Docs and the mobile monitor. See "
     noteLinks:
       - { text: Feature stages, link: /guide/feature-stages }
-      - { text: the release notes, link: /releases }
     noteJoin: " and "
     noteEnd: .
     primary: { text: Read Install and start, link: /guide/getting-started }

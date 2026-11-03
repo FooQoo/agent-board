@@ -163,7 +163,6 @@ export default withMermaid(
           nav: [
             { text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
             { text: 'Developers', link: '/dev/', activeMatch: '/dev/' },
-            { text: 'Releases', link: '/releases', activeMatch: '/releases' },
             ...versionNav,
             { text: 'GitHub', link: repo },
           ],
@@ -186,7 +185,6 @@ export default withMermaid(
           nav: [
             { text: 'ガイド', link: '/ja/guide/', activeMatch: '/ja/guide/' },
             { text: '開発者向け', link: '/ja/dev/', activeMatch: '/ja/dev/' },
-            { text: 'リリースノート', link: '/ja/releases', activeMatch: '/ja/releases' },
             ...versionNav,
             { text: 'GitHub', link: repo },
           ],

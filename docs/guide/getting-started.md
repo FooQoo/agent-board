@@ -50,7 +50,7 @@ For renaming projects and registering other folders, see [Data and backups](./op
 agboard connect
 ```
 
-`connect` is a step-by-step setup in the terminal. It installs the Skill and the Hook for Claude Code, Codex, or both. It must run in a bound folder, because the Hook and the Project scope depend on the folder's project. See [Connect your agent](./automation/agents#connect-your-agent) for the questions it asks, where it writes, and what to do afterwards. `connect` and `update` are in [public preview](./feature-stages#connect-and-update).
+`connect` is a step-by-step setup in the terminal. It installs the Skill and the Hook for Claude Code, Codex, or both. It must run in a bound folder, because the Hook and the Project scope depend on the folder's project. See [Connect your agent](./automation/agents#connect-your-agent) for the questions it asks, where it writes, and what to do afterwards.
 
 ## Start the board
 

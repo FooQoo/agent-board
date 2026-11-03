@@ -2,7 +2,6 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SparklesIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import { PreviewBadge } from '@/shared/ui/preview-feature/PreviewBadge';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog';
 import type { OnboardingWelcomeProps } from '../model/viewContracts';
 import { DIALOG_TITLE_CLASS, WELCOME_DIALOG_CLASS } from './dialog-classes';
@@ -29,12 +28,9 @@ export function OnboardingWelcome({ busy, error, onStart, onSkip }: OnboardingWe
         }}
       >
         <SparklesIcon className="onboarding-dialog__icon" aria-hidden="true" />
-        <div className="onboarding-dialog__heading">
-          <DialogTitle className={`onboarding-dialog__title ${DIALOG_TITLE_CLASS}`}>
-            {t('onboarding.welcome.title')}
-          </DialogTitle>
-          <PreviewBadge feature="onboarding" />
-        </div>
+        <DialogTitle className={`onboarding-dialog__title ${DIALOG_TITLE_CLASS}`}>
+          {t('onboarding.welcome.title')}
+        </DialogTitle>
         <DialogDescription className="onboarding-dialog__body">
           {t('onboarding.welcome.body')}
         </DialogDescription>

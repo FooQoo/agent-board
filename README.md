@@ -98,7 +98,7 @@ agboard update
 
 ## Feature stages
 
-Version 1.0.0 mixes generally available (GA) features and features in public preview. Docs, `connect` and `update`, task listening, the mobile monitor, and the first-run welcome are in public preview and may change. GA is not a promise that nothing changes or that nothing is broken. See [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages).
+Version 1.0.0 mixes generally available (GA) features and features in public preview. Docs, task listening, and the mobile monitor are in public preview and may change. GA is not a promise that nothing changes or that nothing is broken. See [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages).
 
 ## License
 
@@ -110,6 +110,6 @@ see [Third-party notices](THIRD_PARTY_NOTICES.txt).
 
 - [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
 - [Mobile monitor](https://fooqoo.github.io/agent-board/guide/operations/mobile-monitor) — connect a phone with ngrok and a passcode, what the monitor shows, and how to check it.
-- [Release notes](https://fooqoo.github.io/agent-board/releases) — what each published version changes.
+- [Releases](https://github.com/FooQoo/agent-board/releases) — what each published version changes.
 - [Claude Code and Codex integration](integrations/README.md) — what `connect` installs and how the hooks work.
 - [Contributing](CONTRIBUTING.md) — development and verification.
