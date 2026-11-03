@@ -4,9 +4,13 @@
 
 # Agent Board
 
-**A shared work board where users and AI agents keep work moving together.**
+**People and AI agents, working on one board.**
 
-AI agents register work for themselves and users. Users update tasks and answer decisions.
+See what your agent is doing and what it is waiting on. Tasks, questions, and acceptance conditions share one board, and you can answer from your PC or your phone.
+
+```sh
+brew install fooqoo/tap/agboard
+```
 
 [日本語](README.ja.md) · [Usage guide](https://fooqoo.github.io/agent-board/guide/) · [Contributing](CONTRIBUTING.md) · [GitHub repository](https://github.com/FooQoo/agent-board)
 
@@ -20,7 +24,7 @@ AI agents register work for themselves and users. Users update tasks and answer 
 
 ## What is Agent Board?
 
-When an agent works for a long time, you need to see what is moving, what is waiting, and what response will unblock it. Agent Board gives users and agents one shared, history-backed board.
+Hand off long work to an agent, and its progress and questions get buried in the terminal. Agent Board puts them on one shared, history-backed board. The agent asks, you answer on the task from your PC or phone, and the agent resumes. When every acceptance condition is met, the task moves to Done on its own.
 
 ```mermaid
 flowchart LR

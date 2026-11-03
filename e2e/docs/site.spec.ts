@@ -73,54 +73,70 @@ async function brokenImages(page: Page): Promise<string[]> {
   });
 }
 
-// AC-2: hero, feature cards, buttons, board image
+// AC-2: the home page leads with the message, the install command, and two buttons, then the loop and features
 for (const lang of langs) {
-  test(`home page (${lang}) shows the hero, three feature tasks, and two buttons`, async ({ page }) => {
+  const en = lang === 'en';
+  test(`home page (${lang}) shows the hero, the install command, the loop, and the features`, async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const response = await page.goto(pagePath(lang, 'home'));
     expect(response?.status()).toBe(200);
 
-    const hero = page.locator('.VPHero');
-    await expect(hero.locator('.name')).toHaveText('Agent Board');
-    await expect(hero.locator('.tagline')).toHaveText(
-      lang === 'en'
-        ? 'A shared work board where users and AI agents keep work moving together.'
-        : 'ユーザーとAIが一緒に作業を進める共有ボード。',
+    const landing = page.locator('.landing');
+    await expect(landing.locator('h1')).toHaveCount(1);
+    await expect(landing.locator('h1')).toHaveText(
+      en ? /^People and AI agents,\s*working on one board\.$/ : /^人とAIが、\s*同じボードで仕事を進める。$/,
     );
-    // The logo is a light/dark pair; exactly one is visible.
-    const logos = hero.locator('.image img');
-    await expect(logos).toHaveCount(2);
-    await expect(hero.locator('.image img:visible')).toHaveCount(1);
-    for (const logo of await logos.all()) {
-      await expect(logo).toHaveAttribute('alt', lang === 'en' ? 'Agent Board logo' : 'Agent Boardのロゴ');
-    }
 
-    const features = page.locator('.VPFeature');
-    await expect(features).toHaveCount(3);
-    const icons = ['kanban', 'list-ordered', 'file-text'];
-    for (let i = 0; i < 3; i++) {
-      const feature = features.nth(i);
-      await expect(feature.locator('.title')).not.toBeEmpty();
-      await expect(feature.locator('.details')).not.toBeEmpty();
-      await expect(feature.locator('img')).toHaveAttribute('src', `/agent-board/icons/${icons[i]}.svg`);
-    }
+    // The install command is shown and copied as plain text.
+    const hero = landing.locator('.lp-hero');
+    await expect(hero.locator('.lp-command code')).toHaveText('$ brew install fooqoo/tap/agboard');
+    const copy = hero.getByRole('button', { name: en ? 'Copy command' : 'コマンドをコピー' });
+    await copy.click();
+    await expect(hero.getByRole('button', { name: en ? 'Copied' : 'コピーしました' })).toBeVisible();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('brew install fooqoo/tap/agboard');
 
-    const start = hero.getByRole('link', { name: lang === 'en' ? 'Get started' : 'はじめる' });
-    await expect(start).toHaveAttribute(
-      'href',
-      lang === 'en' ? '/agent-board/guide/getting-started' : '/agent-board/ja/guide/getting-started',
-    );
+    const start = hero.getByRole('link', { name: en ? 'Get started' : 'はじめる' });
+    await expect(start).toHaveAttribute('href', en ? '/agent-board/guide/getting-started' : '/agent-board/ja/guide/getting-started');
     await expect(hero.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', repoUrl);
+
+    // The loop has five steps across three lanes, and only the answer is the user's.
+    await expect(landing.locator('.lp-loop__lane')).toHaveCount(3);
+    await expect(landing.locator('.lp-loop .lp-card')).toHaveCount(5);
+    await expect(landing.locator('.lp-loop .lp-card--human')).toHaveCount(1);
+
+    // Four features; the mobile monitor and Docs carry the public preview badge, as does connect.
+    await expect(landing.locator('.lp-feature')).toHaveCount(4);
+    const badges = landing.getByRole('link', { name: en ? 'Public preview' : 'パブリックプレビュー' });
+    const stages = `/agent-board/${pagePath(lang, 'feature-stages')}`;
+    expect(await badges.evaluateAll((els) => els.map((el) => el.getAttribute('href')))).toEqual([
+      `${stages}#mobile-monitor`,
+      `${stages}#docs`,
+      `${stages}#connect-and-update`,
+    ]);
 
     const boardSrc = (await docImageSources(page)).find((src) => assetPattern('board', lang).test(src));
     expect(boardSrc).toBeTruthy();
-    const board = page.locator(`.vp-doc img[src="${boardSrc}"]`);
-    await board.scrollIntoViewIfNeeded();
-    await expect(board).toHaveClass(/screenshot/);
+    await expect(landing.locator(`.lp-feature img[src="${boardSrc}"]`)).toHaveClass(/screenshot/);
     expect(await brokenImages(page)).toEqual([]);
 
     // The start button opens a real page.
     await start.click();
     await expect(page.locator('h1').first()).toBeVisible();
+  });
+
+  // The page's links come from its frontmatter, outside VitePress's dead-link check.
+  test(`every link on the ${lang} home page opens a page and its section`, async ({ page, request }) => {
+    await page.goto(pagePath(lang, 'home'));
+    const hrefs = await page.locator('.landing a').evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''));
+    const internal = [...new Set(hrefs.filter((href) => href.startsWith('/agent-board/')))];
+    expect(internal.length).toBeGreaterThan(10);
+    for (const href of internal) {
+      const [url, hash] = href.split('#');
+      const res = await request.get(url.replace('/agent-board/', ''));
+      expect(res.status(), href).toBe(200);
+      if (hash) expect(await res.text(), href).toContain(`id="${hash}"`);
+    }
+    expect(hrefs.filter((href) => !href.startsWith('/agent-board/'))).toEqual([repoUrl, repoUrl]);
   });
 }
 
@@ -192,9 +208,9 @@ for (const file of guideFiles) {
   });
 }
 
-// Source of every content image on the page, in document order.
+// Source of every content image on the page, in document order. The home page draws its own sections.
 async function docImageSources(page: Page): Promise<string[]> {
-  return page.locator('.vp-doc img').evaluateAll((els) => els.map((el) => el.getAttribute('src') ?? ''));
+  return page.locator('.vp-doc img, .landing img').evaluateAll((els) => els.map((el) => el.getAttribute('src') ?? ''));
 }
 
 // AC-4, AC-5: the sixteen guide screenshots are shown, in the right language
@@ -236,7 +252,7 @@ test('board, epic, and mobile screenshots appear on the home and feature pages',
       await page.goto(url);
       const match = (await docImageSources(page)).filter((src) => assetPattern(name, lang).test(src));
       expect(match.length, `${lang} ${url} should show ${name}`).toBeGreaterThan(0);
-      const img = page.locator(`.vp-doc img[src="${match[0]}"]`).first();
+      const img = page.locator(`img[src="${match[0]}"]`).first();
       await img.scrollIntoViewIfNeeded();
       expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
     }
