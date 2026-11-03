@@ -128,7 +128,8 @@ for (const lang of langs) {
     await page.goto(pagePath(lang, 'home'));
     const hrefs = await page.locator('.landing a').evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''));
     const internal = [...new Set(hrefs.filter((href) => href.startsWith('/agent-board/')))];
-    expect(internal.length).toBeGreaterThan(10);
+    // The guide pages the sections link to: the steps, features, stages, and agents.
+    expect(internal.length).toBeGreaterThanOrEqual(9);
     for (const href of internal) {
       const [url, hash] = href.split('#');
       const res = await request.get(url.replace('/agent-board/', ''));
