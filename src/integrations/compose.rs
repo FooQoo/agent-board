@@ -4,12 +4,13 @@
 
 use std::path::PathBuf;
 
+use super::adopt::ThisProject;
 use super::assets::hook_manifest_hash;
-use super::duplicates::{check_other_registrations, is_move_source};
+use super::duplicates::{Adopt, Found, check_other_registrations, is_move_source};
 use super::merge::{HookEdit, merge_hooks, remove_hooks};
 use super::paths::{placement, resolve_links};
 use super::plan::{AgentPlan, PlanInput, RegistryChange, Stage, Stages};
-use super::registry::InstallationRecord;
+use super::registry::{InstallationRecord, ManagedHookEntry};
 use super::skill::{SkillPlan, plan_install, plan_removal};
 use super::template::TemplateGroup;
 use super::types::{Agent, Component, IntegrationError, Scope};
@@ -38,7 +39,15 @@ pub(super) fn plan_hook(
             return Ok(());
         }
     };
-    let edit = merge_hooks(target, stages.0[index].text.as_deref(), template, &recorded);
+    // connect takes over Hooks written by hand for this project; update,
+    // which moves nothing, leaves them as conflicts.
+    let this = ThisProject {
+        id: input.project_id,
+        name: input.project_name,
+    };
+    let adopt = |found: &Found, entry: &ManagedHookEntry| input.moves && this.adopts(found, entry);
+    let text = stages.0[index].text.as_deref();
+    let edit = merge_hooks(target, text, template, &recorded, &adopt);
     absorb(edit, &mut stages.0[index], plan, true);
     let check = check_other_registrations(
         input.env,
@@ -47,7 +56,7 @@ pub(super) fn plan_hook(
         input.scan_root,
         input.registry,
         template,
-        input.moves,
+        input.moves.then_some(&adopt as Adopt),
     );
     plan.conflicts.extend(check.conflicts);
     plan.warnings.extend(check.warnings);
@@ -56,6 +65,15 @@ pub(super) fn plan_hook(
     } else {
         Vec::new()
     };
+    for (path, entries) in &check.adopted {
+        match stages.load(path) {
+            Ok(i) => {
+                let edit = remove_hooks(path, stages.0[i].text.as_deref(), entries);
+                absorb(edit, &mut stages.0[i], plan, false);
+            }
+            Err(conflict) => plan.conflicts.push(conflict),
+        }
+    }
     for source in &sources {
         match stages.load(&source.resolved_path) {
             Ok(i) => {
@@ -110,8 +128,12 @@ pub(super) fn plan_skill(input: &PlanInput, plan: &mut AgentPlan) -> Result<(), 
         files,
         manifest_hash,
         conflicts,
+        linked,
     } = plan_install(dir, record, input.bundle);
     plan.conflicts.extend(conflicts);
+    if let Some(real) = &linked {
+        plan.warnings.push(format!("{} is a symbolic link to {}, which already holds this Skill. connect leaves it as it is and does not record it.", dir.display(), real.display()));
+    }
     if let Some(op) = op {
         plan.additions.push(op.description.clone());
         plan.ops.push(op);
@@ -144,8 +166,10 @@ pub(super) fn plan_skill(input: &PlanInput, plan: &mut AgentPlan) -> Result<(), 
     };
     let probe = placement(input.env, t.agent, Component::Skill, other, input.scan_root);
     if let (true, Ok(path)) = (input.moves, probe) {
-        let known = skills().any(|r| resolve_links(&r.resolved_path) == resolve_links(&path));
-        if path.exists() && !known {
+        let real = resolve_links(&path);
+        let known = skills().any(|r| resolve_links(&r.resolved_path) == real);
+        // The same folder as the target is not another Skill.
+        if path.exists() && !known && real != resolved {
             plan.warnings.push(format!("Another Skill named agent-board exists at {}. The agent may load it instead of the one connect installs.", path.display()));
         }
     }
@@ -162,7 +186,7 @@ pub(super) fn plan_skill(input: &PlanInput, plan: &mut AgentPlan) -> Result<(), 
         managed_entries: Vec::new(),
         files,
     };
-    if record != Some(&new) {
+    if record != Some(&new) && linked.is_none() {
         plan.registry_changes.push(RegistryChange::Upsert(new));
     }
     Ok(())

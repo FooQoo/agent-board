@@ -61,6 +61,7 @@ fn plan_for(fx: &Fx, agent: Agent, skill: Scope, hook: Scope) -> AgentPlan {
         env: &fx.env,
         targets: &targets,
         project_id: Some("proj"),
+        project_name: None,
         scan_root: Some(&fx.root),
         registry: &registry,
         bundle: &bundle,
@@ -358,18 +359,18 @@ fn skill_conflicts_protect_user_content() {
 }
 
 #[test]
-fn unmanaged_and_suspicious_registrations_stop_the_agent() {
+fn suspicious_registrations_stop_the_agent() {
     let cases: [(&str, ConflictKind); 3] = [
-        (
-            "agboard hook --agent claude",
-            ConflictKind::UnmanagedDuplicate,
-        ),
         (
             "/opt/bin/agboard hook --agent claude",
             ConflictKind::Suspicious,
         ),
         (
             "sh -c 'agboard hook --agent claude; true'",
+            ConflictKind::Suspicious,
+        ),
+        (
+            "agboard --project other hook --agent claude",
             ConflictKind::Suspicious,
         ),
     ];
@@ -637,22 +638,88 @@ fn existing_board_data_is_never_touched() {
 }
 
 #[test]
-fn an_equal_hook_the_user_registered_in_the_target_file_is_not_adopted() {
+fn an_equal_hook_the_user_registered_in_the_target_file_is_taken_over() {
     let fx = fixture();
     let path = place(&fx, Agent::Claude, Component::Hook, Scope::Global);
     let group = json!({"matcher": "startup|resume|clear|compact", "hooks": [{"type": "command", "command": "agboard   hook --agent claude", "timeout": 10}]});
     let original = serde_json::to_string(&json!({"hooks": {"SessionStart": [group]}})).unwrap();
     fs::write(&path, &original).unwrap();
     let outcome = connect(&fx, Agent::Claude, Scope::Global, Scope::Global);
-    assert_eq!(outcome.status, Status::Blocked);
+    assert_eq!(outcome.status, Status::Applied, "{:?}", outcome.conflicts);
     assert!(
-        outcome
-            .conflicts
-            .iter()
-            .any(|c| c.kind == ConflictKind::UnmanagedDuplicate),
-        "{:?}",
-        outcome.conflicts
+        !outcome.backups.is_empty(),
+        "the hand-written file is backed up"
     );
-    assert_eq!(fs::read_to_string(&path).unwrap(), original);
-    assert!(!place(&fx, Agent::Claude, Component::Skill, Scope::Global).exists());
+    // One SessionStart group, now the template's, and a rerun changes nothing.
+    let settings: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    let groups = settings["hooks"]["SessionStart"].as_array().unwrap();
+    assert_eq!(groups.len(), 1, "{settings}");
+    assert_eq!(
+        groups[0]["hooks"][0]["command"], "agboard hook --agent claude",
+        "{settings}"
+    );
+    assert_eq!(
+        connect(&fx, Agent::Claude, Scope::Global, Scope::Global).status,
+        Status::Unchanged
+    );
+}
+
+#[test]
+fn a_hand_written_hook_for_this_project_in_another_file_moves_to_the_target() {
+    let fx = fixture();
+    let global = place(&fx, Agent::Claude, Component::Hook, Scope::Global);
+    let group = json!({"hooks": [{"type": "command", "command": "agboard --project 'proj' hook --agent claude"}]});
+    fs::write(
+        &global,
+        serde_json::to_string(&json!({"theme": "dark", "hooks": {"PostToolUse": [group]}}))
+            .unwrap(),
+    )
+    .unwrap();
+    let outcome = connect(&fx, Agent::Claude, Scope::Global, Scope::Project);
+    assert_eq!(outcome.status, Status::Applied, "{:?}", outcome.conflicts);
+    // The hand-written Hook is gone from the Global file, the rest stays.
+    let left: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&global).unwrap()).unwrap();
+    assert_eq!(left["theme"], "dark");
+    assert!(
+        !fs::read_to_string(&global).unwrap().contains("agboard"),
+        "{left}"
+    );
+    assert!(place(&fx, Agent::Claude, Component::Hook, Scope::Project).exists());
+    assert_eq!(
+        connect(&fx, Agent::Claude, Scope::Global, Scope::Project).status,
+        Status::Unchanged
+    );
+}
+
+#[test]
+fn a_linked_skill_with_the_same_files_is_left_alone_and_not_recorded() {
+    let fx = fixture();
+    // Install once to get the bundled files, then move them behind a link.
+    assert_eq!(
+        connect(&fx, Agent::Codex, Scope::Global, Scope::Global).status,
+        Status::Applied
+    );
+    let skill = place(&fx, Agent::Codex, Component::Skill, Scope::Global);
+    let real = fx.root.join("skill-source");
+    fs::rename(&skill, &real).unwrap();
+    std::os::unix::fs::symlink(&real, &skill).unwrap();
+    let mut registry = Registry::read(&registry_path(&fx.env).unwrap())
+        .unwrap()
+        .unwrap();
+    registry
+        .installations
+        .retain(|r| r.component != Component::Skill);
+    fs::write(registry_path(&fx.env).unwrap(), registry.to_json()).unwrap();
+    let before = snapshot(&real);
+    let plan = plan_for(&fx, Agent::Codex, Scope::Global, Scope::Global);
+    assert!(plan.conflicts.is_empty(), "{:?}", plan.conflicts);
+    assert!(
+        plan.warnings.iter().any(|w| w.contains("symbolic link")),
+        "{:?}",
+        plan.warnings
+    );
+    assert_eq!(plan.state(), PlanState::Unchanged);
+    assert_eq!(snapshot(&real), before);
 }

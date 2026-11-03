@@ -620,6 +620,7 @@ fn an_unfinished_earlier_run_is_recovered_and_reported_before_planning() {
         env: &env,
         targets: &targets,
         project_id: Some("x"),
+        project_name: None,
         scan_root: Some(&fx.root()),
         registry: &registry,
         bundle: &bundle,

@@ -149,6 +149,7 @@ pub fn plan_update(input: &UpdateInput, records: &AgentRecords) -> Result<AgentP
             env: input.env,
             targets: &targets,
             project_id: input.project_id,
+            project_name: None,
             scan_root: input.root,
             registry: input.registry,
             bundle: input.bundle,

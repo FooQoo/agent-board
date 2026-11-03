@@ -107,6 +107,9 @@ pub struct PlanInput<'a> {
     pub targets: &'a ResolvedTargets,
     /// The nearest bound project; required when a scope is Project.
     pub project_id: Option<&'a str>,
+    /// Its name. With the id, it tells a hand-written Hook for this project
+    /// (`agboard --project <name> hook ...`), which connect takes over.
+    pub project_name: Option<&'a str>,
     /// The nearest bound root, also when no scope is Project: Hooks there are
     /// searched for duplicates.
     pub scan_root: Option<&'a Path>,

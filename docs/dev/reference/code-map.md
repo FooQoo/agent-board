@@ -77,7 +77,7 @@ The main files and directories outside `src/` are:
 
 ### Skill and Hook installation
 
-- `src/integrations/`: `assets.rs` and `build_bundle.rs` (the embedded bundle), `paths.rs` (placement), `registry.rs` (the records), `plan.rs`, `compose.rs`, `merge.rs`, `skill.rs`, and `duplicates.rs` (the read-only plan and ownership), `apply.rs`, `ops.rs`, `journal.rs`, and `recovery.rs` (writing, backups, journal, and recovery), `update.rs` and `update_report.rs` (what `update` selects and shows), and `notice.rs` (the update notice).
+- `src/integrations/`: `assets.rs` and `build_bundle.rs` (the embedded bundle), `paths.rs` (placement), `registry.rs` (the records), `plan.rs`, `compose.rs`, `merge.rs`, `skill.rs`, `duplicates.rs`, `adopt.rs`, and `toml_json.rs` (the read-only plan and ownership; `adopt.rs` decides which hand-written Hook for this project connect takes over), `apply.rs`, `ops.rs`, `journal.rs`, and `recovery.rs` (writing, backups, journal, and recovery), `update.rs` and `update_report.rs` (what `update` selects and shows), and `notice.rs` (the update notice).
 - `src/cli/commands/update.rs`: `agboard update` and the glue that prints the notice.
 - `tests/integration_*.rs`: the focused tests of the bundle, paths, install, recovery, connect, update, and notice.
 - `scripts/release/` and `.github/workflows/release.yml`: the release archive, signing, notarization, and Formula (see [Build release](../getting-started/setup.md#build-release)).

@@ -21,6 +21,10 @@ pub struct SkillPlan {
     pub files: Vec<ManagedFile>,
     pub manifest_hash: String,
     pub conflicts: Vec<Conflict>,
+    /// `dir` is a symbolic link to this folder, which already holds exactly
+    /// the bundled Skill. It is left as it is and not recorded, so that no
+    /// later run writes through the link.
+    pub linked: Option<std::path::PathBuf>,
 }
 
 /// The files below `dir` (path with `/` separators, SHA-256), sorted. A
@@ -84,10 +88,20 @@ pub fn plan_install(
         None => match fs::symlink_metadata(dir) {
             Err(error) if error.kind() == ErrorKind::NotFound => None,
             Ok(meta) if meta.file_type().is_symlink() => {
+                let real = super::paths::resolve_links(dir);
+                if list_files(&real).is_ok_and(|mut found| {
+                    found.sort_by(|a, b| a.path.cmp(&b.path));
+                    let mut wanted = plan.files.clone();
+                    wanted.sort_by(|a, b| a.path.cmp(&b.path));
+                    found == wanted
+                }) {
+                    plan.linked = Some(real);
+                    return plan;
+                }
                 plan.conflicts.push(Conflict::new(
                     ConflictKind::Symlink,
                     dir,
-                    "is a symbolic link; Agent Board does not install through it.".into(),
+                    "is a symbolic link to a folder that does not hold the same Skill; Agent Board does not install through it.".into(),
                 ));
                 return plan;
             }

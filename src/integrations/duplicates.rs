@@ -11,13 +11,14 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use toml_edit::{DocumentMut, Item};
+use toml_edit::DocumentMut;
 
 use super::assets::{canonical_json, sha256_hex};
 use super::merge::{Conflict, ConflictKind};
 use super::paths::{PathEnv, placement, resolve_links};
 use super::registry::{InstallationRecord, ManagedHookEntry, Registry};
 use super::template::TemplateGroup;
+use super::toml_json::item_to_json;
 use super::types::{Agent, Component, Scope};
 use super::update::in_reach;
 
@@ -28,6 +29,8 @@ pub struct Found {
     pub matcher: Option<String>,
     pub command: String,
     pub group_index: usize,
+    /// How many hooks the group holds.
+    pub group_hooks: usize,
     /// SHA-256 of the group's canonical JSON.
     pub group_sha: String,
 }
@@ -79,6 +82,7 @@ pub fn find_hooks(root: &Value) -> Result<Vec<Found>, String> {
                             .map(str::to_owned),
                         command: command.to_owned(),
                         group_index,
+                        group_hooks: list.len(),
                         group_sha: sha256_hex(canonical_json(group).as_bytes()),
                     });
                 }
@@ -101,50 +105,21 @@ pub fn scan_file(path: &Path) -> Result<Vec<Found>, String> {
             format!("not valid TOML: {}", error.message())
         })?;
         match doc.get("hooks") {
-            Some(hooks) => serde_json::json!({ "hooks": item_to_json(hooks) }),
+            Some(hooks) => {
+                let mut hooks = item_to_json(hooks);
+                // `[hooks.state."<file>:<event>:..."]` is where Codex records
+                // the Hooks the person trusted, not a Hook event.
+                if let Some(events) = hooks.as_object_mut() {
+                    events.remove("state");
+                }
+                serde_json::json!({ "hooks": hooks })
+            }
             None => serde_json::json!({}),
         }
     } else {
         serde_json::from_str(&text).map_err(|error| format!("not valid JSON: {error}"))?
     };
     find_hooks(&root)
-}
-
-fn item_to_json(item: &Item) -> Value {
-    match item {
-        Item::Value(value) => value_to_json(value),
-        Item::Table(table) => Value::Object(
-            table
-                .iter()
-                .map(|(key, item)| (key.to_owned(), item_to_json(item)))
-                .collect(),
-        ),
-        Item::ArrayOfTables(tables) => Value::Array(
-            tables
-                .iter()
-                .map(|table| item_to_json(&Item::Table(table.clone())))
-                .collect(),
-        ),
-        Item::None => Value::Null,
-    }
-}
-
-fn value_to_json(value: &toml_edit::Value) -> Value {
-    use toml_edit::Value as T;
-    match value {
-        T::String(text) => Value::String(text.value().clone()),
-        T::Integer(number) => Value::from(*number.value()),
-        T::Float(number) => Value::from(*number.value()),
-        T::Boolean(flag) => Value::Bool(*flag.value()),
-        T::Datetime(date) => Value::String(date.value().to_string()),
-        T::Array(items) => Value::Array(items.iter().map(value_to_json).collect()),
-        T::InlineTable(table) => Value::Object(
-            table
-                .iter()
-                .map(|(key, value)| (key.to_owned(), value_to_json(value)))
-                .collect(),
-        ),
-    }
 }
 
 /// The result of looking for Hooks outside the target file.
@@ -155,7 +130,13 @@ pub struct HookCheck {
     pub sources: Vec<InstallationRecord>,
     pub conflicts: Vec<Conflict>,
     pub warnings: Vec<String>,
+    /// Hand-written copies of the template for this project in other JSON
+    /// files, by file: connect removes them in the same transaction.
+    pub adopted: Vec<(PathBuf, Vec<ManagedHookEntry>)>,
 }
+
+/// Decides whether a found Hook is a template entry written by hand.
+pub type Adopt<'a> = &'a dyn Fn(&Found, &ManagedHookEntry) -> bool;
 
 /// Whether connect takes `record` over when it installs `component` into
 /// `target_scope` for the bound root `root`. A scope move takes over this
@@ -176,7 +157,9 @@ pub fn is_move_source(
 
 /// Looks for Agent Board Hooks of `agent` outside `target`. Registrations the
 /// registry records for this agent are known; those that `is_move_source`
-/// accepts are move sources, and every other one stops the change.
+/// accepts are move sources. `adopt` is given when connect plans: then every
+/// recorded file is read, and a hand-written copy of the template in an
+/// unrecorded JSON file is taken over. Every other one stops the change.
 pub fn check_other_registrations(
     env: &PathEnv,
     agent: Agent,
@@ -184,8 +167,9 @@ pub fn check_other_registrations(
     scan_root: Option<&Path>,
     registry: &Registry,
     template: &[TemplateGroup],
-    scan_all_recorded: bool,
+    adopt: Option<Adopt>,
 ) -> HookCheck {
+    let scan_all_recorded = adopt.is_some();
     let mut check = HookCheck::default();
     let target_real = resolve_links(target);
     let recorded: Vec<&InstallationRecord> = registry
@@ -229,6 +213,22 @@ pub fn check_other_registrations(
             let managed =
                 owner.is_some_and(|r| r.managed_entries.iter().any(|e| same_hook(&hook, e)));
             if managed {
+                continue;
+            }
+            let json = path.extension().is_some_and(|ext| ext == "json");
+            if let Some(adopt) = adopt.filter(|_| json && owner.is_none())
+                && template.iter().any(|t| adopt(&hook, &t.entry))
+            {
+                let entry = ManagedHookEntry {
+                    event: hook.event.clone(),
+                    matcher: hook.matcher.clone(),
+                    command: hook.command.clone(),
+                    sha256: hook.group_sha.clone(),
+                };
+                match check.adopted.iter_mut().find(|(p, _)| *p == path) {
+                    Some((_, entries)) => entries.push(entry),
+                    None => check.adopted.push((path.clone(), vec![entry])),
+                }
                 continue;
             }
             let exact = template.iter().any(|t| same_hook(&hook, &t.entry));

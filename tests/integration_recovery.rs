@@ -58,6 +58,7 @@ fn plan(fx: &Fx, skill: Scope, hook: Scope) -> AgentPlan {
         env: &fx.env,
         targets: &targets,
         project_id: Some("proj"),
+        project_name: None,
         scan_root: Some(&fx.root),
         registry: &registry,
         bundle: &bundle,

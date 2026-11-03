@@ -11,6 +11,7 @@
 //!   recovery.
 //! - [`types`]: the shared enums, resolved targets, and errors.
 
+pub mod adopt;
 pub mod apply;
 pub mod assets;
 mod compose;
@@ -29,6 +30,7 @@ pub mod registry;
 pub mod report;
 pub mod skill;
 pub mod template;
+mod toml_json;
 pub mod types;
 pub mod ui;
 pub mod update;

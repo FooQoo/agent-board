@@ -96,7 +96,7 @@ pub fn connect_plan(plans: &[AgentPlan], short: Short, command: &str) {
                 lines.extend(
                     plan.removals
                         .iter()
-                        .map(|r| format!("Remove (scope move): {}", short(r))),
+                        .map(|r| format!("Remove: {}", short(r))),
                 );
                 lines.extend(
                     plan.permissions

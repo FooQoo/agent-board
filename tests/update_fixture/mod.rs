@@ -267,6 +267,7 @@ impl Fx {
             env: &env,
             targets: &targets,
             project_id: None,
+            project_name: None,
             scan_root: Some(&self.root()),
             registry: &registry,
             bundle: &bundle,

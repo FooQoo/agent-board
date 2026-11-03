@@ -77,7 +77,7 @@
 
 ### SkillとHookの導入
 
-- `src/integrations/`: `assets.rs`と`build_bundle.rs`（同梱するバンドル）、`paths.rs`（配置先）、`registry.rs`（導入記録）、`plan.rs`・`compose.rs`・`merge.rs`・`skill.rs`・`duplicates.rs`（読み取りだけの計画と所有）、`apply.rs`・`ops.rs`・`journal.rs`・`recovery.rs`（書き込み、バックアップ、ジャーナル、復旧）、`update.rs`と`update_report.rs`（`update`が選ぶものと表示）、`notice.rs`（更新通知）。
+- `src/integrations/`: `assets.rs`と`build_bundle.rs`（同梱するバンドル）、`paths.rs`（配置先）、`registry.rs`（導入記録）、`plan.rs`・`compose.rs`・`merge.rs`・`skill.rs`・`duplicates.rs`・`adopt.rs`・`toml_json.rs`（読み取りだけの計画と所有。`adopt.rs`は、connectが引き取る、このプロジェクト向けの手書きのHookを判定します）、`apply.rs`・`ops.rs`・`journal.rs`・`recovery.rs`（書き込み、バックアップ、ジャーナル、復旧）、`update.rs`と`update_report.rs`（`update`が選ぶものと表示）、`notice.rs`（更新通知）。
 - `src/cli/commands/update.rs`: `agboard update`と、通知を表示する処理。
 - `tests/integration_*.rs`: バンドル、配置先、導入、復旧、connect、update、通知の焦点テスト。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。

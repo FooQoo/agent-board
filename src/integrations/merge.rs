@@ -69,12 +69,15 @@ pub struct HookEdit {
 
 /// Adds the template groups that are missing, updates managed groups that are
 /// older than the template, and removes obsolete managed groups. `recorded`
-/// is what the registry says Agent Board installed in this file.
+/// is what the registry says Agent Board installed in this file. A group that
+/// is not recorded but that `adopt` accepts as the template written by hand
+/// is taken over: replaced by the template group, or kept when it is equal.
 pub fn merge_hooks(
     path: &Path,
     text: Option<&str>,
     template: &[TemplateGroup],
     recorded: &[ManagedHookEntry],
+    adopt: &dyn Fn(&Found, &ManagedHookEntry) -> bool,
 ) -> HookEdit {
     let mut edit = HookEdit::default();
     let Some((mut root, found)) = load(path, text, &mut edit) else {
@@ -83,11 +86,16 @@ pub fn merge_hooks(
     let mut handled = vec![false; found.len()];
     let (mut inserts, mut replaces, mut removals) = (Vec::new(), Vec::new(), Vec::new());
     for t in template {
-        let hits: Vec<usize> = (0..found.len())
+        let rec = recorded.iter().find(|r| same_entry(r, &t.entry));
+        let mut hits: Vec<usize> = (0..found.len())
             .filter(|&i| same_hook(&found[i], &t.entry))
             .collect();
+        if hits.is_empty() && rec.is_none() {
+            hits = (0..found.len())
+                .filter(|&i| !handled[i] && adopt(&found[i], &t.entry))
+                .collect();
+        }
         hits.iter().for_each(|&i| handled[i] = true);
-        let rec = recorded.iter().find(|r| same_entry(r, &t.entry));
         let label = describe(&t.entry);
         match (hits.as_slice(), rec) {
             ([], None) => inserts.push(t),
@@ -105,6 +113,11 @@ pub fn merge_hooks(
             }
             ([i], Some(r)) => {
                 if r.sha256 != t.entry.sha256 {
+                    replaces.push((&found[*i], t));
+                }
+            }
+            ([i], None) if adopt(&found[*i], &t.entry) => {
+                if found[*i].group_sha != t.entry.sha256 {
                     replaces.push((&found[*i], t));
                 }
             }

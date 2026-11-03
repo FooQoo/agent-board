@@ -262,6 +262,7 @@ fn plan_all(
                     env: &s.path_env,
                     targets: &targets,
                     project_id: Some(&s.project_id),
+                    project_name: Some(&s.project_name),
                     scan_root: Some(&s.root),
                     registry,
                     bundle: &bundle,
