@@ -112,6 +112,20 @@ impl Fx {
     fn session(&self, cwd: &Path, args: &[&str]) -> Session {
         let mut command = self.command(cwd);
         command.args(args);
+        // A child inherits an ignored SIGINT from a test run started in the
+        // background (a non-interactive shell's `&`, nohup, some runners). Ctrl-C
+        // must reach agboard the way it does in a terminal, or the run would read
+        // its prompt forever.
+        {
+            use std::os::unix::process::CommandExt;
+            // SAFETY: the hook only calls the async-signal-safe `signal`.
+            unsafe {
+                command.pre_exec(|| {
+                    libc::signal(libc::SIGINT, libc::SIG_DFL);
+                    Ok(())
+                });
+            }
+        }
         let mut session = expectrl::Session::spawn(command).unwrap();
         session.set_expect_timeout(Some(Duration::from_secs(20)));
         session
