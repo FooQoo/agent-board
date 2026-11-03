@@ -11,7 +11,7 @@ use super::plan::{AgentPlan, PlanState};
 use super::recovery::RecoveryReport;
 use super::types::{Agent, Scope};
 
-fn scope_word(scope: Scope) -> &'static str {
+pub(crate) fn scope_word(scope: Scope) -> &'static str {
     match scope {
         Scope::Global => "global",
         Scope::Project => "project",
@@ -188,7 +188,7 @@ fn placement(text: &mut String, plan: &AgentPlan) {
     );
 }
 
-fn failure(text: &mut String, outcome: &AgentOutcome) {
+pub(crate) fn failure(text: &mut String, outcome: &AgentOutcome) {
     let label = outcome.agent.label();
     let what = if outcome.status == Status::Interrupted {
         "interrupted"
@@ -227,7 +227,7 @@ fn failure(text: &mut String, outcome: &AgentOutcome) {
     }
 }
 
-fn next_step(agent: Agent) -> &'static str {
+pub(crate) fn next_step(agent: Agent) -> &'static str {
     match agent {
         Agent::Claude => "Start a new session and review the hook with /hooks before you trust it.",
         Agent::Codex => "Restart Codex and review the hook with /hooks before you trust it.",

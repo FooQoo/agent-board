@@ -17,10 +17,12 @@ agboard connect
 
 `connect` needs a terminal. It shows the project and the bound root first, then asks, in this order:
 
-1. **Agents.** It looks for `claude` and `codex` on your `PATH` and lists them with their versions. An agent it cannot find is shown with the reason and cannot be chosen. Type the numbers of the agents to connect, `a` for all that are available, or `q` to cancel.
-2. **Skill scope.** One choice, Global or Project, for every agent you selected.
+1. **Agents.** It looks for `claude` and `codex` on your `PATH` and lists the ones it finds with their versions. An agent it cannot find is named above the list with the reason. Move with the arrow keys, press Space to choose an agent, and Enter to go on.
+2. **Skill scope.** One choice, Global or Project, for every agent you selected. Move with the arrow keys and press Enter.
 3. **Hook scope.** One choice, Global or Project, for every agent you selected. It is separate from the Skill scope.
-4. **Confirmation.** It lists every file it will add, change, or remove, the permission it will add, and the backups, then asks `[y/N]`. Anything but `y` or `yes`, and Ctrl+C or the end of input, cancels without writing.
+4. **Confirmation.** It shows a box for each agent with where its Skill and Hook go and every file it will add, change, or remove, and the permission it will add. What cannot be applied is shown in red with the reason, and warnings in yellow. Then it asks **Apply these changes?** Press `y` for yes or `n` for no; Enter takes the highlighted answer, which starts at No.
+
+Esc or Ctrl+C at any question cancels without writing. The results end with what to do next. Paths in your home folder are written with `~`. Colors follow your terminal; set `NO_COLOR` to turn them off.
 
 Skill scope and Hook scope are independent. A rerun offers what you chose before.
 
@@ -64,7 +66,7 @@ agboard update
 agboard update --yes
 ```
 
-`update` handles the agents, Skill scope, and Hook scope that `connect` recorded: the Global installations, and the Project installations of the nearest bound root. It works from a folder with no project, but then updates only the Global ones. It updates the Global and the Project installation separately, and it does not look at other projects. It shows the old and new version of each part and asks `[y/N]`. `--yes` skips only that question. It never adds an agent or a permission and never changes a scope; use `connect` for that.
+`update` handles the agents, Skill scope, and Hook scope that `connect` recorded: the Global installations, and the Project installations of the nearest bound root. It works from a folder with no project, but then updates only the Global ones. It updates the Global and the Project installation separately, and it does not look at other projects. It shows the old and new version of each part and asks **Apply these updates?** the same way `connect` asks. `--yes` skips only that question; without a terminal it prints plain text. It never adds an agent or a permission and never changes a scope; use `connect` for that.
 
 - With nothing recorded it says `No managed integrations found. Run agboard connect in a bound project.` and exits with `0`. With everything current it writes nothing.
 - When the Hook changes, you must trust the changed Hook again in the agent (`/hooks`).

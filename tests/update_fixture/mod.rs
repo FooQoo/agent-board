@@ -25,6 +25,10 @@ use expectrl::process::unix::WaitStatus;
 use expectrl::session::OsSession as Session;
 use expectrl::{Eof, Expect};
 
+#[path = "../support/prompt_keys.rs"]
+pub mod prompt_keys;
+pub use prompt_keys::{CONFIRM, answer};
+
 /// A child process keeps copies of the descriptors that exist while it is
 /// being spawned until it execs, and a copy of a lock file keeps the lock.
 /// Spawning takes this lock shared; holding an agent lock in the test process
@@ -152,15 +156,13 @@ impl Fx {
     pub fn connect_screen_at(&self, cwd: &Path, skill: &str, hook: &str) -> (i32, String) {
         let mut term = self.session(cwd, &["connect"]);
         let mut screen = String::new();
-        for (prompt, answer) in [
+        for (prompt, reply) in [
             ("Select agents", "1 2"),
             ("Skill scope", skill),
             ("Hook scope", hook),
-            ("[y/N]", "y"),
+            (CONFIRM, "y"),
         ] {
-            let seen = term.expect(prompt).unwrap();
-            screen.push_str(&String::from_utf8_lossy(seen.as_bytes()));
-            term.send_line(answer).unwrap();
+            screen.push_str(&answer(&mut term, prompt, reply, &screen));
         }
         let (code, rest) = finish(term);
         screen.push_str(&rest);

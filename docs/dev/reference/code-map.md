@@ -72,7 +72,7 @@ The main files and directories outside `src/` are:
 - `e2e/`: Playwright tests and the screenshot and video scripts.
 - `docs/`: this documentation site.
 - `integrations/`: hook templates.
-- `src/cli/commands/connect.rs`: the interactive `agboard connect` flow. It uses `src/integrations/detect.rs` (agents on PATH and their versions), `prompt.rs` (the questions), and `report.rs` (the plan and result text) around the planner and the per-agent apply.
+- `src/cli/commands/connect.rs`: the interactive `agboard connect` flow. It uses `src/integrations/detect.rs` (agents on PATH and their versions) and `ui/` around the planner and the per-agent apply. `ui/` holds the `Ui` trait with two sides: `ClackUi` (`clack.rs` and `clack_view.rs`, the cliclack prompts and styled lines on a terminal) and `PlainUi` (`plain.rs`, plain text through `prompt.rs` and `report.rs`, used without a terminal and by tests that feed lines). `update` uses the same `ui/`.
 - `.agents/skills/agent-board/`: the agent skill.
 
 ### Skill and Hook installation

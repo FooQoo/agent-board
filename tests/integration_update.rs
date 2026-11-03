@@ -15,7 +15,10 @@ use agent_board::integrations::assets::sha256_hex;
 use agent_board::integrations::registry::InstallationRecord;
 use agent_board::integrations::{Agent, Component, Scope};
 use expectrl::Expect;
-use update_fixture::{Fx, backups, finish, world};
+use update_fixture::{Fx, answer, backups, finish, world};
+
+/// The question of update.
+const UPDATE: &str = "Apply these updates?";
 
 const CURRENT: &str = env!("CARGO_PKG_VERSION");
 
@@ -91,13 +94,15 @@ fn a_terminal_run_shows_the_diff_and_waits_for_y() {
     fx.connect_both("1", "1");
     fx.age("0.0.1", |_| true);
     let mut term = fx.session(&fx.root(), &["update"]);
-    let seen = term.expect("[y/N]").unwrap();
+    let seen = term.expect(UPDATE).unwrap();
     let before = String::from_utf8_lossy(seen.as_bytes()).into_owned();
-    assert!(before.contains("0.0.1 -> "), "{before}");
+    assert!(before.contains("0.0.1 → "), "{before}");
     assert!(before.contains("Claude Code"), "{before}");
     // Nothing is written while the question is open.
     assert!(skill_is_old(&fx, Agent::Claude, false));
-    term.send_line("y").unwrap();
+    // The rest of the question block, then the yes.
+    term.expect(expectrl::Regex("(?s).*?└")).unwrap();
+    term.send("y").unwrap();
     let (code, rest) = finish(term);
     assert_eq!(code, 0, "{rest}");
     assert!(!skill_is_old(&fx, Agent::Claude, false));
@@ -105,14 +110,13 @@ fn a_terminal_run_shows_the_diff_and_waits_for_y() {
 
 #[test]
 fn answering_no_or_nothing_cancels_with_zero_and_no_change() {
-    for answer in ["n", ""] {
+    for reply in ["n", ""] {
         let fx = Fx::new();
         fx.connect_both("1", "1");
         fx.age("0.0.1", |_| true);
         let before = world(&fx.base());
         let mut term = fx.session(&fx.root(), &["update"]);
-        term.expect("[y/N]").unwrap();
-        term.send_line(answer).unwrap();
+        update_fixture::answer(&mut term, UPDATE, reply, "");
         let (code, rest) = finish(term);
         assert_eq!(code, 0, "{rest}");
         assert!(rest.contains("Cancelled"), "{rest}");
@@ -244,7 +248,7 @@ fn a_terminal_rerun_with_nothing_to_do_asks_nothing() {
     let term = fx.session(&fx.root(), &["update"]);
     let (code, screen) = finish(term);
     assert_eq!(code, 0, "{screen}");
-    assert!(!screen.contains("[y/N]"), "{screen}");
+    assert!(!screen.contains(UPDATE), "{screen}");
     assert!(screen.contains("up to date"), "{screen}");
     assert_eq!(world(&fx.base()), before);
 }
@@ -430,10 +434,8 @@ fn the_interactive_screen_prints_no_preview_line() {
     fx.connect_both("1", "1");
     fx.age("0.0.1", |_| true);
     let mut term = fx.session(&fx.root(), &["update"]);
-    let seen = term.expect("[y/N]").unwrap();
-    let screen = String::from_utf8_lossy(seen.as_bytes()).into_owned();
+    let screen = answer(&mut term, UPDATE, "n", "");
     assert!(!screen.contains(PREVIEW), "{screen}");
-    term.send_line("n").unwrap();
     finish(term);
 }
 
@@ -608,15 +610,13 @@ fn cancelling_after_a_recovery_says_the_earlier_run_was_undone() {
     fx.interrupted_run(Agent::Claude);
     let mut term = fx.session(&fx.root(), &["connect"]);
     let mut screen = String::new();
-    for (prompt, answer) in [
+    for (prompt, reply) in [
         ("Select agents", "1"),
         ("Skill scope", "1"),
         ("Hook scope", "1"),
-        ("[y/N]", "n"),
+        (update_fixture::CONFIRM, "n"),
     ] {
-        let seen = term.expect(prompt).unwrap();
-        screen.push_str(&String::from_utf8_lossy(seen.as_bytes()));
-        term.send_line(answer).unwrap();
+        screen.push_str(&answer(&mut term, prompt, reply, &screen));
     }
     let (code, rest) = finish(term);
     screen.push_str(&rest);

@@ -17,8 +17,12 @@ use std::time::Duration;
 
 use expectrl::process::unix::WaitStatus;
 use expectrl::session::OsSession as Session;
-use expectrl::{ControlCode, Eof, Expect};
+use expectrl::{Eof, Expect};
+use prompt_keys::{CONFIRM, answer};
 use serde_json::Value;
+
+#[path = "support/prompt_keys.rs"]
+mod prompt_keys;
 
 const CODEX_CONFIG: &str = "sandbox_mode = \"workspace-write\"\n";
 
@@ -133,18 +137,13 @@ impl Fx {
         session
     }
 
-    /// Runs connect on a terminal with `answers`, one line each, waiting for
-    /// the prompt text in `prompts` before every answer. Returns the exit
-    /// code and everything printed.
+    /// Runs connect on a terminal and answers each question in `steps` (see
+    /// [`answer`]). Returns the exit code and everything printed.
     fn connect(&self, cwd: &Path, steps: &[(&str, &str)]) -> (i32, String) {
         let mut term = self.session(cwd, &["connect"]);
         let mut screen = String::new();
-        for (prompt, answer) in steps {
-            let seen = term.expect(*prompt).unwrap_or_else(|e| {
-                panic!("prompt {prompt:?} not shown ({e}); screen so far:\n{screen}")
-            });
-            screen.push_str(&String::from_utf8_lossy(seen.as_bytes()));
-            term.send_line(*answer).unwrap();
+        for (prompt, reply) in steps {
+            screen.push_str(&answer(&mut term, prompt, reply, &screen));
         }
         let (code, rest) = finish(term);
         screen.push_str(&rest);
@@ -159,7 +158,7 @@ impl Fx {
                 ("Select agents", "1 2"),
                 ("Skill scope", skill),
                 ("Hook scope", hook),
-                ("[y/N]", "y"),
+                (CONFIRM, "y"),
             ],
         )
     }
@@ -380,20 +379,15 @@ fn the_installed_hook_command_reports_the_bound_project() {
 fn the_confirmation_lists_placement_changes_permissions_and_the_backup_policy() {
     let fx = Fx::new();
     fs::write(fx.claude().join("settings.json"), "{\"theme\":\"dark\"}\n").unwrap();
-    let mut term = fx.session(&fx.root(), &["connect"]);
-    let mut screen = String::new();
-    for (prompt, answer) in [
-        ("Select agents", "1 2"),
-        ("Skill scope", "1"),
-        ("Hook scope", "2"),
-        ("[y/N]", "n"),
-    ] {
-        let seen = term.expect(prompt).unwrap();
-        screen.push_str(&String::from_utf8_lossy(seen.as_bytes()));
-        term.send_line(answer).unwrap();
-    }
-    let (code, rest) = finish(term);
-    screen.push_str(&rest);
+    let (code, screen) = fx.connect(
+        &fx.root(),
+        &[
+            ("Select agents", "1 2"),
+            ("Skill scope", "1"),
+            ("Hook scope", "2"),
+            (CONFIRM, "n"),
+        ],
+    );
     assert_eq!(code, 0, "{screen}");
     assert!(screen.contains("skills/agent-board"), "{screen}");
     assert!(screen.contains(".codex/hooks.json"), "{screen}");
@@ -403,7 +397,7 @@ fn the_confirmation_lists_placement_changes_permissions_and_the_backup_policy() 
 }
 
 #[test]
-fn a_no_cancels_without_writing_and_so_do_eof_and_ctrl_c() {
+fn a_no_cancels_without_writing_and_so_does_ctrl_c() {
     let fx = Fx::new();
     let before = world(&fx.base());
     // N
@@ -413,7 +407,7 @@ fn a_no_cancels_without_writing_and_so_do_eof_and_ctrl_c() {
             ("Select agents", "1 2"),
             ("Skill scope", "1"),
             ("Hook scope", "1"),
-            ("[y/N]", "n"),
+            (CONFIRM, "n"),
         ],
     );
     assert_eq!(code, 0, "{screen}");
@@ -426,36 +420,31 @@ fn a_no_cancels_without_writing_and_so_do_eof_and_ctrl_c() {
             ("Select agents", "1 2"),
             ("Skill scope", "1"),
             ("Hook scope", "1"),
-            ("[y/N]", ""),
+            (CONFIRM, ""),
         ],
     );
     assert_eq!(code, 0);
     assert_eq!(world(&fx.base()), before);
-    // End of input at the confirmation.
-    let mut term = fx.session(&fx.root(), &["connect"]);
-    for prompt in ["Select agents", "Skill scope", "Hook scope"] {
-        term.expect(prompt).unwrap();
-        term.send_line(if prompt == "Select agents" {
-            "1 2"
-        } else {
-            "1"
-        })
-        .unwrap();
-    }
-    term.expect("[y/N]").unwrap();
-    term.send(ControlCode::EndOfTransmission).unwrap();
-    let (code, _) = finish(term);
-    assert_eq!(code, 0);
+    // Ctrl-C at the confirmation.
+    let (code, screen) = fx.connect(
+        &fx.root(),
+        &[
+            ("Select agents", "1 2"),
+            ("Skill scope", "1"),
+            ("Hook scope", "1"),
+            (CONFIRM, "q"),
+        ],
+    );
+    assert_eq!(code, 0, "{screen}");
+    assert!(screen.contains("Cancelled"), "{screen}");
     assert_eq!(world(&fx.base()), before);
     // Ctrl-C at the scope question.
-    let mut term = fx.session(&fx.root(), &["connect"]);
-    term.expect("Select agents").unwrap();
-    term.send_line("1 2").unwrap();
-    term.expect("Skill scope").unwrap();
-    term.send(ControlCode::EndOfText).unwrap();
-    let _ = term.expect(Eof);
-    let status = term.get_process().wait().unwrap();
-    assert!(!matches!(status, WaitStatus::Exited(_, 0)), "{status:?}");
+    let (code, screen) = fx.connect(
+        &fx.root(),
+        &[("Select agents", "1 2"), ("Skill scope", "q")],
+    );
+    assert_eq!(code, 0, "{screen}");
+    assert!(screen.contains("Cancelled"), "{screen}");
     assert_eq!(world(&fx.base()), before);
 }
 
@@ -465,18 +454,14 @@ fn an_agent_that_is_not_on_path_cannot_be_selected() {
     fx.remove_agent("codex");
     let before = world(&fx.base());
     let mut term = fx.session(&fx.root(), &["connect"]);
-    let seen = term.expect("Select agents").unwrap();
-    let screen = String::from_utf8_lossy(seen.as_bytes()).into_owned();
-    assert!(screen.contains("2.0.1"), "{screen}");
-    assert!(screen.contains("Codex"), "{screen}");
+    let screen = answer(&mut term, "Select agents", "q", "");
+    // The undetected agent is named with the reason and is not in the list.
+    assert!(screen.contains("Codex: "), "{screen}");
     assert!(screen.contains("not found on PATH"), "{screen}");
-    // Choosing the undetected agent is refused, and the question comes back.
-    term.send_line("2").unwrap();
-    term.expect("not available").unwrap();
-    term.expect("Select agents").unwrap();
-    term.send_line("q").unwrap();
-    let (code, _) = finish(term);
-    assert_eq!(code, 0);
+    assert!(screen.contains("2.0.1"), "{screen}");
+    assert!(!screen.contains("◻ Codex"), "{screen}");
+    let (code, rest) = finish(term);
+    assert_eq!(code, 0, "{rest}");
     assert_eq!(world(&fx.base()), before);
 }
 
@@ -490,7 +475,7 @@ fn only_the_detected_agent_is_configured() {
             ("Select agents", "1"),
             ("Skill scope", "1"),
             ("Hook scope", "1"),
-            ("[y/N]", "y"),
+            (CONFIRM, "y"),
         ],
     );
     assert_eq!(code, 0, "{screen}");
@@ -530,7 +515,7 @@ fn a_rerun_proposes_the_recorded_choices_and_changes_nothing() {
     // Nothing differs, so there is no question to answer.
     assert_eq!(code, 0, "{screen}");
     assert!(screen.contains("No changes"), "{screen}");
-    assert!(!screen.contains("[y/N]"), "{screen}");
+    assert!(!screen.contains(CONFIRM), "{screen}");
     assert_eq!(world(&fx.base()), before);
     assert!(hook_count(&fx.root().join(".claude/settings.json")) > 0);
 }
@@ -650,7 +635,7 @@ fn an_unfinished_earlier_run_is_recovered_and_reported_before_planning() {
             ("Select agents", "1"),
             ("Skill scope", "1"),
             ("Hook scope", "1"),
-            ("[y/N]", "y"),
+            (CONFIRM, "y"),
         ],
     );
     assert_eq!(code, 0, "{screen}");
@@ -663,11 +648,20 @@ fn an_unfinished_earlier_run_is_recovered_and_reported_before_planning() {
 const PREVIEW: &str = "Public preview";
 
 #[test]
-fn the_interactive_screen_starts_with_the_project() {
+fn the_interactive_screen_starts_with_the_command_and_the_project() {
     let fx = Fx::new();
     let (code, screen) = fx.connect(&fx.root(), &[("Select agents", "q")]);
     assert_eq!(code, 0, "{screen}");
-    assert!(screen.trim_start().starts_with("Project:"), "{screen}");
+    let start = |text: &str| {
+        screen
+            .find(text)
+            .unwrap_or_else(|| panic!("{text}: {screen}"))
+    };
+    assert!(
+        start("agboard connect") < start("Project: Demo"),
+        "{screen}"
+    );
+    assert!(start("Project: Demo") < start("Select agents"), "{screen}");
     assert!(!screen.contains(PREVIEW), "{screen}");
 }
 
@@ -694,4 +688,30 @@ fn refusals_and_usage_errors_print_no_preview_line() {
     let (code, screen) = finish(unbound.session(&unbound.base().join("other"), &["connect"]));
     assert_eq!(code, 1, "{screen}");
     assert!(!screen.contains(PREVIEW), "{screen}");
+}
+
+/// Counts the color codes cliclack writes (`ESC [ <n> m`).
+fn colors(screen: &str) -> usize {
+    screen.matches("\u{1b}[3").count() + screen.matches("\u{1b}[9").count()
+}
+
+#[test]
+fn a_color_terminal_gets_colors_and_no_color_turns_them_off() {
+    let fx = Fx::new();
+    let mut seen = Vec::new();
+    for extra in [vec![], vec![("NO_COLOR", "1")]] {
+        let mut command = fx.command(&fx.root());
+        command.arg("connect").env("TERM", "xterm-256color");
+        for (key, value) in &extra {
+            command.env(key, value);
+        }
+        let mut term = expectrl::Session::spawn(command).unwrap();
+        term.set_expect_timeout(Some(Duration::from_secs(20)));
+        let screen = answer(&mut term, "Select agents", "q", "");
+        let (code, rest) = finish(term);
+        assert_eq!(code, 0, "{screen}{rest}");
+        seen.push(colors(&format!("{screen}{rest}")));
+    }
+    assert!(seen[0] > 0, "{seen:?}");
+    assert_eq!(seen[1], 0, "{seen:?}");
 }

@@ -1,7 +1,8 @@
 //! `agboard connect`: the interactive setup of the Skill and the Hook for
 //! Claude Code and Codex. It asks which agents, one Skill scope and one Hook
-//! scope shared by all of them, shows the plan, and writes only after a "y".
-//! It needs a terminal, takes no options, and never waits on a pipe.
+//! scope shared by all of them, shows the plan, and writes only after a yes.
+//! It needs a terminal, takes no options, and never waits on a pipe. On the
+//! terminal it uses the cliclack prompts ([`ClackUi`]).
 //!
 //! Exit codes: 0 for success, nothing to change, or a cancel; 1 when an agent
 //! could not be configured or the folder is not bound; 2 for a bad command
@@ -19,10 +20,11 @@ use crate::integrations::assets::bundle;
 use crate::integrations::detect::{Detection, detect_all};
 use crate::integrations::paths::{PathEnv, registry_path, resolve_targets};
 use crate::integrations::plan::{AgentPlan, PlanInput, PlanState, plan_agent};
-use crate::integrations::prompt::{AgentChoice, Prompter, Reply};
+use crate::integrations::prompt::{AgentChoice, Reply};
 use crate::integrations::recovery::recover_pending;
 use crate::integrations::registry::Registry;
 use crate::integrations::report;
+use crate::integrations::ui::{ClackUi, End, PlainUi, Tone, Ui};
 use crate::integrations::{Agent, Component, Scope};
 
 /// What the questions and the plan are about.
@@ -62,95 +64,92 @@ pub fn run(env: &mut Env) -> Result<i32, AgboardError> {
         project_name: bound.project.name,
         root: bound.bound_root,
     };
-    let stdin = std::io::stdin();
-    let mut input = stdin.lock();
-    Ok(flow(
-        &mut input,
-        &mut *env.stdout,
-        &mut *env.stderr,
-        &session,
-    ))
+    let mut ui = ClackUi::new("connect", session.path_env.home.clone());
+    Ok(flow_with(&mut ui, &session))
+}
+
+/// The steps in plain text, reading one line per question. Returns the exit
+/// code.
+pub fn flow(input: &mut dyn BufRead, out: &mut dyn Write, err: &mut dyn Write, s: &Session) -> i32 {
+    flow_with(&mut PlainUi::new(input, out, err), s)
 }
 
 /// The seven steps, after the terminal and the binding are known. Returns the
 /// exit code.
-pub fn flow(input: &mut dyn BufRead, out: &mut dyn Write, err: &mut dyn Write, s: &Session) -> i32 {
-    let mut p = Prompter::new(input, out);
-    p.say(&report::header(&s.project_name, &s.root));
+pub fn flow_with(ui: &mut dyn Ui, s: &Session) -> i32 {
+    ui.intro("agboard connect", &report::header(&s.project_name, &s.root));
     let detections = detect_all(s.path_var.as_deref());
     if detections.iter().all(|d| !d.is_available()) {
         for d in &detections {
             if let Err(reason) = &d.found {
-                p.say(&format!("{}: {reason}\n", d.agent.label()));
+                ui.say(Tone::Warning, &format!("{}: {reason}\n", d.agent.label()));
             }
         }
-        p.say("No supported agent was found on PATH. Install Claude Code or Codex and run connect again. Nothing was changed.\n");
+        ui.finish(End::Done, "No supported agent was found on PATH. Install Claude Code or Codex and run connect again. Nothing was changed.\n");
         return 0;
     }
     let registry = match registry_path(&s.path_env).map(|path| Registry::read(&path)) {
         Ok(Ok(registry)) => registry.unwrap_or_default(),
         Ok(Err(error)) | Err(error) => {
-            p.say(&format!("Error: {error}\nNothing was changed.\n"));
+            ui.finish(
+                End::Failed,
+                &format!("Error: {error}\nNothing was changed.\n"),
+            );
             return 1;
         }
     };
     let defaults = Defaults::from(&registry, &s.root);
-    let Reply::Value(agents) = p.select_agents(&choices(&detections), &defaults.agents) else {
-        return cancelled(&mut p);
+    let Reply::Value(agents) = ui.select_agents(&choices(&detections), &defaults.agents) else {
+        return cancelled(ui);
     };
-    let Reply::Value(skill) = p.select_scope("Skill", &s.root, defaults.skill) else {
-        return cancelled(&mut p);
+    let Reply::Value(skill) = ui.select_scope("Skill", &s.root, defaults.skill) else {
+        return cancelled(ui);
     };
-    let Reply::Value(hook) = p.select_scope("Hook", &s.root, defaults.hook) else {
-        return cancelled(&mut p);
+    let Reply::Value(hook) = ui.select_scope("Hook", &s.root, defaults.hook) else {
+        return cancelled(ui);
     };
     let mut progress = Progress::default();
-    let plans = plan_all(
-        &mut p,
-        err,
-        s,
-        &agents,
-        (skill, hook),
-        &registry,
-        &mut progress,
-    );
+    let plans = plan_all(ui, s, &agents, (skill, hook), &registry, &mut progress);
     let Progress { stopped, recovered } = progress;
     if plans.is_empty() {
-        p.say("\nSetup finished with errors.\n");
+        ui.finish(End::Failed, "\nSetup finished with errors.\n");
         return 1;
     }
-    p.say(&report::summary(&plans));
+    ui.connect_plan(&plans);
     if plans
         .iter()
         .all(|plan| plan.state() == PlanState::Unchanged)
         && !stopped
     {
-        p.say("No changes. Nothing was written.\n");
+        ui.finish(End::Done, "No changes. Nothing was written.\n");
         return 0;
     }
     if plans.iter().all(|plan| plan.state() != PlanState::Ready) {
-        p.say("Nothing can be applied. Nothing was written.\n");
-        p.say("\nSetup finished with errors.\n");
+        ui.say(
+            Tone::Error,
+            "Nothing can be applied. Nothing was written.\n",
+        );
+        ui.finish(End::Failed, "\nSetup finished with errors.\n");
         return 1;
     }
-    if !p.confirm("Apply these changes?") {
+    if !ui.confirm("Apply these changes?") {
         if recovered {
-            p.say(
+            ui.finish(
+                End::Cancelled,
                 "\nCancelled. The unfinished earlier run was undone; nothing else was changed.\n",
             );
             return 0;
         }
-        return cancelled(&mut p);
+        return cancelled(ui);
     }
-    p.say("\n");
     let outcomes = apply_all(&s.path_env, &plans, &ApplyOptions::default());
     let code = exit_code(&outcomes).max(i32::from(stopped));
-    p.say(&report::results(&outcomes, &plans, code));
+    ui.connect_results(&outcomes, &plans, code);
     code
 }
 
-fn cancelled(p: &mut Prompter) -> i32 {
-    p.say("\nCancelled. Nothing was changed.\n");
+fn cancelled(ui: &mut dyn Ui) -> i32 {
+    ui.finish(End::Cancelled, "\nCancelled. Nothing was changed.\n");
     0
 }
 
@@ -221,8 +220,7 @@ struct Progress {
 /// cannot be undone safely is reported on standard error and its agent is
 /// left out.
 fn plan_all(
-    p: &mut Prompter,
-    err: &mut dyn Write,
+    ui: &mut dyn Ui,
     s: &Session,
     agents: &[Agent],
     (skill, hook): (Scope, Scope),
@@ -232,7 +230,7 @@ fn plan_all(
     let bundle = match bundle() {
         Ok(bundle) => bundle,
         Err(error) => {
-            p.say(&format!("Error: {error}\n"));
+            ui.say(Tone::Error, &format!("Error: {error}\n"));
             progress.stopped = true;
             return Vec::new();
         }
@@ -244,16 +242,16 @@ fn plan_all(
             Ok(Some(found)) => {
                 let text = report::recovery(agent, &found, "connect");
                 if found.is_clean() {
-                    p.say(&text);
+                    ui.say(Tone::Info, &text);
                     progress.recovered |= !found.restored.is_empty();
                 } else {
-                    let _ = err.write_all(text.as_bytes());
+                    ui.problem(&text);
                     progress.stopped = true;
                     continue;
                 }
             }
             Err(error) => {
-                let _ = writeln!(err, "{}: {error}", agent.label());
+                ui.problem(&format!("{}: {error}\n", agent.label()));
                 progress.stopped = true;
                 continue;
             }
@@ -274,7 +272,10 @@ fn plan_all(
         match planned {
             Ok(plan) => plans.push(plan),
             Err(error) => {
-                p.say(&format!("{}: not configured; {error}\n", agent.label()));
+                ui.say(
+                    Tone::Error,
+                    &format!("{}: not configured; {error}\n", agent.label()),
+                );
                 progress.stopped = true;
             }
         }

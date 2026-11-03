@@ -72,7 +72,7 @@
 - `e2e/`: Playwrightのテストと、スクリーンショット・動画の生成スクリプトを置きます。
 - `docs/`: このドキュメントサイトです。
 - `integrations/`: Hookのテンプレートを置きます。
-- `src/cli/commands/connect.rs`: 対話式の`agboard connect`の流れです。`src/integrations/detect.rs`（PATH上のエージェントとversion）、`prompt.rs`（質問）、`report.rs`（計画と結果の文面）を、計画とエージェントごとの適用の前後で使います。
+- `src/cli/commands/connect.rs`: 対話式の`agboard connect`の流れです。`src/integrations/detect.rs`（PATH上のエージェントとversion）と`ui/`を、計画とエージェントごとの適用の前後で使います。`ui/`には`Ui`トレイトと2つの実装があります。`ClackUi`（`clack.rs`と`clack_view.rs`、ターミナルでのcliclackの質問と色分けした行）と、`PlainUi`（`plain.rs`、`prompt.rs`と`report.rs`による文字だけの表示。ターミナルがないときと、行を送り込む試験で使います）です。`update`も同じ`ui/`を使います。
 - `.agents/skills/agent-board/`: エージェントのスキルを置きます。
 
 ### SkillとHookの導入

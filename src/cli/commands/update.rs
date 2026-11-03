@@ -7,7 +7,9 @@
 //! failure, a conflict, or a partial failure; 2 for a bad command line, or no
 //! terminal without `--yes`. Reasons for failures go to standard error.
 //!
-//! This module also holds the glue of the quiet update notice.
+//! On a terminal it uses the cliclack prompts ([`ClackUi`]); `--yes` without a
+//! terminal prints plain text. This module also holds the glue of the quiet
+//! update notice.
 
 use std::io::{BufRead, IsTerminal, Write};
 use std::path::PathBuf;
@@ -21,12 +23,11 @@ use crate::integrations::assets::bundle;
 use crate::integrations::notice::stale_line;
 use crate::integrations::paths::{PathEnv, registry_path};
 use crate::integrations::plan::{AgentPlan, PlanState};
-use crate::integrations::prompt::Prompter;
 use crate::integrations::recovery::recover_pending;
 use crate::integrations::registry::Registry;
 use crate::integrations::report;
+use crate::integrations::ui::{ClackUi, End, PlainUi, Tone, Ui};
 use crate::integrations::update::{AgentRecords, UpdateInput, plan_update, select};
-use crate::integrations::update_report::{blocked_reasons, describe, results};
 
 const NONE_FOUND: &str = "No managed integrations found. Run agboard connect in a bound project.\n";
 
@@ -54,6 +55,10 @@ pub fn run(env: &mut Env, args: &UpdateArgs) -> Result<i32, AgboardError> {
         root: bound.as_ref().map(|b| b.bound_root.clone()),
         project: bound.map(|b| (b.project.id.to_string(), b.project.name)),
     };
+    if terminal {
+        let mut ui = ClackUi::new("update", session.path_env.home.clone());
+        return Ok(flow_with(&mut ui, &session, args.yes));
+    }
     let stdin = std::io::stdin();
     let mut input = stdin.lock();
     Ok(flow(
@@ -65,8 +70,8 @@ pub fn run(env: &mut Env, args: &UpdateArgs) -> Result<i32, AgboardError> {
     ))
 }
 
-/// Everything after the terminal and the folder are known. Returns the exit
-/// code.
+/// The steps in plain text, reading one line for the question. Returns the
+/// exit code.
 pub fn flow(
     input: &mut dyn BufRead,
     out: &mut dyn Write,
@@ -74,23 +79,28 @@ pub fn flow(
     s: &Session,
     yes: bool,
 ) -> i32 {
-    let mut p = Prompter::new(input, out);
+    flow_with(&mut PlainUi::new(input, out, err), s, yes)
+}
+
+/// Everything after the terminal and the folder are known. Returns the exit
+/// code.
+pub fn flow_with(ui: &mut dyn Ui, s: &Session, yes: bool) -> i32 {
     let registry = match registry_path(&s.path_env).map(|path| Registry::read(&path)) {
         Ok(Ok(registry)) => registry.unwrap_or_default(),
         Ok(Err(error)) | Err(error) => {
-            let _ = writeln!(err, "Error: {error}\nNothing was changed.");
+            ui.problem(&format!("Error: {error}\nNothing was changed.\n"));
             return 1;
         }
     };
     let selected = select(&registry, s.root.as_deref());
     if selected.is_empty() {
-        p.say(NONE_FOUND);
+        ui.finish(End::Done, NONE_FOUND);
         return 0;
     }
     let bundle = match bundle() {
         Ok(bundle) => bundle,
         Err(error) => {
-            let _ = writeln!(err, "Error: {error}");
+            ui.problem(&format!("Error: {error}\n"));
             return 1;
         }
     };
@@ -101,41 +111,47 @@ pub fn flow(
         root: s.root.as_deref(),
         registry: &registry,
     };
-    p.say(&header(s));
+    ui.intro("agboard update", &header(s));
     let mut stopped = false;
     let mut recovered = false;
-    let plans = plan_all(&mut p, err, &input, &selected, &mut stopped, &mut recovered);
+    let plans = plan_all(ui, &input, &selected, &mut stopped, &mut recovered);
     for plan in &plans {
         let own = selected.iter().find(|r| r.agent == plan.agent);
         let records: Vec<_> = own.map(|r| r.all().cloned().collect()).unwrap_or_default();
-        p.say(&describe(plan, &records));
+        ui.update_plan(plan, &records);
     }
     let ready = plans.iter().any(|plan| plan.state() == PlanState::Ready);
     if !ready {
         let blocked = plans.iter().any(|plan| plan.state() == PlanState::Blocked);
         if blocked || stopped {
-            let _ = err.write_all(blocked_reasons(&plans).as_bytes());
-            p.say("\nNothing can be updated. Nothing was written.\n");
+            ui.update_blocked(&plans);
+            ui.finish(
+                End::Failed,
+                "\nNothing can be updated. Nothing was written.\n",
+            );
             return 1;
         }
-        p.say("\nEverything is up to date. Nothing was written.\n");
+        ui.finish(
+            End::Done,
+            "\nEverything is up to date. Nothing was written.\n",
+        );
         return 0;
     }
-    p.say("\nBackups: every existing file that changes is first copied next to the original (name.agboard-backup-...), and a Skill folder that changes is moved to .agboard-backups beside the skills folder. The copies are kept.\n\n");
-    if !yes && !p.confirm("Apply these updates?") {
-        p.say(if recovered {
-            "\nCancelled. The unfinished earlier run was undone; nothing else was changed.\n"
-        } else {
-            "\nCancelled. Nothing was changed.\n"
-        });
+    ui.update_backups();
+    if !yes && !ui.confirm("Apply these updates?") {
+        ui.finish(
+            End::Cancelled,
+            if recovered {
+                "\nCancelled. The unfinished earlier run was undone; nothing else was changed.\n"
+            } else {
+                "\nCancelled. Nothing was changed.\n"
+            },
+        );
         return 0;
     }
-    p.say("\n");
     let outcomes = apply_all(&s.path_env, &plans, &ApplyOptions::default());
     let code = exit_code(&outcomes).max(i32::from(stopped));
-    let (shown, errors) = results(&outcomes, &plans, code);
-    p.say(&shown);
-    let _ = err.write_all(errors.as_bytes());
+    ui.update_results(&outcomes, &plans, code);
     code
 }
 
@@ -153,8 +169,7 @@ fn header(s: &Session) -> String {
 /// Recovers an unfinished earlier run, then plans each agent. Agents that
 /// cannot be planned are reported on standard error and set `stopped`.
 fn plan_all(
-    p: &mut Prompter,
-    err: &mut dyn Write,
+    ui: &mut dyn Ui,
     input: &UpdateInput,
     selected: &[AgentRecords],
     stopped: &mut bool,
@@ -168,16 +183,16 @@ fn plan_all(
             Ok(Some(found)) => {
                 let text = report::recovery(agent, &found, "update");
                 if found.is_clean() {
-                    p.say(&text);
+                    ui.say(Tone::Info, &text);
                     *recovered |= !found.restored.is_empty();
                 } else {
-                    let _ = err.write_all(text.as_bytes());
+                    ui.problem(&text);
                     *stopped = true;
                     continue;
                 }
             }
             Err(error) => {
-                let _ = writeln!(err, "{}: {error}", agent.label());
+                ui.problem(&format!("{}: {error}\n", agent.label()));
                 *stopped = true;
                 continue;
             }
@@ -185,7 +200,7 @@ fn plan_all(
         match plan_update(input, records) {
             Ok(plan) => plans.push(plan),
             Err(reason) => {
-                let _ = writeln!(err, "{}: not updated; {reason}", agent.label());
+                ui.problem(&format!("{}: not updated; {reason}\n", agent.label()));
                 *stopped = true;
             }
         }

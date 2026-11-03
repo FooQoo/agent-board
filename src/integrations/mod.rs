@@ -30,6 +30,7 @@ pub mod report;
 pub mod skill;
 pub mod template;
 pub mod types;
+pub mod ui;
 pub mod update;
 pub mod update_report;
 

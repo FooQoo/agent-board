@@ -55,7 +55,7 @@ pub fn describe(plan: &AgentPlan, records: &[InstallationRecord]) -> String {
 
 /// Update adds no permission edits, so a changed settings file is a changed
 /// Hook.
-fn changes_hook(plan: &AgentPlan) -> bool {
+pub(crate) fn changes_hook(plan: &AgentPlan) -> bool {
     plan.ops.iter().any(|op| op.kind == OpKind::File)
 }
 
@@ -132,7 +132,7 @@ pub fn blocked_reasons(plans: &[AgentPlan]) -> String {
     errors
 }
 
-fn failure(text: &mut String, outcome: &AgentOutcome) {
+pub(crate) fn failure(text: &mut String, outcome: &AgentOutcome) {
     let _ = writeln!(
         text,
         "{}: not updated; {}",

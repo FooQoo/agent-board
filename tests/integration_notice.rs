@@ -121,8 +121,7 @@ fn hook_wait_help_version_connect_and_update_stay_quiet() {
 
     // Update on a terminal: it asks, and prints its own result, not the notice.
     let mut term = fx.session(&fx.root(), &["update"]);
-    term.expect("[y/N]").unwrap();
-    term.send_line("y").unwrap();
+    update_fixture::answer(&mut term, "Apply these updates?", "y", "");
     let (code, screen) = finish(term);
     assert_eq!(code, 0, "{screen}");
     assert_eq!(count(&screen), 0, "update: {screen}");

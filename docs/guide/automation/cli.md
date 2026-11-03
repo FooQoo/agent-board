@@ -176,7 +176,7 @@ agboard update --yes
 | Command | What it does | Exit codes |
 | --- | --- | --- |
 | `agboard connect` | Asks which agents, one Skill scope, and one Hook scope, shows the plan, and writes after you answer `y`. Needs a terminal and a folder bound to a project. It takes no options. | `0` success, nothing to change, or a cancel. `1` an agent could not be configured, or the folder is not bound. `2` bad command line, or no terminal. |
-| `agboard update` | Updates what `connect` recorded: the Global installations and the Project installations of the nearest bound root. Shows the changes and asks `[y/N]`. | `0` success, nothing to update, or a cancel. `1` failure, conflict, or partial failure. `2` bad command line, or no terminal without `--yes`. |
+| `agboard update` | Updates what `connect` recorded: the Global installations and the Project installations of the nearest bound root. Shows the changes and asks **Apply these updates?**. | `0` success, nothing to update, or a cancel. `1` failure, conflict, or partial failure. `2` bad command line, or no terminal without `--yes`. |
 | `agboard update --yes` | The same, without the question. Conflicts still fail; your own edits are never overwritten. | The same as `update`. |
 
 - Neither command waits on a pipe. Without a terminal, `connect` and `update` exit with `2` and ask you to run them in a terminal. `update --yes` also works without one.
