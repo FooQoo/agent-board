@@ -7,14 +7,26 @@
   --vp-c-brand-2: #1d4ed8;
   --vp-c-brand-3: #2563eb;
   --vp-c-brand-soft: rgba(37, 99, 235, 0.14);
-  --vp-home-hero-name-color: var(--vp-c-brand-1);
-  --vp-home-hero-image-background-image: linear-gradient(
-    -45deg,
-    rgba(37, 99, 235, 0.35) 50%,
-    rgba(107, 154, 255, 0.35) 50%
-  );
-  --vp-home-hero-image-filter: blur(44px);
   --screenshot-shadow: 0 6px 24px rgba(27, 36, 48, 0.1);
+
+  /* Home page. Lane and pending colors follow the app's theme.css. */
+  --lp-surface: #ffffff;
+  --lp-lane: #eef0f4;
+  --lp-code-bg: var(--vp-c-bg-soft);
+  --lp-todo: #6e62a8;
+  --lp-done: #3e968a;
+  --lp-todo-tint: rgba(110, 98, 168, 0.08);
+  --lp-doing-tint: rgba(37, 99, 235, 0.08);
+  --lp-done-tint: rgba(62, 150, 138, 0.08);
+  --lp-pending-bg: #fff6e3;
+  --lp-pending-border: #efd9a6;
+  --lp-pending-text: #9a5a06;
+  --lp-ai-bg: #e8effd;
+  --lp-ai-text: #1d4ed8;
+  --lp-auto-bg: #e6f4f1;
+  --lp-band: #1b2430;
+  --lp-band-text-2: #b4bdca;
+  --lp-shadow: 0 14px 36px rgba(27, 36, 48, 0.15);
 }
 
 .dark {
@@ -22,18 +34,25 @@
   --vp-c-brand-2: #5589f5;
   --vp-c-brand-3: #3b6fe0;
   --vp-c-brand-soft: rgba(107, 154, 255, 0.16);
-  --vp-home-hero-image-background-image: linear-gradient(
-    -45deg,
-    rgba(59, 111, 224, 0.45) 50%,
-    rgba(107, 154, 255, 0.3) 50%
-  );
   --screenshot-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-}
 
-/* The hero logo is a square mark, so show it at a moderate size. */
-.VPHero .VPImage.image-src {
-  max-width: 180px;
-  max-height: 180px;
+  --lp-surface: var(--vp-c-bg-soft);
+  --lp-lane: #26272d;
+  --lp-code-bg: #161618;
+  --lp-todo: #a99bea;
+  --lp-done: #5cc4a0;
+  --lp-todo-tint: rgba(169, 155, 234, 0.12);
+  --lp-doing-tint: rgba(107, 154, 255, 0.12);
+  --lp-done-tint: rgba(92, 196, 160, 0.12);
+  --lp-pending-bg: #2a2210;
+  --lp-pending-border: #5a4716;
+  --lp-pending-text: #e9b04f;
+  --lp-ai-bg: #1e2a44;
+  --lp-ai-text: #9dbbff;
+  --lp-auto-bg: #17322c;
+  --lp-band: #111114;
+  --lp-band-text-2: #a1a1aa;
+  --lp-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
 }
 
 /* Framed screenshots: ![alt](path){.screenshot} */
@@ -121,84 +140,7 @@ video.demo-video {
   opacity: 1;
 }
 
-/* Home page: keep screenshots compact and centered. */
-.VPHome img.screenshot {
-  display: block;
-  width: 100%;
-  max-width: 720px;
-  margin-inline: auto;
-}
-.VPHome img.screenshot--narrow {
-  max-width: 280px;
-}
-.VPHome video.demo-video {
-  max-width: 800px;
-  margin-inline: auto;
-}
-
-/* Home page closing section: numbered steps and call-to-action buttons. */
-.home-steps ol {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  counter-reset: home-step;
-  list-style: none;
-  padding: 0;
-  margin: 24px 0;
-}
-.home-steps ol > li {
-  counter-increment: home-step;
-  margin: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background: var(--vp-c-bg-soft);
-}
-.home-steps ol > li::before {
-  content: counter(home-step);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-bottom: 8px;
-  border-radius: 50%;
-  background: var(--vp-c-brand-1);
-  color: var(--vp-c-white);
-  font-weight: 600;
-}
-.home-steps ol > li p {
-  margin: 4px 0 0;
-  line-height: 1.6;
-}
-.home-cta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 24px 0 8px;
-}
-.vp-doc a.home-cta__button {
-  display: inline-block;
-  padding: 10px 24px;
-  border: 1px solid var(--vp-button-alt-border);
-  border-radius: 20px;
-  background: var(--vp-button-alt-bg);
-  color: var(--vp-button-alt-text);
-  font-weight: 600;
-  text-decoration: none;
-}
-.vp-doc a.home-cta__button:hover {
-  border-color: var(--vp-button-alt-hover-border);
-  background: var(--vp-button-alt-hover-bg);
-  color: var(--vp-button-alt-hover-text);
-}
-.vp-doc a.home-cta__button--brand {
-  border-color: var(--vp-button-brand-border);
-  background: var(--vp-button-brand-bg);
-  color: var(--vp-button-brand-text);
-}
-.vp-doc a.home-cta__button--brand:hover {
-  border-color: var(--vp-button-brand-hover-border);
-  background: var(--vp-button-brand-hover-bg);
-  color: var(--vp-button-brand-hover-text);
+/* The home page draws its own full-width sections; drop the default bottom gap. */
+.VPHome:has(.landing) {
+  margin-bottom: 0;
 }
