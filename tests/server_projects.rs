@@ -7,6 +7,8 @@
 
 #[path = "support/detail_lines.rs"]
 mod detail_lines;
+#[path = "support/server_thread.rs"]
+mod server_thread;
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
@@ -158,13 +160,13 @@ impl Running {
                     },
                 )
             });
-            match ready_rx.recv_timeout(Duration::from_secs(10)) {
-                Ok(addr) => Running {
-                    addr,
-                    stop: Some(stop_tx),
-                    handle: Some(handle),
+            match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
+                Ok(started) => Running {
+                    addr: started.ready,
+                    stop: Some(started.stop),
+                    handle: Some(started.handle),
                 },
-                Err(_) => panic!("server did not start: {:?}", handle.join()),
+                Err(result) => panic!("server did not start: {result:?}"),
             }
         })
     }
@@ -278,11 +280,8 @@ impl Running {
     }
 
     fn shutdown(&mut self) {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
         if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
+            server_thread::finish(self.stop.take(), handle);
         }
     }
 }

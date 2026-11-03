@@ -16,6 +16,9 @@ use agent_board::server::monitor_connection::lifecycle::{
 use agent_board::server::{MonitorOptions, ServeConfig, run_until_with_monitor};
 use serde_json::Value;
 
+#[path = "server_thread.rs"]
+pub mod server_thread;
+
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 /// The public origin the fake tunnel reports.
 pub const ORIGIN: &str = "https://fixture-run.ngrok.app";
@@ -110,25 +113,29 @@ impl Running {
                 },
             )
         });
-        let ready = ready_rx.recv_timeout(Duration::from_secs(10));
-        // SAFETY: the same startup lock still protects restoration, including
-        // the error path. Every server path has already been captured.
-        unsafe {
-            match previous {
-                Some(value) => std::env::set_var("AGBOARD_HOME", value),
-                None => std::env::remove_var("AGBOARD_HOME"),
+        let ready = {
+            // Restores the parent environment on every path out of the wait, a failed or
+            // timed-out start included. Every server path has already been captured then.
+            struct Restore(Option<std::ffi::OsString>);
+            impl Drop for Restore {
+                fn drop(&mut self) {
+                    // SAFETY: the same startup lock still protects restoration.
+                    unsafe {
+                        match self.0.take() {
+                            Some(value) => std::env::set_var("AGBOARD_HOME", value),
+                            None => std::env::remove_var("AGBOARD_HOME"),
+                        }
+                    }
+                }
             }
-        }
-        let (local, announced) = match ready {
-            Ok(ready) => ready,
-            Err(error) => {
-                let _ = stop_tx.send(());
-                panic!(
-                    "server did not become ready: {error}; result: {:?}",
-                    handle.join()
-                );
-            }
+            let _restore = Restore(previous);
+            server_thread::wait_ready(&ready_rx, stop_tx, handle)
         };
+        let server_thread::Started {
+            ready: (local, announced),
+            stop: stop_tx,
+            handle,
+        } = ready.unwrap_or_else(|result| panic!("server did not become ready: {result:?}"));
         let backend = (*seen.last.lock().unwrap()).expect("a tunnel was opened");
         Self {
             local,
@@ -256,11 +263,10 @@ impl Running {
 
 impl Drop for Running {
     fn drop(&mut self) {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
-        if let Some(handle) = self.handle.take() {
-            handle.join().unwrap().unwrap();
+        if let Some(handle) = self.handle.take()
+            && let Some(result) = server_thread::finish(self.stop.take(), handle)
+        {
+            result.unwrap().unwrap();
         }
     }
 }

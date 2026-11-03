@@ -13,6 +13,12 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+// A test that also loads `support/mobile_monitor.rs` gets a second, identical copy of this
+// module; each harness keeps its own so that either one can be used alone.
+#[allow(clippy::duplicate_mod)]
+#[path = "../support/server_thread.rs"]
+mod server_thread;
+
 use agent_board::error::AgboardError;
 use agent_board::server::{ServeConfig, run_until};
 use serde_json::Value;
@@ -158,13 +164,13 @@ impl Running {
                     },
                 )
             });
-            match ready_rx.recv_timeout(Duration::from_secs(10)) {
-                Ok(addr) => Running {
-                    addr,
-                    stop: Some(stop_tx),
-                    handle: Some(handle),
+            match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
+                Ok(started) => Running {
+                    addr: started.ready,
+                    stop: Some(started.stop),
+                    handle: Some(started.handle),
                 },
-                Err(_) => panic!("server did not start: {:?}", handle.join()),
+                Err(result) => panic!("server did not start: {result:?}"),
             }
         })
     }
@@ -293,11 +299,8 @@ impl Running {
     }
 
     fn shutdown(&mut self) {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
         if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
+            server_thread::finish(self.stop.take(), handle);
         }
     }
 }

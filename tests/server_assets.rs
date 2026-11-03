@@ -1,6 +1,9 @@
 //! Integration tests for the embedded scripts and stylesheets: the tables
 //! `build.rs` generates from `web/dist/`, and `GET /assets/{name}`.
 
+#[path = "support/server_thread.rs"]
+mod server_thread;
+
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::Path;
@@ -227,15 +230,14 @@ impl Running {
                 },
             )
         });
-        let addr = ready_rx
-            .recv_timeout(Duration::from_secs(10))
-            .expect("the server becomes ready");
+        let started = server_thread::wait_ready(&ready_rx, stop_tx, handle);
         // SAFETY: as above.
         unsafe { std::env::remove_var("AGBOARD_HOME") };
+        let started = started.unwrap_or_else(|result| panic!("server did not start: {result:?}"));
         Running {
-            addr,
-            stop: Some(stop_tx),
-            handle: Some(handle),
+            addr: started.ready,
+            stop: Some(started.stop),
+            handle: Some(started.handle),
         }
     }
 
@@ -273,11 +275,8 @@ impl Running {
 
 impl Drop for Running {
     fn drop(&mut self) {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
         if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
+            server_thread::finish(self.stop.take(), handle);
         }
     }
 }

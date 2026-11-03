@@ -18,6 +18,7 @@ use agent_board::server::monitor_connection::lifecycle::{
 use agent_board::server::{MonitorOptions, MonitorReady, ServeConfig, run_until_with_monitor};
 use serde_json::{Value, json};
 
+use super::support::server_thread;
 use super::support::token;
 
 pub const TOKEN: &str = "tok-SECRET-0123456789";
@@ -230,29 +231,23 @@ impl Server {
                 },
             )
         });
-        let got = rx.recv_timeout(Duration::from_secs(15));
+        let got = server_thread::wait_ready(&rx, stop_tx, handle);
         // SAFETY: same lock; the server has captured the path.
         unsafe { std::env::remove_var("AGBOARD_HOME") };
-        match got {
-            Ok((local, ready)) => {
-                let page = request(local, "GET", "/", &[], "").body;
-                Ok(Self {
-                    local,
-                    token: token(&page),
-                    fake: opts.fake,
-                    ready,
-                    stop: Some(stop_tx),
-                    handle: Some(handle),
-                })
-            }
-            Err(_) => {
-                let _ = stop_tx.send(());
-                handle
-                    .join()
-                    .unwrap()
-                    .map(|()| unreachable!("server never became ready"))
-            }
-        }
+        let started = match got {
+            Ok(started) => started,
+            Err(result) => return result.map(|()| unreachable!("server never became ready")),
+        };
+        let (local, ready) = started.ready;
+        let page = request(local, "GET", "/", &[], "").body;
+        Ok(Self {
+            local,
+            token: token(&page),
+            fake: opts.fake,
+            ready,
+            stop: Some(started.stop),
+            handle: Some(started.handle),
+        })
     }
 
     pub fn start(home: &Path, opts: Opts) -> Self {
@@ -333,11 +328,8 @@ impl Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
         if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
+            server_thread::finish(self.stop.take(), handle);
         }
     }
 }

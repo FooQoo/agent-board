@@ -3,6 +3,8 @@
 #[path = "support/mobile_monitor.rs"]
 mod support;
 
+use support::server_thread;
+
 use std::ffi::OsString;
 use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant};
@@ -79,16 +81,19 @@ fn server_startup_keeps_its_captured_directory_when_environment_changes() {
     let captured_lifecycle = home.path().join("lifecycle.lock").exists();
     set_home(sentinel.path());
     drop(write_lock);
-    let ready = ready_rx.recv_timeout(Duration::from_secs(10));
+    let started = server_thread::wait_ready(&ready_rx, stop_tx, worker)
+        .unwrap_or_else(|result| panic!("server did not start: {result:?}"));
     let captured_info = agent_board::paths::read_serve_info_in(home.path());
     let sentinel_bytes = std::fs::read(sentinel.path().join("serve.json")).unwrap();
-    let _ = stop_tx.send(());
-    worker.join().unwrap().unwrap();
+    server_thread::finish(Some(started.stop), started.handle)
+        .expect("the server stops")
+        .unwrap()
+        .unwrap();
     assert!(
         captured_lifecycle,
         "startup must have selected the temporary home before changing the environment"
     );
-    let addr = ready.unwrap();
+    let addr = started.ready;
     assert_eq!(
         captured_info.map(|info| info.port),
         Some(addr.port()),

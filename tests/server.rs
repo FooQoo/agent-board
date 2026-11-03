@@ -2,6 +2,8 @@
 
 #[path = "support/detail_lines.rs"]
 mod detail_lines;
+#[path = "support/server_thread.rs"]
+mod server_thread;
 
 use std::path::Path;
 use std::process::Command;
@@ -256,20 +258,17 @@ impl Running {
                     },
                 )
             });
-            match ready_rx.recv_timeout(Duration::from_secs(10)) {
-                Ok(addr) => Ok(Running {
-                    addr,
+            match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
+                Ok(started) => Ok(Running {
+                    addr: started.ready,
                     base: FileStore::open(&home.join("shared"))
                         .project_by_name("main")
                         .map(|project| format!("/api/projects/{}", project.id))
                         .unwrap_or_default(),
-                    stop: Some(stop_tx),
-                    handle: Some(handle),
+                    stop: Some(started.stop),
+                    handle: Some(started.handle),
                 }),
-                Err(_) => match handle.join() {
-                    Ok(result) => Err(result.expect_err("stopped without becoming ready")),
-                    Err(_) => panic!("the server thread panicked before it was ready"),
-                },
+                Err(result) => Err(result.expect_err("stopped without becoming ready")),
             }
         })
     }
@@ -410,11 +409,11 @@ impl Running {
     }
 
     fn shutdown(&mut self) -> Result<(), AgboardError> {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
         match self.handle.take() {
-            Some(handle) => handle.join().expect("server thread panicked"),
+            Some(handle) => match server_thread::finish(self.stop.take(), handle) {
+                Some(result) => result.expect("server thread panicked"),
+                None => Ok(()),
+            },
             None => Ok(()),
         }
     }
