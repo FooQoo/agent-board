@@ -12,7 +12,7 @@ title: インストールと起動
 
 - macOS 15以降を搭載した、Apple SiliconまたはIntelのMac。
 - [Homebrew](https://brew.sh)。Homebrew自体にも、環境によってはCommand Line Toolsなどの前提があります。その内容はHomebrewのドキュメントに従ってください。
-- 接続の手順で使う、`PATH`上のClaude CodeまたはCodex CLI。
+- 接続の手順で使う、`PATH`上のClaude CodeまたはCodex（`claude`か`codex`のコマンド）。
 
 Agent Boardを自分でビルドする必要はありません。Homebrewで入るのは、Web画面を内蔵したビルド済みのコマンドです。Rust、Node.js、pnpmは不要で、リポジトリをcloneすることもありません。ソースからビルドする場合は、[開発環境のセットアップ](../dev/getting-started/setup)を参照してください。
 

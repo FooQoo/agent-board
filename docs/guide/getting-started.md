@@ -12,7 +12,7 @@ The steps are: install, create or bind a project, connect your agents, and start
 
 - A Mac running macOS 15 or later, with Apple Silicon or an Intel processor.
 - [Homebrew](https://brew.sh). Homebrew has its own requirements, such as the Command Line Tools on some Macs; follow the Homebrew documentation for them.
-- For the connect step, Claude Code or Codex CLI on your `PATH`.
+- For the connect step, Claude Code or Codex on your `PATH` (the `claude` or `codex` command).
 
 You do not build Agent Board yourself. The Homebrew package is a prebuilt command with the web UI inside, so you do not need Rust, Node.js, or pnpm, and you do not clone the repository. To build from source, see [Set up and run](../dev/getting-started/setup).
 

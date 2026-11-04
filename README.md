@@ -35,11 +35,12 @@ flowchart LR
 
 ## Features
 
-**1. One board for people and AI agents.** Track work in Todo, Doing, and Done, with Running and Pending states showing what the agent is doing. Answer questions directly on a task from your PC or phone, and keep decisions and status changes in its history.
+- **The board.** Todo, Doing, and Done, with Running and Pending states on top. Answer questions right on the task. [Using the board](https://fooqoo.github.io/agent-board/guide/use/board)
+- **Epics and progress.** Order tasks in an epic, and the progress table returns the work that can move next to your agent. [Epics and progress](https://fooqoo.github.io/agent-board/guide/use/epics)
+- **Check from your phone.** Away from your desk, check the status and answer questions from the mobile monitor. In public preview. [Mobile monitor](https://fooqoo.github.io/agent-board/guide/operations/mobile-monitor)
+- **Project docs.** Open the design notes and specs in your project's `docs/` folder right from the board. In public preview. [Project docs](https://fooqoo.github.io/agent-board/guide/use/docs)
 
-**2. Keep one agent session moving through tasks.** Order tasks within an epic and let `agboard progress` return the work that can advance, together with the paths to its plans and tasks. An agent can explicitly listen for the next eligible task with `agboard --project "My project" wait --until task --idle-timeout 300 --json`; it processes one task, then listens again in the same session. Existing Todo tasks and idle AI tasks already in Doing are included, and the command exits normally after the chosen idle interval. Folder-based project selection and hooks give agents the right context. When every acceptance condition is verified, eligible AI tasks move to Done automatically; completed work stays read-only for agents.
-
-**3. Local Markdown for plans and results.** Keep epic details in `EPIC.md` and tasks in `TASK.md`, with images alongside them. A task's plan and verification results live in the `TASK.md` body, with acceptance conditions and history in its frontmatter; task metadata such as its current status lives in `task.json`. Each history entry has just a timestamp (`at`) and content (`reason`). Agents record meaningful work progress automatically, and UI or CLI operations add their own history. You may supply a reason or let Agent Board generate one from the current state. Everything stays in your local data area, with no account or hosted service required.
+Plans and results are Markdown files on your machine (`EPIC.md` and `TASK.md`), with acceptance conditions and history in the frontmatter. No account or hosted service is needed.
 
 See the [usage guide](https://fooqoo.github.io/agent-board/guide/) for editing, attachments, archiving, and settings.
 

@@ -140,7 +140,7 @@ for (const lang of langs) {
     expect(hrefs.filter((href) => !href.startsWith('/agent-board/'))).toEqual([
       repoUrl,
       'https://www.claude.com/product/claude-code',
-      'https://developers.openai.com/codex/cli',
+      'https://developers.openai.com/codex',
       repoUrl,
     ]);
     // The agents are names with links, opened in a new tab; no company logo is shown.

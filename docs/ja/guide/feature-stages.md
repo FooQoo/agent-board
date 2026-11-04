@@ -44,8 +44,8 @@ GAの機能には、この表示はありません。
 | プロジェクトと作業フォルダ | CLI、パソコンのブラウザ | フォルダがどのプロジェクトに属するかは、最も近いbindで決まります。 | [CLIリファレンス](./automation/cli#projects) |
 | データの保存と復旧 | macOS | `formatVersion`が1のファイルだけに対応します。 | [データとバックアップ](./operations/data) |
 | 表示言語とテーマ | パソコン、モバイルモニター | 日本語と英語、24のテーマです。 | [設定](./use/board#settings) |
-| エージェント向けのCLI・JSON出力・Hook・`wait` | Claude Code、Codex CLI | HookとSkillは、導入しないと使えません。エージェントの起動は人が行います。 | [エージェントとの連携](./automation/agents) |
-| `connect`と`update` | macOS。`PATH`上にClaude CodeやCodex CLIが見つかる環境 | `update --yes`を除き、どちらのコマンドも対話式です。Hookが変わったときは、エージェントで信頼し直す必要があります。`update`が古い版を入れ直すことはありません。 | [エージェントとの連携](./automation/agents#connect-your-agent)、[CLIリファレンス](./automation/cli#connect-and-update) |
+| エージェント向けのCLI・JSON出力・Hook・`wait` | Claude Code、Codex | HookとSkillは、導入しないと使えません。エージェントの起動は人が行います。 | [エージェントとの連携](./automation/agents) |
+| `connect`と`update` | macOS。`PATH`上にClaude CodeやCodexが見つかる環境 | `update --yes`を除き、どちらのコマンドも対話式です。Hookが変わったときは、エージェントで信頼し直す必要があります。`update`が古い版を入れ直すことはありません。 | [エージェントとの連携](./automation/agents#connect-your-agent)、[CLIリファレンス](./automation/cli#connect-and-update) |
 | 初回の案内 | パソコンのブラウザ | データ領域にすでにプロジェクトがあるときと、モバイルモニターでは表示しません。 | [初回の案内](./use/board#the-first-run-guide) |
 
 ## パブリックプレビューの機能

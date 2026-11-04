@@ -14,7 +14,7 @@ landing:
     install: brew install fooqoo/tap/agboard
     primary: { text: はじめる, link: /ja/guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
-    meta: macOS · Claude Code / Codex CLI · MIT License
+    meta: macOS · Claude Code / Codex · MIT License
     videoLabel: デモ動画。エージェントがタスクに着手して質問し、タスクの回答欄から返答すると作業を再開して、完了まで進む
     questionAlt: エージェントの質問と2つの選択肢が表示された、待機中のタスク
   problem:
@@ -93,12 +93,12 @@ landing:
   agents:
     eyebrow: 連携
     title: いつものエージェントから、そのまま。
-    lead: agboard connectが、Claude CodeとCodex CLIにSkillとHookを対話で導入します。エージェントは進行表を読み、タスクを追加し、質問して回答を待ちます。
+    lead: agboard connectが、Claude CodeとCodexにSkillとHookを対話で導入します。エージェントは進行表を読み、タスクを追加し、質問して回答を待ちます。
     supportedLabel: 対応エージェント
     supported:
       - { text: Claude Code, link: https://www.claude.com/product/claude-code }
-      - { text: Codex CLI, link: https://developers.openai.com/codex/cli }
-    trademark: Claude CodeはAnthropic、Codex CLIはOpenAIの製品で、各名称は各社の商標です。Agent Boardは独立したプロジェクトで、両社と提携しておらず、推奨も受けていません。
+      - { text: Codex, link: https://developers.openai.com/codex }
+    trademark: Claude CodeはAnthropic、CodexはOpenAIの製品で、各名称は各社の商標です。Agent Boardは独立したプロジェクトで、両社と提携しておらず、推奨も受けていません。
     command: agboard connect
     link: { text: エージェントとの連携, link: /ja/guide/automation/agents }
   trust:
@@ -111,7 +111,7 @@ landing:
   start:
     eyebrow: はじめ方
     title: 3つの手順で、ボードが開きます。
-    lead: macOS 15以降とHomebrew、Claude CodeかCodex CLIがあれば始められます。
+    lead: macOS 15以降とHomebrew、Claude CodeかCodexがあれば始められます。
     steps:
       - { title: インストールする, commands: [brew install fooqoo/tap/agboard] }
       - { title: プロジェクトとエージェントをつなぐ, commands: ['agboard project create "My project"', agboard connect] }

@@ -14,7 +14,7 @@ landing:
     install: brew install fooqoo/tap/agboard
     primary: { text: Get started, link: /guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
-    meta: macOS · Claude Code / Codex CLI · MIT License
+    meta: macOS · Claude Code / Codex · MIT License
     videoLabel: "Demo: the agent starts a task and asks a question, you answer on the task, and the agent resumes until the task is done"
     questionAlt: A waiting task with the agent's question and two options to choose from
   problem:
@@ -93,12 +93,12 @@ landing:
   agents:
     eyebrow: Integrations
     title: Works with the agents you already use.
-    lead: agboard connect walks you through installing the Skill and the Hook for Claude Code and Codex CLI. Your agent reads the progress table, adds tasks, asks questions, and waits for your answer.
+    lead: agboard connect walks you through installing the Skill and the Hook for Claude Code and Codex. Your agent reads the progress table, adds tasks, asks questions, and waits for your answer.
     supportedLabel: Supported agents
     supported:
       - { text: Claude Code, link: https://www.claude.com/product/claude-code }
-      - { text: Codex CLI, link: https://developers.openai.com/codex/cli }
-    trademark: Claude Code is a product of Anthropic and Codex CLI is a product of OpenAI; their names are trademarks of their respective owners. Agent Board is an independent project and is not affiliated with or endorsed by either company.
+      - { text: Codex, link: https://developers.openai.com/codex }
+    trademark: Claude Code is a product of Anthropic and Codex is a product of OpenAI; their names are trademarks of their respective owners. Agent Board is an independent project and is not affiliated with or endorsed by either company.
     command: agboard connect
     link: { text: Working with agents, link: /guide/automation/agents }
   trust:
@@ -111,7 +111,7 @@ landing:
   start:
     eyebrow: Get started
     title: Three steps to an open board.
-    lead: You need macOS 15 or later, Homebrew, and Claude Code or Codex CLI.
+    lead: You need macOS 15 or later, Homebrew, and Claude Code or Codex.
     steps:
       - { title: Install, commands: [brew install fooqoo/tap/agboard] }
       - { title: Connect a project and your agent, commands: ['agboard project create "My project"', agboard connect] }
