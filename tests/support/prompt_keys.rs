@@ -7,7 +7,11 @@ use expectrl::{Expect, Regex};
 /// The final question of connect.
 pub const CONFIRM: &str = "Apply these changes?";
 pub const ENTER: &str = "\r";
-pub const CTRL_C: &str = "\u{3}";
+/// Esc cancels a question. Ctrl-C does too while the prompt reads the
+/// keyboard, but between two reads the terminal turns it into SIGINT, which
+/// ends the process instead; the tests use the key that never becomes a
+/// signal.
+pub const ESC: &str = "\u{1b}";
 
 /// Waits for `prompt` and answers it with keys, as a person would:
 /// - "Select agents": the numbers of the listed agents to end up chosen
@@ -27,7 +31,7 @@ pub fn answer(term: &mut Session, prompt: &str, reply: &str, so_far: &str) -> St
     let block = String::from_utf8_lossy(block.as_bytes()).into_owned();
     shown.push_str(&block);
     let keys = match (prompt, reply) {
-        (_, "q") => CTRL_C.to_string(),
+        (_, "q") => ESC.to_string(),
         (_, "") => ENTER.to_string(),
         ("Select agents", wanted) => toggles(&block, wanted),
         (_, "1") => format!("k{ENTER}"),

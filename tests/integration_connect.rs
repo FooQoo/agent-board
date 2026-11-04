@@ -411,7 +411,7 @@ fn the_confirmation_lists_placement_changes_permissions_and_the_backup_policy() 
 }
 
 #[test]
-fn a_no_cancels_without_writing_and_so_does_ctrl_c() {
+fn a_no_cancels_without_writing_and_so_does_esc() {
     let fx = Fx::new();
     let before = world(&fx.base());
     // N
@@ -439,7 +439,7 @@ fn a_no_cancels_without_writing_and_so_does_ctrl_c() {
     );
     assert_eq!(code, 0);
     assert_eq!(world(&fx.base()), before);
-    // Ctrl-C at the confirmation.
+    // Esc at the confirmation.
     let (code, screen) = fx.connect(
         &fx.root(),
         &[
@@ -452,7 +452,7 @@ fn a_no_cancels_without_writing_and_so_does_ctrl_c() {
     assert_eq!(code, 0, "{screen}");
     assert!(screen.contains("Cancelled"), "{screen}");
     assert_eq!(world(&fx.base()), before);
-    // Ctrl-C at the scope question.
+    // Esc at the scope question.
     let (code, screen) = fx.connect(
         &fx.root(),
         &[("Select agents", "1 2"), ("Skill scope", "q")],
