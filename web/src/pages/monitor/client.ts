@@ -169,4 +169,6 @@ export const monitorReadResolvers: MonitorReadResolvers = {
     `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/attachments/${attachmentSegment(attachmentId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
     `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/epics/${epicSegment(epicId)}/attachments/${attachmentSegment(attachmentId)}`,
+  setAcceptance: (projectId, taskId, conditionId, done) =>
+    setAcceptance(projectId, taskId, conditionId, done),
 };

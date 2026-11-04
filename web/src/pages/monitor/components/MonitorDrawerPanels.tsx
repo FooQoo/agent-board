@@ -98,7 +98,7 @@ export function MonitorDrawerPanels({
             inert={tab !== 'acceptance'}
             className="monitor-drawer__panel"
           >
-            {drawn('acceptance') && <TaskAcceptanceTab item={item} />}
+            {drawn('acceptance') && <TaskAcceptanceTab item={item} resolvers={resolvers} />}
           </div>
           <div
             role="tabpanel"

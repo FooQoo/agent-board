@@ -23,10 +23,19 @@ export interface MonitorFreshness {
   snapshotProblems: Array<{ projectId: ProjectId; file: string; field: string; reason: string }>;
 }
 
-/** Where a task's or an epic's attachments are read from. */
+/**
+ * Where a task's or an epic's attachments are read from, and the one change the drawer makes: checking
+ * or unchecking a condition. Without `setAcceptance` (no server connected) the conditions are read-only.
+ */
 export interface MonitorReadResolvers {
   attachmentUrl(projectId: ProjectId, taskId: number, attachmentId: string): string;
   epicAttachmentUrl(projectId: ProjectId, epicId: string, attachmentId: string): string;
+  setAcceptance?(
+    projectId: ProjectId,
+    taskId: number,
+    conditionId: string,
+    done: boolean,
+  ): Promise<unknown>;
 }
 
 /** Resolvers for pages that are not connected to a server (stories, the sample-data mode). */
