@@ -32,13 +32,39 @@ export {
 
 export { createMonitorAdapter, monitorErrorStatus } from './adapter';
 
-async function answerRequest(
+function taskPath(projectId: ProjectId, taskId: number, rest: string) {
+  return `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/${rest}`;
+}
+
+function answerRequest(
   projectId: ProjectId,
   taskId: number,
   input: AnswerInput,
   options: MonitorRequestOptions = {},
 ): Promise<AnswerResult> {
-  const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/answer`;
+  return writeTask('answer', 'POST', taskPath(projectId, taskId, 'answer'), input, options);
+}
+
+/** Checks (`done: true`) or unchecks one acceptance condition, as the person. */
+function setAcceptance(
+  projectId: ProjectId,
+  taskId: number,
+  conditionId: string,
+  done: boolean,
+  options: MonitorRequestOptions = {},
+): Promise<AnswerResult> {
+  const path = taskPath(projectId, taskId, `acceptance/${encodeURIComponent(conditionId)}`);
+  return writeTask('acceptance', 'PUT', path, { done }, options);
+}
+
+/** One write of the monitor, with its session, CSRF token, and time limit. */
+async function writeTask(
+  what: 'answer' | 'acceptance',
+  method: 'POST' | 'PUT',
+  path: string,
+  input: unknown,
+  options: MonitorRequestOptions,
+): Promise<AnswerResult> {
   const session = usesMonitorSession();
   if (session && currentCsrf() === null) {
     try {
@@ -48,7 +74,7 @@ async function answerRequest(
         // Without a live session the page asks for the passcode again.
         if (cause.code === 'session_required') reportAuthLoss('session_required');
         throw writeFailure(
-          'The monitor answer request failed.',
+          `The monitor ${what} request failed.`,
           cause.status,
           cause.code === 'unexpected_response' ? 'session_required' : cause.code,
         );
@@ -72,7 +98,7 @@ async function answerRequest(
     let response: Response;
     try {
       response = await fetch(path, {
-        method: 'POST',
+        method,
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
@@ -89,7 +115,7 @@ async function answerRequest(
     } catch (cause) {
       if (externalSignal?.aborted) throw externalSignal.reason ?? cause;
       throw writeFailure(
-        timedOut ? 'The monitor answer request timed out.' : 'The monitor answer request failed.',
+        timedOut ? `The monitor ${what} request timed out.` : `The monitor ${what} request failed.`,
         0,
         timedOut ? 'timeout' : 'network_error',
       );
@@ -97,7 +123,11 @@ async function answerRequest(
 
     if (session && (response.type === 'opaqueredirect' || response.status === 401)) {
       reportAuthLoss(response.status === 401 ? 'session_required' : 'unexpected_response');
-      throw writeFailure('The monitor answer request failed.', response.status, 'session_required');
+      throw writeFailure(
+        `The monitor ${what} request failed.`,
+        response.status,
+        'session_required',
+      );
     }
     let body: {
       task?: Task & { epicId?: string | null };
@@ -113,7 +143,7 @@ async function answerRequest(
       // A refused write may mean the CSRF token is stale; fetch a new one before the next try.
       if (session && response.status === 403) forgetCsrf();
       throw writeFailure(
-        body.error?.reason ?? `The monitor answer request failed (${response.status}).`,
+        body.error?.reason ?? `The monitor ${what} request failed (${response.status}).`,
         response.status,
         body.error?.code ?? null,
         body.error?.message ?? null,
@@ -129,6 +159,7 @@ async function answerRequest(
 
 export const monitorClient = {
   answerRequest,
+  setAcceptance,
   openSession,
   unlock,
 };

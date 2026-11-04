@@ -1,7 +1,7 @@
 import { ArchiveRestoreIcon, FilePenIcon, PencilIcon as EditIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { setDraft } from '../api/edit';
+import { setAcceptance, setDraft } from '../api/edit';
 import { noOperations, type OperationControls } from '../../../shared/lib/operations/operations';
 import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/api/contracts';
 import { useEpicDetail, useTaskDetail } from '../../../shared/data/react';
@@ -186,6 +186,13 @@ function DetailBody({
 
   const canMakeDraft = !task.isDraft && task.agentStatus !== 'running';
 
+  // The person may check and uncheck conditions on any task that is not archived.
+  const toggleCondition = async (conditionId: string, done: boolean) => {
+    await setAcceptance(projectId, task.id, conditionId, done);
+    void detail.refresh();
+    onChanged?.();
+  };
+
   return (
     <TaskDetailView
       projectId={projectId}
@@ -203,6 +210,7 @@ function DetailBody({
       epicsFailed={epicsFailed}
       onRetryEpics={onRetryEpics}
       readOnlyDraft={false}
+      onToggleCondition={archived ? undefined : toggleCondition}
       toolbar={
         archived ? (
           <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>

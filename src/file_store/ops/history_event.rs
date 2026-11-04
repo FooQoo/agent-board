@@ -16,6 +16,7 @@ pub(super) enum HistoryKind {
     Epic,
     Archive,
     Restore,
+    Acceptance,
 }
 
 pub(super) struct Transition<'a> {
@@ -52,6 +53,7 @@ pub(super) fn transition_event(t: Transition<'_>) -> Result<HistoryRecord, Agboa
         HistoryKind::Epic => "Changed task epic.".into(),
         HistoryKind::Archive => format!("Archived task in {}; agent is idle.", t.to_task.label()),
         HistoryKind::Restore => format!("Restored task in {}.", t.to_task.label()),
+        HistoryKind::Acceptance => "Changed an acceptance condition.".into(),
     };
     let japanese = match t.kind {
         HistoryKind::Created => format!(
@@ -78,6 +80,7 @@ pub(super) fn transition_event(t: Transition<'_>) -> Result<HistoryRecord, Agboa
             t.to_task.label()
         ),
         HistoryKind::Restore => format!("タスクを{}に復元しました。", t.to_task.label()),
+        HistoryKind::Acceptance => "受入条件を変更しました。".into(),
     };
     let reason = reason_or_default(t.reason, t.language.text(&fallback, &japanese).to_owned())?;
 

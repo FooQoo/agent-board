@@ -122,6 +122,26 @@
               "id": "task-detail-detailpanel--tab-conditions",
               "states": ["composite rendering"],
               "interaction": false
+            },
+            {
+              "id": "task-detail-acceptancetab--read-only",
+              "states": ["read-only checkboxes"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-acceptancetab--toggle",
+              "states": ["check a condition", "count follows", "save called"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-acceptancetab--save-fails",
+              "states": ["save fails", "checkbox restored", "error announced"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-acceptancetab--japanese-dark-narrow",
+              "states": ["japanese locale", "dark theme", "phone width", "error message"],
+              "interaction": true
             }
           ]
         }

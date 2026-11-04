@@ -20,6 +20,7 @@ The routes served behind the ngrok monitor entry, including the mobile monitor. 
 | GET `/monitor/api/preferences` | The saved language and color theme, the same JSON as the PC's `GET /api/preferences`. |
 | PUT `/monitor/api/preferences` | Saves the language and theme only: `locale`, `theme`, or both. It needs the public Origin, `Sec-Fetch-Site: same-origin`, and the CSRF token, like an answer. Unknown fields and invalid values are 422 `invalid_preferences`. |
 | POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | Answers the current request only. |
+| PUT `/monitor/api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | Checks or unchecks one condition, as on the board. Only PUT. |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/attachments/{attachmentId}` | Owned images only. |
 | GET/HEAD `/monitor/api/projects/{projectId}/epics/{epicId}/attachments/{attachmentId}` | Owned epic images only. |
 

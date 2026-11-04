@@ -3,6 +3,7 @@
 //! `run_until_with_monitor` builds its own tokio runtime; the rest of the CLI never starts one.
 //! The server listens on 127.0.0.1 only and reads the shared files per request.
 
+mod acceptance;
 mod answer;
 mod api;
 pub mod assets;

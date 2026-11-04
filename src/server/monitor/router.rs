@@ -97,8 +97,11 @@ async fn method_guard(request: Request, next: Next) -> Response {
     let monitor_answer = path.starts_with("/monitor/api/projects/")
         && path.ends_with("/answer")
         && matches!(*request.method(), Method::POST);
+    let monitor_acceptance =
+        super::write::is_acceptance_path(path) && matches!(*request.method(), Method::PUT);
     if !path.starts_with("/monitor/api/")
         || monitor_answer
+        || monitor_acceptance
         || matches!(*request.method(), Method::GET | Method::HEAD)
     {
         next.run(request).await

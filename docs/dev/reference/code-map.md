@@ -37,7 +37,7 @@ Inside `file_store`, the pieces you will touch most often are:
 | `reader` | Combines JSON and Markdown into snapshots and `problems`. |
 | `projection` | The Summary of a project, built from a parsed snapshot, and the change sets between two projections. It holds the versions of each task and epic. |
 | `detail` | The data of one Detail stream, copied from a snapshot, and the NDJSON events built from it. Only the image headers are read from files. |
-| `ops/` | Task, run state, answer, epic, image, and automatic completion operations. |
+| `ops/` | Task, run state, answer, a person's acceptance check, epic, image, and automatic completion operations. |
 | `io`, `lock` | Replace-by-rename saves; `write.lock` and `lifecycle.lock`. |
 | `project`, `bindings` | The project catalog and folder bindings. |
 | `index`, `watch` | The in-memory index inside `serve`, and OS event watching. |
@@ -53,7 +53,7 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | `monitor_auth/` | The monitor's application sessions and CSRF tokens (`session`), the 4-digit passcode and its limit on wrong guesses (`passcode`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
 | `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes and monitor writes, and canonical HTTPS origins. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
-| `store`<br>`answer` | Blocking file access, the index, and URL IDs for every router; saving an answer, shared by the board and the monitor. |
+| `store`<br>`answer`<br>`acceptance` | Blocking file access, the index, and URL IDs for every router; saving an answer, and setting one acceptance condition as a person, both shared by the board and the monitor. |
 | `web_assets` | The embedded scripts and stylesheets of the board and the monitor, their build IDs, and the cacheable gzip or plain response. |
 | `contracts/` | The data layer's wire types: the Summary, the Detail NDJSON lines, and the `changed` event. The golden examples in `tests/fixtures/data-layer/` pin their shapes. |
 | `change_feed.rs` | Numbers each change set of this server run (`seq`, with an `instanceId` for the run) and holds the events a stream has not yet sent. A stream that falls too far behind gets `resync`. |

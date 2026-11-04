@@ -1,6 +1,7 @@
 //! Task operations: creation, title and body edits, the draft flag, archive,
 //! restore, and deletion of an archived task.
 
+mod acceptance;
 mod archive;
 mod create;
 mod delete;

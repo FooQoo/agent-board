@@ -22,7 +22,7 @@ History is one timeline of work progress and every task operation. Each entry ha
 
 Extra fields such as an ID, kind, actor, transition, or request ID are rejected.
 
-- Create, lane move, run-state change, decision request, answer, draft toggle, epic change, archive, restore, and automatic Done append history automatically. If a move or a non-Pending state change omits the reason, the product generates one from the operation and the current state.
+- Create, lane move, run-state change, decision request, answer, draft toggle, epic change, archive, restore, a person checking or unchecking a condition, and automatic Done append history automatically. If a move or a non-Pending state change omits the reason, the product generates one from the operation and the current state.
 - Agents append work progress with `agboard --project NAME history add ID [--reason TEXT | --reason-file PATH]`. The product assigns the time and refuses AI appends to drafts, archived tasks, and Done tasks. A blank reason is generated from the current lane and run state.
 - Agents record concise entries at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without asking for approval each time, and never duplicate an entry an operation already appended.
 - The UI shows time and content only, newest first. CLI `show` and snapshots return the full history.
@@ -52,5 +52,7 @@ history: []
 - The body holds the plan, concise verification results, and artifact references. Chronological progress goes only to `history`.
 
 **Automatic Done.** An AI-owned, non-draft, unarchived Todo or Doing task with at least one valid condition, all `done: true`, moves to Done by itself. One history entry records it and `taskStatusChangedAt` is updated. Pending tasks wait until they are answered and are then re-evaluated. Tasks with no or invalid conditions, human tasks, and drafts are excluded. `serve` also evaluates existing tasks at startup.
+
+**A person's check.** People check and uncheck one condition at a time from the board or the mobile monitor (`PUT .../tasks/{id}/acceptance/{condition}` with `{"done": true|false}`; see [Web API](../reference/web-api.md)). The request carries no version. FileStore reads the latest `TASK.md` under the project lock, changes only that condition, appends a history entry, and saves; so the person's choice wins over a change made since they loaded the task, and the body, the other conditions, and an agent's other edits stay. An archived task is refused (`task_archived`), and an unknown condition is `invalid_argument`. The watcher then evaluates automatic Done as for any change, so checking the last condition of an eligible AI task moves it to Done; unchecking a condition of a Done task leaves it in Done.
 
 Done tasks refuse AI changes (edit, state, epic, history, and images) and never reopen automatically; people can still edit and reopen them. An AI lane move to Done is refused with `acceptance_unmet` while a condition is unmet or the frontmatter is invalid. Tasks with zero conditions, and moves by people, are not blocked. How this is evaluated is described in [Agent integration](./agents.md#automatic-done).

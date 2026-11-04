@@ -6,6 +6,7 @@ import type { MonitorReadResolvers, MonitorTask } from '../contracts';
 import { attachmentResolver } from './attachment-resolver';
 import { MonitorDocument } from './MonitorDocument';
 import { MonitorSection } from './MonitorSection';
+import { monitorClient } from '../client';
 
 interface TabProps {
   item: MonitorTask;
@@ -40,13 +41,23 @@ export function TaskBodyTab({
   );
 }
 
-/** The conditions tab: they come with the `document` section, which the body tab shares. */
+/**
+ * The conditions tab: they come with the `document` section, which the body tab shares. The person can
+ * check and uncheck them here, as on the board.
+ */
 export function TaskAcceptanceTab({ item }: TabProps) {
   const detail = useTaskDetail(item.projectId, item.task.id);
+  const toggle = async (conditionId: string, done: boolean) => {
+    await monitorClient.setAcceptance(item.projectId, item.task.id, conditionId, done);
+    void detail.refresh();
+  };
   return (
     <MonitorSection snapshot={detail.document} onRetry={() => void detail.refresh()}>
       {(document) => (
-        <AcceptanceTabView task={{ acceptance: document.acceptance, acceptanceError: false }} />
+        <AcceptanceTabView
+          task={{ acceptance: document.acceptance, acceptanceError: false }}
+          onToggle={toggle}
+        />
       )}
     </MonitorSection>
   );

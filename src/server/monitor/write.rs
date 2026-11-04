@@ -1,4 +1,5 @@
-//! The monitor's narrowly scoped write surface: answer a pending question.
+//! The monitor's narrowly scoped write surface: answer a pending question,
+//! and check or uncheck an acceptance condition.
 
 use std::sync::Arc;
 
@@ -10,6 +11,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 
 use crate::server::AppState;
+use crate::server::acceptance::{AcceptanceInput, set_project_task_acceptance};
 use crate::server::answer::{AnswerInput, answer_project_task};
 use crate::server::guard::{self, BoardWriteGuard};
 use crate::server::monitor::assets;
@@ -30,6 +32,10 @@ pub(crate) fn router(app: Arc<AppState>, guard: BoardWriteGuard) -> Router {
         .route(
             "/monitor/api/projects/{project_id}/tasks/{id}/answer",
             axum::routing::post(answer),
+        )
+        .route(
+            "/monitor/api/projects/{project_id}/tasks/{id}/acceptance/{condition}",
+            axum::routing::put(acceptance),
         )
         .route(
             "/monitor/api/preferences",
@@ -68,6 +74,15 @@ async fn answer(
     ApiJson(input): ApiJson<AnswerInput>,
 ) -> Response {
     answer_project_task(headers, state.app.clone(), project_id, id, input).await
+}
+
+async fn acceptance(
+    headers: HeaderMap,
+    State(state): State<Arc<WriteState>>,
+    Path(target): Path<(String, String, String)>,
+    ApiJson(input): ApiJson<AcceptanceInput>,
+) -> Response {
+    set_project_task_acceptance(headers, state.app.clone(), target, input).await
 }
 
 /// The saved language and theme. Only the monitor's own preference write is
@@ -121,19 +136,26 @@ async fn write_guard(
     }
     let page_path = matches!(path, "/monitor" | "/monitor/");
     let answer_path = path.starts_with("/monitor/api/projects/") && path.ends_with("/answer");
-    if !page_path && !answer_path {
+    let acceptance_path = is_acceptance_path(path);
+    if !page_path && !answer_path && !acceptance_path {
         return next.run(request).await;
     }
     if page_path && matches!(*request.method(), Method::GET | Method::HEAD) {
         return next.run(request).await;
     }
-    if answer_path
-        && matches!(*request.method(), Method::POST)
+    // Each write has one method: POST to answer, PUT to set a condition.
+    let write_method = if acceptance_path {
+        Method::PUT
+    } else {
+        Method::POST
+    };
+    if (answer_path || acceptance_path)
+        && *request.method() == write_method
         && guard::board_write_allowed(request.headers(), &state.guard)
     {
         return next.run(request).await;
     }
-    if !matches!(*request.method(), Method::POST) {
+    if *request.method() != write_method {
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     }
     if monitor_request_except_token_is_allowed(request.headers(), &state.guard) {
@@ -200,3 +222,12 @@ async fn security_headers(request: Request, next: Next) -> Response {
 
 #[cfg(test)]
 mod tests;
+
+/// `/monitor/api/projects/{project}/tasks/{id}/acceptance/{condition}`.
+pub(crate) fn is_acceptance_path(path: &str) -> bool {
+    let Some(rest) = path.strip_prefix("/monitor/api/projects/") else {
+        return false;
+    };
+    let parts: Vec<&str> = rest.split('/').collect();
+    matches!(parts.as_slice(), [_, "tasks", _, "acceptance", condition] if !condition.is_empty())
+}

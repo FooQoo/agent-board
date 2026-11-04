@@ -15,7 +15,7 @@ To set the title, owner, acceptance conditions, or draft state yourself, choose 
 
 The new task appears at the end of Todo.
 
-## Read a task
+## Read a task {#read-a-task}
 
 Select a task to open its details on the right. The tabs show:
 
@@ -29,6 +29,12 @@ Select a task to open its details on the right. The tabs show:
 ![Task details panel with the Conditions tab showing the task's acceptance conditions](../../images/guide/card-detail.png){.screenshot}
 
 The panel on the right shows the selected task. The Conditions tab lists the task's own acceptance conditions with a progress bar. An epic's own reference conditions stay in its Markdown details.
+
+You can check and uncheck a condition in the Conditions tab. The change shows at once and is saved right away; if it cannot be saved, the checkbox goes back and a message says so. Your choice is saved over the latest file, so it wins even if an agent changed the task after you opened it, and the rest of the file, including the agent's other changes, stays. The history records that a person checked or unchecked the condition.
+
+- When you check the last condition of an AI-owned task in Todo or Doing, the task moves to Done by itself, the same as when an agent checks it.
+- Unchecking a condition of a task in Done leaves it in Done. Move it yourself if work should continue.
+- An archived task's conditions cannot be changed. To change a condition's text, make the task a draft and use the editor.
 
 Each tab loads its text when you open it. The number on the **History** tab appears after the history has loaded.
 

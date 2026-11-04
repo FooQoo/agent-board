@@ -140,6 +140,10 @@
   accent-color: var(--r-accent);
 }
 
+.acceptance-view__item input[type="checkbox"]:not(:disabled) {
+  cursor: pointer;
+}
+
 .acceptance-view__id {
   font-family: var(--font-mono);
   font-size: 11px;

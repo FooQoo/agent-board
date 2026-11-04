@@ -340,6 +340,52 @@ describe('monitor answer client', () => {
   });
 });
 
+describe('monitor acceptance client', () => {
+  it('sets one condition with PUT on its fixed route, with the monitor token', async () => {
+    document.head.innerHTML = '<meta name="agboard-monitor-token" content="monitor-secret">';
+    const task = { id: 7, title: 'Conditions', pendingRequestId: null };
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ task, changed: true }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { monitorClient } = await import('../../src/pages/monitor/client');
+
+    await expect(monitorClient.setAcceptance(PROJECT_ID, 7, 'AC-2', true)).resolves.toEqual({
+      task,
+      changed: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/monitor/api/projects/${PROJECT_ID}/tasks/7/acceptance/AC-2`,
+      expect.objectContaining({
+        method: 'PUT',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Agboard-Token': 'monitor-secret',
+          'X-Agboard-Language': 'en',
+        },
+        body: JSON.stringify({ done: true }),
+      }),
+    );
+  });
+
+  it('keeps the code and status of a refused change', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ error: { code: 'task_archived', reason: 'restore it', message: 'x' } }),
+          { status: 409 },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { monitorClient } = await import('../../src/pages/monitor/client');
+    await expect(monitorClient.setAcceptance(PROJECT_ID, 7, 'AC-1', false)).rejects.toMatchObject({
+      status: 409,
+      code: 'task_archived',
+    });
+  });
+});
+
 describe('monitor session client', () => {
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

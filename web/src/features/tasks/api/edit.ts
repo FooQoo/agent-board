@@ -60,6 +60,23 @@ export async function setDraft(projectId: ProjectId, id: number, isDraft: boolea
   return sendTask('PUT', `${projectPath(projectId)}/tasks/${id}/draft`, { isDraft });
 }
 
+/**
+ * Checks (`done: true`) or unchecks one acceptance condition as the person. No version is sent: the
+ * server saves the person's choice over the latest TASK.md and keeps everything else in it.
+ */
+export function setAcceptance(
+  projectId: ProjectId,
+  id: number,
+  conditionId: string,
+  done: boolean,
+) {
+  return sendTask(
+    'PUT',
+    `${projectPath(projectId)}/tasks/${id}/acceptance/${encodeURIComponent(conditionId)}`,
+    { done },
+  );
+}
+
 /** Puts a card into the epic (`epicId`) or takes it out (`null`). */
 export function setTaskEpic(projectId: ProjectId, id: number, epicId: string | null) {
   return sendTask('PUT', `${projectPath(projectId)}/tasks/${id}/epic`, { epicId });

@@ -20,6 +20,7 @@ ngrokのモニター入口の背後で配信する経路です（モバイルモ
 | GET `/monitor/api/preferences` | 保存した言語とカラーテーマ。PCの`GET /api/preferences`と同じJSON。 |
 | PUT `/monitor/api/preferences` | 言語とテーマだけを保存する。`locale`・`theme`・両方のいずれか。回答と同じく、公開Origin・`Sec-Fetch-Site: same-origin`・CSRFトークンが必要。未知の項目と不正な値は422 `invalid_preferences`。 |
 | POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | 現在の依頼への回答だけ。 |
+| PUT `/monitor/api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | 条件を1件付け外しする。ボードと同じ動き。PUTだけ。 |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/attachments/{attachmentId}` | 所有する画像だけ。 |
 | GET/HEAD `/monitor/api/projects/{projectId}/epics/{epicId}/attachments/{attachmentId}` | 所有するエピックの画像だけ。 |
 

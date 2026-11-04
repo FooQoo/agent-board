@@ -40,3 +40,8 @@
 .acceptance-tab__section > p {
   margin: 8px 0;
 }
+
+.acceptance-tab__section > p.acceptance-tab__error {
+  margin-top: 12px;
+  color: var(--r-danger);
+}

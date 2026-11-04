@@ -85,7 +85,8 @@ export const detailJa = {
     unreadableNote: '直すまで進捗は表示しません。本文は下に表示を続けます。',
     unreadableProblem: '{{file}}（{{field}}）— {{reason}}',
     savedIn:
-      'TASK.md の先頭(frontmatter)に保存されます。エージェントが検証してチェックし、変更は「編集」から行います。',
+      'TASK.md の先頭(frontmatter)に保存されます。エージェントが検証してチェックします。チェックは詳細の「受入条件」タブからも付け外しでき、文言の変更は「編集」から行います。',
+    toggleFailed: '受入条件を保存できませんでした。もう一度お試しください。',
     showAll: 'すべて表示（{{count}}件）',
     showFewer: '閉じる',
   },

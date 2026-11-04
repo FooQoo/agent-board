@@ -42,7 +42,7 @@ test.describe('PC condition tab', () => {
         await conditionTab.click();
         const panel = detail.getByRole('tabpanel');
         await expect(panel.getByRole('checkbox')).toHaveCount(24);
-        await expect(panel.getByRole('checkbox').first()).toBeDisabled();
+        await expect(panel.getByRole('checkbox').first()).toBeEnabled();
         await expect(detail.getByRole('tablist')).toBeInViewport();
         expect(await detail.getByRole('tablist').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
         await panel.hover();
@@ -57,4 +57,36 @@ test.describe('PC condition tab', () => {
       });
     }
   }
+});
+
+test('PC condition tab: a person checks and unchecks a condition and it is saved', async ({ page }) => {
+  resetBoard(mainProject);
+  const id = seed(mainProject);
+  await setPreferences({ locale: 'en', theme: { mode: 'light', accent: 'blue' } });
+  await page.goto(`/?project=${projectId(mainProject)}`);
+  await waitForSync(page);
+  await readBoardAfterReset(page);
+  await page
+    .getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })
+    .locator('.card__title')
+    .click();
+  const detail = page.locator('.detail-view');
+  await detail.getByRole('tab', { name: 'Conditions', exact: true }).click();
+  const panel = detail.getByRole('tabpanel');
+  const done = () =>
+    (JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task.acceptance as {
+      id: string;
+      done: boolean;
+    }[]).map((item) => item.done);
+  // AC-1 starts checked and AC-2 unchecked.
+  const second = panel.getByRole('checkbox', { name: 'Task check 2', exact: true });
+  await second.check();
+  await expect(second).toBeChecked();
+  await expect.poll(() => done().slice(0, 2)).toEqual([true, true]);
+  await panel.getByRole('checkbox', { name: 'Task check 1', exact: true }).uncheck();
+  await expect.poll(() => done().slice(0, 2)).toEqual([false, true]);
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+  // The history names the person's change.
+  await detail.getByRole('tab', { name: /^History/ }).click();
+  await expect(detail.getByRole('tabpanel')).toContainText('A person marked AC-1 as not met.');
 });

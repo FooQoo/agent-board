@@ -14,6 +14,7 @@ mod pages;
 mod preferences;
 mod projects;
 mod summary;
+mod task_acceptance;
 mod task_attachments;
 mod task_edit;
 mod task_multipart;
@@ -48,6 +49,7 @@ use pages::*;
 use preferences::*;
 use projects::*;
 use summary::summary;
+use task_acceptance::*;
 use task_attachments::*;
 use task_edit::*;
 use task_multipart::*;
@@ -143,6 +145,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route(
             "/api/projects/{project_id}/tasks/{id}/draft",
             put(set_draft),
+        )
+        .route(
+            "/api/projects/{project_id}/tasks/{id}/acceptance/{condition}",
+            put(set_acceptance),
         )
         .route(
             "/api/projects/{project_id}/tasks/{id}/move",

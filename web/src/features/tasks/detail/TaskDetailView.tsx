@@ -41,6 +41,8 @@ export interface TaskDetailViewProps {
   statusLabels?: 'pc' | 'monitor';
   ownerName?: string;
   readOnlyDraft?: boolean;
+  /** Lets the person check and uncheck the conditions; without it they are read-only. */
+  onToggleCondition?: (conditionId: string, done: boolean) => Promise<unknown>;
   toolbar?: ReactNode;
   children?: ReactNode;
 }
@@ -66,6 +68,7 @@ export function TaskDetailView({
   statusLabels = 'pc',
   ownerName,
   readOnlyDraft = true,
+  onToggleCondition,
   toolbar,
   children,
 }: TaskDetailViewProps) {
@@ -195,6 +198,7 @@ export function TaskDetailView({
                   acceptance: data.acceptance,
                   acceptanceError: task.acceptanceError ?? false,
                 }}
+                onToggle={onToggleCondition}
               />
             )}
           </DetailSectionView>
