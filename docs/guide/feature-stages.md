@@ -44,7 +44,7 @@ Features that are GA show no notice.
 | Projects and working folders | CLI, PC browser | The nearest bound folder decides which project a folder belongs to. | [CLI reference](./automation/cli#projects) |
 | Saving and recovery of data | macOS | Only files with `formatVersion` 1 are supported. | [Data and backups](./operations/data) |
 | Language and themes | PC, mobile monitor | English and Japanese, and 24 themes. | [Settings](./use/board#settings) |
-| Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Hook and the skill need the version you installed. You start the agent yourself. | [Working with agents](./automation/agents) |
+| Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Hook and the Skill must match the installed `agboard`; run `agboard update` after upgrading it. You start the agent yourself. | [Working with agents](./automation/agents) |
 | `connect` and `update` | macOS, with Claude Code and Codex found on your `PATH` | Both commands are interactive, except `update --yes`. After the Hook changes, you trust it again in the agent. `update` never installs an older version. | [Working with agents](./automation/agents#connect-your-agent), [CLI reference](./automation/cli#connect-and-update) |
 | First-run welcome | PC browser | It does not appear when the data area already has a project, and it does not appear on the mobile monitor. | [The first-run guide](./use/board#the-first-run-guide) |
 

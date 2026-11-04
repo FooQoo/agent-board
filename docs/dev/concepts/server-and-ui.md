@@ -91,7 +91,7 @@ The cache has fixed limits and no time-based expiry. It keeps the Summary of the
 - Create, move, and answer are never applied optimistically. The UI waits for success and keeps the input and selection for a retry on failure.
 - Answer forms on desktop and mobile submit only the current Pending request of a Todo/Doing task, never twice, and never again after success even if an older snapshot is shown. After a lost response, the UI re-reads the snapshot and checks the request ID and state before retrying.
 - A retried answer is not deduplicated; after success it fails with `request_changed` because the request is already cleared. Image uploads are not deduplicated either, so a retry after a lost response can add the same image twice.
-- Desktop answer input is kept per project, task, and request. A Todo/Doing move that withdraws the request keeps the input but stops the stale answer and asks the user to check. A move to Done distasks the input, and late responses never bring it back. Moves and other operations stay available while an answer is being sent.
+- Desktop answer input is kept per project, task, and request. A Todo/Doing move that withdraws the request keeps the input but stops the stale answer and asks the user to check. A move to Done discards the input, and late responses never bring it back. Moves and other operations stay available while an answer is being sent.
 - The shared `DecisionRequestForm` gives desktop and mobile the same input, validation, sending, and failure states.
 
 **Drafts and editing**

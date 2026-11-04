@@ -11,11 +11,11 @@
 | 進行表 | `src/progress.rs` | 進められるタスクの一覧。`agboard progress`とHookが共有する。 |
 | `wait` | `src/agent/wait.rs` | プロジェクトが変わるか、判断依頼に回答があるまで待つ。 |
 
-スキルの名前は`agent-board`、実行ファイルは`agboard`です。典型的な流れは次のとおりです。Hookが進行表を見せる → エージェントは必要な`EPIC.md`と`TASK.md`だけを読む → タイトルが分かりにくければ原依頼を保持して`agboard edit --title`で整理する → タスクをDoingとRunningにする → `history add`で進捗を記録する → ユーザーの判断が必要になったら判断依頼を出して回答を待つ → 条件を満たしていき、自動Doneがタスクを完了させる。タイトル整理は、通常ループと組手に共通するスキルの指示であり、サーバーによる自動要約機能ではありません。
+スキルの名前は`agent-board`、実行ファイルは`agboard`です。典型的な流れは次のとおりです。Hookが進行表を見せる → エージェントは必要な`EPIC.md`と`TASK.md`だけを読む → タイトルが分かりにくければ原依頼を保持して`agboard edit --title`で整理する → タスクをDoingとRunningにする → `history add`で進捗を記録する → ユーザーの判断が必要になったら判断依頼を出して回答を待つ → 条件を満たしていき、自動Doneがタスクを完了させる。タイトル整理は、通常の作業の流れとリッスンに共通するスキルの指示であり、サーバーによる自動要約機能ではありません。
 
 エージェントは、開始・意味のある進捗・判断・検証・中断・再開のときに、項目ごとの承認なしで進捗を追加し、操作時に自動で記録された履歴は重複して追加しません。本文には計画と簡潔な検証結果を記録します。見た目の確認が有用な場合は画像を添付できます。
 
-スキルでは、`BUG`と`ENHANCEMENT`を継続的な分類用エピックとし、本文を固定する例外を設けます。正本の本文はスキル内の`assets/BUG-EPIC.md`と`assets/ENHANCEMENT-EPIC.md`です。ボードの言語で一度だけ初期設定し、その後の通常作業・組手では計画と結果を各タスクだけに記録します。空でない本文の置き換えにはユーザーの明示的な依頼を必要とし、有用な旧本文は関連するタスクの本文に残します。優先順のfrontmatterは引き続き変更できます。サーバー側の編集禁止機能ではありません。
+スキルでは、`BUG`と`ENHANCEMENT`を継続的な分類用エピックとし、本文を固定する例外を設けます。正本の本文はスキル内の`assets/BUG-EPIC.md`と`assets/ENHANCEMENT-EPIC.md`です。ボードの言語で一度だけ初期設定し、その後の通常の作業とリッスンでは、計画と結果を各タスクだけに記録します。空でない本文の置き換えにはユーザーの明示的な依頼を必要とし、有用な旧本文は関連するタスクの本文に残します。優先順のfrontmatterは引き続き変更できます。サーバー側の編集禁止機能ではありません。
 
 ## 進行表とHook
 
@@ -23,7 +23,7 @@
 
 `src/progress.rs`は、`Include`に応じて任意の`pending`節と`done`節を作ります。`agboard progress`と`agboard hook`が`--include-pending`と`--include-done`から`Include`を作ります。既定の`Include`は何も追加しないため、既定の表は変わりません。オプションは[エピックと進行表](../../guide/use/epics.md#進行表を読む)を参照してください。
 
-Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐付け済みの祖先からプロジェクトを識別します。セッションIDは使わず、紐付けがないときに全プロジェクトを選ぶことも、最も近い紐付けが壊れているときに親へ戻ることもありません。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`bound_project_missing`などの`AGBOARD_ERROR`を返します。紐付けがまったくないフォルダはエラーではありません。[Hookのスキップとエラー](#hookのスキップとエラー)を参照してください。
+Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登録済みの祖先からプロジェクトを識別します。セッションIDは使わず、登録がないときに全プロジェクトを選ぶことも、最も近い登録が壊れているときに親へ戻ることもありません。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`bound_project_missing`などの`AGBOARD_ERROR`を返します。登録がまったくないフォルダはエラーではありません。[Hookのスキップとエラー](#hookのスキップとエラー)を参照してください。
 
 - **Claude Code。** `integrations/claude-code/`のテンプレートが、プロジェクト名を固定せずに`agboard hook`をPostToolUseに、失敗の後はPostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。スキルは最初の読み込み時にスナップショットを読み、コンテキスト圧縮後（SessionStartの`compact`）か次のツールの完了時に一覧を取り直します。
 - **Codex。** `integrations/codex/`のテンプレートが`agboard hook --agent codex`をPostToolUseに登録し、最初の利用時とコンテキスト圧縮後にも取得します。既存の設定に自動で書き込むことはなく、利用者がテンプレートを確認して信頼します。
@@ -58,7 +58,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐�
 
 対象の順序には進行表と同じ`ordered_tasks`を使います。エピックID順に、各エピックの保存済み優先順とタスクID、最後に未所属タスクのID順です。返すのはAI担当でTodoまたはDoing、かつIdleで、下書きでもアーカイブでもないタスク一件です。開始前の初回読み込みで、リッスン前に作成されたタスクも対象になります。結果には、そのsnapshotのcursor、タスク、ローカルの`TASK.md`パス、エピックに所属する場合は`EPIC.md`のパスが含まれます。取得は読み取りだけでタスクを占有しないため、操作を始める前に最新状態を読み直します。リッスン手順では全体snapshotを確認し、既存AIタスクの`running`または`pending`を先に解決します。DoingのタスクもIdleなら再開候補です。対象なしでの期限到達は正常な結果ですが、読取不備・サーバー停止・プロジェクト削除はエラーです。
 
-同一セッションでの組手手順として、タスク情報の補完、承認確認、Pendingの回答、直列処理、中断後の復帰を[agent-boardスキルのリッスン手順](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md)に定めています。Pendingのタスクは、既存の依頼に回答が届くまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
+一つのセッションで続けて作業する手順として、タスク情報の補完、承認確認、Pendingの回答、直列処理、中断後の復帰を[agent-boardスキルのリッスン手順](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md)に定めています。Pendingのタスクは、既存の依頼に回答が届くまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
 
 ## 自動Done
 
@@ -75,7 +75,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐�
 
 ## 初回案内のサンプルカード
 
-初回の案内は 2 枚のサンプルカードを作ります。それぞれに `onboardingSample` の識別があり、実行 ID と順番（1 または 2）を保持します。進行表、hook、`wait --until task` は、この識別のあるカードをレーンや実行状態に関係なく除外します。そのためエージェントはカードを取り上げません。
+初回の案内はサンプルカードを2枚作ります。それぞれに`onboardingSample`の識別があり、実行IDと順番（1または2）を保持します。進行表、Hook、`wait --until task`は、この識別のあるカードを、レーンや稼働状態に関係なく除外します。そのため、エージェントがこのカードを扱うことはありません。
 
 識別は案内だけが書き込みます。作成と編集の要求には識別のフィールドがなく、移動・履歴の更新・アーカイブ・復元のあいだも識別は保たれます。ボードにはカードが表示されます。利用者から見た動きは[始める前に](../../guide/quickstart.md#before-you-start-the-first-run-guide)を参照してください。
 
@@ -84,7 +84,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐�
 `connect`と`update`は、実行時にGitのclone、Node.js、Rustを必要としません。SkillとHookのテンプレートが、バイナリの中にあるためです。
 
 - **同梱するもの。** `build.rs`（と`src/integrations/build_bundle.rs`）が、許可リストにあるファイルを取り込みます。`.agents/skills/agent-board/`の`SKILL.md`、`references/`、`assets/`と、`integrations/claude-code/`、`integrations/codex/`のHookのJSONです。参照切れ、個人の絶対パス、シンボリックリンクは拒否し、`node_modules`は読みません。`assets::bundle()`は、クレートの版と、各項目の相対パス、バイト列、そのSHA-256を持つ`EmbeddedBundle`を返します。Skillのフォルダがないときは、ビルドが警告して何も埋め込みません。その場合、`connect`と`update`は実行時に失敗するので、リリースビルドでは埋め込んだファイルの数を確認してください。
-- **配置先。** `paths.rs`は、環境（`AGBOARD_HOME`、`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、ホームフォルダ）とbindのルートから、[スコープを選ぶ](../../guide/automation/agents.md#choose-scopes)にある4つの配置先を求める純粋な関数です。Claude CodeのGlobalのSkillは`CLAUDE_CONFIG_DIR`に従います。CodexのSkillは`~/.agents/skills`を使い、`CODEX_HOME`を無視します。空の環境変数は未設定として扱います。Projectの配置先は、`FileStore::resolve_binding`が返すbindのルートを起点にし、作業フォルダは使いません。
+- **配置先。** `paths.rs`は、環境（`AGBOARD_HOME`、`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、ホームフォルダ）と登録済みのフォルダから、[スコープを選ぶ](../../guide/automation/agents.md#choose-scopes)にある4つの配置先を求める純粋な関数です。Claude CodeのGlobalのSkillは`CLAUDE_CONFIG_DIR`に従います。CodexのSkillは`~/.agents/skills`を使い、`CODEX_HOME`を無視します。空の環境変数は未設定として扱います。Projectの配置先は、`FileStore::resolve_binding`が返す登録済みのフォルダを起点にし、作業フォルダは使いません。
 - **導入記録。** `registry.rs`が`<data-dir>/integrations.json`（`schemaVersion` 1）を読み書きします。それ以外の版や、規則に反する記録は、拒否し、移行も書き換えもしません。項目は[共有ファイル](../reference/files.md#integration-records)にあります。
 - **ハッシュ。** ファイルのハッシュは、バイト列のSHA-256（小文字の16進）です。Skillの管理ハッシュは、ファイルごとに`path<TAB>sha256<LF>`の1行をpath順に並べたもののSHA-256です。Hookの項目のハッシュは、`hooks[event][i]`のグループを正規化したJSON（全階層でキーを並べ替え、空白なし）のSHA-256です。Hookの管理ハッシュは、項目ごとに`event<TAB>matcher<TAB>command<TAB>sha256<LF>`の1行（matcherがなければ空欄）を並べたもののSHA-256です。設定ファイル全体のハッシュは、実行中の変更に気づくためだけに使います。Agent Boardのものではないキーの変更は、競合になりません。
 
@@ -95,7 +95,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐�
 `connect`と`update`は`src/integrations/`の同じ処理を使うので、所有と競合の規則が食い違いません。
 
 1. **計画（読み取りのみ）。** `plan::plan_agent`が、1つのエージェントの`AgentPlan`を作ります。内容は、操作、追加と削除、権限の編集、競合、手作業の手順、警告です。状態は`Ready`、`Unchanged`、`Blocked`のいずれかです。`connect`は、権限と、利用者が選んだスコープで計画します。`update`は、記録されている対象だけを、権限なしで計画します。
-2. **所有。** Hookは、エージェント、イベント、matcher、正規化した固定コマンドで識別します。編集された、または消えた管理対象の項目、管理外の同等のHook、識別できない`agboard`のコマンドは、いずれもそのエージェントを止めます。調べるのは、Globalのファイル、bindのルートとその祖先（`settings.json`と`settings.local.json`、または`hooks.json`と`config.toml`。Codexのinline hookを含む）、導入記録にあるProjectのパスです。ディスクを走査することはありません。Skillは、管理しているファイルが編集または削除された、ファイルが足された、ファイルがリンクに置き換えられたときに、競合になります。
+2. **所有。** Hookは、エージェント、イベント、matcher、正規化した固定コマンドで識別します。編集された、または消えた管理対象の項目、管理外の同等のHook、識別できない`agboard`のコマンドは、いずれもそのエージェントを止めます。ただし`connect`は、このプロジェクト向けに手で書かれたHook（イベントとmatcherが同じで、グループの中にそれだけがあり、コマンドが`agboard hook --agent <agent>`か、`--project`でこのプロジェクトの名前かIDを指定したもの）を引き取ります。`update`は引き取りません。調べるのは、Globalのファイル、登録済みのフォルダとその祖先（`settings.json`と`settings.local.json`、または`hooks.json`と`config.toml`。Codexのinline hookを含む）、導入記録にあるProjectのパスです。ディスクを走査することはありません。Skillは、管理しているファイルが編集または削除された、ファイルが足された、ファイルがリンクに置き換えられたときに、競合になります。
 3. **適用。** `apply::apply_agent`は、エージェントを1つずつ、Claude Code、Codexの順に処理するので、片方の失敗がもう片方を取り消すことはありません。エージェントごとに、ロック（`integrations-<agent>.lock`。保持されていれば、待たずに失敗）を取り、ジャーナルが残っていれば開始を拒否し、すべての対象を検証し、元とこれから書くハッシュとバックアップ名を持つジャーナルを書き、変更するファイルを`<name>.agboard-backup-<txn>-<index>`へバックアップし（Skillのフォルダは代わりに、Skillの置き場の親にある`.agboard-backups/`へ移すので、エージェントが2つ目のSkillを見ることはありません）、同じファイルシステム上の一時ファイルまたはフォルダへ新しい内容を書き、元のものと原子的に置き換え、最後に導入記録をコミットします。Skillのフォルダは、作業用のフォルダで完成させてから、古いものと入れ替えます。
 4. **結果。** 各エージェントは、`Applied`、`Unchanged`、`Blocked`、`Failed`、`Interrupted`のいずれかで終わります。失敗したときは、そのエージェントを開始前の状態へ戻します。他の人が変更したファイルは上書きしません。戻せないときは、ジャーナルが残ります。
 5. **復旧。** `recovery::recover_pending`は、`connect`と`update`が計画する前に呼ばれます。ジャーナル、元と新しいハッシュ、バックアップを突き合わせ、安全なものを戻します。ジャーナルを読む前に、エージェントのロックを取ります。他の人が変更したファイルがあるとき、または戻すのに失敗したときは、ジャーナルを残してそのエージェントを止め、該当する各パスをバックアップとジャーナルの場所とあわせて標準エラーへ表示します。利用者が対処してジャーナルを削除します。通常のコマンドとHookは、復旧も設定の書き込みもしません。
@@ -104,14 +104,14 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い紐�
 
 ## Hookのスキップとエラー
 
-Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。これは`ResolvedBinding`（プロジェクトとbindのルート）を返します。`project_for_folder`はこれを呼ぶので、通常のコマンドの`folder_unbound`エラーは変わりません。
+Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。これは`ResolvedBinding`（プロジェクトと登録済みのフォルダ）を返します。`project_for_folder`はこれを呼ぶので、通常のコマンドの`folder_unbound`エラーは変わりません。
 
 | 入力・状態 | 動作 |
 | --- | --- |
-| `cwd`がbindのルート、サブフォルダ、またはより近い入れ子のbindの中 | 最も近いプロジェクトだけを、`AGBOARD_PROGRESS`として返します。 |
-| bindの情報が正常で、`cwd`が読め、一致するbindがない | stdoutにもstderrにも出力せず、終了コード0。ボードも導入記録も読みません。 |
-| 最も近いbindのプロジェクトが存在しない | `bound_project_missing`。親へ戻りません。 |
-| bindの情報が壊れている、または読めない | 原因を付けた`AGBOARD_ERROR`。未bindとは扱いません。 |
+| `cwd`が登録済みのフォルダ、そのサブフォルダ、またはより近い入れ子の登録済みフォルダの中 | 最も近いプロジェクトだけを、`AGBOARD_PROGRESS`として返します。 |
+| フォルダの登録情報が正常で、`cwd`が読め、一致する登録がない | stdoutにもstderrにも出力せず、終了コード0。ボードも導入記録も読みません。 |
+| 最も近い登録のプロジェクトが存在しない | `bound_project_missing`。親へ戻りません。 |
+| フォルダの登録情報が壊れている、または読めない | 原因を付けた`AGBOARD_ERROR`。未登録とは扱いません。 |
 | 入力がJSONでない、型が違う、大きすぎる | これまでどおり`invalid_hook_input`。 |
 | `cwd`がない、`null`、空 | プロセスの作業フォルダを使います。 |
 | `cwd`が文字列でない、または相対パス | `invalid_hook_input`。 |
@@ -122,7 +122,7 @@ Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。
 
 ## 更新通知
 
-通常のコマンドが出力を終えたあとに、`notice::stale_line`が標準エラー出力へ1行を出すことがあります。`update`が対象とする記録（Global、および最も近いbindのルートのProject）の`installedVersion`と、このビルドの版を比べるだけで、アセットの走査も、ネットワークの利用も、書き込みもしません。標準出力と標準エラー出力がどちらも端末で、出力がJSONでないときだけ出します。`hook`、`wait`、`serve`、`stop`、`setup`、`connect`、`update`、helpとバージョン表示は、この処理より前に戻ります。導入記録がない、読めない、未知のときは、通知を出さず、コマンドの出力と終了コードも変えません。その問題は`update`が報告します。文言は[エージェントとの連携](../../guide/automation/agents.md#refresh-the-integrations)にあります。
+通常のコマンドが出力を終えたあとに、`notice::stale_line`が標準エラー出力へ1行を出すことがあります。`update`が対象とする記録（Global、および最も近い登録済みフォルダのProject）の`installedVersion`と、このビルドの版を比べるだけで、アセットの走査も、ネットワークの利用も、書き込みもしません。標準出力と標準エラー出力がどちらも端末で、出力がJSONでないときだけ出します。`hook`、`wait`、`serve`、`stop`、`setup`、`connect`、`update`、helpとバージョン表示は、この処理より前に戻ります。導入記録がない、読めない、未知のときは、通知を出さず、コマンドの出力と終了コードも変えません。その問題は`update`が報告します。文言は[エージェントとの連携](../../guide/automation/agents.md#refresh-the-integrations)にあります。
 
 ## setupでアクセスを準備する
 

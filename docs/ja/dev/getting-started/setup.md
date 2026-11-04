@@ -9,7 +9,7 @@ Agent Boardの開発に必要な環境を用意し、ビルド・動作確認・
 - Rustのstableツールチェーン（`cargo`）。
 - Node.jsと`pnpm`（Corepack経由）。
 - 任意: 定型コマンドを実行する[`just`](https://github.com/casey/just)と、`just serve`のためのWatchexec（`cargo install --locked watchexec-cli`）。
-- E2Eテストとスクリーンショット: PlaywrightのChromium（インストール方法は後述）。デモ動画: `ffmpeg`。
+- E2Eテストとスクリーンショット: PlaywrightのChromium（インストールのコマンドは[ドキュメントと画像](../docs-and-images.md)を参照）。デモ動画: `ffmpeg`。
 
 普段使っているボードへの影響を避けるため、次の二点を守ってください。
 

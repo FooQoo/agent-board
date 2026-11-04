@@ -6,7 +6,7 @@ title: インストールと起動
 
 このページを読み終えると、Homebrewで`agboard`をインストールし、作業フォルダにプロジェクトを作り、エージェントをつなぎ、ブラウザでボードを開けます。続いて[クイックスタート](./quickstart)で基本操作を試してください。
 
-手順は、インストール、プロジェクトの作成またはbind、エージェントの接続、サーバーの起動の順です。
+手順は、インストール、プロジェクトの作成またはフォルダの登録、エージェントの接続、サーバーの起動の順です。
 
 ## 始める前に
 
@@ -27,16 +27,16 @@ agboard --version
 
 Agent BoardはMITライセンスで公開しています。ライセンスと、同梱する第三者コンポーネントの通知は、Homebrewのprefix配下の`share/agboard`（`$(brew --prefix)/share/agboard`）にインストールされます。
 
-## プロジェクトを作成またはbindする {#create-or-bind-a-project}
+## プロジェクトを作成する、またはフォルダを登録する {#create-or-bind-a-project}
 
-作業しているフォルダに移動します。プロジェクトは、bindしたフォルダに属し、そのサブフォルダも同じプロジェクトを使います。フォルダごとに一度だけ行います。
+作業しているフォルダに移動します。プロジェクトは、登録したフォルダに属し、そのサブフォルダも同じプロジェクトを使います。フォルダごとに一度だけ行います。
 
 ```sh
 cd my-project
 agboard project create "My project"
 ```
 
-`project create`は、プロジェクトを作成し、現在のフォルダをそのプロジェクトにbindします。プロジェクトがすでにある場合は、代わりにこのフォルダをbindします。
+`project create`は、プロジェクトを作成し、現在のフォルダをそのプロジェクトに登録します。プロジェクトがすでにある場合は、代わりにこのフォルダをそのプロジェクトに登録します。
 
 ```sh
 agboard project bind "My project"
@@ -50,7 +50,7 @@ agboard project bind "My project"
 agboard connect
 ```
 
-`connect`は、ターミナルで質問に答えながら進める設定です。Claude Code、Codex、または両方に、SkillとHookを導入します。HookとProjectスコープは、フォルダのプロジェクトに依存するため、bind済みのフォルダで実行する必要があります。聞かれる内容、書き込み先、その後の操作は、[エージェントをつなぐ](./automation/agents#connect-your-agent)を参照してください。
+`connect`は、ターミナルで質問に答えながら進める設定です。Claude Code、Codex、または両方に、SkillとHookを導入します。HookとProjectスコープは、フォルダのプロジェクトに依存するため、登録済みのフォルダで実行する必要があります。聞かれる内容、書き込み先、その後の操作は、[エージェントをつなぐ](./automation/agents#connect-your-agent)を参照してください。
 
 ## ボードを開始する
 

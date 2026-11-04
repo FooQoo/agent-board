@@ -46,8 +46,8 @@
 
 | モジュール | 責務 |
 | --- | --- |
-| `api/` | ボードのルーター、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、モバイル接続の`monitor_connections`）。 |
-| `monitor/` | モニターの読み取り用ルーター、回答のエンドポイント、資産。 |
+| `api/` | ボードのルーター、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、人による受入条件のチェック（`task_acceptance`）、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、モバイル接続の`monitor_connections`）。 |
+| `monitor/` | モニターの読み取り用ルーター、回答と受入条件のチェックのエンドポイント、資産。 |
 | `monitor_connection/` | ngrokのモバイル接続。監督役と状態（`lifecycle`・`start`・`run`）、保存する設定（`config`）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
 | `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、PCとモニターで共有する`GET`・`PUT`の処理、変更の通知。 |
 | `monitor_auth/` | モニターのアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
@@ -93,13 +93,13 @@
 
 ### 初回の案内
 
-- `src/file_store/onboarding_state.rs`: 状態ファイル、そのロック、run の型。
+- `src/file_store/onboarding_state.rs`: 状態ファイル、そのロック、runの型。
 - `src/file_store/onboarding_model.rs`: サンプルの識別と検査。
-- `src/file_store/ops/onboarding.rs`: 案内の操作。
-- `src/server/api/onboarding.rs`: 案内の経路。
-- `web/src/app/onboarding/`: 要求の窓口、制御、層。
+- `src/file_store/ops/onboarding/`: 案内の操作。
+- `src/server/api/onboarding.rs`: 案内のルート。
+- `web/src/app/onboarding/`: リクエスト、制御、層。
 - `web/src/features/onboarding/ui/`: 表示部品。
-- `e2e/tests/onboarding.spec.ts`: E2E 試験。
+- `e2e/tests/onboarding.spec.ts`: E2Eテスト。
 
 ## 採用技術
 

@@ -9,7 +9,7 @@ You need:
 - A stable Rust toolchain (`cargo`).
 - Node.js with `pnpm` (through Corepack).
 - Optional: [`just`](https://github.com/casey/just) for the common workflows, and Watchexec (`cargo install --locked watchexec-cli`) for `just serve`.
-- For end-to-end tests and screenshots: Playwright's Chromium (installed below). For demo videos: `ffmpeg`.
+- For end-to-end tests and screenshots: Playwright's Chromium (see [Documentation and images](../docs-and-images.md) for the install command). For demo videos: `ffmpeg`.
 
 Two habits keep your own board safe while you work:
 

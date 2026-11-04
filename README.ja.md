@@ -74,7 +74,7 @@ agboard project create "My project"
 agboard connect
 ```
 
-`project create`は、現在のフォルダをプロジェクトにbindします。既存のプロジェクトを使うときは`agboard project bind "My project"`を実行します。`connect`は、設定するエージェント（Claude Code、Codex、または両方）と、置き場所を尋ねます。Skillに1つ、Hookに1つ、GlobalかProjectのスコープを選びます。書き込む前にすべての変更を表示し、バックアップを残し、あなたの編集を上書きしません。終わったら、エージェントの`/hooks`でHookを確認してください。詳しくは[エージェントとの連携](https://fooqoo.github.io/agent-board/ja/guide/automation/agents#connect-your-agent)を参照してください。
+`project create`は、現在のフォルダをプロジェクトに登録します。既存のプロジェクトを使うときは`agboard project bind "My project"`を実行します。`connect`は、設定するエージェント（Claude Code、Codex、または両方）と、置き場所を尋ねます。Skillに1つ、Hookに1つ、GlobalかProjectのスコープを選びます。書き込む前にすべての変更を表示し、バックアップを残し、あなたの編集を上書きしません。終わったら、エージェントの`/hooks`でHookを確認してください。詳しくは[エージェントとの連携](https://fooqoo.github.io/agent-board/ja/guide/automation/agents#connect-your-agent)を参照してください。
 
 ## 使い始める
 
@@ -103,7 +103,7 @@ v1.0.0には、一般提供（GA）の機能と、パブリックプレビュー
 
 ## ライセンス
 
-Agent Boardは、[MITライセンス](LICENSE)で公開しています。同梱する第三者コンポーネントには、それぞれのライセンスが適用されます。詳細は[LICENSE](LICENSE)と[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)を参照してください。
+Agent Boardは、[MITライセンス](LICENSE)で公開しています。同梱する第三者コンポーネントには、それぞれのライセンスが適用されます。詳細は[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)を参照してください。
 
 ## ドキュメント
 

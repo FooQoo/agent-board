@@ -111,13 +111,13 @@ agboard project bind "My project" --folder ./docs
 
 ## 変更またはタスクを待つ
 
-`wait`には二つのモードがあります。`--after <cursor>`は[エージェントとの連携](./agents#変更を待つ)のとおりプロジェクトの変更を待ちます。`--until task`は、リッスン開始前からTodoにあったタスクや、IdleのままDoingにあるタスクも含め、対象となるAI担当タスクを一件返します。
+`wait`には二つのモードがあります。`--after <cursor>`は[エージェントとの連携](./agents#変更を待つ)のとおりプロジェクトの変更を待ちます。`--until task`は、対象となるAI担当タスクを一件返します。リッスンを始める前から未着手にあったタスクや、未稼働のまま進行中にあるタスクも対象です。
 
 ```sh
 agboard --project "My project" wait --until task --idle-timeout 300 --json
 ```
 
-`--until task`には`--idle-timeout`が必須です。1〜86,400秒を指定し、既定値はありません。一回の呼び出しで返すのは進行表と同じ順序の一件で、タスクを占有したり変更したりしません。取得したタスクを解決したら、再び`wait`を呼び出します。セッション全体の流れとPendingの扱いは[エージェントとの連携](./agents#listen-for-the-next-task)を参照してください。
+`--until task`には`--idle-timeout`が必須です。1〜86,400秒を指定し、既定値はありません。一回の呼び出しで返すのは進行表と同じ順序の一件で、タスクを占有したり変更したりしません。取得したタスクを解決したら、再び`wait`を呼び出します。セッション全体の流れと、待機中のタスクの扱いは[エージェントとの連携](./agents#listen-for-the-next-task)を参照してください。
 
 取得成功時は、一つのJSONオブジェクトを出力して終了コード0を返します。
 
@@ -125,7 +125,7 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":null}
 ```
 
-指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。Pendingの質問への回答にはなりません。
+指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。待機中の質問への回答にはなりません。
 
 ## サーバーを起動する
 
@@ -175,14 +175,14 @@ agboard update --yes
 
 | コマンド | 動作 | 終了コード |
 | --- | --- | --- |
-| `agboard connect` | 接続するエージェント、Skillのスコープ1つ、Hookのスコープ1つを尋ね、計画を表示して、`y`と答えると書き込みます。ターミナルと、プロジェクトにbindしたフォルダが必要です。オプションはありません。 | `0`は成功、変更なし、取り消し。`1`はエージェントの設定に失敗した、またはフォルダがbindされていない。`2`はコマンドラインが不正、またはターミナルがない。 |
-| `agboard update` | `connect`が記録したものを更新します。対象は、Globalの導入と、最も近いbindのルートのProjectの導入です。変更を表示して **Apply these updates?** と尋ねます。 | `0`は成功、更新なし、取り消し。`1`は失敗、競合、一部の失敗。`2`はコマンドラインが不正、または`--yes`なしでターミナルがない。 |
+| `agboard connect` | 接続するエージェント、Skillのスコープ1つ、Hookのスコープ1つを尋ね、計画を表示して、`y`と答えると書き込みます。ターミナルと、プロジェクトに登録したフォルダが必要です。オプションはありません。 | `0`は成功、変更なし、取り消し。`1`はエージェントの設定に失敗した、またはフォルダが登録されていない。`2`はコマンドラインが不正、またはターミナルがない。 |
+| `agboard update` | `connect`が記録したものを更新します。対象は、Globalの導入と、最も近い登録済みフォルダのProjectの導入です。変更を表示して **Apply these updates?** と尋ねます。 | `0`は成功、更新なし、取り消し。`1`は失敗、競合、一部の失敗。`2`はコマンドラインが不正、または`--yes`なしでターミナルがない。 |
 | `agboard update --yes` | 質問をしない以外は同じです。競合は失敗のままで、あなた自身の編集は上書きしません。 | `update`と同じです。 |
 
 - どちらもパイプを待ちません。ターミナルがないと、`connect`と`update`は終了コード`2`で終わり、ターミナルで実行するよう案内します。`update --yes`はターミナルがなくても動きます。
 - `--json`はどちらでも受け付けず、`--dry-run`は`update`で受け付けません。ほかのオプションはありません。
 - 失敗の理由はエラー出力に出ます。
-- bindされていないフォルダで`connect`を実行すると、`agboard project create "My project"`と`agboard project bind "My project"`を表示して、終了コード`1`で終わります。
+- 登録されていないフォルダで`connect`を実行すると、`agboard project create "My project"`と`agboard project bind "My project"`を表示して、終了コード`1`で終わります。
 - `setup`は、データフォルダをエージェントの設定に加えるだけの、別のコマンドのままです。`connect`も同じ権限の変更を行うので、先に`setup`を実行する必要はありません。
 
 ## 出力と確認

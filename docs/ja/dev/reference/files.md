@@ -61,7 +61,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 - 画像は所有者の`assets/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
 - `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`（`{"pid":41235,"port":7420,"started_at":"..."}`）は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。`serve.log`は`serve -d`で起動したサーバーの出力です（所有者のみ読み取り可、起動のたびに作り直し）。`agboard stop`は`serve.json`からサーバーを見つけます。
 
-`docs/`には、プロジェクトのMarkdown文書を置きます。ドキュメントのダイアログが読み書きします（[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照）。
+`docs/`には、プロジェクトのMarkdown文書を置きます。ドキュメントのダイアログがこれを読みます（[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照）。
 
 `project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`defaultEpicsSeeded`を持ちます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。
 
@@ -167,8 +167,8 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 
 ## 初回の案内
 
-- `shared/.internal/onboarding.json`: 案内の状態、リースの持ち主、実行中の run、直近のコマンド ID。[保存と回復](../concepts/saving-and-recovery.md)を参照してください。
-- `tasks/<id>/task.json` の `onboardingSample`: `{ "runId": "<32 桁の小文字 hex>", "ordinal": 1 | 2 }`。案内のサンプルカードにだけ付きます。
+- `shared/.internal/onboarding.json`: 案内の状態、リースの持ち主、実行中のrun、直近のコマンドID。[保存と復旧](../concepts/saving-and-recovery.md)を参照してください。
+- `tasks/<id>/task.json`の`onboardingSample`: `{ "runId": "<32桁の小文字の16進数>", "ordinal": 1 | 2 }`。案内のサンプルカードにだけ付きます。
 
 ## 連携の導入記録 {#integration-records}
 
@@ -215,5 +215,5 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 - **起動時に補う。** `serve`は、`docs/`がないプロジェクトに`docs/`とREADMEを作ります。すでにあるフォルダには触れないので、利用者が消したREADMEは消えたままです。ここでの失敗は無視します。フォルダがなければ空のツリーとして読むためです。
 - **プロジェクトと一緒に消える。** `project rm`はプロジェクトのフォルダを丸ごと削除し、`docs/`も消えます。退避はしません。既存のプロジェクトに対する`init`は`tasks/`と`epics/`だけを初期化するので、`docs/`は残ります。
 - **ボードのデータではない。** 監視は`docs/`の下をすべて無視し、ファイルはプロジェクトの`version`に含まれません（[変更の通知](../concepts/notifications.md)を参照）。編集しても`changed`は送られません。
-- **ドキュメントのルートからだけ読み書きする。** ツリーはフォルダとファイルを一覧にし、ファイルのルートは2 MiB以下のUTF-8の`.md`と`.mdx`ファイルを読み、保存します。画像のルートは10 MiB以下のPNG・JPEG・WebP・GIF・AVIF・SVGを返します。[Web API](./web-api.md#プロジェクトのドキュメント)を参照してください。
-- **送られたとおりに保存する。** 保存は受け取ったバイト列をそのまま書きます。改行コード、BOM、末尾の改行、フロントマターは変えません。保存で指定する`revision`は、`sha256:`とそのバイト列のSHA-256（16進数）です。
+- **ドキュメントのルートからは読むだけ。** ツリーはフォルダとファイルを一覧にし、ファイルのルートは2 MiB以下のUTF-8の`.md`と`.mdx`ファイルを読みます。画像のルートは10 MiB以下のPNG・JPEG・WebP・GIF・AVIF・SVGを返します。ファイルを書くルートはありません。編集は利用者が自分のエディターで行い、**エディターで開く**がそのエディターを起動します。[Web API](./web-api.md#プロジェクトのドキュメント)を参照してください。
+- **保存されたとおりに返す。** ファイルの読み込みは、ディスク上のバイト列をそのまま返します。改行コード、BOM、末尾の改行、フロントマターは変えません。`revision`は、`sha256:`とそのバイト列のSHA-256（16進数）です。

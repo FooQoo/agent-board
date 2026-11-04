@@ -35,16 +35,16 @@ GAの機能には、この表示はありません。
 
 | 機能 | 対応範囲 | 既知の制約 | ガイド |
 | --- | --- | --- | --- |
-| タスクと作業状態 | macOS、パソコンのブラウザ、モバイルモニターでの閲覧 | Done・下書き・アーカイブのタスクは、エージェントが変更できません。 | [ボード](./use/board) |
+| タスクと作業状態 | macOS、パソコンのブラウザ、モバイルモニターでの閲覧 | 完了・下書き・アーカイブ済みのタスクは、エージェントが変更できません。 | [ボード](./use/board) |
 | 受入条件と履歴 | 同上 | 履歴の項目は、日時（`at`）と理由（`reason`）の2つだけです。 | [ボード](./use/board)、[Markdownファイルの形式](./automation/file-format) |
 | 本文の編集と画像 | パソコンのブラウザ | 画像には大きさの上限があります。 | [編集と画像添付](./use/editing) |
 | アーカイブと削除 | パソコンのブラウザ | 削除できるのは人だけです。 | [アーカイブ](./use/board#archive) |
 | 判断依頼と回答 | パソコン、モバイルモニター、CLI | エージェントは、既定では期限なしで回答を待ちます。`agboard serve`が動いている必要があります。 | [判断依頼](./use/decisions) |
-| エピックと進行表 | パソコンのブラウザ、CLI | 進行表にはPendingのタスクを含めません。 | [エピックと進行表](./use/epics) |
-| プロジェクトと作業フォルダ | CLI、パソコンのブラウザ | フォルダがどのプロジェクトに属するかは、最も近いbindで決まります。 | [CLIリファレンス](./automation/cli#projects) |
+| エピックと進行表 | パソコンのブラウザ、CLI | 進行表には待機中のタスクを含めません。 | [エピックと進行表](./use/epics) |
+| プロジェクトと作業フォルダ | CLI、パソコンのブラウザ | フォルダがどのプロジェクトに属するかは、最も近い登録済みのフォルダで決まります。 | [CLIリファレンス](./automation/cli#projects) |
 | データの保存と復旧 | macOS | `formatVersion`が1のファイルだけに対応します。 | [データとバックアップ](./operations/data) |
 | 表示言語とテーマ | パソコン、モバイルモニター | 日本語と英語、24のテーマです。 | [設定](./use/board#settings) |
-| エージェント向けのCLI・JSON出力・Hook・`wait` | Claude Code、Codex | HookとSkillは、導入しないと使えません。エージェントの起動は人が行います。 | [エージェントとの連携](./automation/agents) |
+| エージェント向けのCLI・JSON出力・Hook・`wait` | Claude Code、Codex | HookとSkillは、インストールした`agboard`の版に合わせます。本体を更新したら`agboard update`を実行します。エージェントの起動は人が行います。 | [エージェントとの連携](./automation/agents) |
 | `connect`と`update` | macOS。`PATH`上にClaude CodeやCodexが見つかる環境 | `update --yes`を除き、どちらのコマンドも対話式です。Hookが変わったときは、エージェントで信頼し直す必要があります。`update`が古い版を入れ直すことはありません。 | [エージェントとの連携](./automation/agents#connect-your-agent)、[CLIリファレンス](./automation/cli#connect-and-update) |
 | 初回の案内 | パソコンのブラウザ | データ領域にすでにプロジェクトがあるときと、モバイルモニターでは表示しません。 | [初回の案内](./use/board#the-first-run-guide) |
 

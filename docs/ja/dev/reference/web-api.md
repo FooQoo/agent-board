@@ -42,7 +42,7 @@
 
 ### SummaryとDetail
 
-ボードとモニターは、プロジェクトを2段階で読みます。Summaryは、カードや一覧の行に表示する内容をまとめて返します。Detailは、カードやエピックを開いたときにだけ必要な内容をストリームで返します。モバイルモニターには同じ契約を`/monitor/api/projects/{projectId}/…`で提供し、モニターのセッションを必要とします。[モニターの経路](./remote-routes.md)を参照してください。パスのプロジェクトIDは読む対象の指定であり、アクセス権ではありません。
+ボードとモニターは、プロジェクトを2段階で読みます。Summaryは、カードや一覧の行に表示する内容をまとめて返します。Detailは、カードやエピックを開いたときにだけ必要な内容をストリームで返します。モバイルモニターには同じ契約を`/monitor/api/projects/{projectId}/…`で提供し、モニターのsessionを必要とします。[モニターの経路](./remote-routes.md)を参照してください。パスのプロジェクトIDは読む対象の指定であり、アクセス権ではありません。
 
 以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
 
@@ -102,7 +102,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 
 これらの経路はローカルのリスナー（`127.0.0.1`）にだけあり、ngrokの入口は配信しません。読み取りはローカルのページからでなければならず、別のHost、クロスサイトの`Sec-Fetch-Site`、別のOriginは403です。書き込みは、ほかの書き込みと同じブラウザの書き込みガードを通ります。
 
-| API | 契約 |
+| API | 入出力と動作 |
 | --- | --- |
 | `GET /api/monitor-connections` | 現在の状態（下記）。秘密の値は含まない。 |
 | `PUT /api/monitor-connections/settings/ngrok` | `{enabled, revision}`を保存し、状態を返す。`revision`は最後に読んだ値でなければならない。未知のフィールドは422 `invalid_value`、古いrevisionは409 `revision_conflict`、保存の失敗は500 `save_failed`で何も変えない。トンネルが動いている間に保存しても作り直さない。作り直すのは開始だけ。 |
@@ -145,11 +145,10 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 次のルートは、プロジェクトの`docs/`（`shared/projects/<projectId>/docs/`）にあるファイルを読みます。書き込むルートはなく、ファイルのルートへの`PUT`は405です。ボードのルーターにだけあり、モニターの入口では提供しません。ディスク上のドキュメントの変化は、`changed`ではなくSSEの`docs`イベントで知らせます（[変更の通知](../concepts/notifications.md#ドキュメント)を参照）。パスは`docs/`からの相対パスで、区切りは`/`です。検証の内容は[セキュリティモデル](../concepts/security.md#プロジェクトのドキュメント)にあります。プロジェクトIDが32文字の小文字16進数でないときは422 `invalid_value`です。
 
-| API | 契約 |
+| API | 入出力と動作 |
 | --- | --- |
 | `GET …/docs/tree` | `docs/`の下のフォルダとファイルの名前だけを、`{nodes, truncated}`で返す。ファイルには`viewer`があり、`.md`と`.mdx`は`markdown`、`.png`・`.jpg`・`.jpeg`・`.webp`・`.gif`・`.avif`・`.svg`は`image`、それ以外は`other`（一覧には出すが表示しない）。フォルダには`viewer`がない。フォルダが先、ファイルが後で、それぞれ大文字・小文字を区別せずに名前順。ドットで始まる名前、シンボリックリンク、パスの規則で拒否される名前は含めない。フォルダがないときはエラーではなく空のツリー。一覧は最大5,000項目・16階層までで、上限で打ち切ったときは`truncated: true`。 |
 | `GET …/docs/file?path=` | `{path, content, revision}`。`content`はファイルの原文そのもの（BOMも含む）。`revision`は`sha256:`とファイルのバイト列のSHA-256（16進数）で、画面はこれを比べてファイルが変わったかを判断する。対象は、`.md`と`.mdx`（大文字・小文字は問わない）で、2 MiB以下で、正しいUTF-8のファイルだけ。 |
-| `PUT …/docs/file` | 本文は`{path, content, expectedRevision}`。知らない項目は400 `invalid_json`。ファイルがまだ`expectedRevision`のときだけ、`content`をそのままのバイト列で書き、新しい`revision`を含む`{path, revision}`を返す。ほかの書き込みと同じ書き込みのガードを通る。ファイルを新しく作ることはない。 |
 | `GET …/docs/assets?path=` | 10 MiB以下のPNG・JPEG・WebP・GIF・AVIF・SVGの画像のバイト列。`Content-Type`は拡張子から決め（`image/png`・`image/jpeg`・`image/webp`・`image/gif`・`image/avif`・`image/svg+xml`）、`X-Content-Type-Options: nosniff`を付ける。SVGの応答には`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`も付けるので、URLを直接開いてもスクリプトは動かない。画面では`<img>`で表示するので、そこでもスクリプトは動かない。ほかの形式は415 `docs_asset_type`。 |
 | `POST …/docs/open[?path=]` | 本文なし。サーバーを動かしているコンピュータで、プロジェクトの`docs/`をファイルマネージャで開く。`?path=`があるときは、そのファイルを、コンピュータがその種類に使うアプリで開く。macOSは`open`、Windowsは`explorer`、それ以外は`xdg-open`を使う。パスは読み込みと同じ方法で確かめ、存在するファイル（種類は問わない）であることを求める（400 `docs_path_invalid`、404 `docs_not_found`）。プログラムはシェルを通さず、フォルダかファイルだけを引数にして起動し、終了は待たない。成功すると204。プロジェクトがないときは404 `project_not_found`。`docs/`がない、またはプログラムを起動できない（たとえば`xdg-open`が入っていない）ときは500 `docs_open_failed`。プログラムを起動するので、ほかの書き込みと同じく書き込みガードを通る。 |
 
@@ -203,14 +202,14 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | メソッドとパス | 役割 |
 | --- | --- |
 | `GET /api/onboarding` | 案内の状態。読み取りだけ。 |
-| `POST /api/onboarding/claim` | タブに案内を渡す。`clientId`、`expectedRevision`。 |
-| `POST /api/onboarding/replay` | 完了またはスキップ済みの案内をもう一度提示する。`clientId`、`expectedRevision`。 |
+| `POST /api/onboarding/claim` | タブに案内を渡す。`clientId`・`expectedRevision`。 |
+| `POST /api/onboarding/replay` | 完了またはスキップ済みの案内をもう一度提示する。`clientId`・`expectedRevision`。 |
 | `POST /api/onboarding/heartbeat` | リースを延長する。`clientId`。 |
-| `POST /api/onboarding/skip` | カードを作る前にスキップする。`clientId`、`expectedRevision`、`commandId`。 |
-| `POST /api/onboarding/recover` | リースが切れた run を終了する。 |
-| `POST /api/projects/{projectId}/onboarding/start` | run を始める。`clientId`、`attemptId`、`expectedRevision`、`locale`。同じ attempt の再送は同じ run を返す。 |
-| `POST /api/projects/{projectId}/onboarding/{runId}/advance` | 手順を 1 つ進める。`clientId`、`expectedRevision`、`commandId`、`transition`。 |
-| `POST /api/projects/{projectId}/onboarding/{runId}/finish` | run のカードをアーカイブし、案内を完了する。 |
-| `POST /api/projects/{projectId}/onboarding/{runId}/abort` | run を途中で終え、カードをアーカイブする。 |
+| `POST /api/onboarding/skip` | カードを作る前にスキップする。`clientId`・`expectedRevision`・`commandId`。 |
+| `POST /api/onboarding/recover` | リースが切れたrunを終了する。 |
+| `POST /api/projects/{projectId}/onboarding/start` | runを始める。`clientId`・`attemptId`・`expectedRevision`・`locale`。同じ`attemptId`の再送は同じrunを返す。 |
+| `POST /api/projects/{projectId}/onboarding/{runId}/advance` | 手順を1つ進める。`clientId`・`expectedRevision`・`commandId`・`transition`。 |
+| `POST /api/projects/{projectId}/onboarding/{runId}/finish` | runのカードをアーカイブし、案内を完了する。 |
+| `POST /api/projects/{projectId}/onboarding/{runId}/abort` | runを途中で終え、カードをアーカイブする。 |
 
-書き込みは write guard を通り、未知のフィールドは拒否されます。サンプルの質問への回答は、既存の `/api/projects/{projectId}/tasks/{id}/answer` を使います。
+書き込みは、ほかの書き込みと同じ書き込みの保護を通り、未知のフィールドは拒否します。サンプルの質問への回答は、既存の`/api/projects/{projectId}/tasks/{id}/answer`を使います。

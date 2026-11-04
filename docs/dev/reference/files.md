@@ -61,7 +61,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 - Images live in the owner's `assets/`. Bodies reference images as `assets/<attachment-id>.<ext>` (or the older `attachment:<id>`). Images are PNG, JPEG, WebP, or GIF; at most 10 MiB each, 20 per owner, and 50 MiB in total.
 - `bindings.json` and `serve.json` are machine-local. `serve.json` (`{"pid":41235,"port":7420,"started_at":"..."}`) tells the CLI where to notify and `wait` where to connect; it never holds a token. `serve.log` is the output of a server started with `serve -d` (owner-only, replaced at every start); `agboard stop` finds the server through `serve.json`.
 
-`docs/` holds the project's own Markdown documents, which the Docs dialog reads and edits (see [Project docs](#project-docs)).
+`docs/` holds the project's own Markdown documents, which the Docs dialog reads (see [Project docs](#project-docs)).
 
 `project.json` holds `formatVersion`, `id`, `name`, `createdAt`, `nextTaskId`, and `defaultEpicsSeeded`. The last one is `true` once the project has been offered the default epics `BUG` and `ENHANCEMENT`; it is written once, so a default epic that was deleted is not created again. A file without it is read as `false`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`.
 
@@ -215,5 +215,5 @@ A folder binding maps a real folder to a ProjectId so the hook and `agboard prog
 - **Filled in at startup.** `serve` creates `docs/` and its README for every project that has no `docs/` folder. A folder that exists is left alone, so a README the user deleted stays deleted. A failure here is skipped, because a missing folder reads as an empty tree.
 - **Deleted with the project.** `project rm` removes the whole project folder, `docs/` included. Nothing is kept aside. `init` on an existing project resets only `tasks/` and `epics/`, so `docs/` stays.
 - **Not board data.** The watcher ignores everything under `docs/`, and the files are not part of the project's `version` (see [Change notifications](../concepts/notifications.md)). Editing them never sends `changed`.
-- **Read and written only through the Docs routes.** The tree lists folders and files; the file routes read and save `.md` and `.mdx` files of at most 2 MiB in UTF-8; the image route serves PNG, JPEG, WebP, GIF, AVIF, and SVG up to 10 MiB. See [Web API](./web-api.md#project-docs).
-- **Saved as sent.** A save writes the bytes it receives, with no change to line endings, a BOM, the final newline, or the front matter. The revision a save names is `sha256:` and the hex SHA-256 of those bytes.
+- **Read only through the Docs routes.** The tree lists folders and files; the file route reads `.md` and `.mdx` files of at most 2 MiB in UTF-8; the image route serves PNG, JPEG, WebP, GIF, AVIF, and SVG up to 10 MiB. No route writes a file; people edit the files in their own editor, which **Open in editor** starts for them. See [Web API](./web-api.md#project-docs).
+- **Served as stored.** A file read returns the bytes on disk, with no change to line endings, a BOM, the final newline, or the front matter. Its `revision` is `sha256:` and the hex SHA-256 of those bytes.

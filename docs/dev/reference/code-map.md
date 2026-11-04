@@ -46,8 +46,8 @@ Inside `server`, routers depend on shared modules rather than on each other:
 
 | Module | Responsibility |
 | --- | --- |
-| `api/` | The board router, its Host and write guards (`guards`), and its handlers grouped by route: pages, projects, tasks, task edits, multipart, archive, task images, epics, epic images, project docs (`docs/`: `tree`, `file_get`, `assets`, `open`), and the mobile connection (`monitor_connections`). |
-| `monitor/` | The monitor's read router, its answer endpoint, and its assets. |
+| `api/` | The board router, its Host and write guards (`guards`), and its handlers grouped by route: pages, projects, tasks, task edits, a person's acceptance check (`task_acceptance`), multipart, archive, task images, epics, epic images, project docs (`docs/`: `tree`, `file_get`, `assets`, `open`), and the mobile connection (`monitor_connections`). |
+| `monitor/` | The monitor's read router, its answer and acceptance-check endpoints, and its assets. |
 | `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `start`, `run`), the saved settings (`config`), the token and its secure storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`, with its `session` routes for the passcode unlock). |
 | `preferences/` | The saved language and color theme: `preferences.json` in the internal area (`PreferencesStore`), the `GET` and `PUT` handling shared by the PC and the monitor, and the change notice. |
 | `monitor_auth/` | The monitor's application sessions and CSRF tokens (`session`), the 4-digit passcode and its limit on wrong guesses (`passcode`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
@@ -95,7 +95,7 @@ The main files and directories outside `src/` are:
 
 - `src/file_store/onboarding_state.rs`: the state file, its lock, and the run's types.
 - `src/file_store/onboarding_model.rs`: the sample identity and its checks.
-- `src/file_store/ops/onboarding.rs`: the guide's operations.
+- `src/file_store/ops/onboarding/`: the guide's operations.
 - `src/server/api/onboarding.rs`: the guide's routes.
 - `web/src/app/onboarding/`: the request client, the controller, and the layer.
 - `web/src/features/onboarding/ui/`: the view parts.
