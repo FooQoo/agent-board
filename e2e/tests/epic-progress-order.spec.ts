@@ -91,10 +91,11 @@ test('a failed save keeps the new order in the progress table, and trying again 
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Space');
 
-  // The first save is refused by the server; the dialog stays with the new order.
+  // The first save of the order is refused by the server; the dialog stays with the new order.
+  // The change itself already made the epic a draft with a PATCH of its own, which goes through.
   let refuse = true;
   await page.route(`**/api/projects/${projectId(mainProject)}/epics/ORDER`, async (route) => {
-    if (refuse && route.request().method() === 'PATCH') {
+    if (refuse && route.request().method() === 'PATCH' && 'priority' in route.request().postDataJSON()) {
       refuse = false;
       await route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"database_error","message":"refused"}}' });
     } else {
