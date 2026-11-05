@@ -21,14 +21,14 @@ For the epic dialog (name, color, details, and task order), see [Epics and progr
 
 ## Preview and save {#preview-and-save}
 
-Open a task's preview with **Preview** in the details toolbar. An epic's preview opens from **Open full screen** on the epic tab of a task, or from the pencil button (**Edit epic**) in an epic's details. Archived tasks and epics open in the same preview, read-only.
+Open a task's preview with **Preview** in the details toolbar. An epic's preview opens from **Open full screen** on the epic tab of a task, or from the pencil button (**Edit epic**) in an epic's details. Archived tasks open in the same preview, read-only, with the reason **Read-only because it is archived.**
 
 The preview opens with the title shown as **Task preview** or **Epic preview**, and its **Close** button is enabled. Opening it changes nothing: the task or epic is not made a draft, and its history does not change. While you have made no change, the preview follows the latest content, including changes from agents and other browsers. The bottom left shows when it was last updated.
 
 Your first change to a task's title, description, conditions, or images, or to an epic's name, color, details, images, or task order, does three things:
 
 - The task or epic becomes a draft, and the **Draft** chip appears in the header.
-- The bottom left says **You have unsaved changes.** and, for a task, **Agents can't change this task until you save.**
+- The bottom left says **You have unsaved changes.** and **Agents can't change this task until you save.** For an epic, the last sentence says **Agents can't change this epic until you save.**
 - **Save** becomes enabled, and the preview stops following updates.
 
 **Save** writes your changes and releases the draft in one step. If the item was already a draft before you opened the preview, it stays a draft.
@@ -38,7 +38,7 @@ To drop your changes, choose **Cancel** and then **Discard and close**. The text
 The preview cannot save in these cases. Your text stays, and the bottom left says why:
 
 - The task started running after your first change. The agent may now be working on it.
-- The task or epic changed after the draft began, so saving would overwrite it. Choose **Cancel** and then **Discard and close**, and open the preview again to see the latest content.
+- The task or epic changed while the preview was open, so saving would overwrite the newer content. Choose **Cancel** and then **Discard and close**, and open the preview again to see the latest content.
 
 A running task opens read-only, with a **Running** chip and the reason **Read-only while an agent is working.** Its fields and image attachments are disabled. When the agent stops, the preview becomes editable again. If a save fails because of a connection error, the dialog keeps your text and you can try again.
 
