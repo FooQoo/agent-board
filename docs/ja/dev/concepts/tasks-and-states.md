@@ -49,7 +49,7 @@
 | `id` | EPIC-ID。`[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`に合う1〜64文字。小文字の入力は大文字にする。変更不可。 |
 | `name` | 前後の空白を除いて1〜100文字、1行。 |
 | `color` | `#RRGGBB`（大文字）。省略時は作成時に乱数で決める。 |
-| `isDraft` | 準備中のエピックの印。所属タスクには影響しない。 |
+| `isDraft` | 人がブラウザで編集しているエピックの印。CLIの`epic edit`と`--priority`は`epic_is_draft`で拒否する。所属タスクと`epic attachment`には影響しない。 |
 | `document`・`body` | frontmatterを含む`EPIC.md`の全文（0〜100,000文字）と、frontmatterを除いた本文。 |
 | `priority`・`priorityError` | 所属タスクIDの作業順と、その読み込みに失敗したかどうか。 |
 
@@ -63,9 +63,9 @@
 
 下書きは、人がまだ書いているタスクです。
 
-- 人がWeb画面で`isDraft`を切り替えます。下書きにできるのはIdleかPendingのタスクだけで、Runningは拒否します。実際に変わると履歴を追加しますが、`updatedAt`は変えません。
-- CLIの`edit`・`mv`・`state`・`history add`は、書き込みロックの中で`isDraft`を確かめ、`task_is_draft`で失敗します。読み取り・`add`・人によるWebの操作は影響を受けません。時間の経過によって下書きが自動で確定されることはありません。
-- Webの編集は下書きのタスクだけを受け付けます。`finalize`を指定すると、本文・タイトル・`isDraft=false`・履歴を一組で確定します。
+- プレビューは、最初の実際の変更で下書きに入ります。タスクは`PUT /tasks/{id}/draft`で`isDraft: true`を送り、エピックは`PATCH /epics/{id}`で`isDraft: true`を送ります。下書きにできるのはIdleかPendingのタスクだけで、Runningは`invalid_state_for_draft`で拒否します。実際に変わると履歴を追加しますが、`updatedAt`は変えません。エピックの下書きの出入りも`updatedAt`を変えません。
+- CLIの`edit`・`mv`・`state`・`history add`は、書き込みロックの中で`isDraft`を確かめ、`task_is_draft`で失敗します。CLIの`epic edit`と`epic edit --priority`も同じように`isDraft`を確かめ、`epic_is_draft`で失敗します。読み取り・`add`・`epic attachment`・所属の変更は影響を受けません。エピックへのWebの`PATCH`は下書きを拒否しません。時間の経過によって下書きが自動で確定されることはありません。
+- Webの編集は下書きのタスクだけを受け付けます。`finalize`を指定すると、本文・タイトル・`isDraft=false`・履歴を一組で確定します。破棄は、`isDraft: false`と`discard: true`を送ります。履歴には`Discarded draft changes.`が残ります。エピックには履歴がないので、破棄は`PATCH /epics/{id}`で`isDraft: false`を送るだけです。
 - 下書きの`TASK.md`の直接編集は製品では止められず、READMEとエージェントのスキルで編集しないよう伝えます。
 
 ## アーカイブ

@@ -19,7 +19,7 @@ const extra = {
     editorChecks: ['The steps are complete', 'A teammate followed the guide', 'The guide is published'],
     archived: ['Set up the repository', 'Choose the color palette', 'Write the first draft'],
     archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
-    makeDraft: 'Make draft', edit: 'Edit task', settings: 'Settings', cancel: 'Cancel',
+    preview: 'Preview', close: 'Close', settings: 'Settings', cancel: 'Cancel',
     addCard: 'Add task', promptLabel: 'What should be done?', epicLabel: 'Epic (optional)',
     attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
     discard: 'Discard and close',
@@ -36,7 +36,7 @@ const extra = {
     editorChecks: ['手順がそろっている', 'メンバーがガイドどおりに進められた', 'ガイドを公開している'],
     archived: ['リポジトリを準備する', '配色を決める', '最初の下書きを書く'],
     archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
-    makeDraft: '下書きにする', edit: 'タスクを編集', settings: '設定', cancel: 'キャンセル',
+    preview: 'プレビュー', close: '閉じる', settings: '設定', cancel: 'キャンセル',
     addCard: 'タスク追加', promptLabel: '何をしてほしいですか？', epicLabel: 'エピック（任意）',
     attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
     discard: '破棄して閉じる',
@@ -166,10 +166,10 @@ try {
       await page.keyboard.press('Escape');
       await expect(settings).toHaveCount(0);
 
-      // editor: a draft card with a task list and a Mermaid diagram, conditions panel expanded.
+      // editor: the preview of a card with a task list and a Mermaid diagram, conditions panel expanded.
+      // Opening the preview changes nothing: the card stays as it is and the dialog offers Close, not Cancel.
       await task(4).click();
-      await page.getByRole('button', { name: more.makeDraft, exact: true }).click();
-      await page.getByRole('button', { name: more.edit, exact: true }).click();
+      await page.getByRole('button', { name: more.preview, exact: true }).click();
       const editor = page.locator('.editor-dialog');
       await expect(editor.locator('.ProseMirror')).toBeVisible();
       await editor.locator('.conditions-dock__head').click();
@@ -177,7 +177,7 @@ try {
       await expect(editor.locator('.ProseMirror h2').first()).toBeVisible();
       await expect(editor.locator('.rich-mermaid svg').first()).toBeVisible();
       await shot('editor', page, page);
-      await editor.getByRole('button', { name: more.cancel, exact: true }).click();
+      await editor.getByRole('button', { name: more.close, exact: true }).first().click();
       await expect(editor).toHaveCount(0);
 
       // archive: archive the completed cards, then open the archive list.

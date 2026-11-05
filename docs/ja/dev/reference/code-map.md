@@ -100,6 +100,9 @@
 - `web/src/app/onboarding/`: リクエスト、制御、層。
 - `web/src/features/onboarding/ui/`: 表示部品。
 - `e2e/tests/onboarding.spec.ts`: E2Eテスト。
+- `web/src/app/dialogs/TaskPreviewDialog.tsx`: タスクのプレビューとサーバーの接続。下書きの出入り、カードの読み直し、稼働中とアーカイブの状態を扱います。
+- `web/src/app/model/useStreamSubscriptions.ts`: プレビューとドキュメントのダイアログが追従する変更通知の購読。
+- `e2e/tests/preview-modal.spec.ts`: プレビューのE2Eテスト。
 
 ## 採用技術
 

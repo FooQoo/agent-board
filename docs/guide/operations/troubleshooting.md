@@ -16,12 +16,14 @@ Find what you see, read the cause, and do what the last column says. The command
 | The board says it is disconnected | The connection to the local server dropped. | Wait a moment; the page reconnects by itself and reloads the board. If the server stopped, start it again. |
 | A task stays **Running** after the agent stopped | Running is what the agent last reported; it is not a live check. | Move the task, or ask the agent to report a new state. |
 | A question disappeared | Moving the task to another column withdraws an open question, or the agent asked a new one. | Open the task's History tab, and answer the current question if there is one. |
+| A task or epic stays **Draft** after I closed its preview | The draft is kept until someone saves or discards it. A window closed with unsaved changes leaves it behind. | Open the task's or epic's details and choose **Finalize**, or open the preview again and save or discard. |
 
 ## An agent cannot do something
 
 | Error | Cause | What to do |
 | --- | --- | --- |
 | `task_is_draft` | The task is a draft; agents may not change it. | Finalize the draft in the browser. The agent can work on other tasks meanwhile. |
+| `epic_is_draft` | The epic is a draft; agents may not change its details or task order. | Wait for the person to save or discard the epic's draft, or ask them to finalize it. Attachments and task membership still work. |
 | `task_is_done` | The task is Done; agents may not change it. | Reopen the task in the browser if more work is needed. |
 | `acceptance_unmet` | The agent tried to move a task to Done while a condition is unmet. | Have the agent verify the conditions and mark them done; the task then finishes by itself. |
 | `request_changed` | The question was already answered, withdrawn, or replaced. | Read the task again and answer the current question. |

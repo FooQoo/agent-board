@@ -11,6 +11,7 @@
 | `task_not_found` | タスクIDがプロジェクトにない。 | 3 | 404 |
 | `task_archived` | アーカイブ済みのタスクへの書き込み。 | 1 | 409 |
 | `task_not_archived` | アーカイブされていないタスクの削除や復元。 | 1 | 409 |
+| `epic_is_draft` | CLIの`epic edit`、または`epic edit --priority`が下書きのエピックを対象にした。 | 1 | 409 |
 | `task_is_draft` | 下書きへのAIの書き込み（`edit`・`mv`・`state`・`history add`）。 | 1 | 409 |
 | `task_not_draft` | 下書きでないタスクへのWebの編集。 | 1 | 409 |
 | `task_is_done` | DoneのタスクへのAIの変更。 | 1 | 409 |

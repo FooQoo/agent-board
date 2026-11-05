@@ -88,6 +88,8 @@ agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 
 `--document`と`--document-file`は同時に指定できません。どちらも100,000文字まで受け付けます。
 
+人がブラウザでエピックを下書きにしている間は、`--priority`を含む`epic edit`が`epic_is_draft`（終了コード1）で失敗し、何も変わりません。保存か破棄が済むまで待ってください。`epic attachment`とタスクの所属の変更は、引き続き使えます。
+
 ## 一覧を絞り込む
 
 ```sh
