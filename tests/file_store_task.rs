@@ -275,7 +275,9 @@ fn an_edit_that_changes_nothing_writes_nothing() {
 fn a_draft_refuses_agent_edits_and_its_files_stay_unchanged() {
     let fx = fixture();
     fx.create("Draft");
-    fx.store.set_draft(&fx.project, 1, true, now()).unwrap();
+    fx.store
+        .set_draft(&fx.project, 1, true, false, now())
+        .unwrap();
     let task = fx.task_bytes(1);
     let body = fx.body_bytes(1);
 
@@ -297,7 +299,10 @@ fn setting_the_draft_flag_adds_a_draft_event_and_keeps_the_update_time() {
     fx.create("Draft");
     let updated = fx.raw_task(1)["updatedAt"].clone();
 
-    let changed = fx.store.set_draft(&fx.project, 1, true, later()).unwrap();
+    let changed = fx
+        .store
+        .set_draft(&fx.project, 1, true, false, later())
+        .unwrap();
     assert!(changed.changed);
     assert!(changed.value.is_draft);
     let raw = fx.raw_task(1);
@@ -305,15 +310,49 @@ fn setting_the_draft_flag_adds_a_draft_event_and_keeps_the_update_time() {
     assert_eq!(raw["updatedAt"], updated);
     assert_eq!(fx.history(1)[1]["reason"], "Marked task as draft.");
 
-    let same = fx.store.set_draft(&fx.project, 1, true, later()).unwrap();
+    let same = fx
+        .store
+        .set_draft(&fx.project, 1, true, false, later())
+        .unwrap();
     assert!(!same.changed);
+}
+
+#[test]
+fn discarding_a_draft_records_a_discard_event_and_refuses_it_with_the_draft_flag_on() {
+    let fx = fixture();
+    fx.create("Draft");
+    fx.store
+        .set_draft(&fx.project, 1, true, false, now())
+        .unwrap();
+
+    let err = fx
+        .store
+        .set_draft(&fx.project, 1, true, true, later())
+        .unwrap_err();
+    assert!(
+        matches!(err, AgboardError::InvalidArgument { .. }),
+        "{err:?}"
+    );
+
+    let left = fx
+        .store
+        .set_draft(&fx.project, 1, false, true, later())
+        .unwrap();
+    assert!(left.changed);
+    assert!(!left.value.is_draft);
+    assert_eq!(
+        fx.history(1).as_array().unwrap().last().unwrap()["reason"],
+        "Discarded draft changes."
+    );
 }
 
 #[test]
 fn finalizing_a_draft_saves_its_body_and_clears_the_flag() {
     let fx = fixture();
     fx.create("Draft");
-    fx.store.set_draft(&fx.project, 1, true, now()).unwrap();
+    fx.store
+        .set_draft(&fx.project, 1, true, false, now())
+        .unwrap();
 
     let Changed { value, changed } = fx
         .store

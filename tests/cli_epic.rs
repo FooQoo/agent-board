@@ -314,6 +314,57 @@ fn an_image_added_from_the_cli_returns_its_asset_path_and_can_be_read_back() {
 }
 
 #[test]
+fn a_draft_epic_refuses_cli_edit_but_reads_and_member_work_still_work() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    epic_add(home.path(), "FILE-SHARE", "File share", Some("#111111"));
+    let store = FileStore::open(&home.path().join("shared"));
+    let project = project_id(home.path());
+    let epic = agent_board::file_store::validate::EpicId::normalize("FILE-SHARE").unwrap();
+    store
+        .update_epic(
+            &project,
+            &epic,
+            agent_board::file_store::model::EpicUpdate {
+                is_draft: Some(true),
+                ..Default::default()
+            },
+            chrono::Utc::now(),
+        )
+        .unwrap();
+
+    for args in [
+        vec!["epic", "edit", "FILE-SHARE", "--name", "Renamed"],
+        vec!["epic", "edit", "FILE-SHARE", "--color", "#222222"],
+        vec![
+            "epic",
+            "edit",
+            "FILE-SHARE",
+            "--document",
+            "---\n---\n\nx\n",
+        ],
+        vec!["epic", "edit", "FILE-SHARE", "--priority", "1"],
+    ] {
+        let mut full = vec!["--project", "Demo"];
+        full.extend(args);
+        let (code, code_name) = json_error(home.path(), &full);
+        assert_eq!((code, code_name.as_str()), (1, "epic_is_draft"), "{full:?}");
+    }
+    let shown = json_ok(
+        home.path(),
+        &["--project", "Demo", "epic", "show", "FILE-SHARE", "--json"],
+    );
+    assert_eq!(shown["epic"]["name"], "File share");
+
+    // A task of the draft epic keeps working.
+    let (code, _, err) = agboard(
+        home.path(),
+        &["--project", "Demo", "edit", "1", "--epic", "FILE-SHARE"],
+    );
+    assert_eq!(code, 0, "{err}");
+}
+
+#[test]
 fn a_draft_task_refuses_cli_image_and_epic_changes_but_reads_still_work() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
@@ -324,7 +375,7 @@ fn a_draft_task_refuses_cli_image_and_epic_changes_but_reads_still_work() {
     // A person marks the task as a draft through the Web path (the store API).
     let store = FileStore::open(&home.path().join("shared"));
     store
-        .set_draft(&project_id(home.path()), 1, true, chrono::Utc::now())
+        .set_draft(&project_id(home.path()), 1, true, false, chrono::Utc::now())
         .unwrap();
 
     let (code, code_name) = json_error(

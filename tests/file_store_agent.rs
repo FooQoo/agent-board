@@ -287,7 +287,9 @@ fn a_move_to_the_same_lane_changes_nothing() {
 fn a_draft_task_refuses_agent_moves_and_accepts_user_moves() {
     let fx = fixture();
     let id = fx.ai_task("draft");
-    fx.store.set_draft(&fx.project, id, true, now()).unwrap();
+    fx.store
+        .set_draft(&fx.project, id, true, false, now())
+        .unwrap();
 
     let err = fx
         .store

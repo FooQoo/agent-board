@@ -527,7 +527,9 @@ fn archived_and_draft_tasks_refuse_image_changes() {
     assert!(matches!(err, AgboardError::TaskArchived { .. }), "{err:?}");
 
     let draft = f.task();
-    f.store.set_draft(&f.project, draft, true, at(5)).unwrap();
+    f.store
+        .set_draft(&f.project, draft, true, false, at(5))
+        .unwrap();
     let err = f
         .store
         .add_attachment(

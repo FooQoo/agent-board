@@ -63,4 +63,7 @@ pub struct EpicUpdate {
     pub color: Option<String>,
     pub is_draft: Option<bool>,
     pub document: Option<String>,
+    /// Refuse the update with `epic_is_draft` while the epic is a draft. The
+    /// check runs under the project lock, so a finalize cannot slip past it.
+    pub refuse_if_draft: bool,
 }

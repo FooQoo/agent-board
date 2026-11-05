@@ -15,13 +15,22 @@ use super::view;
 impl FileStore {
     /// Turn the draft flag on or off. Only an idle or pending task can become a
     /// draft. The update time does not move; the history records the change.
+    /// `discard` marks leaving the draft as a discard of its changes instead of
+    /// a confirmation; it only applies when the flag is turned off.
     pub fn set_draft(
         &self,
         project: &ProjectId,
         id: i64,
         is_draft: bool,
+        discard: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
+        if is_draft && discard {
+            return Err(AgboardError::InvalidArgument {
+                message: "discard cannot be combined with isDraft: true.".to_string(),
+                command: None,
+            });
+        }
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -44,6 +53,7 @@ impl FileStore {
         task.history.push(draft_event(
             &task,
             is_draft,
+            discard,
             stamp(now),
             self.history_language(project, &task)?,
         )?);
@@ -59,6 +69,7 @@ impl FileStore {
 pub(super) fn draft_event(
     task: &TaskFile,
     is_draft: bool,
+    discard: bool,
     at: DateTime<Utc>,
     language: HistoryLanguage,
 ) -> Result<HistoryRecord, AgboardError> {
@@ -67,6 +78,8 @@ pub(super) fn draft_event(
         kind: HistoryKind::Draft,
         reason: Some(if is_draft {
             language.text("Marked task as draft.", "タスクを下書きにしました。")
+        } else if discard {
+            language.text("Discarded draft changes.", "下書きの変更を破棄しました。")
         } else {
             language.text("Finalized task draft.", "下書きを確定しました。")
         }),

@@ -45,6 +45,9 @@ impl AgboardError {
             AgboardError::TaskIsDraft { .. } => {
                 "Wait for the user to finalize it, then try again.".into()
             }
+            AgboardError::EpicIsDraft { .. } => {
+                "Wait for the user to finalize it, then try again.".into()
+            }
             AgboardError::TaskIsDone { .. } => {
                 "A person must move the task out of Done before you can change it.".into()
             }

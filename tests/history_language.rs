@@ -125,7 +125,7 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
             .contains("選択: 進める")
     );
     let draft = store
-        .set_draft(&project, id, true, Utc::now())
+        .set_draft(&project, id, true, false, Utc::now())
         .unwrap()
         .value;
     assert_eq!(
@@ -133,12 +133,23 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
         "タスクを下書きにしました。"
     );
     let finalized = store
-        .set_draft(&project, id, false, Utc::now())
+        .set_draft(&project, id, false, false, Utc::now())
         .unwrap()
         .value;
     assert_eq!(
         finalized.history.last().unwrap().reason,
         "下書きを確定しました。"
+    );
+    store
+        .set_draft(&project, id, true, false, Utc::now())
+        .unwrap();
+    let discarded = store
+        .set_draft(&project, id, false, true, Utc::now())
+        .unwrap()
+        .value;
+    assert_eq!(
+        discarded.history.last().unwrap().reason,
+        "下書きの変更を破棄しました。"
     );
     use agent_board::file_store::model::NewEpic;
     use agent_board::file_store::validate::EpicId;

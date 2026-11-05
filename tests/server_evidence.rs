@@ -185,6 +185,7 @@ fn a_person_may_add_images_to_a_draft_but_the_cli_may_not() {
             &pid.parse::<ProjectId>().unwrap(),
             1,
             true,
+            false,
             chrono::Utc::now(),
         )
         .unwrap();

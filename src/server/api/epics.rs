@@ -229,11 +229,12 @@ pub(super) async fn update_epic(
             color: input.color,
             is_draft: input.is_draft,
             document,
+            refuse_if_draft: false,
         };
         let now = chrono::Utc::now();
         let mut result = store.update_epic(&project_id, &epic_id, update, now)?;
         if let Some(order) = priority {
-            let ordered = store.set_epic_priority(&project_id, &epic_id, &order, now)?;
+            let ordered = store.set_epic_priority(&project_id, &epic_id, &order, false, now)?;
             result = Changed {
                 value: ordered.value,
                 changed: result.changed || ordered.changed,

@@ -35,6 +35,9 @@ impl AgboardError {
             AgboardError::TaskIsDraft { id } => {
                 format!("task #{id} is a draft and read-only for agents.")
             }
+            AgboardError::EpicIsDraft { id } => {
+                format!("epic {id} is a draft and read-only for the CLI.")
+            }
             AgboardError::TaskIsDone { id } => {
                 format!("task #{id} is done and read-only for agents.")
             }

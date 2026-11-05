@@ -364,7 +364,7 @@ fn an_agent_cannot_change_the_epic_of_an_archived_or_draft_task_but_a_human_can(
 
     let draft = f.task("Draft");
     f.store
-        .set_draft(&f.project, draft.id, true, at(5))
+        .set_draft(&f.project, draft.id, true, false, at(5))
         .unwrap();
     let err = f
         .store
@@ -376,6 +376,93 @@ fn an_agent_cannot_change_the_epic_of_an_archived_or_draft_task_but_a_human_can(
         .set_task_epic(&f.project, draft.id, Some(&alpha), Actor::Human, at(6))
         .unwrap();
     assert_eq!(human.value.epic_id.as_deref(), Some("ALPHA"));
+}
+
+#[test]
+fn a_draft_epic_is_refused_when_asked_and_a_draft_toggle_keeps_the_update_time() {
+    let f = fixture();
+    f.new_epic("FILE-SHARE").unwrap();
+    let id = epic_id("FILE-SHARE");
+    let created = f.store.epic(&f.project, &id).unwrap().updated_at;
+
+    // Turning the flag on or off alone does not move the update time.
+    let on = f
+        .store
+        .update_epic(
+            &f.project,
+            &id,
+            EpicUpdate {
+                is_draft: Some(true),
+                ..EpicUpdate::default()
+            },
+            at(20),
+        )
+        .unwrap();
+    assert!(on.changed);
+    assert!(on.value.is_draft);
+    assert_eq!(on.value.updated_at, created);
+
+    // With the refusal asked for, every kind of change is refused and nothing is written.
+    let json_before = bytes_of(f.epic_dir("FILE-SHARE").join("epic.json"));
+    let document_before = bytes_of(f.epic_dir("FILE-SHARE").join("EPIC.md"));
+    for update in [
+        EpicUpdate {
+            name: Some("Other".into()),
+            ..EpicUpdate::default()
+        },
+        EpicUpdate {
+            color: Some("#00ff00".into()),
+            ..EpicUpdate::default()
+        },
+        EpicUpdate {
+            document: Some(valid_document("Other goal")),
+            ..EpicUpdate::default()
+        },
+    ] {
+        let err = f
+            .store
+            .update_epic(
+                &f.project,
+                &id,
+                EpicUpdate {
+                    refuse_if_draft: true,
+                    ..update
+                },
+                at(21),
+            )
+            .unwrap_err();
+        assert!(matches!(err, AgboardError::EpicIsDraft { .. }), "{err:?}");
+    }
+    let err = f
+        .store
+        .set_epic_priority(&f.project, &id, &[], true, at(21))
+        .unwrap_err();
+    assert!(matches!(err, AgboardError::EpicIsDraft { .. }), "{err:?}");
+    assert_eq!(
+        bytes_of(f.epic_dir("FILE-SHARE").join("epic.json")),
+        json_before
+    );
+    assert_eq!(
+        bytes_of(f.epic_dir("FILE-SHARE").join("EPIC.md")),
+        document_before
+    );
+
+    // The web path does not ask for the refusal, and its content change moves the time.
+    let renamed = f
+        .store
+        .update_epic(
+            &f.project,
+            &id,
+            EpicUpdate {
+                name: Some("Web name".into()),
+                is_draft: Some(false),
+                ..EpicUpdate::default()
+            },
+            at(22),
+        )
+        .unwrap();
+    assert!(!renamed.value.is_draft);
+    assert_eq!(renamed.value.updated_at, at(22));
 }
 
 #[test]
@@ -394,6 +481,7 @@ fn update_changes_name_color_draft_and_document_and_refuses_a_broken_document() 
                 color: Some("#ff0000".into()),
                 is_draft: Some(true),
                 document: Some(valid_document("Updated goal")),
+                refuse_if_draft: false,
             },
             at(5),
         )

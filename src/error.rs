@@ -77,6 +77,10 @@ pub enum AgboardError {
     TaskIsDraft {
         id: i64,
     },
+    /// The epic is a draft: the CLI cannot change it.
+    EpicIsDraft {
+        id: String,
+    },
     /// An agent tried to change a completed task.
     TaskIsDone {
         id: i64,

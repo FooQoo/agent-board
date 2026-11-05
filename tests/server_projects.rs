@@ -1251,7 +1251,9 @@ fn serving_needs_no_project_and_stopping_removes_serve_json() {
 // ---------------------------------------------------------------- drafts and editing
 
 fn draft_task(home: &Path, project: &ProjectId, id: i64) {
-    store(home).set_draft(project, id, true, t(9)).unwrap();
+    store(home)
+        .set_draft(project, id, true, false, t(9))
+        .unwrap();
 }
 
 fn task_json(home: &Path, project: &ProjectId, id: i64) -> Value {
@@ -1530,6 +1532,30 @@ fn put_draft_toggles_idle_tasks_and_records_history_with_markdown_time() {
         Some(r#"{"isDraft":true}"#),
     );
     assert_eq!(reply.status, 404);
+}
+
+#[test]
+fn put_draft_discard_records_a_discard_and_refuses_it_with_the_draft_flag_on() {
+    let (home, a, _) = two_projects();
+    let server = Running::start(home.path());
+    let path = format!("/api/projects/{a}/tasks/1/draft");
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+
+    let before = snapshot_json(home.path(), &a);
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true,"discard":true}"#));
+    assert_eq!(reply.status, 422, "{}", reply.body);
+    assert_eq!(reply.code(), "invalid_argument");
+    assert_eq!(snapshot_json(home.path(), &a), before);
+
+    let reply = server.write("PUT", &path, Some(r#"{"isDraft":false,"discard":true}"#));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(reply.json()["task"]["isDraft"], false);
+    let history = reply.json()["task"]["history"].clone();
+    assert_eq!(
+        history.as_array().unwrap().last().unwrap()["reason"],
+        "下書きの変更を破棄しました。"
+    );
 }
 
 #[test]

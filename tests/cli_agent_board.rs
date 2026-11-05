@@ -212,7 +212,7 @@ fn make_draft(home: &std::path::Path, project: &str, id: i64) {
     let files = agent_board::file_store::FileStore::open(&home.join("shared"));
     let meta = files.project_by_name(project).unwrap();
     files
-        .set_draft(&meta.id, id, true, chrono::Utc::now())
+        .set_draft(&meta.id, id, true, false, chrono::Utc::now())
         .unwrap();
 }
 

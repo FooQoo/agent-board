@@ -546,7 +546,7 @@ fn projection_an_epic_order_is_a_summary_change_and_leaves_the_document_version(
     assert!(!before.fields.priority_error);
 
     fx.store
-        .set_epic_priority(&fx.project, &alpha, &[2, 1], at(5))
+        .set_epic_priority(&fx.project, &alpha, &[2, 1], false, at(5))
         .unwrap();
     let sets = fx.reload();
     let after = fx.projection().epics[0].clone();
