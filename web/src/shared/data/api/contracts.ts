@@ -137,7 +137,11 @@ export type DetailEvent =
 // ---- SSE `changed`
 
 export type ChangeResource = 'task' | 'epic' | 'project';
-export type Facet = 'summary' | 'document' | 'history' | 'deleted';
+/**
+ * `request`: a task's pending decision request was asked, answered, or withdrawn. It always comes
+ * with `summary` and is applied even while a panel holds the other updates back.
+ */
+export type Facet = 'summary' | 'request' | 'document' | 'history' | 'deleted';
 
 export interface Change {
   resource: ChangeResource;

@@ -143,6 +143,13 @@ describe('when the cache cannot be trusted', () => {
     expect(state()).toBe('stale');
   });
 
+  it('knows request for a task only', () => {
+    const asked = invalidator.handle(event([change('task', 1, 'summary', 'request')], 1));
+    expect(asked).toMatchObject({ reset: null, summary: true });
+    const onEpic = change('epic', 'E', 'summary', 'request');
+    expect(invalidator.handle(event([onEpic], 2)).reset).toBe('unknown-event');
+  });
+
   it('forgets the sequence so a reconnect does not look like a gap', () => {
     invalidator.handle(event([], 7));
     invalidator.forgetSequence();

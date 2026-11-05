@@ -15,7 +15,7 @@ const STATUSES = ['todo', 'doing', 'done'] as const;
 const RUN_STATES = ['idle', 'running', 'pending'] as const;
 const ASSIGNEES = ['ai', 'human'] as const;
 const RESOURCES = ['task', 'epic', 'project'] as const;
-const FACETS = ['summary', 'document', 'history', 'deleted'] as const;
+const FACETS = ['summary', 'request', 'document', 'history', 'deleted'] as const;
 
 const TASK_FIELDS = [
   'id',
@@ -146,6 +146,9 @@ function parseChange(value: unknown, path: string): Change {
   if (new Set(facets).size !== facets.length) fail(`${path}.facets`, 'no repeated facet');
   if (resource === 'project' && facets.some((f) => f !== 'summary' && f !== 'deleted')) {
     fail(`${path}.facets`, 'only summary or deleted for a project');
+  }
+  if (facets.includes('request') && (resource !== 'task' || !facets.includes('summary'))) {
+    fail(`${path}.facets`, 'request only for a task, with summary');
   }
   return { resource, id, facets };
 }

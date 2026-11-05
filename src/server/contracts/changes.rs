@@ -40,11 +40,14 @@ pub enum ChangeId {
 }
 
 /// What changed. `summary`: title, status, position, epic, pending question, acceptance counts.
-/// `document`: the body and the acceptance text. `history`: the history. `deleted`: removal.
+/// `request`: a task's pending decision request was asked, answered, or withdrawn (always with
+/// `summary`). `document`: the body and the acceptance text. `history`: the history.
+/// `deleted`: removal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Facet {
     Summary,
+    Request,
     Document,
     History,
     Deleted,
@@ -52,8 +55,8 @@ pub enum Facet {
 
 impl Changed {
     /// A defect in the payload's meaning, or `None` when it is well formed: the ID type matches
-    /// the resource, no facet list is empty or repeated, and a project has only `summary` or
-    /// `deleted`.
+    /// the resource, no facet list is empty or repeated, a project has only `summary` or
+    /// `deleted`, and only a task has `request`, never without `summary`.
     pub fn problem(&self) -> Option<String> {
         for change in &self.changes {
             let id_ok = matches!(
@@ -77,6 +80,14 @@ impl Changed {
                 let project_facet = matches!(facet, Facet::Summary | Facet::Deleted);
                 if change.resource == ChangeResource::Project && !project_facet {
                     return Some("a project change has only summary or deleted".into());
+                }
+                if *facet == Facet::Request {
+                    if change.resource != ChangeResource::Task {
+                        return Some("only a task change has request".into());
+                    }
+                    if !change.facets.contains(&Facet::Summary) {
+                        return Some("request comes with summary".into());
+                    }
                 }
             }
         }

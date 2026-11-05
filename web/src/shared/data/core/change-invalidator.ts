@@ -21,9 +21,14 @@ const NONE = (): Invalidation => ({ reset: null, summary: false, stale: [], remo
 const FACETS: readonly Facet[] = ['summary', 'document', 'history', 'deleted'];
 const FOR_RESOURCE: Record<string, readonly Facet[]> = {
   project: ['summary', 'deleted'],
-  task: FACETS,
+  task: [...FACETS, 'request'],
   epic: FACETS,
 };
+
+/** The event asks or settles a decision: a person waiting for it should see it at once. */
+export function changesRequest(event: ChangedEvent): boolean {
+  return event.changes.some((change) => change.facets.includes('request'));
+}
 
 export interface InvalidatorOptions {
   /** Events of other projects are ignored. */

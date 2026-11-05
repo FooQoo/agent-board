@@ -26,6 +26,9 @@ pub enum ResourceId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Facet {
     Summary,
+    /// The task's pending decision request was asked, answered, or withdrawn: its ID changed.
+    /// Always sent together with `Summary`, which carries the request.
+    Request,
     Document,
     History,
     Deleted,

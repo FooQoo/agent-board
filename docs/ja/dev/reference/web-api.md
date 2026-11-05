@@ -79,7 +79,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 
 ```json
 {"instanceId": "inst-5f3a", "seq": 42, "projectId": "…", "changes": [
-  {"resource": "task", "id": 302, "facets": ["summary", "history"]},
+  {"resource": "task", "id": 302, "facets": ["summary", "request", "history"]},
   {"resource": "epic", "id": "EPIC-1", "facets": ["document"]},
   {"resource": "project", "id": "…", "facets": ["deleted"]}
 ]}
@@ -92,7 +92,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `projectId` | 変更が属するプロジェクト。モニターのストリームは、要求したプロジェクトの変更だけを送る。PCのストリームは全プロジェクトを送り、画面は現在のプロジェクト以外を無視する。 |
 | `changes[].resource` | `task`、`epic`、`project`（プロジェクト一覧の変化: 作成・名前の変更・削除）。 |
 | `changes[].id` | タスクは整数、エピックとプロジェクトは文字列。 |
-| `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・Pendingの質問・受入条件の件数。`document`は本文と受入条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
+| `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・Pendingの質問・受入条件の件数。`request`は判断の依頼が出された・回答された・取り下げられたこと（タスクだけで、必ず`summary`と一緒）。`document`は本文と受入条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
 
 `seq`の欠番、新しい`instanceId`、未知のイベントを見たクライアントは、Summaryと関係するキャッシュ済みのDetailを破棄します。`ready`と`preferences`は変わりません。
 

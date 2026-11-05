@@ -109,6 +109,7 @@ fn contract_change(change: &projection::ResourceChange) -> Change {
             .iter()
             .map(|facet| match facet {
                 projection::Facet::Summary => Facet::Summary,
+                projection::Facet::Request => Facet::Request,
                 projection::Facet::Document => Facet::Document,
                 projection::Facet::History => Facet::History,
                 projection::Facet::Deleted => Facet::Deleted,

@@ -88,6 +88,13 @@ fn task_facets(before: &TaskState<'_>, after: &TaskState<'_>) -> Option<Vec<Face
     match (before, after) {
         (TaskState::Absent, TaskState::Absent) => None,
         (_, TaskState::Absent) => Some(vec![Facet::Deleted]),
+        (TaskState::Absent, TaskState::Read(b)) => {
+            let mut facets = ALL_TASK_FACETS.to_vec();
+            if b.fields.pending_request_id.is_some() {
+                facets.insert(1, Facet::Request);
+            }
+            Some(facets)
+        }
         (TaskState::Absent, _) => Some(ALL_TASK_FACETS.to_vec()),
         (TaskState::Broken(a), TaskState::Broken(b)) => (a != b).then(|| ALL_TASK_FACETS.to_vec()),
         (TaskState::Broken(_), _) | (_, TaskState::Broken(_)) => Some(ALL_TASK_FACETS.to_vec()),
@@ -95,6 +102,9 @@ fn task_facets(before: &TaskState<'_>, after: &TaskState<'_>) -> Option<Vec<Face
             let mut facets = Vec::new();
             if a.summary_hash != b.summary_hash {
                 facets.push(Facet::Summary);
+                if a.fields.pending_request_id != b.fields.pending_request_id {
+                    facets.push(Facet::Request);
+                }
             }
             if a.document_version != b.document_version {
                 facets.push(Facet::Document);
@@ -105,7 +115,11 @@ fn task_facets(before: &TaskState<'_>, after: &TaskState<'_>) -> Option<Vec<Face
             if facets.is_empty() {
                 None
             } else if a.damaged || b.damaged {
-                Some(ALL_TASK_FACETS.to_vec())
+                let mut all = ALL_TASK_FACETS.to_vec();
+                if facets.contains(&Facet::Request) {
+                    all.insert(1, Facet::Request);
+                }
+                Some(all)
             } else {
                 Some(facets)
             }

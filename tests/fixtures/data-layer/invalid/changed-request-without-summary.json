@@ -1,0 +1,6 @@
+{
+  "instanceId": "inst-5f3a",
+  "seq": 1,
+  "projectId": "0123456789abcdef0123456789abcdef",
+  "changes": [{ "resource": "task", "id": 302, "facets": ["request", "history"] }]
+}

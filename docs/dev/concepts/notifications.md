@@ -43,11 +43,12 @@ flowchart LR
 | Facet | Meaning |
 | --- | --- |
 | `summary` | Title, status, position, epic, pending question, and acceptance counts. |
+| `request` | A task's decision request was asked, answered, or withdrawn: its request ID changed. It always comes with `summary`, and only a task has it. |
 | `document` | The body and the acceptance condition text. |
 | `history` | The history. |
 | `deleted` | The resource is gone. A project has only `summary` or `deleted`. |
 
-Moving a task to the archive, or restoring it, is a `summary` change. A file that cannot be parsed changes every facet of its resource.
+Moving a task to the archive, or restoring it, is a `summary` change. A file that cannot be parsed changes `summary`, `document`, and `history` of its resource; `request` is added only when the request ID that can be read changed.
 
 The `seq` grows by one for each `changed` within one `instanceId`. The `instanceId` is new at every server start, so a client can tell that `seq` began again. The monitor's stream numbers its own events, so changes to other projects leave no gap in its `seq`.
 

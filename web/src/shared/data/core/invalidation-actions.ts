@@ -29,10 +29,12 @@ export function resetCache(host: SchedulerHost, reason: ResetReason): void {
   for (const projectId of host.watched()) void host.loadSummary(projectId, { immediate: false });
 }
 
+/** `immediate` fetches at once, past the gate, as for a decision request being asked or answered. */
 export function applyInvalidation(
   host: SchedulerHost,
   projectId: ProjectId,
   inv: Invalidation,
+  immediate = false,
 ): void {
   if (host.disposed) return;
   for (const key of inv.removed) cancelDetail(host, key);
@@ -47,12 +49,12 @@ export function applyInvalidation(
         projectId: key.projectId,
         key,
         sections: [section],
-        immediate: false,
+        immediate,
         waiters: [],
       });
     }
   }
-  if (inv.summary) void host.loadSummary(projectId, { immediate: false });
+  if (inv.summary) void host.loadSummary(projectId, { immediate });
 }
 
 /** The resource is gone: drop its queued request and stop its fetch. */

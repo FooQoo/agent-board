@@ -1,0 +1,6 @@
+{
+  "instanceId": "inst-5f3a",
+  "seq": 1,
+  "projectId": "0123456789abcdef0123456789abcdef",
+  "changes": [{ "resource": "epic", "id": "EPIC-1", "facets": ["summary", "request"] }]
+}

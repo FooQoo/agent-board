@@ -79,7 +79,7 @@ The order is `start`, then for each requested section `section-start`, its items
 
 ```json
 {"instanceId": "inst-5f3a", "seq": 42, "projectId": "…", "changes": [
-  {"resource": "task", "id": 302, "facets": ["summary", "history"]},
+  {"resource": "task", "id": 302, "facets": ["summary", "request", "history"]},
   {"resource": "epic", "id": "EPIC-1", "facets": ["document"]},
   {"resource": "project", "id": "…", "facets": ["deleted"]}
 ]}
@@ -92,7 +92,7 @@ The order is `start`, then for each requested section `section-start`, its items
 | `projectId` | The project the changes belong to. The monitor stream carries only the requested project; the PC stream carries every project and the page ignores the others. |
 | `changes[].resource` | `task`, `epic`, or `project` (the project list changed: created, renamed, deleted). |
 | `changes[].id` | An integer for a task, a string for an epic and for a project. |
-| `changes[].facets` | A non-empty list without repeats. `summary`: title, status, position, epic, pending question, acceptance counts. `document`: the body and acceptance text. `history`: the history. `deleted`: the resource is gone. A project has only `summary` or `deleted`. Moving a task to the archive, or restoring it, is a `summary` change. |
+| `changes[].facets` | A non-empty list without repeats. `summary`: title, status, position, epic, pending question, acceptance counts. `request`: a decision request was asked, answered, or withdrawn; only for a task, always with `summary`. `document`: the body and acceptance text. `history`: the history. `deleted`: the resource is gone. A project has only `summary` or `deleted`. Moving a task to the archive, or restoring it, is a `summary` change. |
 
 A client that sees a gap in `seq`, a new `instanceId`, or an event it does not know drops the Summary and the related cached details. `ready` and `preferences` are unchanged.
 

@@ -4,7 +4,7 @@
 // becomes a whole version only through `ResourceStore.commit`, after `readDetail` accepted it.
 import type { ProjectId } from '../../api/contracts';
 import type { ChangedEvent, DetailSection } from '../api/contracts';
-import type { ChangeInvalidator } from './change-invalidator';
+import { type ChangeInvalidator, changesRequest } from './change-invalidator';
 import { runDetail } from './detail-fetch';
 import {
   applyInvalidation,
@@ -135,7 +135,10 @@ export class RefreshScheduler implements SchedulerHost {
 
   // ---- what the connection reports
 
-  /** A `changed` event. The sequence is checked now; what it changes waits for the gate. */
+  /**
+   * A `changed` event. The sequence is checked now; what it changes waits for the gate, except a
+   * decision request being asked or answered, which is fetched and shown at once.
+   */
   onChanged(event: ChangedEvent): void {
     const reason = this.invalidator.observe(event);
     for (const flight of this.flights.values()) {
@@ -146,8 +149,10 @@ export class RefreshScheduler implements SchedulerHost {
     if (reason) {
       this.gate.submit(() => resetCache(this, reason), { key: 'reset' });
     } else {
-      this.gate.submit(() =>
-        applyInvalidation(this, event.projectId, this.invalidator.apply(event)),
+      const urgent = changesRequest(event);
+      this.gate.submit(
+        () => applyInvalidation(this, event.projectId, this.invalidator.apply(event), urgent),
+        { immediate: urgent },
       );
     }
   }

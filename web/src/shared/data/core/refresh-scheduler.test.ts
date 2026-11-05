@@ -48,8 +48,10 @@ const seed = (id: number, document = 'd1', history = 'h1', text = 'old') => {
   store.commit(task(id), 'document', doc(text), document);
   store.commit(task(id), 'history', hist('a'), history);
 };
-const note = (id: number, ...facets: Array<'summary' | 'document' | 'history' | 'deleted'>) =>
-  scheduler.onChanged(changed(++seq, [{ resource: 'task', id, facets }]));
+const note = (
+  id: number,
+  ...facets: Array<'summary' | 'request' | 'document' | 'history' | 'deleted'>
+) => scheduler.onChanged(changed(++seq, [{ resource: 'task', id, facets }]));
 const sectionsOf = (i: number) => adapter.streamCalls[i]?.request.sections;
 const keyOf = (i: number): ResourceKey | undefined => adapter.streamCalls[i]?.request.resource;
 
@@ -481,6 +483,21 @@ describe('the presentation gate', () => {
     adapter.summaryCalls[0]?.resolve(summaryOf([{ id: 7, document: 'd5', history: 'h1' }]));
     await refresh;
     expect(adapter.streamCalls).toHaveLength(2); // the manual refresh reaches the Details too
+  });
+
+  it('shows a decision being asked or answered at once, while other changes keep waiting', async () => {
+    seed(1);
+    seed(2);
+    gate.acquire('drawer');
+    note(2, 'document');
+    note(1, 'summary', 'request', 'history');
+    expect(adapter.summaryCalls).toHaveLength(1);
+    expect(adapter.streamCalls).toHaveLength(1);
+    expect(keyOf(0)).toEqual(task(1));
+    expect(sectionsOf(0)).toEqual(['history']);
+    await settle(10_000);
+    expect(adapter.streamCalls).toHaveLength(1);
+    expect(store.getSection(task(2), 'document').state).toBe('ready');
   });
 
   it('keeps the connection notifications coming: the sequence is checked while held', async () => {

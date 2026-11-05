@@ -8,13 +8,14 @@ use std::fs;
 use std::path::PathBuf;
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId};
-use agent_board::file_store::FileStore;
 use agent_board::file_store::TaskTextParts;
 use agent_board::file_store::frontmatter::AcceptanceItem;
 use agent_board::file_store::index::{ProjectEntry, ProjectIndex};
+use agent_board::file_store::model::Choice;
 use agent_board::file_store::model::{EpicUpdate, NewEpic};
 use agent_board::file_store::projection::{ChangeSet, Facet, Projection, Resource, ResourceId};
 use agent_board::file_store::validate::EpicId;
+use agent_board::file_store::{Answer, FileStore};
 use chrono::{DateTime, TimeZone, Utc};
 
 fn at(minute: u32) -> DateTime<Utc> {
@@ -152,6 +153,45 @@ fn projection_a_status_change_is_summary_and_history_and_leaves_the_document_ver
     assert_ne!(after.history_version, before.history_version);
     assert_ne!(after.summary_hash, before.summary_hash);
     assert_eq!(after.document_version.len(), 32);
+}
+
+#[test]
+fn projection_asking_and_answering_a_decision_add_the_request_facet() {
+    let mut fx = Fx::new();
+    fx.doing();
+    fx.reload();
+    let choices = vec![
+        Choice {
+            id: "a".into(),
+            label: "Plan A".into(),
+        },
+        Choice {
+            id: "b".into(),
+            label: "Plan B".into(),
+        },
+    ];
+    let asked = fx
+        .store
+        .request_decision(&fx.project, 1, Actor::Ai, "Which plan?", choices, at(11))
+        .unwrap();
+    assert_eq!(
+        task_facets(&fx.reload(), 1),
+        Some(vec![Facet::Summary, Facet::Request, Facet::History])
+    );
+
+    let request = asked.value.pending_request_id.unwrap();
+    let answer = Answer {
+        actor: Actor::Human,
+        choice_id: Some("a".into()),
+        text: None,
+    };
+    fx.store
+        .answer_request(&fx.project, 1, &request, answer, at(12))
+        .unwrap();
+    assert_eq!(
+        task_facets(&fx.reload(), 1),
+        Some(vec![Facet::Summary, Facet::Request, Facet::History])
+    );
 }
 
 #[test]

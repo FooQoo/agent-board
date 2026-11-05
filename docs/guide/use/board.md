@@ -87,6 +87,8 @@ The board updates itself when a change is saved, whether an agent made it or ano
 
 While a details panel, an editor, or a dialog is open, automatic updates wait, so the text you are reading or editing does not move. They are applied about three seconds after you close it.
 
+A decision is the exception. When an agent asks for a decision, or a decision is answered or withdrawn, the board shows it at once, even while a panel is open.
+
 ## Settings
 
 Open **Settings** to choose the language (English or Japanese) and one of 24 themes (12 colors, each in light and dark).
