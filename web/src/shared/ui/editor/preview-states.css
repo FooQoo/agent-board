@@ -3,6 +3,18 @@
  * theme.css, so every theme works.
  */
 
+/* A read-only dialog has no field to focus, so the dialog itself holds the focus without a ring. */
+.editor-dialog:focus-visible {
+  outline: none;
+}
+
+/* A read-only title is there to be read: it keeps its full contrast on a muted field. */
+.editor-dialog[data-read-only] input:disabled {
+  background: var(--r-lane);
+  color: var(--r-text);
+  opacity: 1;
+}
+
 /* The state chip takes the header badge's place, with its own color per state. */
 .editor__badge:has(.state-chip) {
   padding: 0;

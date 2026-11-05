@@ -1,8 +1,8 @@
 import { Maximize2Icon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/shared/ui/button';
 import type { EpicRef } from '../../../shared/api/contracts';
+import './detail.css';
 import './epic-heading.css';
 
 export interface EpicTabHeadingProps {
@@ -19,10 +19,10 @@ export function EpicTabHeading({ epic, renderLabel, onOpen }: EpicTabHeadingProp
     <div className="detail__epic-heading">
       {renderLabel(epic)}
       <h3 className="detail__epic-name">{epic.name}</h3>
-      <Button type="button" variant="outline" size="s" onClick={onOpen}>
+      <button type="button" className="detail__tool detail__tool--text" onClick={onOpen}>
         <Maximize2Icon aria-hidden="true" />
         {t('detail.openFullscreen')}
-      </Button>
+      </button>
     </div>
   );
 }
