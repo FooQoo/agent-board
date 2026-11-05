@@ -144,7 +144,7 @@ export const Draft: Story = {
   },
 };
 
-/** A draft on a phone: its edit, archive, and close icons keep equal spacing. */
+/** A draft on a phone: its Preview, archive, and close actions keep equal spacing. */
 export const DraftPhone: Story = {
   args: { task: sampleCard({ id: 8, isDraft: true }) },
   globals: { width: 'phone-390' },
@@ -154,22 +154,17 @@ export const DraftPhone: Story = {
   },
 };
 
+/** The Preview button, the archive icon and the close icon sit with the same gap between them. */
 function expectActionIconSpacing(canvasElement: HTMLElement) {
-  const icons = [
-    ...canvasElement.querySelectorAll<SVGElement>(
-      '.detail__toolbar > button svg, .detail__close svg',
-    ),
+  const controls = [
+    ...canvasElement.querySelectorAll<HTMLElement>('.detail__toolbar > button, .detail__close'),
   ];
-  expect(icons).toHaveLength(3);
-  const centers = icons.map((icon) => {
-    const bounds = icon.getBoundingClientRect();
-    return bounds.left + bounds.width / 2;
-  });
-  const [first, second, third] = centers;
+  expect(controls).toHaveLength(3);
+  const [first, second, third] = controls.map((control) => control.getBoundingClientRect());
   if (first === undefined || second === undefined || third === undefined) {
-    throw new Error('Expected three action icons');
+    throw new Error('Expected three actions');
   }
-  expect(Math.abs(second - first - (third - second))).toBeLessThan(0.1);
+  expect(Math.abs(second.left - first.right - (third.left - second.right))).toBeLessThan(0.1);
 }
 
 /** The archive view, where a restore failed: the failure is shown above the body. */

@@ -32,7 +32,6 @@ export const editEn = {
     saving: 'Saving…',
   },
   editor: {
-    editCardTitle: 'Edit task',
     savingStatus: 'Saving…',
     addCardTitle: 'Add task',
     draft: 'Draft',

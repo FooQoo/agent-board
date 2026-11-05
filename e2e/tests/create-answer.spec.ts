@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson, decisionJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { openManualCreateDialog, pasteMarkdown, closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { putDraft } from '../helpers/drafts';
 
 // Adding a card in the shared dialog, and answering a decision request on its card, on the real page.
 
@@ -84,9 +85,9 @@ test('a task is added with a title, the AI as the default owner, and a Markdown 
   await task(page, id).click();
   await expect(details(page).getByRole('radiogroup')).toHaveCount(0);
   await expect(details(page).getByRole('combobox')).toHaveCount(0);
-  await details(page).getByRole('button', { name: 'Make draft' }).click();
-  await details(page).getByRole('button', { name: 'Edit task' }).click();
-  const editing = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
+  await putDraft(id);
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  const editing = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await expect(editing).toBeVisible();
   await expect(editing.getByRole('radiogroup')).toHaveCount(0);
   await expect(editing.getByText('Assignee')).toHaveCount(0);

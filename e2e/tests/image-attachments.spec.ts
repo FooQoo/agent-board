@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody } from '../helpers/agboard';
 import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { putDraft } from '../helpers/drafts';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -81,9 +82,9 @@ test('side attachments render, persist, retry safely and become No image after d
   await page.screenshot({ path: test.info().outputPath('02-saved-image.png') });
 
   // Delete the picture in the editor: the reference stays in the body and shows as No image.
-  await detail.getByRole('button', { name: 'Make draft' }).click();
-  await detail.getByRole('button', { name: 'Edit task' }).click();
-  const edit = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
+  await putDraft(id);
+  await detail.getByRole('button', { name: 'Preview', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await edit.getByRole('button', { name: 'Remove capture.png' }).click();
   // Save keeps the draft; finalizing is done from the details.
   await edit.getByRole('button', { name: 'Save', exact: true }).click();

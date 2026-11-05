@@ -71,20 +71,20 @@ test('the panel shows the run state and the reason for Doing tasks, and an empty
   const tabsBox = (await panel.getByRole('tablist').boundingBox())!;
   const toolbar = panel.getByRole('toolbar', { name: 'Task actions' });
   const toolbarButtons = toolbar.getByRole('button');
-  await expect(toolbarButtons).toHaveText(['Make draft', '']);
-  await expect(toolbarButtons.first()).toHaveAttribute('title', 'Make draft');
-  await expect(toolbarButtons.first()).toHaveAccessibleName('Make draft');
+  await expect(toolbarButtons).toHaveText(['Preview', '']);
+  await expect(toolbarButtons.first()).toHaveAttribute('title', 'Preview');
+  await expect(toolbarButtons.first()).toHaveAccessibleName('Preview');
   await expect(toolbarButtons.last()).toHaveAccessibleName('Archive task');
-  // At the default 360px detail width, the longer English label yields to its icon
+  // At the default 360px detail width, the label and its icon fit
   // so the tabs and the actions remain on one line.
-  const makeDraftBounds = (await toolbarButtons.first().boundingBox())!;
+  const previewBounds = (await toolbarButtons.first().boundingBox())!;
   const toolbarBounds = (await toolbar.boundingBox())!;
-  expect(makeDraftBounds.width).toBeGreaterThanOrEqual(29);
-  expect(makeDraftBounds.x + makeDraftBounds.width).toBeLessThanOrEqual(toolbarBounds.x + toolbarBounds.width);
+  expect(previewBounds.width).toBeGreaterThanOrEqual(29);
+  expect(previewBounds.x + previewBounds.width).toBeLessThanOrEqual(toolbarBounds.x + toolbarBounds.width);
   expect(await toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   const archiveBox = (await toolbarButtons.last().boundingBox())!;
-  const makeDraftBox = (await toolbarButtons.first().boundingBox())!;
-  expect(archiveBox.x).toBeGreaterThan(makeDraftBox.x + makeDraftBox.width - 1);
+  const previewBox = (await toolbarButtons.first().boundingBox())!;
+  expect(archiveBox.x).toBeGreaterThan(previewBox.x + previewBox.width - 1);
   // The actions sit in the panel header, above the tabs.
   expect(archiveBox.y).toBeLessThan(tabsBox.y);
   await expect(panel.getByText(/^(Idle|Running|Pending)$/)).toHaveCount(0);

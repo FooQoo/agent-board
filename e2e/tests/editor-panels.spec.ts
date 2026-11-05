@@ -3,6 +3,7 @@ import path from 'node:path';
 import { agboardOk, mainProject, nextTaskId, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { putDraft } from '../helpers/drafts';
 
 const conditions = Array.from({ length: 40 }, (_, i) => `- [ ] Condition ${i + 1}`).join('\n');
 const body = `# 進行表と自動完了によるAIの操作削減\n\n## 目的・背景\n\nAIがプロジェクト全体の進行表から作業を選び、必要なエピック計画と作業記録だけを読んで進める。完了更新とプロジェクト指定の操作を減らす。\n\n## スコープ\n\n進行表、プロジェクトとフォルダの登録、エピックの進行順、Hook、自動Doneを扱う。\n\n### プロジェクトの識別\n\nフォルダの登録では \`agboard project bind NAME\` を使い、最も近い祖先の登録を参照する。\n\n${'More body text.\n\n'.repeat(60)}\n\n## Reference conditions\n\n${conditions}`;
@@ -68,14 +69,14 @@ test('creation and task editing use the same single conditions panel and compact
   await page.goto(`/?project=${projectId(mainProject)}`);
   await waitForSync(page);
   await page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) }).click();
-  await page.getByRole('button', { name: 'Make draft', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit task', exact: true }).click();
+  await putDraft(id);
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
   const dialog = page.locator('.editor-dialog');
   await dialog.locator('.conditions-dock__head').click();
   await expect(dialog.locator('.acceptance-edit__head')).toHaveCount(0);
   await expect(dialog.locator('.conditions-dock__title')).toHaveCSS('font-size', '14px');
   await page.screenshot({ path: testInfo.outputPath('card-edit.png') });
-  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
   await openManualCreateDialog(page);
   await dialog.locator('.conditions-dock__head').click();
   await dialog.getByRole('button', { name: 'Add condition', exact: true }).click();

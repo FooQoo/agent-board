@@ -32,7 +32,6 @@ export const editJa = {
     saving: '保存中…',
   },
   editor: {
-    editCardTitle: 'タスクを編集',
     savingStatus: '保存しています…',
     addCardTitle: 'タスクを追加',
     draft: '下書き',

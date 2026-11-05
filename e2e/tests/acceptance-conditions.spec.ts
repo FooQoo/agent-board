@@ -14,6 +14,7 @@ import {
   type TaskJson,
 } from '../helpers/agboard';
 import { editorValue, openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { putDraft } from '../helpers/drafts';
 
 // The acceptance conditions on the real page and in the real CLI: how they show on the board and in the details,
 // how a person adds, edits, reorders, and checks them, what a broken frontmatter does, and when an agent may not
@@ -66,17 +67,17 @@ const THREE: Condition[] = [
 ];
 
 /** Make a card a draft so that a person can edit it on the page. */
-async function makeDraft(page: Page, id: number): Promise<void> {
+async function startFromDraft(page: Page, id: number): Promise<void> {
   await task(page, id).click();
-  await details(page).getByRole('button', { name: 'Make draft' }).click();
+  await putDraft(id);
   await expect.poll(() => show(id).isDraft).toBe(true);
 }
 
 /** Open the card's edit dialog and wait until its text has loaded. */
 async function openEdit(page: Page, id: number): Promise<{ dialog: Locator; editor: Locator }> {
   await task(page, id).click();
-  await details(page).getByRole('button', { name: 'Edit task' }).click();
-  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await expect(dialog).toBeVisible();
   const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
   await expect(editor.getByText(/./).first()).toBeVisible();
@@ -164,7 +165,7 @@ test('a person edits the conditions of a draft: removes, adds without reusing a 
   await page.reload();
   await waitForSync(page);
   await readBoardAfterReset(page);
-  await makeDraft(page, id);
+  await startFromDraft(page, id);
 
   const { dialog } = await openEdit(page, id);
   await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
@@ -189,7 +190,7 @@ test('cancelling the edit dialog discards the changes to the conditions', async 
   await page.reload();
   await waitForSync(page);
   await readBoardAfterReset(page);
-  await makeDraft(page, id);
+  await startFromDraft(page, id);
 
   const { dialog } = await openEdit(page, id);
   await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
@@ -204,7 +205,7 @@ test('a save of the body keeps the other frontmatter keys, which the page does n
   await page.reload();
   await waitForSync(page);
   await readBoardAfterReset(page);
-  await makeDraft(page, id);
+  await startFromDraft(page, id);
 
   const { dialog, editor } = await openEdit(page, id);
   await editor.getByText('old').click();
@@ -297,7 +298,7 @@ test('the edit dialog wraps each condition onto two rows in a narrow width and k
   await page.reload();
   await waitForSync(page);
   await readBoardAfterReset(page);
-  await makeDraft(page, id);
+  await startFromDraft(page, id);
 
   // The dialog is open at the desktop width; the gap is measured between the first condition's checkbox and text.
   const { dialog } = await openEdit(page, id);
@@ -350,7 +351,7 @@ test('task conditions fold in their own dock and a long body scrolls alone', asy
   await waitForSync(page);
   await readBoardAfterReset(page);
 
-  await makeDraft(page, id);
+  await startFromDraft(page, id);
   const { dialog } = await openEdit(page, id);
 
   // The conditions are not in the body: they fold in the dock at the bottom of the dialog.

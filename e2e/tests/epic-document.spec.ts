@@ -104,7 +104,7 @@ function runWith(home: string, args: string[], input = '') {
   });
 }
 
-const dialogOf = (page: Page) => page.getByRole('dialog', { name: /Edit epic/ });
+const dialogOf = (page: Page) => page.getByRole('dialog', { name: /Epic preview/ });
 
 // ---------------------------------------------------------------------------------------------------------------
 // One data area for the files, the contract, the page, and the restart.
@@ -333,7 +333,7 @@ test('the Japanese page labels the epic details', async ({ page }) => {
   await page.locator('[data-epic-label="ALPHA"]').first().click();
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'エピックの詳細 (Markdown)' }) });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'キャンセル' }).click();
+  await dialog.getByRole('button', { name: '閉じる', exact: true }).first().click();
 
   await page.getByRole('button', { name: 'エピック' }).first().click();
   await page.getByRole('button', { name: /Gamma epic/ }).first().click();

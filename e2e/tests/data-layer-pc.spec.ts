@@ -5,6 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { putDraft } from '../helpers/drafts';
 
 // Opening a task reads its text, conditions, log and epic once, so every tab shows at once. A status
 // change reads the Summary and the history again but not the text. The drawer holds the stream back
@@ -127,10 +128,20 @@ test('the drawer holds updates while it is open and for 3 seconds after; a save 
   await expect(lane(page, 'Todo').getByRole('button', { name: /^#16 / })).toBeVisible();
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toHaveCount(0);
 
-  // A save made here shows at once, with the drawer still open: the card is a draft on its tile.
+  // A change made here shows at once, with the drawer still open: the preview makes the card a draft at the
+  // first change, and the card is a draft on its tile.
   await task(page, 14).click();
-  await details(page).getByRole('button', { name: 'Make draft' }).click();
-  await expect(task(page, 14).getByText('Draft', { exact: true })).toHaveCount(1, { timeout: 2_000 });
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: /^#14 / });
+  await preview.getByRole('textbox', { name: 'Title', exact: true }).fill('Changed in the preview');
+  // The dialog hides the board from the accessibility tree, so the tile is found by its text.
+  const tile = page.getByRole('button', { name: /^#14(?!\d)/, includeHidden: true });
+  await expect(tile.getByText('Draft', { exact: true })).toHaveCount(1, { timeout: 2_000 });
+  // Discarding takes the draft back.
+  await preview.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Discard and close' }).click();
+  await expect(preview).toHaveCount(0);
+  await expect(task(page, 14).getByText('Draft', { exact: true })).toHaveCount(0, { timeout: 2_000 });
 
   // An answer shows at once, too: the request is gone and the card is idle.
   await expect(request(page)).toBeVisible();
@@ -202,10 +213,9 @@ test('a 50,000-character document is shown with a bounded page, and is edited an
   await expect(panel.getByText('Last line of the document.')).toBeVisible({ timeout: 20_000 });
 
   // Edit and save: the dialog opens from the whole text, and a later save wins over an earlier one.
-  await details(page).getByRole('button', { name: 'Make draft' }).click();
-  await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
-  await details(page).getByRole('button', { name: 'Edit task' }).click();
-  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
+  await putDraft(id);
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(new RegExp(`^${text.length.toLocaleString('en-US')} / 50,000`))).toBeVisible({ timeout: 30_000 });
 
@@ -214,8 +224,8 @@ test('a 50,000-character document is shown with a bounded page, and is edited an
   await second.goto('/');
   await waitForSync(second);
   await task(second, id).click();
-  await details(second).getByRole('button', { name: 'Edit task' }).click();
-  const secondDialog = second.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
+  await details(second).getByRole('button', { name: 'Preview', exact: true }).click();
+  const secondDialog = second.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await secondDialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Saved from the second page');
   await secondDialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(secondDialog).toHaveCount(0);
