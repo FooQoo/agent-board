@@ -143,6 +143,59 @@ describe('EpicList', () => {
     expect(screen.getByText('Could not refresh the epics.')).toBeTruthy();
   });
 
+  it('shows a draft box with Finalize for a draft epic and calls onFinalize', async () => {
+    const onFinalize = vi.fn(async () => {});
+    renderDetail(
+      <EpicDetailPanel
+        projectId={PROJECT_A.id}
+        epic={epic('BUG', { isDraft: true, body: 'Plan.' })}
+        onEdit={() => {}}
+        onDelete={async () => {}}
+        onFinalize={onFinalize}
+        onClose={() => {}}
+      />,
+    );
+    expect(
+      screen.getByText('Agents cannot change this epic. Once you finalize it, they can.'),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Finalize' }));
+    expect(onFinalize).toHaveBeenCalledTimes(1);
+  });
+
+  it('says the finalize failed and keeps the button when onFinalize rejects', async () => {
+    renderDetail(
+      <EpicDetailPanel
+        projectId={PROJECT_A.id}
+        epic={epic('BUG', { isDraft: true, body: 'Plan.' })}
+        onEdit={() => {}}
+        onDelete={async () => {}}
+        onFinalize={async () => {
+          throw new Error('offline');
+        }}
+        onClose={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Finalize' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Finalize' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  it('shows no draft box for an epic that is not a draft', () => {
+    renderDetail(
+      <EpicDetailPanel
+        projectId={PROJECT_A.id}
+        epic={epic('BUG', { body: 'Plan.' })}
+        onEdit={() => {}}
+        onDelete={async () => {}}
+        onFinalize={async () => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Finalize' })).toBeNull();
+  });
+
   it('asks before deleting and deletes after confirmation', async () => {
     const onDelete = vi.fn(async () => {});
     renderDetail(

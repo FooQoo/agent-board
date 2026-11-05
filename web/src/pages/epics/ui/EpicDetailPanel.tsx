@@ -6,6 +6,7 @@ import type { Epic, ProjectId } from '../../../shared/api/contracts';
 import { WriteError } from '../../../shared/api/writeErrors';
 import { noOperations, type OperationControls } from '../../../shared/lib/operations/operations';
 import { EpicBadge } from '../../../features/epics/label/EpicBadge';
+import { DraftBanner } from '../../../features/tasks/detail/DraftBanner';
 import { DetailAttachments } from '../../../features/tasks/detail/DetailAttachments';
 import { DocumentBlocks } from '../../../features/tasks/detail/BodyDocumentView';
 import { DetailSectionView } from '../../../features/tasks/detail/DetailSection';
@@ -21,6 +22,8 @@ export interface EpicDetailPanelProps {
   onEdit: () => void;
   /** Deletes the epic; the server refuses while a task still names it. */
   onDelete: () => Promise<void>;
+  /** Finalizes the draft epic (the "Finalize" button of the draft box); shown only for a draft. */
+  onFinalize?: () => Promise<void>;
   operations?: OperationControls;
   onClose: () => void;
 }
@@ -41,6 +44,7 @@ export function EpicDetailPanel({
   epic,
   onEdit,
   onDelete,
+  onFinalize,
   operations = noOperations,
   onClose,
 }: EpicDetailPanelProps) {
@@ -48,6 +52,8 @@ export function EpicDetailPanel({
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalizeFailed, setFinalizeFailed] = useState(false);
   const operation = useRef<number | null>(null);
   const controls = useRef(operations);
   controls.current = operations;
@@ -84,6 +90,19 @@ export function EpicDetailPanel({
       );
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const finalize = async () => {
+    if (onFinalize === undefined) return;
+    setFinalizing(true);
+    setFinalizeFailed(false);
+    try {
+      await onFinalize();
+    } catch {
+      setFinalizeFailed(true);
+    } finally {
+      setFinalizing(false);
     }
   };
 
@@ -140,6 +159,14 @@ export function EpicDetailPanel({
       <h2 className="detail__title" id="epic-detail-title">
         {epic.name}
       </h2>
+      {epic.isDraft && onFinalize !== undefined && (
+        <DraftBanner
+          busy={finalizing}
+          failed={finalizeFailed}
+          onFinalize={() => void finalize()}
+          description={t('draft.epicDescription')}
+        />
+      )}
       <div className="detail__viewport" ref={setScroller}>
         <DetailSectionView snapshot={detail.document} onRetry={() => void detail.refresh()}>
           {(data, arriving) => (

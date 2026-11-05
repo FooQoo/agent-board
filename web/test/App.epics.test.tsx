@@ -102,7 +102,9 @@ describe('the epic list in the app shell', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Edit epic' }));
     expect((await screen.findByLabelText('Title')) as HTMLInputElement).toBeTruthy();
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Alpha epic');
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    // Nothing is changed, so the footer button reads Close (the header X has the same name).
+    const closers = within(screen.getByRole('dialog')).getAllByRole('button', { name: 'Close' });
+    await userEvent.click(closers[closers.length - 1] as HTMLElement);
     expect(screen.getByRole('heading', { level: 2, name: 'Alpha epic' })).toBeTruthy();
 
     await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
