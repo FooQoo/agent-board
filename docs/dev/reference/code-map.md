@@ -100,6 +100,9 @@ The main files and directories outside `src/` are:
 - `web/src/app/onboarding/`: the request client, the controller, and the layer.
 - `web/src/features/onboarding/ui/`: the view parts.
 - `e2e/tests/onboarding.spec.ts`: the end-to-end tests.
+- `web/src/app/dialogs/TaskPreviewDialog.tsx`: the task preview's server wiring: entering and leaving the draft, reading the card again, and the running and archived states.
+- `web/src/app/model/useStreamSubscriptions.ts`: the change subscriptions that the previews and the Docs dialog follow.
+- `e2e/tests/preview-modal.spec.ts`: the preview's end-to-end tests.
 
 ## Technology choices
 

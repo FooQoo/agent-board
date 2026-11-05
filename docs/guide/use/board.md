@@ -34,7 +34,7 @@ You can check and uncheck a condition in the Conditions tab. The change shows at
 
 - When you check the last condition of an AI-owned task in Todo or Doing, the task moves to Done by itself, the same as when an agent checks it.
 - Unchecking a condition of a task in Done leaves it in Done. Move it yourself if work should continue.
-- An archived task's conditions cannot be changed. To change a condition's text, make the task a draft and use the editor.
+- An archived task's conditions cannot be changed. To change a condition's text, restore the task and open its preview.
 
 Each tab loads its text when you open it. The number on the **History** tab appears after the history has loaded.
 
@@ -56,17 +56,20 @@ AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks c
 
 ## Change a task
 
-To edit a task or put it in an epic, choose **Make draft** in the details panel, edit the text, and choose **Finalize** when it is ready. See [Editing and image attachments](./editing) for the editor.
+To edit a task or put it in an epic, choose **Preview** in the details toolbar. The preview uses the same editor, and opening it changes nothing. Your first change makes the task a draft, and **Save** finalizes it. See [Preview and save](./editing#preview-and-save) for the details.
 
 ## Drafts
 
 A draft is a task that agents must leave alone while you write it. Agents cannot change a draft, including its `TASK.md` file.
 
 - To create a draft, choose **Create manually** in the request form and check **Draft** in the full editor.
-- To work on an existing task, choose **Make draft** in the details panel, edit and save its text, then choose **Finalize** when an agent may use it. Saving in the editor keeps the draft state; the editor has no Draft checkbox.
-- A running task cannot become a draft.
+- To change an existing task, open its preview. Your first change makes it a draft, and **Save** releases it, so agents can work on the task again. The editor has no Draft checkbox.
+- To drop your changes, choose **Cancel** and then **Discard and close**. The text returns to the saved version, and the history records `Discarded draft changes.`
+- A running task opens read-only and cannot become a draft.
 
-If you forget to finalize, the agent cannot move or update the task. A draft is marked with a **Draft** chip on its card.
+A draft is marked with a **Draft** chip on its card. If you forget to finalize, the agent cannot move or update the task.
+
+If a draft is left behind, for example because a save failed and you closed the browser, choose **Finalize** in the task's details to release it. The **Finalize** button appears only on a draft.
 
 ## Archive
 

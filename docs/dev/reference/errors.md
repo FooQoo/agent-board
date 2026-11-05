@@ -12,6 +12,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `task_archived` | A write targets an archived task. | 1 | 409 |
 | `task_not_archived` | A delete or restore targets a task that is not archived. | 1 | 409 |
 | `task_is_draft` | An AI write (`edit`, `mv`, `state`, `history add`) targets a draft. | 1 | 409 |
+| `epic_is_draft` | A CLI `epic edit`, or `epic edit --priority`, targets a draft epic. | 1 | 409 |
 | `task_not_draft` | A web edit targets a task that is not a draft. | 1 | 409 |
 | `task_is_done` | An AI change targets a Done task. | 1 | 409 |
 | `acceptance_unmet` | An AI moves a task to Done while a condition is unmet or the frontmatter is invalid. | 2 | n/a |

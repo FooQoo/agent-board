@@ -49,7 +49,7 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 | `id` | EPIC-ID: 1 to 64 characters matching `[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`. Lowercase input is uppercased. Immutable. |
 | `name` | 1 to 100 characters after trimming, one line. |
 | `color` | `#RRGGBB`, uppercased. Random at creation when omitted. |
-| `isDraft` | Marks an epic that is still being prepared; member tasks are not affected. |
+| `isDraft` | Marks an epic that a person is editing in the browser. CLI `epic edit` and `--priority` are refused with `epic_is_draft`; member tasks and `epic attachment` are not affected. |
 | `document`, `body` | The whole `EPIC.md` text, frontmatter included (0 to 100,000 characters), and the body without frontmatter. |
 | `priority`, `priorityError` | Member task IDs in work order, and whether reading them failed. |
 
@@ -63,9 +63,9 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 
 A draft is a task a person is still writing.
 
-- People toggle `isDraft` in the web UI. Only Idle or Pending tasks can become drafts; Running is refused. A real change appends history but not `updatedAt`.
-- CLI `edit`, `mv`, `state`, and `history add` check `isDraft` under the write lock and fail with `task_is_draft`. Reads, `add`, and people's web operations are not affected. Drafts never expire.
-- Web editing accepts only draft tasks. With `finalize`, the body, title, `isDraft=false`, and a history entry are committed as one pair.
+- The preview enters the draft at its first real change: `PUT /tasks/{id}/draft` with `isDraft: true` for a task, and `PATCH /epics/{id}` with `isDraft: true` for an epic. Only Idle or Pending tasks can become drafts; Running is refused with `invalid_state_for_draft`. A real change appends history but not `updatedAt`. Entering or leaving an epic draft does not change `updatedAt` either.
+- CLI `edit`, `mv`, `state`, and `history add` check `isDraft` under the write lock and fail with `task_is_draft`. CLI `epic edit` and `epic edit --priority` check an epic's `isDraft` the same way and fail with `epic_is_draft`. Reads, `add`, `epic attachment`, and membership changes are not affected. The web `PATCH` on an epic does not refuse a draft. Drafts never expire.
+- Web editing accepts only draft tasks. With `finalize`, the body, title, `isDraft=false`, and a history entry are committed as one pair. Discard sends `discard: true` with `isDraft: false` instead, and the history records `Discarded draft changes.` An epic has no history, so its discard is only `isDraft: false` on `PATCH /epics/{id}`.
 - The product cannot stop direct edits of a draft's `TASK.md`; the README and the agent skill tell agents not to.
 
 ## Archive

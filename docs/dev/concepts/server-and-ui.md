@@ -97,7 +97,9 @@ The cache has fixed limits and no time-based expiry. It keeps the Summary of the
 
 **Drafts and editing**
 
-- Web edits do not compare content on save (last write wins). An agent overwriting a task with content read before it became a draft, or edits in several tabs, cannot be prevented.
+- Previews for a task and an epic (`TaskPreviewDialog` in `web/src/app/dialogs/TaskPreviewDialog.tsx`, and the epic preview) enter the draft at the first change. Before the draft starts, they compare the content they opened with the content the server returns; a difference stops the save and keeps the text. The comparison ignores `updatedAt`, which agent state changes also move. `invalid_state_for_draft` is shown as a running task.
+- Other web edits do not compare content on save (last write wins). An agent overwriting a task with content read before it became a draft, or edits in several tabs, cannot be prevented.
+- While a preview has no change, it follows the card. `useStreamSubscriptions` (`web/src/app/model/useStreamSubscriptions.ts`) passes every change note of the active project to the preview, which reads the card or epic again and compares. The preview turns read-only while the card runs or is archived, and back when it stops running. The follow does not wait for the board's deferred updates.
 - If a person forgets to finalize a draft, the agent cannot move the task; `isDraft` shows this in the UI and JSON.
 - External images that fail to load show "No image" without blocking anything else.
 

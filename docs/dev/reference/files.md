@@ -18,7 +18,7 @@ A task is one unit of work on the board. A task's state lives in `task.json`; it
 | `taskStatus` | The lane: `todo`, `doing`, or `done`. |
 | `position` | Positive integer, unique among unarchived tasks in the same lane. |
 | `agentStatus` | The AI run state: `idle`, `running`, or `pending`. |
-| `isDraft` | Defaults to `false`. A draft is being prepared by a person. |
+| `isDraft` | Defaults to `false`. A draft is being prepared by a person. For an epic, the CLI `epic edit` refuses a draft with `epic_is_draft`. |
 | `pendingRequestId`, `pendingRequest` | The open decision request while Pending; otherwise `null`. |
 | `requestAnswers` | Answers kept for lookup by request ID, including after a restart. |
 | `archivedAt` | `null`, or the archive time. |

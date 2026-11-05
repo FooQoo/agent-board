@@ -14,10 +14,33 @@ The editor shows the outline on the left, the Markdown body in the middle, and t
 
 - **Formatting.** The editor supports headings, task lists, tables, code blocks, Mermaid diagrams, and images. Click an image or a diagram to enlarge it.
 - **Outline.** Use the outline to jump to a heading in the body. Edit acceptance conditions in the panel below the body.
-- **Saving.** Save or cancel the dialog's changes together. Record verification before you check off a completion condition.
+- **Saving.** **Save** writes all of the dialog's changes together. Record verification before you check off a completion condition.
 - **Conditions.** When you create or edit a task, its acceptance conditions sit in a panel below the body, which starts folded. Expand it to edit them; a long list scrolls inside the panel. Conditions have stable IDs and cannot be reordered. To read conditions on an existing task, use its **Conditions** tab. An epic has no conditions panel: its reference conditions are ordinary Markdown in its details.
 
 For the epic dialog (name, color, details, and task order), see [Epics and progress](./epics). For drafts, see [The board](./board#drafts).
+
+## Preview and save {#preview-and-save}
+
+Open a task's preview with **Preview** in the details toolbar. An epic's preview opens from **Open full screen** on the epic tab of a task, or from the pencil button (**Edit epic**) in an epic's details. Archived tasks and epics open in the same preview, read-only.
+
+The preview opens with the title shown as **Task preview** or **Epic preview**, and its **Close** button is enabled. Opening it changes nothing: the task or epic is not made a draft, and its history does not change. While you have made no change, the preview follows the latest content, including changes from agents and other browsers. The bottom left shows when it was last updated.
+
+Your first change to a task's title, description, conditions, or images, or to an epic's name, color, details, images, or task order, does three things:
+
+- The task or epic becomes a draft, and the **Draft** chip appears in the header.
+- The bottom left says **You have unsaved changes.** and, for a task, **Agents can't change this task until you save.**
+- **Save** becomes enabled, and the preview stops following updates.
+
+**Save** writes your changes and releases the draft in one step. If the item was already a draft before you opened the preview, it stays a draft.
+
+To drop your changes, choose **Cancel** and then **Discard and close**. The text returns to the saved version and the draft is released. A draft that was already there before you opened the preview stays. If you type the original text back, the item stays a draft until you close the preview.
+
+The preview cannot save in these cases. Your text stays, and the bottom left says why:
+
+- The task started running after your first change. The agent may now be working on it.
+- The task or epic changed after the draft began, so saving would overwrite it. Choose **Cancel** and then **Discard and close**, and open the preview again to see the latest content.
+
+A running task opens read-only, with a **Running** chip and the reason **Read-only while an agent is working.** Its fields and image attachments are disabled. When the agent stops, the preview becomes editable again. If a save fails because of a connection error, the dialog keeps your text and you can try again.
 
 ## Send a task request
 

@@ -18,7 +18,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `taskStatus` | レーン。`todo`・`doing`・`done`。 |
 | `position` | 正の整数。同じレーンの未アーカイブのタスク内で一意。 |
 | `agentStatus` | AIの稼働状態。`idle`・`running`・`pending`。 |
-| `isDraft` | 既定は`false`。人が準備中のタスク（下書き）。 |
+| `isDraft` | 既定は`false`。人が準備中のタスク（下書き）。エピックの場合、CLIの`epic edit`は下書きを`epic_is_draft`で拒否する。 |
 | `pendingRequestId`・`pendingRequest` | Pendingの間の未回答の判断依頼。それ以外は`null`。 |
 | `requestAnswers` | 再起動後も依頼IDで引けるよう保存する回答。 |
 | `archivedAt` | `null`、またはアーカイブ日時。 |
