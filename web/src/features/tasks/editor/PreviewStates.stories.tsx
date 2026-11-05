@@ -41,7 +41,7 @@ function TaskPreview({ state }: { state: PreviewState }) {
   const lines: EditorStatusLine[] = [];
   if (state === 'conflict') lines.push({ tone: 'error', text: t('editor.conflictTask') });
   if (editable) lines.push({ tone: 'lock', text: t('editor.lockedTask') });
-  if (state === 'readOnly') lines.push({ tone: 'info', text: t('editor.readOnlyRunning') });
+  if (state === 'readOnly') lines.push({ tone: 'reason', text: t('editor.readOnlyRunning') });
   return (
     <EditorShell
       taskId={14}
