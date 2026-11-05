@@ -100,6 +100,23 @@ landing:
       - { text: Codex, link: https://developers.openai.com/codex }
     trademark: Claude Code is a product of Anthropic and Codex is a product of OpenAI; their names are trademarks of their respective owners. Agent Board is an independent project and is not affiliated with or endorsed by either company.
     command: agboard connect
+    terminal:
+      label: In your terminal
+      caption: Answer a few questions, and the Skill and the Hook are in place.
+      lines:
+        - { kind: command, text: $ agboard connect }
+        - { kind: frame, text: "┌  agboard connect" }
+        - { kind: question, text: "◇  Select agents to connect" }
+        - { kind: answer, text: "│  Claude Code, Codex" }
+        - { kind: question, text: "◇  Skill scope" }
+        - { kind: answer, text: "│  Global" }
+        - { kind: question, text: "◇  Hook scope" }
+        - { kind: answer, text: "│  Global" }
+        - { kind: question, text: "◇  Apply these changes?" }
+        - { kind: answer, text: "│  Yes" }
+        - { kind: result, text: "◆  Claude Code: configured" }
+        - { kind: result, text: "◆  Codex: configured" }
+        - { kind: frame, text: "└  Setup finished." }
     link: { text: Working with agents, link: /guide/automation/agents }
   trust:
     title: Runs on your machine. Your data stays yours.

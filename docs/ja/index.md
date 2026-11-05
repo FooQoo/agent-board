@@ -100,6 +100,23 @@ landing:
       - { text: Codex, link: https://developers.openai.com/codex }
     trademark: Claude CodeはAnthropic、CodexはOpenAIの製品で、各名称は各社の商標です。Agent Boardは独立したプロジェクトで、両社と提携しておらず、推奨も受けていません。
     command: agboard connect
+    terminal:
+      label: ターミナルで
+      caption: いくつかの質問に答えるだけで、SkillとHookが入ります。
+      lines:
+        - { kind: command, text: $ agboard connect }
+        - { kind: frame, text: "┌  agboard connect" }
+        - { kind: question, text: "◇  Select agents to connect" }
+        - { kind: answer, text: "│  Claude Code, Codex" }
+        - { kind: question, text: "◇  Skill scope" }
+        - { kind: answer, text: "│  Global" }
+        - { kind: question, text: "◇  Hook scope" }
+        - { kind: answer, text: "│  Global" }
+        - { kind: question, text: "◇  Apply these changes?" }
+        - { kind: answer, text: "│  Yes" }
+        - { kind: result, text: "◆  Claude Code: configured" }
+        - { kind: result, text: "◆  Codex: configured" }
+        - { kind: frame, text: "└  Setup finished." }
     link: { text: エージェントとの連携, link: /ja/guide/automation/agents }
   trust:
     title: 手元で動き、データはあなたのもの。

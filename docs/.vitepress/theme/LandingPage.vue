@@ -20,6 +20,8 @@ import questionJa from '../../images/guide/question.ja.png'
 // The copy lives in the `landing` frontmatter of each language's index.md; this component only lays it out.
 type Link = { text: string; link: string }
 type Step = { actor: 'ai' | 'human' | 'auto'; title: string; text: string }
+// One line of the connect sample: the command, a frame line, a question, its answer, or a result.
+type TerminalLine = { kind: 'command' | 'frame' | 'question' | 'answer' | 'result'; text: string }
 // `alts` holds one description per phone screen; the other features show one image with `alt`.
 type Feature = { image: string; title: string; text: string; link: Link; preview?: string; alt?: string; alts?: string[] }
 
@@ -208,37 +210,47 @@ onMounted(() => {
     </section>
 
     <section class="lp-section lp-section--soft">
-      <div class="lp-container lp-center">
-        <header class="lp-heading">
-          <p class="lp-eyebrow">{{ c.agents.eyebrow }}</p>
-          <h2>{{ c.agents.title }}</h2>
-          <p class="lp-lead">{{ c.agents.lead }}</p>
-        </header>
-        <p id="lp-agents-label" class="lp-agents__label">{{ c.agents.supportedLabel }}</p>
-        <!-- Names and links only: the companies' logos need their written permission. -->
-        <ul class="lp-agents" aria-labelledby="lp-agents-label">
-          <li v-for="agent in c.agents.supported as Link[]" :key="agent.link">
-            <a :href="agent.link" target="_blank" rel="noopener noreferrer">
-              {{ agent.text }}<LandingIcon name="external-link" :size="16" />
-            </a>
-          </li>
-        </ul>
-        <div class="lp-agents__connect">
-          <div class="lp-command">
-            <code><span class="lp-command__prompt">$</span> {{ c.agents.command }}</code>
-            <button
-              type="button"
-              class="lp-command__copy"
-              :aria-label="copied === c.agents.command ? c.copy.done : c.copy.label"
-              @click="copy(c.agents.command)"
-            >
-              <LandingIcon :name="copied === c.agents.command ? 'check' : 'copy'" :size="16" />
-              <span v-if="copied === c.agents.command" class="lp-command__done">{{ c.copy.done }}</span>
-            </button>
+      <div class="lp-container lp-connect">
+        <!-- A sample connect session, drawn after the real prompts; the text never changes with the language. -->
+        <figure class="lp-connect__demo">
+          <p class="lp-compare__label"><LandingIcon name="terminal" :size="16" />{{ c.agents.terminal.label }}</p>
+          <div class="lp-terminal lp-terminal--connect" aria-hidden="true">
+            <p v-for="(line, index) in c.agents.terminal.lines as TerminalLine[]" :key="index" :class="`is-${line.kind}`">{{ line.text }}</p>
           </div>
-          <a v-if="c.agents.preview" class="lp-badge" :href="href(c.agents.preview)">{{ c.features.previewLabel }}</a>
+          <figcaption>{{ c.agents.terminal.caption }}</figcaption>
+        </figure>
+        <div class="lp-connect__body lp-center">
+          <header class="lp-heading">
+            <p class="lp-eyebrow">{{ c.agents.eyebrow }}</p>
+            <h2>{{ c.agents.title }}</h2>
+            <p class="lp-lead">{{ c.agents.lead }}</p>
+          </header>
+          <p id="lp-agents-label" class="lp-agents__label">{{ c.agents.supportedLabel }}</p>
+          <!-- Names and links only: the companies' logos need their written permission. -->
+          <ul class="lp-agents" aria-labelledby="lp-agents-label">
+            <li v-for="agent in c.agents.supported as Link[]" :key="agent.link">
+              <a :href="agent.link" target="_blank" rel="noopener noreferrer">
+                {{ agent.text }}<LandingIcon name="external-link" :size="16" />
+              </a>
+            </li>
+          </ul>
+          <div class="lp-agents__connect">
+            <div class="lp-command">
+              <code><span class="lp-command__prompt">$</span> {{ c.agents.command }}</code>
+              <button
+                type="button"
+                class="lp-command__copy"
+                :aria-label="copied === c.agents.command ? c.copy.done : c.copy.label"
+                @click="copy(c.agents.command)"
+              >
+                <LandingIcon :name="copied === c.agents.command ? 'check' : 'copy'" :size="16" />
+                <span v-if="copied === c.agents.command" class="lp-command__done">{{ c.copy.done }}</span>
+              </button>
+            </div>
+            <a v-if="c.agents.preview" class="lp-badge" :href="href(c.agents.preview)">{{ c.features.previewLabel }}</a>
+          </div>
+          <a class="lp-more" :href="href(c.agents.link.link)">{{ c.agents.link.text }} →</a>
         </div>
-        <a class="lp-more" :href="href(c.agents.link.link)">{{ c.agents.link.text }} →</a>
         <p class="lp-agents__trademark">{{ c.agents.trademark }}</p>
       </div>
     </section>
@@ -692,7 +704,8 @@ onMounted(() => {
 .lp-compare__label--brand {
   color: var(--vp-c-brand-1);
 }
-.lp-compare figcaption {
+.lp-compare figcaption,
+.lp-connect__demo figcaption {
   color: var(--vp-c-text-2);
   font-size: 14px;
 }
@@ -927,6 +940,65 @@ onMounted(() => {
   justify-items: center;
   margin-bottom: 12px;
 }
+/* The connect sample sits below the copy on a phone and to its left on a wide screen. */
+.lp-connect {
+  display: grid;
+  gap: 40px;
+}
+.lp-connect__demo {
+  display: grid;
+  gap: 14px;
+  order: 1;
+  width: 100%;
+  max-width: 560px;
+  min-width: 0;
+  margin: 0 auto;
+}
+.lp-terminal--connect {
+  height: auto;
+  mask-image: none;
+}
+.lp-terminal--connect .is-command {
+  color: #e5e7eb;
+}
+.lp-terminal--connect .is-frame {
+  color: #6b7280;
+}
+.lp-terminal--connect .is-question {
+  color: #d1d5db;
+}
+.lp-terminal--connect .is-answer {
+  color: #8b95a3;
+}
+.lp-terminal--connect .is-result {
+  color: #86d6a4;
+}
+@media (min-width: 960px) {
+  .lp-connect {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 56px;
+  }
+  .lp-connect__demo {
+    order: 0;
+    max-width: none;
+    margin: 0;
+  }
+  .lp-connect__body {
+    justify-items: start;
+    text-align: left;
+  }
+  .lp-connect__body .lp-heading {
+    justify-items: start;
+  }
+  .lp-connect__body .lp-agents__connect {
+    justify-content: flex-start;
+  }
+  .lp-connect .lp-agents__trademark {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+}
 .lp-agents {
   display: grid;
   gap: 12px;
@@ -962,8 +1034,10 @@ onMounted(() => {
   color: var(--vp-c-text-2);
 }
 .lp-agents__trademark {
+  order: 2;
   max-width: 560px;
-  margin: 0;
+  margin: 0 auto;
+  text-align: center;
   color: var(--vp-c-text-3);
   font-size: 12px;
   line-height: 1.6;
