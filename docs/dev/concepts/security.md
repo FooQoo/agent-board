@@ -86,7 +86,7 @@ These checks prove that a request came from the page in a browser. They do not s
 - Writes to archived tasks (edit, draft change, move, state, answer, and attachments) are refused under the write lock; images stay readable.
 - The draft toggle and edit APIs accept only requests that pass the browser write guard.
 - The preview's draft is a guard against cooperating agents only. `TASK.md` and `EPIC.md` can still be edited directly, and two tabs editing the same item still resolve as last write wins.
-- A draft that a closed tab leaves behind keeps agents out until someone finalizes it or discards it. CLI `epic edit` refuses a draft epic with `epic_is_draft`, while `epic attachment` and membership changes are still accepted.
+- A draft that a closed tab leaves behind keeps agents out until someone finalizes it. CLI `epic edit` refuses a draft epic with `epic_is_draft`, while `epic attachment` and membership changes are still accepted.
 - `actor` (`ai` or `human`) classifies an operation; it is not authentication. It comes from explicit CLI input or the web side's fixed `human`, never from the assignee.
 
 ## Rendering untrusted text

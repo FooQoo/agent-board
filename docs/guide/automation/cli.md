@@ -88,7 +88,7 @@ agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 
 `--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters.
 
-While a person has an epic in draft in the browser, `epic edit` fails with `epic_is_draft` (exit code 1) and changes nothing, `--priority` included. Wait until the draft is saved or discarded. `epic attachment` and changing a task's epic still work.
+While a person has an epic in draft in the browser, `epic edit` fails with `epic_is_draft` (exit code 1) and changes nothing, `--priority` included. Wait until the person saves or discards it, or ask them to finalize a draft that was left behind. `epic attachment` and changing a task's epic still work.
 
 ## Filter and list
 

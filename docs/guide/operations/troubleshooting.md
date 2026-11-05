@@ -16,7 +16,7 @@ Find what you see, read the cause, and do what the last column says. The command
 | The board says it is disconnected | The connection to the local server dropped. | Wait a moment; the page reconnects by itself and reloads the board. If the server stopped, start it again. |
 | A task stays **Running** after the agent stopped | Running is what the agent last reported; it is not a live check. | Move the task, or ask the agent to report a new state. |
 | A question disappeared | Moving the task to another column withdraws an open question, or the agent asked a new one. | Open the task's History tab, and answer the current question if there is one. |
-| A task or epic stays **Draft** after I closed its preview | The draft is kept until someone saves or discards it. A window closed with unsaved changes leaves it behind. | Open the task's or epic's details and choose **Finalize**, or open the preview again and save or discard. |
+| A task or epic stays **Draft** after I closed its preview | A window closed with unsaved changes leaves the draft behind, and it stays until someone finalizes it. | Open the task's or epic's details and choose **Finalize**. Saving or discarding in a new preview keeps the draft. |
 
 ## An agent cannot do something
 
