@@ -31,8 +31,10 @@ export interface EditorBodyProps {
   limit?: number;
   /** The handle of the rich editor: the dialog reads the text and inserts images through it. */
   editorRef: RefObject<RichMarkdownEditorHandle | null>;
-  /** The text is being saved: nothing can be edited. */
+  /** The text is being saved or is read-only: nothing can be edited (the outline still moves). */
   disabled: boolean;
+  /** Changing it builds the rich editor again, to show a newer text; the scroll box stays. */
+  editorKey?: string | number;
   /** Shown above the title (the EPIC-ID label of a card, the label row of an epic). */
   beforeTitle?: ReactNode;
   /** Shown at the top of the right column, above the images panel (the epic row of a card). */
@@ -88,6 +90,7 @@ export function EditorBody({
   limit = DESCRIPTION_LIMIT,
   editorRef,
   disabled,
+  editorKey,
   beforeTitle,
   asideTop,
   extraField,
@@ -160,7 +163,6 @@ export function EditorBody({
                 className="editor__outline-item"
                 aria-current={index === active ? 'location' : undefined}
                 title={item.text}
-                disabled={disabled}
                 onClick={() => editorRef.current?.goTo(index)}
               >
                 <span className="editor__outline-no" aria-hidden="true">
@@ -215,6 +217,7 @@ export function EditorBody({
             }}
           >
             <RichMarkdownEditor
+              key={editorKey}
               ref={editorRef}
               value={description}
               onChange={onDescriptionChange}

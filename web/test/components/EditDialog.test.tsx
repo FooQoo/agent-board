@@ -97,6 +97,13 @@ describe('epic row', () => {
 const button = (root: HTMLElement, name: string) =>
   within(root).getByRole('button', { name }) as HTMLButtonElement;
 
+const footerButton = (root: HTMLElement, name: string) =>
+  within(root.querySelector('.editor__footer') as HTMLElement).getByRole('button', {
+    name,
+  }) as HTMLButtonElement;
+
+const headerClose = (root: HTMLElement) => root.querySelector('.editor__close') as HTMLElement;
+
 const bodyOf = (root: HTMLElement) =>
   within(root).getByRole('textbox', { name: /Markdown/ }) as HTMLTextAreaElement;
 
@@ -122,12 +129,12 @@ afterEach(() => {
 });
 
 describe('edit dialog layout', () => {
-  it('shows the header, the outline, the fields, the draft box and one Cancel and Save pair', async () => {
+  it('shows the preview header, the draft chip, the outline, the fields and one Close and Save pair', async () => {
     const { dialog } = await openEdit();
     expect(within(dialog).getByText('#14')).toBeTruthy();
-    expect(within(dialog).getByText('Edit task')).toBeTruthy();
-    // The draft state is not edited here: no badge and no draft box.
-    expect(dialog.querySelector('.editor__badge')?.textContent ?? '').toBe('');
+    expect(within(dialog).getByText('Task preview')).toBeTruthy();
+    // The card was a draft when it opened, so the chip says so; there is no draft box.
+    expect(dialog.querySelector('.editor__badge')?.textContent).toBe('Draft');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe(
       'CLI target selection',
     );
@@ -140,8 +147,9 @@ describe('edit dialog layout', () => {
     ).toEqual(['01Goal', '02Done when']);
     expect(within(dialog).queryByRole('tab')).toBeNull();
     expect(within(dialog).queryByRole('checkbox')).toBeNull();
-    expect(button(dialog, 'Cancel')).toBeTruthy();
-    expect(button(dialog, 'Save')).toBeTruthy();
+    expect(footerButton(dialog, 'Close')).toBeTruthy();
+    expect(within(dialog).queryByRole('button', { name: 'Cancel' })).toBeNull();
+    expect(button(dialog, 'Save').disabled).toBe(true);
     expect(within(dialog).queryByRole('button', { name: 'Save and finalize' })).toBeNull();
     expect(within(dialog).getByRole('region', { name: 'Image attachments' })).toBeTruthy();
     expect(within(dialog).queryByRole('button', { name: 'Close attachments panel' })).toBeNull();
@@ -150,13 +158,17 @@ describe('edit dialog layout', () => {
   it('shows the Japanese wording', async () => {
     selectLocale('ja');
     const { dialog } = await openEdit();
-    expect(within(dialog).getByText('タスクを編集')).toBeTruthy();
+    expect(within(dialog).getByText('タスクのプレビュー')).toBeTruthy();
     expect(within(dialog).queryByRole('checkbox')).toBeNull();
-    for (const name of ['キャンセル', '保存']) {
-      expect(button(dialog, name)).toBeTruthy();
-    }
+    expect(footerButton(dialog, '閉じる')).toBeTruthy();
+    expect(button(dialog, '保存')).toBeTruthy();
     setDescription('x', dialog);
-    expect(within(dialog).getByText('未保存の変更があります')).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        '未保存の変更があります。保存するまで、エージェントはこのタスクを変更できません。',
+      ),
+    ).toBeTruthy();
+    expect(footerButton(dialog, 'キャンセル')).toBeTruthy();
   });
 
   it('keeps the outline in step with the text', async () => {
@@ -222,16 +234,20 @@ describe('saving', () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog } = await openEdit(onSubmit);
     expect(button(dialog, 'Save').disabled).toBe(true);
-    expect(within(dialog).queryByText('You have unsaved changes.')).toBeNull();
+    expect(within(dialog).getByText('No changes')).toBeTruthy();
     setDescription('## New body', dialog);
-    expect(within(dialog).getByText('You have unsaved changes.')).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        "You have unsaved changes. Agents can't change this task until you save.",
+      ),
+    ).toBeTruthy();
     expect(button(dialog, 'Save').disabled).toBe(false);
   });
 
   it('closes without saving or asking when the body is opened and closed unchanged', async () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const { dialog, onClosed } = await openEdit(onSubmit);
-    await userEvent.click(button(dialog, 'Cancel'));
+    await userEvent.click(footerButton(dialog, 'Close'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -243,11 +259,11 @@ describe('saving', () => {
     setTitle('  Renamed  ', dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    // The body, the conditions and the title go in one last request.
     expect(onSubmit.mock.calls).toEqual([
-      [{ body: '## New body', acceptance: [] }],
-      [{ title: 'Renamed' }],
+      [{ body: '## New body', acceptance: [], title: 'Renamed' }],
     ]);
-    // Saving never changes the draft state of the card.
+    // A card that was a draft before opening stays a draft.
     expect(onSubmit.mock.calls.some(([data]) => 'finalize' in data)).toBe(false);
   });
 
@@ -295,8 +311,8 @@ describe('saving', () => {
     await userEvent.click(button(dialog, 'Save'));
 
     expect(button(dialog, 'Saving…').disabled).toBe(true);
-    expect(button(dialog, 'Cancel').disabled).toBe(true);
-    expect(button(dialog, 'Close').disabled).toBe(true);
+    expect(footerButton(dialog, 'Cancel').disabled).toBe(true);
+    expect((headerClose(dialog) as HTMLButtonElement).disabled).toBe(true);
     expect(within(dialog).getByRole('status').textContent).toBe('Saving…');
     expect(dialog.querySelector('.editor__footer')?.getAttribute('data-saving')).toBe('true');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).disabled).toBe(true);
@@ -333,7 +349,6 @@ describe('save failures', () => {
       .fn<(data: Data) => Promise<void>>()
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new WriteError('Description is too long.', 422, 'invalid_value'))
-      .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(undefined);
     const { dialog, onClosed } = await openEdit(onSubmit, task);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove old.png' }));
@@ -348,15 +363,14 @@ describe('save failures', () => {
     expect(onClosed).not.toHaveBeenCalled();
     expect(descriptionOf(dialog)).toBe('keep this');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('kept title');
-    expect(button(dialog, 'Cancel').disabled).toBe(false);
+    expect(footerButton(dialog, 'Cancel').disabled).toBe(false);
 
     await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
     expect(onSubmit.mock.calls.map(([data]) => Object.keys(data))).toEqual([
       ['requestId', 'attachments', 'removedAttachmentIds'],
-      ['body', 'acceptance'],
-      ['body', 'acceptance'],
-      ['title'],
+      ['body', 'acceptance', 'title'],
+      ['body', 'acceptance', 'title'],
     ]);
   });
 
@@ -392,8 +406,8 @@ describe('unsaved changes', () => {
   it('closes without a question when nothing changed', async () => {
     for (const how of ['cancel', 'close', 'escape', 'backdrop'] as const) {
       const { dialog, onClosed, opener } = await openEdit();
-      if (how === 'cancel') await userEvent.click(button(dialog, 'Cancel'));
-      else if (how === 'close') await userEvent.click(button(dialog, 'Close'));
+      if (how === 'cancel') await userEvent.click(footerButton(dialog, 'Close'));
+      else if (how === 'close') await userEvent.click(headerClose(dialog));
       else if (how === 'escape') await userEvent.keyboard('{Escape}');
       else await userEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as Element);
       await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
@@ -407,8 +421,8 @@ describe('unsaved changes', () => {
     for (const how of ['cancel', 'close', 'escape', 'backdrop'] as const) {
       const { dialog, onClosed } = await openEdit();
       setDescription('edited', dialog);
-      if (how === 'cancel') await userEvent.click(button(dialog, 'Cancel'));
-      else if (how === 'close') await userEvent.click(button(dialog, 'Close'));
+      if (how === 'cancel') await userEvent.click(footerButton(dialog, 'Cancel'));
+      else if (how === 'close') await userEvent.click(headerClose(dialog));
       else if (how === 'escape') await userEvent.keyboard('{Escape}');
       else await userEvent.click(document.querySelector('[data-slot="dialog-overlay"]') as Element);
       const confirm = await screen.findByRole('dialog', { name: 'Discard changes?' });
@@ -477,7 +491,7 @@ describe('focus', () => {
     await waitFor(() =>
       expect(document.activeElement).toBe(within(dialog).getByLabelText('Title')),
     );
-    await userEvent.click(button(dialog, 'Cancel'));
+    await userEvent.click(footerButton(dialog, 'Close'));
     await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 });
