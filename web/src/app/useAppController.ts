@@ -6,10 +6,11 @@ import { useProjects } from '../features/projects/model/useProjects';
 import { useTaskLifecycle } from '../features/tasks/model/useTaskLifecycle';
 import { useBuildReload } from './model/useBuildReload';
 import { usePcConnection } from './data/PcData';
-import { epicForEditor, taskForEditor, toBoardView } from './data/assemble';
+import { epicForEditor, taskForEditor, toBoardView, toTaskSummary } from './data/assemble';
 import { useDataCore, usePresentationHold } from '../shared/data/react';
 import { useDetailWidth } from '../shared/lib/detail-width/useDetailWidth';
 import { useProjectSession } from './model/useProjectSession';
+import { useStreamSubscriptions } from './model/useStreamSubscriptions';
 import { useTaskAnswers } from '../features/tasks/answer/model/useTaskAnswers';
 import { findTask, nextSelection } from '../features/tasks/model/board';
 import { isProjectId } from './model/projectSession';
@@ -140,9 +141,14 @@ export function useAppController(initial: AppInitial | undefined): AppController
   const loadTask = useCallback(
     async (projectId: ProjectId, card: TaskSummary): Promise<Task | null> => {
       const key: ResourceKey = { kind: 'task', projectId, id: card.id };
-      await core.refreshDetail(key, ['document']);
+      // The card's own fields (state, title) come from the Summary, which waits while a modal is
+      // open, so it is read again too; an archived card is not in it and keeps the one given.
+      await Promise.all([core.refreshSummary(projectId), core.refreshDetail(key, ['document'])]);
       const loaded = core.store.getResource(key).document.data;
-      return loaded === null ? null : taskForEditor(card, loaded);
+      if (loaded === null) return null;
+      const summary = core.store.getSummary(projectId).data;
+      const listed = summary?.tasks.find((item) => item.id === card.id);
+      return taskForEditor(listed ? toTaskSummary(listed, summary?.epics ?? []) : card, loaded);
     },
     [core],
   );
@@ -181,16 +187,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     [adapter, core],
   );
 
-  // The Docs dialog follows its own files: a `docs` note names the project, and a reopened stream
-  // may have missed notes for any project. The Docs are not board data, so nothing here waits.
-  const subscribeDocs = useCallback(
-    (listener: (projectId: string | null) => void) =>
-      adapter.subscribe((note) => {
-        if (note.type === 'docs') listener(note.projectId);
-        else if (note.type === 'sync') listener(null);
-      }),
-    [adapter],
-  );
+  const { subscribeDocs, subscribeChanges } = useStreamSubscriptions(adapter, activeRef);
 
   // Automatic updates wait while the detail drawer or a modal is open and for 3 seconds after.
   usePresentationHold(
@@ -281,5 +278,6 @@ export function useAppController(initial: AppInitial | undefined): AppController
     docsProjectId: docsOpenFor === activeId ? docsOpenFor : null,
     setDocsProjectId: setDocsOpenFor,
     subscribeDocs,
+    subscribeChanges,
   };
 }

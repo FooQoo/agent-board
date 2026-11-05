@@ -20,8 +20,6 @@ export const detailEn = {
     epicRetry: 'Try again',
     conditionsTitle: 'Acceptance conditions',
     toolbar: 'Task actions',
-    edit: 'Edit task',
-    makeDraft: 'Make draft',
     preview: 'Preview',
     openFullscreen: 'Open full screen',
     problem: 'This file has a problem: {{file}} ({{field}}) — {{reason}}',

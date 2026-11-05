@@ -92,6 +92,8 @@ export interface AppControllerModel {
    * `null` when it may be any project (the stream reopened). Returns the function that stops it.
    */
   subscribeDocs: (listener: (projectId: string | null) => void) => () => void;
+  /** Calls `listener` when the active project's card or epic may have changed; the preview then reads it again. */
+  subscribeChanges: (listener: () => void) => () => void;
 }
 
 export interface AppWorkspaceActions {
@@ -112,8 +114,9 @@ export interface AppWorkspaceActions {
   onCloseEpic: () => void;
   onEditEpic: () => void;
   onDeleteEpic: () => Promise<void>;
+  onFinalizeEpic: () => Promise<void>;
   onRetryEpics: () => void;
-  onEditTask: () => void;
+  onPreviewTask: () => void;
   onTaskChanged: () => void;
   onRemove: (action: 'archive' | 'delete', task: TaskSummary) => Promise<boolean>;
   onRestore: () => void;

@@ -12,8 +12,12 @@ import { StatusBar } from '../shared/ui/status-bar/StatusBar';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
 import { guideLayer } from './onboarding/lazyGuide';
 import { isProjectId } from './model/projectSession';
-import type { ProjectId } from '../shared/api/contracts';
+import { EpicBadge } from '../features/epics/label/EpicBadge';
+import type { EpicRef, ProjectId } from '../shared/api/contracts';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
+
+/** The epic label of the task detail's epic tab heading. */
+const renderEpicLabel = (epic: EpicRef) => <EpicBadge epic={epic} className="detail__epic-label" />;
 
 export function BoardWorkspace({
   model,
@@ -139,6 +143,7 @@ export function BoardWorkspace({
                 projectId={activeId}
                 epic={selectedEpic}
                 onEdit={actions.onEditEpic}
+                onFinalize={actions.onFinalizeEpic}
                 operations={model.operations}
                 onDelete={actions.onDeleteEpic}
                 onClose={actions.onCloseEpic}
@@ -170,7 +175,9 @@ export function BoardWorkspace({
                   : boardData === null && Boolean(activeId)
               }
               onRetryEpics={actions.onRetryEpics}
-              onEdit={actions.onEditTask}
+              onPreview={actions.onPreviewTask}
+              onOpenEpic={actions.onOpenEpic}
+              renderEpicLabel={renderEpicLabel}
               onChanged={actions.onTaskChanged}
               archived={archiveVisible}
               operationSaving={operation?.saving ?? false}

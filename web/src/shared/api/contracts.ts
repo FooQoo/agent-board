@@ -173,7 +173,7 @@ export type DialogAction =
   | { kind: 'create' }
   | { kind: 'request' }
   | { kind: 'move'; task: TaskSummary; target: ColumnName }
-  | { kind: 'edit'; task: Task }
+  | { kind: 'edit'; task: Task; archived?: boolean }
   | { kind: 'epic'; epic: Epic };
 
 /** Error body shared by the CLI `--json` output and the Web API. */

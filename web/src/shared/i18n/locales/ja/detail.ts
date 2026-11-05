@@ -20,8 +20,6 @@ export const detailJa = {
     epicRetry: '再試行',
     conditionsTitle: '受入条件',
     toolbar: 'タスクの操作',
-    edit: 'タスクを編集',
-    makeDraft: '下書きにする',
     preview: 'プレビュー',
     openFullscreen: '全画面で開く',
     problem: 'ファイルに不備があります: {{file}}（{{field}}） — {{reason}}',

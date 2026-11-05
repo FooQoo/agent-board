@@ -1,8 +1,9 @@
-import { ArchiveRestoreIcon, FilePenIcon, PencilIcon as EditIcon } from 'lucide-react';
+import { ArchiveRestoreIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { setAcceptance, setDraft } from '../api/edit';
 import { noOperations, type OperationControls } from '../../../shared/lib/operations/operations';
+import type { ReactNode } from 'react';
 import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/api/contracts';
 import { useEpicDetail, useTaskDetail } from '../../../shared/data/react';
 import { DeleteButton } from '../delete/DeleteButton';
@@ -10,6 +11,7 @@ import { DeleteConfirm } from '../delete/DeleteConfirm';
 import type { DetailTab } from './DetailTabs';
 import { TaskDetailView } from './TaskDetailView';
 import { DraftBanner } from './DraftBanner';
+import { PreviewAction } from './PreviewAction';
 import './detail.css';
 
 export interface DetailPanelProps {
@@ -22,8 +24,12 @@ export interface DetailPanelProps {
   /** Tells the app about the delete confirmation, so the project cannot change under it. */
   operations?: OperationControls;
   onClose: () => void;
-  /** The edit icon (shown for a draft) was pressed. */
-  onEdit?: (task: TaskSummary) => void;
+  /** The Preview button was pressed: the app opens the preview dialog for the card. */
+  onPreview?: (task: TaskSummary) => void;
+  /** The epic tab's Open full screen button was pressed. The app opens the epic's preview. */
+  onOpenEpic?: (epicId: string) => void;
+  /** Draws the epic label of the epic tab's heading. The caller supplies it. */
+  renderEpicLabel?: (epic: EpicRef) => ReactNode;
   /** A draft toggle or an answer was saved: the board should be fetched again. */
   onChanged?: () => void;
   /** Runs archive/delete through the app's project-bound lifecycle operation. */
@@ -53,7 +59,9 @@ export function DetailPanel({
   variant = 'card',
   operations = noOperations,
   onClose,
-  onEdit,
+  onPreview,
+  onOpenEpic,
+  renderEpicLabel,
   onChanged,
   onRemove,
   initialConfirm,
@@ -88,7 +96,9 @@ export function DetailPanel({
       operations={operations}
       task={task}
       onClose={onClose}
-      onEdit={onEdit}
+      onPreview={onPreview}
+      onOpenEpic={onOpenEpic}
+      renderEpicLabel={renderEpicLabel}
       onChanged={onChanged}
       onRemove={onRemove}
       initialConfirm={initialConfirm}
@@ -121,7 +131,9 @@ function DetailBody({
   task,
   operations,
   onClose,
-  onEdit,
+  onPreview,
+  onOpenEpic,
+  renderEpicLabel,
   onChanged,
   onRemove,
   initialConfirm,
@@ -168,13 +180,13 @@ function DetailBody({
     }
   }, [confirm]);
 
-  const toggleDraft = async (isDraft: boolean) => {
+  const finalizeDraft = async () => {
     if (draftBusy.current) return;
     draftBusy.current = true;
     setDraftSaving(true);
     setDraftFailed(false);
     try {
-      await setDraft(projectId, task.id, isDraft);
+      await setDraft(projectId, task.id, false);
       onChanged?.();
     } catch {
       setDraftFailed(true);
@@ -183,8 +195,6 @@ function DetailBody({
       setDraftSaving(false);
     }
   };
-
-  const canMakeDraft = !task.isDraft && task.agentStatus !== 'running';
 
   // The person may check and uncheck conditions on any task that is not archived.
   const toggleCondition = async (conditionId: string, done: boolean) => {
@@ -211,9 +221,12 @@ function DetailBody({
       onRetryEpics={onRetryEpics}
       readOnlyDraft={false}
       onToggleCondition={archived ? undefined : toggleCondition}
+      onOpenEpic={onOpenEpic}
+      renderEpicLabel={renderEpicLabel}
       toolbar={
         archived ? (
           <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
+            <PreviewAction onPreview={() => onPreview?.(task)} />
             {onRestore && (
               <button
                 type="button"
@@ -235,30 +248,7 @@ function DetailBody({
           </div>
         ) : (
           <div className="detail__toolbar" role="toolbar" aria-label={t('detail.toolbar')}>
-            {task.isDraft && (
-              <button
-                type="button"
-                className="detail__tool"
-                aria-label={t('detail.edit')}
-                title={t('detail.edit')}
-                onClick={() => onEdit?.(task)}
-              >
-                <EditIcon aria-hidden="true" />
-              </button>
-            )}
-            {canMakeDraft && (
-              <button
-                type="button"
-                className="detail__tool detail__tool--text"
-                aria-label={t('detail.makeDraft')}
-                title={t('detail.makeDraft')}
-                disabled={draftSaving}
-                onClick={() => void toggleDraft(true)}
-              >
-                <FilePenIcon aria-hidden="true" />
-                {t('detail.makeDraft')}
-              </button>
-            )}
+            <PreviewAction onPreview={() => onPreview?.(task)} />
             <DeleteButton
               ref={deleteButton}
               action="archive"
@@ -275,7 +265,7 @@ function DetailBody({
         <DraftBanner
           busy={draftSaving}
           failed={draftFailed}
-          onFinalize={() => void toggleDraft(false)}
+          onFinalize={() => void finalizeDraft()}
         />
       )}
       {archived && restoreFailed && (
