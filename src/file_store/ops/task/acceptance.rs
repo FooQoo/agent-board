@@ -69,12 +69,12 @@ impl FileStore {
         let (english, japanese) = if done {
             (
                 format!("A person marked {condition} as met."),
-                format!("人が{condition}を達成にしました。"),
+                format!("ユーザーが{condition}を達成にしました。"),
             )
         } else {
             (
                 format!("A person marked {condition} as not met."),
-                format!("人が{condition}を未達成に戻しました。"),
+                format!("ユーザーが{condition}を未達成に戻しました。"),
             )
         };
         let event = transition_event(Transition {

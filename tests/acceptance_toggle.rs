@@ -117,6 +117,50 @@ fn checking_one_condition_changes_only_it_and_records_who_did() {
 }
 
 #[test]
+fn a_japanese_task_records_that_the_user_made_the_change() {
+    let (home, pid, id) = setup("human");
+    let desc = home.path().join("ja.md");
+    std::fs::write(
+        &desc,
+        "---\nacceptance:\n- id: AC-1\n  text: 一つ目\n  done: false\n- id: AC-2\n  text: 二つ目\n  done: false\n---\n日本語の計画。\n",
+    )
+    .unwrap();
+    json_ok(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "edit",
+            &id.to_string(),
+            "--desc-file",
+            desc.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    let server = Running::start(home.path());
+    let last_reason = |reply: common::Reply| {
+        assert_eq!(reply.status, 200, "{}", reply.body);
+        reply.json()["task"]["history"]
+            .as_array()
+            .unwrap()
+            .last()
+            .unwrap()["reason"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    assert_eq!(
+        last_reason(toggle(&server, &pid, id, "AC-1", true)),
+        "ユーザーがAC-1を達成にしました。"
+    );
+    assert_eq!(
+        last_reason(toggle(&server, &pid, id, "AC-1", false)),
+        "ユーザーがAC-1を未達成に戻しました。"
+    );
+    server.stop();
+}
+
+#[test]
 fn the_persons_choice_wins_and_a_change_made_meanwhile_is_kept() {
     let (home, pid, id) = setup("human");
     let server = Running::start(home.path());
