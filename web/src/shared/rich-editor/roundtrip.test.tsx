@@ -99,6 +99,34 @@ describe('Docs round trip', () => {
     }
   });
 
+  it('does not report a change for reading alone, including a rebuild under a new key', async () => {
+    const ref = createRef<RichMarkdownEditorHandle>();
+    const onChange = vi.fn();
+    const keyed = (key: string, value: string) => (
+      <RichMarkdownEditor
+        key={key}
+        value={value}
+        onChange={onChange}
+        aria-label="Document"
+        resolveImage={resolveImage}
+        ref={ref}
+      />
+    );
+    const { rerender } = render(keyed('first', SAMPLE));
+    await waitFor(() => expect(ref.current).not.toBeNull());
+    for (const [key, text] of [
+      ['second', MDX_SAMPLE],
+      ['third', NOTATION],
+    ] as const) {
+      rerender(keyed(key, text));
+      await waitFor(() => expect(ref.current?.markdown()).toBe(text));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+    }
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('gives back the original text when a character is typed and taken back', async () => {
     const { ref } = await mounted(SAMPLE);
     await act(async () => {
