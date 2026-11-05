@@ -3,6 +3,7 @@ import type { ProgressTaskRenderer } from './EpicProgressList';
 import { EpicEditorView } from './EpicEditorView';
 import { useEpicEditor } from './useEpicEditor';
 import type { EpicApi } from './epicApi';
+import type { ChangeSubscription } from '../../../shared/ui/editor/useFollowLatest';
 
 export type { EpicApi } from './epicApi';
 
@@ -18,6 +19,10 @@ export interface EpicDialogProps {
   onOpenTask: (taskId: number) => void;
   onClose: () => void;
   onSavingChange?: (saving: boolean) => void;
+  /** Tells that the epic may have changed outside the dialog; it then follows the latest. */
+  subscribe?: ChangeSubscription;
+  /** Reads the latest epic without a loading state; null when it found nothing or failed. */
+  load?: () => Promise<Epic | null>;
 }
 
 /** Connects the public epic editor contract to its state controller and display. */
@@ -30,15 +35,19 @@ export function EpicDialog({
   onClose,
   onSavingChange,
   renderTask,
+  subscribe,
+  load,
 }: EpicDialogProps) {
-  const state = useEpicEditor({ epic, tasks, api, projectId, onOpenTask, onClose, onSavingChange });
-  return (
-    <EpicEditorView
-      epic={epic}
-      state={state}
-      onOpenTask={onOpenTask}
-      onClose={onClose}
-      renderTask={renderTask}
-    />
-  );
+  const state = useEpicEditor({
+    epic,
+    tasks,
+    api,
+    projectId,
+    onOpenTask,
+    onClose,
+    onSavingChange,
+    subscribe,
+    load,
+  });
+  return <EpicEditorView epic={epic} state={state} renderTask={renderTask} />;
 }

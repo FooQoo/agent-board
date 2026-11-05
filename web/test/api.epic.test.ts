@@ -36,13 +36,35 @@ describe('epic writes', () => {
   it('saves the whole epic document as document, and its body as body', async () => {
     const fetchMock = stubFetch(200, { epic: EPIC, changed: true });
     const api = epicApi(PROJECT, 'FILE-SHARE', () => {});
-    await api.saveDocument({ document: '---\npriority: [1]\n---\n## Goal' });
-    await api.saveDocument({ body: '## Goal' });
-    const [first, second] = fetchMock.mock.calls;
-    expect(JSON.parse(String(first?.[1]?.body))).toEqual({
+    await api.save({
+      name: 'File share',
+      color: '#7C3AED',
       document: '---\npriority: [1]\n---\n## Goal',
     });
-    expect(JSON.parse(String(second?.[1]?.body))).toEqual({ body: '## Goal' });
+    await api.save({ name: 'File share', color: '#7C3AED', body: '## Goal', isDraft: false });
+    const [first, second] = fetchMock.mock.calls;
+    expect(JSON.parse(String(first?.[1]?.body))).toEqual({
+      name: 'File share',
+      color: '#7C3AED',
+      document: '---\npriority: [1]\n---\n## Goal',
+    });
+    expect(JSON.parse(String(second?.[1]?.body))).toEqual({
+      name: 'File share',
+      color: '#7C3AED',
+      body: '## Goal',
+      isDraft: false,
+    });
+  });
+
+  it('enters a draft with isDraft and takes it back with a discard', async () => {
+    const fetchMock = stubFetch(200, { epic: { ...EPIC, isDraft: true } });
+    const api = epicApi(PROJECT, 'FILE-SHARE', () => {});
+    expect((await api.enterDraft()).isDraft).toBe(true);
+    await api.leaveDraft();
+    const [first, second] = fetchMock.mock.calls;
+    expect(first?.[1]?.method).toBe('PATCH');
+    expect(JSON.parse(String(first?.[1]?.body))).toEqual({ isDraft: true });
+    expect(JSON.parse(String(second?.[1]?.body))).toEqual({ isDraft: false, discard: true });
   });
 
   it('puts a task into an epic and takes it out with null', async () => {

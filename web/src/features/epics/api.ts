@@ -58,6 +58,8 @@ export function updateEpic(
     name?: string;
     color?: string;
     isDraft?: boolean;
+    /** With `isDraft: false`: the draft is dropped, not finalized, and the history says so. */
+    discard?: boolean;
     document?: string;
     body?: string;
     /** The card order of the epic: card IDs, first is first. */

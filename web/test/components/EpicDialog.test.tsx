@@ -8,6 +8,7 @@ import { EpicDialog, type EpicApi } from '../../src/features/epics/editor/EpicDi
 import { selectLocale } from '../../src/shared/i18n';
 import type { Task, Epic } from '../../src/shared/api/contracts';
 import { makeTask } from '../fixtures';
+import type { ChangeSubscription } from '../../src/shared/ui/editor/useFollowLatest';
 
 vi.mock(
   '../../src/shared/rich-editor/RichMarkdownEditor',
@@ -65,11 +66,15 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
     removeImage: vi.fn(async (id: string) => {
       calls.push(`removeImage:${id.slice(0, 4)}`);
     }),
-    saveDocument: vi.fn(async () => {
-      calls.push('saveDocument');
+    save: vi.fn(async () => {
+      calls.push('save');
     }),
-    saveDetails: vi.fn(async () => {
-      calls.push('saveDetails');
+    enterDraft: vi.fn(async () => {
+      calls.push('enterDraft');
+      return { ...EPIC, isDraft: true };
+    }),
+    leaveDraft: vi.fn(async () => {
+      calls.push('leaveDraft');
     }),
     savePriority: vi.fn(async (priority: number[]) => {
       calls.push(`savePriority:${priority.join(',')}`);
@@ -84,7 +89,13 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
 
 async function openEpic(
   api: EpicApi,
-  options: { onOpenTask?: (id: number) => void; epic?: Epic; board?: Task[] } = {},
+  options: {
+    onOpenTask?: (id: number) => void;
+    epic?: Epic;
+    board?: Task[];
+    subscribe?: ChangeSubscription;
+    load?: () => Promise<Epic | null>;
+  } = {},
 ) {
   const onClosed = vi.fn();
   function Host() {
@@ -99,6 +110,8 @@ async function openEpic(
             epic={options.epic ?? EPIC}
             tasks={options.board ?? tasks()}
             api={api}
+            subscribe={options.subscribe}
+            load={options.load}
             renderTask={renderProgressTask}
             onOpenTask={options.onOpenTask ?? vi.fn()}
             onClose={() => {
@@ -116,7 +129,7 @@ async function openEpic(
   return {
     opener,
     onClosed,
-    dialog: screen.getByRole('dialog', { name: /Edit epic|エピックを編集/ }),
+    dialog: screen.getByRole('dialog', { name: /Epic preview|エピックのプレビュー/ }),
   };
 }
 
@@ -200,7 +213,7 @@ describe('epic dialog layout', () => {
     const { api } = fakeApi();
     const { dialog } = await openEpic(api);
     expect(within(dialog).getAllByText('FILE-SHARE').length).toBeGreaterThan(0);
-    expect(within(dialog).getByText('Edit epic')).toBeTruthy();
+    expect(within(dialog).getByText('Epic preview')).toBeTruthy();
     expect(within(dialog).queryByText('Draft', { selector: '.editor__badge' })).toBeNull();
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('File share');
     expect(
@@ -225,11 +238,13 @@ describe('epic dialog layout', () => {
     setName('Renamed draft', dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(api.saveDetails).toHaveBeenCalledWith({
+    expect(api.save).toHaveBeenCalledWith({
       name: 'Renamed draft',
       color: EPIC.color.toUpperCase(),
-      isDraft: true,
+      body: DOCUMENT,
     });
+    expect(api.enterDraft).not.toHaveBeenCalled();
+    expect(api.leaveDraft).not.toHaveBeenCalled();
   });
 });
 
@@ -260,10 +275,15 @@ describe('saving', () => {
     setDocument(text, dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(api.saveDocument).toHaveBeenCalledWith({ body: text });
+    expect(api.save).toHaveBeenCalledWith({
+      name: 'File share',
+      color: '#7C3AED',
+      body: text,
+      isDraft: false,
+    });
   });
 
-  it('saves images, then the epic details, then the name and color', async () => {
+  it('saves images, then the order, then the epic in one last request', async () => {
     const { api, calls } = fakeApi();
     const { dialog, onClosed } = await openEpic(api);
     await openImages(dialog);
@@ -278,17 +298,12 @@ describe('saving', () => {
     setColor('#00ff00', dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(calls).toEqual([
-      `removeImage:${IMAGE.slice(0, 4)}`,
-      'addImages',
-      'saveDocument',
-      'saveDetails',
-    ]);
-    expect(api.saveDocument).toHaveBeenCalledWith({ body: '## Goal\n\nChanged.' });
-    expect(api.saveDetails).toHaveBeenCalledWith({
+    expect(calls).toEqual(['enterDraft', `removeImage:${IMAGE.slice(0, 4)}`, 'addImages', 'save']);
+    expect(api.save).toHaveBeenCalledWith({
       name: 'Renamed epic',
       color: '#00FF00',
-      isDraft: EPIC.isDraft,
+      body: '## Goal\n\nChanged.',
+      isDraft: false,
     });
   });
 
@@ -311,7 +326,7 @@ describe('saving', () => {
     const pending = new Promise<void>((resolve) => {
       finish = resolve;
     });
-    const { api } = fakeApi({ saveDocument: vi.fn(() => pending) });
+    const { api } = fakeApi({ save: vi.fn(() => pending) });
     const { dialog, onClosed } = await openEpic(api);
     setDocument('slow', dialog);
     await userEvent.click(button(dialog, 'Save'));
@@ -331,8 +346,8 @@ describe('save failures', () => {
   it('shows the step that failed, keeps the input, and retries only what is left', async () => {
     const { api, calls } = fakeApi();
     let failFirst = true;
-    api.saveDetails = vi.fn(async () => {
-      calls.push('saveDetails');
+    api.save = vi.fn(async () => {
+      calls.push('save');
       if (failFirst) {
         failFirst = false;
         throw new WriteError('Epic is busy.', 409, 'epic_busy');
@@ -344,15 +359,15 @@ describe('save failures', () => {
     await userEvent.click(button(dialog, 'Save'));
 
     const alert = await within(dialog).findByRole('alert');
-    expect(alert.textContent).toContain('Could not save the name, color or draft.');
-    expect(alert.textContent).toContain('Earlier changes were saved');
+    expect(alert.textContent).toContain('Could not save the epic details.');
+    expect(alert.textContent).toContain('Your input is kept');
     expect(onClosed).not.toHaveBeenCalled();
     expect(bodyOf(dialog).value).toBe('kept plan');
     expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('Renamed epic');
 
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(calls).toEqual(['saveDocument', 'saveDetails', 'saveDetails']);
+    expect(calls).toEqual(['enterDraft', 'save', 'save']);
   });
 
   it('stops at the image step and does not save the epic details', async () => {
@@ -367,7 +382,7 @@ describe('save failures', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove shot.png' }));
     await userEvent.click(button(dialog, 'Save'));
     expect((await within(dialog).findByRole('alert')).textContent).toContain('the images');
-    expect(calls).toEqual([]);
+    expect(calls).toEqual(['enterDraft']);
     expect(bodyOf(dialog).value).toBe('kept');
   });
 });
@@ -383,19 +398,23 @@ describe('epic details document', () => {
   it('saves the whole document as document when the stored order cannot be read', async () => {
     const broken = '---\npriority: [\n---\n## Goal\n\nKeep.';
     const changed = '---\npriority: [\n---\n## Goal\n\nChanged.';
-    const { api } = fakeApi();
-    const { dialog, onClosed } = await openEpic(api, {
-      epic: { ...EPIC, document: broken, body: broken, priorityError: true },
-    });
+    const stored = { ...EPIC, document: broken, body: broken, priorityError: true };
+    const { api } = fakeApi({ enterDraft: vi.fn(async () => ({ ...stored, isDraft: true })) });
+    const { dialog, onClosed } = await openEpic(api, { epic: stored });
     setDocument(changed, dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
-    expect(api.saveDocument).toHaveBeenCalledWith({ document: changed });
+    expect(api.save).toHaveBeenCalledWith({
+      name: 'File share',
+      color: '#7C3AED',
+      document: changed,
+      isDraft: false,
+    });
   });
 
   it('names the epic details in the failure message when they cannot be saved', async () => {
     const { api } = fakeApi({
-      saveDocument: vi.fn(async () => {
+      save: vi.fn(async () => {
         throw new TypeError('Failed to fetch');
       }),
     });
@@ -454,5 +473,136 @@ describe('task names and unsaved changes', () => {
     await userEvent.click(within(confirm).getByRole('button', { name: 'Discard and close' }));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+});
+
+describe('the draft lock', () => {
+  it('does not enter a draft or write anything while the dialog is only read', async () => {
+    const { api, calls } = fakeApi();
+    const { dialog } = await openEpic(api);
+    expect(calls).toEqual([]);
+    expect(within(dialog).queryByText('Draft')).toBeNull();
+    expect(button(dialog, 'Save').disabled).toBe(true);
+  });
+
+  it('enters a draft once at the first difference and shows the chip and the lock line', async () => {
+    const { api } = fakeApi();
+    const { dialog } = await openEpic(api);
+    setName('Renamed', dialog);
+    await waitFor(() => expect(button(dialog, 'Save').disabled).toBe(false));
+    setName('Renamed again', dialog);
+    expect(api.enterDraft).toHaveBeenCalledTimes(1);
+    expect(within(dialog).getByText('Draft')).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        "You have unsaved changes. Agents can't change this epic until you save.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it('keeps Save disabled and says so when the epic changed before the draft was entered', async () => {
+    const { api } = fakeApi({
+      enterDraft: vi.fn(async () => ({ ...EPIC, isDraft: true, name: 'Changed by an agent' })),
+    });
+    const { dialog } = await openEpic(api);
+    setName('Mine', dialog);
+    expect(
+      await within(dialog).findByText("This epic changed while it was open, so it can't be saved."),
+    ).toBeTruthy();
+    expect(within(dialog).getByText('You have unsaved changes.')).toBeTruthy();
+    expect(button(dialog, 'Save').disabled).toBe(true);
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('Mine');
+  });
+
+  it('shows the error band when the draft cannot be entered, and retries it', async () => {
+    const enterDraft = vi
+      .fn<EpicApi['enterDraft']>()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue({ ...EPIC, isDraft: true });
+    const { api } = fakeApi({ enterDraft });
+    const { dialog } = await openEpic(api);
+    setName('Mine', dialog);
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.textContent).toContain('Could not save');
+    expect(button(dialog, 'Save').disabled).toBe(true);
+    await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(button(dialog, 'Save').disabled).toBe(false));
+    expect(enterDraft).toHaveBeenCalledTimes(2);
+  });
+
+  it('takes the draft back when the changes are discarded', async () => {
+    const { api, calls } = fakeApi();
+    const { dialog, onClosed } = await openEpic(api);
+    setName('Other', dialog);
+    await waitFor(() => expect(button(dialog, 'Save').disabled).toBe(false));
+    await userEvent.click(button(dialog, 'Cancel'));
+    const confirm = await screen.findByRole('dialog', { name: 'Discard changes?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Discard and close' }));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(calls).toEqual(['enterDraft', 'leaveDraft']);
+  });
+
+  it('does not take the draft back after a successful save', async () => {
+    const { api, calls } = fakeApi();
+    const { dialog, onClosed } = await openEpic(api);
+    setName('Other', dialog);
+    await waitFor(() => expect(button(dialog, 'Save').disabled).toBe(false));
+    await userEvent.click(button(dialog, 'Save'));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(calls).toEqual(['enterDraft', 'save']);
+  });
+
+  it('leaves an epic that was a draft before the dialog opened as a draft when discarding', async () => {
+    const { api, calls } = fakeApi();
+    const { dialog, onClosed } = await openEpic(api, { epic: { ...EPIC, isDraft: true } });
+    expect(within(dialog).getByText('Draft')).toBeTruthy();
+    setName('Other', dialog);
+    await userEvent.click(button(dialog, 'Cancel'));
+    const confirm = await screen.findByRole('dialog', { name: 'Discard changes?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Discard and close' }));
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('following the latest', () => {
+  function notifier() {
+    let notify: () => void = () => {};
+    const subscribe: ChangeSubscription = (listener) => {
+      notify = listener;
+      return () => {};
+    };
+    return { subscribe, fire: () => notify() };
+  }
+
+  it('shows the latest content and the update time while nothing is changed, and stops at the first difference', async () => {
+    const { subscribe, fire } = notifier();
+    const load = vi.fn(async () => ({ ...EPIC, name: 'Renamed by an agent' }));
+    const { api } = fakeApi();
+    const { dialog } = await openEpic(api, { subscribe, load });
+    await act(async () => fire());
+    await waitFor(() =>
+      expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe(
+        'Renamed by an agent',
+      ),
+    );
+    expect(within(dialog).getByText(/^Updated at /)).toBeTruthy();
+    expect(button(dialog, 'Save').disabled).toBe(true);
+
+    setName('Mine', dialog);
+    await act(async () => fire());
+    expect(load).toHaveBeenCalledTimes(1);
+    expect((within(dialog).getByLabelText('Title') as HTMLInputElement).value).toBe('Mine');
+  });
+
+  it('does not change the screen when the latest holds the same content', async () => {
+    const { subscribe, fire } = notifier();
+    const load = vi.fn(async () => ({ ...EPIC, updatedAt: '2026-10-03T00:00:00Z' }));
+    const { api } = fakeApi();
+    const { dialog } = await openEpic(api, { subscribe, load });
+    await act(async () => fire());
+    expect(load).toHaveBeenCalled();
+    expect(within(dialog).queryByText(/^Updated at /)).toBeNull();
+    expect(within(dialog).getByText('No changes')).toBeTruthy();
   });
 });

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import type { ProgressTaskRenderer } from './EpicProgressList';
 import { makeEpic, makeTask } from '../../../../.storybook/support/fixtures';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
@@ -48,7 +48,7 @@ const renderTask: ProgressTaskRenderer = (task, row) => (
   </div>
 );
 
-function saveDetailsFailsOnce() {
+function saveFailsOnce() {
   let shouldFail = true;
   return fn(async () => {
     if (shouldFail) {
@@ -66,9 +66,10 @@ meta.args = {
   api: {
     addImages: fn(async () => {}),
     removeImage: fn(async () => {}),
-    saveDocument: fn(async () => {}),
-    saveDetails: fn(async () => {}),
+    save: fn(async () => {}),
     savePriority: fn(async () => {}),
+    enterDraft: fn(async () => ({ ...epic, isDraft: true })),
+    leaveDraft: fn(async () => {}),
     remove: fn(async () => {}),
   },
   onOpenTask: fn(),
@@ -104,9 +105,10 @@ export const DetailsSaveRetry: Story = {
     api: {
       addImages: fn(async () => {}),
       removeImage: fn(async () => {}),
-      saveDocument: fn(async () => {}),
-      saveDetails: saveDetailsFailsOnce(),
+      save: saveFailsOnce(),
       savePriority: fn(async () => {}),
+      enterDraft: fn(async () => ({ ...epic, isDraft: true })),
+      leaveDraft: fn(async () => {}),
       remove: fn(async () => {}),
     },
   },
@@ -115,14 +117,15 @@ export const DetailsSaveRetry: Story = {
     const name = view.getByLabelText('Title');
     await userEvent.clear(name);
     await userEvent.type(name, 'Updated plan');
+    await waitFor(() => expect(view.getByRole('button', { name: 'Save' })).toBeEnabled());
     await userEvent.click(view.getByRole('button', { name: 'Save' }));
-    await expect(args.api.saveDetails).toHaveBeenCalledTimes(1);
+    await expect(args.api.save).toHaveBeenCalledTimes(1);
     await expect(await within(document.body).findByRole('alert')).toHaveTextContent(
-      'Could not save the name, color or draft.',
+      'Could not save the epic details.',
     );
     await expect(name).toHaveValue('Updated plan');
     await userEvent.click(within(document.body).getByRole('button', { name: 'Retry' }));
-    await expect(args.api.saveDetails).toHaveBeenCalledTimes(2);
+    await expect(args.api.save).toHaveBeenCalledTimes(2);
     await expect(within(document.body).queryByRole('alert')).toBeNull();
     await expect(args.onClose).toHaveBeenCalledTimes(1);
   },
