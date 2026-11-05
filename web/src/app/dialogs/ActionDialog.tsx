@@ -49,6 +49,7 @@ export function ActionDialog({
   subscribeChanges,
   loadTask,
   loadEpic,
+  isTaskListed,
   onChanged,
 }: {
   action: DialogAction;
@@ -72,6 +73,8 @@ export function ActionDialog({
   subscribeChanges?: ChangeSubscription;
   /** The task preview reads its card again through this. */
   loadTask?: (projectId: ProjectId, card: Task) => Promise<Task | null>;
+  /** Whether the board still lists the card; a card that left the board while open was archived. */
+  isTaskListed?: (projectId: ProjectId, id: number) => boolean | null;
   /** The epic preview reads its epic again through this. */
   loadEpic?: (projectId: ProjectId, epic: Epic) => Promise<Epic | null>;
   /** The task preview entered or left a draft. */
@@ -143,6 +146,7 @@ export function ActionDialog({
           renderEpicChip={renderEpicChip}
           subscribeChanges={subscribeChanges}
           loadTask={loadTask}
+          isTaskListed={isTaskListed}
           onChanged={onChanged ?? noop}
         />
       );

@@ -32,3 +32,23 @@ export async function putDraft(
   });
   if (!response.ok) throw new Error(`PUT draft answered ${response.status}: ${await response.text()}`);
 }
+
+/** Archives a card the way the Archive button does: `POST /tasks/{id}/archive` with the page's token. */
+export async function archiveTask(
+  id: number,
+  options: { project?: string; origin?: string; home?: string } = {},
+): Promise<void> {
+  const origin = options.origin ?? mainOrigin;
+  const project = options.project ?? mainProject;
+  const response = await fetch(`${origin}/api/projects/${projectId(project, options.home ?? mainHome())}/tasks/${id}/archive`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: origin,
+      'Sec-Fetch-Site': 'same-origin',
+      'X-Agboard-Token': await pageToken(origin),
+    },
+    body: '{}',
+  });
+  if (!response.ok) throw new Error(`POST archive answered ${response.status}: ${await response.text()}`);
+}

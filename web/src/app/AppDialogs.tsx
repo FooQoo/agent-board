@@ -38,6 +38,7 @@ export function AppDialogs({
             subscribeChanges={model.subscribeChanges}
             loadTask={model.loadTask}
             loadEpic={model.loadEpic}
+            isTaskListed={model.isTaskListed}
             onChanged={() => model.refreshProject(operation.projectId)}
           />
         </Suspense>

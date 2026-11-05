@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboard, agboardOk, mainProject, nextTaskId, resetBoard, taskBody, workspace } from '../helpers/agboard';
-import { putDraft } from '../helpers/drafts';
+import { archiveTask, putDraft } from '../helpers/drafts';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // The preview dialog of a task and of an epic on the real page and the real server: opening only reads, the
@@ -334,4 +334,35 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
   await expect(epicDialog).toHaveCount(0);
   await expect.poll(() => epic().name).toBe('Preview epic, saved');
   expect(epic().isDraft).toBe(false);
+});
+
+test('PM-4 a task opened from the archive is read-only and never becomes a draft', async ({ page }) => {
+  const id = addTask('Archived before opening');
+  await archiveTask(id);
+  await openBoard(page);
+  await page.locator('.header__archive').click();
+  await page.locator('.archive-row > button').filter({ hasText: 'Archived before opening' }).click();
+  await previewButton(page).click();
+  const dialog = previewOf(page, id);
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('data-read-only', '');
+  await expect(dialog.getByText('Read-only because it is archived.')).toBeVisible();
+  await expect(titleField(dialog)).toBeDisabled();
+  await expect(saveButton(dialog)).toBeDisabled();
+  expect(show(id).isDraft).toBe(false);
+  await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
+  await expect(dialog).toHaveCount(0);
+  expect(show(id).isDraft).toBe(false);
+});
+
+test('PM-4 a task archived while its preview is open turns the preview read-only', async ({ page }) => {
+  const id = addTask('Archived under the dialog');
+  await openBoard(page);
+  const dialog = await openPreview(page, id);
+  await expect(titleField(dialog)).toBeEnabled();
+  await archiveTask(id);
+  await expect(dialog).toHaveAttribute('data-read-only', '', { timeout: 15_000 });
+  await expect(dialog.getByText('Read-only because it is archived.')).toBeVisible();
+  await expect(titleField(dialog)).toBeDisabled();
+  expect(show(id).isDraft).toBe(false);
 });

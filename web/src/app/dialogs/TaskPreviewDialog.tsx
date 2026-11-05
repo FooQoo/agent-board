@@ -14,6 +14,8 @@ export interface TaskPreviewDialogProps {
   subscribeChanges?: ChangeSubscription;
   /** Reads the card and its text again, with its state as the Summary has it now. */
   loadTask: (projectId: ProjectId, card: Task) => Promise<Task | null>;
+  /** Whether the board still lists the card; `null` when that is not known. */
+  isTaskListed?: (projectId: ProjectId, id: number) => boolean | null;
   /** A draft was entered or left: the board should show it. */
   onChanged: () => void;
   onClose: () => void;
@@ -32,15 +34,21 @@ export function TaskPreviewDialog({
   archived = false,
   projectId,
   loadTask,
+  isTaskListed,
   onChanged,
   ...rest
 }: TaskPreviewDialogProps) {
   const [running, setRunning] = useState(task.agentStatus === 'running');
+  // A card that was on the board when the preview opened and is not any more was archived.
+  const [archivedWhileOpen, setArchivedWhileOpen] = useState(false);
   const reload = useCallback(async () => {
     const next = await loadTask(projectId, task);
-    if (next) setRunning(next.agentStatus === 'running');
+    if (next) {
+      setRunning(next.agentStatus === 'running');
+      if (!archived && isTaskListed?.(projectId, task.id) === false) setArchivedWhileOpen(true);
+    }
     return next;
-  }, [loadTask, projectId, task]);
+  }, [archived, isTaskListed, loadTask, projectId, task]);
   const enterDraft = useCallback(async () => {
     const { task: entered } = await setDraft(projectId, task.id, true);
     onChanged();
@@ -54,7 +62,7 @@ export function TaskPreviewDialog({
     <EditDialog
       task={task}
       projectId={projectId}
-      readOnlyReason={archived ? 'archived' : running ? 'running' : undefined}
+      readOnlyReason={archived || archivedWhileOpen ? 'archived' : running ? 'running' : undefined}
       enterDraft={enterDraft}
       leaveDraft={leaveDraft}
       reload={reload}

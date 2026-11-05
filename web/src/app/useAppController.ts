@@ -143,12 +143,24 @@ export function useAppController(initial: AppInitial | undefined): AppController
       const key: ResourceKey = { kind: 'task', projectId, id: card.id };
       // The card's own fields (state, title) come from the Summary, which waits while a modal is
       // open, so it is read again too; an archived card is not in it and keeps the one given.
-      await Promise.all([core.refreshSummary(projectId), core.refreshDetail(key, ['document'])]);
+      // The Summary goes first: reading it drops the Details of cards it no longer lists.
+      await core.refreshSummary(projectId);
+      await core.refreshDetail(key, ['document']);
       const loaded = core.store.getResource(key).document.data;
       if (loaded === null) return null;
       const summary = core.store.getSummary(projectId).data;
       const listed = summary?.tasks.find((item) => item.id === card.id);
       return taskForEditor(listed ? toTaskSummary(listed, summary?.epics ?? []) : card, loaded);
+    },
+    [core],
+  );
+  // Whether the Summary lists the card: `null` when it has no usable Summary (not read yet, or the
+  // last read failed), so a failed read is never taken for a card that left.
+  const isTaskListed = useCallback(
+    (projectId: ProjectId, id: number): boolean | null => {
+      const snapshot = core.store.getSummary(projectId);
+      if (snapshot.data === null || snapshot.state === 'error') return null;
+      return snapshot.data.tasks.some((item) => item.id === id);
     },
     [core],
   );
@@ -270,6 +282,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     refreshProject,
     loadTask,
     loadEpic,
+    isTaskListed,
     setRequested,
     restoreFailure,
     setRestoreFailure,

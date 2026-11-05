@@ -74,6 +74,8 @@ export interface AppControllerModel {
   refreshProject: (projectId: ProjectId) => void;
   /** The task with its Detail read fresh, for an editor; `null` when the Detail cannot be read. */
   loadTask: (projectId: ProjectId, card: TaskSummary) => Promise<Task | null>;
+  /** Whether the Summary lists the card; `null` when the Summary cannot say (not read, or the read failed). */
+  isTaskListed: (projectId: ProjectId, id: number) => boolean | null;
   /** The epic with its document read fresh, for an editor; `null` when it cannot be read. */
   loadEpic: (projectId: ProjectId, epic: Epic) => Promise<Epic | null>;
   setRequested: (
