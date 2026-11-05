@@ -65,7 +65,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 
 `project.json` holds `formatVersion`, `id`, `name`, `createdAt`, `nextTaskId`, and `defaultEpicsSeeded`. The last one is `true` once the project has been offered the default epics `BUG` and `ENHANCEMENT`; it is written once, so a default epic that was deleted is not created again. A file without it is read as `false`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`.
 
-`EPIC.md` holds the epic's details in Markdown, frontmatter included. Its frontmatter may hold `priority`, the list of task IDs in work order. The API and `epic show --json` return the whole text as `document`, the text without frontmatter as `body`, and the parsed order as `priority`. Earlier versions named this file `PLAN.md`; the first read of a project renames it to `EPIC.md`, as described in the [data guide](../../guide/operations/data.md).
+`EPIC.md` holds the epic's details in Markdown, frontmatter included. Its frontmatter may hold `priority`, the list of task IDs in work order. The API and `epic show --json` return the whole text as `document`, the text without frontmatter as `body`, and the parsed order as `priority`.
 
 A `task.json` looks like this:
 

@@ -86,7 +86,7 @@ agboard --project "My project" epic edit LAUNCH --document -
 agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
-`--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters. The earlier `--plan` and `--plan-file` options were removed; see [Data and backups](../operations/data) for the new names.
+`--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters.
 
 ## Filter and list
 

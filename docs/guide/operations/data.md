@@ -114,33 +114,6 @@ Setup does not install the Hook or the `agent-board` Skill. `agboard connect` do
 - **Interrupted runs.** While it writes, each agent has a small journal (`integrations-journal-<agent>.json`) and a lock (`integrations-<agent>.lock`) in the data folder. If a run was cut off, the next `connect` or `update` puts the files back from the backups. When a file changed in the meantime, it stays as it is, the journal stays, and the command stops for that agent and exits with code `1` (cancelling at the confirmation still exits with `0`). It prints each changed file with its backup, and the journal path, on standard error. The other agent is not affected. Restore those files yourself from the backups, remove the journal, and run the command again.
 - **Manual permissions.** Codex only gets the data folder permission when `config.toml` sets `sandbox_mode = "workspace-write"` and uses no permission profile. Otherwise `connect` skips Codex and shows what to do. Set it yourself, then run `connect` again. An agent that Agent Board could not find on your `PATH` is not configured; install it and run `connect` again.
 
-## Upgrading from PLAN.md
-
-Earlier versions stored each epic's details in `PLAN.md`. This version stores them in `EPIC.md`. The change is automatic and one-way: earlier versions cannot read `EPIC.md`.
-
-Before the first run, stop `agboard serve`, agents, and editors, and back up the whole `shared/` folder (see the next section).
-
-The first time a project is read, Agent Board renames each epic's `PLAN.md` to `EPIC.md` in the same folder. The file's bytes do not change, so the frontmatter, `priority`, body, images, attachments, and task membership stay as they were. Each rename is made under the project's write lock, so an interrupted run is finished by the next read. An epic that already has `EPIC.md` is not changed.
-
-Two situations need your attention:
-
-- **Both files exist.** Agent Board changes neither file. Every read of that project fails with `file_invalid`, and the message names the epic and both paths. Compare the two files, keep the content you want in `EPIC.md`, and delete the other file by hand.
-- **Neither file exists.** The epic is still listed, but its details are empty, and `snapshot` reports the missing file in `problems`. Restore the file from your backup.
-
-To return to an earlier version, restore the backup you made before the upgrade. Earlier versions do not see details written to `EPIC.md` after the upgrade. A backup that still contains `PLAN.md` is migrated again the first time this version reads it.
-
-Scripts and integrations also use new names:
-
-| Earlier | Now |
-| --- | --- |
-| `epic edit --plan` | `epic edit --document` |
-| `epic edit --plan-file` | `epic edit --document-file` |
-| `plan` in epic JSON | `document` |
-| `planPath` in hook, progress, and wait output | `documentPath` |
-| `PLAN.md` | `EPIC.md` |
-
-The earlier names are not accepted or produced. Update hook scripts, agent instructions, and any script that reads these fields.
-
 ## Back up and restore
 
 Stop `agboard serve`, agents, and editors writing to the files before backing up or restoring. Copy the whole `shared/` folder to preserve all projects and the workspace format. For one project, copy its entire folder, using the `folder` value from `workspace --json`. Restore the copy to the same location before restarting the server and agents.

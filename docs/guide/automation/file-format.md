@@ -79,7 +79,7 @@ The server also checks existing tasks when it starts. Pending tasks wait until t
 
 ## EPIC.md
 
-An `EPIC.md` holds the epic's details in free Markdown. Earlier versions named this file `PLAN.md`; it is renamed on the first read of its project (see [Data and backups](../operations/data.md)). Write the epic's reference completion conditions directly in the body as ordinary Markdown; they are not parsed as acceptance data, and an epic has no history.
+An `EPIC.md` holds the epic's details in free Markdown. Write the epic's reference completion conditions directly in the body as ordinary Markdown; they are not parsed as acceptance data, and an epic has no history.
 
 Its frontmatter may hold a `priority` list of distinct positive task IDs. It sets the order in the epic's progress panel and in the CLI progress table, independently of the board columns:
 

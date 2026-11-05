@@ -86,7 +86,7 @@ agboard --project "My project" epic edit LAUNCH --document -
 agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
-`--document`と`--document-file`は同時に指定できません。どちらも100,000文字まで受け付けます。以前の`--plan`と`--plan-file`は削除されました。新しい名前は[データとバックアップ](../operations/data)の移行の節を参照してください。
+`--document`と`--document-file`は同時に指定できません。どちらも100,000文字まで受け付けます。
 
 ## 一覧を絞り込む
 
