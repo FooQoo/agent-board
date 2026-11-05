@@ -30,7 +30,8 @@ export function usePreviewStatus({
   const badge = running ? <StateChip kind="running" /> : locked ? <StateChip kind="draft" /> : '';
 
   const lines: EditorStatusLine[] = [];
-  if (readOnlyReason === 'running') lines.push({ tone: 'reason', text: t('editor.readOnlyRunning') });
+  if (readOnlyReason === 'running')
+    lines.push({ tone: 'reason', text: t('editor.readOnlyRunning') });
   else if (readOnlyReason === 'archived')
     lines.push({ tone: 'reason', text: t('editor.readOnlyArchived') });
   else if (problem === 'running') {
