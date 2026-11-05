@@ -15,7 +15,6 @@ use crate::file_store::FileStore;
 use crate::file_store::index;
 use crate::file_store::layout;
 use crate::file_store::lock::WriteLock;
-use crate::file_store::migrate;
 use crate::file_store::model::{EpicView, Problem, TaskView};
 use crate::file_store::transaction;
 
@@ -67,7 +66,6 @@ pub fn read_snapshot(
     let project_dir = project_dir_checked(shared, project_id)?;
     let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
     transaction::recover_locked(&project_dir)?;
-    migrate::migrate_epic_documents(shared, &project_dir)?;
     read_snapshot_locked(shared, project_id)
 }
 

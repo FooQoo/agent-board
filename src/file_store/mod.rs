@@ -17,7 +17,6 @@ pub mod index;
 pub mod io;
 pub mod layout;
 pub mod lock;
-mod migrate;
 pub mod model;
 pub mod onboarding_model;
 pub mod onboarding_state;

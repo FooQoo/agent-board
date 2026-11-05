@@ -17,7 +17,6 @@ use crate::file_store::history::{ParseMode, parse_task};
 use crate::file_store::io;
 use crate::file_store::layout;
 use crate::file_store::lock::WriteLock;
-use crate::file_store::migrate;
 use crate::file_store::model::{
     EpicView, Problem, TaskEpic, TaskFile, TaskMetadata, TaskView, current_request,
 };
@@ -246,7 +245,6 @@ pub fn read_task(
     let project_dir = project_dir_checked(shared, project_id)?;
     let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
     transaction::recover_locked(&project_dir)?;
-    migrate::migrate_epic_documents(shared, &project_dir)?;
     read_task_locked(shared, project_id, task_id)
 }
 
