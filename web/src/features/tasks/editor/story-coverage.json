@@ -12,6 +12,26 @@
               "id": "task-editor-editdialog--default",
               "states": ["editable draft card"],
               "interaction": false
+            },
+            {
+              "id": "task-editor-previewstates--reading",
+              "states": ["preview reading", "no chip", "save off", "close button"],
+              "interaction": true
+            },
+            {
+              "id": "task-editor-previewstates--locked",
+              "states": ["preview locked", "draft chip", "lock line", "save on"],
+              "interaction": true
+            },
+            {
+              "id": "task-editor-previewstates--read-only",
+              "states": ["preview read-only", "running chip", "reason line", "input off"],
+              "interaction": true
+            },
+            {
+              "id": "task-editor-previewstates--conflict",
+              "states": ["preview conflict", "error line", "lock line", "save off"],
+              "interaction": true
             }
           ]
         }

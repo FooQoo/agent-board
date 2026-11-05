@@ -22,6 +22,8 @@ export const detailEn = {
     toolbar: 'Task actions',
     edit: 'Edit task',
     makeDraft: 'Make draft',
+    preview: 'Preview',
+    openFullscreen: 'Open full screen',
     problem: 'This file has a problem: {{file}} ({{field}}) — {{reason}}',
     problemNoField: 'This file has a problem: {{file}} — {{reason}}',
     saveError: 'Could not save. Try again.',
@@ -32,6 +34,7 @@ export const detailEn = {
     label: 'Draft',
     description: 'Agents can only read this task. Once you finalize it, agents can work on it.',
     finalize: 'Finalize',
+    epicDescription: 'Agents cannot change this epic. Once you finalize it, they can.',
   },
   request: {
     title: 'The agent is waiting for your answer',

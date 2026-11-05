@@ -22,6 +22,8 @@ export const detailJa = {
     toolbar: 'タスクの操作',
     edit: 'タスクを編集',
     makeDraft: '下書きにする',
+    preview: 'プレビュー',
+    openFullscreen: '全画面で開く',
     problem: 'ファイルに不備があります: {{file}}（{{field}}） — {{reason}}',
     problemNoField: 'ファイルに不備があります: {{file}} — {{reason}}',
     saveError: '保存できませんでした。もう一度お試しください。',
@@ -31,6 +33,7 @@ export const detailJa = {
     label: '下書き',
     description: 'AIは読み取り専用です。確定すると、AIが扱えます。',
     finalize: '確定する',
+    epicDescription: 'AIはこのエピックを変更できません。確定すると、AIが変更できます。',
   },
   request: {
     title: 'AIが回答を待っています',

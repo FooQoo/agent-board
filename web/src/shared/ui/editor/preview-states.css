@@ -1,0 +1,70 @@
+/*
+ * The state chip and the footer lines of the preview dialog. Colors are the r-* tokens of
+ * theme.css, so every theme works.
+ */
+
+/* The state chip takes the header badge's place, with its own color per state. */
+.editor__badge:has(.state-chip) {
+  padding: 0;
+  background: transparent;
+}
+
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.state-chip svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.state-chip[data-kind="draft"] {
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+}
+
+.state-chip[data-kind="running"] {
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+}
+
+/* The footer lines: one per reason, 19px apart, each with a 12px icon. */
+.editor-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.editor-status__line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.editor-status__line svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.editor-status__line[data-tone="error"] {
+  color: var(--r-danger);
+}
+
+.editor-status__line[data-tone="lock"] {
+  color: var(--r-accent);
+}
+
+.editor-status__line[data-tone="info"] {
+  color: var(--r-muted);
+}
