@@ -85,6 +85,9 @@ fn serve_d_returns_while_the_server_runs_and_stop_ends_it() {
     );
     assert!(port_is_free(), "stop should release the port");
     assert!(!home.path().join("serve.json").exists());
+    // The next `serve` can start at once: the old one has let go of its lock.
+    agent_board::lifecycle::LifecycleGuard::acquire(home.path())
+        .expect("stop should wait until the lifecycle lock is free");
 }
 
 #[test]
