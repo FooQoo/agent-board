@@ -292,6 +292,41 @@
               "id": "task-detail-detailpanel--draft",
               "states": ["composite rendering"],
               "interaction": false
+            },
+            {
+              "id": "task-detail-previewentry--epic-draft-banner",
+              "states": ["epic texts"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/detail/PreviewAction.tsx",
+      "exports": [
+        {
+          "name": "PreviewAction",
+          "stories": [
+            {
+              "id": "task-detail-previewentry--entrances",
+              "states": ["toolbar button", "click"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/detail/EpicTabHeading.tsx",
+      "exports": [
+        {
+          "name": "EpicTabHeading",
+          "stories": [
+            {
+              "id": "task-detail-previewentry--entrances",
+              "states": ["epic label", "epic name", "open full screen"],
+              "interaction": true
             }
           ]
         }

@@ -9,6 +9,11 @@
           "name": "EpicDialog",
           "stories": [
             {
+              "id": "epic-editor-previewstates--locked",
+              "states": ["preview locked", "draft chip", "lock line", "progress table"],
+              "interaction": true
+            },
+            {
               "id": "epic-editor-epicdialog--unchanged",
               "states": [
                 "unchanged",

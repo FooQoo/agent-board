@@ -1,0 +1,36 @@
+/* The top of the epic tab: the label, the epic's name, and the button that opens it full screen. */
+
+.detail__epic-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--r-border);
+}
+
+.detail__epic-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.detail__epic-label svg {
+  width: 12px;
+  height: 12px;
+}
+
+.detail__epic-name {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--r-text);
+}

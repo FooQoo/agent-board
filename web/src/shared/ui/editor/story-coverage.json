@@ -68,6 +68,36 @@
       ]
     },
     {
+      "file": "shared/ui/editor/EditorStatus.tsx",
+      "exports": [
+        {
+          "name": "EditorStatus",
+          "stories": [
+            {
+              "id": "editor-previewstates--status-lines",
+              "states": ["error over lock", "reason line"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/ui/editor/StateChip.tsx",
+      "exports": [
+        {
+          "name": "StateChip",
+          "stories": [
+            {
+              "id": "editor-previewstates--chips",
+              "states": ["draft chip", "running chip"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "file": "shared/ui/editor/CollapsibleSection.tsx",
       "exports": [
         {

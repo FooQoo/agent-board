@@ -32,8 +32,8 @@ export interface EditorShellProps {
   overLimit?: { message: string; count: string } | null;
   /** The dialog is done: saved, or closed. */
   onClose: () => void;
-  /** The line at the left of the footer. */
-  status?: string;
+  /** The line at the left of the footer: text, or an `EditorStatus` for lines with icons. */
+  status?: ReactNode;
   /** The box at the left of the footer, before the status (the draft box of a card or an epic). */
   footerStart?: ReactNode;
   /** The buttons at the right of the footer, after Cancel. */
