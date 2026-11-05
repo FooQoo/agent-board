@@ -36,7 +36,7 @@ export const StatusLines: Story = {
           { tone: 'lock', text: "Agents can't change this task until you save." },
         ]}
       />
-      <EditorStatus lines={[{ tone: 'info', text: 'Read-only while an agent is working.' }]} />
+      <EditorStatus lines={[{ tone: 'reason', text: 'Read-only while an agent is working.' }]} />
     </div>
   ),
   play: async ({ canvasElement }) => {

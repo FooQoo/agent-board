@@ -77,6 +77,10 @@
   color: var(--r-accent);
 }
 
+.editor-status__line[data-tone="reason"] {
+  color: var(--r-text2);
+}
+
 .editor-status__line[data-tone="info"] {
   color: var(--r-muted);
 }
