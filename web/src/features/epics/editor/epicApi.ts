@@ -23,7 +23,7 @@ export interface EpicApi {
   save(input: EpicSaveInput): Promise<void>;
   /** Makes the epic a draft and returns what the server holds then. */
   enterDraft(): Promise<Epic>;
-  /** Takes the draft back (discard); the history says the changes were discarded. */
+  /** Takes the draft back (discard). An epic has no history, so nothing records the discard. */
   leaveDraft(): Promise<void>;
   /** Deletes the epic. The server refuses while a task still names it. */
   remove(): Promise<void>;
@@ -54,7 +54,7 @@ export function epicApi(projectId: string, epicId: string, changed: () => void):
     },
     enterDraft: async () => (await done(updateEpic(projectId, epicId, { isDraft: true }))).epic,
     leaveDraft: async () => {
-      await done(updateEpic(projectId, epicId, { isDraft: false, discard: true }));
+      await done(updateEpic(projectId, epicId, { isDraft: false }));
     },
     remove: () => done(deleteEpic(projectId, epicId)),
   };

@@ -64,7 +64,7 @@ describe('epic writes', () => {
     const [first, second] = fetchMock.mock.calls;
     expect(first?.[1]?.method).toBe('PATCH');
     expect(JSON.parse(String(first?.[1]?.body))).toEqual({ isDraft: true });
-    expect(JSON.parse(String(second?.[1]?.body))).toEqual({ isDraft: false, discard: true });
+    expect(JSON.parse(String(second?.[1]?.body))).toEqual({ isDraft: false });
   });
 
   it('puts a task into an epic and takes it out with null', async () => {
