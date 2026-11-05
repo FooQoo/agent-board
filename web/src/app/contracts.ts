@@ -74,6 +74,8 @@ export interface AppControllerModel {
   refreshProject: (projectId: ProjectId) => void;
   /** The task with its Detail read fresh, for an editor; `null` when the Detail cannot be read. */
   loadTask: (projectId: ProjectId, card: TaskSummary) => Promise<Task | null>;
+  /** Whether the Summary lists the card; `null` when the Summary cannot say (not read, or the read failed). */
+  isTaskListed: (projectId: ProjectId, id: number) => boolean | null;
   /** The epic with its document read fresh, for an editor; `null` when it cannot be read. */
   loadEpic: (projectId: ProjectId, epic: Epic) => Promise<Epic | null>;
   setRequested: (
@@ -92,6 +94,8 @@ export interface AppControllerModel {
    * `null` when it may be any project (the stream reopened). Returns the function that stops it.
    */
   subscribeDocs: (listener: (projectId: string | null) => void) => () => void;
+  /** Calls `listener` when the active project's card or epic may have changed; the preview then reads it again. */
+  subscribeChanges: (listener: () => void) => () => void;
 }
 
 export interface AppWorkspaceActions {
@@ -112,8 +116,9 @@ export interface AppWorkspaceActions {
   onCloseEpic: () => void;
   onEditEpic: () => void;
   onDeleteEpic: () => Promise<void>;
+  onFinalizeEpic: () => Promise<void>;
   onRetryEpics: () => void;
-  onEditTask: () => void;
+  onPreviewTask: () => void;
   onTaskChanged: () => void;
   onRemove: (action: 'archive' | 'delete', task: TaskSummary) => Promise<boolean>;
   onRestore: () => void;

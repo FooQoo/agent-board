@@ -21,6 +21,7 @@ export function useAppActions(model: AppControllerModel) {
   const {
     activeId,
     archiveLifecycle,
+    archiveVisible,
     archivedSelected,
     dispatch,
     operations,
@@ -83,15 +84,21 @@ export function useAppActions(model: AppControllerModel) {
       if (!epic || !activeId) return;
       await epicApi(activeId, epic.id, () => refreshProject(activeId)).remove();
     },
+    onFinalizeEpic: async () => {
+      const epic = model.selectedEpic;
+      if (!epic || !activeId) return;
+      await epicApi(activeId, epic.id, () => refreshProject(activeId)).leaveDraft();
+    },
     onRetryEpics: () => {
-      if (model.archiveVisible) model.archive.reload();
+      if (archiveVisible) model.archive.reload();
       else if (activeId) refreshProject(activeId);
     },
-    onEditTask: () => {
-      const card = model.selected;
-      if (!card?.isDraft || !isProjectId(activeId)) return;
+    onPreviewTask: () => {
+      const card = archiveVisible ? archivedSelected : model.selected;
+      if (!card || !isProjectId(activeId)) return;
+      const archived = archiveVisible;
       void model.loadTask(activeId, card).then((task) => {
-        if (task) model.openDialog({ kind: 'edit', task });
+        if (task) model.openDialog({ kind: 'edit', task, archived });
       });
     },
     onTaskChanged: () => {

@@ -105,11 +105,10 @@ for (const locale of ['en', 'ja']) {
         });
         expect(wrapped, 'tab labels stay on one line').toBe(false);
       }
-      const makeDraft = detail.getByRole('button', { name: locale === 'ja' ? '下書きにする' : 'Make draft' });
-      await expect(makeDraft).toHaveAttribute('title', locale === 'ja' ? '下書きにする' : 'Make draft');
+      const preview = detail.getByRole('button', { name: locale === 'ja' ? 'プレビュー' : 'Preview', exact: true });
+      await expect(preview).toHaveAttribute('title', locale === 'ja' ? 'プレビュー' : 'Preview');
       await page.screenshot({ path: testInfo.outputPath('detail-toolbar.png') });
-      await makeDraft.click();
-      await expect(detail.getByRole('region', { name: locale === 'ja' ? '下書き' : 'Draft', exact: true })).toBeVisible();
+      await expect(detail.getByRole('button', { name: locale === 'ja' ? '下書きにする' : 'Make draft' })).toHaveCount(0);
     });
   }
 }

@@ -130,21 +130,21 @@ export const CardPhone: Story = {
 
 /** A draft: the banner says agents cannot work on it until it is finalized. */
 export const Draft: Story = {
-  args: { task: sampleCard({ id: 8, isDraft: true }), onEdit: fn() },
+  args: { task: sampleCard({ id: 8, isDraft: true }), onPreview: fn() },
   play: async ({ canvasElement, args }) => {
     const view = within(canvasElement);
     expect(canvasElement.querySelector('.detail__draft')).not.toBeNull();
 
     for (const tab of [/^Description/, /^Conditions/, /^History/, /^Epic/]) {
       await userEvent.click(view.getByRole('tab', { name: tab }));
-      await userEvent.click(view.getByRole('button', { name: 'Edit task' }));
-      expect(args.onEdit).toHaveBeenLastCalledWith(args.task);
+      await userEvent.click(view.getByRole('button', { name: 'Preview' }));
+      expect(args.onPreview).toHaveBeenLastCalledWith(args.task);
     }
     expectActionIconSpacing(canvasElement);
   },
 };
 
-/** A draft on a phone: its edit, archive, and close icons keep equal spacing. */
+/** A draft on a phone: its Preview, archive, and close actions keep equal spacing. */
 export const DraftPhone: Story = {
   args: { task: sampleCard({ id: 8, isDraft: true }) },
   globals: { width: 'phone-390' },
@@ -154,22 +154,17 @@ export const DraftPhone: Story = {
   },
 };
 
+/** The Preview button, the archive icon and the close icon sit with the same gap between them. */
 function expectActionIconSpacing(canvasElement: HTMLElement) {
-  const icons = [
-    ...canvasElement.querySelectorAll<SVGElement>(
-      '.detail__toolbar > button svg, .detail__close svg',
-    ),
+  const controls = [
+    ...canvasElement.querySelectorAll<HTMLElement>('.detail__toolbar > button, .detail__close'),
   ];
-  expect(icons).toHaveLength(3);
-  const centers = icons.map((icon) => {
-    const bounds = icon.getBoundingClientRect();
-    return bounds.left + bounds.width / 2;
-  });
-  const [first, second, third] = centers;
+  expect(controls).toHaveLength(3);
+  const [first, second, third] = controls.map((control) => control.getBoundingClientRect());
   if (first === undefined || second === undefined || third === undefined) {
-    throw new Error('Expected three action icons');
+    throw new Error('Expected three actions');
   }
-  expect(Math.abs(second - first - (third - second))).toBeLessThan(0.1);
+  expect(Math.abs(second.left - first.right - (third.left - second.right))).toBeLessThan(0.1);
 }
 
 /** The archive view, where a restore failed: the failure is shown above the body. */

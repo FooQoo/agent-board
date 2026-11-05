@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson } from '../helpers/agboard';
+import { putDraft } from '../helpers/drafts';
 import { editorValue, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // The whole path of a draft on the real page: make a card a draft, edit its body in the rich editor, save it, and
@@ -41,15 +42,19 @@ test.beforeEach(async ({ page }) => {
   await task(page, id).click();
 });
 
-async function makeDraft(page: Page): Promise<void> {
-  await details(page).getByRole('button', { name: 'Make draft' }).click();
-  await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
+/** Starts from a draft: there is no button for it, so the server is asked and the page reads the card again. */
+async function startFromDraft(page: Page): Promise<void> {
+  await putDraft(id);
   await expect.poll(() => show(id).isDraft).toBe(true);
+  await page.goto('/');
+  await waitForSync(page);
+  await task(page, id).click();
+  await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 }
 
 async function openEditor(page: Page): Promise<{ dialog: Locator; editor: Locator }> {
-  await details(page).getByRole('button', { name: 'Edit task' }).click();
-  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Edit task`) });
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await expect(dialog).toBeVisible();
   const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
   // The rich editor loads its text after the dialog opens; typing before that is lost.
@@ -65,19 +70,20 @@ async function typeAtEnd(page: Page, editor: Locator, text: string): Promise<voi
 }
 
 test('a task becomes a draft, is edited and saved, and finalized from the details', async ({ page }) => {
-  // Before: an ordinary card offers Make draft, not Edit.
-  await expect(details(page).getByRole('button', { name: 'Edit task' })).toHaveCount(0);
-  await makeDraft(page);
+  // Before: an ordinary card offers Preview, and no Make draft.
+  expect(await toolbarLabels(page)).toEqual(['Preview', 'Archive task']);
+  await expect(details(page).getByRole('button', { name: 'Make draft' })).toHaveCount(0);
+  await startFromDraft(page);
 
-  // The draft is marked on the tile and in the details; Edit replaces Make draft, with Archive at the right end.
+  // The draft is marked on the tile and in the details; the toolbar is the same, with Archive at the right end.
   await expect(task(page, id).getByText('Draft', { exact: true })).toHaveCount(1);
   const banner = details(page).getByRole('region', { name: 'Draft' });
   await expect(banner).toContainText('Agents can only read this task. Once you finalize it, agents can work on it.');
-  expect(await toolbarLabels(page)).toEqual(['Edit task', 'Archive task']);
+  expect(await toolbarLabels(page)).toEqual(['Preview', 'Archive task']);
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toHaveCount(0);
 
   const { dialog, editor } = await openEditor(page);
-  await expect(dialog).toContainText('Edit task');
+  await expect(dialog).toContainText('Task preview');
   // The dialog opens with the current text, nothing changed yet, and Save disabled.
   expect(await editorValue(editor)).toContain('## Work\n\nOld text.');
   await expect(dialog.getByText('You have unsaved changes.')).toHaveCount(0);
@@ -121,12 +127,12 @@ test('a task becomes a draft, is edited and saved, and finalized from the detail
   await expect.poll(() => show(id).isDraft).toBe(false);
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Draft me, rewritten');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toHaveCount(0);
-  await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeVisible();
+  await expect(details(page).getByRole('button', { name: 'Preview', exact: true })).toBeVisible();
   await expect(task(page, id).getByText('Draft', { exact: true })).toHaveCount(0);
 });
 
 test('Save keeps the task a draft, and Finalize hands it back', async ({ page }) => {
-  await makeDraft(page);
+  await startFromDraft(page);
   const { dialog, editor } = await openEditor(page);
   await typeAtEnd(page, editor, 'Saved but still a draft.');
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
@@ -144,7 +150,7 @@ test('Save keeps the task a draft, and Finalize hands it back', async ({ page })
 });
 
 test('a failed save keeps the dialog and the text, and can be retried', async ({ page }) => {
-  await makeDraft(page);
+  await startFromDraft(page);
   let fail = true;
   let patches = 0;
   await page.route(`**/api/projects/*/tasks/${id}`, async (route) => {
@@ -179,7 +185,7 @@ test('a failed save keeps the dialog and the text, and can be retried', async ({
 });
 
 test('while it saves the dialog cannot be sent twice or closed', async ({ page }) => {
-  await makeDraft(page);
+  await startFromDraft(page);
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -209,10 +215,10 @@ test('while it saves the dialog cannot be sent twice or closed', async ({ page }
 });
 
 test('closing with unsaved changes asks first; closing without changes does not', async ({ page }) => {
-  await makeDraft(page);
-  // No change: Cancel closes at once.
+  await startFromDraft(page);
+  // No change: Close closes at once.
   let { dialog, editor } = await openEditor(page);
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
   await expect(dialog).toHaveCount(0);
 
   // A change: Cancel, Escape, and Close all ask; Keep editing returns to the text.
@@ -244,7 +250,7 @@ test('closing with unsaved changes asks first; closing without changes does not'
 });
 
 test('a body of exactly 50,000 characters saves, and one more cannot be saved', async ({ page }) => {
-  await makeDraft(page);
+  await startFromDraft(page);
   const { dialog, editor } = await openEditor(page);
   const counter = dialog.locator('.editor__counter');
   const shown = async () => Number((await counter.textContent())!.split('/')[0].replace(/,/g, '').trim());
@@ -282,25 +288,31 @@ test('a body of exactly 50,000 characters saves, and one more cannot be saved', 
   expect(stored.isDraft).toBe(true);
 });
 
-test('idle and Pending tasks can be made drafts, while running tasks cannot', async ({ page }) => {
+test('every task offers Preview, and a running task opens it read-only', async ({ page }) => {
   await task(page, 11).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toBeVisible();
   await expect(details(page).getByRole('button', { name: 'Make draft' }), 'running').toHaveCount(0);
-  await expect(details(page).getByRole('button', { name: 'Edit task' }), 'running').toHaveCount(0);
-  expect(await toolbarLabels(page)).toEqual(['Archive task']);
-  // An idle Doing card, a Pending card, and a Done card can.
+  expect(await toolbarLabels(page)).toEqual(['Preview', 'Archive task']);
+  // An idle Doing card, a Pending card, and a Done card offer it too.
   for (const idle of [13, 12, 8]) {
     await task(page, idle).click();
-    await expect(details(page).getByRole('button', { name: 'Make draft' })).toBeVisible();
+    await expect(details(page).getByRole('button', { name: 'Preview', exact: true })).toBeVisible();
   }
+  // The running card opens the preview, but only to read it.
+  await task(page, 11).click();
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: /^#11 Task preview/ });
+  await expect(dialog).toHaveAttribute('data-read-only', '');
+  await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeDisabled();
+  expect(show(11).isDraft).toBe(false);
 });
 
 test('the toolbar puts archive at the right end; its confirmation sits above the tabs and is cancelled or confirmed', async ({
   page,
 }) => {
-  await makeDraft(page);
+  await startFromDraft(page);
   const toolbar = details(page).getByRole('toolbar', { name: 'Task actions' });
-  const edit = toolbar.getByRole('button', { name: 'Edit task' });
+  const edit = toolbar.getByRole('button', { name: 'Preview', exact: true });
   const archive = toolbar.getByRole('button', { name: 'Archive task' });
   const editBox = (await edit.boundingBox())!;
   const archiveBox = (await archive.boundingBox())!;
@@ -343,7 +355,7 @@ test('the toolbar puts archive at the right end; its confirmation sits above the
 });
 
 test('a person can still move a draft task by dragging it', async ({ page }) => {
-  await makeDraft(page);
+  await startFromDraft(page);
   const source = (await task(page, id).boundingBox())!;
   const target = (await page.getByRole('region', { name: 'Doing' }).boundingBox())!;
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);

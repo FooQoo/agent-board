@@ -38,6 +38,10 @@ export interface TaskDetailViewProps {
   /** The epics could not be read: the epic tab offers to try again. */
   epicsFailed?: boolean;
   onRetryEpics?: () => void;
+  /** Draws the epic label of the epic tab's heading; with `onOpenEpic`, the heading shows. */
+  renderEpicLabel?: (epic: EpicRef) => ReactNode;
+  /** Opens the epic's preview dialog (PC only). */
+  onOpenEpic?: (epicId: string) => void;
   statusLabels?: 'pc' | 'monitor';
   ownerName?: string;
   readOnlyDraft?: boolean;
@@ -65,6 +69,8 @@ export function TaskDetailView({
   epics,
   epicsFailed = false,
   onRetryEpics,
+  renderEpicLabel,
+  onOpenEpic,
   statusLabels = 'pc',
   ownerName,
   readOnlyDraft = true,
@@ -165,6 +171,8 @@ export function TaskDetailView({
             onRetry={onRetryEpics}
             onRetryDocument={onRetryEpicDocument}
             scrollParent={scroller}
+            renderEpicLabel={renderEpicLabel}
+            onOpenEpic={onOpenEpic}
           />
         )}
       </div>

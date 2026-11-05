@@ -5,6 +5,7 @@ import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, decisionJson } from '../helpers/agboard';
 import { closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { putDraft } from '../helpers/drafts';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
 // card that is Done and still takes an edit, and the edit dialog that saves once and rewrites nothing unless asked.
@@ -192,8 +193,8 @@ test('a Done task rejects agent edits while a person can still edit and show its
   await expect(details(page)).toContainText('Done');
 
   // Human editing in the page remains available: make a draft, edit the body, and save it while Done.
-  await details(page).getByRole('button', { name: 'Make draft' }).click();
-  await details(page).getByRole('button', { name: 'Edit task' }).click();
+  await putDraft(13);
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: /^#13 / });
   await expect(body(dialog).getByText('Check the layout at 1280, 800, and 480 px.')).toBeVisible();
   await body(dialog).getByText('Check the layout at 1280, 800, and 480 px.').click();
@@ -216,23 +217,23 @@ test('the edit dialog writes nothing when it is opened and closed unchanged, and
 
   await openBoard(page);
   await task(page, 15).click();
-  await details(page).getByRole('button', { name: 'Make draft' }).click();
+  await putDraft(15);
   await expect.poll(() => show(15).isDraft).toBe(true);
   expectHistoryNote(show(15).history.at(-1), ['Marked task as draft.']);
   expect(readFileSync(file, 'utf8')).toContain('reason: Marked task as draft.');
   const before = readFileSync(file, 'utf8');
   const beforeTime = statSync(file).mtimeMs;
-  await details(page).getByRole('button', { name: 'Edit task' }).click();
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: /^#15 / });
   await expect(body(dialog).getByText('Intro text.')).toBeVisible();
   // Opened and closed with no change: the file is not written, and its time does not move.
-  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
   await expect(dialog).toHaveCount(0);
   expect(readFileSync(file, 'utf8')).toBe(before);
   expect(statSync(file).mtimeMs).toBe(beforeTime);
 
   // Opened again, changed, and saved: the text is written once, and the picture's reference stays.
-  await details(page).getByRole('button', { name: 'Edit task' }).click();
+  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
   const again = page.getByRole('dialog', { name: /^#15 / });
   await expect(body(again).getByText('Intro text.')).toBeVisible();
   await body(again).getByText('Intro text.').click();

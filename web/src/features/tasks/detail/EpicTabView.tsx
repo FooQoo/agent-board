@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EpicRef, ProjectId } from '../../../shared/api/contracts';
 import type { SectionSnapshot } from '../../../shared/data/core';
 import { DetailAttachments } from './DetailAttachments';
 import { DetailSectionView } from './DetailSection';
 import { DocumentBlocks } from './BodyDocumentView';
+import { EpicTabHeading } from './EpicTabHeading';
 
 /** What the epic tab of a card can show: nothing, the epic, or why the epic is not there. */
 export type EpicTabStatus = 'none' | 'loading' | 'failed' | 'ready';
@@ -20,6 +22,8 @@ export function EpicTabView({
   onRetry,
   onRetryDocument,
   scrollParent = null,
+  renderEpicLabel,
+  onOpenEpic,
 }: {
   projectId: ProjectId;
   epic: EpicRef | null;
@@ -31,6 +35,10 @@ export function EpicTabView({
   /** Reads the epic's document again. */
   onRetryDocument?: () => void;
   scrollParent?: HTMLElement | null;
+  /** Draws the epic label of the heading. The heading shows only with this and `onOpenEpic`. */
+  renderEpicLabel?: (epic: EpicRef) => ReactNode;
+  /** Opens the epic's preview dialog. */
+  onOpenEpic?: (epicId: string) => void;
 }) {
   const { t } = useTranslation();
   if (status === 'none') return <p className="detail__empty">{t('detail.epicNone')}</p>;
@@ -50,25 +58,34 @@ export function EpicTabView({
   const attachmentUrl = (id: string) =>
     `/api/projects/${projectId}/epics/${encodeURIComponent(epic.id)}/attachments/${encodeURIComponent(id)}`;
   return (
-    <DetailSectionView snapshot={document} onRetry={() => onRetryDocument?.()}>
-      {(data, arriving) => (
-        <>
-          <DocumentBlocks
-            document={data}
-            arriving={arriving}
-            attachmentUrl={attachmentUrl}
-            scrollParent={scrollParent}
-          />
-          {!arriving && (
-            <DetailAttachments
-              projectId={projectId}
-              taskId={0}
-              attachments={[...(data.attachments ?? [])]}
-              attachmentUrl={attachmentUrl}
-            />
-          )}
-        </>
+    <>
+      {renderEpicLabel && onOpenEpic && (
+        <EpicTabHeading
+          epic={epic}
+          renderLabel={renderEpicLabel}
+          onOpen={() => onOpenEpic(epic.id)}
+        />
       )}
-    </DetailSectionView>
+      <DetailSectionView snapshot={document} onRetry={() => onRetryDocument?.()}>
+        {(data, arriving) => (
+          <>
+            <DocumentBlocks
+              document={data}
+              arriving={arriving}
+              attachmentUrl={attachmentUrl}
+              scrollParent={scrollParent}
+            />
+            {!arriving && (
+              <DetailAttachments
+                projectId={projectId}
+                taskId={0}
+                attachments={[...(data.attachments ?? [])]}
+                attachmentUrl={attachmentUrl}
+              />
+            )}
+          </>
+        )}
+      </DetailSectionView>
+    </>
   );
 }

@@ -32,7 +32,6 @@ export const editEn = {
     saving: 'Saving…',
   },
   editor: {
-    editCardTitle: 'Edit task',
     savingStatus: 'Saving…',
     addCardTitle: 'Add task',
     draft: 'Draft',
@@ -108,7 +107,6 @@ export const editEn = {
     documentLabel: 'Epic details (Markdown)',
     stepImages: 'the images',
     stepDocument: 'the epic details',
-    stepDetails: 'the name, color or draft',
     saveFailedAt: 'Could not save {{step}}. Earlier changes were saved. Your input is kept.',
     saveFailedFirst: 'Could not save {{step}}. Your input is kept.',
     deleteTitle: 'Delete this epic?',

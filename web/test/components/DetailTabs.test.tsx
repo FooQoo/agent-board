@@ -139,19 +139,19 @@ describe('toolbar', () => {
       .getAllByRole('button')
       .map((b) => b.textContent || b.getAttribute('aria-label'));
 
-  it('offers Make draft and Delete for an idle task that is not a draft, Delete last', () => {
+  it('offers Preview and Delete for an idle task that is not a draft, Delete last', () => {
     renderPanel(fixtureTask(8));
-    expect(names()).toEqual(['Make draft', 'Archive task']);
+    expect(names()).toEqual(['Preview', 'Archive task']);
   });
 
-  it('offers the edit icon and Delete for a draft', () => {
+  it('offers the same Preview and Delete for a draft', () => {
     renderPanel({ ...fixtureTask(8), isDraft: true });
-    expect(names()).toEqual(['Edit task', 'Archive task']);
+    expect(names()).toEqual(['Preview', 'Archive task']);
   });
 
-  it('offers Make draft for pending tasks but only Delete for running tasks', () => {
+  it('offers Preview to pending and running tasks as well: running opens it read-only', () => {
     const { rerender } = renderPanel(fixtureTask(11));
-    expect(names()).toEqual(['Archive task']);
+    expect(names()).toEqual(['Preview', 'Archive task']);
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
@@ -160,26 +160,26 @@ describe('toolbar', () => {
         onRemove={noRemove}
       />,
     );
-    expect(names()).toEqual(['Make draft', 'Archive task']);
+    expect(names()).toEqual(['Preview', 'Archive task']);
   });
 
-  it('offers Make draft to an idle task that has no run state of its own (Todo)', () => {
+  it('has no Make draft button', () => {
     renderPanel(fixtureTask(14));
-    expect(names()).toEqual(['Make draft', 'Archive task']);
+    expect(screen.queryByRole('button', { name: 'Make draft' })).toBeNull();
   });
 
-  it('keeps the draft edit and Delete in the History tab', async () => {
+  it('keeps Preview and Delete in the History tab', async () => {
     renderPanel({ ...fixtureTask(8), isDraft: true });
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    expect(names()).toEqual(['Edit task', 'Archive task']);
+    expect(names()).toEqual(['Preview', 'Archive task']);
   });
 
-  it('calls onEdit with the task when the edit icon is pressed', async () => {
-    const onEdit = vi.fn();
+  it('calls onPreview with the task when Preview is pressed', async () => {
+    const onPreview = vi.fn();
     const task = { ...fixtureTask(8), isDraft: true };
-    renderPanel(task, { onEdit });
-    await userEvent.click(screen.getByRole('button', { name: 'Edit task' }));
-    expect(onEdit).toHaveBeenCalledWith(task);
+    renderPanel(task, { onPreview });
+    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(onPreview).toHaveBeenCalledWith(task);
   });
 
   it('opens the delete confirmation above the tabs', async () => {
@@ -253,7 +253,7 @@ describe('toolbar', () => {
   it('names the toolbar buttons in Japanese', () => {
     selectLocale('ja');
     renderPanel({ ...fixtureTask(8), isDraft: true });
-    expect(names()).toEqual(['タスクを編集', 'タスクをアーカイブ']);
+    expect(names()).toEqual(['プレビュー', 'タスクをアーカイブ']);
   });
 
   it('names the archived delete icon in Japanese inside the top toolbar', () => {

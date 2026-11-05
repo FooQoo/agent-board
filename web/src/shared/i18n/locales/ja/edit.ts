@@ -32,7 +32,6 @@ export const editJa = {
     saving: '保存中…',
   },
   editor: {
-    editCardTitle: 'タスクを編集',
     savingStatus: '保存しています…',
     addCardTitle: 'タスクを追加',
     draft: '下書き',
@@ -110,7 +109,6 @@ export const editJa = {
     documentLabel: 'エピックの詳細 (Markdown)',
     stepImages: '画像',
     stepDocument: 'エピックの詳細',
-    stepDetails: '名称・色・下書き',
     saveFailedAt: '{{step}}を保存できませんでした。先に保存した変更は残り、入力も残っています。',
     saveFailedFirst: '{{step}}を保存できませんでした。入力は残っています。',
     deleteTitle: 'このエピックを削除しますか？',

@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import type { Epic, TaskSummary, DialogAction } from '../../shared/api/contracts';
+import type { Epic, ProjectId, Task, TaskSummary, DialogAction } from '../../shared/api/contracts';
+import type { ChangeSubscription } from '../../shared/ui/editor/useFollowLatest';
 import type { ActionDialogData } from '../../features/tasks/model/actionData';
 import { CreateDialog } from '../../features/tasks/create/CreateDialog';
 import { RequestDialog } from '../../features/tasks/request/RequestDialog';
 import { EditDialog } from '../../features/tasks/editor/EditDialog';
+import { TaskPreviewDialog } from './TaskPreviewDialog';
 import { EpicDialog, type EpicApi } from '../../features/epics/editor/EpicDialog';
 import { MoveDialog } from '../../features/tasks/move/MoveDialog';
 import { TaskProgressRow } from '../../features/tasks/card/TaskProgressRow';
@@ -13,6 +15,8 @@ import type { ProgressTaskRenderer } from '../../features/epics/editor/EpicProgr
 import type { EpicRef } from '../../shared/api/contracts';
 
 export type { DialogAction };
+
+const noop = () => {};
 
 /** The epic chip beside the card editor, in the epic's color. */
 const renderEpicChip = (epic: EpicRef) => (
@@ -42,6 +46,11 @@ export function ActionDialog({
   epicsFetchFailed = false,
   epicApi,
   onOpenTask,
+  subscribeChanges,
+  loadTask,
+  loadEpic,
+  isTaskListed,
+  onChanged,
 }: {
   action: DialogAction;
   /** The dialog is done: saved, or cancelled. */
@@ -60,6 +69,16 @@ export function ActionDialog({
   epicApi?: EpicApi;
   /** The epic dialog asks for the board to show a task. */
   onOpenTask?: (taskId: number) => void;
+  /** The previews call the listener when the active project may have changed. */
+  subscribeChanges?: ChangeSubscription;
+  /** The task preview reads its card again through this. */
+  loadTask?: (projectId: ProjectId, card: Task) => Promise<Task | null>;
+  /** Whether the board still lists the card; a card that left the board while open was archived. */
+  isTaskListed?: (projectId: ProjectId, id: number) => boolean | null;
+  /** The epic preview reads its epic again through this. */
+  loadEpic?: (projectId: ProjectId, epic: Epic) => Promise<Epic | null>;
+  /** The task preview entered or left a draft. */
+  onChanged?: () => void;
 }) {
   const [manualCreate, setManualCreate] = useState(false);
   switch (action.kind) {
@@ -104,14 +123,31 @@ export function ActionDialog({
         />
       );
     case 'edit':
+      // Without a way to read the card again the dialog only edits what it was given.
+      if (projectId === undefined || loadTask === undefined)
+        return (
+          <EditDialog
+            task={action.task}
+            onClose={onClose}
+            onSavingChange={onSavingChange}
+            onSubmit={onSubmit}
+            projectId={projectId}
+            renderEpicChip={renderEpicChip}
+          />
+        );
       return (
-        <EditDialog
+        <TaskPreviewDialog
           task={action.task}
+          archived={action.archived}
           onClose={onClose}
           onSavingChange={onSavingChange}
           onSubmit={onSubmit}
-          projectId={projectId}
+          projectId={projectId as ProjectId}
           renderEpicChip={renderEpicChip}
+          subscribeChanges={subscribeChanges}
+          loadTask={loadTask}
+          isTaskListed={isTaskListed}
+          onChanged={onChanged ?? noop}
         />
       );
     case 'epic':
@@ -126,6 +162,12 @@ export function ActionDialog({
           onClose={onClose}
           onSavingChange={onSavingChange}
           renderTask={renderEpicTask}
+          subscribe={subscribeChanges}
+          load={
+            loadEpic && projectId !== undefined
+              ? () => loadEpic(projectId as ProjectId, action.epic)
+              : undefined
+          }
         />
       );
   }

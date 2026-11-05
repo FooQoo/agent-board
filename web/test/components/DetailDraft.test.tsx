@@ -60,20 +60,7 @@ describe('draft banner', () => {
   });
 });
 
-describe('Make draft and Finalize', () => {
-  it('Make draft sends PUT draft true and reports the change', async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ task: fixtureTask(8) }));
-    vi.stubGlobal('fetch', fetchMock);
-    const onChanged = renderPanel(fixtureTask(8));
-    await userEvent.click(screen.getByRole('button', { name: 'Make draft' }));
-    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe(`/api/projects/${PROJECT_A.id}/tasks/8/draft`);
-    expect(init.method).toBe('PUT');
-    expect(JSON.parse(String(init.body))).toEqual({ isDraft: true });
-  });
-
+describe('Finalize', () => {
   it('Finalize sends PUT draft false and reports the change', async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ task: fixtureTask(8) }));
     vi.stubGlobal('fetch', fetchMock);
@@ -82,23 +69,6 @@ describe('Make draft and Finalize', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({ isDraft: false });
-  });
-
-  it('shows an error near the button and changes nothing when Make draft fails (409)', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () =>
-        jsonResponse(
-          { error: { code: 'invalid_state_for_draft', message: 'x', reason: 'y' } },
-          409,
-        ),
-      ),
-    );
-    const onChanged = renderPanel(fixtureTask(8));
-    await userEvent.click(screen.getByRole('button', { name: 'Make draft' }));
-    expect((await screen.findByRole('alert')).textContent).toBe('Could not save. Try again.');
-    expect(onChanged).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Make draft' })).toBeTruthy();
   });
 
   it('shows the error in the banner when Finalize fails on the network, and can try again', async () => {
@@ -120,8 +90,8 @@ describe('Make draft and Finalize', () => {
     const gate = deferred<Response>();
     const fetchMock = vi.fn(() => gate.promise);
     vi.stubGlobal('fetch', fetchMock);
-    renderPanel(fixtureTask(8));
-    const button = screen.getByRole('button', { name: 'Make draft' });
+    renderPanel(draftOf(fixtureTask(8)));
+    const button = screen.getByRole('button', { name: 'Finalize' });
     await userEvent.click(button);
     await userEvent.click(button);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -130,18 +100,19 @@ describe('Make draft and Finalize', () => {
     await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
   });
 
-  it('keeps Make draft in the toolbar on every tab', async () => {
+  it('keeps Preview in the toolbar on every tab and never offers Make draft', async () => {
     renderPanel(fixtureTask(8));
     for (const name of [/^History/, /^Conditions/, /^Epic/]) {
       await userEvent.click(screen.getByRole('tab', { name }));
-      expect(screen.getByRole('button', { name: 'Make draft' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Preview' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Make draft' })).toBeNull();
     }
   });
 
-  it('Make draft is Japanese: 下書きにする', () => {
+  it('Preview is Japanese: プレビュー', () => {
     selectLocale('ja');
     renderPanel(fixtureTask(8));
-    expect(screen.getByRole('button', { name: '下書きにする' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'プレビュー' })).toBeTruthy();
   });
 });
 

@@ -35,6 +35,11 @@ export function AppDialogs({
             epicApi={dialog.kind === 'epic' ? epicApi : undefined}
             onOpenTask={onOpenTask}
             onSubmit={onSubmit}
+            subscribeChanges={model.subscribeChanges}
+            loadTask={model.loadTask}
+            loadEpic={model.loadEpic}
+            isTaskListed={model.isTaskListed}
+            onChanged={() => model.refreshProject(operation.projectId)}
           />
         </Suspense>
       ) : null}

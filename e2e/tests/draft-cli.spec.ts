@@ -22,6 +22,7 @@ import {
   type TaskJson,
 } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
+import { putDraft } from '../helpers/drafts';
 
 // What a draft means for the CLI, and the limits of a body, with the real binary and a real serve.
 // The CLI never makes a draft: only the page does, so each test uses the page for that one step.
@@ -54,8 +55,10 @@ async function open(page: Page, id: number): Promise<void> {
   await task(page, id).click();
 }
 
-async function makeDraft(page: Page): Promise<void> {
-  await details(page).getByRole('button', { name: 'Make draft' }).click();
+/** Starts from a draft: there is no button for it, so the server is asked and the page reads the card again. */
+async function startFromDraft(page: Page): Promise<void> {
+  await putDraft(13);
+  await open(page, 13);
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 }
 
@@ -82,7 +85,7 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
 }) => {
   // Card #13 is an idle Doing card of the AI, so all three writes are valid for it when it is not a draft.
   await open(page, 13);
-  await makeDraft(page);
+  await startFromDraft(page);
   await expect.poll(() => show(13).isDraft).toBe(true);
 
   const before = board();
@@ -142,7 +145,7 @@ test('a draft stays a draft over time, and toggling it wakes wait; history updat
   try {
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(waiter.exitCode).toBeNull();
-    await makeDraft(page);
+    await startFromDraft(page);
     expect(await ended).toBe(0);
     const received = JSON.parse(out) as { tasks: ShownTask[]; cursor: string };
     expect(received.tasks.find((c) => c.id === 13)).toMatchObject({ isDraft: true });
@@ -227,7 +230,7 @@ test('a backup is a copy of the project folder; copying it back brings a draft b
   for (const item of listTasks(mainProject)) expect(show(item.id).isDraft, `#${item.id}`).toBe(false);
 
   await open(page, 13);
-  await makeDraft(page);
+  await startFromDraft(page);
   await expect.poll(() => show(13).isDraft).toBe(true);
 
   // The backup copies the card and epic files of the project (MODEL.md, backups).
