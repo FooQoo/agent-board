@@ -157,6 +157,61 @@ describe('usePreviewLock', () => {
     expect(result.current.problem).toBeNull();
   });
 
+  it('keeps a conflict after the changes are taken back and edited again', async () => {
+    const { result, rerender, enterFn } = setup(async () => 'b');
+    await act(async () => rerender(edited));
+    expect(result.current.problem).toBe('conflict');
+    await act(async () => rerender(clean));
+    expect(result.current).toMatchObject({ problem: 'conflict', canSave: false });
+    await act(async () => rerender({ ...edited, snapshot: 'a++' }));
+    expect(result.current).toMatchObject({ problem: 'conflict', canSave: false });
+    expect(enterFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('enters again on retry after running or failed, with a difference and not read-only', async () => {
+    const enter = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(running())
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValue('a');
+    const { result, rerender } = setup(enter);
+    await act(async () => result.current.retry());
+    expect(enter).not.toHaveBeenCalled();
+    await act(async () => rerender(edited));
+    expect(result.current.problem).toBe('running');
+    await act(async () => result.current.retry());
+    expect(enter).toHaveBeenCalledTimes(2);
+    expect(result.current.problem).toBe('failed');
+    await act(async () => rerender({ ...edited, readOnly: true }));
+    await act(async () => result.current.retry());
+    expect(enter).toHaveBeenCalledTimes(2);
+    await act(async () => rerender(edited));
+    await act(async () => result.current.retry());
+    expect(enter).toHaveBeenCalledTimes(3);
+    expect(result.current).toMatchObject({ entered: true, problem: null, canSave: true });
+    await act(async () => result.current.retry());
+    expect(enter).toHaveBeenCalledTimes(3);
+  });
+
+  it('ignores retry while an enter is running, after a conflict, and without a difference', async () => {
+    let resolve: (value: string) => void = () => {};
+    const first = setup(() => new Promise((r) => (resolve = r)));
+    act(() => first.rerender(edited));
+    act(() => first.result.current.retry());
+    expect(first.enterFn).toHaveBeenCalledTimes(1);
+    await act(async () => resolve('b'));
+    await act(async () => first.result.current.retry());
+    expect(first.enterFn).toHaveBeenCalledTimes(1);
+
+    const second = setup(async () => {
+      throw new Error('network');
+    });
+    await act(async () => second.rerender(edited));
+    await act(async () => second.rerender(clean));
+    await act(async () => second.result.current.retry());
+    expect(second.enterFn).toHaveBeenCalledTimes(1);
+  });
+
   it('leaves the draft on release only when it was entered', async () => {
     const { result, rerender, leaveFn } = setup();
     await act(async () => result.current.release());

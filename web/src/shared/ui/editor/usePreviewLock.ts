@@ -23,13 +23,16 @@ export interface PreviewLock {
   problem: PreviewProblem;
   canSave: boolean;
   release: () => Promise<void>;
+  /** Enters again after `running` or `failed`; nothing otherwise. */
+  retry: () => void;
 }
 
 /**
  * The draft lock of the preview modal. The first difference enters a draft once. A refusal
  * because the item is running reports `running`, any other failure `failed`; both leave the
  * input as it is and enter again at the next input (or when the modal stops being read-only).
- * A draft whose content differs from what the modal showed before the edit is a `conflict`.
+ * A draft whose content differs from what the modal showed before the edit is a `conflict`,
+ * which stays while the modal is open.
  */
 export function usePreviewLock({
   draftAtOpen,
@@ -49,14 +52,13 @@ export function usePreviewLock({
   latest.current = { enter, leave };
   if (!dirty && !enteredRef.current) baseline.current = snapshot;
 
-  // `snapshot` is a trigger only: the next input enters again after `running` or `failed`.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
-  useEffect(() => {
-    if (!dirty) {
-      setProblem(null);
-      return;
-    }
-    if (draftAtOpen || readOnly || enteredRef.current || pending.current !== null) return;
+  const view = useRef({ dirty, readOnly, draftAtOpen, problem });
+  view.current = { dirty, readOnly, draftAtOpen, problem };
+
+  const attempt = useCallback(() => {
+    const now = view.current;
+    if (!now.dirty || now.draftAtOpen || now.readOnly) return;
+    if (enteredRef.current || pending.current !== null) return;
     const before = baseline.current;
     const run = (async () => {
       try {
@@ -73,7 +75,20 @@ export function usePreviewLock({
     void run.finally(() => {
       if (pending.current === run) pending.current = null;
     });
-  }, [dirty, snapshot, readOnly, draftAtOpen]);
+  }, []);
+
+  // `snapshot` is a trigger only: the next input enters again after `running` or `failed`.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
+  useEffect(() => {
+    // A conflict stays until the modal is closed: only a discard and a reopen resolve it.
+    if (!dirty) setProblem((current) => (current === 'conflict' ? current : null));
+    else attempt();
+  }, [dirty, snapshot, readOnly, draftAtOpen, attempt]);
+
+  const retry = useCallback(() => {
+    const now = view.current;
+    if (now.problem === 'running' || now.problem === 'failed') attempt();
+  }, [attempt]);
 
   const release = useCallback(async () => {
     if (pending.current !== null) await pending.current;
@@ -85,5 +100,5 @@ export function usePreviewLock({
 
   const locked = draftAtOpen || entered;
   const canSave = dirty && !readOnly && problem === null && locked;
-  return { entered, problem, canSave, release };
+  return { entered, problem, canSave, release, retry };
 }
