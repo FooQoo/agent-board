@@ -123,6 +123,27 @@ describe('task preview', () => {
     expect(leaveDraft).not.toHaveBeenCalled();
   });
 
+  it('can retry the last request when only images changed and that request failed', async () => {
+    const task = base({ attachments: [attachment] });
+    const onSubmit = vi
+      .fn<(data: unknown) => Promise<void>>()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new WriteError('down', 503, null))
+      .mockResolvedValue(undefined);
+    const { user, onClose } = setup({ task, onSubmit });
+    await user.click(screen.getByRole('button', { name: 'Remove shot.png' }));
+    await waitFor(() => expect(save().hasAttribute('disabled')).toBe(false));
+    await user.click(save());
+    await screen.findByRole('alert');
+    expect(onSubmit).toHaveBeenCalledTimes(2);
+    expect(onSubmit.mock.calls[1]?.[0]).toEqual({ finalize: true });
+    expect(save().hasAttribute('disabled')).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledTimes(3);
+    expect(onSubmit.mock.calls[2]?.[0]).toEqual({ finalize: true });
+  });
+
   it('takes the draft back when the changes are discarded', async () => {
     const { user, onClose, leaveDraft, onSubmit } = setup();
     await user.type(titleInput(), '!');

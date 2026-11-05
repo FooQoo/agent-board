@@ -160,8 +160,13 @@ export function EditDialog({
     onClose();
   }, [release, onClose]);
 
+  // The images are saved but the last request failed: nothing differs any more, yet the end of
+  // the draft is still to be sent, so Save and Retry stay available until it goes through.
+  const [lastPending, setLastPending] = useState(false);
+  const canSend = lock.canSave || (lastPending && !readOnly && lock.problem === null);
+
   const save = () => {
-    if (!valid || !lock.canSave || flow.busy.current) return;
+    if (!valid || !canSend || flow.busy.current) return;
     void flow.run(async () => {
       // 1. Images: the added ones are sent with their IDs, the removed ones are deleted.
       if (imagesChanged) {
@@ -182,6 +187,7 @@ export function EditDialog({
         setRemoved([]);
         attachmentState.reset(remaining);
         setSaved((current) => ({ ...current, attachments: remaining }));
+        setLastPending(true);
       }
       // 2. The last request: the body with the conditions (one file write), the title, and the end
       // of the draft when this dialog made it. The editor holds the text the reader typed.
@@ -197,6 +203,7 @@ export function EditDialog({
       // Without `enterDraft` nothing was entered on the server, so there is nothing to end.
       if (lock.entered && enterDraft) input.finalize = true;
       if (Object.keys(input).length > 0) await onSubmit(input);
+      setLastPending(false);
     });
   };
 
@@ -216,7 +223,7 @@ export function EditDialog({
       status={status}
       closeLabel={dirty && !readOnly ? undefined : t('dialog.close')}
       actions={
-        <Button type="button" disabled={flow.saving || !valid || !lock.canSave} onClick={save}>
+        <Button type="button" disabled={flow.saving || !valid || !canSend} onClick={save}>
           {flow.saving ? t('dialog.saving') : t('editor.save')}
         </Button>
       }
