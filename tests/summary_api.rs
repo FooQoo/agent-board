@@ -388,7 +388,7 @@ fn summary_pc_keeps_the_epic_order_and_the_condition_read_error() {
         .set_task_epic(&project, 2, Some(&alpha), Actor::Human, at(7))
         .unwrap();
     store
-        .set_epic_priority(&project, &alpha, &[2, 1], at(8))
+        .set_epic_priority(&project, &alpha, &[2, 1], false, at(8))
         .unwrap();
     let md = shared
         .join("projects")

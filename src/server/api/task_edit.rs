@@ -35,6 +35,9 @@ pub(super) struct EditTaskInput {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct DraftInput {
     is_draft: bool,
+    /// Leaving the draft discards its changes instead of confirming them.
+    #[serde(default)]
+    discard: bool,
 }
 
 /// Save the title and description of a draft, and confirm it with `finalize`.
@@ -110,7 +113,13 @@ pub(super) async fn set_draft(
         Err(response) => return *response,
     };
     let result = with_request_files(&state, &headers, move |store| {
-        store.set_draft(&project_id, id, input.is_draft, chrono::Utc::now())
+        store.set_draft(
+            &project_id,
+            id,
+            input.is_draft,
+            input.discard,
+            chrono::Utc::now(),
+        )
     })
     .await;
     changed_task_response(&state, result)

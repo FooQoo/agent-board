@@ -23,6 +23,7 @@ impl AgboardError {
             AgboardError::InvalidStateForColumn { .. } => "invalid_state_for_column",
             AgboardError::InvalidStateForAssignee => "invalid_state_for_assignee",
             AgboardError::TaskIsDraft { .. } => "task_is_draft",
+            AgboardError::EpicIsDraft { .. } => "epic_is_draft",
             AgboardError::TaskIsDone { .. } => "task_is_done",
             AgboardError::AcceptanceUnmet { .. } => "acceptance_unmet",
             AgboardError::TaskNotDraft { .. } => "task_not_draft",

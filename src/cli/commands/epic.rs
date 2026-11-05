@@ -144,6 +144,7 @@ fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError>
                 color: args.color.clone(),
                 is_draft: None,
                 document,
+                refuse_if_draft: true,
             },
             ctx.clock.now(),
         )?;
@@ -154,7 +155,7 @@ fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError>
         let priority = parse_priority(text)?;
         let result = ctx
             .files
-            .set_epic_priority(project, &id, &priority, ctx.clock.now())?;
+            .set_epic_priority(project, &id, &priority, true, ctx.clock.now())?;
         changed |= result.changed;
         epic = Some(result.value);
     }

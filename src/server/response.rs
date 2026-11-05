@@ -43,6 +43,7 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         AgboardError::RequestChanged
         | AgboardError::TaskStatusChanged { .. }
         | AgboardError::TaskIsDraft { .. }
+        | AgboardError::EpicIsDraft { .. }
         | AgboardError::TaskIsDone { .. }
         | AgboardError::TaskNotDraft { .. }
         | AgboardError::InvalidStateForDraft { .. }

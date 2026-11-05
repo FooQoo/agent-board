@@ -37,6 +37,10 @@ fn messages_and_reasons_follow_the_design_table() {
             "Wait for the user to finalize it, then try again.",
         ),
         (
+            "epic E is a draft and read-only for the CLI.",
+            "Wait for the user to finalize it, then try again.",
+        ),
+        (
             "task #5 is done and read-only for agents.",
             "A person must move the task out of Done before you can change it.",
         ),

@@ -148,7 +148,7 @@ fn malformed_history_keeps_body_and_acceptance_but_blocks_updates() {
     );
     let before_json = fs::read(fx.task_dir(id).join("task.json")).unwrap();
     assert!(matches!(
-        fx.store.set_draft(&fx.project, id, true, Utc::now()),
+        fx.store.set_draft(&fx.project, id, true, false, Utc::now()),
         Err(AgboardError::FileInvalid { field, .. }) if field == "history"
     ));
     assert_eq!(

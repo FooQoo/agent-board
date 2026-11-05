@@ -121,19 +121,26 @@ impl FileStore {
         let shared = self.shared_dir();
         let (_project_dir, _lock) = lock_project(shared, project)?;
         let (dir, mut file) = read_epic_file(shared, project, id)?;
+        if update.refuse_if_draft && file.is_draft {
+            return Err(AgboardError::EpicIsDraft { id: id.to_string() });
+        }
 
         let mut changed = false;
+        // Turning the draft flag on or off alone does not move the update time.
+        let mut content_changed = false;
         if let Some(name) = name
             && name != file.name
         {
             file.name = name;
             changed = true;
+            content_changed = true;
         }
         if let Some(color) = color
             && color != file.color
         {
             file.color = color;
             changed = true;
+            content_changed = true;
         }
         if let Some(is_draft) = update.is_draft
             && is_draft != file.is_draft
@@ -149,9 +156,12 @@ impl FileStore {
             validate::ensure_document_body(&next_document, &label)?;
             save_document(shared, &dir, &next_document)?;
             changed = true;
+            content_changed = true;
         }
         if changed {
-            file.updated_at = stamp(now);
+            if content_changed {
+                file.updated_at = stamp(now);
+            }
             save_epic(shared, &dir, &file)?;
         }
         Ok(Changed {
@@ -164,12 +174,14 @@ impl FileStore {
     /// list is checked first (positive IDs, no repeats). IDs that no task of
     /// the epic holds any more are dropped, so the stored order is the order of
     /// the tasks that exist. Other frontmatter keys and the body stay. A list
-    /// that does not change writes nothing.
+    /// that does not change writes nothing. With `refuse_if_draft`, a draft epic
+    /// is refused with `epic_is_draft` before anything is written.
     pub fn set_epic_priority(
         &self,
         project: &ProjectId,
         id: &EpicId,
         priority: &[i64],
+        refuse_if_draft: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<EpicView>, AgboardError> {
         frontmatter::validate_priority(priority).map_err(|d| AgboardError::InvalidValue {
@@ -179,6 +191,9 @@ impl FileStore {
         let shared = self.shared_dir();
         let (_project_dir, _lock) = lock_project(shared, project)?;
         let (dir, mut file) = read_epic_file(shared, project, id)?;
+        if refuse_if_draft && file.is_draft {
+            return Err(AgboardError::EpicIsDraft { id: id.to_string() });
+        }
         let members: Vec<i64> = reader::read_snapshot_locked(shared, project)?
             .tasks
             .iter()

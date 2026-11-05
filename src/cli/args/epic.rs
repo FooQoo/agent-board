@@ -26,7 +26,7 @@ pub enum EpicCommand {
     Ls,
     /// Show an epic, its color, and its full document
     Show(EpicIdArgs),
-    /// Change an epic's name, color, or document
+    /// Change an epic's name, color, document, or task order; a draft epic is refused with epic_is_draft
     Edit(EpicEditArgs),
     /// Delete an epic (humans only; asks for confirmation)
     Rm(EpicIdArgs),

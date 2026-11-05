@@ -42,7 +42,7 @@ fn body_only_draft_edit_uses_latest_markdown_acceptance_and_history() {
             now,
         )
         .unwrap();
-    files.set_draft(&project, 1, true, now).unwrap();
+    files.set_draft(&project, 1, true, false, now).unwrap();
     let moved = files
         .move_work_task_for_user(
             &project,
@@ -179,7 +179,7 @@ fn rejected_finalize_keeps_the_draft_body_and_history_unchanged() {
     let project = project_id(home.path());
     let files = FileStore::open(&home.path().join("shared"));
     let now = Utc.with_ymd_and_hms(2026, 10, 14, 13, 0, 0).unwrap();
-    files.set_draft(&project, 1, true, now).unwrap();
+    files.set_draft(&project, 1, true, false, now).unwrap();
     let before = files.task(&project, 1).unwrap();
     let invalid_acceptance = [
         AcceptanceItem {

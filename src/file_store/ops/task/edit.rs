@@ -138,6 +138,7 @@ impl FileStore {
             task.history.push(draft_event(
                 &task,
                 false,
+                false,
                 at,
                 match markdown.as_deref() {
                     Some(text) => self
@@ -200,6 +201,7 @@ impl FileStore {
             task.is_draft = false;
             task.history.push(draft_event(
                 &task,
+                false,
                 false,
                 at,
                 match markdown.as_deref() {

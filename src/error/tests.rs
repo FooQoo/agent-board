@@ -26,6 +26,7 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         },
         AgboardError::InvalidStateForAssignee,
         AgboardError::TaskIsDraft { id: 5 },
+        AgboardError::EpicIsDraft { id: "E".into() },
         AgboardError::TaskIsDone { id: 5 },
         AgboardError::AcceptanceUnmet {
             id: 5,
@@ -123,6 +124,7 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("invalid_state_for_column", 1),
             ("invalid_state_for_assignee", 2),
             ("task_is_draft", 1),
+            ("epic_is_draft", 1),
             ("task_is_done", 1),
             ("acceptance_unmet", 2),
             ("task_not_draft", 1),
