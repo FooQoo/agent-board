@@ -87,7 +87,7 @@ export const detailEn = {
     unreadableNote: 'Progress is not shown until the file is fixed. The body is shown below.',
     unreadableProblem: '{{file}} ({{field}}) — {{reason}}',
     savedIn:
-      'Saved in the frontmatter of the file. Agents check them after verifying; you can check them in the Conditions tab of the details, and change their text through the edit dialog.',
+      'Saved in the frontmatter of the file. Agents check them after verifying; you can check them in the Conditions tab of the details, and change their text through the preview dialog.',
     toggleFailed: 'The condition could not be saved. Try again.',
     showAll: 'Show all ({{count}})',
     showFewer: 'Show fewer',
