@@ -55,9 +55,21 @@ export function editTaskMultipart(
   );
 }
 
-/** Makes a card a draft (`true`) or finalizes it (`false`). Only an idle card can become a draft. */
-export async function setDraft(projectId: ProjectId, id: number, isDraft: boolean) {
-  return sendTask('PUT', `${projectPath(projectId)}/tasks/${id}/draft`, { isDraft });
+/**
+ * Makes a card a draft (`true`) or finalizes it (`false`). Only an idle card can become a draft.
+ * `discard` takes the draft back without finalizing it: the history says the changes were
+ * discarded. It goes with `isDraft: false` only.
+ */
+export async function setDraft(
+  projectId: ProjectId,
+  id: number,
+  isDraft: boolean,
+  options: { discard?: boolean } = {},
+) {
+  return sendTask('PUT', `${projectPath(projectId)}/tasks/${id}/draft`, {
+    isDraft,
+    ...(options.discard ? { discard: true } : {}),
+  });
 }
 
 /**
