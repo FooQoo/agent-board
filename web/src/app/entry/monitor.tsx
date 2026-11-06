@@ -10,7 +10,7 @@ import '../../shared/styles/app.css';
 import '../../shared/styles/ui.css';
 import '../../shared/styles/modal.css';
 import '../../shared/styles/theme.css';
-import '../../features/tasks/answer/decision-request.css';
+import '../../features/tasks/answer/decision-answer.css';
 import '../../pages/monitor/monitor.css';
 
 initializeTheme();

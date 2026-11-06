@@ -163,12 +163,7 @@ describe('MonitorProject', () => {
     expect(screen.getByRole('heading', { name: /Doing 1/ })).toBeTruthy();
   });
 
-  it('shows an answer at once: the Summary is read again without waiting for the hold', async () => {
-    const writeAnswer = vi.fn(async () => ({
-      task: makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'idle', pendingRequestId: null }),
-      changed: true,
-    }));
-    mount({ writeAnswer });
+  const pendingSummary = () => {
     const summary = summaryOf([{ id: 1, document: 'd1', history: 'h1' }]);
     Object.assign(summary.tasks[0] ?? {}, {
       taskStatus: 'doing',
@@ -177,20 +172,89 @@ describe('MonitorProject', () => {
       pendingReason: 'Which one?',
       pendingChoices: [{ id: 'a', label: 'A' }],
     });
+    return summary;
+  };
+  const answered = () => ({
+    task: makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'idle', pendingRequestId: null }),
+    changed: true,
+  });
+
+  it('does not hold the list while the answer sheet is open with input: a change is read at once', async () => {
+    mount();
+    const summary = pendingSummary();
     await openAndLoad(summary);
     const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
-    const card = screen.getByRole('article', { name: /Which one\?/ });
-    await user.type(within(card).getByRole('textbox'), 'Go with A');
-    // Typing an answer holds automatic updates: a change that arrives now waits.
+    await user.click(
+      within(screen.getByRole('article', { name: /Which one\?/ })).getByRole('button', {
+        name: 'Answer the question',
+      }),
+    );
+    await user.type(await screen.findByRole('textbox'), 'Go with A');
+    expect(adapter.summaryCalls).toHaveLength(1);
+
+    // The sheet is open and has input; a change that arrives now is not made to wait.
+    act(() =>
+      adapter.handlers?.onChanged(changed(1, [{ resource: 'task', id: 1, facets: ['summary'] }])),
+    );
+    await tick(1000);
+    expect(adapter.summaryCalls).toHaveLength(2);
+  });
+
+  it('holds the list only while the answer is on its way', async () => {
+    const writeAnswer = vi.fn(() => new Promise<never>(() => undefined));
+    mount({ writeAnswer });
+    await openAndLoad(pendingSummary());
+    const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
+    await user.click(
+      within(screen.getByRole('article', { name: /Which one\?/ })).getByRole('button', {
+        name: 'Answer the question',
+      }),
+    );
+    await user.type(await screen.findByRole('textbox'), 'Go with A');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(writeAnswer).toHaveBeenCalledTimes(1);
+
     act(() =>
       adapter.handlers?.onChanged(changed(1, [{ resource: 'task', id: 1, facets: ['summary'] }])),
     );
     await tick(1000);
     expect(adapter.summaryCalls).toHaveLength(1);
+  });
 
-    await user.click(within(card).getByRole('button', { name: 'Send' }));
+  it('shows an answer at once: the Summary is read again without waiting for the hold', async () => {
+    const writeAnswer = vi.fn(async () => answered());
+    mount({ writeAnswer });
+    await openAndLoad(pendingSummary());
+    const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
+    await user.click(
+      within(screen.getByRole('article', { name: /Which one\?/ })).getByRole('button', {
+        name: 'Answer the question',
+      }),
+    );
+    await user.type(await screen.findByRole('textbox'), 'Go with A');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
     await tick();
     expect(writeAnswer).toHaveBeenCalledTimes(1);
     expect(adapter.summaryCalls).toHaveLength(2);
+  });
+
+  it('waits for a new build while input is left in the sheet, even when it is closed', async () => {
+    const reloads: Array<boolean> = [];
+    mount({
+      useBuildReload: ((_served: string | null, busy: boolean) => void reloads.push(busy)) as never,
+    });
+    await openAndLoad(pendingSummary());
+    expect(reloads.at(-1)).toBe(false);
+    const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
+    await user.click(
+      within(screen.getByRole('article', { name: /Which one\?/ })).getByRole('button', {
+        name: 'Answer the question',
+      }),
+    );
+    await user.type(await screen.findByRole('textbox'), 'Go with A');
+    expect(reloads.at(-1)).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Close details' }));
+    await tick(500);
+    expect(reloads.at(-1)).toBe(true);
   });
 });
